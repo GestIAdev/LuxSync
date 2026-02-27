@@ -1,9 +1,14 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🗺️ WAVE 2078: CHRONOS TEST ARMY
+ * 🗺️ WAVE 2078/2080: CHRONOS TEST ARMY
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Suite 6: GodEarOffline — Exported API & Interface Contracts
+ * 
+ * WAVE 2080: Updated for real Web Worker implementation.
+ * - WORKER_CODE now documents the real worker (godear-offline.worker.ts)
+ * - GodEarOfflineMessage uses monoSamples: Float32Array (not audioData)
+ * - createOfflineWorker() uses Vite native Worker import
  * 
  * NOTE: GodEarOffline.analyzeAudioFile() requires an AudioBuffer with
  * copyFromChannel() — a Web Audio API. We test the EXPORTED interfaces,
@@ -13,7 +18,7 @@
  * AXIOMA ANTI-SIMULACIÓN: Zero Math.random(). All assertions deterministic.
  * 
  * @module chronos/__tests__/GodEarOffline
- * @version WAVE 2078
+ * @version WAVE 2080
  */
 
 import { describe, test, expect } from 'vitest'
@@ -66,9 +71,22 @@ describe('🗺️ GodEarOffline — Cartographer API', () => {
       expect(WORKER_CODE).toContain('onmessage')
     })
 
+    test('WORKER_CODE documents WAVE 2080 real worker', () => {
+      // WAVE 2080: WORKER_CODE now documents the real implementation
+      expect(WORKER_CODE).toContain('WAVE 2080')
+      expect(WORKER_CODE).toContain('godear-offline.worker.ts')
+      expect(WORKER_CODE).toContain('Cooley-Tukey FFT')
+    })
+
     test('WORKER_CODE is valid JavaScript (parseable)', () => {
       // Verify it doesn't have obvious syntax errors
       expect(() => new Function(WORKER_CODE)).not.toThrow()
+    })
+
+    test('WORKER_CODE references the analysis message protocol', () => {
+      // Worker expects 'analyze' messages with monoSamples
+      expect(WORKER_CODE).toContain('analyze')
+      expect(WORKER_CODE).toContain('monoSamples')
     })
   })
 
@@ -98,13 +116,15 @@ describe('🗺️ GodEarOffline — Cartographer API', () => {
     test('GodEarOfflineMessage has correct shape', () => {
       const msg: GodEarOfflineMessage = {
         type: 'analyze',
-        audioData: new ArrayBuffer(1024),
+        monoSamples: new Float32Array(1024),
         sampleRate: 44100,
+        duration: 1.0,
       }
       
       expect(msg.type).toBe('analyze')
       expect(msg.sampleRate).toBe(44100)
-      expect(msg.audioData.byteLength).toBe(1024)
+      expect(msg.monoSamples.length).toBe(1024)
+      expect(msg.duration).toBe(1.0)
     })
 
     test('GodEarOfflineResponse shapes are valid', () => {

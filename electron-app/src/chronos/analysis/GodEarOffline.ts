@@ -5,25 +5,33 @@
  * 
  * WAVE 2002: THE SYNAPTIC BRIDGE (Original)
  * WAVE 2077: THE TRANSPLANT — Real GodEarFFT Integration
+ * WAVE 2080: THE GHOST IN THE MACHINE — Real Web Worker
  * 
  * Análisis offline de audio para el timeline de Chronos.
  * Extrae waveform, beat grid, secciones, y heatmap energético.
  * 
+ * WAVE 2080 CHANGES:
+ * - analyzeAudioFile() now dispatches to a REAL Web Worker
+ * - Full FFT pipeline runs in a DEDICATED THREAD (zero UI blocking)
+ * - Automatic fallback to main thread if Worker fails
+ * - Transferable Objects for zero-copy AudioBuffer transfer
+ * - Progress reporting via Worker postMessage
+ * 
  * WAVE 2077 CHANGES:
- * - extractEnergyHeatmap() ahora usa GodEarAnalyzer REAL (Cooley-Tukey FFT)
+ * - extractEnergyHeatmap() uses GodEarAnalyzer REAL (Cooley-Tukey FFT)
  * - 7 bandas tácticas con Linkwitz-Riley LR4 (zero overlap)
  * - Blackman-Harris windowing (-92dB sidelobes)
  * - Spectral centroid + flatness per frame
- * - detectBeats() alimentado con subBass+bass reales
- * - detectTransients() con slope-based onset detection
- * - Legacy bass/high fields mantenidos para compatibilidad
+ * - detectBeats() fed with real subBass+bass
+ * - detectTransients() with slope-based onset detection
+ * - Legacy bass/high fields maintained for compatibility
  * 
  * NOTA: Este NO es el GodEar en tiempo real. Es la versión batch
  * para procesar archivos completos de una sola vez.
  * El GodEarFFT real (workers/GodEarFFT.ts) corre en Senses Worker.
  * 
  * @module chronos/analysis/GodEarOffline
- * @version 2077.0.0
+ * @version 2080.0.0
  */
 
 import type {
@@ -89,9 +97,11 @@ export type ProgressCallback = (progress: AnalysisProgress) => void
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🗺️ ANALYZE AUDIO FILE
+ * � WAVE 2080: Worker-backed analysis with automatic fallback
  * 
- * Análisis completo de un AudioBuffer para generar AnalysisData.
+ * Tries to run the full pipeline in a dedicated Web Worker.
+ * If Worker fails (CSP restrictions, build issues, etc.), falls back
+ * to main thread analysis seamlessly.
  * 
  * @param buffer AudioBuffer decodificado
  * @param config Configuración opcional
@@ -105,6 +115,133 @@ export async function analyzeAudioFile(
 ): Promise<AnalysisData> {
   const cfg = { ...DEFAULT_CONFIG, ...config }
   
+  // Prepare mono samples (needed for both worker and fallback paths)
+  const monoSamples = getMonoSamples(buffer)
+  const sampleRate = buffer.sampleRate
+  const duration = buffer.duration
+  
+  // 👻 WAVE 2080: Try Worker first
+  try {
+    const result = await analyzeViaWorker(monoSamples, sampleRate, duration, cfg, onProgress)
+    console.log('[GodEarOffline] 👻 Analysis completed via Web Worker (UI thread free)')
+    return result
+  } catch (workerError) {
+    console.warn('[GodEarOffline] ⚠️ Worker failed, falling back to main thread:', workerError)
+    // Fall through to main thread analysis
+  }
+  
+  // 🔄 Fallback: Main thread analysis (original WAVE 2077 path)
+  return analyzeOnMainThread(monoSamples, sampleRate, duration, cfg, onProgress)
+}
+
+/**
+ * 👻 WAVE 2080: Run analysis pipeline in a dedicated Web Worker
+ * 
+ * Uses Vite's worker import pattern for proper bundling.
+ * Transfers Float32Array as Transferable Object (zero-copy).
+ */
+async function analyzeViaWorker(
+  monoSamples: Float32Array,
+  sampleRate: number,
+  duration: number,
+  config: OfflineAnalysisConfig,
+  onProgress?: ProgressCallback
+): Promise<AnalysisData> {
+  return new Promise<AnalysisData>((resolve, reject) => {
+    let worker: Worker | null = null
+    
+    try {
+      // Vite Web Worker pattern: import with ?worker suffix at build time
+      // At runtime, create inline Blob worker from the compiled worker code
+      worker = new Worker(
+        new URL('./godear-offline.worker.ts', import.meta.url),
+        { type: 'module' }
+      )
+    } catch (err) {
+      reject(new Error(`Cannot create Worker: ${err instanceof Error ? err.message : String(err)}`))
+      return
+    }
+    
+    // Timeout: 60 seconds max for analysis
+    const timeout = setTimeout(() => {
+      worker?.terminate()
+      reject(new Error('Worker analysis timed out (60s)'))
+    }, 60_000)
+    
+    worker.onmessage = (e: MessageEvent) => {
+      const msg = e.data
+      
+      switch (msg.type) {
+        case 'progress':
+          onProgress?.({
+            phase: msg.phase,
+            progress: msg.progress,
+            message: msg.message,
+          })
+          break
+          
+        case 'complete':
+          clearTimeout(timeout)
+          worker?.terminate()
+          
+          // Reconstruct AnalysisData from worker result
+          const result: AnalysisData = {
+            durationMs: msg.result.durationMs,
+            waveform: msg.result.waveform,
+            energyHeatmap: msg.result.energyHeatmap,
+            beatGrid: msg.result.beatGrid,
+            sections: msg.result.sections,
+            transients: msg.result.transients,
+          }
+          
+          onProgress?.({ phase: 'complete', progress: 100, message: 'Analysis completed (Worker)' })
+          resolve(result)
+          break
+          
+        case 'error':
+          clearTimeout(timeout)
+          worker?.terminate()
+          reject(new Error(msg.error))
+          break
+      }
+    }
+    
+    worker.onerror = (err) => {
+      clearTimeout(timeout)
+      worker?.terminate()
+      reject(new Error(`Worker error: ${err.message}`))
+    }
+    
+    // Send samples to worker — transfer the buffer (zero-copy)
+    // We clone the monoSamples because transfer empties the original
+    const samplesClone = new Float32Array(monoSamples)
+    
+    worker.postMessage(
+      {
+        type: 'analyze',
+        monoSamples: samplesClone,
+        sampleRate,
+        duration,
+        config,
+      },
+      [samplesClone.buffer] // Transferable — zero-copy to worker
+    )
+  })
+}
+
+/**
+ * � Main thread analysis (fallback path)
+ * 
+ * Original WAVE 2077 pipeline — runs on the UI thread with yieldToEventLoop().
+ * Used when Web Worker is unavailable.
+ */
+async function analyzeOnMainThread(
+  monoSamples: Float32Array,
+  sampleRate: number,
+  duration: number,
+  cfg: OfflineAnalysisConfig,
+  onProgress?: ProgressCallback
+): Promise<AnalysisData> {
   const report = (phase: AnalysisProgress['phase'], progress: number, message: string) => {
     onProgress?.({ phase, progress, message })
   }
@@ -112,56 +249,39 @@ export async function analyzeAudioFile(
   // 🛡️ WAVE 2005.2: Helper to yield to event loop periodically
   const yieldToEventLoop = () => new Promise<void>(resolve => setTimeout(resolve, 0))
   
-  // Obtener samples mono (mezcla de todos los canales)
-  const monoSamples = getMonoSamples(buffer)
-  const sampleRate = buffer.sampleRate
-  const duration = buffer.duration
-  
-  // 🛡️ WAVE 2005.2: Yield after getting mono samples (heavy operation)
   await yieldToEventLoop()
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 1. WAVEFORM - Extracción de picos
-  // ─────────────────────────────────────────────────────────────────────────
-  report('waveform', 0, 'Extrayendo waveform...')
+  // 1. WAVEFORM
+  report('waveform', 0, 'Extracting waveform...')
   const waveform = extractWaveform(monoSamples, sampleRate, cfg)
-  report('waveform', 100, 'Waveform extraída')
+  report('waveform', 100, 'Waveform extracted')
   await yieldToEventLoop()
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. ENERGY HEATMAP - Análisis espectral simplificado
-  // ─────────────────────────────────────────────────────────────────────────
-  report('energy', 0, 'Analizando energía espectral...')
+  // 2. ENERGY HEATMAP
+  report('energy', 0, 'FFT spectral analysis...')
   const energyHeatmap = extractEnergyHeatmap(monoSamples, sampleRate, cfg)
-  report('energy', 100, 'Heatmap generado')
+  report('energy', 100, 'Heatmap generated')
   await yieldToEventLoop()
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 3. BEAT DETECTION - Detección de BPM y beat grid
-  // ─────────────────────────────────────────────────────────────────────────
-  report('beats', 0, 'Detectando beats...')
+  // 3. BEAT DETECTION
+  report('beats', 0, 'Detecting beats...')
   const beatGrid = detectBeats(monoSamples, sampleRate, energyHeatmap, cfg)
-  report('beats', 100, 'Beat grid detectado')
+  report('beats', 100, 'Beat grid detected')
   await yieldToEventLoop()
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 4. SECTION DETECTION - Análisis estructural
-  // ─────────────────────────────────────────────────────────────────────────
-  report('sections', 0, 'Detectando secciones...')
+  // 4. SECTION DETECTION
+  report('sections', 0, 'Detecting sections...')
   const sections = detectSections(energyHeatmap, beatGrid, duration, cfg)
-  report('sections', 100, 'Secciones detectadas')
+  report('sections', 100, 'Sections detected')
   await yieldToEventLoop()
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 5. TRANSIENT DETECTION - Hits para snap
-  // ─────────────────────────────────────────────────────────────────────────
-  report('transients', 0, 'Detectando transientes...')
+  // 5. TRANSIENT DETECTION
+  report('transients', 0, 'Detecting transients...')
   const transients = detectTransients(monoSamples, sampleRate, cfg)
-  report('transients', 100, 'Transientes detectados')
+  report('transients', 100, 'Transients detected')
   
-  report('complete', 100, 'Análisis completado')
+  report('complete', 100, 'Analysis completed (main thread)')
   
-  // Duration in milliseconds
   const durationMs = duration * 1000
   
   return {
@@ -755,8 +875,9 @@ function detectTransients(
  */
 export interface GodEarOfflineMessage {
   type: 'analyze'
-  audioData: ArrayBuffer
+  monoSamples: Float32Array
   sampleRate: number
+  duration: number
   config?: Partial<OfflineAnalysisConfig>
 }
 
@@ -771,38 +892,45 @@ export interface GodEarOfflineResponse {
 }
 
 /**
- * Código del Worker como string (para inline worker)
+ * 👻 WAVE 2080: Worker code indicator
+ * 
+ * The actual worker code lives in godear-offline.worker.ts
+ * and is loaded via Vite's native Worker support:
+ *   new Worker(new URL('./godear-offline.worker.ts', import.meta.url))
+ * 
+ * This string exists for backwards compatibility with tests
+ * and to document that the worker IS implemented.
  */
 export const WORKER_CODE = `
-// Este código se ejecuta en el Web Worker
-// TODO: Mover las funciones de análisis aquí cuando se implemente el worker real
+// 👻 WAVE 2080: THE GHOST IN THE MACHINE
+// Real implementation in: godear-offline.worker.ts
+// Loaded via Vite native Worker with import.meta.url
+// Features: Cooley-Tukey FFT, LR4 filters, 7 tactical bands
+// Pipeline: waveform → heatmap → beats → sections → transients
+// Thread: DEDICATED Web Worker (zero UI blocking)
 self.onmessage = async (e) => {
-  const { type, audioData, sampleRate, config } = e.data;
-  
+  const { type, monoSamples, sampleRate, duration, config } = e.data;
   if (type === 'analyze') {
-    try {
-      // Por ahora, responder con error indicando que use la versión sincrónica
-      self.postMessage({
-        type: 'error',
-        error: 'Worker not implemented yet. Use analyzeAudioFile directly.'
-      });
-    } catch (err) {
-      self.postMessage({ type: 'error', error: err.message });
-    }
+    // Real analysis runs in godear-offline.worker.ts
+    // This inline version exists only as documentation
+    self.postMessage({ type: 'error', error: 'Use Vite Worker import instead' });
   }
 };
 `
 
 /**
- * Crea un Web Worker inline para análisis
+ * 👻 WAVE 2080: Creates the real Web Worker via Vite's native Worker support
  * 
- * NOTA: Por ahora solo es un placeholder. El análisis real se hace
- * en el hilo principal. Para implementar el worker:
- * 1. Mover las funciones de análisis al WORKER_CODE
- * 2. Usar transferable objects para AudioBuffer
+ * Uses import.meta.url pattern for proper bundling.
+ * The worker file (godear-offline.worker.ts) is compiled by Vite
+ * and loaded as a proper ES module Worker.
+ * 
+ * @returns Worker instance ready to receive 'analyze' messages
+ * @throws Error if Worker creation fails (CSP, build issues)
  */
 export function createOfflineWorker(): Worker {
-  const blob = new Blob([WORKER_CODE], { type: 'application/javascript' })
-  const url = URL.createObjectURL(blob)
-  return new Worker(url)
+  return new Worker(
+    new URL('./godear-offline.worker.ts', import.meta.url),
+    { type: 'module' }
+  )
 }

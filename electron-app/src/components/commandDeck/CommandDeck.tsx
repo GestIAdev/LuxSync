@@ -14,7 +14,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Zap, Sparkles, Power } from 'lucide-react'
+import { ReactorIcon, BrainNeuralIcon, BoltIcon } from '../icons/LuxIcons'
 import { useEffectsStore, selectBlackout } from '../../stores/effectsStore'
 import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../stores/controlStore'
 import { GrandMasterSlider } from './GrandMasterSlider'
@@ -150,14 +150,22 @@ export const CommandDeck: React.FC = () => {
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="deck-zone zone-intelligence">
         <button
+          className={`intelligence-badge arm-badge ${outputEnabled ? 'armed' : 'disarmed'}`}
+          onClick={handleOutputToggle}
+          title={outputEnabled ? 'DMX OUTPUT LIVE — Click to disarm' : 'DMX OUTPUT BLOCKED — Click to arm'}
+        >
+          <ReactorIcon size={28} className="intel-icon" />
+          <span className="intel-label">{outputEnabled ? 'LIVE' : 'ARM'}</span>
+        </button>
+        <button
           className={`intelligence-badge ${aiEnabled ? 'conscious' : 'reactive'}`}
           onClick={handleConsciousnessToggle}
           title={aiEnabled ? 'CONSCIOUS: AI-driven lighting' : 'REACTIVE: Physics-only mode'}
         >
           {aiEnabled ? (
-            <Sparkles className="intel-icon" />
+            <BrainNeuralIcon size={28} className="intel-icon" />
           ) : (
-            <Zap className="intel-icon" />
+            <BoltIcon size={28} className="intel-icon" />
           )}
           <span className="intel-label">{aiEnabled ? 'AI' : 'RX'}</span>
         </button>
@@ -193,7 +201,7 @@ export const CommandDeck: React.FC = () => {
           onClick={handleOutputToggle}
           title={outputEnabled ? 'Output ENABLED - Click to pause' : 'Output PAUSED - Click to go live'}
         >
-          <Power className="trigger-icon" />
+          <ReactorIcon size={28} className="trigger-icon" />
           <span className="trigger-label">GO</span>
         </button>
       </div>

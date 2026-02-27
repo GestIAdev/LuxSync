@@ -1,12 +1,15 @@
 /**
- * 🔴 BLACKOUT BUTTON - WAVE 375
+ * 🔴 BLACKOUT BUTTON - WAVE 2073: IPC FIX
  * Emergency kill switch - big, red, isolated
  * Always accessible with SPACE key
+ * 
+ * WAVE 2073 FIX: Was calling window.lux.setBlackout() → IPC 'lux:set-blackout' (NO HANDLER)
+ * Now calls window.lux.arbiter.toggleBlackout() → IPC 'lux:arbiter:toggleBlackout' (CONNECTED)
  */
 
 import React, { useCallback, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Square } from 'lucide-react'
+import { BlackoutIcon } from '../icons/LuxIcons'
 import { useEffectsStore, selectBlackoutButton } from '../../stores/effectsStore'
 import './CommandDeck.css'
 
@@ -15,19 +18,23 @@ export const BlackoutButton: React.FC = () => {
   const { blackout, toggleBlackout } = useEffectsStore(useShallow(selectBlackoutButton))
   
   const handleBlackout = useCallback(async () => {
-    // Toggle local state
+    // Toggle local state first (optimistic UI)
     toggleBlackout()
     
-    // Send to backend via arbiter
+    // 🔧 WAVE 2073 FIX: Use arbiter.toggleBlackout (correct IPC channel)
+    // OLD (BROKEN): window.lux?.setBlackout(newState) → 'lux:set-blackout' → NO HANDLER
+    // NEW (FIXED):  window.lux?.arbiter?.toggleBlackout() → 'lux:arbiter:toggleBlackout' → masterArbiter.toggleBlackout()
     try {
-      // First try arbiter (WAVE 374)
-      const newState = !blackout
-      await window.lux?.setBlackout(newState)
-      console.log(`[BlackoutButton] 🔴 Blackout: ${newState ? 'ON' : 'OFF'}`)
+      const result = await window.lux?.arbiter?.toggleBlackout()
+      if (result?.success) {
+        console.log(`[BlackoutButton] 🔴 Blackout: ${result.active ? 'ON' : 'OFF'}`)
+      } else {
+        console.error('[BlackoutButton] toggleBlackout returned no success:', result)
+      }
     } catch (err) {
-      console.error('[BlackoutButton] Blackout error:', err)
+      console.error('[BlackoutButton] Blackout IPC error:', err)
     }
-  }, [blackout, toggleBlackout])
+  }, [toggleBlackout])
   
   // SPACE key always triggers blackout
   useEffect(() => {
@@ -48,7 +55,7 @@ export const BlackoutButton: React.FC = () => {
       onClick={handleBlackout}
       title="BLACKOUT - All lights off [SPACE]"
     >
-      <Square size={32} className="blackout-icon" />
+      <BlackoutIcon size={32} className="blackout-icon" />
       <span className="blackout-text">BLACKOUT</span>
       <span className="blackout-shortcut">SPACE</span>
       

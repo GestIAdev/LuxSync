@@ -14,7 +14,9 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAudioStore, selectHyperionAudio } from '../../../stores/audioStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { useNavigationStore } from '../../../stores/navigationStore'
 import { useShallow } from 'zustand/shallow'
+import { FolderIcon, NetworkIcon } from '../../icons/LuxIcons'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
@@ -118,6 +120,27 @@ export function HyperionView({
     setQualityMode(qualityMode === 'HQ' ? 'LQ' : 'HQ')
   }, [qualityMode, setQualityMode])
 
+  // 🚀 WAVE 2073: Show Operations in Live Header
+  const setActiveTab = useNavigationStore(state => state.setActiveTab)
+  
+  const handleLoadShow = useCallback(async () => {
+    try {
+      const luxApi = (window as any).lux
+      if (luxApi?.stage?.openDialog) {
+        const result = await luxApi.stage.openDialog()
+        if (result?.success) {
+          console.log(`[Hyperion] ✅ Show loaded: ${result.filePath}`)
+        }
+      }
+    } catch (err) {
+      console.error('[Hyperion] Load show error:', err)
+    }
+  }, [])
+
+  const handleDmxNexus = useCallback(() => {
+    setActiveTab('nexus')
+  }, [setActiveTab])
+
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
     if (bpm === 0) return '---'
@@ -199,6 +222,22 @@ export function HyperionView({
 
           {/* Right Section: Quality Toggle + Settings */}
           <div className="hyperion-toolbar__right">
+            <button
+              className="hyperion-show-btn"
+              onClick={handleLoadShow}
+              title="Load Show File"
+            >
+              <FolderIcon size={16} />
+              <span>LOAD SHOW</span>
+            </button>
+            <button
+              className="hyperion-nexus-btn"
+              onClick={handleDmxNexus}
+              title="DMX Nexus — Visual Patcher"
+            >
+              <NetworkIcon size={16} />
+              <span>DMX NEXUS</span>
+            </button>
             <button
               className={`hyperion-quality-toggle ${qualityMode.toLowerCase()}`}
               onClick={handleQualityToggle}

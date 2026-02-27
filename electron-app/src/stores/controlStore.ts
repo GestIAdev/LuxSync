@@ -92,18 +92,40 @@ export interface ControlState {
   enableAI: (enabled: boolean) => void
   
   // ═══════════════════════════════════════════════════════════════════════
+  // ⚛️ WAVE 2073.1: SYSTEM ARM - THE REACTOR SWITCH
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * ¿Está el motor del sistema arrancado? (TitanEngine tick loop)
+   * false = COLD (motor parado, sin cálculos, sin audio)
+   * true = ARMED (motor corriendo, calculando físicas, escuchando audio)
+   * DEFAULT: false (Cold Start — user must explicitly arm)
+   * 
+   * IMPORTANTE: systemArmed ≠ outputEnabled
+   * - systemArmed: Enciende el cerebro (TitanEngine + audio + Selene)
+   * - outputEnabled: Abre la válvula DMX (MasterArbiter compuerta)
+   */
+  systemArmed: boolean
+  
+  /** Toggle system arm (COLD ↔ ARMED) */
+  toggleSystemArm: () => void
+  
+  /** Set system arm state explicitly */
+  setSystemArmed: (armed: boolean) => void
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
   // ═══════════════════════════════════════════════════════════════════════
   
   /** 
-   * ¿Está la salida DMX habilitada?
-   * false = ARMED (engine corre pero DMX bloqueado)
-   * true = LIVE (DMX fluye a fixtures)
+   * ¿Está la salida DMX habilitada? (MasterArbiter compuerta)
+   * false = GATE CLOSED (motor corre pero DMX bloqueado)
+   * true = GATE OPEN (DMX fluye a fixtures)
    * DEFAULT: false (Cold Start)
    */
   outputEnabled: boolean
   
-  /** Toggle output gate (ARMED ↔ LIVE) */
+  /** Toggle output gate (CLOSED ↔ OPEN) */
   toggleOutput: () => void
   
   /** Set output state explicitly */
@@ -182,6 +204,8 @@ const DEFAULT_STATE = {
   // 🧠 WAVE 1133: AI LOBOTOMY - Selene starts SEDATED, not creative
   // User must explicitly enable Conscious mode after GO
   aiEnabled: false,
+  // ⚛️ WAVE 2073.1: System arm - motor starts COLD
+  systemArmed: false,
   // 🚦 WAVE 1132: Cold Start Protocol - output disabled by default
   outputEnabled: false,
   flowParams: DEFAULT_FLOW_PARAMS,
@@ -246,6 +270,23 @@ export const useControlStore = create<ControlState>()(
       enableAI: (enabled) => {
         console.log(`[ControlStore] 🤖 AI explicitly set: ${enabled}`)
         set({ aiEnabled: enabled })
+      },
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // ⚛️ WAVE 2073.1: SYSTEM ARM ACTIONS - THE REACTOR SWITCH
+      // ═══════════════════════════════════════════════════════════════════
+      
+      toggleSystemArm: () => {
+        const current = get().systemArmed
+        const newState = !current
+        console.log(`[ControlStore] ⚛️ System ARM toggled: ${current ? 'ARMED' : 'COLD'} → ${newState ? 'ARMED' : 'COLD'}`)
+        set({ systemArmed: newState })
+      },
+      
+      setSystemArmed: (armed) => {
+        const state = armed ? 'ARMED' : 'COLD'
+        console.log(`[ControlStore] ⚛️ System ARM explicitly set: ${state}`)
+        set({ systemArmed: armed })
       },
       
       // ═══════════════════════════════════════════════════════════════════
@@ -370,6 +411,9 @@ export const selectIs2DMode = (state: ControlState) => state.viewMode === '2D'
 
 // 🚦 WAVE 1132: Output Gate selector
 export const selectOutputEnabled = (state: ControlState) => state.outputEnabled
+
+// ⚛️ WAVE 2073.1: System ARM selector
+export const selectSystemArmed = (state: ControlState) => state.systemArmed
 
 // WAVE 33.2: Palette selectors
 export const selectActivePalette = (state: ControlState) => state.activePalette

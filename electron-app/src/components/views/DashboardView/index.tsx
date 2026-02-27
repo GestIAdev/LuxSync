@@ -24,7 +24,7 @@ import { ActiveSession } from './components/ActiveSession'
 import { TacticalPatchBay } from './components/TacticalPatchBay'
 import { Launchpad } from './components/Launchpad'
 import DataCards from './components/DataCards'
-import PowerButton from './components/PowerButton'
+// ⚡ WAVE 2073.1: PowerButton legacy REMOVED — ARM lives in CommandDeck now
 import { BoltIcon } from '../../icons/LuxIcons'
 import './DashboardView.css'
 
@@ -34,7 +34,7 @@ const DashboardView: React.FC = () => {
       {/* Header Strip — Clean, minimal */}
       <header className="mission-header">
         <div className="header-left">
-          <PowerButton />
+          {/* ⚡ WAVE 2073.1: PowerButton removed — ARM control now in CommandDeck */}
           <div className="header-title">
             <span className="title-icon">
               <BoltIcon size={20} color="#22d3ee" />

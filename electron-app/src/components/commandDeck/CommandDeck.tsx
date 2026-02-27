@@ -1,22 +1,22 @@
 /**
- * 🎛️ THE COMMAND DECK - WAVE 1132: COLD START PROTOCOL
+ * 🎛️ THE COMMAND DECK - WAVE 2073.1: THE DECOUPLING (ARM vs GO)
  * Bottom control bar for live performance - "THE FLIGHT STICK"
  * 
  * Layout (WAVE 1131 - Command Deck Reforged):
  * [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ]
  * 
- * Grid: 0.8fr 2fr 3fr 1.5fr (Master is protagonist)
+ * ⚛️ WAVE 2073.1: ARM and GO are now DECOUPLED:
+ * - ARM button: Starts/stops the TitanEngine tick loop (the brain)
+ * - GO button: Opens/closes the DMX output gate (the valve)
  * 
- * 🚦 WAVE 1132: Output Gate Integration
- * - GO button now connects to MasterArbiter.setOutputEnabled()
- * - System starts in COLD state (output disabled)
- * - User must explicitly click GO to enable DMX output
+ * DJ workflow: ARM first (engine thinks) → GO when ready (DMX flows)
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { ReactorIcon, BrainNeuralIcon, BoltIcon } from '../icons/LuxIcons'
 import { useEffectsStore, selectBlackout } from '../../stores/effectsStore'
-import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../stores/controlStore'
+import { useControlStore, selectAIEnabled, selectOutputEnabled, selectSystemArmed } from '../../stores/controlStore'
+import { useSystemPower } from '../../hooks/useSystemPower'
 import { GrandMasterSlider } from './GrandMasterSlider'
 import { VibeSelectorCompact } from './VibeSelectorCompact'
 import { MoodToggle } from './MoodToggle'
@@ -30,6 +30,11 @@ export const CommandDeck: React.FC = () => {
   // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
   const aiEnabled = useControlStore(selectAIEnabled)
   const toggleAI = useControlStore(state => state.toggleAI)
+  
+  // ⚛️ WAVE 2073.1: System ARM state (the reactor)
+  const systemArmed = useControlStore(selectSystemArmed)
+  const setSystemArmed = useControlStore(state => state.setSystemArmed)
+  const { powerState, togglePower } = useSystemPower()
   
   // 🚦 WAVE 1132: Output Gate from store (synced with backend)
   const outputEnabled = useControlStore(selectOutputEnabled)
@@ -45,6 +50,15 @@ export const CommandDeck: React.FC = () => {
   })
   
   // Subscribe to arbiter status changes
+  useEffect(() => {
+    // ⚛️ WAVE 2073.1: Sync systemArmed with powerState from usePowerStore
+    // If the system was powered on externally (eg. from another component), update our store
+    const isArmed = powerState === 'ONLINE'
+    if (systemArmed !== isArmed) {
+      setSystemArmed(isArmed)
+    }
+  }, [powerState, systemArmed, setSystemArmed])
+  
   useEffect(() => {
     // Initial fetch - includes outputEnabled state
     const fetchStatus = async () => {
@@ -120,8 +134,36 @@ export const CommandDeck: React.FC = () => {
     }
   }, [aiEnabled, toggleAI])
 
-  // 🚦 WAVE 1132: Output GO toggle handler - THE COLD START GATE
-  // Connects to MasterArbiter via IPC
+  // ⚛️ WAVE 2073.1: ARM toggle handler - THE REACTOR SWITCH
+  // Starts/stops the TitanEngine tick loop via useSystemPower
+  // This is the BRAIN — it thinks, calculates physics, listens to audio
+  // But does NOT send DMX until GO is pressed
+  const handleArmToggle = useCallback(async () => {
+    try {
+      await togglePower()
+      // Sync local store after power toggle completes
+      const willBeArmed = powerState === 'OFFLINE'
+      setSystemArmed(willBeArmed)
+      console.log(`[CommandDeck] ⚛️ System ${willBeArmed ? '🟢 ARMED (engine running)' : '� COLD (engine stopped)'}`)
+      
+      // If disarming, also close the DMX gate (safety)
+      if (!willBeArmed && outputEnabled) {
+        try {
+          await window.lux?.arbiter?.setOutputEnabled?.(false)
+          setOutputEnabled(false)
+          console.log('[CommandDeck] ⚛️ Safety: DMX gate closed on disarm')
+        } catch (e) {
+          // Best effort
+        }
+      }
+    } catch (err) {
+      console.error('[CommandDeck] ARM toggle error:', err)
+    }
+  }, [togglePower, powerState, setSystemArmed, outputEnabled, setOutputEnabled])
+
+  // �🚦 WAVE 1132: Output GO toggle handler - THE DMX GATE
+  // Opens/closes the DMX output valve via MasterArbiter
+  // This is the VALVE — it lets the calculated light flow to physical fixtures
   const handleOutputToggle = useCallback(async () => {
     const newState = !outputEnabled
     
@@ -132,7 +174,7 @@ export const CommandDeck: React.FC = () => {
       if (result?.success) {
         // Update local store to match backend
         setOutputEnabled(newState)
-        console.log(`[CommandDeck] 🚦 Output ${newState ? '🟢 LIVE' : '🔴 ARMED'} - DMX ${newState ? 'flowing' : 'blocked'}`)
+        console.log(`[CommandDeck] 🚦 DMX Gate ${newState ? '🟢 OPEN' : '🔴 CLOSED'} - DMX ${newState ? 'flowing' : 'blocked'}`)
       } else {
         console.error('[CommandDeck] Failed to set output enabled:', result)
       }
@@ -150,12 +192,15 @@ export const CommandDeck: React.FC = () => {
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="deck-zone zone-intelligence">
         <button
-          className={`intelligence-badge arm-badge ${outputEnabled ? 'armed' : 'disarmed'}`}
-          onClick={handleOutputToggle}
-          title={outputEnabled ? 'DMX OUTPUT LIVE — Click to disarm' : 'DMX OUTPUT BLOCKED — Click to arm'}
+          className={`intelligence-badge arm-badge ${systemArmed ? 'armed' : 'disarmed'}`}
+          onClick={handleArmToggle}
+          disabled={powerState === 'STARTING'}
+          title={systemArmed 
+            ? 'ENGINE RUNNING — Click to shut down' 
+            : 'ENGINE OFF — Click to start TitanEngine'}
         >
           <ReactorIcon size={28} className="intel-icon" />
-          <span className="intel-label">{outputEnabled ? 'LIVE' : 'ARM'}</span>
+          <span className="intel-label">{systemArmed ? 'LIVE' : 'ARM'}</span>
         </button>
         <button
           className={`intelligence-badge ${aiEnabled ? 'conscious' : 'reactive'}`}

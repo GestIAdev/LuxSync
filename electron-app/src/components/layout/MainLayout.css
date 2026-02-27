@@ -66,3 +66,26 @@
   /* Optional: slight border glow when maximized */
   box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.03);
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 🔴 WAVE 2074.1: BLACKOUT INDICATOR — Non-blocking      */
+/* Blackout is a DMX state, not a UI mode.                 */
+/* Subtle red border + inset glow. App stays fully usable. */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.app-layout.blackout-active {
+  box-shadow: inset 0 0 12px 2px rgba(239, 68, 68, 0.4);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  animation: blackout-border-pulse 2s ease-in-out infinite;
+}
+
+@keyframes blackout-border-pulse {
+  0%, 100% {
+    box-shadow: inset 0 0 12px 2px rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    box-shadow: inset 0 0 20px 4px rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+}

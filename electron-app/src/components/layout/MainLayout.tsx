@@ -6,22 +6,25 @@
  * WAVE 375: ZEN MODE - Sidebar collapse for maximum viewport
  * WAVE 375.2: COMMAND DECK - Replaces GlobalEffectsBar (140px height)
  * WAVE 2009: CHRONOS FULLSCREEN - Hide CommandDeck in Chronos view
+ * WAVE 2074.1: OVERLAY KILL — Blackout no longer blocks the UI.
+ *   Blackout is a DMX state, not a UI mode. You can patch, navigate,
+ *   and operate freely while lights are off. A subtle red border
+ *   on the app frame signals blackout is active.
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
 import Sidebar from './Sidebar'
 import ContentArea from './ContentArea'
 import { CommandDeck } from '../commandDeck'
-import BlackoutOverlay from './BlackoutOverlay'
 import TitleBar from './TitleBar'
-import { useEffectsStore, selectMainLayoutEffects } from '../../stores'
+import { useEffectsStore, selectBlackout } from '../../stores'
 import { useNavigationStore, selectMainLayoutNav } from '../../stores/navigationStore'
 import { useShallow } from 'zustand/shallow'
 import './MainLayout.css'
 
 const MainLayout: React.FC = () => {
-  // 🛡️ WAVE 2042.13.4: Use stable selectors to prevent infinite loops
-  const { blackout } = useEffectsStore(useShallow(selectMainLayoutEffects))
+  // ⚡ WAVE 2074.1: Blackout state for visual indicator (NOT a blocking overlay)
+  const blackout = useEffectsStore(selectBlackout)
   const { activeTab } = useNavigationStore(useShallow(selectMainLayoutNav))
   
   // 🎬 WAVE 2009: Chronos is a full-screen experience
@@ -63,7 +66,7 @@ const MainLayout: React.FC = () => {
   }, [toggleZenMode])
 
   return (
-    <div className={`app-layout ${isZenMode ? 'zen-mode' : ''}`}>
+    <div className={`app-layout ${isZenMode ? 'zen-mode' : ''} ${blackout ? 'blackout-active' : ''}`}>
       {/* 🪟 Global Title Bar - Flex item, NO position:fixed */}
       <TitleBar isZenMode={isZenMode} onToggleZenMode={toggleZenMode} />
       
@@ -83,9 +86,6 @@ const MainLayout: React.FC = () => {
       {/* 🎛️ WAVE 375: Command Deck - 140px bottom bar, full width */}
       {/* 🎬 WAVE 2009: Hidden in Chronos (Chronos has its own Arsenal Dock) */}
       {!isChronosView && <CommandDeck />}
-      
-      {/* Blackout Overlay */}
-      {blackout && <BlackoutOverlay />}
     </div>
   )
 }

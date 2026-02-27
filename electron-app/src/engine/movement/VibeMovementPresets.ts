@@ -24,6 +24,18 @@ export interface MovementPhysics {
   maxVelocity: number       // DMX units/s (50-800)
   friction: number          // 0.0-1.0 (slew rate limit)
   arrivalThreshold: number  // DMX units (0.5-5.0)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏎️ WAVE 2074.2: EXPLICIT PHYSICS MODE — THE PERSONALITY RESURRECTION
+  //
+  // 'snap'    → Respuesta directa con REV_LIMIT. Para vibes con movimiento
+  //             activo (Techno, Latino, Rock). El mover PERSIGUE el target.
+  // 'classic' → Física con inercia, aceleración y frenado. Para vibes
+  //             lentos (Chill, Idle). El mover NAVEGA hacia el target.
+  //
+  // ANTES: El modo dependía de maxAccel > 1000, pero SAFETY_CAP (900)
+  //        lo clampeaba → SNAP MODE era código muerto. NUNCA MÁS.
+  // ═══════════════════════════════════════════════════════════════════════
+  physicsMode: 'snap' | 'classic'
 }
 
 export interface OpticsConfig {
@@ -64,6 +76,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 600,         // Muy rápido
       friction: 0.05,           // Casi sin fricción (libre)
       arrivalThreshold: 0.5,    // Precisión alta
+      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -90,6 +103,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 350,         // 🔧 Subido: Más swing
       friction: 0.20,           // Algo de suavizado orgánico
       arrivalThreshold: 2.0,    // Permite overshoot elegante
+      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)
@@ -116,6 +130,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 450,         // 🔧 Subido: Rápido en golpes
       friction: 0.30,           // Fricción para punch (no arrastrar)
       arrivalThreshold: 1.0,    // Precisión normal
+      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
     },
     optics: {
       zoomDefault: 220,         // Zoom abierto (wash)
@@ -141,6 +156,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 50,          // Velocidad glacial
       friction: 0.80,           // Máxima fricción (slew rate limit)
       arrivalThreshold: 3.0,    // Permite mucho overshoot
+      physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
     },
     optics: {
       zoomDefault: 255,         // Zoom máximo (wash total)
@@ -166,6 +182,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 100,
       friction: 0.50,
       arrivalThreshold: 1.0,
+      physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
     },
     optics: {
       zoomDefault: 127,         // Zoom neutro

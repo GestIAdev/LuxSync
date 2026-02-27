@@ -789,7 +789,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 {/* 🔥 HOTFIX WAVE 2070.1: Restauración del Selector de Canales
                     El input de totalChannels se perdió durante la migración al diseño Cockpit.
                     Se incrusta junto a Model Name en un flex row para no romper el layout. */}
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <div className="cockpit-input-group" style={{ flex: 1 }}>
                     <label>Model Name *</label>
                     <input

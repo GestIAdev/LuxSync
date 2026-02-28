@@ -1,65 +1,41 @@
-/**/**
-
- * ═══════════════════════════════════════════════════════════════════════════ * ═══════════════════════════════════════════════════════════════════════════
-
- * ⚠️ DEPRECATED — WAVE 2082: M2 RENAME * 🚀 CHRONOS INJECTOR - WAVE 2013: STAGE SIMULATOR LINK
-
- *  * 
-
- * This file has been renamed to ChronosStageDispatcher.ts * The bridge between Chronos Timeline and the 3D Stage Simulator.
-
- * This re-export exists for backward compatibility only. * When you playback the timeline, this module reads the clips at the 
-
- *  * current playhead position and dispatches the corresponding effects
-
- * WHY THE RENAME: * to the StageSimulator2.
-
- * There were two "ChronosInjector" files causing navigation confusion: * 
-
- *   - core/ChronosInjector.ts → NOW: core/ChronosStageDispatcher.ts * ARCHITECTURE:
-
- *     (dispatches StageCommands to the Stage Simulator) * ┌─────────────────────────┐
-
- *   - bridge/ChronosInjector.ts → STAYS (the "Whisperer" to Titan/Selene) * │     Chronos Timeline    │
-
- *  * │    (clips, playhead)    │
-
- * @deprecated Import from './ChronosStageDispatcher' instead * └───────────┬─────────────┘
-
- * @module chronos/core/ChronosInjector *             │ getActiveClips(currentTimeMs)
-
- * ═══════════════════════════════════════════════════════════════════════════ *             ▼
-
- */ * ┌─────────────────────────┐
-
- * │    CHRONOS INJECTOR     │
-
-export { * │  - Reads active clips   │
-
-  ChronosStageDispatcher, * │  - Generates commands   │
-
-  ChronosStageDispatcher as ChronosInjector, * │  - Dispatches to Stage  │
-
-  getChronosStageDispatcher, * └───────────┬─────────────┘
-
-  getChronosStageDispatcher as getChronosInjector, *             │ inject(effectData)
-
-  type StageCommand, *             ▼
-
-  type StageCommandListener, * ┌─────────────────────────┐
-
-} from './ChronosStageDispatcher' * │   StageSimulator2 API   │
-
+﻿/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🚀 CHRONOS STAGE DISPATCHER — WAVE 2013 → WAVE 2082 (M2 RENAME)
+ * 
+ * Renamed from ChronosInjector (core) to ChronosStageDispatcher.
+ * Reason: There were two files named "ChronosInjector" in different folders:
+ *   - core/ChronosInjector.ts (THIS FILE → now ChronosStageDispatcher.ts)
+ *   - bridge/ChronosInjector.ts (stays — it's the "Whisperer" to Titan/Selene)
+ * 
+ * This module is the bridge between Chronos Timeline and the Stage Simulator.
+ * When you playback the timeline, it reads clips at the current playhead
+ * position and dispatches corresponding effects to StageSimulator2.
+ * 
+ * ARCHITECTURE:
+ * ┌─────────────────────────┐
+ * │     Chronos Timeline    │
+ * │    (clips, playhead)    │
+ * └───────────┬─────────────┘
+ *             │ getActiveClips(currentTimeMs)
+ *             ▼
+ * ┌─────────────────────────┐
+ * │  CHRONOS STAGE DISPATCHER│
+ * │  - Reads active clips   │
+ * │  - Generates commands   │
+ * │  - Dispatches to Stage  │
+ * └───────────┬─────────────┘
+ *             │ inject(effectData)
+ *             ▼
+ * ┌─────────────────────────┐
+ * │   StageSimulator2 API   │
  * │  (Three.js / WebGL)     │
-
-export { default } from './ChronosStageDispatcher' * └─────────────────────────┘
-
+ * └─────────────────────────┘
  * 
  * AXIOMA ANTI-SIMULACIÓN:
  * This is the REAL pipeline. No mocks. When clips play, the stage reacts.
  * 
- * @module chronos/core/ChronosInjector
- * @version WAVE 2013
+ * @module chronos/core/ChronosStageDispatcher
+ * @version WAVE 2082 (M2 Rename)
  */
 
 import type { TimelineClip, VibeClip, FXClip } from './TimelineClip'
@@ -133,7 +109,7 @@ interface ActiveState {
 // CHRONOS INJECTOR CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export class ChronosInjector {
+export class ChronosStageDispatcher {
   /** Listeners for stage commands */
   private listeners: Set<StageCommandListener> = new Set()
   
@@ -158,7 +134,7 @@ export class ChronosInjector {
   subscribe(listener: StageCommandListener): () => void {
     this.listeners.add(listener)
     if (this.debug) {
-      console.log('[ChronosInjector] 📡 New listener subscribed')
+      console.log('[StageDispatcher] 📡 New listener subscribed')
     }
     
     // Return unsubscribe function
@@ -175,7 +151,7 @@ export class ChronosInjector {
       try {
         listener(command)
       } catch (err) {
-        console.error('[ChronosInjector] Listener error:', err)
+        console.error('[StageDispatcher] Listener error:', err)
       }
     })
   }
@@ -220,7 +196,7 @@ export class ChronosInjector {
         })
         
         if (this.debug) {
-          console.log(`[ChronosInjector] 🎭 VIBE → ${vibe.label}`)
+          console.log(`[StageDispatcher] 🎭 VIBE → ${vibe.label}`)
         }
       }
       
@@ -253,7 +229,7 @@ export class ChronosInjector {
         
         if (this.debug) {
           const hephTag = fx.isHephCustom ? ' ⚒️[HEPH RUNTIME]' : fx.hephClip ? ' ⚒️[HEPH]' : ''
-          console.log(`[ChronosInjector] ⚡ FX ON → ${fx.label}${hephTag}`)
+          console.log(`[StageDispatcher] ⚡ FX ON → ${fx.label}${hephTag}`)
         }
       }
     }
@@ -288,7 +264,7 @@ export class ChronosInjector {
         
         if (this.debug) {
           const hephTag = wasHephCustom ? ' ⚒️[HEPH]' : ''
-          console.log(`[ChronosInjector] ⬛ FX OFF → ${prevFxType}${hephTag}`)
+          console.log(`[StageDispatcher] ⬛ FX OFF → ${prevFxType}${hephTag}`)
         }
       }
     }
@@ -320,7 +296,7 @@ export class ChronosInjector {
     }
     
     if (this.debug) {
-      console.log('[ChronosInjector] 🔄 State reset')
+      console.log('[StageDispatcher] 🔄 State reset')
     }
   }
   
@@ -336,14 +312,17 @@ export class ChronosInjector {
 // SINGLETON INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════
 
-let instance: ChronosInjector | null = null
+let instance: ChronosStageDispatcher | null = null
 
-export function getChronosInjector(): ChronosInjector {
+export function getChronosStageDispatcher(): ChronosStageDispatcher {
   if (!instance) {
-    instance = new ChronosInjector()
-    console.log('[ChronosInjector] 🚀 Instance created')
+    instance = new ChronosStageDispatcher()
+    console.log('[ChronosStageDispatcher] 🚀 Instance created')
   }
   return instance
 }
 
-export default ChronosInjector
+/** @deprecated Use getChronosStageDispatcher() — backward compat alias */
+export const getChronosInjector = getChronosStageDispatcher
+
+export default ChronosStageDispatcher

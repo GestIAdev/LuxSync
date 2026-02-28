@@ -374,12 +374,13 @@ Existían DOS definiciones de proyecto:
 - **Commit:** `0c46302` (WAVE 2081)
 - **Status:** ✅ FULLY RESOLVED — Arquitectura dual documentada como contrato
 
-#### M2. DOS CHRONOS INJECTORS
+#### ~~M2. DOS CHRONOS INJECTORS~~ → ✅ RESUELTO (WAVE 2082: M2 RENAME)
 
-- `core/ChronosInjector.ts` — state diffing, emit StageCommands (para Stage Simulator)
-- `bridge/ChronosInjector.ts` — context → overrides, MusicalContext blending (para TitanEngine)
-
-Mismo nombre de archivo en diferentes carpetas. Funciones complementarias pero confusas de navegar.
+- `core/ChronosInjector.ts` → **Renombrado a `ChronosStageDispatcher.ts`** — state diffing, emit StageCommands (para Stage Simulator)
+- `bridge/ChronosInjector.ts` — se queda (es el "Whisperer" — context → overrides, MusicalContext blending para TitanEngine)
+- Re-export shim en `core/ChronosInjector.ts` para backward compatibility (`@deprecated`)
+- **Commit:** `ba69f26` (WAVE 2082)
+- **Status:** ✅ FULLY RESOLVED — Cada archivo tiene un nombre que describe su función
 
 #### ~~M3. generateChronosId() USA Math.random()~~ → ✅ RESUELTO (WAVE 2081: M3 ANTI-SIMULATION)
 
@@ -488,13 +489,13 @@ El Web Worker para GodEarOffline es un string concatenado, no un archivo .worker
 15. ✅ Session persistence cross-navigation
 16. ✅ Dual-model project architecture (runtime + persistence) con barrel documentado (WAVE 2081)
 
-### Carencias Reales: 2 (era 6 → 5 → ahora 2)
+### Carencias Reales: 1 (era 6 → 5 → 2 → ahora 1)
 
 1. 🟡 Test coverage parcial (144 tests → core + barrel cubiertos, peripherals pendientes)
 2. ~~🔴 Web Worker no implementado~~ → ✅ RESUELTO (WAVE 2080)
 3. ~~🔴 Energy heatmap sin FFT real~~ → ✅ RESUELTO (WAVE 2077)
 4. ~~🟡 Dos sistemas de tipos proyecto paralelos~~ → ✅ RESUELTO (WAVE 2081 — M1)
-5. 🟡 Dos injectors con mismo nombre de archivo (M2 — pendiente)
+5. ~~🟡 Dos injectors con mismo nombre de archivo~~ → ✅ RESUELTO (WAVE 2082 — M2: ChronosStageDispatcher.ts)
 6. ~~🟡 generateChronosId usa Math.random()~~ → ✅ RESUELTO (WAVE 2081 — M3)
 ---
 
@@ -522,7 +523,8 @@ El Web Worker para GodEarOffline es un string concatenado, no un archivo .worker
 │  WAVE 2081: M1 UNIFICATION + M3 ANTI-SIMULATION                    │
 │    → M1: ProjectTypes.ts barrel — contrato arquitectónico explícito │
 │    → M3: crypto.randomUUID() — zero Math.random() en core          │
-│  ZERO carencias rojas. Solo 2 amarillas (nice-to-have).            │
+│  WAVE 2082: M2 RENAME — ChronosStageDispatcher clarity             │
+│  ZERO carencias rojas. Solo 1 amarilla (test coverage peripherals).│
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -554,10 +556,10 @@ El Web Worker para GodEarOffline es un string concatenado, no un archivo .worker
 2. ✅ **FFT real** para energy heatmap — **COMPLETADO (WAVE 2077)** — GodEarAnalyzer con Cooley-Tukey integrado
 3. ⬜ **Canvas offscreen** para StageSimulatorCinema si FPS baja
 
-### Fase 3: CONSOLIDACIÓN — ✅ PARCIALMENTE COMPLETADA (WAVE 2081)
+### Fase 3: CONSOLIDACIÓN — ✅ COMPLETADA (WAVE 2081-2082)
 
 1. ~~Unificar `ChronosProject` / `LuxProject` en un solo sistema de tipos~~ → ✅ **M1 RESUELTO** (WAVE 2081): No se fusionaron — son dual-model by design. Se creó `ProjectTypes.ts` barrel con contrato arquitectónico explícito, converters `luxToChronos`/`chronosToLux` reescritos, 19 tests de validación.
-2. Renombrar uno de los dos `ChronosInjector` para claridad → ⬜ **M2 PENDIENTE**
+2. ~~Renombrar uno de los dos `ChronosInjector` para claridad~~ → ✅ **M2 RESUELTO** (WAVE 2082): `core/ChronosInjector.ts` → `ChronosStageDispatcher.ts`. Re-export shim para backward compat.
 3. ~~Reemplazar `Math.random()` en `generateChronosId()` con `crypto.randomUUID()`~~ → ✅ **M3 RESUELTO** (WAVE 2081): `crypto.randomUUID()` con fallback counter determinista. Zero violación del Axioma Anti-Simulación.
 
 ---
@@ -578,8 +580,9 @@ WAVE 2081 (M3 ANTI-SIMULATION) eliminó `Math.random()` de `generateChronosId()`
 - WAVE 2078 (TEST ARMY) eliminó C1 como carencia roja: 125 tests en 7 suites.
 - WAVE 2080 (THE GHOST IN THE MACHINE) eliminó C2: Worker stub → Worker real + Transferable Objects.
 - WAVE 2081 (M1+M3) eliminó M1 y M3: ProjectTypes barrel + crypto.randomUUID(). 144 tests en 8 suites.
+- WAVE 2082 (M2 RENAME) eliminó M2: `ChronosStageDispatcher.ts` — cada archivo con nombre descriptivo.
 
-**Bottom line:** Chronos pasó de A- (8.5) a A (9.4). De 6 carencias originales, las 2 rojas (C2 y C3) fueron ELIMINADAS. De las 4 amarillas, 2 más fueron ELIMINADAS (M1 y M3). Solo quedan 2 amarillas (M2 injector naming + test coverage peripherals). ZERO carencias críticas. 144 tests. 8 suites. Este timecoder compite con software de €80K usando €0 de presupuesto. Y en 8 de 17 categorías, lo supera.
+**Bottom line:** Chronos pasó de A- (8.5) a A (9.4). De 6 carencias originales, las 2 rojas (C2 y C3) fueron ELIMINADAS. De las 4 amarillas, 3 fueron ELIMINADAS (M1, M2, M3) y M4 fue verificado como ya implementado. Solo queda 1 amarilla (test coverage peripherals). ZERO carencias críticas. 144 tests. 8 suites. Fase 3 COMPLETADA. Este timecoder compite con software de €80K usando €0 de presupuesto. Y en 8 de 17 categorías, lo supera.
 
 ---
 

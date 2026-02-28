@@ -1,22 +1,27 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🕰️ CHRONOS TYPES - THE DNA
+ * 🕰️ CHRONOS TYPES — THE RUNTIME DNA
  * ═══════════════════════════════════════════════════════════════════════════
- * 
- * WAVE 2001: THE FOUNDATION
- * 
- * Define todas las interfaces del sistema Chronos.
- * Este archivo es el contrato de tipos para todo el módulo.
- * 
- * ARQUITECTURA:
- * - ChronosProject: Raíz del documento (como un .als de Ableton)
- * - TimelineTrack: Capas paralelas de contenido
- * - TimelineClip: Bloques semánticos posicionados en tiempo
- * - AutomationLane: Curvas de parámetros (Bézier)
- * - AnalysisData: Datos pre-computados del audio (waveform, beats, sections)
- * 
+ *
+ * WAVE 2001 → WAVE 2081 (M1 Unification)
+ *
+ * This file defines ChronosProject and all related types for the
+ * IN-MEMORY editing model used by the Chronos editor UI, Zustand store,
+ * ChronosEngine, and automation system.
+ *
+ * This is NOT the serialized .lux format. For the file format, see
+ * LuxProject in ./ChronosProject.ts.
+ * For the architectural map and barrel imports, see ./ProjectTypes.ts.
+ *
+ * ARCHITECTURE:
+ * - ChronosProject: Root runtime document (like an open .als in Ableton)
+ * - TimelineTrack: Parallel content layers
+ * - TimelineClip<T>: Generic positioned blocks with typed payloads
+ * - AutomationLane: Bézier parameter curves
+ * - AnalysisData: Pre-computed audio data (waveform, beats, sections)
+ *
  * @module chronos/core/types
- * @version 2001.0.0
+ * @version 2081.0.0
  */
 
 import type { EffectZone } from '../../core/effects/types'
@@ -896,8 +901,24 @@ export type AutomationPointUpdate = Partial<Omit<AutomationPoint, 'id'>>
  * Genera un ID único para Chronos
  */
 export function generateChronosId(): ChronosId {
-  return `chr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+  // Prefer stable, cryptographic UUID when available (no Math.random())
+  try {
+    if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+      return `chr_${(crypto as any).randomUUID()}`
+    }
+  } catch (e) {
+    // Fallthrough to deterministic fallback
+  }
+
+  // Fallback deterministic ID (time + monotonic counter) for older environments
+  // This avoids Math.random() and remains unique within a single process.
+  const now = Date.now().toString(36)
+  generateChronosIdCounter = (generateChronosIdCounter + 1) % 0xFFFFFF
+  return `chr_${now}_${generateChronosIdCounter.toString(36)}`
 }
+
+// Monotonic counter used by fallback path
+let generateChronosIdCounter = 0
 
 /**
  * Crea un proyecto vacío por defecto

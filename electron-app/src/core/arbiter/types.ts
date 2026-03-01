@@ -42,25 +42,48 @@ export enum ControlLayer {
 /**
  * Controllable channel types
  * Each fixture can have any combination of these channels.
+ * 
+ * 🔥 WAVE 2084: Sincronizado con FixtureDefinition.ChannelType
+ * Incluye canales de INGENIOS (rotation, custom, macro, control, frost, etc.)
  */
 export type ChannelType =
+  // INTENSITY
   | 'dimmer'
+  | 'strobe'
+  | 'shutter'
+  // COLOR
   | 'red'
   | 'green'
   | 'blue'
   | 'white'
-  | 'pan'
-  | 'tilt'
-  | 'zoom'
-  | 'focus'
-  | 'gobo'
-  | 'prism'
-  // 🔥 WAVE 1008.2: Additional channels for full fixture control
-  | 'speed'
-  | 'strobe'
-  | 'color_wheel'
   | 'amber'
   | 'uv'
+  | 'cyan'
+  | 'magenta'
+  | 'yellow'
+  | 'color_wheel'
+  // POSITION
+  | 'pan'
+  | 'pan_fine'
+  | 'tilt'
+  | 'tilt_fine'
+  // BEAM
+  | 'gobo'
+  | 'gobo_rotation'
+  | 'prism'
+  | 'prism_rotation'
+  | 'focus'
+  | 'zoom'
+  | 'frost'
+  // CONTROL
+  | 'speed'
+  | 'macro'
+  | 'control'
+  // 🔥 WAVE 2084: INGENIOS
+  | 'rotation'
+  | 'custom'
+  // FALLBACK
+  | 'unknown'
 
 /**
  * Merge strategy per channel
@@ -74,25 +97,49 @@ export type MergeStrategy = 'HTP' | 'LTP' | 'BLEND' | 'OVERRIDE'
 /**
  * Default merge strategies per channel type
  * Industry standard: HTP for intensity, LTP for everything else.
+ * 
+ * 🔥 WAVE 2084: PHANTOM PANEL — Canales de INGENIOS (rotation, custom, macro, etc.)
+ * usan LTP por defecto. Titan/Selene NO inyectan valores en estos canales
+ * (eso se controla en arbitrateFixture), pero si alguien los toca manualmente → LTP.
  */
 export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
+  // INTENSITY
   dimmer: 'HTP',
+  strobe: 'LTP',
+  shutter: 'LTP',
+  // COLOR
   red: 'LTP',
   green: 'LTP',
   blue: 'LTP',
   white: 'LTP',
-  pan: 'LTP',
-  tilt: 'LTP',
-  zoom: 'LTP',
-  focus: 'LTP',
-  gobo: 'LTP',
-  prism: 'LTP',
-  // 🔥 WAVE 1008.2: Additional channel strategies
-  speed: 'LTP',
-  strobe: 'LTP',
-  color_wheel: 'LTP',
   amber: 'LTP',
   uv: 'LTP',
+  cyan: 'LTP',
+  magenta: 'LTP',
+  yellow: 'LTP',
+  color_wheel: 'LTP',
+  // POSITION
+  pan: 'LTP',
+  pan_fine: 'LTP',
+  tilt: 'LTP',
+  tilt_fine: 'LTP',
+  // BEAM
+  gobo: 'LTP',
+  gobo_rotation: 'LTP',
+  prism: 'LTP',
+  prism_rotation: 'LTP',
+  focus: 'LTP',
+  zoom: 'LTP',
+  frost: 'LTP',
+  // CONTROL
+  speed: 'LTP',
+  macro: 'LTP',
+  control: 'LTP',
+  // 🔥 WAVE 2084: INGENIOS
+  rotation: 'LTP',
+  custom: 'LTP',
+  // FALLBACK
+  unknown: 'LTP',
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,6 +279,11 @@ export interface ManualControls {
   // 🎚️ WAVE 999: Pattern movement parameters (0-100 scale from UI)
   patternSpeed?: number     // 0-100 → Multiplier for pattern frequency
   patternAmplitude?: number // 0-100 → Multiplier for movement range
+  
+  // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra para ingenios
+  // Mapa dinámico para canales que no tienen campo explícito arriba
+  // Clave = ChannelType string, Valor = 0-255 DMX
+  phantomChannels?: Record<string, number>
 }
 
 /**
@@ -348,6 +400,17 @@ export interface FixtureLightingTarget {
   speed: number  // 0-255
   /** 🎨 WAVE 1008.6: Color wheel position (THE WHEELSMITH) */
   color_wheel: number  // 0-255
+  /**
+   * 🔥 WAVE 2084: PHANTOM PANEL — Canales extra dinámicos
+   * 
+   * Mapa para canales que el Arbiter no conoce nativamente (rotation, custom,
+   * macro, frost, gobo, gobo_rotation, prism, prism_rotation, shutter, control, etc.)
+   * 
+   * El Arbiter pasa estos valores directamente al HAL sin transformación.
+   * Solo Layer 2 (Manual) puede inyectar valores aquí.
+   * Titan/Selene NO generan valores para estos canales → defaultValue del fixture.
+   */
+  phantomChannels: Record<string, number>
   /** Debug: which layer controls each channel */
   _controlSources: Partial<Record<ChannelType, ControlLayer>>
   /** Debug: is crossfade active */

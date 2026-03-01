@@ -1,7 +1,13 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2084: UNIVERSAL CHANNEL DNA
+// Soporta desde movers clásicos hasta ingenios alienígenas (fans, lasers, FX)
+// ═══════════════════════════════════════════════════════════════════════════
 export type ChannelType = 
+  // INTENSITY
   | 'dimmer'
   | 'strobe'
   | 'shutter'
+  // COLOR
   | 'red'
   | 'green'
   | 'blue'
@@ -11,11 +17,13 @@ export type ChannelType =
   | 'cyan'
   | 'magenta'
   | 'yellow'
+  | 'color_wheel'
+  // POSITION
   | 'pan'
   | 'pan_fine'
   | 'tilt'
   | 'tilt_fine'
-  | 'color_wheel'
+  // BEAM
   | 'gobo'
   | 'gobo_rotation'
   | 'prism'
@@ -23,9 +31,14 @@ export type ChannelType =
   | 'focus'
   | 'zoom'
   | 'frost'
+  // CONTROL
   | 'speed'
   | 'macro'
   | 'control'
+  // 🔥 WAVE 2084: INGENIOS — Canales para dispositivos no convencionales
+  | 'rotation'    // Rotación continua (bolas de espejos, scanners rotativos, etc.)
+  | 'custom'      // Canal libre definido por el usuario (fans, heaters, fog, etc.)
+  // FALLBACK
   | 'unknown';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +55,11 @@ export type FixtureType =
   | 'effect'
   | 'laser'
   | 'blinder'
+  // 🔥 WAVE 2084: INGENIOS — Tipos para dispositivos no convencionales
+  | 'fan'       // Ventiladores DMX
+  | 'fog'       // Máquinas de humo/haze
+  | 'mirror-ball'  // Bolas de espejos motorizadas
+  | 'pyro'      // Efectos pirotécnicos DMX
   | 'generic';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,6 +82,12 @@ export interface DerivedCapabilities {
   hasFrost: boolean
   is16bit: boolean
   channelCount: number
+  // 🔥 WAVE 2084: INGENIOS capabilities
+  hasRotation: boolean       // Tiene canales de rotación continua
+  hasCustomChannels: boolean // Tiene canales custom (fan, fog, laser, etc.)
+  hasMacro: boolean          // Tiene canales macro/program
+  hasSpeed: boolean          // Tiene canal de velocidad
+  customChannelNames: string[] // Nombres descriptivos de canales custom
 }
 
 /**
@@ -102,6 +126,14 @@ export function deriveCapabilities(channels: FixtureChannel[]): DerivedCapabilit
     hasFrost: types.has('frost'),
     is16bit: channels.some(ch => ch.is16bit || ch.type.includes('_fine')),
     channelCount: channels.length,
+    // 🔥 WAVE 2084: INGENIOS capabilities detection
+    hasRotation: types.has('rotation') || channels.some(ch => ch.continuousRotation === true),
+    hasCustomChannels: types.has('custom'),
+    hasMacro: types.has('macro'),
+    hasSpeed: types.has('speed'),
+    customChannelNames: channels
+      .filter(ch => ch.type === 'custom' && ch.customName)
+      .map(ch => ch.customName!),
   }
 }
 
@@ -111,6 +143,13 @@ export interface FixtureChannel {
   type: ChannelType;
   defaultValue: number;
   is16bit: boolean;
+  // 🔥 WAVE 2084: INGENIOS — Nombre personalizado para canales custom/macro
+  // Cuando type='custom' o type='macro', este campo describe qué hace el canal
+  // Ejemplo: "Fan Speed", "Fog Output", "Laser Pattern", "Mirror Ball Rotation"
+  customName?: string;
+  // 🔥 WAVE 2084: INGENIOS — Indica si el canal es de rotación continua (no posicional)
+  // true = 0-127 CW speed, 128 stop, 129-255 CCW speed (convención DMX estándar)
+  continuousRotation?: boolean;
 }
 
 // WAVE 390.6: Import InstallationOrientation from ShowFileV2 for type consistency
@@ -182,5 +221,9 @@ export interface FixtureDefinition {
     colorEngine?: ColorEngineType;
     // 🎨 WAVE 1006: THE WHEELSMITH - Mapa físico de la rueda de colores
     colorWheel?: ColorWheelDefinition;
+    // 🔥 WAVE 2084: INGENIOS capabilities
+    hasRotation?: boolean;
+    hasCustomChannels?: boolean;
+    hasMacro?: boolean;
   };
 }

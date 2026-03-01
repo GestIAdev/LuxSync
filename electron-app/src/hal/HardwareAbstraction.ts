@@ -874,6 +874,8 @@ export class HardwareAbstraction {
           gobo: 0,
           prism: 0,
           strobe: 0,
+          // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
+          phantomChannels: fixtureTarget.phantomChannels,
         }
         
         // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed

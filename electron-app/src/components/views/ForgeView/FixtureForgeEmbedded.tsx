@@ -150,6 +150,17 @@ const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
     { type: 'macro', label: 'Macro', color: '#00ff44', icon: '⚙️' },
     { type: 'control', label: 'Control', color: '#00ff44', icon: '🎛️' },
   ],
+  // 🔥 WAVE 2084: INGENIOS — Canales para dispositivos no convencionales
+  'INGENIOS': [
+    { type: 'rotation', label: 'Rotation', color: '#ff6b35', icon: '🔄' },
+    { type: 'custom', label: 'Custom', color: '#b967ff', icon: '🧬' },
+    { type: 'frost', label: 'Frost', color: '#88e1f2', icon: '❄️' },
+    { type: 'gobo_rotation', label: 'Gobo Rot', color: '#ffd700', icon: '🌀' },
+    { type: 'prism_rotation', label: 'Prism Rot', color: '#dd00ff', icon: '🔮' },
+    { type: 'cyan', label: 'Cyan', color: '#00ffff', icon: '🩵' },
+    { type: 'magenta', label: 'Magenta', color: '#ff00ff', icon: '🩷' },
+    { type: 'yellow', label: 'Yellow', color: '#ffff00', icon: '💛' },
+  ],
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -223,6 +234,31 @@ const FIXTURE_TYPES: FixtureTypeConfig[] = [
     label: 'Generic', 
     color: '#71717a',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+  },
+  // 🔥 WAVE 2084: INGENIOS — Tipos para dispositivos no convencionales
+  { 
+    value: 'fan', 
+    label: 'Fan', 
+    color: '#38bdf8',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"/><path d="M12 2C8 2 8 8 12 10C16 8 16 2 12 2z"/><path d="M22 12C22 8 16 8 14 12C16 16 22 16 22 12z"/><path d="M12 22C16 22 16 16 12 14C8 16 8 22 12 22z"/><path d="M2 12C2 16 8 16 10 12C8 8 2 8 2 12z"/></svg>
+  },
+  { 
+    value: 'fog', 
+    label: 'Fog/Haze', 
+    color: '#94a3b8',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 11c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>
+  },
+  { 
+    value: 'mirror-ball', 
+    label: 'Mirror Ball', 
+    color: '#c084fc',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8"/><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><line x1="8" y1="4" x2="8" y2="20"/><line x1="16" y1="4" x2="16" y2="20"/></svg>
+  },
+  { 
+    value: 'pyro', 
+    label: 'Pyro', 
+    color: '#f43f5e',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22c-4 0-7-3-7-7 0-6 7-13 7-13s7 7 7 13c0 4-3 7-7 7z"/><path d="M12 22c-2 0-3-2-3-4 0-3 3-7 3-7s3 4 3 7c0 2-1 4-3 4z"/></svg>
   },
 ]
 

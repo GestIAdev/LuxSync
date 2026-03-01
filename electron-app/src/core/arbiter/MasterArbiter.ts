@@ -1216,6 +1216,9 @@ export class MasterArbiter extends EventEmitter {
             // ── MECHANICAL CHANNELS: Wave 2068 color shield aware ──
             color_wheel: finalColorWheel,
             
+            // 🔥 WAVE 2084: Phantom channels passthrough from Titan's arbitration
+            phantomChannels: titanTarget.phantomChannels,
+            
             // ── Metadata ──
             _controlSources: {
               ...titanTarget._controlSources,
@@ -1408,6 +1411,45 @@ export class MasterArbiter extends EventEmitter {
     // 🎨 WAVE 1008.6: Merge color_wheel channel (THE WHEELSMITH)
     const color_wheel = this.mergeChannelForFixture(fixtureId, 'color_wheel', titanValues, manualOverride, now, controlSources)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2084: PHANTOM PANEL — Canales Dinámicos para Ingenios
+    //
+    // Los canales que NO son nativos del Arbiter (rotation, custom, macro,
+    // frost, gobo, gobo_rotation, prism, prism_rotation, shutter, control,
+    // cyan, magenta, yellow, etc.) se resuelven así:
+    //
+    //   1. Si hay Manual Override con phantomChannels → usar ese valor (LTP)
+    //   2. Si no → usar el defaultValue del canal en la definición del fixture
+    //
+    // Titan/Selene NO generan valores para estos canales.
+    // El Arbiter actúa como PASSTHROUGH transparente.
+    // Solo el operador humano (Layer 2) puede modificar estos valores.
+    // ═══════════════════════════════════════════════════════════════════════
+    const phantomChannels: Record<string, number> = {}
+    const NATIVE_CHANNELS = new Set([
+      'dimmer', 'red', 'green', 'blue', 'pan', 'tilt',
+      'zoom', 'focus', 'speed', 'color_wheel',
+    ])
+    
+    // Obtener canales del fixture registrado
+    const fixtureData = this.fixtures.get(fixtureId)
+    if (fixtureData && (fixtureData as any).channelDefinitions) {
+      const channelDefs: Array<{ type: string; defaultValue: number }> = (fixtureData as any).channelDefinitions
+      for (const ch of channelDefs) {
+        if (!NATIVE_CHANNELS.has(ch.type)) {
+          // Check manual override first
+          const manualPhantomValue = manualOverride?.controls?.phantomChannels?.[ch.type]
+          if (manualPhantomValue !== undefined) {
+            phantomChannels[ch.type] = clampDMX(manualPhantomValue)
+            controlSources[ch.type as ChannelType] = ControlLayer.MANUAL
+          } else {
+            phantomChannels[ch.type] = ch.defaultValue ?? 0
+            controlSources[ch.type as ChannelType] = ControlLayer.TITAN_AI
+          }
+        }
+      }
+    }
+    
     // Check if any crossfade is active
     const crossfadeActive = this.isAnyCrossfadeActive(fixtureId)
     const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0
@@ -1429,6 +1471,7 @@ export class MasterArbiter extends EventEmitter {
       focus: clampDMX(focus),
       speed: clampDMX(speed),  // 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow)
       color_wheel: clampDMX(color_wheel),  // 🎨 WAVE 1008.6: Color wheel position (THE WHEELSMITH)
+      phantomChannels,  // 🔥 WAVE 2084: Phantom Panel passthrough
       _controlSources: controlSources,
       _crossfadeActive: crossfadeActive,
       _crossfadeProgress: crossfadeProgress,
@@ -1672,6 +1715,21 @@ export class MasterArbiter extends EventEmitter {
       color_wheel: 0,
       amber: 0,
       uv: 0,
+      // 🔥 WAVE 2084: Canales expandidos (todos los que el ChannelType del Arbiter ahora soporta)
+      shutter: 255,     // Open by default
+      cyan: 0,
+      magenta: 0,
+      yellow: 0,
+      pan_fine: 0,
+      tilt_fine: 0,
+      gobo_rotation: 0,
+      prism_rotation: 0,
+      frost: 0,
+      macro: 0,
+      control: 0,
+      rotation: 0,
+      custom: 0,
+      unknown: 0,
     }
     
     if (!this.layer0_titan?.intent) return defaults
@@ -2067,6 +2125,7 @@ export class MasterArbiter extends EventEmitter {
       focus: 128,
       speed: 0,  // 🔥 WAVE 1008.4: Fast movement during blackout (0=fast)
       color_wheel: 0,  // 🎨 WAVE 1008.6: Color wheel off during blackout
+      phantomChannels: {},  // 🔥 WAVE 2084: Empty in blackout — all phantoms go to default
       _controlSources: controlSources,
       _crossfadeActive: false,
       _crossfadeProgress: 0,
@@ -2112,6 +2171,7 @@ export class MasterArbiter extends EventEmitter {
       focus: 128,                   // 🔍 Mid focus
       speed: 0,                     // ⚡ Fast response when enabled
       color_wheel: 0,               // ⚪ Open/white
+      phantomChannels: {},          // 🔥 WAVE 2084: Empty in output gate — safe state
       _controlSources: controlSources,
       _crossfadeActive: false,
       _crossfadeProgress: 0,

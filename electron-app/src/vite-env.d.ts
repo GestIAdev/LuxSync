@@ -303,7 +303,11 @@ declare global {
         manufacturer: string
         type: string
         channelCount: number
-        channels: Array<{ index: number; name: string; type: string; is16bit: boolean }>
+        channels: Array<{ 
+          index: number; name: string; type: string; is16bit: boolean
+          // 🔥 WAVE 2084.2: PHANTOM UI — Extended channel metadata from Ingenios
+          customName?: string; defaultValue?: number; continuousRotation?: boolean
+        }>
         filePath: string
         // 🔥 WAVE 1042.1: Physics for motor/movement info
         physics?: {

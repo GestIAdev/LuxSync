@@ -621,6 +621,10 @@ export interface FixtureState {
   online: boolean
   /** ¿Está activo? */
   active: boolean
+  
+  // 🔥 WAVE 2084.2: PHANTOM UI — Profile ID for fixture definition lookup
+  /** Reference to fixture profile in library (for channel definition queries) */
+  profileId?: string
 }
 
 /**

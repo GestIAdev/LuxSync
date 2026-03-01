@@ -17,6 +17,7 @@ import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
+import { ExtrasSection } from './ExtrasSection'
 import { GroupsPanel } from './GroupsPanel'
 import { IntensityIcon, GroupIcon } from '../../icons/LuxIcons'
 import './TheProgrammer.css'
@@ -32,6 +33,7 @@ interface OverrideState {
   color: boolean
   position: boolean
   beam: boolean
+  extras: boolean
 }
 
 export const TheProgrammer: React.FC = () => {
@@ -51,6 +53,7 @@ export const TheProgrammer: React.FC = () => {
     color: false,
     position: false,
     beam: false,
+    extras: false,
   })
   
   // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
@@ -186,7 +189,7 @@ export const TheProgrammer: React.FC = () => {
   const handleUnlockAll = useCallback(async () => {
     if (selectedIds.length === 0) return
     
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -200,7 +203,7 @@ export const TheProgrammer: React.FC = () => {
   
   // Reset override state when selection changes
   useEffect(() => {
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
   }, [selectedIds.length])
   
   /**
@@ -215,6 +218,13 @@ export const TheProgrammer: React.FC = () => {
    */
   const handleBeamOverrideChange = useCallback((hasOverride: boolean) => {
     setOverrideState(prev => ({ ...prev, beam: hasOverride }))
+  }, [])
+  
+  /**
+   * Handler for extras (phantom channels) override changes
+   */
+  const handleExtrasOverrideChange = useCallback((hasOverride: boolean) => {
+    setOverrideState(prev => ({ ...prev, extras: hasOverride }))
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -327,8 +337,16 @@ export const TheProgrammer: React.FC = () => {
             onOverrideChange={handleBeamOverrideChange}
           />
           
+          {/* 🔥 WAVE 2084.2: EXTRAS SECTION — Phantom channels (custom, macro, rotation, speed) */}
+          <ExtrasSection
+            hasOverride={overrideState.extras}
+            isExpanded={activeSection === 'extras'}
+            onToggle={() => toggleSection('extras')}
+            onOverrideChange={handleExtrasOverrideChange}
+          />
+          
           {/* OVERRIDE INDICATOR */}
-          {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam) && (
+          {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
             <div className="override-indicator">
               <span className="override-dot" />
               MANUAL CONTROL ACTIVE

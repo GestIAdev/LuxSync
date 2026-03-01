@@ -1446,7 +1446,9 @@ export class TitanOrchestrator {
               panVelocity: f.panVelocity ?? 0,  // DMX/s (raw)
               tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
               online: true,
-              active: f.dimmer > 0
+              active: f.dimmer > 0,
+              // 🔥 WAVE 2084.2: PHANTOM UI — Profile reference for frontend channel definition queries
+              profileId: originalFixture?.profileId || undefined
             }
           })
         },

@@ -276,9 +276,19 @@ export function mapLibraryTypeToFixtureType(libraryType) {
         'strobe': 'strobe',
         'laser': 'laser',
         'blinder': 'blinder',
-        'bar': 'generic', // Bar → generic for now
-        'spot': 'generic',
-        'scanner': 'generic',
+        'bar': 'bar',
+        'spot': 'spot',
+        'scanner': 'scanner',
+        'effect': 'effect',
+        // 🔥 WAVE 2084.5: INGENIOS — New device types
+        'fan': 'fan',
+        'fog': 'fog',
+        'haze': 'fog', // Common alias
+        'mirror-ball': 'mirror-ball',
+        'mirrorball': 'mirror-ball',
+        'mirror_ball': 'mirror-ball',
+        'pyro': 'pyro',
+        'flame': 'pyro', // Common alias
         'other': 'generic',
         'generic': 'generic'
     };

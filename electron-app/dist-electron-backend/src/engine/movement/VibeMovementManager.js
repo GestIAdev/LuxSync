@@ -267,7 +267,9 @@ export class VibeMovementManager {
         console.log(`[CHOREO] All overrides cleared`);
     }
     // GENERATE INTENT - El corazon del coreografo
-    generateIntent(vibeId, audio, fixtureIndex = 0, totalFixtures = 1) {
+    generateIntent(vibeId, audio, fixtureIndex = 0, totalFixtures = 1, 
+    /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). Defaults to 250 if not provided. */
+    fixtureMaxSpeed = 250) {
         // Actualizar tiempo interno
         const now = Date.now();
         const deltaTime = (now - this.lastUpdate) / 1000;
@@ -318,7 +320,7 @@ export class VibeMovementManager {
         }
         const rawPosition = patternFn(phase, audio, fixtureIndex, totalFixtures);
         // THE GEARBOX - Dynamic Amplitude Scaling
-        const effectiveAmplitude = this.calculateEffectiveAmplitude(config.amplitudeScale, safeBPM, patternPeriod, audio.energy);
+        const effectiveAmplitude = this.calculateEffectiveAmplitude(config.amplitudeScale, safeBPM, patternPeriod, audio.energy, fixtureMaxSpeed);
         // Aplicar amplitud
         const position = {
             x: Math.max(-1, Math.min(1, rawPosition.x * effectiveAmplitude)),
@@ -395,13 +397,19 @@ export class VibeMovementManager {
         return patterns[patternIndex];
     }
     // GEARBOX - Hardware speed limiting
-    calculateEffectiveAmplitude(baseAmplitude, bpm, patternPeriod, energy) {
+    calculateEffectiveAmplitude(baseAmplitude, bpm, patternPeriod, energy, 
+    /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). No more global constant. */
+    fixtureMaxSpeed = 250) {
         // Manual override
         if (this.manualAmplitudeOverride !== null) {
             return 0.05 + (this.manualAmplitudeOverride / 100) * 0.95;
         }
-        // Hardware limit: ~250 DMX/s para EL-1140 y similares
-        const HARDWARE_MAX_SPEED = 250;
+        // 🏎️ WAVE 2074.3: Per-fixture hardware limit
+        // ANTES: HARDWARE_MAX_SPEED = 250 (global para todos los fixtures)
+        // AHORA: Cada fixture pasa su propio maxSpeed desde su physicsProfile.
+        // Si un fixture tiene maxVelocity: 100, el Gearbox reduce la amplitud
+        // para que el patrón no pida más de lo que sus motores pueden dar.
+        const HARDWARE_MAX_SPEED = fixtureMaxSpeed;
         const secondsPerBeat = 60 / bpm;
         // Presupuesto de movimiento en un ciclo del patron
         const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod;

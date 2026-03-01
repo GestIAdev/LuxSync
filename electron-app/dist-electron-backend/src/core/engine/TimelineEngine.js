@@ -27,6 +27,7 @@
  * @version WAVE 2053.1
  */
 import { masterArbiter } from '../arbiter';
+import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY IMPORTS — The Full Arsenal
 // ═══════════════════════════════════════════════════════════════════════════
@@ -191,6 +192,28 @@ export class TimelineEngine {
         this.activeClips = new Map();
         // ── Last active set for cleanup ──
         this.previousActiveIds = new Set();
+        // ── 🎬 WAVE 2063: Active vibe tracking for Titan handoff ──
+        this.currentPlaybackVibeId = null;
+        // ── 🔥 WAVE 2056: Frame accumulator for Direct Drive ──
+        // 🎛️ WAVE 2066: Added blendMode per-fixture for Smart MixBus
+        this.frameAccumulator = new Map();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2069: COLOR LATCH — Sustained Palette for Mechanical Wheels
+        //
+        // Movers with mechanical color wheels (stepper motors) CANNOT change color
+        // at strobe speeds (15Hz+). When a strobe effect alternates between
+        // RGB(Cyan) and RGB(0,0,0), the HAL translates the zeros to color_wheel=0
+        // (Open/White). The stepper motor gets whiplashed between Cyan and White
+        // at 15Hz → firmware locks the wheel → color dies.
+        //
+        // THE LATCH: Cache the last POSITIVE color seen per fixture. During
+        // micro-blackouts (dimmer=0, RGB=0,0,0), re-inject the latched color.
+        // The strobe modulates ONLY the dimmer. The color stays parked.
+        //
+        // LIFECYCLE: Written when a positive color arrives. Read when RGB is zero.
+        // Cleared when the clip ends (releaseClip) or playback stops (stop).
+        // ═══════════════════════════════════════════════════════════════════════
+        this.colorLatch = new Map();
     }
     // ═══════════════════════════════════════════════════════════════════════
     // LOAD PROJECT
@@ -206,22 +229,95 @@ export class TimelineEngine {
         console.log(`[TimelineEngine] 📀 Loaded "${project.meta.name}" — ${this.fxClips.length} FX clips, ${this.vibeClips.length} Vibe clips`);
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // TICK — Called every frame from frontend via IPC
+    // 🔥 WAVE 2056: TICK — Direct Drive Frame Construction
     // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Called every frame from frontend via IPC.
+     *
+     * 🔥 WAVE 2056: SCORCHED EARTH
+     * Build complete frame with ALL fixtures, send once to Arbiter.
+     * Uses existing effect logic but collects results into frame buffer.
+     */
     tick(timeMs) {
         if (!this.playing || !this.project)
             return;
         // ── Calculate deltaMs ──
         const deltaMs = this.lastTickMs > 0 ? timeMs - this.lastTickMs : 16.67;
         this.lastTickMs = timeMs;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2065: SPARSE FRAME ACCUMULATOR — The Transparent Overlay
+        // 
+        // OLD: Initialize ALL fixtures with zeros → gaps between effects send BLACK
+        //      → Titan/Selene vibe gets KILLED in those gaps
+        // 
+        // NEW: Start EMPTY. Only fixtures TOUCHED by an active effect get added.
+        //      Fixtures not in the accumulator = "Chronos has nothing to say"
+        //      → Arbiter leaves them 100% under Titan/Selene control.
+        //
+        // This is the paradigm shift: Chronos is a TRANSPARENT OVERLAY, not a
+        // replacement. The Vibe is the canvas, Chronos paints ON TOP of it.
+        // ═══════════════════════════════════════════════════════════════════════
+        this.frameAccumulator.clear();
+        // NOTE: No pre-population! Effects add fixtures as they dispatch.
         // ── Find active FX clips at this timeMs ──
         const nowActiveIds = new Set();
         for (const clip of this.fxClips) {
             if (timeMs >= clip.startMs && timeMs < clip.endMs) {
                 nowActiveIds.add(clip.id);
-                this.processClip(clip, timeMs, deltaMs);
+                this.processClip(clip, timeMs, deltaMs); // Uses existing logic
             }
         }
+        // ── Process active Vibe clips ──
+        // 🎬 WAVE 2063: Track if any vibe is active this frame
+        let hasActiveVibe = false;
+        for (const vibeClip of this.vibeClips) {
+            if (timeMs >= vibeClip.startMs && timeMs < vibeClip.endMs) {
+                hasActiveVibe = true;
+                this.processVibeClip(vibeClip, timeMs); // Now also sends vibeId to Titan
+            }
+        }
+        // 🎬 WAVE 2063: If no vibe clip is active, clear the tracked vibe
+        if (!hasActiveVibe && this.currentPlaybackVibeId) {
+            this.currentPlaybackVibeId = null;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2065: SPARSE CONVERSION — Only touched fixtures go to Arbiter
+        // 
+        // The accumulator now only contains fixtures that an active FX clip touched.
+        // Untouched fixtures are NOT in the map → Arbiter won't override them.
+        // ═══════════════════════════════════════════════════════════════════════
+        const fixtureTargets = [];
+        for (const [fixtureId, state] of this.frameAccumulator.entries()) {
+            fixtureTargets.push({
+                fixtureId,
+                dimmer: state.dimmer,
+                color: { r: state.red, g: state.green, b: state.blue },
+                colorTouched: state.colorTouched, // 🎭 WAVE 2070: Propagate flag
+                pan: state.pan,
+                tilt: state.tilt,
+                zoom: state.zoom,
+                focus: 0,
+                speed: state.speed,
+                color_wheel: 0,
+                strobe: 0,
+                prism: 0,
+                gobo: 0,
+                blendMode: state.blendMode, // 🎛️ WAVE 2066: Smart MixBus
+                controlSources: {},
+                appliedLayers: [],
+            });
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY
+        //
+        // Chronos is a painter, not a dictator. Only the fixtures it explicitly
+        // touches are sent to the Arbiter. Everything else stays under Titan/Selene.
+        // If no FX clip is active → fixtureTargets is EMPTY → Titan reigns supreme.
+        // ═══════════════════════════════════════════════════════════════════════
+        masterArbiter.setPlaybackFrame(fixtureTargets, {
+            hasActiveVibe,
+            vibeId: this.currentPlaybackVibeId,
+        });
         // ── Cleanup clips that ended ──
         Array.from(this.previousActiveIds).forEach(prevId => {
             if (!nowActiveIds.has(prevId)) {
@@ -235,21 +331,27 @@ export class TimelineEngine {
     // ═══════════════════════════════════════════════════════════════════════
     stop() {
         // Abort all active effect instances
-        Array.from(this.activeClips.entries()).forEach(([_id, state]) => {
+        const abortedCount = this.activeClips.size;
+        Array.from(this.activeClips.entries()).forEach(([id, state]) => {
             if (state.effect) {
+                console.log(`[TimelineEngine] 🧹 Aborting effect: ${state.clip.fxType} (clip: ${id})`);
                 state.effect.abort();
             }
         });
         this.activeClips.clear();
         this.previousActiveIds.clear();
-        // Clear arbiter overrides
-        masterArbiter.releaseAllManualOverrides();
+        // � WAVE 2069: Clear color latch — no stale colors after stop
+        this.colorLatch.clear();
+        // �🔥 WAVE 2056: Stop playback mode in Arbiter
+        masterArbiter.stopPlayback();
+        // 🎬 WAVE 2063: Clear tracked vibe
+        this.currentPlaybackVibeId = null;
         this.playing = false;
         this.lastTickMs = 0;
         this.project = null;
         this.fxClips = [];
         this.vibeClips = [];
-        console.log('[TimelineEngine] ⏹ Stopped — all effects aborted, arbiter cleared');
+        console.log(`[TimelineEngine] ⏹ Stopped — ${abortedCount} effects aborted, arbiter playback cleared`);
     }
     // ═══════════════════════════════════════════════════════════════════════
     // STATE QUERY
@@ -292,13 +394,26 @@ export class TimelineEngine {
         let state = this.activeClips.get(clip.id);
         if (!state) {
             const factory = EFFECT_FACTORIES.get(clip.fxType);
-            if (!factory)
+            if (!factory) {
+                console.error(`[TimelineEngine] ❌ No factory found for effect: ${clip.fxType}`);
                 return;
+            }
             const effect = factory();
+            if (!effect) {
+                console.error(`[TimelineEngine] ❌ Factory returned null for effect: ${clip.fxType}`);
+                return;
+            }
+            console.log(`[TimelineEngine] ✅ Created effect instance: ${clip.fxType} (clip: ${clip.id})`);
             state = { clip, effect, triggered: false };
             this.activeClips.set(clip.id, state);
         }
         const effect = state.effect;
+        // 🎛️ WAVE 2066.1: Read blendMode DIRECTLY from the effect instance
+        // Each Core Effect declares its own mixBus ('global' | 'htp') via readonly property.
+        // No hardcoded lists needed — the effect knows what it needs.
+        // clip.mixBus override takes precedence (user can override in timeline)
+        const effectMixBus = clip.mixBus ?? effect.mixBus ?? 'htp';
+        const blendMode = effectMixBus === 'global' ? 'LTP' : 'HTP';
         // Trigger on first activation
         if (!state.triggered) {
             const zones = (clip.zones && clip.zones.length > 0)
@@ -317,37 +432,152 @@ export class TimelineEngine {
         effect.update(deltaMs);
         // Read procedural output
         const output = effect.getOutput();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2063.5: SEAMLESS RE-TRIGGER
+        // 🎯 WAVE 2067: ONESHOT GATE — isOneShot effects fire ONCE and die.
+        // 
+        // If effect finished mid-clip, re-create AND re-trigger in the SAME frame.
+        // This eliminates the 1-frame "dead gap" between effect cycles that caused
+        // the accumulator to go empty and Chronos to send dim=0 RGB(0,0,0).
+        // 
+        // WAVE 2067: OneShot effects (SolarFlare, GatlingRaid, CoreMeltdown, etc.)
+        // are NOT re-triggered. They fire once and the clip goes silent.
+        // This prevents a 700ms SolarFlare from firing 4+ times in a 3s clip.
+        // ═══════════════════════════════════════════════════════════════════════
+        const isOneShot = effect.isOneShot === true;
+        if (!output && effect.isFinished()) {
+            // 🎯 WAVE 2067: OneShot → clip is done. No re-trigger, no pre-stage.
+            if (isOneShot) {
+                return; // Silence until clip ends. The effect spoke once.
+            }
+            const factory = EFFECT_FACTORIES.get(clip.fxType);
+            if (factory) {
+                const newEffect = factory();
+                const zones = (clip.zones && clip.zones.length > 0)
+                    ? clip.zones
+                    : ['all'];
+                newEffect.trigger({
+                    effectType: clip.fxType,
+                    intensity: 1,
+                    source: 'chronos',
+                    zones,
+                    reason: `timeline:${clip.fxType}:${clip.id}:retrigger`,
+                });
+                newEffect.update(deltaMs);
+                state.effect = newEffect;
+                state.triggered = true;
+                const retriggeredOutput = newEffect.getOutput();
+                if (!retriggeredOutput)
+                    return;
+                // 🔥 WAVE 2068: Core FX own their intensity — no keyframe envelope on retrigger either
+                const envelope = 1.0;
+                const fixtureIds = this.resolveFixtureIds(clip);
+                this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode);
+                return;
+            }
+        }
         if (!output)
             return;
-        // Keyframe envelope acts as master dimmer multiplier
-        const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs);
-        // ── Process output → Arbiter ──
-        const fixtureIds = this.resolveFixtureIds(clip);
-        // Check if this effect uses zoneOverrides (spatial effects)
-        if (output.zoneOverrides && Object.keys(output.zoneOverrides).length > 0) {
-            this.dispatchZoneOverrides(output, envelope, fixtureIds);
-        }
-        // Also dispatch the global fallback (colorOverride, dimmerOverride)
-        this.dispatchGlobalOutput(output, envelope, fixtureIds);
-        // If the effect finished, let it re-trigger on next frame
-        // (clips can be longer than a single effect cycle)
-        if (effect.isFinished()) {
-            state.triggered = false;
-            // Re-create effect for next cycle
+        // If the effect finished after getOutput (will be caught next frame by seamless re-trigger)
+        if (effect.isFinished() && !isOneShot) {
+            // Pre-stage re-creation so next frame triggers immediately
             const factory = EFFECT_FACTORIES.get(clip.fxType);
             if (factory) {
                 state.effect = factory();
+                state.triggered = false;
             }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2068: THE DICTATOR'S WRATH — Anti Double-Envelope
+        //
+        // Core FX (ILightEffect instances) have their own ADSR curves.
+        // SolarFlare has attack/sustain/decay. GatlingRaid has burst timing.
+        // DigitalRain has internal flicker dynamics.
+        //
+        // The UI keyframes (Chronos timeline) add ANOTHER envelope on top:
+        // a default 0→1 fade-in over ~1.5s. This strangles the effect:
+        //   effect.intensity(0.9) × keyframeEnvelope(0.1) = 0.09 → pathetic
+        //
+        // FIX: Core FX bypass the keyframe envelope entirely. envelope = 1.0.
+        // The clip dictates WHEN the effect fires, the effect dictates HOW HARD.
+        // Only Hephaestus custom clips (processHephClip) use keyframe envelopes,
+        // because those are manually authored curves by the user.
+        // ═══════════════════════════════════════════════════════════════════════
+        const envelope = 1.0; // Core FX own their intensity. Chronos doesn't touch it.
+        // ── Process output → Arbiter ──
+        const fixtureIds = this.resolveFixtureIds(clip);
+        this.dispatchEffectOutput(output, envelope, fixtureIds, blendMode);
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2063.5: UNIFIED EFFECT DISPATCH
+    // 
+    // Replaces the old dual-call pattern (dispatchZoneOverrides + dispatchGlobalOutput)
+    // with a single smart dispatcher that avoids the "auto-white overwrite" bug.
+    //
+    // OLD BUG: Effects with zoneOverrides (like SalsaFire) would dispatch colored zones,
+    //          then dispatchGlobalOutput would overwrite them with RGB(255,255,255) via
+    //          auto-white injection because colorOverride=undefined.
+    //
+    // NEW: If zoneOverrides have color → use those exclusively (no global fallback).
+    //      If no zoneOverrides → use global colorOverride/dimmerOverride/auto-white.
+    // ═══════════════════════════════════════════════════════════════════════
+    dispatchEffectOutput(output, envelope, fixtureIds, blendMode = 'HTP') {
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 2067.1: COLOR CABLE CUT
+        //
+        // The effect output has 3 possible "color authority" signals:
+        //   1. zoneOverrides with color/dimmer → ZONE PATH (spatial)
+        //   2. colorOverride / whiteOverride   → GLOBAL PATH (uniform)
+        //   3. None of the above               → FALLBACK (intensity-only)
+        //
+        // OLD BUG: The FALLBACK path sent intensity-only outputs through
+        //   dispatchGlobalOutput, which auto-injects RGB(255,255,255).
+        //   Effects that have zoneOverrides but no color THIS FRAME
+        //   (e.g., between flickers of DigitalRain) got white-washed.
+        //
+        // NEW: If the effect emits zoneOverrides AT ALL, it owns its colors.
+        //   Even frames with only dimmer data in zones go through ZONE PATH.
+        //   Auto-white ONLY fires for truly colorless, zoneless outputs
+        //   (pure dimmer/intensity modulators).
+        // ═══════════════════════════════════════════════════════════════════
+        const hasZoneOverrides = output.zoneOverrides && Object.keys(output.zoneOverrides).length > 0;
+        if (hasZoneOverrides) {
+            // ZONE PATH: Effect has spatial authority — zones are the law.
+            // Even dimmer-only zones must dispatch (DigitalRain blackout zones).
+            this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode);
+            // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
+        }
+        else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
+            // GLOBAL PATH: Effects with direct color/dimmer overrides
+            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode);
+        }
+        else {
+            // FALLBACK: Pure intensity modulators → global output with auto-white
+            // Only reaches here if: no zoneOverrides, no colorOverride, no whiteOverride, no dimmerOverride
+            // These are truly "colorless" effects that just modulate brightness → white is correct
+            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode);
         }
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎨 ZONE OVERRIDES → ARBITER (spatial effects like FiberOptics)
+    // 🎨 ZONE OVERRIDES → ARBITER (spatial effects like FiberOptics, DigitalRain, GatlingRaid)
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchZoneOverrides(output, envelope, _allFixtureIds) {
+    //
+    // 🎯 WAVE 2067: ZONE-AWARE DISPATCH
+    //
+    // OLD BUG: Every zone override was dispatched to ['*'] (ALL fixtures).
+    //          Result: last zone in the loop overwrote all previous zones.
+    //          DigitalRain: front=Cyan, back=Lime, movers=dim → only movers survived.
+    //          GatlingRaid: front_left=WHITE, back=BLACK → BLACK killed everything.
+    //
+    // NEW: Each zoneId is resolved to its ACTUAL fixture IDs via MasterArbiter.
+    //      'front' → only front fixtures, 'all-movers' → only movers, etc.
+    //      Each zone paints ONLY its own fixtures. No more friendly fire.
+    // ═══════════════════════════════════════════════════════════════════════
+    dispatchZoneOverrides(output, envelope, _allFixtureIds, blendMode = 'HTP') {
         if (!output.zoneOverrides)
             return;
-        // For each zone override, build controls and dispatch
-        for (const [_zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
+        // For each zone override, build controls and dispatch to THAT ZONE's fixtures only
+        for (const [zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
             const controls = {};
             const channels = [];
             // Zone dimmer × envelope × 255
@@ -387,32 +617,22 @@ export class TimelineEngine {
                     channels.push('speed');
                 }
             }
-            // Skip if nothing to send
-            if (channels.length === 0 || controls.dimmer === 0)
+            // Skip if nothing to send (no channels at all)
+            // 🎯 WAVE 2067.1: Do NOT skip dimmer=0 — intentional blackout zones
+            // (e.g., DigitalRain sends dimmer:0 + blendMode:'replace' to darken zones)
+            // Those MUST reach the arbiter to suppress underlying layers.
+            if (channels.length === 0)
                 continue;
-            // Dispatch to ALL fixtures (the Arbiter doesn't do zone→fixture resolution,
-            // that's for the Orchestrator. For Scene Player, we apply globally and
-            // let the merge sort it out — better to over-illuminate than miss fixtures)
-            const fixtureIds = masterArbiter.getFixtureIds();
-            for (const fixtureId of fixtureIds) {
-                masterArbiter.setManualOverride({
-                    fixtureId,
-                    controls: controls,
-                    overrideChannels: channels,
-                    mode: 'absolute',
-                    source: 'ui_programmer',
-                    priority: 100,
-                    autoReleaseMs: 100,
-                    releaseTransitionMs: 50,
-                    timestamp: performance.now(),
-                });
-            }
+            // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
+            // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
+            const zoneFixtureIds = masterArbiter.getFixtureIdsByZone(zoneId);
+            this.dispatchToArbiter(zoneFixtureIds, controls, { blendMode });
         }
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 📤 GLOBAL OUTPUT → ARBITER (colorOverride, dimmerOverride)
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchGlobalOutput(output, envelope, fixtureIds) {
+    dispatchGlobalOutput(output, envelope, fixtureIds, blendMode = 'HTP') {
         const controls = {};
         const channels = [];
         // Color: HSL → RGB
@@ -465,20 +685,8 @@ export class TimelineEngine {
         // Skip if nothing meaningful
         if (channels.length === 0)
             return;
-        // Dispatch to all target fixtures
-        for (const fixtureId of fixtureIds) {
-            masterArbiter.setManualOverride({
-                fixtureId,
-                controls: controls,
-                overrideChannels: channels,
-                mode: 'absolute',
-                source: 'ui_programmer',
-                priority: 100,
-                autoReleaseMs: 100,
-                releaseTransitionMs: 50,
-                timestamp: performance.now(),
-            });
-        }
+        // Dispatch via centralized helper
+        this.dispatchToArbiter(fixtureIds, controls, { blendMode });
     }
     // ═══════════════════════════════════════════════════════════════════════
     // ⚒️ HEPHAESTUS CUSTOM CLIPS
@@ -570,20 +778,18 @@ export class TimelineEngine {
         }
         if (channels.length === 0)
             return;
+        // 🎛️ WAVE 2066: Resolve blendMode from Hephaestus clip's mixBus
+        // 'global' → LTP (takeover: strobes, blinders, meltdowns)
+        // 'htp'    → HTP (cooperative: sweeps, chases)
+        // 'ambient'/'accent' → ADD (additive: atmospheres, accents)
+        const mixBus = clip.mixBus ?? clip.hephClip?.mixBus ?? 'htp';
+        let blendMode = 'HTP';
+        if (mixBus === 'global')
+            blendMode = 'LTP';
+        else if (mixBus === 'ambient' || mixBus === 'accent')
+            blendMode = 'ADD';
         const fixtureIds = this.resolveFixtureIds(clip);
-        for (const fixtureId of fixtureIds) {
-            masterArbiter.setManualOverride({
-                fixtureId,
-                controls: controls,
-                overrideChannels: channels,
-                mode: 'absolute',
-                source: 'ui_programmer',
-                priority: 100,
-                autoReleaseMs: 100,
-                releaseTransitionMs: 50,
-                timestamp: performance.now(),
-            });
-        }
+        this.dispatchToArbiter(fixtureIds, controls, { blendMode });
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 📼 LEGACY FX TYPES (strobe, blackout, color-wash, etc.)
@@ -646,33 +852,186 @@ export class TimelineEngine {
         }
         if (channels.length === 0)
             return;
+        // 🎛️ WAVE 2066: Resolve blendMode from legacy fx type
+        // Strobes and blackouts MUST override the vibe (LTP/absolute authority)
+        // Everything else cooperates with the vibe canvas (HTP)
+        const LTP_EFFECTS = new Set(['strobe', 'blackout']);
+        const blendMode = LTP_EFFECTS.has(fxType) ? 'LTP' : 'HTP';
         const fixtureIds = this.resolveFixtureIds(clip);
-        for (const fixtureId of fixtureIds) {
-            masterArbiter.setManualOverride({
-                fixtureId,
-                controls: controls,
-                overrideChannels: channels,
-                mode: 'absolute',
-                source: 'ui_programmer',
-                priority: 100,
-                autoReleaseMs: 100,
-                releaseTransitionMs: 50,
-                timestamp: performance.now(),
-            });
+        this.dispatchToArbiter(fixtureIds, controls, { blendMode });
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌈 VIBE CLIPS — Vibe Handoff to Titan (WAVE 2065)
+    // ═══════════════════════════════════════════════════════════════════════
+    processVibeClip(clip, timeMs) {
+        const localTimeMs = timeMs - clip.startMs;
+        const clipDurationMs = clip.endMs - clip.startMs;
+        // Calculate envelope (fade in/out)
+        let envelope = 1;
+        if (localTimeMs < clip.fadeInMs) {
+            envelope = localTimeMs / clip.fadeInMs;
         }
+        else if (localTimeMs > clipDurationMs - clip.fadeOutMs) {
+            envelope = (clipDurationMs - localTimeMs) / clip.fadeOutMs;
+        }
+        if (envelope <= 0)
+            return;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY — Vibe Handoff ONLY
+        //
+        // The VibeClip's ONLY job is to tell Titan which vibe to run.
+        // The COLOR and MOVEMENT of the vibe come from Selene/Titan's reactive
+        // engine — they are the CANVAS. Chronos does NOT paint the base color.
+        //
+        // OLD (WAVE 2063): VibeClip wrote color+dimmer to accumulator → 
+        //   This made Chronos "own" all fixtures even in gaps → killed Titan
+        //
+        // NEW: VibeClip sends vibeId to Titan and NOTHING to the accumulator.
+        //   The vibe's procedural colors flow through Titan → HAL → DMX unimpeded.
+        //   FX clips are the only things that paint on top.
+        // ═══════════════════════════════════════════════════════════════════════
+        const vibeId = clip.vibeType;
+        if (vibeId && vibeId !== this.currentPlaybackVibeId) {
+            this.currentPlaybackVibeId = vibeId;
+            try {
+                const orchestrator = getTitanOrchestrator();
+                orchestrator.setVibe(vibeId);
+                console.log(`[TimelineEngine] 🎭 WAVE 2065: Vibe handoff → Titan "${vibeId}" (Selene paints the canvas)`);
+            }
+            catch (err) {
+                console.warn(`[TimelineEngine] ⚠️ Could not set vibe on Titan:`, err);
+            }
+        }
+        // NOTE: No dispatchToArbiter here! The vibe's color comes from Selene.
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: Fixture resolution
     // ═══════════════════════════════════════════════════════════════════════
     resolveFixtureIds(clip) {
-        // If clip has zones, use those (future: resolve zone→fixture mapping)
-        // For now: all fixtures (wildcard). The Arbiter handles the merge.
         const zones = clip.zones;
+        // If clip specifies zones, use them (with fallback logic)
         if (zones && zones.length > 0) {
-            // TODO WAVE 2053.2: Implement zone→fixture resolution
-            // For now, return all fixtures
+            // Check for wildcard
+            if (zones.includes('all') || zones.includes('*')) {
+                return masterArbiter.getFixtureIds();
+            }
+            // 🚑 FALLBACK DE EMERGENCIA:
+            // Si el efecto pide una zona específica pero no tenemos un mapa zone→fixture,
+            // mejor iluminar TODO que iluminar NADA.
+            // Esto arregla el "CoreMeltdown invisible" si falló el mapping.
+            console.warn(`[TimelineEngine] ⚠️ Zone mapping not implemented for zones: ${zones.join(', ')} — falling back to wildcard '*'`);
         }
+        // Default: all fixtures
         return masterArbiter.getFixtureIds();
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2065: Frame Accumulator — Sparse Overlay
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎬 WAVE 2065: SPARSE OVERLAY
+     *
+     * Accumulate effect outputs into the frameAccumulator.
+     * Only fixtures that are TOUCHED by an effect end up in the accumulator.
+     *
+     * WAVE 2056 (old): Pre-filled ALL fixtures with zeros → gaps sent BLACK
+     * WAVE 2065 (new): Empty start, create entries on-demand → gaps are TRANSPARENT
+     * WAVE 2066: blendMode per-fixture for Smart MixBus arbitration
+     */
+    dispatchToArbiter(targetIds, controls, options = {}) {
+        const blendMode = options.blendMode ?? 'HTP';
+        // A. Expand wildcard '*' → All fixture IDs
+        let finalIds = targetIds;
+        if (targetIds.includes('*')) {
+            finalIds = masterArbiter.getFixtureIds();
+            if (finalIds.length === 0) {
+                console.warn('[TimelineEngine] ⚠️ No fixtures registered in Arbiter!');
+                return;
+            }
+        }
+        // B. Accumulate controls into frame buffer (HTP for dimmer, LTP for others)
+        for (const fixtureId of finalIds) {
+            // 🎬 WAVE 2065: Create entry on-demand (sparse accumulator)
+            let currentState = this.frameAccumulator.get(fixtureId);
+            if (!currentState) {
+                currentState = {
+                    dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
+                    pan: 127, tilt: 127, zoom: 0, speed: 0,
+                    blendMode: 'HTP',
+                    colorTouched: false, // 🎭 WAVE 2070: No effect has sent color yet
+                };
+                this.frameAccumulator.set(fixtureId, currentState);
+            }
+            // 🎛️ WAVE 2066: LTP wins for blendMode — if an LTP effect overwrites an HTP,
+            // the fixture becomes LTP for this frame. This is correct because:
+            // - A strobe (LTP) MUST kill the vibe dimmer, even if a wash (HTP) is also active
+            // - A blackout (LTP) MUST override everything
+            // Priority: LTP > ADD > HTP
+            if (blendMode === 'LTP') {
+                currentState.blendMode = 'LTP';
+            }
+            else if (blendMode === 'ADD' && currentState.blendMode !== 'LTP') {
+                currentState.blendMode = 'ADD';
+            }
+            // HTP is default, only set if nothing else has claimed it
+            // HTP for dimmer (Highest Takes Precedence)
+            if (controls.dimmer !== undefined) {
+                currentState.dimmer = Math.max(currentState.dimmer, controls.dimmer);
+            }
+            // LTP for color (Latest Takes Precedence)
+            // 🔒 WAVE 2069: COLOR LATCH — Park the color for mechanical wheels
+            //
+            // If the effect sends a POSITIVE color → cache it in the latch.
+            // If the effect sends RGB(0,0,0) (strobe micro-blackout) → re-inject
+            // the latched color so the color_wheel stays parked.
+            //
+            // This prevents stepper motor whiplash on movers.
+            // The strobe modulates ONLY the dimmer channel. Color stays constant.
+            const hasIncomingColor = (controls.red !== undefined || controls.green !== undefined || controls.blue !== undefined);
+            if (hasIncomingColor) {
+                // 🎭 WAVE 2070: Mark that color was EXPLICITLY touched by an effect
+                currentState.colorTouched = true;
+                const r = controls.red ?? 0;
+                const g = controls.green ?? 0;
+                const b = controls.blue ?? 0;
+                const isPositiveColor = (r > 0 || g > 0 || b > 0);
+                if (isPositiveColor) {
+                    // Positive color → WRITE to latch + apply normally
+                    this.colorLatch.set(fixtureId, { r, g, b });
+                    currentState.red = r;
+                    currentState.green = g;
+                    currentState.blue = b;
+                }
+                else {
+                    // RGB(0,0,0) → CHECK latch. If latched color exists, re-inject it.
+                    // The dimmer is already 0 from the strobe curve, so the fixture
+                    // will be dark. But the color_wheel stays parked on the right gel.
+                    const latched = this.colorLatch.get(fixtureId);
+                    if (latched) {
+                        currentState.red = latched.r;
+                        currentState.green = latched.g;
+                        currentState.blue = latched.b;
+                    }
+                    else {
+                        // No latch → pass through zeros (first frame, or pure intensity effect)
+                        currentState.red = 0;
+                        currentState.green = 0;
+                        currentState.blue = 0;
+                    }
+                }
+            }
+            if (controls.white !== undefined)
+                currentState.white = controls.white;
+            // LTP for position
+            if (controls.pan !== undefined)
+                currentState.pan = controls.pan;
+            if (controls.tilt !== undefined)
+                currentState.tilt = controls.tilt;
+            // LTP for optics
+            if (controls.zoom !== undefined)
+                currentState.zoom = controls.zoom;
+            if (controls.speed !== undefined)
+                currentState.speed = controls.speed;
+        }
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: Clip release / cleanup
@@ -683,8 +1042,8 @@ export class TimelineEngine {
             state.effect.abort();
         }
         this.activeClips.delete(clipId);
-        // Release arbiter overrides
-        masterArbiter.releaseAllManualOverrides();
+        // 🔥 WAVE 2056: No longer needs to release arbiter overrides
+        // Playback uses setPlaybackFrame() which is completely replaced each tick
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: Standard keyframe interpolation (offsetMs based)
@@ -758,6 +1117,19 @@ export class TimelineEngine {
             }
         }
         return keyframes[keyframes.length - 1].value;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIVATE: Color conversion utilities
+    // ═══════════════════════════════════════════════════════════════════════
+    hexToRgb(hex) {
+        // Remove # if present
+        const cleanHex = hex.replace('#', '');
+        // Parse hex to RGB
+        const bigint = parseInt(cleanHex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════

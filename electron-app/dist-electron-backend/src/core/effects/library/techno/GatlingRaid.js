@@ -74,6 +74,7 @@ export class GatlingRaid extends BaseEffect {
         this.category = 'physical';
         this.priority = 92; // Alta pero menor que industrial_strobe
         this.mixBus = 'global'; // 🚂 DICTADOR - necesita negro entre balas
+        this.isOneShot = true; // 🎯 WAVE 2067: Ráfaga única — NO re-trigger
         this.currentBullet = 0; // Índice del disparo actual
         this.currentSweep = 0; // Barrido actual (0 to sweepCount-1)
         this.bulletTimer = 0; // Timer dentro del ciclo bala+gap

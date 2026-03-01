@@ -77,6 +77,7 @@ export class MacheteSpark extends BaseEffect {
         this.category = 'physical';
         this.priority = 78; // Alta pero no máxima
         this.mixBus = 'global'; // Global override durante el corte
+        this.isOneShot = true; // 🎯 WAVE 2067: Chispazo único — NO re-trigger
         this.currentCut = 0;
         this.totalDurationMs = 0;
         // Estado de la fase actual dentro de un corte

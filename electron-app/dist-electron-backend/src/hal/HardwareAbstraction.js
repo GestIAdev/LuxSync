@@ -57,6 +57,8 @@ export class HardwareAbstraction {
         this.universeBuffers = new Map();
         this.lastFixtureStates = [];
         this.lastDebugTime = 0; // WAVE 256.7: For throttled debug logging
+        // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
+        this.lastPhysicsFrameTime = 0;
         // Current vibe preset (for physics)
         // 🔥 WAVE 279.5: HEART vs SLAP - Filosofía de zonas
         // FRONT PARS (Bass/Heart): bom bom bom - presión en el pecho, no agresivo
@@ -267,6 +269,23 @@ export class HardwareAbstraction {
     // 👁️ WAVE 340.2: DYNAMIC OPTICS CON SMOOTHING
     // Las ópticas RESPIRAN con el movimiento - suave, sin saltos
     // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏎️ WAVE 2074.2: REAL DELTATIME — NO MORE HARDCODED 16ms
+    //
+    // Mide el tiempo real entre frames para que la física sea frame-rate
+    // independent. Cap de 200ms para evitar explosiones numéricas en pausa.
+    // Primer frame usa 16ms como semilla segura.
+    // ═══════════════════════════════════════════════════════════════════════
+    measurePhysicsDeltaTime() {
+        const now = Date.now();
+        if (this.lastPhysicsFrameTime === 0) {
+            this.lastPhysicsFrameTime = now;
+            return 16; // Primer frame: semilla segura
+        }
+        const dt = Math.min(200, now - this.lastPhysicsFrameTime);
+        this.lastPhysicsFrameTime = now;
+        return Math.max(1, dt); // Nunca 0 (protección div/0)
+    }
     /**
      * 👁️ Aplica óptica dinámica basada en vibe y movimiento
      * 🔧 WAVE 340.2: Con SMOOTHING para evitar oscilaciones locas
@@ -458,6 +477,8 @@ export class HardwareAbstraction {
         const approxBpm = movementSpeed * 240;
         const beatDuration = 60 / Math.max(60, approxBpm); // seconds per beat
         const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration; // 0-1
+        // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
+        const physicsDt = this.measurePhysicsDeltaTime();
         const statesWithPhysics = finalStates.map((state, index) => {
             // 🔥 WAVE 339.6: Use real fixture ID from the fixtures array
             // This matches the ID registered in setFixtures() → registerMover()
@@ -480,13 +501,21 @@ export class HardwareAbstraction {
             const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
+                // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
+                // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+                const profile = this.getFixtureProfileCached(fixture);
+                const physicsData = profile?.physics || profile?.physicsProfile;
+                if (physicsData) {
+                    this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData);
+                }
                 // ═══════════════════════════════════════════════════════════════════════
-                // 🔧 WAVE 340.6: DIRECT DMX INTERPOLATION
+                // 🔧 WAVE 340.6 + 2074.2: DIRECT DMX INTERPOLATION
                 // TitanEngine already generates target positions in DMX space (0-255)
                 // We pass them DIRECTLY to physics without double-conversion
+                // 🏎️ WAVE 2074.2: Using real measured deltaTime instead of hardcoded 16ms
                 // ═══════════════════════════════════════════════════════════════════════
                 // Run physics simulation with DMX target directly (no abstract conversion!)
-                this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, 16);
+                this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
                 // Get interpolated state
                 const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
                 return {
@@ -647,6 +676,8 @@ export class HardwareAbstraction {
                     gobo: 0,
                     prism: 0,
                     strobe: 0,
+                    // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
+                    phantomChannels: fixtureTarget.phantomChannels,
                 };
                 // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
                 // This is the KEY integration point: if fixture has color wheel profile,
@@ -685,6 +716,8 @@ export class HardwareAbstraction {
         const opticsTimeSeconds = Date.now() / 1000;
         const beatDuration = 0.5; // Default 120 BPM
         const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration;
+        // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
+        const physicsDt = this.measurePhysicsDeltaTime();
         const statesWithPhysics = fixtureStates.map((state, index) => {
             const fixture = fixtures[index];
             const fixtureId = fixture?.id || `fallback_mover_${index}`;
@@ -702,8 +735,15 @@ export class HardwareAbstraction {
             const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
-                // Apply physics interpolation
-                this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, 16);
+                // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
+                // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+                const profile = this.getFixtureProfileCached(fixture);
+                const physicsData = profile?.physics || profile?.physicsProfile;
+                if (physicsData) {
+                    this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData);
+                }
+                // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
+                this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
                 const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
                 return {
                     ...state,
@@ -755,15 +795,26 @@ export class HardwareAbstraction {
      */
     getFixtureProfileCached(fixture) {
         const cacheKey = fixture.profileId || fixture.name || fixture.id || 'unknown';
+        // Si ya lo procesamos, devolverlo de la caché silenciosamente (ADIÓS SPAM)
         if (this.profileCache.has(cacheKey)) {
-            return this.profileCache.get(cacheKey) ?? null;
+            return this.profileCache.get(cacheKey);
         }
-        // Try to find profile by ID or model name
-        const profile = fixture.profileId
-            ? getProfile(fixture.profileId)
-            : getProfileByModel(fixture.name);
-        this.profileCache.set(cacheKey, profile ?? null);
-        return profile ?? null;
+        let profile = null;
+        // 1. JSON inyectado en vivo desde la Forja
+        if (fixture.capabilities || fixture.wheels || fixture.colorEngine || fixture.physics) {
+            profile = fixture;
+        }
+        // 2. Búsqueda por ID formal
+        else if (fixture.profileId) {
+            profile = getProfile(fixture.profileId) ?? null;
+        }
+        // 3. Heurística por nombre (Salvavidas)
+        else if (fixture.name) {
+            profile = getProfileByModel(fixture.name) ?? null;
+        }
+        // Guardar en caché para no volver a calcularlo ni printearlo en el próximo frame
+        this.profileCache.set(cacheKey, profile);
+        return profile;
     }
     /**
      * 🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it

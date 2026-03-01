@@ -51,6 +51,7 @@ export class ThunderStruck extends BaseEffect {
         this.category = 'physical';
         this.priority = 95; // Alta prioridad - es un BLINDER
         this.mixBus = 'global'; // Dictador - necesita el impacto completo
+        this.isOneShot = true; // 🎯 WAVE 2067: Trueno único — NO re-trigger
         this.currentFlash = 0;
         this.flashPhase = 'attack';
         this.phaseTimer = 0;

@@ -29,6 +29,10 @@ export const MOVEMENT_PRESETS = {
             maxVelocity: 600, // Muy rápido
             friction: 0.05, // Casi sin fricción (libre)
             arrivalThreshold: 0.5, // Precisión alta
+            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
+            snapFactor: 1.0, // 🏎️ WAVE 2074.3: Instantáneo — sweep/square siguen target frame a frame
+            revLimitPanPerSec: 3600, // 🏎️ WAVE 2074.3: 120/frame × 30fps — sweeps necesitan velocidad
+            revLimitTiltPerSec: 1800, // 🏎️ WAVE 2074.3: 60/frame × 30fps
         },
         optics: {
             zoomDefault: 30, // Beam cerrado (láser)
@@ -54,6 +58,10 @@ export const MOVEMENT_PRESETS = {
             maxVelocity: 350, // 🔧 Subido: Más swing
             friction: 0.20, // Algo de suavizado orgánico
             arrivalThreshold: 2.0, // Permite overshoot elegante
+            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
+            snapFactor: 0.65, // 🏎️ WAVE 2074.3: Suavizado orgánico — curvas sin corners
+            revLimitPanPerSec: 750, // 🏎️ WAVE 2074.3: 25/frame × 30fps — figure8 sin lag
+            revLimitTiltPerSec: 540, // 🏎️ WAVE 2074.3: 18/frame × 30fps
         },
         optics: {
             zoomDefault: 150, // Zoom medio (spot suave)
@@ -79,6 +87,10 @@ export const MOVEMENT_PRESETS = {
             maxVelocity: 450, // 🔧 Subido: Rápido en golpes
             friction: 0.30, // Fricción para punch (no arrastrar)
             arrivalThreshold: 1.0, // Precisión normal
+            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
+            snapFactor: 0.50, // 🏎️ WAVE 2074.3: Punch con algo de suavizado — wall of light
+            revLimitPanPerSec: 450, // 🏎️ WAVE 2074.3: 15/frame × 30fps — dramático pero controlado
+            revLimitTiltPerSec: 300, // 🏎️ WAVE 2074.3: 10/frame × 30fps
         },
         optics: {
             zoomDefault: 220, // Zoom abierto (wash)
@@ -103,6 +115,10 @@ export const MOVEMENT_PRESETS = {
             maxVelocity: 50, // Velocidad glacial
             friction: 0.80, // Máxima fricción (slew rate limit)
             arrivalThreshold: 3.0, // Permite mucho overshoot
+            physicsMode: 'classic', // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
+            snapFactor: 0.0, // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
+            revLimitPanPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico — la física clásica controla
+            revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
         },
         optics: {
             zoomDefault: 255, // Zoom máximo (wash total)
@@ -127,6 +143,10 @@ export const MOVEMENT_PRESETS = {
             maxVelocity: 100,
             friction: 0.50,
             arrivalThreshold: 1.0,
+            physicsMode: 'classic', // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
+            snapFactor: 0.0, // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
+            revLimitPanPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
+            revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
         },
         optics: {
             zoomDefault: 127, // Zoom neutro

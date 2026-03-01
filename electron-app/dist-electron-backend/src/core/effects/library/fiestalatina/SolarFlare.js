@@ -78,7 +78,8 @@ export class SolarFlare {
         this.name = 'Solar Flare';
         this.category = 'physical';
         this.priority = 100; // Alta prioridad - brilla sobre todo
-        this.mixBus = 'htp'; // � WAVE 790: HTP - Let physics breathe during decay
+        this.mixBus = 'htp'; // 🔥 WAVE 790: HTP - Let physics breathe during decay
+        this.isOneShot = true; // 🎯 WAVE 2067: One-hit wonder — NO re-trigger
         this.phase = 'idle';
         this.phaseStartTime = 0;
         this.elapsedMs = 0;
@@ -240,6 +241,15 @@ export class SolarFlare {
      */
     getPhase() {
         return this.phase;
+    }
+    /**
+     * 📏 WAVE 2067: NATIVE DURATION
+     *
+     * SolarFlare's real duration = preBlackout + attack + sustain + decay
+     * With defaults: 50 + 0 + 150 + 500 = 700ms (NOT the registry's 3000ms!)
+     */
+    getDurationMs() {
+        return this.config.preBlackoutMs + this.config.attackMs + this.config.sustainMs + this.config.decayMs;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Phase processors

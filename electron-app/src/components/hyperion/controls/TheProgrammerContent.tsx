@@ -19,6 +19,7 @@ import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
+import { ExtrasSection } from './ExtrasSection'
 import './TheProgrammer.css'
 import './accordion-styles.css'
 
@@ -28,6 +29,7 @@ interface OverrideState {
   color: boolean
   position: boolean
   beam: boolean
+  extras: boolean
 }
 
 export const TheProgrammerContent: React.FC = () => {
@@ -43,6 +45,7 @@ export const TheProgrammerContent: React.FC = () => {
     color: false,
     position: false,
     beam: false,
+    extras: false,
   })
   
   // WAVE 999: POSITION ES REY - Position abierto por defecto
@@ -166,7 +169,7 @@ export const TheProgrammerContent: React.FC = () => {
     setUnlockFlash(true)
     setTimeout(() => setUnlockFlash(false), 400)
     
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
     // WAVE 440.5: Reset UI values to neutral state
     setCurrentDimmer(null)
     setCurrentColor({ r: 128, g: 128, b: 128 })
@@ -198,7 +201,7 @@ export const TheProgrammerContent: React.FC = () => {
       // ═══════════════════════════════════════════════════════════════════
       // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
       // ═══════════════════════════════════════════════════════════════════
-      setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+      setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
       setCurrentDimmer(null)
       setCurrentColor({ r: 128, g: 128, b: 128 })
       
@@ -264,6 +267,10 @@ export const TheProgrammerContent: React.FC = () => {
   
   const handleBeamOverrideChange = useCallback((hasOverride: boolean) => {
     setOverrideState(prev => ({ ...prev, beam: hasOverride }))
+  }, [])
+  
+  const handleExtrasOverrideChange = useCallback((hasOverride: boolean) => {
+    setOverrideState(prev => ({ ...prev, extras: hasOverride }))
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -357,8 +364,16 @@ export const TheProgrammerContent: React.FC = () => {
         onOverrideChange={handleBeamOverrideChange}
       />
       
+      {/* 🔥 WAVE 2084.10: THE DOPPELGÄNGER FIX — ExtrasSection finally in the REAL component */}
+      <ExtrasSection
+        hasOverride={overrideState.extras}
+        isExpanded={activeSection === 'extras'}
+        onToggle={() => toggleSection('extras')}
+        onOverrideChange={handleExtrasOverrideChange}
+      />
+      
       {/* OVERRIDE INDICATOR */}
-      {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam) && (
+      {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
         <div className="override-indicator">
           <span className="override-dot" />
           MANUAL CONTROL ACTIVE

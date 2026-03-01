@@ -238,9 +238,9 @@ async function initTitan() {
         const phantom = getPhantomWorker();
         await phantom.init();
         setupChronosIPCHandlers(mainWindow);
-        setupPlaybackIPCHandlers();
+        setupPlaybackIPCHandlers(mainWindow); // WAVE 2054: Pass window for arbiter feedback
         console.log('[Main] 👻 Phantom Worker initialized (WAVE 2005.3)');
-        console.log('[Main] 🎬 TimelineEngine playback initialized (WAVE 2053.1)');
+        console.log('[Main] 🎬 TimelineEngine playback initialized (WAVE 2054)');
     }
     catch (err) {
         console.error('[Main] ❌ Failed to initialize Phantom Worker:', err);

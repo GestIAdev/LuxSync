@@ -85,6 +85,7 @@ export class SeismicSnap extends BaseEffect {
         this.category = 'physical';
         this.priority = 78; // Alto - este es un efecto de IMPACTO
         this.mixBus = 'global'; // 🎯 OVERRIDE física total
+        this.isOneShot = true; // 🎯 WAVE 2067: Snap sísmico — NO re-trigger
         // ─────────────────────────────────────────────────────────────────────────
         // Internal state
         // ─────────────────────────────────────────────────────────────────────────

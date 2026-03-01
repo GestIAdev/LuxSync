@@ -38,25 +38,49 @@ export var ControlLayer;
 /**
  * Default merge strategies per channel type
  * Industry standard: HTP for intensity, LTP for everything else.
+ *
+ * 🔥 WAVE 2084: PHANTOM PANEL — Canales de INGENIOS (rotation, custom, macro, etc.)
+ * usan LTP por defecto. Titan/Selene NO inyectan valores en estos canales
+ * (eso se controla en arbitrateFixture), pero si alguien los toca manualmente → LTP.
  */
 export const DEFAULT_MERGE_STRATEGIES = {
+    // INTENSITY
     dimmer: 'HTP',
+    strobe: 'LTP',
+    shutter: 'LTP',
+    // COLOR
     red: 'LTP',
     green: 'LTP',
     blue: 'LTP',
     white: 'LTP',
-    pan: 'LTP',
-    tilt: 'LTP',
-    zoom: 'LTP',
-    focus: 'LTP',
-    gobo: 'LTP',
-    prism: 'LTP',
-    // 🔥 WAVE 1008.2: Additional channel strategies
-    speed: 'LTP',
-    strobe: 'LTP',
-    color_wheel: 'LTP',
     amber: 'LTP',
     uv: 'LTP',
+    cyan: 'LTP',
+    magenta: 'LTP',
+    yellow: 'LTP',
+    color_wheel: 'LTP',
+    // POSITION
+    pan: 'LTP',
+    pan_fine: 'LTP',
+    tilt: 'LTP',
+    tilt_fine: 'LTP',
+    // BEAM
+    gobo: 'LTP',
+    gobo_rotation: 'LTP',
+    prism: 'LTP',
+    prism_rotation: 'LTP',
+    focus: 'LTP',
+    zoom: 'LTP',
+    frost: 'LTP',
+    // CONTROL
+    speed: 'LTP',
+    macro: 'LTP',
+    control: 'LTP',
+    // 🔥 WAVE 2084: INGENIOS
+    rotation: 'LTP',
+    custom: 'LTP',
+    // FALLBACK
+    unknown: 'LTP',
 };
 /**
  * Default arbiter configuration

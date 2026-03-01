@@ -1,22 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💾 CHRONOS PROJECT - WAVE 2014: THE MEMORY CORE
+ * 💾 CHRONOS PROJECT — PERSISTENCE LAYER
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * LuxSync Project File Format (.lux)
- * Serializable format for saving/loading complete Chronos sessions.
+ * WAVE 2014 → WAVE 2081 (M1 Unification)
  *
- * FILE STRUCTURE:
- * - meta: Project metadata (version, author, timestamps)
- * - audio: Audio file reference and analysis data
- * - timeline: All clips and their positions
- * - library: Custom effects (future)
+ * This file defines the LuxProject type — the SERIALIZABLE format for
+ * .lux files saved to disk and loaded by TimelineEngine / Hyperion.
+ *
+ * LuxProject is NOT the runtime editing model. For the in-memory
+ * representation used by the Chronos editor (Zustand store, ChronosEngine),
+ * see ChronosProject in ./types.ts.
+ *
+ * For the architectural map and barrel imports, see ./ProjectTypes.ts.
  *
  * AXIOMA ANTI-SIMULACIÓN:
  * The saved project represents REAL work, not demos.
  *
  * @module chronos/core/ChronosProject
- * @version WAVE 2014
+ * @version WAVE 2081
  */
+import { generateChronosId } from './types';
 // ═══════════════════════════════════════════════════════════════════════════
 // PROJECT FILE FORMAT (.lux)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -238,5 +242,116 @@ export function validateProject(project) {
         valid: errors.length === 0,
         errors,
         warnings,
+    };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// CONVERSION HELPERS (LuxProject ↔ ChronosProject)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// These bridge the two project representations:
+//   LuxProject  = serializable .lux file (flat clip list, portable)
+//   RuntimeProject = in-memory editing model (multi-track, automation, analysis)
+//
+// The clip type systems diverge intentionally:
+//   LuxProject uses TimelineClip = VibeClip | FXClip  (concrete, serializable)
+//   RuntimeProject uses TimelineClip<ClipData>  (generic, extensible)
+//
+// Conversion uses `any` at the clip boundary because these are two
+// independent type hierarchies. Runtime safety is guaranteed by the
+// fact that clips always carry their `type` discriminator.
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Convert a LuxProject (file) into a runtime ChronosProject.
+ * Clips are collected into a single default track.
+ */
+export function luxToChronos(lux) {
+    const nowIso = new Date(lux.meta.modified || Date.now()).toISOString();
+    const defaultTrackId = generateChronosId();
+    // Map LuxProject clips into the runtime track shape.
+    // The clip shapes are structurally compatible at runtime even though
+    // the TS types diverge — both have id, type, startMs, trackId.
+    const clips = (lux.timeline?.clips || []).map((c) => ({
+        ...c,
+        trackId: defaultTrackId,
+    }));
+    return {
+        version: '1.0.0',
+        id: generateChronosId(),
+        meta: {
+            name: lux.meta.name || 'Imported Project',
+            description: '',
+            audioPath: lux.audio?.path || null,
+            durationMs: lux.meta.durationMs || lux.audio?.durationMs || 60000,
+            bpm: lux.audio?.bpm ?? 120,
+            timeSignature: 4,
+            key: null,
+            createdAt: new Date(lux.meta.created || Date.now()).toISOString(),
+            modifiedAt: nowIso,
+            audioHash: lux.audio?.checksum || null,
+        },
+        playback: {
+            loop: false,
+            loopRegion: null,
+            snapToBeat: true,
+            snapResolution: 'beat',
+            overrideMode: 'whisper',
+            latencyCompensationMs: 10,
+        },
+        analysis: null,
+        tracks: [
+            {
+                id: defaultTrackId,
+                name: 'Timeline',
+                type: 'audio',
+                enabled: true,
+                solo: false,
+                locked: false,
+                height: 120,
+                color: '#6b7280',
+                clips: clips,
+                automation: [],
+                order: 0,
+            },
+        ],
+        globalAutomation: [],
+        markers: [],
+    };
+}
+/**
+ * Convert a runtime ChronosProject into a LuxProject for serialization.
+ * Flattens all tracks into a single timeline.clips array.
+ */
+export function chronosToLux(ch) {
+    const metaNow = Date.now();
+    // Flatten all track clips into a single list
+    const clips = (ch.tracks || []).flatMap((t) => t.clips || []);
+    return {
+        meta: {
+            version: PROJECT_VERSION,
+            author: resolveAuthor(),
+            created: Date.parse(ch.meta.createdAt) || metaNow,
+            modified: Date.parse(ch.meta.modifiedAt) || metaNow,
+            durationMs: ch.meta.durationMs || 0,
+            name: ch.meta.name || 'Chronos Export',
+        },
+        audio: ch.meta.audioPath
+            ? {
+                name: ch.meta.audioPath.split(/[/\\]/).pop() || 'audio',
+                path: ch.meta.audioPath,
+                bpm: ch.meta.bpm || 120,
+                offsetMs: 0,
+                durationMs: ch.meta.durationMs || 0,
+            }
+            : null,
+        timeline: {
+            clips: clips,
+            playheadMs: 0,
+            viewportStartMs: 0,
+            pixelsPerSecond: 100,
+        },
+        library: {
+            customEffects: extractHephEffects(clips),
+            presets: [],
+        },
     };
 }

@@ -457,6 +457,27 @@ export class TitanOrchestrator {
         // 4. HAL renders arbitrated target -> produces fixture states
         // Now using the new renderFromTarget method that accepts FinalLightingTarget
         let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
+        //
+        // OLD (WAVE 2063): Binary gate — Chronos playing? Block ALL effects everywhere.
+        //   → This killed Selene's reactive colors for the ENTIRE stage during gaps.
+        //
+        // NEW: Chronos only protects the SPECIFIC fixtures it's painting right now.
+        //   Fixtures NOT in the Chronos frame are FREE for EffectManager/Hephaestus.
+        //   This means Selene's music-reactive physics keep working on untouched fixtures.
+        //
+        // The Set<string> contains ONLY the fixture IDs that Chronos is controlling
+        // in THIS exact frame. An empty set = Chronos has nothing to say = full freedom.
+        // ═══════════════════════════════════════════════════════════════════════
+        const isChronosPlaying = masterArbiter.isPlaybackActive();
+        const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
+        // 🔬 WAVE 2065: Telemetry (1 sample every 5s)
+        if (isChronosPlaying && this.frameCount % 300 === 1) {
+            const f0 = fixtureStates[0];
+            console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
+                `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`);
+        }
         // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
         // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
         // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
@@ -465,6 +486,7 @@ export class TitanOrchestrator {
         // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
         // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
         // Si no, usar la lógica legacy con colorOverride global
+        // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — now per-fixture inside loop
         if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
             // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
             // Los logs de zoneOverrides están en el EffectManager, no aquí
@@ -487,7 +509,10 @@ export class TitanOrchestrator {
                     // 🔊 WAVE 1075.2: Use position.x from original fixtures array
                     const positionX = this.fixtures[index]?.position?.x ?? 0;
                     if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
-                        // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
+                        // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                        const fixtureId = this.fixtures[index]?.id;
+                        if (fixtureId && chronosFixtureIds.has(fixtureId))
+                            return;
                         // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
                         affectedFixtureIndices.add(index);
                         // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
@@ -607,6 +632,7 @@ export class TitanOrchestrator {
         else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
             // ═══════════════════════════════════════════════════════════════════════
             // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
+            // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — per-fixture check inside
             // ═══════════════════════════════════════════════════════════════════════
             const flareIntensity = effectOutput.dimmerOverride; // 0-1
             // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
@@ -662,6 +688,10 @@ export class TitanOrchestrator {
                 const shouldApply = shouldApplyToFixture(f, index);
                 if (!shouldApply)
                     return f; // No afectar esta fixture
+                // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                const fixtureId = this.fixtures[index]?.id;
+                if (fixtureId && chronosFixtureIds.has(fixtureId))
+                    return f;
                 if (isGlobalMode) {
                     // ═══════════════════════════════════════════════════════════════════════
                     // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
@@ -879,6 +909,8 @@ export class TitanOrchestrator {
         //   - Color (RGB): LTP (Hephaestus overwrites if present)
         //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
         //   - Strobe: Additive (sum clamped to max)
+        //
+        // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
         // ═══════════════════════════════════════════════════════════════════════════
         const hephRuntime = getHephaestusRuntime();
         const hephOutputs = hephRuntime.tick(Date.now());
@@ -894,6 +926,10 @@ export class TitanOrchestrator {
             }
             // Apply Hephaestus outputs to fixtures
             fixtureStates = fixtureStates.map((f, index) => {
+                // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                const fixtureId = this.fixtures[index]?.id;
+                if (fixtureId && chronosFixtureIds.has(fixtureId))
+                    return f;
                 // Find matching outputs for this fixture's zone
                 const fixtureZone = (f.zone || '').toLowerCase();
                 const applicableOutputs = [];
@@ -1209,7 +1245,11 @@ export class TitanOrchestrator {
                             panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
                             tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
                             online: true,
-                            active: f.dimmer > 0
+                            active: f.dimmer > 0,
+                            // 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — Robust profileId cascade
+                            // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
+                            // NEVER let profileId be undefined — the ExtrasSection IPC depends on it
+                            profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
                         };
                     })
                 },

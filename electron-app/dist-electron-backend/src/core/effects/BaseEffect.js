@@ -85,6 +85,16 @@ export class BaseEffect {
         this._forcedProgress = null;
         /** Duración del efecto en ms (para cálculo de progress) */
         this._durationMs = 1000;
+        /**
+         * 🎯 WAVE 2067: ONESHOT FLAG
+         *
+         * Default: false (loopeable). Subclasses override to true for
+         * short one-hit effects like SolarFlare, MacheteSpark, GatlingRaid.
+         *
+         * When true, Chronos will NOT re-trigger this effect via Seamless Re-Trigger
+         * even if the clip is longer than the effect's native duration.
+         */
+        this.isOneShot = false;
         this.id = `${idPrefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -119,6 +129,17 @@ export class BaseEffect {
      */
     getPhase() {
         return this.phase;
+    }
+    /**
+     * 📏 WAVE 2067: NATIVE DURATION
+     *
+     * Public getter for the effect's native duration.
+     * Subclasses set this via setDuration() or config.durationMs.
+     *
+     * @returns Duration in ms
+     */
+    getDurationMs() {
+        return this._durationMs;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // 🕰️ WAVE 2002: CHRONOS PARAMETRIC SCRUBBING

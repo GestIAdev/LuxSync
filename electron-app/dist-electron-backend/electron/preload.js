@@ -605,7 +605,7 @@ const luxApi = {
         /** Toggle blackout state */
         toggleBlackout: () => ipcRenderer.invoke('lux:arbiter:toggleBlackout'),
         /** Set blackout state */
-        setBlackout: (active) => ipcRenderer.invoke('lux:arbiter:blackout', active),
+        setBlackout: (active) => ipcRenderer.invoke('lux:arbiter:setBlackout', { active }),
         // ============================================
         // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
         // ============================================
@@ -663,11 +663,31 @@ const luxApi = {
          */
         clearMovementOverrides: () => ipcRenderer.invoke('lux:arbiter:clearMovementOverrides'),
         /**
+         * 🔧 WAVE 2071: THE ANCHOR — Set manual pattern for specific fixtures
+         * This is the Layer 2 pattern command (MasterArbiter.activePatterns).
+         * NOT to be confused with setMovementPattern which is Layer 0 (CHOREO).
+         *
+         * @param fixtureIds - Fixture IDs to apply pattern to
+         * @param pattern - 'circle'|'eight'|'sweep'|'hold'|null (null = destroy)
+         * @param speed - 0-100 UI scale
+         * @param amplitude - 0-100 UI scale
+         */
+        setManualFixturePattern: (args) => ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', args),
+        /**
          * 🧠 WAVE 999.6: Get unified state for UI hydration
          * @param fixtureIds Array of fixture IDs (uses first as "Leader")
          * @returns State snapshot with null for AI-controlled channels
          */
         getFixturesState: (fixtureIds) => ipcRenderer.invoke('lux:arbiter:getFixturesState', { fixtureIds }),
+        /**
+         * Subscribe to arbiter output events (WAVE 2054)
+         * Real-time lighting state for visual feedback
+         */
+        onOutput: (callback) => {
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on('lux:arbiter:output', handler);
+            return () => ipcRenderer.removeListener('lux:arbiter:output', handler);
+        },
         // ============================================
         // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
         // ============================================
@@ -712,9 +732,12 @@ const luxApi = {
             ipcRenderer.on('lux:stage:loaded', handler);
             return () => ipcRenderer.removeListener('lux:stage:loaded', handler);
         },
+        /** Sync fixtures to backend Arbiter (WAVE 2054) */
+        syncFixtures: (fixtures) => ipcRenderer.send('lux:stage:sync', fixtures),
     },
     // ============================================
     // 🎯 WAVE 2019.11: CHRONOS TIMELINE → STAGE COMMANDS
+    // ============================================
     // Bridge for ChronosIPCBridge to communicate with backend
     // ============================================
     chronos: {

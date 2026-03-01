@@ -34,6 +34,7 @@ import { EventEmitter } from 'events';
 import { ControlLayer, DEFAULT_ARBITER_CONFIG, } from './types';
 import { mergeChannel, clampDMX } from './merge/MergeStrategies';
 import { CrossfadeEngine } from './CrossfadeEngine';
+import { normalizeZone } from '../stage/ShowFileV2';
 export class MasterArbiter extends EventEmitter {
     constructor(config = {}) {
         super();
@@ -58,6 +59,29 @@ export class MasterArbiter extends EventEmitter {
         // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
         // When operator releases manual control, we store the position here so AI adopts it as "home"
         this.fixtureOrigins = new Map();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — THE SOFT HANDOFF
+        //
+        // Cuando el operador suelta el XY pad (manual release), los canales de
+        // dimmer/color ya tienen crossfade via CrossfadeEngine. Pero pan/tilt
+        // pasan por getAdjustedPosition() que devuelve HARD CUT al titan value.
+        //
+        // SOLUCIÓN: Post-process DESPUÉS de getAdjustedPosition().
+        // Se captura la última posición manual al momento del release y se
+        // interpola linealmente hacia la posición Titan durante POSITION_RELEASE_MS.
+        //
+        // Esto es un POST-PROCESS — NO contamina Titan values (ese era el bug
+        // del Ghost Handoff original que se tuvo que exorcizar en WAVE 2070.3).
+        // ═══════════════════════════════════════════════════════════════════════
+        this.positionReleaseFades = new Map();
+        this.POSITION_RELEASE_MS = 500; // Fade suave de medio segundo
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2063: HYBRID MODE - Playback with Titan coexistence
+        // Chronos controls color/dimmer. Titan controls movement (when vibe active).
+        // ═══════════════════════════════════════════════════════════════════════
+        this.playbackActive = false;
+        this.currentPlaybackFrame = new Map();
+        this._playbackMeta = { hasActiveVibe: false, vibeId: null };
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
         // Pattern Engine (WAVE 376)
@@ -172,6 +196,86 @@ export class MasterArbiter extends EventEmitter {
     getFixtureIds() {
         return Array.from(this.fixtures.keys());
     }
+    /**
+     * 🎯 WAVE 2067: ZONE-AWARE FIXTURE RESOLUTION
+     *
+     * Maps effect zone IDs (from EffectFrameOutput.zoneOverrides) to real fixture IDs.
+     * Effects use abstract zones like 'front', 'back', 'all-pars', 'all-movers'.
+     * This resolves them to the actual fixtures registered in the Arbiter.
+     *
+     * ZONE VOCABULARY:
+     * ┌─────────────────────┬──────────────────────────────────────────────────┐
+     * │ Effect Zone         │ Maps To (CanonicalZones)                        │
+     * ├─────────────────────┼──────────────────────────────────────────────────┤
+     * │ 'front'             │ front                                           │
+     * │ 'back'              │ back                                            │
+     * │ 'floor'             │ floor                                           │
+     * │ 'all-pars' / 'pars' │ front + back + floor                            │
+     * │ 'all-movers'/'movers│ movers-left + movers-right                     │
+     * │ 'center'            │ center                                          │
+     * │ 'air'               │ air                                             │
+     * │ 'all' / '*'         │ ALL fixtures                                    │
+     * │ 'front_left' etc.   │ front (positional subset - future)             │
+     * └─────────────────────┴──────────────────────────────────────────────────┘
+     *
+     * @param effectZone Zone ID from the effect's zoneOverrides
+     * @returns Array of fixture IDs belonging to that zone
+     */
+    getFixtureIdsByZone(effectZone) {
+        const zone = effectZone.toLowerCase().trim();
+        // Wildcard → everything
+        if (zone === 'all' || zone === '*') {
+            return this.getFixtureIds();
+        }
+        // Composite zones → union of canonical zones
+        const COMPOSITE_ZONES = {
+            'all-pars': ['front', 'back', 'floor'],
+            'pars': ['front', 'back', 'floor'],
+            'all-movers': ['movers-left', 'movers-right'],
+            'movers': ['movers-left', 'movers-right'],
+        };
+        const canonicalTargets = COMPOSITE_ZONES[zone]
+            ? COMPOSITE_ZONES[zone]
+            : [zone]; // Single zone — use as-is
+        // 🎯 WAVE 2067.1: Resolve via normalizeZone() — handles ALL legacy formats
+        // BEFORE: fixture.zone.toLowerCase() → 'front_pars' ≠ 'front' → MISS
+        // NOW:    normalizeZone('FRONT_PARS') → 'front' → MATCH
+        const result = [];
+        for (const [id, fixture] of this.fixtures) {
+            const fixtureZone = normalizeZone(fixture.zone);
+            if (canonicalTargets.includes(fixtureZone)) {
+                result.push(id);
+            }
+        }
+        // Positional sub-zones (GatlingRaid style): front_left, back_center, etc.
+        // These need stereo/position resolution — match by zone prefix + position
+        if (result.length === 0 && zone.includes('_')) {
+            const [zoneBase, side] = zone.split('_');
+            for (const [id, fixture] of this.fixtures) {
+                const fixtureZone = normalizeZone(fixture.zone);
+                if (!fixtureZone.startsWith(zoneBase))
+                    continue;
+                // Match by name/position hints
+                const name = (fixture.name || '').toLowerCase();
+                if (side === 'left' && (name.includes('left') || name.includes(' l ') || fixtureZone.includes('left'))) {
+                    result.push(id);
+                }
+                else if (side === 'right' && (name.includes('right') || name.includes(' r ') || fixtureZone.includes('right'))) {
+                    result.push(id);
+                }
+                else if (side === 'center' && (name.includes('center') || name.includes('centre') || fixtureZone === zoneBase)) {
+                    result.push(id);
+                }
+            }
+        }
+        // FALLBACK: If zone resolved to NOTHING, return ALL fixtures rather than silence.
+        // Better to light everything than light nothing.
+        if (result.length === 0) {
+            console.warn(`[MasterArbiter] ⚠️ WAVE 2067: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`);
+            return this.getFixtureIds();
+        }
+        return result;
+    }
     // ═══════════════════════════════════════════════════════════════════════
     // LAYER 0: TITAN AI INPUT
     // ═══════════════════════════════════════════════════════════════════════
@@ -221,6 +325,7 @@ export class MasterArbiter extends EventEmitter {
      * WAVE 440: Now MERGES with existing override instead of replacing.
      */
     setManualOverride(override) {
+        console.log(`[RADAR 1 - ENTRADA] UI mandó control a ${override.fixtureId}:`, override.controls);
         // Check limit
         if (this.layer2_manualOverrides.size >= this.config.maxManualOverrides &&
             !this.layer2_manualOverrides.has(override.fixtureId)) {
@@ -282,6 +387,9 @@ export class MasterArbiter extends EventEmitter {
     /**
      * Release manual override for a fixture
      * Starts crossfade transition back to AI control.
+     * 🔧 WAVE 2070.3: EXORCISM — Also purge patterns and origins for released fixtures.
+     *   Without this, activePatterns stayed orphaned after UNLOCK, keeping the fixture
+     *   locked on pattern.center instead of returning to Titan/Selene.
      */
     releaseManualOverride(fixtureId, channels) {
         const override = this.layer2_manualOverrides.get(fixtureId);
@@ -294,6 +402,34 @@ export class MasterArbiter extends EventEmitter {
             const currentValue = this.getManualChannelValue(override, channel);
             const targetValue = titanValues[channel] ?? 0;
             this.crossfadeEngine.startTransition(fixtureId, channel, currentValue, targetValue, override.releaseTransitionMs || this.config.defaultCrossfadeMs);
+        }
+        // 🔧 WAVE 2070.3 + 2070.4: MANDATORY pattern purge on pan/tilt release
+        // If channels is undefined (full release) OR contains 'pan'/'tilt',
+        // the pattern MUST die. No zombies. No orphans.
+        const releasingMovement = channelsToRelease.includes('pan') ||
+            channelsToRelease.includes('tilt');
+        if (!channels || releasingMovement) {
+            // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
+            // BEFORE purging the override, grab the current position for interpolation.
+            // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
+            const lastManualPan = override.controls.pan ?? 128;
+            const lastManualTilt = override.controls.tilt ?? 128;
+            this.positionReleaseFades.set(fixtureId, {
+                fromPan: lastManualPan,
+                fromTilt: lastManualTilt,
+                startTime: Date.now(),
+                durationMs: this.POSITION_RELEASE_MS,
+            });
+            console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`);
+            // OBLIGATORY: Annihilate active pattern for this fixture
+            if (this.activePatterns.has(fixtureId)) {
+                this.activePatterns.delete(fixtureId);
+                console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`);
+            }
+            // Purge ghost origin
+            if (this.fixtureOrigins.has(fixtureId)) {
+                this.fixtureOrigins.delete(fixtureId);
+            }
         }
         // Update or remove override
         if (channels) {
@@ -542,10 +678,45 @@ export class MasterArbiter extends EventEmitter {
         }
     }
     /**
+     * 🔧 WAVE 2070.2: Update pattern speed/size WITHOUT resetting startTime.
+     *
+     * The old flow re-created the entire PatternConfig on every slider change,
+     * which reset startTime = performance.now() → phase = 0 → pattern never
+     * completes a cycle. Now we surgically update speed/size in-place.
+     */
+    updatePatternParams(fixtureIds, speed, size) {
+        for (const fixtureId of fixtureIds) {
+            const existing = this.activePatterns.get(fixtureId);
+            if (existing) {
+                existing.speed = speed;
+                existing.size = size;
+                // startTime stays untouched → phase continues uninterrupted
+            }
+        }
+    }
+    /**
      * Get pattern for a fixture
      */
     getPattern(fixtureId) {
         return this.activePatterns.get(fixtureId);
+    }
+    /**
+     * 🔧 WAVE 2071: THE ANCHOR — Get current effective position for a fixture.
+     *
+     * Returns the REAL position the fixture is at RIGHT NOW:
+     *   1. If manualOverride has pan/tilt → use that (user moved XY pad)
+     *   2. Otherwise → snapshot Titan's current position (AI is driving)
+     *
+     * This is the ONLY correct way to capture an anchor point for patterns.
+     * Without this, patterns orbit around a moving center (Titan) = chaos.
+     */
+    getCurrentPosition(fixtureId) {
+        const override = this.layer2_manualOverrides.get(fixtureId);
+        if (override?.controls.pan !== undefined && override?.controls.tilt !== undefined) {
+            return { pan: override.controls.pan, tilt: override.controls.tilt };
+        }
+        const titanValues = this.getTitanValuesForFixture(fixtureId);
+        return { pan: titanValues.pan, tilt: titanValues.tilt };
     }
     // ═══════════════════════════════════════════════════════════════════════
     // GROUP FORMATION (WAVE 376)
@@ -606,6 +777,69 @@ export class MasterArbiter extends EventEmitter {
         return this.activeFormations.get(groupId);
     }
     // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2056: DIRECT DRIVE - Playback Frame Injection
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🔥 WAVE 2056: SCORCHED EARTH PROTOCOL
+     *
+     * Inject a complete playback frame from TimelineEngine.
+     * ═══════════════════════════════════════════════════════════════════════
+     * 🎬 WAVE 2063: HYBRID MODE — Smart Override, NOT Scorched Earth
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * When playback is active, Chronos controls COLOR channels (dimmer, RGB, white, color_wheel).
+     * If a Vibe is active, Titan KEEPS control of MOVEMENT channels (pan, tilt, zoom, speed).
+     *
+     * This is NOT video rendering anymore — it's a smart layer overlay.
+     * Chronos is a color director. Titan is a movement director. They coexist.
+     *
+     * @param fixtures Array of fixture states from TimelineEngine
+     * @param meta Hybrid metadata: whether a vibe is active, and which vibe
+     */
+    setPlaybackFrame(fixtures, meta) {
+        this.currentPlaybackFrame.clear();
+        for (const fixture of fixtures) {
+            this.currentPlaybackFrame.set(fixture.fixtureId, fixture);
+        }
+        // Activate playback mode
+        this.playbackActive = true;
+        // 🎬 WAVE 2063: Store hybrid metadata
+        this._playbackMeta = meta ?? { hasActiveVibe: false, vibeId: null };
+        if (this.config.debug && this.frameNumber % 60 === 0) {
+            const mode = this._playbackMeta.hasActiveVibe ? 'HYBRID (Titan+Chronos)' : 'COLOR ONLY';
+            console.log(`[MasterArbiter] 🎬 PLAYBACK ${mode}: ${fixtures.length} fixtures | vibe: ${this._playbackMeta.vibeId ?? 'none'}`);
+        }
+    }
+    /**
+     * Stop playback mode and return to normal layer arbitration
+     */
+    stopPlayback() {
+        this.playbackActive = false;
+        this.currentPlaybackFrame.clear();
+        this._playbackMeta = { hasActiveVibe: false, vibeId: null };
+        console.log('[MasterArbiter] 🎬 PLAYBACK STOPPED: Returning to normal layer arbitration');
+    }
+    /**
+     * Check if playback is active
+     */
+    isPlaybackActive() {
+        return this.playbackActive;
+    }
+    /**
+     * 🎬 WAVE 2065: Get the fixture IDs that Chronos is CURRENTLY controlling.
+     *
+     * In Transparent Overlay mode, Chronos only controls fixtures that have
+     * an active FX clip painting them RIGHT NOW. All other fixtures are free.
+     *
+     * Used by TitanOrchestrator to decide which fixtures to gate from
+     * EffectManager/HephaestusRuntime (only the ones Chronos is touching).
+     */
+    getPlaybackAffectedFixtureIds() {
+        if (!this.playbackActive)
+            return new Set();
+        return new Set(this.currentPlaybackFrame.keys());
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     // MAIN ARBITRATION
     // ═══════════════════════════════════════════════════════════════════════
     /**
@@ -614,11 +848,221 @@ export class MasterArbiter extends EventEmitter {
      * Merges all layers and produces final lighting target.
      * Call this every frame to get the output for HAL.
      *
+     * 🎬 WAVE 2063: HYBRID MODE — When playback is active, Chronos controls color
+     * and Titan controls movement. Both directors coexist. No more scorched earth.
+     *
      * @returns Final lighting target ready for HAL
      */
     arbitrate() {
         const now = performance.now();
         this.frameNumber++;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎬 WAVE 2063: HYBRID MODE — Chronos + Titan coexistence
+        // 
+        // OLD (WAVE 2056): Direct Drive returned raw frames, killing Titan.
+        // NEW: Chronos is a COLOR DIRECTOR, Titan is a MOVEMENT DIRECTOR.
+        //
+        // When playback active:
+        //   1. Run NORMAL arbitration (Titan generates pan/tilt/zoom/speed)
+        //   2. OVERLAY Chronos color data (dimmer, R, G, B, white, color_wheel)
+        //   3. If vibe is active → Titan keeps movement. If not → Chronos movement wins.
+        //
+        // This fixes:
+        //   - GRAY BUG: Frames now go through normal HAL → translateColorToWheel()
+        //   - DEAD VIBE: Titan runs normally → FixturePhysicsDriver gets pan/tilt targets
+        //
+        // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY
+        //   Chronos frame is now SPARSE — only contains fixtures actively touched by FX.
+        //   Untouched fixtures → pure Titan. Touched fixtures → HTP blend.
+        //   The Vibe is the canvas, Chronos paints ON TOP of it.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this.playbackActive) {
+            // STEP 1: Run normal arbitration for ALL fixtures (Titan/Selene lives!)
+            this.cleanupExpiredEffects();
+            const allFixtureIds = Array.from(this.fixtures.keys());
+            const hybridTargets = [];
+            for (const fixtureId of allFixtureIds) {
+                // Get Titan's full arbitration (includes vibe color + movement)
+                const titanTarget = this.arbitrateFixture(fixtureId, now);
+                // Get Chronos' frame data (only present if an FX clip is touching this fixture)
+                const chronosData = this.currentPlaybackFrame.get(fixtureId);
+                if (chronosData) {
+                    // ═══════════════════════════════════════════════════════════════════
+                    // �️ WAVE 2066: THE SMART MIXBUS — Dynamic Blend Mode Arbitration
+                    //
+                    // The playback frame now carries a per-fixture blendMode.
+                    // Each effect declares its mixing intent:
+                    //
+                    //   'HTP' → Highest Takes Precedence (washes, color fills)
+                    //           Math.max(titanDim, chronosDim) — brighter wins
+                    //           The vibe canvas shines through if it's brighter.
+                    //
+                    //   'LTP' → Last Takes Precedence / Override (strobes, blackouts, meltdowns)
+                    //           chronosDim directly replaces titanDim — ABSOLUTE AUTHORITY
+                    //           A strobe at 0 WILL kill the vibe. A blackout IS a blackout.
+                    //
+                    //   'ADD' → Additive (ambient mists, accents, atmospheric)
+                    //           Math.min(255, titanDim + chronosDim) — both contribute
+                    //           Subtle effects ADD to the existing vibe canvas.
+                    //
+                    // COLOR: Same logic applies per blendMode.
+                    // MOVEMENT: Always from Titan (the vibe owns choreography).
+                    // ═══════════════════════════════════════════════════════════════════
+                    const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster);
+                    const titanDim = titanTarget.dimmer;
+                    // 🎛️ WAVE 2066: Read blendMode from the enriched frame
+                    const blendMode = chronosData.blendMode ?? 'HTP';
+                    // ── DIMMER: Switch by blend mode ──
+                    let finalDimmer;
+                    switch (blendMode) {
+                        case 'LTP':
+                            // ABSOLUTE OVERRIDE — Chronos dictates dimmer.
+                            // Strobes, blackouts, meltdowns: the zero IS the zero.
+                            finalDimmer = chronosDim;
+                            break;
+                        case 'ADD':
+                            // ADDITIVE — Both sources contribute, capped at 255
+                            finalDimmer = clampDMX(titanDim + chronosDim);
+                            break;
+                        case 'HTP':
+                        default:
+                            // HIGHEST TAKES PRECEDENCE — The brighter one wins
+                            finalDimmer = Math.max(chronosDim, titanDim);
+                            break;
+                    }
+                    // ── COLOR: Blend mode aware ──
+                    // 🔥 WAVE 2068: THE COLOR SHIELD — LTP color is ABSOLUTE and BINARY.
+                    // 🎭 WAVE 2070: THE TRANSPARENT DICTATOR — LTP respects color omission.
+                    //
+                    // When blendMode === 'LTP' (Override/Dictator effects):
+                    //   - IF colorTouched === true: Color channels are LAW. Absolute. Binary.
+                    //     Even RGB(0,0,0) is intentional (blackout IS blackout).
+                    //   - IF colorTouched === false: The effect CHOSE to be transparent on color.
+                    //     Titan's color passes through untouched. The Dictator only rules
+                    //     dimmer and movement in this case (e.g., DeepBreath on movers).
+                    //
+                    // This is the difference between:
+                    //   "I command BLACK" (colorTouched=true, RGB=0,0,0) → absolute black
+                    //   "I have nothing to say about color" (colorTouched=false) → Titan's color lives
+                    //
+                    // THE RULE: A Dictator only dictates what it explicitly declares.
+                    //           Silence is not suppression. Omission is not annihilation.
+                    const colorTouched = chronosData.colorTouched !== false; // default true for backwards compat
+                    const chronosHasColor = chronosData.color.r > 0 || chronosData.color.g > 0 || chronosData.color.b > 0;
+                    let finalColor;
+                    if (blendMode === 'LTP' && colorTouched) {
+                        // LTP + color was explicitly touched: ABSOLUTE. Even black is intentional.
+                        // NO multiplication by dimmer. NO blending with Titan. ABSOLUTE.
+                        finalColor = {
+                            r: clampDMX(chronosData.color.r),
+                            g: clampDMX(chronosData.color.g),
+                            b: clampDMX(chronosData.color.b),
+                        };
+                    }
+                    else if (blendMode === 'LTP' && !colorTouched) {
+                        // 🎭 WAVE 2070: LTP but color NOT touched → Titan's color passes through
+                        // The Dictator is transparent on color. It only rules dimmer/movement.
+                        finalColor = titanTarget.color;
+                    }
+                    else if (blendMode === 'ADD' && chronosHasColor) {
+                        // ADD: Additive color mixing (both contribute)
+                        finalColor = {
+                            r: clampDMX(titanTarget.color.r + chronosData.color.r),
+                            g: clampDMX(titanTarget.color.g + chronosData.color.g),
+                            b: clampDMX(titanTarget.color.b + chronosData.color.b),
+                        };
+                    }
+                    else if (chronosHasColor) {
+                        // HTP with real color: Chronos color wins
+                        finalColor = {
+                            r: clampDMX(chronosData.color.r),
+                            g: clampDMX(chronosData.color.g),
+                            b: clampDMX(chronosData.color.b),
+                        };
+                    }
+                    else {
+                        // No Chronos color → Titan's vibe color passes through
+                        finalColor = titanTarget.color;
+                    }
+                    // 🔥 WAVE 2068 + 🎭 WAVE 2070: LTP color_wheel logic
+                    // If LTP AND color was touched → force open (0) to prevent gel contamination
+                    // If LTP AND color NOT touched → Titan keeps its color_wheel (transparent dictator)
+                    // HTP/ADD → standard fallback to Titan if not specified
+                    const finalColorWheel = (blendMode === 'LTP' && colorTouched)
+                        ? (chronosData.color_wheel ?? 0) // LTP + color touched: force open if not specified
+                        : (chronosData.color_wheel ?? titanTarget.color_wheel); // Transparent LTP / HTP / ADD: Titan fallback
+                    const hybridTarget = {
+                        fixtureId,
+                        dimmer: finalDimmer,
+                        color: finalColor,
+                        // ── MOVEMENT: Titan always owns choreography ──
+                        pan: titanTarget.pan,
+                        tilt: titanTarget.tilt,
+                        zoom: titanTarget.zoom,
+                        speed: titanTarget.speed,
+                        focus: titanTarget.focus,
+                        // ── MECHANICAL CHANNELS: Wave 2068 color shield aware ──
+                        color_wheel: finalColorWheel,
+                        // 🔥 WAVE 2084: Phantom channels passthrough from Titan's arbitration
+                        phantomChannels: titanTarget.phantomChannels,
+                        // ── Metadata ──
+                        _controlSources: {
+                            ...titanTarget._controlSources,
+                            dimmer: ControlLayer.EFFECTS,
+                            red: ControlLayer.EFFECTS,
+                            green: ControlLayer.EFFECTS,
+                            blue: ControlLayer.EFFECTS,
+                        },
+                        _crossfadeActive: titanTarget._crossfadeActive,
+                        _crossfadeProgress: titanTarget._crossfadeProgress,
+                    };
+                    hybridTargets.push(hybridTarget);
+                    // 🔬 WAVE 2066: Smart MixBus telemetry (1 sample every 5s)
+                    if (this.frameNumber % 300 === 1 && hybridTargets.length === 1) {
+                        console.log(`[MasterArbiter �️ MIXBUS] f=${fixtureId} mode=${blendMode} | ` +
+                            `chronos: dim=${chronosDim} RGB(${chronosData.color.r.toFixed(0)},${chronosData.color.g.toFixed(0)},${chronosData.color.b.toFixed(0)}) | ` +
+                            `titan: dim=${titanDim} RGB(${titanTarget.color.r},${titanTarget.color.g},${titanTarget.color.b}) | ` +
+                            `FINAL: dim=${finalDimmer} color=${chronosHasColor ? (blendMode === 'ADD' ? 'additive' : 'chronos') : 'titan'} | ` +
+                            `overlay=${this.currentPlaybackFrame.size}/${allFixtureIds.length} fixtures`);
+                    }
+                    // Cache position for Ghost Protocol
+                    this.lastKnownPositions.set(fixtureId, { pan: hybridTarget.pan, tilt: hybridTarget.tilt });
+                }
+                else {
+                    // 🎬 WAVE 2065: Fixture NOT in Chronos frame → 100% Titan/Selene
+                    // The vibe paints this fixture with its full reactive color + movement.
+                    hybridTargets.push(titanTarget);
+                }
+            }
+            const output = {
+                fixtures: hybridTargets,
+                globalEffects: {
+                    strobeActive: false,
+                    strobeSpeed: 0,
+                    blinderActive: false,
+                    blinderIntensity: 0,
+                    blackoutActive: false,
+                    freezeActive: false,
+                },
+                timestamp: now,
+                frameNumber: this.frameNumber,
+                _layerActivity: {
+                    titanActive: this._playbackMeta.hasActiveVibe,
+                    titanVibeId: this._playbackMeta.vibeId ?? 'PLAYBACK_COLOR_ONLY',
+                    consciousnessActive: false,
+                    consciousnessStatus: undefined,
+                    manualOverrideCount: 0,
+                    manualFixtureIds: [],
+                    activeEffects: [], // Chronos is not a layer effect, it's a playback overlay
+                }
+            };
+            this.lastOutputTimestamp = now;
+            this.emit('output', output);
+            return output;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // NORMAL LAYER ARBITRATION (when playback is NOT active)
+        // ═══════════════════════════════════════════════════════════════════════
         // Clean up expired effects
         this.cleanupExpiredEffects();
         // ═══════════════════════════════════════════════════════════════════════
@@ -691,13 +1135,80 @@ export class MasterArbiter extends EventEmitter {
         const green = this.mergeChannelForFixture(fixtureId, 'green', titanValues, manualOverride, now, controlSources);
         const blue = this.mergeChannelForFixture(fixtureId, 'blue', titanValues, manualOverride, now, controlSources);
         // Get position (with pattern/formation applied)
-        const { pan, tilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now);
+        const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+        //
+        // Si hay un fade activo para este fixture, interpolamos entre la última
+        // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).
+        //
+        // Esto es un POST-PROCESS: getAdjustedPosition ya devolvió el valor
+        // correcto de Titan. Nosotros solo lo suavizamos temporalmente.
+        // NO contaminamos Titan values. NO creamos zombies.
+        // Después de durationMs, el fade se auto-purga.
+        // ═══════════════════════════════════════════════════════════════════════
+        let pan = rawPan;
+        let tilt = rawTilt;
+        const releaseFade = this.positionReleaseFades.get(fixtureId);
+        if (releaseFade) {
+            const elapsed = now - releaseFade.startTime;
+            if (elapsed >= releaseFade.durationMs) {
+                // Fade completado — purgar
+                this.positionReleaseFades.delete(fixtureId);
+            }
+            else {
+                // Interpolación lineal: from → to (rawPan/rawTilt = posición Titan actual)
+                const t = elapsed / releaseFade.durationMs;
+                // Curva ease-out: t² × (3 - 2t) — suave al final, no al principio
+                const smoothT = t * t * (3 - 2 * t);
+                pan = releaseFade.fromPan + (rawPan - releaseFade.fromPan) * smoothT;
+                tilt = releaseFade.fromTilt + (rawTilt - releaseFade.fromTilt) * smoothT;
+            }
+        }
         const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources);
         const focus = this.mergeChannelForFixture(fixtureId, 'focus', titanValues, manualOverride, now, controlSources);
         // 🔥 WAVE 1008.4: Merge speed channel for Pan/Tilt movement velocity
         const speed = this.mergeChannelForFixture(fixtureId, 'speed', titanValues, manualOverride, now, controlSources);
         // 🎨 WAVE 1008.6: Merge color_wheel channel (THE WHEELSMITH)
         const color_wheel = this.mergeChannelForFixture(fixtureId, 'color_wheel', titanValues, manualOverride, now, controlSources);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2084: PHANTOM PANEL — Canales Dinámicos para Ingenios
+        //
+        // Los canales que NO son nativos del Arbiter (rotation, custom, macro,
+        // frost, gobo, gobo_rotation, prism, prism_rotation, shutter, control,
+        // cyan, magenta, yellow, etc.) se resuelven así:
+        //
+        //   1. Si hay Manual Override con phantomChannels → usar ese valor (LTP)
+        //   2. Si no → usar el defaultValue del canal en la definición del fixture
+        //
+        // Titan/Selene NO generan valores para estos canales.
+        // El Arbiter actúa como PASSTHROUGH transparente.
+        // Solo el operador humano (Layer 2) puede modificar estos valores.
+        // ═══════════════════════════════════════════════════════════════════════
+        const phantomChannels = {};
+        const NATIVE_CHANNELS = new Set([
+            'dimmer', 'red', 'green', 'blue', 'pan', 'tilt',
+            'zoom', 'focus', 'speed', 'color_wheel',
+        ]);
+        // Obtener canales del fixture registrado
+        const fixtureData = this.fixtures.get(fixtureId);
+        if (fixtureData && fixtureData.channelDefinitions) {
+            const channelDefs = fixtureData.channelDefinitions;
+            for (const ch of channelDefs) {
+                if (!NATIVE_CHANNELS.has(ch.type)) {
+                    // Check manual override first
+                    const manualPhantomValue = manualOverride?.controls?.phantomChannels?.[ch.type];
+                    if (manualPhantomValue !== undefined) {
+                        phantomChannels[ch.type] = clampDMX(manualPhantomValue);
+                        controlSources[ch.type] = ControlLayer.MANUAL;
+                    }
+                    else {
+                        phantomChannels[ch.type] = ch.defaultValue ?? 0;
+                        controlSources[ch.type] = ControlLayer.TITAN_AI;
+                    }
+                }
+            }
+        }
         // Check if any crossfade is active
         const crossfadeActive = this.isAnyCrossfadeActive(fixtureId);
         const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0;
@@ -717,6 +1228,7 @@ export class MasterArbiter extends EventEmitter {
             focus: clampDMX(focus),
             speed: clampDMX(speed), // 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow)
             color_wheel: clampDMX(color_wheel), // 🎨 WAVE 1008.6: Color wheel position (THE WHEELSMITH)
+            phantomChannels, // 🔥 WAVE 2084: Phantom Panel passthrough
             _controlSources: controlSources,
             _crossfadeActive: crossfadeActive,
             _crossfadeProgress: crossfadeProgress,
@@ -800,12 +1312,17 @@ export class MasterArbiter extends EventEmitter {
      * Calculate pattern offset (Circle, Eight, Sweep)
      * Returns pan/tilt offset as fractions (-1 to +1)
      * 🔧 WAVE 2042.24: Simplified - size already normalized 0-1
+     * 🔧 WAVE 2070.3: Added diagnostic logging every 60 frames
      */
     calculatePatternOffset(pattern, now) {
         const elapsedMs = now - pattern.startTime;
         const cycleDurationMs = (1000 / Math.max(0.01, pattern.speed)); // speed = cycles per second, prevent div by 0
         const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs;
         const t = phase * 2 * Math.PI; // 0 to 2π
+        // 🔧 WAVE 2070.3: Diagnostic — log every 60 frames to see actual values
+        if (this.frameNumber % 60 === 0) {
+            console.log(`[Pattern] 🔄 type=${pattern.type} speed=${pattern.speed.toFixed(3)}Hz size=${pattern.size.toFixed(3)} elapsed=${(elapsedMs / 1000).toFixed(1)}s cycle=${(cycleDurationMs / 1000).toFixed(2)}s phase=${phase.toFixed(3)} t=${t.toFixed(3)}`);
+        }
         // 🔧 WAVE 2042.24: Size is already 0-1, applied in getAdjustedPosition
         // Here we just generate the shape with amplitude -1 to +1
         let panOffset = 0;
@@ -846,8 +1363,19 @@ export class MasterArbiter extends EventEmitter {
             // Max movement = 128 DMX units (half range) * size
             const panMovement = offset.panOffset * 128 * pattern.size;
             const tiltMovement = offset.tiltOffset * 128 * pattern.size;
-            const adjustedPan = pattern.center.pan + panMovement;
-            const adjustedTilt = pattern.center.tilt + tiltMovement;
+            // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
+            // not the static pattern.center captured at creation time.
+            // This way: if the user moves the XY pad while a pattern is running,
+            // the pattern orbits around the NEW position, not the old frozen one.
+            // basePan = manualOverride.controls.pan (if user moved pad) ?? titanValues.pan
+            const liveCenterPan = basePan;
+            const liveCenterTilt = baseTilt;
+            const adjustedPan = liveCenterPan + panMovement;
+            const adjustedTilt = liveCenterTilt + tiltMovement;
+            // 🔧 WAVE 2070.3: Diagnostic — show final position vs center
+            if (this.frameNumber % 60 === 0) {
+                console.log(`[Position] 📍 ${fixtureId.substring(0, 8)} liveCenter=P${liveCenterPan.toFixed(0)}/T${liveCenterTilt.toFixed(0)} → adjusted=P${adjustedPan.toFixed(1)}/T${adjustedTilt.toFixed(1)} (move=±${panMovement.toFixed(1)}/${tiltMovement.toFixed(1)}) hasOverride=${!!manualOverride}`);
+            }
             return { pan: adjustedPan, tilt: adjustedTilt };
         }
         // Apply group formation if active
@@ -870,6 +1398,12 @@ export class MasterArbiter extends EventEmitter {
      * NOW WITH: Zone-based color mapping + Individual mover movement
      */
     getTitanValuesForFixture(fixtureId) {
+        const fixture = this.fixtures.get(fixtureId);
+        // 🏎️ WAVE 2062: EL FRENO DE MANO DE HARDWARE
+        // Buscamos el canal de velocidad en tu JSON para no enviar 0 (violencia máxima)
+        // channels es Array<{ index, name, type, is16bit, defaultValue }>
+        const speedChannel = fixture?.channels?.find((c) => c.type === 'speed');
+        const defaultSpeed = speedChannel?.defaultValue ?? 0;
         const defaults = {
             dimmer: 0,
             red: 0,
@@ -882,16 +1416,30 @@ export class MasterArbiter extends EventEmitter {
             focus: 128,
             gobo: 0,
             prism: 0,
-            speed: 0, // 0 = fast movement (critical for movers!)
+            speed: defaultSpeed, // 🚀 MAGIA: Usamos el 127 de tu molde en vez de forzar 0
             strobe: 0,
             color_wheel: 0,
             amber: 0,
             uv: 0,
+            // 🔥 WAVE 2084: Canales expandidos (todos los que el ChannelType del Arbiter ahora soporta)
+            shutter: 255, // Open by default
+            cyan: 0,
+            magenta: 0,
+            yellow: 0,
+            pan_fine: 0,
+            tilt_fine: 0,
+            gobo_rotation: 0,
+            prism_rotation: 0,
+            frost: 0,
+            macro: 0,
+            control: 0,
+            rotation: 0,
+            custom: 0,
+            unknown: 0,
         };
         if (!this.layer0_titan?.intent)
             return defaults;
         const intent = this.layer0_titan.intent;
-        const fixture = this.fixtures.get(fixtureId);
         // ═══════════════════════════════════════════════════════════════════════
         // 🔦 WAVE 411 FIX: OPTICS HANDOFF
         // Si Titan envía óptica, úsala. Si no, usa el default (128).
@@ -1124,6 +1672,22 @@ export class MasterArbiter extends EventEmitter {
         //
         // if ((intent as any).mechanics?.colorOverride) { ... }  // REMOVED
         // ═══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
+        // 👻 WAVE 2070.2: GHOST HANDOFF — DISABLED (WAVE 2070.3 EXORCISM)
+        // ═══════════════════════════════════════════════════════════════════════
+        // The interpolation was contaminating the Titan → getAdjustedPosition pipeline.
+        // When operator releases manual control, we now do a HARD CUT back to Titan.
+        // The smooth crossfade was causing the fixture to appear "stuck" because:
+        //   1. Origin values overwrote Titan values fed to getAdjustedPosition
+        //   2. Patterns used contaminated base positions
+        //   3. UNLOCK couldn't complete because interpolation held position
+        //
+        // TODO: Re-enable with proper architecture that doesn't touch Titan values
+        //       but instead operates AFTER getAdjustedPosition as a post-process.
+        // ═══════════════════════════════════════════════════════════════════════
+        // const GHOST_TRANSITION_MS = 2000
+        // const origin = this.fixtureOrigins.get(fixtureId)
+        // if (origin) { ... }
         return defaults;
     }
     /**
@@ -1231,6 +1795,7 @@ export class MasterArbiter extends EventEmitter {
             focus: 128,
             speed: 0, // 🔥 WAVE 1008.4: Fast movement during blackout (0=fast)
             color_wheel: 0, // 🎨 WAVE 1008.6: Color wheel off during blackout
+            phantomChannels: {}, // 🔥 WAVE 2084: Empty in blackout — all phantoms go to default
             _controlSources: controlSources,
             _crossfadeActive: false,
             _crossfadeProgress: 0,
@@ -1273,6 +1838,7 @@ export class MasterArbiter extends EventEmitter {
             focus: 128, // 🔍 Mid focus
             speed: 0, // ⚡ Fast response when enabled
             color_wheel: 0, // ⚪ Open/white
+            phantomChannels: {}, // 🔥 WAVE 2084: Empty in output gate — safe state
             _controlSources: controlSources,
             _crossfadeActive: false,
             _crossfadeProgress: 0,

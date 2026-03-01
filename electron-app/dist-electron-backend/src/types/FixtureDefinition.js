@@ -33,5 +33,13 @@ export function deriveCapabilities(channels) {
         hasFrost: types.has('frost'),
         is16bit: channels.some(ch => ch.is16bit || ch.type.includes('_fine')),
         channelCount: channels.length,
+        // 🔥 WAVE 2084: INGENIOS capabilities detection
+        hasRotation: types.has('rotation') || channels.some(ch => ch.continuousRotation === true),
+        hasCustomChannels: types.has('custom'),
+        hasMacro: types.has('macro'),
+        hasSpeed: types.has('speed'),
+        customChannelNames: channels
+            .filter(ch => ch.type === 'custom' && ch.customName)
+            .map(ch => ch.customName),
     };
 }

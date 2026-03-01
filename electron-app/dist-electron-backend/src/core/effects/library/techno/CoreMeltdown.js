@@ -70,6 +70,7 @@ export class CoreMeltdown extends BaseEffect {
         this.category = 'physical';
         this.priority = 100; // MÁXIMA PRIORIDAD - LA BESTIA DOMINA TODO
         this.mixBus = 'global'; // ☢️ DICTADOR ABSOLUTO
+        this.isOneShot = true; // 🎯 WAVE 2067: Meltdown único — NO re-trigger
         // ─────────────────────────────────────────────────────────────────────────
         // Internal state
         // ─────────────────────────────────────────────────────────────────────────

@@ -366,7 +366,30 @@ export class FixtureMapper {
                 // Control/reset channel - use default (usually 0 or specific value for normal operation)
                 return channel.defaultValue ?? 0;
             // ═══════════════════════════════════════════════════════════════════
-            // UNKNOWN/CUSTOM CHANNELS
+            // 🔥 WAVE 2084: INGENIOS — Canales expandidos
+            // ═══════════════════════════════════════════════════════════════════
+            case 'frost':
+                // Frost filter: 0 = out, 255 = full frost
+                return state.phantomChannels?.['frost'] ?? channel.defaultValue ?? 0;
+            case 'rotation':
+                // Continuous rotation: 0-127 CW, 128 stop, 129-255 CCW (convención DMX)
+                return state.phantomChannels?.['rotation'] ?? channel.defaultValue ?? 128; // Stop by default
+            case 'cyan':
+                return state.phantomChannels?.['cyan'] ?? channel.defaultValue ?? 0;
+            case 'magenta':
+                return state.phantomChannels?.['magenta'] ?? channel.defaultValue ?? 0;
+            case 'yellow':
+                return state.phantomChannels?.['yellow'] ?? channel.defaultValue ?? 0;
+            case 'gobo_rotation':
+                return state.phantomChannels?.['gobo_rotation'] ?? channel.defaultValue ?? 0;
+            case 'prism_rotation':
+                return state.phantomChannels?.['prism_rotation'] ?? channel.defaultValue ?? 0;
+            case 'custom':
+                // 🔥 WAVE 2084: Canal libre definido por el usuario
+                // El valor viene del Phantom Panel (manual override) o defaultValue
+                return state.phantomChannels?.['custom'] ?? channel.defaultValue ?? 0;
+            // ═══════════════════════════════════════════════════════════════════
+            // UNKNOWN/FALLBACK CHANNELS
             // ═══════════════════════════════════════════════════════════════════
             case 'unknown':
             default:

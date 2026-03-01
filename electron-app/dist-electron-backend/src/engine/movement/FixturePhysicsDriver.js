@@ -3,7 +3,31 @@
  *                      FIXTURE PHYSICS DRIVER V16.2
  *                   "Abstract Motion → Physical DMX"
  *
- *   Traduce coordenadas abstractas (-1 a +1) a valores DMX físicos (0-255)
+ *   Traduce coordenadas abstract    // 🏎️ WAVE 2074.2: Store explicit physics mode from preset
+    this.currentPhysicsMode = vibePhysics.physicsMode
+    
+    // 🏎️ WAVE 2074.3: Store explicit personality data from preset
+    // These values are NOT affected by SAFETY_CAP — they define the CHARACTER,
+    // not the raw acceleration/velocity. SAFETY_CAP protects motors.
+    // snapFactor/revLimit protect the SOUL of the vibe.
+    this.currentSnapFactor = vibePhysics.snapFactor
+    this.currentRevLimitPanPerSec = vibePhysics.revLimitPanPerSec
+    this.currentRevLimitTiltPerSec = vibePhysics.revLimitTiltPerSec
+    
+    // 🔒 WAVE 343: Aplicar SAFETY CAP a la configuración del vibe
+    // El vibe puede pedir lo que quiera, pero el hardware tiene límites
+    this.physicsConfig.maxAcceleration = Math.min(
+      vibePhysics.maxAcceleration,
+      this.SAFETY_CAP.maxAcceleration
+    )
+    this.physicsConfig.maxVelocity = Math.min(
+      vibePhysics.maxVelocity,
+      this.SAFETY_CAP.maxVelocity
+    )
+    this.physicsConfig.friction = vibePhysics.friction
+    this.physicsConfig.arrivalThreshold = vibePhysics.arrivalThreshold
+    
+    console.log(`[PhysicsDriver] 🏎️ WAVE 2074.3: Vibe "${vibeId}" - Mode:${this.currentPhysicsMode} Snap:${this.currentSnapFactor} RevPan:${this.currentRevLimitPanPerSec}/s RevTilt:${this.currentRevLimitTiltPerSec}/s Acc:${this.physicsConfig.maxAcceleration} (cap:${this.SAFETY_CAP.maxAcceleration})`)lores DMX físicos (0-255)
  *   considerando: orientación, inversiones, límites mecánicos, inercia
  *
  *
@@ -30,6 +54,12 @@ export class FixturePhysicsDriver {
         this.lastUpdate = Date.now();
         // 🔧 WAVE 338: Current vibe for physics adaptation
         this.currentVibeId = 'idle';
+        // 🏎️ WAVE 2074.2: Explicit physics mode — no more dead code
+        this.currentPhysicsMode = 'classic';
+        // 🏎️ WAVE 2074.3: Explicit personality data — no more maxAccel branches
+        this.currentSnapFactor = 0.0;
+        this.currentRevLimitPanPerSec = 7650;
+        this.currentRevLimitTiltPerSec = 7650;
         // Presets de instalación
         this.INSTALLATION_PRESETS = {
             //  CEILING: Fixtures colgados del techo mirando hacia abajo
@@ -80,12 +110,14 @@ export class FixturePhysicsDriver {
         // Los movers chinos baratos no soportan aceleraciones extremas.
         // Sin importar lo que diga VibeMovementPresets, este cap protege el hardware.
         // 
-        // 2500 = límite conservador para movers de $50-200
-        // Si tienes movers de $1000+, puedes subirlo a 4000
+        // 🏎️ WAVE 2062: RESTORE HARDWARE SAFETY - EL GRAN FRENO
+        // Reduced from 2500 to 900 to force CLASSIC PHYSICS mode always
+        // (SNAP mode activates when accel > 1000, causing violent uncontrolled movement)
+        // 900 = safe zone for all Chinese movers (Beam 2R, Neo 250, etc)
         // ═══════════════════════════════════════════════════════════════════════
         this.SAFETY_CAP = {
-            maxAcceleration: 2500, // DMX units/s² - NUNCA exceder
-            maxVelocity: 800, // DMX units/s - NUNCA exceder
+            maxAcceleration: 900, // DMX units/s² - NUNCA exceder (Classic Physics always)
+            maxVelocity: 400, // DMX units/s - NUNCA exceder (reduced from 800)
         };
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1101: PAN SAFETY MARGIN - EL AIRBAG HORIZONTAL
@@ -106,13 +138,22 @@ export class FixturePhysicsDriver {
             return this;
         this.currentVibeId = vibeId;
         const vibePhysics = getMovementPhysics(vibeId);
+        // 🏎️ WAVE 2074.2: Store explicit physics mode from preset
+        this.currentPhysicsMode = vibePhysics.physicsMode;
+        // 🏎️ WAVE 2074.3: Store explicit personality data from preset
+        // These values are NOT affected by SAFETY_CAP — they define the CHARACTER,
+        // not the raw acceleration/velocity. SAFETY_CAP protects motors.
+        // snapFactor/revLimit protect the SOUL of the vibe.
+        this.currentSnapFactor = vibePhysics.snapFactor;
+        this.currentRevLimitPanPerSec = vibePhysics.revLimitPanPerSec;
+        this.currentRevLimitTiltPerSec = vibePhysics.revLimitTiltPerSec;
         // 🔒 WAVE 343: Aplicar SAFETY CAP a la configuración del vibe
         // El vibe puede pedir lo que quiera, pero el hardware tiene límites
         this.physicsConfig.maxAcceleration = Math.min(vibePhysics.maxAcceleration, this.SAFETY_CAP.maxAcceleration);
         this.physicsConfig.maxVelocity = Math.min(vibePhysics.maxVelocity, this.SAFETY_CAP.maxVelocity);
         this.physicsConfig.friction = vibePhysics.friction;
         this.physicsConfig.arrivalThreshold = vibePhysics.arrivalThreshold;
-        console.log(`[PhysicsDriver] 🎛️ WAVE 343: Vibe "${vibeId}" - Acc:${this.physicsConfig.maxAcceleration} (cap:${this.SAFETY_CAP.maxAcceleration}) Vel:${this.physicsConfig.maxVelocity} Fric:${vibePhysics.friction}`);
+        console.log(`[PhysicsDriver] WAVE 2074.3: Vibe "${vibeId}" - Mode:${this.currentPhysicsMode} Snap:${this.currentSnapFactor} RevPan:${this.currentRevLimitPanPerSec}/s Acc:${this.physicsConfig.maxAcceleration} (cap:${this.SAFETY_CAP.maxAcceleration})`);
         return this;
     }
     /** Obtener vibe actual */
@@ -160,6 +201,16 @@ export class FixturePhysicsDriver {
             console.log(`[PhysicsDriver] Fixture "${fixtureId}" registrado:`, finalConfig.installationType);
         }
         return this;
+    }
+    /** 🏗️ WAVE 2061: Inyectar perfil físico en vivo desde el HAL */
+    updatePhysicsProfile(fixtureId, profile) {
+        const config = this.configs.get(fixtureId);
+        // Solo actualizar si no tiene uno o si forzamos el cambio
+        if (config && !config.physicsProfile) {
+            config.physicsProfile = profile;
+            // 🔇 SILENCIO: No loguear aquí, se llama 60/seg desde renderFromTarget
+            // console.log(`[PhysicsDriver] 🧠 Perfil físico inyectado para "${fixtureId}":`, profile)
+        }
     }
     /** Aplica un preset de instalación a un fixture */
     applyPreset(fixtureId, presetName) {
@@ -365,24 +416,32 @@ export class FixturePhysicsDriver {
         // Nivel 3: Hardware Limit (lo que aguanta el fixture)
         // Solo aplica si el fixture tiene physicsProfile definido
         if (profile) {
+            // 📐 WAVE 2062: EL CONVERSOR DE BABEL (Grados -> DMX)
+            // El JSON (Forja) usa Grados/s. El motor usa DMX/s.
+            // Ej: 255 DMX = 540 Grados -> Multiplicador = 255 / 540 = 0.472
+            const degToDmxFactor = 255 / (config.range.pan || 540);
             if (profile.maxAcceleration !== undefined) {
-                effectiveMaxAccel = Math.min(effectiveMaxAccel, profile.maxAcceleration);
+                // Convertimos tus 1500 Grados/s² a ~708 DMX/s²
+                const accDMX = profile.maxAcceleration * degToDmxFactor;
+                effectiveMaxAccel = Math.min(effectiveMaxAccel, accDMX);
             }
             if (profile.maxVelocity !== undefined) {
-                effectiveMaxVel = Math.min(effectiveMaxVel, profile.maxVelocity);
+                // Convertimos tus 250 Grados/s a ~118 DMX/s
+                const velDMX = profile.maxVelocity * degToDmxFactor;
+                effectiveMaxVel = Math.min(effectiveMaxVel, velDMX);
             }
             // 🏗️ Auto-tune basado en qualityTier si no hay valores explícitos
             if (profile.qualityTier && !profile.maxAcceleration && !profile.maxVelocity) {
                 switch (profile.qualityTier) {
                     case 'budget':
-                        // Movers chinos de $50-150 - motores lentos
-                        effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200);
-                        effectiveMaxVel = Math.min(effectiveMaxVel, 400);
+                        // Movers chinos de $50-150 - motores lentos (1200°/s² -> ~566 DMX/s²)
+                        effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200 * degToDmxFactor);
+                        effectiveMaxVel = Math.min(effectiveMaxVel, 400 * degToDmxFactor);
                         break;
                     case 'mid':
-                        // Movers de $200-500 - motores decentes
-                        effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800);
-                        effectiveMaxVel = Math.min(effectiveMaxVel, 600);
+                        // Movers de $200-500 - motores decentes (1800°/s² -> ~849 DMX/s²)
+                        effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800 * degToDmxFactor);
+                        effectiveMaxVel = Math.min(effectiveMaxVel, 600 * degToDmxFactor);
                         break;
                     case 'pro':
                         // Movers de $1000+ - motores rápidos
@@ -444,92 +503,65 @@ export class FixturePhysicsDriver {
         const speedFactorPan = effectiveLimits.speedFactorPan;
         const speedFactorTilt = effectiveLimits.speedFactorTilt;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🏎️ WAVE 342.5: REV LIMITER PER-VIBE (Seguro de Vida para Correas)
-        // 🔧 WAVE 1105.2: Ahora modulado por speedFactor del fixture
-        // 
-        // Ahora que TODOS los patrones usan frecuencias FIJAS (sin saltos por BPM),
-        // podemos ser más generosos con los límites. Los patrones son SUAVES.
-        // 
-        // El REV LIMITER protege contra:
-        // - Cambios bruscos de patrón (ej: cambio de vibe)
-        // - Errores de código que generen saltos
-        // - Valores extremos inesperados
-        // - 🔧 NUEVO: Motores lentos del fixture individual
+        // 🏎️ WAVE 342.5 + 2074.3: REV LIMITER PER-VIBE (Seguro de Vida para Correas)
+        // 🔧 WAVE 1105.2: Modulado por speedFactor del fixture
+        // 🔧 WAVE 2074.2: Valores en DMX/SEGUNDO (frame-rate independent)
+        // 🔧 WAVE 2074.3: Valores EXPLÍCITOS del preset — ya no dependen de maxAccel
+        //
+        // ANTES (bug 2074.2): REV_LIMIT branches usaban maxAccel > 1400/1100/1000
+        //        pero SAFETY_CAP clampeaba maxAccel a 900 → TODOS los vibes
+        //        caían al branch CHILL (7650 DMX/s = sin límite). MUERTO.
+        //
+        // AHORA: Cada preset DECLARA su REV_LIMIT. SAFETY_CAP protege motores,
+        //        pero ya NO mata la diferenciación entre vibes.
         // ═══════════════════════════════════════════════════════════════════════
-        // Determinar límites según aceleración del vibe
-        let REV_LIMIT_PAN;
-        let REV_LIMIT_TILT;
-        if (maxAccel > 1400) {
-            // 🔧 WAVE 347.5: TECHNO - VELOCITY LIBERATION
-            // Los patterns como SWEEP se mueven CONTINUAMENTE, el target cambia cada frame.
-            // Con REV_LIMIT bajo, el mover persigue un blanco que se mueve más rápido.
-            // 
-            // SOLUCIÓN: REV_LIMIT MUY ALTO + snapFactor alto = sigue el target sin lag
-            // Riesgo: Motores baratos pueden sufrir, pero es la única forma de ver el rango completo
-            // 
-            // Si tus movers son de $50-200 y se rompen, baja esto a 60
-            // Si tus movers son de $500+, puedes subir a 150
-            REV_LIMIT_PAN = 120; // ~5040°/s - BRUTAL pero necesario para sweeps continuos
-            REV_LIMIT_TILT = 60; // ~2520°/s - Suficiente para movimientos verticales
-        }
-        else if (maxAccel > 1100) {
-            // LATINO - Alta libertad para seguir trayectorias curvas
-            REV_LIMIT_PAN = 25; // ~1050°/s - Sigue figure8 sin lag
-            REV_LIMIT_TILT = 18; // ~750°/s
-        }
-        else if (maxAccel > 1000) {
-            // ROCK: Medio (dramático pero controlado)
-            REV_LIMIT_PAN = 15; // ~630°/s
-            REV_LIMIT_TILT = 10; // ~420°/s
-        }
-        else {
-            // CHILL: Sin límite (usa física clásica, muy lento)
-            REV_LIMIT_PAN = 255; // Sin límite práctico
-            REV_LIMIT_TILT = 255;
-        }
+        // 🏎️ WAVE 2074.3: REV_LIMIT directo del preset (ya no hay branches)
+        const REV_LIMIT_PAN_PER_SEC = this.currentRevLimitPanPerSec;
+        const REV_LIMIT_TILT_PER_SEC = this.currentRevLimitTiltPerSec;
         // 🔧 WAVE 1105.2: APLICAR SPEED FACTOR DEL FIXTURE
         // Un fixture con panSpeedFactor = 0.5 reduce su REV_LIMIT a la mitad
         // Esto hace que el hardware lento NO intente seguir el ritmo de Techno
-        REV_LIMIT_PAN = Math.round(REV_LIMIT_PAN * speedFactorPan);
-        REV_LIMIT_TILT = Math.round(REV_LIMIT_TILT * speedFactorTilt);
+        const limitPanPerSec = REV_LIMIT_PAN_PER_SEC * speedFactorPan;
+        const limitTiltPerSec = REV_LIMIT_TILT_PER_SEC * speedFactorTilt;
+        // 🏎️ WAVE 2074.2: Convertir a límite por-frame usando dt real
+        const maxPanThisFrame = limitPanPerSec * dt;
+        const maxTiltThisFrame = limitTiltPerSec * dt;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔧 WAVE 342.5: UNIFIED SNAP MODE
-        // Todos los vibes usan SNAP MODE ahora (excepto CHILL que usa física clásica)
-        // INSTANT MODE ya no existe - era problemático con patrones BPM-dependientes
+        // 🏎️ WAVE 2074.2: EXPLICIT PHYSICS MODE — THE PERSONALITY RESURRECTION
+        //
+        // ANTES: if (maxAccel > 1000) → SNAP. Pero SAFETY_CAP=900 mataba el branch.
+        // AHORA: El preset DICE explícitamente qué modo usar. SAFETY_CAP sigue
+        //        limitando velocidad/aceleración brutas, pero ya NO mata el modo.
+        //
+        // SNAP  = El mover PERSIGUE el target (Techno, Latino, Rock)
+        // CLASSIC = El mover NAVEGA con inercia (Chill, Idle)
         // ═══════════════════════════════════════════════════════════════════════
-        if (maxAccel > 1000) {
-            // 🔥 SNAP MODE con REV LIMITER para todos los vibes rápidos
+        if (this.currentPhysicsMode === 'snap') {
+            // 🔥 SNAP MODE con REV LIMITER para todos los vibes con movimiento activo
             // 
-            // WAVE 347.7: TECHNO NEEDS INSTANT RESPONSE
-            // Con patterns que se mueven continuamente (sweep), el snapFactor < 1.0
-            // causa que el mover siempre quede atrás persiguiendo el target.
+            // snapFactor = 1.0 → respuesta instantánea (sin damping)
+            // snapFactor < 1.0 → "smooth" con algo de lag (suavidad orgánica)
             // 
-            // snapFactor = 1.0 significa respuesta instantánea (sin damping)
-            // snapFactor < 1.0 significa "smooth" pero con lag
-            // 
-            // Para Techno: Necesitamos snapFactor = 1.0 (instant)
-            // Para Latino/Rock: Podemos usar < 1.0 para suavidad
-            const snapFactor = maxAccel > 1400
-                ? 1.0 // TECHNO: Respuesta instantánea, sin lag
-                : Math.min(0.85, 0.4 + (maxAccel - 1000) / 800); // OTROS: Suavizado
+            // 🏎️ WAVE 2074.3: snapFactor viene DIRECTO del preset.
+            // ANTES: Se calculaba con formula (maxAccel-1000)/800 — pero SAFETY_CAP
+            //        clampeaba maxAccel a 900 → snapFactor = 0.275 para TODOS.
+            //        Techno = Latino = Rock = misma respuesta. PERSONALIDAD MUERTA.
+            // AHORA: Techno=1.0, Latino=0.65, Rock=0.50 — cada uno con su alma.
+            const snapFactor = this.currentSnapFactor;
             let deltaPan = (targetDMX.pan - current.pan) * snapFactor;
             let deltaTilt = (targetDMX.tilt - current.tilt) * snapFactor;
-            // Aplicar REV LIMITER (seguridad para motores)
-            deltaPan = Math.max(-REV_LIMIT_PAN, Math.min(REV_LIMIT_PAN, deltaPan));
-            deltaTilt = Math.max(-REV_LIMIT_TILT, Math.min(REV_LIMIT_TILT, deltaTilt));
+            // 🏎️ WAVE 2074.2: REV LIMITER normalizado por dt (frame-rate independent)
+            deltaPan = Math.max(-maxPanThisFrame, Math.min(maxPanThisFrame, deltaPan));
+            deltaTilt = Math.max(-maxTiltThisFrame, Math.min(maxTiltThisFrame, deltaTilt));
             newPos.pan = current.pan + deltaPan;
             newPos.tilt = current.tilt + deltaTilt;
             // ═══════════════════════════════════════════════════════════════════════
             // 🔧 WAVE 2040.2: REINFORCED NaN GUARD - Velocity Explosion Protection
-            // 
-            // Si dt es muy pequeño (< 1ms) o deltaPan/deltaTilt son enormes (saltos square),
-            // la división puede resultar en Infinity → NaN Guard debe resetear velocidad.
             // ═══════════════════════════════════════════════════════════════════════
             const safeVelPan = dt > 0.1 ? deltaPan / dt : 0;
             const safeVelTilt = dt > 0.1 ? deltaTilt / dt : 0;
             newVel.pan = Number.isFinite(safeVelPan) ? safeVelPan : 0;
             newVel.tilt = Number.isFinite(safeVelTilt) ? safeVelTilt : 0;
-            // Debugging: alertar si se detectó explosión
             if (!Number.isFinite(safeVelPan) || !Number.isFinite(safeVelTilt)) {
                 console.warn(`[PhysicsDriver] 🔧 WAVE 2040.2: Velocity explosion detected! dt=${dt.toFixed(2)}ms, deltaPan=${deltaPan.toFixed(1)}, deltaTilt=${deltaTilt.toFixed(1)} → velocity reset to 0`);
             }
@@ -539,7 +571,7 @@ export class FixturePhysicsDriver {
         }
         // ═══════════════════════════════════════════════════════════════════════
         // MODO CLÁSICO: Física con aceleración/frenado (para vibes lentos)
-        // Solo CHILL usa esto (maxAccel < 1000)
+        // Chill e Idle usan esto (physicsMode === 'classic')
         // 🔧 WAVE 1105.2: Usa límites efectivos del fixture
         // ═══════════════════════════════════════════════════════════════════════
         const axes = ['pan', 'tilt'];

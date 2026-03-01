@@ -286,6 +286,17 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     setChannelValues(new Map())
   }, [selectedIds.length])
   
+  // 🔥 WAVE 2084.12: HYDRATION RESET — When override is released, snap UI to defaults
+  useEffect(() => {
+    if (!hasOverride && phantomChannels.length > 0) {
+      const defaults = new Map<number, number>()
+      for (const ch of phantomChannels) {
+        defaults.set(ch.channelIndex, ch.defaultValue)
+      }
+      setChannelValues(defaults)
+    }
+  }, [hasOverride, phantomChannels])
+  
   // ═══════════════════════════════════════════════════════════════════
   // HANDLERS — Connect to Arbiter
   // ═══════════════════════════════════════════════════════════════════
@@ -351,6 +362,26 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     return 'STOP'
   }
   
+  /**
+   * 🔥 WAVE 2084.12: CYBERPUNK COLOR CODING
+   * Each phantom channel type gets its own neon identity.
+   * Returns [hex, r, g, b] for CSS variable injection.
+   */
+  const getPhantomColorRGB = (type: string): [string, number, number, number] => {
+    switch (type) {
+      case 'rotation':
+      case 'speed':
+        return ['#f59e0b', 245, 158, 11]  // Amber/gold — kinetic energy
+      case 'custom':
+        return ['#d946ef', 217, 70, 239]   // Magenta/fuchsia — raw DNA
+      case 'macro':
+      case 'control':
+        return ['#22c55e', 34, 197, 94]    // Neon green — system command
+      default:
+        return ['#22d3ee', 34, 211, 238]   // Cyan — unknown phantom
+    }
+  }
+  
   // ═══════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════
@@ -400,8 +431,22 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
             <div className="phantom-grid">
               {phantomChannels.map(ch => {
                 const value = channelValues.get(ch.channelIndex) ?? ch.defaultValue
+                const [hex, r, g, b] = getPhantomColorRGB(ch.type)
                 return (
-                  <div key={ch.channelIndex} className={`phantom-channel ${ch.continuousRotation ? 'rotation-channel' : ''}`}>
+                  <div 
+                    key={ch.channelIndex} 
+                    className={`phantom-channel ${ch.continuousRotation ? 'rotation-channel' : ''}`}
+                    style={{
+                      '--pc': hex,
+                      '--pc-border': `rgba(${r},${g},${b},0.4)`,
+                      '--pc-hover': `rgba(${r},${g},${b},0.25)`,
+                      '--pc-glow': `rgba(${r},${g},${b},0.12)`,
+                      '--pc-label': `rgba(${r},${g},${b},0.85)`,
+                      '--pc-track': `rgba(${r},${g},${b},0.1)`,
+                      '--pc-shadow': `rgba(${r},${g},${b},0.6)`,
+                      '--pc-shadow-active': `rgba(${r},${g},${b},0.8)`,
+                    } as React.CSSProperties}
+                  >
                     <div className="phantom-channel-header">
                       <span className="phantom-channel-label">{ch.label}</span>
                       <span className="phantom-channel-value">
@@ -410,7 +455,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
                     </div>
                     <input
                       type="range"
-                      className={`phantom-slider phantom-slider--${ch.type}`}
+                      className="phantom-slider"
                       min={0}
                       max={255}
                       value={value}

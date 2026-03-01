@@ -580,7 +580,7 @@
    ANTI-JITTER: NO dimension changes on hover
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Section identity — subtle purple accent (differentiate from cyan-dominant sections) */
+/* Section identity — glows with dominant phantom color when overriding */
 .programmer-section.extras-section.has-override {
   border-color: rgba(180, 100, 255, 0.3);
   box-shadow: 0 0 12px rgba(180, 100, 255, 0.15);
@@ -646,17 +646,12 @@
   background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.04);
-  transition: border-color 0.2s ease;
-  /* ANTI-JITTER: NO dimension changes */
+  border-left: 2px solid var(--pc-border);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .phantom-channel:hover {
-  border-color: rgba(255, 255, 255, 0.1);
-  /* NO padding, margin, or size changes */
-}
-
-/* Rotation channels get a subtle purple left border */
-.phantom-channel.rotation-channel {
-  border-left: 2px solid rgba(180, 100, 255, 0.4);
+  border-color: var(--pc-hover);
+  box-shadow: 0 0 6px var(--pc-glow);
 }
 
 /* Channel header: label + value */
@@ -670,7 +665,7 @@
 .phantom-channel-label {
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--pc-label);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   overflow: hidden;
@@ -683,7 +678,7 @@
   font-size: 9px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
-  color: rgba(180, 100, 255, 0.9);
+  color: var(--pc);
   min-width: 32px;
   text-align: right;
 }
@@ -694,7 +689,7 @@
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--pc-track);
   border-radius: 2px;
   outline: none;
   cursor: pointer;
@@ -707,49 +702,23 @@
   appearance: none;
   width: 10px;
   height: 10px;
-  background: rgba(180, 100, 255, 0.9);
+  background: var(--pc);
   border-radius: 50%;
   cursor: grab;
-  box-shadow: 0 0 4px rgba(180, 100, 255, 0.5);
+  box-shadow: 0 0 6px var(--pc-shadow);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .phantom-slider::-webkit-slider-thumb:active {
   cursor: grabbing;
   transform: scale(1.3);
-  box-shadow: 0 0 8px rgba(180, 100, 255, 0.8);
-}
-
-/* Type-specific slider accent colors */
-.phantom-slider--custom::-webkit-slider-thumb {
-  background: rgba(180, 100, 255, 0.9);
-  box-shadow: 0 0 4px rgba(180, 100, 255, 0.5);
-}
-
-.phantom-slider--rotation::-webkit-slider-thumb {
-  background: rgba(0, 200, 255, 0.9);
-  box-shadow: 0 0 4px rgba(0, 200, 255, 0.5);
-}
-
-.phantom-slider--macro::-webkit-slider-thumb {
-  background: rgba(255, 180, 0, 0.9);
-  box-shadow: 0 0 4px rgba(255, 180, 0, 0.5);
-}
-
-.phantom-slider--speed::-webkit-slider-thumb {
-  background: rgba(255, 100, 100, 0.9);
-  box-shadow: 0 0 4px rgba(255, 100, 100, 0.5);
-}
-
-.phantom-slider--control::-webkit-slider-thumb {
-  background: rgba(100, 255, 150, 0.9);
-  box-shadow: 0 0 4px rgba(100, 255, 150, 0.5);
+  box-shadow: 0 0 12px var(--pc-shadow-active);
 }
 
 /* Firefox slider styling */
 .phantom-slider::-moz-range-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--pc-track);
   border-radius: 2px;
   border: none;
 }
@@ -757,8 +726,9 @@
 .phantom-slider::-moz-range-thumb {
   width: 10px;
   height: 10px;
-  background: rgba(180, 100, 255, 0.9);
+  background: var(--pc);
   border-radius: 50%;
   border: none;
   cursor: grab;
+  box-shadow: 0 0 6px var(--pc-shadow);
 }

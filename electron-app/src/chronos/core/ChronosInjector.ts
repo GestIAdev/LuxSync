@@ -1,59 +1,30 @@
-/**/**
-
- * ═══════════════════════════════════════════════════════════════════════════ * ═══════════════════════════════════════════════════════════════════════════
-
- * ⚠️ DEPRECATED — WAVE 2082: M2 RENAME * 🚀 CHRONOS INJECTOR - WAVE 2013: STAGE SIMULATOR LINK
-
- *  * 
-
- * This file has been renamed to ChronosStageDispatcher.ts * The bridge between Chronos Timeline and the 3D Stage Simulator.
-
- * This re-export exists for backward compatibility only. * When you playback the timeline, this module reads the clips at the 
-
- *  * current playhead position and dispatches the corresponding effects
-
- * WHY THE RENAME: * to the StageSimulator2.
-
- * There were two "ChronosInjector" files causing navigation confusion: * 
-
- *   - core/ChronosInjector.ts → NOW: core/ChronosStageDispatcher.ts * ARCHITECTURE:
-
- *     (dispatches StageCommands to the Stage Simulator) * ┌─────────────────────────┐
-
- *   - bridge/ChronosInjector.ts → STAYS (the "Whisperer" to Titan/Selene) * │     Chronos Timeline    │
-
- *  * │    (clips, playhead)    │
-
- * @deprecated Import from './ChronosStageDispatcher' instead * └───────────┬─────────────┘
-
- * @module chronos/core/ChronosInjector *             │ getActiveClips(currentTimeMs)
-
- * ═══════════════════════════════════════════════════════════════════════════ *             ▼
-
- */ * ┌─────────────────────────┐
-
+/**
+ * 🚀 CHRONOS INJECTOR - WAVE 2013: STAGE SIMULATOR LINK
+ * 
+ * The bridge between Chronos Timeline and the 3D Stage Simulator.
+ * When you playback the timeline, this module reads the clips at the 
+ * current playhead position and dispatches the corresponding effects
+ * to the StageSimulator2.
+ * 
+ * ARCHITECTURE:
+ * ┌─────────────────────────┐
+ * │     Chronos Timeline    │
+ * │    (clips, playhead)    │
+ * └───────────┬─────────────┘
+ *             │ getActiveClips(currentTimeMs)
+ *             ▼
+ * ┌─────────────────────────┐
  * │    CHRONOS INJECTOR     │
-
-export { * │  - Reads active clips   │
-
-  ChronosStageDispatcher, * │  - Generates commands   │
-
-  ChronosStageDispatcher as ChronosInjector, * │  - Dispatches to Stage  │
-
-  getChronosStageDispatcher, * └───────────┬─────────────┘
-
-  getChronosStageDispatcher as getChronosInjector, *             │ inject(effectData)
-
-  type StageCommand, *             ▼
-
-  type StageCommandListener, * ┌─────────────────────────┐
-
-} from './ChronosStageDispatcher' * │   StageSimulator2 API   │
-
+ * │  - Reads active clips   │
+ * │  - Generates commands   │
+ * │  - Dispatches to Stage  │
+ * └───────────┬─────────────┘
+ *             │ inject(effectData)
+ *             ▼
+ * ┌─────────────────────────┐
+ * │   StageSimulator2 API   │
  * │  (Three.js / WebGL)     │
-
-export { default } from './ChronosStageDispatcher' * └─────────────────────────┘
-
+ * └─────────────────────────┘
  * 
  * AXIOMA ANTI-SIMULACIÓN:
  * This is the REAL pipeline. No mocks. When clips play, the stage reacts.

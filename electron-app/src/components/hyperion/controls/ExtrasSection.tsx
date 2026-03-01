@@ -1,14 +1,16 @@
 /**
- * 🔥 WAVE 2084.5: THE PHANTOM UI — EXTRAS SECTION
+ * 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — EXTRAS SECTION
  * 
  * La sección fantasma: solo aparece cuando hay fixtures con canales phantom
  * (custom, macro, rotation, speed) — los Ingenios de la WAVE 2084.
  * 
  * Arquitectura:
- * - WAVE 2084.5: Eliminada heurística Tier-1 por tipo de fixture (era un error
- *   arquitectónico: un moving-head con un canal macro nunca mostraba el panel)
- * - ÚNICA fuente de verdad: profileId + getFixtureDefinition() IPC (Tier-2)
- * - Cache de definiciones por profileId (NO se repite IPC cada frame)
+ * - WAVE 2084.5: Eliminada heurística Tier-1 por tipo de fixture
+ * - WAVE 2084.6: Cascada blindada de fallback para obtener canales:
+ *     1. DIRECTO: fixture.channels embebidos en el ShowFile → usa inline
+ *     2. FETCH:   definitionId || profileId || fixtureDefId || id → IPC
+ *   Logging táctico antes del render gate para diagnóstico en consola Electron.
+ * - Cache de definiciones por defId (NO se repite IPC cada frame)
  * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
  * 
  * ANTI-SIMULACIÓN: Toda función es real, determinista, sin mocks.
@@ -94,8 +96,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   const cacheRef = useRef<Map<string, CachedPhantomDef>>(new Map())
   
   // ═══════════════════════════════════════════════════════════════════
-  // TIER-1: Type-based heuristic (instant, no IPC)
-  // Determines if the section SHOULD RENDER at all
+  // FIXTURE RESOLUTION — Blind cascade for channel extraction
   // ═══════════════════════════════════════════════════════════════════
   
   const selectedFixtures = useMemo(() => {
@@ -106,27 +107,63 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [selectedIds, hardware?.fixtures])
   
   /**
-   * ANY fixture with a profileId or id is eligible for phantom channel detection.
-   * The IPC fetch (Tier-2) is the SOLE arbiter of whether phantom channels exist.
-   * No type-based discrimination — a moving head can have custom macros too.
+   * 🔥 WAVE 2084.6: Blind cascade to resolve the fixture definition ID.
+   * The FixtureState from SeleneTruth may carry the ID under different keys
+   * depending on which pipeline populated it (ShowFileV2, TitanSyncBridge, Arbiter).
+   * 
+   * Priority: definitionId > profileId > fixtureDefId
+   * NEVER fall back to fixture.id — that's the instance ID, not the library ID.
+   */
+  const resolveDefId = useCallback((f: any): string | null => {
+    return f?.definitionId || f?.profileId || f?.fixtureDefId || null
+  }, [])
+  
+  /**
+   * 🔥 WAVE 2084.6: Extract phantom channels INLINE from embedded channels array.
+   * If the fixture carries its own channels[] (from ShowFileV2 or TitanSyncBridge),
+   * we can resolve phantom channels WITHOUT any IPC call.
+   */
+  const extractInlinePhantoms = useCallback((channels: any[]): PhantomChannel[] => {
+    if (!Array.isArray(channels) || channels.length === 0) return []
+    return channels
+      .filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type))
+      .map((ch: any): PhantomChannel => ({
+        channelIndex: ch.index ?? ch.channelIndex ?? 0,
+        label: ch.customName || ch.name || ch.type?.toUpperCase() || 'UNKNOWN',
+        type: ch.type,
+        defaultValue: ch.defaultValue ?? 0,
+        continuousRotation: ch.continuousRotation === true,
+      }))
+  }, [])
+  
+  /**
+   * Any selected fixture qualifies if it has:
+   * - Embedded channels with at least one phantom type, OR
+   * - A resolvable definition ID (we'll verify via IPC)
    */
   const mayHavePhantomChannels = useMemo(() => {
-    return selectedFixtures.some((f: any) => !!(f?.profileId || f?.id))
-  }, [selectedFixtures])
+    return selectedFixtures.some((f: any) => {
+      // Path 1: Inline channels already embedded
+      if (Array.isArray(f?.channels) && f.channels.length > 0) {
+        return f.channels.some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type))
+      }
+      // Path 2: Has a definition ID we can query
+      return !!resolveDefId(f)
+    })
+  }, [selectedFixtures, resolveDefId])
   
   // ═══════════════════════════════════════════════════════════════════
-  // TIER-2: IPC fetch for precise phantom channel detection
-  // Only fires when section expands AND we have qualifying fixtures
+  // CHANNEL RESOLUTION — Inline first, IPC only when needed
   // ═══════════════════════════════════════════════════════════════════
   
   useEffect(() => {
-    if (!isExpanded || !mayHavePhantomChannels || selectedFixtures.length === 0) {
+    if (!isExpanded || selectedFixtures.length === 0) {
       return
     }
     
     let cancelled = false
     
-    const fetchPhantomChannels = async () => {
+    const resolvePhantomChannels = async () => {
       setIsLoading(true)
       const allPhantomChannels: PhantomChannel[] = []
       const now = Date.now()
@@ -134,13 +171,32 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
       for (const fixture of selectedFixtures) {
         if (cancelled) break
         const f = fixture as any
-        const profileId = f?.profileId || f?.id
-        if (!profileId) continue
+        
+        // ─── PATH 1: INLINE — channels[] embedded in the fixture object ───
+        if (Array.isArray(f?.channels) && f.channels.length > 0) {
+          const inlinePhantoms = extractInlinePhantoms(f.channels)
+          console.log(`[PhantomPanel] 📦 INLINE path | fixture: "${f.name}" | channels: ${f.channels.length} | phantoms: ${inlinePhantoms.length}`)
+          for (const ch of inlinePhantoms) {
+            if (!allPhantomChannels.some(existing => existing.channelIndex === ch.channelIndex)) {
+              allPhantomChannels.push(ch)
+            }
+          }
+          continue // No IPC needed for this fixture
+        }
+        
+        // ─── PATH 2: RESOLVE definition ID via blind cascade ───
+        const defId = resolveDefId(f)
+        console.log(`[PhantomPanel] 🔍 FETCH path | fixture: "${f.name}" | defId: ${defId} | keys: [definitionId=${f?.definitionId}, profileId=${f?.profileId}, fixtureDefId=${f?.fixtureDefId}]`)
+        
+        if (!defId) {
+          console.warn(`[PhantomPanel] ⚠️ NO definition ID for fixture "${f.name}" (id: ${f.id}) — skipping`)
+          continue
+        }
         
         // Check cache first
-        const cached = cacheRef.current.get(profileId)
+        const cached = cacheRef.current.get(defId)
         if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
-          // Merge cached phantom channels (deduplicate by channelIndex)
+          console.log(`[PhantomPanel] ✅ CACHE HIT for "${defId}" → ${cached.phantomChannels.length} phantoms`)
           for (const ch of cached.phantomChannels) {
             if (!allPhantomChannels.some(existing => existing.channelIndex === ch.channelIndex)) {
               allPhantomChannels.push(ch)
@@ -149,10 +205,22 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
           continue
         }
         
-        // IPC fetch
+        // IPC fetch — the real source of truth
         try {
-          const result = await window.lux?.getFixtureDefinition?.(profileId)
-          if (!result?.success || !result.definition?.channels) continue
+          const result = await window.lux?.getFixtureDefinition?.(defId)
+          console.log(`[PhantomPanel] 📡 IPC result for "${defId}":`, result?.success ? `${result.definition?.channels?.length || 0} channels` : `FAILED: ${result?.error || 'unknown'}`)
+          
+          if (!result?.success || !result.definition?.channels) {
+            console.warn(`[PhantomPanel] ❌ getFixtureDefinition("${defId}") → no channels. Fixture "${f.name}" won't show extras.`)
+            // Cache the miss to avoid hammering IPC
+            cacheRef.current.set(defId, {
+              fixtureId: f.id,
+              profileId: defId,
+              phantomChannels: [],
+              timestamp: now,
+            })
+            continue
+          }
           
           const phantoms = result.definition.channels
             .filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch.type))
@@ -164,10 +232,12 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
               continuousRotation: ch.continuousRotation === true,
             }))
           
+          console.log(`[PhantomPanel] 🎯 Resolved ${phantoms.length} phantom channels for "${f.name}" via IPC`)
+          
           // Cache it
-          cacheRef.current.set(profileId, {
+          cacheRef.current.set(defId, {
             fixtureId: f.id,
-            profileId,
+            profileId: defId,
             phantomChannels: phantoms,
             timestamp: now,
           })
@@ -179,7 +249,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
             }
           }
         } catch (err) {
-          console.warn(`[Extras] Failed to fetch definition for ${profileId}:`, err)
+          console.warn(`[PhantomPanel] 💥 IPC error for "${defId}":`, err)
         }
       }
       
@@ -194,7 +264,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
           defaults.set(ch.channelIndex, ch.defaultValue)
         }
         setChannelValues(prev => {
-          // Preserve existing values, add new ones with defaults
           const merged = new Map(prev)
           for (const [idx, val] of defaults) {
             if (!merged.has(idx)) {
@@ -207,10 +276,10 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
       }
     }
     
-    fetchPhantomChannels()
+    resolvePhantomChannels()
     
     return () => { cancelled = true }
-  }, [isExpanded, mayHavePhantomChannels, selectedFixtures])
+  }, [isExpanded, selectedFixtures, resolveDefId, extractInlinePhantoms])
   
   // Reset when selection changes
   useEffect(() => {
@@ -266,10 +335,29 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [selectedIds, phantomChannels, onOverrideChange])
   
   // ═══════════════════════════════════════════════════════════════════
-  // RENDER GATE — The Phantom condition
+  // 🔥 WAVE 2084.6: TACTICAL LOGGING — Render gate diagnostic
   // ═══════════════════════════════════════════════════════════════════
   
-  const shouldRender = mayHavePhantomChannels && selectedIds.length > 0
+  // Log every evaluation so we can see in Electron console WHY it aborts
+  if (selectedFixtures.length > 0) {
+    const fixtureDebug = selectedFixtures.map((f: any) => ({
+      name: f?.name,
+      id: f?.id,
+      type: f?.type,
+      profileId: f?.profileId,
+      definitionId: f?.definitionId,
+      fixtureDefId: f?.fixtureDefId,
+      hasChannels: Array.isArray(f?.channels) && f.channels.length > 0,
+      channelCount: Array.isArray(f?.channels) ? f.channels.length : 0,
+    }))
+    console.log(`[PhantomPanel] 🔎 Evaluating ${selectedFixtures.length} fixtures | mayHavePhantom=${mayHavePhantomChannels} | phantomChannels=${phantomChannels.length}`, fixtureDebug)
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // RENDER GATE — Always show for selected fixtures, content decides
+  // ═══════════════════════════════════════════════════════════════════
+  
+  const shouldRender = selectedIds.length > 0
   
   if (!shouldRender) {
     return null

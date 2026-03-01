@@ -1060,9 +1060,39 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     <span className="channel-number">{idx + 1}</span>
                     <div className="channel-function">
                       {channel.type !== 'unknown' ? (
-                        <>
-                          <span className="channel-name">{channel.name || channel.type}</span>
-                        </>
+                        // 🔥 WAVE 2084.3: Phantom channels get an editable name input
+                        (() => {
+                          const isEditable = ['custom', 'macro', 'rotation', 'speed', 'control'].includes(channel.type)
+                          return isEditable ? (
+                            <input
+                              type="text"
+                              className="channel-name-input"
+                              placeholder={channel.type.toUpperCase()}
+                              value={channel.name || ''}
+                              onChange={(e) => {
+                                setFixture(prev => {
+                                  const newChannels = [...prev.channels]
+                                  newChannels[idx] = { ...newChannels[idx], name: e.target.value }
+                                  return { ...prev, channels: newChannels }
+                                })
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                background: 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${categoryColor ? categoryColor + '55' : 'rgba(255,255,255,0.12)'}`,
+                                color: categoryColor || 'inherit',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                width: '120px',
+                                fontFamily: 'inherit',
+                                fontSize: '11px',
+                                outline: 'none',
+                              }}
+                            />
+                          ) : (
+                            <span className="channel-name">{channel.name || channel.type}</span>
+                          )
+                        })()
                       ) : (
                         <span className="channel-empty">Drop function here</span>
                       )}

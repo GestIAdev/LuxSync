@@ -1,15 +1,16 @@
 /**
- * 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — EXTRAS SECTION
+ * 🔥 WAVE 2084.8: THE STATE BYPASS — EXTRAS SECTION
  * 
  * La sección fantasma: solo aparece cuando hay fixtures con canales phantom
  * (custom, macro, rotation, speed) — los Ingenios de la WAVE 2084.
  * 
  * Arquitectura:
- * - WAVE 2084.5: Eliminada heurística Tier-1 por tipo de fixture
- * - WAVE 2084.6: Cascada blindada de fallback para obtener canales:
- *     1. DIRECTO: fixture.channels embebidos en el ShowFile → usa inline
- *     2. FETCH:   definitionId || profileId || fixtureDefId || id → IPC
- *   Logging táctico antes del render gate para diagnóstico en consola Electron.
+ * - WAVE 2084.8: STATE BYPASS — Lee el ADN de los fixtures (channels[]) 
+ *   directamente del stageStore (FixtureV2 completo), NO del truthStore/hardware
+ *   (FixtureState es telemetría pura: dimmer/pan/tilt, sin channels).
+ * - selectedIds vienen del selectionStore (qué fixtures están clickeados)
+ * - stageStore.fixtures contiene el FixtureV2 con channels[] embebido
+ * - Si channels[] no está embebido → fallback a IPC getFixtureDefinition()
  * - Cache de definiciones por defId (NO se repite IPC cada frame)
  * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
  * 
@@ -18,7 +19,7 @@
 
 import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
-import { useHardware } from '../../../stores/truthStore'
+import { useStageStore } from '../../../stores/stageStore'
 import { ControlsIcon } from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -81,47 +82,50 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   onOverrideChange,
 }) => {
   const selectedIds = useSelectedArray()
-  const hardware = useHardware()
+  
+  // 🔥 WAVE 2084.8: STATE BYPASS — Read FixtureV2 from stageStore (has channels[])
+  // NOT from useHardware() which returns FixtureState (telemetry only: dimmer/pan/tilt)
+  const stageFixtures = useStageStore(state => state.fixtures)
   
   // Phantom channel values: Map<channelIndex, dmxValue>
   const [channelValues, setChannelValues] = useState<Map<number, number>>(new Map())
   
-  // Resolved phantom channels from IPC fetch
+  // Resolved phantom channels
   const [phantomChannels, setPhantomChannels] = useState<PhantomChannel[]>([])
   
-  // Loading state for IPC fetch
+  // Loading state for IPC fetch (only used as fallback)
   const [isLoading, setIsLoading] = useState(false)
   
-  // Definition cache: profileId → CachedPhantomDef
+  // Definition cache: defId → CachedPhantomDef
   const cacheRef = useRef<Map<string, CachedPhantomDef>>(new Map())
   
   // ═══════════════════════════════════════════════════════════════════
-  // FIXTURE RESOLUTION — Blind cascade for channel extraction
+  // FIXTURE RESOLUTION — Cross-reference selected IDs with stage DNA
   // ═══════════════════════════════════════════════════════════════════
   
+  /**
+   * 🔥 WAVE 2084.8: THE STATE BYPASS
+   * Match selectedIds (from live selection) against stageStore.fixtures (static DNA).
+   * This gives us FixtureV2 objects WITH channels[] embedded.
+   */
   const selectedFixtures = useMemo(() => {
-    const fixtures = hardware?.fixtures || []
     return selectedIds
-      .map(id => fixtures.find((f: { id: string }) => f.id === id))
+      .map(id => stageFixtures.find((sf: { id: string }) => sf.id === id))
       .filter(Boolean)
-  }, [selectedIds, hardware?.fixtures])
+  }, [selectedIds, stageFixtures])
   
   /**
-   * 🔥 WAVE 2084.6: Blind cascade to resolve the fixture definition ID.
-   * The FixtureState from SeleneTruth may carry the ID under different keys
-   * depending on which pipeline populated it (ShowFileV2, TitanSyncBridge, Arbiter).
-   * 
-   * Priority: definitionId > profileId > fixtureDefId
-   * NEVER fall back to fixture.id — that's the instance ID, not the library ID.
+   * 🔥 WAVE 2084.8: Blind cascade to resolve the fixture definition ID.
+   * Used ONLY as fallback when channels[] is not embedded in the FixtureV2.
+   * Priority: profileId > definitionId > fixtureDefId
    */
   const resolveDefId = useCallback((f: any): string | null => {
-    return f?.definitionId || f?.profileId || f?.fixtureDefId || null
+    return f?.profileId || f?.definitionId || f?.fixtureDefId || null
   }, [])
   
   /**
-   * 🔥 WAVE 2084.6: Extract phantom channels INLINE from embedded channels array.
-   * If the fixture carries its own channels[] (from ShowFileV2 or TitanSyncBridge),
-   * we can resolve phantom channels WITHOUT any IPC call.
+   * Extract phantom channels from an embedded channels array.
+   * This is the PRIMARY path — channels come from stageStore (FixtureV2).
    */
   const extractInlinePhantoms = useCallback((channels: any[]): PhantomChannel[] => {
     if (!Array.isArray(channels) || channels.length === 0) return []
@@ -137,17 +141,17 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [])
   
   /**
-   * Any selected fixture qualifies if it has:
-   * - Embedded channels with at least one phantom type, OR
-   * - A resolvable definition ID (we'll verify via IPC)
+   * 🔥 WAVE 2084.8: Check if any selected fixture has phantom channels.
+   * With stageStore providing full FixtureV2, channels[] is almost always present.
+   * Fallback to defId for edge cases where fixture was patched without Forge data.
    */
   const mayHavePhantomChannels = useMemo(() => {
     return selectedFixtures.some((f: any) => {
-      // Path 1: Inline channels already embedded
+      // Primary: Check embedded channels directly
       if (Array.isArray(f?.channels) && f.channels.length > 0) {
         return f.channels.some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type))
       }
-      // Path 2: Has a definition ID we can query
+      // Fallback: Has a library definition ID we can query via IPC
       return !!resolveDefId(f)
     })
   }, [selectedFixtures, resolveDefId])
@@ -335,7 +339,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [selectedIds, phantomChannels, onOverrideChange])
   
   // ═══════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2084.6: TACTICAL LOGGING — Render gate diagnostic
+  // 🔥 WAVE 2084.8: TACTICAL LOGGING — Render gate diagnostic
   // ═══════════════════════════════════════════════════════════════════
   
   // Log every evaluation so we can see in Electron console WHY it aborts
@@ -345,12 +349,14 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
       id: f?.id,
       type: f?.type,
       profileId: f?.profileId,
-      definitionId: f?.definitionId,
-      fixtureDefId: f?.fixtureDefId,
+      source: 'stageStore',
       hasChannels: Array.isArray(f?.channels) && f.channels.length > 0,
       channelCount: Array.isArray(f?.channels) ? f.channels.length : 0,
+      phantomTypes: Array.isArray(f?.channels) 
+        ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => ch.type)
+        : [],
     }))
-    console.log(`[PhantomPanel] 🔎 Evaluating ${selectedFixtures.length} fixtures | mayHavePhantom=${mayHavePhantomChannels} | phantomChannels=${phantomChannels.length}`, fixtureDebug)
+    console.log(`[PhantomPanel] 🔎 Evaluating ${selectedFixtures.length} fixtures (from stageStore) | mayHavePhantom=${mayHavePhantomChannels} | resolvedPhantoms=${phantomChannels.length}`, fixtureDebug)
   }
   
   // ═══════════════════════════════════════════════════════════════════

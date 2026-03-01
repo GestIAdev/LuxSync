@@ -45,6 +45,12 @@ const FIXTURE_SHAPES: Record<string, FixtureShapeConfig> = {
   'blinder':     { shape: 'square',   icon: '■', filled: true },
   'bar':         { shape: 'rectangle', icon: '▬', filled: false },
   'effect':      { shape: 'diamond',  icon: '✦', filled: true },
+  // 🔥 WAVE 2084.5: INGENIOS — Cyberpunk tactical shapes
+  'fan':         { shape: 'circle',   icon: '❋', filled: false },
+  'fog':         { shape: 'rectangle', icon: '☁', filled: true },
+  'mirror-ball': { shape: 'circle',   icon: '✺', filled: true },
+  'pyro':        { shape: 'triangle', icon: '🔥', filled: true },
+  // Fallback
   'generic':     { shape: 'circle',   icon: '●', filled: true },
 };
 

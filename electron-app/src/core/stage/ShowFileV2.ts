@@ -527,7 +527,11 @@ export interface FixtureV2 {
   manufacturer: string
   
   /** Fixture type for categorization */
-  type: 'moving-head' | 'par' | 'wash' | 'strobe' | 'laser' | 'blinder' | 'generic'
+  // 🔥 WAVE 2084.5: Extended with Ingenio types (fan, fog, mirror-ball, pyro)
+  type: 'moving-head' | 'par' | 'wash' | 'strobe' | 'laser' | 'blinder'
+    | 'scanner' | 'bar' | 'spot' | 'effect'
+    | 'fan' | 'fog' | 'mirror-ball' | 'pyro'
+    | 'generic'
   
   // ═══════════════════════════════════════════════════════════════════════
   // DMX CONFIGURATION
@@ -654,9 +658,19 @@ export function mapLibraryTypeToFixtureType(
     'strobe': 'strobe',
     'laser': 'laser',
     'blinder': 'blinder',
-    'bar': 'generic', // Bar → generic for now
-    'spot': 'generic',
-    'scanner': 'generic',
+    'bar': 'bar',
+    'spot': 'spot',
+    'scanner': 'scanner',
+    'effect': 'effect',
+    // 🔥 WAVE 2084.5: INGENIOS — New device types
+    'fan': 'fan',
+    'fog': 'fog',
+    'haze': 'fog',          // Common alias
+    'mirror-ball': 'mirror-ball',
+    'mirrorball': 'mirror-ball',
+    'mirror_ball': 'mirror-ball',
+    'pyro': 'pyro',
+    'flame': 'pyro',        // Common alias
     'other': 'generic',
     'generic': 'generic'
   }

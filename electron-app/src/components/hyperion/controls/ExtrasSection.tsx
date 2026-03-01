@@ -1,12 +1,13 @@
 /**
- * 🔥 WAVE 2084.2: THE PHANTOM UI — EXTRAS SECTION
+ * 🔥 WAVE 2084.5: THE PHANTOM UI — EXTRAS SECTION
  * 
  * La sección fantasma: solo aparece cuando hay fixtures con canales phantom
  * (custom, macro, rotation, speed) — los Ingenios de la WAVE 2084.
  * 
  * Arquitectura:
- * - Detección por fixture.type (heurística tier-1) + lazy IPC fetch (tier-2 precisa)
- * - Grid 2 columnas de sliders horizontales diminutos
+ * - WAVE 2084.5: Eliminada heurística Tier-1 por tipo de fixture (era un error
+ *   arquitectónico: un moving-head con un canal macro nunca mostraba el panel)
+ * - ÚNICA fuente de verdad: profileId + getFixtureDefinition() IPC (Tier-2)
  * - Cache de definiciones por profileId (NO se repite IPC cada frame)
  * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
  * 
@@ -64,16 +65,6 @@ const PHANTOM_CHANNEL_TYPES = new Set([
   'control',
 ])
 
-/** Fixture types that likely have phantom channels (tier-1 heuristic) */
-const INGENIO_TYPES = new Set([
-  'fan',
-  'fog',
-  'mirror-ball',
-  'pyro',
-  'effect',
-  'laser',
-])
-
 /** Cache TTL — definitions don't change at runtime */
 const CACHE_TTL_MS = 60_000
 
@@ -115,20 +106,12 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [selectedIds, hardware?.fixtures])
   
   /**
-   * Quick check: do ANY selected fixtures potentially have phantom channels?
-   * Uses fixture type as heuristic — Ingenio types always qualify.
-   * Non-Ingenio types ALSO qualify if they have a profileId (we'll verify via IPC).
+   * ANY fixture with a profileId or id is eligible for phantom channel detection.
+   * The IPC fetch (Tier-2) is the SOLE arbiter of whether phantom channels exist.
+   * No type-based discrimination — a moving head can have custom macros too.
    */
   const mayHavePhantomChannels = useMemo(() => {
-    return selectedFixtures.some((f: any) => {
-      const type = f?.type?.toLowerCase() || ''
-      // Tier-1: Ingenio types are guaranteed to have phantom channels
-      if (INGENIO_TYPES.has(type)) return true
-      // Tier-1b: Any fixture with a profileId MIGHT have phantom channels
-      // The section renders but may collapse if IPC reveals nothing phantom
-      if (f?.profileId) return true
-      return false
-    })
+    return selectedFixtures.some((f: any) => !!(f?.profileId || f?.id))
   }, [selectedFixtures])
   
   // ═══════════════════════════════════════════════════════════════════

@@ -83,9 +83,13 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
 }) => {
   const selectedIds = useSelectedArray()
   
-  // 🔥 WAVE 2084.8: STATE BYPASS — Read FixtureV2 from stageStore (has channels[])
-  // NOT from useHardware() which returns FixtureState (telemetry only: dimmer/pan/tilt)
-  const stageFixtures = useStageStore(state => state.fixtures)
+  // 🔥 WAVE 2084.8 + 2084.9: STATE BYPASS — Read FixtureV2 from stageStore
+  // Blind cascade: state.fixtures (synced) > state.showFile.fixtures (raw) > []
+  const stageFixtures = useStageStore(state => {
+    if (state.fixtures && state.fixtures.length > 0) return state.fixtures
+    if (state.showFile?.fixtures && state.showFile.fixtures.length > 0) return state.showFile.fixtures
+    return []
+  })
   
   // Phantom channel values: Map<channelIndex, dmxValue>
   const [channelValues, setChannelValues] = useState<Map<number, number>>(new Map())
@@ -360,13 +364,67 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }
   
   // ═══════════════════════════════════════════════════════════════════
-  // RENDER GATE — Always show for selected fixtures, content decides
+  // 🚨 WAVE 2084.9: TRUTH SERUM — Visual debugger (render to UI)
+  // Shows WHY the panel renders or doesn't, DIRECTLY ON SCREEN
   // ═══════════════════════════════════════════════════════════════════
   
   const shouldRender = selectedIds.length > 0
   
   if (!shouldRender) {
     return null
+  }
+  
+  // If we have selected fixtures but NO phantom channels, show the debugger
+  if (phantomChannels.length === 0 && !isLoading) {
+    const debugInfo = selectedFixtures.map((f: any) => ({
+      name: f?.name || 'Unknown',
+      id: f?.id,
+      type: f?.type,
+      channelCount: Array.isArray(f?.channels) ? f.channels.length : 0,
+      phantomTypes: Array.isArray(f?.channels) 
+        ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => `${ch.type}(${ch.name})`)
+        : [],
+      hasCustom: Array.isArray(f?.channels) && f.channels.some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)),
+      profileId: f?.profileId || 'NONE',
+    }))
+    
+    return (
+      <div className="programmer-section extras-section collapsed">
+        <div className="section-header clickable" onClick={onToggle}>
+          <h4 className="section-title">
+            <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
+            <ControlsIcon size={18} className="title-icon" />
+            EXTRAS
+          </h4>
+        </div>
+        {isExpanded && (
+          <div style={{ padding: '10px', background: 'rgba(255,0,0,0.15)', border: '1px solid rgba(255,80,80,0.5)', color: '#ff6666', fontSize: '10px', fontFamily: 'monospace', margin: '8px', borderRadius: '4px' }}>
+            <strong>🚨 PHANTOM PANEL DEBUGGER (WAVE 2084.9)</strong><br/>
+            <span style={{ color: '#aaa' }}>selectedIds:</span> {selectedIds.length} → [{selectedIds.slice(0, 3).join(', ')}{selectedIds.length > 3 ? '...' : ''}]<br/>
+            <span style={{ color: '#aaa' }}>stageStore.fixtures:</span> {stageFixtures?.length ?? 0} total<br/>
+            <span style={{ color: '#aaa' }}>matched (selectedIds ∩ stageStore):</span> {selectedFixtures.length}<br/>
+            <span style={{ color: '#aaa' }}>mayHavePhantom:</span> {String(mayHavePhantomChannels)}<br/>
+            <span style={{ color: '#aaa' }}>resolvedPhantoms:</span> {phantomChannels.length}<br/>
+            <hr style={{ borderColor: 'rgba(255,80,80,0.3)', margin: '4px 0' }} />
+            {debugInfo.length === 0 ? (
+              <div style={{ color: '#ff4444' }}>
+                ❌ NO MATCH: selectedIds no coinciden con stageStore.fixtures<br/>
+                stageStore IDs: [{stageFixtures?.slice(0, 5).map((f: any) => f?.id).join(', ')}{(stageFixtures?.length ?? 0) > 5 ? '...' : ''}]
+              </div>
+            ) : (
+              debugInfo.map((d, i) => (
+                <div key={i} style={{ marginBottom: '2px' }}>
+                  {'→ '}<strong>{d.name}</strong> ({d.id}): {d.channelCount} chs | 
+                  Phantom: {d.hasCustom ? <span style={{ color: '#00ff88' }}>YES</span> : <span style={{ color: '#ff4444' }}>NO</span>}
+                  {d.phantomTypes.length > 0 && ` [${d.phantomTypes.join(', ')}]`}
+                  {' | profile: '}{d.profileId}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    )
   }
   
   // ═══════════════════════════════════════════════════════════════════

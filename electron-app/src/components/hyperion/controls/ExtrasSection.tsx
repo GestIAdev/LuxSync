@@ -1,17 +1,14 @@
 /**
- * 🔥 WAVE 2084.8: THE STATE BYPASS — EXTRAS SECTION
+ * 🔥 WAVE 2084.10: EXTRAS SECTION — Phantom Channel Control
  * 
- * La sección fantasma: solo aparece cuando hay fixtures con canales phantom
- * (custom, macro, rotation, speed) — los Ingenios de la WAVE 2084.
+ * La sección de canales phantom: solo aparece cuando hay fixtures con canales
+ * tipo custom, macro, rotation, speed o control — los "Ingenios" de WAVE 2084.
  * 
  * Arquitectura:
- * - WAVE 2084.8: STATE BYPASS — Lee el ADN de los fixtures (channels[]) 
- *   directamente del stageStore (FixtureV2 completo), NO del truthStore/hardware
- *   (FixtureState es telemetría pura: dimmer/pan/tilt, sin channels).
- * - selectedIds vienen del selectionStore (qué fixtures están clickeados)
- * - stageStore.fixtures contiene el FixtureV2 con channels[] embebido
- * - Si channels[] no está embebido → fallback a IPC getFixtureDefinition()
- * - Cache de definiciones por defId (NO se repite IPC cada frame)
+ * - selectedIds del selectionStore (qué fixtures están seleccionados)
+ * - stageStore.fixtures contiene FixtureV2 con channels[] embebido desde Forge
+ * - Si channels[] no está embebido → fallback IPC a getFixtureDefinition()
+ * - Cache de definiciones por defId (no IPC repetitivo)
  * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
  * 
  * ANTI-SIMULACIÓN: Toda función es real, determinista, sin mocks.
@@ -183,7 +180,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         // ─── PATH 1: INLINE — channels[] embedded in the fixture object ───
         if (Array.isArray(f?.channels) && f.channels.length > 0) {
           const inlinePhantoms = extractInlinePhantoms(f.channels)
-          console.log(`[PhantomPanel] 📦 INLINE path | fixture: "${f.name}" | channels: ${f.channels.length} | phantoms: ${inlinePhantoms.length}`)
           for (const ch of inlinePhantoms) {
             if (!allPhantomChannels.some(existing => existing.channelIndex === ch.channelIndex)) {
               allPhantomChannels.push(ch)
@@ -194,7 +190,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         
         // ─── PATH 2: RESOLVE definition ID via blind cascade ───
         const defId = resolveDefId(f)
-        console.log(`[PhantomPanel] 🔍 FETCH path | fixture: "${f.name}" | defId: ${defId} | keys: [definitionId=${f?.definitionId}, profileId=${f?.profileId}, fixtureDefId=${f?.fixtureDefId}]`)
         
         if (!defId) {
           console.warn(`[PhantomPanel] ⚠️ NO definition ID for fixture "${f.name}" (id: ${f.id}) — skipping`)
@@ -204,7 +199,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         // Check cache first
         const cached = cacheRef.current.get(defId)
         if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
-          console.log(`[PhantomPanel] ✅ CACHE HIT for "${defId}" → ${cached.phantomChannels.length} phantoms`)
           for (const ch of cached.phantomChannels) {
             if (!allPhantomChannels.some(existing => existing.channelIndex === ch.channelIndex)) {
               allPhantomChannels.push(ch)
@@ -216,7 +210,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         // IPC fetch — the real source of truth
         try {
           const result = await window.lux?.getFixtureDefinition?.(defId)
-          console.log(`[PhantomPanel] 📡 IPC result for "${defId}":`, result?.success ? `${result.definition?.channels?.length || 0} channels` : `FAILED: ${result?.error || 'unknown'}`)
           
           if (!result?.success || !result.definition?.channels) {
             console.warn(`[PhantomPanel] ❌ getFixtureDefinition("${defId}") → no channels. Fixture "${f.name}" won't show extras.`)
@@ -239,8 +232,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
               defaultValue: ch.defaultValue ?? 0,
               continuousRotation: ch.continuousRotation === true,
             }))
-          
-          console.log(`[PhantomPanel] 🎯 Resolved ${phantoms.length} phantom channels for "${f.name}" via IPC`)
           
           // Cache it
           cacheRef.current.set(defId, {
@@ -343,27 +334,6 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [selectedIds, phantomChannels, onOverrideChange])
   
   // ═══════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2084.8: TACTICAL LOGGING — Render gate diagnostic
-  // ═══════════════════════════════════════════════════════════════════
-  
-  // Log every evaluation so we can see in Electron console WHY it aborts
-  if (selectedFixtures.length > 0) {
-    const fixtureDebug = selectedFixtures.map((f: any) => ({
-      name: f?.name,
-      id: f?.id,
-      type: f?.type,
-      profileId: f?.profileId,
-      source: 'stageStore',
-      hasChannels: Array.isArray(f?.channels) && f.channels.length > 0,
-      channelCount: Array.isArray(f?.channels) ? f.channels.length : 0,
-      phantomTypes: Array.isArray(f?.channels) 
-        ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => ch.type)
-        : [],
-    }))
-    console.log(`[PhantomPanel] 🔎 Evaluating ${selectedFixtures.length} fixtures (from stageStore) | mayHavePhantom=${mayHavePhantomChannels} | resolvedPhantoms=${phantomChannels.length}`, fixtureDebug)
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════
   // FORMAT HELPERS
   // ═══════════════════════════════════════════════════════════════════
   
@@ -382,48 +352,18 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }
   
   // ═══════════════════════════════════════════════════════════════════
-  // 🚨 WAVE 2084.9: TRUTH SERUM — ALWAYS VISIBLE DEBUGGER
-  // This renders NO MATTER WHAT to prove the component is alive
+  // RENDER
   // ═══════════════════════════════════════════════════════════════════
   
-  // ALWAYS render — no gates, no conditions, no null returns
+  // Don't render if no selection
+  if (selectedIds.length === 0) return null
+  
+  // Don't render if no fixture has phantom-capable channels or definition
+  if (!mayHavePhantomChannels && phantomChannels.length === 0) return null
+  
   return (
-    <div className="programmer-section extras-section" style={{ minHeight: '40px' }}>
-      {/* ALWAYS-VISIBLE DEBUG HEADER */}
-      <div style={{ 
-        padding: '8px 12px', 
-        background: 'rgba(255,0,255,0.2)', 
-        border: '2px solid magenta', 
-        color: 'magenta', 
-        fontSize: '10px', 
-        fontFamily: 'monospace',
-        borderRadius: '4px',
-        margin: '4px 0'
-      }}>
-        <strong>🚨 EXTRAS ALIVE | WAVE 2084.9</strong><br/>
-        selectedIds: {selectedIds.length} → [{selectedIds.slice(0, 3).join(', ')}{selectedIds.length > 3 ? '...' : ''}]<br/>
-        stageFixtures: {stageFixtures?.length ?? 0}<br/>
-        matched: {selectedFixtures.length}<br/>
-        mayHavePhantom: {String(mayHavePhantomChannels)}<br/>
-        phantomChannels: {phantomChannels.length}<br/>
-        isExpanded: {String(isExpanded)}<br/>
-        isLoading: {String(isLoading)}<br/>
-        {selectedFixtures.length > 0 && selectedFixtures.map((f: any, i: number) => (
-          <div key={i}>
-            {'→ '}{f?.name || '?'} | type={f?.type} | chs={Array.isArray(f?.channels) ? f.channels.length : 0} | 
-            phantomTypes=[{Array.isArray(f?.channels) ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => ch.type).join(',') : 'N/A'}]
-          </div>
-        ))}
-        {selectedFixtures.length === 0 && selectedIds.length > 0 && (
-          <div style={{ color: '#ff4444' }}>
-            ❌ ID MISMATCH: selectedIds exist but NO match in stageStore<br/>
-            stageStore IDs: [{stageFixtures?.slice(0, 5).map((f: any) => f?.id).join(', ')}{(stageFixtures?.length ?? 0) > 5 ? '...' : ''}]<br/>
-            selectedIds: [{selectedIds.slice(0, 5).join(', ')}]
-          </div>
-        )}
-      </div>
-      
-      {/* Normal accordion header */}
+    <div className="programmer-section extras-section">
+      {/* Accordion header */}
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>

@@ -364,71 +364,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }
   
   // ═══════════════════════════════════════════════════════════════════
-  // 🚨 WAVE 2084.9: TRUTH SERUM — Visual debugger (render to UI)
-  // Shows WHY the panel renders or doesn't, DIRECTLY ON SCREEN
-  // ═══════════════════════════════════════════════════════════════════
-  
-  const shouldRender = selectedIds.length > 0
-  
-  if (!shouldRender) {
-    return null
-  }
-  
-  // If we have selected fixtures but NO phantom channels, show the debugger
-  if (phantomChannels.length === 0 && !isLoading) {
-    const debugInfo = selectedFixtures.map((f: any) => ({
-      name: f?.name || 'Unknown',
-      id: f?.id,
-      type: f?.type,
-      channelCount: Array.isArray(f?.channels) ? f.channels.length : 0,
-      phantomTypes: Array.isArray(f?.channels) 
-        ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => `${ch.type}(${ch.name})`)
-        : [],
-      hasCustom: Array.isArray(f?.channels) && f.channels.some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)),
-      profileId: f?.profileId || 'NONE',
-    }))
-    
-    return (
-      <div className="programmer-section extras-section collapsed">
-        <div className="section-header clickable" onClick={onToggle}>
-          <h4 className="section-title">
-            <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
-            <ControlsIcon size={18} className="title-icon" />
-            EXTRAS
-          </h4>
-        </div>
-        {isExpanded && (
-          <div style={{ padding: '10px', background: 'rgba(255,0,0,0.15)', border: '1px solid rgba(255,80,80,0.5)', color: '#ff6666', fontSize: '10px', fontFamily: 'monospace', margin: '8px', borderRadius: '4px' }}>
-            <strong>🚨 PHANTOM PANEL DEBUGGER (WAVE 2084.9)</strong><br/>
-            <span style={{ color: '#aaa' }}>selectedIds:</span> {selectedIds.length} → [{selectedIds.slice(0, 3).join(', ')}{selectedIds.length > 3 ? '...' : ''}]<br/>
-            <span style={{ color: '#aaa' }}>stageStore.fixtures:</span> {stageFixtures?.length ?? 0} total<br/>
-            <span style={{ color: '#aaa' }}>matched (selectedIds ∩ stageStore):</span> {selectedFixtures.length}<br/>
-            <span style={{ color: '#aaa' }}>mayHavePhantom:</span> {String(mayHavePhantomChannels)}<br/>
-            <span style={{ color: '#aaa' }}>resolvedPhantoms:</span> {phantomChannels.length}<br/>
-            <hr style={{ borderColor: 'rgba(255,80,80,0.3)', margin: '4px 0' }} />
-            {debugInfo.length === 0 ? (
-              <div style={{ color: '#ff4444' }}>
-                ❌ NO MATCH: selectedIds no coinciden con stageStore.fixtures<br/>
-                stageStore IDs: [{stageFixtures?.slice(0, 5).map((f: any) => f?.id).join(', ')}{(stageFixtures?.length ?? 0) > 5 ? '...' : ''}]
-              </div>
-            ) : (
-              debugInfo.map((d, i) => (
-                <div key={i} style={{ marginBottom: '2px' }}>
-                  {'→ '}<strong>{d.name}</strong> ({d.id}): {d.channelCount} chs | 
-                  Phantom: {d.hasCustom ? <span style={{ color: '#00ff88' }}>YES</span> : <span style={{ color: '#ff4444' }}>NO</span>}
-                  {d.phantomTypes.length > 0 && ` [${d.phantomTypes.join(', ')}]`}
-                  {' | profile: '}{d.profileId}
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER
+  // FORMAT HELPERS
   // ═══════════════════════════════════════════════════════════════════
   
   /**
@@ -440,14 +376,54 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     if (!continuousRotation) {
       return String(value)
     }
-    // Continuous rotation convention: 0-127 CW, 128 STOP, 129-255 CCW
     if (value < 126) return `CW ${Math.round((1 - value / 127) * 100)}%`
     if (value > 130) return `CCW ${Math.round(((value - 128) / 127) * 100)}%`
     return 'STOP'
   }
   
+  // ═══════════════════════════════════════════════════════════════════
+  // 🚨 WAVE 2084.9: TRUTH SERUM — ALWAYS VISIBLE DEBUGGER
+  // This renders NO MATTER WHAT to prove the component is alive
+  // ═══════════════════════════════════════════════════════════════════
+  
+  // ALWAYS render — no gates, no conditions, no null returns
   return (
-    <div className={`programmer-section extras-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+    <div className="programmer-section extras-section" style={{ minHeight: '40px' }}>
+      {/* ALWAYS-VISIBLE DEBUG HEADER */}
+      <div style={{ 
+        padding: '8px 12px', 
+        background: 'rgba(255,0,255,0.2)', 
+        border: '2px solid magenta', 
+        color: 'magenta', 
+        fontSize: '10px', 
+        fontFamily: 'monospace',
+        borderRadius: '4px',
+        margin: '4px 0'
+      }}>
+        <strong>🚨 EXTRAS ALIVE | WAVE 2084.9</strong><br/>
+        selectedIds: {selectedIds.length} → [{selectedIds.slice(0, 3).join(', ')}{selectedIds.length > 3 ? '...' : ''}]<br/>
+        stageFixtures: {stageFixtures?.length ?? 0}<br/>
+        matched: {selectedFixtures.length}<br/>
+        mayHavePhantom: {String(mayHavePhantomChannels)}<br/>
+        phantomChannels: {phantomChannels.length}<br/>
+        isExpanded: {String(isExpanded)}<br/>
+        isLoading: {String(isLoading)}<br/>
+        {selectedFixtures.length > 0 && selectedFixtures.map((f: any, i: number) => (
+          <div key={i}>
+            {'→ '}{f?.name || '?'} | type={f?.type} | chs={Array.isArray(f?.channels) ? f.channels.length : 0} | 
+            phantomTypes=[{Array.isArray(f?.channels) ? f.channels.filter((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type)).map((ch: any) => ch.type).join(',') : 'N/A'}]
+          </div>
+        ))}
+        {selectedFixtures.length === 0 && selectedIds.length > 0 && (
+          <div style={{ color: '#ff4444' }}>
+            ❌ ID MISMATCH: selectedIds exist but NO match in stageStore<br/>
+            stageStore IDs: [{stageFixtures?.slice(0, 5).map((f: any) => f?.id).join(', ')}{(stageFixtures?.length ?? 0) > 5 ? '...' : ''}]<br/>
+            selectedIds: [{selectedIds.slice(0, 5).join(', ')}]
+          </div>
+        )}
+      </div>
+      
+      {/* Normal accordion header */}
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>

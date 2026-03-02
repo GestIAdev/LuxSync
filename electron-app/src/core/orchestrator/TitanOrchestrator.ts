@@ -439,7 +439,13 @@ export class TitanOrchestrator {
       confidence: 0,
       kickDetected: false,
       snareDetected: false,
-      hihatDetected: false
+      hihatDetected: false,
+      // 🕰️ WAVE 2090.3: PLL defaults
+      pllPhase: 0,
+      pllOnBeat: false,
+      predictedNextBeatTime: 0,
+      phaseError: 0,
+      pllLocked: false,
     }
     
     if (this.beatDetector && this.hasRealAudio) {
@@ -471,16 +477,22 @@ export class TitanOrchestrator {
         onBeat: beatState.onBeat,
       }
       
-      // THE HEARTBEAT: Process and get the state
+      // THE HEARTBEAT: Process audio and feed PLL
       this.beatDetector.process(audioForBeat)
-      beatState = this.beatDetector.getState()
+      // WAVE 2090.3: tick() advances the PLL Flywheel
+      // process() feeds kicks -> PLL correction, tick() advances phase continuously
+      beatState = this.beatDetector.tick(Date.now())
       
-      // � WAVE 2090.2: THE PACEMAKER MONOPOLY — sole BPM source
-      // Log every ~2 seconds to show Pacemaker state
+      // WAVE 2090.3: THE PHANTOM METRONOME - sole BPM source + PLL
       if (this.frameCount % 60 === 0) {
         const pacemakerBpm = beatState.bpm
-        console.log(`[TitanOrchestrator] ❤️ PACEMAKER BPM=${pacemakerBpm.toFixed(0)} conf=${beatState.confidence.toFixed(2)} | beat #${beatState.beatCount}`)
+        const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
+        console.log(`[TitanOrchestrator] PACEMAKER BPM=${pacemakerBpm.toFixed(0)} PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} err=${beatState.phaseError.toFixed(0)}ms | beat #${beatState.beatCount}`)
       }
+    } else if (this.beatDetector) {
+      // WAVE 2090.3: THE FLYWHEEL - tick even without audio
+      // The metronome keeps spinning on inertia (freewheel mode)
+      beatState = this.beatDetector.tick(Date.now())
     }
     
     // For TitanEngine
@@ -1299,9 +1311,9 @@ export class TitanOrchestrator {
           fft: new Array(256).fill(0),
           beat: {
             onBeat: engineAudioMetrics.isBeat,
-            confidence: 0.8,
-            bpm: context.bpm || 120,
-            beatPhase: context.beatPhase || 0,
+            confidence: engineAudioMetrics.beatConfidence,
+            bpm: engineAudioMetrics.bpm,  // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
+            beatPhase: engineAudioMetrics.beatPhase,  // 🕰️ WAVE 2090.3: PLL-driven phase
             barPhase: 0,
             timeSinceLastBeat: 0
           },

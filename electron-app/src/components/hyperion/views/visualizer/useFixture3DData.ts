@@ -8,7 +8,7 @@
  * @since WAVE 2042.6 (Project Hyperion — Phase 4)
  */
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useStageStore } from '../../../../stores/stageStore'
 import { useHardware } from '../../../../stores/truthStore'

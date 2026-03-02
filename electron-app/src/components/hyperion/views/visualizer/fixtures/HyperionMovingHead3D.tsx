@@ -1,15 +1,19 @@
 /**
- * ☀️ HYPERION — HyperionMovingHead3D v3.2
+ * ☀️ HYPERION — HyperionMovingHead3D v3.4
  * 
- * WAVE 2088.2: Physics-Aligned Render + Visual Smoothing + Sane Angular Range
+ * WAVE 2088.12: VIBE-AWARE BEAM CONE — Dynamic zoom visualization
  * 
- * v2 (old):     Raw `pan` + SLERP = double interpolation, erratic.
- * v3 (broken):  physicalPan DIRECT, no smoothing = hydra effect.
- * v3.1:         physicalPan + exponential smoothing = no more hydra BUT
- *               PAN_RANGE=2π (±180°) and TILT_RANGE=π (±90°) = epileptic
- *               because 2D views use only ±81°. Same data, 2.2x more rotation.
- * v3.2 (this):  Sane angular ranges aligned with real fixtures:
- *               PAN ±135° (270° total), TILT ±67.5° (135° total).
+ * v3.3:         TILT_REST_ANGLE fixed     useFrame(() => {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteedame(() => {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteednvisible pan sweep.
+ * v3.4 (this):  Beam cone width driven LIVE by zoom DMX from store.
+ *               Techno = sable láser (zoom=30 → radius 0.03)
+ *               Latino = spot suave (zoom=150 → radius 0.28)
+ *               Rock   = wall of light (zoom=220 → radius 0.40)
+ *               Chill  = baño de luz (zoom=255 → radius 0.45)
+ *               Zoom is smoothed at 0.15 for organic transitions.
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionMovingHead3D
  * @since WAVE 2042.15, WAVE 2088-2088.2
@@ -18,6 +22,7 @@
 import React, { useRef } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useTruthStore } from '../../../../../stores/truthStore'
 import type { Fixture3DData } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,7 +50,46 @@ const TILT_RANGE = Math.PI * 0.75  // ±67.5° (135° total arc)
 const NEON_CYAN = '#00F0FF'
 
 /**
- * 🛡️ WAVE 2088.1 + 2088.8: VISUAL SMOOTHING
+ * 🛡️ WAVE 2088.11: TILT REST ANGLE — THE GEOMETRIC FIX
+ * 
+ * BUG: The beam cone hangs in -Y (perpendicular to floor). When tilt=0.5
+ *   (DMX center), tiltAngle=0 → beam points STRAIGHT DOWN at floor.
+ *   Pan rotates the yoke, but the beam spins on its own axis — visually
+ *   NOTHING moves. The 2D view doesn't have this problem because it
+ *   projects pan directly onto the horizontal plane.
+ * 
+ * FIX: Real moving heads mounted on truss naturally point ~45° forward
+ *   into the audience/stage. The REST angle is the tilt when DMX=center.
+ *   We add this offset so that tilt=0.5 → beam points ~45° forward,
+ *   making PAN sweeps clearly visible as the beam sweeps the floor.
+ * 
+ * MATH: tiltAngle = -(tilt - 0.5) * TILT_RANGE + TILT_REST_ANGLE
+ *   - tilt=0.5 → tiltAngle = +45° → beam 45° forward from vertical
+ *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
+ *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
+ */
+const TILT_REST_ANGLE = Math.PI * 0.25  // 45° forward from vertical
+
+/**
+ * � WAVE 2088.12: VIBE-AWARE BEAM CONE
+ * 
+ * The cone radius in 3D represents the zoom of the fixture.
+ * Zoom is 0-255 DMX where 0=Beam(tight), 255=Wash(wide).
+ * 
+ * Visual mapping (cone base radius in scene units):
+ *   BEAM_MIN = 0.03  → Sable láser techno (zoom≈30, DMX 0-80)
+ *   BEAM_MAX = 0.45  → Baño de luz chill  (zoom≈255, DMX 200-255)
+ *
+ * The beam length stays fixed at 3.5 units — only the WIDTH changes.
+ * This makes techno look like a laser cutting through smoke,
+ * and chill look like a warm wash flooding the stage.
+ */
+const BEAM_RADIUS_MIN = 0.03   // Tight beam (techno sable láser)
+const BEAM_RADIUS_MAX = 0.45   // Wide wash (chill baño de luz)
+const ZOOM_SMOOTH = 0.15       // Slower than pan/tilt — zoom transitions should feel organic
+
+/**
+ * �🛡️ WAVE 2088.1 + 2088.8: VISUAL SMOOTHING
  * 
  * 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
  * ANTES: VISUAL_SMOOTH=0.12. Combinado con snapFactor=0.35 del PhysicsDriver,
@@ -88,66 +132,132 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const headRef = useRef<THREE.Group>(null)
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const beamMeshRef = useRef<THREE.Mesh>(null)
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 2088.1: Visual smoothing state — persistent across renders.
-  // Same exponential-smoothing pattern as TacticalCanvas & useFixtureRender.
   // Smooths the NORMALIZED values (0-1) before converting to quaternion.
   // ═══════════════════════════════════════════════════════════════════════
   const smoothPan = useRef<number | null>(null)
   const smoothTilt = useRef<number | null>(null)
+  const smoothZoom = useRef<number | null>(null)
   const yokeQuat = useRef(new THREE.Quaternion())
   const headQuat = useRef(new THREE.Quaternion())
 
-  const { id, intensity, color, physicalPan, physicalTilt, zoom, selected, hasOverride } = fixture
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2088.9: DIRECT STORE ACCESS — THE REAL FIX
+  //
+  // BEFORE (BUG): physicalPan came from React props. React re-renders at
+  //   10-30fps under load, but useFrame runs at 60fps. The smoothing in
+  //   useFrame was interpolating between STALE prop values — creating
+  //   jerky, stuttering movement that didn't match the patterns.
+  //
+  // NOW: We read physicalPan DIRECTLY from the Zustand store inside
+  //   useFrame using getState(). This gives us the LATEST value at 60fps,
+  //   completely bypassing React's render cycle. The store updates at
+  //   60fps from IPC, and now the 3D render reads at 60fps too.
+  //
+  // This is the canonical R3F pattern for high-frequency data.
+  // ═══════════════════════════════════════════════════════════════════════
+  const fixtureId = fixture.id
 
-  // 🎨 WAVE 2042.15.3: ULTRA TIGHT beam for MovingHeads (precision spot)
-  const beamWidth = 0.04 + zoom * 0.02
-  const beamLength = 3 + intensity * 2
+  // Static values from props (don't need 60fps updates)
+  const { id, selected, hasOverride } = fixture
+
+  // Reusable THREE.Color for useFrame (no allocations per frame)
+  const liveColor = useRef(new THREE.Color())
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteed
+    //
+    // CRITICAL R3F PATTERN: Inside useFrame, props are stale (last React
+    // render). For high-frequency data like movement, read from the store
+    // using getState() — this gives the LATEST value at frame rate.
+    //
+    // This is THE canonical solution for live animation data in R3F.
+    // ═══════════════════════════════════════════════════════════════════════
+    const truth = useTruthStore.getState().truth
+    const fixtureState = truth.hardware.fixtures.find(
+      (f: any) => f.id === fixtureId
+    )
+
+    // If fixture not found in store, use prop values as fallback
+    const livePan = fixtureState?.physicalPan ?? fixtureState?.pan ?? fixture.physicalPan
+    const liveTilt = fixtureState?.physicalTilt ?? fixtureState?.tilt ?? fixture.physicalTilt
+    const liveIntensity = fixtureState?.dimmer ?? fixture.intensity
+
+    // 🔦 WAVE 2088.12: Live zoom from store (0-255 DMX) → normalized 0-1
+    // Zoom is sent as raw DMX 0-255 from TitanOrchestrator.
+    // 0 = beam (tight), 255 = wash (wide)
+    const rawZoom = fixtureState?.zoom ?? 127
+    const liveZoom = rawZoom / 255  // Normalize to 0-1
+
+    // Color from store (0-255 RGB) or fallback to prop
+    if (fixtureState?.color) {
+      liveColor.current.setRGB(
+        fixtureState.color.r / 255,
+        fixtureState.color.g / 255,
+        fixtureState.color.b / 255
+      )
+    } else {
+      liveColor.current.copy(fixture.color)
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🛡️ WAVE 2088.1: EXPONENTIAL SMOOTHING on normalized values
     //
     // physicalPan arrives from the store at ~60fps with micro-steps.
-    // Without smoothing, each micro-step renders as a hard angular jump
-    // (the "hydra" effect — multiple beams flashing in random directions).
-    //
-    // Solution: same pattern TacticalCanvas uses (SMOOTHING_FACTOR = 0.10).
     // Smooth the 0-1 value BEFORE converting to quaternion.
     // First frame: snap to current position (no animation from 0).
     // ═══════════════════════════════════════════════════════════════════════
     if (smoothPan.current === null) {
-      // First frame: initialize — no interpolation, just snap
-      smoothPan.current = physicalPan
-      smoothTilt.current = physicalTilt
+      smoothPan.current = livePan
+      smoothTilt.current = liveTilt
+      smoothZoom.current = liveZoom
     } else {
-      // Exponential smoothing: chase the target gradually
-      smoothPan.current += (physicalPan - smoothPan.current) * VISUAL_SMOOTH
-      smoothTilt.current! += (physicalTilt - smoothTilt.current!) * VISUAL_SMOOTH
+      smoothPan.current += (livePan - smoothPan.current) * VISUAL_SMOOTH
+      smoothTilt.current! += (liveTilt - smoothTilt.current!) * VISUAL_SMOOTH
+      smoothZoom.current! += (liveZoom - smoothZoom.current!) * ZOOM_SMOOTH
     }
 
     // Convert smoothed 0-1 to radians
+    // 🛡️ WAVE 2088.11: TILT_REST_ANGLE makes beam point ~45° forward at DMX center.
+    // Without this, tilt=0.5 → beam perpendicular to floor → pan sweeps are invisible.
     const panAngle = (smoothPan.current - 0.5) * PAN_RANGE
-    const tiltAngle = -(smoothTilt.current! - 0.5) * TILT_RANGE
-
+    const tiltAngle = -(smoothTilt.current! - 0.5) * TILT_RANGE + TILT_REST_ANGLE
     yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
     headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)
 
     if (yokeRef.current) yokeRef.current.quaternion.copy(yokeQuat.current)
     if (headRef.current) headRef.current.quaternion.copy(headQuat.current)
 
-    // Update lens
+    // Update lens color + intensity
     if (lensMaterialRef.current) {
-      lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.opacity = 0.7 + intensity * 0.3
+      lensMaterialRef.current.color.copy(liveColor.current)
+      lensMaterialRef.current.opacity = 0.7 + liveIntensity * 0.3
     }
-    
-    // Update beam
+
+    // Update beam color + intensity + ZOOM WIDTH
     if (beamMaterialRef.current && showBeam) {
-      beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.25
+      beamMaterialRef.current.color.copy(liveColor.current)
+      beamMaterialRef.current.opacity = liveIntensity * 0.25
+    }
+
+    // 🔦 WAVE 2088.12: DYNAMIC BEAM CONE WIDTH — Vibe-Aware
+    //
+    // Scale the beam cone mesh's X and Z to reflect zoom.
+    // The coneGeometry is built at radius=1.0 (base geometry).
+    // We scale it to the desired visual radius based on smoothed zoom.
+    //
+    // smoothZoom 0.0 (beam) → BEAM_RADIUS_MIN (0.03) → sable láser
+    // smoothZoom 1.0 (wash) → BEAM_RADIUS_MAX (0.45) → baño de luz
+    if (beamMeshRef.current) {
+      const targetRadius = BEAM_RADIUS_MIN + (smoothZoom.current ?? 0.5) * (BEAM_RADIUS_MAX - BEAM_RADIUS_MIN)
+      beamMeshRef.current.scale.x = targetRadius
+      beamMeshRef.current.scale.z = targetRadius
     }
   })
 
@@ -201,21 +311,24 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
             <circleGeometry args={[0.055, 32]} />
             <meshBasicMaterial
               ref={lensMaterialRef}
-              color={color}
+              color={fixture.color}
               transparent
               opacity={1.0}
             />
           </mesh>
 
-          {/* Beam */}
-          {showBeam && intensity > 0.01 && (
-            <mesh position={[0, -beamLength / 2 - 0.08, 0]}>
-              <coneGeometry args={[beamWidth, beamLength, 16, 1, true]} />
+          {/* Beam — 🔦 WAVE 2088.12: Dynamic cone width via scale.x/z
+              Base geometry radius=1.0, height=3.5. useFrame scales X/Z
+              to match zoom: tight laser (techno) → wide wash (chill).
+              Opacity controlled by useFrame based on dimmer. */}
+          {showBeam && (
+            <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]}>
+              <coneGeometry args={[1.0, 3.5, 16, 1, true]} />
               <meshBasicMaterial
                 ref={beamMaterialRef}
-                color={color}
+                color={fixture.color}
                 transparent
-                opacity={0.12}
+                opacity={0.0}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}

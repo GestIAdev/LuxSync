@@ -169,7 +169,7 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   // LATINO — fluido, sensual, cadera
   figure8: 16,      // 4 compases: el infinito tiene tiempo para respirar
   wave_y: 8,        // 2 compases: ola con peso, no espuma nerviosa
-  ballyhoo: 32,     // 8 compases: espiral épica, cierra cada 8 barras
+  ballyhoo: 16,     // 4 compases: espiral épica pero con cadencia latina (WAVE 2088.11: era 32, demasiado lento)
   
   // POP-ROCK — estadio, simetría, majestuosidad
   circle_big: 16,   // 4 compases: el rey necesita su corte completa
@@ -466,6 +466,25 @@ export class VibeMovementManager {
   private barCount: number = 0
   private lastBeatCount: number = 0
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
+  //
+  // THE ROOT CAUSE (2088.9 forensics):
+  //   Before: phase = (absoluteBeats % patternPeriod) / patternPeriod * 2π
+  //   Problem 1: patternPeriod varied with energy → phase JUMPED discontinuously
+  //   Problem 2: BPM fluctuated 70→184 frame-to-frame → chaotic phase velocity
+  //   Problem 3: beatCount modulo changing period = INSTANT position teleport
+  //
+  // THE FIX: Accumulate phase delta frame-by-frame using smoothed BPM.
+  //   phaseAccumulator += (smoothedBPM / 60) * dt / patternPeriod * 2π
+  //   Phase ONLY moves forward (or very slowly backward), NEVER teleports.
+  //   patternPeriod is FIXED per pattern (no energy modulation on period).
+  //   Energy modulates AMPLITUDE only (which is continuous, not discontinuous).
+  // ═══════════════════════════════════════════════════════════════════════
+  private phaseAccumulator: number = 0
+  private smoothedBPM: number = 120
+  private readonly BPM_SMOOTH_FACTOR = 0.05  // Very slow BPM tracking (20 frames to converge)
+  
   // Manual override system (WAVE 999 compatible)
   private manualSpeedOverride: number | null = null
   private manualAmplitudeOverride: number | null = null
@@ -574,11 +593,14 @@ export class VibeMovementManager {
     const now = Date.now()
     const isSameFrame = (now - this.lastUpdate) < 2  // <2ms = same render frame
     
+    // 🔥 WAVE 2088.10: Capture dt BEFORE updating lastUpdate
+    let frameDeltaTime = 0.016  // default 60fps
+    
     if (!isSameFrame) {
       // First call this frame: update all internal state
-      const deltaTime = (now - this.lastUpdate) / 1000
+      frameDeltaTime = Math.min((now - this.lastUpdate) / 1000, 0.1)  // Cap at 100ms
       this.lastUpdate = now
-      this.time += deltaTime
+      this.time += frameDeltaTime
       this.frameCount++
     }
     // Second call (R fixture): reuse same time/frameCount/barCount
@@ -610,42 +632,37 @@ export class VibeMovementManager {
     const safeBPM = this.getSafeBPM(audio.bpm)
     
     // ═══════════════════════════════════════════════════════════════════
-    // 🎭 WAVE 2086.4: ENERGY-TO-PERIOD — The Conductor's Tempo
+    // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
     //
-    // La energía NO solo afecta amplitud — también afecta VELOCIDAD.
-    // Un DJ bajando la energía = los movers se vuelven contemplativos.
-    // Un drop = los movers aceleran al doble.
+    // KILLED: ENERGY-TO-PERIOD modulation.
+    // WHY: Changing patternPeriod frame-by-frame caused DISCONTINUOUS phase
+    //      jumps. (absoluteBeats % changingPeriod) teleports the pattern.
+    //      Energy should modulate AMPLITUDE (continuous), not PERIOD (discontinuous).
     //
-    // energy < 0.3 → periodo × 2.0 (mitad de velocidad: meditativo)
-    // energy 0.3-0.8 → periodo × 1.0 (velocidad nominal)
-    // energy > 0.8 → periodo × 0.5 (doble velocidad: frenesí)
+    // KILLED: Direct beatCount-to-phase mapping.
+    // WHY: BPM fluctuating 70→184 made absoluteBeats advance erratically.
+    //      Modulo of erratic value = chaotic phase = convulsive movement.
+    //
+    // NEW: Smooth BPM → delta phase per frame → accumulate monotonically.
+    //      Phase advances like a FLYWHEEL — steady, never teleporting.
+    //      patternPeriod is FIXED per pattern (no energy modulation).
     // ═══════════════════════════════════════════════════════════════════
-    const energy = audio.energy
-    let periodMultiplier = 1.0
-    if (energy < 0.3) {
-      // Lerp suave de 2.0 (energy=0) a 1.0 (energy=0.3)
-      periodMultiplier = 2.0 - (energy / 0.3)
-    } else if (energy > 0.8) {
-      // Lerp suave de 1.0 (energy=0.8) a 0.5 (energy=1.0)
-      periodMultiplier = 1.0 - ((energy - 0.8) / 0.2) * 0.5
-    }
-    const patternPeriod = basePatternPeriod * periodMultiplier
+    const patternPeriod = basePatternPeriod  // FIXED — no energy modulation
     
-    let phase: number
-    const hasBeatData = beatCount > 0 || beatPhase > 0.01
-    
-    if (hasBeatData) {
-      // Pacemaker conectado - fase sincronizada con beats
-      const absoluteBeats = beatCount + beatPhase
-      const patternPhase = (absoluteBeats % patternPeriod) / patternPeriod
-      phase = patternPhase * Math.PI * 2
-    } else {
-      // Fallback - fase basada en tiempo
-      const beatsPerSecond = safeBPM / 60
-      const elapsedBeats = this.time * beatsPerSecond
-      const patternPhase = (elapsedBeats % patternPeriod) / patternPeriod
-      phase = patternPhase * Math.PI * 2
+    // Smooth BPM with heavy low-pass filter (only on first call per frame)
+    if (!isSameFrame) {
+      this.smoothedBPM += (safeBPM - this.smoothedBPM) * this.BPM_SMOOTH_FACTOR
     }
+    
+    // Accumulate phase delta using smoothed BPM and frame dt
+    if (!isSameFrame) {
+      const beatsPerSecond = this.smoothedBPM / 60
+      const phasePerBeat = (2 * Math.PI) / patternPeriod  // radians per beat
+      const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat
+      this.phaseAccumulator += phaseDelta
+    }
+    
+    const phase = this.phaseAccumulator
     
     // PATTERN EXECUTION
     const patternFn = PATTERNS[patternName as GoldenPattern]
@@ -657,9 +674,10 @@ export class VibeMovementManager {
     const rawPosition = patternFn(phase, audio, fixtureIndex, totalFixtures)
     
     // THE GEARBOX - Dynamic Amplitude Scaling
+    // 🔥 WAVE 2088.10: Use smoothedBPM for stable gearbox calculations
     const effectiveAmplitude = this.calculateEffectiveAmplitude(
       config.amplitudeScale,
-      safeBPM,
+      this.smoothedBPM,
       patternPeriod,
       audio.energy,
       fixtureMaxSpeed
@@ -801,7 +819,8 @@ export class VibeMovementManager {
       const manualTag = this.hasAnyOverride() ? ' [MANUAL]' : ''
       const transitionTag = this.isTransitioning ? ' [LERP]' : ''
       const stereoTag = stereoConfig.type !== 'sync' ? ` [${stereoConfig.type.toUpperCase()} F${fixtureIndex}/${totalFixtures}]` : ''
-      console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag}${stereoTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg}`)
+      const phaseDeg = Math.round((this.phaseAccumulator % (2 * Math.PI)) * 180 / Math.PI)
+      console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag}${stereoTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`)
     }
     
     // Determinar phaseType
@@ -945,6 +964,8 @@ export class VibeMovementManager {
     this.lastUpdate = Date.now()
     this.barCount = 0
     this.lastBeatCount = 0
+    this.phaseAccumulator = 0
+    this.smoothedBPM = 120
     // WAVE 1155.1: Reset transition state
     this.lastPattern = null
     this.lastPosition = { x: 0, y: 0 }

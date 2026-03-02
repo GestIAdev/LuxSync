@@ -1450,15 +1450,6 @@ export class TitanOrchestrator {
         timestamp: Date.now()
       }
       
-      // 🧹 WAVE 671.5: Silenced BROADCAST debug spam (every 2s)
-      // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
-      // 🩸 WAVE 380: Updated to show REAL fixture IDs
-      // if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
-      //   const f0 = truth.hardware.fixtures[0]
-      //   const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ')
-      //   console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`)
-      //   console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`)
-      // }
       
       this.onBroadcast(truth)
       

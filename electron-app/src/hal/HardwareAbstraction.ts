@@ -996,17 +996,6 @@ export class HardwareAbstraction {
     
     this.lastFixtureStates = statesWithPhysics
     
-    // Debug logging (every ~1 second)
-    if (this.framesRendered % 30 === 0) {
-      const movers = statesWithPhysics.filter(s => s.zone.includes('MOVING'))
-      if (movers.length > 0) {
-        const m = movers[0]
-        const panDeg = Math.round(((m.pan / 255) - 0.5) * 540)
-        const tiltDeg = Math.round(((m.tilt / 255) - 0.5) * 270)
-        console.log(`[🎭 HAL ARBITER] ${this.currentVibeId} | Pan:${panDeg}° Tilt:${tiltDeg}° | Blackout:${target.globalEffects.blackoutActive}`)
-      }
-    }
-    
     return statesWithPhysics
   }
   

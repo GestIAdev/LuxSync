@@ -51,11 +51,17 @@ export interface Fixture3DData {
   /** Color THREE.Color-ready */
   color: THREE.Color
   
-  /** Pan normalizado (0-1 → -180° a +180°) */
+  /** Pan normalizado (0-1 → -180° a +180°) — TARGET position */
   pan: number
   
-  /** Tilt normalizado (0-1 → -90° a +90°) */
+  /** Tilt normalizado (0-1 → -90° a +90°) — TARGET position */
   tilt: number
+  
+  /** Physical Pan (0-1) — ACTUAL interpolated position from FixturePhysicsDriver */
+  physicalPan: number
+  
+  /** Physical Tilt (0-1) — ACTUAL interpolated position from FixturePhysicsDriver */
+  physicalTilt: number
   
   /** Zoom normalizado (0-1, 0=spot, 1=wash) */
   zoom: number

@@ -189,6 +189,20 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           ? override.values.tilt / 255    // Override: convert 0-255 → 0-1
           : (fixtureState?.tilt ?? 0.5)   // FixtureState: already 0-1
           
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 2088: PHYSICAL POSITION — The Real Deal
+        // pan/tilt = TARGET (where the motor wants to go)
+        // physicalPan/physicalTilt = ACTUAL (interpolated by FixturePhysicsDriver)
+        // The 3D render must use physicalPan for smooth, realistic movement.
+        // Override bypasses physics — use target directly.
+        // ═══════════════════════════════════════════════════════════════════
+        const physicalPan = override?.values?.pan !== undefined
+          ? override.values.pan / 255
+          : (fixtureState?.physicalPan ?? fixtureState?.pan ?? 0.5)
+        const physicalTilt = override?.values?.tilt !== undefined
+          ? override.values.tilt / 255
+          : (fixtureState?.physicalTilt ?? fixtureState?.tilt ?? 0.5)
+          
         // Zoom/Focus: fixtureState is 0-1 normalized
         const zoom = fixtureState?.zoom ?? 0.5
         const focus = fixtureState?.focus ?? 0.5
@@ -208,6 +222,8 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           color,
           pan,
           tilt,
+          physicalPan,
+          physicalTilt,
           zoom,
           focus,
           selected: selectedIds.has(fixture.id),

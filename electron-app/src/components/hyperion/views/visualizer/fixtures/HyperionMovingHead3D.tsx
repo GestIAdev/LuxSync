@@ -1,11 +1,21 @@
 /**
- * ☀️ HYPERION — HyperionMovingHead3D v2
+ * ☀️ HYPERION — HyperionMovingHead3D v3
  * 
- * CLEAN REWRITE - No más parches sobre parches
- * Moving head con SLERP suave y materiales simples que FUNCIONAN.
+ * WAVE 2088: Physics-Aligned Render
+ * 
+ * BEFORE (v2): Used raw `pan` (TARGET) + SLERP interpolation in the render.
+ * This caused DOUBLE interpolation (physics + SLERP) and erratic movement
+ * because the SLERP was chasing a target that jumped every frame.
+ * 
+ * NOW (v3): Uses `physicalPan` (ACTUAL position from FixturePhysicsDriver).
+ * The physics engine already handles smooth interpolation with speed limits.
+ * The render just FOLLOWS — no extra smoothing, no double interpolation.
+ * 
+ * This aligns the 3D view with the 2D views (TacticalView, Cinema) which
+ * already use physicalPan correctly and look smooth.
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionMovingHead3D
- * @since WAVE 2042.15 (Clean Rewrite)
+ * @since WAVE 2042.15 (Clean Rewrite), WAVE 2088 (Physics Alignment)
  */
 
 import React, { useRef } from 'react'
@@ -17,14 +27,15 @@ import type { Fixture3DData } from '../types'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Pan range: 0-1 → -180° to +180° (full 360° sweep) */
+const PAN_RANGE = Math.PI * 2
+/** Tilt range: 0-1 → -90° to +90° (full 180° arc) */
+const TILT_RANGE = Math.PI
+const NEON_CYAN = '#00F0FF'
+
+// Quaternion axes (allocated once, shared across instances)
 const PAN_AXIS = new THREE.Vector3(0, 1, 0)
 const TILT_AXIS = new THREE.Vector3(1, 0, 0)
-const PAN_RANGE = Math.PI * 2
-const TILT_RANGE = Math.PI
-const SLERP_SPEED = 2.0
-const MAX_DELTA = 1 / 30
-const MIN_DELTA = 1 / 144
-const NEON_CYAN = '#00F0FF'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -53,42 +64,49 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
 
-  // Quaternions for smooth rotation
-  const targetYokeQuat = useRef(new THREE.Quaternion())
-  const currentYokeQuat = useRef(new THREE.Quaternion())
-  const targetHeadQuat = useRef(new THREE.Quaternion())
-  const currentHeadQuat = useRef(new THREE.Quaternion())
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2088: Quaternions set DIRECTLY from physicalPan/physicalTilt.
+  // No SLERP — the FixturePhysicsDriver already interpolated the position.
+  // ═══════════════════════════════════════════════════════════════════════
+  const yokeQuat = useRef(new THREE.Quaternion())
+  const headQuat = useRef(new THREE.Quaternion())
 
-  const { id, intensity, color, pan, tilt, zoom, selected, hasOverride } = fixture
+  const { id, intensity, color, physicalPan, physicalTilt, zoom, selected, hasOverride } = fixture
   
-  const targetPanAngle = (pan - 0.5) * PAN_RANGE
-  const targetTiltAngle = -(tilt - 0.5) * TILT_RANGE
+  // Convert normalized 0-1 to radians
+  const panAngle = (physicalPan - 0.5) * PAN_RANGE
+  const tiltAngle = -(physicalTilt - 0.5) * TILT_RANGE
+
   // 🎨 WAVE 2042.15.3: ULTRA TIGHT beam for MovingHeads (precision spot)
   const beamWidth = 0.04 + zoom * 0.02
   const beamLength = 3 + intensity * 2
 
   // ── Animation ─────────────────────────────────────────────────────────────
-  useFrame((_, delta) => {
-    const dt = Math.max(MIN_DELTA, Math.min(delta, MAX_DELTA))
+  useFrame(() => {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 2088: DIRECT QUATERNION — No SLERP
+    //
+    // BEFORE: targetQuat.setFromAxisAngle(...) → currentQuat.slerp(target, t)
+    //   Problem: DOUBLE interpolation. Physics already smoothed the position.
+    //   The SLERP was chasing a smoothed-target that ALSO moved smoothly,
+    //   creating lag + overshoot + erratic "jenízaro" movement.
+    //
+    // NOW: physicalPan IS the smooth position. Set quaternion directly.
+    //   Result: 3D render matches 2D render perfectly. Physics owns smoothing.
+    // ═══════════════════════════════════════════════════════════════════════
+    yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
+    headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)
 
-    // SLERP rotation
-    targetYokeQuat.current.setFromAxisAngle(PAN_AXIS, targetPanAngle)
-    targetHeadQuat.current.setFromAxisAngle(TILT_AXIS, targetTiltAngle)
-    
-    const t = 1 - Math.exp(-SLERP_SPEED * dt)
-    currentYokeQuat.current.slerp(targetYokeQuat.current, t)
-    currentHeadQuat.current.slerp(targetHeadQuat.current, t)
+    if (yokeRef.current) yokeRef.current.quaternion.copy(yokeQuat.current)
+    if (headRef.current) headRef.current.quaternion.copy(headQuat.current)
 
-    if (yokeRef.current) yokeRef.current.quaternion.copy(currentYokeQuat.current)
-    if (headRef.current) headRef.current.quaternion.copy(currentHeadQuat.current)
-
-    // Update lens - MORE BRIGHTNESS
+    // Update lens
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
       lensMaterialRef.current.opacity = 0.7 + intensity * 0.3
     }
     
-    // Update beam - MORE OPACITY
+    // Update beam
     if (beamMaterialRef.current && showBeam) {
       beamMaterialRef.current.color.copy(color)
       beamMaterialRef.current.opacity = intensity * 0.25

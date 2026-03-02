@@ -475,36 +475,31 @@ export class TitanOrchestrator {
       this.beatDetector.process(audioForBeat)
       beatState = this.beatDetector.getState()
       
-      // 💀 WAVE 1159: Log comparison - BETA vs PACEMAKER
-      // Log every ~2 seconds to show which BPM wins
+      // � WAVE 2090.2: THE PACEMAKER MONOPOLY — sole BPM source
+      // Log every ~2 seconds to show Pacemaker state
       if (this.frameCount % 60 === 0) {
-        const betaBpm = context.bpm || 120
         const pacemakerBpm = beatState.bpm
-        const winner = betaBpm !== 120 ? 'BETA' : 'PACEMAKER'
-        console.log(`[TitanOrchestrator] ❤️ BPM: ${winner}=${winner === 'BETA' ? betaBpm : pacemakerBpm} | BETA=${betaBpm} PACEMAKER=${pacemakerBpm.toFixed(0)} | beat #${beatState.beatCount}`)
+        console.log(`[TitanOrchestrator] ❤️ PACEMAKER BPM=${pacemakerBpm.toFixed(0)} conf=${beatState.confidence.toFixed(2)} | beat #${beatState.beatCount}`)
       }
     }
     
     // For TitanEngine
     // 🎛️ WAVE 661: Incluir textura espectral
     // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
-    // ❤️ WAVE 1153: beatPhase/isBeat/beatCount NOW FROM REAL PACEMAKER
-    // 💀 WAVE 1159: THE FERRARI TAKES THE WHEEL
-    // El PACEMAKER está roto (detecta 64 BPM cuando BETA dice 170+ BPM).
-    // BETA funciona perfectamente → usamos context.bpm de BETA como fuente de verdad.
-    // PACEMAKER solo aporta: beatPhase, onBeat, beatCount (ritmo local)
+    // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
+    // � WAVE 2090.2: THE PACEMAKER MONOPOLY — ALL BPM fields from Pacemaker
+    // Worker no longer computes BPM. Pacemaker is the single source of truth.
     const engineAudioMetrics = {
       bass,  // Ya normalizado por AGC - INTOCABLE
       mid,   // Ya normalizado por AGC - INTOCABLE
       high,  // Ya normalizado por AGC - INTOCABLE
       energy, // Ya normalizado por AGC - INTOCABLE
-      // ❤️ WAVE 1153 + 💀 WAVE 1159: 
-      // - beatPhase/isBeat/beatCount: del PACEMAKER (ritmo local)
-      // - BPM: de BETA/context (el Ferrari que SÍ funciona)
+      // ❤️ WAVE 1153 + � WAVE 2090.2: 
+      // ALL beat/BPM fields from PACEMAKER (sole authority)
       beatPhase: beatState.phase,
       isBeat: beatState.onBeat,
       beatCount: beatState.beatCount,  // 🔥 THE MISSING PIECE! VMM needs this!
-      bpm: context.bpm || beatState.bpm,  // 💀 WAVE 1159: BETA primero, Pacemaker fallback
+      bpm: beatState.bpm,  // � WAVE 2090.2: PACEMAKER MONOPOLY — sole BPM source
       beatConfidence: beatState.confidence,
       // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
       harshness: this.smoothedMetrics.harshness,

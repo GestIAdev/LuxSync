@@ -110,10 +110,19 @@ export interface AudioAnalysis {
   agcGainFactor?: number;
   
   // Beat Detection
+  // 🔪 WAVE 2090.2: THE PACEMAKER MONOPOLY
+  // These fields are VESTIGIAL — the Worker no longer computes BPM.
+  // BPM is computed exclusively by BeatDetector v2.0 "Pacemaker" in TitanOrchestrator.
+  // Worker sends 0/false for these fields; consumers MUST NOT rely on them for BPM.
+  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker BPM instead. */
   bpm: number;
+  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker confidence instead. */
   bpmConfidence: number;      // 0-1
+  /** @deprecated WAVE 2090.2: Reflects kickDetected (transient onset), NOT BPM-based beat. */
   onBeat: boolean;
+  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker phase instead. */
   beatPhase: number;          // 0-1 (position in beat cycle)
+  /** @deprecated WAVE 2090.2: Reflects kickDetected strength, NOT BPM-based beat strength. */
   beatStrength: number;       // 0-1
   
   // Rhythm

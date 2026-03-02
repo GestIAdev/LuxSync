@@ -1,20 +1,18 @@
 /**
- * ☀️ HYPERION — HyperionMovingHead3D v3.1
+ * ☀️ HYPERION — HyperionMovingHead3D v3.2
  * 
- * WAVE 2088.1: Physics-Aligned Render + Visual Smoothing
+ * WAVE 2088.2: Physics-Aligned Render + Visual Smoothing + Sane Angular Range
  * 
- * v2 (old): Used raw `pan` (TARGET) + SLERP = double interpolation, erratic.
- * v3 (broken): Used `physicalPan` DIRECT, no smoothing = hydra effect.
- *              The store updates at 60fps with micro-jumps; without visual
- *              smoothing, each micro-jump renders as a hard angular snap.
- * 
- * v3.1 (current): Uses `physicalPan` (correct source) + exponential smoothing
- *   on the normalized 0-1 values BEFORE converting to quaternion. Same exact
- *   pattern used by TacticalCanvas (0.10) and useFixtureRender (0.30).
- *   This is NOT physics — it's cosmetic jitter-hiding ("la mentira piadosa").
+ * v2 (old):     Raw `pan` + SLERP = double interpolation, erratic.
+ * v3 (broken):  physicalPan DIRECT, no smoothing = hydra effect.
+ * v3.1:         physicalPan + exponential smoothing = no more hydra BUT
+ *               PAN_RANGE=2π (±180°) and TILT_RANGE=π (±90°) = epileptic
+ *               because 2D views use only ±81°. Same data, 2.2x more rotation.
+ * v3.2 (this):  Sane angular ranges aligned with real fixtures:
+ *               PAN ±135° (270° total), TILT ±67.5° (135° total).
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionMovingHead3D
- * @since WAVE 2042.15, WAVE 2088 (Physics Alignment), WAVE 2088.1 (Visual Smooth)
+ * @since WAVE 2042.15, WAVE 2088-2088.2
  */
 
 import React, { useRef } from 'react'
@@ -26,10 +24,24 @@ import type { Fixture3DData } from '../types'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Pan range: 0-1 → -180° to +180° (full 360° sweep) */
-const PAN_RANGE = Math.PI * 2
-/** Tilt range: 0-1 → -90° to +90° (full 180° arc) */
-const TILT_RANGE = Math.PI
+/**
+ * 🛡️ WAVE 2088.2: ANGULAR RANGE — Aligned with real fixtures & 2D views
+ * 
+ * BEFORE: PAN_RANGE = 2π (±180°), TILT_RANGE = π (±90°)
+ *   → A physicalPan sweep from 0→1 rotated 360° in 3D — INSANE.
+ *   → TacticalCanvas and Cinema only use ±81° (Math.PI * 0.45).
+ *   → Same data looked 2.2x more aggressive in 3D vs 2D.
+ * 
+ * NOW: Matched to professional moving head specs:
+ *   Pan:  ±135° (270° total) — Standard for Clay Paky, Robe, etc.
+ *   Tilt: ±67.5° (135° total) — Typical tilt arc for yoke fixtures.
+ * 
+ * These are visual/cosmetic — they don't affect DMX output.
+ * The 2D views use ±81° because that's appropriate for a top-down view.
+ * The 3D uses wider range because you SEE the full mechanical rotation.
+ */
+const PAN_RANGE = Math.PI * 1.5    // ±135° (270° total sweep)
+const TILT_RANGE = Math.PI * 0.75  // ±67.5° (135° total arc)
 const NEON_CYAN = '#00F0FF'
 
 /**

@@ -93,6 +93,19 @@ function isDarkColor(color: HSLColor): boolean {
   return color.l < 0.5
 }
 
+/**
+ * Clamp HSL to visually safe ranges — prevents black/white flashes during silence.
+ * Only for UI display; does NOT mutate the source-of-truth palette.
+ * s ≥ 0.2 (always some chroma), l ∈ [0.15, 0.85] (never pure black/white)
+ */
+function getSafeColor(color: HSLColor): HSLColor {
+  return {
+    h: color.h,
+    s: Math.max(0.2, color.s),
+    l: Math.max(0.15, Math.min(0.85, color.l)),
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,12 +117,15 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
   const strategyKey = palette.strategy || 'analogous'
   const strategyData = STRATEGY_INFO[strategyKey] || STRATEGY_INFO['analogous']
   
-  // Primary color details
-  const primaryHue = Math.round(palette.primary.h * 360)
-  const primarySat = Math.round(palette.primary.s * 100)
-  const primaryLight = Math.round(palette.primary.l * 100)
-  const primaryHex = useMemo(() => hslToHex(palette.primary), [palette.primary])
-  const temperature = useMemo(() => hueToTemperature(palette.primary.h), [palette.primary.h])
+  // UI-safe palette — clamped to prevent black/white flashes during silence
+  const safePrimary = useMemo(() => getSafeColor(palette.primary), [palette.primary])
+  
+  // Primary color details (display uses safe values)
+  const primaryHue = Math.round(safePrimary.h * 360)
+  const primarySat = Math.round(safePrimary.s * 100)
+  const primaryLight = Math.round(safePrimary.l * 100)
+  const primaryHex = useMemo(() => hslToHex(safePrimary), [safePrimary])
+  const temperature = useMemo(() => hueToTemperature(safePrimary.h), [safePrimary.h])
   
   // Wheel rotation for indicator
   const wheelRotation = primaryHue
@@ -119,7 +135,7 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
       {/* Header */}
       <div className="titan-card__header">
         <div className="titan-card__title">
-          <PaletteChromaticIcon size={18} color={hslToCSS(palette.primary)} />
+          <PaletteChromaticIcon size={18} color={hslToCSS(safePrimary)} />
           <span>CHROMATIC CORE</span>
         </div>
         <div className="chromatic-core-complete__strategy-badge">
@@ -141,16 +157,16 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
           >
             <div 
               className="chromatic-core-complete__wheel-dot"
-              style={{ backgroundColor: hslToCSS(palette.primary) }}
+              style={{ backgroundColor: hslToCSS(safePrimary) }}
             />
           </div>
           
           {/* Center display */}
           <div 
             className="chromatic-core-complete__wheel-center"
-            style={{ backgroundColor: hslToCSS(palette.primary) }}
+            style={{ backgroundColor: hslToCSS(safePrimary) }}
           >
-            <span className={`chromatic-core-complete__wheel-hex ${isDarkColor(palette.primary) ? 'chromatic-core-complete__wheel-hex--light' : ''}`}>
+            <span className={`chromatic-core-complete__wheel-hex ${isDarkColor(safePrimary) ? 'chromatic-core-complete__wheel-hex--light' : ''}`}>
               {primaryHex}
             </span>
           </div>
@@ -206,17 +222,17 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
       {/* Palette Grid */}
       <div className="chromatic-core-complete__palette">
         {PALETTE_ROLES.map((role) => {
-          const color = palette[role.key]
-          const cssColor = hslToCSS(color)
-          const h = Math.round(color.h * 360)
-          const isDark = isDarkColor(color)
+          const safeColor = getSafeColor(palette[role.key])
+          const cssColor = hslToCSS(safeColor)
+          const h = Math.round(safeColor.h * 360)
+          const isDark = isDarkColor(safeColor)
           
           return (
             <div 
               key={role.key}
               className="chromatic-core-complete__swatch"
               style={{ backgroundColor: cssColor }}
-              title={`${role.label}: H${h}° S${Math.round(color.s * 100)}% L${Math.round(color.l * 100)}%`}
+              title={`${role.label}: H${h}° S${Math.round(safeColor.s * 100)}% L${Math.round(safeColor.l * 100)}%`}
             >
               <span className={`chromatic-core-complete__swatch-label ${isDark ? 'chromatic-core-complete__swatch-label--light' : ''}`}>
                 {role.shortLabel}

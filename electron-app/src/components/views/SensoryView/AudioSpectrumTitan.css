@@ -122,12 +122,14 @@
   align-items: flex-end;
 }
 
-/* Individual Bar */
+/* Individual Bar — static glow replaces per-frame dynamic boxShadow (GPU saver) */
 .audio-spectrum-titan__bar {
   width: 100%;
   min-height: 2px;
   border-radius: 2px 2px 0 0;
   transition: height 0.05s ease-out;
+  filter: brightness(1.1) drop-shadow(0 0 4px currentColor);
+  will-change: height;
 }
 
 /* Peak Indicator */

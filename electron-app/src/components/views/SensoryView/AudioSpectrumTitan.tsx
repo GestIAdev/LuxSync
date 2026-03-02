@@ -10,7 +10,7 @@
  * - Energy distribution pie
  */
 
-import React, { memo, useMemo, useRef, useEffect, useState } from 'react'
+import React, { memo, useMemo, useRef } from 'react'
 import { useTruthAudio, useTruthBeat } from '../../../hooks/useSeleneTruth'
 import { SpectrumBarsIcon, LiveDotIcon } from '../../icons/LuxIcons'
 import './AudioSpectrumTitan.css'
@@ -107,38 +107,35 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
   const audio = useTruthAudio()
   const beat = useTruthBeat()
   
-  // Peak hold state
+  // Peak hold — refs only, no state (avoids double-render per audio frame)
   const peakHoldRef = useRef<number[]>(new Array(BAND_COUNT).fill(0))
   const peakHoldCounterRef = useRef<number[]>(new Array(BAND_COUNT).fill(0))
-  const [peaks, setPeaks] = useState<number[]>(new Array(BAND_COUNT).fill(0))
   
-  // Interpolate to 32 bands
-  const bands = useMemo(() => 
-    interpolateTo32Bands(audio.bass, audio.mid, audio.high),
-    [audio.bass, audio.mid, audio.high]
-  )
-  
-  // Update peak hold
-  useEffect(() => {
-    const newPeaks = [...peakHoldRef.current]
+  // Interpolate to 32 bands AND compute peaks in a single memo pass
+  const { bands, peaks } = useMemo(() => {
+    const interpolated = interpolateTo32Bands(audio.bass, audio.mid, audio.high)
     
-    bands.forEach((value, i) => {
-      if (value > newPeaks[i]) {
-        // New peak
-        newPeaks[i] = value
-        peakHoldCounterRef.current[i] = PEAK_HOLD_FRAMES
-      } else if (peakHoldCounterRef.current[i] > 0) {
-        // Holding peak
-        peakHoldCounterRef.current[i]--
+    // Peak hold update — mutating refs inside useMemo is safe here because
+    // the computation is idempotent per unique input triple and refs are 
+    // frame-persistent scratch space, not React state.
+    const currentPeaks = peakHoldRef.current
+    const counters = peakHoldCounterRef.current
+    
+    for (let i = 0; i < BAND_COUNT; i++) {
+      const value = interpolated[i]
+      if (value > currentPeaks[i]) {
+        currentPeaks[i] = value
+        counters[i] = PEAK_HOLD_FRAMES
+      } else if (counters[i] > 0) {
+        counters[i]--
       } else {
-        // Decay peak
-        newPeaks[i] = Math.max(0, newPeaks[i] - PEAK_DECAY_RATE)
+        currentPeaks[i] = Math.max(0, currentPeaks[i] - PEAK_DECAY_RATE)
       }
-    })
+    }
     
-    peakHoldRef.current = newPeaks
-    setPeaks(newPeaks)
-  }, [bands])
+    // Snapshot peaks for this render (slice to avoid aliasing the ref array)
+    return { bands: interpolated, peaks: currentPeaks.slice() }
+  }, [audio.bass, audio.mid, audio.high])
   
   // Calculate spectral flux (how much the spectrum is changing)
   const spectralFlux = useMemo(() => {
@@ -217,7 +214,6 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
                 style={{ 
                   height: `${value * 100}%`,
                   backgroundColor: getBandColor(i),
-                  boxShadow: `0 0 ${10 + value * 10}px ${getBandColor(i)}40`,
                 }}
               />
             </div>

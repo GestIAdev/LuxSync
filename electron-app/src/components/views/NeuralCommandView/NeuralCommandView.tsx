@@ -33,12 +33,14 @@ import './NeuralCommandView.css'
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${mins}m`
+function formatUptime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${totalSeconds % 60}s`
+  return `${totalSeconds}s`
 }
 
 function getModeColor(mode: string): string {

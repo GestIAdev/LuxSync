@@ -431,7 +431,7 @@ export default function TacticalHub() {
         .hub-panel {
           position: fixed;
           top: 38px;
-          right: 150px;
+          left: 8px;
           width: 400px;
           max-height: 560px;
           background: rgba(8, 8, 14, 0.96);

@@ -73,7 +73,8 @@ interface VibeConfig {
   homeOnSilence: boolean
 }
 
-// THE GOLDEN DOZEN - Los unicos 12 patrones que existen
+// THE GOLDEN DOZEN + THE FOUR NOBLES
+// WAVE 2086.5: Vocabulario extendido — 4 nuevos patrones profesionales
 
 type GoldenPattern = 
   // TECHNO (4 patterns - Industrial/Sharp)
@@ -93,6 +94,13 @@ type GoldenPattern =
   | 'drift'       // Movimiento browniano lento
   | 'sway'        // Pendulo suave (solo X)
   | 'breath'      // Solo Tilt sutil (la luz respira)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎭 WAVE 2086.5: THE FOUR NOBLES — Vocabulario expandido profesional
+  // ═══════════════════════════════════════════════════════════════════════
+  | 'slow_pan'        // Barrido horizontal lineal ultraLento (32 beats)
+  | 'tilt_nod'        // Inclinación vertical suave (cabeceo "sí")
+  | 'figure_of_4'     // Figure8 contenido (amplitude 0.5 fija, centro)
+  | 'chase_position'  // Snap cuantizado cada 4 beats (hold between)
 
 // VIBE CONFIGURATIONS
 
@@ -172,6 +180,12 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   drift: 32,        // 8 compases: browniano con tiempo geológico
   sway: 16,         // 4 compases: péndulo meditativo
   breath: 16,       // 4 compases: la luz inhala... exhala...
+  
+  // 🎭 WAVE 2086.5: THE FOUR NOBLES
+  slow_pan: 32,         // 8 compases: el faro del fondo del escenario
+  tilt_nod: 16,         // 4 compases: cabeceo meditativo
+  figure_of_4: 16,      // 4 compases: figure8 contenido en el centro
+  chase_position: 16,   // 4 compases: 4 posiciones × 4 beats = 16 beats
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -346,6 +360,57 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
       y: Math.sin(phase) * 0.35,
     }
   },
+
+  // ═══════════════════════════════════════════════════
+  // 🎭 WAVE 2086.5: THE FOUR NOBLES
+  // ═══════════════════════════════════════════════════
+
+  // SLOW_PAN: El faro del fondo — barrido horizontal puro, 32 beats
+  slow_pan: (phase, _audio) => {
+    // Sin(phase) puro: el moving head barre 180° en 8 compases
+    // Sin componente Y — movimiento hipnótico lateral
+    return {
+      x: Math.sin(phase),
+      y: 0,
+    }
+  },
+
+  // TILT_NOD: Cabeceo meditativo — solo vertical, 16 beats
+  tilt_nod: (phase, _audio) => {
+    // Amplitud 0.6 para no ser agresivo — es un asentimiento, no un headbang
+    return {
+      x: 0,
+      y: Math.sin(phase) * 0.6,
+    }
+  },
+
+  // FIGURE_OF_4: Figure8 contenido — mismo espíritu, menos territorio
+  figure_of_4: (phase, _audio) => {
+    // x = sin(phase) * 0.5: la mitad del recorrido horizontal
+    // y = sin(2*phase) * 0.3: doble frecuencia vertical, amplitud contenida
+    // El resultado es un 8 compacto que ocupa el centro del escenario
+    return {
+      x: Math.sin(phase) * 0.5,
+      y: Math.sin(2 * phase) * 0.3,
+    }
+  },
+
+  // CHASE_POSITION: Snap cuantizado — 4 posiciones fijas, 4 beats cada una
+  chase_position: (phase, _audio) => {
+    // 4 posiciones discretas en el ciclo de 16 beats
+    // phase va de 0 a 2π → dividimos en 4 cuadrantes
+    const step = Math.floor((phase / (2 * Math.PI)) * 4) % 4
+
+    // Posiciones cardinales: izquierda, arriba, derecha, abajo
+    const positions: Array<{ x: number; y: number }> = [
+      { x: -0.7, y: 0 },     // Izquierda
+      { x: 0, y: 0.7 },      // Arriba
+      { x: 0.7, y: 0 },      // Derecha
+      { x: 0, y: -0.7 },     // Abajo
+    ]
+
+    return positions[step]
+  },
 }
 
 // VIBE MOVEMENT MANAGER - THE CHOREOGRAPHER
@@ -497,8 +562,30 @@ export class VibeMovementManager {
     }
     
     // PHASE CALCULATION - Beat-Locked (WAVE 1153 compatible)
-    const patternPeriod = PATTERN_PERIOD[patternName as GoldenPattern] || 4
+    const basePatternPeriod = PATTERN_PERIOD[patternName as GoldenPattern] || 4
     const safeBPM = this.getSafeBPM(audio.bpm)
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎭 WAVE 2086.4: ENERGY-TO-PERIOD — The Conductor's Tempo
+    //
+    // La energía NO solo afecta amplitud — también afecta VELOCIDAD.
+    // Un DJ bajando la energía = los movers se vuelven contemplativos.
+    // Un drop = los movers aceleran al doble.
+    //
+    // energy < 0.3 → periodo × 2.0 (mitad de velocidad: meditativo)
+    // energy 0.3-0.8 → periodo × 1.0 (velocidad nominal)
+    // energy > 0.8 → periodo × 0.5 (doble velocidad: frenesí)
+    // ═══════════════════════════════════════════════════════════════════
+    const energy = audio.energy
+    let periodMultiplier = 1.0
+    if (energy < 0.3) {
+      // Lerp suave de 2.0 (energy=0) a 1.0 (energy=0.3)
+      periodMultiplier = 2.0 - (energy / 0.3)
+    } else if (energy > 0.8) {
+      // Lerp suave de 1.0 (energy=0.8) a 0.5 (energy=1.0)
+      periodMultiplier = 1.0 - ((energy - 0.8) / 0.2) * 0.5
+    }
+    const patternPeriod = basePatternPeriod * periodMultiplier
     
     let phase: number
     const hasBeatData = beatCount > 0 || beatPhase > 0.01
@@ -534,10 +621,34 @@ export class VibeMovementManager {
       fixtureMaxSpeed
     )
     
-    // Aplicar amplitud
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎭 WAVE 2086.3: PHRASE ENVELOPE — The Breathing Amplifier
+    //
+    // Sin esto, cada compás tiene la misma amplitud = monotonía mecánica.
+    // Con el envelope, la frase de 32 beats (8 compases) RESPIRA:
+    //
+    //   Beat 0-7   (compás 1-2):  0.60 → 0.75  — arranque contenido
+    //   Beat 8-19  (compás 3-5):  0.75 → 1.00  — expansión progresiva
+    //   Beat 20-23 (compás 6):    1.00          — CLÍMAX: apertura máxima
+    //   Beat 24-31 (compás 7-8):  1.00 → 0.60  — relajación elegante
+    //
+    // Curva suave basada en coseno — sin discontinuidades.
+    // ═══════════════════════════════════════════════════════════════════
+    const phraseBeats = 32
+    const phraseProgress = (beatCount % phraseBeats) / phraseBeats  // 0.0 → 1.0
+    
+    // Coseno desplazado: arranca en 0.6, pico en 1.0 a ~62% de la frase, relaja a 0.6
+    // f(t) = 0.8 + 0.2 * sin(π * (t - 0.15)) → pico natural en t≈0.65
+    const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
+    // Clamp final: el envelope escala entre 0.6 y 1.0
+    const clampedEnvelope = Math.max(0.6, Math.min(1.0, phraseEnvelope))
+    
+    const finalAmplitude = effectiveAmplitude * clampedEnvelope
+    
+    // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
     const position = {
-      x: Math.max(-1, Math.min(1, rawPosition.x * effectiveAmplitude)),
-      y: Math.max(-1, Math.min(1, rawPosition.y * effectiveAmplitude)),
+      x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
+      y: Math.max(-1, Math.min(1, rawPosition.y * finalAmplitude)),
     }
     
     // WAVE 1155.1: SMOOTH TRANSITION SYSTEM

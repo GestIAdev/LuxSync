@@ -228,15 +228,15 @@ export default function TacticalHub() {
 
   return (
     <>
-      {/* ── HUB PILL BUTTON ── */}
+      {/* ── HUB PILL BUTTON — uses .tb-pill base from TitleBar.css ── */}
       <button
         ref={btnRef}
-        className={`hub-pill ${isOpen ? 'active' : ''}`}
+        className={`tb-pill tb-pill--hub ${isOpen ? 'active' : ''}`}
         onClick={handleToggle}
         title="Tactical Hub — System tools & network"
       >
         <span className={dotClass} />
-        <span className="hub-pill-label">HUB</span>
+        <span className="tb-pill-label">HUB</span>
         {artnetNodeCount > 0 && (
           <span className="hub-pill-count">{artnetNodeCount}</span>
         )}
@@ -364,47 +364,25 @@ export default function TacticalHub() {
 
       <style>{`
         /* ═══════════════════════════════════════════════════════════════ */
-        /* HUB PILL BUTTON                                               */
+        /* HUB PILL — Cyan variant, extends .tb-pill from TitleBar.css   */
         /* ═══════════════════════════════════════════════════════════════ */
-        .hub-pill {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: transparent;
-          backdrop-filter: blur(6px);
-          border: 1px solid rgba(0, 240, 255, 0.25);
-          border-radius: 12px;
-          padding: 3px 10px;
-          cursor: pointer;
-          user-select: none;
+        .tb-pill--hub {
+          border-color: rgba(0, 240, 255, 0.25);
           color: rgba(0, 240, 255, 0.5);
-          font-family: var(--font-mono, 'Orbitron', monospace);
-          font-size: 0.6rem;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          transition: all 0.2s ease;
-          -webkit-app-region: no-drag;
         }
 
-        .hub-pill:hover {
-          background: rgba(10, 10, 15, 0.85);
+        .tb-pill--hub:hover {
           border-color: rgba(0, 240, 255, 0.5);
           color: rgba(0, 240, 255, 0.8);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 20px rgba(0, 240, 255, 0.15);
-          transform: translateY(-1px);
+          background: rgba(0, 240, 255, 0.06);
+          box-shadow: 0 0 14px rgba(0, 240, 255, 0.12);
         }
 
-        .hub-pill.active {
+        .tb-pill--hub.active {
           border-color: rgba(0, 240, 255, 0.7);
-          background: rgba(0, 240, 255, 0.08);
           color: var(--accent-primary, #00ffff);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 30px rgba(0, 240, 255, 0.2);
-        }
-
-        .hub-pill-label {
-          line-height: 1;
+          background: rgba(0, 240, 255, 0.08);
+          box-shadow: 0 0 24px rgba(0, 240, 255, 0.2);
         }
 
         .hub-pill-count {

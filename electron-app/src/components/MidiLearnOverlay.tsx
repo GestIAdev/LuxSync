@@ -128,16 +128,16 @@ export default function MidiLearnOverlay() {
 
   return (
     <>
-      {/* ── FLOATING BUTTON (always visible) ── */}
+      {/* ── MIDI PILL (always visible) — WAVE UX-1: Pill system ── */}
       <button
-        className={`ml-btn ${learnMode ? 'active' : ''} ${mappingCount > 0 ? 'has-mappings' : ''}`}
+        className={`tb-pill tb-pill--midi ${learnMode ? 'active' : ''} ${mappingCount > 0 ? 'has-mappings' : ''}`}
         onClick={handleToggle}
         title={learnMode ? 'Exit MIDI Learn (ESC)' : 'Enter MIDI Learn mode'}
       >
-        <span className="ml-btn-icon">🎹</span>
-        <span className="ml-btn-label">MIDI</span>
+        <span className="tb-pill-emoji">🎹</span>
+        <span className="tb-pill-label">MIDI</span>
         {mappingCount > 0 && !learnMode && (
-          <span className="ml-btn-count">{mappingCount}</span>
+          <span className="tb-pill-count">{mappingCount}</span>
         )}
       </button>
 
@@ -235,76 +235,54 @@ export default function MidiLearnOverlay() {
 
       <style>{`
         /* ═══════════════════════════════════════════════════════════════ */
-        /* MIDI LEARN BUTTON - WAVE 2049: TITLE BAR INTEGRATION          */
+        /* WAVE UX-1: MIDI PILL — Purple accent variant of .tb-pill      */
+        /* Base .tb-pill styles come from TitleBar.css                    */
         /* ═══════════════════════════════════════════════════════════════ */
-        .ml-btn {
-          /* 🎹 INLINE badge en TitleBar (no position:fixed) */
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          
-          /* Estilo minimalista tipo nativo */
-          background: transparent;
-          backdrop-filter: blur(6px);
-          border: 1px solid rgba(160, 80, 255, 0.25);
-          border-radius: 12px;
-          padding: 3px 8px;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-          
-          /* Interacción */
-          cursor: pointer;
-          user-select: none;
-          color: var(--text-secondary, #aaa);
-          font-family: var(--font-mono, monospace);
-          font-size: 0.6rem;
-          letter-spacing: 0.08em;
-          font-weight: 600;
-          
-          transition: all 0.2s ease;
+        .tb-pill--midi {
+          border-color: rgba(160, 80, 255, 0.2);
+          color: rgba(160, 80, 255, 0.5);
         }
 
-        .ml-btn:hover {
-          background: rgba(10, 10, 15, 0.85);
-          border-color: rgba(160, 80, 255, 0.5);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 20px rgba(160, 80, 255, 0.2);
-          transform: translateY(-1px);
-          color: var(--text-primary, #e0e0e0);
+        .tb-pill--midi:hover {
+          border-color: rgba(160, 80, 255, 0.45);
+          color: rgba(160, 80, 255, 0.8);
+          background: rgba(160, 80, 255, 0.06);
+          box-shadow: 0 0 14px rgba(160, 80, 255, 0.12);
         }
 
-        .ml-btn.active {
-          border-color: rgba(160, 80, 255, 0.8);
-          background: rgba(160, 80, 255, 0.15);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 30px rgba(160, 80, 255, 0.3);
+        .tb-pill--midi.active {
+          border-color: rgba(160, 80, 255, 0.7);
           color: #c084fc;
-          animation: ml-btn-pulse 2s ease-in-out infinite;
+          background: rgba(160, 80, 255, 0.1);
+          box-shadow: 0 0 24px rgba(160, 80, 255, 0.2);
+          animation: midi-pill-glow 2s ease-in-out infinite;
         }
 
-        .ml-btn.has-mappings {
-          border-color: rgba(160, 80, 255, 0.5);
+        .tb-pill--midi.active .tb-pill-label {
+          text-shadow: 0 0 8px rgba(160, 80, 255, 0.5);
         }
 
-        .ml-btn-icon {
-          font-size: 0.8rem;
+        .tb-pill--midi.has-mappings {
+          border-color: rgba(160, 80, 255, 0.4);
         }
 
-        .ml-btn-label {
+        .tb-pill-emoji {
+          font-size: 0.75rem;
           line-height: 1;
         }
 
-        .ml-btn-count {
+        .tb-pill-count {
           font-size: 0.55rem;
           color: #c084fc;
-          background: rgba(160, 80, 255, 0.2);
+          background: rgba(160, 80, 255, 0.18);
           padding: 0 4px;
           border-radius: 3px;
           font-weight: 700;
         }
 
-        @keyframes ml-btn-pulse {
-          0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 30px rgba(160,80,255,0.3); }
-          50% { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 50px rgba(160,80,255,0.5); }
+        @keyframes midi-pill-glow {
+          0%, 100% { box-shadow: 0 0 24px rgba(160,80,255,0.2); }
+          50% { box-shadow: 0 0 36px rgba(160,80,255,0.35); }
         }
 
         /* ═══════════════════════════════════════════════════════════════ */

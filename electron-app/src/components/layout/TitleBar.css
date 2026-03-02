@@ -3,15 +3,16 @@
  * WAVE 39.9: FLEXBOX STRUCTURAL - No more position:fixed
  * WAVE 375: Zen Mode Toggle Button
  * WAVE 2049: Status Badges Container (MIDI + Network)
- * Always visible, physically occupies space in DOM
+ * WAVE UX-1: THE TACTICAL HUB — Pill system replaces old badges
+ *   Layout: [ZEN pill] [MIDI pill] [HUB pill] ——— LUXSYNC ——— [safe-zone]
  */
 
 .global-title-bar {
   /* WAVE 39.9: Eliminado position:fixed - ahora es flex item */
-  flex: 0 0 auto;         /* No encoger, no crecer, altura fija */
+  flex: 0 0 auto;
   width: 100%;
   height: 32px;
-  z-index: 9999;          /* Aún alto para overlays */
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -24,69 +25,87 @@
   -webkit-app-region: drag;
 }
 
-/* 🧘 WAVE 375: Zen Mode Toggle Button */
-.zen-mode-toggle {
-  -webkit-app-region: no-drag;
+/* ═══════════════════════════════════════════════════════════════ */
+/* WAVE UX-1: PILL CLUSTER (left block)                          */
+/* ═══════════════════════════════════════════════════════════════ */
+.title-bar-pills {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 6px;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+/* ── Base pill ── */
+.tb-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   background: transparent;
-  border: none;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 3px 10px;
   cursor: pointer;
-  color: rgba(0, 255, 255, 0.4);
+  user-select: none;
+  font-family: var(--font-mono, 'Orbitron', monospace);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
   transition: all 0.2s ease;
 }
 
-.zen-mode-toggle:hover {
-  background: rgba(0, 255, 255, 0.1);
-  color: rgba(0, 255, 255, 0.8);
+.tb-pill:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
 }
 
-.zen-mode-toggle.active {
-  color: var(--accent-primary, #00ffff);
-  background: rgba(0, 255, 255, 0.15);
-}
-
-.zen-mode-toggle.active:hover {
-  background: rgba(0, 255, 255, 0.25);
-}
-
-.zen-icon {
+.tb-pill-icon {
+  flex-shrink: 0;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.zen-mode-toggle.active .zen-icon {
+.tb-pill-label {
+  line-height: 1;
+}
+
+/* ── ZEN pill — Cyan accent ── */
+.tb-pill--zen {
+  border-color: rgba(0, 255, 255, 0.2);
+  color: rgba(0, 255, 255, 0.4);
+}
+
+.tb-pill--zen:hover {
+  border-color: rgba(0, 255, 255, 0.4);
+  color: rgba(0, 255, 255, 0.7);
+  background: rgba(0, 255, 255, 0.05);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.1);
+}
+
+.tb-pill--zen.active {
+  border-color: rgba(0, 255, 255, 0.6);
+  color: var(--accent-primary, #00ffff);
+  background: rgba(0, 255, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+}
+
+.tb-pill--zen.active .tb-pill-icon {
   transform: rotate(180deg);
 }
 
-/* Zen Mode Indicator */
-.zen-mode-indicator {
-  margin-left: 12px;
-  padding: 2px 8px;
-  font-family: 'Orbitron', 'Rajdhani', sans-serif;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--accent-primary, #00ffff);
-  background: rgba(0, 255, 255, 0.1);
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 3px;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-  animation: zen-pulse 2s ease-in-out infinite;
+.tb-pill--zen.active .tb-pill-label {
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
 }
 
-@keyframes zen-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
+/* Drag region */
 .title-bar-drag {
   flex: 1;
   display: flex;
   align-items: center;
-  padding-left: 8px;
+  justify-content: center;
+  padding: 0 8px;
   height: 100%;
 }
 
@@ -95,18 +114,9 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 4px;
-  color: rgba(0, 255, 255, 0.5);
+  color: rgba(0, 255, 255, 0.35);
   text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-}
-
-/* 🎹📡 WAVE 2049: Status Badges Container */
-.title-bar-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-right: 8px;
-  -webkit-app-region: no-drag;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
 }
 
 /* Safe zone for native window controls (Windows: ~140px, Mac: ~80px) */
@@ -133,7 +143,7 @@
     justify-content: flex-end;
   }
   
-  .zen-mode-toggle {
+  .title-bar-pills {
     order: 1;
   }
 }

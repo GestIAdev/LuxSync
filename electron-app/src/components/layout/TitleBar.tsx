@@ -2,19 +2,20 @@
  * 🪟 TITLE BAR - WAVE 35.3: Global Window Controls & Drag Region
  * WAVE 375: Zen Mode Toggle Button
  * WAVE 2049: NetIndicator + MidiLearn Badge Integration
- * 
- * Sistema de controles de ventana para Electron
- * - Drag region para mover la ventana
- * - Safe zone para evitar overlapping con controles nativos
- * - GLOBAL: Siempre visible en todas las vistas
- * - ZEN MODE: Toggle button para colapsar sidebar
- * - BADGES: MIDI Learn + Art-Net Discovery (right side)
+ * WAVE UX-1: THE TACTICAL HUB & HEADER CLEANUP
+ *   - Left block: [ZEN pill] [MIDI pill] [HUB pill]
+ *   - Center: LUXSYNC drag region
+ *   - Right: safe zone for native window controls
+ *   - Art-Net Discovery migrated into TacticalHub dropdown
+ *   - MIDI pill gets same visual treatment as ZEN (active glow)
+ *
+ * Layout: [ZEN] [MIDI] [HUB] ——— LUXSYNC ——— [safe-zone]
  */
 
 import React from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
-import NetIndicator from '../NetIndicator'
 import MidiLearnOverlay from '../MidiLearnOverlay'
+import TacticalHub from './TacticalHub'
 import './TitleBar.css'
 
 interface TitleBarProps {
@@ -30,29 +31,32 @@ const TitleBar: React.FC<TitleBarProps> = ({
 }) => {
   return (
     <div className="global-title-bar">
-      {/* 🧘 WAVE 375: Zen Mode Toggle Button */}
-      <button 
-        className={`zen-mode-toggle ${isZenMode ? 'active' : ''}`}
-        onClick={onToggleZenMode}
-        title={isZenMode ? 'Exit Zen Mode [Z]' : 'Enter Zen Mode [Z]'}
-      >
-        {isZenMode ? (
-          <Minimize2 size={14} className="zen-icon" />
-        ) : (
-          <Maximize2 size={14} className="zen-icon" />
-        )}
-      </button>
-      
+      {/* 🔧 WAVE UX-1: Left pill cluster — ZEN → MIDI → HUB */}
+      <div className="title-bar-pills">
+        {/* 🧘 ZEN pill */}
+        <button 
+          className={`tb-pill tb-pill--zen ${isZenMode ? 'active' : ''}`}
+          onClick={onToggleZenMode}
+          title={isZenMode ? 'Exit Zen Mode [Z]' : 'Enter Zen Mode [Z]'}
+        >
+          {isZenMode ? (
+            <Minimize2 size={12} className="tb-pill-icon" />
+          ) : (
+            <Maximize2 size={12} className="tb-pill-icon" />
+          )}
+          <span className="tb-pill-label">ZEN</span>
+        </button>
+
+        {/* 🎹 MIDI pill */}
+        <MidiLearnOverlay />
+
+        {/* ⚙️ HUB pill (Art-Net + future tools) */}
+        <TacticalHub />
+      </div>
+
       {/* Drag Region - spans full width, native controls overlay on right */}
       <div className="title-bar-drag">
         <span className="title-bar-text">{title}</span>
-        {isZenMode && <span className="zen-mode-indicator">ZEN</span>}
-      </div>
-      
-      {/* 🎹📡 WAVE 2049: Status Badges (MIDI + Network) */}
-      <div className="title-bar-badges">
-        <MidiLearnOverlay />
-        <NetIndicator />
       </div>
       
       {/* Safe zone spacer for native window controls (Win/Mac) */}

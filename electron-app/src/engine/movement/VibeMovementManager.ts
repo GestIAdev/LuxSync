@@ -666,26 +666,26 @@ export class VibeMovementManager {
     )
     
     // ═══════════════════════════════════════════════════════════════════
-    // 🎭 WAVE 2086.3: PHRASE ENVELOPE — The Breathing Amplifier
+    // 🎭 WAVE 2086.3 + 2088.8: PHRASE ENVELOPE — The Breathing Amplifier
     //
-    // Sin esto, cada compás tiene la misma amplitud = monotonía mecánica.
-    // Con el envelope, la frase de 32 beats (8 compases) RESPIRA:
+    // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+    // ANTES: Rango 0.60-1.00. En los primeros compases, la amplitud era 60%
+    // → los patrones perdían su forma (un square al 60% = un blob centrado).
+    // AHORA: Rango 0.85-1.00. La frase RESPIRA pero los patrones mantienen
+    // su identidad geométrica en TODO momento.
     //
-    //   Beat 0-7   (compás 1-2):  0.60 → 0.75  — arranque contenido
-    //   Beat 8-19  (compás 3-5):  0.75 → 1.00  — expansión progresiva
+    //   Beat 0-7   (compás 1-2):  0.85 → 0.90  — arranque contenido
+    //   Beat 8-19  (compás 3-5):  0.90 → 1.00  — expansión progresiva
     //   Beat 20-23 (compás 6):    1.00          — CLÍMAX: apertura máxima
-    //   Beat 24-31 (compás 7-8):  1.00 → 0.60  — relajación elegante
-    //
-    // Curva suave basada en coseno — sin discontinuidades.
+    //   Beat 24-31 (compás 7-8):  1.00 → 0.85  — relajación elegante
     // ═══════════════════════════════════════════════════════════════════
     const phraseBeats = 32
     const phraseProgress = (beatCount % phraseBeats) / phraseBeats  // 0.0 → 1.0
     
-    // Coseno desplazado: arranca en 0.6, pico en 1.0 a ~62% de la frase, relaja a 0.6
-    // f(t) = 0.8 + 0.2 * sin(π * (t - 0.15)) → pico natural en t≈0.65
-    const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
-    // Clamp final: el envelope escala entre 0.6 y 1.0
-    const clampedEnvelope = Math.max(0.6, Math.min(1.0, phraseEnvelope))
+    // Coseno desplazado: arranca en 0.85, pico en 1.0 a ~62% de la frase
+    const phraseEnvelope = 0.925 + 0.075 * Math.sin(Math.PI * (phraseProgress - 0.15))
+    // Clamp final: el envelope escala entre 0.85 y 1.0
+    const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope))
     
     const finalAmplitude = effectiveAmplitude * clampedEnvelope
     

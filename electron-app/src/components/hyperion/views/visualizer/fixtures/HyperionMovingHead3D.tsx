@@ -45,17 +45,18 @@ const TILT_RANGE = Math.PI * 0.75  // ±67.5° (135° total arc)
 const NEON_CYAN = '#00F0FF'
 
 /**
- * 🛡️ WAVE 2088.1: VISUAL SMOOTHING — Same pattern as TacticalCanvas (0.10)
- * and useFixtureRender (0.30). The store updates at 60fps with micro-steps;
- * without smoothing, R3F's useFrame renders every micro-step as a hard jump.
+ * 🛡️ WAVE 2088.1 + 2088.8: VISUAL SMOOTHING
  * 
- * This is NOT physics interpolation (that's FixturePhysicsDriver's job).
- * This is purely COSMETIC — "la mentira piadosa" that hides IPC jitter.
- * 
- * 0.08 = heavy/cinematic (slightly slower than TacticalCanvas's 0.10)
- * because 3D feels more jarring than 2D at the same speed.
+ * 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+ * ANTES: VISUAL_SMOOTH=0.12. Combinado con snapFactor=0.35 del PhysicsDriver,
+ * el 3D mostraba movimiento al ~4% de la señal original (0.35 × 0.12 = 0.042).
+ * Los patrones eran blobs informes.
+ *
+ * AHORA: 0.35 — mucho más responsivo. El PhysicsDriver ya suaviza la señal;
+ * el Visual Smooth solo necesita filtrar jitter IPC, no añadir más inercia.
+ * A 60fps con 0.35: convergencia visual en ~5 frames (83ms) — fluido y definido.
  */
-const VISUAL_SMOOTH = 0.12
+const VISUAL_SMOOTH = 0.35
 
 // Quaternion axes (allocated once, shared across instances)
 const PAN_AXIS = new THREE.Vector3(0, 1, 0)

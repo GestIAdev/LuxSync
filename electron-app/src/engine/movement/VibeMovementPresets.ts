@@ -99,13 +99,23 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.05,           // Casi sin fricción (libre)
       arrivalThreshold: 0.5,    // Precisión alta
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
-      snapFactor: 0.35,         // 🏎️ WAVE 2088.4: Solo 35% del delta por frame — sweeps agresivos PERO con damping
-                                //    Antes=1.0 (100% del delta → square saltaba 2.0 en 1 frame = epilepsia)
-                                //    0.35 en snap mode = el foco PERSIGUE rápido pero NO teleporta
-      revLimitPanPerSec: 140,   // 🏎️ WAVE 2088.4: ~296°/s — justo por debajo de un Robe Robin 600 real
-                                //    Antes=3600 (7624°/s = 25× un mover real). A 60fps: 140×0.016=2.24 DMX/frame
-      revLimitTiltPerSec: 95,   // 🏎️ WAVE 2088.4: ~100°/s — tilt siempre más lento que pan (motores reales)
-                                //    Antes=1800 (1906°/s). A 60fps: 95×0.016=1.52 DMX/frame
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+      // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
+      // Pero eso fue con Hermite (ya eliminado en 2088.7). Ahora los targets
+      // son lineales puros y el PhysicsDriver es el ÚNICO filtro.
+      // Con snap=0.35 + revLimit=140: el mover NUNCA alcanza el target.
+      // Un square se convierte en blob, un scan en balanceo tímido.
+      //
+      // CALIBRACIÓN: Para que un scan_x de período 16 beats a 120 BPM
+      // cubra ~200 DMX de rango en ~2s de semi-ciclo, necesitamos:
+      //   - snapFactor=0.85 → el mover alcanza 85% del delta por frame
+      //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
+      // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
+      // ═══════════════════════════════════════════════════════════════════
+      snapFactor: 0.85,         // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
+      revLimitPanPerSec: 400,   // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
+      revLimitTiltPerSec: 280,  // 🔧 WAVE 2088.8: ~297°/s — tilt siempre más lento
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -136,12 +146,19 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.20,           // Algo de suavizado orgánico
       arrivalThreshold: 2.0,    // Permite overshoot elegante
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
-      snapFactor: 0.45,         // 🏎️ WAVE 2088.4: Suavizado orgánico — las caderas no teleportan
-                                //    Antes=0.65. Bajamos para más fluidez en figure8
-      revLimitPanPerSec: 85,    // 🏎️ WAVE 2088.4: ~180°/s — mover medio tirando a rápido
-                                //    Antes=750 (1588°/s). A 60fps: 85×0.016=1.36 DMX/frame
-      revLimitTiltPerSec: 60,   // 🏎️ WAVE 2088.4: ~64°/s — tilt suave para curvas sensuales
-                                //    Antes=540 (571°/s). A 60fps: 60×0.016=0.96 DMX/frame
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+      // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
+      // SIGA la trayectoria con precisión. Con snap=0.45 + revLimit=85,
+      // un figure8 de período 16 beats se convertía en una elipse aplastada
+      // porque el mover nunca alcanzaba los extremos del Lissajous.
+      //
+      // snap=0.70 → sigue la curva con 70% de fidelidad por frame
+      // revLimit=250 → 4.17 DMX/frame → suficiente para las curvas suaves
+      // ═══════════════════════════════════════════════════════════════════
+      snapFactor: 0.70,         // 🔧 WAVE 2088.8: Fiel a las curvas, con suavidad orgánica residual
+      revLimitPanPerSec: 250,   // 🔧 WAVE 2088.8: ~530°/s — headroom para figure8 a alta energía
+      revLimitTiltPerSec: 180,  // 🔧 WAVE 2088.8: ~191°/s — tilt curvo suave
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)
@@ -172,12 +189,18 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.30,           // Fricción para punch (no arrastrar)
       arrivalThreshold: 1.0,    // Precisión normal
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
-      snapFactor: 0.30,         // 🏎️ WAVE 2088.4: Punch con peso — el mover GOLPEA, no teleporta
-                                //    Antes=0.50. Rock tiene GRAVITAS, el movimiento cuesta.
-      revLimitPanPerSec: 95,    // 🏎️ WAVE 2088.4: ~201°/s — mover medio, dramático pero controlado
-                                //    Antes=450 (953°/s). A 60fps: 95×0.016=1.52 DMX/frame
-      revLimitTiltPerSec: 65,   // 🏎️ WAVE 2088.4: ~69°/s — tilt con peso real
-                                //    Antes=300 (318°/s). A 60fps: 65×0.016=1.04 DMX/frame
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+      // Rock usa circle_big, cancan, dual_sweep. Con snap=0.30 + revLimit=95
+      // un circle_big de 16 beats se convertía en un temblor amorfo.
+      // Los movers de estadio necesitan dibujar ARCOS visibles.
+      //
+      // snap=0.65 → el mover persigue con PESO (más lento que techno)
+      // revLimit=300 → 5 DMX/frame → arcos grandes con gravitas
+      // ═══════════════════════════════════════════════════════════════════
+      snapFactor: 0.65,         // 🔧 WAVE 2088.8: Golpes con peso visible — más lento que techno
+      revLimitPanPerSec: 300,   // 🔧 WAVE 2088.8: ~636°/s — arcos dramáticos de estadio
+      revLimitTiltPerSec: 200,  // 🔧 WAVE 2088.8: ~212°/s — tilt con gravitas
     },
     optics: {
       zoomDefault: 220,         // Zoom abierto (wash)
@@ -205,10 +228,9 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       arrivalThreshold: 3.0,    // Permite mucho overshoot
       physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
       snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 30,    // 🏎️ WAVE 2088.4: ~64°/s — glacial pero con red de seguridad real
-                                //    Antes=7650 (sin límite práctico). Classic mode controla via inercia,
-                                //    pero si algo falla, este cap evita teleporting.
-      revLimitTiltPerSec: 20,   // 🏎️ WAVE 2088.4: ~21°/s — tilt ultra lento para chill
+      revLimitPanPerSec: 80,    // 🔧 WAVE 2088.8: ~170°/s — Chill pero con movimiento VISIBLE
+                                //    Antes=30 → drift/sway eran imperceptibles
+      revLimitTiltPerSec: 55,   // 🔧 WAVE 2088.8: ~58°/s — tilt orgánico visible
     },
     optics: {
       zoomDefault: 255,         // Zoom máximo (wash total)
@@ -236,9 +258,8 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       arrivalThreshold: 1.0,
       physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
       snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 50,    // 🏎️ WAVE 2088.4: ~106°/s — idle tranquilo con red de seguridad
-                                //    Antes=7650 (sin límite práctico)
-      revLimitTiltPerSec: 35,   // 🏎️ WAVE 2088.4: ~37°/s — tilt suave en idle
+      revLimitPanPerSec: 120,    // 🔧 WAVE 2088.8: ~254°/s — idle visible, no congelado
+      revLimitTiltPerSec: 80,    // 🔧 WAVE 2088.8: ~85°/s — tilt suave en idle
     },
     optics: {
       zoomDefault: 127,         // Zoom neutro

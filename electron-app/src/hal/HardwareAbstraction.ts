@@ -1237,11 +1237,45 @@ export class HardwareAbstraction {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * ⚒️ WAVE 2030.22g: Public method to send already-processed fixture states
-   * Used by TitanOrchestrator after applying Hephaestus parameter overlays
+   * 🛡️ WAVE 2085: SAFE MOTOR SEND — Applies physics before DMX dispatch.
+   * 
+   * Used by TitanOrchestrator after applying Hephaestus/effects parameter overlays.
+   * The states may have NEW pan/tilt targets, but physicalPan/physicalTilt must be
+   * interpolated by the physics engine before reaching the DMX driver.
+   * 
+   * NON-MOVEMENT params (dimmer, color, white, etc.) are sent immediately.
+   * MOVEMENT params (pan/tilt) go through FixturePhysicsDriver.translateDMX().
+   * 
+   * REPLACES the old sendStates() which was a physics-bypass backdoor.
    */
-  public sendStates(states: FixtureState[]): void {
-    this.sendToDriver(states)
+  public sendStatesWithPhysics(states: FixtureState[]): void {
+    // Apply physics interpolation to all moving fixtures
+    const physicsDt = this.measurePhysicsDeltaTime()
+    
+    const safeStates = states.map((state) => {
+      // Detect if this is a moving fixture
+      const isMovingFixture = state.zone?.includes('MOVING') || 
+                              state.type?.toLowerCase().includes('moving') ||
+                              state.type?.toLowerCase().includes('spot') ||
+                              state.type?.toLowerCase().includes('beam')
+      
+      if (!isMovingFixture) return state
+      
+      // 🛡️ Run physics: interpolate pan/tilt targets → smooth physicalPan/physicalTilt
+      const fixtureId = state.fixtureId || `fixture-${state.dmxAddress}`
+      this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
+      const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
+      
+      return {
+        ...state,
+        physicalPan: physicsState.physicalPan,
+        physicalTilt: physicsState.physicalTilt,
+        panVelocity: physicsState.panVelocity,
+        tiltVelocity: physicsState.tiltVelocity,
+      }
+    })
+    
+    this.sendToDriver(safeStates)
   }
   
   private sendToDriver(states: FixtureState[]): void {

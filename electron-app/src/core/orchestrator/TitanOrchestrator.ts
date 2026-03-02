@@ -946,33 +946,30 @@ export class TitanOrchestrator {
           
           if (!mov) return f
           
+          // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
+          // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
+          // The physics engine will interpolate toward these new targets.
           let newPan = f.pan
           let newTilt = f.tilt
-          let newPhysicalPan = f.physicalPan ?? f.pan
-          let newPhysicalTilt = f.physicalTilt ?? f.tilt
           
           if (mov.isAbsolute) {
             // ABSOLUTE MODE: Reemplaza completamente
             if (mov.pan !== undefined) {
               // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
               newPan = Math.round(mov.pan * 255)
-              newPhysicalPan = newPan
             }
             if (mov.tilt !== undefined) {
               newTilt = Math.round(mov.tilt * 255)
-              newPhysicalTilt = newTilt
             }
           } else {
-            // OFFSET MODE: Suma
+            // OFFSET MODE: Suma al target
             if (mov.pan !== undefined) {
               const panOffset = Math.round((mov.pan - 0.5) * 255)
               newPan = Math.max(0, Math.min(255, f.pan + panOffset))
-              newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset))
             }
             if (mov.tilt !== undefined) {
               const tiltOffset = Math.round((mov.tilt - 0.5) * 255)
               newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset))
-              newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset))
             }
           }
           
@@ -980,8 +977,8 @@ export class TitanOrchestrator {
             ...f,
             pan: newPan,
             tilt: newTilt,
-            physicalPan: newPhysicalPan,
-            physicalTilt: newPhysicalTilt,
+            // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
+            // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
           }
         })
         
@@ -1006,34 +1003,30 @@ export class TitanOrchestrator {
         const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined)
         if (!isMover) return f
         
+        // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
+        // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
         let newPan = f.pan
         let newTilt = f.tilt
-        let newPhysicalPan = f.physicalPan ?? f.pan
-        let newPhysicalTilt = f.physicalTilt ?? f.tilt
         
         if (mov.isAbsolute) {
-          // ABSOLUTE MODE: Reemplaza completamente las físicas
+          // ABSOLUTE MODE: Reemplaza completamente las posiciones target
           // Convertir -1.0..1.0 → 0..255
           if (mov.pan !== undefined) {
             newPan = Math.round(((mov.pan + 1) / 2) * 255)
-            newPhysicalPan = newPan
           }
           if (mov.tilt !== undefined) {
             newTilt = Math.round(((mov.tilt + 1) / 2) * 255)
-            newPhysicalTilt = newTilt
           }
         } else {
-          // OFFSET MODE: Suma a las físicas existentes
+          // OFFSET MODE: Suma a los targets existentes
           // Convertir offset -1.0..1.0 → -127..127 y sumar
           if (mov.pan !== undefined) {
             const panOffset = Math.round(mov.pan * 127)
             newPan = Math.max(0, Math.min(255, f.pan + panOffset))
-            newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset))
           }
           if (mov.tilt !== undefined) {
             const tiltOffset = Math.round(mov.tilt * 127)
             newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset))
-            newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset))
           }
         }
         
@@ -1041,8 +1034,8 @@ export class TitanOrchestrator {
           ...f,
           pan: newPan,
           tilt: newTilt,
-          physicalPan: newPhysicalPan,
-          physicalTilt: newPhysicalTilt,
+          // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
+          // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
         }
       })
       
@@ -1149,8 +1142,9 @@ export class TitanOrchestrator {
             case 'pan': {
               // ⚒️ WAVE 2030.24: LTP with 16-bit precision
               // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
+              // 🛡️ WAVE 2085: ONLY set TARGET. physicalPan is SACRED — owned exclusively
+              // by FixturePhysicsDriver. HAL will interpolate toward this target.
               newF.pan = output.value
-              newF.physicalPan = newF.pan
               // panFine carried in output.fine (if fixture supports 16-bit)
               if (output.fine !== undefined) {
                 (newF as any).panFine = output.fine
@@ -1160,8 +1154,8 @@ export class TitanOrchestrator {
             
             case 'tilt': {
               // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+              // 🛡️ WAVE 2085: ONLY set TARGET. physicalTilt is SACRED.
               newF.tilt = output.value
-              newF.physicalTilt = newF.tilt
               if (output.fine !== undefined) {
                 (newF as any).tiltFine = output.fine
               }
@@ -1238,12 +1232,11 @@ export class TitanOrchestrator {
       }
     }
 
-    // ⚒️ WAVE 2030.22g: Send Hephaestus-modified states to DMX
-    // HAL already sent once in renderFromTarget(), but Hephaestus changes
-    // were applied AFTER that initial send. We need to send again with the
-    // parameter overlays applied (white, amber, intensity modulation, etc.)
+    // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
+    // but THROUGH the physics engine so movement is interpolated safely.
+    // The old sendStates() was a physics-bypass backdoor — now sealed.
     if (hephOutputs.length > 0) {
-      this.hal.sendStates(fixtureStates)
+      this.hal.sendStatesWithPhysics(fixtureStates)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

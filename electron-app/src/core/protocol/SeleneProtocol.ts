@@ -606,16 +606,17 @@ export interface FixtureState {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎛️ WAVE 339: PHYSICS (Interpolated positions from FixturePhysicsDriver)
+  // 🛡️ WAVE 2085: READONLY — Owned exclusively by FixturePhysicsDriver via HAL.
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Physical Pan (0-255) - INTERPOLATED by physics engine (shows actual position) */
-  physicalPan?: number
+  readonly physicalPan?: number
   /** Physical Tilt (0-255) - INTERPOLATED by physics engine (shows actual position) */
-  physicalTilt?: number
+  readonly physicalTilt?: number
   /** Current velocity for pan axis (DMX/s) */
-  panVelocity?: number
+  readonly panVelocity?: number
   /** Current velocity for tilt axis (DMX/s) */
-  tiltVelocity?: number
+  readonly tiltVelocity?: number
   
   /** ¿Está online/conectado? */
   online: boolean

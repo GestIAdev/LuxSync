@@ -1,21 +1,20 @@
 /**
- * ☀️ HYPERION — HyperionMovingHead3D v3
+ * ☀️ HYPERION — HyperionMovingHead3D v3.1
  * 
- * WAVE 2088: Physics-Aligned Render
+ * WAVE 2088.1: Physics-Aligned Render + Visual Smoothing
  * 
- * BEFORE (v2): Used raw `pan` (TARGET) + SLERP interpolation in the render.
- * This caused DOUBLE interpolation (physics + SLERP) and erratic movement
- * because the SLERP was chasing a target that jumped every frame.
+ * v2 (old): Used raw `pan` (TARGET) + SLERP = double interpolation, erratic.
+ * v3 (broken): Used `physicalPan` DIRECT, no smoothing = hydra effect.
+ *              The store updates at 60fps with micro-jumps; without visual
+ *              smoothing, each micro-jump renders as a hard angular snap.
  * 
- * NOW (v3): Uses `physicalPan` (ACTUAL position from FixturePhysicsDriver).
- * The physics engine already handles smooth interpolation with speed limits.
- * The render just FOLLOWS — no extra smoothing, no double interpolation.
- * 
- * This aligns the 3D view with the 2D views (TacticalView, Cinema) which
- * already use physicalPan correctly and look smooth.
+ * v3.1 (current): Uses `physicalPan` (correct source) + exponential smoothing
+ *   on the normalized 0-1 values BEFORE converting to quaternion. Same exact
+ *   pattern used by TacticalCanvas (0.10) and useFixtureRender (0.30).
+ *   This is NOT physics — it's cosmetic jitter-hiding ("la mentira piadosa").
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionMovingHead3D
- * @since WAVE 2042.15 (Clean Rewrite), WAVE 2088 (Physics Alignment)
+ * @since WAVE 2042.15, WAVE 2088 (Physics Alignment), WAVE 2088.1 (Visual Smooth)
  */
 
 import React, { useRef } from 'react'
@@ -32,6 +31,19 @@ const PAN_RANGE = Math.PI * 2
 /** Tilt range: 0-1 → -90° to +90° (full 180° arc) */
 const TILT_RANGE = Math.PI
 const NEON_CYAN = '#00F0FF'
+
+/**
+ * 🛡️ WAVE 2088.1: VISUAL SMOOTHING — Same pattern as TacticalCanvas (0.10)
+ * and useFixtureRender (0.30). The store updates at 60fps with micro-steps;
+ * without smoothing, R3F's useFrame renders every micro-step as a hard jump.
+ * 
+ * This is NOT physics interpolation (that's FixturePhysicsDriver's job).
+ * This is purely COSMETIC — "la mentira piadosa" that hides IPC jitter.
+ * 
+ * 0.08 = heavy/cinematic (slightly slower than TacticalCanvas's 0.10)
+ * because 3D feels more jarring than 2D at the same speed.
+ */
+const VISUAL_SMOOTH = 0.12
 
 // Quaternion axes (allocated once, shared across instances)
 const PAN_AXIS = new THREE.Vector3(0, 1, 0)
@@ -65,17 +77,16 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🛡️ WAVE 2088: Quaternions set DIRECTLY from physicalPan/physicalTilt.
-  // No SLERP — the FixturePhysicsDriver already interpolated the position.
+  // 🛡️ WAVE 2088.1: Visual smoothing state — persistent across renders.
+  // Same exponential-smoothing pattern as TacticalCanvas & useFixtureRender.
+  // Smooths the NORMALIZED values (0-1) before converting to quaternion.
   // ═══════════════════════════════════════════════════════════════════════
+  const smoothPan = useRef<number | null>(null)
+  const smoothTilt = useRef<number | null>(null)
   const yokeQuat = useRef(new THREE.Quaternion())
   const headQuat = useRef(new THREE.Quaternion())
 
   const { id, intensity, color, physicalPan, physicalTilt, zoom, selected, hasOverride } = fixture
-  
-  // Convert normalized 0-1 to radians
-  const panAngle = (physicalPan - 0.5) * PAN_RANGE
-  const tiltAngle = -(physicalTilt - 0.5) * TILT_RANGE
 
   // 🎨 WAVE 2042.15.3: ULTRA TIGHT beam for MovingHeads (precision spot)
   const beamWidth = 0.04 + zoom * 0.02
@@ -84,16 +95,30 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
     // ═══════════════════════════════════════════════════════════════════════
-    // 🛡️ WAVE 2088: DIRECT QUATERNION — No SLERP
+    // 🛡️ WAVE 2088.1: EXPONENTIAL SMOOTHING on normalized values
     //
-    // BEFORE: targetQuat.setFromAxisAngle(...) → currentQuat.slerp(target, t)
-    //   Problem: DOUBLE interpolation. Physics already smoothed the position.
-    //   The SLERP was chasing a smoothed-target that ALSO moved smoothly,
-    //   creating lag + overshoot + erratic "jenízaro" movement.
+    // physicalPan arrives from the store at ~60fps with micro-steps.
+    // Without smoothing, each micro-step renders as a hard angular jump
+    // (the "hydra" effect — multiple beams flashing in random directions).
     //
-    // NOW: physicalPan IS the smooth position. Set quaternion directly.
-    //   Result: 3D render matches 2D render perfectly. Physics owns smoothing.
+    // Solution: same pattern TacticalCanvas uses (SMOOTHING_FACTOR = 0.10).
+    // Smooth the 0-1 value BEFORE converting to quaternion.
+    // First frame: snap to current position (no animation from 0).
     // ═══════════════════════════════════════════════════════════════════════
+    if (smoothPan.current === null) {
+      // First frame: initialize — no interpolation, just snap
+      smoothPan.current = physicalPan
+      smoothTilt.current = physicalTilt
+    } else {
+      // Exponential smoothing: chase the target gradually
+      smoothPan.current += (physicalPan - smoothPan.current) * VISUAL_SMOOTH
+      smoothTilt.current! += (physicalTilt - smoothTilt.current!) * VISUAL_SMOOTH
+    }
+
+    // Convert smoothed 0-1 to radians
+    const panAngle = (smoothPan.current - 0.5) * PAN_RANGE
+    const tiltAngle = -(smoothTilt.current! - 0.5) * TILT_RANGE
+
     yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
     headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)
 

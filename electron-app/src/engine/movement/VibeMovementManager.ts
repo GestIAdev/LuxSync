@@ -236,15 +236,11 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
   
-  // SQUARE: Movimiento cuadrado con transición edge-to-edge
-  // 🔧 WAVE 2088.5: FIX "CLAVONE" — El mover SIEMPRE está en movimiento.
-  // Antes: step function → mismo punto durante 1.6s → percepción de "clavado".
-  // Ahora: interpolación ease-in-out entre esquinas. El mover desacelera
-  // al acercarse a una esquina y acelera al salir hacia la siguiente.
-  // Esto crea un efecto de "visita" a cada esquina sin parar realmente.
-  //
-  // holdRatio=0.25 → 25% del tiempo "en" la esquina (desacelerando/acelerando),
-  // 75% del tiempo viajando entre esquinas. Zero time parado.
+  // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
+  // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
+  // El VMM genera un target que avanza a velocidad CONSTANTE entre esquinas.
+  // El FixturePhysicsDriver ya es un filtro paso-bajo que añadirá la inercia
+  // y la aceleración mecánica. NO pre-suavizamos el target.
   square: (phase, audio) => {
     const corners = [
       { x: 1, y: 1 },
@@ -255,36 +251,40 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const normalizedPhase = (phase / (Math.PI * 2)) * 4
     const currentCorner = Math.floor(normalizedPhase) % 4
     const nextCorner = (currentCorner + 1) % 4
-    const t = normalizedPhase - Math.floor(normalizedPhase) // 0..1 within this segment
-    
-    // Ease-in-out cubic: slow near corners, fast in transit
-    // f(t) = 3t² - 2t³ (Hermite smoothstep)
-    const eased = t * t * (3 - 2 * t)
+    const t = normalizedPhase - Math.floor(normalizedPhase)
     
     const from = corners[currentCorner]
     const to = corners[nextCorner]
     return {
-      x: from.x + (to.x - from.x) * eased,
-      y: from.y + (to.y - from.y) * eased,
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
     }
   },
   
   // DIAMOND: Rombo agresivo
+  // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Diamond toca [-1,1]
+  // ANTES: rawX * SQRT2 * 0.7 = max ~0.9899 (nunca llegaba a 1.0)
+  // AHORA: Normalización exacta. El diamante rota a 45° y sus vértices
+  // tocan exactamente ±1 en cada eje cardinal.
   diamond: (phase, audio) => {
     const rawX = Math.sin(phase)
     const rawY = Math.cos(phase)
-    const scale = Math.SQRT2
+    // Rotación 45°: los picos de sin/cos (±1) se mapean a los ejes
+    // La envolvente de |sin| + |cos| tiene máximo SQRT2, así que
+    // dividimos por SQRT2 para normalizar, pero queremos que los VÉRTICES
+    // del diamante (donde un eje = 0 y el otro = ±1) toquen ±1.
+    // En un diamante perfecto: x = sin(phase), y = cos(phase) rotados 45°
+    // Vértices en phase = 0, π/2, π, 3π/2 → ya tocan ±1 en un eje.
     return {
-      x: rawX * scale * 0.7,
-      y: rawY * scale * 0.7,
+      x: rawX,
+      y: rawY,
     }
   },
   
-  // BOTSTEP: Posiciones cuantizadas robóticas con transición
-  // 🔧 WAVE 2088.5: FIX "CLAVONE" — Mismo principio que square.
-  // 8 posiciones golden-ratio, con ease-in-out entre cada una.
-  // El carácter "robótico" se mantiene por la ease-in-out que
-  // desacelera y acelera bruscamente en cada posición.
+  // BOTSTEP: Posiciones cuantizadas robóticas con interpolación lineal
+  // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
+  // 8 posiciones golden-ratio con transición a velocidad constante.
+  // El carácter "robótico" lo dará el PhysicsDriver al frenar en cada posición.
   botstep: (phase, audio) => {
     const phi = 1.618033988749
     const totalSteps = 8
@@ -293,27 +293,27 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const nextStep = (currentStep + 1) % totalSteps
     const t = normalizedPhase - Math.floor(normalizedPhase)
     
-    // Ease-in-out cubic (same Hermite smoothstep)
-    const eased = t * t * (3 - 2 * t)
-    
     const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9
     const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.6
     const toX = Math.sin(nextStep * phi * Math.PI) * 0.9
     const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.6
     
     return {
-      x: fromX + (toX - fromX) * eased,
-      y: fromY + (toY - fromY) * eased,
+      x: fromX + (toX - fromX) * t,
+      y: fromY + (toY - fromY) * t,
     }
   },
   
   // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
   
   // FIGURE8: El clasico infinito (Lissajous 1:2)
+  // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Y-axis 0.6 → 0.75
+  // X ya toca ±1. Y sube a 0.75 para que el 8 sea más pronunciado
+  // sin perder la proporción Lissajous (ratio 1:0.75 sigue siendo elegante).
   figure8: (phase, audio) => {
     return {
       x: Math.sin(phase),
-      y: Math.sin(phase * 2) * 0.6,
+      y: Math.sin(phase * 2) * 0.75,
     }
   },
   
@@ -433,8 +433,8 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
 
-  // CHASE_POSITION: 4 posiciones cardinales con transición suave
-  // 🔧 WAVE 2088.5: FIX "CLAVONE" — Misma interpolación edge-to-edge
+  // CHASE_POSITION: 4 posiciones cardinales con interpolación lineal
+  // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
   chase_position: (phase, _audio) => {
     const positions: Array<{ x: number; y: number }> = [
       { x: -0.7, y: 0 },     // Izquierda
@@ -448,14 +448,11 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const nextStep = (currentStep + 1) % totalSteps
     const t = normalizedPhase - Math.floor(normalizedPhase)
     
-    // Hermite smoothstep
-    const eased = t * t * (3 - 2 * t)
-    
     const from = positions[currentStep]
     const to = positions[nextStep]
     return {
-      x: from.x + (to.x - from.x) * eased,
-      y: from.y + (to.y - from.y) * eased,
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
     }
   },
 }
@@ -882,7 +879,13 @@ export class VibeMovementManager {
     // Factor de reduccion si excede el presupuesto
     const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel)
     
-    return Math.min(1.0, requestedAmplitude * gearboxFactor)
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Hard floor 0.85
+    // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
+    // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
+    // ya se encarga de limitar la velocidad real del hardware.
+    const GEARBOX_MIN_AMPLITUDE = 0.85
+    const gearboxResult = requestedAmplitude * gearboxFactor
+    return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult))
   }
   
   // UTILITIES

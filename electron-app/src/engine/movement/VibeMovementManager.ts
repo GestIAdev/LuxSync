@@ -236,17 +236,37 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
   
-  // SQUARE: Movimiento cuadrado, esquinas duras
+  // SQUARE: Movimiento cuadrado con transición edge-to-edge
+  // 🔧 WAVE 2088.5: FIX "CLAVONE" — El mover SIEMPRE está en movimiento.
+  // Antes: step function → mismo punto durante 1.6s → percepción de "clavado".
+  // Ahora: interpolación ease-in-out entre esquinas. El mover desacelera
+  // al acercarse a una esquina y acelera al salir hacia la siguiente.
+  // Esto crea un efecto de "visita" a cada esquina sin parar realmente.
+  //
+  // holdRatio=0.25 → 25% del tiempo "en" la esquina (desacelerando/acelerando),
+  // 75% del tiempo viajando entre esquinas. Zero time parado.
   square: (phase, audio) => {
-    const normalizedPhase = (phase / (Math.PI * 2)) * 4
-    const quadrant = Math.floor(normalizedPhase) % 4
     const corners = [
       { x: 1, y: 1 },
       { x: 1, y: -1 },
       { x: -1, y: -1 },
       { x: -1, y: 1 },
     ]
-    return corners[quadrant]
+    const normalizedPhase = (phase / (Math.PI * 2)) * 4
+    const currentCorner = Math.floor(normalizedPhase) % 4
+    const nextCorner = (currentCorner + 1) % 4
+    const t = normalizedPhase - Math.floor(normalizedPhase) // 0..1 within this segment
+    
+    // Ease-in-out cubic: slow near corners, fast in transit
+    // f(t) = 3t² - 2t³ (Hermite smoothstep)
+    const eased = t * t * (3 - 2 * t)
+    
+    const from = corners[currentCorner]
+    const to = corners[nextCorner]
+    return {
+      x: from.x + (to.x - from.x) * eased,
+      y: from.y + (to.y - from.y) * eased,
+    }
   },
   
   // DIAMOND: Rombo agresivo
@@ -260,13 +280,31 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
   
-  // BOTSTEP: Posiciones cuantizadas roboticas
+  // BOTSTEP: Posiciones cuantizadas robóticas con transición
+  // 🔧 WAVE 2088.5: FIX "CLAVONE" — Mismo principio que square.
+  // 8 posiciones golden-ratio, con ease-in-out entre cada una.
+  // El carácter "robótico" se mantiene por la ease-in-out que
+  // desacelera y acelera bruscamente en cada posición.
   botstep: (phase, audio) => {
-    const step = Math.floor((phase / (Math.PI * 2)) * 8)
     const phi = 1.618033988749
-    const x = Math.sin(step * phi * Math.PI) * 0.9
-    const y = Math.cos(step * phi * phi * Math.PI) * 0.6
-    return { x, y }
+    const totalSteps = 8
+    const normalizedPhase = (phase / (Math.PI * 2)) * totalSteps
+    const currentStep = Math.floor(normalizedPhase) % totalSteps
+    const nextStep = (currentStep + 1) % totalSteps
+    const t = normalizedPhase - Math.floor(normalizedPhase)
+    
+    // Ease-in-out cubic (same Hermite smoothstep)
+    const eased = t * t * (3 - 2 * t)
+    
+    const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9
+    const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.6
+    const toX = Math.sin(nextStep * phi * Math.PI) * 0.9
+    const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.6
+    
+    return {
+      x: fromX + (toX - fromX) * eased,
+      y: fromY + (toY - fromY) * eased,
+    }
   },
   
   // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
@@ -395,21 +433,30 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
 
-  // CHASE_POSITION: Snap cuantizado — 4 posiciones fijas, 4 beats cada una
+  // CHASE_POSITION: 4 posiciones cardinales con transición suave
+  // 🔧 WAVE 2088.5: FIX "CLAVONE" — Misma interpolación edge-to-edge
   chase_position: (phase, _audio) => {
-    // 4 posiciones discretas en el ciclo de 16 beats
-    // phase va de 0 a 2π → dividimos en 4 cuadrantes
-    const step = Math.floor((phase / (2 * Math.PI)) * 4) % 4
-
-    // Posiciones cardinales: izquierda, arriba, derecha, abajo
     const positions: Array<{ x: number; y: number }> = [
       { x: -0.7, y: 0 },     // Izquierda
       { x: 0, y: 0.7 },      // Arriba
       { x: 0.7, y: 0 },      // Derecha
       { x: 0, y: -0.7 },     // Abajo
     ]
-
-    return positions[step]
+    const totalSteps = 4
+    const normalizedPhase = (phase / (2 * Math.PI)) * totalSteps
+    const currentStep = Math.floor(normalizedPhase) % totalSteps
+    const nextStep = (currentStep + 1) % totalSteps
+    const t = normalizedPhase - Math.floor(normalizedPhase)
+    
+    // Hermite smoothstep
+    const eased = t * t * (3 - 2 * t)
+    
+    const from = positions[currentStep]
+    const to = positions[nextStep]
+    return {
+      x: from.x + (to.x - from.x) * eased,
+      y: from.y + (to.y - from.y) * eased,
+    }
   },
 }
 

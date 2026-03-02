@@ -341,49 +341,64 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       vi.restoreAllMocks()
     })
 
-    test('square: visits exactly 4 positions (quantized)', () => {
+    test('square: traverses all 4 quadrants with smooth interpolation', () => {
       vmm.setManualPattern('square')
-      const positions = new Set<string>()
+      const quadrantsVisited = new Set<string>()
       
-      // Run through one full cycle (16 beats at this period)
+      // Run through one full cycle (16 beats at this period) with sub-beat resolution
+      // WAVE 2088.5: square now interpolates between corners (smooth transition)
+      // so we sample at sub-beat intervals to catch all 4 quadrants
       for (let beat = 0; beat < 16; beat++) {
-        vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
-        const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.5 })
-        const intent = vmm.generateIntent('techno-club', audio, 0, 1)
-        
-        // Quantize to detect unique positions
-        const key = `${Math.sign(intent.x)},${Math.sign(intent.y)}`
-        positions.add(key)
-        
-        assertSafeRange(intent, `square beat=${beat}`)
+        for (let subBeat = 0; subBeat < 4; subBeat++) {
+          const phase = subBeat * 0.25
+          vi.spyOn(Date, 'now').mockReturnValue(1000 + (beat * 4 + subBeat) * 17)
+          const audio = createBaseAudio({ beatCount: beat, beatPhase: phase, energy: 0.5 })
+          const intent = vmm.generateIntent('techno-club', audio, 0, 1)
+          
+          // Track which quadrant this position is in (skip zero-crossings)
+          if (Math.abs(intent.x) > 0.1 && Math.abs(intent.y) > 0.1) {
+            const qx = intent.x > 0 ? '+' : '-'
+            const qy = intent.y > 0 ? '+' : '-'
+            quadrantsVisited.add(`${qx},${qy}`)
+          }
+          
+          assertSafeRange(intent, `square beat=${beat}.${subBeat}`)
+        }
       }
       
-      // Square should visit exactly 4 quadrants
-      expect(positions.size).toBe(4)
+      // Square must visit all 4 quadrants during its cycle
+      expect(quadrantsVisited.size).toBe(4)
       
       vi.restoreAllMocks()
     })
 
-    test('chase_position: visits exactly 4 cardinal positions', () => {
+    test('chase_position: traverses all 4 cardinal directions with smooth interpolation', () => {
       vmm.setManualPattern('chase_position')
-      const positions = new Set<string>()
+      const directionsVisited = new Set<string>()
       
+      // WAVE 2088.5: chase_position now interpolates between positions
       for (let beat = 0; beat < 16; beat++) {
-        vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
-        const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.5 })
-        const intent = vmm.generateIntent('techno-club', audio, 0, 1)
-        
-        // Quantize: which axis is dominant?
-        const isHorizontal = Math.abs(intent.x) > Math.abs(intent.y)
-        const key = isHorizontal
-          ? `${Math.sign(intent.x)},0`
-          : `0,${Math.sign(intent.y)}`
-        positions.add(key)
-        
-        assertSafeRange(intent, `chase beat=${beat}`)
+        for (let subBeat = 0; subBeat < 4; subBeat++) {
+          const phase = subBeat * 0.25
+          vi.spyOn(Date, 'now').mockReturnValue(1000 + (beat * 4 + subBeat) * 17)
+          const audio = createBaseAudio({ beatCount: beat, beatPhase: phase, energy: 0.5 })
+          const intent = vmm.generateIntent('techno-club', audio, 0, 1)
+          
+          // Track dominant axis direction (skip neutral crossings)
+          const absX = Math.abs(intent.x)
+          const absY = Math.abs(intent.y)
+          if (absX > 0.3 && absX > absY * 1.5) {
+            directionsVisited.add(intent.x > 0 ? 'right' : 'left')
+          } else if (absY > 0.3 && absY > absX * 1.5) {
+            directionsVisited.add(intent.y > 0 ? 'up' : 'down')
+          }
+          
+          assertSafeRange(intent, `chase beat=${beat}.${subBeat}`)
+        }
       }
       
-      expect(positions.size).toBe(4)
+      // Chase must visit all 4 cardinal directions during its cycle
+      expect(directionsVisited.size).toBe(4)
       
       vi.restoreAllMocks()
     })

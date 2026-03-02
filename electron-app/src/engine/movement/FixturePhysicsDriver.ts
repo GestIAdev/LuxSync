@@ -141,10 +141,11 @@ export class FixturePhysicsDriver {
   // 🏎️ WAVE 2074.2: Explicit physics mode — no more dead code
   private currentPhysicsMode: 'snap' | 'classic' = 'classic'
   // 🏎️ WAVE 2074.3: Explicit personality data — no more maxAccel branches
+  // 🔧 WAVE 2088.4: Defaults bajados a valores realistas (antes 7650 = sin límite)
   private currentSnapFactor: number = 0.0
-  private currentRevLimitPanPerSec: number = 7650
-  private currentRevLimitTiltPerSec: number = 7650
-
+  private currentRevLimitPanPerSec: number = 50
+  private currentRevLimitTiltPerSec: number = 35
+  
   // Presets de instalación
   private readonly INSTALLATION_PRESETS: Record<string, InstallationPreset> = {
     //  CEILING: Fixtures colgados del techo mirando hacia abajo
@@ -727,7 +728,7 @@ export class FixturePhysicsDriver {
       newPos.tilt = current.tilt + deltaTilt
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2040.2: REINFORCED NaN GUARD - Velocity Explosion Protection
+      //  WAVE 2040.2: REINFORCED NaN GUARD - Velocity Explosion Protection
       // ═══════════════════════════════════════════════════════════════════════
       const safeVelPan = dt > 0.1 ? deltaPan / dt : 0
       const safeVelTilt = dt > 0.1 ? deltaTilt / dt : 0

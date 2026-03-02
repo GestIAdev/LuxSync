@@ -53,7 +53,7 @@ import {
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
 
 // �🔧 WAVE 338: Movement Physics Driver
-import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver'
+import { FixturePhysicsDriver, type PhysicsProfile as DriverPhysicsProfile } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -666,12 +666,14 @@ export class HardwareAbstraction {
       const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod))
       
       if (isMovingFixture) {
-        // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
-        // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+        // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
+        // El profile puede venir en 3 formatos distintos. translateToDriverPhysicsProfile
+        // los normaliza al formato que entiende el FixturePhysicsDriver.
         const profile = this.getFixtureProfileCached(fixture)
-        const physicsData = profile?.physics || (profile as any)?.physicsProfile
-        if (physicsData) {
-          this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData)
+        const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
+        const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
+        if (driverProfile) {
+          this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -949,12 +951,12 @@ export class HardwareAbstraction {
       const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod))
       
       if (isMovingFixture) {
-        // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
-        // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+        // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
         const profile = this.getFixtureProfileCached(fixture)
-        const physicsData = profile?.physics || (profile as any)?.physicsProfile
-        if (physicsData) {
-          this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData)
+        const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
+        const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
+        if (driverProfile) {
+          this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
         }
 
         // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
@@ -1045,7 +1047,99 @@ export class HardwareAbstraction {
   }
   
   /**
-   * 🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
+   * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor
+   * 
+   * Problema: Existen 3 formatos de PhysicsProfile incompatibles:
+   *   A) ShowFileV2.PhysicsProfile: motorType='stepper-cheap', maxVelocity=400 (DMX/s)
+   *   B) FixtureProfiles.movement: type='stepper', maxPanSpeed=180 (grados/s)
+   *   C) FixturePhysicsDriver.PhysicsProfile: panSpeedFactor=0.5, qualityTier='budget'
+   * 
+   * Este método normaliza CUALQUIER formato al formato C que el Driver entiende.
+   * Sin él, los límites de la Forja NUNCA llegaban al motor de físicas.
+   */
+  private translateToDriverPhysicsProfile(rawProfile: any): DriverPhysicsProfile | null {
+    if (!rawProfile) return null
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FUENTE A: ShowFileV2.PhysicsProfile (from fixture.physics)
+    // Tiene: motorType='servo-pro'|'stepper-quality'|'stepper-cheap'|'unknown'
+    //        maxAcceleration, maxVelocity (ya en DMX/s)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rawProfile.motorType && rawProfile.maxVelocity !== undefined && rawProfile.orientation !== undefined) {
+      const motorTypeMap: Record<string, 'stepper' | 'servo' | 'unknown'> = {
+        'servo-pro': 'servo',
+        'stepper-quality': 'stepper',
+        'stepper-cheap': 'stepper',
+        'unknown': 'unknown',
+      }
+      const qualityMap: Record<string, 'budget' | 'mid' | 'pro'> = {
+        'servo-pro': 'pro',
+        'stepper-quality': 'mid',
+        'stepper-cheap': 'budget',
+        'unknown': 'budget',
+      }
+      
+      // maxVelocity del ShowFileV2 está en DMX/s.
+      // El REF_SPEED para calcular speedFactor: Robe Robin = ~142 DMX/s
+      const REF_SPEED_DMX = 142
+      const speedFactor = Math.min(1.0, rawProfile.maxVelocity / REF_SPEED_DMX)
+      
+      return {
+        motorType: motorTypeMap[rawProfile.motorType] ?? 'unknown',
+        maxAcceleration: rawProfile.maxAcceleration,
+        maxVelocity: rawProfile.maxVelocity,
+        panSpeedFactor: speedFactor,
+        tiltSpeedFactor: speedFactor * 0.7, // Tilt siempre más lento (carga vertical)
+        qualityTier: qualityMap[rawProfile.motorType] ?? 'budget',
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FUENTE B: FixtureProfiles.movement (from getProfile/getProfileByModel)
+    // Tiene: movement.type='stepper', movement.maxPanSpeed=180 (grados/s)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rawProfile.movement && rawProfile.movement.maxPanSpeed !== undefined) {
+      const mov = rawProfile.movement
+      
+      // Convertir grados/s a speedFactor relativo a Robe Robin (300°/s)
+      const REF_SPEED_DEG = 300
+      const panFactor = Math.min(1.0, mov.maxPanSpeed / REF_SPEED_DEG)
+      const tiltFactor = Math.min(1.0, (mov.maxTiltSpeed ?? mov.maxPanSpeed * 0.7) / (REF_SPEED_DEG * 0.7))
+      
+      // Inferir qualityTier por velocidad
+      let qualityTier: 'budget' | 'mid' | 'pro' = 'budget'
+      if (mov.maxPanSpeed >= 250) qualityTier = 'pro'
+      else if (mov.maxPanSpeed >= 160) qualityTier = 'mid'
+      
+      const motorTypeMap: Record<string, 'stepper' | 'servo' | 'unknown'> = {
+        'stepper': 'stepper',
+        'servo': 'servo',
+        'galvo': 'servo',
+      }
+      
+      return {
+        motorType: motorTypeMap[mov.type] ?? 'stepper',
+        maxAcceleration: undefined, // El profile de FixtureProfiles no tiene accel
+        maxVelocity: undefined,     // Se usará speedFactor en su lugar
+        panSpeedFactor: panFactor,
+        tiltSpeedFactor: tiltFactor,
+        qualityTier,
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FUENTE C: Ya es un DriverPhysicsProfile (passthrough)
+    // Tiene: panSpeedFactor o qualityTier directamente
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rawProfile.panSpeedFactor !== undefined || rawProfile.qualityTier !== undefined) {
+      return rawProfile as DriverPhysicsProfile
+    }
+    
+    return null
+  }
+  
+  /**
+   * �🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
    * @returns Modified state with colorWheel set (or original state if no translation needed)
    */
   private translateColorToWheel(

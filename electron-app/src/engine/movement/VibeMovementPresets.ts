@@ -86,6 +86,11 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 🎛️ TECHNO: Velocidad máxima, Aceleración agresiva, Beam cerrado
   // "Los demonios de neón en el bunker noruego"
   // 🔧 WAVE 350.5: maxAcceleration 1500 → 2000 (safety bump para botStabs)
+  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — basada en hardware real (Sharpy ~257°/s = 121 DMX/s)
+  //    ANTES: revLimitPan=3600 (7624°/s = 25× un Sharpy real), snapFactor=1.0 (sin damping)
+  //    Log probaba velocidades de 7624°/s reales. Epilepsia pura.
+  //    AHORA: REV_LIMIT calibrado a mover pro real. snapFactor<1.0 para damping.
+  //    Referencia: Clay Paky Sharpy Pan=540°/2.1s=257°/s, Robe Robin=300°/s
   // ───────────────────────────────────────────────────────────────
   'techno-club': {
     physics: {
@@ -94,9 +99,13 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.05,           // Casi sin fricción (libre)
       arrivalThreshold: 0.5,    // Precisión alta
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
-      snapFactor: 1.0,          // 🏎️ WAVE 2074.3: Instantáneo — sweep/square siguen target frame a frame
-      revLimitPanPerSec: 3600,  // 🏎️ WAVE 2074.3: 120/frame × 30fps — sweeps necesitan velocidad
-      revLimitTiltPerSec: 1800, // 🏎️ WAVE 2074.3: 60/frame × 30fps
+      snapFactor: 0.35,         // 🏎️ WAVE 2088.4: Solo 35% del delta por frame — sweeps agresivos PERO con damping
+                                //    Antes=1.0 (100% del delta → square saltaba 2.0 en 1 frame = epilepsia)
+                                //    0.35 en snap mode = el foco PERSIGUE rápido pero NO teleporta
+      revLimitPanPerSec: 140,   // 🏎️ WAVE 2088.4: ~296°/s — justo por debajo de un Robe Robin 600 real
+                                //    Antes=3600 (7624°/s = 25× un mover real). A 60fps: 140×0.016=2.24 DMX/frame
+      revLimitTiltPerSec: 95,   // 🏎️ WAVE 2088.4: ~100°/s — tilt siempre más lento que pan (motores reales)
+                                //    Antes=1800 (1906°/s). A 60fps: 95×0.016=1.52 DMX/frame
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -116,6 +125,9 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 💃 LATINO: Fluido, Circular, Orgánico
   // "La cumbia tiene swing, los movers también"
   // 🔧 WAVE 340.5: Aceleración alta para seguir caderas
+  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — figure8 suave necesita seguir curva sin lag
+  //    Referencia: 750 DMX/s era ~1588°/s. Un figure8 a 120bpm con período 8 beats
+  //    necesita ~50 DMX/s pico. Le damos 85 DMX/s (~180°/s) para headroom.
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
@@ -124,9 +136,12 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.20,           // Algo de suavizado orgánico
       arrivalThreshold: 2.0,    // Permite overshoot elegante
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
-      snapFactor: 0.65,         // 🏎️ WAVE 2074.3: Suavizado orgánico — curvas sin corners
-      revLimitPanPerSec: 750,   // 🏎️ WAVE 2074.3: 25/frame × 30fps — figure8 sin lag
-      revLimitTiltPerSec: 540,  // 🏎️ WAVE 2074.3: 18/frame × 30fps
+      snapFactor: 0.45,         // 🏎️ WAVE 2088.4: Suavizado orgánico — las caderas no teleportan
+                                //    Antes=0.65. Bajamos para más fluidez en figure8
+      revLimitPanPerSec: 85,    // 🏎️ WAVE 2088.4: ~180°/s — mover medio tirando a rápido
+                                //    Antes=750 (1588°/s). A 60fps: 85×0.016=1.36 DMX/frame
+      revLimitTiltPerSec: 60,   // 🏎️ WAVE 2088.4: ~64°/s — tilt suave para curvas sensuales
+                                //    Antes=540 (571°/s). A 60fps: 60×0.016=0.96 DMX/frame
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)
@@ -146,6 +161,9 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 🎸 ROCK: Reactivo, Posiciones fijas, Wall of Light
   // "El muro de luz que golpea con la guitarra"
   // 🔧 WAVE 340.5: Aceleración alta para punch
+  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — golpes dramáticos pero creíbles
+  //    Rock necesita movimientos con peso, como un headbang — no teleporting.
+  //    Referencia: mover de gama media (~200°/s pan = 94 DMX/s)
   // ───────────────────────────────────────────────────────────────
   'pop-rock': {
     physics: {
@@ -154,9 +172,12 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       friction: 0.30,           // Fricción para punch (no arrastrar)
       arrivalThreshold: 1.0,    // Precisión normal
       physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
-      snapFactor: 0.50,         // 🏎️ WAVE 2074.3: Punch con algo de suavizado — wall of light
-      revLimitPanPerSec: 450,   // 🏎️ WAVE 2074.3: 15/frame × 30fps — dramático pero controlado
-      revLimitTiltPerSec: 300,  // 🏎️ WAVE 2074.3: 10/frame × 30fps
+      snapFactor: 0.30,         // 🏎️ WAVE 2088.4: Punch con peso — el mover GOLPEA, no teleporta
+                                //    Antes=0.50. Rock tiene GRAVITAS, el movimiento cuesta.
+      revLimitPanPerSec: 95,    // 🏎️ WAVE 2088.4: ~201°/s — mover medio, dramático pero controlado
+                                //    Antes=450 (953°/s). A 60fps: 95×0.016=1.52 DMX/frame
+      revLimitTiltPerSec: 65,   // 🏎️ WAVE 2088.4: ~69°/s — tilt con peso real
+                                //    Antes=300 (318°/s). A 60fps: 65×0.016=1.04 DMX/frame
     },
     optics: {
       zoomDefault: 220,         // Zoom abierto (wash)
@@ -184,8 +205,10 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       arrivalThreshold: 3.0,    // Permite mucho overshoot
       physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
       snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 7650,  // 🏎️ WAVE 2074.3: Sin límite práctico — la física clásica controla
-      revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
+      revLimitPanPerSec: 30,    // 🏎️ WAVE 2088.4: ~64°/s — glacial pero con red de seguridad real
+                                //    Antes=7650 (sin límite práctico). Classic mode controla via inercia,
+                                //    pero si algo falla, este cap evita teleporting.
+      revLimitTiltPerSec: 20,   // 🏎️ WAVE 2088.4: ~21°/s — tilt ultra lento para chill
     },
     optics: {
       zoomDefault: 255,         // Zoom máximo (wash total)
@@ -213,8 +236,9 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       arrivalThreshold: 1.0,
       physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
       snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 7650,  // 🏎️ WAVE 2074.3: Sin límite práctico
-      revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
+      revLimitPanPerSec: 50,    // 🏎️ WAVE 2088.4: ~106°/s — idle tranquilo con red de seguridad
+                                //    Antes=7650 (sin límite práctico)
+      revLimitTiltPerSec: 35,   // 🏎️ WAVE 2088.4: ~37°/s — tilt suave en idle
     },
     optics: {
       zoomDefault: 127,         // Zoom neutro

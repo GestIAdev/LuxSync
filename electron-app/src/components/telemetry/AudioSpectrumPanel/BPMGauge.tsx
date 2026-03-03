@@ -1,9 +1,12 @@
 /**
  * 💓 BPM GAUGE - WAVE 1167
  * Gauge circular de BPM con arco de confidence
+ * 
+ * WAVE 2097.1: Wrapped in React.memo — all props are primitives (number/boolean),
+ * shallow comparison prevents needless SVG re-renders at 30fps.
  */
 
-import React from 'react'
+import React, { memo } from 'react'
 
 export interface BPMGaugeProps {
   bpm: number
@@ -14,8 +17,9 @@ export interface BPMGaugeProps {
 
 /**
  * 💓 Gauge circular mostrando BPM y confidence
+ * WAVE 2097.1: memo() — bpm, confidence, beatPhase: number; onBeat: boolean → all primitives
  */
-export const BPMGauge: React.FC<BPMGaugeProps> = ({ 
+export const BPMGauge: React.FC<BPMGaugeProps> = memo(({ 
   bpm, 
   confidence, 
   onBeat,
@@ -93,6 +97,8 @@ export const BPMGauge: React.FC<BPMGaugeProps> = ({
       </div>
     </div>
   )
-}
+})
+
+BPMGauge.displayName = 'BPMGauge'
 
 export default BPMGauge

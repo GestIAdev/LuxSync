@@ -62,6 +62,8 @@ export {
   
   // Validation
   validateShowFile,
+  validateShowFileDeep,
+  type ShowFileValidationResult,
   getSchemaVersion
 } from './ShowFileV2'
 
@@ -73,6 +75,8 @@ export {
   type MigrationResult,
   migrateConfigV1ToV2,
   autoMigrate,
+  migrateV2ToLatest,
+  LATEST_V2_VERSION,
   parseLegacyScenes
 } from './ShowFileMigrator'
 

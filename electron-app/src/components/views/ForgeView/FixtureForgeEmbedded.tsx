@@ -588,14 +588,16 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     return {
       ...fixture,
       // WAVE 1116.4: Include PHYSICS at root level for JSON export!
+      // 🛡️ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt frozen to false in physics.
+      // The actual invert values live in fixture.calibration (set by CalibrationView).
       physics: {
         motorType: physics.motorType as any,  // Cast needed: ShowFileV2 vs FixtureDefinition types differ
         maxAcceleration: physics.maxAcceleration,
         maxVelocity: physics.maxVelocity,
         safetyCap: physics.safetyCap,
         orientation: physics.orientation,
-        invertPan: physics.invertPan,
-        invertTilt: physics.invertTilt,
+        invertPan: false,   // 🛡️ CW-AUDIT-4: Frozen — calibration is master
+        invertTilt: false,  // 🛡️ CW-AUDIT-4: Frozen — calibration is master
         swapPanTilt: physics.swapPanTilt,
         homePosition: { ...physics.homePosition },
         tiltLimits: { ...physics.tiltLimits },

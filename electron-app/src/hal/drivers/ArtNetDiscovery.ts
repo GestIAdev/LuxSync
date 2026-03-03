@@ -310,7 +310,7 @@ export class ArtNetDiscovery extends EventEmitter {
   
   constructor() {
     super()
-    console.log('[ArtNetDiscovery] 📡 WAVE 2048: ECHO LOCATION initialized')
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════════

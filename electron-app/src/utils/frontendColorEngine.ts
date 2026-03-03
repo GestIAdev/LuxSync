@@ -18,11 +18,9 @@
 
 import { LivingPaletteId } from '../stores/controlStore'
 
-export interface RGBColor {
-  r: number
-  g: number
-  b: number
-}
+// 🎨 WAVE 2096.1: RGBColor unificado en types/color.ts (VULN-COLOR-07)
+import { RGBColor } from '../types/color'
+export type { RGBColor }
 
 export type ZoneType = 'wash' | 'spot'
 export type Side = 'left' | 'right' | 'front' | 'back'

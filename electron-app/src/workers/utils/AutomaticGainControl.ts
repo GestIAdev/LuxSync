@@ -266,7 +266,6 @@ let agcInstance: AutomaticGainControl | null = null;
 export function getAGC(): AutomaticGainControl {
   if (!agcInstance) {
     agcInstance = new AutomaticGainControl();
-    console.log('[AGC 🎚️] 🚀 WAVE 670: Automatic Gain Control INITIALIZED');
   }
   return agcInstance;
 }

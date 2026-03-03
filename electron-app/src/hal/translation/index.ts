@@ -39,6 +39,8 @@ export {
   isMechanicalFixture,
   registerProfile,
   listProfiles,
+  generateProfileFromDefinition,
+  type GeneratableFixtureData,
 } from './FixtureProfiles'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -144,5 +146,4 @@ export function translateColor(
   }
 }
 
-console.log('[HAL Translation] 🎨 WAVE 1000: HAL Genesis module loaded')
-console.log('[HAL Translation]    Components: Profiles ✓ Translator ✓ SafetyLayer ✓')
+// WAVE 2098: Boot silence

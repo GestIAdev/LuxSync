@@ -703,6 +703,9 @@ export class VibeMovementManager {
     // Coseno desplazado: arranca en 0.85, pico en 1.0 a ~62% de la frase
     const phraseEnvelope = 0.925 + 0.075 * Math.sin(Math.PI * (phraseProgress - 0.15))
     // Clamp final: el envelope escala entre 0.85 y 1.0
+    // ⚠️ KEA-007 (WAVE 2095.1): FLOOR 0.85 aquí + GEARBOX_MIN 0.85 abajo
+    // → amplitud efectiva mínima combinada = 0.85 × 0.85 = 72.25% del rango.
+    // Ver cálculo completo en calculateGearboxAmplitude() → GEARBOX_MIN_AMPLITUDE.
     const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope))
     
     const finalAmplitude = effectiveAmplitude * clampedEnvelope
@@ -785,6 +788,15 @@ export class VibeMovementManager {
       // La posición base (finalPosition) es un punto en una trayectoria
       // circular/elíptica. Rotamos ese punto alrededor del centro (0,0)
       // por el offset del fixture → efecto ola/cadena.
+      //
+      // ⚠️ KEA-005 (WAVE 2095.1): SNAKE + PATRONES Y-ONLY = OSCILACIÓN DIAGONAL
+      // Patrones como 'breath' generan {x:0, y:valor}. Al aplicar snake rotation,
+      // el vector se rota en el plano XY → el fixture NO ejecuta un breath
+      // vertical puro sino una oscilación DIAGONAL cuyo ángulo depende del
+      // fixtureIndex y stereoConfig.offset. Esto es un efecto visual válido
+      // (y normalmente bonito), pero NO es un breath tradicional. El operador
+      // que calibre Forge asumiendo movimiento vertical puro estará equivocado.
+      // Para breath puro en SNAKE: usar SYNC o sobreescribir con patrones 2D.
       const phaseOffset = fixtureIndex * stereoConfig.offset
       
       // Magnitud del movimiento (distancia al centro en espacio -1..+1)
@@ -902,6 +914,16 @@ export class VibeMovementManager {
     // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
     // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
     // ya se encarga de limitar la velocidad real del hardware.
+    //
+    // ⚠️ KEA-007 (WAVE 2095.1): INTERACCIÓN OCULTA GEARBOX × PHRASE_ENVELOPE
+    // El PhraseEnvelope también tiene un floor de 0.85 (clampedEnvelope).
+    // El Gearbox multiplica por encima del envelope → la amplitud efectiva
+    // mínima combinada es: GEARBOX_MIN (0.85) × ENVELOPE_MIN (0.85) = 0.7225
+    //
+    // Implicación práctica: un patrón con amplitud objetivo 1.0 jamás bajará
+    // del 72.25% de su rango teórico, incluso con energía=0 y phrase en valle.
+    // Para un scan_x en fixture de 540°: barrido mínimo real = ~390° (no 540°).
+    // Tenerlo en cuenta al calibrar posiciones de stage en Forge.
     const GEARBOX_MIN_AMPLITUDE = 0.85
     const gearboxResult = requestedAmplitude * gearboxFactor
     return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult))

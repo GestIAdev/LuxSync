@@ -29,7 +29,6 @@ import { deserializeHephClip, serializeHephClip } from './types'
  * Call this during app initialization.
  */
 export function setupHephIPCHandlers(): void {
-  console.log('[HephIPC] Setting up Hephaestus IPC handlers (WAVE 2030.5)')
 
   // ═══════════════════════════════════════════════════════════════════════
   // SAVE
@@ -230,7 +229,7 @@ export function setupHephIPCHandlers(): void {
     }
   })
 
-  console.log('[HephIPC] ✓ All Hephaestus handlers registered')
+  // WAVE 2098: Boot silence
 }
 
 export default setupHephIPCHandlers

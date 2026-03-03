@@ -179,7 +179,7 @@ export class TitanOrchestrator {
     }
     
     this.eventRouter = getEventRouter()
-    console.log('[TitanOrchestrator] Created (WAVE 243.5)')
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -187,24 +187,17 @@ export class TitanOrchestrator {
    */
   async init(): Promise<void> {
     if (this.isInitialized) {
-      console.log('[TitanOrchestrator] Already initialized')
       return
     }
     
-    console.log('[TitanOrchestrator] ===============================================')
-    console.log('[TitanOrchestrator]   INITIALIZING TITAN 2.0')
-    console.log('[TitanOrchestrator] ===============================================')
-    
     // Initialize Brain
     this.brain = new TrinityBrain()
-    console.log('[TitanOrchestrator] TrinityBrain created')
     
     // Connect Brain to Trinity Orchestrator and START the neural network
     try {
       const trinity = getTrinity()
       this.trinity = trinity  // 🧠 WAVE 258: Save reference for audio feeding
       this.brain.connectToOrchestrator(trinity)
-      console.log('[TitanOrchestrator] Brain connected to Trinity')
       
       // ═══════════════════════════════════════════════════════════════════════════
       // 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
@@ -254,15 +247,10 @@ export class TitanOrchestrator {
         // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
         // Frontend los gestiona a 30fps
       });
-      console.log('[TitanOrchestrator] 🔥 WAVE 1012.5: HYBRID SOURCE - Frontend(30fps)=bass/mid/high, Worker(10fps)=FFT metrics')
       
-      // 🧠 WAVE 258 CORTEX KICKSTART: Start the Workers!
-      console.log('[TitanOrchestrator] 🧠 Starting Trinity Neural Network...')
       await trinity.start()
-      console.log('[TitanOrchestrator] ✅ Trinity Workers are LIVE!')
     } catch (e) {
       console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e)
-      console.log('[TitanOrchestrator] Brain will use simulated context as fallback')
     }
     
     // Initialize Engine with initial vibe
@@ -270,48 +258,26 @@ export class TitanOrchestrator {
       debug: this.config.debug, 
       initialVibe: this.config.initialVibe 
     })
-    console.log('[TitanOrchestrator] TitanEngine created')
     
-    // ❤️ WAVE 1153: Initialize THE PACEMAKER
-    // The heart that pumps beat data through the entire system
     this.beatDetector = new BeatDetector({
       sampleRate: 44100,
       fftSize: 2048,
       smoothingTimeConstant: 0.8,
-      minBpm: 60,    // Slowest heartbeat: 60 BPM ballads
-      maxBpm: 200,   // Fastest heartbeat: 200 BPM hardcore
+      minBpm: 60,
+      maxBpm: 200,
     })
-    console.log('[TitanOrchestrator] ❤️ PACEMAKER (BeatDetector) installed - WAVE 1153')
     
-    // 📜 WAVE 560: Subscribe to TitanEngine log events for Tactical Log
     this.engine.on('log', (logEntry: { category: string; message: string; data?: Record<string, unknown> }) => {
       this.log(logEntry.category, logEntry.message, logEntry.data)
     })
-    console.log('[TitanOrchestrator] 📜 Tactical Log connected to TitanEngine')
     
-    // Initialize HAL
-    // 🎨 WAVE 686.10: Pass external driver if provided
     this.hal = new HardwareAbstraction({ 
       debug: this.config.debug,
       externalDriver: this.config.dmxDriver
     })
-    console.log('[TitanOrchestrator] HardwareAbstraction created')
-    if (this.config.dmxDriver) {
-      console.log('[TitanOrchestrator] 🎨 Using external DMX driver (WAVE 686.10)')
-    }
-    
-    // 🎭 WAVE 374: Initialize MasterArbiter
-    console.log('[TitanOrchestrator] 🎭 MasterArbiter ready (Layer 0-4 arbitration)')
-    
-    // TODO: EventRouter connection needs interface alignment
-    // this.eventRouter.connect(this.brain, this.engine, this.hal)
-    console.log('[TitanOrchestrator] EventRouter ready (direct mode)')
     
     this.isInitialized = true
-    
-    console.log('[TitanOrchestrator] ===============================================')
-    console.log('[TitanOrchestrator]   TITAN 2.0 INITIALIZED')
-    console.log('[TitanOrchestrator] ===============================================')
+    // WAVE 2098: Boot silence — all init logs removed, unified banner in main.ts
   }
 
   /**
@@ -324,12 +290,8 @@ export class TitanOrchestrator {
     }
     
     if (this.isRunning) {
-      console.log('[TitanOrchestrator] Already running')
       return
     }
-    
-    // 🏎️ WAVE 1013: NITRO BOOST - Overclock to 60fps
-    console.log('[TitanOrchestrator] 🏎️ Starting main loop @ 60fps (WAVE 1013: NITRO BOOST)')
     
     this.isRunning = true
     this.mainLoopInterval = setInterval(() => {
@@ -352,7 +314,7 @@ export class TitanOrchestrator {
       this.mainLoopInterval = null
     }
     this.isRunning = false
-    console.log('[TitanOrchestrator] Stopped')
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -581,11 +543,7 @@ export class TitanOrchestrator {
       })
     }
     
-    // WAVE 380: Debug - verify fixtures are present in loop
-    if (this.frameCount === 1 || this.frameCount % 300 === 0) {
-      console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`)
-      console.log(`[TitanOrchestrator] 🎭 Arbitrated fixtures: ${arbitratedTarget.fixtures.length}`)
-    }
+    // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
     
     // 4. HAL renders arbitrated target -> produces fixture states
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
@@ -1648,7 +1606,6 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setBroadcastCallback(callback: (truth: any) => void): void {
     this.onBroadcast = callback
-    console.log('[TitanOrchestrator] Broadcast callback registered')
   }
 
   /**
@@ -1659,7 +1616,6 @@ export class TitanOrchestrator {
   
   setLogCallback(callback: (entry: any) => void): void {
     this.onLog = callback
-    console.log('[TitanOrchestrator] Log callback registered')
   }
 
   /**
@@ -1833,9 +1789,7 @@ export class TitanOrchestrator {
       dmxAddress: f.dmxAddress || f.address  // Ensure dmxAddress exists regardless of format
     }))
     
-    // WAVE 380: Log fixture ingestion
-    console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`)
-    console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...')
+    // WAVE 380: Fixture ingestion (WAVE 2098: silenced)
     
     // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
     // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
@@ -1873,8 +1827,7 @@ export class TitanOrchestrator {
         }
       }
     }
-    
-    console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} total, ${moverCount} movers registered in PhysicsDriver + Arbiter`)
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -2106,5 +2059,4 @@ export function registerTitanOrchestrator(instance: TitanOrchestrator): void {
     console.warn('[TitanOrchestrator] ⚠️ Replacing existing singleton instance')
   }
   orchestratorInstance = instance
-  console.log('[TitanOrchestrator] ✅ Instance registered as singleton')
 }

@@ -144,7 +144,7 @@ export class TrinityOrchestrator extends EventEmitter {
       beta: path.join(workerDir, 'senses.js'),
       gamma: path.join(workerDir, 'mind.js')
     };
-    console.log('[ALPHA] Worker paths:', this.WORKER_PATHS);
+    // WAVE 2098: Boot silence
     
     this.initializeNodes();
   }
@@ -176,8 +176,7 @@ export class TrinityOrchestrator extends EventEmitter {
         stateSnapshot: null
       });
     }
-    
-    console.log('[ALPHA] 🛡️ Trinity Orchestrator initialized');
+    // WAVE 2098: Boot silence
   }
   
   // ============================================
@@ -190,7 +189,7 @@ export class TrinityOrchestrator extends EventEmitter {
       return;
     }
     
-    console.log('[ALPHA] 🚀 Starting Trinity...');
+    // WAVE 2098: Boot silence
     this.startTime = Date.now();
     this.isRunning = true;
     
@@ -206,7 +205,6 @@ export class TrinityOrchestrator extends EventEmitter {
       // Wait for both workers to be ready
       await this.waitForReady();
       
-      console.log('[ALPHA] ✅ Trinity is LIVE');
       this.emit('ready');
       
     } catch (error) {
@@ -217,7 +215,7 @@ export class TrinityOrchestrator extends EventEmitter {
   }
   
   async stop(): Promise<void> {
-    console.log('[ALPHA] 🛑 Stopping Trinity...');
+    // WAVE 2098: Boot silence
     this.isRunning = false;
     
     // Stop intervals
@@ -249,7 +247,6 @@ export class TrinityOrchestrator extends EventEmitter {
     }
     
     this.emit('shutdown');
-    console.log('[ALPHA] Trinity stopped');
   }
   
   // ============================================
@@ -272,7 +269,7 @@ export class TrinityOrchestrator extends EventEmitter {
       console.log(`[ALPHA] Circuit HALF-OPEN for ${nodeId}, testing...`);
     }
     
-    console.log(`[ALPHA] Spawning ${NODE_NAMES[nodeId]}...`);
+    // WAVE 2098: Boot silence
     
     const workerPath = this.WORKER_PATHS[nodeId];
     
@@ -357,7 +354,7 @@ export class TrinityOrchestrator extends EventEmitter {
         node.isReady = true;
         node.circuit.state = CircuitState.CLOSED;
         node.circuit.failures = 0;
-        console.log(`[ALPHA] ${NODE_NAMES[sourceId]} is READY`);
+        // WAVE 2098: Boot silence
         
         // 🔧 WAVE 15.1: Enviar configuración pendiente ahora que está listo
         this.flushPendingConfig(sourceId);
@@ -679,9 +676,8 @@ export class TrinityOrchestrator extends EventEmitter {
   private flushPendingConfig(nodeId: NodeId): void {
     // 💉 FORCE FEED: Inyectar configuración actual SIEMPRE al worker que nace
     const configToInject = this.pendingConfig || this.config;
-    const gainPercent = ((configToInject.inputGain || 1.0) * 100).toFixed(0);
     
-    console.log(`[ALPHA] � Injecting initial config to ${nodeId} (Gain: ${gainPercent}%)`);
+    // WAVE 2098: Boot silence
     this.sendToWorker(nodeId, MessageType.CONFIG_UPDATE, configToInject);
     
     // Limpiar config pendiente si existía

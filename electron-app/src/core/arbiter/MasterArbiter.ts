@@ -172,12 +172,7 @@ export class MasterArbiter extends EventEmitter {
     this.config = { ...DEFAULT_ARBITER_CONFIG, ...config }
     this.crossfadeEngine = new CrossfadeEngine(this.config.defaultCrossfadeMs)
     
-    // 🚦 WAVE 1132: Log cold start state
-    console.log('[MasterArbiter] 🚦 COLD START: Output DISABLED by default (ARMED state)')
-    
-    if (this.config.debug) {
-      console.log('[MasterArbiter] Initialized with config:', this.config)
-    }
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -256,13 +251,10 @@ export class MasterArbiter extends EventEmitter {
       }
     }
     
-    console.log(`[🕵️ WAVE 1055] ═══════════════════════════════════════════════════════════`)
+    // WAVE 2098: Boot silence — WAVE 1055 separator removed
     
     // Store mover count for spread calculations
     this.moverCount = moverCount
-    
-    // 🔥 WAVE 384.5: Summary log for verification
-    console.log(`[MasterArbiter] 🩸 Registered ${this.fixtures.size} fixtures (${moverCount} movers, ${totalChannels} total channels)`)
   }
   
   /**

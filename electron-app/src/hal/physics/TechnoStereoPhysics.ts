@@ -147,7 +147,7 @@ export class TechnoStereoPhysics {
   private inSilence = false
 
   constructor() {
-    console.log('[TechnoStereoPhysics] 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection - Initialized')
+    // WAVE 2098: Boot silence
   }
 
   // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...

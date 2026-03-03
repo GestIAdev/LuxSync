@@ -586,7 +586,13 @@ export const VisualPatcher: React.FC = () => {
   const [batchStartAddress, setBatchStartAddress] = useState(1);
   const [batchOffset, setBatchOffset] = useState(16);
   
-  // 💾 WAVE 1218: Save feedback state
+  // 🌐 WAVE 2093.3: Multi-universe selector (CW-4 fix)
+  const [selectedUniverse, setSelectedUniverse] = useState(0);
+  
+  // � WAVE 2093.2: Batch collision warnings (CW-2 fix)
+  const [batchWarnings, setBatchWarnings] = useState<string[]>([]);
+  
+  // �💾 WAVE 1218: Save feedback state
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean | null>(null);
   
@@ -611,9 +617,19 @@ export const VisualPatcher: React.FC = () => {
     selectedIds.length === 0 ? 'none' : 
     selectedIds.length === 1 ? 'single' : 'multi';
 
+  // 🌐 WAVE 2093.3 (CW-4): Derive available universes from fixtures
+  const availableUniverses = useMemo(() => 
+    [...new Set(fixtures.map(f => f.universe || 0))].sort((a, b) => a - b),
+    [fixtures]
+  );
+
   // --- 💥 COLLISION ENGINE ---
+  // 🔧 WAVE 2093.2 (CW-1 fix): ELIMINATED dangerous `|| 10` fallback.
+  // If a fixture has no channelCount AND no channels array, it returns 0.
+  // A channelCount of 0 means "fixture profile incomplete" — collision engine
+  // will treat it as zero-width (safe) but the UI will flag it as a warning.
   const getChannelCount = useCallback((fixture: FixtureV2): number => {
-    return fixture.channelCount || fixture.channels?.length || 10;
+    return fixture.channelCount || fixture.channels?.length || 0;
   }, []);
 
   const checkCollision = useCallback((target: FixtureV2): { hasCollision: boolean; conflicts: FixtureV2[] } => {
@@ -638,12 +654,47 @@ export const VisualPatcher: React.FC = () => {
     [selectedFixture, checkCollision]
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2093.2 (CW-AUDIT-1 & CW-AUDIT-3): GLOBAL BLOCKING ERRORS
+  // Scans ALL fixtures for collisions and universe overflow.
+  // If any blocking error exists → SAVE button is physically disabled.
+  // This is the "Tour-Ready Paranoia" layer.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const blockingErrors = useMemo(() => {
+    const errors: string[] = [];
+    
+    for (const f of fixtures) {
+      const chCount = getChannelCount(f);
+      const uni = f.universe || 0;
+      
+      // CW-AUDIT-3: Universe overflow check
+      if (chCount > 0 && f.address + chCount - 1 > 512) {
+        errors.push(`${f.name} (U${uni + 1} Ch${f.address}): overflows universe — address ${f.address} + ${chCount} channels = ${f.address + chCount - 1} > 512`);
+      }
+      
+      // CW-AUDIT-1: Collision check (only count each pair once)
+      const { hasCollision, conflicts } = checkCollision(f);
+      if (hasCollision) {
+        // Only report if this fixture's ID is "smaller" to avoid double-reporting
+        const uniqueConflicts = conflicts.filter(c => c.id > f.id);
+        if (uniqueConflicts.length > 0) {
+          errors.push(`${f.name} (U${uni + 1} Ch${f.address}) collides with: ${uniqueConflicts.map(c => c.name).join(', ')}`);
+        }
+      }
+    }
+    
+    return errors;
+  }, [fixtures, checkCollision, getChannelCount]);
+
+  const hasBlockingErrors = blockingErrors.length > 0;
+
   // --- 📊 UNIVERSE BAR DATA ---
+  // 🌐 WAVE 2093.3 (CW-4): Dynamic universe — filters by selectedUniverse
   const universeData = useMemo(() => {
     const blocks: Array<{ start: number; end: number; fixture: FixtureV2; isSelected: boolean; hasCollision: boolean }> = [];
     
     fixtures.forEach(f => {
-      if ((f.universe || 0) !== 0) return; // Solo universe 1 por ahora
+      if ((f.universe || 0) !== selectedUniverse) return;
       const start = f.address;
       const end = start + getChannelCount(f) - 1;
       const { hasCollision } = checkCollision(f);
@@ -667,7 +718,7 @@ export const VisualPatcher: React.FC = () => {
     });
     
     return { blocks, freeChannels: 512 - usedChannels };
-  }, [fixtures, selectedIds, checkCollision, getChannelCount]);
+  }, [fixtures, selectedIds, selectedUniverse, checkCollision, getChannelCount]);
 
   // --- ⚡ FLASH HANDLER (HAL REAL!) ---
   // 🐝 WAVE 1213: Supports multi-flash (THE SWARM STROBE)
@@ -1007,7 +1058,16 @@ export const VisualPatcher: React.FC = () => {
   }, [selectedFixture, updateFixture]);
 
   // --- 💾 SAVE HANDLER ---
+  // 🛡️ WAVE 2093.2 (CW-AUDIT-1 & CW-AUDIT-3): Blocked if DMX errors exist
   const handleSave = useCallback(async () => {
+    if (hasBlockingErrors) {
+      console.error(`🚨 SAVE BLOCKED: ${blockingErrors.length} DMX error(s):`);
+      blockingErrors.forEach(e => console.error(`  ✗ ${e}`));
+      setSaveSuccess(false);
+      setTimeout(() => setSaveSuccess(null), 3000);
+      return;
+    }
+    
     setIsSaving(true);
     setSaveSuccess(null);
     
@@ -1026,27 +1086,115 @@ export const VisualPatcher: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [saveShow]);
+  }, [saveShow, hasBlockingErrors, blockingErrors]);
 
-  // --- �🐝 BATCH PATCHING HANDLER ---
+  // --- 🐝 BATCH PATCHING HANDLER ---
+  // 🔧 WAVE 2093.2 (CW-2 fix): Post-batch collision detection + warnings
+  // 🔧 WAVE 2093.3 (CW-AUDIT-11): Cross-universe auto-split when address > 512
   const handleBatchPatch = useCallback(async () => {
     if (selectedIds.length < 2) return;
     
     console.log(`🐝 BATCH PATCHING: ${selectedIds.length} fixtures, start=${batchStartAddress}, offset=${batchOffset}`);
     
-    selectedIds.forEach((id, index) => {
-      const newAddress = batchStartAddress + (index * batchOffset);
-      // Clamp to valid DMX range
-      if (newAddress >= 1 && newAddress <= 512) {
-        updateFixture(id, { address: newAddress });
-        const fixture = fixtures.find(f => f.id === id);
-        console.log(`  → ${fixture?.name || id}: Ch ${newAddress}`);
+    // ── STEP 1: Compute addresses with cross-universe auto-split ──
+    // When a fixture's computed address exceeds 512 (DMX universe limit),
+    // it automatically wraps to the next universe. Deterministic, no heuristics.
+    const patchedAddresses: Array<{ id: string; name: string; address: number; universe: number }> = [];
+    
+    // Start from the currently selected universe
+    let currentUniverse = selectedUniverse;
+    let nextAddress = batchStartAddress;
+    
+    selectedIds.forEach((id) => {
+      const fixture = fixtures.find(f => f.id === id);
+      const chCount = fixture ? getChannelCount(fixture) : batchOffset;
+      
+      // 🔧 CW-AUDIT-11: If this fixture wouldn't fit in the current universe, jump to next
+      // A fixture "fits" if its START address + channelCount - 1 ≤ 512
+      if (nextAddress > 512 || (nextAddress + Math.max(chCount, 1) - 1) > 512) {
+        currentUniverse += 1;
+        nextAddress = 1; // Reset to start of new universe
+        console.log(`  🌐 AUTO-SPLIT → Universe ${currentUniverse + 1} (address reset to 1)`);
       }
+      
+      updateFixture(id, { address: nextAddress, universe: currentUniverse });
+      patchedAddresses.push({
+        id,
+        name: fixture?.name || id,
+        address: nextAddress,
+        universe: currentUniverse
+      });
+      console.log(`  → ${fixture?.name || id}: U${currentUniverse + 1} Ch ${nextAddress}`);
+      
+      nextAddress += batchOffset;
     });
+    
+    // ── STEP 2: Post-batch collision detection (CW-2) ──
+    // Build a virtual map of ALL fixtures with the new addresses applied
+    const virtualFixtures = fixtures.map(f => {
+      const patched = patchedAddresses.find(p => p.id === f.id);
+      return patched
+        ? { ...f, address: patched.address, universe: patched.universe }
+        : f;
+    });
+    
+    const warnings: string[] = [];
+    
+    // 🔧 CW-AUDIT-11: Report universe auto-splits
+    const universesUsed = new Set(patchedAddresses.map(p => p.universe));
+    if (universesUsed.size > 1) {
+      const uniList = Array.from(universesUsed).map(u => `U${u + 1}`).join(', ');
+      warnings.push(`🌐 Auto-split across ${universesUsed.size} universes: ${uniList}`);
+    }
+    
+    for (const patched of patchedAddresses) {
+      const target = virtualFixtures.find(f => f.id === patched.id);
+      if (!target) continue;
+      
+      const chCount = getChannelCount(target);
+      const start = target.address;
+      const end = start + chCount - 1;
+      const targetUni = target.universe ?? 0;
+      
+      // Check against ALL other fixtures (including other batch members)
+      const conflicts = virtualFixtures.filter(f => {
+        if (f.id === target.id) return false;
+        if ((f.universe ?? 0) !== targetUni) return false;
+        const fStart = f.address;
+        const fEnd = fStart + getChannelCount(f) - 1;
+        return (start <= fEnd && end >= fStart);
+      });
+      
+      if (conflicts.length > 0) {
+        const conflictNames = conflicts.map(c => c.name).join(', ');
+        warnings.push(`⚠️ ${patched.name} (U${targetUni + 1} Ch ${start}) collides with: ${conflictNames}`);
+      }
+      
+      // 🛡️ WAVE 2093.2 (CW-AUDIT-3): Universe overflow check
+      // After CW-AUDIT-11 auto-split this should be rare, but keep as safety net
+      if (chCount > 0 && end > 512) {
+        warnings.push(`🚫 ${patched.name} (U${targetUni + 1} Ch ${start}): overflows universe — ${start} + ${chCount} = ${end} > 512`);
+      }
+      
+      // Also warn if channelCount is unknown (CW-1 companion)
+      if (chCount === 0) {
+        warnings.push(`⚠️ ${patched.name}: unknown channel count — collision detection unreliable`);
+      }
+    }
+    
+    // ── STEP 3: Set warnings for UI display ──
+    setBatchWarnings(warnings);
+    if (warnings.length > 0) {
+      console.warn(`[Patcher] 🐝 BATCH COLLISION WARNINGS (${warnings.length}):`);
+      warnings.forEach(w => console.warn(`  ${w}`));
+    }
+    
+    // Auto-clear warnings after 8 seconds
+    setTimeout(() => setBatchWarnings([]), 8000);
     
     // Auto-save after batch patch
     await handleSave();
-  }, [selectedIds, batchStartAddress, batchOffset, updateFixture, fixtures, handleSave]);
+  }, [selectedIds, batchStartAddress, batchOffset, selectedUniverse, updateFixture, fixtures, handleSave, getChannelCount]);
 
   // --- 🗑️ CLEAR SELECTION ---
   const handleClearSelection = useCallback(() => {
@@ -1148,33 +1296,51 @@ export const VisualPatcher: React.FC = () => {
               </div>
             </div>
             {/* 💾 SAVE BUTTON - 🎨 WAVE 1218: Real Persistence! */}
+            {/* 🛡️ WAVE 2093.2 (CW-AUDIT-1/3): Disabled when DMX errors exist */}
             <button 
               style={{
                 ...s.btnGhost,
                 ...(isSaving && { opacity: 0.6, cursor: 'wait' }),
+                ...(hasBlockingErrors && { 
+                  borderColor: COLORS.state.danger, 
+                  color: COLORS.state.danger, 
+                  opacity: 0.8,
+                  cursor: 'not-allowed',
+                }),
                 ...(saveSuccess === true && { borderColor: '#00FF88', color: '#00FF88' }),
                 ...(saveSuccess === false && { borderColor: '#FF4444', color: '#FF4444' }),
               }}
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || hasBlockingErrors}
               onMouseEnter={(e) => {
-                if (!isSaving) {
+                if (!isSaving && !hasBlockingErrors) {
                   e.currentTarget.style.borderColor = COLORS.accent.cyan;
                   e.currentTarget.style.color = COLORS.accent.cyan;
                   e.currentTarget.style.filter = 'drop-shadow(0 0 6px rgba(34, 211, 238, 0.6))';
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.color = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : COLORS.text.secondary;
-                e.currentTarget.style.filter = 'none';
+                if (hasBlockingErrors) {
+                  e.currentTarget.style.borderColor = COLORS.state.danger;
+                  e.currentTarget.style.color = COLORS.state.danger;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.borderColor = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : 'rgba(255, 255, 255, 0.2)';
+                  e.currentTarget.style.color = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : COLORS.text.secondary;
+                  e.currentTarget.style.filter = 'none';
+                }
               }}
-              title="Save Show"
+              title={hasBlockingErrors ? `SAVE BLOCKED: ${blockingErrors.length} DMX error(s) — fix collisions/overflows first` : 'Save Show'}
             >
               {isSaving ? (
                 <>
                   <span style={{ animation: 'spin 1s linear infinite' }}>⟳</span>
                   <span>SAVING...</span>
+                </>
+              ) : hasBlockingErrors ? (
+                <>
+                  <span>🚫</span>
+                  <span>BLOCKED ({blockingErrors.length})</span>
                 </>
               ) : saveSuccess === true ? (
                 <>
@@ -1198,6 +1364,42 @@ export const VisualPatcher: React.FC = () => {
           {/* ═══════════════════════════════════════════════════════════════════
               🧠 INSPECTOR MODES: NONE / SINGLE / MULTI
               ═══════════════════════════════════════════════════════════════════ */}
+          
+          {/* 🛡️ WAVE 2093.2 (CW-AUDIT-1/3): GLOBAL ERROR BANNER */}
+          {hasBlockingErrors && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+              borderRadius: '6px',
+              padding: '10px',
+              maxHeight: '120px',
+              overflowY: 'auto',
+            }}>
+              <div style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#ef4444',
+                letterSpacing: '1px',
+                marginBottom: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}>
+                🚫 SAVE BLOCKED — {blockingErrors.length} DMX ERROR{blockingErrors.length > 1 ? 'S' : ''}
+              </div>
+              {blockingErrors.map((err, i) => (
+                <div key={i} style={{
+                  fontSize: '9px',
+                  color: '#fca5a5',
+                  fontFamily: '"JetBrains Mono", monospace',
+                  lineHeight: '1.5',
+                  padding: '1px 0',
+                }}>
+                  ✗ {err}
+                </div>
+              ))}
+            </div>
+          )}
           
           {selectionMode === 'none' && (
             /* CASE A: No selection */
@@ -1402,9 +1604,110 @@ export const VisualPatcher: React.FC = () => {
                   </div>
                 </div>
 
+                {/* ═══════════════════════════════════════════════════════════════
+                    🔧 WAVE 2093.3 (CW-AUDIT-5): AUTO-OFFSET BUTTONS
+                    Reads channelCount from first selected fixture and proposes
+                    optimal offset. "+2 GAP" adds safety margin for split fixtures.
+                    ═══════════════════════════════════════════════════════════════ */}
+                {(() => {
+                  const firstSelected = selectedFixtures[0];
+                  const firstChCount = firstSelected ? getChannelCount(firstSelected) : 0;
+                  if (firstChCount <= 0) return null;
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      gap: '6px',
+                      marginTop: '8px',
+                    }}>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '5px 8px',
+                          background: batchOffset === firstChCount
+                            ? 'rgba(34, 211, 238, 0.25)'
+                            : 'rgba(34, 211, 238, 0.08)',
+                          border: `1px solid ${batchOffset === firstChCount ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.25)'}`,
+                          borderRadius: '4px',
+                          color: '#22d3ee',
+                          fontSize: '9px',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          fontWeight: 600,
+                          letterSpacing: '0.5px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onClick={() => setBatchOffset(firstChCount)}
+                        title={`Set offset to exact channel count (${firstChCount}ch) — zero gap, maximum density`}
+                      >
+                        AUTO-OFFSET: {firstChCount}ch
+                      </button>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '5px 8px',
+                          background: batchOffset === firstChCount + 2
+                            ? 'rgba(251, 191, 36, 0.25)'
+                            : 'rgba(251, 191, 36, 0.08)',
+                          border: `1px solid ${batchOffset === firstChCount + 2 ? 'rgba(251, 191, 36, 0.6)' : 'rgba(251, 191, 36, 0.25)'}`,
+                          borderRadius: '4px',
+                          color: '#fbbf24',
+                          fontSize: '9px',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          fontWeight: 600,
+                          letterSpacing: '0.5px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onClick={() => setBatchOffset(firstChCount + 2)}
+                        title={`Set offset to channel count + 2 gap (${firstChCount + 2}ch) — safety margin for split addresses`}
+                      >
+                        +2 GAP: {firstChCount + 2}ch
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 {/* 🔮 PREVIEW - DATA STREAM STYLE (WAVE 1215) */}
                 <div style={{ marginTop: '12px' }}>
                   <div style={s.label}>PREVIEW ASSIGNMENT</div>
+                  {/* 🔧 WAVE 2093.2 (CW-3 bonus): Warn if offset < channelCount */}
+                  {(() => {
+                    const firstSelected = selectedFixtures[0];
+                    const firstChCount = firstSelected ? getChannelCount(firstSelected) : 0;
+                    if (firstChCount > 0 && batchOffset < firstChCount) {
+                      return (
+                        <div style={{
+                          fontSize: '9px',
+                          color: '#f59e0b',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          padding: '3px 6px',
+                          marginBottom: '4px',
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          borderRadius: '4px',
+                        }}>
+                          ⚠️ Offset ({batchOffset}) &lt; channel count ({firstChCount}) — fixtures will overlap!
+                        </div>
+                      );
+                    }
+                    if (firstChCount === 0 && firstSelected) {
+                      return (
+                        <div style={{
+                          fontSize: '9px',
+                          color: '#f59e0b',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          padding: '3px 6px',
+                          marginBottom: '4px',
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          borderRadius: '4px',
+                        }}>
+                          ⚠️ {firstSelected.name}: no channel count defined — collision detection unreliable
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   <div style={{ 
                     background: 'rgba(0, 0, 0, 0.4)', 
                     borderRadius: '4px', 
@@ -1440,6 +1743,42 @@ export const VisualPatcher: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ═══════════════════════════════════════════════════════════════
+                  🔧 WAVE 2093.2: BATCH COLLISION WARNINGS (CW-2 fix)
+                  ═══════════════════════════════════════════════════════════════ */}
+              {batchWarnings.length > 0 && (
+                <div style={{
+                  marginTop: '10px',
+                  padding: '8px 10px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  borderRadius: '6px',
+                  maxHeight: '100px',
+                  overflowY: 'auto',
+                }}>
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#ef4444',
+                    letterSpacing: '0.5px',
+                    marginBottom: '4px',
+                  }}>
+                    🚨 COLLISION DETECTED ({batchWarnings.length})
+                  </div>
+                  {batchWarnings.map((w, i) => (
+                    <div key={i} style={{
+                      fontSize: '9px',
+                      color: '#fca5a5',
+                      fontFamily: '"JetBrains Mono", monospace',
+                      lineHeight: '1.4',
+                      padding: '1px 0',
+                    }}>
+                      {w}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* ═══════════════════════════════════════════════════════════════
                   🎨 WAVE 1218: ACTION ROW - AUTO-PATCH + FLASH CONSOLIDATED
@@ -1539,8 +1878,38 @@ export const VisualPatcher: React.FC = () => {
           alignItems: 'center',
           marginBottom: '4px'
         }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, color: COLORS.accent.cyan, letterSpacing: '1px' }}>
-            📊 UNIVERSE 1 ALLOCATION
+          {/* 🌐 WAVE 2093.3 (CW-4): Universe selector — dynamic from fixtures */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 600, color: COLORS.accent.cyan, letterSpacing: '1px' }}>
+              📊 UNIVERSE {selectedUniverse + 1} ALLOCATION
+            </div>
+            {availableUniverses.length > 1 && (
+              <div style={{ display: 'flex', gap: '2px' }}>
+                {availableUniverses.map(uni => (
+                  <button
+                    key={uni}
+                    onClick={() => setSelectedUniverse(uni)}
+                    style={{
+                      background: uni === selectedUniverse 
+                        ? COLORS.accent.cyan 
+                        : 'rgba(255,255,255,0.05)',
+                      color: uni === selectedUniverse ? '#000' : COLORS.text.muted,
+                      border: `1px solid ${uni === selectedUniverse ? COLORS.accent.cyan : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: '3px',
+                      padding: '1px 6px',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    U{uni + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ fontSize: '10px', color: COLORS.state.success }}>
             FREE: {universeData.freeChannels} ch

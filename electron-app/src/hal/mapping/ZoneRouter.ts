@@ -91,7 +91,7 @@ export class ZoneRouter {
   
   constructor() {
     this.zoneConfig = this.buildZoneConfig()
-    console.log('[ZoneRouter] 🗺️ Initialized (WAVE 207)')
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════

@@ -48,6 +48,7 @@ import {
   getProfile, 
   getProfileByModel,
   needsColorTranslation,
+  generateProfileFromDefinition,
   type FixtureProfile 
 } from './translation'
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
@@ -171,9 +172,7 @@ export class HardwareAbstraction {
     // Initialize universe 1 (extract Uint8Array from DMXUniverse)
     this.universeBuffers.set(1, createEmptyUniverse(1).channels)
     
-    console.log('[HAL] 🏛️ HardwareAbstraction initialized (WAVE 215)')
-    console.log(`[HAL]    Driver: ${this.config.driverType}`)
-    console.log(`[HAL]    Installation: ${this.config.installationType}`)
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -689,12 +688,19 @@ export class HardwareAbstraction {
         // Get interpolated state
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
         
+        // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+        const calibrated = this.applyCalibrationOffsets(
+          physicsState.physicalPan,
+          physicsState.physicalTilt,
+          fixture
+        )
+        
         return {
           ...state,
           zoom: finalZoom,     // 👁️ Dynamic optics
           focus: finalFocus,   // 👁️ Dynamic optics
-          physicalPan: physicsState.physicalPan,
-          physicalTilt: physicsState.physicalTilt,
+          physicalPan: calibrated.pan,
+          physicalTilt: calibrated.tilt,
           panVelocity: physicsState.panVelocity,
           tiltVelocity: physicsState.tiltVelocity,
         }
@@ -963,12 +969,19 @@ export class HardwareAbstraction {
         this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
         
+        // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+        const calibrated = this.applyCalibrationOffsets(
+          physicsState.physicalPan,
+          physicsState.physicalTilt,
+          fixture
+        )
+        
         return {
           ...state,
           zoom: finalZoom,
           focus: finalFocus,
-          physicalPan: physicsState.physicalPan,
-          physicalTilt: physicsState.physicalTilt,
+          physicalPan: calibrated.pan,
+          physicalTilt: calibrated.tilt,
           panVelocity: physicsState.panVelocity,
           tiltVelocity: physicsState.tiltVelocity,
         }
@@ -1000,7 +1013,86 @@ export class HardwareAbstraction {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
+  // � WAVE 2093.1: CALIBRATION INJECTION LAYER
+  // Connects CalibrationLab offsets & PhysicsProfile tiltLimits to the
+  // actual DMX output pipeline. Without this, calibration was "write-only".
+  //
+  // Applied AFTER FixturePhysicsDriver interpolation, BEFORE DMX emission.
+  // Order of operations:
+  //   1. Invert (flip axis direction if calibration says so)
+  //   2. Offset (shift by degrees converted to DMX units)
+  //   3. TiltLimits clamp (prevent aiming at audience)
+  //   4. Final 0-255 clamp (never exceed DMX range)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits to physics-interpolated positions
+   * 
+   * @param physicalPan  - Raw interpolated pan from FixturePhysicsDriver (0-255)
+   * @param physicalTilt - Raw interpolated tilt from FixturePhysicsDriver (0-255)
+   * @param fixture      - The PatchedFixture (carries calibration + physics from ShowFileV2)
+   * @returns Calibrated { pan, tilt } clamped to 0-255
+   */
+  private applyCalibrationOffsets(
+    physicalPan: number,
+    physicalTilt: number,
+    fixture: PatchedFixture
+  ): { pan: number; tilt: number } {
+    // --- Read calibration data (from ShowFileV2.FixtureV2.calibration) ---
+    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now properly typed in PatchedFixture — no more `as any`
+    const cal = fixture.calibration
+
+    // --- Read physics tilt limits (from ShowFileV2.FixtureV2.physics) ---
+    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now properly typed in PatchedFixture — no more `as any`
+    const physics = fixture.physics
+
+    let pan = physicalPan
+    let tilt = physicalTilt
+
+    if (cal) {
+      // ── STEP 1: INVERT ──
+      // If the fixture is mounted backwards/upside-down, flip the axis
+      if (cal.panInvert) {
+        pan = 255 - pan
+      }
+      if (cal.tiltInvert) {
+        tilt = 255 - tilt
+      }
+
+      // ── STEP 2: OFFSET (degrees → DMX) ──
+      // Pan range: typically 540° mapped to 0-255 DMX
+      // Tilt range: typically 270° mapped to 0-255 DMX
+      // Conversion: offsetDMX = (offsetDegrees / totalDegrees) × 255
+      // 🔧 WAVE 2093.3 (CW-AUDIT-9): Industry-standard defaults, no `as any` casts
+      if (cal.panOffset && cal.panOffset !== 0) {
+        const PAN_RANGE_DEG = 540   // Standard moving head pan range
+        const panOffsetDMX = (cal.panOffset / PAN_RANGE_DEG) * 255
+        pan += panOffsetDMX
+      }
+      if (cal.tiltOffset && cal.tiltOffset !== 0) {
+        const TILT_RANGE_DEG = 270  // Standard moving head tilt range
+        const tiltOffsetDMX = (cal.tiltOffset / TILT_RANGE_DEG) * 255
+        tilt += tiltOffsetDMX
+      }
+    }
+
+    // ── STEP 3: TILT LIMITS (CW-8 fix) ──
+    // PhysicsProfile.tiltLimits defines the safe DMX range for tilt
+    // This prevents the fixture from aiming at the audience
+    if (physics?.tiltLimits) {
+      tilt = Math.max(physics.tiltLimits.min, Math.min(physics.tiltLimits.max, tilt))
+    }
+
+    // ── STEP 4: FINAL CLAMP ──
+    // No DMX value can ever leave the 0-255 range
+    pan = Math.max(0, Math.min(255, Math.round(pan)))
+    tilt = Math.max(0, Math.min(255, Math.round(tilt)))
+
+    return { pan, tilt }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // �🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
   // Translates RGB commands to Color Wheel DMX for fixtures that need it
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -1018,8 +1110,9 @@ export class HardwareAbstraction {
     let profile: FixtureProfile | null = null;
     
     // 1. JSON inyectado en vivo desde la Forja
-    if ((fixture as any).capabilities || (fixture as any).wheels || (fixture as any).colorEngine || (fixture as any).physics) {
-      profile = fixture as any;
+    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now typed in PatchedFixture — no more `as any`
+    if (fixture.capabilities || fixture.wheels || fixture.physics) {
+      profile = fixture as unknown as FixtureProfile;
     } 
     // 2. Búsqueda por ID formal
     else if (fixture.profileId) {
@@ -1028,6 +1121,21 @@ export class HardwareAbstraction {
     // 3. Heurística por nombre (Salvavidas)
     else if (fixture.name) {
       profile = getProfileByModel(fixture.name) ?? null;
+    }
+    
+    // 4. 🔧 WAVE 2093.3 (CW-AUDIT-6): Auto-generate HAL profile from inline data
+    //    If steps 1-3 failed but the fixture has channels/capabilities, derive a profile
+    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now typed in PatchedFixture — no more `as any`
+    if (!profile && ((fixture.channels?.length ?? 0) > 0 || fixture.capabilities)) {
+      profile = generateProfileFromDefinition({
+        id: fixture.profileId || fixture.id || cacheKey,
+        name: fixture.name || 'Unknown Fixture',
+        type: fixture.type,
+        channels: fixture.channels,
+        capabilities: fixture.capabilities,
+        wheels: fixture.wheels,
+        physics: fixture.physics,
+      }) ?? null;
     }
     
     // Guardar en caché para no volver a calcularlo ni printearlo en el próximo frame
@@ -1152,7 +1260,7 @@ export class HardwareAbstraction {
       return state // RGB/CMY fixture, no translation needed
     }
     
-    // 🐟 TRANSLATE RGB → COLOR WHEEL DMX
+    // 🐟 TRANSLATE RGB → PHYSICAL COLOR (wheel/RGBW/CMY)
     const targetRGB: RGB = { r: state.r, g: state.g, b: state.b }
     const translation = this.colorTranslator.translate(targetRGB, profile)
     
@@ -1160,6 +1268,39 @@ export class HardwareAbstraction {
     if (!translation.wasTranslated) {
       return state
     }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // 🎨 WAVE 2096.1: RGBW fixtures — populate white channel directly
+    // No SafetyLayer needed (no mechanical wheel to protect)
+    // ─────────────────────────────────────────────────────────────────
+    if (translation.rgbw) {
+      return {
+        ...state,
+        r: translation.rgbw.r,
+        g: translation.rgbw.g,
+        b: translation.rgbw.b,
+        white: translation.rgbw.w,
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // 🎨 WAVE 2096.1: CMY fixtures — pass CMY values through
+    // The HAL DMX writer should read cmy from state if available
+    // For now, CMY fixtures keep RGB (DMX mapping handles the rest)
+    // ─────────────────────────────────────────────────────────────────
+    if (translation.cmy) {
+      return {
+        ...state,
+        // CMY fixtures: keep original RGB for UI, DMX layer reads profile
+        r: state.r,
+        g: state.g,
+        b: state.b,
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // 🐟 COLOR WHEEL fixtures — full SafetyLayer pipeline
+    // ─────────────────────────────────────────────────────────────────
     
     // Apply safety filter (debounce, latch, strobe delegation)
     const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`

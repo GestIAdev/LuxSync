@@ -670,6 +670,9 @@ export interface AudioAnalysis {
   /** Waveform crudo */
   waveform?: Float32Array;
   
+  /** 🎵 WAVE 2091.2: Frecuencia dominante del espectro (Hz) — para chroma mapping real */
+  dominantFrequency?: number;
+  
   /** Transientes detectados (para drums) */
   transients?: {
     bass: number;       // 0-1

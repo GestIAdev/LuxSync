@@ -243,11 +243,9 @@ export interface LightingDecision {
   fixtureOverrides?: Map<number, FixtureOverride>;
 }
 
-export interface RGBColor {
-  r: number;  // 0-255
-  g: number;
-  b: number;
-}
+// 🎨 WAVE 2096.1: RGBColor unificado en types/color.ts (VULN-COLOR-07)
+import { RGBColor } from '../types/color'
+export type { RGBColor }
 
 export type MovementPattern = 
   | 'static'

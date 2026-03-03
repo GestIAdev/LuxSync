@@ -571,11 +571,16 @@ const SECTION_ORGANICITY: Record<SectionType, number> = {
 
 /**
  * Efectos "comodín" por categoría - Usados cuando hay Middle Void
+ * 🔧 WAVE 2092.1 (COG-4): Añadidos pop-rock y chill-lounge
+ * Antes: Solo 3 categorías → pop-rock y chill usaban cyber_dualism (techno) como fallback global
+ * Ahora: 5 categorías → cada vibe tiene un wildcard coherente con su identidad sonora
  */
 export const WILDCARD_EFFECTS: Record<string, string> = {
-  'techno-industrial': 'cyber_dualism',   // Moderado: A=0.55, C=0.50, O=0.45
-  'techno-atmospheric': 'digital_rain',   // Moderado: A=0.20, C=0.65, O=0.40
-  'latino-organic': 'clave_rhythm',       // Moderado: A=0.50, C=0.35, O=0.70
+  'techno-industrial': 'cyber_dualism',       // Moderado: A=0.55, C=0.50, O=0.45
+  'techno-atmospheric': 'digital_rain',       // Moderado: A=0.35, C=0.65, O=0.40
+  'latino-organic': 'clave_rhythm',           // Moderado: A=0.48, C=0.20, O=0.70
+  'pop-rock': 'spotlight_pulse',              // 🔧 WAVE 2092.1: A=0.50, C=0.20, O=0.40 — pulso emotivo, no techno
+  'chill-lounge': 'deep_current_pulse',       // 🔧 WAVE 2092.1: A=0.10, C=0.05, O=0.95 — corriente oceánica zen
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -883,8 +888,13 @@ export class DNAAnalyzer {
     // 🔥 AGGRESSION: Derivada de ENERGÍA + PERCUSIÓN + ESPECTRO
     // ═══════════════════════════════════════════════════════════════
     //
-    // Fórmula:
-    // A = (energy * 0.40) + (kickIntensity * 0.25) + (harshness * 0.20) + (bassBoost * 0.15)
+    // 🔧 WAVE 2092.1 (COG-1): Pesos NORMALIZADOS a 1.0
+    // Antes: 0.40 + 0.25 + 0.20 + 0.30 = 1.15 (excedía 1.0, clamp perdía resolución)
+    // Ahora: 0.348 + 0.217 + 0.174 + 0.261 = 1.000 (resolución completa del rango)
+    // Ratio original preservado: energy sigue siendo el mayor contribuyente
+    //
+    // Fórmula normalizada:
+    // A = (energy × 0.348) + (kickIntensity × 0.217) + (harshness × 0.174) + (bassBoost × 0.261)
     
     const energy = context.energy
     const kickIntensity = context.rhythm?.drums?.kickIntensity ?? 0
@@ -895,10 +905,10 @@ export class DNAAnalyzer {
     const bassBoost = this.clamp((bassRatio - 1) * 0.5, 0, 0.5)  // Max +0.5 si bass >> mid
     
     const aggression = this.clamp(
-      (energy * 0.40) +
-      (kickIntensity * 0.25) +
-      (harshness * 0.20) +
-      (bassBoost * 0.30),
+      (energy * 0.348) +
+      (kickIntensity * 0.217) +
+      (harshness * 0.174) +
+      (bassBoost * 0.261),
       0, 1
     )
     
@@ -966,6 +976,8 @@ export class DNAAnalyzer {
   
   /**
    * Determina la categoría de un efecto basándose en su ID
+   * 🔧 WAVE 2092.1 (COG-4): Añadidas categorías pop-rock y chill-lounge
+   * para que rankEffects() resuelva wildcards correctamente en Middle Void
    */
   private getEffectCategory(effectId: string): string {
     // Techno-industrial
@@ -974,13 +986,25 @@ export class DNAAnalyzer {
     }
     // Techno-atmospheric
     // 🔪 WAVE 986: static_pulse PURGED, binary_glitch + seismic_snap ADDED
-    if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap'].includes(effectId)) {
+    if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap',
+         'ambient_strobe', 'sonar_ping', 'fiber_optics', 'core_meltdown', 'abyssal_rise'].includes(effectId)) {
       return 'techno-atmospheric'
     }
     // Latino-organic
     if (['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath', 
-         'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'].includes(effectId)) {
+         'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino',
+         'amazon_mist', 'glitch_guaguanco', 'machete_spark', 'latina_meltdown'].includes(effectId)) {
       return 'latino-organic'
+    }
+    // 🔧 WAVE 2092.1: Pop-Rock
+    if (['thunder_struck', 'liquid_solo', 'amp_heat', 'arena_sweep', 'feedback_storm',
+         'power_chord', 'stage_wash', 'spotlight_pulse'].includes(effectId)) {
+      return 'pop-rock'
+    }
+    // 🔧 WAVE 2092.1: Chill-Lounge
+    if (['solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+         'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'].includes(effectId)) {
+      return 'chill-lounge'
     }
     return 'unknown'
   }

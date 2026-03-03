@@ -1,12 +1,8 @@
 /**
  * 📦 COMPONENTS INDEX
- * Re-exports de todos los componentes
+ * Re-exports de componentes activos
+ * 
+ * WAVE 2097.1: Purged legacy exports (Header, BigSwitch, EffectsBar)
+ * Those components exist as files but are NOT mounted by AppCommander.
+ * If resurrected, re-add their exports here.
  */
-
-export { default as Header } from './Header'
-export { default as BigSwitch } from './BigSwitch'
-// TODO: PaletteReactor pendiente de implementar
-// export { default as PaletteReactor } from './PaletteReactor'
-// TODO: MovementControl pendiente de implementar
-// export { default as MovementControl } from './MovementControl'
-export { default as EffectsBar } from './EffectsBar'

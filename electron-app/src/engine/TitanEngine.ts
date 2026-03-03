@@ -33,7 +33,7 @@ import {
   withHex,
 } from '../core/protocol/LightingIntent'
 import { MusicalContext } from '../core/protocol/MusicalContext'
-import { SeleneColorEngine, ExtendedAudioAnalysis, SelenePalette } from './color/SeleneColorEngine'
+import { SeleneColorEngine, SeleneColorInterpolator, ExtendedAudioAnalysis, SelenePalette } from './color/SeleneColorEngine'
 import { getColorConstitution } from './color/colorConstitutions'
 import { VibeManager } from './vibe/VibeManager'
 import type { VibeId, VibeProfile } from '../types/VibeProfile'
@@ -56,7 +56,7 @@ import {
 } from './movement/VibeMovementManager'
 
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
-import { getOpticsConfig } from './movement/VibeMovementPresets'
+import { getOpticsConfig, getMovementPhysics } from './movement/VibeMovementPresets'
 
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
 import { 
@@ -185,11 +185,13 @@ export class TitanEngine extends EventEmitter {
   
   // Sub-módulos
   // 🔥 WAVE 269: SeleneColorEngine reemplaza a ColorLogic
+  // 🎨 WAVE 2096.1: SeleneColorInterpolator — LERP suave entre paletas
   // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
   // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
   // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa V2
   // 🧨 WAVE 600: EFFECT ARSENAL
   private vibeManager: VibeManager
+  private colorInterpolator: SeleneColorInterpolator  // 🎨 WAVE 2096.1
   private keyStabilizer: KeyStabilizer
   private energyStabilizer: EnergyStabilizer
   private moodArbiter: MoodArbiter
@@ -252,7 +254,9 @@ export class TitanEngine extends EventEmitter {
     
     // Inicializar sub-módulos
     // 🔥 WAVE 269: SeleneColorEngine es estático, no necesita instanciarse
+    // 🎨 WAVE 2096.1: Interpolator para transiciones suaves (LERP + Desaturation Dip)
     this.vibeManager = VibeManager.getInstance()
+    this.colorInterpolator = new SeleneColorInterpolator()
     
     // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Instanciar Stabilizers
     this.keyStabilizer = new KeyStabilizer()
@@ -285,14 +289,7 @@ export class TitanEngine extends EventEmitter {
       previousBass: 0,
       lastGlobalComposition: 0,  // 🌊 WAVE 1080: FLUID DYNAMICS - Para evitar spam de logs
     }
-    
-    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`)
-    console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`)
-    console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`)
-    console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`)
-    console.log(`[TitanEngine]    🧬 Consciousness: SeleneTitanConscious V2✓ (Native Intelligence)`)
-    console.log(`[TitanEngine]    🧨 EffectManager: ${this.effectManager.getState().activeEffects} effects ready`)
-    console.log(`[TitanEngine]    🕰️ ChronosInjector: Ready (Timeline Control)`)
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -591,8 +588,14 @@ export class TitanEngine extends EventEmitter {
       }
     }
     
-    // 🎨 GENERAR PALETA CON EL FERRARI (ahora con oceanicModulation si es chill)
-    const selenePalette = SeleneColorEngine.generate(audioAnalysis, constitution)
+    // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
+    // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
+    //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
+    const selenePalette = this.colorInterpolator.update(
+      audioAnalysis,
+      energyOutput.isRelativeDrop ?? false,
+      constitution
+    )
     
     // Convertir SelenePalette → ColorPalette
     const palette = this.selenePaletteToColorPalette(selenePalette)
@@ -1158,6 +1161,10 @@ export class TitanEngine extends EventEmitter {
     }
     
     const selenePalette = SeleneColorEngine.generate(mockAudio, constitution)
+    
+    // 🎨 WAVE 2096.1: Force immediate en interpolator (sin transición LERP)
+    this.colorInterpolator.forceImmediate(selenePalette)
+    
     const palette = this.selenePaletteToColorPalette(selenePalette)
     this.state.lastPalette = palette
     
@@ -1899,11 +1906,33 @@ export class TitanEngine extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     const STEREO_TOTAL = 2  // L/R pair (standard stereo rig)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 2095.1 FIX VULN-02: GEARBOX BUDGET — FEED THE SPEED LIMIT
+    //
+    // BUG ANTERIOR: generateIntent() se llamaba sin fixtureMaxSpeed (5° arg).
+    //   Default = 250 DMX/s para TODOS los fixtures. El Gearbox calculaba
+    //   amplitudes asumiendo que todo mover puede hacer 250 DMX/s.
+    //   Un mover lento (100 DMX/s) recibía targets inalcanzables.
+    //
+    // FIX: Pasar min(vibeMaxVelocity, SAFETY_CAP=400) como presupuesto.
+    //   Aquí NO conocemos el fixture concreto (el Arbiter lo asigna después),
+    //   pero sí conocemos el máximo del género + el tope del sistema.
+    //   El PhysicsDriver (VULN-01 fix) ya acota por fixture individual.
+    //   Este fix asegura que el GEARBOX no genere amplitudes de fantasía.
+    //
+    //   Chill: min(50, 400) = 50 → amplitud conservadora (correcto)
+    //   Techno: min(600, 400) = 400 → amplitud acotada al cap del sistema
+    //   Latino: min(350, 400) = 350 → amplitud natural del género
+    // ═══════════════════════════════════════════════════════════════════════
+    const SYSTEM_SAFETY_CAP_VELOCITY = 400  // Must mirror FixturePhysicsDriver.SAFETY_CAP.maxVelocity
+    const vibeMaxVelocity = getMovementPhysics(currentVibeId).maxVelocity
+    const gearboxMaxSpeed = Math.min(vibeMaxVelocity, SYSTEM_SAFETY_CAP_VELOCITY)
+    
     const vmmIntentL: VMMMovementIntent = vibeMovementManager.generateIntent(
-      currentVibeId, vmmContext, 0, STEREO_TOTAL
+      currentVibeId, vmmContext, 0, STEREO_TOTAL, gearboxMaxSpeed
     )
     const vmmIntentR: VMMMovementIntent = vibeMovementManager.generateIntent(
-      currentVibeId, vmmContext, 1, STEREO_TOTAL
+      currentVibeId, vmmContext, 1, STEREO_TOTAL, gearboxMaxSpeed
     )
     
     // Convert VMM coordinates (-1..+1) to protocol coordinates (0..1)

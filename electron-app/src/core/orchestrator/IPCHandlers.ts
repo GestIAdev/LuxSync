@@ -94,8 +94,6 @@ export interface IPCDependencies {
  * Registra todos los handlers IPC
  */
 export function setupIPCHandlers(deps: IPCDependencies): void {
-  console.log('[IPC] Setting up IPC handlers (WAVE 243.5 V2)')
-  
   setupSeleneLuxHandlers(deps)
   setupEffectHandlers(deps)
   setupOverrideHandlers(deps)
@@ -104,8 +102,6 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
   // setupShowHandlers PURGED - WAVE 365: Use StageIPCHandlers instead
   setupDMXHandlers(deps)
   setupArtNetHandlers(deps)
-  
-  console.log('[IPC] All IPC handlers registered')
 }
 
 // =============================================================================
@@ -126,7 +122,6 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   })
   
   ipcMain.handle('lux:stop', () => {
-    console.log('[IPC] lux:stop - TitanOrchestrator stopping')
     if (titanOrchestrator) {
       titanOrchestrator.stop()
     }

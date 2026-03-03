@@ -82,7 +82,7 @@ export class EventRouter extends EventEmitter {
   
   constructor() {
     super()
-    console.log('[EventRouter] 🔄 Initialized (WAVE 240)')
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -93,7 +93,7 @@ export class EventRouter extends EventEmitter {
     this.engine = engine
     this.hal = hal
     
-    console.log('[EventRouter] 🔗 Connecting modules...')
+    // WAVE 2098: Boot silence
     
     // ═══════════════════════════════════════════════════════════════════════
     // BRAIN → ENGINE: MusicalContext
@@ -154,10 +154,7 @@ export class EventRouter extends EventEmitter {
       // (visualizadores, logging, etc.)
     })
 
-    console.log('[EventRouter] ✅ All modules connected')
-    console.log('[EventRouter]    Brain  → [context-update] → Engine')
-    console.log('[EventRouter]    Engine → [lighting-intent] → HAL')
-    console.log('[EventRouter]    HAL    → [dmx-output] → Hardware')
+    // WAVE 2098: Boot silence
   }
 
   /**

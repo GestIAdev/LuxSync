@@ -1,9 +1,12 @@
 /**
  * 📊 FREQUENCY BARS - WAVE 1167
  * Visualización de 7 bandas de frecuencia con animación
+ * 
+ * WAVE 2097.1: Wrapped in React.memo — prevents 30fps re-renders
+ * when parent AudioSpectrumPanel updates but spectrum values are identical.
  */
 
-import React from 'react'
+import React, { memo } from 'react'
 
 export interface FrequencyBarsProps {
   spectrum: {
@@ -30,8 +33,9 @@ const BANDS = [
 
 /**
  * 📊 7 barras de espectro de frecuencia
+ * WAVE 2097.1: memo() — shallow comparison on spectrum object + onBeat primitive
  */
-export const FrequencyBars: React.FC<FrequencyBarsProps> = ({ 
+export const FrequencyBars: React.FC<FrequencyBarsProps> = memo(({ 
   spectrum, 
   onBeat 
 }) => {
@@ -61,6 +65,8 @@ export const FrequencyBars: React.FC<FrequencyBarsProps> = ({
       </div>
     </div>
   )
-}
+})
+
+FrequencyBars.displayName = 'FrequencyBars'
 
 export default FrequencyBars

@@ -707,23 +707,14 @@ function getLR4FilterMasks(fftSize: number, sampleRate: number): Map<string, Flo
     return LR4_FILTER_MASKS;
   }
   
-  console.log('[GOD EAR] 🔧 Generating Linkwitz-Riley 4th order filter masks...');
+  // WAVE 2098: Boot silence — LR4 filter generation logs removed
   
   LR4_FILTER_MASKS = new Map();
   
   for (const [key, config] of Object.entries(GOD_EAR_BAND_CONFIG)) {
     const mask = generateBandMask(fftSize, sampleRate, config.freqLow, config.freqHigh);
     LR4_FILTER_MASKS.set(config.id, mask);
-    
-    // Calculate effective bins for logging
-    let activeBins = 0;
-    for (let i = 0; i < mask.length; i++) {
-      if (mask[i] > 0.01) activeBins++;
-    }
-    console.log(`[GOD EAR]   ${config.id}: ${config.freqLow}-${config.freqHigh}Hz (~${activeBins} bins)`);
   }
-  
-  console.log('[GOD EAR] ✅ LR4 filter bank ready');
   
   return LR4_FILTER_MASKS;
 }
@@ -1329,10 +1320,7 @@ export class GodEarAnalyzer {
     
     // Initialize LR4 filter masks (also one-time)
     getLR4FilterMasks(fftSize, sampleRate);
-    
-    console.log(`[GOD EAR] Initialized: ${fftSize} FFT, ${sampleRate}Hz, ${BIN_RESOLUTION.toFixed(2)}Hz/bin`);
-    console.log(`[GOD EAR] WAVE 2090.4: SPLIT-RADIX DIF + ZERO-ALLOCATION PIPELINE (${((fftSize * 5 + this.numBins + 1 + fftSize) * 4 / 1024).toFixed(1)}KB pre-allocated)`);
-    console.log('[GOD EAR] 37% fewer arithmetic ops vs Cooley-Tukey Radix-2');
+    // WAVE 2098: Boot silence
   }
   
   /**
@@ -1715,4 +1703,4 @@ export function toLegacyFormat(spectrum: GodEarSpectrum): LegacyBandEnergy {
 
 export default GodEarAnalyzer;
 
-console.log('[GOD EAR] MODULE LOADED — SPLIT-RADIX FFT ENGINE ONLINE');
+// WAVE 2098: Boot silence — module load log removed

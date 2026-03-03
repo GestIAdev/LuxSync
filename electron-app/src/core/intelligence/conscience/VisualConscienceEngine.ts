@@ -147,9 +147,7 @@ export class VisualConscienceEngine {
       defaultTimeoutMs: 5000,
       maxConcurrentOperations: 5
     })
-    
-    console.log('[CONSCIENCE] ⚖️ Visual Conscience Engine initialized')
-    console.log('[CONSCIENCE] 📊 Maturity: 0.0% | Experience: 0')
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════

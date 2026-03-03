@@ -74,7 +74,7 @@ export class CircuitBreaker {
   
   constructor(config: Partial<CircuitBreakerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
-    console.log(`[CIRCUIT_BREAKER] ⚡ Initialized (threshold: ${this.config.failureThreshold})`)
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════
@@ -228,7 +228,7 @@ export class TimeoutWrapper {
       maxConcurrentOperations: 5,
       ...config
     }
-    console.log(`[TIMEOUT_WRAPPER] ⏱️ Initialized (timeout: ${this.config.defaultTimeoutMs}ms)`)
+    // WAVE 2098: Boot silence
   }
   
   /**

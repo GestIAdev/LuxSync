@@ -1,6 +1,22 @@
 /**
  * 🎨 PROCEDURAL PALETTE GENERATOR
  * ================================
+ * 
+ * ⚠️ WAVE 2096.1: CONSOLIDATION CANDIDATE
+ * ═══════════════════════════════════════════════════════════════
+ * This module is a PARALLEL palette generator that duplicates logic
+ * from SeleneColorEngine (KEY_TO_HUE, MODE_MODIFIERS, strategies).
+ * TitanEngine (the main loop) uses ONLY SeleneColorEngine.generate().
+ * 
+ * This module is consumed by:
+ *   - SeleneMusicalBrain (via PaletteManager/MusicToLightMapper)
+ *   - Tests
+ * 
+ * DECISION PENDING: Consolidate unique features (section variations,
+ * zodiac element shifts, forced mutation) into SeleneColorEngine,
+ * then deprecate this file. Do NOT add new features here.
+ * ═══════════════════════════════════════════════════════════════
+ * 
  * Generador de paletas cromáticas basado en ADN musical
  * 
  * PRINCIPIO FUNDAMENTAL:
@@ -24,23 +40,9 @@ import { EventEmitter } from 'events';
 // TIPOS E INTERFACES
 // ============================================================
 
-/**
- * Color en formato HSL
- */
-export interface HSLColor {
-  h: number;  // Hue: 0-360
-  s: number;  // Saturation: 0-100
-  l: number;  // Lightness: 0-100
-}
-
-/**
- * Color en formato RGB
- */
-export interface RGBColor {
-  r: number;  // 0-255
-  g: number;  // 0-255
-  b: number;  // 0-255
-}
+// 🎨 WAVE 2096.1: HSLColor y RGBColor unificados en types/color.ts (VULN-COLOR-07)
+import { HSLColor, RGBColor } from '../../../types/color'
+export type { HSLColor, RGBColor }
 
 /**
  * ADN musical de una canción/momento
@@ -707,7 +709,8 @@ export class ProceduralPaletteGenerator extends EventEmitter {
     }
     
     // 🔍 DEBUG WAVE 13.5
-    if (Math.random() < 0.02) { // 2% de los frames
+    // 🎯 WAVE 2096.1: Replaced Math.random() with deterministic counter (Axiom Anti-Simulación)
+    if (this.generationCount % 50 === 0) { // ~2% of calls (deterministic)
       const zodiacInfo = fullDNA.zodiacElement ? ` zodiac=${fullDNA.zodiacElement}` : '';
       console.log(`[PaletteGen] 🔮 WAVE 13.5: key=${fullDNA.key || 'null'} mood=${fullDNA.mood}${zodiacInfo} → baseHue=${baseHue.toFixed(0)}° | Energy=${fullDNA.energy.toFixed(2)} (solo brillo)`);
     }

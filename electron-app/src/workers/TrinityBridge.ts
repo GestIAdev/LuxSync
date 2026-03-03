@@ -153,11 +153,9 @@ export interface SelenePalette {
   };
 }
 
-export interface HSLColor {
-  h: number;  // 0-360
-  s: number;  // 0-100
-  l: number;  // 0-100
-}
+// 🎨 WAVE 2096.1: HSLColor unificado en types/color.ts (VULN-COLOR-07)
+import { HSLColor } from '../types/color'
+export type { HSLColor }
 
 // ============================================
 // CONVERSION FUNCTIONS

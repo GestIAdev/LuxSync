@@ -34,7 +34,6 @@ import path from 'path'
  * Register all Stage-related IPC handlers
  */
 export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null): void {
-  console.log('[StageIPC] Setting up Stage Constructor IPC handlers (WAVE 365)')
 
   // ═══════════════════════════════════════════════════════════════════════
   // LOAD
@@ -255,7 +254,7 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
     }
   })
 
-  console.log('[StageIPC] ✅ All Stage IPC handlers registered (WAVE 369.5)')
+  // WAVE 2098: Boot silence
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

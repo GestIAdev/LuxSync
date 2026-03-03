@@ -455,7 +455,7 @@ export class EffectDreamSimulator {
   private readonly PRE_BUFFER_MAX_AGE_MS = 5000       // Expira después de 5s
   
   constructor() {
-    console.log('[DREAM_SIMULATOR] 🔮 Initialized with Cassandra Pre-Buffer')
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════

@@ -22,7 +22,7 @@
  * @version WAVE 2072
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
   PlusIcon,
   TrashIcon,
@@ -181,6 +181,67 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [probeValue, setProbeValue] = useState<number>(0)
   const [testAddress, setTestAddress] = useState<number>(1)
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 2093.3 (CW-AUDIT-7): DMX VALIDATION ENGINE
+  // Detects: duplicate DMX values, non-monotonic ordering, spin overlap
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Default continuous spin range for color wheels (industry standard Beam 2R-like) */
+  const SPIN_RANGE_START = 190
+  const SPIN_RANGE_END = 255
+  
+  const wheelValidation = useMemo(() => {
+    const warnings: Array<{ type: 'duplicate' | 'spin-overlap' | 'non-monotonic'; message: string; slotKey?: string }> = []
+    
+    if (colors.length < 2) return warnings
+    
+    // ── Check 1: Duplicate DMX values ──
+    const dmxSeen = new Map<number, string>() // dmx → first slot name
+    for (const color of colors) {
+      const existing = dmxSeen.get(color.dmx)
+      if (existing) {
+        warnings.push({
+          type: 'duplicate',
+          message: `DMX ${color.dmx}: "${color.name}" duplicates "${existing}"`,
+          slotKey: color._key,
+        })
+      } else {
+        dmxSeen.set(color.dmx, color.name)
+      }
+    }
+    
+    // ── Check 2: DMX values in continuous spin range ──
+    for (const color of colors) {
+      if (color.dmx >= SPIN_RANGE_START && color.dmx <= SPIN_RANGE_END) {
+        warnings.push({
+          type: 'spin-overlap',
+          message: `DMX ${color.dmx} ("${color.name}"): in continuous spin range (${SPIN_RANGE_START}-${SPIN_RANGE_END})`,
+          slotKey: color._key,
+        })
+      }
+    }
+    
+    // ── Check 3: Non-monotonic DMX ordering ──
+    // Physical wheels expect ascending DMX values. Non-monotonic = suspicious.
+    for (let i = 1; i < colors.length; i++) {
+      if (colors[i].dmx <= colors[i - 1].dmx) {
+        warnings.push({
+          type: 'non-monotonic',
+          message: `Slot #${i + 1} ("${colors[i].name}") DMX ${colors[i].dmx} ≤ slot #${i} ("${colors[i - 1].name}") DMX ${colors[i - 1].dmx} — non-ascending order`,
+          slotKey: colors[i]._key,
+        })
+      }
+    }
+    
+    return warnings
+  }, [colors])
+  
+  /** Set of slot keys that have validation issues (for per-card highlighting) */
+  const warnedSlotKeys = useMemo(() => 
+    new Set(wheelValidation.filter(w => w.slotKey).map(w => w.slotKey!)),
+    [wheelValidation]
+  )
   
   // ═══════════════════════════════════════════════════════════════════════
   // STORE — Fixture from Stage
@@ -483,7 +544,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
               const isLast = index === colors.length - 1
               
               return (
-                <div key={key} className="wheel-slot-card">
+                <div key={key} className={`wheel-slot-card${warnedSlotKeys.has(key) ? ' wheel-slot-warned' : ''}`}
+                  style={warnedSlotKeys.has(key) ? { borderColor: 'rgba(245, 158, 11, 0.6)', boxShadow: '0 0 8px rgba(245, 158, 11, 0.15)' } : undefined}
+                >
                   
                   {/* ── Slot Header: Index + Color Orb + Name ── */}
                   <div className="slot-header">
@@ -599,6 +662,48 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
         <div className="wheel-validation-error">
           <AlertIcon size={16} />
           {validationError}
+        </div>
+      )}
+      
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 🔧 WAVE 2093.3 (CW-AUDIT-7): DMX VALIDATION WARNINGS     */}
+      {/* Persistent panel: duplicates, spin overlap, non-monotonic  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {wheelValidation.length > 0 && (
+        <div className="wheel-validation-panel" style={{
+          margin: '8px 0',
+          padding: '8px 10px',
+          background: 'rgba(245, 158, 11, 0.08)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '6px',
+          maxHeight: '120px',
+          overflowY: 'auto',
+        }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#f59e0b',
+            letterSpacing: '0.5px',
+            marginBottom: '4px',
+            fontFamily: '"JetBrains Mono", monospace',
+          }}>
+            ⚠️ DMX VALIDATION ({wheelValidation.length} issue{wheelValidation.length !== 1 ? 's' : ''})
+          </div>
+          {wheelValidation.map((w, i) => (
+            <div key={i} style={{
+              fontSize: '9px',
+              color: w.type === 'spin-overlap' ? '#ef4444' : '#fbbf24',
+              fontFamily: '"JetBrains Mono", monospace',
+              lineHeight: '1.5',
+              padding: '1px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}>
+              <span>{w.type === 'duplicate' ? '🔁' : w.type === 'spin-overlap' ? '🌀' : '📉'}</span>
+              <span>{w.message}</span>
+            </div>
+          ))}
         </div>
       )}
       

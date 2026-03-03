@@ -86,7 +86,8 @@ export function HyperionView({
   // ── State ─────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = usePersistedState<ViewMode>('viewMode', initialViewMode)
   const [qualityMode, setQualityMode] = usePersistedState<QualityMode>('qualityMode', initialQualityMode)
-  const [isLoading, setIsLoading] = useState(true)
+  // WAVE 2097.1: Removed fake setTimeout loading (Axioma Anti-Simulación).
+  // Canvas mounts immediately — no simulated delay.
 
   // ── Stores ────────────────────────────────────────────────────────────────
   // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
@@ -101,12 +102,6 @@ export function HyperionView({
   const isEmpty = fixtureCount === 0
 
   // ── Effects ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    // Simular tiempo de carga inicial (canvas setup)
-    const timer = setTimeout(() => setIsLoading(false), 300)
-    return () => clearTimeout(timer)
-  }, [])
-
   useEffect(() => {
     onViewModeChange?.(viewMode)
   }, [viewMode, onViewModeChange])
@@ -263,16 +258,8 @@ export function HyperionView({
           {/* Animated Border */}
           <div className="hyperion-viewport-border" />
 
-          {/* Loading State */}
-          {isLoading && (
-            <div className="hyperion-loading">
-              <div className="hyperion-loading__spinner" />
-              <div className="hyperion-loading__text">Initializing Hyperion</div>
-            </div>
-          )}
-
           {/* Empty State */}
-          {!isLoading && isEmpty && (
+          {isEmpty && (
             <div className="hyperion-empty-state">
               <div className="hyperion-empty-state__icon">☀️</div>
               <div className="hyperion-empty-state__title">No Fixtures</div>
@@ -284,7 +271,7 @@ export function HyperionView({
           )}
 
           {/* Canvas Container — TacticalCanvas (2D) or VisualizerCanvas (3D) */}
-          {!isLoading && !isEmpty && (
+          {!isEmpty && (
             <div className="hyperion-canvas-container">
               {viewMode === '2D' ? (
                 <TacticalCanvas 

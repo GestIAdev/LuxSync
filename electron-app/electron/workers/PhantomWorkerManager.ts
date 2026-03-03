@@ -75,7 +75,7 @@ export class PhantomWorkerManager {
   private onProgressCallback?: (progress: AnalysisProgress) => void
   
   constructor() {
-    console.log('[PhantomWorker] 👻 Manager created')
+    // WAVE 2098: Boot silence
   }
   
   /**
@@ -88,7 +88,7 @@ export class PhantomWorkerManager {
       return
     }
     
-    console.log('[PhantomWorker] 👻 Initializing hidden worker...')
+    // WAVE 2098: Boot silence
     
     // Create hidden BrowserWindow
     this.phantomWindow = new BrowserWindow({
@@ -110,7 +110,6 @@ export class PhantomWorkerManager {
     })
     
     this.phantomWindow.on('closed', () => {
-      console.log('[PhantomWorker] 👻 Phantom window closed')
       this.phantomWindow = null
       this.isReady = false
     })
@@ -129,10 +128,8 @@ export class PhantomWorkerManager {
     
     let workerPath: string | null = null
     for (const p of possiblePaths) {
-      console.log(`[PhantomWorker] Checking path: ${p}`)
       if (fs.existsSync(p)) {
         workerPath = p
-        console.log(`[PhantomWorker] ✅ Found at: ${p}`)
         break
       }
     }
@@ -144,7 +141,6 @@ export class PhantomWorkerManager {
     await this.phantomWindow.loadFile(workerPath)
     
     this.isReady = true
-    console.log('[PhantomWorker] 👻 Phantom ready for audio processing!')
   }
   
   /**
@@ -182,7 +178,6 @@ export class PhantomWorkerManager {
     
     // Handle phantom ready signal
     ipcMain.on('phantom:ready', () => {
-      console.log('[PhantomWorker] 👻 Phantom signals ready')
       this.isReady = true
     })
   }

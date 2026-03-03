@@ -748,8 +748,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     const orchestrator = getTitanOrchestrator()
     orchestrator.setFixtures(fixtures)
     
-    console.log(`[ArbiterIPC] 🩸 WAVE 380: Synced ${fixtures.length} fixtures to Arbiter + Orchestrator`)
-    
     return { 
       success: true, 
       fixtureCount: fixtures.length,

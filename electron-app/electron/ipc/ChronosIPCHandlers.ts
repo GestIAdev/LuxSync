@@ -107,7 +107,6 @@ function generateRequestId(): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function setupChronosIPCHandlers(mainWindow: BrowserWindow): void {
-  console.log('[ChronosIPC] 🎧 Setting up Chronos IPC handlers...')
   
   const phantom = getPhantomWorker()
   
@@ -247,7 +246,7 @@ export function setupChronosIPCHandlers(mainWindow: BrowserWindow): void {
     }
   })
   
-  console.log('[ChronosIPC] ✅ Chronos IPC handlers ready')
+  // WAVE 2098: Boot silence
   
   // ─────────────────────────────────────────────────────────────────────────
   // 💾 WAVE 2014: PROJECT FILE HANDLERS
@@ -286,7 +285,6 @@ interface LoadProjectResponse {
 }
 
 function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
-  console.log('[ChronosIPC] 💾 Setting up Project IPC handlers...')
   
   // ─────────────────────────────────────────────────────────────────────────
   // HANDLER: chronos:save-project
@@ -507,7 +505,7 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
     }
   })
   
-  console.log('[ChronosIPC] ✅ Project IPC handlers ready')
+  // WAVE 2098: Boot silence
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

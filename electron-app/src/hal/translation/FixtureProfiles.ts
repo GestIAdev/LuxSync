@@ -347,14 +347,14 @@ export function needsColorTranslation(profile: any): boolean {
   
   // 1. Formato Forja V2 (Nueva)
   const capEngine = profile.capabilities?.colorEngine
-  if (capEngine === 'wheel' || capEngine === 'hybrid') return true
+  if (capEngine === 'wheel' || capEngine === 'hybrid' || capEngine === 'rgbw' || capEngine === 'cmy') return true
   
   // 2. Formato Forja V1 (Vieja)
   const mixEngine = profile.colorEngine?.mixing
-  if (mixEngine === 'wheel' || mixEngine === 'hybrid') return true
+  if (mixEngine === 'wheel' || mixEngine === 'hybrid' || mixEngine === 'rgbw' || mixEngine === 'cmy') return true
   
   // 3. Fallback string directo
-  if (profile.colorEngine === 'wheel' || profile.colorEngine === 'hybrid') return true
+  if (profile.colorEngine === 'wheel' || profile.colorEngine === 'hybrid' || profile.colorEngine === 'rgbw' || profile.colorEngine === 'cmy') return true
   
   return false
 }
@@ -385,4 +385,207 @@ export function listProfiles(): string[] {
   return Array.from(PROFILE_REGISTRY.keys())
 }
 
-console.log(`[FixtureProfiles] 🎨 WAVE 1000: Loaded ${PROFILE_REGISTRY.size} fixture profiles`)
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 2093.3 (CW-AUDIT-6): AUTO-GENERATE HAL PROFILE FROM FIXTURE DATA
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Bridges the gap between FixtureDefinition (Forge output) and FixtureProfile
+// (HAL input). Instead of requiring manual profile creation for every fixture,
+// this function derives a complete FixtureProfile from the inline capabilities,
+// channels, and wheels data that every FixtureV2 carries.
+//
+// This is called as a LAST RESORT when:
+//   1. getProfile(profileId) returns undefined
+//   2. getProfileByModel(name) returns undefined
+//   3. The fixture HAS inline data (capabilities/channels/wheels)
+//
+// The generated profile is auto-registered so subsequent lookups are instant.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fixture-like shape accepted by the generator.
+ * Matches the inline data present in FixtureV2 and FixtureDefinition.
+ */
+export interface GeneratableFixtureData {
+  /** Unique id to use as profile key (e.g. profileId or fixture id) */
+  id: string
+  /** Human name */
+  name: string
+  /** Fixture type */
+  type?: string
+  /** Inline channel definitions */
+  channels?: Array<{ type: string; is16bit?: boolean; name?: string }>
+  /** Inline capabilities (from Forge's deriveCapabilities or FixtureV2.capabilities) */
+  capabilities?: {
+    hasColorWheel?: boolean
+    hasColorMixing?: boolean
+    colorEngine?: string
+    colorWheel?: {
+      colors: Array<{
+        dmx: number
+        name: string
+        rgb: { r: number; g: number; b: number }
+        hasTexture?: boolean
+      }>
+      allowsContinuousSpin?: boolean
+      spinStartDmx?: number
+      minChangeTimeMs?: number
+    }
+    hasMovementChannels?: boolean
+    has16bitMovement?: boolean
+  }
+  /** Root-level wheel data (Forge export format) */
+  wheels?: {
+    colors: Array<{
+      dmx: number
+      name: string
+      rgb: { r: number; g: number; b: number }
+      hasTexture?: boolean
+    }>
+  }
+  /** Physics data from Forge */
+  physics?: {
+    motorType?: string
+    maxAcceleration?: number
+    maxVelocity?: number
+    safetyCap?: number | boolean
+  }
+}
+
+/**
+ * 🔧 WAVE 2093.3 (CW-AUDIT-6): Generate a HAL FixtureProfile from fixture inline data.
+ * 
+ * Deterministic derivation — no heuristics, no randomness.
+ * The generated profile is auto-registered in the registry.
+ * 
+ * @returns The generated profile, or undefined if insufficient data
+ */
+export function generateProfileFromDefinition(data: GeneratableFixtureData): FixtureProfile | undefined {
+  if (!data.id || !data.name) return undefined
+  
+  // ── Don't regenerate if already registered ──
+  const existing = PROFILE_REGISTRY.get(data.id)
+  if (existing) return existing
+  
+  // ── Need at least channels or capabilities to generate ──
+  const channels = data.channels || []
+  const caps = data.capabilities || {}
+  if (channels.length === 0 && !caps.colorEngine && !caps.hasColorWheel) {
+    return undefined
+  }
+  
+  // ── Derive channel types set ──
+  const channelTypes = new Set(channels.map(ch => ch.type))
+  
+  // ═══ COLOR ENGINE ═══
+  const hasRGB = channelTypes.has('red') && channelTypes.has('green') && channelTypes.has('blue')
+  const hasWhite = channelTypes.has('white')
+  const hasCMY = channelTypes.has('cyan') && channelTypes.has('magenta') && channelTypes.has('yellow')
+  const hasColorWheel = channelTypes.has('color_wheel') || caps.hasColorWheel === true
+  
+  // Determine mixing type
+  let mixing: ColorMixingType = 'rgb' // safe default for LED
+  if (caps.colorEngine === 'wheel' || (hasColorWheel && !hasRGB && !hasCMY)) {
+    mixing = 'wheel'
+  } else if (caps.colorEngine === 'hybrid' || (hasColorWheel && (hasRGB || hasCMY))) {
+    mixing = 'hybrid'
+  } else if (caps.colorEngine === 'cmy' || hasCMY) {
+    mixing = 'cmy'
+  } else if (caps.colorEngine === 'rgbw' || (hasRGB && hasWhite)) {
+    mixing = 'rgbw'
+  } else if (caps.colorEngine === 'rgb' || hasRGB) {
+    mixing = 'rgb'
+  }
+  
+  // ═══ COLOR WHEEL (from capabilities.colorWheel or wheels.colors) ═══
+  let colorWheel: ColorWheelDefinition | undefined = undefined
+  const wheelSource = caps.colorWheel || (data.wheels ? { colors: data.wheels.colors } : undefined)
+  
+  if (wheelSource && wheelSource.colors && wheelSource.colors.length > 0) {
+    colorWheel = {
+      colors: wheelSource.colors.map(c => ({
+        dmx: c.dmx,
+        name: c.name,
+        rgb: { r: c.rgb.r, g: c.rgb.g, b: c.rgb.b },
+        hasTexture: c.hasTexture,
+      })),
+      allowsContinuousSpin: wheelSource.allowsContinuousSpin ?? false,
+      spinStartDmx: wheelSource.spinStartDmx,
+      minChangeTimeMs: wheelSource.minChangeTimeMs ?? 200,
+    }
+  }
+  
+  // ═══ FIXTURE TYPE ═══
+  const fixtureType = data.type || 'generic'
+  let profileType: FixtureProfile['type'] = 'generic'
+  if (fixtureType === 'moving-head' || fixtureType === 'scanner') profileType = 'beam'
+  else if (fixtureType === 'spot') profileType = 'spot'
+  else if (fixtureType === 'wash') profileType = 'wash'
+  else if (fixtureType === 'par') profileType = 'par'
+  else if (fixtureType === 'strobe' || fixtureType === 'blinder') profileType = 'strobe'
+  else if (fixtureType === 'laser') profileType = 'laser'
+  
+  // ═══ SHUTTER ═══
+  // Discharge fixtures and fixtures with mechanical shutters get mechanical type
+  const motorType = data.physics?.motorType || ''
+  const isDischarge = motorType.includes('discharge') || 
+    (mixing === 'wheel' && !hasRGB && !hasCMY) // Pure wheel = likely discharge lamp
+  const shutterType: ShutterType = isDischarge ? 'mechanical' : 'digital'
+  const maxStrobeHz = shutterType === 'mechanical' ? 12 : undefined
+  
+  // ═══ MOVEMENT ═══
+  const hasPan = channelTypes.has('pan') || channelTypes.has('pan_fine') || caps.hasMovementChannels
+  const hasTilt = channelTypes.has('tilt') || channelTypes.has('tilt_fine')
+  let movement: FixtureProfile['movement'] = undefined
+  
+  if (hasPan || hasTilt) {
+    // Derive movement type from physics motorType
+    let movementType: MovementType = 'stepper'
+    if (motorType.includes('servo')) movementType = 'servo'
+    else if (motorType.includes('galvo')) movementType = 'galvo'
+    
+    // Derive speeds from physics maxVelocity or use conservative defaults
+    const maxVelocity = data.physics?.maxVelocity || 0
+    const panSpeed = maxVelocity > 0 ? Math.round(maxVelocity * 0.45) : 180
+    const tiltSpeed = maxVelocity > 0 ? Math.round(maxVelocity * 0.35) : 120
+    
+    movement = {
+      type: movementType,
+      maxPanSpeed: panSpeed,
+      maxTiltSpeed: tiltSpeed,
+    }
+  }
+  
+  // ═══ SAFETY ═══
+  const safety: FixtureProfile['safety'] = {
+    blackoutOnColorChange: mixing === 'wheel' && !hasRGB, // Pure wheel needs blackout
+    maxContinuousOnTime: fixtureType === 'strobe' ? 30 : 0,
+    isDischarge,
+    cooldownTime: isDischarge ? 300 : 0,
+  }
+  
+  // ═══ ASSEMBLE PROFILE ═══
+  const profile: FixtureProfile = {
+    id: data.id,
+    name: `${data.name} (Auto-HAL)`,
+    type: profileType,
+    colorEngine: {
+      mixing,
+      colorWheel,
+    },
+    shutter: {
+      type: shutterType,
+      maxStrobeHz,
+    },
+    movement,
+    safety,
+  }
+  
+  // ═══ AUTO-REGISTER ═══
+  registerProfile(profile)
+  console.log(`[FixtureProfiles] 🔧 CW-AUDIT-6: Auto-generated HAL profile for "${data.name}" → mixing=${mixing}, shutter=${shutterType}, movement=${movement ? movement.type : 'none'}`)
+  
+  return profile
+}
+
+// WAVE 2098: Boot silence

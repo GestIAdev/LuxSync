@@ -10,6 +10,7 @@ export { EffectsEngine } from './EffectsEngine'
 // WAVE 68.5: Motor de color PURO (sin género)
 export { 
   SeleneColorEngine,
+  SeleneColorInterpolator,
   // Tipos
   type HSLColor,
   type RGBColor,

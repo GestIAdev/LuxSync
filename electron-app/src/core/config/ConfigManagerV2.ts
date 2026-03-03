@@ -204,8 +204,6 @@ class ConfigManagerV2 {
     const userDataPath = app.getPath('userData')
     this.configPath = path.join(userDataPath, 'luxsync-config.json')
     this.config = { ...DEFAULT_CONFIG_V2 }
-    
-    console.log(`[ConfigManagerV2] 📁 Config path: ${this.configPath}`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -219,7 +217,6 @@ class ConfigManagerV2 {
   load(): { config: LuxSyncPreferencesV2; legacyFixtures: LegacyPatchedFixture[] } {
     try {
       if (!fs.existsSync(this.configPath)) {
-        console.log('[ConfigManagerV2] 📝 No config file found, using defaults')
         return { config: this.config, legacyFixtures: [] }
       }
       
@@ -228,7 +225,7 @@ class ConfigManagerV2 {
       
       // Detect V1 config by presence of patchedFixtures
       if ('patchedFixtures' in loaded && Array.isArray(loaded.patchedFixtures)) {
-        console.log('[ConfigManagerV2] 🔄 Detected V1 config, migrating...')
+        console.warn('[ConfigManagerV2] V1 config detected — migrating to V2')
         return this.migrateFromV1(loaded as LegacyConfigV1)
       }
       
@@ -243,7 +240,6 @@ class ConfigManagerV2 {
         ui: { ...DEFAULT_CONFIG_V2.ui, ...loadedV2.ui },
       }
       
-      console.log('[ConfigManagerV2] ✅ V2 config loaded')
       return { config: this.config, legacyFixtures: [] }
       
     } catch (error) {
@@ -258,7 +254,6 @@ class ConfigManagerV2 {
   private migrateFromV1(v1Config: LegacyConfigV1): { config: LuxSyncPreferencesV2; legacyFixtures: LegacyPatchedFixture[] } {
     // Extract legacy fixtures
     this.legacyFixtures = v1Config.patchedFixtures || []
-    console.log(`[ConfigManagerV2] 📦 Extracted ${this.legacyFixtures.length} legacy fixtures for migration`)
     
     // Build V2 config (WITHOUT fixtures)
     this.config = {
@@ -298,7 +293,6 @@ class ConfigManagerV2 {
     // Save V2 config immediately (removes patchedFixtures from disk)
     this.save()
     
-    console.log('[ConfigManagerV2] ✅ V1 → V2 migration complete (fixtures extracted)')
     return { config: this.config, legacyFixtures: this.legacyFixtures }
   }
   

@@ -36,29 +36,9 @@
 // 1. INTERFACES & TIPOS
 // ============================================================
 
-/**
- * Color en formato HSL (Hue, Saturation, Lightness)
- */
-export interface HSLColor {
-  /** Matiz: 0-360 grados en el círculo cromático */
-  h: number;
-  /** Saturación: 0-100% */
-  s: number;
-  /** Luminosidad: 0-100% */
-  l: number;
-}
-
-/**
- * Color en formato RGB (Red, Green, Blue)
- */
-export interface RGBColor {
-  /** Rojo: 0-255 */
-  r: number;
-  /** Verde: 0-255 */
-  g: number;
-  /** Azul: 0-255 */
-  b: number;
-}
+// 🎨 WAVE 2096.1: HSLColor y RGBColor unificados en types/color.ts (VULN-COLOR-07)
+import { HSLColor, RGBColor } from '../../types/color'
+export type { HSLColor, RGBColor }
 
 /**
  * Paleta cromática completa generada por Selene
@@ -958,6 +938,9 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
  */
 export class SeleneColorEngine {
   
+  // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
+  private static generateCallCount = 0;
+  
   // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
   private static lastLoggedKey: string | null = null;
   private static lastLoggedStrategy: string | null = null;
@@ -1056,6 +1039,9 @@ export class SeleneColorEngine {
    * @returns Paleta de 5 colores HSL con metadata
    */
   static generate(data: ExtendedAudioAnalysis, options?: GenerationOptions): SelenePalette {
+    // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
+    this.generateCallCount++;
+    
     // === A. EXTRAER DATOS CON FALLBACKS ===
     const wave8 = data.wave8 || {
       harmony: { key: null, mode: 'minor', mood: 'universal' },
@@ -1377,8 +1363,9 @@ export class SeleneColorEngine {
       correctedSat = clamp(correctedSat + breathDelta, satMin, satMax);
       correctedLight = clamp(correctedLight + breathDelta * 0.5, lightMin, lightMax);
       
-      // Log de modulación oceánica (solo ocasionalmente)
-      if (Math.random() < 0.01) {  // 1% de frames
+      // Log de modulación oceánica (deterministic throttle — ~1% of frames)
+      // 🎯 WAVE 2096.1: Replaced Math.random() with deterministic counter (Axiom Anti-Simulación)
+      if (this.generateCallCount % 100 === 0) {
         console.log(
           `[🌊 OCEAN→COLOR] Zone:${ocean.zone ?? '?'} Depth:${ocean.depth?.toFixed(0) ?? '?'}m | ` +
           `Hue:${finalHue.toFixed(0)}° (influence:${ocean.hueInfluence.toFixed(0)}° @${(ocean.hueInfluenceStrength*100).toFixed(0)}%) | ` +

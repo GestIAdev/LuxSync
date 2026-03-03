@@ -76,7 +76,7 @@ export class PhysicsEngine {
   private moverStabilityCounter = new Map<string, number>()  // Frame counter per mover
 
   constructor() {
-    console.log('[PhysicsEngine] 🔧 Initialized (WAVE 205)')
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════

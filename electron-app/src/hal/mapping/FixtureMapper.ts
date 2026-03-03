@@ -55,6 +55,54 @@ export interface PatchedFixture {
   profileId?: string             // HAL profile ID for translation
   // 🌊 WAVE 1035: 7-ZONE STEREO - Fixture physical position for stereo routing
   position?: { x: number; y: number; z: number }
+  // 🔧 WAVE 2093.3 (CW-AUDIT-9): Calibration offsets from CalibrationView
+  // Previously accessed via (fixture as any).calibration — now formally typed.
+  // Applied by HardwareAbstraction.applyCalibrationOffsets() during runtime.
+  calibration?: {
+    panOffset: number
+    tiltOffset: number
+    panInvert: boolean
+    tiltInvert: boolean
+  }
+  // 🔧 WAVE 2093.3 (CW-AUDIT-9): Physics profile from ShowFileV2
+  // Used by applyCalibrationOffsets() for tiltLimits enforcement
+  physics?: {
+    motorType?: string
+    maxAcceleration?: number
+    maxVelocity?: number
+    safetyCap?: boolean | number
+    invertPan?: boolean
+    invertTilt?: boolean
+    swapPanTilt?: boolean
+    tiltLimits?: { min: number; max: number }
+    orientation?: string
+    homePosition?: { pan: number; tilt: number }
+  }
+  // 🔧 WAVE 2093.3 (CW-AUDIT-6): Inline capabilities from Forge
+  capabilities?: {
+    hasMovementChannels?: boolean
+    has16bitMovement?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+    colorEngine?: string
+    colorWheel?: {
+      colors: Array<{
+        dmx: number
+        name: string
+        rgb: { r: number; g: number; b: number }
+        hasTexture?: boolean
+      }>
+    }
+  }
+  // 🔧 WAVE 2093.3 (CW-AUDIT-6): Wheel data from Forge export
+  wheels?: {
+    colors: Array<{
+      dmx: number
+      name: string
+      rgb: { r: number; g: number; b: number }
+      hasTexture?: boolean
+    }>
+  }
 }
 
 /** Calculated fixture state (output of mapper) */
@@ -170,7 +218,7 @@ export class FixtureMapper {
   private halDebugLastLog = 0
   
   constructor() {
-    console.log('[FixtureMapper] 🎛️ Initialized (WAVE 210 + WAVE 1001 HAL)')
+    // WAVE 2098: Boot silence
   }
   
   /**
@@ -214,7 +262,16 @@ export class FixtureMapper {
     let panValue = movement.pan
     let tiltValue = movement.tilt
     
-    const isMovingFixture = this.isMovingZone(zone) || 
+    // 🔧 WAVE 2093.2 (CW-5 fix): CAPABILITY-AWARE MOVEMENT GUARD
+    // Only emit movement values if the fixture actually has pan/tilt capability.
+    // Detection order: (1) channel definitions, (2) zone heuristic, (3) type name.
+    // If a strobe/par has no pan/tilt channels, it gets pan=0, tilt=0 — safe defaults.
+    const hasMovementCapability = 
+      fixture.hasMovementChannels === true ||
+      (fixture.channels?.some(ch => ch.type === 'pan' || ch.type === 'tilt') ?? false)
+    
+    const isMovingFixture = hasMovementCapability || 
+                            this.isMovingZone(zone) || 
                             fixture.type?.toLowerCase().includes('moving')
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -613,6 +670,11 @@ export class FixtureMapper {
    * 
    * This is the original hardcoded 8-channel format for backwards compatibility
    * with fixtures that don't have a JSON definition.
+   * 
+   * 🔧 WAVE 2093.2 (CW-5 hardening): Pan/Tilt values are only emitted if the
+   * fixture state already carries non-zero movement. The FixtureMapper.mapFixture()
+   * capability guard ensures that non-moving fixtures always have pan=0, tilt=0,
+   * so this is a defense-in-depth layer — not the primary guard.
    */
   private buildLegacyChannels(state: FixtureState): number[] {
     return [

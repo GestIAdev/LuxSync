@@ -114,10 +114,7 @@ export class HardwareSafetyLayer {
   
   constructor(config: Partial<SafetyConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
-    console.log('[SafetyLayer] 🛡️ WAVE 1000: Hardware Safety Layer initialized')
-    console.log(`[SafetyLayer]    Safety margin: ${this.config.safetyMargin}x`)
-    console.log(`[SafetyLayer]    Chaos threshold: ${this.config.chaosThreshold} changes/sec`)
-    console.log(`[SafetyLayer]    Latch duration: ${this.config.latchDurationMs}ms`)
+    // WAVE 2098: Boot silence
   }
   
   /**
@@ -190,6 +187,11 @@ export class HardwareSafetyLayer {
       } else {
         // Latch expirado → liberar
         state.isLatched = false
+        // 🔧 KEA-006 (WAVE 2095.1): BUNKER RESET
+        // blockedChanges nunca se decrementaba → shouldDelegateToStrobe()
+        // retornaba true PERMANENTEMENTE tras 10 bloqueos acumulados en la sesión.
+        // Reset aquí garantiza que el contador refleja solo el caos ACTUAL.
+        state.blockedChanges = 0
         if (this.config.debug) {
           console.log(`[SafetyLayer] 🔓 LATCH released: ${fixtureId}`)
         }

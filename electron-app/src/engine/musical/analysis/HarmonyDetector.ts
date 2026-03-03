@@ -625,8 +625,8 @@ export class HarmonyDetector extends EventEmitter {
       this.fftToChroma(audio.rawFFT, chroma);
     } else {
       // Aproximación desde bandas de frecuencia
-      // Esto es menos preciso pero funcional
-      this.spectrumToChroma(audio.spectrum, chroma);
+      // 🎵 WAVE 2091.2: Usar dominantFrequency para chroma mapping real
+      this.spectrumToChroma(audio.spectrum, chroma, audio.dominantFrequency);
     }
 
     // Normalizar
@@ -687,41 +687,68 @@ export class HarmonyDetector extends EventEmitter {
   }
 
   /**
-   * Aproximar chromagrama desde bandas de frecuencia
-   * Menos preciso pero funciona sin FFT raw
+   * 🎵 WAVE 2091.2: Aproximar chromagrama desde bandas de frecuencia
+   * 
+   * Si tenemos dominantFrequency, derivamos la root pitch class real via MIDI math
+   * y distribuimos la energía del bajo en root(I) + third(III) + fifth(V) relativos.
+   * Sin dominantFrequency, fallback a distribución uniforme por banda (sin hardcode).
    */
   private spectrumToChroma(
     spectrum: { bass: number; lowMid: number; mid: number; highMid: number; treble: number },
-    chroma: number[]
+    chroma: number[],
+    dominantFrequency?: number
   ): void {
-    // Aproximación muy simplificada:
-    // Bass → notas graves (C, E, G típicas de bajo)
-    // Mid → notas medias
-    // Treble → armónicos
-    
     const { bass, lowMid, mid, highMid, treble } = spectrum;
     
-    // Bass suele tener C, E, G (I-III-V de la tónica)
-    chroma[0] += bass * 0.5;   // C
-    chroma[4] += bass * 0.3;   // E  
-    chroma[7] += bass * 0.2;   // G
+    // ═══════════════════════════════════════════════════════════════════
+    // BASS → Root triad (I-III-V) basado en frecuencia dominante REAL
+    // ═══════════════════════════════════════════════════════════════════
+    if (dominantFrequency && dominantFrequency >= 27.5 && dominantFrequency <= 4186) {
+      // MIDI note number → pitch class (0=C, 1=C#, ... 11=B)
+      const midiNote = 12 * Math.log2(dominantFrequency / 440) + 69;
+      const rootPitchClass = Math.round(midiNote) % 12;
+      
+      // Distribuir energía del bajo en la tríada relativa a la root REAL
+      chroma[rootPitchClass] += bass * 0.5;                    // Root (I)
+      chroma[(rootPitchClass + 4) % 12] += bass * 0.3;        // Major third (III)
+      chroma[(rootPitchClass + 7) % 12] += bass * 0.2;        // Perfect fifth (V)
+      
+      // HighMid armónicos también siguen la root real
+      chroma[rootPitchClass] += highMid * 0.2;
+      chroma[(rootPitchClass + 4) % 12] += highMid * 0.15;
+      chroma[(rootPitchClass + 7) % 12] += highMid * 0.15;
+    } else {
+      // Sin frecuencia dominante válida: distribuir bass/highMid uniformemente
+      // (mejor que hardcodear C-E-G que introduce bias tonal falso)
+      const bassPerBin = bass / 12;
+      const highMidPerBin = highMid / 12;
+      for (let i = 0; i < 12; i++) {
+        chroma[i] += bassPerBin;
+        chroma[i] += highMidPerBin * 0.5;
+      }
+    }
     
-    // LowMid añade color
-    chroma[2] += lowMid * 0.3;  // D
-    chroma[5] += lowMid * 0.3;  // F
-    chroma[9] += lowMid * 0.3;  // A
+    // ═══════════════════════════════════════════════════════════════════
+    // LOW-MID → Notas secundarias (2nd, 4th, 6th intervals)
+    // ═══════════════════════════════════════════════════════════════════
+    chroma[2] += lowMid * 0.3;  // D / major 2nd
+    chroma[5] += lowMid * 0.3;  // F / perfect 4th
+    chroma[9] += lowMid * 0.3;  // A / major 6th
     
-    // Mid es donde está la melodía principal
-    // Distribuir uniformemente con algo de ruido
+    // ═══════════════════════════════════════════════════════════════════
+    // MID → Melodía principal (distribución uniforme)
+    // ═══════════════════════════════════════════════════════════════════
     for (let i = 0; i < 12; i++) {
       chroma[i] += mid * 0.1;
     }
     
-    // HighMid y Treble son armónicos
-    chroma[0] += highMid * 0.2;
-    chroma[4] += highMid * 0.15;
-    chroma[7] += highMid * 0.15;
-    chroma[11] += treble * 0.1;
+    // ═══════════════════════════════════════════════════════════════════
+    // TREBLE → Armónicos altos (distribución uniforme leve)
+    // ═══════════════════════════════════════════════════════════════════
+    const treblePerBin = treble * 0.1 / 12;
+    for (let i = 0; i < 12; i++) {
+      chroma[i] += treblePerBin;
+    }
   }
 
   /**

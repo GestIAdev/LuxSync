@@ -1,15 +1,13 @@
 import { FixtureDefinition, ChannelType } from '../types/FixtureDefinition';
 
 export class FixtureFactory {
+  /**
+   * 🛡️ WAVE 2093.3 (CW-6 fix): Axiom Anti-Simulación compliance.
+   * Electron guarantees crypto.randomUUID() — no Math.random() fallback.
+   * Deterministic provenance: every UUID is cryptographically generated.
+   */
   private static generateUUID(): string {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+    return crypto.randomUUID();
   }
 
   static createEmpty(): FixtureDefinition {

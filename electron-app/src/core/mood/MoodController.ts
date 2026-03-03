@@ -146,7 +146,7 @@ export class MoodController {
   // ═══════════════════════════════════════════════════════════════════════
   
   private constructor() {
-    console.log('[MoodController] 🎭 Initialized with BALANCED mode');
+    // WAVE 2098: Boot silence
   }
   
   /**

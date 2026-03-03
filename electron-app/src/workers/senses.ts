@@ -96,6 +96,10 @@ interface BetaState {
   ringBufferWriteIndex: number;    // Current write position (0-4095)
   ringBufferFilled: boolean;       // Has buffer been filled at least once?
   
+  // 🏎️ WAVE 2091: ZERO-ALLOC SNAPSHOT — Pre-allocated buffer for FFT linearization
+  // Eliminates 16KB garbage per frame (new Float32Array(4096) every ~21ms)
+  snapshotBuffer: Float32Array;
+  
   // Wave 8 Analysis Outputs (cached for GAMMA)
   lastRhythmOutput: RhythmOutput | null;
   lastHarmonyOutput: HarmonyOutput | null;
@@ -121,6 +125,9 @@ const state: BetaState = {
   ringBuffer: new Float32Array(4096),
   ringBufferWriteIndex: 0,
   ringBufferFilled: false,
+  
+  // 🏎️ WAVE 2091: ZERO-ALLOC SNAPSHOT — Reusable linearization buffer
+  snapshotBuffer: new Float32Array(4096),
   
   // Wave 8 outputs
   lastRhythmOutput: null,
@@ -186,8 +193,7 @@ class SpectrumAnalyzer {
   constructor(sampleRate: number = 44100) {
     // 🩻 GOD EAR con 4096 muestras para resolución máxima
     this.godEar = new GodEarAnalyzer(sampleRate, 4096);
-    console.log('[BETA] � GOD EAR Analyzer initialized (WAVE 1017: THE TRANSPLANT)');
-    console.log('[BETA] 💀 Blackman-Harris | LR4 24dB/oct | 7 Tactical Bands');
+    // WAVE 2098: Boot silence
   }
   
   analyze(buffer: Float32Array, sampleRate: number): {
@@ -301,7 +307,6 @@ const sectionTracker = new SimpleSectionTracker();
 
 // 🌈 WAVE 47.1: MoodSynthesizer - Emotional tone analysis
 const moodSynthesizer = new MoodSynthesizer();
-console.log('[BETA] 🌈 MoodSynthesizer initialized (VAD Model)');
 
 // ============================================
 // AUDIO PROCESSING - WAVE 8 INTEGRATED
@@ -370,7 +375,6 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     const totalSamplesWritten = state.frameCount * incomingLength;
     if (totalSamplesWritten >= 4096) {
       state.ringBufferFilled = true;
-      console.log('[BETA 🏎️] Ring buffer READY - 4096 samples accumulated, FFT analysis active');
     }
   }
   
@@ -378,7 +382,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   if (!state.ringBufferFilled) {
     // 🏎️ WAVE 1013: Silenciado - solo log primera vez
     if (state.frameCount === 1) {
-      console.log('[BETA 🏎️] Ring buffer initializing (4096 samples)...');
+      // WAVE 2098: Boot silence
     }
     // Retornar análisis mínimo mientras el buffer se llena
     return {
@@ -412,7 +416,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   }
   
   // 3. Crear snapshot lineal del ring buffer para FFT (4096 samples)
-  const buffer = new Float32Array(4096);
+  // 🏎️ WAVE 2091: ZERO-ALLOC — Reuse pre-allocated buffer instead of new Float32Array(4096) per frame
+  const buffer = state.snapshotBuffer;
   for (let i = 0; i < 4096; i++) {
     const readIndex = (state.ringBufferWriteIndex + i) % 4096;
     buffer[i] = state.ringBuffer[readIndex];
@@ -727,7 +732,7 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.INIT:
         state.isRunning = true;
         state.startTime = Date.now();
-        console.log('[BETA] 👂 Senses initialized');
+        // WAVE 2098: Boot silence
         sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
         break;
         
@@ -841,7 +846,7 @@ if (parentPort) {
   parentPort.on('message', handleMessage);
   
   // Notify Alpha we're alive
-  console.log('[BETA] 👂 Worker thread started, waiting for INIT...');
+  // WAVE 2098: Boot silence
   
   // Handle uncaught errors
   (process as NodeJS.EventEmitter).on('uncaughtException', (error: Error) => {

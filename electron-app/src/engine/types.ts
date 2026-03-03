@@ -206,10 +206,15 @@ export type FixtureType =
   | 'moving_head' | 'scanner' | 'strobe' 
   | 'led_bar' | 'laser' | 'fog'
 
-export interface RGBColor {
-  r: number   // 0-255
-  g: number   // 0-255
-  b: number   // 0-255
+// 🎨 WAVE 2096.1: RGBColor canónico desde types/color.ts (VULN-COLOR-07)
+import { RGBColor } from '../types/color'
+export type { RGBColor }
+
+/**
+ * Color RGB extendido con canales adicionales de fixture (white, amber, UV)
+ * Extiende RGBColor canónico con campos opcionales de hardware.
+ */
+export interface ExtendedRGBColor extends RGBColor {
   w?: number  // 0-255 (blanco, si el fixture lo soporta)
   a?: number  // 0-255 (amber)
   uv?: number // 0-255 (ultravioleta)

@@ -381,22 +381,27 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             </div>
             
             {/* Invert toggles */}
+            {/* 🛡️ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt DEPRECATED here.
+                The real master is FixtureV2.calibration.panInvert/tiltInvert,
+                managed by CalibrationView. Shown as read-only reference. */}
             <div className="invert-grid">
-              <div className="toggle-row compact">
-                <label>Invert Pan</label>
+              <div className="toggle-row compact" style={{ opacity: 0.5 }}>
+                <label>Invert Pan <span style={{ fontSize: '9px', color: '#94a3b8' }}>(→ Calibration)</span></label>
                 <button
                   className={`toggle-btn small ${physics.invertPan ? 'on' : 'off'}`}
                   onClick={() => updatePhysics('invertPan', !physics.invertPan)}
+                  title="⚠️ Deprecated: Use CalibrationView for invert settings. Changes here sync to calibration."
                 >
                   {physics.invertPan ? 'YES' : 'NO'}
                 </button>
               </div>
               
-              <div className="toggle-row compact">
-                <label>Invert Tilt</label>
+              <div className="toggle-row compact" style={{ opacity: 0.5 }}>
+                <label>Invert Tilt <span style={{ fontSize: '9px', color: '#94a3b8' }}>(→ Calibration)</span></label>
                 <button
                   className={`toggle-btn small ${physics.invertTilt ? 'on' : 'off'}`}
                   onClick={() => updatePhysics('invertTilt', !physics.invertTilt)}
+                  title="⚠️ Deprecated: Use CalibrationView for invert settings. Changes here sync to calibration."
                 >
                   {physics.invertTilt ? 'YES' : 'NO'}
                 </button>

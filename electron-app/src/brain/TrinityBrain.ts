@@ -58,7 +58,7 @@ export class TrinityBrain extends EventEmitter {
   constructor() {
     super()
     this.lastContext = createDefaultMusicalContext()
-    console.log('[Brain] 🧠 TrinityBrain initialized (WAVE 227 - REAL RECEPTOR + WAVE 260 MEMORY)')
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -89,7 +89,6 @@ export class TrinityBrain extends EventEmitter {
     // Escuchar cuando el orquestador está listo
     orchestrator.on('ready', () => {
       this.isConnected = true
-      console.log('[Brain] 🧠 Connected to Trinity Orchestrator - REAL DATA FLOW ACTIVE')
       this.emit('ready')
     })
 
@@ -99,7 +98,7 @@ export class TrinityBrain extends EventEmitter {
       this.emit('error', new Error(`Worker ${nodeId}: ${error}`))
     })
 
-    console.log('[Brain] 🧠 Listening to TrinityOrchestrator events')
+    // WAVE 2098: Boot silence
   }
 
   /**
@@ -114,7 +113,6 @@ export class TrinityBrain extends EventEmitter {
 
     try {
       await this.orchestrator.start()
-      console.log('[Brain] 🧠 TrinityOrchestrator started successfully')
     } catch (error) {
       console.error('[Brain] 🧠 Failed to start orchestrator:', error)
       throw error

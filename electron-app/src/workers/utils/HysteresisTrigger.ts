@@ -182,8 +182,7 @@ export class EffectTriggersManager {
     this.prism = new HysteresisTrigger('prism', 0.70, 0.45);    // Parpadeo prisma
     
     this.triggers = [this.pulse, this.chase, this.strobe, this.laser, this.prism];
-    
-    console.log('[EffectTriggers] 🎛️ All 5 Schmitt triggers initialized');
+    // WAVE 2098: Boot silence
   }
   
   /**

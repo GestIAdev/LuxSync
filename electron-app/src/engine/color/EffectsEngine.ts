@@ -6,7 +6,7 @@
  * 
  * Features:
  * - LayerStack: 3 capas que se fusionan para output final
- * - EffectManager: Gestiona efectos activos con duración
+ * - EffectManager: Gestiona efectos activos con duraciï¿½n
  * - OpticEngine: Gobos y Prismas con MECHANICAL DEBOUNCE (2000ms)
  * - 8 efectos predefinidos: strobe, pulse, blinder, shake, dizzy, police, rainbow, breathe
  */
@@ -17,7 +17,7 @@ import type { EffectId } from '../types'
 // CONSTANTS
 // ============================================================================
 
-/**  CRITICAL SAFETY: Tiempo mínimo entre cambios mecánicos (gobos/prismas) */
+/**  CRITICAL SAFETY: Tiempo mï¿½nimo entre cambios mecï¿½nicos (gobos/prismas) */
 export const MECHANICAL_HOLD_TIME_MS = 2000
 
 // ============================================================================
@@ -58,7 +58,7 @@ export interface EffectsLayer {
   active: boolean
 }
 
-/** Capa de ópticas: Gobos, prismas, zoom */
+/** Capa de ï¿½pticas: Gobos, prismas, zoom */
 export interface OpticsLayer {
   prismActive: boolean
   goboIndex: number
@@ -74,7 +74,7 @@ export interface MergedState extends BaseLayer {
   focusValue: number
 }
 
-/** Definición de un efecto */
+/** Definiciï¿½n de un efecto */
 export interface EffectDefinition {
   name: string
   type: 'dimmer' | 'color' | 'position'
@@ -139,7 +139,7 @@ function hslToRgb(h: number, s: number, l: number): RGB {
 
 export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   // -------------------------------------------------------------------------
-  // STROBE - Parpadeo rápido de dimmer
+  // STROBE - Parpadeo rï¿½pido de dimmer
   // -------------------------------------------------------------------------
   strobe: {
     name: 'Strobe',
@@ -161,7 +161,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   },
 
   // -------------------------------------------------------------------------
-  // PULSE - Respiración suave con sine wave
+  // PULSE - Respiraciï¿½n suave con sine wave
   // -------------------------------------------------------------------------
   pulse: {
     name: 'Pulse',
@@ -220,7 +220,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   },
 
   // -------------------------------------------------------------------------
-  // SHAKE - Vibración en position
+  // SHAKE - Vibraciï¿½n en position
   // -------------------------------------------------------------------------
   shake: {
     name: 'Shake',
@@ -249,7 +249,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   },
 
   // -------------------------------------------------------------------------
-  // DIZZY - Movimiento circular rápido
+  // DIZZY - Movimiento circular rï¿½pido
   // -------------------------------------------------------------------------
   dizzy: {
     name: 'Dizzy',
@@ -357,7 +357,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   },
 
   // -------------------------------------------------------------------------
-  // ?? PRISM - Fragmentación del haz con rotación (WAVE 10.7)
+  // ?? PRISM - Fragmentaciï¿½n del haz con rotaciï¿½n (WAVE 10.7)
   // -------------------------------------------------------------------------
   prism: {
     name: 'Prism',
@@ -566,7 +566,7 @@ export class EffectManager {
 }
 
 // ============================================================================
-// OPTIC ENGINE - Motor de Ópticas con MECHANICAL DEBOUNCE
+// OPTIC ENGINE - Motor de ï¿½pticas con MECHANICAL DEBOUNCE
 // ============================================================================
 
 export class OpticEngine {
@@ -593,7 +593,7 @@ export class OpticEngine {
     breakup: 5,
   }
 
-  /** Selene solicita un estado óptico abstracto */
+  /** Selene solicita un estado ï¿½ptico abstracto */
   setTarget(opticsMood: { beamWidth?: number; texture?: number; fragmentation?: number }, entropy = 0): void {
     const { beamWidth = 0.5, texture = 0, fragmentation = 0 } = opticsMood
 
@@ -614,7 +614,7 @@ export class OpticEngine {
   update(): OpticsLayer {
     const now = performance.now()
 
-    // Zoom y Focus: interpolación suave
+    // Zoom y Focus: interpolaciï¿½n suave
     this.state.zoomValue += (this.targetState.zoomValue - this.state.zoomValue) * 0.1
     this.state.focusValue += (this.targetState.focusValue - this.state.focusValue) * 0.1
 
@@ -657,7 +657,7 @@ export class OpticEngine {
 }
 
 // ============================================================================
-// SELENE EFFECTS ENGINE V17 - Integración completa
+// SELENE EFFECTS ENGINE V17 - Integraciï¿½n completa
 // ============================================================================
 
 export class EffectsEngine {
@@ -668,8 +668,7 @@ export class EffectsEngine {
   private frameCount = 0
 
   constructor() {
-    console.log('[EffectsEngine]  V17 initialized')
-    console.log(`[EffectsEngine]  Mechanical Hold Time: ${MECHANICAL_HOLD_TIME_MS}ms`)
+    // WAVE 2098: Boot silence
   }
 
   /** Update principal - llamar cada frame */
@@ -684,7 +683,7 @@ export class EffectsEngine {
     const effectsState = this.effectManager.process(this.entropy)
     this.layerStack.effectsLayer = effectsState
 
-    // 3. Actualizar ópticas (con mechanical debounce)
+    // 3. Actualizar ï¿½pticas (con mechanical debounce)
     if (baseState.beamWidth !== undefined || 
         baseState.texture !== undefined || 
         baseState.fragmentation !== undefined) {
@@ -701,7 +700,7 @@ export class EffectsEngine {
     return this.layerStack.merge()
   }
 
-  /** Entropía determinista */
+  /** Entropï¿½a determinista */
   private getSystemEntropy(paletteIndex: number): number {
     return (this.frameCount * 127 + paletteIndex * 9973) % 100000
   }
@@ -721,7 +720,7 @@ export class EffectsEngine {
     this.effectManager.cancelAll()
   }
 
-  /** Establecer estado óptico abstracto */
+  /** Establecer estado ï¿½ptico abstracto */
   setOptics(opticsMood: { beamWidth?: number; texture?: number; fragmentation?: number }): void {
     this.opticEngine.setTarget(opticsMood, this.entropy)
   }

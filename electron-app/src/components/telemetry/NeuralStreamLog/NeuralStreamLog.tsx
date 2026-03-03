@@ -312,19 +312,29 @@ export const NeuralStreamLog = memo(() => {
   // Local state
   const [isPaused, setIsPaused] = useState(false)
   const [activeFilter, setActiveFilter] = useState<string>('all')
-  const [now, setNow] = useState(Date.now())
+  
+  // WAVE 2097.1: Imperative time ref — NO re-renders every second.
+  // Timestamps update only when new logs arrive (logs.length changes)
+  // or when the user changes filter. The ref always holds a fresh "now".
+  const nowRef = useRef(Date.now())
+  
+  // Keep nowRef fresh (runs silently, no state change, no re-render)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nowRef.current = Date.now()
+    }, TIME_UPDATE_INTERVAL)
+    return () => clearInterval(interval)
+  }, [])
+  
+  // Snapshot "now" for render — recalculated only when logs or filter change
+  const now = useMemo(() => {
+    nowRef.current = Date.now()
+    return nowRef.current
+  }, [logs, activeFilter])
   
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null)
   const isUserScrolling = useRef(false)
-  
-  // Update "now" every second for relative timestamps
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now())
-    }, TIME_UPDATE_INTERVAL)
-    return () => clearInterval(interval)
-  }, [])
   
   // Auto-scroll to bottom on new logs (if not paused)
   useEffect(() => {

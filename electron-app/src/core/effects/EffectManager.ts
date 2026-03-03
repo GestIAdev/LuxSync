@@ -442,7 +442,7 @@ export class EffectManager extends EventEmitter {
   constructor() {
     super()
     this.registerBuiltinEffects()
-    console.log('[EffectManager 🎛️] Initialized with built-in effects ⚒️ Hephaestus overlay support enabled')
+    // WAVE 2098: Boot silence
   }
   
   // ─────────────────────────────────────────────────────────────────────────

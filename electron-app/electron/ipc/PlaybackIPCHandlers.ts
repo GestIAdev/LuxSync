@@ -137,7 +137,7 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
     }
   })
 
-  console.log('[PlaybackIPC] 🎬 Playback handlers registered (WAVE 2054)')
+  // WAVE 2098: Boot silence
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

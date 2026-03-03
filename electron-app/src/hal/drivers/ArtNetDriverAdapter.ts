@@ -39,8 +39,7 @@ export class ArtNetDriverAdapter extends EventEmitter implements IDMXDriver {
     this.artnet.on('ready', () => this.emit('connected', 'ArtNet'))
     this.artnet.on('error', (err) => this.emit('error', err))
     this.artnet.on('disconnected', () => this.emit('disconnected', 'Socket closed'))
-    
-    console.log('[ArtNetAdapter] 🎨 ArtNetDriverAdapter initialized (WAVE 686.10)')
+    // WAVE 2098: Boot silence
   }
 
   // ═══════════════════════════════════════════════════════════════════════

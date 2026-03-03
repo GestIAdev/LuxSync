@@ -385,7 +385,7 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.INIT:
         state.isRunning = true;
         state.startTime = Date.now();
-        console.log('[GAMMA] 🧠 WAVE 230.5: Pure Musical Analyst INITIALIZED');
+        // WAVE 2098: Boot silence
         sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
         break;
         
@@ -507,7 +507,7 @@ function sendMessage<T>(
 if (parentPort) {
   parentPort.on('message', handleMessage);
   
-  console.log('[GAMMA] 🧠 WAVE 230.5: Pure Musical Analyst ready');
+  // WAVE 2098: Boot silence
   
   // Handle uncaught errors
   (process as NodeJS.EventEmitter).on('uncaughtException', (error: Error) => {

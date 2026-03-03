@@ -1,9 +1,12 @@
 /**
  * ⚡ ENERGY METER - WAVE 1167
  * Barra de energía con indicador de tendencia
+ * 
+ * WAVE 2097.1: Wrapped in React.memo — energy (number) and trend (string)
+ * are primitives, shallow comparison works perfectly.
  */
 
-import React from 'react'
+import React, { memo } from 'react'
 import { TrendUpIcon, TrendDownIcon, TrendStableIcon } from '../../icons/LuxIcons'
 
 export interface EnergyMeterProps {
@@ -13,8 +16,9 @@ export interface EnergyMeterProps {
 
 /**
  * ⚡ Medidor de energía con tendencia
+ * WAVE 2097.1: memo() — energy: number, trend: string → primitives, stable comparison
  */
-export const EnergyMeter: React.FC<EnergyMeterProps> = ({ 
+export const EnergyMeter: React.FC<EnergyMeterProps> = memo(({ 
   energy, 
   trend 
 }) => {
@@ -61,6 +65,8 @@ export const EnergyMeter: React.FC<EnergyMeterProps> = ({
       <TrendIcon size={16} color={trendColor} className="energy-meter__trend" />
     </div>
   )
-}
+})
+
+EnergyMeter.displayName = 'EnergyMeter'
 
 export default EnergyMeter

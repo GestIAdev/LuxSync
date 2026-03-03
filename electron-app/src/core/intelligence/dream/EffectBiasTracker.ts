@@ -121,7 +121,7 @@ export class EffectBiasTracker {
   
   constructor(maxHistorySize: number = 200) {
     this.maxHistorySize = maxHistorySize
-    console.log(`[BIAS_TRACKER] 🔬 Initialized (window: ${maxHistorySize})`)
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════

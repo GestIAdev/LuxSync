@@ -1071,12 +1071,19 @@ const StageGrid3D: React.FC = () => {
               maxVelocity: def.physics.maxVelocity || 400,
               safetyCap: def.physics.safetyCap ?? true,
               orientation: def.physics.orientation || 'floor',
-              invertPan: def.physics.invertPan ?? false,
-              invertTilt: def.physics.invertTilt ?? false,
+              invertPan: false,  // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
+              invertTilt: false, // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               swapPanTilt: def.physics.swapPanTilt ?? false,
               homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
               tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 }
             } : undefined,
+            // 🛡️ WAVE 2093.2 (CW-AUDIT-4): calibration is THE MASTER for invert
+            calibration: {
+              panOffset: 0,
+              tiltOffset: 0,
+              panInvert: def.physics?.invertPan ?? false,
+              tiltInvert: def.physics?.invertTilt ?? false,
+            },
             // Store capabilities for rendering decisions
             // 🔥 WAVE 1042.1: Include full capabilities with colorEngine and colorWheel
             capabilities: {
@@ -1166,12 +1173,19 @@ const StageGrid3D: React.FC = () => {
               orientation: (['ceiling', 'floor', 'wall-left', 'wall-right', 'truss-front', 'truss-back'].includes(def.physics.orientation || '') 
                 ? def.physics.orientation 
                 : 'floor') as 'ceiling' | 'floor' | 'wall-left' | 'wall-right' | 'truss-front' | 'truss-back',
-              invertPan: def.physics.invertPan ?? false,
-              invertTilt: def.physics.invertTilt ?? false,
+              invertPan: false,  // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
+              invertTilt: false, // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               swapPanTilt: def.physics.swapPanTilt ?? false,
               homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
               tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 }
             } : undefined,
+            // 🛡️ WAVE 2093.2 (CW-AUDIT-4): calibration is THE MASTER for invert
+            calibration: {
+              panOffset: 0,
+              tiltOffset: 0,
+              panInvert: def.physics?.invertPan ?? false,
+              tiltInvert: def.physics?.invertTilt ?? false,
+            },
             // 🔥 WAVE 1042.1: Include full capabilities with colorEngine and colorWheel
             capabilities: {
               hasMovementChannels: def.hasMovementChannels,

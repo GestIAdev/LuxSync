@@ -124,7 +124,7 @@ import { MoodController } from '../mood/MoodController'
 import { EnergyLogger } from './EnergyLogger'
 
 // DEBUG ENERGY FLAG - Set to true to enable CSV logging
-const DEBUG_ENERGY = true  // 🧪 Set to TRUE to activate Energy Lab
+const DEBUG_ENERGY = false  // WAVE 2098: Calibration complete, lab closed
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
@@ -347,7 +347,6 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // 🧪 WAVE 978: Inicializar Energy Logger si DEBUG activo
     if (DEBUG_ENERGY) {
-      console.log('[🧪 ENERGY_LAB] DEBUG_ENERGY = TRUE → Initializing logger...')
       EnergyLogger.initialize()
     }
     
@@ -391,10 +390,7 @@ export class SeleneTitanConscious extends EventEmitter {
     this.lastOutput = createEmptyOutput()
     
     if (this.config.debug) {
-      console.log('[SeleneTitanConscious] 🧬 GENESIS - Cerebro V2 inicializado')
-      console.log('[SeleneTitanConscious]    🛡️ Energy Override: ARMED')
-      console.log('[SeleneTitanConscious]    📜 Constitution Guard: ARMED')
-      console.log('[SeleneTitanConscious]    🎯 Confidence Threshold:', this.config.confidenceThreshold)
+      // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
     }
   }
   

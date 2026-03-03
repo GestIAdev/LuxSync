@@ -137,7 +137,6 @@ let customLibPath: string = ''
  * This is the ONLY function that should update fixtureLibrary after save/delete
  */
 async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
-  console.log('[Library] 🔄 WAVE 390.5: Rescanning ALL libraries...')
   
   // Scan both libraries
   const factoryDefinitions = fxtParser.scanFolder(factoryLibPath)
@@ -175,14 +174,12 @@ async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
   }
   
   fixtureLibrary = mergedLibrary
-  console.log(`[Library] ✅ Rescanned: ${factoryDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} merged fixtures`)
   
   return fixtureLibrary
 }
 
 function resetZoneCounters(): void {
   zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 }
-  console.log('[Zoning] Zone counters reset')
 }
 
 function recalculateZoneCounters(): void {
@@ -199,7 +196,6 @@ function recalculateZoneCounters(): void {
       zoneCounters.laser++
     }
   })
-  console.log('[Zoning] Counters recalculated:', zoneCounters)
 }
 
 function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): FixtureZone {
@@ -214,7 +210,6 @@ function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): 
     zoneCounters.moving++
     // 🔥 WAVE 2040.24: Canonical zones
     const zone: FixtureZone = currentCount % 2 === 0 ? 'movers-left' : 'movers-right'
-    console.log('[Zoning] Moving Head #' + currentCount + ' "' + fixtureName + '" -> ' + zone)
     return zone
   }
   
@@ -235,7 +230,6 @@ function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): 
   zoneCounters.par++
   // 🔥 WAVE 2040.24: Canonical zones
   const zone: FixtureZone = currentParCount % 2 === 0 ? 'back' : 'front'
-  console.log('[Zoning] PAR/LED #' + currentParCount + ' "' + fixtureName + '" -> ' + zone)
   return zone
 }
 
@@ -288,7 +282,6 @@ function createWindow(): void {
     // Broadcast fixtures if loaded
     if (patchedFixtures.length > 0 && mainWindow) {
       mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
-      console.log('[Main] Broadcasted ' + patchedFixtures.length + ' fixtures to renderer')
     }
   })
 
@@ -308,24 +301,18 @@ function createWindow(): void {
 // =============================================================================
 
 async function initTitan(): Promise<void> {
-  console.log('[Main] ===============================================')
-  console.log('[Main]   BOOTING TITAN 2.0 - WAVE 254: THE SPARK')
-  console.log('[Main]   WAVE 365: SYSTEM INTEGRATION')
-  console.log('[Main]   LuxSync V2 - NO HAY VUELTA ATRAS')
-  console.log('[Main] ===============================================')
+  // WAVE 2098: Boot silence — banners removed
 
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 365: Initialize Stage Persistence (BEFORE other systems)
   // ═══════════════════════════════════════════════════════════════════════════
   await stagePersistence.init()
   setupStageIPCHandlers(() => mainWindow)
-  console.log('[Main] 💾 Stage Persistence V2 initialized')
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
   // ═══════════════════════════════════════════════════════════════════════════
   setupHephIPCHandlers()
-  console.log('[Main] ⚒️ Hephaestus File I/O initialized (WAVE 2030.5)')
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis
@@ -335,8 +322,6 @@ async function initTitan(): Promise<void> {
     await phantom.init()
     setupChronosIPCHandlers(mainWindow!)
     setupPlaybackIPCHandlers(mainWindow!) // WAVE 2054: Pass window for arbiter feedback
-    console.log('[Main] 👻 Phantom Worker initialized (WAVE 2005.3)')
-    console.log('[Main] 🎬 TimelineEngine playback initialized (WAVE 2054)')
   } catch (err) {
     console.error('[Main] ❌ Failed to initialize Phantom Worker:', err)
     // Non-fatal - Chronos will work without audio analysis
@@ -347,7 +332,6 @@ async function initTitan(): Promise<void> {
   
   // 🎨 WAVE 686.10: Create ArtNet adapter for HAL integration
   const artNetAdapter = createArtNetAdapter(artNetDriver)
-  console.log('[Main] 🎨 ArtNetDriverAdapter created (WAVE 686.10)')
   
   // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
   // Pass ArtNet adapter so HAL can output to real hardware
@@ -418,17 +402,14 @@ async function initTitan(): Promise<void> {
   }
   
   setupIPCHandlers(ipcDeps)
-  console.log('[Main] IPC Handlers registered via IPCHandlers module')
   
   // 🎭 WAVE 374 + 377: Arbiter IPC Handlers (unified)
   // Note: Using registerArbiterHandlers from arbiter module (more complete)
   // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
   registerArbiterHandlers(masterArbiter)
-  console.log('[Main] � Arbiter handlers registered (WAVE 374 + 377)')
 
   // ArtNet event forwarding
   artNetDriver.on('ready', () => {
-    console.log('[ArtNet] Ready')
     mainWindow?.webContents.send('artnet:ready', artNetDriver.getStatus())
   })
   artNetDriver.on('error', (error: Error) => {
@@ -436,14 +417,24 @@ async function initTitan(): Promise<void> {
     mainWindow?.webContents.send('artnet:error', error.message)
   })
   artNetDriver.on('disconnected', () => {
-    console.log('[ArtNet] Disconnected')
     mainWindow?.webContents.send('artnet:disconnected')
   })
 
-  console.log('[Main] ===============================================')
-  console.log('[Main]   TITAN 2.0 ONLINE')
-  console.log('[Main]   All modules initialized')
-  console.log('[Main] ===============================================')
+  // WAVE 2098: Unified boot banner — the ONLY boot output
+  const ts = new Date().toLocaleTimeString()
+  console.log('')
+  console.log('  ╔══════════════════════════════════════════════╗')
+  console.log('  ║                                              ║')
+  console.log('  ║   ▓▓  LuxSync  ▓▓  Selene Lux IA Engine     ║')
+  console.log('  ║   ══════════════════════════════════════      ║')
+  console.log('  ║   TITAN CORE .............. ONLINE            ║')
+  console.log('  ║   TRINITY WORKERS ......... LIVE              ║')
+  console.log('  ║   HAL ABSTRACTION ......... READY             ║')
+  console.log('  ║   DMX OUTPUT .............. ARMED             ║')
+  console.log('  ║                                              ║')
+  console.log(`  ║   ${ts}                              ║`)
+  console.log('  ╚══════════════════════════════════════════════╝')
+  console.log('')
 }
 
 // =============================================================================
@@ -451,23 +442,16 @@ async function initTitan(): Promise<void> {
 // =============================================================================
 
 app.whenReady().then(async () => {
-  console.log('[Main] LuxSync V2 starting...')
-  console.log('[Main] ═══════════════════════════════════════════════════════')
-  console.log('[Main]   WAVE 367: SPRING CLEANING ARCHITECTURE')
-  console.log('[Main]   ConfigManagerV2 → Preferences Only')
-  console.log('[Main]   StagePersistence → ShowFileV2 (fixtures, scenes)')
-  console.log('[Main] ═══════════════════════════════════════════════════════')
+  // WAVE 2098: Boot silence — startup banners removed
   
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 367: Load preferences (ConfigManagerV2 - NO FIXTURES)
   // ═══════════════════════════════════════════════════════════════════════════
   const { config: preferences, legacyFixtures } = configManager.load()
-  console.log(`[Main] 📦 Preferences loaded: v${preferences.version}`)
   
   // If legacy fixtures were found (V1 → V2 migration), they need to be saved to ShowFileV2
   if (legacyFixtures.length > 0) {
-    console.log(`[Main] 🔄 MIGRATION: ${legacyFixtures.length} legacy fixtures detected`)
-    console.log('[Main] 🔄 These will be migrated to ShowFileV2 when stageStore loads')
+    console.warn(`[Main] MIGRATION: ${legacyFixtures.length} legacy fixtures detected — will migrate to ShowFileV2`)
     // Legacy fixtures are now extracted - ConfigManagerV2 has already saved without them
     // The renderer will handle migration via stageStore.loadFromDisk() → autoMigrate()
   }
@@ -491,22 +475,16 @@ app.whenReady().then(async () => {
     path.join(app.getPath('userData'), 'librerias'),          // Prod: userData copy
   ]
   
-  console.log('[Library] 🔍 WAVE 1114 PATHFINDER: Searching system library...')
+  // WAVE 2098: Boot silence — PATHFINDER verbose scan removed
   
   let factoryLibraryPath: string = ''
   for (const candidate of candidatePaths) {
-    console.log(`[Library] 🔍 Checking: ${candidate}`)
     if (fs.existsSync(candidate)) {
       const files = fs.readdirSync(candidate).filter((f: string) => f.endsWith('.fxt') || f.endsWith('.json'))
       if (files.length > 0) {
-        console.log(`[Library] ✅ Found ${files.length} fixture files at: ${candidate}`)
         factoryLibraryPath = candidate
         break
-      } else {
-        console.log(`[Library] ⚠️ Folder exists but empty: ${candidate}`)
       }
-    } else {
-      console.log(`[Library] ❌ Not found: ${candidate}`)
     }
   }
   
@@ -528,7 +506,6 @@ app.whenReady().then(async () => {
   // (fs already imported above in PATHFINDER section)
   if (!fs.existsSync(customLibraryPath)) {
     fs.mkdirSync(customLibraryPath, { recursive: true })
-    console.log('[Library] � Created custom library folder:', customLibraryPath)
     
     // WAVE 387 STEP 2 BONUS: Copy factory fixtures to custom library if empty
     if (fs.existsSync(factoryLibraryPath)) {
@@ -543,18 +520,13 @@ app.whenReady().then(async () => {
           copiedCount++
         }
       }
-      console.log(`[Library] 📋 Copied ${copiedCount} factory fixtures to custom library`)
     }
-  } else {
-    console.log('[Library] 📁 Custom library folder exists:', customLibraryPath)
   }
   
   // WAVE 387 STEP 3: Configure FXTParser with custom library path
   fxtParser.setLibraryPath(customLibraryPath)
   
   // WAVE 390.5: Use unified rescanAllLibraries() for initial load
-  // This ensures consistent merge logic and debug logging
-  console.log('[Library] 📚 Initial library scan using rescanAllLibraries()...')
   await rescanAllLibraries()
   
   if (fixtureLibrary.length === 0) {
@@ -568,7 +540,6 @@ app.whenReady().then(async () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // NOTE: Legacy startup that loaded from ConfigManager is REMOVED
   // Fixtures now come from ShowFileV2 via stageStore + StagePersistence
-  console.log('[Main] 📭 patchedFixtures starts empty (will be loaded from ShowFileV2)')
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 1008.5: Initialize Titan BEFORE creating window
@@ -600,7 +571,6 @@ app.on('before-quit', async () => {
   destroyPhantomWorker()
   await cleanupChronosIPC()
   cleanupPlaybackIPC()
-  console.log('[Main] Config saved, TITAN stopped, Phantom destroyed, Playback cleaned')
 })
 
 app.on('window-all-closed', () => {
@@ -618,7 +588,6 @@ ipcMain.handle('audio:getDesktopSources', async () => {
       types: ['window', 'screen'],
       thumbnailSize: { width: 0, height: 0 }
     })
-    console.log('[Main] Desktop sources found:', sources.length)
     return sources.map(s => ({
       id: s.id,
       name: s.name,
@@ -630,4 +599,4 @@ ipcMain.handle('audio:getDesktopSources', async () => {
   }
 })
 
-console.log('LuxSync V2 Main Process Loaded - WAVE 243.5')
+// WAVE 2098: Boot silence — module load log removed

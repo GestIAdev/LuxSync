@@ -1,26 +1,33 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎨 WAVE 1000: COLOR TRANSLATOR - EL INTÉRPRETE
+ * 🎨 WAVE 2096.1: COLOR TRANSLATOR — THE CHROMATIC RESURRECTION
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Traduce intenciones artísticas (RGB) a realidades físicas (DMX).
  * 
- * PROBLEMA QUE RESUELVE:
- * Selene sueña en "#00FFFF" (Cian Cyberpunk), pero el Beam 2R solo
- * tiene 8 colores fijos en su rueda. ¿Qué hacemos?
+ * WAVE 1000: Original implementation (weighted RGB distance)
+ * WAVE 2096.1: REWRITE — CIE L*a*b* perceptual distance, RGBW, CMY
  * 
- * SOLUCIÓN:
- * 1. Calculamos la "distancia" del color pedido a cada color de la rueda
- * 2. Elegimos el color más cercano (vecino más próximo)
- * 3. Enviamos el DMX de ese color
+ * WHAT CHANGED:
+ * - Wheel matching now uses CIE76 ΔE* (perceptually uniform) instead of
+ *   weighted RGB distance with BT.601 luminance coefficients.
+ * - RGBW extraction: W = min(R,G,B), then R'=R-W, G'=G-W, B'=B-W
+ * - CMY subtractive mixing: C=255-R, M=255-G, Y=255-B
+ * - Cache upgraded from FIFO to LRU with perceptual quantization
  * 
- * ALGORITMOS DE DISTANCIA:
- * - Euclidiana RGB: Simple pero no perceptualmente uniforme
- * - CIE Delta E 2000: Perceptualmente uniforme, más complejo
- * - Usamos RGB por eficiencia (suficiente para ruedas de 8-12 colores)
+ * COLOR SCIENCE:
+ * - RGB → XYZ (sRGB D65 illuminant)
+ * - XYZ → CIE L*a*b* (D65 white point)
+ * - ΔE*ab = √((ΔL*)² + (Δa*)² + (Δb*)²) — CIE76
+ * 
+ * Why CIE76 instead of CIEDE2000?
+ * CIE76 is perceptually uniform enough for wheel matching with 8-14 colors.
+ * CIEDE2000 adds rotation terms and is 10x more complex for marginal gain
+ * at this granularity. If we ever need fine-grained continuous matching,
+ * we upgrade to CIEDE2000. For now CIE76 is the correct tradeoff.
  * 
  * @module hal/translation/ColorTranslator
- * @version WAVE 1000
+ * @version WAVE 2096.1 — THE CHROMATIC RESURRECTION
  */
 
 import { 
@@ -40,6 +47,28 @@ export interface RGB {
   b: number  // 0-255
 }
 
+/** WAVE 2096.1: RGBW decomposition result */
+export interface RGBW {
+  r: number  // 0-255 (chromatic red, white subtracted)
+  g: number  // 0-255 (chromatic green, white subtracted)
+  b: number  // 0-255 (chromatic blue, white subtracted)
+  w: number  // 0-255 (white channel)
+}
+
+/** WAVE 2096.1: CMY subtractive result */
+export interface CMY {
+  c: number  // 0-255 (cyan flag)
+  m: number  // 0-255 (magenta flag)
+  y: number  // 0-255 (yellow flag)
+}
+
+/** CIE L*a*b* color space */
+interface Lab {
+  L: number  // Lightness: 0-100
+  a: number  // Green(-) to Red(+)
+  b: number  // Blue(-) to Yellow(+)
+}
+
 export interface ColorTranslationResult {
   /** El color de destino (pass-through para RGB, traducido para wheel) */
   outputRGB: RGB
@@ -47,62 +76,136 @@ export interface ColorTranslationResult {
   colorWheelDmx?: number
   /** Nombre del color seleccionado (solo si es wheel) */
   colorName?: string
-  /** Distancia al color original (0 = perfecto, mayor = más lejano) */
+  /** Distancia perceptual al color original (CIE76 ΔE*) */
   colorDistance: number
   /** Si se aplicó traducción */
   wasTranslated: boolean
   /** Si el color es muy diferente al pedido (puede ser mejor usar blanco) */
   poorMatch: boolean
+  /** WAVE 2096.1: RGBW decomposition (for RGBW fixtures) */
+  rgbw?: RGBW
+  /** WAVE 2096.1: CMY subtractive values (for CMY fixtures) */
+  cmy?: CMY
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ALGORITMOS DE DISTANCIA DE COLOR
+// CIE COLOR SCIENCE — RGB → L*a*b* → ΔE*
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Distancia Euclidiana en espacio RGB
- * 
- * Simple y rápida. Suficiente para ruedas de pocos colores.
- * No es perceptualmente uniforme (verde se percibe diferente a rojo)
- * pero para nuestro caso (8-12 colores) funciona bien.
- * 
- * Distancia máxima posible: sqrt(255² + 255² + 255²) ≈ 441.67
+ * sRGB inverse companding (gamma decode)
+ * Converts 0-255 sRGB to linear 0-1
  */
-function rgbDistance(c1: RGB, c2: RGB): number {
-  const dr = c1.r - c2.r
-  const dg = c1.g - c2.g
-  const db = c1.b - c2.b
-  return Math.sqrt(dr * dr + dg * dg + db * db)
+function srgbToLinear(c: number): number {
+  const s = c / 255
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
 }
 
 /**
- * Distancia ponderada perceptualmente
- * 
- * Los humanos son más sensibles al verde, luego al rojo, luego al azul.
- * Esta fórmula compensa esa diferencia.
+ * RGB → CIE XYZ (D65 illuminant, sRGB primaries)
+ * Matrix from IEC 61966-2-1:1999 (sRGB standard)
  */
-function weightedRgbDistance(c1: RGB, c2: RGB): number {
-  const dr = c1.r - c2.r
-  const dg = c1.g - c2.g
-  const db = c1.b - c2.b
+function rgbToXyz(rgb: RGB): { X: number; Y: number; Z: number } {
+  const r = srgbToLinear(rgb.r)
+  const g = srgbToLinear(rgb.g)
+  const b = srgbToLinear(rgb.b)
   
-  // Pesos basados en sensibilidad humana
-  const rWeight = 0.299
-  const gWeight = 0.587
-  const bWeight = 0.114
-  
-  return Math.sqrt(
-    rWeight * dr * dr +
-    gWeight * dg * dg +
-    bWeight * db * db
-  )
+  return {
+    X: 0.4124564 * r + 0.3575761 * g + 0.1804375 * b,
+    Y: 0.2126729 * r + 0.7151522 * g + 0.0721750 * b,
+    Z: 0.0193339 * r + 0.1191920 * g + 0.9503041 * b,
+  }
 }
 
 /**
- * Calcula la luminosidad percibida de un color
+ * CIE XYZ → CIE L*a*b*
+ * Using D65 standard illuminant white point:
+ * Xn = 0.95047, Yn = 1.00000, Zn = 1.08883
  */
-function getLuminance(c: RGB): number {
-  return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
+function xyzToLab(xyz: { X: number; Y: number; Z: number }): Lab {
+  const Xn = 0.95047
+  const Yn = 1.00000
+  const Zn = 1.08883
+  
+  const f = (t: number): number => {
+    const delta = 6 / 29
+    return t > delta * delta * delta
+      ? Math.cbrt(t)
+      : t / (3 * delta * delta) + 4 / 29
+  }
+  
+  const fx = f(xyz.X / Xn)
+  const fy = f(xyz.Y / Yn)
+  const fz = f(xyz.Z / Zn)
+  
+  return {
+    L: 116 * fy - 16,
+    a: 500 * (fx - fy),
+    b: 200 * (fy - fz),
+  }
+}
+
+/**
+ * RGB → CIE L*a*b* (convenience function)
+ */
+function rgbToLab(rgb: RGB): Lab {
+  return xyzToLab(rgbToXyz(rgb))
+}
+
+/**
+ * CIE76 ΔE* — Perceptual color distance
+ * 
+ * ΔE*ab = √((ΔL*)² + (Δa*)² + (Δb*)²)
+ * 
+ * Scale reference:
+ *   0-1:   Imperceptible
+ *   1-2:   Barely perceptible
+ *   2-3.5: Perceptible through close observation
+ *   3.5-5: Clearly distinguishable
+ *   >5:    Colors are more different than similar
+ * 
+ * Max possible ΔE* ≈ 200 (black to white in L*a*b*)
+ */
+function deltaE76(lab1: Lab, lab2: Lab): number {
+  const dL = lab1.L - lab2.L
+  const da = lab1.a - lab2.a
+  const db = lab1.b - lab2.b
+  return Math.sqrt(dL * dL + da * da + db * db)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RGBW & CMY CONVERSION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔆 WAVE 2096.1: RGB → RGBW decomposition
+ * 
+ * Extracts the white component from an RGB color.
+ * W = min(R, G, B) — the achromatic portion
+ * Then subtracts white from each channel to get pure chromatic RGB.
+ */
+export function rgbToRgbw(rgb: RGB): RGBW {
+  const w = Math.min(rgb.r, rgb.g, rgb.b)
+  return {
+    r: rgb.r - w,
+    g: rgb.g - w,
+    b: rgb.b - w,
+    w,
+  }
+}
+
+/**
+ * 🎨 WAVE 2096.1: RGB → CMY subtractive conversion
+ * 
+ * For fixtures with Cyan, Magenta, Yellow flags.
+ * C = 255 - R, M = 255 - G, Y = 255 - B
+ */
+export function rgbToCmy(rgb: RGB): CMY {
+  return {
+    c: 255 - rgb.r,
+    m: 255 - rgb.g,
+    y: 255 - rgb.b,
+  }
 }
 
 /**
@@ -120,137 +223,251 @@ function getSaturation(c: RGB): number {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ColorTranslator {
-  // Cache de traducciones para evitar recalcular cada frame
+  // Cache de traducciones (LRU)
   private translationCache = new Map<string, ColorTranslationResult>()
   
-  // Umbral de "poor match" - si la distancia supera esto, es mejor usar blanco
-  // 441 es la distancia máxima (negro a blanco), usamos ~40% como umbral
-  private readonly POOR_MATCH_THRESHOLD = 180
+  // Pre-computed L*a*b* for wheel colors (cached per profile)
+  private wheelLabCache = new Map<string, Lab[]>()
+  
+  // ΔE* threshold for "poor match"
+  // ΔE* > 40 means colors are extremely different
+  private readonly POOR_MATCH_THRESHOLD = 40
   
   // Tamaño máximo del cache
-  private readonly MAX_CACHE_SIZE = 256
+  private readonly MAX_CACHE_SIZE = 512
   
   constructor() {
-    console.log('[ColorTranslator] 🎨 WAVE 1000: Initialized')
+    // WAVE 2098: Boot silence
   }
   
   /**
    * 🎯 MÉTODO PRINCIPAL: Traduce un color RGB al formato físico del fixture
    * 
-   * @param targetRGB - Color que Selene quiere
-   * @param profile - Perfil del fixture (define sus capacidades)
-   * @returns Resultado de la traducción
+   * WAVE 2096.1: Now supports 4 fixture types:
+   *   1. RGB pass-through (LED PARs, LED wash)
+   *   2. RGBW decomposition (LED RGBW fixtures)
+   *   3. CMY subtractive (discharge CMY fixtures)
+   *   4. Color wheel matching (beam/spot with mechanical wheel)
    */
   public translate(targetRGB: RGB, profile: any): ColorTranslationResult {
    
-    // CASO 1: Sin perfil
+    // CASO 0: Sin perfil → pass-through
     if (!profile) {
       return { outputRGB: targetRGB, colorDistance: 0, wasTranslated: false, poorMatch: false }
     }
     
+    // ═══════════════════════════════════════════════════════════════════
+    // WAVE 2096.1: Detect color engine type
+    // ═══════════════════════════════════════════════════════════════════
+    const mixingType = profile.colorEngine?.mixing 
+      || profile.capabilities?.colorEngine 
+      || profile.colorEngine
+      || 'rgb'
+    
+    // ─────────────────────────────────────────────────────────────────
+    // CASO 1: RGBW fixture — decompose white channel
+    // ─────────────────────────────────────────────────────────────────
+    if (mixingType === 'rgbw') {
+      const rgbw = rgbToRgbw(targetRGB)
+      return {
+        outputRGB: targetRGB,
+        colorDistance: 0,
+        wasTranslated: true,
+        poorMatch: false,
+        rgbw,
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // CASO 2: CMY fixture — subtractive conversion
+    // ─────────────────────────────────────────────────────────────────
+    if (mixingType === 'cmy') {
+      const cmy = rgbToCmy(targetRGB)
+      return {
+        outputRGB: targetRGB,
+        colorDistance: 0,
+        wasTranslated: true,
+        poorMatch: false,
+        cmy,
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // CASO 3: Color wheel matching (beam/spot) — CIE L*a*b* ΔE*
+    // Also handles 'hybrid' (wheel + CMY) as wheel for now.
+    // ─────────────────────────────────────────────────────────────────
+    
     // 🚑 WAVE 2058: EXTRACCIÓN SEGURA (Puente entre Forja V1 y V2)
-    // Detectamos si es un fixture de rueda mirando en el formato nuevo y en el viejo
-    const isWheelEngine = profile.capabilities?.colorEngine === 'wheel' || 
-                          profile.colorEngine === 'wheel' ||
-                          profile.colorEngine?.mixing === 'wheel';
+    const isWheelEngine = mixingType === 'wheel' || mixingType === 'hybrid'
                           
-    // Buscamos dónde están guardados los colores exactamente
     const colorWheel = profile.capabilities?.colorWheel || 
                        profile.wheels || 
-                       profile.colorEngine?.colorWheel;
+                       profile.colorEngine?.colorWheel
 
-    const hasWheelData = colorWheel && colorWheel.colors && colorWheel.colors.length > 0;
+    const hasWheelData = colorWheel && colorWheel.colors && colorWheel.colors.length > 0
 
-    // CASO 2: Si es RGB puro (no es rueda), pass-through directo sin tocar el DMX
+    // CASO 3a: Pure RGB (no wheel, not RGBW, not CMY) → pass-through
     if (!isWheelEngine && !hasWheelData) {
       return { outputRGB: targetRGB, colorDistance: 0, wasTranslated: false, poorMatch: false }
     }
     
-    // CASO 3: Es rueda, pero está vacía (Fallback a blanco)
+    // CASO 3b: Is wheel but empty → Fallback to white
     if (!hasWheelData) {
       console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped`)
       return {
         outputRGB: { r: 255, g: 255, b: 255 },
         colorWheelDmx: 0,
         colorName: 'Open (Fallback)',
-        colorDistance: 441,
+        colorDistance: 100,
         wasTranslated: true,
         poorMatch: true,
       }
     }
     
-    // CASO 4: Traducción real a la rueda (Encontramos los datos)
+    // CASO 3c: Real wheel translation with CIE L*a*b*
     const cacheKey = this.getCacheKey(targetRGB, profile.id)
     const cached = this.translationCache.get(cacheKey)
-    if (cached) return cached
+    if (cached) {
+      // LRU: move to end (delete + re-insert)
+      this.translationCache.delete(cacheKey)
+      this.translationCache.set(cacheKey, cached)
+      return cached
+    }
     
-    // Buscar el color más cercano usando nuestro array de colores
-    const result = this.findNearestColor(targetRGB, colorWheel)
+    const result = this.findNearestColorLab(targetRGB, colorWheel, profile.id)
     this.cacheResult(cacheKey, result)
     
     return result
   }
   
   /**
-   * 🔍 Busca el color más cercano en la rueda
+   *  WAVE 2096.1: Find nearest wheel color using CIE76 ΔE*
+   * Pre-computes L*a*b* for all wheel colors (cached per profile).
    */
-  private findNearestColor(target: RGB, wheel: ColorWheelDefinition): ColorTranslationResult {
-    let nearestColor: WheelColor = wheel.colors[0]
-    let smallestDistance = Infinity
+  private findNearestColorLab(target: RGB, wheel: ColorWheelDefinition, profileId: string): ColorTranslationResult {
+    // Get or compute L*a*b* for wheel colors
+    let wheelLabs = this.wheelLabCache.get(profileId)
+    if (!wheelLabs) {
+      wheelLabs = wheel.colors.map(c => rgbToLab(c.rgb))
+      this.wheelLabCache.set(profileId, wheelLabs)
+    }
     
-    for (const wheelColor of wheel.colors) {
-      // Usamos distancia ponderada para mejor percepción
-      const distance = weightedRgbDistance(target, wheelColor.rgb)
-      
-      if (distance < smallestDistance) {
-        smallestDistance = distance
-        nearestColor = wheelColor
+    const targetLab = rgbToLab(target)
+    
+    // Find the two closest colors (for half-color positioning)
+    let nearestIndex = 0
+    let secondNearestIndex = -1
+    let smallestDeltaE = Infinity
+    let secondSmallestDeltaE = Infinity
+    
+    for (let i = 0; i < wheel.colors.length; i++) {
+      const dE = deltaE76(targetLab, wheelLabs[i])
+      if (dE < smallestDeltaE) {
+        secondSmallestDeltaE = smallestDeltaE
+        secondNearestIndex = nearestIndex
+        smallestDeltaE = dE
+        nearestIndex = i
+      } else if (dE < secondSmallestDeltaE) {
+        secondSmallestDeltaE = dE
+        secondNearestIndex = i
       }
     }
     
-    // Determinar si es un "poor match"
-    const poorMatch = smallestDistance > this.POOR_MATCH_THRESHOLD
+    let finalColor = wheel.colors[nearestIndex]
+    const poorMatch = smallestDeltaE > this.POOR_MATCH_THRESHOLD
     
-    // Si es muy malo el match y el color pedido es saturado, considerar alternativas
-    let finalColor = nearestColor
+    // If poor match and target is low saturation → prefer white/open
     if (poorMatch && getSaturation(target) < 0.3) {
-      // Color poco saturado + poor match = probablemente mejor usar blanco
-      const whiteColor = wheel.colors.find(c => c.name.toLowerCase().includes('white') || c.name.toLowerCase().includes('open'))
+      const whiteColor = wheel.colors.find(
+        c => c.name.toLowerCase().includes('white') || c.name.toLowerCase().includes('open')
+      )
       if (whiteColor) {
         finalColor = whiteColor
-        smallestDistance = weightedRgbDistance(target, whiteColor.rgb)
+        smallestDeltaE = deltaE76(targetLab, rgbToLab(whiteColor.rgb))
+        return {
+          outputRGB: finalColor.rgb,
+          colorWheelDmx: finalColor.dmx,
+          colorName: finalColor.name,
+          colorDistance: smallestDeltaE,
+          wasTranslated: true,
+          poorMatch: true,
+        }
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // WAVE 2096.2: HALF-COLOR POSITIONING (VULN-COLOR-04)
+    // 
+    // If the target sits between two adjacent wheel colors,
+    // interpolate the DMX value for analog wheel positioning.
+    // 
+    // Requirements for half-color:
+    //   1. Two valid colors found
+    //   2. They are ADJACENT on the wheel (index difference of 1)
+    //   3. The nearest match is not a perfect match (dE > 3)
+    //   4. The second color is meaningfully close (dE < 60)
+    //   5. Not a poor match overall
+    // ─────────────────────────────────────────────────────────────────
+    let interpolatedDmx = finalColor.dmx
+    let colorName = finalColor.name
+    
+    if (
+      secondNearestIndex >= 0 &&
+      !poorMatch &&
+      smallestDeltaE > 3 &&           // Not already a perfect match
+      secondSmallestDeltaE < 60       // Second color is in the neighborhood
+    ) {
+      const secondColor = wheel.colors[secondNearestIndex]
+      
+      // Check adjacency: colors must be neighbors on the physical wheel
+      // Adjacent = index difference of 1 (or wrap-around for first/last)
+      const indexDiff = Math.abs(nearestIndex - secondNearestIndex)
+      const isAdjacent = indexDiff === 1 || indexDiff === wheel.colors.length - 1
+      
+      if (isAdjacent) {
+        // Interpolation factor: how far toward secondColor (0 = at nearest, 1 = at second)
+        const totalDistance = smallestDeltaE + secondSmallestDeltaE
+        const t = totalDistance > 0 ? smallestDeltaE / totalDistance : 0
+        
+        // Interpolate DMX value between the two slots
+        const dmxA = finalColor.dmx
+        const dmxB = secondColor.dmx
+        interpolatedDmx = Math.round(dmxA + (dmxB - dmxA) * t)
+        
+        // Label with both colors when meaningfully between them
+        if (t > 0.15) {
+          colorName = `${finalColor.name}/${secondColor.name}`
+        }
       }
     }
     
     return {
       outputRGB: finalColor.rgb,
-      colorWheelDmx: finalColor.dmx,
-      colorName: finalColor.name,
-      colorDistance: smallestDistance,
+      colorWheelDmx: interpolatedDmx,
+      colorName,
+      colorDistance: smallestDeltaE,
       wasTranslated: true,
       poorMatch,
     }
   }
   
   /**
-   * 🎲 Genera una clave de cache
+   * � WAVE 2096.1: Cache key with perceptual quantization
+   * Quantizes in L*a*b* space (step=4) instead of RGB.
    */
   private getCacheKey(rgb: RGB, profileId: string): string {
-    // Cuantizamos el color para aumentar hits de cache
-    // (colores muy similares comparten resultado)
-    const qr = Math.round(rgb.r / 8) * 8
-    const qg = Math.round(rgb.g / 8) * 8
-    const qb = Math.round(rgb.b / 8) * 8
-    return `${profileId}:${qr},${qg},${qb}`
+    const lab = rgbToLab(rgb)
+    const qL = Math.round(lab.L / 4) * 4
+    const qa = Math.round(lab.a / 4) * 4
+    const qb = Math.round(lab.b / 4) * 4
+    return `${profileId}:${qL},${qa},${qb}`
   }
   
   /**
-   * 💾 Guarda resultado en cache con límite de tamaño
+   * 💾 LRU cache storage with size limit
    */
   private cacheResult(key: string, result: ColorTranslationResult): void {
-    // Evitar que el cache crezca infinitamente
     if (this.translationCache.size >= this.MAX_CACHE_SIZE) {
-      // Eliminar el primer elemento (LRU simple)
       const firstKey = this.translationCache.keys().next().value
       if (firstKey) {
         this.translationCache.delete(firstKey)
@@ -264,6 +481,7 @@ export class ColorTranslator {
    */
   public clearCache(): void {
     this.translationCache.clear()
+    this.wheelLabCache.clear()
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -274,13 +492,12 @@ export class ColorTranslator {
    * Obtiene todos los colores disponibles en un perfil
    */
   public getAvailableColors(profile: any): WheelColor[] {
-    const colorWheel = profile?.capabilities?.colorWheel || profile?.wheels || profile?.colorEngine?.colorWheel;
+    const colorWheel = profile?.capabilities?.colorWheel || profile?.wheels || profile?.colorEngine?.colorWheel
     
     if (colorWheel && colorWheel.colors && colorWheel.colors.length > 0) {
-      return colorWheel.colors;
+      return colorWheel.colors
     }
     
-    // Para RGB, devolvemos colores primarios y secundarios como referencia
     return [
       { dmx: 0,   name: 'Red',     rgb: { r: 255, g: 0,   b: 0   } },
       { dmx: 0,   name: 'Green',   rgb: { r: 0,   g: 255, b: 0   } },
@@ -293,16 +510,19 @@ export class ColorTranslator {
   }
   
   /**
-   * Debug: muestra la distancia de un color a cada color de la rueda
+   * Debug: muestra la distancia ΔE* de un color a cada color de la rueda
    */
   public debugDistances(target: RGB, profile: FixtureProfile): void {
     const colors = this.getAvailableColors(profile)
-    console.log(`[ColorTranslator] 🔬 Distances from RGB(${target.r}, ${target.g}, ${target.b}):`)
+    const targetLab = rgbToLab(target)
+    
+    console.log(`[ColorTranslator] 🔬 ΔE* distances from RGB(${target.r}, ${target.g}, ${target.b}) [L*=${targetLab.L.toFixed(1)} a*=${targetLab.a.toFixed(1)} b*=${targetLab.b.toFixed(1)}]:`)
     
     for (const color of colors) {
-      const dist = weightedRgbDistance(target, color.rgb)
-      const bar = '█'.repeat(Math.round(dist / 10))
-      console.log(`  ${color.name.padEnd(15)} DMX:${color.dmx.toString().padStart(3)} | Distance: ${dist.toFixed(1).padStart(6)} | ${bar}`)
+      const colorLab = rgbToLab(color.rgb)
+      const dE = deltaE76(targetLab, colorLab)
+      const bar = '█'.repeat(Math.round(dE / 2))
+      console.log(`  ${color.name.padEnd(18)} DMX:${color.dmx.toString().padStart(3)} | ΔE*: ${dE.toFixed(1).padStart(6)} | ${bar}`)
     }
   }
 }

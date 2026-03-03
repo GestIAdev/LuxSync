@@ -205,9 +205,7 @@ export class RockStereoPhysics2 {
   private readonly MIN_FRAMES_BETWEEN_CHANGES = 600;  // Mínimo 10 segundos entre cambios
   
   constructor() {
-    console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1018 PROG DETECTOR)');
-    console.log('[RockStereoPhysics2] 🩻 Zones: Front=Kick | Back=Voces | ML=Guitarras | MR=Cymbals');
-    console.log('[RockStereoPhysics2] 🎭 Subgenre Detection: HARD_ROCK (default) | PROG_ROCK (auto-detect)');
+    // WAVE 2098: Boot silence
   }
   
   // ==========================================================================

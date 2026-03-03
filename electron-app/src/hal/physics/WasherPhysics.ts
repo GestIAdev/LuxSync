@@ -122,8 +122,7 @@ export class WasherPhysics {
   private lastBassValue = 0
   
   constructor() {
-    console.log('[WasherPhysics] 🎨 WAVE 1031: Canvas of Light initialized')
-    console.log(`[WasherPhysics] 🌊 BREATHING FLOOR: ${this.INTENSITY_FLOOR}`)
+    // WAVE 2098: Boot silence
   }
   
   // ═══════════════════════════════════════════════════════════════════════

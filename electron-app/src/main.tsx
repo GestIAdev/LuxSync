@@ -1,15 +1,11 @@
 /**
  * 🚀 LUXSYNC - MAIN ENTRY POINT
- * WAVE 9: Commander Layout
- * 
- * Switch between legacy App and new AppCommander:
- * - AppCommander: New Commander Layout (WAVE 9)
- * - App: Legacy layout (pre-WAVE 9)
+ * WAVE 9: Commander Layout → AppCommander
+ * WAVE 2097.1: Purged legacy App.tsx (267 lines of dead code)
  */
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-// import App from './App'  // Legacy layout - preserved for reference
-import AppCommander from './AppCommander'  // WAVE 9 Commander Layout
+import AppCommander from './AppCommander'
 import './styles/globals.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

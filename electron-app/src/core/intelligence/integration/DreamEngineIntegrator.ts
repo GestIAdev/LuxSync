@@ -143,8 +143,12 @@ export class DreamEngineIntegrator {
     //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
     //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
     // 🩸 WAVE 2100: Gate lowered 0.55 → 0.50
-    // At 0.50, only truly unworthy moments (raw < 0.60 in balanced) get blocked.
-    if (effectiveWorthiness < 0.50) {  // 🩸 WAVE 2100: was 0.55
+    // 🩸 WAVE 2104: Gate raised 0.50 → 0.58
+    // "Hay demasiados efectos. Hay que subir el threshold para que no entre
+    //  cualquier efecto de 3ra categoría en cualquier momento."
+    // At 0.58, balanced mode (1.15x) needs raw >= 0.67 to pass.
+    // This ensures only genuinely worthy musical moments get through.
+    if (effectiveWorthiness < 0.58) {  // 🩸 WAVE 2104: was 0.50
       // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
       // console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
@@ -161,25 +165,29 @@ export class DreamEngineIntegrator {
       }
     }
 
-    // 🩸 WAVE 2101.3: ENERGY ZONE GATE
-    // No ejecutar el pipeline completo en zonas de silencio/valle/ambient.
-    // 🩸 WAVE 2101.5: AMBIENT también bloqueado.
-    // Drops reales bypasean.
+    // 🩸 WAVE 2103: ZONE GATE REFORM — "ambient" and "valley" are WHERE TECHNO LIVES
+    // 
+    // THE BUG: WAVE 2101.3/2101.5 blocked ambient+valley+silence from the pipeline.
+    // In techno at 118-122 BPM, energy oscillates between 0.20-0.70 constantly,
+    // which maps to valley/ambient/gentle. The gate was blocking ~60% of all frames.
+    // Effects NEVER fired because by the time energy hit "gentle", the hunt moment
+    // had already passed and the cooldown was already registered from a failed attempt.
+    //
+    // THE FIX: Only block "silence" zone (E < 0.15). That's a real dead zone.
+    // Valley and ambient are NORMAL operating zones for techno buildups/breakdowns.
+    // The ContextualEffectSelector ALREADY handles zone-appropriate effect selection
+    // via EFFECTS_BY_INTENSITY — that's the correct architectural layer for this.
+    // Duplicating zone filtering here was violating Single Responsibility.
     const energyZone = context.energyZone ?? 'ambient'
-    const predTimeMs = context.predictionTimeMs ?? 9999
-    const predProb = context.predictionProbability ?? 0
-    const predType = context.predictionType ?? 'none'
-    const isRealDropImminent = (predType === 'drop_incoming' || predType === 'energy_spike') 
-      && predTimeMs < 1500 && predProb > 0.75
-
-    if ((energyZone === 'silence' || energyZone === 'valley' || energyZone === 'ambient') && !isRealDropImminent) {
+    
+    if (energyZone === 'silence') {
       return {
         approved: false,
         effect: null,
         dreamTime: 0,
         filterTime: 0,
         totalTime: Date.now() - pipelineStartTime,
-        dreamRecommendation: `Zone gate: ${energyZone} without imminent drop`,
+        dreamRecommendation: `Zone gate: silence (E < 0.15)`,
         ethicalVerdict: null,
         circuitHealthy: true,
         fallbackUsed: false,

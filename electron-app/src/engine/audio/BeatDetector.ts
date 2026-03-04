@@ -151,11 +151,11 @@ const SUBDIVISION_RATIO = 0.55
  * Phase error threshold (ms) for soft correction vs hard reset.
  * If the kick arrives within this window of the predicted beat,
  * we apply proportional correction. Beyond this → hard reset (snap to grid).
- * 🩸 WAVE 2098: Widened from 80ms to 150ms. At 128 BPM (469ms/beat), 
- * kicks can arrive ±100ms off prediction due to AGC latency + frame timing.
- * 80ms was too tight → almost every kick triggered HARD RESET → PLL never locked.
+ * 🩸 WAVE 2104: Restored to 120ms (between original 80ms and WAVE 2098's 150ms).
+ * With rawBass ratio-based detection, kicks are more accurately timed than with AGC.
+ * 120ms gives enough tolerance for frame timing variance without being too loose.
  */
-const PLL_SOFT_CORRECTION_WINDOW_MS = 150
+const PLL_SOFT_CORRECTION_WINDOW_MS = 120
 
 /**
  * Proportional gain for soft phase correction.
@@ -250,23 +250,29 @@ export class BeatDetector {
   // 🎚️ AUTO-GAIN: Media móvil del bass para calibración
   private bassHistory: number[] = []
   private readonly BASS_HISTORY_SIZE = 30  // ~1 segundo @ 30fps
-  private bassAvg = 0.5  // 🩸 WAVE 2097: Initial value for normalized bass (0.4-0.8 range)
+  private bassAvg = 0.03  // 🩸 WAVE 2104: Initial value for rawBassEnergy (0.01-0.15 range)
   
-  // 🩸 WAVE 2098: THRESHOLD AUTOPSY — The threshold was KILLING kicks after warmup.
-  // WAVE 2097 set BASE=0.06 + MULT=0.10 → with bassAvg=0.70: threshold=0.13
-  // But AGC-normalized bass transients are only 0.02-0.05 for normal kicks!
-  // Only extreme transients (>0.10) passed → 20 kicks detected, then ZERO.
+  // 🩸 WAVE 2104: RATIO-BASED KICK DETECTION — Inspired by GodEarBPMTracker (WAVE 1163)
+  // WAVE 2097/2098 used absolute thresholds on AGC-compressed bass, but AGC progressively
+  // compresses dynamics over time → transients shrink → kicks lost → BPM corrupts.
   //
-  // ROOT CAUSE: AGC compresses dynamics. A real kick creates transient of ~0.03-0.06
-  // (not 0.10+ like raw bass). The threshold must match AGC-compressed transients.
+  // WAVE 1163 proved: ratio-based detection is IMMUNE to AGC/gain changes because
+  // it measures RELATIVE change (current / rolling average), not absolute values.
   //
-  // NEW Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-  // bassAvg=0.40 → thresh=0.042 (quiet — sensitive)
-  // bassAvg=0.55 → thresh=0.047 (normal — detects real kicks ~0.04+)
-  // bassAvg=0.70 → thresh=0.052 (loud — ignores noise, catches kicks)
-  // bassAvg=0.85 → thresh=0.057 (very loud)
-  private readonly KICK_THRESHOLD_BASE = 0.035
-  private readonly KICK_THRESHOLD_MULTIPLIER = 0.025  // 🩸 WAVE 2098: AGC transients are 0.03-0.06, threshold must be BELOW that
+  // rawBassEnergy values: 0.01-0.15 (microscopic FFT power, pre-AGC)
+  // Kick transients: 0.005-0.030 above rolling average
+  // Ratio at kick: current/avg > 1.5x (kick is 50%+ above average)
+  //
+  // FORMULA: kickDetected = (bassTransient > 0) AND (current / avg > RATIO_THRESHOLD)
+  //          AND (delta > MIN_DELTA)
+  //
+  // This is the EXACT philosophy from GodEarBPMTracker that worked for 74-188 BPM.
+  private readonly KICK_RATIO_THRESHOLD = 1.4    // 🩸 WAVE 2104: Current must be 40%+ above average
+  private readonly KICK_MIN_DELTA = 0.003         // 🩸 WAVE 2104: Minimum absolute rise (noise floor)
+  
+  // Legacy thresholds kept for snare/hihat (still fed frontendBass via mid/treble)
+  private readonly KICK_THRESHOLD_BASE = 0.035    // 🩸 WAVE 2104: Legacy — not used for kick anymore
+  private readonly KICK_THRESHOLD_MULTIPLIER = 0.025
   
   // Transient detection thresholds (DINÁMICOS - estos son fallbacks)
   private kickThreshold = 0.12   // Se recalcula cada frame
@@ -365,14 +371,11 @@ export class BeatDetector {
       this.bassAvg = this.bassHistory.reduce((a, b) => a + b, 0) / this.bassHistory.length
     }
     
-    // 3. Calcular threshold DINÁMICO
-    // 🩸 WAVE 2098: Recalibrated for AGC-compressed transients
-    // AGC compresses dynamics: real kicks produce transient ~0.03-0.06 (not 0.10+)
-    // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-    // bassAvg=0.40 → threshold=0.045 (sensitive — quiet music)
-    // bassAvg=0.60 → threshold=0.050 (normal — detects kicks ~0.04+)
-    // bassAvg=0.75 → threshold=0.054 (loud — still catches kicks)
-    this.kickThreshold = this.KICK_THRESHOLD_BASE + (this.bassAvg * this.KICK_THRESHOLD_MULTIPLIER)
+    // 3. Calcular threshold DINÁMICO (ratio-based for kick, absolute for snare/hihat)
+    // 🩸 WAVE 2104: RATIO-BASED — immune to AGC gain drift
+    // Instead of: "is transient > fixed threshold?" (fails when AGC compresses)
+    // We ask: "is current bass 40%+ above recent average?" (works regardless of gain)
+    this.kickThreshold = this.bassAvg * this.KICK_RATIO_THRESHOLD  // For diagnostic logging only
     
     // ═══════════════════════════════════════════════════════════════════════════
     
@@ -381,18 +384,19 @@ export class BeatDetector {
     const midTransient = metrics.mid - this.prevMid
     const trebleTransient = metrics.treble - this.prevTreble
     
-    // 5. Detectar instrumentos con threshold DINÁMICO
-    // 💀 WAVE 1161: SOLO el transiente importa, sin condición secundaria
-    // La condición "bass > bassAvg * 0.7" era redundante y restrictiva
-    // Un transiente positivo grande YA indica que estamos en un pico
-    this.state.kickDetected = bassTransient > this.kickThreshold
+    // 5. Detectar instrumentos con RATIO-BASED detection para kicks
+    // 🩸 WAVE 2104: Ratio detection — inspired by GodEarBPMTracker (WAVE 1163)
+    // Kick = bass rising AND current > 40% above rolling average AND minimum delta
+    // This is IMMUNE to AGC gain drift because it's relative, not absolute.
+    const bassRatio = this.bassAvg > 0.001 ? (metrics.bass / this.bassAvg) : 0
+    this.state.kickDetected = bassTransient > this.KICK_MIN_DELTA && bassRatio > this.KICK_RATIO_THRESHOLD
     this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.15
     this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.10
     
-    // 🩸 WAVE 2097: Diagnostic logging — now using normalized frontendBass
+    // 🩸 WAVE 2104: Diagnostic logging — now showing ratio-based metrics
     this.diagnosticFrames++
     if (this.diagnosticFrames % 60 === 0) {
-      console.log(`[💓 PACEMAKER] bass=${metrics.bass.toFixed(2)} avg=${this.bassAvg.toFixed(2)} thresh=${this.kickThreshold.toFixed(3)} trans=${bassTransient.toFixed(3)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (PLL:${this.pllSmoothedBpm.toFixed(1)})`)
+      console.log(`[💓 PACEMAKER] bass=${metrics.bass.toFixed(4)} avg=${this.bassAvg.toFixed(4)} ratio=${bassRatio.toFixed(2)} delta=${bassTransient.toFixed(4)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (PLL:${this.pllSmoothedBpm.toFixed(1)})`)
     }
     
     // 6. Registrar picos para análisis de BPM
@@ -400,9 +404,9 @@ export class BeatDetector {
     if (this.state.kickDetected) {
       this.recordPeak(now, metrics.energy, 'kick')
       this.kicksDetectedTotal++
-      // 🩸 WAVE 2097: Log kick detection for diagnostics (throttled)
+      // 🩸 WAVE 2104: Log kick detection with ratio metrics (throttled)
       if (this.kicksDetectedTotal <= 10 || this.kicksDetectedTotal % 20 === 0) {
-        console.log(`[💓 KICK #${this.kicksDetectedTotal}] bass=${metrics.bass.toFixed(2)} trans=${bassTransient.toFixed(3)} > thresh=${this.kickThreshold.toFixed(3)}`)
+        console.log(`[💓 KICK #${this.kicksDetectedTotal}] bass=${metrics.bass.toFixed(4)} ratio=${bassRatio.toFixed(2)} delta=${bassTransient.toFixed(4)} > minDelta=${this.KICK_MIN_DELTA}`)
       }
     }
     

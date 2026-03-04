@@ -321,19 +321,21 @@ export class SeleneTitanConscious extends EventEmitter {
   private readonly DNA_OVERRIDE_MIN_INTERVAL_MS = 12000  // 12s entre overrides
   private readonly DNA_OVERRIDE_SAME_EFFECT_INTERVAL_MS = 20000  // 20s para repetir el MISMO efecto con override
 
-  // 🩸 WAVE 2101.3: PIPELINE EXECUTION THROTTLE
-  // El pipeline DNA se ejecuta cada frame si worthiness >= 0.65, pero solo necesitamos
-  // decidir cada ~500ms. Si el resultado sería bloqueado por cooldown de todas formas,
-  // no tiene sentido gastar CPU y generar spam de APPROVED/BLOCKED.
+  // 🩸 WAVE 2103: PIPELINE EXECUTION THROTTLE — aligned with global cooldown
+  // Was 2000ms (WAVE 2101.4), but global cooldown is 2500ms.
+  // If the pipeline throttle fires at T=0 and the effect fires at T=0,
+  // next pipeline at T=2000 but global cooldown blocks until T=2500.
+  // Then next pipeline at T=4000 — that's a 4s gap between OPPORTUNITIES.
+  // FIX: Match the global cooldown so pipeline is ready right when cooldown expires.
   private lastPipelineExecutionTimestamp: number = 0
-  private readonly PIPELINE_EXECUTION_THROTTLE_MS = 2000  // 🩸 WAVE 2101.4: 1 pipeline cada 2 segundos (era 500ms)
+  private readonly PIPELINE_EXECUTION_THROTTLE_MS = 2000  // 🩸 WAVE 2104: 2s (was 1s) — dream pipeline breathes
 
   // 🩸 WAVE 2102: GLOBAL EFFECT COOLDOWN LIBERADO
   // 15s encadenaba la IA a una camisa de fuerza. El techno vive de secuencias rápidas
   // en los drops (strobe -> sweep -> burst). Devolvemos el poder a la IA.
   // Solo mantenemos un seguro de 2.5s para no spamear 10 efectos en un segundo.
   private lastGlobalEffectTimestamp: number = 0
-  private readonly GLOBAL_EFFECT_COOLDOWN_MS = 2500  // Liberado de 15s a 2.5s
+  private readonly GLOBAL_EFFECT_COOLDOWN_MS = 4000  // 🩸 WAVE 2104: 4s (was 2.5s) — más espacio entre efectos
 
   // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
   private lastDreamIntegrationResult: IntegrationDecision | null = null
@@ -1118,18 +1120,17 @@ export class SeleneTitanConscious extends EventEmitter {
         const isCooldownBlock = availability.reason?.includes('COOLDOWN') && !isHardMinimumBlocked
         const alternatives = dreamIntegrationData?.alternatives as Array<{effect: string, intensity: number, reasoning: string, confidence: number}> | undefined
         
-        // 🩸 WAVE 2101.3: FALLTHROUGH ENERGY GATE
-        // Solo usar fallthrough si la energía/sección justifica disparar ALGO.
-        // En breakdown o baja energía, silencio es mejor que un efecto de relleno.
-        // 🩸 WAVE 2101.5: Fallthrough TAMBIÉN respeta zona energética.
-        // digital_rain @ Z=-0.8 en valley es una aberración. No.
+        // 🩸 WAVE 2103: FALLTHROUGH ENERGY GATE — reformed
+        // WAVE 2101.3/2101.5 was blocking fallthrough in ambient/valley zones.
+        // That killed rotation: acid_sweep in cooldown → digital_rain denied → SILENCE.
+        // FIX: Only block fallthrough in true silence. Valley/ambient are normal techno zones.
+        // The section gate stays — no firing random effects in breakdown if DNA didn't ask.
         const sectionAllowsFallthrough = pattern.section === 'buildup' 
           || pattern.section === 'drop' 
           || pattern.section === 'chorus'
-        const intensityAllowsFallthrough = output.effectDecision!.intensity >= 0.40
-        const zoneAllowsFallthrough = energyContext.zone !== 'silence' 
-          && energyContext.zone !== 'valley'
-          && energyContext.zone !== 'ambient'
+          || pattern.section === 'breakdown'  // 🩸 WAVE 2103: breakdown can fallthrough for atmosphere
+        const intensityAllowsFallthrough = output.effectDecision!.intensity >= 0.30  // 🩸 WAVE 2103: lowered from 0.40
+        const zoneAllowsFallthrough = energyContext.zone !== 'silence'
         const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough
 
         if (isCooldownBlock && fallThroughAllowed && alternatives && alternatives.length > 0) {

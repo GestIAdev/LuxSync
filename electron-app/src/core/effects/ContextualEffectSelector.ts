@@ -128,32 +128,37 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   
   // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
   // 🔫 WAVE 930.3: ANTI-STROBE-SPAM - Aumentado de 2s a 10s
-  'industrial_strobe': 10000,  // 10s base → Strobe es IMPACTO, no spam
-  'acid_sweep': 12000,         // 12s base → Dar espacio para sweeps (was 15s)
+  // 🩸 WAVE 2103: THE REAL FIX - Cooldowns SLASHED for rotation
+  // With BALANCED (1.5x), these become: strobe=12s, acid=12s, cyber=12s
+  // That's 3 effects rotating every ~4s instead of silence.
+  'industrial_strobe': 8000,   // 8s base → BALANCED:12s, PUNK:5.6s (was 10s)
+  'acid_sweep': 8000,          // 8s base → BALANCED:12s, PUNK:5.6s (was 12s)
   
   // 🤖 WAVE 810: UNLOCK THE TWINS
-  'cyber_dualism': 15000,      // 15s base (was 20s) → Más gemelos
+  // 🩸 WAVE 2103: Slashed — 15s×1.5=22.5s was absurd for the bread-and-butter effect
+  'cyber_dualism': 10000,      // 10s base → BALANCED:15s, PUNK:7s (was 15s)
   
   // 🔫 WAVE 930: ARSENAL PESADO
-  'gatling_raid': 8000,        // 8s base → Machine gun controlado
-  'sky_saw': 10000,            // 10s base → Aggressive cuts espaciados
-  'abyssal_rise': 45000,       // 45s base → Epic transition - muy raro
+  // 🩸 WAVE 2103: Cooldowns reduced for rotation pool depth
+  'gatling_raid': 8000,        // 8s base → BALANCED:12s (was 8s — kept)
+  'sky_saw': 8000,             // 8s base → BALANCED:12s (was 10s)
+  'abyssal_rise': 30000,       // 30s base → BALANCED:45s (was 45s — still rare)
   
   // 🌫️ WAVE 938 + 963: ATMOSPHERIC ARSENAL (cooldowns REDUCIDOS para rotation)
-  // WAVE 963: Cooldowns reducidos para que compitan con acid_sweep/sky_saw
-  // Objetivo: Que aparezcan en la rotación NORMAL de techno
-  'void_mist': 15000,          // 15s base (was 40s) → Neblina más frecuente
+  // 🩸 WAVE 2103: Further reduced — these need to be part of the rotation pool
+  'void_mist': 12000,          // 12s base → BALANCED:18s (was 15s)
   // 🔪 WAVE 986: static_pulse PURGED
-  'digital_rain': 18000,       // 18s base (was 35s) → Matrix flicker regular
-  'deep_breath': 20000,        // 20s base (was 45s) → Respiración zen frecuente
+  'digital_rain': 12000,       // 12s base → BALANCED:18s (was 18s)
+  'deep_breath': 15000,        // 15s base → BALANCED:22s (was 20s)
   
   // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
   'ambient_strobe': 14000,     // 14s base → Flashes dispersos gentle/active zone
   'sonar_ping': 25000,         // 25s base → Ping submarino silence/valley (efecto raro)
   
   // 🔪 WAVE 986: ACTIVE REINFORCEMENTS
-  'binary_glitch': 10000,      // 10s base → Glitch digital frecuente
-  'seismic_snap': 12000,       // 12s base → Golpe mecánico espaciado
+  // 🩸 WAVE 2103: Reduced for rotation depth
+  'binary_glitch': 8000,       // 8s base → BALANCED:12s (was 10s)
+  'seismic_snap': 8000,        // 8s base → BALANCED:12s (was 12s)
   
   // 🔮 WAVE 988: THE FINAL ARSENAL
   'fiber_optics': 20000,       // 20s base → Traveling colors ambient (long effect, needs space)
@@ -923,33 +928,37 @@ export class ContextualEffectSelector {
    */
   private getEffectsAllowedForZone(zone: EnergyZone, vibe?: string): string[] {
     // 🔋 Efectos permitidos por intensidad energética (base)
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL añadido a zonas bajas (silence, valley, ambient, gentle)
-    // 🔪 WAVE 961: VIBE LEAK SURGERY - Latinos removidos, techno tiene sus atmosféricos
+    // 🩸 WAVE 2103: THE REAL FIX - ZONE OVERLAP FOR ROTATION
+    //
+    // THE BUG: Each zone had EXACTLY 2 effects. When both were on cooldown = SILENCE.
+    // With BALANCED mood (1.5x multiplier), cyber_dualism cooldown = 22.5s.
+    // If both effects in a zone are cooling, the AI goes mute for 10-20 seconds.
+    //
+    // THE FIX: Adjacent zones SHARE effects (overlap). This creates a 4-5 effect
+    // rotation pool per zone instead of 2. The AI can always find SOMETHING to fire.
+    // Philosophy: Energy zones are FUZZY, not rigid boxes. A build at E=0.44 
+    // (ambient) should still consider gentle-zone effects like binary_glitch.
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
-      // 🎚️ WAVE 996: THE 7-ZONE EXPANSION - Equidistant thresholds (6×15% + peak 10%)
-      // THE LADDER: silence(0-15%), valley(15-30%), ambient(30-45%), gentle(45-60%),
-      //             active(60-75%), intense(75-90%), peak(90-100%)
+      // SILENCE (0-15%): Respiración + eco
+      silence: ['deep_breath', 'sonar_ping', 'void_mist'],
       
-      // SILENCE (0-15%): Respiración profunda y ecos minimalistas
-      silence: ['deep_breath', 'sonar_ping'],
+      // VALLEY (15-30%): Niebla + fibras + overlap from silence/ambient
+      valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain'],
       
-      // VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
-      valley: ['void_mist', 'fiber_optics'],
+      // AMBIENT (30-45%): Lluvia digital + acid + overlap from valley/gentle
+      ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch'],
       
-      // AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
-      ambient: ['digital_rain', 'acid_sweep'],
+      // GENTLE (45-60%): Flashes + glitches + overlap from ambient/active
+      gentle: ['ambient_strobe', 'binary_glitch', 'acid_sweep', 'cyber_dualism', 'digital_rain'],
       
-      // GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
-      gentle: ['ambient_strobe', 'binary_glitch'],
+      // ACTIVE (60-75%): Dualismo + snaps + overlap from gentle/intense
+      active: ['cyber_dualism', 'seismic_snap', 'binary_glitch', 'sky_saw', 'acid_sweep'],
       
-      // ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
-      active: ['cyber_dualism', 'seismic_snap'],
+      // INTENSE (75-90%): Sierra + abyssal + overlap from active/peak
+      intense: ['sky_saw', 'abyssal_rise', 'cyber_dualism', 'industrial_strobe', 'seismic_snap'],
       
-      // INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
-      intense: ['sky_saw', 'abyssal_rise'],
-      
-      // PEAK (90-100%): Artillería pesada - territorio de drops
-      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe'],
+      // PEAK (90-100%): Artillería pesada + overlap from intense
+      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise'],
     }
     
     const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []

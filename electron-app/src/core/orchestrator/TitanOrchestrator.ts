@@ -427,28 +427,30 @@ export class TitanOrchestrator {
       // bass, mid, treble, energy, timestamp
       //
       // ═══════════════════════════════════════════════════════════════════════
-      // 🩸 WAVE 2097: BYPASS REVERSAL — Feed frontendBass to Pacemaker
+      // 🩸 WAVE 2104: RESTORE THE BYPASS — rawBassEnergy for Pacemaker
       // ═══════════════════════════════════════════════════════════════════════
-      // WAVE 1162 "THE BYPASS" switched to rawBassEnergy (pre-AGC FFT power)
-      // thinking raw signal = better kick detection. WRONG.
+      // WAVE 2097 reversed to frontendBass (AGC-normalized) but this was WRONG.
+      // EVIDENCE from log: Pacemaker starts perfect (BPM=125, 194 kicks) but DEGRADES
+      // over time as AGC compresses more → transients shrink below threshold → kicks lost
+      // → intervals stretch to 900-1071ms → BPM jumps to 155-161.
       //
-      // rawBassEnergy values: 0.01-0.08 (microscopic FFT power)
-      // frontendBass values:  0.50-0.80 (normalized, dynamic range preserved)
+      // WAVE 1163 already proved: "AGC Es El Enemigo Del Transiente"
+      // The GodEarBPMTracker used rawBassEnergy with RATIO-BASED detection and worked
+      // perfectly for 74-188 BPM. It was purged, but the principle stands:
+      // PRE-AGC signal preserves transient dynamics that AGC progressively destroys.
       //
-      // With rawBass, transients are ~0.01 vs threshold ~0.055 → ZERO kicks detected
-      // → BPM=120 frozen → PLL=FREEWHEEL → phase=0 → section=breakdown forever
-      //
-      // frontendBass is normalized by the Worker's AGC but PRESERVES transient contrast.
-      // Kicks produce transients of 0.10-0.30 which CROSS the dynamic threshold.
-      // This is how the Pacemaker worked before WAVE 1162 and detected BPM correctly.
+      // rawBassEnergy values: 0.01-0.15 (microscopic but DYNAMIC — transients preserved)
+      // BeatDetector thresholds recalibrated in WAVE 2104 for this range.
       // ═══════════════════════════════════════════════════════════════════════
       
+      const rawBass = this.lastAudioData.rawBassEnergy ?? 0
+      
       if (this.frameCount % 120 === 0) {
-        console.log(`[💓 PACEMAKER FEED] frontendBass=${bass.toFixed(3)} | rawBass=${this.lastAudioData.rawBassEnergy?.toFixed(3) ?? 'N/A'} | using=FRONTEND`)
+        console.log(`[💓 PACEMAKER FEED] frontendBass=${bass.toFixed(3)} | rawBass=${rawBass.toFixed(4)} | using=RAW_BASS`)
       }
       
       const audioForBeat = {
-        bass: bass,  // 🩸 WAVE 2097: Use normalized frontendBass (NOT raw) for kick detection
+        bass: rawBass,  // 🩸 WAVE 2104: Use rawBassEnergy (pre-AGC) — AGC kills transients over time
         mid,
         treble: high,
         energy,

@@ -1109,7 +1109,8 @@ export class EffectDreamSimulator {
       ) ?? false
       
       // 🔮 CASSANDRA: Confidence boost si el Oráculo sugirió este efecto
-      const oracleBoost = isSuggestedByOracle ? 0.15 : 0
+      // 🩸 WAVE 2104: Reducido de 0.15 a 0.08 — sugerencia, no imposición
+      const oracleBoost = isSuggestedByOracle ? 0.08 : 0
       const baseConfidence = prediction.confidence * 0.9
       const finalConfidence = Math.min(1, baseConfidence + oracleBoost)
       
@@ -1620,26 +1621,57 @@ export class EffectDreamSimulator {
   }
   
   private calculateVibeCoherence(effect: EffectCandidate, context: AudienceSafetyContext): number {
-    // WAVE 902.1: TRUTH - Only Techno + Latino implemented
+    // ═══════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2104: VIBE COHERENCE REFORM
+    // ANTES: Solo 3 efectos (industrial_strobe, acid_sweep, cyber_dualism) tenían 1.0
+    //        Los otros 12 efectos techno tenían 0.5 → cyber_dualism ganaba +0.09 siempre
+    // AHORA: TODOS los efectos registrados en EFFECTS_BY_VIBE son "de la casa" (0.85)
+    //        Los no registrados (herejía inter-género) son 0.0
+    //        Efectos desconocidos: 0.4
+    // FILOSOFÍA: La coherencia de vibe ya se filtra en generateCandidates() con
+    //            getVibeAllowedEffects(). Si un efecto llegó hasta aquí, ES coherente.
+    //            Dar ventaja injusta a 3 elegidos es ARISTOCRACIA, no democracia.
+    // ═══════════════════════════════════════════════════════════════
+    
+    // TECHNO: Todos los efectos techno registrados son igualmente de casa
     if (context.vibe.includes('techno')) {
-      if (['industrial_strobe', 'acid_sweep', 'cyber_dualism'].includes(effect.effect)) {
-        return 1.0
-      } else if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
-        return 0.0 // HEREJÍA - Latino en sesión Techno
+      const TECHNO_FAMILY = [
+        'industrial_strobe', 'gatling_raid', 'core_meltdown',
+        'sky_saw', 'abyssal_rise',
+        'cyber_dualism', 'seismic_snap',
+        'ambient_strobe', 'binary_glitch',
+        'acid_sweep', 'digital_rain',
+        'void_mist', 'fiber_optics',
+        'deep_breath', 'sonar_ping'
+      ]
+      if (TECHNO_FAMILY.includes(effect.effect)) {
+        return 0.85  // Todos son familia — nadie es más techno que otro
       }
-      return 0.5
+      // Herejía inter-género
+      if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
+        return 0.0
+      }
+      return 0.4  // Desconocido
     }
     
-    // WAVE 902.1: TRUTH - Latino effects (all 10)
+    // LATINO: Todos los efectos latinos registrados son igualmente de casa
     if (context.vibe.includes('latino')) {
-      if (['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath', 
-           'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'].includes(effect.effect)) {
-        return 1.0
+      const LATINO_FAMILY = [
+        'ghost_breath', 'amazon_mist',
+        'cumbia_moon', 'tidal_wave',
+        'corazon_latino', 'strobe_burst',
+        'clave_rhythm', 'tropical_pulse',
+        'glitch_guaguanco', 'machete_spark',
+        'salsa_fire', 'solar_flare',
+        'latina_meltdown', 'strobe_storm'
+      ]
+      if (LATINO_FAMILY.includes(effect.effect)) {
+        return 0.85
       }
-      return 0.6
+      return 0.4
     }
     
-    return 0.7 // Neutral para vibes desconocidos
+    return 0.6 // Neutral para vibes desconocidos
   }
   
   private calculateDiversityScore(effect: EffectCandidate, context: AudienceSafetyContext): number {
@@ -1745,25 +1777,37 @@ export class EffectDreamSimulator {
     let score = 0
     const effectName = scenario.effect.effect.toLowerCase()
     
-    // 🎯 CORE: DNA Relevance MULTIPLICADA por Diversity Factor
-    // diversityScore ya viene con la escalera (1.0 / 0.7 / 0.4 / 0.1)
+    // 🩸 WAVE 2104: adjustedRelevance ya no se usa en pesos principales
+    // (diversity es factor independiente ahora), pero se mantiene para el perfect match check
     const adjustedRelevance = scenario.projectedRelevance * scenario.diversityScore
     
     // 🎲 WAVE 1178: ANTI-DETERMINISM - Exploration Factor
-    // Usa el timestamp actual para rotar qué efectos tienen boost
-    // El hash del nombre del efecto crea una "firma" única para cada efecto
-    // que se combina con el timestamp para crear varianza temporal
+    // 🩸 WAVE 2104: Ventana 10s→8s, probabilidad 30%→40%, boost 0.15→0.12
+    // Más efectos rotan más frecuentemente pero con boost más moderado.
+    // Antes: 30% recibían +0.15 cada 10s = picos agresivos infrecuentes
+    // Ahora: 40% reciben +0.12 cada 8s = rotación más suave y constante
     const effectHash = this.hashEffectName(effectName)
-    const timeWindow = Math.floor(Date.now() / 10000) // Cambia cada 10 segundos
+    const timeWindow = Math.floor(Date.now() / 8000) // 🩸 WAVE 2104: Cambia cada 8 segundos (era 10)
     const explorationSeed = (effectHash + timeWindow) % 100
-    const explorationBoost = (explorationSeed < 30) ? 0.15 : 0 // 30% de efectos reciben boost en cada ventana
+    const explorationBoost = (explorationSeed < 40) ? 0.12 : 0 // 🩸 WAVE 2104: 40% de efectos (era 30%), boost 0.12 (era 0.15)
     
     // 🧬 Pesos del scoring (ajustados para hacer espacio a exploración)
-    score += adjustedRelevance * 0.45              // 🧬 DNA + Diversity (45% - era 50%)
-    score += scenario.vibeCoherence * 0.18         // Coherencia de vibe (era 20%)
-    score += (1 - scenario.riskLevel) * 0.18       // Bajo riesgo preferido (era 20%)
-    score += scenario.simulationConfidence * 0.09  // Confianza en predicción (era 10%)
-    score += explorationBoost                      // 🎲 WAVE 1178: Exploration (10% efectivo)
+    // 🩸 WAVE 2104: REBALANCE — "Cassandra es el copiloto, no el piloto"
+    // ANTES: relevance*0.45, vibe*0.18, risk*0.18, simConf*0.09, exploration*0.10
+    // PROBLEMA: DNA relevance (45%) dominaba todo. cyber_dualism SIEMPRE ganaba porque
+    //           su DNA (A=0.55, C=0.50, O=0.45) está en el CENTRO del espacio y
+    //           la distancia euclidiana es MÍNIMA para energías medias.
+    //           Diversity se multiplicaba DENTRO de relevance → el efecto con mejor
+    //           DNA distance aplastaba cualquier penalización de diversidad.
+    // AHORA: Diversity se pondera SEPARADAMENTE del DNA relevance.
+    //        DNA baja a 0.35, Diversity sube a 0.20 como factor INDEPENDIENTE.
+    //        Exploration sube a 0.12 para más varianza temporal.
+    score += scenario.projectedRelevance * 0.35     // 🧬 DNA puro (era 0.45 con diversity incluida)
+    score += scenario.diversityScore * 0.20          // 🎲 Diversity INDEPENDIENTE (nuevo)
+    score += scenario.vibeCoherence * 0.15           // Coherencia de vibe (era 0.18, ahora que es igualitaria baja)
+    score += (1 - scenario.riskLevel) * 0.13         // Bajo riesgo (era 0.18)
+    score += scenario.simulationConfidence * 0.05    // Confianza (era 0.09)
+    score += explorationBoost                        // 🎲 WAVE 1178: Exploration (12% efectivo)
     
     // Penalizar conflictos
     score -= scenario.cooldownConflicts.length * 0.15
@@ -1858,20 +1902,22 @@ export class EffectDreamSimulator {
     
     if (isUrgent && oracleProbability > 0.5) {
       // 🚨 URGENCIA ALTA: < 2 segundos para el evento
-      // Boost MASIVO a efectos que matchean el tipo de predicción
-      const urgencyBoost = Math.min(0.35, (2000 - timeToEvent) / 2000 * 0.35)
+      // 🩸 WAVE 2104: "Cassandra es el copiloto de rally que anticipa curvas, no el piloto"
+      // ANTES: Max +0.35 → dominaba el scoring, convertía al Oráculo en dictador
+      // AHORA: Max +0.18 → influencia significativa pero no dictatorial
+      const urgencyBoost = Math.min(0.18, (2000 - timeToEvent) / 2000 * 0.18)
       score += urgencyBoost
       
       // Log para debugging de Cassandra urgency
-      if (urgencyBoost > 0.15) {
+      if (urgencyBoost > 0.10) {
         console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(2)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(2)})`)
       }
     }
     
     // 🔮 CASSANDRA: Boost adicional si alta probabilidad del Oráculo (> 0.7)
-    // Esto significa que el Oráculo está MUY seguro de la predicción
+    // 🩸 WAVE 2104: Reducido de 0.2 a 0.10 — apoyo, no dominación
     if (oracleProbability > 0.7) {
-      const confidenceBoost = (oracleProbability - 0.7) * 0.2 // Max +0.06 para prob=1.0
+      const confidenceBoost = (oracleProbability - 0.7) * 0.10 // Max +0.03 para prob=1.0 (era +0.06)
       score += confidenceBoost
     }
     

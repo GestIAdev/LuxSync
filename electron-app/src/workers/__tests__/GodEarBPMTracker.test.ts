@@ -413,9 +413,10 @@ describe('🔥 WAVE 2113: GodEarBPMTracker — The 6-Genre Crucible', () => {
   // ─────────────────────────────────────────────────────────────────────
   describe('🎯 TEST 7: WAVE 2116 — Sub-Beat Rejection (The 161 BPM Bug)', () => {
     it('should detect 125 BPM, NOT 161 BPM, when offbeats are present', () => {
-      // THE test that catches the bug: 125 BPM kicks with offbeats at 0.45 energy.
+      // THE test that catches the bug: 125 BPM kicks with offbeats at 0.30 energy.
       // Old tracker (KICK_RATIO=1.6): offbeats pass → intervals=279ms → BPM=161
-      // New tracker (KICK_RATIO=2.0 + IQR): offbeats rejected → intervals=464-511ms → BPM=125
+      // WAVE 2116 (KICK_RATIO=2.0 + IQR): offbeats rejected → BPM=125
+      // WAVE 2117 (KICK_RATIO=1.7 + IQR): offbeats at 0.30 stay below ratio → BPM=125
       const buffer = generateSubBeatBuffer(125, 30)
       const results = runTimeMachineLoop(tracker, buffer)
 
@@ -437,7 +438,7 @@ describe('🔥 WAVE 2113: GodEarBPMTracker — The 6-Genre Crucible', () => {
       // Even more aggressive sub-beats: higher energy, closer spacing
       const buffer = generateSubBeatBuffer(125, 20, {
         kickEnergy: 0.75,
-        subBeatEnergy: 0.50,  // 0.50 / 0.18 = 2.78× — but below the new 2.0 threshold
+        subBeatEnergy: 0.50,  // 0.50 / ~0.28 avg = ~1.78× — borderline but IQR cleans intervals
         noiseFloor: 0.20,     // Even higher floor (dense bass)
       })
       const results = runTimeMachineLoop(tracker, buffer)

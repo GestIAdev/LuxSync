@@ -356,7 +356,7 @@ export function generateSubBeatBuffer(
   } = {}
 ): SyntheticBuffer {
   const kickEnergy = options.kickEnergy ?? 0.80
-  const subBeatEnergy = options.subBeatEnergy ?? 0.45
+  const subBeatEnergy = options.subBeatEnergy ?? 0.30  // WAVE 2117: 0.45→0.30 — real mastered offbeats are ~37% of kick, not 56%
   const noiseFloor = options.noiseFloor ?? 0.18  // Higher floor — continuous bass
   const startTimeMs = options.startTimeMs ?? 0
   

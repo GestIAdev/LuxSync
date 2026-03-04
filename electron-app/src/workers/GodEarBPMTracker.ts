@@ -19,8 +19,16 @@
  *            ROOT CAUSE: KICK_RATIO_THRESHOLD=1.6 + KICK_DELTA_THRESHOLD=0.008
  *            was too permissive — offbeats with ratio 1.7-2.0 passed the filter.
  *            FEEDBACK LOOP: High BPM → short debounce → more sub-beats → even higher BPM.
- *            FIX: Raise thresholds, add IQR-based interval filtering (reject outliers
- *            before median), increase debounce floor. Tested: passes 6-genre + sub-beat.
+ *            FIX: Added IQR-based interval filtering, increased debounce floor.
+ * 
+ * WAVE 2117: THE CALIBRATED EAR — Production-ready thresholds.
+ *            PROBLEM: WAVE 2116 thresholds (ratio=2.0, delta=0.03) were tuned
+ *            against synthetic beats but killed real kicks in mastered audio.
+ *            Professional tracks have compressed dynamics: kick ratio 1.5-1.8,
+ *            delta 0.01-0.04. The 2.0 ratio rejected EVERY kick → BPM=0 forever.
+ *            FIX: Ratio 2.0→1.7, delta 0.03→0.015. Sub-beat rejection relies on
+ *            the IQR interval filter (the architecturally correct tool) not on
+ *            over-aggressive energy thresholds. The probe is temporary for validation.
  * 
  * ARCHITECTURE:
  * 
@@ -48,8 +56,8 @@
  * 
  * WHY THIS WORKS:
  * - rawBassEnergy is FRESH every FFT frame (~46ms @ 44100/2048)
- * - Ratio detection (current/avg > 2.0) rejects weak sub-beats
- * - Delta threshold (0.03) ensures true TRANSIENT, not sustained bass
+ * - Ratio detection (current/avg > 1.7) rejects weak sub-beats
+ * - Delta threshold (0.015) ensures true TRANSIENT, not sustained bass
  * - Adaptive debounce floor (250ms = 240 BPM) prevents extreme false positives
  * - IQR filtering removes outlier intervals BEFORE median calculation
  * - Median interval (not mean) further rejects remaining outliers
@@ -58,7 +66,7 @@
  * PROVEN RANGE: 74-188 BPM ±2 BPM (Brejcha→Psytrance)
  * 
  * @author PunkOpus
- * @wave 1163 + 2112 + 2116
+ * @wave 1163 + 2112 + 2116 + 2117
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -100,17 +108,20 @@ const ENERGY_HISTORY_SIZE = 32
 /** BPM history for smoothing (median of N measurements) */
 const BPM_HISTORY_SIZE = 12
 
-/** Ratio threshold: current bass must be 100%+ above rolling average
- *  WAVE 2116: Raised from 1.6 to 2.0 — the killer fix.
- *  In Brejcha sessions, offbeats have ratio 1.7-1.9 against the dense bass floor.
- *  At 1.6, these pass as kicks. At 2.0, only true kicks survive. */
-const KICK_RATIO_THRESHOLD = 2.0
+/** Ratio threshold: current bass must be 70%+ above rolling average
+ *  WAVE 2116: Raised from 1.6 to 2.0
+ *  WAVE 2117: Lowered to 1.7 — 2.0 was killing real kicks in mastered audio.
+ *  Professional tracks (Brejcha) have compressed dynamics: real kicks only
+ *  reach 1.5-1.8 ratio against the dense bass floor.
+ *  Sub-beat rejection is now handled by the IQR interval filter (the correct tool). */
+const KICK_RATIO_THRESHOLD = 1.7
 
 /** Minimum rising delta to confirm a transient (noise floor)
- *  WAVE 2116: Raised from 0.008 to 0.03 — 0.008 was absurdly low.
- *  Any microscopic fluctuation registered as "rising". 0.03 demands
- *  a real transient onset, not just bass rumble. */
-const KICK_DELTA_THRESHOLD = 0.03
+ *  WAVE 2116: Raised from 0.008 to 0.03
+ *  WAVE 2117: Lowered to 0.015 — 0.03 was too aggressive for loopback audio.
+ *  Loopback-captured bass has smaller absolute deltas than synth tests.
+ *  0.015 still rejects noise (0.008 was absurd) but lets real transients through. */
+const KICK_DELTA_THRESHOLD = 0.015
 
 /** Debounce factor: 40% of expected interval. Prevents vicious cycle. */
 const DEBOUNCE_FACTOR = 0.40

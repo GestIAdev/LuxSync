@@ -459,16 +459,33 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🥁 WAVE 2112: PHASE 2 — GodEar BPM Detection (RESURRECTED)
+  // 🥁 WAVE 2115: THE RELATIVE CLOCK — GodEar BPM Detection (TIMESTAMP FIX)
   // ═══════════════════════════════════════════════════════════════════════════
-  // rawBassEnergy is FRESH every frame. This is WHY BPM detection belongs here.
-  // GodEarBPMTracker: ratio kick detection + adaptive debounce + median intervals.
-  // Proven 74-188 BPM ±2 across genres (WAVE 1163).
+  // WAVE 2112 original usaba Date.now() — tiempo de CPU real.
+  // PROBLEMA: El Worker procesa en bursts. Si el SO pausa el thread 200ms,
+  // el tracker ve un "silencio" de 200ms entre kicks y calcula BPM=30.
+  // Los intervalos del log lo confirman: [448,511,451,558,961,511] — ese 961ms
+  // es un stall de CPU, no un beat de 62 BPM.
+  //
+  // SOLUCIÓN: Timestamp basado en la posición del sample en el flujo de audio.
+  // Cada frame recibe exactamente `incomingLength` samples.
+  // Tiempo musical acumulado = frameCount * incomingLength / sampleRate * 1000ms
+  //
+  // Con incomingLength=2048, sampleRate=44100:
+  //   frameCount=1  → t=46.4ms
+  //   frameCount=10 → t=464ms
+  // El tracker siempre ve intervalos perfectamente proporcionales al tempo real,
+  // sin importar cuánto tarde la CPU en procesar cada frame.
+  //
+  // INVARIANTE: deterministicTimestampMs es MONOTÓNICO (nunca retrocede).
   // ═══════════════════════════════════════════════════════════════════════════
+  const sampleRate = config.audioSampleRate ?? 44100;
+  const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
+
   const godEarBpmResult = godEarBPMTracker.process(
     spectrum.rawBassEnergy,       // Raw bass energy pre-AGC (fresh this frame)
     spectrum.kickDetected,        // Slope-based onset from GodEar transient detector
-    Date.now()
+    deterministicTimestampMs      // 🕐 WAVE 2115: Musical clock, not CPU clock
   );
   
   // Update Worker BPM state from GodEar tracker
@@ -478,7 +495,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     state.beatPhase = godEarBpmResult.beatPhase;
   }
   if (godEarBpmResult.kickDetected) {
-    state.lastBeatTime = Date.now();
+    // 🕐 WAVE 2115: lastBeatTime en musical clock — consistente con el tracker
+    state.lastBeatTime = deterministicTimestampMs;
   }
   
   // Calculate overall energy (weighted by perceptual importance)

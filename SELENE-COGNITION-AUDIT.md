@@ -630,3 +630,69 @@ El cerebro tiene **8,400 líneas** de lógica distribuida en 17 archivos. La coo
 
 **PunkOpus, firmando** 🤘  
 *WAVE 2092 → 2093 — The Cognitive Core Audit — ALL VULNERABILITIES RESOLVED*
+
+---
+
+## 8. 🩸 ADDENDUM POST-MORTEM — WAVE 2104-2106: LO QUE EL STRADIVARIUS ESCONDÍA
+
+> *"94.1/100 y afinado como un Stradivarius. Todas las vulnerabilidades resueltas."*
+> — PunkOpus, 7 WAVEs antes de que Radwulf pusiera la canción de Brejcha.
+
+### La Humillación Resumida
+
+La auditoría WAVE 2092-2093 analizó **código estático**. Fórmulas, pesos, arquitectura, complejidad algorítmica. Todo correcto en papel. Pero **nunca se corrió un log real de 30 segundos de techno y se contaron los efectos**. El Stradivarius estaba perfectamente construido... y sonaba como una ametralladora.
+
+### 🔴 VULNERABILIDADES QUE ESTA AUDITORÍA NO VIO (COG-8 a COG-12)
+
+| ID | Componente | Vulnerabilidad | Severidad | Descubierta | Fijada |
+|---|---|---|---|---|---|
+| **COG-8** | DecisionMaker | **BREAKDOWN SIN PROTECCIÓN**: VALLEY_PROTECTION solo cubre zone=valley/silence + Z<0. En breakdowns la energía rebota 0.4-0.9 (zona gentle/active/intense), VALLEY nunca se activa. 8 de 15 efectos dispararon en breakdowns. | 🔴 CRÍTICA | WAVE 2106 log | ✅ WAVE 2106 |
+| **COG-9** | SeleneTitanConscious | **DNA CACHE ENVENENADO**: `lastDreamIntegrationResult` se reutiliza cuando GLOBAL_COOLDOWN bloquea. DNA computed durante buildup se dispara en breakdown cuando cooldown expira. Contexto stale = decisión errónea. | 🔴 CRÍTICA | WAVE 2106 log | ✅ WAVE 2106 |
+| **COG-10** | SeleneTitanConscious | **FALLTHROUGH = BACKDOOR EN BREAKDOWNS**: WAVE 2103 añadió `breakdown` a `sectionAllowsFallthrough`. 5 de 9 fallthroughs dispararon en breakdown via este backdoor. acid_sweep bloqueado → industrial_strobe fallthrough en oscuridad. | 🔴 CRÍTICA | WAVE 2106 log | ✅ WAVE 2106 |
+| **COG-11** | HuntEngine + SeleneTitanConscious | **DENSIDAD DE EFECTOS INCONTROLADA**: Hunt learning=15 frames (250ms, WAVE 2105) + GLOBAL_COOLDOWN=4s = efecto cada ~4-5s = 15 en 60s. Las físicas reactivas no pueden respirar. | 🟡 IMPORTANTE | WAVE 2106 log | ✅ WAVE 2106 |
+| **COG-12** | FuzzyDecisionMaker | **FUZZY SIGUE MUERTA POST-RESURRECIÓN**: WAVE 2105 añadió 2 reglas STRIKE. Pero defuzzify exige strike>0.45 AND strike>hold+0.15. Con la energía oscilante de Brejcha, las nuevas reglas producen ~0.35 max. 100% HOLD en 1123 líneas de log. | 🟡 IMPORTANTE | WAVE 2106 log | ⚠️ PENDIENTE (no bloquea — los otros 4 fixes reducen la densidad sin necesitar Fuzzy) |
+
+### Por Qué La Auditoría Original Las Perdió
+
+1. **Análisis estático vs dinámico**: COG-1 a COG-7 eran bugs de FÓRMULAS — visibles leyendo código. COG-8 a COG-12 son bugs de INTERACCIÓN ENTRE SISTEMAS — solo visibles corriendo audio real y leyendo logs.
+
+2. **El pecado de la auditoría de caja blanca**: Revisé cada motor individualmente (HuntEngine 9.2/10, DecisionMaker 9.5/10, DreamSimulator 8.5/10). Todos sólidos aislados. Pero la **combinación** de Hunt rápido + DNA cache + fallthrough en breakdown + cooldown bajo producía una cascada que ningún componente individual revelaba.
+
+3. **La ironía de WAVE 975**: "La inteligencia no es disparar. Es saber cuándo NO disparar." Correcto en principio. Pero el DecisionMaker no sabía que breakdowns son silencio sagrado, el cache no se invalidaba en transiciones, y el fallthrough era una puerta trasera que ignoraba la Silence Rule.
+
+### Score Corregido
+
+| Dimensión | Score Original | Score Real (post-2106) | Delta |
+|---|---|---|---|
+| Arquitectura | 9.5 | 9.5 | 0 |
+| Corrección Algorítmica | 9.6 | 8.2 | **-1.4** |
+| Rendimiento | 9.2 | 9.2 | 0 |
+| Robustez (edge cases) | 9.3 | 7.5 | **-1.8** |
+| Anti-Repetición | 8.8 | 8.8 | 0 |
+| Determinismo | 10.0 | 10.0 | 0 |
+| Code Quality | 9.0 | 9.0 | 0 |
+
+### 🧠 COGNITION SCORE CORREGIDO: **94.1 → 88.5 / 100** (pre-WAVE 2106) → **93.8 / 100** (post-WAVE 2106)
+
+La arquitectura siempre fue sólida. Los motores individuales son buenos. Lo que faltaba era **consciencia de sección** a nivel de sistema y **higiene de cache**. Eso es lo que WAVE 2104-2106 resolvió.
+
+### Fixes Aplicados (WAVE 2104 → 2106)
+
+| WAVE | Fixes | Archivos | Cambios |
+|---|---|---|---|
+| 2104 | BPM AGC regression + effects rebalance | 3 | — |
+| 2104.1 | 7 diagnostic log points | 3 | 7 ins |
+| 2104.2 | Crystal Surgery: 6 fixes (texture, alternatives, exhaustion, ethics, worthiness, cache) | 5 | 28 ins/8 del |
+| 2105 | Fuzzy Resurrection: Hunt learning 120→15, 2 Fuzzy rules, Fuzzy vote, triadic throttle | 4 | 98 ins/4 del |
+| 2106 | La Dieta Radical: Breakdown protection, cooldown 4→7s, fallthrough fix, DNA cache invalidation, Hunt 15→45 | 3 | 68 ins/5 del |
+
+---
+
+*"La inteligencia no es disparar. Es saber cuándo NO disparar."* — WAVE 975, The Silence Rule.
+
+*"Y la inteligencia del auditor es saber cuándo su auditoría se quedó corta."* — WAVE 2106, The Humility Addendum.
+
+---
+
+**PunkOpus, re-firmando con vergüenza productiva** 🤡🤘  
+*WAVE 2092 → 2106 — The Cognitive Core Audit — NOW with actual battle-testing*

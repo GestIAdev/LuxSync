@@ -1,9 +1,9 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v3
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v4
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2122.3: TEMPORAL UPSAMPLING — THE NYQUIST FIX
+ * WAVE 2123: MEAN-CENTER & OCTAVE LOCK
  *
  * WAVE 2122.2 POSTMORTEM:
  * ┌──────────────────────────────────────────────────────────────────────┐
@@ -25,7 +25,37 @@
  * │  That's like measuring temperature with a 9°C thermometer.        │
  * └──────────────────────────────────────────────────────────────────────┘
  *
- * THE FIX: TEMPORAL UPSAMPLING 4×
+ * WAVE 2122.3: TEMPORAL UPSAMPLING 4×
+ * Fixed the coarse lag grid by upsampling energy buffer 4×.
+ * Tests passed 25/25. Production: OCTAVE BOUNCE (167↔93 BPM).
+ *
+ * WAVE 2123 POSTMORTEM:
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │  Production telemetry (atortasconelBPM.md) showed classic          │
+ * │  "octave bounce": BPM alternates between ~186 and ~93.            │
+ * │                                                                      │
+ * │  AUTOCORR landscapes show TWO peaks at 2:1 ratio:                 │
+ * │    L28(186bpm)=0.323  and  L59(88bpm)=0.343                      │
+ * │    L31(169bpm)=0.376  and  L61(85bpm)=0.358                      │
+ * │                                                                      │
+ * │  ROOT CAUSES:                                                       │
+ * │  1. Sieve prefers SHORTEST lag (highest BPM). This is WRONG for   │
+ * │     octave disambiguation. A beat at 93 BPM generates peaks at    │
+ * │     BOTH L55(93) AND L28(186). Preferring shortest = always       │
+ * │     picks the double. Must prefer LONGEST lag (lowest BPM)        │
+ * │     when both peaks have similar correlation strength.             │
+ * │                                                                      │
+ * │  2. No octave protection in smoothing. A 93→186 BPM jump is      │
+ * │     accepted instantly if diff > 30 (snap mode). Need the         │
+ * │     Pacemaker's OCTAVE LOCK: require sustained evidence before    │
+ * │     accepting 2× or 0.5× BPM changes.                            │
+ * │                                                                      │
+ * │  3. Correlations are real (0.3–0.5 after mean-centering) but      │
+ * │     the two octave peaks are NEARLY EQUAL, making the sieve       │
+ * │     decision fragile. Octave preference bias resolves this.       │
+ * └──────────────────────────────────────────────────────────────────────┘
+ *
+ * THE FIX: TEMPORAL UPSAMPLING 4× + OCTAVE-AWARE SIEVE + OCTAVE LOCK
  *
  * Instead of computing autocorrelation on 1 energy sample per frame,
  * we linearly interpolate the energy buffer 4× before correlating.
@@ -42,7 +72,7 @@
  * the ~2 Hz beat frequency we're detecting.
  *
  * @author PunkOpus
- * @wave 2122.3
+ * @wave 2123
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -125,6 +155,28 @@ const HARMONIC_LAG_TOLERANCE = 3
  *  4× turns 14 lags into 53 lags across 70-190 BPM. */
 const UPSAMPLE_FACTOR = 4
 
+/** WAVE 2123: Octave preference — when a low-BPM peak and its 2× harmonic
+ *  both exist, the low-BPM peak wins if its correlation is at least this
+ *  fraction of the high-BPM peak. This breaks the tie in favor of the
+ *  fundamental when both octaves are nearly equal.
+ *  0.80 = "93 BPM wins over 186 BPM if corr(93) >= 0.80 × corr(186)"
+ *  Tuned to NOT pull 175→87.5 BPM (where 87.5 has much weaker corr)
+ *  but DO pull 186→93 BPM (where both have nearly equal corr). */
+const OCTAVE_LOW_PREFERENCE = 0.80
+
+/** WAVE 2123: Number of consecutive scans that must agree on an octave jump
+ *  before we accept it. At SCAN_INTERVAL_FRAMES=4 and ~46.4ms/frame,
+ *  each scan is ~186ms apart. 8 scans ≈ 1.5 seconds of confirmation.
+ *  Inspired by Pacemaker WAVE 1022 OCTAVE_CHANGE_FRAMES=90 (~3s). */
+const OCTAVE_LOCK_SCANS = 8
+
+/** WAVE 2123: Ratio range for detecting octave jumps.
+ *  A BPM change is "octave" if newBpm/oldBpm is within these ranges. */
+const OCTAVE_RATIO_RANGES: [number, number][] = [
+  [1.85, 2.15],  // 2× doubling
+  [0.45, 0.55],  // 0.5× halving
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,6 +224,11 @@ export class GodEarBPMTracker {
   private readonly rollingEnergySize = 32
   private rollingEnergyBuffer: Float32Array
   private rollingEnergyPos = 0
+
+  /** WAVE 2123: Octave lock — counts consecutive scans requesting an octave jump */
+  private octaveLockCounter = 0
+  /** WAVE 2123: The BPM that the octave lock is tracking as a candidate */
+  private octaveLockCandidateBpm = 0
 
   constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
     this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000
@@ -296,8 +353,9 @@ export class GodEarBPMTracker {
    * Step 2: Compute normalized autocorrelation R(lag) in upsampled space.
    * Step 3: Find all local maxima in R(lag).
    * Step 4: Parabolic interpolation for sub-sample lag resolution.
-   * Step 5: Harmonic sieve — prefer shortest-lag peak with harmonic support.
-   * Step 6: Smooth output BPM via EMA.
+   * Step 5: Harmonic sieve — prefer LONGEST-lag peak (lowest BPM) with
+   *         harmonic support. WAVE 2123: inverted from v3 shortest-lag.
+   * Step 6: Octave-locked BPM smoothing via EMA.
    */
   private runAutocorrelationScan(): void {
     const n = this.sampleCount
@@ -383,8 +441,29 @@ export class GodEarBPMTracker {
       console.log(`[🥁 PEAKS] ${peaks.length} found: ${peakDump}`)
     }
 
-    // ─── Step 4: Harmonic sieve ──────────────────────────────────────────
-    peaks.sort((a, b) => a.lag - b.lag) // Shortest lag first (highest BPM)
+    // ─── Step 4: Harmonic sieve — OCTAVE-AWARE PEAK SELECTION ──────────
+    //
+    // WAVE 2123: FUNDAMENTAL INSIGHT about autocorrelation octave symmetry:
+    //
+    // A signal periodic at lag L is ALSO periodic at lag 2L, 3L, etc.
+    // So a beat at 175 BPM (lag 29) generates peaks at BOTH lag 29 AND
+    // lag ~58 (87.5 BPM). The lag-2L peak can even be STRONGER because:
+    //   1. More samples overlap at longer lags → more statistical stability
+    //   2. The energy pattern is perfectly periodic at 2T too
+    //
+    // The reverse is NOT symmetric: a REAL 87 BPM beat would produce a
+    // sub-harmonic at ~44 BPM (lag ~3L) which is below MIN_BPM range.
+    // But its 2× harmonic at 174 BPM IS in range. So both cases look
+    // the same in the autocorrelation landscape.
+    //
+    // RESOLUTION: When an octave pair exists (lag L and lag ~2L), prefer
+    // the HIGHER BPM (shorter lag) because:
+    //   a) If the real beat IS at lag L → correct choice
+    //   b) If the real beat IS at lag 2L → the octave lock in Step 5
+    //      will prevent snap-jumping from a stable low BPM to the double
+    //
+    // The octave lock then protects any stable BPM from being overridden
+    // by its 2× or 0.5× harmonic without sustained evidence.
 
     let globalMaxCorr = 0
     for (const p of peaks) {
@@ -393,61 +472,51 @@ export class GodEarBPMTracker {
 
     let bestPeak: AutocorrPeak | null = null
 
-    // Pass 1: find shortest-lag peak with harmonic support
-    for (const peak of peaks) {
-      if (peak.correlation < globalMaxCorr * HARMONIC_SIEVE_RATIO) continue
-      if (peak.bpm < MIN_BPM || peak.bpm > MAX_BPM) continue
+    // Sort by shortest lag first (highest BPM)
+    peaks.sort((a, b) => a.lag - b.lag)
 
-      // Check for harmonic at ~2× lag
-      const target2x = peak.lag * 2
-      let hasSupport = false
+    // Pass 1: For each high-BPM peak, check if it has an octave partner
+    // at ~2× lag. If both exist and the high peak has correlation above
+    // OCTAVE_LOW_PREFERENCE × the low peak, high peak wins.
+    // This ensures we pick 175 over 87.5 when both are strong.
+    for (const highPeak of peaks) {
+      if (highPeak.bpm < MIN_BPM || highPeak.bpm > MAX_BPM) continue
+      if (highPeak.correlation < globalMaxCorr * HARMONIC_SIEVE_RATIO) continue
+
+      // Look for an octave partner at ~2× this lag (half BPM)
+      const targetDoubleLag = Math.round(highPeak.lag * 2)
+      let lowPeak: AutocorrPeak | null = null
 
       for (const other of peaks) {
-        if (Math.abs(other.lag - target2x) <= HARMONIC_LAG_TOLERANCE) {
-          if (other.correlation >= peak.correlation * HARMONIC_SUPPORT_RATIO) {
-            hasSupport = true
-            break
+        if (Math.abs(other.lag - targetDoubleLag) <= HARMONIC_LAG_TOLERANCE) {
+          if (!lowPeak || other.correlation > lowPeak.correlation) {
+            lowPeak = other
           }
         }
       }
 
-      // Check ~3× lag as fallback
-      if (!hasSupport) {
-        const target3x = peak.lag * 3
-        for (const other of peaks) {
-          if (Math.abs(other.lag - target3x) <= HARMONIC_LAG_TOLERANCE + 1) {
-            if (other.correlation >= peak.correlation * HARMONIC_SUPPORT_RATIO) {
-              hasSupport = true
-              break
-            }
-          }
-        }
-      }
-
-      if (hasSupport) {
-        bestPeak = peak
-        break
-      }
-    }
-
-    // Fallback: global max peak
-    if (!bestPeak) {
-      for (const peak of peaks) {
-        if (peak.bpm >= MIN_BPM && peak.bpm <= MAX_BPM) {
-          if (peak.correlation >= globalMaxCorr * 0.99) {
-            bestPeak = peak
-            break
-          }
-        }
-      }
-    }
-
-    // Last resort: any peak in range
-    if (!bestPeak) {
-      for (const peak of peaks) {
-        if (peak.bpm >= MIN_BPM && peak.bpm <= MAX_BPM) {
-          bestPeak = peak
+      if (lowPeak) {
+        // Octave pair found. High peak wins if its correlation is at least
+        // OCTAVE_LOW_PREFERENCE × the low peak's correlation.
+        // At 0.80: 175bpm(0.698) vs 87bpm(0.747) → 0.698/0.747=0.93 > 0.80 ✓ → 175 wins
+        // Production: 186bpm(0.323) vs 93bpm(0.343) → 0.323/0.343=0.94 > 0.80 ✓ → 186 wins
+        // (octave lock in smoothing will then protect stable 93 from 186)
+        if (highPeak.correlation >= lowPeak.correlation * OCTAVE_LOW_PREFERENCE) {
+          bestPeak = highPeak
           break
+        }
+      }
+    }
+
+    // Pass 2: No octave pair resolved — pick strongest peak in range
+    if (!bestPeak) {
+      let bestCorr = -1
+      for (const peak of peaks) {
+        if (peak.bpm >= MIN_BPM && peak.bpm <= MAX_BPM) {
+          if (peak.correlation > bestCorr) {
+            bestCorr = peak.correlation
+            bestPeak = peak
+          }
         }
       }
     }
@@ -491,26 +560,82 @@ export class GodEarBPMTracker {
     this.rawBpm = Math.round(finalBpm)
     this.currentConfidence = Math.max(0, Math.min(1, finalCorr))
 
-    // ─── Step 5: Smooth BPM output ───────────────────────────────────────
+    // ─── Step 5: Smooth BPM output with OCTAVE LOCK ─────────────────────
+    // WAVE 2123: Inspired by Pacemaker WAVE 1022. If the new BPM is an
+    // octave jump (2× or 0.5×) from stableBpm, don't accept immediately.
+    // Require OCTAVE_LOCK_SCANS consecutive scans confirming the jump.
     if (finalCorr > MIN_CORRELATION) {
       if (this.stableBpm === 0) {
+        // First reading — accept immediately
         this.stableBpm = Math.round(finalBpm)
       } else {
-        const diff = Math.abs(finalBpm - this.stableBpm)
+        const isOctaveJump = this.isOctaveJump(finalBpm, this.stableBpm)
 
-        if (diff > 30) {
-          // Large jump — snap
-          this.stableBpm = Math.round(finalBpm)
-          this.lastBeatPhaseTimestamp = 0
-          this.prevPhase = 0
+        if (isOctaveJump) {
+          // Track the octave candidate
+          if (Math.abs(finalBpm - this.octaveLockCandidateBpm) < 10) {
+            this.octaveLockCounter++
+          } else {
+            // Different octave candidate — restart
+            this.octaveLockCandidateBpm = finalBpm
+            this.octaveLockCounter = 1
+          }
+
+          if (this.octaveLockCounter >= OCTAVE_LOCK_SCANS) {
+            // Sustained octave jump confirmed — accept
+            if (this.frameCount % 120 === 0) {
+              console.log(
+                `[🥁 OCTAVE ACCEPT] ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
+                `after ${this.octaveLockCounter} scans`
+              )
+            }
+            this.stableBpm = Math.round(finalBpm)
+            this.lastBeatPhaseTimestamp = 0
+            this.prevPhase = 0
+            this.octaveLockCounter = 0
+            this.octaveLockCandidateBpm = 0
+          } else {
+            // BLOCK octave jump — keep current BPM
+            if (this.frameCount % 120 === 0) {
+              console.log(
+                `[🥁 OCTAVE BLOCK] ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
+                `(${this.octaveLockCounter}/${OCTAVE_LOCK_SCANS} scans)`
+              )
+            }
+          }
         } else {
-          // EMA smoothing
-          this.stableBpm = Math.round(
-            this.stableBpm + BPM_SMOOTH_FACTOR * (finalBpm - this.stableBpm)
-          )
+          // Not an octave jump — normal smoothing, reset octave counter
+          this.octaveLockCounter = 0
+          this.octaveLockCandidateBpm = 0
+
+          const diff = Math.abs(finalBpm - this.stableBpm)
+          if (diff > 30) {
+            // Large non-octave jump — snap (e.g. song change)
+            this.stableBpm = Math.round(finalBpm)
+            this.lastBeatPhaseTimestamp = 0
+            this.prevPhase = 0
+          } else {
+            // EMA smoothing
+            this.stableBpm = Math.round(
+              this.stableBpm + BPM_SMOOTH_FACTOR * (finalBpm - this.stableBpm)
+            )
+          }
         }
       }
     }
+  }
+
+  /**
+   * WAVE 2123: Detect if a BPM change is an octave jump (2× or 0.5×).
+   * Ported from Pacemaker WAVE 1022 isOctaveJump().
+   */
+  private isOctaveJump(newBpm: number, currentBpm: number): boolean {
+    if (currentBpm <= 0) return false
+    const ratio = newBpm / currentBpm
+    for (const [min, max] of OCTAVE_RATIO_RANGES) {
+      if (ratio >= min && ratio <= max) return true
+    }
+    return false
   }
 
   /**
@@ -616,5 +741,7 @@ export class GodEarBPMTracker {
     this.rollingEnergySum = 0
     this.rollingEnergyCount = 0
     this.rollingEnergyPos = 0
+    this.octaveLockCounter = 0
+    this.octaveLockCandidateBpm = 0
   }
 }

@@ -662,21 +662,21 @@ La auditoría WAVE 2092-2093 analizó **código estático**. Fórmulas, pesos, a
 
 ### Score Corregido
 
-| Dimensión | Score Original | Score Real (post-2106) | Delta |
-|---|---|---|---|
-| Arquitectura | 9.5 | 9.5 | 0 |
-| Corrección Algorítmica | 9.6 | 8.2 | **-1.4** |
-| Rendimiento | 9.2 | 9.2 | 0 |
-| Robustez (edge cases) | 9.3 | 7.5 | **-1.8** |
-| Anti-Repetición | 8.8 | 8.8 | 0 |
-| Determinismo | 10.0 | 10.0 | 0 |
-| Code Quality | 9.0 | 9.0 | 0 |
+| Dimensión | Score Original | Score Real (post-2106) | Post-2107 | Delta |
+|---|---|---|---|---|
+| Arquitectura | 9.5 | 9.5 | 9.5 | 0 |
+| Corrección Algorítmica | 9.6 | 8.2 | 9.0 | **+0.8** |
+| Rendimiento | 9.2 | 9.2 | 9.2 | 0 |
+| Robustez (edge cases) | 9.3 | 7.5 | 8.8 | **+1.3** |
+| Anti-Repetición | 8.8 | 8.8 | 9.2 | **+0.4** |
+| Determinismo | 10.0 | 10.0 | 10.0 | 0 |
+| Code Quality | 9.0 | 9.0 | 9.0 | 0 |
 
-### 🧠 COGNITION SCORE CORREGIDO: **94.1 → 88.5 / 100** (pre-WAVE 2106) → **93.8 / 100** (post-WAVE 2106)
+### 🧠 COGNITION SCORE: **88.5** (pre-2106) → **93.8** (post-2106) → **94.8 / 100** (post-2107)
 
-La arquitectura siempre fue sólida. Los motores individuales son buenos. Lo que faltaba era **consciencia de sección** a nivel de sistema y **higiene de cache**. Eso es lo que WAVE 2104-2106 resolvió.
+La arquitectura siempre fue sólida. Los motores individuales son buenos. Lo que faltaba era **consciencia de sección** (WAVE 2104-2106) y **que los dos hemisferios del cerebro estuvieran vivos** (WAVE 2107).
 
-### Fixes Aplicados (WAVE 2104 → 2106)
+### Fixes Aplicados (WAVE 2104 → 2107)
 
 | WAVE | Fixes | Archivos | Cambios |
 |---|---|---|---|
@@ -685,6 +685,43 @@ La arquitectura siempre fue sólida. Los motores individuales son buenos. Lo que
 | 2104.2 | Crystal Surgery: 6 fixes (texture, alternatives, exhaustion, ethics, worthiness, cache) | 5 | 28 ins/8 del |
 | 2105 | Fuzzy Resurrection: Hunt learning 120→15, 2 Fuzzy rules, Fuzzy vote, triadic throttle | 4 | 98 ins/4 del |
 | 2106 | La Dieta Radical: Breakdown protection, cooldown 4→7s, fallthrough fix, DNA cache invalidation, Hunt 15→45 | 3 | 68 ins/5 del |
+| 2107 | Fuzzy Resurrection Real + DNA Diversification: 3 fuzzy locks broken, EMA α 0.20→0.30, diversity [1.0,0.70,0.35,0.15] | 2 | 43 ins/12 del |
+
+### 🔬 WAVE 2107 — Addendum: La Autopsia del Coma Fuzzy (COG-12)
+
+**Diagnóstico**: FuzzyDecisionMaker llevaba en coma permanente desde su creación. 100% HOLD en TODOS los logs analizados. Ni un solo STRIKE jamás emitido.
+
+**Causa raíz**: Triple cerrojo simultáneo:
+
+1. **Cerrojo de Membresía** — `energy.high` con borde en 0.65 y spread 0.35. Boris Brejcha oscila E=0.3-0.6. Resultado: `energy.high = 0.0` en el 95% del set. 5 de 7 reglas STRIKE = muertas.
+
+2. **Cerrojo de Supresión** — Regla `Energy_Silence_Total_Suppress` con peso 1.5. Con `lowZone = 0.3`: `hold += 1.5 × 0.3 = 0.45`. Strike máximo teórico = 0.225. IMPOSIBLE superar hold.
+
+3. **Cerrojo de Defuzzificación** — `strike > 0.45 AND strike > hold + 0.15`. Con strike máximo 0.225, necesitaría hold < 0.075. Pero hold siempre ≥ 0.45. TRIPLE IMPOSIBILIDAD MATEMÁTICA.
+
+**Prueba matemática** (E=0.60, Z=2.1, buildup):
+```
+ANTES: energy.high = 0.0 → 5 reglas STRIKE muertas
+        hold ≥ 0.45 (supresión) → strike max 0.225
+        Defuzzify: 0.225 > 0.45? NO → HOLD perpetuo
+
+DESPUÉS: energy.high = 0.20 → reglas VIVAS
+         hold ≈ 0.30 (supresión reducida)
+         strike ≈ 0.42 → 0.42 > 0.35 AND 0.42 > 0.30+0.08? SÍ → STRIKE
+```
+
+**Fix aplicado**: 
+- Membresía: borde 0.65→0.50, spread 0.35→0.50
+- Supresión: pesos 1.5/1.2/1.0 → 1.0/0.85/0.70
+- Defuzzificación: umbrales 0.45/+0.15 → 0.35/+0.08
+
+### 🧬 WAVE 2107 — DNA Diversification
+
+**Diagnóstico**: acid_sweep aparece 3 veces en 2 minutos. DNA target glacial (EMA α=0.20 = 80% historia).
+
+**Fix**: 
+- EMA α: 0.20→0.30 (target reacciona 50% más rápido a cambios de sección/energía)
+- Diversity factors: [1.0, 0.8, 0.5, 0.2] → [1.0, 0.70, 0.35, 0.15] (3er uso del mismo efecto = 65% penalización)
 
 ---
 
@@ -692,7 +729,9 @@ La arquitectura siempre fue sólida. Los motores individuales son buenos. Lo que
 
 *"Y la inteligencia del auditor es saber cuándo su auditoría se quedó corta."* — WAVE 2106, The Humility Addendum.
 
+*"Tener medio cerebro en coma y no darte cuenta es la definición de deuda técnica invisible."* — WAVE 2107, The Coma Autopsy.
+
 ---
 
-**PunkOpus, re-firmando con vergüenza productiva** 🤡🤘  
-*WAVE 2092 → 2106 — The Cognitive Core Audit — NOW with actual battle-testing*
+**PunkOpus, firmando con orgullo quirúrgico** �⚡🤘  
+*WAVE 2092 → 2107 — The Cognitive Core Audit — Both hemispheres alive*

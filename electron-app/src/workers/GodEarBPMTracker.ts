@@ -1,56 +1,48 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v2
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v3
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2122.1: PARABOLIC INTERPOLATION + HARMONIC SIEVE
+ * WAVE 2122.3: TEMPORAL UPSAMPLING — THE NYQUIST FIX
  *
- * WAVE 2122 POSTMORTEM:
+ * WAVE 2122.2 POSTMORTEM:
  * ┌──────────────────────────────────────────────────────────────────────┐
- * │  Production log on ~126 BPM music:                                  │
- * │    85 → 84 → 84 → 162 → 169 → 169 → 169 → 96 → 92                │
+ * │  AGC decompensation eliminated the ~95 BPM AGC pumping artifact.   │
+ * │  But production now reads ~180 BPM on 126 BPM music.              │
  * │                                                                      │
- * │  NEVER hit 126 BPM. Oscillated between sub-harmonics (84-96) and   │
- * │  super-harmonics (162-173). Pure "octave hopping."                  │
+ * │  AUTOCORR RAW telemetry showed:                                     │
+ * │    L7(185bpm)=0.623  ← DOMINANT (10 of 13 scans)                  │
+ * │    L10(129bpm)=0.142 ← REAL BEAT (barely visible)                 │
+ * │    L14(92bpm)=0.369  ← sub-harmonic                               │
  * │                                                                      │
- * │  ROOT CAUSE: At 46.4ms/frame, 126 BPM = lag 10.26 frames.         │
- * │  Math.round → lag 10. But 125 BPM = lag 10.34 → also lag 10.      │
- * │  128 BPM = lag 10.09 → also lag 10. FOUR BPMs share one lag.      │
- * │  Meanwhile, 84 BPM = lag 15.37 — much better resolution.           │
- * │  Autocorrelation with integer lags CANNOT resolve the 120-130 BPM  │
- * │  range at this frame rate. The harmonic at lag 15 (84 BPM) or      │
- * │  lag 8 (168 BPM) can easily win by noise margin.                   │
+ * │  ROOT CAUSE: At 46.4ms/frame, lagRange=[6,19] = only 14 lags.    │
+ * │  126 BPM → lag 10.26. Each lag covers ~15 BPM. L7 sees the        │
+ * │  half-period modulation more clearly than L10 sees the beat.       │
+ * │  Parabolic interpolation helps WITHIN a peak but can't rescue     │
+ * │  a peak that's INVISIBLE because the lag grid is too coarse.      │
+ * │                                                                      │
+ * │  MATH: 14 lags for 70-190 BPM = ~8.6 BPM/lag resolution.        │
+ * │  That's like measuring temperature with a 9°C thermometer.        │
  * └──────────────────────────────────────────────────────────────────────┘
  *
- * THE FIX: TWO TECHNIQUES
+ * THE FIX: TEMPORAL UPSAMPLING 4×
  *
- * 1. PARABOLIC INTERPOLATION OF AUTOCORRELATION PEAKS
- *    Instead of evaluating autocorrelation only at integer lags, we:
- *    a) Compute autocorrelation at ALL integer lags in the valid range
- *    b) Find local maxima in the correlation function
- *    c) For each local maximum at lag k, fit a parabola through
- *       R(k-1), R(k), R(k+1) to find the SUB-SAMPLE peak position
- *    d) Convert interpolated lag to BPM: bpm = 60000 / (lag * frameDurationMs)
+ * Instead of computing autocorrelation on 1 energy sample per frame,
+ * we linearly interpolate the energy buffer 4× before correlating.
  *
- *    This is the standard technique in pitch detection (YIN, AMDF, MPM)
- *    and gives sub-frame resolution. A peak at integer lag 10 might
- *    resolve to lag 10.26 → exactly 126 BPM.
+ * Before: 130 samples, 46.4ms/sample, lags [6,19] = 14 points
+ * After:  520 samples, 11.6ms/virtual-sample, lags [24,76] = 53 points
  *
- * 2. HARMONIC SIEVE
- *    Autocorrelation has peaks at every integer multiple of the fundamental lag.
- *    lag=10 (126 BPM) → also peaks at lag=20 (63 BPM), lag=30 (42 BPM)...
- *    And sub-harmonics can appear at lag=5 (252 BPM).
+ * Resolution improvement:
+ *   126 BPM: lag 10.26 (±7 BPM per bin) → lag 41.04 (±1.7 BPM per bin)
  *
- *    The harmonic sieve: collect ALL local maxima in the autocorrelation,
- *    sort by lag (shortest first = highest BPM). For each peak, check if
- *    it has harmonic support (a peak near 2× its lag). The fundamental is
- *    the shortest-lag peak that is "strong enough" (≥75% of the global max
- *    correlation) AND has evidence of a harmonic at ~2× its lag.
- *
- *    If no peak has harmonic support, fall back to the global maximum.
+ * Linear interpolation is mathematically valid because the energy signal
+ * is already band-limited (one sample per 46.4ms FFT frame). The
+ * Nyquist frequency of the original signal is ~10.8 Hz, well above
+ * the ~2 Hz beat frequency we're detecting.
  *
  * @author PunkOpus
- * @wave 2122.1
+ * @wave 2122.3
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -125,8 +117,13 @@ const HARMONIC_SIEVE_RATIO = 0.75
  *  whose correlation is at least this fraction of the peak at L. */
 const HARMONIC_SUPPORT_RATIO = 0.3
 
-/** When looking for a harmonic at ~2×lag, allow this tolerance in frames. */
-const HARMONIC_LAG_TOLERANCE = 2
+/** When looking for a harmonic at ~2×lag, allow this tolerance in frames.
+ *  WAVE 2122.3: Increased from 2→3 because upsampled lags are 4× finer. */
+const HARMONIC_LAG_TOLERANCE = 3
+
+/** Upsampling factor for temporal resolution.
+ *  4× turns 14 lags into 53 lags across 70-190 BPM. */
+const UPSAMPLE_FACTOR = 4
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
@@ -141,6 +138,8 @@ export class GodEarBPMTracker {
   private sampleCount = 0
   /** Duration of one FFT frame in milliseconds */
   private readonly frameDurationMs: number
+  /** Virtual frame duration after upsampling (frameDurationMs / UPSAMPLE_FACTOR) */
+  private readonly virtualFrameDurationMs: number
   /** Maximum samples in the window */
   private readonly windowSize: number
 
@@ -176,14 +175,16 @@ export class GodEarBPMTracker {
 
   constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
     this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000
+    this.virtualFrameDurationMs = this.frameDurationMs / UPSAMPLE_FACTOR
     this.windowSize = Math.ceil((WINDOW_SECONDS * 1000) / this.frameDurationMs)
     this.energyWindow = new Float32Array(this.windowSize)
     this.rollingEnergyBuffer = new Float32Array(this.rollingEnergySize)
 
     // Pre-compute lag range from BPM range
+    // WAVE 2122.3: Lags are computed in UPSAMPLED space (virtual frame duration)
     // Higher BPM → shorter period → smaller lag
-    this.minLag = Math.floor((60000 / MAX_BPM) / this.frameDurationMs)
-    this.maxLag = Math.ceil((60000 / MIN_BPM) / this.frameDurationMs)
+    this.minLag = Math.floor((60000 / MAX_BPM) / this.virtualFrameDurationMs)
+    this.maxLag = Math.ceil((60000 / MIN_BPM) / this.virtualFrameDurationMs)
   }
 
   /**
@@ -269,8 +270,8 @@ export class GodEarBPMTracker {
       console.log(
         `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
         `conf=${this.currentConfidence.toFixed(3)} samples=${this.sampleCount} ` +
-        `frameDur=${this.frameDurationMs.toFixed(1)}ms lagRange=[${this.minLag},${this.maxLag}] ` +
-        `energy=${rawBassEnergy.toFixed(4)}`
+        `frameDur=${this.frameDurationMs.toFixed(1)}ms virtualDur=${this.virtualFrameDurationMs.toFixed(2)}ms ` +
+        `lagRange=[${this.minLag},${this.maxLag}] energy=${rawBassEnergy.toFixed(4)}`
       )
     }
 
@@ -284,14 +285,19 @@ export class GodEarBPMTracker {
   }
 
   /**
-   * CORE: Autocorrelation scan with parabolic interpolation + harmonic sieve.
+   * CORE: Autocorrelation scan with 4× upsampling + parabolic interpolation
+   *       + harmonic sieve.
    *
-   * Step 1: Compute normalized autocorrelation R(lag) for all integer lags
-   *         in [minLag, maxLag].
-   * Step 2: Find all local maxima in R(lag).
-   * Step 3: Parabolic interpolation for sub-frame lag resolution.
-   * Step 4: Harmonic sieve — prefer shortest-lag peak with harmonic support.
-   * Step 5: Smooth output BPM via EMA.
+   * WAVE 2122.3: The energy buffer is linearly upsampled 4× before
+   * autocorrelation. This turns 130 samples → 520 samples and the
+   * lag range from [6,19] → [24,76], giving 53 lags instead of 14.
+   *
+   * Step 1: Linearize and upsample energy buffer 4×
+   * Step 2: Compute normalized autocorrelation R(lag) in upsampled space.
+   * Step 3: Find all local maxima in R(lag).
+   * Step 4: Parabolic interpolation for sub-sample lag resolution.
+   * Step 5: Harmonic sieve — prefer shortest-lag peak with harmonic support.
+   * Step 6: Smooth output BPM via EMA.
    */
   private runAutocorrelationScan(): void {
     const n = this.sampleCount
@@ -299,18 +305,22 @@ export class GodEarBPMTracker {
     // Linearize the circular buffer
     const linear = this.getLinearWindow()
 
+    // ─── Step 1: Upsample 4× via linear interpolation ───────────────────
+    const upsampled = this.upsample(linear, n, UPSAMPLE_FACTOR)
+    const uN = n * UPSAMPLE_FACTOR
+
     // Remove DC offset (mean)
-    const mean = this.computeMean(linear, n)
-    for (let i = 0; i < n; i++) {
-      linear[i] -= mean
+    const mean = this.computeMean(upsampled, uN)
+    for (let i = 0; i < uN; i++) {
+      upsampled[i] -= mean
     }
 
     // Normalization: autocorrelation at lag 0
-    const energy = this.computeEnergy(linear, n)
+    const energy = this.computeEnergy(upsampled, uN)
     if (energy < 1e-10) return // Silence
 
-    // ─── Step 1: Compute normalized autocorrelation ──────────────────────
-    const effectiveMaxLag = Math.min(this.maxLag, n - 1)
+    // ─── Step 2: Compute normalized autocorrelation (upsampled space) ───
+    const effectiveMaxLag = Math.min(this.maxLag, uN - 1)
     const effectiveMinLag = Math.max(this.minLag, 2)
 
     if (effectiveMinLag >= effectiveMaxLag) return
@@ -318,10 +328,10 @@ export class GodEarBPMTracker {
     const corrLen = effectiveMaxLag - effectiveMinLag + 1
     const corrArray = new Float32Array(corrLen)
     for (let lag = effectiveMinLag; lag <= effectiveMaxLag; lag++) {
-      corrArray[lag - effectiveMinLag] = this.correlationAtLag(linear, n, lag) / energy
+      corrArray[lag - effectiveMinLag] = this.correlationAtLag(upsampled, uN, lag) / energy
     }
 
-    // ─── Step 2 + 3: Find local maxima with parabolic interpolation ─────
+    // ─── Step 3 + 4: Find local maxima with parabolic interpolation ─────
     const peaks: AutocorrPeak[] = []
 
     for (let i = 1; i < corrLen - 1; i++) {
@@ -344,7 +354,8 @@ export class GodEarBPMTracker {
           interpolatedCorr = curr - 0.25 * (prev - next) * clampedDelta
         }
 
-        const bpm = 60000 / (interpolatedLag * this.frameDurationMs)
+        // WAVE 2122.3: BPM uses virtualFrameDurationMs (upsampled time base)
+        const bpm = 60000 / (interpolatedLag * this.virtualFrameDurationMs)
 
         if (bpm >= MIN_BPM - 5 && bpm <= MAX_BPM + 5) {
           peaks.push({ lag, interpolatedLag, correlation: interpolatedCorr, bpm })
@@ -356,14 +367,14 @@ export class GodEarBPMTracker {
 
     // ─── DIAGNOSTIC: Log full autocorrelation landscape ──────────────────
     if (this.frameCount % 120 === 0) {
-      // Log raw correlation at every lag
+      // Log raw correlation at every 4th lag (to keep logs readable)
       const corrDump: string[] = []
-      for (let i = 0; i < corrLen; i++) {
+      for (let i = 0; i < corrLen; i += UPSAMPLE_FACTOR) {
         const lag = i + effectiveMinLag
-        const bpm = 60000 / (lag * this.frameDurationMs)
+        const bpm = 60000 / (lag * this.virtualFrameDurationMs)
         corrDump.push(`L${lag}(${Math.round(bpm)}bpm)=${corrArray[i].toFixed(3)}`)
       }
-      console.log(`[🥁 AUTOCORR RAW] ${corrDump.join(' | ')}`)
+      console.log(`[🥁 AUTOCORR RAW 4×] virtualDur=${this.virtualFrameDurationMs.toFixed(2)}ms ${corrDump.join(' | ')}`)
 
       // Log detected peaks
       const peakDump = peaks.map(p =>
@@ -500,6 +511,44 @@ export class GodEarBPMTracker {
         }
       }
     }
+  }
+
+  /**
+   * Upsample a signal by integer factor via linear interpolation.
+   *
+   * Given N input samples, produces N × factor output samples.
+   * This is mathematically equivalent to inserting (factor - 1) linearly
+   * interpolated points between each pair of original samples.
+   *
+   * Valid for band-limited signals where the original sampling rate is
+   * already above the Nyquist frequency of the signal of interest.
+   * (Energy at ~2 Hz << original sampling at ~21.5 Hz = ✓)
+   */
+  private upsample(input: Float32Array, inputLength: number, factor: number): Float32Array {
+    const outputLength = inputLength * factor
+    const output = new Float32Array(outputLength)
+
+    for (let i = 0; i < inputLength - 1; i++) {
+      const base = i * factor
+      const v0 = input[i]
+      const v1 = input[i + 1]
+      const step = (v1 - v0) / factor
+
+      for (let j = 0; j < factor; j++) {
+        output[base + j] = v0 + step * j
+      }
+    }
+
+    // Fill the last segment (hold last value)
+    const lastBase = (inputLength - 1) * factor
+    const lastVal = input[inputLength - 1]
+    for (let j = 0; j < factor; j++) {
+      if (lastBase + j < outputLength) {
+        output[lastBase + j] = lastVal
+      }
+    }
+
+    return output
   }
 
   /**

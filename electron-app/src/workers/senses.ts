@@ -788,6 +788,34 @@ function handleMessage(message: WorkerMessage): void {
         }
         
         const analysis = processAudioBuffer(buffer);
+
+        // ══════════════════════════════════════════════════════════════
+        // 📡 WAVE 2114: DIAGNOSTIC PROBE 1 — WORKER EMISSION GATE
+        // Qué sale del Worker hacia ALPHA en cada frame de audio.
+        // Log cada frame durante primeros 300 frames, luego cada 60.
+        // ══════════════════════════════════════════════════════════════
+        if (state.frameCount <= 300 || state.frameCount % 60 === 0) {
+          const bpmOk = analysis.bpm > 0 && analysis.bpmConfidence > 0;
+          if (!bpmOk) {
+            console.warn(
+              `[PROBE-1 BETA ⚠️ BPM=0] frame=${state.frameCount}` +
+              ` | bpm=${analysis.bpm}` +
+              ` | conf=${analysis.bpmConfidence?.toFixed(3)}` +
+              ` | ringBufferFilled=${state.ringBufferFilled}` +
+              ` | currentBpm=${state.currentBpm}` +
+              ` | godEarState={ bpm:${state.currentBpm}, conf:${state.bpmConfidence?.toFixed(3)} }`
+            );
+          } else {
+            console.log(
+              `[PROBE-1 BETA ✅ BPM OK] frame=${state.frameCount}` +
+              ` | bpm=${analysis.bpm}` +
+              ` | conf=${analysis.bpmConfidence?.toFixed(3)}` +
+              ` | onBeat=${analysis.onBeat}`
+            );
+          }
+        }
+        // ══════════════════════════════════════════════════════════════
+
         sendMessage(
           MessageType.AUDIO_ANALYSIS, 
           'alpha', 

@@ -385,6 +385,25 @@ export class TrinityOrchestrator extends EventEmitter {
         
       case MessageType.AUDIO_ANALYSIS:
         // BETA → ALPHA: Forward to GAMMA
+        // ══════════════════════════════════════════════════════════════
+        // 📡 WAVE 2114: DIAGNOSTIC PROBE 2 — IPC BRIDGE RAW PAYLOAD
+        // Payload crudo que acaba de cruzar el IPC, antes de que nadie lo toque.
+        // ══════════════════════════════════════════════════════════════
+        {
+          const _probe2 = message.payload as AudioAnalysis;
+          if (_probe2.bpm === 0 || _probe2.bpm === undefined || _probe2.bpm === null) {
+            console.warn(
+              `[PROBE-2 IPC ⚠️ BPM=0] AUDIO_ANALYSIS cruzó el puente con BPM muerto` +
+              ` | bpm=${_probe2.bpm}` +
+              ` | bpmConfidence=${_probe2.bpmConfidence}` +
+              ` | frameId=${_probe2.frameId}` +
+              ` | timestamp=${_probe2.timestamp}` +
+              ` | onBeat=${_probe2.onBeat}` +
+              ` | source=${sourceId}`
+            );
+          }
+        }
+        // ══════════════════════════════════════════════════════════════
         this.emit('audio-analysis', message.payload as AudioAnalysis);
         this.sendToWorker('gamma', MessageType.AUDIO_ANALYSIS, message.payload);
         break;

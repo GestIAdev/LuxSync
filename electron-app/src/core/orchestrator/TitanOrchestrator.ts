@@ -271,8 +271,36 @@ export class TitanOrchestrator {
           workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
           workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
         };
-        // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
-        // Frontend los gestiona a 30fps
+
+        // ══════════════════════════════════════════════════════════════
+        // � WAVE 2114: DIAGNOSTIC PROBE 3 — TITAN ASSIGNMENT GATE
+        // Valor que queda escrito en lastAudioData.workerBpm tras el merge.
+        // Detecta si el ?? fallback enmascaró un BPM=0 del Worker.
+        // ══════════════════════════════════════════════════════════════
+        {
+          const _resolvedBpm   = this.lastAudioData.workerBpm;
+          const _resolvedConf  = this.lastAudioData.workerBpmConfidence;
+          const _incomingBpm   = levels.bpm;
+          const _incomingConf  = levels.bpmConfidence;
+
+          if (_incomingBpm === 0 || _incomingBpm === undefined || _incomingBpm === null) {
+            console.warn(
+              `[PROBE-3 TITAN 🚨 BPM=0] levels.bpm llegó NULO/CERO — fallback a lastAudioData` +
+              ` | incoming.bpm=${_incomingBpm}` +
+              ` | incoming.conf=${_incomingConf}` +
+              ` | resolved.workerBpm=${_resolvedBpm}` +
+              ` | resolved.workerBpmConf=${_resolvedConf}`
+            );
+          } else if (_resolvedBpm === 0 || _resolvedBpm === undefined) {
+            console.warn(
+              `[PROBE-3 TITAN 🔥 MERGE=0] incoming.bpm=${_incomingBpm} pero resolved=0` +
+              ` | POSIBLE SOBRESCRITURA — revisar operador ??` +
+              ` | incoming.conf=${_incomingConf}` +
+              ` | resolved.workerBpmConf=${_resolvedConf}`
+            );
+          }
+        }
+        // ══════════════════════════════════════════════════════════════
       });
       
       await trinity.start()

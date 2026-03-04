@@ -297,6 +297,26 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     return 'hold'  // BLOQUEADO - música muriendo
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩸 WAVE 2106: BREAKDOWN PROTECTION — La oscuridad es sagrada
+  // ═══════════════════════════════════════════════════════════════════════
+  // LOG EVIDENCE (1123 lines, post-WAVE 2105):
+  //   8 of 15 effects fired during section=breakdown. acid_sweep in darkness.
+  //   gatling_raid 1 tick after buildup→breakdown transition.
+  //   industrial_strobe + abyssal_rise in breakdown back-to-back.
+  // ROOT CAUSE: VALLEY_PROTECTION only blocks zone=valley/silence + Z<0.
+  //   But during breakdowns, energy bounces 0.4-0.9 (zone=gentle/active/intense),
+  //   so VALLEY_PROTECTION never triggers. Breakdowns had ZERO protection.
+  // FIX: If section=breakdown → HOLD. Period. Only DIVINE (Z>3.5σ) can override.
+  //   The DIVINE check above already happened — if we're here, it wasn't divine.
+  //   "Estas ahi en un breakdown con silencio total, disfrutando la oscuridad
+  //    de la sala.... y ala! una acid sweep" — Radwulf, WAVE 2106
+  // ═══════════════════════════════════════════════════════════════════════
+  const section = pattern.section
+  if (section === 'breakdown') {
+    return 'hold'  // 🖤 Breakdowns are sacred darkness — only DIVINE can override
+  }
+  
   // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
   // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
   if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {

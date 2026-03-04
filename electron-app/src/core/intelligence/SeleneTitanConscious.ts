@@ -334,8 +334,13 @@ export class SeleneTitanConscious extends EventEmitter {
   // 15s encadenaba la IA a una camisa de fuerza. El techno vive de secuencias rápidas
   // en los drops (strobe -> sweep -> burst). Devolvemos el poder a la IA.
   // Solo mantenemos un seguro de 2.5s para no spamear 10 efectos en un segundo.
+  // 🩸 WAVE 2106: 4s→7s — LOG EVIDENCE: 15 effects in 110s = 1 every 7.3s.
+  // At 4s cooldown + fast Hunt cycle (15 frames), effects fire every ~4-5s.
+  // With fallthrough spawning 2-3 effects per cycle, density reaches ~10 in 30s.
+  // Physics can't breathe. 7s allows ~8 effects/min — space for reactive physics to shine.
+  // "No pueden brillar las fisicas reactivas que estan muy conseguidas" — Radwulf
   private lastGlobalEffectTimestamp: number = 0
-  private readonly GLOBAL_EFFECT_COOLDOWN_MS = 4000  // 🩸 WAVE 2104: 4s (was 2.5s) — más espacio entre efectos
+  private readonly GLOBAL_EFFECT_COOLDOWN_MS = 7000  // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
 
   // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
   private lastDreamIntegrationResult: IntegrationDecision | null = null
@@ -351,6 +356,13 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
   private _constitutionLogThrottle: Record<string, number> = {}
+
+  // 🩸 WAVE 2106: SECTION CHANGE DETECTION — invalidate DNA cache on section transitions
+  // LOG EVIDENCE: acid_sweep DNA result computed during buildup gets CACHED,
+  // then FIRES during breakdown when GLOBAL_COOLDOWN expires and cache is reused.
+  // The cached decision was correct FOR THE BUILDUP — but the music moved on.
+  // Track last section to detect transitions and nuke the stale cache.
+  private _lastSectionForCacheInvalidation: string = ''
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -795,6 +807,24 @@ export class SeleneTitanConscious extends EventEmitter {
     const activeDictator = getEffectManager().hasDictator()
     
     // ═══════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2106: SECTION CHANGE → INVALIDATE DNA CACHE
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOG EVIDENCE: buildup→breakdown transition at line 84 of log.
+    //   DNA computed acid_sweep for buildup context → GLOBAL_COOLDOWN caches it.
+    //   Cooldown expires during breakdown → cached acid_sweep FIRES in darkness.
+    //   The DNA result was stale — computed for a different musical moment.
+    // FIX: When section changes, nuke lastDreamIntegrationResult.
+    //   Next tick must run a fresh DNA pipeline (or get SILENCE from DecisionMaker).
+    // ═══════════════════════════════════════════════════════════════════════
+    if (normalizedSection !== this._lastSectionForCacheInvalidation) {
+      if (this._lastSectionForCacheInvalidation !== '') {
+        // Not the first frame — this is a real transition
+        this.lastDreamIntegrationResult = null
+      }
+      this._lastSectionForCacheInvalidation = normalizedSection
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula
     // 🔒 WAVE 1179: PERO SOLO SI NO HAY DICTADOR
     // ═══════════════════════════════════════════════════════════════════════
@@ -1152,10 +1182,17 @@ export class SeleneTitanConscious extends EventEmitter {
         // That killed rotation: acid_sweep in cooldown → digital_rain denied → SILENCE.
         // FIX: Only block fallthrough in true silence. Valley/ambient are normal techno zones.
         // The section gate stays — no firing random effects in breakdown if DNA didn't ask.
+        // 🩸 WAVE 2106: BREAKDOWN REMOVED from fallthrough — LOG EVIDENCE:
+        //   9 of 15 effects were fallthroughs. Of those 9, 5 fired during breakdown.
+        //   acid_sweep blocked → industrial_strobe fallthrough in breakdown.
+        //   acid_sweep blocked → abyssal_rise fallthrough in breakdown.
+        //   Fallthrough was a BACKDOOR past breakdown protection.
+        //   "breakdown can fallthrough for atmosphere" (WAVE 2103) was WRONG.
+        //   Breakdowns need SILENCE, not atmospheric alternatives.
         const sectionAllowsFallthrough = pattern.section === 'buildup' 
           || pattern.section === 'drop' 
           || pattern.section === 'chorus'
-          || pattern.section === 'breakdown'  // 🩸 WAVE 2103: breakdown can fallthrough for atmosphere
+          // 🩸 WAVE 2106: breakdown REMOVED — breakdown is sacred darkness
         const intensityAllowsFallthrough = output.effectDecision!.intensity >= 0.30  // 🩸 WAVE 2103: lowered from 0.40
         const zoneAllowsFallthrough = energyContext.zone !== 'silence'
         const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough

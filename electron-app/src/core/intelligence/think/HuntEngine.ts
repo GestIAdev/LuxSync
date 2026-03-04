@@ -132,9 +132,15 @@ const DEFAULT_CONFIG: HuntConfig = {
   // against effect spam. Learning's 120-frame cooldown was a SECOND guard that
   // stacked: Hunt blind 2s + Global cooldown 4s = 6 SECONDS of total blindness.
   // In techno at 120bpm that's 12 beats where the predator can't even SEE prey.
-  // FIX: 15 frames (~250ms) — just enough to register the strike and reset state.
-  // The real spam protection lives in the global cooldown where it belongs.
-  learningCooldownFrames: 15,
+  // 🩸 WAVE 2106: 15→45 frames (~750ms) — LOG EVIDENCE:
+  //   15 frames was TOO SHORT. Hunt cycle: stalk(5)→eval(15)→strike→learn(15)→stalk...
+  //   Full cycle ~35 frames (~580ms). With GLOBAL_COOLDOWN at 4s, Hunt saw 6-7
+  //   WORTHY MOMENTS per cooldown window, each generating a DNA pipeline + cache.
+  //   At 45 frames (~750ms), Hunt cycle becomes ~65 frames (~1.1s).
+  //   Combined with GLOBAL_COOLDOWN 7s (FIX 2): Hunt sees ~6 worthy moments per
+  //   cooldown window, but each is more deliberate. The predator REFLECTS.
+  //   120 was coma. 15 was cocaine. 45 is clarity.
+  learningCooldownFrames: 45,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

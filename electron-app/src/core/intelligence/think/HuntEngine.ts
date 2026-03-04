@@ -127,7 +127,14 @@ const DEFAULT_CONFIG: HuntConfig = {
   consonanceThreshold: 0.60,
   urgencyForceThreshold: 0.90,
   maxEvaluatingFrames: 15,
-  learningCooldownFrames: 120,  // 🔥 WAVE 635: 2 segundos de cooldown (era 10 = 166ms)
+  // 🩸 WAVE 2105: LEARNING COOLDOWN KILLED — was 120 frames (~2s)
+  // The GLOBAL_EFFECT_COOLDOWN_MS (4s) in SeleneTitanConscious ALREADY protects
+  // against effect spam. Learning's 120-frame cooldown was a SECOND guard that
+  // stacked: Hunt blind 2s + Global cooldown 4s = 6 SECONDS of total blindness.
+  // In techno at 120bpm that's 12 beats where the predator can't even SEE prey.
+  // FIX: 15 frames (~250ms) — just enough to register the strike and reset state.
+  // The real spam protection lives in the global cooldown where it belongs.
+  learningCooldownFrames: 15,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -348,6 +348,9 @@ export class SeleneTitanConscious extends EventEmitter {
   // El log anterior tenía ~80 líneas de FALLTHROUGH_DEBUG repetidas idénticamente.
   private fallthroughExhaustionCache: Record<string, number> = {}
   private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 3000
+
+  // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
+  private _constitutionLogThrottle: Record<string, number> = {}
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -802,7 +805,17 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // Si Hunt detectó momento digno Y no hay dictador activo, ejecutar simulador DNA
     const WORTHINESS_THRESHOLD = 0.65
-    if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && !activeDictator) {
+    // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy can unlock the DNA pipeline
+    // Before: Only Hunt worthiness >= 0.65 could trigger DNA simulation.
+    // Problem: Hunt learning phase emits worthiness=0 for 120 frames (now 15),
+    // but even with the fix, there are moments where Hunt is at 0.60 (evaluating)
+    // while Fuzzy KNOWS it should strike (contextual intelligence: zone, z-score, mood).
+    // FIX: If Fuzzy says strike/force_strike with good confidence, that also unlocks DNA.
+    const fuzzyUnlock = this.lastFuzzyDecision 
+      && (this.lastFuzzyDecision.action === 'strike' || this.lastFuzzyDecision.action === 'force_strike')
+      && this.lastFuzzyDecision.confidence >= 0.50
+    const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock) && !activeDictator
+    if (shouldRunDNA) {
       // 🩸 WAVE 2101.4: GLOBAL EFFECT COOLDOWN GATE
       // Si se disparó CUALQUIER efecto hace menos de 8s, ni siquiera ejecutar pipeline.
       // Excepción: drops inminentes (<800ms, prob>0.80) bypasean.
@@ -960,6 +973,8 @@ export class SeleneTitanConscious extends EventEmitter {
       spectralContext: spectralContextForDecision,
       // 🔒 WAVE 1177: CALIBRATION - Check if dictator is active to prevent DIVINE spam
       activeDictator: getEffectManager().hasDictator(),
+      // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote in decisions
+      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -1384,9 +1399,18 @@ export class SeleneTitanConscious extends EventEmitter {
     if (!result.isValid) {
       this.stats.constitutionViolationsAvoided++
       
+      // 🩸 WAVE 2105: THROTTLE constitution violation logs — was ~65 lines per 700-line log
+      // The Constitution forces analogous on every tick, logging the same message endlessly.
+      // Now: log once per violation TYPE per 5 seconds, not every 16ms tick.
       if (this.config.debug) {
+        const now = Date.now()
         for (const v of result.violations) {
-          console.log(`[SeleneTitanConscious] 📜 Violation avoided: ${v.description}`)
+          const lastLog = this._constitutionLogThrottle?.[v.description] ?? 0
+          if (now - lastLog > 5000) {
+            console.log(`[SeleneTitanConscious] 📜 Violation avoided: ${v.description}`)
+            if (!this._constitutionLogThrottle) this._constitutionLogThrottle = {}
+            this._constitutionLogThrottle[v.description] = now
+          }
         }
       }
       

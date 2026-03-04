@@ -26,6 +26,8 @@ import type { EnergyZone, EnergyContext } from '../../protocol/MusicalContext'
 // 🎨 WAVE 1028: THE CURATOR - Texture Filter integration
 import { getContextualEffectSelector } from '../../effects/ContextualEffectSelector'
 import type { SpectralContext } from '../../protocol/MusicalContext'
+// 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote
+import type { FuzzyDecision } from './FuzzyDecisionMaker'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
@@ -118,6 +120,9 @@ export interface DecisionInputs {
   
   /** 🔒 WAVE 1177: CALIBRATION - Dictador activo (efecto global en ejecución) */
   activeDictator?: string | null
+
+  /** 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy decision gets a real vote in the pipeline */
+  fuzzyDecision?: FuzzyDecision
 }
 
 /**
@@ -251,7 +256,7 @@ type DecisionType =
  * 5. 🧘 Hold
  */
 function determineDecisionType(inputs: DecisionInputs): DecisionType {
-  const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator } = inputs
+  const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision } = inputs
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
@@ -296,6 +301,39 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
   if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
     return 'strike'  // DNA aprobó → strike con efecto de DNA
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩸 WAVE 2105: FUZZY RESURRECTION — The Fuzzy Brain gets a REAL VOTE
+  // ═══════════════════════════════════════════════════════════════════════
+  // Before: Fuzzy evaluated 20+ rules, generated strike/prepare/hold...
+  // and then NOBODY LISTENED. It was pure decoration — logged but ignored.
+  // The Fuzzy system has contextual intelligence that Hunt doesn't have:
+  // - EnergyZone awareness (silence/valley/active/peak suppression)
+  // - Z-Score anomaly detection (normal/notable/epic)
+  // - Section narrative (quiet/building/peak)
+  // - Harshness/texture awareness
+  // - Mood integration (threshold/intensity multipliers)
+  //
+  // NOW: If Fuzzy says STRIKE or FORCE_STRIKE with sufficient confidence,
+  // it can trigger the DNA pipeline even when Hunt hasn't reached 0.65.
+  // This closes the gap where Hunt=evaluating + Fuzzy=strike but nothing fires.
+  // ═══════════════════════════════════════════════════════════════════════
+  if (fuzzyDecision) {
+    if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60) {
+      console.log(
+        `[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
+        `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
+      )
+      return 'strike'
+    }
+    if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50) {
+      console.log(
+        `[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
+        `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
+      )
+      return 'strike'
+    }
   }
   
   // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)

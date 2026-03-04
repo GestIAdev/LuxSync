@@ -475,6 +475,31 @@ const FUZZY_RULES: FuzzyRule[] = [
     consequent: 'strike',
     weight: 0.65,
   },
+  // 🩸 WAVE 2105: FUZZY RESURRECTION — 2 new STRIKE rules independent of section.peak
+  // PROBLEM: All 5 existing STRIKE rules use section.peak via Math.min().
+  // In buildup, section.peak = 0.3. Math.min(x, 0.3) * weight = MAX 0.255.
+  // Defuzzify needs strike > 0.45. MATHEMATICALLY IMPOSSIBLE without section=drop.
+  // But SimpleSectionTracker NEVER detects drops in Brejcha-style techno
+  // (bassR=1.04 < threshold 1.4, wE=0.19 < threshold 0.75).
+  // FIX: Two new rules that can reach strike WITHOUT section=drop.
+  // They use Hunt worthiness + energy/z-score — the real signals that MATTER.
+  {
+    name: 'Hunt_Buildup_Strike',
+    // Hunt confident + energy high + building = worth a strike even without "drop" label
+    // In buildup: building=1.0, so this can reach 0.8*0.8=0.64 when hunt+energy are high
+    antecedent: (i) => i.huntScore * i.energy.high * Math.max(i.section.building, i.section.peak) * 0.8,
+    consequent: 'strike',
+    weight: 0.80,
+  },
+  {
+    name: 'Notable_Energy_Strike',
+    // Notable z-score + high energy = something big is happening, section label be damned
+    // z-score notable peaks at ~0.8 in typical techno, energy.high at ~0.7
+    // Product: 0.56 * weight 0.75 = 0.42 — combined with other activations pushes past 0.45
+    antecedent: (i) => i.zScore.notable * i.energy.high * i.energyZone.highZone,
+    consequent: 'strike',
+    weight: 0.75,
+  },
   
   // ═══════════════════════════════════════════════════════════════════════
   // PREPARE - Anticipación, algo viene

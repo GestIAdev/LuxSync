@@ -324,30 +324,28 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🩸 WAVE 2105: FUZZY RESURRECTION — The Fuzzy Brain gets a REAL VOTE
+  // 🩸 WAVE 2105→2109: FUZZY RESURRECTION — The Fuzzy Brain gets a REAL VOTE
   // ═══════════════════════════════════════════════════════════════════════
-  // Before: Fuzzy evaluated 20+ rules, generated strike/prepare/hold...
-  // and then NOBODY LISTENED. It was pure decoration — logged but ignored.
-  // The Fuzzy system has contextual intelligence that Hunt doesn't have:
-  // - EnergyZone awareness (silence/valley/active/peak suppression)
-  // - Z-Score anomaly detection (normal/notable/epic)
-  // - Section narrative (quiet/building/peak)
-  // - Harshness/texture awareness
-  // - Mood integration (threshold/intensity multipliers)
-  //
-  // NOW: If Fuzzy says STRIKE or FORCE_STRIKE with sufficient confidence,
-  // it can trigger the DNA pipeline even when Hunt hasn't reached 0.65.
-  // This closes the gap where Hunt=evaluating + Fuzzy=strike but nothing fires.
+  // WAVE 2105: Fuzzy can now trigger 'strike' → generateStrikeDecision()
+  // WAVE 2109 FIX: Fuzzy was returning 'strike' 16 times but DNA had no proposal.
+  //   generateStrikeDecision() checks dreamIntegration?.approved → FALSE → SILENCE.
+  //   Result: 16x "[FUZZY STRIKE → strike]" immediately followed by "SILENCE: DNA has no proposal"
+  //   This was a VOID SCREAM — Fuzzy ordered fire but nobody loaded the weapon.
+  //   FIX: Fuzzy STRIKE only triggers 'strike' if DNA has a loaded weapon.
+  //   If DNA has nothing, Fuzzy STRIKE falls through to Hunt/prediction/buildup priorities.
+  //   This means Fuzzy still ACCELERATES decision-making when DNA is ready,
+  //   but doesn't create 16 useless log lines when DNA pipeline is on cooldown.
   // ═══════════════════════════════════════════════════════════════════════
+  const hasDNAProposal = dreamIntegration?.approved && dreamIntegration.effect?.effect
   if (fuzzyDecision) {
-    if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60) {
+    if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
       console.log(
         `[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
         `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
       )
       return 'strike'
     }
-    if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50) {
+    if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
       console.log(
         `[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
         `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`

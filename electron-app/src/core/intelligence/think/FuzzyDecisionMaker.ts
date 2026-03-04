@@ -509,30 +509,39 @@ const FUZZY_RULES: FuzzyRule[] = [
     consequent: 'strike',
     weight: 0.75,
   },
-  // 🩸 WAVE 2108: THE REAL RESURRECTION — New rules with MAX 2 multiplicative factors
-  // PROBLEM: ALL existing STRIKE rules multiply 3-4 factors. In Brejcha, each factor is
-  // individually mediocre (E=0.7, hunt=0.5, section=0.5, Z=1.0). Product of mediocrities:
-  // 0.72 × 0.51 × 0.5 × 0.8 × 0.80 = 0.118. Defuzzify needs >0.20. STILL IMPOSSIBLE
-  // when you multiply 3+ factors that are all 0.3-0.7.
-  // FIX: Rules that use MAX 2 multiplicative factors + highZone gate.
-  // The highZone gate ensures we ONLY fire in active/intense/peak zones.
+  // 🩸 WAVE 2108→2109: STRIKE RULES — Resurrected + Rebalanced
+  // WAVE 2108: Created Pure_Energy_Strike and Energy_Building_Strike with MAX 2 factors.
+  // WAVE 2109: LOG EVIDENCE (post-2108): 16 FUZZY STRIKE events, but too aggressive.
+  //   Pure_Energy_Strike fired at E=0.89 → 0.78 × 0.65 = 0.507 → conf=0.83-0.90.
+  //   It fires on EVERY high-energy frame because highZone=1.0 in active/intense/peak.
+  //   Result: 7 effects in 100s + 16 strikes-to-void (DNA not ready).
+  //
+  // FIX 2109: Add Z-Score gate. Energy alone isn't enough — we need ANOMALOUS energy.
+  //   Pure energy fires constantly in techno (E>0.73 is normal for Brejcha).
+  //   Z-Score tells us if the energy is EXCEPTIONAL relative to recent history.
+  //   highZone * clamp(Z/2) ensures we only strike when energy is BOTH high AND rising.
+  //   E=0.89 Z=1.9 → 1.0 * 0.95 * 0.55 = 0.523 ✓ (genuine peak)
+  //   E=0.79 Z=0.3 → 1.0 * 0.15 * 0.55 = 0.083 ✗ (just normal high energy)
   {
     name: 'Pure_Energy_Strike',
-    // When energy is clearly high AND we're in a high zone, that's enough signal.
-    // E=0.79 → energy.high=0.58, highZone=1.0 → 0.58 × 0.65 = 0.377
-    // This is the "trust the energy" rule — if the room is pumping, ACT.
-    antecedent: (i) => i.energy.high * i.energyZone.highZone * 0.65,
+    // Energy high + zone high + Z-Score anomalous = genuine peak worth striking.
+    // The notable gate filters out "normal" high energy frames (z < 1.5).
+    // Z=1.9σ → notable≈1.0 → gate open. Z=0.3σ → notable≈0.12 → gate mostly closed.
+    antecedent: (i) => {
+      const zGate = Math.max(i.zScore.notable, i.zScore.epic)
+      return i.energy.high * i.energyZone.highZone * zGate * 0.55
+    },
     consequent: 'strike',
     weight: 0.65,
   },
   {
     name: 'Energy_Building_Strike',
-    // High energy + building section = the buildup is peaking, worth a strike.
-    // E=0.79 → energy.high=0.58, building=0.5(breakdown)/1.0(buildup)
-    // In buildup: 0.58 × 1.0 × 0.70 = 0.406. In breakdown: 0.58 × 0.5 × 0.70 = 0.203
-    antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * 0.70,
+    // High energy + building/peak section = the buildup is peaking, worth a strike.
+    // E=0.79 → energy.high=0.58, building=1.0(buildup)
+    // In buildup: 0.58 × 1.0 × 0.65 = 0.377. In breakdown: 0.58 × 0.5 × 0.65 = 0.189
+    antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * 0.65,
     consequent: 'strike',
-    weight: 0.70,
+    weight: 0.65,
   },
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -721,15 +730,15 @@ function defuzzify(
     action = 'force_strike'
     dominantRule = activations.find(a => a.output === 'forceStrike')?.rule ?? 'Divine_Override'
   }
-  // 🩸 WAVE 2107→2108: DEFUZZIFY THRESHOLDS RECALIBRATED
+  // 🩸 WAVE 2107→2109: DEFUZZIFY THRESHOLDS RECALIBRATED
   // WAVE 2107: 0.45/+0.15 → 0.35/+0.08. Still dead — max strike in Brejcha ≈ 0.23
-  // WAVE 2108: 0.35 → 0.20. The REAL gate is now strike > hold + 0.05.
-  // With new Pure_Energy_Strike rule: E=0.79 → strike≈0.38 vs hold≈0.08 → 0.38>0.13 ✓
-  // The +0.05 margin ensures Fuzzy only fires when strike CLEARLY beats hold.
-  // Additional safety: DecisionMaker still requires confidence ≥ 0.50 for Fuzzy strike.
-  // And MoodController BALANCED applies 1.20x threshold on top of that.
+  // WAVE 2108: 0.35 → 0.20, +0.08 → +0.05. Alive but too aggressive (16 strikes/100s).
+  // WAVE 2109: 0.20 → 0.25, +0.05 → +0.08. The Z-gate on Pure_Energy_Strike already
+  //   filters out normal-energy frames, so the defuzzify can be slightly more selective.
+  //   With Pure_Energy_Strike (E=0.89, Z=1.9): strike≈0.33 vs hold≈0.05 → 0.33>0.13 ✓
+  //   With Pure_Energy_Strike (E=0.79, Z=0.3): strike≈0.07 vs hold≈0.15 → FAILS ✗ (correct!)
   // Triple safety net: defuzzify + DecisionMaker confidence + Mood threshold.
-  else if (outputs.strike > outputs.hold + 0.05 && outputs.strike > 0.20) {
+  else if (outputs.strike > outputs.hold + 0.08 && outputs.strike > 0.25) {
     action = 'strike'
     dominantRule = activations.find(a => a.output === 'strike')?.rule ?? 'Strike_Rule'
   }
@@ -789,13 +798,17 @@ function calculateIntensity(action: FuzzyDecision['action'], outputs: FuzzyOutpu
  * Calcula la confianza basada en qué tan "clara" es la decisión
  * Alta confianza = un output domina claramente sobre los demás
  * 
- * 🩸 WAVE 2108: CONFIDENCE RECALIBRATED
+ * 🩸 WAVE 2108→2109: CONFIDENCE RECALIBRATED
  * Old formula: (max + gap) / 2 where gap = max - secondMax across ALL 4 outputs.
  * Problem: strike=0.38, prepare=0.30, hold=0.08 → gap=0.08, conf=(0.38+0.08)/2=0.23
  * DecisionMaker needs conf≥0.50 → Fuzzy STRIKE ignored even when defuzzify chose it.
  * 
- * New formula: For strike/force_strike actions, confidence = strike output value directly.
- * The defuzzify already gatekept this (>0.20 AND >hold+0.05). If it passed, trust it.
+ * WAVE 2108: Maps [0.20, 0.70] → [0.50, 0.90]. TOO GENEROUS.
+ *   Log evidence: strike=0.39 → conf=0.67, strike=0.50 → conf=0.82. 
+ *   16 FUZZY STRIKEs in 100s, most with conf 0.55-0.90. Spammy.
+ * WAVE 2109: Maps [0.25, 0.65] → [0.50, 0.80]. Tighter.
+ *   strike=0.25 → conf=0.50 (bare minimum), strike=0.40 → conf=0.59, strike=0.55 → conf=0.69
+ *   This means only strong strikes (>0.30) actually pass DecisionMaker's 0.50 gate.
  * For hold/prepare, use the old gap-based formula (we WANT low confidence for holds).
  */
 function calculateConfidence(outputs: FuzzyOutputs): number {
@@ -809,11 +822,11 @@ function calculateConfidence(outputs: FuzzyOutputs): number {
   // If strike is the winner, confidence = the strike score itself (0-1 range)
   // This means strike=0.38 → conf=0.38, which after mood (÷1.20) = 0.317
   // Still needs to pass DecisionMaker's 0.50 check. So we scale it.
-  // A strike score of 0.25+ should produce confidence ≥ 0.50
+  // 🩸 WAVE 2109: Tighter mapping. strike=0.30→conf=0.51, strike=0.45→conf=0.65
   if (outputs.strike === max && outputs.strike > outputs.hold) {
-    // Map strike [0.20, 0.70] → confidence [0.50, 0.90]
-    const normalizedStrike = Math.min(1, Math.max(0, (outputs.strike - 0.15) / 0.55))
-    return 0.50 + normalizedStrike * 0.40
+    // Map strike [0.25, 0.65] → confidence [0.50, 0.80]
+    const normalizedStrike = Math.min(1, Math.max(0, (outputs.strike - 0.25) / 0.40))
+    return 0.50 + normalizedStrike * 0.30
   }
   if (outputs.forceStrike === max && outputs.forceStrike > 0.3) {
     return 0.80 + outputs.forceStrike * 0.20
@@ -987,16 +1000,14 @@ export class FuzzyDecisionMaker {
     let wasDowngraded = false
     
     // 🎯 WAVE 1176: OPERATION SNIPER - Umbrales más exigentes
-    // 🩸 WAVE 2108: strike threshold lowered. The Fuzzy already has 3 safety layers:
-    //   1. Defuzzify: strike>0.20 AND strike>hold+0.05
-    //   2. DecisionMaker: confidence ≥ 0.50
-    //   3. MoodController: effectiveScore = conf/1.20 (BALANCED)
-    // With old threshold 0.60, a Fuzzy strike needs conf ≥ 0.72 raw to survive.
-    // But Fuzzy confidences are structurally moderate (0.50-0.65) due to products.
-    // New threshold 0.40: needs conf ≥ 0.48 raw. Still requires real musical evidence.
+    // 🩸 WAVE 2108→2109: strike threshold rebalanced.
+    //   WAVE 2108: 0.60→0.40. Log showed 16 strikes, most passing easily.
+    //   WAVE 2109: 0.40→0.50. With tighter confidence mapping [0.50-0.80],
+    //   effectiveScore = conf/1.20 (BALANCED). conf=0.55→eff=0.458 → FAILS.
+    //   conf=0.62→eff=0.517 → PASSES. Only strong Fuzzy strikes survive.
     const THRESHOLDS = {
       force_strike: 0.7,  // Necesitas score alto para force_strike
-      strike: 0.40,       // 🩸 WAVE 2108: 0.60→0.40. DecisionMaker+Mood already gate this.
+      strike: 0.50,       // 🩸 WAVE 2109: 0.40→0.50. Needs conf≥0.60 raw in BALANCED.
       prepare: 0.35,      // 🎯 WAVE 1176: SUBIDO de 0.3 (Más exigente)
       hold: 0.0,          // Hold siempre pasa
     }

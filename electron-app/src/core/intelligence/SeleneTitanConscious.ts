@@ -348,11 +348,13 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🩸 WAVE 2102: Evitar spam logs
   private lastGatekeeperLogs: Record<string, number> = {}
-  // 🩸 WAVE 2104.2: FALLTHROUGH EXHAUSTION CACHE — si todas las alternativas están en cooldown,
-  // NO reintentar cada tick (16ms). Cachear el fallo durante 3s y rendirse limpiamente.
-  // El log anterior tenía ~80 líneas de FALLTHROUGH_DEBUG repetidas idénticamente.
+  // 🩸 WAVE 2104.2→2109: FALLTHROUGH EXHAUSTION CACHE — si todas las alternativas están en cooldown,
+  // NO reintentar cada tick (16ms). Cachear el fallo durante N segundos y rendirse limpiamente.
+  // WAVE 2104.2: 3s cache. Log post-WAVE 2108 showed ~15 FALLTHROUGH_DEBUG lines for cyber_dualism
+  //   because the 3s window expired between DNA re-proposals.
+  // WAVE 2109: 5s cache. Longer silence between retry bursts.
   private fallthroughExhaustionCache: Record<string, number> = {}
-  private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 3000
+  private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 5000  // 🩸 WAVE 2109: 3s→5s
 
   // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
   private _constitutionLogThrottle: Record<string, number> = {}
@@ -405,8 +407,13 @@ export class SeleneTitanConscious extends EventEmitter {
       this.effectSelector.registerEffectFired(event.effectType)
       console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${event.effectType}`)
       
-      // 🩸 WAVE 2104.2: Clear fallthrough exhaustion cache — new effect fired means new landscape
-      this.fallthroughExhaustionCache = {}
+      // 🩸 WAVE 2104.2→2109: Fallthrough exhaustion cache — DO NOT clear on effect fire.
+      // WAVE 2104.2: Cleared cache on every effect fire. But this meant:
+      //   cyber_dualism fires (fallthrough to sky_saw) → cache cleared →
+      //   next tick: cyber_dualism proposed again → fallthrough spam resumes.
+      // WAVE 2109: Let the exhaustion cache expire naturally (5s timer).
+      //   New effects don't reset the landscape for the BLOCKED effect.
+      // this.fallthroughExhaustionCache = {}  // REMOVED in WAVE 2109
       
       // 🔒 WAVE 1177: CALIBRATION - Solo pushear al historial cuando REALMENTE se ejecuta
       // Esto evita que efectos bloqueados por GLOBAL_LOCK contaminen el historial

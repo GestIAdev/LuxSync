@@ -238,18 +238,34 @@ export class GodEarBPMTracker {
       this.inKick = false
     }
     
-    // Also accept external kick from GodEar if passes debounce
-    if (externalKickDetected && debounceOk && !kickDetected) {
-      kickDetected = true
-      this.lastKickTime = timestamp
-      this.lastBeatTime = timestamp
-      this.totalKicks++
-      
-      this.kickTimestamps.push(timestamp)
-      if (this.kickTimestamps.length > MAX_TIMESTAMPS) {
-        this.kickTimestamps.shift()
-      }
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🚫 WAVE 2119.1: EXTERNAL KICK BYPASS DISABLED
+    // ═══════════════════════════════════════════════════════════════════
+    // The SlopeBasedOnsetDetector in GodEarFFT uses subBass + bass*0.5
+    // to detect kicks — effectively the same unweighted formula that
+    // WAVEs 2118/2119 tried to fix. It fires on every Brejcha offbeat,
+    // injecting 325/372ms intervals that poison the IQR and lock
+    // BPM at 161.
+    //
+    // The ratio-based detection above (KICK_RATIO_THRESHOLD=1.7 +
+    // KICK_DELTA_THRESHOLD=0.015 + beaterClick coincidence from 2119)
+    // is the ONLY path that respects our calibrated thresholds.
+    //
+    // externalKickDetected is still useful for OTHER consumers
+    // (BeatDetector, light physics, etc.) — just not for BPM tracking.
+    // ═══════════════════════════════════════════════════════════════════
+    // DISABLED: External kick bypass was injecting offbeats unchecked.
+    // if (externalKickDetected && debounceOk && !kickDetected) {
+    //   kickDetected = true
+    //   this.lastKickTime = timestamp
+    //   this.lastBeatTime = timestamp
+    //   this.totalKicks++
+    //
+    //   this.kickTimestamps.push(timestamp)
+    //   if (this.kickTimestamps.length > MAX_TIMESTAMPS) {
+    //     this.kickTimestamps.shift()
+    //   }
+    // }
     
     this.prevEnergy = rawBassEnergy
     

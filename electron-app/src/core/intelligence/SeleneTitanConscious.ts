@@ -1175,12 +1175,24 @@ export class SeleneTitanConscious extends EventEmitter {
         }
       } else if (output.effectDecision) {
         // ═══════════════════════════════════════════════════════════════════════
-        // 🩸 WAVE 2100: COOLDOWN FALLTHROUGH — Try alternatives instead of silence
+        // 🩸 WAVE 2100→2110: COOLDOWN FALLTHROUGH — Try alternatives instead of silence
         // ═══════════════════════════════════════════════════════════════════════
         // Before: GATEKEEPER BLOCKED = silence. Same effect proposed 20x in a row.
         // Now: If blocked by COOLDOWN (not HARD_COOLDOWN), try alternatives from DNA.
         // The DreamEngineIntegrator already generates alternatives — we just never used them.
+        // 🩸 WAVE 2110: ANTI-DOUBLE-FIRE — If the original effect was ALREADY approved
+        //   and assigned to finalEffectDecision, we must NOT enter fallthrough at all.
+        //   LOG EVIDENCE (post-2109): acid_sweep FIRED at I=0.94 → same tick →
+        //   FALLTHROUGH acid_sweep blocked → gatling_raid FIRED at I=0.94.
+        //   The pipeline ran twice in one tick: first approved acid_sweep, then the SECOND
+        //   pass found acid_sweep in cooldown (just registered!) and fell through.
+        //   FIX: This block only runs when `!finalEffectDecision` (already guarded above).
+        //   But ALSO guard against re-entry: if the same effect was approved less than
+        //   GLOBAL_EFFECT_COOLDOWN_MS ago, it means WE just fired it — don't fallthrough.
         // ═══════════════════════════════════════════════════════════════════════
+        const timeSinceGlobalFire = Date.now() - this.lastGlobalEffectTimestamp
+        const justFiredRecently = timeSinceGlobalFire < 1000  // 🩸 WAVE 2110: <1s = same tick/burst
+        
         const isCooldownBlock = availability.reason?.includes('COOLDOWN') && !isHardMinimumBlocked
         const alternatives = dreamIntegrationData?.alternatives as Array<{effect: string, intensity: number, reasoning: string, confidence: number}> | undefined
         
@@ -1202,7 +1214,7 @@ export class SeleneTitanConscious extends EventEmitter {
           // 🩸 WAVE 2106: breakdown REMOVED — breakdown is sacred darkness
         const intensityAllowsFallthrough = output.effectDecision!.intensity >= 0.30  // 🩸 WAVE 2103: lowered from 0.40
         const zoneAllowsFallthrough = energyContext.zone !== 'silence'
-        const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough
+        const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough && !justFiredRecently  // 🩸 WAVE 2110: anti-double-fire
 
         if (isCooldownBlock && fallThroughAllowed && alternatives && alternatives.length > 0) {
           // 🩸 WAVE 2104.2: FALLTHROUGH EXHAUSTION — si ya fallamos recientemente, no reintentar

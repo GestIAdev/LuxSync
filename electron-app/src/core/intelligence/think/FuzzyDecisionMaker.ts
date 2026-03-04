@@ -309,10 +309,16 @@ function fuzzify(input: FuzzyEvaluatorInput): FuzzyInputs {
   }
   
   // === Z-SCORE ===
+  // 🩸 WAVE 2110: Notable curve smoothed. Old notable at Z=1.0σ = 0.40 (too low for strike gate).
+  //   Old formula: Z<1.5 → Z/2.5. At Z=1.0 → 0.40. CLIFF at Z=1.5 → jumps to 1.0.
+  //   New formula: Z<1.5 → Z/2.0. At Z=1.0 → 0.50. Smoother ramp, no cliff.
+  //   This lets Pure_Energy_Strike activate meaningfully from Z≥0.8σ instead of Z≥1.5σ.
+  //   At Z=0.5σ: 0.25 (mild gate). At Z=1.0σ: 0.50 (moderate gate). At Z=1.5σ: 0.75 → 1.0.
+  //   The defuzzify threshold (>0.25) + confidence mapping still prevent spam.
   const absZ = Math.abs(input.zScore)
   const zScore: ZScoreFuzzySet = {
     normal: absZ < 1.5 ? 1 - (absZ / 1.5) * 0.5 : Math.max(0, 1 - (absZ - 1.0)),
-    notable: absZ < 1.5 ? absZ / 2.5 : absZ >= 2.5 ? Math.max(0, 1 - (absZ - 2.5) / 1.0) : 1,
+    notable: absZ < 1.5 ? absZ / 2.0 : absZ >= 2.5 ? Math.max(0, 1 - (absZ - 2.5) / 1.0) : 1,  // 🩸 WAVE 2110: /2.5→/2.0
     epic: absZ < 2.5 ? Math.max(0, (absZ - 1.5) / 1.0) : Math.min(1, 0.5 + (absZ - 2.5) * 0.25),
   }
   
@@ -509,39 +515,43 @@ const FUZZY_RULES: FuzzyRule[] = [
     consequent: 'strike',
     weight: 0.75,
   },
-  // 🩸 WAVE 2108→2109: STRIKE RULES — Resurrected + Rebalanced
+  // 🩸 WAVE 2108→2110: STRIKE RULES — Resurrected + Rebalanced + Z-Smoothed
   // WAVE 2108: Created Pure_Energy_Strike and Energy_Building_Strike with MAX 2 factors.
   // WAVE 2109: LOG EVIDENCE (post-2108): 16 FUZZY STRIKE events, but too aggressive.
-  //   Pure_Energy_Strike fired at E=0.89 → 0.78 × 0.65 = 0.507 → conf=0.83-0.90.
-  //   It fires on EVERY high-energy frame because highZone=1.0 in active/intense/peak.
-  //   Result: 7 effects in 100s + 16 strikes-to-void (DNA not ready).
-  //
-  // FIX 2109: Add Z-Score gate. Energy alone isn't enough — we need ANOMALOUS energy.
-  //   Pure energy fires constantly in techno (E>0.73 is normal for Brejcha).
-  //   Z-Score tells us if the energy is EXCEPTIONAL relative to recent history.
-  //   highZone * clamp(Z/2) ensures we only strike when energy is BOTH high AND rising.
-  //   E=0.89 Z=1.9 → 1.0 * 0.95 * 0.55 = 0.523 ✓ (genuine peak)
-  //   E=0.79 Z=0.3 → 1.0 * 0.15 * 0.55 = 0.083 ✗ (just normal high energy)
+  //   FIX 2109: Added Z-Score gate. Energy alone isn't enough — need ANOMALOUS energy.
+  // WAVE 2110: LOG EVIDENCE (post-2109): 2 strikes in 80 samples, 0 pass DecisionMaker.
+  //   Fuzzy is DORMANT. Z-gate too aggressive: notable at Z=1.0σ was only 0.40 (old /2.5).
+  //   FIX 2110: Notable curve smoothed (/2.5→/2.0), gate uses (notable + epic*0.5),
+  //   Energy_Building_Strike gets highZone gate + weight boost (0.65→0.70).
+  //   This restores Fuzzy's ability to contribute without the void-scream problem.
   {
     name: 'Pure_Energy_Strike',
-    // Energy high + zone high + Z-Score anomalous = genuine peak worth striking.
-    // The notable gate filters out "normal" high energy frames (z < 1.5).
-    // Z=1.9σ → notable≈1.0 → gate open. Z=0.3σ → notable≈0.12 → gate mostly closed.
+    // 🩸 WAVE 2110: Z-gate SMOOTHED. Old gate: notable alone. At Z=1.0σ → 0.40 → too low.
+    //   Post-2109 log: 80 fuzzy samples, only 2 strikes. Fuzzy is DORMANT.
+    //   NEW: Use (notable + epic*0.5) clamped to [0,1]. This gives:
+    //     Z=0.5σ: gate=0.25. Z=1.0σ: gate=0.50. Z=1.5σ: gate=1.0. Z=3.0σ: gate=1.35→1.0
+    //   Math: E=0.72, Z=1.0σ → energy.high=0.44, highZone≈0.8, gate=0.50
+    //     0.44 * 0.8 * 0.50 * 0.55 = 0.097 × weight 0.70 = 0.068 (still needs other rules)
+    //   E=0.85, Z=1.5σ → energy.high=0.70, highZone≈1.0, gate=1.0
+    //     0.70 * 1.0 * 1.0 * 0.55 = 0.385 × weight 0.70 = 0.270 → passes defuzzify ✓
+    //   E=0.72, Z=0.3σ → gate=0.15 → 0.007 × weight = 0.005 → no chance (correct ✗)
     antecedent: (i) => {
-      const zGate = Math.max(i.zScore.notable, i.zScore.epic)
+      const zGate = Math.min(1, i.zScore.notable + i.zScore.epic * 0.5)
       return i.energy.high * i.energyZone.highZone * zGate * 0.55
     },
     consequent: 'strike',
-    weight: 0.65,
+    weight: 0.70,  // 🩸 WAVE 2110: 0.65→0.70. Needs slightly more weight with smoothed gate.
   },
   {
     name: 'Energy_Building_Strike',
-    // High energy + building/peak section = the buildup is peaking, worth a strike.
-    // E=0.79 → energy.high=0.58, building=1.0(buildup)
-    // In buildup: 0.58 × 1.0 × 0.65 = 0.377. In breakdown: 0.58 × 0.5 × 0.65 = 0.189
-    antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * 0.65,
+    // 🩸 WAVE 2110: Added highZone gate. Without it, this fires in EVERY buildup with E>0.50.
+    //   The highZone factor ensures we only strike when actually in high-energy zone,
+    //   not just because section=buildup and energy barely passed 0.50.
+    //   Old: 0.58 × 1.0 × 0.65 = 0.377. New: 0.58 × 1.0 × 0.8 × 0.70 = 0.325
+    //   In low energy (E=0.45, highZone=0.1): 0.0 × 1.0 × 0.1 × 0.70 = 0.0 (correct)
+    antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * i.energyZone.highZone * 0.70,
     consequent: 'strike',
-    weight: 0.65,
+    weight: 0.70,  // 🩸 WAVE 2110: 0.65→0.70. Compensates the highZone gate.
   },
   
   // ═══════════════════════════════════════════════════════════════════════

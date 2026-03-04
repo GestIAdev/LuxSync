@@ -224,10 +224,15 @@ interface FuzzyRule {
  */
 const MEMBERSHIP_PARAMS = {
   // Energy (0-1 input)
+  // 🩸 WAVE 2107: FUZZY RESURRECTION REAL
+  // Brejcha-style techno oscillates E=0.3-0.6. Old edge 0.65 meant energy.high=0 ALWAYS.
+  // 5 of 7 STRIKE rules use energy.high → Fuzzy was mathematically DEAD.
+  // New edge 0.50 lets energy.high activate from E=0.50 upward.
+  // This doesn't make Fuzzy trigger-happy — suppression rules + defuzzify still gate it.
   energy: {
     low: { center: 0.0, spread: 0.35 },      // Pico en 0, cae hasta 0.35
     medium: { center: 0.5, spread: 0.30 },   // Pico en 0.5, ±0.30
-    high: { center: 1.0, spread: 0.35 },     // Pico en 1, desde 0.65
+    high: { center: 1.0, spread: 0.50 },     // 🩸 WAVE 2107: 0.35→0.50 spread. Activa desde E=0.50
   },
   
   // Z-Score (calibrado con datos reales)
@@ -293,10 +298,14 @@ function rightTrapezoid(value: number, edge: number, spread: number): number {
  */
 function fuzzify(input: FuzzyEvaluatorInput): FuzzyInputs {
   // === ENERGY ===
+  // 🩸 WAVE 2107: energy.high edge moved from 0.65 to 0.50 (spread 0.50)
+  // At E=0.59: old=rightTrapezoid(0.59,0.65,0.35)=0. New=rightTrapezoid(0.59,0.50,0.50)=0.18
+  // At E=0.70: old=0.14. New=0.40. At E=0.85: old=0.57. New=0.70.
+  // Fuzzy can now FEEL energy in Brejcha's 0.4-0.7 range instead of being blind.
   const energy: FuzzySet = {
     low: leftTrapezoid(input.energy, 0.3, 0.3),
     medium: triangularMembership(input.energy, 0.5, 0.35),
-    high: rightTrapezoid(input.energy, 0.65, 0.35),
+    high: rightTrapezoid(input.energy, 0.50, 0.50),  // 🩸 WAVE 2107: was (0.65, 0.35)
   }
   
   // === Z-SCORE ===
@@ -567,24 +576,31 @@ const FUZZY_RULES: FuzzyRule[] = [
   // 🔋 WAVE 932: SUPRESIÓN ENERGÉTICA
   // La consciencia de zona de energía SUPRIME triggers en zonas bajas
   // Esto evita el "Síndrome del Grito en Biblioteca"
+  //
+  // 🩸 WAVE 2107: WEIGHTS REBALANCED
+  // Old weights (1.5, 1.2, 1.0) produced hold=0.45 in ambient/gentle zones.
+  // With max strike=0.225 in buildup, defuzzify NEVER picks strike (needs >0.45 AND >hold+0.15).
+  // New weights (1.0, 0.85, 0.70) produce hold≈0.30 — still protective but beatable.
+  // True silence (lowZone=1.0) still dominates: 1.0×1.0=1.0 hold. Library is still quiet.
+  // But ambient/gentle (lowZone=0.3) now yields hold≈0.30 — Fuzzy CAN win when music warrants.
   // ═══════════════════════════════════════════════════════════════════════
   {
     name: 'Energy_Silence_Total_Suppress',
     antecedent: (i) => i.energyZone.lowZone * 1.0,  // Zona de silencio = HOLD absoluto
     consequent: 'hold',
-    weight: 1.5,  // Peso alto para DOMINAR otras reglas
+    weight: 1.0,  // 🩸 WAVE 2107: 1.5→1.0. lowZone=1.0 (silence) still wins. lowZone=0.3 (ambient) = 0.30
   },
   {
     name: 'Energy_Valley_Suppress',
     antecedent: (i) => i.energyZone.lowZone * 0.8,  // Valle también suprime
     consequent: 'hold',
-    weight: 1.2,
+    weight: 0.85,  // 🩸 WAVE 2107: 1.2→0.85
   },
   {
     name: 'Energy_Low_Dampen_Action',
     antecedent: (i) => i.energyZone.lowZone * (1 - i.section.peak), // No en picos
     consequent: 'hold',
-    weight: 1.0,
+    weight: 0.70,  // 🩸 WAVE 2107: 1.0→0.70
   },
 ]
 
@@ -675,9 +691,15 @@ function defuzzify(
     action = 'force_strike'
     dominantRule = activations.find(a => a.output === 'forceStrike')?.rule ?? 'Divine_Override'
   }
-  // 🎯 WAVE 1176: OPERATION SNIPER - Más exigente para strike
-  // Prioridad 2: Strike supera Hold significativamente (SUBIDO de 0.3 → 0.45)
-  else if (outputs.strike > outputs.hold + 0.15 && outputs.strike > 0.45) {
+  // 🩸 WAVE 2107: DEFUZZIFY THRESHOLDS RECALIBRATED
+  // Old: strike > 0.45 AND strike > hold + 0.15
+  // Problem: With max strike ≈ 0.35 in buildup and hold ≈ 0.30 (post weight rebalance),
+  // 0.35 > 0.45 = FALSE. Fuzzy still dead.
+  // New: strike > 0.35 AND strike > hold + 0.08
+  // Math: strike=0.35 > 0.35 ✓, 0.35 > 0.30+0.08=0.38 → still tight.
+  // But at E=0.6, Z=2.1: strike can reach ~0.42 while hold≈0.30 → 0.42>0.38 ✓ ALIVE!
+  // This means Fuzzy fires when there's REAL musical evidence, not just existing.
+  else if (outputs.strike > outputs.hold + 0.08 && outputs.strike > 0.35) {
     action = 'strike'
     dominantRule = activations.find(a => a.output === 'strike')?.rule ?? 'Strike_Rule'
   }

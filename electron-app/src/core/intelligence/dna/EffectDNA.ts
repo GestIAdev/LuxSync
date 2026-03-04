@@ -612,7 +612,12 @@ export class DNAAnalyzer {
   }
   
   /** Alpha para EMA (0.15=lento, 0.5=rápido) */
-  private readonly SMOOTHING_ALPHA = 0.20  // 20% frame actual, 80% histórico
+  // 🩸 WAVE 2107: 0.20→0.30 — More reactive to section/energy changes.
+  // Old α=0.20 (80% history) made target DNA glacial — section changes took ~15 frames
+  // to shift the target significantly. acid_sweep kept winning because target barely moved.
+  // New α=0.30 (70% history) still prevents jitter but responds to musical structure.
+  // Drop/breakdown SNAP conditions override anyway, this only affects gradual transitions.
+  private readonly SMOOTHING_ALPHA = 0.30
   
   /** Threshold para detectar "Middle Void" */
   private readonly MIDDLE_VOID_THRESHOLD = 0.60
@@ -647,10 +652,14 @@ export class DNAAnalyzer {
   
   /** 
    * Factores de diversidad por uso repetido
-   * 🌊 WAVE 1073.4: Más generosos [1.0, 0.8, 0.5, 0.2]
-   * Antes: [1.0, 0.7, 0.4, 0.1] - muy agresivo
+   * 🩸 WAVE 2107: Steeper penalty curve [1.0, 0.7, 0.35, 0.15]
+   * Old: [1.0, 0.8, 0.5, 0.2] — acid_sweep at 2 uses still had 0.5× relevance.
+   * With base relevance 0.62, that's 0.31 — still competitive vs alternatives at 0.25.
+   * New: 2nd use = 0.7× (mild), 3rd = 0.35× (harsh), 4th = 0.15× (nuclear).
+   * acid_sweep at 2 uses: 0.62×0.35=0.22 — now LOSES to any fresh competitor.
+   * Combined with USAGE_WINDOW_MS=120s, this FORCES real rotation within 2 minutes.
    */
-  private readonly DIVERSITY_FACTORS = [1.0, 0.8, 0.5, 0.2]
+  private readonly DIVERSITY_FACTORS = [1.0, 0.70, 0.35, 0.15]
   
   constructor() {
     // 🔧 WAVE 1003.15: Silenciado para reducir spam de logs

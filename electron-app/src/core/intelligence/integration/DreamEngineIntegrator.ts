@@ -149,8 +149,8 @@ export class DreamEngineIntegrator {
     // At 0.58, balanced mode (1.15x) needs raw >= 0.67 to pass.
     // This ensures only genuinely worthy musical moments get through.
     if (effectiveWorthiness < 0.58) {  // 🩸 WAVE 2104: was 0.50
-      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-      // console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
+      // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
+      console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.58 | ${currentProfile.emoji} ${currentProfile.name}`)
       return {
         approved: false,
         effect: null,

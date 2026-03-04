@@ -804,6 +804,10 @@ export class SeleneTitanConscious extends EventEmitter {
                          && prediction.estimatedTimeMs < 800 
                          && prediction.probability > 0.80
       if (timeSinceLastEffect < this.GLOBAL_EFFECT_COOLDOWN_MS && !isDropUrgent) {
+        // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
+        if (this.stats.framesProcessed % 15 === 0) {
+          console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((this.GLOBAL_EFFECT_COOLDOWN_MS - timeSinceLastEffect) / 1000)}s left | lastEffect=${this.lastEffectType ?? 'none'}`)
+        }
         dreamIntegrationData = this.lastDreamIntegrationResult  // Reusar cache
       } else {
       // 🩸 WAVE 2101.4: PIPELINE EXECUTION THROTTLE (HARDENED)
@@ -1136,8 +1140,13 @@ export class SeleneTitanConscious extends EventEmitter {
         if (isCooldownBlock && fallThroughAllowed && alternatives && alternatives.length > 0) {
           // Try each alternative in order until one passes the gatekeeper
           // 🩸 WAVE 2101.3: Only use alternatives with confidence > 0.4 (no relleno de baja calidad)
+          // 🩸 WAVE 2104.1: DIAGNOSTIC — Log every alternative attempt
+          console.log(`[FALLTHROUGH_DEBUG] 🔄 ${intent} blocked, trying ${alternatives.length} alternatives: [${alternatives.map(a => `${a.effect}(c=${(a.confidence ?? 0).toFixed(2)})`).join(', ')}]`)
           for (const alt of alternatives) {
-            if ((alt.confidence ?? 0) < 0.4) continue
+            if ((alt.confidence ?? 0) < 0.4) {
+              console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} skipped: confidence ${(alt.confidence ?? 0).toFixed(2)} < 0.4`)
+              continue
+            }
             const altAvailability = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
             if (altAvailability.available) {
               finalEffectDecision = {
@@ -1151,6 +1160,9 @@ export class SeleneTitanConscious extends EventEmitter {
                 `original=${intent} (${availability.reason})`
               )
               break
+            } else {
+              // 🩸 WAVE 2104.1: DIAGNOSTIC — Por qué falló la alternativa
+              console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} blocked: ${altAvailability.reason}`)
             }
           }
           

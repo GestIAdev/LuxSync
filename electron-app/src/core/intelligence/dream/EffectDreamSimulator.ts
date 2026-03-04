@@ -1496,8 +1496,8 @@ export class EffectDreamSimulator {
     
     if (!textureCheck.compatible) {
       // REJECTED by texture filter - return zero relevance
-      // 🧹 WAVE 1178.1: Log SILENCIADO - spam innecesario
-      // console.log(`[DREAM_SIMULATOR] 🎨 TEXTURE REJECT: ${effect.effect} - ${textureCheck.reason}`)
+      // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)
+      console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${EFFECT_DNA_REGISTRY[effect.effect]?.textureAffinity}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`)
       return {
         relevance: 0,
         distance: Math.sqrt(3),  // Máxima distancia
@@ -1543,6 +1543,12 @@ export class EffectDreamSimulator {
     // Usar el DNAAnalyzer singleton para derivar el Target DNA
     const dnaAnalyzer = getDNAAnalyzer()
     const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics)
+    
+    // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
+    // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
+    if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
+      console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)}`)
+    }
     
     // Calcular distancia euclidiana 3D (effectDNA es directamente EffectDNA, no tiene .dna)
     const dA = effectDNA.aggression - targetDNA.aggression
@@ -1748,7 +1754,23 @@ export class EffectDreamSimulator {
       score: this.calculateScenarioScore(s, prediction)
     })).sort((a, b) => b.score - a.score)
     
-    // 🧹 WAVE 1015: Silenciado - spam innecesario
+    // � WAVE 2104.1: DIAGNOSTIC LOG — Top 5 candidatos con desglose completo
+    // SIN ESTO ESTAMOS CIEGOS. Se desactiva cuando el sistema esté calibrado.
+    const top5 = scored.slice(0, 5)
+    const predType = prediction.predictionType ?? 'none'
+    console.log(
+      `[DREAM_RANKING] 🏆 TOP 5 (${scored.length} total) | pred=${predType} conf=${prediction.confidence.toFixed(2)}:\n` +
+      top5.map((s, i) => {
+        const sc = s.scenario
+        const dna = `DNA=${sc.projectedRelevance.toFixed(2)}`
+        const div = `DIV=${sc.diversityScore.toFixed(2)}`
+        const vib = `VIB=${sc.vibeCoherence.toFixed(2)}`
+        const rsk = `RSK=${sc.riskLevel.toFixed(2)}`
+        const dist = `dist=${sc.dnaDistance.toFixed(2)}`
+        const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : ''
+        return `  ${i + 1}. ${sc.effect.effect.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`
+      }).join('\n')
+    )
     
     return scored.map(s => s.scenario)
   }

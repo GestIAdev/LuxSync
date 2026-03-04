@@ -1,75 +1,72 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — RESURRECTED + TRUE EAR
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE
  * ═══════════════════════════════════════════════════════════════════════════
- * 
- * WAVE 1163: Original implementation — ratio-based kick detection + adaptive debounce
- *            Proven 74-188 BPM with ±2 BPM precision across genres.
- * 
- * WAVE 2090.2: PURGED — "Pacemaker Monopoly" moved BPM to main thread.
- *              But Pacemaker gets rawBass at 10fps (IPC lag), processes same
- *              frozen value 6× per frame → kick detection corrupted → BPM chaos.
- * 
- * WAVE 2112: RESURRECTED — Back in the Worker where FFT data is FRESH every frame.
- *            The Worker IS the ears. BPM detection belongs here.
- * 
- * WAVE 2116: THE TRUE EAR — Hardened kick detection + interval clustering.
- *            PROBLEM: Sub-beats (offbeats, syncopation) fooled the tracker
- *            into 161 BPM on a 125 BPM Brejcha session.
- *            ROOT CAUSE: KICK_RATIO_THRESHOLD=1.6 + KICK_DELTA_THRESHOLD=0.008
- *            was too permissive — offbeats with ratio 1.7-2.0 passed the filter.
- *            FEEDBACK LOOP: High BPM → short debounce → more sub-beats → even higher BPM.
- *            FIX: Added IQR-based interval filtering, increased debounce floor.
- * 
- * WAVE 2117: THE CALIBRATED EAR — Production-ready thresholds.
- *            PROBLEM: WAVE 2116 thresholds (ratio=2.0, delta=0.03) were tuned
- *            against synthetic beats but killed real kicks in mastered audio.
- *            Professional tracks have compressed dynamics: kick ratio 1.5-1.8,
- *            delta 0.01-0.04. The 2.0 ratio rejected EVERY kick → BPM=0 forever.
- *            FIX: Ratio 2.0→1.7, delta 0.03→0.015. Sub-beat rejection relies on
- *            the IQR interval filter (the architecturally correct tool) not on
- *            over-aggressive energy thresholds. The probe is temporary for validation.
- * 
+ *
+ * WAVE 2122: VOLVER A LOS ORÍGENES — AUTOCORRELACIÓN
+ *
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │  WAVEs 1163→2121: THE INTERVAL GRAVEYARD                           │
+ * │                                                                      │
+ * │  Approach: Count kicks → measure intervals → median → BPM.          │
+ * │                                                                      │
+ * │  Fatal flaw: In Tech House (Brejcha), kicks and offbeats have       │
+ * │  IDENTICAL energy in subBass+bass. No threshold, weight, IQR, or    │
+ * │  debounce can distinguish them. The tracker detected BOTH, poisoning│
+ * │  intervals with 325ms offbeats → erratic BPM 108-161.              │
+ * │                                                                      │
+ * │  Waves that fell:                                                    │
+ * │    2118: subBass×1.5 + bass×0.4 → 161 BPM lock                     │
+ * │    2119: beaterClick (mid+highMid) coincidence → 185 spikes         │
+ * │    2119.1: Disable external kick bypass → still 161/185             │
+ * │    2121: Pure rawBassEnergy + MIN_INTERVAL=310ms → erratic 108-161  │
+ * │                                                                      │
+ * │  ROOT CAUSE: Architectural. Interval-based detection CANNOT work     │
+ * │  when kick and offbeat are energetically indistinguishable.          │
+ * └──────────────────────────────────────────────────────────────────────┘
+ *
+ * THE SOLUTION: AUTOCORRELATION
+ *
+ * Instead of counting individual kicks, we ask:
+ *   "At what lag does the energy signal repeat itself?"
+ *
+ * This finds the DOMINANT PERIODICITY — the beat period — regardless of
+ * whether offbeats also fire. Because kick+offbeat TOGETHER create a
+ * pattern that repeats at the TRUE beat interval (e.g., 476ms for 126 BPM).
+ *
+ * HOW IT WORKS:
+ *   1. Store a rolling window of bass energy values (one per FFT frame)
+ *   2. For each candidate BPM (70-190), calculate the corresponding lag
+ *      in frames: lag = (60000/BPM) / frameDurationMs
+ *   3. Compute normalized autocorrelation at that lag
+ *   4. The lag with highest correlation = dominant beat period = BPM
+ *
+ * WHY THIS IS ARCHITECTURALLY CORRECT:
+ *   - Immune to offbeats: they're part of the repeating pattern
+ *   - Immune to missed kicks: correlation degrades gracefully
+ *   - No threshold tuning for kick detection
+ *   - No IQR, no debounce, no ratio — pure signal processing
+ *   - This is how Ableton, Rekordbox, and every serious BPM analyzer works
+ *
  * ARCHITECTURE:
- * 
+ *
  *   Worker Thread (senses.ts)
  *   ┌─────────────────────────────────────────┐
  *   │ GodEarFFT.analyze(buffer)               │
- *   │   ↓ subBass (20-60Hz) + mid + highMid   │
- *   │   ↓ kickDetected (slope-based onset)    │
- *   │ 🥁 WAVE 2119: THE BEATER CLICK          │
- *   │   beaterClick = mid + highMid (raw)     │
- *   │   trackerEnergy = subBass×(1+click×5)   │
- *   │ GodEarBPMTracker.process()              │
- *   │   ↓ ratio kick detection                │
- *   │   ↓ adaptive debounce                   │
- *   │   ↓ IQR interval filtering              │
- *   │   ↓ median interval → BPM              │
- *   │   ↓ variance → confidence              │
+ *   │   ↓ rawBassEnergy (subBass + bass)      │
+ *   │ GodEarBPMTracker.process(energy, ts)    │
+ *   │   ↓ accumulate energy in circular buffer│
+ *   │   ↓ autocorrelation over BPM range      │
+ *   │   ↓ peak detection + harmonic disambig  │
+ *   │   ↓ exponential smoothing               │
  *   │ → bpm, confidence, kickDetected, phase  │
  *   └────────────┬────────────────────────────┘
  *                │ IPC (every frame)
  *                ▼
  *   Main Thread (TitanOrchestrator)
- *   ┌─────────────────────────────────────────┐
- *   │ Pacemaker: PLL only (validate + smooth) │
- *   │ NO kick detection. NO clustering.       │
- *   │ Just phase-lock to Worker BPM.          │
- *   └─────────────────────────────────────────┘
- * 
- * WHY THIS WORKS:
- * - rawBassEnergy is FRESH every FFT frame (~46ms @ 44100/2048)
- * - Ratio detection (current/avg > 1.7) rejects weak sub-beats
- * - Delta threshold (0.015) ensures true TRANSIENT, not sustained bass
- * - Adaptive debounce floor (250ms = 240 BPM) prevents extreme false positives
- * - IQR filtering removes outlier intervals BEFORE median calculation
- * - Median interval (not mean) further rejects remaining outliers
- * - History size 12 provides smooth BPM transitions
- * 
- * PROVEN RANGE: 74-188 BPM ±2 BPM (Brejcha→Psytrance)
- * 
+ *
  * @author PunkOpus
- * @wave 1163 + 2112 + 2116 + 2117 + 2118 + 2119 + 2119.1
+ * @wave 2122
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,15 +74,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface GodEarBPMResult {
-  /** Stable BPM (smoothed via median + history) */
+  /** Stable BPM (smoothed) */
   bpm: number
-  /** 0-1: Variance-based confidence — low variance = high confidence */
+  /** 0-1: Autocorrelation peak strength */
   confidence: number
-  /** Number of kicks in timestamp history */
+  /** Number of energy samples accumulated in the analysis window */
   kickCount: number
-  /** Was a kick detected THIS frame? */
+  /** Was a beat detected THIS frame? (phase crossing) */
   kickDetected: boolean
-  /** Beat phase 0-1 (time since last kick / expected interval) */
+  /** Beat phase 0-1 (position within current beat cycle) */
   beatPhase: number
 }
 
@@ -93,340 +90,401 @@ export interface GodEarBPMResult {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Maximum kicks in timestamp history */
-const MAX_TIMESTAMPS = 32
+/** Duration of the analysis window in seconds.
+ *  6 seconds captures ~7-8 beats at 126 BPM — enough for solid correlation.
+ *  Longer = more stable but slower to react to tempo changes. */
+const WINDOW_SECONDS = 6
 
-/** Minimum interval between kicks (ms)
- *  WAVE 2116: Raised from 200ms to 250ms.
- *  WAVE 2121: Raised from 250ms to 310ms (193 BPM max).
- *  At 126 BPM, a half-beat is 238ms. With 46ms buffer jitter, it can read as 284ms.
- *  By raising this to 310ms, NO offbeat will pass debounce in Tech House! */
-const MIN_INTERVAL_MS = 310
+/** Minimum BPM to scan. Below this is not dance music. */
+const MIN_BPM = 70
 
-/** Maximum interval between kicks (ms) — 40 BPM min */
-const MAX_INTERVAL_MS = 1500
+/** Maximum BPM to scan. Psytrance tops ~185. */
+const MAX_BPM = 190
 
-/** Rolling average window for bass energy (frames) — ~1.1s @ 21fps
- *  WAVE 2116: Increased from 24 to 32 for more stable baseline in bass-heavy genres */
-const ENERGY_HISTORY_SIZE = 32
+/** BPM scan resolution. 1.0 = test every integer BPM. */
+const BPM_STEP = 1.0
 
-/** BPM history for smoothing (median of N measurements) */
-const BPM_HISTORY_SIZE = 12
+/** Smoothing factor for BPM output (exponential moving average).
+ *  0.12 = relatively smooth, reaches target in ~20 scans. */
+const BPM_SMOOTH_FACTOR = 0.12
 
-/** Ratio threshold: current bass must be 70%+ above rolling average
- *  WAVE 2116: Raised from 1.6 to 2.0
- *  WAVE 2117: Lowered to 1.7 — 2.0 was killing real kicks in mastered audio.
- *  Professional tracks (Brejcha) have compressed dynamics: real kicks only
- *  reach 1.5-1.8 ratio against the dense bass floor.
- *  Sub-beat rejection is now handled by the IQR interval filter (the correct tool). */
-const KICK_RATIO_THRESHOLD = 1.7
+/** Minimum correlation strength to accept a BPM reading.
+ *  Below this, we keep the previous BPM (freewheel). */
+const MIN_CORRELATION = 0.05
 
-/** Minimum rising delta to confirm a transient (noise floor)
- *  WAVE 2116: Raised from 0.008 to 0.03
- *  WAVE 2117: Lowered to 0.015 — 0.03 was too aggressive for loopback audio.
- *  Loopback-captured bass has smaller absolute deltas than synth tests.
- *  0.015 still rejects noise (0.008 was absurd) but lets real transients through. */
-const KICK_DELTA_THRESHOLD = 0.015
+/** Frames between full autocorrelation scans.
+ *  Autocorrelation is O(N×M) — we don't need it every frame.
+ *  Every 4 frames at ~46.4ms/frame ≈ every 186ms. */
+const SCAN_INTERVAL_FRAMES = 4
 
-/** Debounce factor: 40% of expected interval. Prevents vicious cycle. */
-const DEBOUNCE_FACTOR = 0.40
+/** Beat phase threshold for kick detection.
+ *  When phase wraps from >threshold back to <(1-threshold), that's a beat. */
+const BEAT_PHASE_WRAP_THRESHOLD = 0.15
 
-/** Minimum confidence to accept BPM into smoothing history */
-const MIN_CONFIDENCE_FOR_SMOOTH = 0.30
+/** Harmonic preference: if sub-harmonic (half BPM) has correlation
+ *  within this ratio of the best, prefer the sub-harmonic.
+ *  Prevents 126→252 BPM octave errors. */
+const HARMONIC_PREFERENCE_RATIO = 0.85
 
-/** Hystéresis threshold for exiting "in kick" state (90% of avg) */
-const KICK_EXIT_RATIO = 0.9
+/** Minimum amplitude multiplier to confirm a kick this frame.
+ *  Used ONLY for kickDetected flag (light physics needs it).
+ *  BPM calculation does NOT use this — it uses autocorrelation. */
+const KICK_ENERGY_RATIO = 1.4
 
-/** IQR multiplier for outlier rejection in interval filtering
- *  WAVE 2116: Intervals outside Q1 - 1.5*IQR ... Q3 + 1.5*IQR are discarded
- *  before median calculation. This kills sub-beat contamination. */
-const IQR_MULTIPLIER = 1.5
+/** Minimum absolute energy to even consider a kick.
+ *  Prevents false positives during breakdowns/silence where
+ *  noise floor modulation can trigger phase-based detection. */
+const KICK_MIN_ABSOLUTE_ENERGY = 0.15
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class GodEarBPMTracker {
-  // Kick timestamp history for interval calculation
-  private kickTimestamps: number[] = []
-  
-  // Stable BPM output (smoothed)
-  private stableBpm = 128
-  
-  // BPM history for median smoothing
-  private bpmHistory: number[] = []
-  
-  // Energy rolling average state
-  private energyHistory: number[] = []
-  private prevEnergy = 0
-  
-  // Kick hysteresis: "inside a kick?" prevents double-trigger
-  private inKick = false
-  
-  // Last kick time for adaptive debounce
-  private lastKickTime = 0
-  
-  // Beat phase tracking
-  private lastBeatTime = 0
-  
-  // Diagnostics
+  /** Rolling window of raw bass energy values */
+  private energyWindow: Float32Array
+  /** Write position in the circular buffer */
+  private writePos = 0
+  /** Number of samples written (capped at window size) */
+  private sampleCount = 0
+  /** Duration of one FFT frame in milliseconds */
+  private readonly frameDurationMs: number
+  /** Maximum samples in the window */
+  private readonly windowSize: number
+
+  /** Current smoothed BPM output */
+  private stableBpm = 0
+  /** Raw BPM from last autocorrelation scan */
+  private rawBpm = 0
+  /** Correlation strength of current BPM */
+  private currentConfidence = 0
+
+  /** Frame counter for scan interval */
   private frameCount = 0
+  /** Total beat phase wraps detected (for diagnostics / interface compat) */
   private totalKicks = 0
-  
+
+  /** Phase tracking */
+  private lastBeatPhaseTimestamp = 0
+  private prevPhase = 0
+
+  /** Kick hysteresis: prevents double-trigger on multi-frame peaks */
+  private inKickState = false
+
+  /** Energy average for simple kick detection (for kickDetected flag) */
+  private rollingEnergySum = 0
+  private rollingEnergyCount = 0
+  private readonly rollingEnergySize = 32
+  private rollingEnergyBuffer: Float32Array
+  private rollingEnergyPos = 0
+
+  /** Pre-computed lag table: bpm → lag in frames */
+  private lagTable: Array<{ bpm: number; lag: number }> = []
+
+  constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
+    this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000 // ~46.4ms in production
+    this.windowSize = Math.ceil((WINDOW_SECONDS * 1000) / this.frameDurationMs)
+    this.energyWindow = new Float32Array(this.windowSize)
+    this.rollingEnergyBuffer = new Float32Array(this.rollingEnergySize)
+
+    // Pre-compute lag table for all candidate BPMs
+    for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += BPM_STEP) {
+      const periodMs = 60000 / bpm
+      const lagFrames = Math.round(periodMs / this.frameDurationMs)
+      this.lagTable.push({ bpm, lag: lagFrames })
+    }
+  }
+
   /**
    * Process one frame of audio data.
-   * Call this EVERY FFT frame with fresh bass energy.
-   * 
-   * @param rawBassEnergy - 🥁 WAVE 2119: Multi-band coincidence energy: subBass × (1 + beaterClick × 5)
-   *                        Pre-2119: was subBass×1.5 + bass×0.4 (WAVE 2118)
-   *                        Pre-2118: was unweighted (subBass + bass from GodEar bandsRaw)
-   * @param externalKickDetected - Slope-based onset from GodEar transient detector
-   * @param timestamp - 🕐 WAVE 2115: Deterministic musical timestamp (not Date.now())
+   *
+   * @param rawBassEnergy - Raw bass energy (subBass + bass, pre-AGC)
+   * @param _externalKickDetected - Unused, kept for interface compatibility
+   * @param timestamp - Deterministic musical timestamp (WAVE 2115)
    */
   process(
     rawBassEnergy: number,
-    externalKickDetected: boolean,
+    _externalKickDetected: boolean,
     timestamp: number = Date.now()
   ): GodEarBPMResult {
     this.frameCount++
-    
-    // ─── 1. Update energy rolling average ────────────────────────
-    this.energyHistory.push(rawBassEnergy)
-    if (this.energyHistory.length > ENERGY_HISTORY_SIZE) {
-      this.energyHistory.shift()
+
+    // ─── 1. Write energy into circular buffer ────────────────────
+    this.energyWindow[this.writePos] = rawBassEnergy
+    this.writePos = (this.writePos + 1) % this.windowSize
+    this.sampleCount = Math.min(this.sampleCount + 1, this.windowSize)
+
+    // ─── 1b. Update rolling energy average (for kickDetected) ────
+    if (this.rollingEnergyCount >= this.rollingEnergySize) {
+      this.rollingEnergySum -= this.rollingEnergyBuffer[this.rollingEnergyPos]
+    } else {
+      this.rollingEnergyCount++
     }
-    
-    const avgEnergy = this.energyHistory.length > 3
-      ? this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length
-      : 0.05  // Bootstrap default
-    
-    // ─── 2. Ratio-based kick detection ───────────────────────────
-    // A kick is when current energy is significantly above average.
-    // Immune to AGC drift because it's RELATIVE, not absolute.
-    const energyRatio = avgEnergy > 0.001 ? rawBassEnergy / avgEnergy : 0
-    const delta = rawBassEnergy - this.prevEnergy
-    
-    // ─── 3. Adaptive debounce ────────────────────────────────────
-    // Factor 0.40 of expected interval — prevents vicious circle:
-    //   "detect half-beats → think BPM is double → debounce too short → detect more half-beats"
-    // Floor of MIN_INTERVAL_MS (200ms) prevents extreme false positives.
-    const expectedInterval = 60000 / this.stableBpm
-    const adaptiveDebounce = Math.max(MIN_INTERVAL_MS, expectedInterval * DEBOUNCE_FACTOR)
-    const timeSinceLastKick = timestamp - this.lastKickTime
-    
-    // ─── 4. Kick decision ────────────────────────────────────────
-    const isRising = delta > KICK_DELTA_THRESHOLD
-    const isPeak = energyRatio > KICK_RATIO_THRESHOLD
-    const debounceOk = timeSinceLastKick >= adaptiveDebounce
-    
-    let kickDetected = false
-    
-    if (isPeak && isRising && !this.inKick && debounceOk) {
-      // KICK DETECTED
-      kickDetected = true
-      this.inKick = true
-      this.lastKickTime = timestamp
-      this.lastBeatTime = timestamp
-      this.totalKicks++
-      
-      this.kickTimestamps.push(timestamp)
-      if (this.kickTimestamps.length > MAX_TIMESTAMPS) {
-        this.kickTimestamps.shift()
-      }
-    }
-    
-    // Exit "in kick" state when energy drops below average
-    if (this.inKick && rawBassEnergy < avgEnergy * KICK_EXIT_RATIO) {
-      this.inKick = false
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════
-    // 🚫 WAVE 2119.1: EXTERNAL KICK BYPASS DISABLED
-    // ═══════════════════════════════════════════════════════════════════
-    // The SlopeBasedOnsetDetector in GodEarFFT uses subBass + bass*0.5
-    // to detect kicks — effectively the same unweighted formula that
-    // WAVEs 2118/2119 tried to fix. It fires on every Brejcha offbeat,
-    // injecting 325/372ms intervals that poison the IQR and lock
-    // BPM at 161.
-    //
-    // The ratio-based detection above (KICK_RATIO_THRESHOLD=1.7 +
-    // KICK_DELTA_THRESHOLD=0.015 + beaterClick coincidence from 2119)
-    // is the ONLY path that respects our calibrated thresholds.
-    //
-    // externalKickDetected is still useful for OTHER consumers
-    // (BeatDetector, light physics, etc.) — just not for BPM tracking.
-    // ═══════════════════════════════════════════════════════════════════
-    // DISABLED: External kick bypass was injecting offbeats unchecked.
-    // if (externalKickDetected && debounceOk && !kickDetected) {
-    //   kickDetected = true
-    //   this.lastKickTime = timestamp
-    //   this.lastBeatTime = timestamp
-    //   this.totalKicks++
-    //
-    //   this.kickTimestamps.push(timestamp)
-    //   if (this.kickTimestamps.length > MAX_TIMESTAMPS) {
-    //     this.kickTimestamps.shift()
-    //   }
-    // }
-    
-    this.prevEnergy = rawBassEnergy
-    
-    // ─── 5. Calculate beat phase ─────────────────────────────────
-    // Simple continuous phase: time since last kick / expected beat interval
-    const beatInterval = 60000 / this.stableBpm
-    const timeSinceLastBeat = timestamp - this.lastBeatTime
-    const beatPhase = this.lastBeatTime > 0
-      ? (timeSinceLastBeat % beatInterval) / beatInterval
-      : 0
-    
-    // ─── 6. Need enough kicks for BPM calculation ────────────────
-    if (this.kickTimestamps.length < 4) {
+    this.rollingEnergyBuffer[this.rollingEnergyPos] = rawBassEnergy
+    this.rollingEnergySum += rawBassEnergy
+    this.rollingEnergyPos = (this.rollingEnergyPos + 1) % this.rollingEnergySize
+
+    // ─── 2. Need enough data for correlation ─────────────────────
+    // At least 3 seconds of data before first scan
+    const minSamples = Math.ceil(3000 / this.frameDurationMs)
+    if (this.sampleCount < minSamples) {
       return {
         bpm: this.stableBpm,
         confidence: 0,
-        kickCount: this.kickTimestamps.length,
-        kickDetected,
-        beatPhase,
+        kickCount: this.sampleCount,
+        kickDetected: false,
+        beatPhase: 0,
       }
     }
-    
-    // ─── 7. Calculate valid intervals ────────────────────────────
-    const rawIntervals: number[] = []
-    for (let i = 1; i < this.kickTimestamps.length; i++) {
-      const interval = this.kickTimestamps[i] - this.kickTimestamps[i - 1]
-      if (interval >= MIN_INTERVAL_MS && interval <= MAX_INTERVAL_MS) {
-        rawIntervals.push(interval)
-      }
+
+    // ─── 3. Run autocorrelation scan every N frames ──────────────
+    if (this.frameCount % SCAN_INTERVAL_FRAMES === 0) {
+      this.runAutocorrelationScan()
     }
-    
-    if (rawIntervals.length < 3) {
-      return {
-        bpm: this.stableBpm,
-        confidence: 0.1,
-        kickCount: this.kickTimestamps.length,
-        kickDetected,
-        beatPhase,
+
+    // ─── 4. Calculate beat phase ─────────────────────────────────
+    let beatPhase = 0
+    let kickDetected = false
+
+    if (this.stableBpm > 0) {
+      const beatIntervalMs = 60000 / this.stableBpm
+
+      if (this.lastBeatPhaseTimestamp === 0) {
+        this.lastBeatPhaseTimestamp = timestamp
       }
-    }
-    
-    // ─── 7b. WAVE 2116: IQR-based outlier rejection ─────────────
-    // Sub-beats produce short intervals (279ms, 372ms) mixed with
-    // real beat intervals (464ms, 511ms). The IQR filter removes
-    // intervals that are statistical outliers, leaving the true beat cluster.
-    const intervals: number[] = this.filterIntervalsIQR(rawIntervals)
-    
-    // If IQR filter removed too many, fall back to raw intervals
-    if (intervals.length < 3) {
-      return {
-        bpm: this.stableBpm,
-        confidence: 0.1,
-        kickCount: this.kickTimestamps.length,
-        kickDetected,
-        beatPhase,
+
+      const elapsed = timestamp - this.lastBeatPhaseTimestamp
+      beatPhase = (elapsed % beatIntervalMs) / beatIntervalMs
+
+      // ─── 5. Detect beat crossing (phase wrap) ────────────────────
+      // Phase goes 0→1 continuously. When it wraps back from ~1 to ~0,
+      // that's a new beat.
+      if (this.prevPhase > (1 - BEAT_PHASE_WRAP_THRESHOLD) && beatPhase < BEAT_PHASE_WRAP_THRESHOLD) {
+        this.lastBeatPhaseTimestamp = timestamp // Re-sync phase on each wrap
       }
-    }
-    
-    // ─── 8. MEDIAN interval (robust to outliers) ─────────────────
-    const sorted = [...intervals].sort((a, b) => a - b)
-    const medianInterval = sorted[Math.floor(sorted.length / 2)]
-    const rawBpm = Math.round(60000 / medianInterval)
-    const clampedBpm = Math.max(60, Math.min(200, rawBpm))
-    
-    // ─── 9. Confidence from variance ─────────────────────────────
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
-    const variance = intervals.reduce(
-      (sum, int) => sum + Math.pow(int - avgInterval, 2), 0
-    ) / intervals.length
-    const stdDev = Math.sqrt(variance)
-    const confidence = Math.max(0, Math.min(1, 1 - (stdDev / avgInterval)))
-    
-    // ─── 10. Smooth BPM if confident enough ──────────────────────
-    if (confidence > MIN_CONFIDENCE_FOR_SMOOTH) {
-      this.bpmHistory.push(clampedBpm)
-      if (this.bpmHistory.length > BPM_HISTORY_SIZE) {
-        this.bpmHistory.shift()
+
+      // ─── 5b. Kick detection (energy-based, phase-independent) ──
+      // kickDetected fires when energy spikes above rolling average.
+      // This is for light physics / beat flash — NOT for BPM calculation.
+      // Separate from phase to avoid timing mismatch between phase wrap and energy peak.
+      const avgEnergy = this.rollingEnergyCount > 0
+        ? this.rollingEnergySum / this.rollingEnergyCount
+        : 0.05
+      if (rawBassEnergy > avgEnergy * KICK_ENERGY_RATIO
+          && rawBassEnergy > KICK_MIN_ABSOLUTE_ENERGY
+          && !this.inKickState) {
+        kickDetected = true
+        this.totalKicks++
+        this.inKickState = true
       }
-      this.stableBpm = Math.round(
-        this.bpmHistory.reduce((a, b) => a + b, 0) / this.bpmHistory.length
-      )
+      // Exit kick state when energy drops below average
+      if (this.inKickState && rawBassEnergy < avgEnergy * 0.9) {
+        this.inKickState = false
+      }
+      this.prevPhase = beatPhase
     }
-    
-    // ─── 11. Diagnostic log ──────────────────────────────────────
+
+    // ─── 6. Diagnostic log ───────────────────────────────────────
     if (this.frameCount % 120 === 0) {
-      const lastIntervals = intervals.slice(-6).map(i => `${i.toFixed(0)}`).join(',')
       console.log(
-        `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${rawBpm}) ` +
-        `conf=${confidence.toFixed(2)} kicks=${this.totalKicks} ` +
-        `intervals=[${lastIntervals}]`
+        `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
+        `conf=${this.currentConfidence.toFixed(3)} samples=${this.sampleCount}`
       )
     }
-    
+
     return {
       bpm: this.stableBpm,
-      confidence,
-      kickCount: this.kickTimestamps.length,
+      confidence: this.currentConfidence,
+      kickCount: this.sampleCount,
       kickDetected,
       beatPhase,
     }
   }
-  
+
   /**
-   * 🔧 WAVE 2116: IQR-based interval filtering.
-   * 
-   * Standard statistical outlier rejection using Interquartile Range.
-   * Removes intervals that fall outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR].
-   * 
-   * This kills sub-beat contamination:
-   * - Real beats at 125 BPM → intervals ~464-511ms (the cluster)
-   * - Sub-beats → intervals ~279-372ms (outliers below Q1)
-   * - Missed beats → intervals ~882-1115ms (outliers above Q3)
-   * 
-   * After IQR: only the true beat cluster survives → correct median → correct BPM.
-   * 
-   * @param intervals - Raw intervals in ms (already filtered by MIN/MAX)
-   * @returns Filtered intervals with outliers removed
+   * Core autocorrelation scan.
+   * Tests every candidate BPM and picks the one with highest correlation.
+   *
+   * Autocorrelation R(lag) = Σ x[n] * x[n+lag]
+   * Normalized by R(0) = Σ x[n]²
+   *
+   * The BPM whose lag yields the highest normalized R is the dominant periodicity.
    */
-  private filterIntervalsIQR(intervals: number[]): number[] {
-    if (intervals.length < 4) return intervals  // Need at least 4 for meaningful IQR
-    
-    const sorted = [...intervals].sort((a, b) => a - b)
-    const n = sorted.length
-    
-    // Q1 = median of lower half, Q3 = median of upper half
-    const q1Index = Math.floor(n / 4)
-    const q3Index = Math.floor((3 * n) / 4)
-    const q1 = sorted[q1Index]
-    const q3 = sorted[q3Index]
-    const iqr = q3 - q1
-    
-    // If IQR is tiny (all intervals are similar), skip filtering — they're all good
-    if (iqr < 20) return intervals
-    
-    const lowerBound = q1 - IQR_MULTIPLIER * iqr
-    const upperBound = q3 + IQR_MULTIPLIER * iqr
-    
-    return intervals.filter(i => i >= lowerBound && i <= upperBound)
+  private runAutocorrelationScan(): void {
+    const n = this.sampleCount
+
+    // Linearize the circular buffer for correlation
+    const linear = this.getLinearWindow()
+
+    // Remove DC offset (mean) — essential for clean correlation.
+    // Without this, a constant signal would have R(lag)=1 for all lags.
+    const mean = this.computeMean(linear, n)
+    for (let i = 0; i < n; i++) {
+      linear[i] -= mean
+    }
+
+    // Normalization: autocorrelation at lag 0 (total energy of signal)
+    const energy = this.computeEnergy(linear, n)
+    if (energy < 1e-10) return // Silence — skip
+
+    // Scan all candidate BPMs
+    let bestBpm = this.rawBpm
+    let bestCorr = -1
+
+    for (let i = 0; i < this.lagTable.length; i++) {
+      const { bpm, lag } = this.lagTable[i]
+      if (lag >= n) continue // Lag exceeds window — skip
+
+      // Compute normalized autocorrelation at this lag
+      const corr = this.correlationAtLag(linear, n, lag) / energy
+
+      if (corr > bestCorr) {
+        bestCorr = corr
+        bestBpm = bpm
+      }
+    }
+
+    // ─── Harmonic disambiguation ─────────────────────────────────
+    // Problem: Autocorrelation has peaks at every harmonic (lag, 2×lag, 3×lag...)
+    // If the tracker picks 252 BPM (lag=5) when the real tempo is 126 BPM (lag=10),
+    // we need to check if the sub-harmonic is nearly as strong.
+    //
+    // Strategy: Check half-BPM. Prefer it ONLY if it's nearly as strong AND the
+    // current BPM is above the dance music ceiling (>MAX_BPM). This prevents
+    // 252→126 (correct) without causing 175→87 (wrong).
+    //
+    // For BPMs within the valid range, also check if half-BPM has a STRONGER
+    // correlation — this catches cases where 250→125 genuinely sounds better.
+
+    const halfBpm = Math.round(bestBpm / 2)
+    if (halfBpm >= MIN_BPM) {
+      const halfLag = Math.round((60000 / halfBpm) / this.frameDurationMs)
+      if (halfLag < n) {
+        const halfCorr = this.correlationAtLag(linear, n, halfLag) / energy
+        if (bestBpm > MAX_BPM) {
+          // BPM is above valid range — sub-harmonic is almost certainly correct
+          if (halfCorr > bestCorr * HARMONIC_PREFERENCE_RATIO) {
+            bestBpm = halfBpm
+            bestCorr = halfCorr
+          }
+        } else {
+          // BPM is within valid range — only prefer half if it's ACTUALLY stronger
+          if (halfCorr > bestCorr * 1.05) {
+            bestBpm = halfBpm
+            bestCorr = halfCorr
+          }
+        }
+      }
+    }
+
+    // Also check double BPM — prevent 63 being read instead of 126.
+    // Only prefer double if it's SIGNIFICANTLY stronger (1.3x).
+    const dblBpm = bestBpm * 2
+    if (dblBpm <= MAX_BPM) {
+      const dblLag = Math.round((60000 / dblBpm) / this.frameDurationMs)
+      if (dblLag < n && dblLag > 0) {
+        const dblCorr = this.correlationAtLag(linear, n, dblLag) / energy
+        if (dblCorr > bestCorr * 1.3) {
+          bestBpm = dblBpm
+          bestCorr = dblCorr
+        }
+      }
+    }
+
+    this.rawBpm = bestBpm
+    this.currentConfidence = Math.max(0, Math.min(1, bestCorr))
+
+    // ─── Smooth BPM output ───────────────────────────────────────
+    if (bestCorr > MIN_CORRELATION) {
+      if (this.stableBpm === 0) {
+        // First valid reading — snap immediately
+        this.stableBpm = Math.round(bestBpm)
+      } else {
+        const diff = Math.abs(bestBpm - this.stableBpm)
+
+        if (diff > 30) {
+          // Large jump — likely song change, snap quickly
+          this.stableBpm = Math.round(bestBpm)
+          // Reset phase tracking on big jump
+          this.lastBeatPhaseTimestamp = 0
+          this.prevPhase = 0
+        } else {
+          // Normal tracking — exponential moving average
+          this.stableBpm = Math.round(
+            this.stableBpm + BPM_SMOOTH_FACTOR * (bestBpm - this.stableBpm)
+          )
+        }
+      }
+    }
   }
-  
+
   /**
-   * Get current stable BPM
+   * Get a linearized (non-circular) copy of the energy window.
+   * Oldest sample first, newest last.
    */
+  private getLinearWindow(): Float32Array {
+    const n = this.sampleCount
+    const linear = new Float32Array(n)
+
+    if (this.sampleCount < this.windowSize) {
+      // Buffer not yet full — data starts at 0
+      for (let i = 0; i < n; i++) {
+        linear[i] = this.energyWindow[i]
+      }
+    } else {
+      // Circular buffer is full — unwrap from writePos
+      for (let i = 0; i < n; i++) {
+        linear[i] = this.energyWindow[(this.writePos + i) % this.windowSize]
+      }
+    }
+    return linear
+  }
+
+  /** Compute mean of first n elements */
+  private computeMean(data: Float32Array, n: number): number {
+    let sum = 0
+    for (let i = 0; i < n; i++) sum += data[i]
+    return sum / n
+  }
+
+  /** Compute energy (sum of squares) of first n elements */
+  private computeEnergy(data: Float32Array, n: number): number {
+    let sum = 0
+    for (let i = 0; i < n; i++) sum += data[i] * data[i]
+    return sum
+  }
+
+  /** Compute unnormalized autocorrelation at a specific lag */
+  private correlationAtLag(data: Float32Array, n: number, lag: number): number {
+    let sum = 0
+    const end = n - lag
+    for (let i = 0; i < end; i++) {
+      sum += data[i] * data[i + lag]
+    }
+    return sum
+  }
+
+  /** Get current stable BPM */
   getBpm(): number {
     return this.stableBpm
   }
-  
-  /**
-   * Reset tracker state (e.g., on song change)
-   */
+
+  /** Reset tracker state (e.g., on song change) */
   reset(): void {
-    this.kickTimestamps = []
-    this.bpmHistory = []
-    this.energyHistory = []
-    this.stableBpm = 128
-    this.lastKickTime = 0
-    this.lastBeatTime = 0
-    this.prevEnergy = 0
-    this.inKick = false
+    this.energyWindow.fill(0)
+    this.writePos = 0
+    this.sampleCount = 0
+    this.stableBpm = 0
+    this.rawBpm = 0
+    this.currentConfidence = 0
+    this.lastBeatPhaseTimestamp = 0
+    this.prevPhase = 0
+    this.inKickState = false
     this.totalKicks = 0
+    this.frameCount = 0
+    this.rollingEnergyBuffer.fill(0)
+    this.rollingEnergySum = 0
+    this.rollingEnergyCount = 0
+    this.rollingEnergyPos = 0
   }
 }

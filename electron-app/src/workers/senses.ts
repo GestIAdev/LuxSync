@@ -498,29 +498,17 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🥁 WAVE 2119: THE BEATER CLICK — Multi-Band Coincidence Detection
+  // 🥁 WAVE 2122: AUTOCORRELATION — No more kick counting
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2118 (subBass×1.5 + bass×0.4) fue insuficiente: el "rumble bass"
-  // de Brejcha inunda el subBass en el contratiempo. El subBass solo no
-  // discrimina kicks de rumble.
+  // WAVEs 2118-2121 FAILED: ratio-based kick detection cannot distinguish
+  // kicks from offbeats in compressed Tech House (Brejcha). Energy profiles
+  // are identical → 325ms offbeat intervals poison everything.
   //
-  // INSIGHT: El kick real tiene un "beater click" — el impacto del parche
-  // genera armónicos en mid (500-2000Hz) y highMid (2000-6000Hz).
-  // El rumble bass rodante es PURA frecuencia grave: NO tiene medios.
-  //
-  // FÓRMULA: trackerEnergy = subBass × (1.0 + beaterClick × 5.0)
-  //
-  //   Kick real:    subBass=0.25, beaterClick=0.5 → 0.25 × 3.5 = 0.875
-  //   Rumble bass:  subBass=0.20, beaterClick=0.05 → 0.20 × 1.25 = 0.250
-  //   Ratio kick/rumble = 3.5:1 — el KICK_RATIO_THRESHOLD=1.7 lo aplasta.
-  //
-  // NOTA: rawBassEnergy se mantiene intacto para otros consumidores.
-  // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2121: THE GOLDILOCKS SIGNAL
-  // beaterClick (2119) and weights (2118) failed because they created fake peaks on hi-hats.
-  // pure subBass failed because the rolling rumble is too loud.
-  // We return to rawBassEnergy (subBass + bass), which naturally has a sharp
-  // transient (delta) when a real kick hits across the whole 20-250Hz octaves.
+  // WAVE 2122: The tracker now uses AUTOCORRELATION over a 6-second rolling
+  // window of rawBassEnergy. It finds the dominant periodicity — the beat
+  // period — regardless of whether individual events are kicks or offbeats.
+  // The energy signal (subBass + bass) is the correct input: it captures
+  // the full rhythmic pattern that autocorrelation can decompose.
   // ═══════════════════════════════════════════════════════════════════════════
   const trackerEnergy = spectrum.rawBassEnergy;
 

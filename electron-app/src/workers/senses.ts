@@ -509,11 +509,28 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // period — regardless of whether individual events are kicks or offbeats.
   // The energy signal (subBass + bass) is the correct input: it captures
   // the full rhythmic pattern that autocorrelation can decompose.
+  //
   // ═══════════════════════════════════════════════════════════════════════════
-  const trackerEnergy = spectrum.rawBassEnergy;
+  // 🔧 WAVE 2122.2: AGC DECOMPENSATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CRITICAL BUG: rawBassEnergy is labeled "pre-AGC" but it's NOT.
+  //   Flow: ringBuffer → AGC(buffer, gain) → FFT(buffer) → rawBands.subBass+bass
+  //   The FFT runs on the AGC-compressed buffer, so rawBassEnergy inherits
+  //   the AGC's variable gain (0.59-0.82x frame-to-frame).
+  //
+  // This creates an ARTIFICIAL amplitude modulation that the autocorrelation
+  // misreads as ~95 BPM periodicity (the AGC pumping cycle), masking the
+  // true 126 BPM beat periodicity.
+  //
+  // FIX: Divide rawBassEnergy by gain² to recover pre-AGC energy dynamics.
+  // Energy ∝ amplitude², and AGC multiplied amplitude by gain, so:
+  //   E_post = E_pre × gain²  →  E_pre = E_post / gain²
+  // ═══════════════════════════════════════════════════════════════════════════
+  const agcGain = agcResult.gainFactor > 0.01 ? agcResult.gainFactor : 1.0;
+  const trackerEnergy = spectrum.rawBassEnergy / (agcGain * agcGain);
 
   const godEarBpmResult = godEarBPMTracker.process(
-    trackerEnergy,                // Pure rawBassEnergy without multipliers
+    trackerEnergy,                // AGC-decompensated rawBassEnergy (WAVE 2122.2)
     spectrum.kickDetected,
     deterministicTimestampMs
   );

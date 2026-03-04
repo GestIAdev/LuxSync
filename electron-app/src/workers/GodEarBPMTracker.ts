@@ -268,7 +268,9 @@ export class GodEarBPMTracker {
     if (this.frameCount % 120 === 0) {
       console.log(
         `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
-        `conf=${this.currentConfidence.toFixed(3)} samples=${this.sampleCount}`
+        `conf=${this.currentConfidence.toFixed(3)} samples=${this.sampleCount} ` +
+        `frameDur=${this.frameDurationMs.toFixed(1)}ms lagRange=[${this.minLag},${this.maxLag}] ` +
+        `energy=${rawBassEnergy.toFixed(4)}`
       )
     }
 
@@ -351,6 +353,24 @@ export class GodEarBPMTracker {
     }
 
     if (peaks.length === 0) return
+
+    // ─── DIAGNOSTIC: Log full autocorrelation landscape ──────────────────
+    if (this.frameCount % 120 === 0) {
+      // Log raw correlation at every lag
+      const corrDump: string[] = []
+      for (let i = 0; i < corrLen; i++) {
+        const lag = i + effectiveMinLag
+        const bpm = 60000 / (lag * this.frameDurationMs)
+        corrDump.push(`L${lag}(${Math.round(bpm)}bpm)=${corrArray[i].toFixed(3)}`)
+      }
+      console.log(`[🥁 AUTOCORR RAW] ${corrDump.join(' | ')}`)
+
+      // Log detected peaks
+      const peakDump = peaks.map(p =>
+        `L${p.lag}→${p.interpolatedLag.toFixed(2)}(${Math.round(p.bpm)}bpm)r=${p.correlation.toFixed(3)}`
+      ).join(' | ')
+      console.log(`[🥁 PEAKS] ${peaks.length} found: ${peakDump}`)
+    }
 
     // ─── Step 4: Harmonic sieve ──────────────────────────────────────────
     peaks.sort((a, b) => a.lag - b.lag) // Shortest lag first (highest BPM)
@@ -447,6 +467,15 @@ export class GodEarBPMTracker {
 
     const finalBpm = bestPeak.bpm
     const finalCorr = bestPeak.correlation
+
+    // ─── DIAGNOSTIC: Log sieve decision ──────────────────────────────────
+    if (this.frameCount % 120 === 0) {
+      console.log(
+        `[🥁 SIEVE] chose L${bestPeak.lag}→${bestPeak.interpolatedLag.toFixed(2)} ` +
+        `(${Math.round(bestPeak.bpm)}bpm) corr=${bestPeak.correlation.toFixed(3)} ` +
+        `globalMax=${globalMaxCorr.toFixed(3)} threshold=${(globalMaxCorr * HARMONIC_SIEVE_RATIO).toFixed(3)}`
+      )
+    }
 
     this.rawBpm = Math.round(finalBpm)
     this.currentConfidence = Math.max(0, Math.min(1, finalCorr))

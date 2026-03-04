@@ -348,13 +348,11 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🩸 WAVE 2102: Evitar spam logs
   private lastGatekeeperLogs: Record<string, number> = {}
-  // 🩸 WAVE 2104.2→2109: FALLTHROUGH EXHAUSTION CACHE — si todas las alternativas están en cooldown,
-  // NO reintentar cada tick (16ms). Cachear el fallo durante N segundos y rendirse limpiamente.
-  // WAVE 2104.2: 3s cache. Log post-WAVE 2108 showed ~15 FALLTHROUGH_DEBUG lines for cyber_dualism
-  //   because the 3s window expired between DNA re-proposals.
-  // WAVE 2109: 5s cache. Longer silence between retry bursts.
-  private fallthroughExhaustionCache: Record<string, number> = {}
-  private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 5000  // 🩸 WAVE 2109: 3s→5s
+  // 🩸 WAVE 2111: FALLTHROUGH ABOLISHED — exhaustion cache no longer needed.
+  // History: WAVE 2100 introduced fallthrough. WAVE 2104.2 added exhaustion cache.
+  // 11 WAVEs of patches later, the whole concept was wrong. Silence > garbage effects.
+  // private fallthroughExhaustionCache: Record<string, number> = {}   // DEAD CODE
+  // private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 5000       // DEAD CODE
 
   // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
   private _constitutionLogThrottle: Record<string, number> = {}
@@ -406,14 +404,6 @@ export class SeleneTitanConscious extends EventEmitter {
     effectManager.on('effectTriggered', (event: any) => {
       this.effectSelector.registerEffectFired(event.effectType)
       console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${event.effectType}`)
-      
-      // 🩸 WAVE 2104.2→2109: Fallthrough exhaustion cache — DO NOT clear on effect fire.
-      // WAVE 2104.2: Cleared cache on every effect fire. But this meant:
-      //   cyber_dualism fires (fallthrough to sky_saw) → cache cleared →
-      //   next tick: cyber_dualism proposed again → fallthrough spam resumes.
-      // WAVE 2109: Let the exhaustion cache expire naturally (5s timer).
-      //   New effects don't reset the landscape for the BLOCKED effect.
-      // this.fallthroughExhaustionCache = {}  // REMOVED in WAVE 2109
       
       // 🔒 WAVE 1177: CALIBRATION - Solo pushear al historial cuando REALMENTE se ejecuta
       // Esto evita que efectos bloqueados por GLOBAL_LOCK contaminen el historial
@@ -1175,118 +1165,45 @@ export class SeleneTitanConscious extends EventEmitter {
         }
       } else if (output.effectDecision) {
         // ═══════════════════════════════════════════════════════════════════════
-        // 🩸 WAVE 2100→2110: COOLDOWN FALLTHROUGH — Try alternatives instead of silence
+        // 🩸 WAVE 2111: FALLTHROUGH ABOLISHED — "The true intelligence is knowing when NOT to fire"
         // ═══════════════════════════════════════════════════════════════════════
-        // Before: GATEKEEPER BLOCKED = silence. Same effect proposed 20x in a row.
-        // Now: If blocked by COOLDOWN (not HARD_COOLDOWN), try alternatives from DNA.
-        // The DreamEngineIntegrator already generates alternatives — we just never used them.
-        // 🩸 WAVE 2110: ANTI-DOUBLE-FIRE — If the original effect was ALREADY approved
-        //   and assigned to finalEffectDecision, we must NOT enter fallthrough at all.
-        //   LOG EVIDENCE (post-2109): acid_sweep FIRED at I=0.94 → same tick →
-        //   FALLTHROUGH acid_sweep blocked → gatling_raid FIRED at I=0.94.
-        //   The pipeline ran twice in one tick: first approved acid_sweep, then the SECOND
-        //   pass found acid_sweep in cooldown (just registered!) and fell through.
-        //   FIX: This block only runs when `!finalEffectDecision` (already guarded above).
-        //   But ALSO guard against re-entry: if the same effect was approved less than
-        //   GLOBAL_EFFECT_COOLDOWN_MS ago, it means WE just fired it — don't fallthrough.
+        // HISTORY: Fallthrough was born in WAVE 2100 to avoid silence when cooldown blocked.
+        //   It spawned: section gates (2103), energy gates (2103), breakdown removal (2106),
+        //   exhaustion cache (2104.2), double-fire fix (2110) — 11 WAVEs of patches on a bad idea.
+        // 
+        // LOG EVIDENCE (post-2110): 6 effects fired, 2 were FALLTHROUGH GARBAGE:
+        //   acid_sweep I=0.30 Z=-0.9 → FALLTHROUGH → core_meltdown I=0.30 Z=-1.4 (HARD effect at low intensity!)
+        //   cyber_dualism I=0.70 Z=1.7 → FALLTHROUGH → seismic_snap I=0.70 Z=0.9 (wasted on mediocre moment)
+        //   33% of all effects were unplanned substitutes. That's not intelligence, that's panic.
+        //
+        // PHILOSOPHY: If the DNA chose acid_sweep and it's in cooldown, SILENCE is correct.
+        //   The DNA evaluated the musical context and picked THE RIGHT effect. A random substitute
+        //   doesn't carry that contextual weight. Better to wait 7s for the next real opportunity
+        //   than to fire core_meltdown at I=0.30 because "something must happen."
+        //   For controlled chaos, that's what PUNK mode is for.
+        //
+        // WHAT WE KEEP: The GATEKEEPER log (throttled) so we know decisions are being made.
+        // WHAT DIES: All fallthrough logic, exhaustion cache, alternative iteration.
         // ═══════════════════════════════════════════════════════════════════════
-        const timeSinceGlobalFire = Date.now() - this.lastGlobalEffectTimestamp
-        const justFiredRecently = timeSinceGlobalFire < 1000  // 🩸 WAVE 2110: <1s = same tick/burst
         
-        const isCooldownBlock = availability.reason?.includes('COOLDOWN') && !isHardMinimumBlocked
-        const alternatives = dreamIntegrationData?.alternatives as Array<{effect: string, intensity: number, reasoning: string, confidence: number}> | undefined
-        
-        // 🩸 WAVE 2103: FALLTHROUGH ENERGY GATE — reformed
-        // WAVE 2101.3/2101.5 was blocking fallthrough in ambient/valley zones.
-        // That killed rotation: acid_sweep in cooldown → digital_rain denied → SILENCE.
-        // FIX: Only block fallthrough in true silence. Valley/ambient are normal techno zones.
-        // The section gate stays — no firing random effects in breakdown if DNA didn't ask.
-        // 🩸 WAVE 2106: BREAKDOWN REMOVED from fallthrough — LOG EVIDENCE:
-        //   9 of 15 effects were fallthroughs. Of those 9, 5 fired during breakdown.
-        //   acid_sweep blocked → industrial_strobe fallthrough in breakdown.
-        //   acid_sweep blocked → abyssal_rise fallthrough in breakdown.
-        //   Fallthrough was a BACKDOOR past breakdown protection.
-        //   "breakdown can fallthrough for atmosphere" (WAVE 2103) was WRONG.
-        //   Breakdowns need SILENCE, not atmospheric alternatives.
-        const sectionAllowsFallthrough = pattern.section === 'buildup' 
-          || pattern.section === 'drop' 
-          || pattern.section === 'chorus'
-          // 🩸 WAVE 2106: breakdown REMOVED — breakdown is sacred darkness
-        const intensityAllowsFallthrough = output.effectDecision!.intensity >= 0.30  // 🩸 WAVE 2103: lowered from 0.40
-        const zoneAllowsFallthrough = energyContext.zone !== 'silence'
-        const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough && !justFiredRecently  // 🩸 WAVE 2110: anti-double-fire
-
-        if (isCooldownBlock && fallThroughAllowed && alternatives && alternatives.length > 0) {
-          // 🩸 WAVE 2104.2: FALLTHROUGH EXHAUSTION — si ya fallamos recientemente, no reintentar
-          const exhaustionKey = `ft_${intent}`
-          const nowForExhaustion = Date.now()
-          if (nowForExhaustion - (this.fallthroughExhaustionCache[exhaustionKey] ?? 0) < this.FALLTHROUGH_EXHAUSTION_COOLDOWN_MS) {
-            // Silencio total — ya sabemos que no hay alternativas disponibles, no spamear 80 logs
-          } else {
-            // Try each alternative in order until one passes the gatekeeper
-            // 🩸 WAVE 2101.3: Only use alternatives with confidence > 0.4 (no relleno de baja calidad)
-            // 🩸 WAVE 2104.1: DIAGNOSTIC — Log every alternative attempt
-            console.log(`[FALLTHROUGH_DEBUG] 🔄 ${intent} blocked, trying ${alternatives.length} alternatives: [${alternatives.map(a => `${a.effect}(c=${(a.confidence ?? 0).toFixed(2)})`).join(', ')}]`)
-            for (const alt of alternatives) {
-              if ((alt.confidence ?? 0) < 0.4) {
-                console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} skipped: confidence ${(alt.confidence ?? 0).toFixed(2)} < 0.4`)
-                continue
-              }
-              const altAvailability = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
-              if (altAvailability.available) {
-                finalEffectDecision = {
-                  ...output.effectDecision!,
-                  effectType: alt.effect,
-                  intensity: alt.intensity ?? output.effectDecision!.intensity,
-                  reason: `🔄 FALLTHROUGH: ${intent} blocked → ${alt.effect} | ${alt.reasoning ?? ''}`,
-                }
-                console.log(
-                  `[SeleneTitanConscious] 🔄 COOLDOWN FALLTHROUGH: ${intent} blocked → ${alt.effect} | ` +
-                  `original=${intent} (${availability.reason})`
-                )
-                break
-              } else {
-                // 🩸 WAVE 2104.1: DIAGNOSTIC — Por qué falló la alternativa
-                console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} blocked: ${altAvailability.reason}`)
-              }
-            }
-          
-            // If no alternative passed either, cache the exhaustion and log once
-            if (!finalEffectDecision) {
-              // 🩸 WAVE 2104.2: Cache fallthrough failure — don't retry for 3s
-              this.fallthroughExhaustionCache[exhaustionKey] = nowForExhaustion
-              const gatekeeperKey = `no_alt_${intent}`
-              if (!this.lastGatekeeperLogs) this.lastGatekeeperLogs = {}
-              if (nowForExhaustion - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
-                console.log(
-                  `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason} (no alternatives available — exhaustion cached 3s)`
-                )
-                this.lastGatekeeperLogs[gatekeeperKey] = nowForExhaustion
-              }
-            }
-          } // end exhaustion else
-        } else {
-            // 🩸 WAVE 2102: Throttled spam logger
-            const gatekeeperKey = `denied_${intent}`
-            const nowTime = Date.now()
-            if (!this.lastGatekeeperLogs) this.lastGatekeeperLogs = {}
-            if (nowTime - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
-              console.log(
-                `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
-                + (!fallThroughAllowed ? ` [fallthrough denied: section=${pattern.section} I=${output.effectDecision!.intensity.toFixed(2)}]` : '')
-              )
-              this.lastGatekeeperLogs[gatekeeperKey] = nowTime
-            }
+        // 🩸 WAVE 2102: Throttled gatekeeper log — one message per blocked effect per 3s
+        const gatekeeperKey = `denied_${intent}`
+        const nowTime = Date.now()
+        if (!this.lastGatekeeperLogs) this.lastGatekeeperLogs = {}
+        if (nowTime - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
+          console.log(
+            `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
+          )
+          this.lastGatekeeperLogs[gatekeeperKey] = nowTime
         }
         
-        if (!finalEffectDecision) {
-          output = {
-            ...output,
-            effectDecision: null,
-            debugInfo: {
-              ...output.debugInfo,
-              reasoning: `🚪 BLOCKED: ${intent} - ${availability.reason}`,
-            }
+        // Blocked = silence. No plan B. No panic substitution.
+        output = {
+          ...output,
+          effectDecision: null,
+          debugInfo: {
+            ...output.debugInfo,
+            reasoning: `🚪 BLOCKED: ${intent} - ${availability.reason}`,
           }
         }
       }

@@ -113,19 +113,21 @@ export interface AudioAnalysis {
   agcGainFactor?: number;
   
   // Beat Detection
-  // 🔪 WAVE 2090.2: THE PACEMAKER MONOPOLY
-  // These fields are VESTIGIAL — the Worker no longer computes BPM.
-  // BPM is computed exclusively by BeatDetector v2.0 "Pacemaker" in TitanOrchestrator.
-  // Worker sends 0/false for these fields; consumers MUST NOT rely on them for BPM.
-  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker BPM instead. */
+  // ═══════════════════════════════════════════════════════════════════════════
+  // � WAVE 2112: THE RESURRECTION — GodEarBPMTracker BACK in Worker
+  // BPM is now computed by GodEarBPMTracker in the Worker thread where FFT
+  // data is fresh every frame (~21ms). These fields are REAL again.
+  // The Pacemaker (main thread) is demoted to PLL/Flywheel only.
+  // ═══════════════════════════════════════════════════════════════════════════
+  /** WAVE 2112: Real BPM from GodEarBPMTracker in Worker (ratio-based, 74-188 BPM proven) */
   bpm: number;
-  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker confidence instead. */
+  /** WAVE 2112: Real confidence from GodEarBPMTracker (0-1) */
   bpmConfidence: number;      // 0-1
-  /** @deprecated WAVE 2090.2: Reflects kickDetected (transient onset), NOT BPM-based beat. */
+  /** WAVE 2112: Real beat detection from GodEarBPMTracker kick detection */
   onBeat: boolean;
-  /** @deprecated WAVE 2090.2: Always 0 from worker. Use Pacemaker phase instead. */
+  /** WAVE 2112: Real beat phase from GodEarBPMTracker (0-1 position in beat cycle) */
   beatPhase: number;          // 0-1 (position in beat cycle)
-  /** @deprecated WAVE 2090.2: Reflects kickDetected strength, NOT BPM-based beat strength. */
+  /** WAVE 2112: Real beat strength from GodEarBPMTracker */
   beatStrength: number;       // 0-1
   
   // Rhythm

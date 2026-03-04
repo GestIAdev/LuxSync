@@ -223,6 +223,7 @@ export class TrinityBrain extends EventEmitter {
     // Emitir niveles de audio para visualización
     // 🎸 WAVE 1011.1: Extended con métricas FFT para Physics Engines
     // 🔥 WAVE 1162: rawBassEnergy para BeatDetector bypass
+    // 🔥 WAVE 2112: BPM fields restored — Worker is BPM authority again
     this.emit('audio-levels', {
       bass: analysis.bass,
       mid: analysis.mid,
@@ -242,6 +243,12 @@ export class TrinityBrain extends EventEmitter {
       hihatDetected: analysis.hihatDetected,
       // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
       rawBassEnergy: analysis.rawBassEnergy,
+      // 🔥 WAVE 2112: THE RESURRECTION — Real BPM from GodEarBPMTracker
+      bpm: analysis.bpm,
+      bpmConfidence: analysis.bpmConfidence,
+      onBeat: analysis.onBeat,
+      beatPhase: analysis.beatPhase,
+      beatStrength: analysis.beatStrength,
     })
 
     // Log cada ~30 frames (1 segundo)

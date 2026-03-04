@@ -114,7 +114,6 @@ export class TitanOrchestrator {
   private consciousnessEnabled = true
 
   // WAVE 255: Real audio buffer from frontend
-  // 🎛️ WAVE 661: Ampliado para incluir textura espectral
   // 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
   // 🔥 WAVE 1162: THE BYPASS - rawBassEnergy para BeatDetector
   private lastAudioData: { 
@@ -132,6 +131,12 @@ export class TitanOrchestrator {
     snareDetected?: boolean;    // 🎸 WAVE 1011: Snare transient
     hihatDetected?: boolean;    // 🎸 WAVE 1011: Hihat transient
     rawBassEnergy?: number;     // 🔥 WAVE 1162: Bass SIN AGC para BeatDetector
+    // 🔥 WAVE 2112: Worker BPM fields — GodEarBPMTracker is the authority
+    workerBpm?: number;
+    workerBpmConfidence?: number;
+    workerOnBeat?: boolean;
+    workerBeatPhase?: number;
+    workerBeatStrength?: number;
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
@@ -226,6 +231,9 @@ export class TitanOrchestrator {
         harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
         kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
         rawBassEnergy?: number;  // 🔥 WAVE 1162: THE BYPASS
+        // 🔥 WAVE 2112: BPM from GodEarBPMTracker in Worker
+        bpm?: number; bpmConfidence?: number; onBeat?: boolean;
+        beatPhase?: number; beatStrength?: number;
       }) => {
         // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
         // NO sobrescribir bass/mid/high/energy - Frontend tiene prioridad temporal (30fps)
@@ -254,6 +262,14 @@ export class TitanOrchestrator {
           // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
           // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
           rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+          
+          // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM is the authority
+          // GodEarBPMTracker runs IN the Worker where FFT data is fresh every ~21ms
+          workerBpm: levels.bpm ?? this.lastAudioData.workerBpm,
+          workerBpmConfidence: levels.bpmConfidence ?? this.lastAudioData.workerBpmConfidence,
+          workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+          workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+          workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
         };
         // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
         // Frontend los gestiona a 30fps
@@ -401,8 +417,11 @@ export class TitanOrchestrator {
     this.applyEMASmoothing();
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // ❤️ WAVE 1153: FEED THE PACEMAKER
-    // El corazón necesita sangre (audio) para latir
+    // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
+    // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
+    // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
+    // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
+    // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
     // ═══════════════════════════════════════════════════════════════════════════
     let beatState = { 
       bpm: 120, 
@@ -413,7 +432,7 @@ export class TitanOrchestrator {
       kickDetected: false,
       snareDetected: false,
       hihatDetected: false,
-      // 🕰️ WAVE 2090.3: PLL defaults
+      // PLL defaults
       pllPhase: 0,
       pllOnBeat: false,
       predictedNextBeatTime: 0,
@@ -421,63 +440,37 @@ export class TitanOrchestrator {
       pllLocked: false,
     }
     
+    // 🔥 WAVE 2112: Worker BPM — the source of truth
+    const workerBpm = this.lastAudioData.workerBpm ?? 0
+    const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0
+    const workerOnBeat = this.lastAudioData.workerOnBeat ?? false
+    const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0
+    
     if (this.beatDetector && this.hasRealAudio) {
-      // Feed audio metrics to the Pacemaker
-      // AudioMetrics interface requires many fields, but BeatDetector only uses:
-      // bass, mid, treble, energy, timestamp
-      //
       // ═══════════════════════════════════════════════════════════════════════
-      // 🩸 WAVE 2104: RESTORE THE BYPASS — rawBassEnergy for Pacemaker
+      // 🔥 WAVE 2112: FEED WORKER BPM TO PLL — No more kick detection here
+      // setBpm() updates the Pacemaker's internal BPM and syncs PLL.
+      // tick() advances the PLL Flywheel for anticipatory beat prediction.
+      // The Pacemaker becomes a PHASE-LOCKED FLYWHEEL: smooth, predictive,
+      // but slaved to the Worker's authoritative BPM detection.
       // ═══════════════════════════════════════════════════════════════════════
-      // WAVE 2097 reversed to frontendBass (AGC-normalized) but this was WRONG.
-      // EVIDENCE from log: Pacemaker starts perfect (BPM=125, 194 kicks) but DEGRADES
-      // over time as AGC compresses more → transients shrink below threshold → kicks lost
-      // → intervals stretch to 900-1071ms → BPM jumps to 155-161.
-      //
-      // WAVE 1163 already proved: "AGC Es El Enemigo Del Transiente"
-      // The GodEarBPMTracker used rawBassEnergy with RATIO-BASED detection and worked
-      // perfectly for 74-188 BPM. It was purged, but the principle stands:
-      // PRE-AGC signal preserves transient dynamics that AGC progressively destroys.
-      //
-      // rawBassEnergy values: 0.01-0.15 (microscopic but DYNAMIC — transients preserved)
-      // BeatDetector thresholds recalibrated in WAVE 2104 for this range.
-      // ═══════════════════════════════════════════════════════════════════════
-      
-      const rawBass = this.lastAudioData.rawBassEnergy ?? 0
-      
-      if (this.frameCount % 120 === 0) {
-        console.log(`[💓 PACEMAKER FEED] frontendBass=${bass.toFixed(3)} | rawBass=${rawBass.toFixed(4)} | using=RAW_BASS`)
+      if (workerBpm > 0 && workerConfidence > 0.2) {
+        this.beatDetector.setBpm(workerBpm)
       }
       
-      const audioForBeat = {
-        bass: rawBass,  // 🩸 WAVE 2104: Use rawBassEnergy (pre-AGC) — AGC kills transients over time
-        mid,
-        treble: high,
-        energy,
-        peak: energy, // Use energy as peak approximation
-        timestamp: Date.now(),
-        frameIndex: this.frameCount,
-        // These are outputs from BeatDetector, but required by interface
-        // We pass previous state values (circular but harmless)
-        bpm: beatState.bpm,
-        beatPhase: beatState.phase,
-        beatConfidence: beatState.confidence,
-        onBeat: beatState.onBeat,
-      }
-      
-      // THE HEARTBEAT: Process audio and feed PLL
-      this.beatDetector.process(audioForBeat)
-      // WAVE 2090.3: tick() advances the PLL Flywheel
-      // process() feeds kicks -> PLL correction, tick() advances phase continuously
+      // PLL Flywheel: advances phase continuously for smooth beat prediction
       beatState = this.beatDetector.tick(Date.now())
       
-      // WAVE 2090.3: THE PHANTOM METRONOME - sole BPM source + PLL
-      // 🩸 WAVE 2094: Extended with transplant diagnostics
+      // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
+      if (workerOnBeat) {
+        beatState.onBeat = true
+        beatState.kickDetected = true
+      }
+      
       if (this.frameCount % 60 === 0) {
-        const pacemakerBpm = beatState.bpm
         const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
         const syncInfo = this.smoothedSyncopation.toFixed(2)
-        console.log(`[TitanOrchestrator] 💓 PACEMAKER BPM=${pacemakerBpm.toFixed(0)} PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
+        console.log(`[TitanOrchestrator] � WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
       }
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
@@ -486,45 +479,37 @@ export class TitanOrchestrator {
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Feed BPM back to Worker BETA
+    //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
+    // The Worker computes its OWN BPM via GodEarBPMTracker now.
+    // The trinity.setBpm() bridge is UNNECESSARY — Worker is the authority.
+    // Kept as comment for archaeology.
     // ═══════════════════════════════════════════════════════════════════════════
-    // WAVE 2090.2 cut the BPM from the Worker, leaving SimpleSectionTracker blind.
-    // The Pacemaker (main thread) has real BPM but never sent it back.
-    // This bridge closes the loop: Pacemaker → TrinityOrchestrator → Worker BETA.
-    // SimpleSectionTracker can now detect drops, buildups, breakdowns properly.
-    // ═══════════════════════════════════════════════════════════════════════════
-    if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
-      this.trinity.setBpm(
-        beatState.bpm,
-        beatState.pllPhase ?? beatState.phase,
-        beatState.confidence
-      )
-    }
+    // if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
+    //   this.trinity.setBpm(beatState.bpm, beatState.pllPhase, beatState.confidence)
+    // }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Inject real BPM into MusicalContext
+    // 🔥 WAVE 2112: BPM INJECTION — Worker BPM is the authority, PLL gives phase
     // ═══════════════════════════════════════════════════════════════════════════
-    // ROOT CAUSE (diagnosed WAVE 2093.4):
-    //   WAVE 2090.2 "Pacemaker Monopoly" purged BPM calculation from BETA worker,
-    //   setting bpm=0, beatPhase=0 in AudioAnalysis. GAMMA forwards these zeros
-    //   into MusicalContext. TrinityBrain stores MusicalContext as-is.
-    //   TitanEngine reads processedContext.bpm (=0) for TitanStabilizedState.
-    //
-    //   RESULT: Selene's entire cognitive stack (HuntEngine worthiness,
-    //   PredictionEngine timing, MusicalPatternSensor rhythmicIntensity,
-    //   SimpleSectionTracker section detection) was starved of BPM data.
-    //
-    // FIX: The Pacemaker (main thread) is the sole BPM authority.
-    //   We inject its output into MusicalContext HERE, at the orchestration layer,
-    //   before it reaches TitanEngine → Selene.
-    //   This is the CORRECT architectural point: TitanOrchestrator is the bridge
-    //   between Worker data and Engine consumption.
+    // Worker's GodEarBPMTracker provides authoritative BPM.
+    // PLL Flywheel provides smooth phase prediction for anticipatory effects.
+    // Combined: real BPM + smooth phase = best of both worlds.
     // ═══════════════════════════════════════════════════════════════════════════
-    if (beatState.bpm > 0 && beatState.confidence > 0) {
+    if (workerBpm > 0 && workerConfidence > 0.2) {
+      context.bpm = workerBpm
+      // Use PLL phase (smooth, predictive) if locked, else Worker phase
+      context.beatPhase = beatState.pllLocked 
+        ? (beatState.pllPhase ?? beatState.phase)
+        : workerBeatPhase
+      context.syncopation = this.estimateSyncopation(
+        context.beatPhase,
+        bass,
+        mid
+      )
+    } else if (beatState.bpm > 0 && beatState.confidence > 0) {
+      // Fallback: PLL flywheel if Worker hasn't locked yet
       context.bpm = beatState.bpm
       context.beatPhase = beatState.pllPhase ?? beatState.phase
-      // 🩸 WAVE 2094: Syncopation from worker is DEAD (beatPhase=0 → always on-beat → sync→0)
-      // Recalculate using Pacemaker's real beatPhase + spectral energy
       context.syncopation = this.estimateSyncopation(
         beatState.pllPhase ?? beatState.phase,
         bass,
@@ -536,20 +521,18 @@ export class TitanOrchestrator {
     // 🎛️ WAVE 661: Incluir textura espectral
     // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
     // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
-    // 🔪 WAVE 2090.2: THE PACEMAKER MONOPOLY — ALL BPM fields from Pacemaker
-    // Worker no longer computes BPM. Pacemaker is the single source of truth.
+    // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
     const engineAudioMetrics = {
       bass,  // Ya normalizado por AGC - INTOCABLE
       mid,   // Ya normalizado por AGC - INTOCABLE
       high,  // Ya normalizado por AGC - INTOCABLE
       energy, // Ya normalizado por AGC - INTOCABLE
-      // ❤️ WAVE 1153 + � WAVE 2090.2: 
-      // ALL beat/BPM fields from PACEMAKER (sole authority)
-      beatPhase: beatState.phase,
-      isBeat: beatState.onBeat,
-      beatCount: beatState.beatCount,  // 🔥 THE MISSING PIECE! VMM needs this!
-      bpm: beatState.bpm,  // � WAVE 2090.2: PACEMAKER MONOPOLY — sole BPM source
-      beatConfidence: beatState.confidence,
+      // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
+      beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
+      isBeat: workerOnBeat || beatState.onBeat,
+      beatCount: beatState.beatCount,
+      bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
+      beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
       // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
       harshness: this.smoothedMetrics.harshness,
       spectralFlatness: this.smoothedMetrics.spectralFlatness,
@@ -558,10 +541,10 @@ export class TitanOrchestrator {
       subBass: this.smoothedMetrics.subBass,
       lowMid: this.smoothedMetrics.lowMid,
       highMid: this.smoothedMetrics.highMid,
-      // 🎸 WAVE 1011: Transientes - ahora también desde Pacemaker si disponibles
-      kickDetected: beatState.kickDetected || this.lastAudioData.kickDetected,
-      snareDetected: beatState.snareDetected || this.lastAudioData.snareDetected,
-      hihatDetected: beatState.hihatDetected || this.lastAudioData.hihatDetected,
+      // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
+      kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
+      snareDetected: this.lastAudioData.snareDetected,
+      hihatDetected: this.lastAudioData.hihatDetected,
     }
     
     // For HAL

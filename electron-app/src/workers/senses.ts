@@ -39,6 +39,9 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════════
 import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
+// 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM back in the Worker
+import { GodEarBPMTracker } from './GodEarBPMTracker';
+
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
   SimpleRhythmDetector,
@@ -89,11 +92,11 @@ interface BetaState {
   lastHeartbeat: number;
   heartbeatSequence: number;
   
-  // 🔪 WAVE 2090.2: BPM state PURGED — Pacemaker in main thread is the sole BPM authority
-  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Restored via SET_BPM message from TitanOrchestrator
-  pacemakerBpm: number;
-  pacemakerBeatPhase: number;
-  pacemakerConfidence: number;
+  // 🥁 WAVE 2112: BPM detection RESTORED in Worker — GodEar is the source of truth
+  currentBpm: number;
+  bpmConfidence: number;
+  beatPhase: number;
+  lastBeatTime: number;
   
   // 🏎️ WAVE 1013: NITRO BOOST - Ring Buffer for Overlap Strategy
   ringBuffer: Float32Array;        // 4096 samples circular buffer
@@ -123,11 +126,11 @@ const state: BetaState = {
   lastHeartbeat: Date.now(),
   heartbeatSequence: 0,
   
-  // 🔪 WAVE 2090.2: BPM state initialization PURGED
-  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM restored via SET_BPM from TitanOrchestrator
-  pacemakerBpm: 0,
-  pacemakerBeatPhase: 0,
-  pacemakerConfidence: 0,
+  // 🥁 WAVE 2112: BPM detection RESTORED in Worker
+  currentBpm: 0,
+  bpmConfidence: 0,
+  beatPhase: 0,
+  lastBeatTime: 0,
   
   // 🏎️ WAVE 1013: Ring Buffer (4096 samples for FFT, ~85ms @ 48kHz)
   ringBuffer: new Float32Array(4096),
@@ -153,29 +156,24 @@ const state: BetaState = {
 // ============================================
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// � WAVE 2090.2: THE PACEMAKER MONOPOLY — BPM DE-DUPLICATION
+// 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM detection in Worker
 // ═══════════════════════════════════════════════════════════════════════════════
-// PURGED: GodEarBPMTracker (was a full BPM calculator in the worker)
-// PURGED: Legacy BeatDetector (was a second BPM calculator in the worker)
+// WAVE 2090.2 purged BPM detection from the Worker. That was an error.
+// The Worker has FRESH FFT data every frame (~21ms). The main thread Pacemaker
+// only receives rawBassEnergy at 10fps via IPC, re-processing the same frozen
+// value 6× per frame → kick detection corrupted → BPM chaos 90-160.
 //
-// The Worker is NO LONGER RESPONSIBLE for calculating BPM.
-// Single Source of Truth: BeatDetector v2.0 "The Pacemaker" in TitanOrchestrator (main thread)
+// The GodEarBPMTracker PROVED to work 74-188 BPM ±2 across genres (WAVE 1163).
+// It belongs HERE, where the data is fresh.
 //
-// What the Worker DOES export:
-// - rawBassEnergy (pre-AGC bass for the Pacemaker's kick detection)
-// - kickDetected / snareDetected / hihatDetected (GodEar slope-based onsets)
-// - All spectral metrics (bands, clarity, flatness, centroid, etc.)
-//
-// What the Worker NO LONGER exports:
-// - bpm (was computed by GodEarBPMTracker + legacy BeatDetector)
-// - bpmConfidence (was an arbitrated value between two detectors)
-// - onBeat (was from legacy BeatDetector)
-// - beatPhase (was computed from worker-local state)
-// - beatStrength (was from legacy BeatDetector)
+// Main thread Pacemaker is DEMOTED to PLL/Flywheel only — phase-locks to
+// Worker BPM for anticipatory beat prediction. No more kick detection there.
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const godEarBPMTracker = new GodEarBPMTracker();
+
 // ============================================
-// SPECTRUM ANALYZER - � WAVE 1017: GOD EAR TRANSPLANT
+// SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
 
 /**
@@ -226,7 +224,7 @@ class SpectrumAnalyzer {
     // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
     rawBassEnergy: number;
   } {
-    // � Ejecutar GOD EAR FFT
+    //  Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
     this.lastGodEarResult = godEarResult;
     this.frameCount++;
@@ -461,43 +459,49 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // � WAVE 2090.2: PHASES 2 & 3 PURGED — BPM detection moved to Pacemaker
+  // 🥁 WAVE 2112: PHASE 2 — GodEar BPM Detection (RESURRECTED)
   // ═══════════════════════════════════════════════════════════════════════════
-  // DELETED: GodEarBPMTracker.process() — was PHASE 2
-  // DELETED: beatDetector.analyze() — was PHASE 3
-  // DELETED: BPM arbitrage logic (confidence-based switching between two detectors)
-  // DELETED: Beat phase calculation from worker-local state
-  //
-  // The Worker now only exports raw spectral metrics + transient onsets.
-  // BPM is computed exclusively by Pacemaker (BeatDetector v2.0) in TitanOrchestrator.
+  // rawBassEnergy is FRESH every frame. This is WHY BPM detection belongs here.
+  // GodEarBPMTracker: ratio kick detection + adaptive debounce + median intervals.
+  // Proven 74-188 BPM ±2 across genres (WAVE 1163).
   // ═══════════════════════════════════════════════════════════════════════════
+  const godEarBpmResult = godEarBPMTracker.process(
+    spectrum.rawBassEnergy,       // Raw bass energy pre-AGC (fresh this frame)
+    spectrum.kickDetected,        // Slope-based onset from GodEar transient detector
+    Date.now()
+  );
+  
+  // Update Worker BPM state from GodEar tracker
+  if (godEarBpmResult.confidence > 0.25) {
+    state.currentBpm = godEarBpmResult.bpm;
+    state.bpmConfidence = godEarBpmResult.confidence;
+    state.beatPhase = godEarBpmResult.beatPhase;
+  }
+  if (godEarBpmResult.kickDetected) {
+    state.lastBeatTime = Date.now();
+  }
   
   // Calculate overall energy (weighted by perceptual importance)
   const rawEnergy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
   
   // 🎯 WAVE 16: Normalizar energía con Rolling Peak 15s
-  // Esto auto-ajusta la sensibilidad según el nivel de la canción
   const energyNormalizer = getEnergyNormalizer();
   const normalizedEnergy = energyNormalizer.normalize(rawEnergy);
-  const energy = normalizedEnergy; // Usar energía normalizada en todo el pipeline
+  const energy = normalizedEnergy;
   
-  // === PHASE 4: Wave 8 Rich Analysis ===
-  // Create AudioMetrics for Wave 8 analyzers
-  // 🔪 WAVE 2090.2: BPM fields set to neutral — Pacemaker owns BPM in main thread
-  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM/beatPhase restored from Pacemaker via SET_BPM
+  // === PHASE 3: Wave 8 Rich Analysis ===
+  // 🥁 WAVE 2112: BPM fields are REAL again — from GodEarBPMTracker
   const audioMetrics: AudioMetrics = {
     bass: spectrum.bass,
     mid: spectrum.mid,
     treble: spectrum.treble,
     volume: energy,
-    bpm: state.pacemakerBpm,                // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
-    bpmConfidence: state.pacemakerConfidence, // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
-    onBeat: spectrum.kickDetected,  // 🔪 WAVE 2090.2: Use GOD EAR transient onset only
-    beatPhase: state.pacemakerBeatPhase,     // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
+    bpm: state.currentBpm,
+    bpmConfidence: state.bpmConfidence,
+    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    beatPhase: state.beatPhase,
     timestamp: Date.now(),
-    // 🎵 WAVE 15.5: Para Key detection
     dominantFrequency: spectrum.dominantFrequency,
-    // 🤖 WAVE 50.1: Texture-based detection para Skrillex/DnB
     subBass: spectrum.subBass,
     harshness: spectrum.harshness,
     spectralFlatness: spectrum.spectralFlatness,
@@ -510,20 +514,19 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
-  // � WAVE 2096.1: Beat state restored from Pacemaker
+  // 🥁 WAVE 2112: Beat state from GodEarBPMTracker (fresh, in-worker)
   const beatState = {
-    bpm: state.pacemakerBpm,
-    confidence: state.pacemakerConfidence,
-    onBeat: spectrum.kickDetected,
-    phase: state.pacemakerBeatPhase,
-    beatCount: 0
+    bpm: state.currentBpm,
+    confidence: state.bpmConfidence,
+    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    phase: state.beatPhase,
+    beatCount: godEarBpmResult.kickCount
   };
   
-  // Adapt AudioMetrics for MoodSynthesizer (different type signature)
   const metricsForMood = {
     ...audioMetrics,
-    energy: energy,  // MoodSynthesizer expects 'energy' not 'volume'
-    beatConfidence: state.pacemakerConfidence,  // � WAVE 2096.1: From Pacemaker
+    energy: energy,
+    beatConfidence: state.bpmConfidence,
     peak: energy,
     frameIndex: state.frameCount
   };
@@ -540,7 +543,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     genre: 'ELECTRONIC_4X4',
     subgenre: 'none' as const,
     features: {
-      bpm: 0,  // 🔪 WAVE 2090.2: Worker no longer knows BPM
+      bpm: state.currentBpm,  // 🥁 WAVE 2112: Worker knows BPM again
       syncopation: rhythmOutput.syncopation ?? 0,
       hasFourOnFloor: rhythmOutput.pattern === 'four_on_floor',
       hasDembow: false,
@@ -596,12 +599,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
     agcGainFactor: agcResult.gainFactor,
     
-    // � WAVE 2096.1: BPM fields restored from Pacemaker (was neutered in WAVE 2090.2)
-    bpm: state.pacemakerBpm,
-    bpmConfidence: state.pacemakerConfidence,
-    onBeat: spectrum.kickDetected,  // Transient onset only, not BPM-based beat
-    beatPhase: state.pacemakerBeatPhase,
-    beatStrength: spectrum.kickDetected ? 1 : 0,
+    // 🥁 WAVE 2112: BPM fields REAL again — from GodEarBPMTracker in Worker
+    bpm: state.currentBpm,
+    bpmConfidence: state.bpmConfidence,
+    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    beatPhase: state.beatPhase,
+    beatStrength: godEarBpmResult.kickDetected ? 1 : 0,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,
@@ -817,15 +820,10 @@ function handleMessage(message: WorkerMessage): void {
         console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker`);
         break;
       
-      // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Receive BPM from TitanOrchestrator
+      // 🥁 WAVE 2112: SET_BPM now a no-op — Worker computes its own BPM via GodEarBPMTracker
+      // Pacemaker BPM is no longer needed here. Worker is the source of truth.
       case MessageType.SET_BPM:
-        const bpmPayload = message.payload as { bpm: number; beatPhase: number; confidence: number };
-        state.pacemakerBpm = bpmPayload.bpm;
-        state.pacemakerBeatPhase = bpmPayload.beatPhase;
-        state.pacemakerConfidence = bpmPayload.confidence;
-        if (state.frameCount % 300 === 0) {
-          console.log(`[BETA] 💓 WAVE 2096.1: Pacemaker BPM=${bpmPayload.bpm.toFixed(0)} phase=${bpmPayload.beatPhase.toFixed(2)} conf=${bpmPayload.confidence.toFixed(2)}`);
-        }
+        // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
         break;
         
       default:

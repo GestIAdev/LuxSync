@@ -516,17 +516,18 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   //
   // NOTA: rawBassEnergy se mantiene intacto para otros consumidores.
   // ═══════════════════════════════════════════════════════════════════════════
-  const godEarRaw = spectrumAnalyzer.getLastGodEarResult();
-  const rawSubBass = godEarRaw ? godEarRaw.bandsRaw.subBass : spectrum.rawSubBassEnergy;
-  const beaterClick = godEarRaw
-    ? godEarRaw.bandsRaw.mid + godEarRaw.bandsRaw.highMid
-    : 0;
-  const trackerEnergy = rawSubBass * (1.0 + (beaterClick * 5.0));
+  // WAVE 2121: THE GOLDILOCKS SIGNAL
+  // beaterClick (2119) and weights (2118) failed because they created fake peaks on hi-hats.
+  // pure subBass failed because the rolling rumble is too loud.
+  // We return to rawBassEnergy (subBass + bass), which naturally has a sharp
+  // transient (delta) when a real kick hits across the whole 20-250Hz octaves.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const trackerEnergy = spectrum.rawBassEnergy;
 
   const godEarBpmResult = godEarBPMTracker.process(
-    trackerEnergy,                // 🥁 WAVE 2119: subBass × (1 + beaterClick×5) — multi-band coincidence
-    spectrum.kickDetected,        // Slope-based onset from GodEar transient detector
-    deterministicTimestampMs      // 🕐 WAVE 2115: Musical clock, not CPU clock
+    trackerEnergy,                // Pure rawBassEnergy without multipliers
+    spectrum.kickDetected,
+    deterministicTimestampMs
   );
   
   // Update Worker BPM state from GodEar tracker

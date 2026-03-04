@@ -96,10 +96,12 @@ export interface GodEarBPMResult {
 /** Maximum kicks in timestamp history */
 const MAX_TIMESTAMPS = 32
 
-/** Minimum interval between kicks (ms) — 240 BPM max (fast DnB territory)
- *  WAVE 2116: Raised from 200ms (300 BPM) to 250ms (240 BPM).
- *  Sub-beats at 279ms were sneaking through the 200ms floor. */
-const MIN_INTERVAL_MS = 250
+/** Minimum interval between kicks (ms)
+ *  WAVE 2116: Raised from 200ms to 250ms.
+ *  WAVE 2121: Raised from 250ms to 310ms (193 BPM max).
+ *  At 126 BPM, a half-beat is 238ms. With 46ms buffer jitter, it can read as 284ms.
+ *  By raising this to 310ms, NO offbeat will pass debounce in Tech House! */
+const MIN_INTERVAL_MS = 310
 
 /** Maximum interval between kicks (ms) — 40 BPM min */
 const MAX_INTERVAL_MS = 1500

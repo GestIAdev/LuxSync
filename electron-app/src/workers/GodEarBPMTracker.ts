@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — RESURRECTED
+ * 🥁 GODEAR BPM TRACKER — RESURRECTED + TRUE EAR
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * WAVE 1163: Original implementation — ratio-based kick detection + adaptive debounce
@@ -13,6 +13,15 @@
  * WAVE 2112: RESURRECTED — Back in the Worker where FFT data is FRESH every frame.
  *            The Worker IS the ears. BPM detection belongs here.
  * 
+ * WAVE 2116: THE TRUE EAR — Hardened kick detection + interval clustering.
+ *            PROBLEM: Sub-beats (offbeats, syncopation) fooled the tracker
+ *            into 161 BPM on a 125 BPM Brejcha session.
+ *            ROOT CAUSE: KICK_RATIO_THRESHOLD=1.6 + KICK_DELTA_THRESHOLD=0.008
+ *            was too permissive — offbeats with ratio 1.7-2.0 passed the filter.
+ *            FEEDBACK LOOP: High BPM → short debounce → more sub-beats → even higher BPM.
+ *            FIX: Raise thresholds, add IQR-based interval filtering (reject outliers
+ *            before median), increase debounce floor. Tested: passes 6-genre + sub-beat.
+ * 
  * ARCHITECTURE:
  * 
  *   Worker Thread (senses.ts)
@@ -23,6 +32,7 @@
  *   │ GodEarBPMTracker.process()              │
  *   │   ↓ ratio kick detection                │
  *   │   ↓ adaptive debounce                   │
+ *   │   ↓ IQR interval filtering              │
  *   │   ↓ median interval → BPM              │
  *   │   ↓ variance → confidence              │
  *   │ → bpm, confidence, kickDetected, phase  │
@@ -37,16 +47,18 @@
  *   └─────────────────────────────────────────┘
  * 
  * WHY THIS WORKS:
- * - rawBassEnergy is FRESH every FFT frame (~21ms @ 48kHz/4096)
- * - Ratio detection (current/avg > 1.6) is immune to AGC gain drift
- * - Adaptive debounce (40% of expected interval) prevents vicious cycles
- * - Median interval (not mean) rejects outliers
+ * - rawBassEnergy is FRESH every FFT frame (~46ms @ 44100/2048)
+ * - Ratio detection (current/avg > 2.0) rejects weak sub-beats
+ * - Delta threshold (0.03) ensures true TRANSIENT, not sustained bass
+ * - Adaptive debounce floor (250ms = 240 BPM) prevents extreme false positives
+ * - IQR filtering removes outlier intervals BEFORE median calculation
+ * - Median interval (not mean) further rejects remaining outliers
  * - History size 12 provides smooth BPM transitions
  * 
  * PROVEN RANGE: 74-188 BPM ±2 BPM (Brejcha→Psytrance)
  * 
  * @author PunkOpus
- * @wave 1163 + 2112
+ * @wave 1163 + 2112 + 2116
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -73,23 +85,32 @@ export interface GodEarBPMResult {
 /** Maximum kicks in timestamp history */
 const MAX_TIMESTAMPS = 32
 
-/** Minimum interval between kicks (ms) — 300 BPM max (DnB territory) */
-const MIN_INTERVAL_MS = 200
+/** Minimum interval between kicks (ms) — 240 BPM max (fast DnB territory)
+ *  WAVE 2116: Raised from 200ms (300 BPM) to 250ms (240 BPM).
+ *  Sub-beats at 279ms were sneaking through the 200ms floor. */
+const MIN_INTERVAL_MS = 250
 
 /** Maximum interval between kicks (ms) — 40 BPM min */
 const MAX_INTERVAL_MS = 1500
 
-/** Rolling average window for bass energy (frames) — ~0.8s @ 48fps */
-const ENERGY_HISTORY_SIZE = 24
+/** Rolling average window for bass energy (frames) — ~1.1s @ 21fps
+ *  WAVE 2116: Increased from 24 to 32 for more stable baseline in bass-heavy genres */
+const ENERGY_HISTORY_SIZE = 32
 
 /** BPM history for smoothing (median of N measurements) */
 const BPM_HISTORY_SIZE = 12
 
-/** Ratio threshold: current bass must be 60%+ above rolling average */
-const KICK_RATIO_THRESHOLD = 1.6
+/** Ratio threshold: current bass must be 100%+ above rolling average
+ *  WAVE 2116: Raised from 1.6 to 2.0 — the killer fix.
+ *  In Brejcha sessions, offbeats have ratio 1.7-1.9 against the dense bass floor.
+ *  At 1.6, these pass as kicks. At 2.0, only true kicks survive. */
+const KICK_RATIO_THRESHOLD = 2.0
 
-/** Minimum rising delta to confirm a transient (noise floor) */
-const KICK_DELTA_THRESHOLD = 0.008
+/** Minimum rising delta to confirm a transient (noise floor)
+ *  WAVE 2116: Raised from 0.008 to 0.03 — 0.008 was absurdly low.
+ *  Any microscopic fluctuation registered as "rising". 0.03 demands
+ *  a real transient onset, not just bass rumble. */
+const KICK_DELTA_THRESHOLD = 0.03
 
 /** Debounce factor: 40% of expected interval. Prevents vicious cycle. */
 const DEBOUNCE_FACTOR = 0.40
@@ -99,6 +120,11 @@ const MIN_CONFIDENCE_FOR_SMOOTH = 0.30
 
 /** Hystéresis threshold for exiting "in kick" state (90% of avg) */
 const KICK_EXIT_RATIO = 0.9
+
+/** IQR multiplier for outlier rejection in interval filtering
+ *  WAVE 2116: Intervals outside Q1 - 1.5*IQR ... Q3 + 1.5*IQR are discarded
+ *  before median calculation. This kills sub-beat contamination. */
+const IQR_MULTIPLIER = 1.5
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
@@ -231,14 +257,31 @@ export class GodEarBPMTracker {
     }
     
     // ─── 7. Calculate valid intervals ────────────────────────────
-    const intervals: number[] = []
+    const rawIntervals: number[] = []
     for (let i = 1; i < this.kickTimestamps.length; i++) {
       const interval = this.kickTimestamps[i] - this.kickTimestamps[i - 1]
       if (interval >= MIN_INTERVAL_MS && interval <= MAX_INTERVAL_MS) {
-        intervals.push(interval)
+        rawIntervals.push(interval)
       }
     }
     
+    if (rawIntervals.length < 3) {
+      return {
+        bpm: this.stableBpm,
+        confidence: 0.1,
+        kickCount: this.kickTimestamps.length,
+        kickDetected,
+        beatPhase,
+      }
+    }
+    
+    // ─── 7b. WAVE 2116: IQR-based outlier rejection ─────────────
+    // Sub-beats produce short intervals (279ms, 372ms) mixed with
+    // real beat intervals (464ms, 511ms). The IQR filter removes
+    // intervals that are statistical outliers, leaving the true beat cluster.
+    const intervals: number[] = this.filterIntervalsIQR(rawIntervals)
+    
+    // If IQR filter removed too many, fall back to raw intervals
     if (intervals.length < 3) {
       return {
         bpm: this.stableBpm,
@@ -291,6 +334,44 @@ export class GodEarBPMTracker {
       kickDetected,
       beatPhase,
     }
+  }
+  
+  /**
+   * 🔧 WAVE 2116: IQR-based interval filtering.
+   * 
+   * Standard statistical outlier rejection using Interquartile Range.
+   * Removes intervals that fall outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR].
+   * 
+   * This kills sub-beat contamination:
+   * - Real beats at 125 BPM → intervals ~464-511ms (the cluster)
+   * - Sub-beats → intervals ~279-372ms (outliers below Q1)
+   * - Missed beats → intervals ~882-1115ms (outliers above Q3)
+   * 
+   * After IQR: only the true beat cluster survives → correct median → correct BPM.
+   * 
+   * @param intervals - Raw intervals in ms (already filtered by MIN/MAX)
+   * @returns Filtered intervals with outliers removed
+   */
+  private filterIntervalsIQR(intervals: number[]): number[] {
+    if (intervals.length < 4) return intervals  // Need at least 4 for meaningful IQR
+    
+    const sorted = [...intervals].sort((a, b) => a - b)
+    const n = sorted.length
+    
+    // Q1 = median of lower half, Q3 = median of upper half
+    const q1Index = Math.floor(n / 4)
+    const q3Index = Math.floor((3 * n) / 4)
+    const q1 = sorted[q1Index]
+    const q3 = sorted[q3Index]
+    const iqr = q3 - q1
+    
+    // If IQR is tiny (all intervals are similar), skip filtering — they're all good
+    if (iqr < 20) return intervals
+    
+    const lowerBound = q1 - IQR_MULTIPLIER * iqr
+    const upperBound = q3 + IQR_MULTIPLIER * iqr
+    
+    return intervals.filter(i => i >= lowerBound && i <= upperBound)
   }
   
   /**

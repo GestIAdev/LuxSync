@@ -249,7 +249,11 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     streamRef.current = stream
     setIsPermissionGranted(true)
     
-    const audioContext = new AudioContext()
+    // 🔧 WAVE 2116: Force 44100 Hz — matches Worker's config.audioSampleRate.
+    // Without this, AudioContext defaults to hardware rate (often 48000 on Windows).
+    // The Worker's deterministic clock calculates: frameCount * 2048 / sampleRate * 1000
+    // If real=48000 but Worker assumes 44100, timestamps are inflated 8.84% → BPM error.
+    const audioContext = new AudioContext({ sampleRate: 44100 })
     audioContextRef.current = audioContext
     if (audioContext.state === 'suspended') await audioContext.resume()
     

@@ -327,3 +327,109 @@ export function chainBuffers(
     sourceBpm: lastSourceBpm,
   }
 }
+
+/**
+ * 🔧 WAVE 2116: Generate buffer with sub-beats (offbeats between main kicks).
+ * 
+ * Simulates Brejcha-style productions where:
+ * - Main kicks land on every beat at the true BPM (e.g., 125 BPM)
+ * - Offbeats (bass synth pulses, hats with low-end bleed) land between kicks
+ * - The bass floor is high (0.18) due to continuous rolling bass
+ * - Offbeats have energy 0.40-0.55 — enough to fool a loose ratio detector
+ *   (0.45 / 0.18 = 2.5×, but real kicks are 0.80 / 0.18 = 4.4×)
+ * 
+ * This is THE test that caught the 161 BPM bug.
+ * 
+ * @param bpm - Target BPM for MAIN kicks (the true tempo)
+ * @param durationSeconds - Duration
+ * @param options - Optional overrides
+ * @returns Buffer with kicks AND sub-beats
+ */
+export function generateSubBeatBuffer(
+  bpm: number,
+  durationSeconds: number,
+  options: {
+    kickEnergy?: number
+    subBeatEnergy?: number
+    noiseFloor?: number
+    startTimeMs?: number
+  } = {}
+): SyntheticBuffer {
+  const kickEnergy = options.kickEnergy ?? 0.80
+  const subBeatEnergy = options.subBeatEnergy ?? 0.45
+  const noiseFloor = options.noiseFloor ?? 0.18  // Higher floor — continuous bass
+  const startTimeMs = options.startTimeMs ?? 0
+  
+  const totalFrames = Math.ceil((durationSeconds * 1000) / FRAME_DURATION_MS)
+  const beatIntervalMs = 60000 / bpm
+  const halfBeatMs = beatIntervalMs / 2  // Sub-beat at the halfway point
+  
+  const frames: SyntheticFrame[] = []
+  let kickCount = 0
+  
+  // Pre-calculate main kick timestamps
+  const kickTimestamps: number[] = []
+  let nextKickTime = startTimeMs + beatIntervalMs
+  const endTime = startTimeMs + (durationSeconds * 1000)
+  
+  while (nextKickTime < endTime) {
+    kickTimestamps.push(nextKickTime)
+    nextKickTime += beatIntervalMs
+  }
+  
+  // Pre-calculate sub-beat timestamps (halfway between kicks)
+  const subBeatTimestamps: number[] = []
+  for (const kickTime of kickTimestamps) {
+    subBeatTimestamps.push(kickTime + halfBeatMs)
+  }
+  
+  for (let i = 0; i < totalFrames; i++) {
+    const timestamp = startTimeMs + (i * FRAME_DURATION_MS)
+    
+    // Higher noise floor with organic modulation
+    const sineModA = Math.sin(i * 0.13) * 0.04
+    const sineModB = Math.sin(i * 0.37) * 0.03
+    let energy = Math.max(0.05, noiseFloor + sineModA + sineModB)
+    let isKickFrame = false
+    
+    // Check main kicks first
+    for (const kickTime of kickTimestamps) {
+      const framesSinceKick = (timestamp - kickTime) / FRAME_DURATION_MS
+      if (framesSinceKick >= 0 && framesSinceKick < 1) {
+        energy = kickEnergy
+        isKickFrame = true
+        kickCount++
+        break
+      } else if (framesSinceKick >= 1 && framesSinceKick < 1 + KICK_TAIL_FRAMES) {
+        const tailEnergy = kickEnergy * Math.pow(KICK_DECAY_RATE, framesSinceKick - 1)
+        energy = Math.max(energy, tailEnergy)
+        break
+      }
+    }
+    
+    // Check sub-beats (only if not already a kick)
+    if (!isKickFrame) {
+      for (const subTime of subBeatTimestamps) {
+        const framesSinceSub = (timestamp - subTime) / FRAME_DURATION_MS
+        if (framesSinceSub >= 0 && framesSinceSub < 1) {
+          energy = Math.max(energy, subBeatEnergy)
+          break
+        } else if (framesSinceSub >= 1 && framesSinceSub < 1 + 2) {
+          // Sub-beats have shorter decay (2 frames vs 4)
+          const tailEnergy = subBeatEnergy * Math.pow(0.35, framesSinceSub - 1)
+          energy = Math.max(energy, tailEnergy)
+          break
+        }
+      }
+    }
+    
+    frames.push({ energy, timestamp, isKickFrame })
+  }
+  
+  return {
+    frames,
+    durationMs: durationSeconds * 1000,
+    kickCount,
+    sourceBpm: bpm,
+  }
+}

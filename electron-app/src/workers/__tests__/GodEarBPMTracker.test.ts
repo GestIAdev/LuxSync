@@ -21,6 +21,7 @@ import {
   generateHalfTimeBuffer,
   generateBreakdownBuffer,
   generateVariableAmplitudeBuffer,
+  generateSubBeatBuffer,
   chainBuffers,
   FRAME_DURATION_MS,
   type SyntheticBuffer,
@@ -404,6 +405,59 @@ describe('🔥 WAVE 2113: GodEarBPMTracker — The 6-Genre Crucible', () => {
       
       // Log actual performance for human reference
       console.log(`⚡ 60s of audio (${buffer.frames.length} frames) processed in ${elapsed.toFixed(2)}ms`)
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
+  // TEST 7: WAVE 2116 — Sub-Beat Rejection (THE 161 BPM BUG)
+  // ─────────────────────────────────────────────────────────────────────
+  describe('🎯 TEST 7: WAVE 2116 — Sub-Beat Rejection (The 161 BPM Bug)', () => {
+    it('should detect 125 BPM, NOT 161 BPM, when offbeats are present', () => {
+      // THE test that catches the bug: 125 BPM kicks with offbeats at 0.45 energy.
+      // Old tracker (KICK_RATIO=1.6): offbeats pass → intervals=279ms → BPM=161
+      // New tracker (KICK_RATIO=2.0 + IQR): offbeats rejected → intervals=464-511ms → BPM=125
+      const buffer = generateSubBeatBuffer(125, 30)
+      const results = runTimeMachineLoop(tracker, buffer)
+
+      // Final BPM MUST be 125 ±4 — NOT anywhere near 161
+      const finalResult = results[results.length - 1]
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(121)
+      expect(finalResult.bpm).toBeLessThanOrEqual(131)
+
+      // Must NOT be in the 150-170 range at any stable point
+      const lastTenSec = getLastNSeconds(results, 10)
+      const maxBpm = Math.max(...lastTenSec.map(r => r.bpm))
+      expect(maxBpm).toBeLessThan(145) // Hard ceiling: never above 145
+
+      // Stability
+      expect(isBpmStable(lastTenSec, 4)).toBe(true)
+    })
+
+    it('should reject sub-beats at 0.45 energy (2.5× floor) with raised threshold', () => {
+      // Even more aggressive sub-beats: higher energy, closer spacing
+      const buffer = generateSubBeatBuffer(125, 20, {
+        kickEnergy: 0.75,
+        subBeatEnergy: 0.50,  // 0.50 / 0.18 = 2.78× — but below the new 2.0 threshold
+        noiseFloor: 0.20,     // Even higher floor (dense bass)
+      })
+      const results = runTimeMachineLoop(tracker, buffer)
+
+      // Should still read ~125, not double
+      const finalResult = results[results.length - 1]
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(120)
+      expect(finalResult.bpm).toBeLessThanOrEqual(135)
+    })
+
+    it('sub-beats at 130 BPM (Brejcha live set simulation)', () => {
+      const buffer = generateSubBeatBuffer(130, 30)
+      const results = runTimeMachineLoop(tracker, buffer)
+
+      const finalResult = results[results.length - 1]
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(126)
+      expect(finalResult.bpm).toBeLessThanOrEqual(135)
+
+      const lastTenSec = getLastNSeconds(results, 10)
+      expect(isBpmStable(lastTenSec, 3)).toBe(true)
     })
   })
 })

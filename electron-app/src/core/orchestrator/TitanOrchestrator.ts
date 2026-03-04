@@ -153,6 +153,17 @@ export class TitanOrchestrator {
     highMid: 0,
   }
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
+  // Since BETA worker no longer has beatPhase (Pacemaker is in main thread),
+  // syncopation must be estimated HERE using Pacemaker's real beatPhase.
+  // Uses same algorithm as SimpleRhythmDetector but with real phase data.
+  // ═══════════════════════════════════════════════════════════════════════════
+  private syncopationPhaseHistory: { phase: number; energy: number }[] = []
+  private smoothedSyncopation: number = 0.35 // Neutral default (same as Worker)
+  private readonly SYNC_HISTORY_SIZE = 32
+  private readonly SYNC_EMA_ALPHA = 0.08 // Same smoothing factor as Worker
+  
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
   // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
@@ -414,17 +425,30 @@ export class TitanOrchestrator {
       // Feed audio metrics to the Pacemaker
       // AudioMetrics interface requires many fields, but BeatDetector only uses:
       // bass, mid, treble, energy, timestamp
-      // 🔥 WAVE 1162: THE BYPASS - Usar rawBassEnergy si disponible
-      const rawBassAvailable = this.lastAudioData.rawBassEnergy !== undefined;
-      const rawBass = this.lastAudioData.rawBassEnergy ?? bass;
+      //
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🩸 WAVE 2097: BYPASS REVERSAL — Feed frontendBass to Pacemaker
+      // ═══════════════════════════════════════════════════════════════════════
+      // WAVE 1162 "THE BYPASS" switched to rawBassEnergy (pre-AGC FFT power)
+      // thinking raw signal = better kick detection. WRONG.
+      //
+      // rawBassEnergy values: 0.01-0.08 (microscopic FFT power)
+      // frontendBass values:  0.50-0.80 (normalized, dynamic range preserved)
+      //
+      // With rawBass, transients are ~0.01 vs threshold ~0.055 → ZERO kicks detected
+      // → BPM=120 frozen → PLL=FREEWHEEL → phase=0 → section=breakdown forever
+      //
+      // frontendBass is normalized by the Worker's AGC but PRESERVES transient contrast.
+      // Kicks produce transients of 0.10-0.30 which CROSS the dynamic threshold.
+      // This is how the Pacemaker worked before WAVE 1162 and detected BPM correctly.
+      // ═══════════════════════════════════════════════════════════════════════
       
-      // 🔥 DEBUG: Ver si rawBassEnergy está llegando
       if (this.frameCount % 120 === 0) {
-        console.log(`[💓 BYPASS DEBUG] rawBassEnergy=${this.lastAudioData.rawBassEnergy?.toFixed(3) ?? 'UNDEFINED'} | frontendBass=${bass.toFixed(3)} | using=${rawBassAvailable ? 'RAW' : 'FRONTEND'}`)
+        console.log(`[💓 PACEMAKER FEED] frontendBass=${bass.toFixed(3)} | rawBass=${this.lastAudioData.rawBassEnergy?.toFixed(3) ?? 'N/A'} | using=FRONTEND`)
       }
       
       const audioForBeat = {
-        bass: rawBass,  // 🔥 WAVE 1162: BYPASS AGC - Bass crudo para detección de kicks
+        bass: bass,  // 🩸 WAVE 2097: Use normalized frontendBass (NOT raw) for kick detection
         mid,
         treble: high,
         energy,
@@ -446,10 +470,12 @@ export class TitanOrchestrator {
       beatState = this.beatDetector.tick(Date.now())
       
       // WAVE 2090.3: THE PHANTOM METRONOME - sole BPM source + PLL
+      // 🩸 WAVE 2094: Extended with transplant diagnostics
       if (this.frameCount % 60 === 0) {
         const pacemakerBpm = beatState.bpm
         const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
-        console.log(`[TitanOrchestrator] PACEMAKER BPM=${pacemakerBpm.toFixed(0)} PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} err=${beatState.phaseError.toFixed(0)}ms | beat #${beatState.beatCount}`)
+        const syncInfo = this.smoothedSyncopation.toFixed(2)
+        console.log(`[TitanOrchestrator] 💓 PACEMAKER BPM=${pacemakerBpm.toFixed(0)} PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
       }
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
@@ -457,11 +483,58 @@ export class TitanOrchestrator {
       beatState = this.beatDetector.tick(Date.now())
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Feed BPM back to Worker BETA
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WAVE 2090.2 cut the BPM from the Worker, leaving SimpleSectionTracker blind.
+    // The Pacemaker (main thread) has real BPM but never sent it back.
+    // This bridge closes the loop: Pacemaker → TrinityOrchestrator → Worker BETA.
+    // SimpleSectionTracker can now detect drops, buildups, breakdowns properly.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
+      this.trinity.setBpm(
+        beatState.bpm,
+        beatState.pllPhase ?? beatState.phase,
+        beatState.confidence
+      )
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Inject real BPM into MusicalContext
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ROOT CAUSE (diagnosed WAVE 2093.4):
+    //   WAVE 2090.2 "Pacemaker Monopoly" purged BPM calculation from BETA worker,
+    //   setting bpm=0, beatPhase=0 in AudioAnalysis. GAMMA forwards these zeros
+    //   into MusicalContext. TrinityBrain stores MusicalContext as-is.
+    //   TitanEngine reads processedContext.bpm (=0) for TitanStabilizedState.
+    //
+    //   RESULT: Selene's entire cognitive stack (HuntEngine worthiness,
+    //   PredictionEngine timing, MusicalPatternSensor rhythmicIntensity,
+    //   SimpleSectionTracker section detection) was starved of BPM data.
+    //
+    // FIX: The Pacemaker (main thread) is the sole BPM authority.
+    //   We inject its output into MusicalContext HERE, at the orchestration layer,
+    //   before it reaches TitanEngine → Selene.
+    //   This is the CORRECT architectural point: TitanOrchestrator is the bridge
+    //   between Worker data and Engine consumption.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (beatState.bpm > 0 && beatState.confidence > 0) {
+      context.bpm = beatState.bpm
+      context.beatPhase = beatState.pllPhase ?? beatState.phase
+      // 🩸 WAVE 2094: Syncopation from worker is DEAD (beatPhase=0 → always on-beat → sync→0)
+      // Recalculate using Pacemaker's real beatPhase + spectral energy
+      context.syncopation = this.estimateSyncopation(
+        beatState.pllPhase ?? beatState.phase,
+        bass,
+        mid
+      )
+    }
+
     // For TitanEngine
     // 🎛️ WAVE 661: Incluir textura espectral
     // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
     // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
-    // � WAVE 2090.2: THE PACEMAKER MONOPOLY — ALL BPM fields from Pacemaker
+    // 🔪 WAVE 2090.2: THE PACEMAKER MONOPOLY — ALL BPM fields from Pacemaker
     // Worker no longer computes BPM. Pacemaker is the single source of truth.
     const engineAudioMetrics = {
       bass,  // Ya normalizado por AGC - INTOCABLE
@@ -2032,6 +2105,49 @@ export class TitanOrchestrator {
         (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid + 
         this.EMA_ALPHA_FAST * raw.highMid;
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Syncopation estimator
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Mirror of SimpleRhythmDetector algorithm but using REAL beatPhase
+  // from Pacemaker instead of the dead beatPhase=0 from Worker.
+  //
+  // Syncopation = ratio of off-beat energy to total energy.
+  // On-beat: phase < 0.25 || phase > 0.75 (50% window around beat)
+  // Off-beat: everything else (the "and" of the beat)
+  // High syncopation = energy concentrated off-beat (funk, breakbeat)
+  // Low syncopation = energy on-beat (four-on-floor techno)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private estimateSyncopation(beatPhase: number, bass: number, mid: number): number {
+    const energy = bass + mid * 0.5
+    
+    this.syncopationPhaseHistory.push({ phase: beatPhase, energy })
+    if (this.syncopationPhaseHistory.length > this.SYNC_HISTORY_SIZE) {
+      this.syncopationPhaseHistory.shift()
+    }
+    
+    let onBeatEnergy = 0
+    let offBeatEnergy = 0
+    
+    for (const frame of this.syncopationPhaseHistory) {
+      const isOnBeat = frame.phase < 0.25 || frame.phase > 0.75
+      if (isOnBeat) {
+        onBeatEnergy += frame.energy
+      } else {
+        offBeatEnergy += frame.energy
+      }
+    }
+    
+    const totalEnergy = onBeatEnergy + offBeatEnergy
+    const instantSync = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0
+    
+    // EMA smoothing — same alpha as Worker for behavioral parity
+    this.smoothedSyncopation = 
+      (this.SYNC_EMA_ALPHA * instantSync) + 
+      ((1 - this.SYNC_EMA_ALPHA) * this.smoothedSyncopation)
+    
+    return this.smoothedSyncopation
   }
 }
 

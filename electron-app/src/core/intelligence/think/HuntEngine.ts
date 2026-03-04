@@ -555,6 +555,13 @@ function calculateWorthiness(
   // Bonus por momentos especiales
   let bonus = 0
   
+  // 🩸 WAVE 2095: DROP = momento ESTELAR (el clímax absoluto)
+  // Antes no tenía bonus — los drops quedaban al mismo nivel que un verse.
+  // Un drop es el momento donde TODO debe explotar.
+  if (pattern.section === 'drop') {
+    bonus += 0.20
+  }
+  
   // Buildup = muy interesante
   if (pattern.section === 'buildup' || pattern.isBuilding) {
     bonus += 0.15

@@ -306,10 +306,24 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     setError(null)
     setAudioSource('microphone')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-      })
-      await setupAudioFromStream(stream, 'Microphone')
+      // 🎤 WAVE 2049.2: Prefer JACK/line-in — exclude webcam/integrated mics
+      const WEBCAM_KEYWORDS = ['webcam', 'camera', 'usb camera', 'integrated', 'built-in', 'array', 'microsoft lifecam', 'logitech']
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const audioInputs = devices.filter(d => d.kind === 'audioinput')
+      const jackDevice = audioInputs.find(d =>
+        !WEBCAM_KEYWORDS.some(kw => d.label.toLowerCase().includes(kw))
+      )
+      console.log('[PHOENIX] 🎤 Audio inputs:', audioInputs.map(d => d.label))
+      console.log('[PHOENIX] 🎤 Selected device:', jackDevice?.label ?? 'default fallback')
+
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        ...(jackDevice ? { deviceId: { exact: jackDevice.deviceId } } : {})
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+      await setupAudioFromStream(stream, jackDevice?.label ?? 'Microphone')
     } catch (err) {
       console.error('[PHOENIX] Microphone failed:', err)
       setError(err instanceof Error ? err.message : 'Failed')

@@ -815,7 +815,22 @@ export class TrinityOrchestrator extends EventEmitter {
   }
   
   /**
-   * 🔌 WAVE 63.95: System Sleep - Pause all workers
+   * � WAVE 2096.1: PACEMAKER BRIDGE — Send BPM from Pacemaker to Worker BETA
+   * 
+   * WAVE 2090.2 cut the umbilical cord between Pacemaker and Worker,
+   * leaving SimpleSectionTracker blind (bpm=0, beatPhase=0).
+   * This restores the data flow without duplicating BPM computation.
+   * The Pacemaker remains the SOLE authority — this is just a bridge.
+   */
+  setBpm(bpm: number, beatPhase: number, confidence: number): void {
+    const beta = this.nodes.get('beta');
+    if (beta?.worker) {
+      this.sendToWorker('beta', MessageType.SET_BPM, { bpm, beatPhase, confidence }, MessagePriority.HIGH);
+    }
+  }
+
+  /**
+   * �🔌 WAVE 63.95: System Sleep - Pause all workers
    * Sends SYSTEM_SLEEP to Mind worker to stop processing audio
    */
   systemSleep(): void {

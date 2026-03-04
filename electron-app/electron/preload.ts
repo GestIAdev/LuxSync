@@ -64,7 +64,22 @@ const api = {
    * Resolved at preload time — no IPC round-trip needed.
    */
   getSystemUser: (): string => process.env.USERNAME || process.env.USER || '',
-  
+
+  // ============================================
+  // 🪟 WINDOW CONTROLS - Custom title bar
+  // ============================================
+  window: {
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    maximize: () => ipcRenderer.invoke('window:maximize'),
+    close: () => ipcRenderer.invoke('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    onMaximizeChange: (callback: (isMaximized: boolean) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, value: boolean) => callback(value)
+      ipcRenderer.on('window:maximized', handler)
+      return () => ipcRenderer.removeListener('window:maximized', handler)
+    },
+  },
+
   // ============================================
   // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection
   // Shortcut for calibration tools (ColorWheelEditor, etc.)

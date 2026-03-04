@@ -479,7 +479,9 @@ export class EffectDreamSimulator {
     // ═══════════════════════════════════════════════════════════════
     
     const now = Date.now()
-    const timeToEvent = musicalPrediction.timeToEventMs ?? 4000
+    // 🛡️ WAVE 2093.1: Guard Infinity — `Infinity ?? 4000` returns Infinity (not null).
+    const timeToEvent = (Number.isFinite(musicalPrediction.timeToEventMs) && musicalPrediction.timeToEventMs! > 0)
+      ? musicalPrediction.timeToEventMs! : 4000
     const oracleProbability = musicalPrediction.oracleProbability ?? 0
     const isUrgent = musicalPrediction.isUrgent ?? false
     
@@ -1396,16 +1398,24 @@ export class EffectDreamSimulator {
   
   /**
    * 🎨 WAVE 1029: Derive SpectralContext from AudienceSafetyContext
+   * 🧬 WAVE 2093 COG-3: Prioridad: context.spectral (REAL) > ghost > vibe fallback
    * 
-   * Si no hay ghost context, derivamos uno básico del vibe y energy.
+   * Antes: hardcodeaba textura por vibe (chill=clean, techno=harsh).
+   * Ahora: usa datos reales del análisis FFT cuando están disponibles.
+   * Dark Ambient ya no se trata como "clean" solo por ser chill-lounge.
    */
   private deriveSpectralContext(context: AudienceSafetyContext, state: SystemState): SpectralContext {
-    // Si hay ghost context, usarlo
+    // 🧬 WAVE 2093 COG-3: PRIORIDAD 1 — Datos REALES del sensory layer
+    if (context.spectral) {
+      return context.spectral
+    }
+
+    // PRIORIDAD 2 — Ghost context (inyectado para testing)
     if (this.ghostSpectralContext) {
       return this.ghostSpectralContext
     }
     
-    // Derivar textura del vibe
+    // PRIORIDAD 3 — Fallback: derivar del vibe (legacy, última línea de defensa)
     let texture: SpectralTexture = 'warm'  // Default safe
     let harshness = 0.4
     let clarity = 0.5
@@ -1419,7 +1429,6 @@ export class EffectDreamSimulator {
       harshness = 0.2
       clarity = 0.8
     } else if (context.vibe.includes('rock') || context.vibe.includes('pop-rock')) {
-      // Rock: depende de la energía
       if (state.energy > 0.75) {
         texture = 'harsh'
         harshness = 0.6
@@ -1779,20 +1788,31 @@ export class EffectDreamSimulator {
     const predictionType = prediction.predictionType ?? 'none'
     
     if (predictionType === 'energy_spike' || predictionType === 'drop_incoming') {
-      // 🎯 WAVE 1176: SPIKE BOOST AUMENTADO - Efectos de IMPACTO ganan +50% (era +25%)
+      // 🎯 WAVE 2093 COG-6: RATIO SIMÉTRICO ±0.40
+      // Era +0.50/-0.70 (ratio 7:5 asimétrico) — destruía candidatos atmosféricos en falsos spike.
+      // Ahora ±0.40 simétrico: boost justo, penalti justo. Equilibrio.
+      //
+      // 🩸 WAVE 2095.3: Añadidos 'saw', 'abyssal', 'rise', 'dualism', 'cyber'
+      // PROBLEMA: Los efectos hard con textureAffinity='dirty' (industrial_strobe, gatling_raid)
+      // eran los únicos con keywords en IMPACT_EFFECTS. Pero en textura CLEAN (Brejcha,
+      // clarity 0.80, harshness 0.01), todos los 'dirty' son VETADOS por texture filter.
+      // Los efectos universal agresivos (sky_saw A=0.80, abyssal_rise A=0.80, cyber_dualism A=0.55)
+      // NO tenían keywords aquí → ninguno recibía el +0.40 boost durante drops.
+      // Resultado: en clean texture + drop_incoming, NADIE recibía boost → acid_sweep seguía ganando.
       const IMPACT_EFFECTS = [
         'strobe', 'flash', 'blind', 'gatling', 'thunder', 'meltdown', 
-        'storm', 'raid', 'snap', 'spark', 'burst', 'strike', 'glitch'
+        'storm', 'raid', 'snap', 'spark', 'burst', 'strike', 'glitch',
+        'saw', 'abyssal', 'rise', 'dualism', 'cyber'  // 🩸 WAVE 2095.3: universal agresivos
       ]
       const isImpactEffect = IMPACT_EFFECTS.some(keyword => effectName.includes(keyword))
       
       if (isImpactEffect) {
-        score += 0.50  // 🎯 WAVE 1176: SUBIDO de 0.25 (¡Prioridad total al impacto!)
+        score += 0.40  // 🎯 WAVE 2093: Simétrico (era 0.50)
         // También boost intensity del candidato (mutación temporal para scoring)
         scenario.effect.intensity = Math.min(1.0, scenario.effect.intensity * 1.25)
       }
       
-      // 🎯 WAVE 1176: SLOW PENALTY AUMENTADO - Efectos LENTOS pierden -70% (era -30%)
+      // 🎯 WAVE 2093 COG-6: Penalti simétrico para lentos
       const SLOW_EFFECTS = [
         'breath', 'mist', 'drift', 'moon', 'wave', 'sweep', 'ambient', 
         'fiber', 'pulse', 'shimmer', 'plankton', 'whale', 'caustic'
@@ -1800,7 +1820,7 @@ export class EffectDreamSimulator {
       const isSlowEffect = SLOW_EFFECTS.some(keyword => effectName.includes(keyword))
       
       if (isSlowEffect) {
-        score -= 0.70  // 🎯 WAVE 1176: SUBIDO de 0.30 (¡Muerte a los lentos en drops!)
+        score -= 0.40  // 🎯 WAVE 2093: Simétrico (era 0.70 — demasiado destructivo)
       }
     }
     
@@ -1831,7 +1851,9 @@ export class EffectDreamSimulator {
     // ═══════════════════════════════════════════════════════════════
     
     const isUrgent = prediction.isUrgent ?? false
-    const timeToEvent = prediction.timeToEventMs ?? 4000
+    // 🛡️ WAVE 2093.1: Guard Infinity — same pattern as Cassandra pre-buffer
+    const timeToEvent = (Number.isFinite(prediction.timeToEventMs) && prediction.timeToEventMs! > 0)
+      ? prediction.timeToEventMs! : 4000
     const oracleProbability = prediction.oracleProbability ?? 0
     
     if (isUrgent && oracleProbability > 0.5) {
@@ -1883,10 +1905,21 @@ export class EffectDreamSimulator {
     }
     
     // MODIFY conditions
-    if (bestScenario.projectedBeauty < 0.5) {
+    // 🧬 WAVE 2093 COG-2: projectedBeauty → projectedRelevance (ghost dependency fix)
+    // projectedBeauty era una métrica legacy deprecada desde WAVE 970.
+    // projectedRelevance es la métrica primaria: distancia euclidiana DNA real.
+    //
+    // 🩸 WAVE 2095.3: Gate bajado 0.45 → 0.30
+    // PROBLEMA: Con drop_incoming, los efectos IMPACT (strobes, aggression=0.85-0.95) 
+    // tienen projectedRelevance BAJA (~0.35) porque el target DNA tiene aggression ~0.35
+    // a energías medias de Brejcha. El ranking de CASSANDRA ya incorporó el boost de
+    // +0.40 para IMPACT_EFFECTS, así que si llegó como bestScenario, GANÓ la competencia.
+    // El gate de 0.45 era un second-guess redundante que MATABA todo efecto hard durante drops.
+    // 0.30 mantiene protección contra efectos genuinamente irrelevantes sin vetar a los ganadores.
+    if (bestScenario.projectedRelevance < 0.30) {
       return {
         action: 'modify',
-        reason: `Low beauty: ${bestScenario.projectedBeauty.toFixed(2)} - consider alternatives`
+        reason: `Low relevance: ${bestScenario.projectedRelevance.toFixed(2)} - consider alternatives`
       }
     }
     
@@ -1900,7 +1933,7 @@ export class EffectDreamSimulator {
     // EXECUTE
     return {
       action: 'execute',
-      reason: `Beauty: ${bestScenario.projectedBeauty.toFixed(2)}, Risk: ${bestScenario.riskLevel.toFixed(2)} - GO!`
+      reason: `Relevance: ${bestScenario.projectedRelevance.toFixed(2)}, Risk: ${bestScenario.riskLevel.toFixed(2)} - GO!`
     }
   }
   

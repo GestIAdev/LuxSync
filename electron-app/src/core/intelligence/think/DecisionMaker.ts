@@ -306,11 +306,22 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   }
   
   // Prioridad 2: Drop predicho con alta probabilidad
-  if (prediction.type === 'drop_incoming' && prediction.probability > 0.8) {
+  // 🩸 WAVE 2095: Bajado 0.8 → 0.65 — Brejcha/minimal tienen drops sutiles.
+  // PredictionEngine ya filtra con confianza; 0.8 era redundantemente alto.
+  // También: si section ES drop (detectado por Worker), actuar inmediatamente.
+  if (prediction.type === 'drop_incoming' && prediction.probability > 0.65) {
+    return 'prepare_for_drop'
+  }
+  if (pattern.section === 'drop') {
     return 'prepare_for_drop'
   }
   
-  // Prioridad 3: Buildup con potencial
+  // Prioridad 3: energy_spike también puede ser un drop (PredictionEngine a veces lo clasifica así)
+  if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6) {
+    return 'prepare_for_drop'
+  }
+  
+  // Prioridad 4: Buildup con potencial
   if (pattern.section === 'buildup' || 
       (prediction.type === 'buildup_starting' && prediction.probability > 0.7)) {
     return 'buildup_enhance'
@@ -564,13 +575,40 @@ function generateDropPreparationDecision(
   output: ConsciousnessOutput,
   confidence: number
 ): ConsciousnessOutput {
-  const { prediction, beauty, pattern } = inputs
+  const { prediction, beauty, pattern, zScore, energyContext } = inputs
   
-  output.confidence = confidence
+  output.confidence = Math.max(confidence, 0.85)  // 🩸 WAVE 2095: Drops merecen alta confianza
   output.source = 'prediction'
   output.debugInfo.huntState = 'evaluating'
   output.debugInfo.beautyScore = beauty.totalBeauty
-  output.debugInfo.reasoning = `Preparando drop: ${prediction.reasoning}`
+  output.debugInfo.reasoning = `🔴 DROP PREPARATION: ${prediction.reasoning} | Z=${(zScore ?? 0).toFixed(2)}`
+  
+  // 🩸 WAVE 2095 / WAVE 2101.2: Si el drop OCURRE AHORA, sugerir efecto HARD
+  // La predicción nos avisa con 'timeToEvent' de hasta 4000-8000ms de antelación.
+  // Solo disparamos la artillería cuando estamos MUY cerca o si ya estamos en section=drop.
+  // Si no, vaciamos el arsenal durante el buildup (spam de CIENTOS de efectos).
+  const isDropImminent = prediction.estimatedTimeMs < 800 || pattern.section === 'drop'
+  
+  if (prediction.probability > 0.7 && isDropImminent) {
+    const vibeId = pattern.vibeId
+    // Usar el arsenal DIVINE como pool de efectos hard para drops
+    const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club']
+    const suggestedEffect = dropArsenal[0]
+    
+    output.effectDecision = {
+      effectType: suggestedEffect,
+      intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
+      zones: ['all'],
+      reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | arsenal=${dropArsenal.join(', ')}`,
+      confidence: prediction.probability,
+      divineArsenal: dropArsenal,  // Para que SeleneTitanConscious busque alternativas en cooldown
+    } as any
+    
+    console.log(
+      `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+      `vibe=${vibeId} | Z=${(zScore ?? 0).toFixed(2)}`
+    )
+  }
   
   // Color decision: Preparar transición
   output.colorDecision = {

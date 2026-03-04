@@ -637,7 +637,13 @@ export class DNAAnalyzer {
    * Los efectos oceánicos tienen cooldowns de 45-90s, una ventana de 10s
    * era demasiado larga y penalizaba injustamente la intensidad
    */
-  private readonly USAGE_WINDOW_MS = 5000
+  // 🩸 WAVE 2095.3: 45s → 120s
+  // Con cooldowns de 22s, acid_sweep se dispara ~2 veces en 45s.
+  // Con DIVERSITY_FACTORS [1.0, 0.8, 0.5, 0.2], 2 usos = 0.5x.
+  // Pero 0.5x × base_relevance_alta sigue ganando a otros efectos con 1.0x × base_baja.
+  // Con 120s, acid_sweep acumula 3-5 usos → 0.2x factor → pierde contra cualquiera.
+  // Esto FUERZA rotación real: cada 120s el slate se limpia y acid_sweep vuelve a competir.
+  private readonly USAGE_WINDOW_MS = 120000
   
   /** 
    * Factores de diversidad por uso repetido
@@ -820,28 +826,11 @@ export class DNAAnalyzer {
       }))
       .sort((a, b) => b.relevance - a.relevance)
     
-    // 🚨 TRAMPA #2: Middle Void detection
-    const bestRelevance = ranked[0]?.relevance ?? 0
-    
-    if (bestRelevance < this.MIDDLE_VOID_THRESHOLD) {
-      console.warn(`[DNA_ANALYZER] ⚠️ MIDDLE VOID: Best relevance=${bestRelevance.toFixed(2)} < ${this.MIDDLE_VOID_THRESHOLD}`)
-      console.warn(`[DNA_ANALYZER] 🎯 Target: A=${targetDNA.aggression.toFixed(2)}, C=${targetDNA.chaos.toFixed(2)}, O=${targetDNA.organicity.toFixed(2)}`)
-      
-      // Determinar wildcard según categoría
-      const wildcardId = category 
-        ? WILDCARD_EFFECTS[category] 
-        : 'cyber_dualism'  // Default global wildcard
-      
-      console.warn(`[DNA_ANALYZER] 🃏 Forcing WILDCARD: ${wildcardId}`)
-      
-      // Forzar wildcard al top si existe
-      const wildcardIndex = ranked.findIndex(r => r.effectId === wildcardId)
-      if (wildcardIndex > 0) {
-        const wildcard = ranked.splice(wildcardIndex, 1)[0]
-        ranked.unshift(wildcard)
-      }
-    }
-    
+    // 🚨 TRAMPA #2: Middle Void detection REMOVED (WAVE 2102)
+    // El "Middle Void" forzaba 'cyber_dualism' bloqueando la diversidad
+    // cuando no había match perfecto. Dejamos que la IA elija el mejor disponible orgánicamente.
+    // (Código de Middle Void purgado a petición del Cónclave)
+
     return ranked
   }
   

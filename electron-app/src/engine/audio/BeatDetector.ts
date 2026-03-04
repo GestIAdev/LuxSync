@@ -130,12 +130,12 @@ const OCTAVE_LOCK_CONFIDENCE = 0.70
 const OCTAVE_CHANGE_FRAMES = 45
 
 /**
- * 💀 WAVE 1158: INTERVALO MÍNIMO = 200ms (300 BPM max)
- * A 160 BPM = 375ms/beat
- * A 200 BPM = 300ms/beat  
- * BETA usa 200ms y FUNCIONA. El problema no era este.
+ * 💀 WAVE 1158: INTERVALO MÍNIMO entre kicks para clustering.
+ * 🩸 WAVE 2099: Aligned with MIN_PEAK_SPACING_MS (280ms).
+ * No valid interval can be shorter than the debounce window.
+ * 280ms = 214 BPM maximum. DnB at 170 BPM (353ms) still passes fine.
  */
-const MIN_INTERVAL_MS = 200  // Era 300 - Igual que BETA
+const MIN_INTERVAL_MS = 280  // 🩸 WAVE 2099: Was 200 — must match debounce
 
 /** Intervalo máximo válido (ms) - 40bpm min */
 const MAX_INTERVAL_MS = 1500
@@ -151,8 +151,11 @@ const SUBDIVISION_RATIO = 0.55
  * Phase error threshold (ms) for soft correction vs hard reset.
  * If the kick arrives within this window of the predicted beat,
  * we apply proportional correction. Beyond this → hard reset (snap to grid).
+ * 🩸 WAVE 2098: Widened from 80ms to 150ms. At 128 BPM (469ms/beat), 
+ * kicks can arrive ±100ms off prediction due to AGC latency + frame timing.
+ * 80ms was too tight → almost every kick triggered HARD RESET → PLL never locked.
  */
-const PLL_SOFT_CORRECTION_WINDOW_MS = 80
+const PLL_SOFT_CORRECTION_WINDOW_MS = 150
 
 /**
  * Proportional gain for soft phase correction.
@@ -192,10 +195,23 @@ const PLL_SILENCE_TIMEOUT_MS = 4000
 
 /**
  * 💀 WAVE 1158: DEBOUNCE MÍNIMO ENTRE KICKS
- * A 200 BPM = 300ms entre kicks → debounce 200ms es seguro
- * BETA usa 200ms y FUNCIONA. Nosotros teníamos 80ms (LOCURA)
+ * BETA usa 200ms, nosotros teníamos 80ms.
+ * 
+ * 🩸 WAVE 2099: THE GOLDILOCKS DEBOUNCE — 200ms was too low.
+ * At 200ms, intervals of 229ms/264ms/276ms/295ms pass → these are hi-hat
+ * sub-beats, NOT kick drums. The clustering then creates a phantom cluster
+ * at ~280ms (~214 BPM) which dominates over the real kick cluster (~476ms = 126 BPM).
+ * 
+ * At 280ms debounce:
+ * - 126 BPM (techno) = 476ms → PASSES ✅
+ * - 170 BPM (DnB)    = 353ms → PASSES ✅  
+ * - 200 BPM (fast)   = 300ms → PASSES ✅
+ * - 214 BPM (sub-beat ghost) = 280ms → BLOCKED ❌
+ * - Hi-hat wobbles at 229-276ms → BLOCKED ❌
+ * 
+ * This kills the 210 BPM phantom that plagued WAVE 2098.
  */
-const MIN_PEAK_SPACING_MS = 200  // Era 80 - Igual que BETA
+const MIN_PEAK_SPACING_MS = 280  // 🩸 WAVE 2099: Was 200 — sub-beats at 229-276ms were passing
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE PACEMAKER
@@ -234,18 +250,23 @@ export class BeatDetector {
   // 🎚️ AUTO-GAIN: Media móvil del bass para calibración
   private bassHistory: number[] = []
   private readonly BASS_HISTORY_SIZE = 30  // ~1 segundo @ 30fps
-  private bassAvg = 0.2  // Valor inicial para RAW (más bajo que AGC)
+  private bassAvg = 0.5  // 🩸 WAVE 2097: Initial value for normalized bass (0.4-0.8 range)
   
-  // 🔥 WAVE 1162: Thresholds para audio RAW (sin AGC)
-  // La señal RAW tiene MAYOR dinámica → umbrales más altos
-  // PERO el GOD EAR rawBands ya está parcialmente normalizado
-  // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-  // bassAvg=0.15 → thresh=0.065 (música suave)
-  // bassAvg=0.30 → thresh=0.095 (normal)
-  // bassAvg=0.50 → thresh=0.125 (fuerte)
-  // bassAvg=0.70 → thresh=0.155 (muy fuerte)
-  private readonly KICK_THRESHOLD_BASE = 0.05
-  private readonly KICK_THRESHOLD_MULTIPLIER = 0.15  // Reducido de 0.35 - rawBands ya normalizado
+  // 🩸 WAVE 2098: THRESHOLD AUTOPSY — The threshold was KILLING kicks after warmup.
+  // WAVE 2097 set BASE=0.06 + MULT=0.10 → with bassAvg=0.70: threshold=0.13
+  // But AGC-normalized bass transients are only 0.02-0.05 for normal kicks!
+  // Only extreme transients (>0.10) passed → 20 kicks detected, then ZERO.
+  //
+  // ROOT CAUSE: AGC compresses dynamics. A real kick creates transient of ~0.03-0.06
+  // (not 0.10+ like raw bass). The threshold must match AGC-compressed transients.
+  //
+  // NEW Formula: threshold = BASE + (bassAvg * MULTIPLIER)
+  // bassAvg=0.40 → thresh=0.042 (quiet — sensitive)
+  // bassAvg=0.55 → thresh=0.047 (normal — detects real kicks ~0.04+)
+  // bassAvg=0.70 → thresh=0.052 (loud — ignores noise, catches kicks)
+  // bassAvg=0.85 → thresh=0.057 (very loud)
+  private readonly KICK_THRESHOLD_BASE = 0.035
+  private readonly KICK_THRESHOLD_MULTIPLIER = 0.025  // 🩸 WAVE 2098: AGC transients are 0.03-0.06, threshold must be BELOW that
   
   // Transient detection thresholds (DINÁMICOS - estos son fallbacks)
   private kickThreshold = 0.12   // Se recalcula cada frame
@@ -345,11 +366,12 @@ export class BeatDetector {
     }
     
     // 3. Calcular threshold DINÁMICO
-    // 💀 WAVE 1161: Recalibrado para audio AGC
+    // 🩸 WAVE 2098: Recalibrated for AGC-compressed transients
+    // AGC compresses dynamics: real kicks produce transient ~0.03-0.06 (not 0.10+)
     // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-    // bassAvg=0.3 → threshold=0.086 (muy sensible)
-    // bassAvg=0.6 → threshold=0.122 (normal - detecta kicks reales)
-    // bassAvg=0.8 → threshold=0.146 (fuerte - ignora wobbles)
+    // bassAvg=0.40 → threshold=0.045 (sensitive — quiet music)
+    // bassAvg=0.60 → threshold=0.050 (normal — detects kicks ~0.04+)
+    // bassAvg=0.75 → threshold=0.054 (loud — still catches kicks)
     this.kickThreshold = this.KICK_THRESHOLD_BASE + (this.bassAvg * this.KICK_THRESHOLD_MULTIPLIER)
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -367,11 +389,10 @@ export class BeatDetector {
     this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.15
     this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.10
     
-    // 💀 WAVE 1160/1162: Diagnostic logging con threshold dinámico
-    // WAVE 1162: El bass que recibimos ahora es RAW (sin AGC)
+    // 🩸 WAVE 2097: Diagnostic logging — now using normalized frontendBass
     this.diagnosticFrames++
     if (this.diagnosticFrames % 60 === 0) {
-      console.log(`[💓 PACEMAKER RAW] bass=${metrics.bass.toFixed(2)} avg=${this.bassAvg.toFixed(2)} thresh=${this.kickThreshold.toFixed(3)} trans=${bassTransient.toFixed(3)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (raw:${this.state.rawBpm.toFixed(0)})`)
+      console.log(`[💓 PACEMAKER] bass=${metrics.bass.toFixed(2)} avg=${this.bassAvg.toFixed(2)} thresh=${this.kickThreshold.toFixed(3)} trans=${bassTransient.toFixed(3)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (PLL:${this.pllSmoothedBpm.toFixed(1)})`)
     }
     
     // 6. Registrar picos para análisis de BPM
@@ -379,6 +400,10 @@ export class BeatDetector {
     if (this.state.kickDetected) {
       this.recordPeak(now, metrics.energy, 'kick')
       this.kicksDetectedTotal++
+      // 🩸 WAVE 2097: Log kick detection for diagnostics (throttled)
+      if (this.kicksDetectedTotal <= 10 || this.kicksDetectedTotal % 20 === 0) {
+        console.log(`[💓 KICK #${this.kicksDetectedTotal}] bass=${metrics.bass.toFixed(2)} trans=${bassTransient.toFixed(3)} > thresh=${this.kickThreshold.toFixed(3)}`)
+      }
     }
     
     // 4. 💓 THE PACEMAKER: Calcular BPM con clustering + histéresis
@@ -587,6 +612,13 @@ export class BeatDetector {
    * 💓 WAVE 1022: THE PACEMAKER - BPM con clustering + histéresis
    */
   private updateBpmWithPacemaker(now: number): void {
+    // 🩸 WAVE 2098: PEAK HISTORY DECAY — Purge stale kicks
+    // Without this, old kicks from 30+ seconds ago stay in peakHistory forever.
+    // The intervals between old+new kicks are garbage (989ms, 958ms outliers).
+    // Only keep kicks from the last 10 seconds for fresh, relevant clustering.
+    const PEAK_FRESHNESS_MS = 10000
+    this.peakHistory = this.peakHistory.filter(p => (now - p.time) < PEAK_FRESHNESS_MS)
+    
     // Necesitamos suficientes kicks para analizar
     const kicks = this.peakHistory.filter(p => p.type === 'kick')
     if (kicks.length < 6) return
@@ -696,7 +728,31 @@ export class BeatDetector {
     
     if (this.candidateFrames >= requiredFrames) {
       // ¡El candidato es estable! Aplicar cambio
-      this.state.bpm = Math.round(this.candidateBpm * 10) / 10  // 1 decimal
+      // 🩸 WAVE 2101.4: BPM RATE LIMITER — máximo ±2 BPM por actualización
+      // El BPM driftaba de 123→163 porque candidateBpm absorbía sub-divisiones
+      // Sin rate limit, 30 frames estables de intervalos cortos = BPM sube de golpe.
+      // 🩸 WAVE 2101.5: BPM SANITY FLOOR — Si BPM candidato está a <70% o >140% del actual,
+      // es un cambio de octava disfrazado o clustering de basura. Rechazar.
+      // Un tema NO cambia de 122 a 57 BPM. Lo que cambia es que los intervalos
+      // entre kicks son erráticos (range 295-1428ms) y el cluster dominante se rompe.
+      const newBpm = Math.round(this.candidateBpm * 10) / 10
+      
+      // Sanity check: si ya tenemos BPM estable, rechazar candidatos absurdos
+      if (this.state.bpm > 0 && !isWarmup) {
+        const ratio = newBpm / this.state.bpm
+        if (ratio < 0.70 || ratio > 1.40) {
+          // Candidato absurdo — resetear y mantener BPM actual
+          this.candidateFrames = 0
+          return
+        }
+      }
+      
+      const maxBpmChange = isWarmup ? 10 : 2  // Warmup permite cambios rápidos
+      const clampedBpm = Math.max(
+        this.state.bpm - maxBpmChange, 
+        Math.min(this.state.bpm + maxBpmChange, newBpm)
+      )
+      this.state.bpm = this.state.bpm === 0 ? newBpm : clampedBpm  // First detection = no clamp
       this.state.isLocked = true
       this.state.lockFrames++
     } else {

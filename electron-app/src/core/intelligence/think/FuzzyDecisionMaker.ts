@@ -377,6 +377,15 @@ function fuzzifyEnergyZone(energyContext?: EnergyContext): EnergyZoneFuzzySet {
 
 /**
  * Fuzzifica el tipo de sección en quiet/building/peak
+ * 
+ * 🩸 WAVE 2100: breakdown REBALANCED
+ * Before: breakdown = { quiet: 0.8, building: 0.2, peak: 0.0 }
+ * This made Fuzzy treat breakdown as near-silence, which in techno is WRONG.
+ * Techno breakdowns still have bass/energy — they're tension-builders, not silences.
+ * All STRIKE rules use section.peak via Math.min() — with peak=0.0, strike=0.0 ALWAYS.
+ * FIX: breakdown = { quiet: 0.3, building: 0.5, peak: 0.2 }
+ * This lets breakdown moments still trigger effects when energy/Z-score/hunt are high.
+ * True silence is handled by EnergyZone suppression rules (weight 1.5).
  */
 function fuzzifySection(sectionType: SectionType): SectionFuzzySet {
   // Mappeo de secciones a energía narrativa
@@ -387,7 +396,7 @@ function fuzzifySection(sectionType: SectionType): SectionFuzzySet {
     'bridge':    { quiet: 0.4, building: 0.6, peak: 0.2 },
     'buildup':   { quiet: 0.0, building: 1.0, peak: 0.3 },
     'drop':      { quiet: 0.0, building: 0.0, peak: 1.0 },
-    'breakdown': { quiet: 0.8, building: 0.2, peak: 0.0 },
+    'breakdown': { quiet: 0.3, building: 0.5, peak: 0.2 },  // 🩸 WAVE 2100: was 0.8/0.2/0.0
     'outro':     { quiet: 1.0, building: 0.1, peak: 0.0 },
   }
   

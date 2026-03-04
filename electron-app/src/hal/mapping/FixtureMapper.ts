@@ -568,17 +568,14 @@ export class FixtureMapper {
       // ═══════════════════════════════════════════════════════════════════
       case 'red':
         const redValue = Math.round(state.r)
-        if (redValue > 0) console.log(`[Mapper] 🔴 RED=${redValue} for ${state.fixtureId}`)
         return redValue
       
       case 'green':
         const greenValue = Math.round(state.g)
-        if (greenValue > 0) console.log(`[Mapper] 🟢 GREEN=${greenValue} for ${state.fixtureId}`)
         return greenValue
       
       case 'blue':
         const blueValue = Math.round(state.b)
-        if (blueValue > 0) console.log(`[Mapper] 🔵 BLUE=${blueValue} for ${state.fixtureId}`)
         return blueValue
       
       case 'white':

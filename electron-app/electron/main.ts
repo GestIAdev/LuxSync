@@ -241,6 +241,8 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1920,
     height: 1080,
+    frame: false,           // Custom title bar
+    title: 'LuxSync',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -293,6 +295,14 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // Notify renderer of maximize state changes (for custom title bar button icon)
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window:maximized', true)
+  })
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window:maximized', false)
   })
 }
 
@@ -581,6 +591,34 @@ app.on('window-all-closed', () => {
 
 // Basic IPC handlers that need to stay in main
 ipcMain.handle('app:getVersion', () => app.getVersion())
+
+// ============================================================================
+// 🪟 WINDOW CONTROLS IPC - Custom title bar
+// ============================================================================
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize()
+})
+
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize()
+  } else {
+    mainWindow?.maximize()
+  }
+})
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close()
+})
+
+ipcMain.handle('window:isMaximized', () => {
+  return mainWindow?.isMaximized() ?? false
+})
+
+// Notify renderer when maximize state changes
+app.on('ready', () => {
+  // Listeners are added after mainWindow is created — see createWindow setup below
+})
 
 ipcMain.handle('audio:getDesktopSources', async () => {
   try {

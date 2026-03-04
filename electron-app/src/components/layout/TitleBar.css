@@ -119,12 +119,52 @@
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
 }
 
-/* Safe zone for native window controls (Windows: ~140px, Mac: ~80px) */
-.title-bar-safe-zone {
-  width: 140px;
+/* Safe zone REEMPLAZADA por botones custom — ver .title-bar-wc */
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* WAVE 2049.2: WINDOW CONTROL BUTTONS (right block)             */
+/* ═══════════════════════════════════════════════════════════════ */
+.title-bar-wc {
+  display: flex;
+  align-items: stretch;
   height: 100%;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+}
+
+.tb-wc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.45);
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.tb-wc-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tb-wc-btn:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Close button: red on hover */
+.tb-wc-close:hover {
+  background: rgba(196, 43, 28, 0.85);
+  color: #ffffff;
+}
+
+.tb-wc-close:active {
+  background: rgba(180, 30, 15, 1);
 }
 
 /* macOS uses left side for controls */
@@ -132,17 +172,17 @@
   .global-title-bar {
     flex-direction: row-reverse;
   }
-  
-  .title-bar-safe-zone {
-    width: 80px;
+
+  .title-bar-wc {
+    order: -1;
   }
-  
+
   .title-bar-drag {
     padding-left: 0;
     padding-right: 16px;
     justify-content: flex-end;
   }
-  
+
   .title-bar-pills {
     order: 1;
   }

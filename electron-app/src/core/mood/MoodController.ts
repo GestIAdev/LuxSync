@@ -80,16 +80,18 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // 🔥 WAVE 998: THE RESPECT PROTOCOL - Un pelín más de filtro y aire
   // 🎯 WAVE 1176: OPERATION SNIPER - Balanced más estricto, francotirador
   // 🎧 WAVE 1182: ETHICS RECALIBRATION - Solo épicos (1.13+) bypassean cooldown
-  // FILOSOFÍA: effects normales (ethics=1.00) respetan cooldown
-  //            effects épicos (ethics≥1.10) pueden override
-  // Target EPM: 4-5 (1 efecto cada 12-15 segundos)
+  // 🩸 WAVE 2095.2: RECALIBRADO PARA BREJCHA — 1.35 era demasiado estricto.
+  //   Raw worthiness de Brejcha vive en 0.65-0.85. Con 1.35x, 0.65/1.35=0.481 → BLOCKED.
+  //   Solo raw>0.75 pasaba. Resultado: 1 efecto en 400+ frames (casi nada).
+  //   1.20x: 0.65/1.20=0.542(borderline) | 0.70/1.20=0.583✅ | 0.75/1.20=0.625✅
+  //   Objetivo: 4-6 EPM. Francotirador, no estatua.
   balanced: {
     name: 'balanced',
     description: 'El profesional. El DJ está sobrio. 🎧',
     emoji: '⚖️',
-    thresholdMultiplier: 1.4,      // 🔥 WAVE 998: Filtro estándar
-    cooldownMultiplier: 1.8,       // 🎯 WAVE 1176: Cooldowns x1.5
-    ethicsThreshold: 1.10,         // WAVE 1182: SUBIDO 0.80 → 1.10 (solo épicos bypassean)
+    thresholdMultiplier: 1.20,     // 🩸 WAVE 2095.2: 1.35→1.20 (Brejcha raw 0.65-0.85 necesita más aire)
+    cooldownMultiplier: 1.8,       // 🎯 WAVE 1176: Cooldowns x1.8
+    ethicsThreshold: 1.12,         // WAVE 2093.3: Solo effects con ethics alto bypassean cooldown
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado

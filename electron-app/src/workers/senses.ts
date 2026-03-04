@@ -90,6 +90,10 @@ interface BetaState {
   heartbeatSequence: number;
   
   // 🔪 WAVE 2090.2: BPM state PURGED — Pacemaker in main thread is the sole BPM authority
+  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Restored via SET_BPM message from TitanOrchestrator
+  pacemakerBpm: number;
+  pacemakerBeatPhase: number;
+  pacemakerConfidence: number;
   
   // 🏎️ WAVE 1013: NITRO BOOST - Ring Buffer for Overlap Strategy
   ringBuffer: Float32Array;        // 4096 samples circular buffer
@@ -120,6 +124,10 @@ const state: BetaState = {
   heartbeatSequence: 0,
   
   // 🔪 WAVE 2090.2: BPM state initialization PURGED
+  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM restored via SET_BPM from TitanOrchestrator
+  pacemakerBpm: 0,
+  pacemakerBeatPhase: 0,
+  pacemakerConfidence: 0,
   
   // 🏎️ WAVE 1013: Ring Buffer (4096 samples for FFT, ~85ms @ 48kHz)
   ringBuffer: new Float32Array(4096),
@@ -476,15 +484,16 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // === PHASE 4: Wave 8 Rich Analysis ===
   // Create AudioMetrics for Wave 8 analyzers
   // 🔪 WAVE 2090.2: BPM fields set to neutral — Pacemaker owns BPM in main thread
+  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM/beatPhase restored from Pacemaker via SET_BPM
   const audioMetrics: AudioMetrics = {
     bass: spectrum.bass,
     mid: spectrum.mid,
     treble: spectrum.treble,
     volume: energy,
-    bpm: 0,                // 🔪 WAVE 2090.2: Worker no longer computes BPM
-    bpmConfidence: 0,      // 🔪 WAVE 2090.2: No BPM confidence from worker
+    bpm: state.pacemakerBpm,                // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
+    bpmConfidence: state.pacemakerConfidence, // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
     onBeat: spectrum.kickDetected,  // 🔪 WAVE 2090.2: Use GOD EAR transient onset only
-    beatPhase: 0,          // 🔪 WAVE 2090.2: Phase computed by Pacemaker
+    beatPhase: state.pacemakerBeatPhase,     // � WAVE 2096.1: From Pacemaker (was hardcoded 0)
     timestamp: Date.now(),
     // 🎵 WAVE 15.5: Para Key detection
     dominantFrequency: spectrum.dominantFrequency,
@@ -501,12 +510,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
-  // 🔪 WAVE 2090.2: Beat state neutered — no BPM in worker
+  // � WAVE 2096.1: Beat state restored from Pacemaker
   const beatState = {
-    bpm: 0,
-    confidence: 0,
+    bpm: state.pacemakerBpm,
+    confidence: state.pacemakerConfidence,
     onBeat: spectrum.kickDetected,
-    phase: 0,
+    phase: state.pacemakerBeatPhase,
     beatCount: 0
   };
   
@@ -514,7 +523,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const metricsForMood = {
     ...audioMetrics,
     energy: energy,  // MoodSynthesizer expects 'energy' not 'volume'
-    beatConfidence: 0,  // 🔪 WAVE 2090.2: No beat confidence from worker
+    beatConfidence: state.pacemakerConfidence,  // � WAVE 2096.1: From Pacemaker
     peak: energy,
     frameIndex: state.frameCount
   };
@@ -587,11 +596,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
     agcGainFactor: agcResult.gainFactor,
     
-    // 🔪 WAVE 2090.2: BPM fields neutered — Pacemaker is sole authority
-    bpm: 0,
-    bpmConfidence: 0,
+    // � WAVE 2096.1: BPM fields restored from Pacemaker (was neutered in WAVE 2090.2)
+    bpm: state.pacemakerBpm,
+    bpmConfidence: state.pacemakerConfidence,
     onBeat: spectrum.kickDetected,  // Transient onset only, not BPM-based beat
-    beatPhase: 0,
+    beatPhase: state.pacemakerBeatPhase,
     beatStrength: spectrum.kickDetected ? 1 : 0,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
@@ -806,6 +815,17 @@ function handleMessage(message: WorkerMessage): void {
         const vibePayload = message.payload as { vibeId: string };
         sectionTracker.setVibe(vibePayload.vibeId);
         console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker`);
+        break;
+      
+      // 💓 WAVE 2096.1: PACEMAKER BRIDGE — Receive BPM from TitanOrchestrator
+      case MessageType.SET_BPM:
+        const bpmPayload = message.payload as { bpm: number; beatPhase: number; confidence: number };
+        state.pacemakerBpm = bpmPayload.bpm;
+        state.pacemakerBeatPhase = bpmPayload.beatPhase;
+        state.pacemakerConfidence = bpmPayload.confidence;
+        if (state.frameCount % 300 === 0) {
+          console.log(`[BETA] 💓 WAVE 2096.1: Pacemaker BPM=${bpmPayload.bpm.toFixed(0)} phase=${bpmPayload.beatPhase.toFixed(2)} conf=${bpmPayload.confidence.toFixed(2)}`);
+        }
         break;
         
       default:

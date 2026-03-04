@@ -7,7 +7,6 @@
  *   - calibration: CalibrationView (Hardware Setup)
  *   - constructor: StageConstructorView (Stage Layout)
  *   - forge: ForgeView (Fixture Definition Editor) - WAVE 1110
- *   - setup: SetupView (Audio + DMX Config)
  *   - core: NeuralCommandView (AI Monitoring) - WAVE 1167
  * 
  * WAVE 379.4: Atomic Handoff for WebGL transitions

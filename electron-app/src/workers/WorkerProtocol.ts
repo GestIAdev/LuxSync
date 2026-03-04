@@ -65,6 +65,9 @@ export enum MessageType {
   // 🎛️ WAVE 60: Vibe Control
   SET_VIBE = 'set_vibe',          // Change active Vibe profile
   
+  // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM back to Worker
+  SET_BPM = 'set_bpm',            // Pacemaker BPM → Worker BETA
+  
   // 🔌 WAVE 63.95: System Power Control
   SYSTEM_SLEEP = 'system_sleep',  // Pause processing, reset state
   SYSTEM_WAKE = 'system_wake',    // Resume processing

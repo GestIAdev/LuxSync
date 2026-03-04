@@ -817,6 +817,7 @@ export class HardwareAbstraction {
     // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
     if (target.globalEffects.blackoutActive) {
       const blackoutStates: FixtureState[] = fixtures.map(fixture => ({
+        fixtureId: fixture.id || fixture.name,  // 🔧 WAVE 2049.1: Propagate fixtureId
         name: fixture.name,
         type: fixture.type || 'generic',
         zone: (fixture.zone || 'UNASSIGNED') as PhysicalZone,
@@ -858,6 +859,7 @@ export class HardwareAbstraction {
       if (fixtureTarget) {
         // Use arbitrated values directly
         const baseState: FixtureState = {
+          fixtureId,  // 🔧 WAVE 2049.1: Propagate fixtureId to state (was undefined!)
           name: fixture.name,
           type: fixture.type || 'generic',
           zone,
@@ -900,6 +902,7 @@ export class HardwareAbstraction {
       
       // Fallback: fixture not in arbiter output (shouldn't happen)
       return {
+        fixtureId,  // 🔧 WAVE 2049.1: Propagate fixtureId to state
         name: fixture.name,
         type: fixture.type || 'generic',
         zone,

@@ -70,6 +70,10 @@ export interface PipelineContext {
   predictionReasoning?: string
   /** Efectos sugeridos por el Oráculo */
   suggestedEffects?: string[]
+
+  // 🧬 WAVE 2093 COG-3: Spectral Context real desde sensory layer
+  /** SpectralContext derivado del FFT real — reemplaza hardcode por vibe */
+  spectralContext?: import('../../protocol/MusicalContext').SpectralContext
 }
 
 export interface IntegrationDecision {
@@ -138,7 +142,9 @@ export class DreamEngineIntegrator {
     //   Raw 0.64 / 1.15 = 0.557 → PASA ✅ (antes fallaba)
     //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
     //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
-    if (effectiveWorthiness < 0.55) {  // ← WAVE 976.5: era 0.60
+    // 🩸 WAVE 2100: Gate lowered 0.55 → 0.50
+    // At 0.50, only truly unworthy moments (raw < 0.60 in balanced) get blocked.
+    if (effectiveWorthiness < 0.50) {  // 🩸 WAVE 2100: was 0.55
       // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
       // console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
@@ -148,6 +154,32 @@ export class DreamEngineIntegrator {
         filterTime: 0,
         totalTime: Date.now() - pipelineStartTime,
         dreamRecommendation: `Hunt worthiness insufficient (${currentProfile.name} mode: ${rawWorthiness.toFixed(2)} → ${effectiveWorthiness.toFixed(2)})`,
+        ethicalVerdict: null,
+        circuitHealthy: true,
+        fallbackUsed: false,
+        alternatives: []
+      }
+    }
+
+    // 🩸 WAVE 2101.3: ENERGY ZONE GATE
+    // No ejecutar el pipeline completo en zonas de silencio/valle/ambient.
+    // 🩸 WAVE 2101.5: AMBIENT también bloqueado.
+    // Drops reales bypasean.
+    const energyZone = context.energyZone ?? 'ambient'
+    const predTimeMs = context.predictionTimeMs ?? 9999
+    const predProb = context.predictionProbability ?? 0
+    const predType = context.predictionType ?? 'none'
+    const isRealDropImminent = (predType === 'drop_incoming' || predType === 'energy_spike') 
+      && predTimeMs < 1500 && predProb > 0.75
+
+    if ((energyZone === 'silence' || energyZone === 'valley' || energyZone === 'ambient') && !isRealDropImminent) {
+      return {
+        approved: false,
+        effect: null,
+        dreamTime: 0,
+        filterTime: 0,
+        totalTime: Date.now() - pipelineStartTime,
+        dreamRecommendation: `Zone gate: ${energyZone} without imminent drop`,
         ethicalVerdict: null,
         circuitHealthy: true,
         fallbackUsed: false,
@@ -227,14 +259,31 @@ export class DreamEngineIntegrator {
       alternatives: ethicalVerdict.alternatives.slice(0, 2)
     }
     
-    // 🧹 WAVE 1015: Solo logear si slow (>10ms) o si rejected
-    if (decision.totalTime > 10 || !decision.approved) {
+    // � WAVE 2102: MINIMUM INTENSITY GATE — log approvals and reject weak intensities
+    if (decision.approved && decision.effect) {
+      if (decision.effect.intensity < 0.30) {
+        console.log(
+          `[INTEGRATOR] 🔇 LOW INTENSITY BLOCKED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} (min=0.30)`
+        )
+        return {
+          ...decision,
+          approved: false,
+          dreamRecommendation: `Intensity gate: ${decision.effect.intensity.toFixed(2)} < 0.30 minimum`,
+        }
+      }
+      console.log(
+        `[INTEGRATOR] ✅ APPROVED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} | ` +
+        `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
+        `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`
+      )
+    } else if (decision.totalTime > 10 || !decision.approved) {
       console.log(
         `[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
-        `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms`
+        `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms | ` +
+        `reason=${decision.dreamRecommendation?.substring(0, 60) ?? '?'}`
       )
     }
-    
+
     // Record for learning
     if (decision.approved && decision.effect) {
       effectBiasTracker.recordEffect({
@@ -299,18 +348,22 @@ export class DreamEngineIntegrator {
   public getHealthStatus() {
     const circuitStatus = visualConscienceEngine.checkCircuitHealth()
     const maturityMetrics = visualConscienceEngine.getMaturityMetrics()
-    
+
     return {
       circuitBreakerState: circuitStatus.state,
-      circuitHealthy: circuitStatus.isHealthy,
-      maturityLevel: maturityMetrics.level,
-      maturityExperience: maturityMetrics.experience,
-      unlockedFeatures: maturityMetrics.unlockedFeatures,
-      pipelineDecisions: this.executionHistory.length,
+      evolutionLevel: maturityMetrics?.level ?? 1,
       cacheSize: this.dreamCache.size
     }
   }
-  
+
+  /**
+   * ⚡ WAVE 2093.2: Invalidar Dream cache
+   * Se llama cuando un efecto se disparó con éxito para forzar alternativas
+   */
+  public invalidateDreamCache(): void {
+    this.dreamCache.clear()
+  }
+
   // ═════════════════════════════════════════════════════════════════════════
   // PRIVATE: DREAM EXECUTION
   // ═════════════════════════════════════════════════════════════════════════
@@ -465,6 +518,11 @@ export class DreamEngineIntegrator {
     // Add epilepsy mode if enabled
     if (context.epilepsyMode) {
       builder.withEpilepsyMode(true)
+    }
+
+    // 🧬 WAVE 2093 COG-3: Spectral Context
+    if (context.spectralContext) {
+      builder.withSpectral(context.spectralContext)
     }
     
     // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR

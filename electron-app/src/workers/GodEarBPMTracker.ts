@@ -1,72 +1,56 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v2
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2122: VOLVER A LOS ORÍGENES — AUTOCORRELACIÓN
+ * WAVE 2122.1: PARABOLIC INTERPOLATION + HARMONIC SIEVE
  *
+ * WAVE 2122 POSTMORTEM:
  * ┌──────────────────────────────────────────────────────────────────────┐
- * │  WAVEs 1163→2121: THE INTERVAL GRAVEYARD                           │
+ * │  Production log on ~126 BPM music:                                  │
+ * │    85 → 84 → 84 → 162 → 169 → 169 → 169 → 96 → 92                │
  * │                                                                      │
- * │  Approach: Count kicks → measure intervals → median → BPM.          │
+ * │  NEVER hit 126 BPM. Oscillated between sub-harmonics (84-96) and   │
+ * │  super-harmonics (162-173). Pure "octave hopping."                  │
  * │                                                                      │
- * │  Fatal flaw: In Tech House (Brejcha), kicks and offbeats have       │
- * │  IDENTICAL energy in subBass+bass. No threshold, weight, IQR, or    │
- * │  debounce can distinguish them. The tracker detected BOTH, poisoning│
- * │  intervals with 325ms offbeats → erratic BPM 108-161.              │
- * │                                                                      │
- * │  Waves that fell:                                                    │
- * │    2118: subBass×1.5 + bass×0.4 → 161 BPM lock                     │
- * │    2119: beaterClick (mid+highMid) coincidence → 185 spikes         │
- * │    2119.1: Disable external kick bypass → still 161/185             │
- * │    2121: Pure rawBassEnergy + MIN_INTERVAL=310ms → erratic 108-161  │
- * │                                                                      │
- * │  ROOT CAUSE: Architectural. Interval-based detection CANNOT work     │
- * │  when kick and offbeat are energetically indistinguishable.          │
+ * │  ROOT CAUSE: At 46.4ms/frame, 126 BPM = lag 10.26 frames.         │
+ * │  Math.round → lag 10. But 125 BPM = lag 10.34 → also lag 10.      │
+ * │  128 BPM = lag 10.09 → also lag 10. FOUR BPMs share one lag.      │
+ * │  Meanwhile, 84 BPM = lag 15.37 — much better resolution.           │
+ * │  Autocorrelation with integer lags CANNOT resolve the 120-130 BPM  │
+ * │  range at this frame rate. The harmonic at lag 15 (84 BPM) or      │
+ * │  lag 8 (168 BPM) can easily win by noise margin.                   │
  * └──────────────────────────────────────────────────────────────────────┘
  *
- * THE SOLUTION: AUTOCORRELATION
+ * THE FIX: TWO TECHNIQUES
  *
- * Instead of counting individual kicks, we ask:
- *   "At what lag does the energy signal repeat itself?"
+ * 1. PARABOLIC INTERPOLATION OF AUTOCORRELATION PEAKS
+ *    Instead of evaluating autocorrelation only at integer lags, we:
+ *    a) Compute autocorrelation at ALL integer lags in the valid range
+ *    b) Find local maxima in the correlation function
+ *    c) For each local maximum at lag k, fit a parabola through
+ *       R(k-1), R(k), R(k+1) to find the SUB-SAMPLE peak position
+ *    d) Convert interpolated lag to BPM: bpm = 60000 / (lag * frameDurationMs)
  *
- * This finds the DOMINANT PERIODICITY — the beat period — regardless of
- * whether offbeats also fire. Because kick+offbeat TOGETHER create a
- * pattern that repeats at the TRUE beat interval (e.g., 476ms for 126 BPM).
+ *    This is the standard technique in pitch detection (YIN, AMDF, MPM)
+ *    and gives sub-frame resolution. A peak at integer lag 10 might
+ *    resolve to lag 10.26 → exactly 126 BPM.
  *
- * HOW IT WORKS:
- *   1. Store a rolling window of bass energy values (one per FFT frame)
- *   2. For each candidate BPM (70-190), calculate the corresponding lag
- *      in frames: lag = (60000/BPM) / frameDurationMs
- *   3. Compute normalized autocorrelation at that lag
- *   4. The lag with highest correlation = dominant beat period = BPM
+ * 2. HARMONIC SIEVE
+ *    Autocorrelation has peaks at every integer multiple of the fundamental lag.
+ *    lag=10 (126 BPM) → also peaks at lag=20 (63 BPM), lag=30 (42 BPM)...
+ *    And sub-harmonics can appear at lag=5 (252 BPM).
  *
- * WHY THIS IS ARCHITECTURALLY CORRECT:
- *   - Immune to offbeats: they're part of the repeating pattern
- *   - Immune to missed kicks: correlation degrades gracefully
- *   - No threshold tuning for kick detection
- *   - No IQR, no debounce, no ratio — pure signal processing
- *   - This is how Ableton, Rekordbox, and every serious BPM analyzer works
+ *    The harmonic sieve: collect ALL local maxima in the autocorrelation,
+ *    sort by lag (shortest first = highest BPM). For each peak, check if
+ *    it has harmonic support (a peak near 2× its lag). The fundamental is
+ *    the shortest-lag peak that is "strong enough" (≥75% of the global max
+ *    correlation) AND has evidence of a harmonic at ~2× its lag.
  *
- * ARCHITECTURE:
- *
- *   Worker Thread (senses.ts)
- *   ┌─────────────────────────────────────────┐
- *   │ GodEarFFT.analyze(buffer)               │
- *   │   ↓ rawBassEnergy (subBass + bass)      │
- *   │ GodEarBPMTracker.process(energy, ts)    │
- *   │   ↓ accumulate energy in circular buffer│
- *   │   ↓ autocorrelation over BPM range      │
- *   │   ↓ peak detection + harmonic disambig  │
- *   │   ↓ exponential smoothing               │
- *   │ → bpm, confidence, kickDetected, phase  │
- *   └────────────┬────────────────────────────┘
- *                │ IPC (every frame)
- *                ▼
- *   Main Thread (TitanOrchestrator)
+ *    If no peak has harmonic support, fall back to the global maximum.
  *
  * @author PunkOpus
- * @wave 2122
+ * @wave 2122.1
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -86,13 +70,24 @@ export interface GodEarBPMResult {
   beatPhase: number
 }
 
+/** Internal: a detected peak in the autocorrelation function */
+interface AutocorrPeak {
+  /** Integer lag of the peak */
+  lag: number
+  /** Interpolated lag (sub-sample precision via parabolic fit) */
+  interpolatedLag: number
+  /** Normalized correlation strength at this peak */
+  correlation: number
+  /** BPM corresponding to the interpolated lag */
+  bpm: number
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Duration of the analysis window in seconds.
- *  6 seconds captures ~7-8 beats at 126 BPM — enough for solid correlation.
- *  Longer = more stable but slower to react to tempo changes. */
+ *  6 seconds captures ~7-8 beats at 126 BPM — enough for solid correlation. */
 const WINDOW_SECONDS = 6
 
 /** Minimum BPM to scan. Below this is not dance music. */
@@ -101,40 +96,37 @@ const MIN_BPM = 70
 /** Maximum BPM to scan. Psytrance tops ~185. */
 const MAX_BPM = 190
 
-/** BPM scan resolution. 1.0 = test every integer BPM. */
-const BPM_STEP = 1.0
-
 /** Smoothing factor for BPM output (exponential moving average).
- *  0.12 = relatively smooth, reaches target in ~20 scans. */
-const BPM_SMOOTH_FACTOR = 0.12
+ *  0.15 = reaches target in ~15 scans (~2.8s). */
+const BPM_SMOOTH_FACTOR = 0.15
 
 /** Minimum correlation strength to accept a BPM reading.
  *  Below this, we keep the previous BPM (freewheel). */
 const MIN_CORRELATION = 0.05
 
 /** Frames between full autocorrelation scans.
- *  Autocorrelation is O(N×M) — we don't need it every frame.
  *  Every 4 frames at ~46.4ms/frame ≈ every 186ms. */
 const SCAN_INTERVAL_FRAMES = 4
 
-/** Beat phase threshold for kick detection.
- *  When phase wraps from >threshold back to <(1-threshold), that's a beat. */
-const BEAT_PHASE_WRAP_THRESHOLD = 0.15
-
-/** Harmonic preference: if sub-harmonic (half BPM) has correlation
- *  within this ratio of the best, prefer the sub-harmonic.
- *  Prevents 126→252 BPM octave errors. */
-const HARMONIC_PREFERENCE_RATIO = 0.85
-
 /** Minimum amplitude multiplier to confirm a kick this frame.
- *  Used ONLY for kickDetected flag (light physics needs it).
- *  BPM calculation does NOT use this — it uses autocorrelation. */
+ *  Used ONLY for kickDetected flag (light physics).
+ *  BPM calculation does NOT use this. */
 const KICK_ENERGY_RATIO = 1.4
 
 /** Minimum absolute energy to even consider a kick.
- *  Prevents false positives during breakdowns/silence where
- *  noise floor modulation can trigger phase-based detection. */
+ *  Prevents false positives during silence. */
 const KICK_MIN_ABSOLUTE_ENERGY = 0.15
+
+/** Harmonic sieve: a peak is "strong enough" to be the fundamental
+ *  if its correlation is at least this fraction of the global max. */
+const HARMONIC_SIEVE_RATIO = 0.75
+
+/** A peak at lag L has "harmonic support" if there's a peak near 2L
+ *  whose correlation is at least this fraction of the peak at L. */
+const HARMONIC_SUPPORT_RATIO = 0.3
+
+/** When looking for a harmonic at ~2×lag, allow this tolerance in frames. */
+const HARMONIC_LAG_TOLERANCE = 2
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
@@ -152,6 +144,10 @@ export class GodEarBPMTracker {
   /** Maximum samples in the window */
   private readonly windowSize: number
 
+  /** Min/max lag corresponding to BPM range (pre-computed) */
+  private readonly minLag: number
+  private readonly maxLag: number
+
   /** Current smoothed BPM output */
   private stableBpm = 0
   /** Raw BPM from last autocorrelation scan */
@@ -161,46 +157,37 @@ export class GodEarBPMTracker {
 
   /** Frame counter for scan interval */
   private frameCount = 0
-  /** Total beat phase wraps detected (for diagnostics / interface compat) */
+  /** Total kicks detected (for interface compat) */
   private totalKicks = 0
 
   /** Phase tracking */
   private lastBeatPhaseTimestamp = 0
   private prevPhase = 0
 
-  /** Kick hysteresis: prevents double-trigger on multi-frame peaks */
+  /** Kick hysteresis */
   private inKickState = false
 
-  /** Energy average for simple kick detection (for kickDetected flag) */
+  /** Energy average for kick detection */
   private rollingEnergySum = 0
   private rollingEnergyCount = 0
   private readonly rollingEnergySize = 32
   private rollingEnergyBuffer: Float32Array
   private rollingEnergyPos = 0
 
-  /** Pre-computed lag table: bpm → lag in frames */
-  private lagTable: Array<{ bpm: number; lag: number }> = []
-
   constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
-    this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000 // ~46.4ms in production
+    this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000
     this.windowSize = Math.ceil((WINDOW_SECONDS * 1000) / this.frameDurationMs)
     this.energyWindow = new Float32Array(this.windowSize)
     this.rollingEnergyBuffer = new Float32Array(this.rollingEnergySize)
 
-    // Pre-compute lag table for all candidate BPMs
-    for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += BPM_STEP) {
-      const periodMs = 60000 / bpm
-      const lagFrames = Math.round(periodMs / this.frameDurationMs)
-      this.lagTable.push({ bpm, lag: lagFrames })
-    }
+    // Pre-compute lag range from BPM range
+    // Higher BPM → shorter period → smaller lag
+    this.minLag = Math.floor((60000 / MAX_BPM) / this.frameDurationMs)
+    this.maxLag = Math.ceil((60000 / MIN_BPM) / this.frameDurationMs)
   }
 
   /**
    * Process one frame of audio data.
-   *
-   * @param rawBassEnergy - Raw bass energy (subBass + bass, pre-AGC)
-   * @param _externalKickDetected - Unused, kept for interface compatibility
-   * @param timestamp - Deterministic musical timestamp (WAVE 2115)
    */
   process(
     rawBassEnergy: number,
@@ -225,7 +212,6 @@ export class GodEarBPMTracker {
     this.rollingEnergyPos = (this.rollingEnergyPos + 1) % this.rollingEnergySize
 
     // ─── 2. Need enough data for correlation ─────────────────────
-    // At least 3 seconds of data before first scan
     const minSamples = Math.ceil(3000 / this.frameDurationMs)
     if (this.sampleCount < minSamples) {
       return {
@@ -242,7 +228,7 @@ export class GodEarBPMTracker {
       this.runAutocorrelationScan()
     }
 
-    // ─── 4. Calculate beat phase ─────────────────────────────────
+    // ─── 4. Calculate beat phase + kick detection ────────────────
     let beatPhase = 0
     let kickDetected = false
 
@@ -256,17 +242,12 @@ export class GodEarBPMTracker {
       const elapsed = timestamp - this.lastBeatPhaseTimestamp
       beatPhase = (elapsed % beatIntervalMs) / beatIntervalMs
 
-      // ─── 5. Detect beat crossing (phase wrap) ────────────────────
-      // Phase goes 0→1 continuously. When it wraps back from ~1 to ~0,
-      // that's a new beat.
-      if (this.prevPhase > (1 - BEAT_PHASE_WRAP_THRESHOLD) && beatPhase < BEAT_PHASE_WRAP_THRESHOLD) {
-        this.lastBeatPhaseTimestamp = timestamp // Re-sync phase on each wrap
+      // Phase wrap detection → re-sync
+      if (this.prevPhase > 0.85 && beatPhase < 0.15) {
+        this.lastBeatPhaseTimestamp = timestamp
       }
 
-      // ─── 5b. Kick detection (energy-based, phase-independent) ──
-      // kickDetected fires when energy spikes above rolling average.
-      // This is for light physics / beat flash — NOT for BPM calculation.
-      // Separate from phase to avoid timing mismatch between phase wrap and energy peak.
+      // Kick detection (energy-based, phase-independent)
       const avgEnergy = this.rollingEnergyCount > 0
         ? this.rollingEnergySum / this.rollingEnergyCount
         : 0.05
@@ -277,14 +258,13 @@ export class GodEarBPMTracker {
         this.totalKicks++
         this.inKickState = true
       }
-      // Exit kick state when energy drops below average
       if (this.inKickState && rawBassEnergy < avgEnergy * 0.9) {
         this.inKickState = false
       }
       this.prevPhase = beatPhase
     }
 
-    // ─── 6. Diagnostic log ───────────────────────────────────────
+    // ─── 5. Diagnostic log ───────────────────────────────────────
     if (this.frameCount % 120 === 0) {
       console.log(
         `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
@@ -302,116 +282,191 @@ export class GodEarBPMTracker {
   }
 
   /**
-   * Core autocorrelation scan.
-   * Tests every candidate BPM and picks the one with highest correlation.
+   * CORE: Autocorrelation scan with parabolic interpolation + harmonic sieve.
    *
-   * Autocorrelation R(lag) = Σ x[n] * x[n+lag]
-   * Normalized by R(0) = Σ x[n]²
-   *
-   * The BPM whose lag yields the highest normalized R is the dominant periodicity.
+   * Step 1: Compute normalized autocorrelation R(lag) for all integer lags
+   *         in [minLag, maxLag].
+   * Step 2: Find all local maxima in R(lag).
+   * Step 3: Parabolic interpolation for sub-frame lag resolution.
+   * Step 4: Harmonic sieve — prefer shortest-lag peak with harmonic support.
+   * Step 5: Smooth output BPM via EMA.
    */
   private runAutocorrelationScan(): void {
     const n = this.sampleCount
 
-    // Linearize the circular buffer for correlation
+    // Linearize the circular buffer
     const linear = this.getLinearWindow()
 
-    // Remove DC offset (mean) — essential for clean correlation.
-    // Without this, a constant signal would have R(lag)=1 for all lags.
+    // Remove DC offset (mean)
     const mean = this.computeMean(linear, n)
     for (let i = 0; i < n; i++) {
       linear[i] -= mean
     }
 
-    // Normalization: autocorrelation at lag 0 (total energy of signal)
+    // Normalization: autocorrelation at lag 0
     const energy = this.computeEnergy(linear, n)
-    if (energy < 1e-10) return // Silence — skip
+    if (energy < 1e-10) return // Silence
 
-    // Scan all candidate BPMs
-    let bestBpm = this.rawBpm
-    let bestCorr = -1
+    // ─── Step 1: Compute normalized autocorrelation ──────────────────────
+    const effectiveMaxLag = Math.min(this.maxLag, n - 1)
+    const effectiveMinLag = Math.max(this.minLag, 2)
 
-    for (let i = 0; i < this.lagTable.length; i++) {
-      const { bpm, lag } = this.lagTable[i]
-      if (lag >= n) continue // Lag exceeds window — skip
+    if (effectiveMinLag >= effectiveMaxLag) return
 
-      // Compute normalized autocorrelation at this lag
-      const corr = this.correlationAtLag(linear, n, lag) / energy
+    const corrLen = effectiveMaxLag - effectiveMinLag + 1
+    const corrArray = new Float32Array(corrLen)
+    for (let lag = effectiveMinLag; lag <= effectiveMaxLag; lag++) {
+      corrArray[lag - effectiveMinLag] = this.correlationAtLag(linear, n, lag) / energy
+    }
 
-      if (corr > bestCorr) {
-        bestCorr = corr
-        bestBpm = bpm
+    // ─── Step 2 + 3: Find local maxima with parabolic interpolation ─────
+    const peaks: AutocorrPeak[] = []
+
+    for (let i = 1; i < corrLen - 1; i++) {
+      const prev = corrArray[i - 1]
+      const curr = corrArray[i]
+      const next = corrArray[i + 1]
+
+      if (curr > prev && curr > next && curr > MIN_CORRELATION) {
+        const lag = i + effectiveMinLag
+
+        // Parabolic interpolation: vertex of parabola through 3 points
+        const denom = prev - 2 * curr + next
+        let interpolatedLag = lag
+        let interpolatedCorr = curr
+
+        if (Math.abs(denom) > 1e-10) {
+          const delta = 0.5 * (prev - next) / denom
+          const clampedDelta = Math.max(-0.5, Math.min(0.5, delta))
+          interpolatedLag = lag + clampedDelta
+          interpolatedCorr = curr - 0.25 * (prev - next) * clampedDelta
+        }
+
+        const bpm = 60000 / (interpolatedLag * this.frameDurationMs)
+
+        if (bpm >= MIN_BPM - 5 && bpm <= MAX_BPM + 5) {
+          peaks.push({ lag, interpolatedLag, correlation: interpolatedCorr, bpm })
+        }
       }
     }
 
-    // ─── Harmonic disambiguation ─────────────────────────────────
-    // Problem: Autocorrelation has peaks at every harmonic (lag, 2×lag, 3×lag...)
-    // If the tracker picks 252 BPM (lag=5) when the real tempo is 126 BPM (lag=10),
-    // we need to check if the sub-harmonic is nearly as strong.
-    //
-    // Strategy: Check half-BPM. Prefer it ONLY if it's nearly as strong AND the
-    // current BPM is above the dance music ceiling (>MAX_BPM). This prevents
-    // 252→126 (correct) without causing 175→87 (wrong).
-    //
-    // For BPMs within the valid range, also check if half-BPM has a STRONGER
-    // correlation — this catches cases where 250→125 genuinely sounds better.
+    if (peaks.length === 0) return
 
-    const halfBpm = Math.round(bestBpm / 2)
-    if (halfBpm >= MIN_BPM) {
-      const halfLag = Math.round((60000 / halfBpm) / this.frameDurationMs)
-      if (halfLag < n) {
-        const halfCorr = this.correlationAtLag(linear, n, halfLag) / energy
-        if (bestBpm > MAX_BPM) {
-          // BPM is above valid range — sub-harmonic is almost certainly correct
-          if (halfCorr > bestCorr * HARMONIC_PREFERENCE_RATIO) {
-            bestBpm = halfBpm
-            bestCorr = halfCorr
+    // ─── Step 4: Harmonic sieve ──────────────────────────────────────────
+    peaks.sort((a, b) => a.lag - b.lag) // Shortest lag first (highest BPM)
+
+    let globalMaxCorr = 0
+    for (const p of peaks) {
+      if (p.correlation > globalMaxCorr) globalMaxCorr = p.correlation
+    }
+
+    let bestPeak: AutocorrPeak | null = null
+
+    // Pass 1: find shortest-lag peak with harmonic support
+    for (const peak of peaks) {
+      if (peak.correlation < globalMaxCorr * HARMONIC_SIEVE_RATIO) continue
+      if (peak.bpm < MIN_BPM || peak.bpm > MAX_BPM) continue
+
+      // Check for harmonic at ~2× lag
+      const target2x = peak.lag * 2
+      let hasSupport = false
+
+      for (const other of peaks) {
+        if (Math.abs(other.lag - target2x) <= HARMONIC_LAG_TOLERANCE) {
+          if (other.correlation >= peak.correlation * HARMONIC_SUPPORT_RATIO) {
+            hasSupport = true
+            break
           }
-        } else {
-          // BPM is within valid range — only prefer half if it's ACTUALLY stronger
-          if (halfCorr > bestCorr * 1.05) {
-            bestBpm = halfBpm
-            bestCorr = halfCorr
+        }
+      }
+
+      // Check ~3× lag as fallback
+      if (!hasSupport) {
+        const target3x = peak.lag * 3
+        for (const other of peaks) {
+          if (Math.abs(other.lag - target3x) <= HARMONIC_LAG_TOLERANCE + 1) {
+            if (other.correlation >= peak.correlation * HARMONIC_SUPPORT_RATIO) {
+              hasSupport = true
+              break
+            }
+          }
+        }
+      }
+
+      if (hasSupport) {
+        bestPeak = peak
+        break
+      }
+    }
+
+    // Fallback: global max peak
+    if (!bestPeak) {
+      for (const peak of peaks) {
+        if (peak.bpm >= MIN_BPM && peak.bpm <= MAX_BPM) {
+          if (peak.correlation >= globalMaxCorr * 0.99) {
+            bestPeak = peak
+            break
           }
         }
       }
     }
 
-    // Also check double BPM — prevent 63 being read instead of 126.
-    // Only prefer double if it's SIGNIFICANTLY stronger (1.3x).
-    const dblBpm = bestBpm * 2
-    if (dblBpm <= MAX_BPM) {
-      const dblLag = Math.round((60000 / dblBpm) / this.frameDurationMs)
-      if (dblLag < n && dblLag > 0) {
-        const dblCorr = this.correlationAtLag(linear, n, dblLag) / energy
-        if (dblCorr > bestCorr * 1.3) {
-          bestBpm = dblBpm
-          bestCorr = dblCorr
+    // Last resort: any peak in range
+    if (!bestPeak) {
+      for (const peak of peaks) {
+        if (peak.bpm >= MIN_BPM && peak.bpm <= MAX_BPM) {
+          bestPeak = peak
+          break
         }
       }
     }
 
-    this.rawBpm = bestBpm
-    this.currentConfidence = Math.max(0, Math.min(1, bestCorr))
+    if (!bestPeak) return
 
-    // ─── Smooth BPM output ───────────────────────────────────────
-    if (bestCorr > MIN_CORRELATION) {
+    // ─── Safety: pull above-range BPM down to sub-harmonic ──────────────
+    if (bestPeak.bpm > MAX_BPM) {
+      const halfLag = bestPeak.lag * 2
+      for (const p of peaks) {
+        if (Math.abs(p.lag - halfLag) <= HARMONIC_LAG_TOLERANCE && p.bpm >= MIN_BPM && p.bpm <= MAX_BPM) {
+          bestPeak = p
+          break
+        }
+      }
+    }
+
+    // ─── Safety: push below-range BPM up to harmonic ────────────────────
+    if (bestPeak.bpm < MIN_BPM) {
+      const halfLag = Math.round(bestPeak.lag / 2)
+      for (const p of peaks) {
+        if (Math.abs(p.lag - halfLag) <= HARMONIC_LAG_TOLERANCE && p.bpm >= MIN_BPM && p.bpm <= MAX_BPM) {
+          bestPeak = p
+          break
+        }
+      }
+    }
+
+    const finalBpm = bestPeak.bpm
+    const finalCorr = bestPeak.correlation
+
+    this.rawBpm = Math.round(finalBpm)
+    this.currentConfidence = Math.max(0, Math.min(1, finalCorr))
+
+    // ─── Step 5: Smooth BPM output ───────────────────────────────────────
+    if (finalCorr > MIN_CORRELATION) {
       if (this.stableBpm === 0) {
-        // First valid reading — snap immediately
-        this.stableBpm = Math.round(bestBpm)
+        this.stableBpm = Math.round(finalBpm)
       } else {
-        const diff = Math.abs(bestBpm - this.stableBpm)
+        const diff = Math.abs(finalBpm - this.stableBpm)
 
         if (diff > 30) {
-          // Large jump — likely song change, snap quickly
-          this.stableBpm = Math.round(bestBpm)
-          // Reset phase tracking on big jump
+          // Large jump — snap
+          this.stableBpm = Math.round(finalBpm)
           this.lastBeatPhaseTimestamp = 0
           this.prevPhase = 0
         } else {
-          // Normal tracking — exponential moving average
+          // EMA smoothing
           this.stableBpm = Math.round(
-            this.stableBpm + BPM_SMOOTH_FACTOR * (bestBpm - this.stableBpm)
+            this.stableBpm + BPM_SMOOTH_FACTOR * (finalBpm - this.stableBpm)
           )
         }
       }
@@ -419,20 +474,17 @@ export class GodEarBPMTracker {
   }
 
   /**
-   * Get a linearized (non-circular) copy of the energy window.
-   * Oldest sample first, newest last.
+   * Linearize the circular buffer. Oldest sample first, newest last.
    */
   private getLinearWindow(): Float32Array {
     const n = this.sampleCount
     const linear = new Float32Array(n)
 
     if (this.sampleCount < this.windowSize) {
-      // Buffer not yet full — data starts at 0
       for (let i = 0; i < n; i++) {
         linear[i] = this.energyWindow[i]
       }
     } else {
-      // Circular buffer is full — unwrap from writePos
       for (let i = 0; i < n; i++) {
         linear[i] = this.energyWindow[(this.writePos + i) % this.windowSize]
       }
@@ -469,7 +521,7 @@ export class GodEarBPMTracker {
     return this.stableBpm
   }
 
-  /** Reset tracker state (e.g., on song change) */
+  /** Reset tracker state */
   reset(): void {
     this.energyWindow.fill(0)
     this.writePos = 0

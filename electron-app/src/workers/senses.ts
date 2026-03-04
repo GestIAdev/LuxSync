@@ -97,6 +97,9 @@ interface BetaState {
   bpmConfidence: number;
   beatPhase: number;
   lastBeatTime: number;
+
+  // 🥁 WAVE 2124: Previous frame energy for spectral flux (onset detection)
+  prevTrackerEnergy: number;
   
   // 🏎️ WAVE 1013: NITRO BOOST - Ring Buffer for Overlap Strategy
   ringBuffer: Float32Array;        // 4096 samples circular buffer
@@ -131,6 +134,9 @@ const state: BetaState = {
   bpmConfidence: 0,
   beatPhase: 0,
   lastBeatTime: 0,
+
+  // 🥁 WAVE 2124: Spectral flux onset detection
+  prevTrackerEnergy: 0,
   
   // 🏎️ WAVE 1013: Ring Buffer (4096 samples for FFT, ~85ms @ 48kHz)
   ringBuffer: new Float32Array(4096),
@@ -505,32 +511,65 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // are identical → 325ms offbeat intervals poison everything.
   //
   // WAVE 2122: The tracker now uses AUTOCORRELATION over a 6-second rolling
-  // window of rawBassEnergy. It finds the dominant periodicity — the beat
-  // period — regardless of whether individual events are kicks or offbeats.
-  // The energy signal (subBass + bass) is the correct input: it captures
-  // the full rhythmic pattern that autocorrelation can decompose.
+  // window. It finds the dominant periodicity — the beat period.
   //
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 2122.2: AGC DECOMPENSATION
   // ═══════════════════════════════════════════════════════════════════════════
-  // CRITICAL BUG: rawBassEnergy is labeled "pre-AGC" but it's NOT.
-  //   Flow: ringBuffer → AGC(buffer, gain) → FFT(buffer) → rawBands.subBass+bass
-  //   The FFT runs on the AGC-compressed buffer, so rawBassEnergy inherits
-  //   the AGC's variable gain (0.59-0.82x frame-to-frame).
+  // rawBassEnergy inherits AGC's variable gain (0.59-0.82x frame-to-frame).
+  // This creates ARTIFICIAL amplitude modulation that the autocorrelation
+  // misreads as ~95 BPM periodicity (AGC pumping cycle).
   //
-  // This creates an ARTIFICIAL amplitude modulation that the autocorrelation
-  // misreads as ~95 BPM periodicity (the AGC pumping cycle), masking the
-  // true 126 BPM beat periodicity.
+  // FIX: Divide rawBassEnergy by gain² to recover pre-AGC dynamics.
+  // ═══════════════════════════════════════════════════════════════════════════
   //
-  // FIX: Divide rawBassEnergy by gain² to recover pre-AGC energy dynamics.
-  // Energy ∝ amplitude², and AGC multiplied amplitude by gain, so:
-  //   E_post = E_pre × gain²  →  E_pre = E_post / gain²
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 2124: SPECTRAL FLUX — THE UNIVERSAL ONSET DETECTOR
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 2123 POSTMORTEM: The autocorrelation engine is mathematically
+  // perfect (octave-aware sieve + octave lock). But production telemetry
+  // showed NEGATIVE correlation at 126 BPM (lag 41):
+  //
+  //   Frame 960:  L43(120bpm)=-0.229
+  //   Frame 1080: L43(120bpm)=-0.170
+  //   Frame 1560: L43(120bpm)=-0.131
+  //
+  // The 126 BPM beat pattern DOES NOT EXIST in the raw energy signal.
+  // Sustained bass lines and continuous offbeat energy fill the gaps
+  // between kicks, making the energy "plateau" look periodic at ~170 BPM
+  // (the bass modulation frequency), not at 126 BPM (the kick frequency).
+  //
+  // SOLUTION: Feed the tracker SPECTRAL FLUX instead of absolute energy.
+  // Spectral flux = frame-over-frame energy INCREASE. Only the positive
+  // delta matters (Math.max(0, delta)) — this isolates ONSETS:
+  //
+  //   - Kick:  energy jumps from 0.1 → 0.8 = flux of 0.7 ✓
+  //   - Bass:  energy drifts from 0.4 → 0.5 = flux of 0.1 ✗ (negligible)
+  //   - Decay: energy drops from 0.8 → 0.3 = flux of 0.0 (clamped)
+  //
+  // This is how Pioneer, Rekordbox, and Serato isolate the rhythmic
+  // skeleton regardless of genre. The autocorrelation then finds the
+  // periodicity of ATTACKS, which is the actual beat pattern.
+  //
+  // Input includes subBass + bass + 50% mid to capture the "click" of
+  // acoustic kicks in Rock/Pop that live in the 200-500Hz range.
   // ═══════════════════════════════════════════════════════════════════════════
   const agcGain = agcResult.gainFactor > 0.01 ? agcResult.gainFactor : 1.0;
-  const trackerEnergy = spectrum.rawBassEnergy / (agcGain * agcGain);
+
+  // Step 1: Compute AGC-decompensated energy (broader band for onset detection)
+  const currentTrackerEnergy = (
+    spectrum.rawBassEnergy + spectrum.mid * 0.5
+  ) / (agcGain * agcGain);
+
+  // Step 2: Compute POSITIVE spectral flux (onset = energy increase only)
+  const energyDelta = currentTrackerEnergy - state.prevTrackerEnergy;
+  const transientFlux = Math.max(0, energyDelta);
+
+  // Step 3: Store for next frame
+  state.prevTrackerEnergy = currentTrackerEnergy;
 
   const godEarBpmResult = godEarBPMTracker.process(
-    trackerEnergy,                // AGC-decompensated rawBassEnergy (WAVE 2122.2)
+    transientFlux,                // WAVE 2124: Spectral flux onset signal
     spectrum.kickDetected,
     deterministicTimestampMs
   );

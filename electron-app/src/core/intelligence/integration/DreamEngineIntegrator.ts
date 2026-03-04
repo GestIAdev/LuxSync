@@ -144,13 +144,13 @@ export class DreamEngineIntegrator {
     //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
     // 🩸 WAVE 2100: Gate lowered 0.55 → 0.50
     // 🩸 WAVE 2104: Gate raised 0.50 → 0.58
-    // "Hay demasiados efectos. Hay que subir el threshold para que no entre
-    //  cualquier efecto de 3ra categoría en cualquier momento."
-    // At 0.58, balanced mode (1.15x) needs raw >= 0.67 to pass.
-    // This ensures only genuinely worthy musical moments get through.
-    if (effectiveWorthiness < 0.58) {  // 🩸 WAVE 2104: was 0.50
+    // 🩸 WAVE 2104.2: Gate adjusted 0.58 → 0.55. Con 0.58, raw=0.69/1.20=0.575 → BLOCKED por 0.005.
+    //   Eso bloqueó 4-5 momentos dignos en el log. 0.55 deja pasar el rango útil de Brejcha (0.66+)
+    //   pero sigue filtrando los <0.66 (effective<0.55). El control de calidad real está en el
+    //   ethicsThreshold que ahora es 1.20 (el override ya no es gratis).
+    if (effectiveWorthiness < 0.55) {  // 🩸 WAVE 2104.2: was 0.58
       // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
-      console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.58 | ${currentProfile.emoji} ${currentProfile.name}`)
+      console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.55 | ${currentProfile.emoji} ${currentProfile.name}`)
       return {
         approved: false,
         effect: null,
@@ -264,7 +264,7 @@ export class DreamEngineIntegrator {
       ethicalVerdict,
       circuitHealthy: ethicalVerdict.circuitBreakerStatus !== 'OPEN',
       fallbackUsed: ethicalVerdict.verdict !== 'APPROVED' || ethicalVerdict.approvedEffect === null,
-      alternatives: ethicalVerdict.alternatives.slice(0, 2)
+      alternatives: ethicalVerdict.alternatives.slice(0, 5)  // 🩸 WAVE 2104.2: was 2 — con solo 2 alternativas, si ambas están en cooldown = SILENCIO. 5 da rotation real
     }
     
     // � WAVE 2102: MINIMUM INTENSITY GATE — log approvals and reject weak intensities

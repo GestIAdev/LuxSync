@@ -343,6 +343,11 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🩸 WAVE 2102: Evitar spam logs
   private lastGatekeeperLogs: Record<string, number> = {}
+  // 🩸 WAVE 2104.2: FALLTHROUGH EXHAUSTION CACHE — si todas las alternativas están en cooldown,
+  // NO reintentar cada tick (16ms). Cachear el fallo durante 3s y rendirse limpiamente.
+  // El log anterior tenía ~80 líneas de FALLTHROUGH_DEBUG repetidas idénticamente.
+  private fallthroughExhaustionCache: Record<string, number> = {}
+  private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 3000
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -384,6 +389,9 @@ export class SeleneTitanConscious extends EventEmitter {
     effectManager.on('effectTriggered', (event: any) => {
       this.effectSelector.registerEffectFired(event.effectType)
       console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${event.effectType}`)
+      
+      // 🩸 WAVE 2104.2: Clear fallthrough exhaustion cache — new effect fired means new landscape
+      this.fallthroughExhaustionCache = {}
       
       // 🔒 WAVE 1177: CALIBRATION - Solo pushear al historial cuando REALMENTE se ejecuta
       // Esto evita que efectos bloqueados por GLOBAL_LOCK contaminen el historial
@@ -1138,47 +1146,54 @@ export class SeleneTitanConscious extends EventEmitter {
         const fallThroughAllowed = sectionAllowsFallthrough && intensityAllowsFallthrough && zoneAllowsFallthrough
 
         if (isCooldownBlock && fallThroughAllowed && alternatives && alternatives.length > 0) {
-          // Try each alternative in order until one passes the gatekeeper
-          // 🩸 WAVE 2101.3: Only use alternatives with confidence > 0.4 (no relleno de baja calidad)
-          // 🩸 WAVE 2104.1: DIAGNOSTIC — Log every alternative attempt
-          console.log(`[FALLTHROUGH_DEBUG] 🔄 ${intent} blocked, trying ${alternatives.length} alternatives: [${alternatives.map(a => `${a.effect}(c=${(a.confidence ?? 0).toFixed(2)})`).join(', ')}]`)
-          for (const alt of alternatives) {
-            if ((alt.confidence ?? 0) < 0.4) {
-              console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} skipped: confidence ${(alt.confidence ?? 0).toFixed(2)} < 0.4`)
-              continue
-            }
-            const altAvailability = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
-            if (altAvailability.available) {
-              finalEffectDecision = {
-                ...output.effectDecision!,
-                effectType: alt.effect,
-                intensity: alt.intensity ?? output.effectDecision!.intensity,
-                reason: `🔄 FALLTHROUGH: ${intent} blocked → ${alt.effect} | ${alt.reasoning ?? ''}`,
+          // 🩸 WAVE 2104.2: FALLTHROUGH EXHAUSTION — si ya fallamos recientemente, no reintentar
+          const exhaustionKey = `ft_${intent}`
+          const nowForExhaustion = Date.now()
+          if (nowForExhaustion - (this.fallthroughExhaustionCache[exhaustionKey] ?? 0) < this.FALLTHROUGH_EXHAUSTION_COOLDOWN_MS) {
+            // Silencio total — ya sabemos que no hay alternativas disponibles, no spamear 80 logs
+          } else {
+            // Try each alternative in order until one passes the gatekeeper
+            // 🩸 WAVE 2101.3: Only use alternatives with confidence > 0.4 (no relleno de baja calidad)
+            // 🩸 WAVE 2104.1: DIAGNOSTIC — Log every alternative attempt
+            console.log(`[FALLTHROUGH_DEBUG] 🔄 ${intent} blocked, trying ${alternatives.length} alternatives: [${alternatives.map(a => `${a.effect}(c=${(a.confidence ?? 0).toFixed(2)})`).join(', ')}]`)
+            for (const alt of alternatives) {
+              if ((alt.confidence ?? 0) < 0.4) {
+                console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} skipped: confidence ${(alt.confidence ?? 0).toFixed(2)} < 0.4`)
+                continue
               }
-              console.log(
-                `[SeleneTitanConscious] 🔄 COOLDOWN FALLTHROUGH: ${intent} blocked → ${alt.effect} | ` +
-                `original=${intent} (${availability.reason})`
-              )
-              break
-            } else {
-              // 🩸 WAVE 2104.1: DIAGNOSTIC — Por qué falló la alternativa
-              console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} blocked: ${altAvailability.reason}`)
+              const altAvailability = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
+              if (altAvailability.available) {
+                finalEffectDecision = {
+                  ...output.effectDecision!,
+                  effectType: alt.effect,
+                  intensity: alt.intensity ?? output.effectDecision!.intensity,
+                  reason: `🔄 FALLTHROUGH: ${intent} blocked → ${alt.effect} | ${alt.reasoning ?? ''}`,
+                }
+                console.log(
+                  `[SeleneTitanConscious] 🔄 COOLDOWN FALLTHROUGH: ${intent} blocked → ${alt.effect} | ` +
+                  `original=${intent} (${availability.reason})`
+                )
+                break
+              } else {
+                // 🩸 WAVE 2104.1: DIAGNOSTIC — Por qué falló la alternativa
+                console.log(`[FALLTHROUGH_DEBUG]   ❌ ${alt.effect} blocked: ${altAvailability.reason}`)
+              }
             }
-          }
           
-          // If no alternative passed either, log the original block
-          if (!finalEffectDecision) {
-            // 🩸 WAVE 2102: Throttled spam logger
-            const gatekeeperKey = `no_alt_${intent}`
-            const nowTime = Date.now()
-            if (!this.lastGatekeeperLogs) this.lastGatekeeperLogs = {}
-            if (nowTime - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
-              console.log(
-                `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason} (no alternatives available)`
-              )
-              this.lastGatekeeperLogs[gatekeeperKey] = nowTime
+            // If no alternative passed either, cache the exhaustion and log once
+            if (!finalEffectDecision) {
+              // 🩸 WAVE 2104.2: Cache fallthrough failure — don't retry for 3s
+              this.fallthroughExhaustionCache[exhaustionKey] = nowForExhaustion
+              const gatekeeperKey = `no_alt_${intent}`
+              if (!this.lastGatekeeperLogs) this.lastGatekeeperLogs = {}
+              if (nowForExhaustion - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
+                console.log(
+                  `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason} (no alternatives available — exhaustion cached 3s)`
+                )
+                this.lastGatekeeperLogs[gatekeeperKey] = nowForExhaustion
+              }
             }
-          }
+          } // end exhaustion else
         } else {
             // 🩸 WAVE 2102: Throttled spam logger
             const gatekeeperKey = `denied_${intent}`

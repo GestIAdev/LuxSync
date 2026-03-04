@@ -91,7 +91,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     emoji: '⚖️',
     thresholdMultiplier: 1.20,     // 🩸 WAVE 2095.2: 1.35→1.20 (Brejcha raw 0.65-0.85 necesita más aire)
     cooldownMultiplier: 1.8,       // 🎯 WAVE 1176: Cooldowns x1.8
-    ethicsThreshold: 1.12,         // WAVE 2093.3: Solo effects con ethics alto bypassean cooldown
+    ethicsThreshold: 1.20,         // 🩸 WAVE 2104.2: 1.12→1.20. Con 1.12, ethics=1.134 pasaba con margen de 0.014 = GRATIS. El override debe ser ÉPICO, no rutinario.
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado

@@ -171,7 +171,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.95,   // 🔥 El martillo más brutal
     chaos: 0.30,        // Ordenado: flashes predecibles
     organicity: 0.05,   // 100% máquina
-    textureAffinity: 'dirty',  // 🎨 Solo con harshness
+    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. Un strobe ES el impacto, no necesita harshness del audio
   },
   'acid_sweep': {
     aggression: 0.70,   // Agresivo pero más fluido
@@ -190,7 +190,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
     chaos: 0.40,        // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
     organicity: 0.10,   // Mecánico puro
-    textureAffinity: 'dirty',  // 🎨 Industrial = dirty
+    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La ametralladora dispara en cualquier contexto
   },
   'sky_saw': {
     aggression: 0.80,   // Sierra cortante
@@ -214,13 +214,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.60,   // ⚡ Golpe seco digital - tartamudeo de código
     chaos: 0.55,        // 🔧 WAVE 1003.10: 0.85→0.55 (caótico pero competitivo con target ~0.30)
     organicity: 0.00,   // 100% máquina - cero orgánico
-    textureAffinity: 'dirty',  // 🎨 Glitch = ruido digital
+    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. El glitch digital funciona con cualquier textura
   },
   'seismic_snap': {
     aggression: 0.70,   // 💥 Golpe físico de luz - obturador gigante
     chaos: 0.20,        // Ordenado - SNAP preciso
     organicity: 0.10,   // Casi 100% máquina
-    textureAffinity: 'dirty',  // 🎨 Impacto mecánico
+    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. Un flash sísmico no necesita que el audio sea dirty
   },
   'digital_rain': {
     aggression: 0.35,   // 🌧️ WAVE 977: 0.20 → 0.35 (más presencia)
@@ -274,7 +274,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
     chaos: 1.00,        // MÁXIMO - Impredecible strobe
     organicity: 0.00,   // 100% máquina apocalíptica
-    textureAffinity: 'dirty',  // 🎨 Solo con harshness extremo
+    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La Bestia despierta cuando ella quiere, no cuando el audio suena sucio
   },
   
   // ═══════════════════════════════════════════════════════════════

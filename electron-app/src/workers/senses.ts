@@ -223,6 +223,10 @@ class SpectrumAnalyzer {
     clarity: number;
     // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
     rawBassEnergy: number;
+    // 🔪 WAVE 2118: THE FREQUENCY SCALPEL — Bandas raw individuales
+    // Necesarias para que el tracker BPM pueda ponderar subBass vs bass
+    rawSubBassEnergy: number;
+    rawBassOnlyEnergy: number;
   } {
     //  Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
@@ -283,6 +287,17 @@ class SpectrumAnalyzer {
       // rawBassEnergy es la suma de subBass + bass ANTES del AGC.
       // Esto permite al BeatDetector ver los PICOS REALES de los kicks.
       rawBassEnergy: godEarResult.bandsRaw.subBass + godEarResult.bandsRaw.bass,
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔪 WAVE 2118: THE FREQUENCY SCALPEL — Bandas raw individuales
+      // ═══════════════════════════════════════════════════════════════════
+      // El kick real golpea 40-50Hz → subBass.
+      // El offbeat bass (Brejcha) golpea 80-150Hz → bass.
+      // El tracker BPM necesita distinguirlos para no confundir
+      // offbeats con kicks. Estos valores raw permiten la ponderación.
+      // ═══════════════════════════════════════════════════════════════════
+      rawSubBassEnergy: godEarResult.bandsRaw.subBass,
+      rawBassOnlyEnergy: godEarResult.bandsRaw.bass,
     };
   }
   
@@ -482,8 +497,27 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔪 WAVE 2118: THE FREQUENCY SCALPEL — Energía ponderada para el tracker
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROBLEMA: rawBassEnergy = subBass + bass (peso igual).
+  // Los offbeat bass de Brejcha (80-150Hz) generan picos en la banda `bass`
+  // que el tracker confunde con kicks reales, produciendo intervalos de
+  // 279-372ms que contaminan el IQR y bloquean el BPM en 161.
+  //
+  // SOLUCIÓN: El kick real golpea 40-50Hz (subBass).
+  //           El offbeat bass golpea 80-150Hz (bass).
+  //           Ponderando subBass×1.5 y bass×0.4, el offbeat produce
+  //           una señal ~3.75× menor que el kick, creando un foso
+  //           que el KICK_RATIO_THRESHOLD=1.7 discrimina sin esfuerzo.
+  //
+  // NOTA: rawBassEnergy (sin ponderar) se mantiene intacto para otros
+  //       consumidores (BeatDetector, IPC, etc.)
+  // ═══════════════════════════════════════════════════════════════════════════
+  const trackerEnergy = (spectrum.rawSubBassEnergy * 1.5) + (spectrum.rawBassOnlyEnergy * 0.4);
+
   const godEarBpmResult = godEarBPMTracker.process(
-    spectrum.rawBassEnergy,       // Raw bass energy pre-AGC (fresh this frame)
+    trackerEnergy,                // 🔪 WAVE 2118: Weighted bass (subBass×1.5 + bass×0.4)
     spectrum.kickDetected,        // Slope-based onset from GodEar transient detector
     deterministicTimestampMs      // 🕐 WAVE 2115: Musical clock, not CPU clock
   );

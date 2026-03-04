@@ -35,10 +35,11 @@
  *   Worker Thread (senses.ts)
  *   ┌─────────────────────────────────────────┐
  *   │ GodEarFFT.analyze(buffer)               │
- *   │   ↓ subBass (20-60Hz) + bass (60-250Hz) │
+ *   │   ↓ subBass (20-60Hz) + mid + highMid   │
  *   │   ↓ kickDetected (slope-based onset)    │
- *   │ 🔪 WAVE 2118: FREQUENCY SCALPEL         │
- *   │   trackerEnergy = subBass×1.5+bass×0.4  │
+ *   │ 🥁 WAVE 2119: THE BEATER CLICK          │
+ *   │   beaterClick = mid + highMid (raw)     │
+ *   │   trackerEnergy = subBass×(1+click×5)   │
  *   │ GodEarBPMTracker.process()              │
  *   │   ↓ ratio kick detection                │
  *   │   ↓ adaptive debounce                   │
@@ -68,7 +69,7 @@
  * PROVEN RANGE: 74-188 BPM ±2 BPM (Brejcha→Psytrance)
  * 
  * @author PunkOpus
- * @wave 1163 + 2112 + 2116 + 2117 + 2118
+ * @wave 1163 + 2112 + 2116 + 2117 + 2118 + 2119
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -174,7 +175,8 @@ export class GodEarBPMTracker {
    * Process one frame of audio data.
    * Call this EVERY FFT frame with fresh bass energy.
    * 
-   * @param rawBassEnergy - 🔪 WAVE 2118: Weighted bass energy (subBass×1.5 + bass×0.4)
+   * @param rawBassEnergy - 🥁 WAVE 2119: Multi-band coincidence energy: subBass × (1 + beaterClick × 5)
+   *                        Pre-2119: was subBass×1.5 + bass×0.4 (WAVE 2118)
    *                        Pre-2118: was unweighted (subBass + bass from GodEar bandsRaw)
    * @param externalKickDetected - Slope-based onset from GodEar transient detector
    * @param timestamp - 🕐 WAVE 2115: Deterministic musical timestamp (not Date.now())

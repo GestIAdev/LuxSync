@@ -498,26 +498,33 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔪 WAVE 2118: THE FREQUENCY SCALPEL — Energía ponderada para el tracker
+  // 🥁 WAVE 2119: THE BEATER CLICK — Multi-Band Coincidence Detection
   // ═══════════════════════════════════════════════════════════════════════════
-  // PROBLEMA: rawBassEnergy = subBass + bass (peso igual).
-  // Los offbeat bass de Brejcha (80-150Hz) generan picos en la banda `bass`
-  // que el tracker confunde con kicks reales, produciendo intervalos de
-  // 279-372ms que contaminan el IQR y bloquean el BPM en 161.
+  // WAVE 2118 (subBass×1.5 + bass×0.4) fue insuficiente: el "rumble bass"
+  // de Brejcha inunda el subBass en el contratiempo. El subBass solo no
+  // discrimina kicks de rumble.
   //
-  // SOLUCIÓN: El kick real golpea 40-50Hz (subBass).
-  //           El offbeat bass golpea 80-150Hz (bass).
-  //           Ponderando subBass×1.5 y bass×0.4, el offbeat produce
-  //           una señal ~3.75× menor que el kick, creando un foso
-  //           que el KICK_RATIO_THRESHOLD=1.7 discrimina sin esfuerzo.
+  // INSIGHT: El kick real tiene un "beater click" — el impacto del parche
+  // genera armónicos en mid (500-2000Hz) y highMid (2000-6000Hz).
+  // El rumble bass rodante es PURA frecuencia grave: NO tiene medios.
   //
-  // NOTA: rawBassEnergy (sin ponderar) se mantiene intacto para otros
-  //       consumidores (BeatDetector, IPC, etc.)
+  // FÓRMULA: trackerEnergy = subBass × (1.0 + beaterClick × 5.0)
+  //
+  //   Kick real:    subBass=0.25, beaterClick=0.5 → 0.25 × 3.5 = 0.875
+  //   Rumble bass:  subBass=0.20, beaterClick=0.05 → 0.20 × 1.25 = 0.250
+  //   Ratio kick/rumble = 3.5:1 — el KICK_RATIO_THRESHOLD=1.7 lo aplasta.
+  //
+  // NOTA: rawBassEnergy se mantiene intacto para otros consumidores.
   // ═══════════════════════════════════════════════════════════════════════════
-  const trackerEnergy = (spectrum.rawSubBassEnergy * 1.5) + (spectrum.rawBassOnlyEnergy * 0.4);
+  const godEarRaw = spectrumAnalyzer.getLastGodEarResult();
+  const rawSubBass = godEarRaw ? godEarRaw.bandsRaw.subBass : spectrum.rawSubBassEnergy;
+  const beaterClick = godEarRaw
+    ? godEarRaw.bandsRaw.mid + godEarRaw.bandsRaw.highMid
+    : 0;
+  const trackerEnergy = rawSubBass * (1.0 + (beaterClick * 5.0));
 
   const godEarBpmResult = godEarBPMTracker.process(
-    trackerEnergy,                // 🔪 WAVE 2118: Weighted bass (subBass×1.5 + bass×0.4)
+    trackerEnergy,                // 🥁 WAVE 2119: subBass × (1 + beaterClick×5) — multi-band coincidence
     spectrum.kickDetected,        // Slope-based onset from GodEar transient detector
     deterministicTimestampMs      // 🕐 WAVE 2115: Musical clock, not CPU clock
   );

@@ -568,8 +568,15 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // Step 3: Store for next frame
   state.prevTrackerEnergy = currentTrackerEnergy;
 
+  // WAVE 2126: Flux Amplifier — multiply by 100 before feeding the tracker.
+  // Spectral flux deltas are tiny (0.0000–0.0089). Mean-centering on
+  // sub-millimeter values turns correlation peaks into floating dust.
+  // ×100 expands the signal mathematically so correlation peaks can
+  // exceed the 0.5–0.6 threshold needed for the Polyrhythm Filter (WAVE 2125).
+  const amplifiedFlux = transientFlux * 100.0;
+
   const godEarBpmResult = godEarBPMTracker.process(
-    transientFlux,                // WAVE 2124: Spectral flux onset signal
+    amplifiedFlux,                // WAVE 2126: Amplified spectral flux onset signal
     spectrum.kickDetected,
     deterministicTimestampMs
   );

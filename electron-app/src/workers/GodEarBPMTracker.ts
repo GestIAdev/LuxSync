@@ -1,7 +1,9 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v5
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v6
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * WAVE 2126: AMNESIA FIX (TIME_WARP 150→3000ms) + FLUX AMPLIFIER (×100)
  *
  * WAVE 2125: SILENCE PROTOCOL, TIME WARP SHIELD, POLYRHYTHM FILTER
  *
@@ -188,10 +190,12 @@ const POLYRHYTHM_RATIO_MIN = 1.30
 const POLYRHYTHM_RATIO_MAX = 1.36
 const POLYRHYTHM_PREFERENCE = 0.60
 
-/** WAVE 2125: Time warp protection threshold (ms).
- *  If the gap between consecutive process() calls exceeds this,
- *  the energy buffer is discontinuous and must be flushed. */
-const TIME_WARP_THRESHOLD_MS = 150
+/** WAVE 2126: Time warp protection threshold (ms).
+ *  Raised from 150ms (WAVE 2125 was too aggressive — GC pauses of
+ *  200ms are normal and the autocorrelation math survives micro-gaps
+ *  fine). Only flush on a multi-second freeze (e.g. 3 full seconds),
+ *  which means the app was genuinely suspended. */
+const TIME_WARP_THRESHOLD_MS = 3000
 
 /** WAVE 2125: Verbose telemetry control.
  *  When false, suppresses the massive AUTOCORR RAW and PEAKS dumps

@@ -100,6 +100,9 @@ interface BetaState {
 
   // 🥁 WAVE 2124: Previous frame energy for spectral flux (onset detection)
   prevTrackerEnergy: number;
+
+  // 🥁 WAVE 2126.2: Onset envelope for autocorrelation widening
+  onsetEnvelope: number;
   
   // 🏎️ WAVE 1013: NITRO BOOST - Ring Buffer for Overlap Strategy
   ringBuffer: Float32Array;        // 4096 samples circular buffer
@@ -137,6 +140,7 @@ const state: BetaState = {
 
   // 🥁 WAVE 2124: Spectral flux onset detection
   prevTrackerEnergy: 0,
+  onsetEnvelope: 0,
   
   // 🏎️ WAVE 1013: Ring Buffer (4096 samples for FFT, ~85ms @ 48kHz)
   ringBuffer: new Float32Array(4096),
@@ -575,8 +579,16 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // exceed the 0.5–0.6 threshold needed for the Polyrhythm Filter (WAVE 2125).
   const amplifiedFlux = transientFlux * 100.0;
 
+  // WAVE 2126.2: Onset Envelope (Leaky Integrator)
+  // Autocorrelating raw Dirac-like spikes (flux) destroys confidence,
+  // because a 1-frame misalignment (due to fractional BPMs or jitter) drops
+  // the correlation to zero. We apply an exponential decay to WIDEN the peaks 
+  // (a "shark fin" envelope), allowing partial overlaps and massively boosting 
+  // autocorrelation confidence.
+  state.onsetEnvelope = Math.max(amplifiedFlux, state.onsetEnvelope * 0.85);
+
   const godEarBpmResult = godEarBPMTracker.process(
-    amplifiedFlux,                // WAVE 2126: Amplified spectral flux onset signal
+    state.onsetEnvelope,          // WAVE 2126.2: Widened onset envelope
     spectrum.kickDetected,
     deterministicTimestampMs
   );

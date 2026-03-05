@@ -597,4 +597,139 @@ describe('🔥 WAVE 2122: GodEarBPMTracker Autocorrelation — The 6-Genre Cruci
       expect(maxBpm - minBpm).toBeLessThan(10)
     })
   })
+
+  // ─────────────────────────────────────────────────────────────────────
+  // TEST 9: WAVE 2125 — POLYRHYTHM FILTER (96 vs 128 BPM)
+  // ─────────────────────────────────────────────────────────────────────
+  // When a syncopated bass creates a strong peak at 96 BPM (3/4 of 128),
+  // the sieve should prefer 128 BPM as the real 4/4 beat.
+  // ─────────────────────────────────────────────────────────────────────
+  describe('🥊 TEST 9: WAVE 2125 — Polyrhythm Filter (96 vs 128 BPM)', () => {
+    const PRODUCTION_FRAME_MS = 46.4
+
+    /** Generate a buffer with BOTH 128 BPM kicks AND 96 BPM syncopation.
+     *  The syncopation energy can be made stronger than the kick to simulate
+     *  Brejcha-style dotted bass patterns. */
+    function generateSyncopatedBuffer(
+      realBpm: number,
+      syncopationBpm: number,
+      durationSec: number,
+      opts?: {
+        kickEnergy?: number
+        syncopationEnergy?: number
+        noiseFloor?: number
+        frameDurationMs?: number
+      }
+    ): SyntheticBuffer {
+      const frameDuration = opts?.frameDurationMs ?? PRODUCTION_FRAME_MS
+      const kickEnergy = opts?.kickEnergy ?? 0.70
+      const syncopationEnergy = opts?.syncopationEnergy ?? 0.85 // syncopation STRONGER!
+      const noiseFloor = opts?.noiseFloor ?? 0.12
+
+      const totalFrames = Math.ceil((durationSec * 1000) / frameDuration)
+      const realBeatMs = 60000 / realBpm
+      const syncBeatMs = 60000 / syncopationBpm
+
+      const frames: SyntheticFrame[] = []
+      let kickCount = 0
+
+      for (let i = 0; i < totalFrames; i++) {
+        const timestamp = i * frameDuration
+        const noise = noiseFloor + 0.03 * Math.sin(i * 0.1) * Math.sin(i * 0.037)
+        let energy = noise
+
+        // Real 4/4 kick
+        const timeSinceKick = timestamp % realBeatMs
+        if (timeSinceKick < frameDuration) {
+          energy = kickEnergy
+          kickCount++
+        } else if (timeSinceKick < frameDuration * 2) {
+          energy = kickEnergy * 0.4
+        }
+
+        // Syncopation (dotted note) — overlaps but at different period
+        const timeSinceSync = timestamp % syncBeatMs
+        if (timeSinceSync < frameDuration) {
+          energy = Math.max(energy, syncopationEnergy)
+        } else if (timeSinceSync < frameDuration * 2) {
+          energy = Math.max(energy, syncopationEnergy * 0.4)
+        }
+
+        frames.push({ energy, timestamp, isKickFrame: timeSinceKick < frameDuration })
+      }
+
+      return { frames, durationMs: totalFrames * frameDuration, kickCount, sourceBpm: realBpm }
+    }
+
+    it('should prefer 128 BPM over 96 BPM syncopation at production frame rate', () => {
+      const prodTracker = new GodEarBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      const buffer = generateSyncopatedBuffer(128, 96, 30)
+      const results = runTimeMachineLoop(prodTracker, buffer)
+
+      const finalResult = results[results.length - 1]
+      console.log(`🥊 POLYRHYTHM 128vs96: detected=${finalResult.bpm} conf=${finalResult.confidence.toFixed(3)}`)
+
+      // MUST detect 128, NOT 96
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(123)
+      expect(finalResult.bpm).toBeLessThanOrEqual(133)
+
+      // Hard ceiling: never near 96
+      expect(finalResult.bpm).toBeGreaterThan(110)
+    })
+
+    it('should prefer 128 BPM over 96 BPM at test frame rate too', () => {
+      const tracker21ms = new GodEarBPMTracker(44100, 2048, FRAME_DURATION_MS)
+      const buffer = generateSyncopatedBuffer(128, 96, 30, { frameDurationMs: FRAME_DURATION_MS })
+      const results = runTimeMachineLoop(tracker21ms, buffer)
+
+      const finalResult = results[results.length - 1]
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(123)
+      expect(finalResult.bpm).toBeLessThanOrEqual(133)
+    })
+
+    it('should be stable (no bouncing between 96 and 128)', () => {
+      const prodTracker = new GodEarBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      const buffer = generateSyncopatedBuffer(128, 96, 30)
+      const results = runTimeMachineLoop(prodTracker, buffer)
+
+      const lastFifteenSec = results.slice(-Math.ceil(15000 / PRODUCTION_FRAME_MS))
+      const bpms = lastFifteenSec.map(r => r.bpm)
+      const minBpm = Math.min(...bpms)
+      const maxBpm = Math.max(...bpms)
+      expect(maxBpm - minBpm).toBeLessThan(10)
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
+  // TEST 10: WAVE 2125 — TIME WARP PROTECTION
+  // ─────────────────────────────────────────────────────────────────────
+  describe('🕳️ TEST 10: WAVE 2125 — Time Warp Protection', () => {
+    it('should recover after a 500ms gap in timestamps', () => {
+      // 10 seconds of 128 BPM, then a 500ms gap, then 15 more seconds
+      const tracker = new GodEarBPMTracker(44100, 2048, FRAME_DURATION_MS)
+      const preBuf = generateSyntheticBeatBuffer(128, 10)
+      const postBuf = generateSyntheticBeatBuffer(128, 15, {
+        startTimeMs: 10000 + 500 // 500ms gap
+      })
+
+      // Feed pre-gap
+      for (const frame of preBuf.frames) {
+        tracker.process(frame.energy, false, frame.timestamp)
+      }
+      const bpmBeforeGap = tracker.getBpm()
+      expect(bpmBeforeGap).toBeGreaterThanOrEqual(125)
+      expect(bpmBeforeGap).toBeLessThanOrEqual(131)
+
+      // Feed post-gap — the time warp guard should flush and recover
+      const results: GodEarBPMResult[] = []
+      for (const frame of postBuf.frames) {
+        results.push(tracker.process(frame.energy, false, frame.timestamp))
+      }
+
+      // After recovery, BPM should be back to 128 ±3
+      const finalResult = results[results.length - 1]
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(125)
+      expect(finalResult.bpm).toBeLessThanOrEqual(131)
+    })
+  })
 })

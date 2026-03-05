@@ -1,7 +1,9 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v4
+ * 🥁 GODEAR BPM TRACKER — AUTOCORRELATION ENGINE v5
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * WAVE 2125: SILENCE PROTOCOL, TIME WARP SHIELD, POLYRHYTHM FILTER
  *
  * WAVE 2123: MEAN-CENTER & OCTAVE LOCK
  *
@@ -177,6 +179,27 @@ const OCTAVE_RATIO_RANGES: [number, number][] = [
   [0.45, 0.55],  // 0.5× halving
 ]
 
+/** WAVE 2125: Polyrhythm / dotted syncopation ratio (1.333×).
+ *  96 BPM is exactly 3/4 of 128 BPM — a puntillo/tresillo relationship.
+ *  In 4/4 electronic music the higher BPM is ALWAYS the real beat.
+ *  The lower BPM is the syncopation ghost (bass offbeats, dotted patterns).
+ *  The 4/4 candidate wins even with 60% of the syncopation's correlation. */
+const POLYRHYTHM_RATIO_MIN = 1.30
+const POLYRHYTHM_RATIO_MAX = 1.36
+const POLYRHYTHM_PREFERENCE = 0.60
+
+/** WAVE 2125: Time warp protection threshold (ms).
+ *  If the gap between consecutive process() calls exceeds this,
+ *  the energy buffer is discontinuous and must be flushed. */
+const TIME_WARP_THRESHOLD_MS = 150
+
+/** WAVE 2125: Verbose telemetry control.
+ *  When false, suppresses the massive AUTOCORR RAW and PEAKS dumps
+ *  that were choking the IPC bridge and starving the event loop.
+ *  Only the GODEAR BPM summary, SIEVE decision, and state-change
+ *  logs (OCTAVE ACCEPT/BLOCK, TIME WARP) remain active. */
+const VERBOSE_AUTOCORR_LOGS = false
+
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TRACKER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -230,6 +253,9 @@ export class GodEarBPMTracker {
   /** WAVE 2123: The BPM that the octave lock is tracking as a candidate */
   private octaveLockCandidateBpm = 0
 
+  /** WAVE 2125: Timestamp of the last process() call, for time warp detection */
+  private lastFrameTimestamp = 0
+
   constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
     this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000
     this.virtualFrameDurationMs = this.frameDurationMs / UPSAMPLE_FACTOR
@@ -253,6 +279,22 @@ export class GodEarBPMTracker {
     timestamp: number = Date.now()
   ): GodEarBPMResult {
     this.frameCount++
+
+    // ─── 0. TIME WARP PROTECTION (WAVE 2125) ─────────────────────
+    // If the event loop was choked (GC pause, IPC flood, console I/O),
+    // the gap between frames will be >> frameDurationMs. The energy
+    // buffer is now discontinuous — correlating it would produce garbage.
+    // Flush the buffer and force a clean refill from continuous audio.
+    const timeSinceLastFrame = timestamp - (this.lastFrameTimestamp || timestamp)
+    this.lastFrameTimestamp = timestamp
+
+    if (timeSinceLastFrame > TIME_WARP_THRESHOLD_MS && this.sampleCount > 0) {
+      console.warn(
+        `[🥁 TIME WARP] ${timeSinceLastFrame.toFixed(0)}ms gap detected. ` +
+        `Buffer flushed — refilling with continuous audio.`
+      )
+      this.sampleCount = 0
+    }
 
     // ─── 1. Write energy into circular buffer ────────────────────
     this.energyWindow[this.writePos] = rawBassEnergy
@@ -424,7 +466,9 @@ export class GodEarBPMTracker {
     if (peaks.length === 0) return
 
     // ─── DIAGNOSTIC: Log full autocorrelation landscape ──────────────────
-    if (this.frameCount % 120 === 0) {
+    // WAVE 2125: Gated behind VERBOSE_AUTOCORR_LOGS to stop IPC choking.
+    // These massive string serializations were the #1 cause of AUDIO STALE.
+    if (VERBOSE_AUTOCORR_LOGS && this.frameCount % 120 === 0) {
       // Log raw correlation at every 4th lag (to keep logs readable)
       const corrDump: string[] = []
       for (let i = 0; i < corrLen; i += UPSAMPLE_FACTOR) {
@@ -508,7 +552,52 @@ export class GodEarBPMTracker {
       }
     }
 
-    // Pass 2: No octave pair resolved — pick strongest peak in range
+    // Pass 2: No octave pair resolved — check for POLYRHYTHM (1.333×)
+    // WAVE 2125: In 4/4 electronic music, if the strongest peak is at ~96 BPM
+    // and another peak exists at ~128 BPM (ratio 1.33×), the 128 is the real
+    // 4/4 beat and the 96 is a dotted-note syncopation (tresillo/puntillo).
+    // The 4/4 candidate wins even with only 60% of the syncopation's correlation.
+    if (!bestPeak) {
+      // Find the strongest peak first (the "top" candidate)
+      let topPeak: AutocorrPeak | null = null
+      for (const p of peaks) {
+        if (p.bpm >= MIN_BPM && p.bpm <= MAX_BPM) {
+          if (!topPeak || p.correlation > topPeak.correlation) {
+            topPeak = p
+          }
+        }
+      }
+
+      if (topPeak) {
+        // Check every other peak as potential 4/4 real beat
+        for (const alt of peaks) {
+          if (alt === topPeak) continue
+          if (alt.bpm < MIN_BPM || alt.bpm > MAX_BPM) continue
+
+          const syncRatio = alt.bpm / topPeak.bpm
+          if (syncRatio >= POLYRHYTHM_RATIO_MIN && syncRatio <= POLYRHYTHM_RATIO_MAX) {
+            // 'alt' is the 4/4 real beat (e.g. 128), 'topPeak' is the syncopation (e.g. 96)
+            if (alt.correlation >= topPeak.correlation * POLYRHYTHM_PREFERENCE) {
+              bestPeak = alt
+              if (this.frameCount % 120 === 0) {
+                console.log(
+                  `[🥁 POLYRHYTHM] ${Math.round(topPeak.bpm)}→${Math.round(alt.bpm)} BPM ` +
+                  `(ratio=${syncRatio.toFixed(3)}, corr ${alt.correlation.toFixed(3)} vs ${topPeak.correlation.toFixed(3)})`
+                )
+              }
+              break
+            }
+          }
+        }
+
+        // If no polyrhythm candidate won, fall through to strongest-peak
+        if (!bestPeak) {
+          bestPeak = topPeak
+        }
+      }
+    }
+
+    // Pass 3: Fallback — strongest peak in range (shouldn't reach here often)
     if (!bestPeak) {
       let bestCorr = -1
       for (const peak of peaks) {
@@ -743,5 +832,6 @@ export class GodEarBPMTracker {
     this.rollingEnergyPos = 0
     this.octaveLockCounter = 0
     this.octaveLockCandidateBpm = 0
+    this.lastFrameTimestamp = 0
   }
 }

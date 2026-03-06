@@ -389,9 +389,21 @@ export class PacemakerV2 {
               this.intervals.shift()
             }
 
+            // WAVE 2149.2: Log every accepted interval
+            console.log(
+              `[PM2 ⚡] F${this.frameCount} IOI=${Math.round(timeSinceLast)}ms ` +
+              `(${Math.round(60000 / timeSinceLast)}bpm) ` +
+              `energy=${energy.toFixed(4)} gate=${Math.round(outerDebounce)}ms`
+            )
+
             kickDetectedThisFrame = true
+          } else {
+            // WAVE 2149.2: Log out-of-range discards
+            console.log(
+              `[PM2 🚫] F${this.frameCount} RANGE-REJECT ` +
+              `IOI=${Math.round(timeSinceLast)}ms (min=${MIN_INTERVAL_MS} max=${MAX_INTERVAL_MS})`
+            )
           }
-          // Intervals outside range are silently discarded (noise)
         }
 
         // Update last onset timestamp (even if interval was out of range)
@@ -429,12 +441,31 @@ export class PacemakerV2 {
       this.prevPhase = beatPhase
     }
 
-    // ─── 5. DIAGNOSTIC LOG ───────────────────────────────────────
+    // ─── 5. DIAGNOSTIC LOG — WAVE 2149.2: EXHAUSTIVE TELEMETRY ───
+    // Radwulf's Law: "Los logs son dios para el debug. Sin ellos no se puede."
+    // Every DIAGNOSTIC_INTERVAL_FRAMES: full cluster dump + state snapshot.
     if (this.frameCount % DIAGNOSTIC_INTERVAL_FRAMES === 0 && this.stableBpm > 0) {
+      // Build cluster snapshot for the log
+      const values = this.intervals.map(i => i.ms)
+      const clusters = this.buildClusters(values)
+      const clusterStr = clusters
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)  // Top 5 clusters max
+        .map(c => `${Math.round(c.bpm)}bpm:${c.count}v(${Math.round(c.centerMs)}ms)`)
+        .join(' | ')
+
+      // Last 6 interval gaps for pattern visibility
+      const recentIntervals = this.intervals.slice(-6).map(i => Math.round(i.ms)).join(',')
+
       console.log(
-        `[💓 PACEMAKER v2] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
-        `conf=${this.currentConfidence.toFixed(3)} intervals=${this.intervals.length} ` +
-        `onsets=${this.onsetCount} gate=${Math.round(outerDebounce)}ms`
+        `[💓 PM2 DIAG] F${this.frameCount} ` +
+        `stable=${this.stableBpm}bpm raw=${this.rawBpm} ` +
+        `conf=${this.currentConfidence.toFixed(3)} ` +
+        `gate=${Math.round(outerDebounce)}ms ` +
+        `kickLvl=${this.kickLevel.toFixed(4)} ` +
+        `intv=${this.intervals.length} onsets=${this.onsetCount}\n` +
+        `  clusters: [${clusterStr}]\n` +
+        `  recent: [${recentIntervals}]`
       )
     }
 
@@ -549,15 +580,18 @@ export class PacemakerV2 {
    * Find the dominant cluster: largest count wins.
    * On ties, prefer the cluster closest to current stable BPM (stability).
    *
-   * WAVE 2148: ANTI-OCTAVE-DOUBLING
-   * If the dominant cluster has ~2× the BPM of another cluster with ≥40%
-   * of the votes, the engine is seeing subdivisions (kicks + offbeats) and
-   * doubling the real tempo. Prefer the slower (correct) cluster.
+   * WAVE 2149.2: ANTI-OCTAVE-DOUBLING REMOVED.
+   * WAVE 2148's anti-doubling was architecturally flawed:
+   *   - It compared the dominant cluster (325ms=185BPM, 13 votes)
+   *     against a minor cluster (604ms=99BPM, 6 votes).
+   *   - Ratio 604/325=1.86 → fell in [1.85,2.15] → chose 99 BPM.
+   *   - But NEITHER was correct. 126 BPM=476ms was the real tempo.
+   *   - The anti-doubling masked the real bug (syncopation leaking)
+   *     and created a WORSE outcome (99 BPM instead of 185 or 126).
    *
-   * Real case: 92 BPM track → onsets every 324ms AND 648ms.
-   * Cluster A: centerMs=324, count=14, bpm=185  ← dominant by votes
-   * Cluster B: centerMs=648, count=8,  bpm=92   ← real tempo
-   * ratio B/A = 648/324 = 2.0 → anti-doubling fires → return B.
+   * The correct architectural solution is to prevent syncopation
+   * from entering the interval buffer (via gates and energy checks),
+   * not to post-process bad data with heuristics.
    */
   private findDominantCluster(clusters: IntervalCluster[]): IntervalCluster | null {
     if (clusters.length === 0) return null
@@ -566,24 +600,6 @@ export class PacemakerV2 {
     // Sort by count descending
     const sorted = [...clusters].sort((a, b) => b.count - a.count)
     const largest = sorted[0]
-
-    // ─── WAVE 2148: ANTI-OCTAVE-DOUBLING ─────────────────────────
-    // Check if the dominant cluster is a 2× subdivision of a slower cluster.
-    // If yes, the slower cluster is the real tempo — prefer it.
-    for (const c of sorted.slice(1)) {
-      if (c.count < largest.count * 0.40) continue  // Not enough votes to challenge
-      const ratio = c.centerMs / largest.centerMs
-      // Ratio ~2.0 means c is the whole note, largest is the half note (double BPM)
-      if (ratio >= 1.85 && ratio <= 2.15) {
-        console.log(
-          `[💓 PACEMAKER v2 ANTI-DOUBLE] Rejecting ${Math.round(largest.bpm)}BPM ` +
-          `(${largest.count} votes, ${Math.round(largest.centerMs)}ms) ` +
-          `in favour of ${Math.round(c.bpm)}BPM ` +
-          `(${c.count} votes, ${Math.round(c.centerMs)}ms) — octave doubling detected`
-        )
-        return c
-      }
-    }
 
     // Get all clusters within 60% of the largest count
     const significant = sorted.filter(c => c.count >= largest.count * 0.6)

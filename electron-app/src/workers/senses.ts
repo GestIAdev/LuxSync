@@ -191,6 +191,11 @@ const state: BetaState = {
 
 const godEarBpmTracker = new GodEarBPMTracker();
 
+// 🌊 WAVE 2152: THE FLUX DERIVATIVE — persistent state for raw bass flux calculation.
+// previousBass tracks the combined subBass+bass energy from the previous frame.
+// The positive derivative (flux) is what we feed to autocorrelation.
+let previousBass: number = 0;
+
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
@@ -516,37 +521,48 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
-  // 🔪 WAVE 2151.1: THE FREQUENCY SCALPEL — SubBass-only autocorrelation input
+  // 🌊 WAVE 2152: THE FLUX DERIVATIVE — Universal autocorrelation input
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2151 fed rawBassEnergy (subBass + bass, 0-200Hz) to autocorrelation.
-  // RESULT: 184 BPM on 126 BPM music. Classic octave doubling.
+  // WAVE 2151.1 fed rawSubBassEnergy (0-80Hz) — STILL failed (96-185 BPM chaos).
+  // ROOT CAUSE: Boris Brejcha minimal techno has offbeat bass with fundamentals
+  // in 50-70Hz — INSIDE the subBass band. Frequency domain is blind here.
+  // No band-split can separate kick from offbeat bass when they share the same
+  // spectral range. The energy signal is contaminated regardless of cutoff.
   //
-  // ROOT CAUSE: Offbeat bass (80-150Hz) has equal energy to the kick (40-60Hz).
-  // The combined signal has periodicity at HALF the real beat period.
-  // Autocorrelation sees peaks at lag~28 (183 BPM) AND lag~56 (93 BPM),
-  // but NOT at lag~41 (126 BPM) — because the offbeat fills the gaps.
+  // THE DERIVATIVE: Instead of feeding static energy, feed the POSITIVE RATE
+  // OF CHANGE — the spectral flux of the bass band.
   //
-  // THE SCALPEL: Feed ONLY rawSubBassEnergy (0-80Hz) where the kick lives.
-  // The offbeat bass lives in rawBassOnlyEnergy (80-200Hz) and is excluded.
-  // GodEarFFT Radix-2 band separation is surgical (verified: 50Hz tone stays
-  // 100% in subBass). The autocorrelation now sees a clean landscape:
-  // silence → KICK → silence → KICK → silence → KICK at 476ms = 126 BPM.
+  //   rawBassFlux = max(0, currentBass - previousBass)
   //
-  // GENRE SAFETY: This is NOT genre-specific. In ALL electronic music,
-  // the kick drum fundamental is 40-60Hz (subBass band). Bass synths, offbeat
-  // bass, and melodic bass lines live 80Hz+ (bass band). SubBass isolation
-  // gives the purest rhythmic signal regardless of genre.
+  // WHY THIS WORKS:
+  //   - Kick drum attack:      flux = HIGH spike (rapid energy onset)
+  //   - 808 sustain / offbeat: flux ≈ 0 (energy is constant — derivative is zero)
+  //   - Silence:               flux = 0
+  //
+  // The autocorrelation now receives a PULSE TRAIN, not a noisy energy carpet.
+  // Kick transient spikes at exactly the beat period. Sustained bass is invisible.
+  //
+  // UNIVERSAL GENRE ARGUMENT:
+  //   - Minimal Techno (Brejcha): kick spike every 476ms = 126 BPM ✓
+  //   - Rock / Metal: kick attack 8th or 16th note = subdivisions, but BPM correct
+  //   - Cumbia / Reggaeton: dembow pattern = flux at fundamental tempo ✓
+  //   - House: 4-on-floor kick = textbook flux spike every 500ms = 120 BPM ✓
+  //   - Ambient (no kick): flux ≈ 0 everywhere → conf drops → engine stays quiet ✓
+  //
+  // COST: One subtraction + one max() per frame. Zero GC pressure.
   // ═══════════════════════════════════════════════════════════════════════════
+  const currentBass = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
+  const rawBassFlux = Math.max(0, currentBass - previousBass);
+  previousBass = currentBass; // Persist for next frame
 
   const godEarBpmResult = godEarBpmTracker.process(
-    spectrum.rawSubBassEnergy,  // � WAVE 2151.1: SubBass ONLY (0-80Hz) — kick without offbeat contamination
-    spectrum.kickDetected,      // External kick hint (used for kick count, not BPM math)
+    rawBassFlux,           // 🌊 WAVE 2152: Positive bass flux — pure transient pulse train
+    spectrum.kickDetected, // External kick hint (used for kick count, not BPM math)
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2151.1: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // High frequency during calibration. Shows both subBass and full bass
-  // so we can verify the band separation is working.
+  // 🔬 WAVE 2152: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows flux alongside raw bands to verify the derivative is picking up kicks.
   if (state.frameCount % 20 === 0) {
     console.log(
       `[AUTOCORR 🩺] F${state.frameCount}` +
@@ -554,9 +570,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
       ` kick=${godEarBpmResult.kickDetected}` +
       ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
+      ` flux=${rawBassFlux.toFixed(4)}` +
       ` subBass=${spectrum.rawSubBassEnergy.toFixed(4)}` +
       ` bassOnly=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
-      ` fullBass=${spectrum.rawBassEnergy.toFixed(4)}` +
       ` samples=${godEarBpmResult.kickCount}`
     );
   }

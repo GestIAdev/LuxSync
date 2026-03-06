@@ -303,6 +303,22 @@ export class PacemakerV2 {
    *  en la zona de kicks reales — las síncopas de 0.030-0.050 mueren al instante. */
   private kickLevel = 0.060
 
+  // ─── WAVE 2150: P99 CEILING GATE — energy filter at IOI level ─────
+  /** Circular buffer of onset energies (used for P99 ceiling calculation).
+   *  Only ACCEPTED onsets contribute. 32 entries ≈ ~15s at 128 BPM. */
+  private onsetEnergyHistory: number[] = []
+  /** Maximum onset energy entries to track */
+  private static readonly ONSET_ENERGY_SIZE = 32
+  /** P99 kick ratio: onset must be at least 35% of the P99 peak to be
+   *  accepted as a valid kick for IOI purposes. Kills weak transients
+   *  (ghost notes, hi-hat bleed, soft syncopations) that produce garbage
+   *  intervals and pollute the clustering.
+   *
+   *  At 35%: kick=0.150, P99=0.200 → threshold=0.070. Weak=0.040 DIES ✅
+   *  At 35%: kick=0.080, P99=0.150 → threshold=0.053. Weak=0.040 DIES ✅
+   *  At 35%: both kicks at 0.100, P99=0.100 → threshold=0.035. Both PASS ✅ */
+  private static readonly P99_IOI_RATIO = 0.35
+
   /**
    * Process one frame of audio data.
    *
@@ -381,22 +397,61 @@ export class PacemakerV2 {
         if (this.lastOnsetTimestamp > 0) {
           // THE WALL: Range filter
           if (timeSinceLast >= MIN_INTERVAL_MS && timeSinceLast <= MAX_INTERVAL_MS) {
-            // Valid interval — record it
-            this.intervals.push({ ms: timeSinceLast, timestamp })
 
-            // Trim to max history
-            if (this.intervals.length > MAX_INTERVAL_HISTORY) {
-              this.intervals.shift()
+            // ═══ WAVE 2150: P99 CEILING GATE ═══════════════════════
+            // The inner ear and GodEar fire on weak transients (ghost notes,
+            // hi-hat bleed, soft syncopations). These produce garbage intervals
+            // that pollute clustering: 325ms, 372ms, 604ms, 650ms instead of
+            // the real 476ms (126 BPM).
+            //
+            // The P99 gate: only accept an onset for IOI if its energy is at
+            // least P99_IOI_RATIO (35%) of the P99 of recent onset energies.
+            // This kills weak transients while allowing real kicks through.
+            //
+            // During warmup (<8 onsets), we skip this gate to allow calibration.
+            let passesEnergyGate = true
+            if (this.onsetEnergyHistory.length >= 8) {
+              const sortedE = [...this.onsetEnergyHistory].sort((a, b) => a - b)
+              const p99Idx = Math.min(sortedE.length - 1, Math.floor(sortedE.length * 0.99))
+              const p99Energy = sortedE[p99Idx]
+              const energyThreshold = p99Energy * PacemakerV2.P99_IOI_RATIO
+              passesEnergyGate = energy >= energyThreshold
+
+              if (!passesEnergyGate) {
+                console.log(
+                  `[PM2 🔇] F${this.frameCount} ENERGY-REJECT ` +
+                  `IOI=${Math.round(timeSinceLast)}ms energy=${energy.toFixed(4)} ` +
+                  `< threshold=${energyThreshold.toFixed(4)} (P99=${p99Energy.toFixed(4)}×${PacemakerV2.P99_IOI_RATIO})`
+                )
+              }
             }
 
-            // WAVE 2149.2: Log every accepted interval
-            console.log(
-              `[PM2 ⚡] F${this.frameCount} IOI=${Math.round(timeSinceLast)}ms ` +
-              `(${Math.round(60000 / timeSinceLast)}bpm) ` +
-              `energy=${energy.toFixed(4)} gate=${Math.round(outerDebounce)}ms`
-            )
+            if (passesEnergyGate) {
+              // Valid interval — record it
+              this.intervals.push({ ms: timeSinceLast, timestamp })
 
-            kickDetectedThisFrame = true
+              // Trim to max history
+              if (this.intervals.length > MAX_INTERVAL_HISTORY) {
+                this.intervals.shift()
+              }
+
+              // Track onset energy for P99 calculation
+              this.onsetEnergyHistory.push(energy)
+              if (this.onsetEnergyHistory.length > PacemakerV2.ONSET_ENERGY_SIZE) {
+                this.onsetEnergyHistory.shift()
+              }
+
+              // WAVE 2149.2: Log every accepted interval
+              console.log(
+                `[PM2 ⚡] F${this.frameCount} IOI=${Math.round(timeSinceLast)}ms ` +
+                `(${Math.round(60000 / timeSinceLast)}bpm) ` +
+                `energy=${energy.toFixed(4)} gate=${Math.round(outerDebounce)}ms`
+              )
+
+              kickDetectedThisFrame = true
+            }
+            // ═══ END P99 CEILING GATE ══════════════════════════════
+
           } else {
             // WAVE 2149.2: Log out-of-range discards
             console.log(
@@ -406,19 +461,32 @@ export class PacemakerV2 {
           }
         }
 
-        // Update last onset timestamp (even if interval was out of range)
+        // Update last onset timestamp (even if interval was out of range or energy-rejected)
         this.lastOnsetTimestamp = timestamp
         this.onsetCount++
+
+        // Track energy even for non-interval onsets (calibration during warmup)
+        if (this.onsetEnergyHistory.length < 8) {
+          this.onsetEnergyHistory.push(energy)
+        }
+
         kickDetectedThisFrame = true
       }
     }
 
     // ─── 2. PURGE STALE INTERVALS ────────────────────────────────
+    const prevLength = this.intervals.length
     const cutoff = timestamp - INTERVAL_MAX_AGE_MS
     this.intervals = this.intervals.filter(i => i.timestamp > cutoff)
+    const purged = prevLength - this.intervals.length
 
     // ─── 3. CLUSTERING + BPM CALCULATION ─────────────────────────
-    if (this.intervals.length >= MIN_INTERVALS_FOR_BPM) {
+    // WAVE 2150: Only recluster when data CHANGED (new onset or stale purge).
+    // Before: updateBpmFromClusters ran EVERY FRAME (~46ms), even with identical
+    // data → AMNESIA fired 10-15× between onsets with the SAME clusters.
+    // After: only runs on actual data change → clean logs, honest confidence.
+    const dataChanged = kickDetectedThisFrame || purged > 0
+    if (this.intervals.length >= MIN_INTERVALS_FOR_BPM && dataChanged) {
       this.updateBpmFromClusters(timestamp)
     }
 
@@ -921,5 +989,7 @@ export class PacemakerV2 {
     this.prevEnergy = 0
     // WAVE 2137: ANTI-SYNCOPATION SHIELD — reset muscle memory to initial value
     this.kickLevel = 0.025
+    // WAVE 2150: P99 CEILING GATE — reset onset energy history
+    this.onsetEnergyHistory = []
   }
 }

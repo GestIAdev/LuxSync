@@ -285,12 +285,12 @@ export class PacemakerV2 {
 
   // ─── WAVE 2137: ANTI-SYNCOPATION SHIELD — muscle memory ──────────
   /** Memoria muscular: fuerza del último bombo aceptado.
-   *  WAVE 2140: valor inicial = 0.025 (= floor del decay de WAVE 2139).
-   *  Con 0.035 el Instant Attack del primer kick gordo (0.075) subía
-   *  el kickLevel a 0.075 → umbral 0.056 → los kicks siguientes a 0.050
-   *  no pasaban → motor recibía solo los picos → intervals dobles → 185 BPM.
-   *  Con 0.025 el kickLevel sube más moderado y no mutila el arranque. */
-  private kickLevel = 0.025
+   *  WAVE 2146: valor inicial = 0.060 (recalibrado para señal Radix-2 limpia).
+   *  Con el Radix-2, los kicks llegan masivos (0.100-0.200). El arranque con
+   *  0.025 dejaba que cualquier transitorio de 0.019+ pasara como kick antes
+   *  de que la memoria muscular se calibrara. Con 0.060 el motor arranca ya
+   *  en la zona de kicks reales — las síncopas de 0.030-0.050 mueren al instante. */
+  private kickLevel = 0.060
 
   /**
    * Process one frame of audio data.
@@ -732,10 +732,12 @@ export class PacemakerV2 {
       }
     }
 
-    // DECAIMIENTO EN SILENCIO: más lento (0.999) y piso más alto (0.025).
+    // DECAIMIENTO EN SILENCIO: más lento (0.999) y piso más alto (0.045).
     // ~0.1%/frame × 47fps ≈ 4.7%/s → mitad en ~15s de breakdown.
-    // El piso de 0.025 evita que el motor se vuelva ultra-sensible durante intros largas.
-    this.kickLevel = Math.max(0.025, this.kickLevel * 0.999)
+    // WAVE 2146: El piso sube de 0.025 a 0.045 para aguantar breakdowns con
+    // señal Radix-2 limpia. Evita que el motor se vuelva hiper-sensible durante
+    // intros largas — el bajo sincopado (0.030) sigue bajo el umbral del 75%.
+    this.kickLevel = Math.max(0.045, this.kickLevel * 0.999)
 
     return isOnset
   }

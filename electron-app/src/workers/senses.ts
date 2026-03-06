@@ -555,34 +555,33 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   state.prevLows = currentLows;
   state.prevMids = currentMids;
 
-  // 4. "Rhythmic Punch" — WAVE 2142: SNARE KILLER (Bass Gate v3 + Low Dominance)
+  // 4. "Rhythmic Punch" — WAVE 2146: POST-RADIX RECALIBRATION (Threshold Scaling)
   //
-  //    WAVE 2141 bajó el gate a 0.012 → demasiado permisivo. Brejcha "Gravity"
-  //    tiene snares y claps con dL=0.035-0.052 y dM=0.043-0.050. Con la fórmula
-  //    anterior (deltaLows + deltaMids×0.5), un snare con dL=0.040/dM=0.047 generaba
-  //    punch=0.064 — más alto que un kick suave. Eso inundaba el Pacemaker con
-  //    intervalos falsos (~238ms = off-beat) → clusters espurios → 161 BPM.
+  //    Con el Radix-2 limpio, la energía ya no se fuga entre bins. Los valores de
+  //    deltaLows ahora llegan masivos (0.100 - 0.200). El gate de 0.015 de WAVE 2142
+  //    se quedó raquítico: las síncopas del bajo ahora miden 0.030+ y pasan como kicks.
+  //    Resultado: falsos 185 BPM por intervalos de offbeat.
   //
-  //    DOS CORRECCIONES:
-  //    A) Gate: 0.012 → 0.015. Kills voz (dL<0.010) y snares leves (dL<0.015).
-  //       Los kicks de transición de Brejcha con dL=0.015-0.017 ahora pasan.
-  //       Los snares fuertes con dL>0.015 aún pasan, PERO...
-  //    B) Factor mids: 0.5 → 0.20. El bajo domina 5:1 sobre los medios.
-  //       Kick real:     dL=0.055 dM=0.035 → punch = 0.055 + 0.007 = 0.062 ✅
-  //       Snare fuerte:  dL=0.040 dM=0.047 → punch = 0.040 + 0.009 = 0.049 (menor)
-  //       El kick sigue ganando sobre el snare por su mayor energía de bajos.
+  //    RECALIBRACIÓN WAVE 2146:
+  //    A) Gate: 0.015 → 0.040. Un bombo suave con Radix-2 no baja de 0.040.
+  //       Voz, hi-hats, síncopas de techno (0.020-0.035): MUERTOS.
+  //       Kick real (0.040+): PASA.
+  //    B) Factor mids: 0.20 → 0.50. Con el gate más alto, los mids que llegan
+  //       ya son de golpes reales (snare + kick). El 50% refuerza el punch total
+  //       sin riesgo de colarse — el gate los filtra antes.
+  //       Kick real:    dL=0.100 dM=0.060 → punch = 0.100 + 0.030 = 0.130 ✅
+  //       Síncopa baja: dL=0.030 (NO PASA EL GATE) → punch = 0 ✅
   //
-  //    No es un hack — es calibración basada en física: los bombos viven en lows,
-  //    los snares en mids. El peso 5:1 refleja esa realidad espectral.
+  //    No es un hack — es escalar los umbrales a la nueva magnitud de señal limpia.
   let rhythmicPunch = 0;
-  if (deltaLows >= 0.015) {
-    // Lows dominan 5:1 sobre mids — snares y claps son ciudadanos de segunda clase
-    rhythmicPunch = deltaLows + (deltaMids * 0.20);
+  if (deltaLows >= 0.040) {
+    // Con Radix-2 limpio: gate alto elimina síncopas, mids 50% refuerza el ataque real
+    rhythmicPunch = deltaLows + (deltaMids * 0.50);
   }
 
   const godEarBpmResult = pacemakerV2.process(
     spectrum.kickDetected,   // Boolean onset del SlopeBasedOnsetDetector de GodEar
-    rhythmicPunch,           // 💓 WAVE 2142: Bass Gate — 0 si deltaLows < 0.015 | mids×0.20
+    rhythmicPunch,           // 💓 WAVE 2146: Bass Gate — 0 si deltaLows < 0.040 | mids×0.50
     deterministicTimestampMs
   );
 

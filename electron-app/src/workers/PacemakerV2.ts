@@ -110,16 +110,10 @@ const MIN_INTERVAL_MS = Math.floor(60000 / MAX_BPM)
  *  60000 / 70 = 857ms. Anything longer is not a beat interval. */
 const MAX_INTERVAL_MS = Math.ceil(60000 / MIN_BPM)
 
-/** Debounce window after a valid onset (ms).
- *  The system goes DEAF for this duration to prevent:
- *  - Bass reverb tail counting as a second kick
- *  - Sub-bass rumble triggering multiple onsets per kick
- *  WAVE 2134: THE TRACTOR — 300 → 200ms.
- *  Con umbral fijo de 0.045 (la guadaña rústica), el muro de hierro
- *  ya filtra güiros y ruido. 200ms permite leer percusión rápida latina
- *  sin riesgo de doble-trigger (190 BPM = 315ms, 200ms < 315ms).
- *  Herencia de WAVE 1163: MIN_INTERVAL_MS = 200ms fue lo que rompió
- *  el círculo vicioso del debounce adaptativo. */
+/** @deprecated WAVE 2149: Replaced by adaptive outer gate using MIN_INTERVAL_MS as floor
+ *  + Dynamic Armor (shieldMultiplier = 0.40 + confidence × 0.40).
+ *  Was: 200ms static (WAVE 2134). Caused vicious circle at 161 BPM. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEBOUNCE_MS = 200
 
 /** Tolerance for clustering intervals together (ms).
@@ -243,9 +237,16 @@ const DELTA_THRESHOLD = 0.008
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ADAPTIVE_DEBOUNCE_FACTOR = 0.80
 
-/** Floor for adaptive debounce — never blind for less than this.
- *  200ms = theoretical maximum 300 BPM (DnB/Hardcore). */
-const ADAPTIVE_DEBOUNCE_FLOOR_MS = 200
+/** Floor for adaptive debounce (inner ear) — never blind for less than this.
+ *  WAVE 2149: Aligned with outer gate. Both use MIN_INTERVAL_MS (315ms) as floor.
+ *  Was: 200ms (WAVE 2134). The 200ms floor let 232-325ms syncopation through
+ *  the inner ear, which then fired an onset that the outer gate also accepted
+ *  (since both gates had the same 200-250ms floor). Result: 161 BPM vicious circle.
+ *
+ *  With 315ms: only intervals ≥315ms (≤190 BPM) pass. This kills syncopation
+ *  at all tempos while still allowing DnB/Psytrance at 185-190 BPM.
+ *  Exactly matches MAX_BPM = 190 → 60000/190 = 315ms. */
+const ADAPTIVE_DEBOUNCE_FLOOR_MS = MIN_INTERVAL_MS
 
 export class PacemakerV2 {
   // ─── Onset timing ──────────────────────────────────────────────────
@@ -329,22 +330,47 @@ export class PacemakerV2 {
     // Merge: external OR internal onset
     const onsetDetected = kickOnset || adaptiveOnset
 
-    // ─── 1. ONSET GATE: Dynamic Debounce + Range Filter ──────────
-    // WAVE 2148.1: THE OUTER GATE WAS STATIC (200ms). That let 232ms
-    // intervals through — Brejcha's sincopated bass fires every ~230ms
-    // and was registering as onsets BETWEEN kicks.
+    // ─── 1. ONSET GATE: Adaptive Outer Debounce ──────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // WAVE 2149: ADAPTIVE OUTER GATE — BREAKING THE VICIOUS CIRCLE
+    // ═══════════════════════════════════════════════════════════════
     //
-    // Fix: outer gate mirrors the inner gate logic.
-    // If stableBpm is known → use 75% of beat interval (same as inner ear)
-    // If no stableBpm yet → use 250ms (slightly above 200ms to kill sub-250ms trash)
+    // History of the vicious circle:
+    //   WAVE 2148.1: gate=250ms → 325ms syncopation passes → lock 161 BPM
+    //   → gate=280ms (×0.75 fixed) → 325ms STILL passes → 161 forever
     //
-    // 126 BPM: 476ms × 0.75 = 357ms  ← kills 232ms sincopated bass ✅
-    // 160 BPM: 375ms × 0.75 = 281ms  ← tight but safe ✅
-    // 185 BPM: 324ms × 0.75 = 243ms  ← still above 232ms ✅
-    // no BPM:  250ms fallback          ← kills sub-250ms noise ✅
+    // THE FIX: Two-phase adaptive gate with Dynamic Armor.
+    //
+    // PHASE 1 — STARTUP (no stableBpm):
+    //   Conservative gate = MIN_INTERVAL_MS × 1.15 ≈ 362ms.
+    //   This is the VICIOUS CIRCLE BREAKER. At startup we don't know the
+    //   tempo, so we must be conservative:
+    //     → 232ms bass syncopation: DEAD (232 < 362) ✅
+    //     → 325ms offbeat syncopation: DEAD (325 < 362) ✅
+    //     → 375ms kick (160 BPM): ALIVE (375 > 362) ✅
+    //     → 476ms kick (126 BPM): ALIVE (476 > 362) ✅
+    //   Cost: We lose 170+ BPM detection at startup (353ms < 362ms).
+    //   Acceptable: 170+ BPM Psytrance has clean kicks with no syncopation,
+    //   so the inner ear's energy checks catch it. Once locked → Phase 2.
+    //
+    // PHASE 2 — RUNNING (with stableBpm):
+    //   Dynamic Armor: shield = 0.40 + (confidence × 0.40)
+    //   gate = max(MIN_INTERVAL_MS, beatInterval × shield)
+    //   Floor = MIN_INTERVAL_MS (315ms) — safe for all tempos.
+    //   High confidence (0.80) → shield=0.72 → 126BPM: 476×0.72=343ms gate
+    //     → 325ms syncopation: DEAD ✅
+    //   Low confidence (0.20) → shield=0.48 → gate=floor=315ms
+    //     → mode: learning new tempo, gate at minimum ✅
+    //
+    // Lección WAVE 1163: "Los Círculos Viciosos Son Reales.
+    //   Cuando un sistema adaptativo detecta mal, puede auto-confirmarse
+    //   en un bucle infinito. Solución: floor absoluto que rompa la
+    //   retroalimentación."
+    const STARTUP_GATE_MS = Math.floor(MIN_INTERVAL_MS * 1.15)  // ≈362ms
+    const outerShield = 0.40 + (this.currentConfidence * 0.40)
     const outerDebounce = this.stableBpm > 0
-      ? Math.max(250, (60000 / this.stableBpm) * 0.75)
-      : 250
+      ? Math.max(MIN_INTERVAL_MS, (60000 / this.stableBpm) * outerShield)
+      : STARTUP_GATE_MS
 
     if (onsetDetected) {
       const timeSinceLast = timestamp - this.lastOnsetTimestamp
@@ -736,34 +762,31 @@ export class PacemakerV2 {
     for (let i = 0; i < ENERGY_HISTORY_SIZE; i++) sum += this.energyHistory[i]
     const mean = sum / ENERGY_HISTORY_SIZE
 
-    // ─── 3. DEBOUNCE DINÁMICO — WAVE 2147: DYNAMIC ARMOR ────────
-    // WAVE 2141 usaba un escudo fijo del 80% — nos cegaba durante cambios de tempo.
+    // ─── 3. DEBOUNCE DINÁMICO — WAVE 2147/2149: DYNAMIC ARMOR ─────
+    // WAVE 2147: El escudo escala con la confianza actual del motor:
+    //   Confianza alta (1.0) → shieldMultiplier = 0.80 → escudo máximo
+    //   Confianza nula (0.0) → shieldMultiplier = 0.40 → escucha activa
     //
-    // WAVE 2147: El escudo ahora escala con la confianza actual del motor:
-    //   Confianza alta (1.0) → shieldMultiplier = 0.80 → escudo máximo (bloquea síncopas)
-    //   Confianza nula (0.0) → shieldMultiplier = 0.40 → modo escucha activa (aprende nuevo tempo)
-    //
-    // Cuando el DJ sube el BPM (86→126), la confianza del 86 se desploma.
-    // El escudo se encoge del 80% al 40%, dejando entrar el nuevo ritmo.
-    // Una vez estabilizado el 126, la confianza sube y el escudo vuelve al 80%.
+    // WAVE 2149: Floor unificado con outer gate = MIN_INTERVAL_MS (315ms).
+    // Ambas puertas comparten el mismo piso físico para evitar inconsistencias.
     //
     // Ejemplos con confianza = 1.0 (shield 80%):
-    //   A 125 BPM: max(200, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA ✅
-    //   A 160 BPM: max(200, 375×0.80) = 300ms  ← head-room de 75ms ✅
+    //   A 125 BPM: max(315, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA ✅
+    //   A 160 BPM: max(315, 375×0.80) = 315ms  ← floor toma el control ✅
     // Ejemplos con confianza = 0.0 (shield 40%):
-    //   A 125 BPM: max(200, 480×0.40) = 200ms  ← escucha activa, aprende rápido ✅
+    //   A 125 BPM: max(315, 480×0.40) = 315ms  ← floor, escucha activa ✅
     const expectedInterval = currentBpm > 0 ? (60000 / currentBpm) : 500
     const shieldMultiplier = 0.40 + (this.currentConfidence * 0.40)
     let adaptiveDebounce = Math.max(ADAPTIVE_DEBOUNCE_FLOOR_MS, expectedInterval * shieldMultiplier)
 
     // ─── 3b. AP-KICK: ARMOR-PIERCING PROTOCOL — WAVE 2147 ────────
-    // Un bombo puro de Minimal Techno tras un breakdown puede llegar a 0.200.
+    // Un bombo puro tras un breakdown puede llegar a 0.200.
     // Un impacto que supera en 50% a nuestra memoria muscular es INNEGABLE.
-    // No someterlo a reglas de tempo — rompemos el escudo al límite físico (200ms).
+    // Rompemos el escudo al floor (315ms = MIN_INTERVAL_MS).
+    // WAVE 2149: el floor ya no es 200ms sino 315ms — consistente con MAX_BPM.
     //
     // Ejemplo: kickLevel=0.090, bombo de Brejcha a 0.198
-    //   punch (0.198) > kickLevel×1.5 (0.135) → adaptiveDebounce = 200ms ⚡
-    // El elefante rompe la pared. El nuevo tempo entra limpio.
+    //   punch (0.198) > kickLevel×1.5 (0.135) → adaptiveDebounce = 315ms ⚡
     if (punch > this.kickLevel * 1.5) {
       adaptiveDebounce = ADAPTIVE_DEBOUNCE_FLOOR_MS
     }

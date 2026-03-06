@@ -329,12 +329,28 @@ export class PacemakerV2 {
     // Merge: external OR internal onset
     const onsetDetected = kickOnset || adaptiveOnset
 
-    // ─── 1. ONSET GATE: Debounce + Range Filter ───────────────────
+    // ─── 1. ONSET GATE: Dynamic Debounce + Range Filter ──────────
+    // WAVE 2148.1: THE OUTER GATE WAS STATIC (200ms). That let 232ms
+    // intervals through — Brejcha's sincopated bass fires every ~230ms
+    // and was registering as onsets BETWEEN kicks.
+    //
+    // Fix: outer gate mirrors the inner gate logic.
+    // If stableBpm is known → use 75% of beat interval (same as inner ear)
+    // If no stableBpm yet → use 250ms (slightly above 200ms to kill sub-250ms trash)
+    //
+    // 126 BPM: 476ms × 0.75 = 357ms  ← kills 232ms sincopated bass ✅
+    // 160 BPM: 375ms × 0.75 = 281ms  ← tight but safe ✅
+    // 185 BPM: 324ms × 0.75 = 243ms  ← still above 232ms ✅
+    // no BPM:  250ms fallback          ← kills sub-250ms noise ✅
+    const outerDebounce = this.stableBpm > 0
+      ? Math.max(250, (60000 / this.stableBpm) * 0.75)
+      : 250
+
     if (onsetDetected) {
       const timeSinceLast = timestamp - this.lastOnsetTimestamp
 
       // THE BLINDNESS: Ignore if within debounce window
-      if (timeSinceLast >= DEBOUNCE_MS) {
+      if (timeSinceLast >= outerDebounce) {
         // First onset ever? Just record it, no interval yet.
         if (this.lastOnsetTimestamp > 0) {
           // THE WALL: Range filter
@@ -392,7 +408,7 @@ export class PacemakerV2 {
       console.log(
         `[💓 PACEMAKER v2] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
         `conf=${this.currentConfidence.toFixed(3)} intervals=${this.intervals.length} ` +
-        `onsets=${this.onsetCount}`
+        `onsets=${this.onsetCount} gate=${Math.round(outerDebounce)}ms`
       )
     }
 

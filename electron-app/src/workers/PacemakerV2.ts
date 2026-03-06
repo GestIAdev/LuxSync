@@ -147,10 +147,13 @@ const HYSTERESIS_FRAMES = 30
 const BPM_STABILITY_DELTA = 4
 
 /** Octave jump detection ranges.
- *  A change is "octave" if ratio is within these ranges. */
+ *  A change is "octave" if ratio is within these ranges.
+ *  WAVE 2148: widened from [1.90,2.10]/[0.48,0.52] to [1.85,2.15]/[0.46,0.54]
+ *  to catch borderline octave doublings (e.g. 92→185 when cluster scatter
+ *  lands at 187 or 183). */
 const OCTAVE_RANGES: [number, number][] = [
-  [1.90, 2.10],  // 2× doubling
-  [0.48, 0.52],  // 0.5× halving
+  [1.85, 2.15],  // 2× doubling — widened
+  [0.46, 0.54],  // 0.5× halving — widened
 ]
 
 /** Frames of sustained octave pressure needed to accept the jump.
@@ -503,6 +506,16 @@ export class PacemakerV2 {
   /**
    * Find the dominant cluster: largest count wins.
    * On ties, prefer the cluster closest to current stable BPM (stability).
+   *
+   * WAVE 2148: ANTI-OCTAVE-DOUBLING
+   * If the dominant cluster has ~2× the BPM of another cluster with ≥40%
+   * of the votes, the engine is seeing subdivisions (kicks + offbeats) and
+   * doubling the real tempo. Prefer the slower (correct) cluster.
+   *
+   * Real case: 92 BPM track → onsets every 324ms AND 648ms.
+   * Cluster A: centerMs=324, count=14, bpm=185  ← dominant by votes
+   * Cluster B: centerMs=648, count=8,  bpm=92   ← real tempo
+   * ratio B/A = 648/324 = 2.0 → anti-doubling fires → return B.
    */
   private findDominantCluster(clusters: IntervalCluster[]): IntervalCluster | null {
     if (clusters.length === 0) return null
@@ -511,6 +524,24 @@ export class PacemakerV2 {
     // Sort by count descending
     const sorted = [...clusters].sort((a, b) => b.count - a.count)
     const largest = sorted[0]
+
+    // ─── WAVE 2148: ANTI-OCTAVE-DOUBLING ─────────────────────────
+    // Check if the dominant cluster is a 2× subdivision of a slower cluster.
+    // If yes, the slower cluster is the real tempo — prefer it.
+    for (const c of sorted.slice(1)) {
+      if (c.count < largest.count * 0.40) continue  // Not enough votes to challenge
+      const ratio = c.centerMs / largest.centerMs
+      // Ratio ~2.0 means c is the whole note, largest is the half note (double BPM)
+      if (ratio >= 1.85 && ratio <= 2.15) {
+        console.log(
+          `[💓 PACEMAKER v2 ANTI-DOUBLE] Rejecting ${Math.round(largest.bpm)}BPM ` +
+          `(${largest.count} votes, ${Math.round(largest.centerMs)}ms) ` +
+          `in favour of ${Math.round(c.bpm)}BPM ` +
+          `(${c.count} votes, ${Math.round(c.centerMs)}ms) — octave doubling detected`
+        )
+        return c
+      }
+    }
 
     // Get all clusters within 60% of the largest count
     const significant = sorted.filter(c => c.count >= largest.count * 0.6)

@@ -376,9 +376,10 @@ export class GodEarBPMTracker {
     }
 
     // ─── 5. Diagnostic log ───────────────────────────────────────
-    if (this.frameCount % 120 === 0) {
+    // WAVE 2151.1: Increased frequency %120→%24 (~4.5s) for calibration
+    if (this.frameCount % 24 === 0) {
       console.log(
-        `[🥁 GODEAR BPM] ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
+        `[🥁 GODEAR BPM] F${this.frameCount} ${this.stableBpm}bpm (raw=${this.rawBpm}) ` +
         `conf=${this.currentConfidence.toFixed(3)} samples=${this.sampleCount} ` +
         `frameDur=${this.frameDurationMs.toFixed(1)}ms virtualDur=${this.virtualFrameDurationMs.toFixed(2)}ms ` +
         `lagRange=[${this.minLag},${this.maxLag}] energy=${rawBassEnergy.toFixed(4)}`
@@ -648,12 +649,11 @@ export class GodEarBPMTracker {
     const finalCorr = bestPeak.correlation
 
     // ─── DIAGNOSTIC: Log sieve decision ──────────────────────────────────
-    // WAVE 2151: Gated to every 120 frames (~22s). The spread+sort that
-    // was running EVERY scan (every 4 frames ≈ 186ms) caused GC pressure
-    // and was the #2 contributor to AUDIO STALE warnings.
-    if (this.frameCount % 120 === 0) {
+    // WAVE 2151.1: Increased frequency %120→%24 (~4.5s) for calibration.
+    // peaks.slice(0,4) is trivial — no GC risk on small arrays.
+    if (this.frameCount % 24 === 0) {
       const topPeaks = peaks
-        .slice(0, 4) // Already few peaks — avoid spread+sort on hot path
+        .slice(0, 4)
         .map(p => `${Math.round(p.bpm)}bpm:${p.correlation.toFixed(3)}`)
         .join(' ')
       console.log(
@@ -688,12 +688,11 @@ export class GodEarBPMTracker {
 
           if (this.octaveLockCounter >= OCTAVE_LOCK_SCANS) {
             // Sustained octave jump confirmed — accept
-            if (this.frameCount % 120 === 0) {
-              console.log(
-                `[🥁 OCTAVE ACCEPT] ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
-                `after ${this.octaveLockCounter} scans`
-              )
-            }
+            // WAVE 2151.1: ALWAYS log octave events — critical for diagnosis
+            console.log(
+              `[🥁 OCTAVE ACCEPT] F${this.frameCount} ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
+              `after ${this.octaveLockCounter} scans`
+            )
             this.stableBpm = Math.round(finalBpm)
             this.lastBeatPhaseTimestamp = 0
             this.prevPhase = 0
@@ -701,12 +700,11 @@ export class GodEarBPMTracker {
             this.octaveLockCandidateBpm = 0
           } else {
             // BLOCK octave jump — keep current BPM
-            if (this.frameCount % 120 === 0) {
-              console.log(
-                `[🥁 OCTAVE BLOCK] ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
-                `(${this.octaveLockCounter}/${OCTAVE_LOCK_SCANS} scans)`
-              )
-            }
+            // WAVE 2151.1: ALWAYS log octave events — critical for diagnosis
+            console.log(
+              `[🥁 OCTAVE BLOCK] F${this.frameCount} ${this.stableBpm}→${Math.round(finalBpm)} BPM ` +
+              `(${this.octaveLockCounter}/${OCTAVE_LOCK_SCANS} scans)`
+            )
           }
         } else {
           // Not an octave jump — normal smoothing, reset octave counter

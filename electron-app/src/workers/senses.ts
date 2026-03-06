@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 👂 BETA WORKER - SENSES (Audio Analysis)
  * 
  * Worker Thread dedicado al análisis de audio en tiempo real.
@@ -516,39 +516,47 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
+  // 🔪 WAVE 2151.1: THE FREQUENCY SCALPEL — SubBass-only autocorrelation input
   // ═══════════════════════════════════════════════════════════════════════════
-  // � WAVE 2151: THE LAZARUS PROTOCOL — Autocorrelation BPM Detection
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PacemakerV2 (IOI) was genetically unfit: it required classifying individual
-  // transients as "kick" or "not kick" — impossible when kick energy (0.05-0.22)
-  // overlaps with syncopation energy in complex electronic music.
+  // WAVE 2151 fed rawBassEnergy (subBass + bass, 0-200Hz) to autocorrelation.
+  // RESULT: 184 BPM on 126 BPM music. Classic octave doubling.
   //
-  // GodEarBPMTracker (autocorrelation) finds periodicity MATHEMATICALLY:
-  //   "Is the bass energy signal periodic at ~476ms (126 BPM)?" → YES/NO
-  // Syncopations are aperiodic → autocorrelation ignores them naturally.
-  // Kicks at 126 BPM are periodic → clear correlation peak at lag ~41.
+  // ROOT CAUSE: Offbeat bass (80-150Hz) has equal energy to the kick (40-60Hz).
+  // The combined signal has periodicity at HALF the real beat period.
+  // Autocorrelation sees peaks at lag~28 (183 BPM) AND lag~56 (93 BPM),
+  // but NOT at lag~41 (126 BPM) — because the offbeat fills the gaps.
   //
-  // CRITICAL: rawBassEnergy (NOT rhythmicPunch). Autocorrelation needs the
-  // CONTINUOUS energy signal. The spectral flux gate (rhythmicPunch) zeros out
-  // 95% of frames — that would destroy the correlation window.
+  // THE SCALPEL: Feed ONLY rawSubBassEnergy (0-80Hz) where the kick lives.
+  // The offbeat bass lives in rawBassOnlyEnergy (80-200Hz) and is excluded.
+  // GodEarFFT Radix-2 band separation is surgical (verified: 50Hz tone stays
+  // 100% in subBass). The autocorrelation now sees a clean landscape:
+  // silence → KICK → silence → KICK → silence → KICK at 476ms = 126 BPM.
+  //
+  // GENRE SAFETY: This is NOT genre-specific. In ALL electronic music,
+  // the kick drum fundamental is 40-60Hz (subBass band). Bass synths, offbeat
+  // bass, and melodic bass lines live 80Hz+ (bass band). SubBass isolation
+  // gives the purest rhythmic signal regardless of genre.
   // ═══════════════════════════════════════════════════════════════════════════
 
   const godEarBpmResult = godEarBpmTracker.process(
-    spectrum.rawBassEnergy,    // 🔥 WAVE 2151: Raw bass energy — immaculate Radix-2 signal
-    spectrum.kickDetected,     // External kick hint (used for kick count, not BPM math)
+    spectrum.rawSubBassEnergy,  // � WAVE 2151.1: SubBass ONLY (0-80Hz) — kick without offbeat contamination
+    spectrum.kickDetected,      // External kick hint (used for kick count, not BPM math)
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2151: AUTOCORRELATION TELEMETRY — Every 100 frames (~4.6s)
-  // Lightweight: no arrays, no sorting, no spread. Pure string interpolation.
-  if (state.frameCount % 100 === 0) {
+  // 🔬 WAVE 2151.1: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // High frequency during calibration. Shows both subBass and full bass
+  // so we can verify the band separation is working.
+  if (state.frameCount % 20 === 0) {
     console.log(
       `[AUTOCORR 🩺] F${state.frameCount}` +
       ` bpm=${godEarBpmResult.bpm}` +
       ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
       ` kick=${godEarBpmResult.kickDetected}` +
       ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
-      ` rawBass=${spectrum.rawBassEnergy.toFixed(4)}` +
+      ` subBass=${spectrum.rawSubBassEnergy.toFixed(4)}` +
+      ` bassOnly=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
+      ` fullBass=${spectrum.rawBassEnergy.toFixed(4)}` +
       ` samples=${godEarBpmResult.kickCount}`
     );
   }

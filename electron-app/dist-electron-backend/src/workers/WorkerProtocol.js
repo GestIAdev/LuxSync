@@ -48,6 +48,8 @@ export var MessageType;
     MessageType["SET_VIBE"] = "set_vibe";
     // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM back to Worker
     MessageType["SET_BPM"] = "set_bpm";
+    // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset on Vibe change
+    MessageType["RESET_PACEMAKER"] = "reset_pacemaker";
     // 🔌 WAVE 63.95: System Power Control
     MessageType["SYSTEM_SLEEP"] = "system_sleep";
     MessageType["SYSTEM_WAKE"] = "system_wake";

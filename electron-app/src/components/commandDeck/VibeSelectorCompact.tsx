@@ -21,7 +21,7 @@ import './VibeSelectorCompact.css'
 // ICON MAP
 // ============================================================================
 
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   'Zap': Zap,
   'Flame': Flame,
   'Mic2': Mic2,

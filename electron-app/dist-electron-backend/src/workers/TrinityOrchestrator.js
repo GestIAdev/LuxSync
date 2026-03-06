@@ -635,6 +635,23 @@ export class TrinityOrchestrator extends EventEmitter {
         }
     }
     /**
+     * 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset del PacemakerV2 en Worker BETA.
+     *
+     * Un cambio de Vibe significa casi con certeza un cambio de canción.
+     * Borrar el estado del Pacemaker obliga al motor a escuchar la nueva
+     * canción en blanco, sin el ghost del BPM anterior contaminando el lock.
+     */
+    resetPacemaker() {
+        const beta = this.nodes.get('beta');
+        if (beta?.worker) {
+            this.sendToWorker('beta', MessageType.RESET_PACEMAKER, {}, MessagePriority.HIGH);
+            console.log('[ALPHA] 🧨 WAVE 2140: RESET_PACEMAKER sent to BETA — Amnesia Protocol active');
+        }
+        else {
+            console.warn('[ALPHA] ⚠️ Cannot reset pacemaker: BETA worker not spawned yet');
+        }
+    }
+    /**
      * �🔌 WAVE 63.95: System Sleep - Pause all workers
      * Sends SYSTEM_SLEEP to Mind worker to stop processing audio
      */

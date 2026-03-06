@@ -154,7 +154,7 @@ const DIAGNOSTIC_INTERVAL_FRAMES = 60;
 //   mean × 1.6  →  filtra el nivel sostenido
 //   delta 0.008  →  filtra reverb y ataques suaves (síncopas de techno)
 //   inKick flag  →  histéresis, previene double-trigger dentro del mismo golpe
-//   adaptiveDebounce  →  floor 200ms + 40% del BPM actual (herencia WAVE 1163)
+//   adaptiveDebounce  →  floor 200ms + 80% del BPM actual (WAVE 2141: 80% Shield)
 // ═══════════════════════════════════════════════════════════════════════════
 /** WAVE 1163.5 replica: rolling average window size (frames).
  *  24 frames × ~21ms/frame ≈ 0.5s rolling average. */
@@ -166,11 +166,19 @@ const ENERGY_RATIO = 1.6;
  *  Punch must rise by at least 0.008 from the previous frame.
  *  Kills reverb tails, soft syncopations, and plateau transitions. */
 const DELTA_THRESHOLD = 0.008;
-/** WAVE 1163.5 replica: adaptive debounce factor.
- *  adaptiveDebounce = max(200ms, expectedInterval × 0.40)
- *  At 160 BPM: max(200, 375×0.40) = max(200, 150) = 200ms ✅
- *  At 80 BPM:  max(200, 750×0.40) = max(200, 300) = 300ms ✅ */
-const ADAPTIVE_DEBOUNCE_FACTOR = 0.40;
+/** WAVE 2141: THE 80% SHIELD — adaptive debounce factor.
+ *  adaptiveDebounce = max(200ms, expectedInterval × 0.80)
+ *
+ *  El 80% cubre el 75% del compás real — suficiente para que la síncopa
+ *  de semicorchea con puntillo del Minimal Techno rebote y muera.
+ *
+ *  A 125 BPM (480ms): max(200, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA ✅
+ *  A 128 BPM (469ms): max(200, 469×0.80) = 375ms  ← escudo baja 94ms antes del kick ✅
+ *  A 160 BPM (375ms): max(200, 375×0.80) = 300ms  ← head-room de 75ms para el kick ✅
+ *  A 80  BPM (750ms): max(200, 750×0.80) = 600ms  ← mata qualquier doble ✅
+ *
+ *  ⚠️ NOTA: A >250 BPM el floor de 200ms toma el control. Psytrance/DnB safe. */
+const ADAPTIVE_DEBOUNCE_FACTOR = 0.80;
 /** Floor for adaptive debounce — never blind for less than this.
  *  200ms = theoretical maximum 300 BPM (DnB/Hardcore). */
 const ADAPTIVE_DEBOUNCE_FLOOR_MS = 200;
@@ -329,7 +337,25 @@ export class PacemakerV2 {
         // ─── Step 4: Calculate confidence ────────────────────────────
         const totalIntervals = values.length;
         const dominanceRatio = dominant.count / totalIntervals;
-        this.currentConfidence = Math.max(0, Math.min(1, dominanceRatio));
+        const rawConfidence = Math.max(0, Math.min(1, dominanceRatio));
+        // ─── WAVE 2140: CONFIDENCE BLEED — Amnesia Protocol ──────────
+        // Si el rawBpm diverge del stableBpm, el trono del dictador sangra.
+        // Cada clustering call sin respaldo = -5% de confianza.
+        // Cuando el candidato rawConfidence supera al stable, cambia el trono.
+        if (this.stableBpm > 0 && Math.abs(this.rawBpm - this.stableBpm) > BPM_STABILITY_DELTA) {
+            this.currentConfidence *= 0.95;
+            if (rawConfidence > this.currentConfidence) {
+                // El nuevo candidato ha ganado la guerra de confianza
+                console.log(`[💓 PACEMAKER v2 AMNESIA] Confidence bleed triggered. ` +
+                    `stable=${this.stableBpm} (conf=${this.currentConfidence.toFixed(3)}) ` +
+                    `→ raw=${this.rawBpm} (conf=${rawConfidence.toFixed(3)})`);
+                this.currentConfidence = rawConfidence;
+            }
+        }
+        else {
+            // Raw coincide con stable: recargar confianza normalmente
+            this.currentConfidence = rawConfidence;
+        }
         // ─── Step 5: Hysteresis + Octave protection ──────────────────
         this.applyHysteresis(dominant.bpm);
     }
@@ -420,6 +446,10 @@ export class PacemakerV2 {
         // WAVE 2140: Ya no aceptamos la primera lectura directamente.
         // Acumulamos el candidato igual que en el flujo normal para evitar
         // que un octave error inicial (185 cuando es 92/126) se fije al instante.
+        // WAVE 2141: 4 frames → 6 frames. Con el Bass Gate rebajado a 0.012,
+        // llegan más onsets desde el principio. 6 frames consistentes = ~125ms
+        // de confirmación → suficiente para distinguir 92 BPM de 126 BPM real
+        // antes de grabar el primer stableBpm.
         if (this.stableBpm === 0) {
             if (Math.abs(newBpm - this.candidateBpm) <= BPM_STABILITY_DELTA) {
                 this.candidateFrames++;
@@ -429,8 +459,8 @@ export class PacemakerV2 {
                 this.candidateBpm = newBpm;
                 this.candidateFrames = 1;
             }
-            // Necesitamos solo 4 intervalos consistentes para el primer lock (warmup rápido)
-            if (this.candidateFrames >= 4) {
+            // 6 clustering calls consistentes para el primer lock
+            if (this.candidateFrames >= 6) {
                 this.stableBpm = Math.round(this.candidateBpm);
                 this.candidateFrames = 0;
                 this.warmupComplete = false;
@@ -480,10 +510,17 @@ export class PacemakerV2 {
             this.warmupComplete = true;
         if (this.candidateFrames >= requiredFrames) {
             const roundedCandidate = Math.round(this.candidateBpm);
-            // Sanity check: reject absurd jumps (>40% change outside warmup)
+            // Sanity check: reject absurd jumps (>55% change outside warmup)
+            // WAVE 2141: 1.40 → 1.55 y 0.60 → 0.64.
+            // Con stableBpm=92 (incorrecto) y raw clustering produciendo 144 BPM:
+            //   144/92 = 1.565 → con 1.40 se bloqueaba. Con 1.55 también... pero 126/92=1.37 pasaba.
+            // El problema real es que el ratio guard impedía que el motor convergiera
+            // desde 92 hacia 126 cuando el clustering ya lo veía correctamente.
+            // Con 0.64: 92×0.64 = 59 → el guard permite bajar hasta 59 BPM sin bloquear.
+            // La protección real de octavas está en isOctaveJump con OCTAVE_RANGES [0.48, 0.52].
             if (this.warmupComplete && this.stableBpm > 0) {
                 const ratio = roundedCandidate / this.stableBpm;
-                if (ratio < 0.60 || ratio > 1.40) {
+                if (ratio < 0.64 || ratio > 1.55) {
                     this.candidateFrames = 0;
                     return;
                 }
@@ -521,8 +558,9 @@ export class PacemakerV2 {
      *   1. isAboveAverage: punch > mean × 1.6  (el bajo sostenido ≈ mean → no pasa)
      *   2. isSharpAttack:  (punch - prevPunch) >= 0.008  (no hay síncopa suave)
      *   3. !inKick:        no estamos dentro del mismo golpe (histéresis)
-     *   4. adaptiveDebounce: max(200ms, 40% del intervalo del BPM actual)
-     *      — herencia directa de WAVE 1163: el floor que rompió el círculo vicioso
+     *   4. adaptiveDebounce: max(200ms, 80% del intervalo del BPM actual)
+     *      — WAVE 2141: 40% → 80%. El 80% cubre el 75% del compás real,
+     *        bloqueando la síncopa de semicorchea con puntillo del Minimal Techno.
      *
      * @param punch     - Multiband Spectral Flux (rhythmicPunch de senses.ts)
      * @param timestamp - Deterministic musical timestamp (ms)
@@ -537,10 +575,11 @@ export class PacemakerV2 {
         for (let i = 0; i < ENERGY_HISTORY_SIZE; i++)
             sum += this.energyHistory[i];
         const mean = sum / ENERGY_HISTORY_SIZE;
-        // ─── 3. DEBOUNCE ADAPTATIVO (herencia exacta WAVE 1163.5) ────
-        // 40% del intervalo esperado, con floor de 200ms.
-        // A 160 BPM: max(200, 375×0.40) = 200ms  ← deja pasar todos los kicks
-        // A 80 BPM:  max(200, 750×0.40) = 300ms  ← previene dobles a BPMs lentos
+        // ─── 3. DEBOUNCE ADAPTATIVO — WAVE 2141: THE 80% SHIELD ─────
+        // 80% del intervalo esperado, con floor de 200ms.
+        // A 125 BPM: max(200, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA
+        // A 160 BPM: max(200, 375×0.80) = 300ms  ← head-room de 75ms para el kick
+        // A 80  BPM: max(200, 750×0.80) = 600ms  ← mata cualquier doble
         const expectedInterval = currentBpm > 0 ? (60000 / currentBpm) : 500;
         const adaptiveDebounce = Math.max(ADAPTIVE_DEBOUNCE_FLOOR_MS, expectedInterval * ADAPTIVE_DEBOUNCE_FACTOR);
         // ─── 4. RESET HISTÉRESIS — el golpe terminó cuando caemos bajo la media

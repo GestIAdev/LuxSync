@@ -173,7 +173,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       console.log(`[LibraryStore] 💾 Saving fixture: ${fixture.name}`)
       
-      const result = await window.lux.library.saveUser(fixture)
+      const result = await window.lux.library.saveUser(fixture as unknown as Parameters<typeof window.lux.library.saveUser>[0])
       
       if (!result.success) {
         return { success: false, error: result.error || 'Failed to save fixture' }

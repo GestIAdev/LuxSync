@@ -15,7 +15,7 @@ export class FixtureFactory {
       id: this.generateUUID(),
       name: '',
       manufacturer: '',
-      type: 'Moving Head',
+      type: 'moving-head',
       channels: []
     };
   }
@@ -83,18 +83,26 @@ export class FixtureFactory {
       'white': 'White',
       'amber': 'Amber',
       'uv': 'UV',
+      'cyan': 'Cyan',
+      'magenta': 'Magenta',
+      'yellow': 'Yellow',
       'pan': 'Pan',
       'pan_fine': 'Pan Fine',
       'tilt': 'Tilt',
       'tilt_fine': 'Tilt Fine',
       'color_wheel': 'Color Wheel',
       'gobo': 'Gobo',
+      'gobo_rotation': 'Gobo Rotation',
       'prism': 'Prism',
+      'prism_rotation': 'Prism Rotation',
       'focus': 'Focus',
       'zoom': 'Zoom',
+      'frost': 'Frost',
       'speed': 'Speed',
       'macro': 'Macro',
       'control': 'Control',
+      'rotation': 'Rotation',
+      'custom': 'Custom',
       'unknown': 'Unknown'
     };
     return labels[type] || type;

@@ -1303,6 +1303,13 @@ export class TitanOrchestrator {
                 this.hal.setVibe(normalizedVibeId);
                 console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`);
             }
+            // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset del Pacemaker en BETA.
+            // Un cambio de Vibe = nuevo track = el BPM anterior es basura.
+            // Obligamos al motor a escuchar en blanco.
+            if (this.trinity) {
+                this.trinity.resetPacemaker();
+                console.log(`[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → ${normalizedVibeId}`);
+            }
         }
     }
     /**

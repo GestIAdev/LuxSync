@@ -30,8 +30,14 @@
     "src/components/**/*.tsx",
     "src/core/intelligence/dream/disabled/**/*.ts",
     "src/hooks/**/*.ts",
+    "src/tests/**/*.ts",
     "**/__tests__/**",
     "**/*.test.ts",
-    "**/integration/**/*.test.ts"
+    "**/integration/**/*.test.ts",
+    "src/**/*.micro-diag.ts",
+    "src/**/*.radix2.ts",
+    "src/**/*.radix4.ts",
+    "src/**/*.recursive-sr.ts",
+    "src/**/*.iterative-sr.ts"
   ]
 }

@@ -369,17 +369,32 @@ function processAudioBuffer(incomingBuffer) {
     // 3. Guardar estado para el siguiente frame
     state.prevLows = currentLows;
     state.prevMids = currentMids;
-    // 4. "Rhythmic Punch" — WAVE 2138: THE BASS GATE (Filtro Anti-Podcast)
-    //    Un bombo real (incluso Cumbia suave) produce deltaLows >= 0.020.
-    //    Voz hablada, sílabas, platillos: deltaLows < 0.018 → ruido sin cimientos de graves.
-    //    Si no hay impacto físico de graves, el punch = 0 → Pacemaker muere de hambre → FREEWHEEL.
+    // 4. "Rhythmic Punch" — WAVE 2142: SNARE KILLER (Bass Gate v3 + Low Dominance)
+    //
+    //    WAVE 2141 bajó el gate a 0.012 → demasiado permisivo. Brejcha "Gravity"
+    //    tiene snares y claps con dL=0.035-0.052 y dM=0.043-0.050. Con la fórmula
+    //    anterior (deltaLows + deltaMids×0.5), un snare con dL=0.040/dM=0.047 generaba
+    //    punch=0.064 — más alto que un kick suave. Eso inundaba el Pacemaker con
+    //    intervalos falsos (~238ms = off-beat) → clusters espurios → 161 BPM.
+    //
+    //    DOS CORRECCIONES:
+    //    A) Gate: 0.012 → 0.015. Kills voz (dL<0.010) y snares leves (dL<0.015).
+    //       Los kicks de transición de Brejcha con dL=0.015-0.017 ahora pasan.
+    //       Los snares fuertes con dL>0.015 aún pasan, PERO...
+    //    B) Factor mids: 0.5 → 0.20. El bajo domina 5:1 sobre los medios.
+    //       Kick real:     dL=0.055 dM=0.035 → punch = 0.055 + 0.007 = 0.062 ✅
+    //       Snare fuerte:  dL=0.040 dM=0.047 → punch = 0.040 + 0.009 = 0.049 (menor)
+    //       El kick sigue ganando sobre el snare por su mayor energía de bajos.
+    //
+    //    No es un hack — es calibración basada en física: los bombos viven en lows,
+    //    los snares en mids. El peso 5:1 refleja esa realidad espectral.
     let rhythmicPunch = 0;
-    if (deltaLows >= 0.018) {
-        // Solo si hay cimientos de graves, sumamos el "click" de los medios
-        rhythmicPunch = deltaLows + (deltaMids * 0.5);
+    if (deltaLows >= 0.015) {
+        // Lows dominan 5:1 sobre mids — snares y claps son ciudadanos de segunda clase
+        rhythmicPunch = deltaLows + (deltaMids * 0.20);
     }
     const godEarBpmResult = pacemakerV2.process(spectrum.kickDetected, // Boolean onset del SlopeBasedOnsetDetector de GodEar
-    rhythmicPunch, // 💓 WAVE 2138: Bass Gate — 0 si deltaLows < 0.018
+    rhythmicPunch, // 💓 WAVE 2142: Bass Gate — 0 si deltaLows < 0.015 | mids×0.20
     deterministicTimestampMs);
     // 🔬 WAVE 2133: TELEMETRY — Cada 100 frames (~6.5s) y en cada onset
     if (state.frameCount % 100 === 0 || godEarBpmResult.kickDetected) {
@@ -699,6 +714,13 @@ function handleMessage(message) {
             // Pacemaker BPM is no longer needed here. Worker is the source of truth.
             case MessageType.SET_BPM:
                 // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
+                break;
+            // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset on Vibe change
+            // A vibe change = near-certain song change. Wipe Pacemaker memory
+            // so the engine listens to the new track with a clean slate.
+            case MessageType.RESET_PACEMAKER:
+                pacemakerV2.reset();
+                console.log('[BETA] 🧨 WAVE 2140: PacemakerV2 HARD RESET — Amnesia Protocol executed');
                 break;
             default:
                 console.warn(`[BETA] Unknown message type: ${message.type}`);

@@ -39,6 +39,8 @@ interface FixtureChannel {
   type: ChannelType
   defaultValue: number
   is16bit: boolean
+  customName?: string
+  continuousRotation?: boolean
 }
 
 interface FixtureDefinition {
@@ -47,6 +49,34 @@ interface FixtureDefinition {
   manufacturer: string
   type: string
   channels: FixtureChannel[]
+  wheels?: { colors: Array<{ dmx: number; name: string; rgb: { r: number; g: number; b: number }; hasTexture?: boolean }> }
+  physics?: {
+    motorType: 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro'
+    maxAcceleration: number
+    maxVelocity?: number
+    safetyCap: number | boolean
+    orientation?: string
+    invertPan?: boolean
+    invertTilt?: boolean
+    swapPanTilt?: boolean
+    homePosition?: { pan: number; tilt: number }
+    tiltLimits?: { min: number; max: number }
+  }
+  capabilities?: {
+    hasPan?: boolean
+    hasTilt?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+    hasGobo?: boolean
+    hasPrism?: boolean
+    hasStrobe?: boolean
+    hasDimmer?: boolean
+    colorEngine?: string
+    colorWheel?: unknown
+    hasRotation?: boolean
+    hasCustomChannels?: boolean
+    hasMacro?: boolean
+  }
 }
 
 // ============================================================================

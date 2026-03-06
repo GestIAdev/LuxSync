@@ -648,17 +648,19 @@ export class GodEarBPMTracker {
     const finalCorr = bestPeak.correlation
 
     // ─── DIAGNOSTIC: Log sieve decision ──────────────────────────────────
-    // WAVE 2127.1: TEMPORARILY log EVERY scan to diagnose frozen-93 BPM.
-    // TODO: Revert to frameCount % 120 after diagnosis.
-    const topPeaks = [...peaks]
-      .sort((a, b) => b.correlation - a.correlation)
-      .slice(0, 4)
-      .map(p => `${Math.round(p.bpm)}bpm:${p.correlation.toFixed(3)}`)
-      .join(' ')
-    console.log(
-      `[🥁 SIEVE] F${this.frameCount} → ${Math.round(bestPeak.bpm)}bpm ` +
-      `corr=${bestPeak.correlation.toFixed(3)} stable=${this.stableBpm} | ${topPeaks}`
-    )
+    // WAVE 2151: Gated to every 120 frames (~22s). The spread+sort that
+    // was running EVERY scan (every 4 frames ≈ 186ms) caused GC pressure
+    // and was the #2 contributor to AUDIO STALE warnings.
+    if (this.frameCount % 120 === 0) {
+      const topPeaks = peaks
+        .slice(0, 4) // Already few peaks — avoid spread+sort on hot path
+        .map(p => `${Math.round(p.bpm)}bpm:${p.correlation.toFixed(3)}`)
+        .join(' ')
+      console.log(
+        `[🥁 SIEVE] F${this.frameCount} → ${Math.round(bestPeak.bpm)}bpm ` +
+        `corr=${bestPeak.correlation.toFixed(3)} stable=${this.stableBpm} | ${topPeaks}`
+      )
+    }
 
     this.rawBpm = Math.round(finalBpm)
     this.currentConfidence = Math.max(0, Math.min(1, finalCorr))

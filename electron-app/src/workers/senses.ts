@@ -40,15 +40,17 @@ import {
 import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
 // 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM back in the Worker
-// 🔒 WAVE 2130: PRESERVED — GodEarBPMTracker is a mathematical gem.
-//     Kept under lock as a WASM candidate for future high-resolution analysis.
-//     No longer the primary BPM engine. PacemakerV2 (IOI) is the authority.
+// � WAVE 2151: THE LAZARUS PROTOCOL — GodEarBPMTracker returns as primary engine.
+//     PacemakerV2 (IOI) failed genetically: onset classification is impossible
+//     on complex productions (Brejcha). Autocorrelation finds periodicity
+//     mathematically — no transient classification needed. With clean Radix-2
+//     FFT data (fixed since WAVE 2096.1), the correlation peaks are now accurate.
 import { GodEarBPMTracker } from './GodEarBPMTracker';
 
-// 💓 WAVE 2130: THE PHOENIX PROTOCOL — PacemakerV2 IOI Engine
-// Resurrected Inter-Onset Interval detection using GodEar's SlopeBasedOnsetDetector.
-// Proven 74-190 BPM ±2 across genres. Immune to continuous basslines.
-import { PacemakerV2 } from './PacemakerV2';
+// � WAVE 2151: PacemakerV2 archived. 20 WAVEs (2130-2150) of heuristic whack-a-mole
+//     proved IOI is architecturally unfit for complex electronic music.
+//     Preserved in codebase as historical reference.
+// import { PacemakerV2 } from './PacemakerV2';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
@@ -125,11 +127,6 @@ interface BetaState {
   messagesProcessed: number;
   totalProcessingTime: number;
   errors: string[];
-
-  // 🥁 WAVE 2133: THE GROOVE CLARIFIER — Multiband Spectral Flux
-  // Estado previo de energía por banda para calcular la derivada positiva (flux)
-  prevLows: number;   // subBass + bass del frame anterior
-  prevMids: number;   // mid + highMid del frame anterior
 }
 
 const state: BetaState = {
@@ -162,10 +159,6 @@ const state: BetaState = {
   messagesProcessed: 0,
   totalProcessingTime: 0,
   errors: [],
-
-  // 🥁 WAVE 2133: THE GROOVE CLARIFIER — estado inicial del flux
-  prevLows: 0,
-  prevMids: 0,
 };
 
 // ============================================
@@ -173,19 +166,30 @@ const state: BetaState = {
 // ============================================
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 💓 WAVE 2130: THE PHOENIX PROTOCOL — PacemakerV2 replaces GodEarBPMTracker
+// � WAVE 2151: THE LAZARUS PROTOCOL — GodEarBPMTracker resurrected
 // ═══════════════════════════════════════════════════════════════════════════════
-// The autocorrelation engine (GodEarBPMTracker) was proven architecturally unfit
-// for production audio: 97% failure rate on 128 BPM Minimal Techno (291 frames).
-// 
-// PacemakerV2 uses GodEar's SlopeBasedOnsetDetector (transients.kick) as input
-// and calculates BPM via Inter-Onset Interval clustering. Simple. Brutal. Works.
+// PacemakerV2 (IOI) died in production: Boris Brejcha 126 BPM → 185→161→92→99
+// across 20 WAVEs of surgery. The onset classification problem is GENETIC:
+//   - SlopeBasedOnsetDetector fires on kicks, syncopations, AND ghost notes
+//   - Energy range of real kicks (0.05-0.22) overlaps with syncopation energy
+//   - Every heuristic (Dynamic Armor, Muscle Memory, P99 Ceiling) killed real kicks
 //
-// The GodEarBPMTracker is preserved as a WASM candidate — its autocorrelation
-// math is beautiful and will shine with higher-resolution buffers in the future.
+// GodEarBPMTracker (autocorrelation) was abandoned at WAVE 2130 because of
+// octave bounce — but that was caused by BROKEN FFT (SplitX Radix was kaputt).
+// Since WAVE 2096.1, GodEarFFT Radix-2 DIT sends CLEAN spectral data.
+// The autocorrelation engine now has:
+//   - 4× temporal upsampling (53 lags, 1.7 BPM resolution)
+//   - Harmonic sieve with octave-aware preference
+//   - Octave lock (8 scans ≈ 1.5s confirmation)
+//   - Polyrhythm filter (ratio 1.28-1.55, kills syncopation ghosts)
+//   - Float32Array circular buffer (ZERO GC pressure — no spread/sort per frame)
+//   - Verbose logs gated behind VERBOSE_AUTOCORR_LOGS=false
+//
+// It receives rawBassEnergy (NOT rhythmicPunch) because autocorrelation
+// works on the CONTINUOUS energy signal, not on gated onset events.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const pacemakerV2 = new PacemakerV2();
+const godEarBpmTracker = new GodEarBPMTracker();
 
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
@@ -513,94 +517,43 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 💓 WAVE 2130: THE PHOENIX PROTOCOL — PacemakerV2 IOI BPM Detection
+  // � WAVE 2151: THE LAZARUS PROTOCOL — Autocorrelation BPM Detection
   // ═══════════════════════════════════════════════════════════════════════════
-  // The autocorrelation engine (GodEarBPMTracker) died in production:
-  //   291 frames → 97% garbage (92, 94, 167, 178, 186 BPM on 128 BPM music)
+  // PacemakerV2 (IOI) was genetically unfit: it required classifying individual
+  // transients as "kick" or "not kick" — impossible when kick energy (0.05-0.22)
+  // overlaps with syncopation energy in complex electronic music.
   //
-  // PacemakerV2 uses the GodEar's OWN transient detector (SlopeBasedOnsetDetector)
-  // which already computes kick onset booleans from rawBands.subBass + rawBands.bass.
-  // No flux, no autocorrelation, no upsampling. Just: "Was there a kick? When?"
+  // GodEarBPMTracker (autocorrelation) finds periodicity MATHEMATICALLY:
+  //   "Is the bass energy signal periodic at ~476ms (126 BPM)?" → YES/NO
+  // Syncopations are aperiodic → autocorrelation ignores them naturally.
+  // Kicks at 126 BPM are periodic → clear correlation peak at lag ~41.
   //
-  // The IOI clustering then groups intervals by similarity (±15ms tolerance)
-  // and the largest cluster's BPM wins. A single offbeat is statistically
-  // irrelevant against 20+ correct kick intervals.
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 💓 WAVE 2133: THE GROOVE CLARIFIER — Multiband Spectral Flux
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PROBLEMA: rawSubBassEnergy es AMPLITUD CRUDA. El bajo eléctrico de géneros
-  // latinos (cumbia, reggaeton) vive en subBass/bass con energía SOSTENIDA
-  // (~0.030 constante). El P99 ceiling se fija en ese bajo eléctrico → el
-  // threshold mide offbeats del bajo, no golpes de bombo.
-  //
-  // SOLUCIÓN: Spectral Flux = derivada positiva de la energía por banda.
-  //   - Bajo eléctrico sostenido: frame N=0.035, frame N+1=0.034 → delta=0
-  //   - Kick real:                frame N=0.005, frame N+1=0.045 → delta=0.040 (EXPLOSIÓN)
-  //
-  // El flux es 0 la mayor parte del tiempo → el P99 aterriza en el pico de
-  // ataque real, no en el relleno tonal. Válido para todos los géneros.
+  // CRITICAL: rawBassEnergy (NOT rhythmicPunch). Autocorrelation needs the
+  // CONTINUOUS energy signal. The spectral flux gate (rhythmicPunch) zeros out
+  // 95% of frames — that would destroy the correlation window.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 1. Agrupar bandas (Graves para el peso sísmico, Medios para el clic del parche)
-  const currentLows = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
-  const currentMids = spectrum.mid + spectrum.highMid;
-
-  // 2. Flux Espectral Positivo: solo importa cuando la energía SUBE de golpe
-  const deltaLows = Math.max(0, currentLows - state.prevLows);
-  const deltaMids = Math.max(0, currentMids - state.prevMids);
-
-  // 3. Guardar estado para el siguiente frame
-  state.prevLows = currentLows;
-  state.prevMids = currentMids;
-
-  // 4. "Rhythmic Punch" — WAVE 2146: POST-RADIX RECALIBRATION (Threshold Scaling)
-  //
-  //    Con el Radix-2 limpio, la energía ya no se fuga entre bins. Los valores de
-  //    deltaLows ahora llegan masivos (0.100 - 0.200). El gate de 0.015 de WAVE 2142
-  //    se quedó raquítico: las síncopas del bajo ahora miden 0.030+ y pasan como kicks.
-  //    Resultado: falsos 185 BPM por intervalos de offbeat.
-  //
-  //    RECALIBRACIÓN WAVE 2146 → 2147:
-  //    A) Gate: 0.015 → 0.040 → 0.045. Señal Radix-2 pura: CrestFactor > 19,
-  //       bombos a 0.198. El ruido de fondo "silencioso" ahora mide más que
-  //       los viejos bombos de la era pre-Radix. Sube el suelo para ignorar basura.
-  //       Voz, hi-hats, síncopas de techno (0.020-0.040): MUERTOS.
-  //       Kick real (0.045+): PASA.
-  //    B) Factor mids: 0.20 → 0.50. Con el gate más alto, los mids que llegan
-  //       ya son de golpes reales (snare + kick). El 50% refuerza el punch total
-  //       sin riesgo de colarse — el gate los filtra antes.
-  //       Kick real:    dL=0.100 dM=0.060 → punch = 0.100 + 0.030 = 0.130 ✅
-  //       Síncopa baja: dL=0.040 (NO PASA EL GATE) → punch = 0 ✅
-  //
-  //    No es un hack — es escalar los umbrales a la nueva magnitud de señal limpia.
-  let rhythmicPunch = 0;
-  if (deltaLows >= 0.045) {
-    // Con Radix-2 puro: CrestFactor > 19, noise floor sube, gate 0.045 es el corte real
-    rhythmicPunch = deltaLows + (deltaMids * 0.50);
-  }
-
-  const godEarBpmResult = pacemakerV2.process(
-    spectrum.kickDetected,   // Boolean onset del SlopeBasedOnsetDetector de GodEar
-    rhythmicPunch,           // 💓 WAVE 2147: Bass Gate — 0 si deltaLows < 0.045 | mids×0.50
+  const godEarBpmResult = godEarBpmTracker.process(
+    spectrum.rawBassEnergy,    // 🔥 WAVE 2151: Raw bass energy — immaculate Radix-2 signal
+    spectrum.kickDetected,     // External kick hint (used for kick count, not BPM math)
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2133: TELEMETRY — Cada 100 frames (~6.5s) y en cada onset
-  if (state.frameCount % 100 === 0 || godEarBpmResult.kickDetected) {
+  // 🔬 WAVE 2151: AUTOCORRELATION TELEMETRY — Every 100 frames (~4.6s)
+  // Lightweight: no arrays, no sorting, no spread. Pure string interpolation.
+  if (state.frameCount % 100 === 0) {
     console.log(
-      `[PM2 🩺] F${state.frameCount}` +
-      ` adaptive=${godEarBpmResult.kickDetected}` +
-      ` punch=${rhythmicPunch.toFixed(4)}` +
-      ` (dL=${deltaLows.toFixed(4)} dM=${deltaMids.toFixed(4)})` +
+      `[AUTOCORR 🩺] F${state.frameCount}` +
       ` bpm=${godEarBpmResult.bpm}` +
       ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
-      ` kicks=${godEarBpmResult.kickCount}`
+      ` kick=${godEarBpmResult.kickDetected}` +
+      ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
+      ` rawBass=${spectrum.rawBassEnergy.toFixed(4)}` +
+      ` samples=${godEarBpmResult.kickCount}`
     );
   }
 
-  // Update Worker BPM state from PacemakerV2
+  // Update Worker BPM state from GodEarBPMTracker
   if (godEarBpmResult.confidence > 0.25) {
     state.currentBpm = godEarBpmResult.bpm;
     state.bpmConfidence = godEarBpmResult.confidence;
@@ -958,12 +911,12 @@ function handleMessage(message: WorkerMessage): void {
         // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
         break;
       
-      // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset on Vibe change
-      // A vibe change = near-certain song change. Wipe Pacemaker memory
+      // 🧨 WAVE 2140 → 2151: AMNESIA PROTOCOL — Hard reset on Vibe change
+      // A vibe change = near-certain song change. Wipe BPM tracker memory
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
-        pacemakerV2.reset();
-        console.log('[BETA] 🧨 WAVE 2140: PacemakerV2 HARD RESET — Amnesia Protocol executed');
+        godEarBpmTracker.reset();
+        console.log('[BETA] 🧨 WAVE 2151: GodEarBPMTracker HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

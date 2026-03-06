@@ -562,26 +562,28 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   //    se quedó raquítico: las síncopas del bajo ahora miden 0.030+ y pasan como kicks.
   //    Resultado: falsos 185 BPM por intervalos de offbeat.
   //
-  //    RECALIBRACIÓN WAVE 2146:
-  //    A) Gate: 0.015 → 0.040. Un bombo suave con Radix-2 no baja de 0.040.
-  //       Voz, hi-hats, síncopas de techno (0.020-0.035): MUERTOS.
-  //       Kick real (0.040+): PASA.
+  //    RECALIBRACIÓN WAVE 2146 → 2147:
+  //    A) Gate: 0.015 → 0.040 → 0.045. Señal Radix-2 pura: CrestFactor > 19,
+  //       bombos a 0.198. El ruido de fondo "silencioso" ahora mide más que
+  //       los viejos bombos de la era pre-Radix. Sube el suelo para ignorar basura.
+  //       Voz, hi-hats, síncopas de techno (0.020-0.040): MUERTOS.
+  //       Kick real (0.045+): PASA.
   //    B) Factor mids: 0.20 → 0.50. Con el gate más alto, los mids que llegan
   //       ya son de golpes reales (snare + kick). El 50% refuerza el punch total
   //       sin riesgo de colarse — el gate los filtra antes.
   //       Kick real:    dL=0.100 dM=0.060 → punch = 0.100 + 0.030 = 0.130 ✅
-  //       Síncopa baja: dL=0.030 (NO PASA EL GATE) → punch = 0 ✅
+  //       Síncopa baja: dL=0.040 (NO PASA EL GATE) → punch = 0 ✅
   //
   //    No es un hack — es escalar los umbrales a la nueva magnitud de señal limpia.
   let rhythmicPunch = 0;
-  if (deltaLows >= 0.040) {
-    // Con Radix-2 limpio: gate alto elimina síncopas, mids 50% refuerza el ataque real
+  if (deltaLows >= 0.045) {
+    // Con Radix-2 puro: CrestFactor > 19, noise floor sube, gate 0.045 es el corte real
     rhythmicPunch = deltaLows + (deltaMids * 0.50);
   }
 
   const godEarBpmResult = pacemakerV2.process(
     spectrum.kickDetected,   // Boolean onset del SlopeBasedOnsetDetector de GodEar
-    rhythmicPunch,           // 💓 WAVE 2146: Bass Gate — 0 si deltaLows < 0.040 | mids×0.50
+    rhythmicPunch,           // 💓 WAVE 2147: Bass Gate — 0 si deltaLows < 0.045 | mids×0.50
     deterministicTimestampMs
   );
 

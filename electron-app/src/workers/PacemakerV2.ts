@@ -230,7 +230,14 @@ const DELTA_THRESHOLD = 0.008
  *  A 160 BPM (375ms): max(200, 375×0.80) = 300ms  ← head-room de 75ms para el kick ✅
  *  A 80  BPM (750ms): max(200, 750×0.80) = 600ms  ← mata qualquier doble ✅
  *
- *  ⚠️ NOTA: A >250 BPM el floor de 200ms toma el control. Psytrance/DnB safe. */
+ *  ⚠️ NOTA: A >250 BPM el floor de 200ms toma el control. Psytrance/DnB safe.
+ *
+ *  WAVE 2147: Reemplazado por Dynamic Armor. El factor ya no es fijo (0.80)
+ *  sino variable: shieldMultiplier = 0.40 + (confidence × 0.40).
+ *  Referencia histórica mantenida abajo. */
+/** @deprecated WAVE 2147: Static factor replaced by confidence-based shieldMultiplier.
+ *  Kept for historical reference. Was: 0.80 (WAVE 2141). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ADAPTIVE_DEBOUNCE_FACTOR = 0.80
 
 /** Floor for adaptive debounce — never blind for less than this.
@@ -682,13 +689,37 @@ export class PacemakerV2 {
     for (let i = 0; i < ENERGY_HISTORY_SIZE; i++) sum += this.energyHistory[i]
     const mean = sum / ENERGY_HISTORY_SIZE
 
-    // ─── 3. DEBOUNCE ADAPTATIVO — WAVE 2141: THE 80% SHIELD ─────
-    // 80% del intervalo esperado, con floor de 200ms.
-    // A 125 BPM: max(200, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA
-    // A 160 BPM: max(200, 375×0.80) = 300ms  ← head-room de 75ms para el kick
-    // A 80  BPM: max(200, 750×0.80) = 600ms  ← mata cualquier doble
+    // ─── 3. DEBOUNCE DINÁMICO — WAVE 2147: DYNAMIC ARMOR ────────
+    // WAVE 2141 usaba un escudo fijo del 80% — nos cegaba durante cambios de tempo.
+    //
+    // WAVE 2147: El escudo ahora escala con la confianza actual del motor:
+    //   Confianza alta (1.0) → shieldMultiplier = 0.80 → escudo máximo (bloquea síncopas)
+    //   Confianza nula (0.0) → shieldMultiplier = 0.40 → modo escucha activa (aprende nuevo tempo)
+    //
+    // Cuando el DJ sube el BPM (86→126), la confianza del 86 se desploma.
+    // El escudo se encoge del 80% al 40%, dejando entrar el nuevo ritmo.
+    // Una vez estabilizado el 126, la confianza sube y el escudo vuelve al 80%.
+    //
+    // Ejemplos con confianza = 1.0 (shield 80%):
+    //   A 125 BPM: max(200, 480×0.80) = 384ms  ← síncopa a 360ms = BLOQUEADA ✅
+    //   A 160 BPM: max(200, 375×0.80) = 300ms  ← head-room de 75ms ✅
+    // Ejemplos con confianza = 0.0 (shield 40%):
+    //   A 125 BPM: max(200, 480×0.40) = 200ms  ← escucha activa, aprende rápido ✅
     const expectedInterval = currentBpm > 0 ? (60000 / currentBpm) : 500
-    const adaptiveDebounce = Math.max(ADAPTIVE_DEBOUNCE_FLOOR_MS, expectedInterval * ADAPTIVE_DEBOUNCE_FACTOR)
+    const shieldMultiplier = 0.40 + (this.currentConfidence * 0.40)
+    let adaptiveDebounce = Math.max(ADAPTIVE_DEBOUNCE_FLOOR_MS, expectedInterval * shieldMultiplier)
+
+    // ─── 3b. AP-KICK: ARMOR-PIERCING PROTOCOL — WAVE 2147 ────────
+    // Un bombo puro de Minimal Techno tras un breakdown puede llegar a 0.200.
+    // Un impacto que supera en 50% a nuestra memoria muscular es INNEGABLE.
+    // No someterlo a reglas de tempo — rompemos el escudo al límite físico (200ms).
+    //
+    // Ejemplo: kickLevel=0.090, bombo de Brejcha a 0.198
+    //   punch (0.198) > kickLevel×1.5 (0.135) → adaptiveDebounce = 200ms ⚡
+    // El elefante rompe la pared. El nuevo tempo entra limpio.
+    if (punch > this.kickLevel * 1.5) {
+      adaptiveDebounce = ADAPTIVE_DEBOUNCE_FLOOR_MS
+    }
 
     // ─── 4. RESET HISTÉRESIS — el golpe terminó cuando caemos bajo la media
     if (this.inKick && punch < mean) {

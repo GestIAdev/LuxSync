@@ -191,11 +191,6 @@ const state: BetaState = {
 
 const godEarBpmTracker = new GodEarBPMTracker();
 
-// 🌊 WAVE 2152: THE FLUX DERIVATIVE — persistent state for raw bass flux calculation.
-// previousBass tracks the combined subBass+bass energy from the previous frame.
-// The positive derivative (flux) is what we feed to autocorrelation.
-let previousBass: number = 0;
-
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
@@ -251,6 +246,9 @@ class SpectrumAnalyzer {
     // Necesarias para que el tracker BPM pueda ponderar subBass vs bass
     rawSubBassEnergy: number;
     rawBassOnlyEnergy: number;
+    // 📡 WAVE 2153: BROADBAND ANCHOR — Medios raw para detección de ataque del kick
+    rawLowMidEnergy: number;
+    rawMidEnergy: number;
   } {
     //  Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
@@ -322,6 +320,8 @@ class SpectrumAnalyzer {
       // ═══════════════════════════════════════════════════════════════════
       rawSubBassEnergy: godEarResult.bandsRaw.subBass,
       rawBassOnlyEnergy: godEarResult.bandsRaw.bass,
+      rawLowMidEnergy: godEarResult.bandsRaw.lowMid,
+      rawMidEnergy: godEarResult.bandsRaw.mid,
     };
   }
   
@@ -521,48 +521,57 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
-  // 🌊 WAVE 2152: THE FLUX DERIVATIVE — Universal autocorrelation input
+  // 📡 WAVE 2153: BROADBAND ANCHOR — Continuous broadband energy for autocorrelation
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2151.1 fed rawSubBassEnergy (0-80Hz) — STILL failed (96-185 BPM chaos).
-  // ROOT CAUSE: Boris Brejcha minimal techno has offbeat bass with fundamentals
-  // in 50-70Hz — INSIDE the subBass band. Frequency domain is blind here.
-  // No band-split can separate kick from offbeat bass when they share the same
-  // spectral range. The energy signal is contaminated regardless of cutoff.
+  // WAVE 2152 (Flux Derivative) FAILED: positive flux was almost always 0.0000.
+  // The signal was a sparse spike train — autocorrelation on mostly-zeros is
+  // mathematically undefined. The Sieve had no coherent peak to find.
   //
-  // THE DERIVATIVE: Instead of feeding static energy, feed the POSITIVE RATE
-  // OF CHANGE — the spectral flux of the bass band.
+  // WAVE 2152 LOG EVIDENCE:
+  //   F320: flux=0.0115  F340: flux=0.0000  F360: flux=0.0000
+  //   F380: flux=0.0000  F400: flux=0.0000  F420: flux=0.0000
+  //   → 7 of 8 samples were zero. Autocorrelation flatlined.
   //
-  //   rawBassFlux = max(0, currentBass - previousBass)
+  // THE ANCHOR: Return to CONTINUOUS energy signal (what autocorrelation loves),
+  // but EXPAND the band upward to include lowMid and mid.
   //
   // WHY THIS WORKS:
-  //   - Kick drum attack:      flux = HIGH spike (rapid energy onset)
-  //   - 808 sustain / offbeat: flux ≈ 0 (energy is constant — derivative is zero)
-  //   - Silence:               flux = 0
+  //   A kick drum is BROADBAND by nature. The attack transient spreads energy
+  //   across subBass (40Hz) + bass (80Hz) + lowMid (250Hz) + mid (500-2kHz).
+  //   An offbeat bass synth is NARROW BAND — it stays in subBass/bass only.
   //
-  // The autocorrelation now receives a PULSE TRAIN, not a noisy energy carpet.
-  // Kick transient spikes at exactly the beat period. Sustained bass is invisible.
+  //   At the moment of each kick:
+  //     broadband = subBass + bass + lowMid + mid  →  HIGH (all 4 bands fire)
+  //   Between kicks (bass sustain / offbeat):
+  //     broadband = subBass + bass + ~0 + ~0        →  LOWER (only 2 bands)
   //
-  // UNIVERSAL GENRE ARGUMENT:
-  //   - Minimal Techno (Brejcha): kick spike every 476ms = 126 BPM ✓
-  //   - Rock / Metal: kick attack 8th or 16th note = subdivisions, but BPM correct
-  //   - Cumbia / Reggaeton: dembow pattern = flux at fundamental tempo ✓
-  //   - House: 4-on-floor kick = textbook flux spike every 500ms = 120 BPM ✓
-  //   - Ambient (no kick): flux ≈ 0 everywhere → conf drops → engine stays quiet ✓
+  //   The kick now has a 2× amplitude advantage over the offbeat bass in the
+  //   combined signal. Autocorrelation finds the dominant periodicity: 126 BPM.
   //
-  // COST: One subtraction + one max() per frame. Zero GC pressure.
+  // USING RAW VALUES (pre-AGC): AGC compresses dynamics and would re-inflate
+  // the offbeat bass back to kick level. Raw bands preserve the natural
+  // amplitude difference between attack transients and sustained notes.
+  //
+  // GENRE ARGUMENT: This works universally.
+  //   - Minimal techno: kick transient broadband >> narrow 808 sustain
+  //   - Rock: snare+kick both broadband >> guitar sustain
+  //   - Cumbia/Reggaeton: kick+rim broadband >> bass sustain
+  //   - Ambient (no percussion): all bands flat → conf drops → engine quiet ✓
   // ═══════════════════════════════════════════════════════════════════════════
-  const currentBass = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
-  const rawBassFlux = Math.max(0, currentBass - previousBass);
-  previousBass = currentBass; // Persist for next frame
+  const broadbandEnergy =
+    spectrum.rawSubBassEnergy +
+    spectrum.rawBassOnlyEnergy +
+    spectrum.rawLowMidEnergy +
+    spectrum.rawMidEnergy;
 
   const godEarBpmResult = godEarBpmTracker.process(
-    rawBassFlux,           // 🌊 WAVE 2152: Positive bass flux — pure transient pulse train
+    broadbandEnergy,       // 📡 WAVE 2153: Continuous raw broadband — kick dominates by width
     spectrum.kickDetected, // External kick hint (used for kick count, not BPM math)
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2152: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows flux alongside raw bands to verify the derivative is picking up kicks.
+  // 🔬 WAVE 2153: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows all 4 raw bands + broadband so we can verify kick dominance.
   if (state.frameCount % 20 === 0) {
     console.log(
       `[AUTOCORR 🩺] F${state.frameCount}` +
@@ -570,9 +579,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
       ` kick=${godEarBpmResult.kickDetected}` +
       ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
-      ` flux=${rawBassFlux.toFixed(4)}` +
-      ` subBass=${spectrum.rawSubBassEnergy.toFixed(4)}` +
-      ` bassOnly=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
+      ` bb=${broadbandEnergy.toFixed(4)}` +
+      ` sub=${spectrum.rawSubBassEnergy.toFixed(4)}` +
+      ` bass=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
+      ` lmid=${spectrum.rawLowMidEnergy.toFixed(4)}` +
+      ` mid=${spectrum.rawMidEnergy.toFixed(4)}` +
       ` samples=${godEarBpmResult.kickCount}`
     );
   }

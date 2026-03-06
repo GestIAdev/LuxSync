@@ -803,11 +803,24 @@ export class PacemakerV2 {
     // Borde de subida fuerte — mata reverb, síncopas suaves y plateaus
     const isSharpAttack = (punch - this.prevEnergy) >= DELTA_THRESHOLD
 
-    // WAVE 2137: EL ESCUDO ANTI-SÍNCOPA (Muscle Memory)
-    // El golpe debe tener al menos el 75% de la fuerza del último bombo aceptado.
-    // Si un bombo pegó a 0.052 → kickLevel ≈ 0.052 → umbral = 0.039.
-    // La síncopa de 0.028 se estrella contra 0.039 y muere. Siempre.
-    const isAboveSyncopation = punch > (this.kickLevel * 0.75)
+    // WAVE 2137/2149: EL ESCUDO ANTI-SÍNCOPA (Muscle Memory)
+    // ═══════════════════════════════════════════════════════════════
+    // WAVE 2149: Bajado de 0.75 → 0.50 (EL VEREDICTO DE BREJCHA).
+    //
+    // Con 0.75, los kicks de Brejcha que alternan fuerte/débil
+    // (0.200 / 0.100) resultaban en:
+    //   kickLevel=0.200 (Instant Attack) → threshold=0.150 → kick de 0.100 MUERE
+    //   → motor solo detecta cada 2 kicks → 92 BPM (mitad exacta de 126)
+    //
+    // WAVE 1163 lo llamó "La Maldición del 85 BPM" — EXACTAMENTE EL MISMO BUG
+    // pero causado por Muscle Memory en vez de debounce.
+    //
+    // Con 0.50:
+    //   kickLevel=0.200 → threshold=0.100 → kick de 0.100 PASA ✅
+    //   kickLevel=0.200 → síncopa de 0.040 = MUERE (0.040 < 0.100) ✅
+    //   kickLevel=0.100 → síncopa de 0.040 = MUERE (0.040 < 0.050) ✅
+    // ═══════════════════════════════════════════════════════════════
+    const isAboveSyncopation = punch > (this.kickLevel * 0.50)
 
     this.prevEnergy = punch
 
@@ -820,13 +833,22 @@ export class PacemakerV2 {
         // No actualizamos lastOnsetTimestamp aquí — lo hace el process() IOI engine
         // para mantener el timing compartido entre el path externo y este.
 
-        // WAVE 2139: MEMORIA ASIMÉTRICA (Instant Attack, Slow Release)
-        // Si el bombo nuevo supera la memoria, aprendemos al instante: guardia a tope.
-        // Si el bombo es más suave, bajamos muy despacio (EMA 90/10).
-        // Efecto: el primer kick del drop de Brejcha (0.060) aplasta la memoria
-        // inmediatamente → umbral sube a 0.045 → síncopas mueren en el acto.
+        // WAVE 2139/2149: MEMORIA ASIMÉTRICA (Fast Attack, Slow Release)
+        // WAVE 2149: Instant Attack → Fast EMA (70/30).
+        //
+        // El Instant Attack original (kickLevel = punch) causaba half-BPM:
+        //   Brejcha kick fuerte=0.200 → kickLevel=0.200 instantáneo
+        //   Siguiente kick real=0.100 → 0.100 < 0.200×0.50=0.100 → BORDERLINE
+        //   Con varianza natural → MUERTO → solo detecta cada 2 kicks = 92 BPM
+        //
+        // Fast EMA (70/30): kickLevel sube rápido pero no al extremo.
+        //   Kick 0.200: kickLevel = 0.060×0.70 + 0.200×0.30 = 0.102
+        //   Kick 0.200 otra vez: kickLevel = 0.102×0.70 + 0.200×0.30 = 0.131
+        //   Converge a ~0.170 con kicks constantes a 0.200.
+        //   Threshold (×0.50) = 0.085 → kick de 0.100 PASA siempre ✅
+        //   Threshold (×0.50) = 0.085 → síncopa de 0.040 MUERE siempre ✅
         if (punch > this.kickLevel) {
-          this.kickLevel = punch                                // Instant Attack ⚡
+          this.kickLevel = (this.kickLevel * 0.70) + (punch * 0.30)  // Fast Attack
         } else {
           this.kickLevel = (this.kickLevel * 0.90) + (punch * 0.10)  // Slow Release
         }

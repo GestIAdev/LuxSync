@@ -217,7 +217,7 @@ export class ArtNetDiscovery extends EventEmitter {
         this.broadcastAddress = '2.255.255.255';
         /** Total polls sent */
         this.pollCount = 0;
-        console.log('[ArtNetDiscovery] 📡 WAVE 2048: ECHO LOCATION initialized');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // LIFECYCLE

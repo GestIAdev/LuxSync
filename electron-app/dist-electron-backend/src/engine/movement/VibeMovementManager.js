@@ -1,5 +1,7 @@
 /**
  * WAVE 1155: THE CHOREOGRAPHER REBORN
+ * WAVE 2086.1: STEREO RESURRECTION — Phase offset (mirror/snake) lives HERE now
+ * WAVE 2086.2: THE MAJESTIC REFORM — Professional period scaling (no more epilepsy)
  *
  * FILOSOFIA: "HARMONIC MOTION"
  * El movimiento NO compite con efectos (Flash/Color).
@@ -10,10 +12,12 @@
  * Sin fallbacks raros. Sin patrones fantasma. Sin legacy.
  *
  * ARQUITECTURA:
- *   TitanEngine -> VibeMovementManager -> { x: -1 to +1, y: -1 to +1 }
+ *   TitanEngine -> VibeMovementManager.generateIntent(vibeId, audio, fixtureIndex, total)
+ *   Cada fixture recibe su propia posición con phase offset (snake/mirror) aplicado.
+ *   El Arbiter recibe posiciones L/R ya diferenciadas via mechanicsL/R.
  *
  * @layer ENGINE/MOVEMENT
- * @version WAVE 1155 - The Golden Dozen
+ * @version WAVE 2086.2 - The Majestic Reform
  * @author PunkOpus
  */
 // VIBE CONFIGURATIONS
@@ -55,24 +59,47 @@ const VIBE_CONFIG = {
     },
 };
 // PATTERN PERIODS - Cuantos beats por ciclo completo
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎭 WAVE 2086.2: THE MAJESTIC REFORM
+// ANTES: Periodos de 1-4 beats → 1-2 Hz de oscilación → epilepsia mecánica
+// AHORA: Periodos profesionales de 8-32 beats → movimientos de estadio
+//
+// Referencia shows profesionales:
+//   Barrido lento (scan):   1 ciclo / 4-8 compases  = 16-32 beats
+//   Circle/Figure8:         1 ciclo / 4 compases     = 16 beats
+//   Snap a posición:        1 posición / 2 compases  = 8 beats
+//   Ballyhoo/Drift épico:   1 ciclo / 8 compases     = 32 beats
+// ═══════════════════════════════════════════════════════════════════════════
 const PATTERN_PERIOD = {
-    // TECHNO
-    scan_x: 2,
-    square: 4,
-    diamond: 2,
-    botstep: 1,
-    // LATINO  
-    figure8: 4,
-    wave_y: 2,
-    ballyhoo: 16,
-    // POP-ROCK
-    circle_big: 4,
-    cancan: 2,
-    dual_sweep: 4,
-    // CHILL
-    drift: 8,
-    sway: 4,
-    breath: 4,
+    // TECHNO — geometría industrial, pero DELIBERADA
+    scan_x: 16, // 4 compases: barrido majestuoso, no epiléptico
+    square: 16, // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
+    diamond: 8, // 2 compases: rombo contenido pero fluido
+    botstep: 8, // 2 compases: posiciones robóticas con gravitas
+    // LATINO — fluido, sensual, cadera
+    figure8: 16, // 4 compases: el infinito tiene tiempo para respirar
+    wave_y: 8, // 2 compases: ola con peso, no espuma nerviosa
+    ballyhoo: 16, // 4 compases: espiral épica pero con cadencia latina (WAVE 2088.11: era 32, demasiado lento)
+    // POP-ROCK — estadio, simetría, majestuosidad
+    circle_big: 16, // 4 compases: el rey necesita su corte completa
+    cancan: 8, // 2 compases: subida/bajada con drama
+    dual_sweep: 16, // 4 compases: barrido en U con peso cinematográfico
+    // CHILL — orgánico, invisible, respiración
+    drift: 32, // 8 compases: browniano con tiempo geológico
+    sway: 16, // 4 compases: péndulo meditativo
+    breath: 16, // 4 compases: la luz inhala... exhala...
+    // 🎭 WAVE 2086.5: THE FOUR NOBLES
+    slow_pan: 32, // 8 compases: el faro del fondo del escenario
+    tilt_nod: 16, // 4 compases: cabeceo meditativo
+    figure_of_4: 16, // 4 compases: figure8 contenido en el centro
+    chase_position: 16, // 4 compases: 4 posiciones × 4 beats = 16 beats
+};
+const STEREO_CONFIG = {
+    'techno-club': { offset: Math.PI, type: 'mirror' }, // L/R espejos (puertas abren/cierran)
+    'fiesta-latina': { offset: Math.PI / 4, type: 'snake' }, // 45° cadena de caderas
+    'pop-rock': { offset: Math.PI / 3, type: 'snake' }, // 60° wall ondulante
+    'chill-lounge': { offset: Math.PI / 2, type: 'snake' }, // 90° ola de mar lenta
+    'idle': { offset: 0, type: 'sync' }, // Sin movimiento
 };
 const PATTERNS = {
     // TECHNO PATTERNS - Industrial / Sharp / Geometria Dura
@@ -84,42 +111,77 @@ const PATTERNS = {
             y: 0,
         };
     },
-    // SQUARE: Movimiento cuadrado, esquinas duras
+    // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
+    // El VMM genera un target que avanza a velocidad CONSTANTE entre esquinas.
+    // El FixturePhysicsDriver ya es un filtro paso-bajo que añadirá la inercia
+    // y la aceleración mecánica. NO pre-suavizamos el target.
     square: (phase, audio) => {
-        const normalizedPhase = (phase / (Math.PI * 2)) * 4;
-        const quadrant = Math.floor(normalizedPhase) % 4;
         const corners = [
             { x: 1, y: 1 },
             { x: 1, y: -1 },
             { x: -1, y: -1 },
             { x: -1, y: 1 },
         ];
-        return corners[quadrant];
+        const normalizedPhase = (phase / (Math.PI * 2)) * 4;
+        const currentCorner = Math.floor(normalizedPhase) % 4;
+        const nextCorner = (currentCorner + 1) % 4;
+        const t = normalizedPhase - Math.floor(normalizedPhase);
+        const from = corners[currentCorner];
+        const to = corners[nextCorner];
+        return {
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
+        };
     },
     // DIAMOND: Rombo agresivo
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Diamond toca [-1,1]
+    // ANTES: rawX * SQRT2 * 0.7 = max ~0.9899 (nunca llegaba a 1.0)
+    // AHORA: Normalización exacta. El diamante rota a 45° y sus vértices
+    // tocan exactamente ±1 en cada eje cardinal.
     diamond: (phase, audio) => {
         const rawX = Math.sin(phase);
         const rawY = Math.cos(phase);
-        const scale = Math.SQRT2;
+        // Rotación 45°: los picos de sin/cos (±1) se mapean a los ejes
+        // La envolvente de |sin| + |cos| tiene máximo SQRT2, así que
+        // dividimos por SQRT2 para normalizar, pero queremos que los VÉRTICES
+        // del diamante (donde un eje = 0 y el otro = ±1) toquen ±1.
+        // En un diamante perfecto: x = sin(phase), y = cos(phase) rotados 45°
+        // Vértices en phase = 0, π/2, π, 3π/2 → ya tocan ±1 en un eje.
         return {
-            x: rawX * scale * 0.7,
-            y: rawY * scale * 0.7,
+            x: rawX,
+            y: rawY,
         };
     },
-    // BOTSTEP: Posiciones cuantizadas roboticas
+    // BOTSTEP: Posiciones cuantizadas robóticas con interpolación lineal
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
+    // 8 posiciones golden-ratio con transición a velocidad constante.
+    // El carácter "robótico" lo dará el PhysicsDriver al frenar en cada posición.
     botstep: (phase, audio) => {
-        const step = Math.floor((phase / (Math.PI * 2)) * 8);
         const phi = 1.618033988749;
-        const x = Math.sin(step * phi * Math.PI) * 0.9;
-        const y = Math.cos(step * phi * phi * Math.PI) * 0.6;
-        return { x, y };
+        const totalSteps = 8;
+        const normalizedPhase = (phase / (Math.PI * 2)) * totalSteps;
+        const currentStep = Math.floor(normalizedPhase) % totalSteps;
+        const nextStep = (currentStep + 1) % totalSteps;
+        const t = normalizedPhase - Math.floor(normalizedPhase);
+        const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9;
+        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.6;
+        const toX = Math.sin(nextStep * phi * Math.PI) * 0.9;
+        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.6;
+        return {
+            x: fromX + (toX - fromX) * t,
+            y: fromY + (toY - fromY) * t,
+        };
     },
     // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
     // FIGURE8: El clasico infinito (Lissajous 1:2)
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Y-axis 0.6 → 0.75
+    // X ya toca ±1. Y sube a 0.75 para que el 8 sea más pronunciado
+    // sin perder la proporción Lissajous (ratio 1:0.75 sigue siendo elegante).
     figure8: (phase, audio) => {
         return {
             x: Math.sin(phase),
-            y: Math.sin(phase * 2) * 0.6,
+            y: Math.sin(phase * 2) * 0.75,
         };
     },
     // WAVE_Y: La ola (X lento, Y rapido)
@@ -194,6 +256,57 @@ const PATTERNS = {
             y: Math.sin(phase) * 0.35,
         };
     },
+    // ═══════════════════════════════════════════════════
+    // 🎭 WAVE 2086.5: THE FOUR NOBLES
+    // ═══════════════════════════════════════════════════
+    // SLOW_PAN: El faro del fondo — barrido horizontal puro, 32 beats
+    slow_pan: (phase, _audio) => {
+        // Sin(phase) puro: el moving head barre 180° en 8 compases
+        // Sin componente Y — movimiento hipnótico lateral
+        return {
+            x: Math.sin(phase),
+            y: 0,
+        };
+    },
+    // TILT_NOD: Cabeceo meditativo — solo vertical, 16 beats
+    tilt_nod: (phase, _audio) => {
+        // Amplitud 0.6 para no ser agresivo — es un asentimiento, no un headbang
+        return {
+            x: 0,
+            y: Math.sin(phase) * 0.6,
+        };
+    },
+    // FIGURE_OF_4: Figure8 contenido — mismo espíritu, menos territorio
+    figure_of_4: (phase, _audio) => {
+        // x = sin(phase) * 0.5: la mitad del recorrido horizontal
+        // y = sin(2*phase) * 0.3: doble frecuencia vertical, amplitud contenida
+        // El resultado es un 8 compacto que ocupa el centro del escenario
+        return {
+            x: Math.sin(phase) * 0.5,
+            y: Math.sin(2 * phase) * 0.3,
+        };
+    },
+    // CHASE_POSITION: 4 posiciones cardinales con interpolación lineal
+    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
+    chase_position: (phase, _audio) => {
+        const positions = [
+            { x: -0.7, y: 0 }, // Izquierda
+            { x: 0, y: 0.7 }, // Arriba
+            { x: 0.7, y: 0 }, // Derecha
+            { x: 0, y: -0.7 }, // Abajo
+        ];
+        const totalSteps = 4;
+        const normalizedPhase = (phase / (2 * Math.PI)) * totalSteps;
+        const currentStep = Math.floor(normalizedPhase) % totalSteps;
+        const nextStep = (currentStep + 1) % totalSteps;
+        const t = normalizedPhase - Math.floor(normalizedPhase);
+        const from = positions[currentStep];
+        const to = positions[nextStep];
+        return {
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
+        };
+    },
 };
 // VIBE MOVEMENT MANAGER - THE CHOREOGRAPHER
 export class VibeMovementManager {
@@ -203,6 +316,24 @@ export class VibeMovementManager {
         this.frameCount = 0;
         this.barCount = 0;
         this.lastBeatCount = 0;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
+        //
+        // THE ROOT CAUSE (2088.9 forensics):
+        //   Before: phase = (absoluteBeats % patternPeriod) / patternPeriod * 2π
+        //   Problem 1: patternPeriod varied with energy → phase JUMPED discontinuously
+        //   Problem 2: BPM fluctuated 70→184 frame-to-frame → chaotic phase velocity
+        //   Problem 3: beatCount modulo changing period = INSTANT position teleport
+        //
+        // THE FIX: Accumulate phase delta frame-by-frame using smoothed BPM.
+        //   phaseAccumulator += (smoothedBPM / 60) * dt / patternPeriod * 2π
+        //   Phase ONLY moves forward (or very slowly backward), NEVER teleports.
+        //   patternPeriod is FIXED per pattern (no energy modulation on period).
+        //   Energy modulates AMPLITUDE only (which is continuous, not discontinuous).
+        // ═══════════════════════════════════════════════════════════════════════
+        this.phaseAccumulator = 0;
+        this.smoothedBPM = 120;
+        this.BPM_SMOOTH_FACTOR = 0.05; // Very slow BPM tracking (20 frames to converge)
         // Manual override system (WAVE 999 compatible)
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
@@ -270,12 +401,25 @@ export class VibeMovementManager {
     generateIntent(vibeId, audio, fixtureIndex = 0, totalFixtures = 1, 
     /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). Defaults to 250 if not provided. */
     fixtureMaxSpeed = 250) {
-        // Actualizar tiempo interno
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎭 WAVE 2086.1: FRAME-ONCE GUARD
+        // TitanEngine now calls generateIntent() TWICE per frame (L + R stereo).
+        // Internal state (time, frameCount, barCount, pattern selection) must
+        // only update ONCE per frame. We use lastFrameTimestamp to detect
+        // same-frame calls: if Date.now() === lastUpdate, skip state updates.
+        // ═══════════════════════════════════════════════════════════════════════
         const now = Date.now();
-        const deltaTime = (now - this.lastUpdate) / 1000;
-        this.lastUpdate = now;
-        this.time += deltaTime;
-        this.frameCount++;
+        const isSameFrame = (now - this.lastUpdate) < 2; // <2ms = same render frame
+        // 🔥 WAVE 2088.10: Capture dt BEFORE updating lastUpdate
+        let frameDeltaTime = 0.016; // default 60fps
+        if (!isSameFrame) {
+            // First call this frame: update all internal state
+            frameDeltaTime = Math.min((now - this.lastUpdate) / 1000, 0.1); // Cap at 100ms
+            this.lastUpdate = now;
+            this.time += frameDeltaTime;
+            this.frameCount++;
+        }
+        // Second call (R fixture): reuse same time/frameCount/barCount
         // Obtener configuracion del vibe
         const config = VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle'];
         // Actualizar barCount desde beatCount
@@ -295,23 +439,37 @@ export class VibeMovementManager {
             return this.createFreezeIntent(patternName);
         }
         // PHASE CALCULATION - Beat-Locked (WAVE 1153 compatible)
-        const patternPeriod = PATTERN_PERIOD[patternName] || 4;
+        const basePatternPeriod = PATTERN_PERIOD[patternName] || 4;
         const safeBPM = this.getSafeBPM(audio.bpm);
-        let phase;
-        const hasBeatData = beatCount > 0 || beatPhase > 0.01;
-        if (hasBeatData) {
-            // Pacemaker conectado - fase sincronizada con beats
-            const absoluteBeats = beatCount + beatPhase;
-            const patternPhase = (absoluteBeats % patternPeriod) / patternPeriod;
-            phase = patternPhase * Math.PI * 2;
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
+        //
+        // KILLED: ENERGY-TO-PERIOD modulation.
+        // WHY: Changing patternPeriod frame-by-frame caused DISCONTINUOUS phase
+        //      jumps. (absoluteBeats % changingPeriod) teleports the pattern.
+        //      Energy should modulate AMPLITUDE (continuous), not PERIOD (discontinuous).
+        //
+        // KILLED: Direct beatCount-to-phase mapping.
+        // WHY: BPM fluctuating 70→184 made absoluteBeats advance erratically.
+        //      Modulo of erratic value = chaotic phase = convulsive movement.
+        //
+        // NEW: Smooth BPM → delta phase per frame → accumulate monotonically.
+        //      Phase advances like a FLYWHEEL — steady, never teleporting.
+        //      patternPeriod is FIXED per pattern (no energy modulation).
+        // ═══════════════════════════════════════════════════════════════════
+        const patternPeriod = basePatternPeriod; // FIXED — no energy modulation
+        // Smooth BPM with heavy low-pass filter (only on first call per frame)
+        if (!isSameFrame) {
+            this.smoothedBPM += (safeBPM - this.smoothedBPM) * this.BPM_SMOOTH_FACTOR;
         }
-        else {
-            // Fallback - fase basada en tiempo
-            const beatsPerSecond = safeBPM / 60;
-            const elapsedBeats = this.time * beatsPerSecond;
-            const patternPhase = (elapsedBeats % patternPeriod) / patternPeriod;
-            phase = patternPhase * Math.PI * 2;
+        // Accumulate phase delta using smoothed BPM and frame dt
+        if (!isSameFrame) {
+            const beatsPerSecond = this.smoothedBPM / 60;
+            const phasePerBeat = (2 * Math.PI) / patternPeriod; // radians per beat
+            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat;
+            this.phaseAccumulator += phaseDelta;
         }
+        const phase = this.phaseAccumulator;
         // PATTERN EXECUTION
         const patternFn = PATTERNS[patternName];
         if (!patternFn) {
@@ -320,16 +478,41 @@ export class VibeMovementManager {
         }
         const rawPosition = patternFn(phase, audio, fixtureIndex, totalFixtures);
         // THE GEARBOX - Dynamic Amplitude Scaling
-        const effectiveAmplitude = this.calculateEffectiveAmplitude(config.amplitudeScale, safeBPM, patternPeriod, audio.energy, fixtureMaxSpeed);
-        // Aplicar amplitud
+        // 🔥 WAVE 2088.10: Use smoothedBPM for stable gearbox calculations
+        const effectiveAmplitude = this.calculateEffectiveAmplitude(config.amplitudeScale, this.smoothedBPM, patternPeriod, audio.energy, fixtureMaxSpeed);
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎭 WAVE 2086.3 + 2088.8: PHRASE ENVELOPE — The Breathing Amplifier
+        //
+        // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+        // ANTES: Rango 0.60-1.00. En los primeros compases, la amplitud era 60%
+        // → los patrones perdían su forma (un square al 60% = un blob centrado).
+        // AHORA: Rango 0.85-1.00. La frase RESPIRA pero los patrones mantienen
+        // su identidad geométrica en TODO momento.
+        //
+        //   Beat 0-7   (compás 1-2):  0.85 → 0.90  — arranque contenido
+        //   Beat 8-19  (compás 3-5):  0.90 → 1.00  — expansión progresiva
+        //   Beat 20-23 (compás 6):    1.00          — CLÍMAX: apertura máxima
+        //   Beat 24-31 (compás 7-8):  1.00 → 0.85  — relajación elegante
+        // ═══════════════════════════════════════════════════════════════════
+        const phraseBeats = 32;
+        const phraseProgress = (beatCount % phraseBeats) / phraseBeats; // 0.0 → 1.0
+        // Coseno desplazado: arranca en 0.85, pico en 1.0 a ~62% de la frase
+        const phraseEnvelope = 0.925 + 0.075 * Math.sin(Math.PI * (phraseProgress - 0.15));
+        // Clamp final: el envelope escala entre 0.85 y 1.0
+        // ⚠️ KEA-007 (WAVE 2095.1): FLOOR 0.85 aquí + GEARBOX_MIN 0.85 abajo
+        // → amplitud efectiva mínima combinada = 0.85 × 0.85 = 72.25% del rango.
+        // Ver cálculo completo en calculateGearboxAmplitude() → GEARBOX_MIN_AMPLITUDE.
+        const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope));
+        const finalAmplitude = effectiveAmplitude * clampedEnvelope;
+        // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
         const position = {
-            x: Math.max(-1, Math.min(1, rawPosition.x * effectiveAmplitude)),
-            y: Math.max(-1, Math.min(1, rawPosition.y * effectiveAmplitude)),
+            x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
+            y: Math.max(-1, Math.min(1, rawPosition.y * finalAmplitude)),
         };
         // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
         // Detectar cambio de patron e iniciar transicion LERP de 2 segundos
-        if (this.lastPattern !== null && this.lastPattern !== patternName) {
-            // Patron cambio! Iniciar transicion
+        if (!isSameFrame && this.lastPattern !== null && this.lastPattern !== patternName) {
+            // Patron cambio! Iniciar transicion (only on first call per frame)
             this.isTransitioning = true;
             this.transitionStartTime = now;
             console.log(`[CHOREO] Pattern transition: ${this.lastPattern} -> ${patternName} (2s LERP)`);
@@ -351,26 +534,93 @@ export class VibeMovementManager {
                 console.log(`[CHOREO] Transition complete -> ${patternName}`);
             }
         }
-        // Guardar estado para proxima transicion
-        this.lastPattern = patternName;
-        this.lastPosition = finalPosition;
+        // 🎭 WAVE 2086.1: Save state ONLY on first call per frame
+        // This prevents the R fixture's stereo position from contaminating
+        // the L fixture's LERP origin on the next frame.
+        if (!isSameFrame) {
+            this.lastPattern = patternName;
+            this.lastPosition = finalPosition; // Pre-stereo position (shared base)
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎭 WAVE 2086.1: STEREO PHASE OFFSET — The Resurrection
+        //
+        // ANTES: applyPhaseOffset() vivía en HAL pero SOLO era llamada por
+        // renderFromIntent() (flujo muerto). renderFromTarget() (flujo activo)
+        // la ignoraba. Resultado: todos los movers eran clones (Borg mode).
+        //
+        // AHORA: La lógica de mirror/snake vive AQUÍ, donde se genera el
+        // movimiento. Cada fixture recibe su posición diferenciada ANTES de
+        // que llegue al Arbiter. Así el Arbiter ya ve L/R distinto.
+        //
+        // MIRROR (techno): Fixture impar invierte X → puertas del infierno
+        // SNAKE (latino/pop/chill): Cada fixture añade offset a la fase base
+        //   → ola mexicana, cadena de caderas
+        // SYNC (idle): Sin cambio
+        // ═══════════════════════════════════════════════════════════════════════
+        const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle'];
+        let stereoPosition = { ...finalPosition };
+        if (stereoConfig.type === 'mirror' && totalFixtures > 1) {
+            // 🪞 MIRROR: Fixtures impares (derecha) invierten PAN (eje X)
+            // Fixture 0 (L): x se mantiene → puerta izquierda
+            // Fixture 1 (R): x se invierte → puerta derecha
+            // Efecto: las puertas se abren y cierran en espejo horizontal
+            // TILT (eje Y) es compartido: ambos apuntan al mismo nivel vertical
+            const mirrorSign = fixtureIndex % 2 === 0 ? 1 : -1;
+            stereoPosition.x = finalPosition.x * mirrorSign;
+            // Y no se toca: stereoPosition.y = finalPosition.y (ya copiado)
+        }
+        else if (stereoConfig.type === 'snake' && totalFixtures > 1) {
+            // 🐍 SNAKE: Cada fixture aplica un desfase angular a la posición
+            // La posición base (finalPosition) es un punto en una trayectoria
+            // circular/elíptica. Rotamos ese punto alrededor del centro (0,0)
+            // por el offset del fixture → efecto ola/cadena.
+            //
+            // ⚠️ KEA-005 (WAVE 2095.1): SNAKE + PATRONES Y-ONLY = OSCILACIÓN DIAGONAL
+            // Patrones como 'breath' generan {x:0, y:valor}. Al aplicar snake rotation,
+            // el vector se rota en el plano XY → el fixture NO ejecuta un breath
+            // vertical puro sino una oscilación DIAGONAL cuyo ángulo depende del
+            // fixtureIndex y stereoConfig.offset. Esto es un efecto visual válido
+            // (y normalmente bonito), pero NO es un breath tradicional. El operador
+            // que calibre Forge asumiendo movimiento vertical puro estará equivocado.
+            // Para breath puro en SNAKE: usar SYNC o sobreescribir con patrones 2D.
+            const phaseOffset = fixtureIndex * stereoConfig.offset;
+            // Magnitud del movimiento (distancia al centro en espacio -1..+1)
+            const mag = Math.sqrt(finalPosition.x * finalPosition.x + finalPosition.y * finalPosition.y);
+            if (mag > 0.01) {
+                // Ángulo actual del vector posición
+                const currentAngle = Math.atan2(finalPosition.y, finalPosition.x);
+                // Rotar por el phase offset del fixture
+                const newAngle = currentAngle + phaseOffset;
+                stereoPosition.x = Math.cos(newAngle) * mag;
+                stereoPosition.y = Math.sin(newAngle) * mag;
+            }
+            // Si mag ≈ 0 (posición en centro), no hay nada que rotar
+        }
+        // 'sync' → stereoPosition = finalPosition (sin cambio)
+        // Clampar al rango válido
+        stereoPosition.x = Math.max(-1, Math.min(1, stereoPosition.x));
+        stereoPosition.y = Math.max(-1, Math.min(1, stereoPosition.y));
         // Frecuencia efectiva (con override manual)
         const effectiveFrequency = this.manualSpeedOverride !== null
             ? 0.01 + (this.manualSpeedOverride / 100) * 0.49
             : config.baseFrequency;
         // Debug log cada ~1 segundo
         if (this.frameCount % 60 === 0) {
-            const panDeg = Math.round(finalPosition.x * 270);
-            const tiltDeg = Math.round(finalPosition.y * 135);
+            const panDeg = Math.round(stereoPosition.x * 270);
+            const tiltDeg = Math.round(stereoPosition.y * 135);
             const manualTag = this.hasAnyOverride() ? ' [MANUAL]' : '';
             const transitionTag = this.isTransitioning ? ' [LERP]' : '';
-            console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg}`);
+            const stereoTag = stereoConfig.type !== 'sync' ? ` [${stereoConfig.type.toUpperCase()} F${fixtureIndex}/${totalFixtures}]` : '';
+            const phaseDeg = Math.round((this.phaseAccumulator % (2 * Math.PI)) * 180 / Math.PI);
+            console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag}${stereoTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`);
         }
         // Determinar phaseType
+        // 🔧 WAVE 2086.1: phaseType is now informational only (stereo already applied)
+        // We keep it for downstream compatibility but HAL no longer uses it for phase offset
         const phaseType = (patternName === 'scan_x' || patternName === 'cancan') ? 'linear' : 'polar';
         return {
-            x: finalPosition.x,
-            y: finalPosition.y,
+            x: stereoPosition.x,
+            y: stereoPosition.y,
             pattern: patternName,
             speed: effectiveFrequency,
             amplitude: effectiveAmplitude,
@@ -420,7 +670,23 @@ export class VibeMovementManager {
         const requestedTravel = 255 * requestedAmplitude;
         // Factor de reduccion si excede el presupuesto
         const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel);
-        return Math.min(1.0, requestedAmplitude * gearboxFactor);
+        // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Hard floor 0.85
+        // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
+        // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
+        // ya se encarga de limitar la velocidad real del hardware.
+        //
+        // ⚠️ KEA-007 (WAVE 2095.1): INTERACCIÓN OCULTA GEARBOX × PHRASE_ENVELOPE
+        // El PhraseEnvelope también tiene un floor de 0.85 (clampedEnvelope).
+        // El Gearbox multiplica por encima del envelope → la amplitud efectiva
+        // mínima combinada es: GEARBOX_MIN (0.85) × ENVELOPE_MIN (0.85) = 0.7225
+        //
+        // Implicación práctica: un patrón con amplitud objetivo 1.0 jamás bajará
+        // del 72.25% de su rango teórico, incluso con energía=0 y phrase en valle.
+        // Para un scan_x en fixture de 540°: barrido mínimo real = ~390° (no 540°).
+        // Tenerlo en cuenta al calibrar posiciones de stage en Forge.
+        const GEARBOX_MIN_AMPLITUDE = 0.85;
+        const gearboxResult = requestedAmplitude * gearboxFactor;
+        return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult));
     }
     // UTILITIES
     getSafeBPM(bpm) {
@@ -472,6 +738,8 @@ export class VibeMovementManager {
         this.lastUpdate = Date.now();
         this.barCount = 0;
         this.lastBeatCount = 0;
+        this.phaseAccumulator = 0;
+        this.smoothedBPM = 120;
         // WAVE 1155.1: Reset transition state
         this.lastPattern = null;
         this.lastPosition = { x: 0, y: 0 };

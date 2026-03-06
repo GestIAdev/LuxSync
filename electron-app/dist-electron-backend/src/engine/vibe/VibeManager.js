@@ -108,7 +108,7 @@ export class VibeManager {
         this.currentVibe = newVibe;
         this.transitionProgress = 0.0;
         this.transitionStartFrame = frameCount ?? this.currentFrame;
-        console.log(`[VibeManager] Transitioning: ${this.previousVibe.id} → ${newVibe.id}`);
+        // WAVE 2098: Boot silence — transition log removed
         return true;
     }
     /**

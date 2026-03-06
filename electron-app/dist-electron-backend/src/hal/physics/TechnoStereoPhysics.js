@@ -73,7 +73,7 @@ export class TechnoStereoPhysics {
         // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
         this.lastSilenceTime = 0;
         this.inSilence = false;
-        console.log('[TechnoStereoPhysics] 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection - Initialized');
+        // WAVE 2098: Boot silence
     }
     // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...
     static apply(palette, audio, mods) {

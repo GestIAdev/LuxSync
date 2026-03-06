@@ -39,7 +39,7 @@ export class PhysicsEngine {
         this.MOVER_INTENSITY_SMOOTHING = 0.4; // 40% previous (was 70%) - más contraste
         this.MOVER_MIN_STABLE_FRAMES = 2; // 2 frames (was 3) - respuesta más rápida
         this.moverStabilityCounter = new Map(); // Frame counter per mover
-        console.log('[PhysicsEngine] 🔧 Initialized (WAVE 205)');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC API

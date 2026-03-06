@@ -516,6 +516,8 @@ export class SeleneColorEngine {
      * @returns Paleta de 5 colores HSL con metadata
      */
     static generate(data, options) {
+        // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
+        this.generateCallCount++;
         // === A. EXTRAER DATOS CON FALLBACKS ===
         const wave8 = data.wave8 || {
             harmony: { key: null, mode: 'minor', mood: 'universal' },
@@ -775,8 +777,9 @@ export class SeleneColorEngine {
             const breathDelta = (ocean.breathingFactor - 1.0) * 10; // ±1.5 aprox
             correctedSat = clamp(correctedSat + breathDelta, satMin, satMax);
             correctedLight = clamp(correctedLight + breathDelta * 0.5, lightMin, lightMax);
-            // Log de modulación oceánica (solo ocasionalmente)
-            if (Math.random() < 0.01) { // 1% de frames
+            // Log de modulación oceánica (deterministic throttle — ~1% of frames)
+            // 🎯 WAVE 2096.1: Replaced Math.random() with deterministic counter (Axiom Anti-Simulación)
+            if (this.generateCallCount % 100 === 0) {
                 console.log(`[🌊 OCEAN→COLOR] Zone:${ocean.zone ?? '?'} Depth:${ocean.depth?.toFixed(0) ?? '?'}m | ` +
                     `Hue:${finalHue.toFixed(0)}° (influence:${ocean.hueInfluence.toFixed(0)}° @${(ocean.hueInfluenceStrength * 100).toFixed(0)}%) | ` +
                     `S:${correctedSat.toFixed(0)} L:${correctedLight.toFixed(0)}`);
@@ -1310,6 +1313,8 @@ export class SeleneColorEngine {
         return MODE_MODIFIERS[mode];
     }
 }
+// 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
+SeleneColorEngine.generateCallCount = 0;
 // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
 SeleneColorEngine.lastLoggedKey = null;
 SeleneColorEngine.lastLoggedStrategy = null;

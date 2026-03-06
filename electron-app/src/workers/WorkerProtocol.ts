@@ -67,6 +67,9 @@ export enum MessageType {
   
   // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM back to Worker
   SET_BPM = 'set_bpm',            // Pacemaker BPM → Worker BETA
+
+  // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset on Vibe change
+  RESET_PACEMAKER = 'reset_pacemaker', // Wipe PacemakerV2 state on song/vibe change
   
   // 🔌 WAVE 63.95: System Power Control
   SYSTEM_SLEEP = 'system_sleep',  // Pause processing, reset state

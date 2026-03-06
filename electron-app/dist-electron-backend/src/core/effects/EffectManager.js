@@ -317,7 +317,7 @@ export class EffectManager extends EventEmitter {
         /** Frame timing */
         this.lastUpdateTime = Date.now();
         this.registerBuiltinEffects();
-        console.log('[EffectManager 🎛️] Initialized with built-in effects ⚒️ Hephaestus overlay support enabled');
+        // WAVE 2098: Boot silence
     }
     // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -885,9 +885,18 @@ export class EffectManager extends EventEmitter {
         const activeDictator = Array.from(this.activeEffects.values())
             .find(e => e.mixBus === 'global');
         if (activeDictator) {
-            // Excepción: Si el candidato es PEAK/EMERGENCY (techno-extreme)
-            const isEmergency = ['solar_flare', 'strobe_storm'].includes(effectType);
-            const dictatorIsPeak = ['solar_flare', 'strobe_storm'].includes(activeDictator.effectType);
+            // Excepción: Si el candidato es PEAK/EMERGENCY/DROP 
+            // WAVE 2101.1: Agregamos TODOS los drops multigenérico para evitar Dictadores Inmortales
+            const isEmergency = [
+                'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe', 'gatling_raid', 'abyssal_rise', 'acid_sweep', // Techno
+                'latina_meltdown', 'strobe_burst', 'tidal_wave', // Latina
+                'thunder_struck', 'feedback_storm', 'power_chord' // PopRock
+            ].includes(effectType);
+            // Dictadores Peak son INMORTALES: Nada puede interrumpirlos
+            const dictatorIsPeak = [
+                'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe',
+                'latina_meltdown', 'strobe_burst', 'thunder_struck'
+            ].includes(activeDictator.effectType);
             if (!isEmergency || dictatorIsPeak) {
                 console.log(`🔒 [GLOBAL_LOCK] ${effectType} BLOQUEADO: ${activeDictator.effectType} tiene la palabra.`);
                 return {

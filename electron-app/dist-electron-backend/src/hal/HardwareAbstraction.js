@@ -32,7 +32,7 @@ import { FixtureMapper } from './mapping/FixtureMapper';
 import { MockDMXDriver } from './drivers';
 // � WAVE 2042.20: BABEL FISH - Color Translation Layer
 import { getColorTranslator } from './translation/ColorTranslator';
-import { getProfile, getProfileByModel, needsColorTranslation } from './translation';
+import { getProfile, getProfileByModel, needsColorTranslation, generateProfileFromDefinition } from './translation';
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer';
 // �🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver';
@@ -110,9 +110,7 @@ export class HardwareAbstraction {
         this.mapper.setInstallationType(this.config.installationType);
         // Initialize universe 1 (extract Uint8Array from DMXUniverse)
         this.universeBuffers.set(1, createEmptyUniverse(1).channels);
-        console.log('[HAL] 🏛️ HardwareAbstraction initialized (WAVE 215)');
-        console.log(`[HAL]    Driver: ${this.config.driverType}`);
-        console.log(`[HAL]    Installation: ${this.config.installationType}`);
+        // WAVE 2098: Boot silence
     }
     /**
      * 🐍 Aplica phase offset por fixture para crear efecto serpiente
@@ -501,12 +499,14 @@ export class HardwareAbstraction {
             const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
-                // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
-                // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+                // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
+                // El profile puede venir en 3 formatos distintos. translateToDriverPhysicsProfile
+                // los normaliza al formato que entiende el FixturePhysicsDriver.
                 const profile = this.getFixtureProfileCached(fixture);
-                const physicsData = profile?.physics || profile?.physicsProfile;
-                if (physicsData) {
-                    this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData);
+                const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
+                const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
+                if (driverProfile) {
+                    this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
                 }
                 // ═══════════════════════════════════════════════════════════════════════
                 // 🔧 WAVE 340.6 + 2074.2: DIRECT DMX INTERPOLATION
@@ -518,12 +518,14 @@ export class HardwareAbstraction {
                 this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
                 // Get interpolated state
                 const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
+                // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+                const calibrated = this.applyCalibrationOffsets(physicsState.physicalPan, physicsState.physicalTilt, fixture);
                 return {
                     ...state,
                     zoom: finalZoom, // 👁️ Dynamic optics
                     focus: finalFocus, // 👁️ Dynamic optics
-                    physicalPan: physicsState.physicalPan,
-                    physicalTilt: physicsState.physicalTilt,
+                    physicalPan: calibrated.pan,
+                    physicalTilt: calibrated.tilt,
                     panVelocity: physicsState.panVelocity,
                     tiltVelocity: physicsState.tiltVelocity,
                 };
@@ -616,6 +618,7 @@ export class HardwareAbstraction {
         // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
         if (target.globalEffects.blackoutActive) {
             const blackoutStates = fixtures.map(fixture => ({
+                fixtureId: fixture.id || fixture.name, // 🔧 WAVE 2049.1: Propagate fixtureId
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone: (fixture.zone || 'UNASSIGNED'),
@@ -652,6 +655,7 @@ export class HardwareAbstraction {
             if (fixtureTarget) {
                 // Use arbitrated values directly
                 const baseState = {
+                    fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state (was undefined!)
                     name: fixture.name,
                     type: fixture.type || 'generic',
                     zone,
@@ -687,6 +691,7 @@ export class HardwareAbstraction {
             }
             // Fallback: fixture not in arbiter output (shouldn't happen)
             return {
+                fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone,
@@ -735,22 +740,24 @@ export class HardwareAbstraction {
             const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
-                // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
-                // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+                // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
                 const profile = this.getFixtureProfileCached(fixture);
-                const physicsData = profile?.physics || profile?.physicsProfile;
-                if (physicsData) {
-                    this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData);
+                const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
+                const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
+                if (driverProfile) {
+                    this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
                 }
                 // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
                 this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
                 const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
+                // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+                const calibrated = this.applyCalibrationOffsets(physicsState.physicalPan, physicsState.physicalTilt, fixture);
                 return {
                     ...state,
                     zoom: finalZoom,
                     focus: finalFocus,
-                    physicalPan: physicsState.physicalPan,
-                    physicalTilt: physicsState.physicalTilt,
+                    physicalPan: calibrated.pan,
+                    physicalTilt: calibrated.tilt,
                     panVelocity: physicsState.panVelocity,
                     tiltVelocity: physicsState.tiltVelocity,
                 };
@@ -774,20 +781,76 @@ export class HardwareAbstraction {
         if (this.renderTimes.length > 100)
             this.renderTimes.shift();
         this.lastFixtureStates = statesWithPhysics;
-        // Debug logging (every ~1 second)
-        if (this.framesRendered % 30 === 0) {
-            const movers = statesWithPhysics.filter(s => s.zone.includes('MOVING'));
-            if (movers.length > 0) {
-                const m = movers[0];
-                const panDeg = Math.round(((m.pan / 255) - 0.5) * 540);
-                const tiltDeg = Math.round(((m.tilt / 255) - 0.5) * 270);
-                console.log(`[🎭 HAL ARBITER] ${this.currentVibeId} | Pan:${panDeg}° Tilt:${tiltDeg}° | Blackout:${target.globalEffects.blackoutActive}`);
-            }
-        }
         return statesWithPhysics;
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // 🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
+    // � WAVE 2093.1: CALIBRATION INJECTION LAYER
+    // Connects CalibrationLab offsets & PhysicsProfile tiltLimits to the
+    // actual DMX output pipeline. Without this, calibration was "write-only".
+    //
+    // Applied AFTER FixturePhysicsDriver interpolation, BEFORE DMX emission.
+    // Order of operations:
+    //   1. Invert (flip axis direction if calibration says so)
+    //   2. Offset (shift by degrees converted to DMX units)
+    //   3. TiltLimits clamp (prevent aiming at audience)
+    //   4. Final 0-255 clamp (never exceed DMX range)
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits to physics-interpolated positions
+     *
+     * @param physicalPan  - Raw interpolated pan from FixturePhysicsDriver (0-255)
+     * @param physicalTilt - Raw interpolated tilt from FixturePhysicsDriver (0-255)
+     * @param fixture      - The PatchedFixture (carries calibration + physics from ShowFileV2)
+     * @returns Calibrated { pan, tilt } clamped to 0-255
+     */
+    applyCalibrationOffsets(physicalPan, physicalTilt, fixture) {
+        // --- Read calibration data (from ShowFileV2.FixtureV2.calibration) ---
+        // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now properly typed in PatchedFixture — no more `as any`
+        const cal = fixture.calibration;
+        // --- Read physics tilt limits (from ShowFileV2.FixtureV2.physics) ---
+        // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now properly typed in PatchedFixture — no more `as any`
+        const physics = fixture.physics;
+        let pan = physicalPan;
+        let tilt = physicalTilt;
+        if (cal) {
+            // ── STEP 1: INVERT ──
+            // If the fixture is mounted backwards/upside-down, flip the axis
+            if (cal.panInvert) {
+                pan = 255 - pan;
+            }
+            if (cal.tiltInvert) {
+                tilt = 255 - tilt;
+            }
+            // ── STEP 2: OFFSET (degrees → DMX) ──
+            // Pan range: typically 540° mapped to 0-255 DMX
+            // Tilt range: typically 270° mapped to 0-255 DMX
+            // Conversion: offsetDMX = (offsetDegrees / totalDegrees) × 255
+            // 🔧 WAVE 2093.3 (CW-AUDIT-9): Industry-standard defaults, no `as any` casts
+            if (cal.panOffset && cal.panOffset !== 0) {
+                const PAN_RANGE_DEG = 540; // Standard moving head pan range
+                const panOffsetDMX = (cal.panOffset / PAN_RANGE_DEG) * 255;
+                pan += panOffsetDMX;
+            }
+            if (cal.tiltOffset && cal.tiltOffset !== 0) {
+                const TILT_RANGE_DEG = 270; // Standard moving head tilt range
+                const tiltOffsetDMX = (cal.tiltOffset / TILT_RANGE_DEG) * 255;
+                tilt += tiltOffsetDMX;
+            }
+        }
+        // ── STEP 3: TILT LIMITS (CW-8 fix) ──
+        // PhysicsProfile.tiltLimits defines the safe DMX range for tilt
+        // This prevents the fixture from aiming at the audience
+        if (physics?.tiltLimits) {
+            tilt = Math.max(physics.tiltLimits.min, Math.min(physics.tiltLimits.max, tilt));
+        }
+        // ── STEP 4: FINAL CLAMP ──
+        // No DMX value can ever leave the 0-255 range
+        pan = Math.max(0, Math.min(255, Math.round(pan)));
+        tilt = Math.max(0, Math.min(255, Math.round(tilt)));
+        return { pan, tilt };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // �🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
     // Translates RGB commands to Color Wheel DMX for fixtures that need it
     // ═══════════════════════════════════════════════════════════════════════
     /**
@@ -801,7 +864,8 @@ export class HardwareAbstraction {
         }
         let profile = null;
         // 1. JSON inyectado en vivo desde la Forja
-        if (fixture.capabilities || fixture.wheels || fixture.colorEngine || fixture.physics) {
+        // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now typed in PatchedFixture — no more `as any`
+        if (fixture.capabilities || fixture.wheels || fixture.physics) {
             profile = fixture;
         }
         // 2. Búsqueda por ID formal
@@ -812,12 +876,110 @@ export class HardwareAbstraction {
         else if (fixture.name) {
             profile = getProfileByModel(fixture.name) ?? null;
         }
+        // 4. 🔧 WAVE 2093.3 (CW-AUDIT-6): Auto-generate HAL profile from inline data
+        //    If steps 1-3 failed but the fixture has channels/capabilities, derive a profile
+        // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now typed in PatchedFixture — no more `as any`
+        if (!profile && ((fixture.channels?.length ?? 0) > 0 || fixture.capabilities)) {
+            profile = generateProfileFromDefinition({
+                id: fixture.profileId || fixture.id || cacheKey,
+                name: fixture.name || 'Unknown Fixture',
+                type: fixture.type,
+                channels: fixture.channels,
+                capabilities: fixture.capabilities,
+                wheels: fixture.wheels,
+                physics: fixture.physics,
+            }) ?? null;
+        }
         // Guardar en caché para no volver a calcularlo ni printearlo en el próximo frame
         this.profileCache.set(cacheKey, profile);
         return profile;
     }
     /**
-     * 🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
+     * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor
+     *
+     * Problema: Existen 3 formatos de PhysicsProfile incompatibles:
+     *   A) ShowFileV2.PhysicsProfile: motorType='stepper-cheap', maxVelocity=400 (DMX/s)
+     *   B) FixtureProfiles.movement: type='stepper', maxPanSpeed=180 (grados/s)
+     *   C) FixturePhysicsDriver.PhysicsProfile: panSpeedFactor=0.5, qualityTier='budget'
+     *
+     * Este método normaliza CUALQUIER formato al formato C que el Driver entiende.
+     * Sin él, los límites de la Forja NUNCA llegaban al motor de físicas.
+     */
+    translateToDriverPhysicsProfile(rawProfile) {
+        if (!rawProfile)
+            return null;
+        // ═══════════════════════════════════════════════════════════════════════
+        // FUENTE A: ShowFileV2.PhysicsProfile (from fixture.physics)
+        // Tiene: motorType='servo-pro'|'stepper-quality'|'stepper-cheap'|'unknown'
+        //        maxAcceleration, maxVelocity (ya en DMX/s)
+        // ═══════════════════════════════════════════════════════════════════════
+        if (rawProfile.motorType && rawProfile.maxVelocity !== undefined && rawProfile.orientation !== undefined) {
+            const motorTypeMap = {
+                'servo-pro': 'servo',
+                'stepper-quality': 'stepper',
+                'stepper-cheap': 'stepper',
+                'unknown': 'unknown',
+            };
+            const qualityMap = {
+                'servo-pro': 'pro',
+                'stepper-quality': 'mid',
+                'stepper-cheap': 'budget',
+                'unknown': 'budget',
+            };
+            // maxVelocity del ShowFileV2 está en DMX/s.
+            // El REF_SPEED para calcular speedFactor: Robe Robin = ~142 DMX/s
+            const REF_SPEED_DMX = 142;
+            const speedFactor = Math.min(1.0, rawProfile.maxVelocity / REF_SPEED_DMX);
+            return {
+                motorType: motorTypeMap[rawProfile.motorType] ?? 'unknown',
+                maxAcceleration: rawProfile.maxAcceleration,
+                maxVelocity: rawProfile.maxVelocity,
+                panSpeedFactor: speedFactor,
+                tiltSpeedFactor: speedFactor * 0.7, // Tilt siempre más lento (carga vertical)
+                qualityTier: qualityMap[rawProfile.motorType] ?? 'budget',
+            };
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // FUENTE B: FixtureProfiles.movement (from getProfile/getProfileByModel)
+        // Tiene: movement.type='stepper', movement.maxPanSpeed=180 (grados/s)
+        // ═══════════════════════════════════════════════════════════════════════
+        if (rawProfile.movement && rawProfile.movement.maxPanSpeed !== undefined) {
+            const mov = rawProfile.movement;
+            // Convertir grados/s a speedFactor relativo a Robe Robin (300°/s)
+            const REF_SPEED_DEG = 300;
+            const panFactor = Math.min(1.0, mov.maxPanSpeed / REF_SPEED_DEG);
+            const tiltFactor = Math.min(1.0, (mov.maxTiltSpeed ?? mov.maxPanSpeed * 0.7) / (REF_SPEED_DEG * 0.7));
+            // Inferir qualityTier por velocidad
+            let qualityTier = 'budget';
+            if (mov.maxPanSpeed >= 250)
+                qualityTier = 'pro';
+            else if (mov.maxPanSpeed >= 160)
+                qualityTier = 'mid';
+            const motorTypeMap = {
+                'stepper': 'stepper',
+                'servo': 'servo',
+                'galvo': 'servo',
+            };
+            return {
+                motorType: motorTypeMap[mov.type] ?? 'stepper',
+                maxAcceleration: undefined, // El profile de FixtureProfiles no tiene accel
+                maxVelocity: undefined, // Se usará speedFactor en su lugar
+                panSpeedFactor: panFactor,
+                tiltSpeedFactor: tiltFactor,
+                qualityTier,
+            };
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // FUENTE C: Ya es un DriverPhysicsProfile (passthrough)
+        // Tiene: panSpeedFactor o qualityTier directamente
+        // ═══════════════════════════════════════════════════════════════════════
+        if (rawProfile.panSpeedFactor !== undefined || rawProfile.qualityTier !== undefined) {
+            return rawProfile;
+        }
+        return null;
+    }
+    /**
+     * �🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
      * @returns Modified state with colorWheel set (or original state if no translation needed)
      */
     translateColorToWheel(state, fixture, existingColorWheel) {
@@ -834,13 +996,43 @@ export class HardwareAbstraction {
         if (!needsColorTranslation(profile)) {
             return state; // RGB/CMY fixture, no translation needed
         }
-        // 🐟 TRANSLATE RGB → COLOR WHEEL DMX
+        // 🐟 TRANSLATE RGB → PHYSICAL COLOR (wheel/RGBW/CMY)
         const targetRGB = { r: state.r, g: state.g, b: state.b };
         const translation = this.colorTranslator.translate(targetRGB, profile);
         // If not translated (shouldn't happen if needsColorTranslation=true), pass-through
         if (!translation.wasTranslated) {
             return state;
         }
+        // ─────────────────────────────────────────────────────────────────
+        // 🎨 WAVE 2096.1: RGBW fixtures — populate white channel directly
+        // No SafetyLayer needed (no mechanical wheel to protect)
+        // ─────────────────────────────────────────────────────────────────
+        if (translation.rgbw) {
+            return {
+                ...state,
+                r: translation.rgbw.r,
+                g: translation.rgbw.g,
+                b: translation.rgbw.b,
+                white: translation.rgbw.w,
+            };
+        }
+        // ─────────────────────────────────────────────────────────────────
+        // 🎨 WAVE 2096.1: CMY fixtures — pass CMY values through
+        // The HAL DMX writer should read cmy from state if available
+        // For now, CMY fixtures keep RGB (DMX mapping handles the rest)
+        // ─────────────────────────────────────────────────────────────────
+        if (translation.cmy) {
+            return {
+                ...state,
+                // CMY fixtures: keep original RGB for UI, DMX layer reads profile
+                r: state.r,
+                g: state.g,
+                b: state.b,
+            };
+        }
+        // ─────────────────────────────────────────────────────────────────
+        // 🐟 COLOR WHEEL fixtures — full SafetyLayer pipeline
+        // ─────────────────────────────────────────────────────────────────
         // Apply safety filter (debounce, latch, strobe delegation)
         const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`;
         const safetyResult = this.safetyLayer.filter(fixtureId, translation.colorWheelDmx ?? 0, profile, state.dimmer);
@@ -971,11 +1163,41 @@ export class HardwareAbstraction {
     // 🎛️ DMX OUTPUT CONTROL
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * ⚒️ WAVE 2030.22g: Public method to send already-processed fixture states
-     * Used by TitanOrchestrator after applying Hephaestus parameter overlays
+     * 🛡️ WAVE 2085: SAFE MOTOR SEND — Applies physics before DMX dispatch.
+     *
+     * Used by TitanOrchestrator after applying Hephaestus/effects parameter overlays.
+     * The states may have NEW pan/tilt targets, but physicalPan/physicalTilt must be
+     * interpolated by the physics engine before reaching the DMX driver.
+     *
+     * NON-MOVEMENT params (dimmer, color, white, etc.) are sent immediately.
+     * MOVEMENT params (pan/tilt) go through FixturePhysicsDriver.translateDMX().
+     *
+     * REPLACES the old sendStates() which was a physics-bypass backdoor.
      */
-    sendStates(states) {
-        this.sendToDriver(states);
+    sendStatesWithPhysics(states) {
+        // Apply physics interpolation to all moving fixtures
+        const physicsDt = this.measurePhysicsDeltaTime();
+        const safeStates = states.map((state) => {
+            // Detect if this is a moving fixture
+            const isMovingFixture = state.zone?.includes('MOVING') ||
+                state.type?.toLowerCase().includes('moving') ||
+                state.type?.toLowerCase().includes('spot') ||
+                state.type?.toLowerCase().includes('beam');
+            if (!isMovingFixture)
+                return state;
+            // 🛡️ Run physics: interpolate pan/tilt targets → smooth physicalPan/physicalTilt
+            const fixtureId = state.fixtureId || `fixture-${state.dmxAddress}`;
+            this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
+            const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
+            return {
+                ...state,
+                physicalPan: physicsState.physicalPan,
+                physicalTilt: physicsState.physicalTilt,
+                panVelocity: physicsState.panVelocity,
+                tiltVelocity: physicsState.tiltVelocity,
+            };
+        });
+        this.sendToDriver(safeStates);
     }
     sendToDriver(states) {
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!

@@ -68,7 +68,7 @@ import { MoodController } from '../mood/MoodController';
 // ═══════════════════════════════════════════════════════════════════════════
 import { EnergyLogger } from './EnergyLogger';
 // DEBUG ENERGY FLAG - Set to true to enable CSV logging
-const DEBUG_ENERGY = true; // 🧪 Set to TRUE to activate Energy Lab
+const DEBUG_ENERGY = false; // WAVE 2098: Calibration complete, lab closed
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -162,9 +162,50 @@ export class SeleneTitanConscious extends EventEmitter {
         // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - "El silencio no debe spammear"
         this.lastSilenceLogTimestamp = 0;
         this.SILENCE_LOG_THROTTLE_MS = 5000; // Log silence solo cada 5 segundos
+        // ⚡ WAVE 2093.2: DNA OVERRIDE COOLDOWN - "El override no puede ser un exploit"
+        // ⚡ WAVE 2093.3: Ajustado — 30s→20s para mismo efecto (balanced target = 4-5 EPM)
+        // Tiempo mínimo entre DNA Cooldown Overrides (para CUALQUIER efecto)
+        this.lastDNAOverrideTimestamp = 0;
+        this.lastDNAOverrideEffect = null;
+        this.DNA_OVERRIDE_MIN_INTERVAL_MS = 12000; // 12s entre overrides
+        this.DNA_OVERRIDE_SAME_EFFECT_INTERVAL_MS = 20000; // 20s para repetir el MISMO efecto con override
+        // 🩸 WAVE 2103: PIPELINE EXECUTION THROTTLE — aligned with global cooldown
+        // Was 2000ms (WAVE 2101.4), but global cooldown is 2500ms.
+        // If the pipeline throttle fires at T=0 and the effect fires at T=0,
+        // next pipeline at T=2000 but global cooldown blocks until T=2500.
+        // Then next pipeline at T=4000 — that's a 4s gap between OPPORTUNITIES.
+        // FIX: Match the global cooldown so pipeline is ready right when cooldown expires.
+        this.lastPipelineExecutionTimestamp = 0;
+        this.PIPELINE_EXECUTION_THROTTLE_MS = 2000; // 🩸 WAVE 2104: 2s (was 1s) — dream pipeline breathes
+        // 🩸 WAVE 2102: GLOBAL EFFECT COOLDOWN LIBERADO
+        // 15s encadenaba la IA a una camisa de fuerza. El techno vive de secuencias rápidas
+        // en los drops (strobe -> sweep -> burst). Devolvemos el poder a la IA.
+        // Solo mantenemos un seguro de 2.5s para no spamear 10 efectos en un segundo.
+        // 🩸 WAVE 2106: 4s→7s — LOG EVIDENCE: 15 effects in 110s = 1 every 7.3s.
+        // At 4s cooldown + fast Hunt cycle (15 frames), effects fire every ~4-5s.
+        // With fallthrough spawning 2-3 effects per cycle, density reaches ~10 in 30s.
+        // Physics can't breathe. 7s allows ~8 effects/min — space for reactive physics to shine.
+        // "No pueden brillar las fisicas reactivas que estan muy conseguidas" — Radwulf
+        this.lastGlobalEffectTimestamp = 0;
+        this.GLOBAL_EFFECT_COOLDOWN_MS = 7000; // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
         // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
         this.lastDreamIntegrationResult = null;
         this.lastEnergyZone = 'ambient';
+        // 🩸 WAVE 2102: Evitar spam logs
+        this.lastGatekeeperLogs = {};
+        // 🩸 WAVE 2111: FALLTHROUGH ABOLISHED — exhaustion cache no longer needed.
+        // History: WAVE 2100 introduced fallthrough. WAVE 2104.2 added exhaustion cache.
+        // 11 WAVEs of patches later, the whole concept was wrong. Silence > garbage effects.
+        // private fallthroughExhaustionCache: Record<string, number> = {}   // DEAD CODE
+        // private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 5000       // DEAD CODE
+        // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
+        this._constitutionLogThrottle = {};
+        // 🩸 WAVE 2106: SECTION CHANGE DETECTION — invalidate DNA cache on section transitions
+        // LOG EVIDENCE: acid_sweep DNA result computed during buildup gets CACHED,
+        // then FIRES during breakdown when GLOBAL_COOLDOWN expires and cache is reused.
+        // The cached decision was correct FOR THE BUILDUP — but the music moved on.
+        // Track last section to detect transitions and nuke the stale cache.
+        this._lastSectionForCacheInvalidation = '';
         // ═══════════════════════════════════════════════════════════════════════
         // SENSE: Percepción - USANDO SENSORES REALES
         // ═══════════════════════════════════════════════════════════════════════
@@ -198,7 +239,6 @@ export class SeleneTitanConscious extends EventEmitter {
         this.energyConsciousness = createEnergyConsciousnessEngine();
         // 🧪 WAVE 978: Inicializar Energy Logger si DEBUG activo
         if (DEBUG_ENERGY) {
-            console.log('[🧪 ENERGY_LAB] DEBUG_ENERGY = TRUE → Initializing logger...');
             EnergyLogger.initialize();
         }
         // 🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
@@ -235,10 +275,7 @@ export class SeleneTitanConscious extends EventEmitter {
         // Output inicial
         this.lastOutput = createEmptyOutput();
         if (this.config.debug) {
-            console.log('[SeleneTitanConscious] 🧬 GENESIS - Cerebro V2 inicializado');
-            console.log('[SeleneTitanConscious]    🛡️ Energy Override: ARMED');
-            console.log('[SeleneTitanConscious]    📜 Constitution Guard: ARMED');
-            console.log('[SeleneTitanConscious]    🎯 Confidence Threshold:', this.config.confidenceThreshold);
+            // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
         }
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -528,6 +565,23 @@ export class SeleneTitanConscious extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         const activeDictator = getEffectManager().hasDictator();
         // ═══════════════════════════════════════════════════════════════════════
+        // 🩸 WAVE 2106: SECTION CHANGE → INVALIDATE DNA CACHE
+        // ═══════════════════════════════════════════════════════════════════════
+        // LOG EVIDENCE: buildup→breakdown transition at line 84 of log.
+        //   DNA computed acid_sweep for buildup context → GLOBAL_COOLDOWN caches it.
+        //   Cooldown expires during breakdown → cached acid_sweep FIRES in darkness.
+        //   The DNA result was stale — computed for a different musical moment.
+        // FIX: When section changes, nuke lastDreamIntegrationResult.
+        //   Next tick must run a fresh DNA pipeline (or get SILENCE from DecisionMaker).
+        // ═══════════════════════════════════════════════════════════════════════
+        if (normalizedSection !== this._lastSectionForCacheInvalidation) {
+            if (this._lastSectionForCacheInvalidation !== '') {
+                // Not the first frame — this is a real transition
+                this.lastDreamIntegrationResult = null;
+            }
+            this._lastSectionForCacheInvalidation = normalizedSection;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
         // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula
         // 🔒 WAVE 1179: PERO SOLO SI NO HAY DICTADOR
         // ═══════════════════════════════════════════════════════════════════════
@@ -537,70 +591,134 @@ export class SeleneTitanConscious extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         // Si Hunt detectó momento digno Y no hay dictador activo, ejecutar simulador DNA
         const WORTHINESS_THRESHOLD = 0.65;
-        if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && !activeDictator) {
-            // Construir contexto para el pipeline integrado
-            // 🧠 WAVE 1173: NEURAL LINK - Pasar predicción del Oráculo al Dreamer
-            const pipelineContext = {
-                pattern: {
-                    vibe: pattern.vibeId,
-                    energy: state.rawEnergy,
-                    tempo: pattern.bpm,
-                },
-                huntDecision: {
-                    worthiness: huntDecision.worthiness,
-                    confidence: huntDecision.confidence,
-                },
-                crowdSize: 500,
-                epilepsyMode: false,
-                estimatedFatigue: this.lastEffectTimestamp ?
-                    Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
-                gpuLoad: 0.5,
-                maxLuminosity: 100,
-                recentEffects: this.effectHistory.slice(-10).map(e => ({
-                    effect: e.type,
-                    timestamp: e.timestamp
-                })),
-                // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
-                energyZone: energyContext.zone,
-                // 🛡️ WAVE 1178: ZONE PROTECTION - Inyectar Z-Score para bloquear disparos en bajadas
-                zScore: zScore,
-                // 🧠 WAVE 1173: NEURAL LINK - Oracle → Dreamer
-                predictionType: prediction.type,
-                energyTrend: prediction.type === 'energy_spike' ? 'spike' :
-                    (prediction.reasoning?.includes('RISING') ? 'rising' :
-                        prediction.reasoning?.includes('FALLING') ? 'falling' : 'stable'),
-                // ═══════════════════════════════════════════════════════════════
-                // 🔮 WAVE 1190: PROJECT CASSANDRA - ORACLE → DREAMER DATA FLOW
-                // Ahora el Dreamer recibe los datos REALES del Oráculo para:
-                // 1. Saber CUÁNTO tiempo tiene para actuar
-                // 2. Saber QUÉ TAN SEGURO está el Oráculo
-                // 3. Recibir SUGERENCIAS de efectos apropiados
-                // ═══════════════════════════════════════════════════════════════
-                predictionProbability: prediction.probability,
-                predictionTimeMs: prediction.estimatedTimeMs ?? 4000,
-                suggestedEffects: prediction.suggestedActions?.map(a => a.effect) ?? [],
-            };
-            // 🧬 DNA Brain simula - NO decide
-            try {
-                dreamIntegrationData = await Promise.race([
-                    dreamEngineIntegrator.executeFullPipeline(pipelineContext),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Dream timeout')), 15))
-                ]);
-                // � WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
-                this.lastDreamIntegrationResult = dreamIntegrationData;
-                // �🔇 WAVE 982.5: DNA logs silenciados (arqueología del día 2)
-                /*
-                if (dreamIntegrationData) {
-                  console.log(
-                    `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
-                    `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
-                  )
+        // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy can unlock the DNA pipeline
+        // Before: Only Hunt worthiness >= 0.65 could trigger DNA simulation.
+        // Problem: Hunt learning phase emits worthiness=0 for 120 frames (now 15),
+        // but even with the fix, there are moments where Hunt is at 0.60 (evaluating)
+        // while Fuzzy KNOWS it should strike (contextual intelligence: zone, z-score, mood).
+        // FIX: If Fuzzy says strike/force_strike with good confidence, that also unlocks DNA.
+        const fuzzyUnlock = this.lastFuzzyDecision
+            && (this.lastFuzzyDecision.action === 'strike' || this.lastFuzzyDecision.action === 'force_strike')
+            && this.lastFuzzyDecision.confidence >= 0.50;
+        const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock) && !activeDictator;
+        if (shouldRunDNA) {
+            // 🩸 WAVE 2101.4: GLOBAL EFFECT COOLDOWN GATE
+            // Si se disparó CUALQUIER efecto hace menos de 8s, ni siquiera ejecutar pipeline.
+            // Excepción: drops inminentes (<800ms, prob>0.80) bypasean.
+            const nowGlobal = Date.now();
+            const timeSinceLastEffect = nowGlobal - this.lastGlobalEffectTimestamp;
+            const isDropUrgent = prediction.type === 'drop_incoming'
+                && prediction.estimatedTimeMs < 800
+                && prediction.probability > 0.80;
+            if (timeSinceLastEffect < this.GLOBAL_EFFECT_COOLDOWN_MS && !isDropUrgent) {
+                // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
+                if (this.stats.framesProcessed % 15 === 0) {
+                    console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((this.GLOBAL_EFFECT_COOLDOWN_MS - timeSinceLastEffect) / 1000)}s left | lastEffect=${this.lastEffectType ?? 'none'}`);
                 }
-                */
+                dreamIntegrationData = this.lastDreamIntegrationResult; // Reusar cache
             }
-            catch (err) {
-                console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err);
-            }
+            else {
+                // 🩸 WAVE 2101.4: PIPELINE EXECUTION THROTTLE (HARDENED)
+                // El throttle anterior (WAVE 2101.3) se bypasseaba siempre porque
+                // `transition_beat` tiene estimatedTimeMs ~1500ms y prob ~0.85.
+                // FIX: Solo bypasear para DROPS REALES a <800ms, no para transition_beat.
+                const nowPipeline = Date.now();
+                const timeSinceLastPipeline = nowPipeline - this.lastPipelineExecutionTimestamp;
+                const isDropType = prediction.type === 'drop_incoming' || prediction.type === 'energy_spike';
+                const isUrgent = isDropType
+                    && prediction.estimatedTimeMs < 800
+                    && prediction.probability > 0.80;
+                const pipelineReady = isUrgent || timeSinceLastPipeline >= this.PIPELINE_EXECUTION_THROTTLE_MS;
+                if (!pipelineReady) {
+                    // Reusar el último resultado del pipeline si está reciente y sigue siendo válido
+                    dreamIntegrationData = this.lastDreamIntegrationResult;
+                }
+                else {
+                    this.lastPipelineExecutionTimestamp = nowPipeline;
+                    // Construir contexto para el pipeline integrado
+                    // 🧠 WAVE 1173: NEURAL LINK - Pasar predicción del Oráculo al Dreamer
+                    const pipelineContext = {
+                        pattern: {
+                            vibe: pattern.vibeId,
+                            energy: state.rawEnergy,
+                            tempo: pattern.bpm,
+                        },
+                        huntDecision: {
+                            worthiness: huntDecision.worthiness,
+                            confidence: huntDecision.confidence,
+                        },
+                        crowdSize: 500,
+                        epilepsyMode: false,
+                        estimatedFatigue: this.lastEffectTimestamp ?
+                            Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
+                        gpuLoad: 0.5,
+                        maxLuminosity: 100,
+                        recentEffects: this.effectHistory.slice(-10).map(e => ({
+                            effect: e.type,
+                            timestamp: e.timestamp
+                        })),
+                        // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
+                        energyZone: energyContext.zone,
+                        // 🛡️ WAVE 1178: ZONE PROTECTION - Inyectar Z-Score para bloquear disparos en bajadas
+                        zScore: zScore,
+                        // 🧠 WAVE 1173: NEURAL LINK - Oracle → Dreamer
+                        predictionType: prediction.type,
+                        energyTrend: prediction.type === 'energy_spike' ? 'spike' :
+                            (prediction.reasoning?.includes('RISING') ? 'rising' :
+                                prediction.reasoning?.includes('FALLING') ? 'falling' : 'stable'),
+                        // ═══════════════════════════════════════════════════════════════
+                        // 🔮 WAVE 1190: PROJECT CASSANDRA - ORACLE → DREAMER DATA FLOW
+                        // Ahora el Dreamer recibe los datos REALES del Oráculo para:
+                        // 1. Saber CUÁNTO tiempo tiene para actuar
+                        // 2. Saber QUÉ TAN SEGURO está el Oráculo
+                        // 3. Recibir SUGERENCIAS de efectos apropiados
+                        // ═══════════════════════════════════════════════════════════════
+                        predictionProbability: prediction.probability,
+                        // 🛡️ WAVE 2093.1: Guard Infinity — `Infinity ?? 4000` = Infinity (Infinity is NOT null).
+                        // Si estimatedTimeMs es Infinity, NaN, negativo o 0, fallback a 4000ms.
+                        predictionTimeMs: (Number.isFinite(prediction.estimatedTimeMs) && prediction.estimatedTimeMs > 0)
+                            ? prediction.estimatedTimeMs : 4000,
+                        suggestedEffects: prediction.suggestedActions?.map(a => a.effect) ?? [],
+                        // 🧬 WAVE 2093 COG-3: SPECTRAL CONTEXT REAL desde FFT
+                        // Antes: DreamSimulator hardcodeaba textura por vibe (chill=clean, techno=harsh).
+                        // Ahora: datos reales del análisis de audio. Dark Ambient en chill ya no es "clean".
+                        spectralContext: {
+                            texture: this.deriveTextureFromState(state),
+                            clarity: state.clarity,
+                            harshness: state.harshness,
+                            flatness: state.spectralFlatness,
+                            centroid: state.spectralCentroid,
+                            bands: {
+                                subBass: state.bass * 0.8, // Aproximación: bass contiene sub+bass
+                                bass: state.bass,
+                                lowMid: state.mid * 0.7, // Aproximación conservadora
+                                mid: state.mid,
+                                highMid: state.high * 0.6, // Aproximación: high contiene highMid+treble
+                                treble: state.high,
+                                ultraAir: state.ultraAir, // 🎯 Dato real desde TitanEngine
+                            }
+                        },
+                    };
+                    // 🧬 DNA Brain simula - NO decide
+                    try {
+                        dreamIntegrationData = await Promise.race([
+                            dreamEngineIntegrator.executeFullPipeline(pipelineContext),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Dream timeout')), 15))
+                        ]);
+                        // � WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
+                        this.lastDreamIntegrationResult = dreamIntegrationData;
+                        // ⚡ WAVE 2093.3: DNA SIMULATION LOG restaurado (información vital para debug)
+                        if (dreamIntegrationData) {
+                            console.log(`[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
+                                `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
+                                `dream=${dreamIntegrationData.dreamTime}ms | ${dreamIntegrationData.dreamRecommendation?.substring(0, 50) ?? ''}`);
+                        }
+                    }
+                    catch (err) {
+                        console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err);
+                    }
+                } // end else (pipeline ready)
+            } // end else (global cooldown allows)
         }
         // 🔮 WAVE 1168: NEURAL BRIDGE - Cache energy zone for UI telemetry
         this.lastEnergyZone = energyContext.zone;
@@ -631,6 +749,8 @@ export class SeleneTitanConscious extends EventEmitter {
             spectralContext: spectralContextForDecision,
             // 🔒 WAVE 1177: CALIBRATION - Check if dictator is active to prevent DIVINE spam
             activeDictator: getEffectManager().hasDictator(),
+            // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote in decisions
+            fuzzyDecision: this.lastFuzzyDecision ?? undefined,
         };
         // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
         // 🔇 WAVE 982.5: Silenciado
@@ -690,28 +810,44 @@ export class SeleneTitanConscious extends EventEmitter {
                     };
                 }
             }
-            // 🧬 WAVE 973.3: DNA COOLDOWN OVERRIDE (MOOD-AWARE)
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🧬 WAVE 973.3 + WAVE 2093.2: DNA COOLDOWN OVERRIDE (MOOD-AWARE + TEMPORAL GUARD)
+            // ═══════════════════════════════════════════════════════════════════════════
             // Si DNA decidió con ethics score alto SEGÚN EL MOOD ACTUAL,
-            // ignora cooldown. Cada mood define su umbral ético.
+            // PUEDE ignorar cooldown PERO con restricciones temporales:
+            //   1. Mínimo 15s entre cualquier override (DNA_OVERRIDE_MIN_INTERVAL_MS)
+            //   2. Mínimo 30s para repetir el MISMO efecto con override
+            //   3. Oceanic protection sigue sagrada
+            //   4. HARD_COOLDOWN sigue siendo LEY ABSOLUTA
+            // ═══════════════════════════════════════════════════════════════════════════
             const isDNADecision = inputs.dreamIntegration?.approved;
             const ethicsScore = inputs.dreamIntegration?.ethicalVerdict?.ethicalScore ?? 0;
             // 🎭 WAVE 973.5: Ethics threshold viene del MoodController
             const currentMoodProfile = MoodController.getInstance().getCurrentProfile();
             const ethicsThreshold = currentMoodProfile.ethicsThreshold;
             // 🌊 WAVE 1073.4: OCEANIC EFFECTS PROTECTION
-            // Los efectos oceánicos NO permiten DNA override en chill-lounge
-            // Sus cooldowns son gestionados por ChillStereoPhysics y son sagrados
             const isOceanicEffect = OCEANIC_EFFECTS_NO_OVERRIDE.has(intent);
             const isChillVibe = pattern.vibeId === 'chill-lounge';
             const oceanicProtection = isOceanicEffect && isChillVibe;
-            const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold && !oceanicProtection;
+            // ⚡ WAVE 2093.2: TEMPORAL GUARD — El override tiene su propio cooldown
+            const now = Date.now();
+            const timeSinceLastOverride = now - this.lastDNAOverrideTimestamp;
+            const isSameEffectAsLastOverride = intent === this.lastDNAOverrideEffect;
+            const overrideTemporalMinimum = isSameEffectAsLastOverride
+                ? this.DNA_OVERRIDE_SAME_EFFECT_INTERVAL_MS // 30s para repetir mismo efecto
+                : this.DNA_OVERRIDE_MIN_INTERVAL_MS; // 15s para cualquier override
+            const overrideTemporalReady = timeSinceLastOverride >= overrideTemporalMinimum;
+            // 🩸 WAVE 2102: DNA COOLDOWN OVERRIDE RESTAURADO
+            // Le habíamos cortado las alas a la IA. Si la ética es fuerte, DEBE disparar,
+            // margin pequeño o grande, es la consciencia hablando. Se relaja la restricción.
+            const hasHighEthicsOverride = isDNADecision
+                && ethicsScore >= ethicsThreshold
+                && !oceanicProtection
+                && overrideTemporalReady;
             // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
             const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision;
             // ═══════════════════════════════════════════════════════════════════════════
             // 🔒 WAVE 1179: DICTATOR HARD MINIMUM PROTECTION
-            // ═══════════════════════════════════════════════════════════════════════════
-            // Incluso con DNA COOLDOWN OVERRIDE, verificamos el HARD MINIMUM primero.
-            // Esto evita que abyssal_rise se dispare 2x en 10 segundos.
             // ═══════════════════════════════════════════════════════════════════════════
             const hardMinimumCheck = this.effectSelector.checkAvailability(intent, pattern.vibeId);
             const isHardMinimumBlocked = hardMinimumCheck.reason?.includes('HARD_COOLDOWN');
@@ -725,8 +861,18 @@ export class SeleneTitanConscious extends EventEmitter {
             if (availability.available && output.effectDecision) {
                 finalEffectDecision = output.effectDecision;
                 if (hasHighEthicsOverride) {
-                    console.log(`[SeleneTitanConscious] � DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
-                        `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold}`);
+                    // ⚡ WAVE 2093.2: Registrar el override para temporal guard
+                    this.lastDNAOverrideTimestamp = now;
+                    this.lastDNAOverrideEffect = intent;
+                    console.log(`[SeleneTitanConscious] 🧬 DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
+                        `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold} | ` +
+                        `nextOverride=${Math.ceil(this.DNA_OVERRIDE_MIN_INTERVAL_MS / 1000)}s`);
+                }
+                else if (isDNADecision && ethicsScore > ethicsThreshold && !overrideTemporalReady) {
+                    // ⚡ WAVE 2093.2: Log cuando temporal guard bloqueó el override
+                    console.log(`[SeleneTitanConscious] ⏱️ OVERRIDE TEMPORAL GUARD: ${intent} | ` +
+                        `ethics=${ethicsScore.toFixed(2)} qualifies but ${Math.ceil((overrideTemporalMinimum - timeSinceLastOverride) / 1000)}s cooldown remaining` +
+                        `${isSameEffectAsLastOverride ? ' (same effect penalty)' : ''}`);
                 }
                 else if (oceanicProtection && isDNADecision && ethicsScore > ethicsThreshold) {
                     // 🌊 WAVE 1073.4: Log cuando protección oceánica bloqueó el override
@@ -739,7 +885,37 @@ export class SeleneTitanConscious extends EventEmitter {
                 }
             }
             else if (output.effectDecision) {
-                console.log(`[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`);
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🩸 WAVE 2111: FALLTHROUGH ABOLISHED — "The true intelligence is knowing when NOT to fire"
+                // ═══════════════════════════════════════════════════════════════════════
+                // HISTORY: Fallthrough was born in WAVE 2100 to avoid silence when cooldown blocked.
+                //   It spawned: section gates (2103), energy gates (2103), breakdown removal (2106),
+                //   exhaustion cache (2104.2), double-fire fix (2110) — 11 WAVEs of patches on a bad idea.
+                // 
+                // LOG EVIDENCE (post-2110): 6 effects fired, 2 were FALLTHROUGH GARBAGE:
+                //   acid_sweep I=0.30 Z=-0.9 → FALLTHROUGH → core_meltdown I=0.30 Z=-1.4 (HARD effect at low intensity!)
+                //   cyber_dualism I=0.70 Z=1.7 → FALLTHROUGH → seismic_snap I=0.70 Z=0.9 (wasted on mediocre moment)
+                //   33% of all effects were unplanned substitutes. That's not intelligence, that's panic.
+                //
+                // PHILOSOPHY: If the DNA chose acid_sweep and it's in cooldown, SILENCE is correct.
+                //   The DNA evaluated the musical context and picked THE RIGHT effect. A random substitute
+                //   doesn't carry that contextual weight. Better to wait 7s for the next real opportunity
+                //   than to fire core_meltdown at I=0.30 because "something must happen."
+                //   For controlled chaos, that's what PUNK mode is for.
+                //
+                // WHAT WE KEEP: The GATEKEEPER log (throttled) so we know decisions are being made.
+                // WHAT DIES: All fallthrough logic, exhaustion cache, alternative iteration.
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🩸 WAVE 2102: Throttled gatekeeper log — one message per blocked effect per 3s
+                const gatekeeperKey = `denied_${intent}`;
+                const nowTime = Date.now();
+                if (!this.lastGatekeeperLogs)
+                    this.lastGatekeeperLogs = {};
+                if (nowTime - (this.lastGatekeeperLogs[gatekeeperKey] ?? 0) > 3000) {
+                    console.log(`[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`);
+                    this.lastGatekeeperLogs[gatekeeperKey] = nowTime;
+                }
+                // Blocked = silence. No plan B. No panic substitution.
                 output = {
                     ...output,
                     effectDecision: null,
@@ -764,7 +940,11 @@ export class SeleneTitanConscious extends EventEmitter {
         // 3. Track para cooldown y anti-repetición
         if (finalEffectDecision) {
             this.lastEffectTimestamp = Date.now();
+            this.lastGlobalEffectTimestamp = Date.now(); // 🩸 WAVE 2101.4: Global cooldown tracker
             this.lastEffectType = finalEffectDecision.effectType;
+            // ⚡ WAVE 2093.2: Invalidar Dream cache para forzar diversidad
+            // Sin esto, el cache devuelve el mismo efecto 3s seguidos → monotonía
+            dreamEngineIntegrator.invalidateDreamCache();
             // 🔒 WAVE 1177: REMOVED - History push moved to effectTriggered listener
             // This prevents blocked effects from contaminating history
             // (See constructor: effectManager.on('effectTriggered', ...))
@@ -878,9 +1058,19 @@ export class SeleneTitanConscious extends EventEmitter {
         const result = validateColorDecision(decision.colorDecision, state.constitution);
         if (!result.isValid) {
             this.stats.constitutionViolationsAvoided++;
+            // 🩸 WAVE 2105: THROTTLE constitution violation logs — was ~65 lines per 700-line log
+            // The Constitution forces analogous on every tick, logging the same message endlessly.
+            // Now: log once per violation TYPE per 5 seconds, not every 16ms tick.
             if (this.config.debug) {
+                const now = Date.now();
                 for (const v of result.violations) {
-                    console.log(`[SeleneTitanConscious] 📜 Violation avoided: ${v.description}`);
+                    const lastLog = this._constitutionLogThrottle?.[v.description] ?? 0;
+                    if (now - lastLog > 5000) {
+                        console.log(`[SeleneTitanConscious] 📜 Violation avoided: ${v.description}`);
+                        if (!this._constitutionLogThrottle)
+                            this._constitutionLogThrottle = {};
+                        this._constitutionLogThrottle[v.description] = now;
+                    }
                 }
             }
             return {

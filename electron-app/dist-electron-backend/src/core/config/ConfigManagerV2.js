@@ -68,7 +68,6 @@ class ConfigManagerV2 {
         const userDataPath = app.getPath('userData');
         this.configPath = path.join(userDataPath, 'luxsync-config.json');
         this.config = { ...DEFAULT_CONFIG_V2 };
-        console.log(`[ConfigManagerV2] 📁 Config path: ${this.configPath}`);
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // LOAD WITH AUTO-MIGRATION
@@ -80,14 +79,13 @@ class ConfigManagerV2 {
     load() {
         try {
             if (!fs.existsSync(this.configPath)) {
-                console.log('[ConfigManagerV2] 📝 No config file found, using defaults');
                 return { config: this.config, legacyFixtures: [] };
             }
             const data = fs.readFileSync(this.configPath, 'utf-8');
             const loaded = JSON.parse(data);
             // Detect V1 config by presence of patchedFixtures
             if ('patchedFixtures' in loaded && Array.isArray(loaded.patchedFixtures)) {
-                console.log('[ConfigManagerV2] 🔄 Detected V1 config, migrating...');
+                console.warn('[ConfigManagerV2] V1 config detected — migrating to V2');
                 return this.migrateFromV1(loaded);
             }
             // Already V2
@@ -100,7 +98,6 @@ class ConfigManagerV2 {
                 audio: { ...DEFAULT_CONFIG_V2.audio, ...loadedV2.audio },
                 ui: { ...DEFAULT_CONFIG_V2.ui, ...loadedV2.ui },
             };
-            console.log('[ConfigManagerV2] ✅ V2 config loaded');
             return { config: this.config, legacyFixtures: [] };
         }
         catch (error) {
@@ -114,7 +111,6 @@ class ConfigManagerV2 {
     migrateFromV1(v1Config) {
         // Extract legacy fixtures
         this.legacyFixtures = v1Config.patchedFixtures || [];
-        console.log(`[ConfigManagerV2] 📦 Extracted ${this.legacyFixtures.length} legacy fixtures for migration`);
         // Build V2 config (WITHOUT fixtures)
         this.config = {
             version: '2.0.0',
@@ -146,7 +142,6 @@ class ConfigManagerV2 {
         };
         // Save V2 config immediately (removes patchedFixtures from disk)
         this.save();
-        console.log('[ConfigManagerV2] ✅ V1 → V2 migration complete (fixtures extracted)');
         return { config: this.config, legacyFixtures: this.legacyFixtures };
     }
     // ═══════════════════════════════════════════════════════════════════════════

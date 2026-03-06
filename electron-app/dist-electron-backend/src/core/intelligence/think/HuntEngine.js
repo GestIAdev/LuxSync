@@ -11,7 +11,20 @@ const DEFAULT_CONFIG = {
     consonanceThreshold: 0.60,
     urgencyForceThreshold: 0.90,
     maxEvaluatingFrames: 15,
-    learningCooldownFrames: 120, // 🔥 WAVE 635: 2 segundos de cooldown (era 10 = 166ms)
+    // 🩸 WAVE 2105: LEARNING COOLDOWN KILLED — was 120 frames (~2s)
+    // The GLOBAL_EFFECT_COOLDOWN_MS (4s) in SeleneTitanConscious ALREADY protects
+    // against effect spam. Learning's 120-frame cooldown was a SECOND guard that
+    // stacked: Hunt blind 2s + Global cooldown 4s = 6 SECONDS of total blindness.
+    // In techno at 120bpm that's 12 beats where the predator can't even SEE prey.
+    // 🩸 WAVE 2106: 15→45 frames (~750ms) — LOG EVIDENCE:
+    //   15 frames was TOO SHORT. Hunt cycle: stalk(5)→eval(15)→strike→learn(15)→stalk...
+    //   Full cycle ~35 frames (~580ms). With GLOBAL_COOLDOWN at 4s, Hunt saw 6-7
+    //   WORTHY MOMENTS per cooldown window, each generating a DNA pipeline + cache.
+    //   At 45 frames (~750ms), Hunt cycle becomes ~65 frames (~1.1s).
+    //   Combined with GLOBAL_COOLDOWN 7s (FIX 2): Hunt sees ~6 worthy moments per
+    //   cooldown window, but each is more deliberate. The predator REFLECTS.
+    //   120 was coma. 15 was cocaine. 45 is clarity.
+    learningCooldownFrames: 45,
 };
 let state = createInitialState();
 function createInitialState() {
@@ -318,6 +331,12 @@ function calculateWorthiness(pattern, beauty, consonance, spectralHint) {
     const rhythmScore = pattern.rhythmicIntensity;
     // Bonus por momentos especiales
     let bonus = 0;
+    // 🩸 WAVE 2095: DROP = momento ESTELAR (el clímax absoluto)
+    // Antes no tenía bonus — los drops quedaban al mismo nivel que un verse.
+    // Un drop es el momento donde TODO debe explotar.
+    if (pattern.section === 'drop') {
+        bonus += 0.20;
+    }
     // Buildup = muy interesante
     if (pattern.section === 'buildup' || pattern.isBuilding) {
         bonus += 0.15;

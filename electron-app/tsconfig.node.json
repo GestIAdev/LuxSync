@@ -30,6 +30,8 @@
     "src/components/**/*.tsx",
     "src/core/intelligence/dream/disabled/**/*.ts",
     "src/hooks/**/*.ts",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/integration/**/*.test.ts"
   ]
 }

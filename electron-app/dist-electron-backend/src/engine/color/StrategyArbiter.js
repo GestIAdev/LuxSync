@@ -80,10 +80,7 @@ export class StrategyArbiter {
         this.config = { ...StrategyArbiter.DEFAULT_CONFIG, ...config };
         // Inicializar buffer con valores neutros
         this.syncBuffer = new Array(this.config.bufferSize).fill(0.45);
-        // 🐛 WAVE 1209 DEBUG: Confirmar inicialización
-        console.log(`[StrategyArbiter] 🎨 Initialized: bufferSize=${this.config.bufferSize}, lockingFrames=${this.config.lockingFrames}, commitment=${this.STRATEGY_COMMITMENT_DURATION}`);
-        // 🧹 WAVE 63: Log init comentado - solo vibes importan
-        // console.log(`[StrategyArbiter] 🎨 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(0)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(0)}s)`);
+        // WAVE 2098: Boot silence
     }
     /**
      * 🎨 PROCESO PRINCIPAL

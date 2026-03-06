@@ -29,7 +29,6 @@ export function getHephaestusRuntime() {
  * Registra todos los handlers IPC
  */
 export function setupIPCHandlers(deps) {
-    console.log('[IPC] Setting up IPC handlers (WAVE 243.5 V2)');
     setupSeleneLuxHandlers(deps);
     setupEffectHandlers(deps);
     setupOverrideHandlers(deps);
@@ -38,7 +37,6 @@ export function setupIPCHandlers(deps) {
     // setupShowHandlers PURGED - WAVE 365: Use StageIPCHandlers instead
     setupDMXHandlers(deps);
     setupArtNetHandlers(deps);
-    console.log('[IPC] All IPC handlers registered');
 }
 // =============================================================================
 // TITAN ORCHESTRATOR HANDLERS (WAVE 254: THE SPARK)
@@ -55,7 +53,6 @@ function setupSeleneLuxHandlers(deps) {
         return { success: true, inputGain: savedGain };
     });
     ipcMain.handle('lux:stop', () => {
-        console.log('[IPC] lux:stop - TitanOrchestrator stopping');
         if (titanOrchestrator) {
             titanOrchestrator.stop();
         }

@@ -375,28 +375,154 @@ export function createFixtureGroup(id, name, fixtureIds = []) {
         order: 0
     };
 }
-// ═══════════════════════════════════════════════════════════════════════════
-// VALIDATION
-// ═══════════════════════════════════════════════════════════════════════════
 /**
- * Validate a ShowFile structure
+ * 🔧 WAVE 2093.1: Deep validate a ShowFile structure
+ *
+ * Returns detailed diagnostics: hard errors (invalid data that would crash)
+ * and soft warnings (missing optional fields, suspicious values).
+ *
+ * Checks:
+ *  - Schema version, name, required arrays
+ *  - Per-fixture: id (string), address (1-512), universe (>=0)
+ *  - Physics object exists with positive maxAcceleration
+ *  - No duplicate fixture IDs
+ *  - Group referential integrity (fixtureIds ⊆ fixtures[].id)
+ */
+export function validateShowFileDeep(data) {
+    const errors = [];
+    const warnings = [];
+    // ── STRUCTURAL CHECKS ──
+    if (!data || typeof data !== 'object') {
+        return { valid: false, errors: ['Data is null or not an object'], warnings };
+    }
+    const show = data;
+    if (show.schemaVersion !== '2.0.0' && show.schemaVersion !== '2.1.0') {
+        errors.push(`Invalid schemaVersion: expected '2.0.0' or '2.1.0', got '${show.schemaVersion}'`);
+    }
+    if (typeof show.name !== 'string' || show.name.trim() === '') {
+        errors.push(`Invalid or empty show name: '${show.name}'`);
+    }
+    if (!Array.isArray(show.fixtures)) {
+        errors.push('fixtures is not an array');
+        return { valid: false, errors, warnings };
+    }
+    if (!Array.isArray(show.groups)) {
+        errors.push('groups is not an array');
+    }
+    if (!Array.isArray(show.scenes)) {
+        errors.push('scenes is not an array');
+    }
+    // If fatal structural errors, stop here
+    if (errors.length > 0 && !Array.isArray(show.fixtures)) {
+        return { valid: false, errors, warnings };
+    }
+    // ── PER-FIXTURE VALIDATION ──
+    const fixtureIds = new Set();
+    const fixtures = show.fixtures;
+    for (let i = 0; i < fixtures.length; i++) {
+        const f = fixtures[i];
+        const prefix = `fixtures[${i}]`;
+        // ID: must be a non-empty string
+        if (typeof f.id !== 'string' || f.id.trim() === '') {
+            errors.push(`${prefix}: missing or empty 'id'`);
+            continue;
+        }
+        // Duplicate ID check
+        if (fixtureIds.has(f.id)) {
+            errors.push(`${prefix}: duplicate fixture id '${f.id}'`);
+        }
+        fixtureIds.add(f.id);
+        // Address: integer 1-512
+        if (typeof f.address !== 'number' || !Number.isInteger(f.address) || f.address < 1 || f.address > 512) {
+            errors.push(`${prefix} (${f.id}): address must be integer 1-512, got ${f.address}`);
+        }
+        // Universe: integer >= 0
+        const universe = f.universe;
+        if (universe !== undefined && universe !== null) {
+            if (typeof universe !== 'number' || !Number.isInteger(universe) || universe < 0) {
+                errors.push(`${prefix} (${f.id}): universe must be integer >= 0, got ${universe}`);
+            }
+        }
+        // Physics: must exist with positive maxAcceleration
+        if (!f.physics || typeof f.physics !== 'object') {
+            warnings.push(`${prefix} (${f.id}): missing 'physics' object — will use defaults`);
+        }
+        else {
+            const physics = f.physics;
+            if (typeof physics.maxAcceleration !== 'number' || physics.maxAcceleration <= 0) {
+                warnings.push(`${prefix} (${f.id}): physics.maxAcceleration must be positive, got ${physics.maxAcceleration}`);
+            }
+            // Validate tiltLimits if present
+            if (physics.tiltLimits && typeof physics.tiltLimits === 'object') {
+                const tl = physics.tiltLimits;
+                if (typeof tl.min !== 'number' || typeof tl.max !== 'number') {
+                    warnings.push(`${prefix} (${f.id}): physics.tiltLimits.min/max must be numbers`);
+                }
+                else if (tl.min >= tl.max) {
+                    warnings.push(`${prefix} (${f.id}): physics.tiltLimits.min (${tl.min}) >= max (${tl.max})`);
+                }
+            }
+        }
+        // Position: must have x, y, z as numbers (if present)
+        if (f.position && typeof f.position === 'object') {
+            const pos = f.position;
+            if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || typeof pos.z !== 'number') {
+                warnings.push(`${prefix} (${f.id}): position.x/y/z must be numbers`);
+            }
+        }
+    }
+    // ── GROUP REFERENTIAL INTEGRITY ──
+    if (Array.isArray(show.groups)) {
+        const groups = show.groups;
+        for (let g = 0; g < groups.length; g++) {
+            const group = groups[g];
+            const gPrefix = `groups[${g}]`;
+            if (typeof group.id !== 'string' || group.id.trim() === '') {
+                warnings.push(`${gPrefix}: missing or empty group 'id'`);
+                continue;
+            }
+            if (!Array.isArray(group.fixtureIds)) {
+                warnings.push(`${gPrefix} (${group.id}): fixtureIds is not an array`);
+                continue;
+            }
+            const fIds = group.fixtureIds;
+            for (const fId of fIds) {
+                if (!fixtureIds.has(fId)) {
+                    errors.push(`${gPrefix} (${group.id}): references non-existent fixture '${fId}'`);
+                }
+            }
+        }
+    }
+    return {
+        valid: errors.length === 0,
+        errors,
+        warnings,
+    };
+}
+/**
+ * Validate a ShowFile structure (type guard)
+ *
+ * 🔧 WAVE 2093.1: Now performs DEEP validation — checks every fixture,
+ * detects duplicates, validates ranges, and verifies referential integrity.
+ * Logs warnings to console for non-fatal issues.
  */
 export function validateShowFile(data) {
-    if (!data || typeof data !== 'object')
-        return false;
-    const show = data;
-    // Required fields
-    if (show.schemaVersion !== '2.0.0')
-        return false;
-    if (typeof show.name !== 'string')
-        return false;
-    if (!Array.isArray(show.fixtures))
-        return false;
-    if (!Array.isArray(show.groups))
-        return false;
-    if (!Array.isArray(show.scenes))
-        return false;
-    return true;
+    const result = validateShowFileDeep(data);
+    // Log warnings for visibility (non-fatal but important)
+    if (result.warnings.length > 0) {
+        console.warn(`[ShowFileV2] ⚠️ Validation warnings (${result.warnings.length}):`);
+        for (const w of result.warnings) {
+            console.warn(`  → ${w}`);
+        }
+    }
+    // Log errors
+    if (result.errors.length > 0) {
+        console.error(`[ShowFileV2] 🔴 Validation FAILED (${result.errors.length} errors):`);
+        for (const e of result.errors) {
+            console.error(`  ✗ ${e}`);
+        }
+    }
+    return result.valid;
 }
 /**
  * Get schema version from file (for migration)
@@ -405,8 +531,8 @@ export function getSchemaVersion(data) {
     if (!data || typeof data !== 'object')
         return null;
     const obj = data;
-    // V2 format
-    if (obj.schemaVersion === '2.0.0')
+    // V2 format (any 2.x.x version)
+    if (typeof obj.schemaVersion === 'string' && obj.schemaVersion.startsWith('2.'))
         return '2.0.0';
     // V1 format (old ConfigManager)
     if (obj.version && typeof obj.patchedFixtures !== 'undefined')

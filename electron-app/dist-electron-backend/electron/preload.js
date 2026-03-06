@@ -18,6 +18,20 @@ const api = {
      */
     getSystemUser: () => process.env.USERNAME || process.env.USER || '',
     // ============================================
+    // 🪟 WINDOW CONTROLS - Custom title bar
+    // ============================================
+    window: {
+        minimize: () => ipcRenderer.invoke('window:minimize'),
+        maximize: () => ipcRenderer.invoke('window:maximize'),
+        close: () => ipcRenderer.invoke('window:close'),
+        isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+        onMaximizeChange: (callback) => {
+            const handler = (_, value) => callback(value);
+            ipcRenderer.on('window:maximized', handler);
+            return () => ipcRenderer.removeListener('window:maximized', handler);
+        },
+    },
+    // ============================================
     // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection
     // Shortcut for calibration tools (ColorWheelEditor, etc.)
     // ============================================

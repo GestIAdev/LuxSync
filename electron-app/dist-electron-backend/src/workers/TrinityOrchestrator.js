@@ -91,7 +91,7 @@ export class TrinityOrchestrator extends EventEmitter {
             beta: path.join(workerDir, 'senses.js'),
             gamma: path.join(workerDir, 'mind.js')
         };
-        console.log('[ALPHA] Worker paths:', this.WORKER_PATHS);
+        // WAVE 2098: Boot silence
         this.initializeNodes();
     }
     // ============================================
@@ -119,7 +119,7 @@ export class TrinityOrchestrator extends EventEmitter {
                 stateSnapshot: null
             });
         }
-        console.log('[ALPHA] 🛡️ Trinity Orchestrator initialized');
+        // WAVE 2098: Boot silence
     }
     // ============================================
     // START / STOP
@@ -129,7 +129,7 @@ export class TrinityOrchestrator extends EventEmitter {
             console.warn('[ALPHA] Already running');
             return;
         }
-        console.log('[ALPHA] 🚀 Starting Trinity...');
+        // WAVE 2098: Boot silence
         this.startTime = Date.now();
         this.isRunning = true;
         try {
@@ -141,7 +141,6 @@ export class TrinityOrchestrator extends EventEmitter {
             this.startHealthCheck();
             // Wait for both workers to be ready
             await this.waitForReady();
-            console.log('[ALPHA] ✅ Trinity is LIVE');
             this.emit('ready');
         }
         catch (error) {
@@ -151,7 +150,7 @@ export class TrinityOrchestrator extends EventEmitter {
         }
     }
     async stop() {
-        console.log('[ALPHA] 🛑 Stopping Trinity...');
+        // WAVE 2098: Boot silence
         this.isRunning = false;
         // Stop intervals
         if (this.heartbeatInterval) {
@@ -179,7 +178,6 @@ export class TrinityOrchestrator extends EventEmitter {
             }
         }
         this.emit('shutdown');
-        console.log('[ALPHA] Trinity stopped');
     }
     // ============================================
     // WORKER SPAWNING
@@ -199,7 +197,7 @@ export class TrinityOrchestrator extends EventEmitter {
             node.circuit.state = CircuitState.HALF_OPEN;
             console.log(`[ALPHA] Circuit HALF-OPEN for ${nodeId}, testing...`);
         }
-        console.log(`[ALPHA] Spawning ${NODE_NAMES[nodeId]}...`);
+        // WAVE 2098: Boot silence
         const workerPath = this.WORKER_PATHS[nodeId];
         // 🧠 WAVE 10: Check if worker file exists before spawning
         const fs = await import('fs');
@@ -268,7 +266,7 @@ export class TrinityOrchestrator extends EventEmitter {
                 node.isReady = true;
                 node.circuit.state = CircuitState.CLOSED;
                 node.circuit.failures = 0;
-                console.log(`[ALPHA] ${NODE_NAMES[sourceId]} is READY`);
+                // WAVE 2098: Boot silence
                 // 🔧 WAVE 15.1: Enviar configuración pendiente ahora que está listo
                 this.flushPendingConfig(sourceId);
                 break;
@@ -516,8 +514,7 @@ export class TrinityOrchestrator extends EventEmitter {
     flushPendingConfig(nodeId) {
         // 💉 FORCE FEED: Inyectar configuración actual SIEMPRE al worker que nace
         const configToInject = this.pendingConfig || this.config;
-        const gainPercent = ((configToInject.inputGain || 1.0) * 100).toFixed(0);
-        console.log(`[ALPHA] � Injecting initial config to ${nodeId} (Gain: ${gainPercent}%)`);
+        // WAVE 2098: Boot silence
         this.sendToWorker(nodeId, MessageType.CONFIG_UPDATE, configToInject);
         // Limpiar config pendiente si existía
         if (this.pendingConfig) {
@@ -624,7 +621,21 @@ export class TrinityOrchestrator extends EventEmitter {
         }
     }
     /**
-     * 🔌 WAVE 63.95: System Sleep - Pause all workers
+     * � WAVE 2096.1: PACEMAKER BRIDGE — Send BPM from Pacemaker to Worker BETA
+     *
+     * WAVE 2090.2 cut the umbilical cord between Pacemaker and Worker,
+     * leaving SimpleSectionTracker blind (bpm=0, beatPhase=0).
+     * This restores the data flow without duplicating BPM computation.
+     * The Pacemaker remains the SOLE authority — this is just a bridge.
+     */
+    setBpm(bpm, beatPhase, confidence) {
+        const beta = this.nodes.get('beta');
+        if (beta?.worker) {
+            this.sendToWorker('beta', MessageType.SET_BPM, { bpm, beatPhase, confidence }, MessagePriority.HIGH);
+        }
+    }
+    /**
+     * �🔌 WAVE 63.95: System Sleep - Pause all workers
      * Sends SYSTEM_SLEEP to Mind worker to stop processing audio
      */
     systemSleep() {

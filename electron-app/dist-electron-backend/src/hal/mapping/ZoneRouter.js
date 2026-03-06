@@ -21,7 +21,7 @@ export class ZoneRouter {
     constructor() {
         this.debugCounter = 0; // 🔥 WAVE 279.4: Debug counter
         this.zoneConfig = this.buildZoneConfig();
-        console.log('[ZoneRouter] 🗺️ Initialized (WAVE 207)');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC API

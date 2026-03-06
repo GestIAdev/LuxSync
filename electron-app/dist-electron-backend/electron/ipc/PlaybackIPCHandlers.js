@@ -101,7 +101,7 @@ export function setupPlaybackIPCHandlers(window) {
             mainWindow.webContents.send('lux:arbiter:output', data);
         }
     });
-    console.log('[PlaybackIPC] 🎬 Playback handlers registered (WAVE 2054)');
+    // WAVE 2098: Boot silence
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // CLEANUP

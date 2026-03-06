@@ -32,9 +32,18 @@ import { MoodController } from '../../mood/MoodController';
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-const APPROVAL_THRESHOLD = 0.5; // Score mínimo para aprobar
+const BASE_APPROVAL_THRESHOLD = 0.5; // Score mínimo para aprobar (normal)
+const EPILEPSY_APPROVAL_THRESHOLD = 0.7; // Score mínimo en epilepsy mode (más estricto)
 const MATURITY_EVOLUTION_RATE = 0.02; // Máximo 2% cambio por ciclo
 const EXPERIENCE_FOR_EVOLUTION = 100; // Decisiones antes de evolucionar
+/**
+ * 🧬 WAVE 2093 COG-7: Approval threshold dinámico
+ * En epilepsyMode el umbral sube a 0.7 — solo efectos de alta ética pasan.
+ * Esto elimina el margen gris que permitía efectos borderline en modo seguro.
+ */
+function getApprovalThreshold(epilepsyMode) {
+    return epilepsyMode ? EPILEPSY_APPROVAL_THRESHOLD : BASE_APPROVAL_THRESHOLD;
+}
 const MATURITY_THRESHOLDS = {
     basic: 0.3,
     intermediate: 0.6,
@@ -62,8 +71,7 @@ export class VisualConscienceEngine {
             defaultTimeoutMs: 5000,
             maxConcurrentOperations: 5
         });
-        console.log('[CONSCIENCE] ⚖️ Visual Conscience Engine initialized');
-        console.log('[CONSCIENCE] 📊 Maturity: 0.0% | Experience: 0');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -251,7 +259,9 @@ export class VisualConscienceEngine {
         const sorted = evaluations.sort((a, b) => b.ethicalScore - a.ethicalScore);
         const best = sorted[0];
         // Decidir veredicto
-        if (best.ethicalScore >= APPROVAL_THRESHOLD && best.violations.length === 0) {
+        // 🧬 WAVE 2093 COG-7: Threshold dinámico — epilepsyMode = más estricto
+        const approvalThreshold = getApprovalThreshold(context.epilepsyMode);
+        if (best.ethicalScore >= approvalThreshold && best.violations.length === 0) {
             // APPROVED
             const verdict = {
                 verdict: 'APPROVED',
@@ -275,7 +285,7 @@ export class VisualConscienceEngine {
             });
             return verdict;
         }
-        else if (best.ethicalScore >= APPROVAL_THRESHOLD * 0.7) {
+        else if (best.ethicalScore >= approvalThreshold * 0.7) {
             // DEFERRED (borderline)
             return {
                 verdict: 'DEFERRED',

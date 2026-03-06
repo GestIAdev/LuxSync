@@ -59,9 +59,15 @@ export class DreamEngineIntegrator {
         //   Raw 0.64 / 1.15 = 0.557 → PASA ✅ (antes fallaba)
         //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
         //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
-        if (effectiveWorthiness < 0.55) { // ← WAVE 976.5: era 0.60
-            // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-            // console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
+        // 🩸 WAVE 2100: Gate lowered 0.55 → 0.50
+        // 🩸 WAVE 2104: Gate raised 0.50 → 0.58
+        // 🩸 WAVE 2104.2: Gate adjusted 0.58 → 0.55. Con 0.58, raw=0.69/1.20=0.575 → BLOCKED por 0.005.
+        //   Eso bloqueó 4-5 momentos dignos en el log. 0.55 deja pasar el rango útil de Brejcha (0.66+)
+        //   pero sigue filtrando los <0.66 (effective<0.55). El control de calidad real está en el
+        //   ethicsThreshold que ahora es 1.20 (el override ya no es gratis).
+        if (effectiveWorthiness < 0.55) { // 🩸 WAVE 2104.2: was 0.58
+            // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
+            console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.55 | ${currentProfile.emoji} ${currentProfile.name}`);
             return {
                 approved: false,
                 effect: null,
@@ -69,6 +75,34 @@ export class DreamEngineIntegrator {
                 filterTime: 0,
                 totalTime: Date.now() - pipelineStartTime,
                 dreamRecommendation: `Hunt worthiness insufficient (${currentProfile.name} mode: ${rawWorthiness.toFixed(2)} → ${effectiveWorthiness.toFixed(2)})`,
+                ethicalVerdict: null,
+                circuitHealthy: true,
+                fallbackUsed: false,
+                alternatives: []
+            };
+        }
+        // 🩸 WAVE 2103: ZONE GATE REFORM — "ambient" and "valley" are WHERE TECHNO LIVES
+        // 
+        // THE BUG: WAVE 2101.3/2101.5 blocked ambient+valley+silence from the pipeline.
+        // In techno at 118-122 BPM, energy oscillates between 0.20-0.70 constantly,
+        // which maps to valley/ambient/gentle. The gate was blocking ~60% of all frames.
+        // Effects NEVER fired because by the time energy hit "gentle", the hunt moment
+        // had already passed and the cooldown was already registered from a failed attempt.
+        //
+        // THE FIX: Only block "silence" zone (E < 0.15). That's a real dead zone.
+        // Valley and ambient are NORMAL operating zones for techno buildups/breakdowns.
+        // The ContextualEffectSelector ALREADY handles zone-appropriate effect selection
+        // via EFFECTS_BY_INTENSITY — that's the correct architectural layer for this.
+        // Duplicating zone filtering here was violating Single Responsibility.
+        const energyZone = context.energyZone ?? 'ambient';
+        if (energyZone === 'silence') {
+            return {
+                approved: false,
+                effect: null,
+                dreamTime: 0,
+                filterTime: 0,
+                totalTime: Date.now() - pipelineStartTime,
+                dreamRecommendation: `Zone gate: silence (E < 0.15)`,
                 ethicalVerdict: null,
                 circuitHealthy: true,
                 fallbackUsed: false,
@@ -132,12 +166,26 @@ export class DreamEngineIntegrator {
             ethicalVerdict,
             circuitHealthy: ethicalVerdict.circuitBreakerStatus !== 'OPEN',
             fallbackUsed: ethicalVerdict.verdict !== 'APPROVED' || ethicalVerdict.approvedEffect === null,
-            alternatives: ethicalVerdict.alternatives.slice(0, 2)
+            alternatives: ethicalVerdict.alternatives.slice(0, 5) // 🩸 WAVE 2104.2: was 2 — con solo 2 alternativas, si ambas están en cooldown = SILENCIO. 5 da rotation real
         };
-        // 🧹 WAVE 1015: Solo logear si slow (>10ms) o si rejected
-        if (decision.totalTime > 10 || !decision.approved) {
+        // � WAVE 2102: MINIMUM INTENSITY GATE — log approvals and reject weak intensities
+        if (decision.approved && decision.effect) {
+            if (decision.effect.intensity < 0.30) {
+                console.log(`[INTEGRATOR] 🔇 LOW INTENSITY BLOCKED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} (min=0.30)`);
+                return {
+                    ...decision,
+                    approved: false,
+                    dreamRecommendation: `Intensity gate: ${decision.effect.intensity.toFixed(2)} < 0.30 minimum`,
+                };
+            }
+            console.log(`[INTEGRATOR] ✅ APPROVED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} | ` +
+                `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
+                `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`);
+        }
+        else if (decision.totalTime > 10 || !decision.approved) {
             console.log(`[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
-                `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms`);
+                `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms | ` +
+                `reason=${decision.dreamRecommendation?.substring(0, 60) ?? '?'}`);
         }
         // Record for learning
         if (decision.approved && decision.effect) {
@@ -189,13 +237,16 @@ export class DreamEngineIntegrator {
         const maturityMetrics = visualConscienceEngine.getMaturityMetrics();
         return {
             circuitBreakerState: circuitStatus.state,
-            circuitHealthy: circuitStatus.isHealthy,
-            maturityLevel: maturityMetrics.level,
-            maturityExperience: maturityMetrics.experience,
-            unlockedFeatures: maturityMetrics.unlockedFeatures,
-            pipelineDecisions: this.executionHistory.length,
+            evolutionLevel: maturityMetrics?.level ?? 1,
             cacheSize: this.dreamCache.size
         };
+    }
+    /**
+     * ⚡ WAVE 2093.2: Invalidar Dream cache
+     * Se llama cuando un efecto se disparó con éxito para forzar alternativas
+     */
+    invalidateDreamCache() {
+        this.dreamCache.clear();
     }
     // ═════════════════════════════════════════════════════════════════════════
     // PRIVATE: DREAM EXECUTION
@@ -325,6 +376,10 @@ export class DreamEngineIntegrator {
         // Add epilepsy mode if enabled
         if (context.epilepsyMode) {
             builder.withEpilepsyMode(true);
+        }
+        // 🧬 WAVE 2093 COG-3: Spectral Context
+        if (context.spectralContext) {
+            builder.withSpectral(context.spectralContext);
         }
         // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR
         // El Diversity Engine NECESITA el historial de efectos recientes para penalizar repeticiones

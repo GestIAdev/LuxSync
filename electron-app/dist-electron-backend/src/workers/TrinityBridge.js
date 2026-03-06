@@ -661,7 +661,10 @@ const VIBE_PROFILES = {
         dropCooldown: 15000,
         dropEnergyKillThreshold: 0.55,
         buildupDeltaThreshold: 0.03,
-        breakdownEnergyThreshold: 0.35,
+        // 🩸 WAVE 2099: Was 0.35 — techno with constant bass has wE ~0.30-0.40 normally.
+        // With 0.35, any small dip triggered breakdown and the section got trapped forever.
+        // At 0.25, only real energy collapses (intro, bridge, silence) trigger breakdown.
+        breakdownEnergyThreshold: 0.25,
         frequencyWeights: { bass: 0.50, midBass: 0.25, mid: 0.15, treble: 0.10 },
     },
     'latino': {
@@ -705,6 +708,13 @@ const VIBE_PROFILES = {
         frequencyWeights: { bass: 0.25, midBass: 0.25, mid: 0.25, treble: 0.25 },
     },
 };
+// 🩸 WAVE 2097: VIBE ALIASES — Map UI vibe IDs to their Worker profile equivalents
+// The UI uses 'techno-club', 'fiesta-latina' etc but Worker profiles use 'techno', 'latino'.
+// Without these aliases, setVibe('techno-club') falls to DEFAULT_PROFILE silently.
+VIBE_PROFILES['techno-club'] = VIBE_PROFILES['techno'];
+VIBE_PROFILES['fiesta-latina'] = VIBE_PROFILES['latino'];
+VIBE_PROFILES['pop-rock'] = VIBE_PROFILES['rock'];
+VIBE_PROFILES['chill-lounge'] = VIBE_PROFILES['chill'];
 // Default profile (techno-compatible for backwards compatibility)
 const DEFAULT_PROFILE = VIBE_PROFILES['techno'];
 export class SimpleSectionTracker {
@@ -718,6 +728,11 @@ export class SimpleSectionTracker {
         this.dropStartTime = 0;
         this.lastDropEndTime = 0;
         this.frameCount = 0;
+        // 🩸 WAVE 2098: SECTION HYSTERESIS — Prevent breakdown ping-pong
+        // After entering a section, it must stay for at least MIN_FRAMES_IN_SECTION
+        // before ANY transition can happen. This kills the breakdown→verse→breakdown cycle.
+        this.framesSinceTransition = 0;
+        this.MIN_FRAMES_IN_SECTION = 45; // ~1.5s at 30fps — minimum stay
         // 🎯 WAVE 289.5: Vibe profile
         this.activeVibeId = 'techno';
         this.profile = DEFAULT_PROFILE;
@@ -733,6 +748,7 @@ export class SimpleSectionTracker {
     }
     analyze(audio, rhythm) {
         this.frameCount++;
+        this.framesSinceTransition++;
         const now = Date.now();
         const p = this.profile;
         // Acumular historial
@@ -745,13 +761,33 @@ export class SimpleSectionTracker {
         if (audio.onBeat) {
             this.beatsSinceChange++;
         }
+        // 🩸 WAVE 2097: FRAME-BASED FALLBACK — Prevent section starvation
+        // If onBeat never fires (GOD EAR transient detection inactive), beatsSinceChange
+        // never increments and the tracker gets STUCK in breakdown/buildup forever.
+        // Estimate beats from frames: ~60fps, 120bpm = 2 beats/sec = 1 beat per 30 frames.
+        // Increment every 30 frames as a fallback when onBeat hasn't fired.
+        if (!audio.onBeat && this.frameCount % 30 === 0) {
+            this.beatsSinceChange++;
+        }
         // === MÉTRICAS CLAVE ===
-        const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.5;
+        // 🩸 WAVE 2100: hasKick threshold relaxed 0.5 → 0.3
+        // In the worker, kickIntensity from GodEar raw FFT is often 0.3-0.45.
+        // At 0.5 threshold, hasKick was ALWAYS false — no drop could ever detect a kick.
+        // 0.3 lets real kicks through while still filtering noise.
+        const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.3;
         // 🎯 WAVE 289.5: Calcular energía PONDERADA por perfil
-        const weightedEnergy = (audio.bass * p.frequencyWeights.bass) +
+        // 🩸 WAVE 2100: THE NORMALIZER FIX
+        // spectrum.bass/mid/treble from GodEarFFT are RAW power values (0.01-0.12).
+        // audio.volume is NORMALIZED by EnergyNormalizer (0.3-0.8 typical).
+        // With raw values, weightedEnergy ≈ 0.06 → breakdown ALWAYS wins (wE < 0.25).
+        // FIX: Use audio.volume as a FLOOR — if the normalized energy is higher than
+        // the raw weighted sum, the section tracker sees actual musical energy.
+        // This mirrors how the main thread uses frontendBass (normalized) not rawBass.
+        const rawWeightedEnergy = (audio.bass * p.frequencyWeights.bass) +
             ((audio.bass + audio.mid) * 0.5 * p.frequencyWeights.midBass) +
             (audio.mid * p.frequencyWeights.mid) +
             (audio.treble * p.frequencyWeights.treble);
+        const weightedEnergy = Math.max(rawWeightedEnergy, audio.volume * 0.85);
         // Promedios recientes vs históricos
         const recentEnergy = this.avg(this.energyHistory.slice(-16));
         const olderEnergy = this.avg(this.energyHistory.slice(0, 32));
@@ -772,32 +808,67 @@ export class SimpleSectionTracker {
                 newSection = 'verse';
                 this.lastDropEndTime = now;
                 this.beatsSinceChange = 0;
+                this.framesSinceTransition = 0;
                 if (this.frameCount % 60 === 0 || dropExpired || energyKillSwitch) {
                     console.log(`[SimpleSectionTracker] 🔴 DROP EXIT | expired=${dropExpired} | killSwitch=${energyKillSwitch} | duration=${dropDuration}ms | energy=${weightedEnergy.toFixed(2)}`);
                 }
             }
         }
         else {
+            // 🩸 WAVE 2098: HYSTERESIS GATE — Block transitions if section is too young
+            // Exception: DROP ENTER always overrides (we never want to miss a drop!)
+            const hysteresisAllows = this.framesSinceTransition >= this.MIN_FRAMES_IN_SECTION;
             // ¿Deberíamos ENTRAR en drop?
-            if (!inCooldown && bassRatio > p.dropEnergyRatio && hasKick && weightedEnergy > p.dropAbsoluteThreshold) {
+            // 🩸 WAVE 2098: Relaxed weightedEnergy condition — was > p.dropAbsoluteThreshold (0.75)
+            // In techno, weightedEnergy is often 0.30-0.60 because bass-heavy signal through
+            // weighted average gets diluted by low mid/treble. Use bassRatio as PRIMARY signal.
+            // NEW: bassRatio > threshold AND (hasKick OR high bass energy directly)
+            const highBassDirectly = audio.bass > 0.65;
+            if (!inCooldown && bassRatio > p.dropEnergyRatio && (hasKick || highBassDirectly) && weightedEnergy > 0.30) {
                 newSection = 'drop';
                 this.dropStartTime = now;
                 this.beatsSinceChange = 0;
-                console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)}`);
+                this.framesSinceTransition = 0;
+                console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)} | bass=${audio.bass.toFixed(2)} | kick=${hasKick}`);
             }
-            // BUILDUP: Energía subiendo
-            else if (energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
+            // BUILDUP: Energía subiendo (only if hysteresis allows)
+            else if (hysteresisAllows && energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
                 newSection = 'buildup';
             }
-            // BREAKDOWN: Caída de energía
-            else if (energyDelta < -0.20 && weightedEnergy < p.breakdownEnergyThreshold) {
+            // BREAKDOWN: Caída de energía REAL (only if hysteresis allows)
+            // 🩸 WAVE 2099: THE BLACK HOLE FIX — breakdown was a trap.
+            // energyDelta < -0.20 triggered on any small fluctuation (e.g., -0.21).
+            // In techno (constant bass), the weighted energy oscillates ±0.15 normally.
+            // Combined with breakdownEnergyThreshold=0.35 (which techno CONSTANTLY hits),
+            // the tracker fell into breakdown and never escaped because:
+            //   - verse requires beatsSinceChange>90 (45 seconds at 2 beats/sec!)
+            //   - buildup requires energyDelta>0.03 (steady bass doesn't rise)
+            //   - drop requires bassRatio>1.40 (stable history = ratio ~1.0)
+            //
+            // FIX: Tighten breakdown entry — only REAL energy collapses trigger it.
+            // -0.10 delta threshold means energy must DROP 10% between recent and older windows.
+            // AND wE must be below 0.25 (truly quiet, not just bass-steady techno at 0.30-0.40).
+            else if (hysteresisAllows && energyDelta < -0.10 && weightedEnergy < p.breakdownEnergyThreshold) {
                 newSection = 'breakdown';
                 this.beatsSinceChange = 0;
             }
-            // VERSE: Estado neutral después de 90 frames
-            else if (this.beatsSinceChange > 90) {
+            // VERSE: Estado neutral — recovery from any section that's been stuck
+            // 🩸 WAVE 2099: Reduced from 90 to 32 beats.
+            // At ~2 beats/sec (fallback counter), 90 beats = 45 seconds stuck in breakdown.
+            // 32 beats = ~16 seconds — still long enough to be musically meaningful,
+            // but short enough to recover from the breakdown black hole.
+            else if (hysteresisAllows && this.beatsSinceChange > 32) {
                 newSection = 'verse';
             }
+        }
+        // 🩸 WAVE 2097: Log section transitions (not just drops)
+        if (newSection !== this.currentSection) {
+            this.framesSinceTransition = 0; // 🩸 WAVE 2098: Reset hysteresis on transition
+            console.log(`[SimpleSectionTracker] 📍 ${this.currentSection} → ${newSection} | bassR=${bassRatio.toFixed(2)} wE=${weightedEnergy.toFixed(2)} ΔE=${energyDelta.toFixed(3)} kick=${hasKick}`);
+        }
+        // 🩸 WAVE 2097: Periodic diagnostic (every ~5 seconds)
+        if (this.frameCount % 300 === 0) {
+            console.log(`[SimpleSectionTracker] 📊 section=${this.currentSection} | bassR=${bassRatio.toFixed(2)}/${p.dropEnergyRatio} wE=${weightedEnergy.toFixed(2)}/${p.dropAbsoluteThreshold} kick=${hasKick} cool=${inCooldown}`);
         }
         this.currentSection = newSection;
         const transitionLikelihood = Math.min(1, Math.abs(energyDelta) * 2 +
@@ -821,6 +892,7 @@ export class SimpleSectionTracker {
         this.beatsSinceChange = 0;
         this.dropStartTime = 0;
         this.lastDropEndTime = 0;
+        this.framesSinceTransition = 0; // 🩸 WAVE 2098
     }
 }
 // �️ WAVE 61: SimpleBinaryBias ELIMINADO

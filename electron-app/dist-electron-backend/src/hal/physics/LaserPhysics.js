@@ -59,8 +59,7 @@ export class LaserPhysics {
         this.wavePhase = 0;
         this.frameCount = 0;
         this.safetyConfig = { ...this.DEFAULT_SAFETY, ...safetyConfig };
-        console.log('[LaserPhysics] 🟢 WAVE 1031: Photon Weaver initialized');
-        console.log(`[LaserPhysics] 👁️🚫 RETINA GUARD: horizonLimit=${this.safetyConfig.horizonLimit}`);
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════
     // API PÚBLICA

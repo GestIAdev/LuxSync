@@ -20,7 +20,7 @@ export {
 // Pre-defined profiles
 BEAM_2R_PROFILE, LED_PAR_RGB_PROFILE, LED_WASH_PROFILE, LED_STROBE_PROFILE, 
 // API
-getProfile, getProfileByModel, needsColorTranslation, isMechanicalFixture, registerProfile, listProfiles, } from './FixtureProfiles';
+getProfile, getProfileByModel, needsColorTranslation, isMechanicalFixture, registerProfile, listProfiles, generateProfileFromDefinition, } from './FixtureProfiles';
 // ═══════════════════════════════════════════════════════════════════════════
 // TRANSLATOR - EL INTÉRPRETE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,5 +76,4 @@ export function translateColor(fixtureId, targetRGB, fixtureName, profileId, cur
         delegateToStrobe: safetyResult.delegateToStrobe,
     };
 }
-console.log('[HAL Translation] 🎨 WAVE 1000: HAL Genesis module loaded');
-console.log('[HAL Translation]    Components: Profiles ✓ Translator ✓ SafetyLayer ✓');
+// WAVE 2098: Boot silence

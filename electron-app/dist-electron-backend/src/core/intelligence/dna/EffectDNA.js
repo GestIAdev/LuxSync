@@ -89,7 +89,7 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 0.95, // 🔥 El martillo más brutal
         chaos: 0.30, // Ordenado: flashes predecibles
         organicity: 0.05, // 100% máquina
-        textureAffinity: 'dirty', // 🎨 Solo con harshness
+        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. Un strobe ES el impacto, no necesita harshness del audio
     },
     'acid_sweep': {
         aggression: 0.70, // Agresivo pero más fluido
@@ -108,7 +108,7 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 0.90, // 🔫 Ametralladora de PARs
         chaos: 0.40, // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
         organicity: 0.10, // Mecánico puro
-        textureAffinity: 'dirty', // 🎨 Industrial = dirty
+        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. La ametralladora dispara en cualquier contexto
     },
     'sky_saw': {
         aggression: 0.80, // Sierra cortante
@@ -131,13 +131,13 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 0.60, // ⚡ Golpe seco digital - tartamudeo de código
         chaos: 0.55, // 🔧 WAVE 1003.10: 0.85→0.55 (caótico pero competitivo con target ~0.30)
         organicity: 0.00, // 100% máquina - cero orgánico
-        textureAffinity: 'dirty', // 🎨 Glitch = ruido digital
+        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. El glitch digital funciona con cualquier textura
     },
     'seismic_snap': {
         aggression: 0.70, // 💥 Golpe físico de luz - obturador gigante
         chaos: 0.20, // Ordenado - SNAP preciso
         organicity: 0.10, // Casi 100% máquina
-        textureAffinity: 'dirty', // 🎨 Impacto mecánico
+        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. Un flash sísmico no necesita que el audio sea dirty
     },
     'digital_rain': {
         aggression: 0.35, // 🌧️ WAVE 977: 0.20 → 0.35 (más presencia)
@@ -188,7 +188,7 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 1.00, // ☢️ MÁXIMA - LA BESTIA
         chaos: 1.00, // MÁXIMO - Impredecible strobe
         organicity: 0.00, // 100% máquina apocalíptica
-        textureAffinity: 'dirty', // 🎨 Solo con harshness extremo
+        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. La Bestia despierta cuando ella quiere, no cuando el audio suena sucio
     },
     // ═══════════════════════════════════════════════════════════════
     //  FIESTA LATINA ARSENAL - THE LATINO LADDER (WAVE 1004.4 + 1005.x)
@@ -452,11 +452,16 @@ const SECTION_ORGANICITY = {
 // ═══════════════════════════════════════════════════════════════════════════
 /**
  * Efectos "comodín" por categoría - Usados cuando hay Middle Void
+ * 🔧 WAVE 2092.1 (COG-4): Añadidos pop-rock y chill-lounge
+ * Antes: Solo 3 categorías → pop-rock y chill usaban cyber_dualism (techno) como fallback global
+ * Ahora: 5 categorías → cada vibe tiene un wildcard coherente con su identidad sonora
  */
 export const WILDCARD_EFFECTS = {
     'techno-industrial': 'cyber_dualism', // Moderado: A=0.55, C=0.50, O=0.45
-    'techno-atmospheric': 'digital_rain', // Moderado: A=0.20, C=0.65, O=0.40
-    'latino-organic': 'clave_rhythm', // Moderado: A=0.50, C=0.35, O=0.70
+    'techno-atmospheric': 'digital_rain', // Moderado: A=0.35, C=0.65, O=0.40
+    'latino-organic': 'clave_rhythm', // Moderado: A=0.48, C=0.20, O=0.70
+    'pop-rock': 'spotlight_pulse', // 🔧 WAVE 2092.1: A=0.50, C=0.20, O=0.40 — pulso emotivo, no techno
+    'chill-lounge': 'deep_current_pulse', // 🔧 WAVE 2092.1: A=0.10, C=0.05, O=0.95 — corriente oceánica zen
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // DNA ANALYZER CLASS
@@ -485,7 +490,12 @@ export class DNAAnalyzer {
             confidence: 0.5
         };
         /** Alpha para EMA (0.15=lento, 0.5=rápido) */
-        this.SMOOTHING_ALPHA = 0.20; // 20% frame actual, 80% histórico
+        // 🩸 WAVE 2107: 0.20→0.30 — More reactive to section/energy changes.
+        // Old α=0.20 (80% history) made target DNA glacial — section changes took ~15 frames
+        // to shift the target significantly. acid_sweep kept winning because target barely moved.
+        // New α=0.30 (70% history) still prevents jitter but responds to musical structure.
+        // Drop/breakdown SNAP conditions override anyway, this only affects gradual transitions.
+        this.SMOOTHING_ALPHA = 0.30;
         /** Threshold para detectar "Middle Void" */
         this.MIDDLE_VOID_THRESHOLD = 0.60;
         /** Máxima distancia posible en cubo unitario 3D = √3 ≈ 1.732 */
@@ -504,13 +514,23 @@ export class DNAAnalyzer {
          * Los efectos oceánicos tienen cooldowns de 45-90s, una ventana de 10s
          * era demasiado larga y penalizaba injustamente la intensidad
          */
-        this.USAGE_WINDOW_MS = 5000;
+        // 🩸 WAVE 2095.3: 45s → 120s
+        // Con cooldowns de 22s, acid_sweep se dispara ~2 veces en 45s.
+        // Con DIVERSITY_FACTORS [1.0, 0.8, 0.5, 0.2], 2 usos = 0.5x.
+        // Pero 0.5x × base_relevance_alta sigue ganando a otros efectos con 1.0x × base_baja.
+        // Con 120s, acid_sweep acumula 3-5 usos → 0.2x factor → pierde contra cualquiera.
+        // Esto FUERZA rotación real: cada 120s el slate se limpia y acid_sweep vuelve a competir.
+        this.USAGE_WINDOW_MS = 120000;
         /**
          * Factores de diversidad por uso repetido
-         * 🌊 WAVE 1073.4: Más generosos [1.0, 0.8, 0.5, 0.2]
-         * Antes: [1.0, 0.7, 0.4, 0.1] - muy agresivo
+         * 🩸 WAVE 2107: Steeper penalty curve [1.0, 0.7, 0.35, 0.15]
+         * Old: [1.0, 0.8, 0.5, 0.2] — acid_sweep at 2 uses still had 0.5× relevance.
+         * With base relevance 0.62, that's 0.31 — still competitive vs alternatives at 0.25.
+         * New: 2nd use = 0.7× (mild), 3rd = 0.35× (harsh), 4th = 0.15× (nuclear).
+         * acid_sweep at 2 uses: 0.62×0.35=0.22 — now LOSES to any fresh competitor.
+         * Combined with USAGE_WINDOW_MS=120s, this FORCES real rotation within 2 minutes.
          */
-        this.DIVERSITY_FACTORS = [1.0, 0.8, 0.5, 0.2];
+        this.DIVERSITY_FACTORS = [1.0, 0.70, 0.35, 0.15];
         // 🔧 WAVE 1003.15: Silenciado para reducir spam de logs
         // console.log('[DNA_ANALYZER] 🧬 Initialized')
     }
@@ -653,23 +673,10 @@ export class DNAAnalyzer {
             distance: this.calculateDistance(effectId, targetDNA)
         }))
             .sort((a, b) => b.relevance - a.relevance);
-        // 🚨 TRAMPA #2: Middle Void detection
-        const bestRelevance = ranked[0]?.relevance ?? 0;
-        if (bestRelevance < this.MIDDLE_VOID_THRESHOLD) {
-            console.warn(`[DNA_ANALYZER] ⚠️ MIDDLE VOID: Best relevance=${bestRelevance.toFixed(2)} < ${this.MIDDLE_VOID_THRESHOLD}`);
-            console.warn(`[DNA_ANALYZER] 🎯 Target: A=${targetDNA.aggression.toFixed(2)}, C=${targetDNA.chaos.toFixed(2)}, O=${targetDNA.organicity.toFixed(2)}`);
-            // Determinar wildcard según categoría
-            const wildcardId = category
-                ? WILDCARD_EFFECTS[category]
-                : 'cyber_dualism'; // Default global wildcard
-            console.warn(`[DNA_ANALYZER] 🃏 Forcing WILDCARD: ${wildcardId}`);
-            // Forzar wildcard al top si existe
-            const wildcardIndex = ranked.findIndex(r => r.effectId === wildcardId);
-            if (wildcardIndex > 0) {
-                const wildcard = ranked.splice(wildcardIndex, 1)[0];
-                ranked.unshift(wildcard);
-            }
-        }
+        // 🚨 TRAMPA #2: Middle Void detection REMOVED (WAVE 2102)
+        // El "Middle Void" forzaba 'cyber_dualism' bloqueando la diversidad
+        // cuando no había match perfecto. Dejamos que la IA elija el mejor disponible orgánicamente.
+        // (Código de Middle Void purgado a petición del Cónclave)
         return ranked;
     }
     /**
@@ -708,18 +715,23 @@ export class DNAAnalyzer {
         // 🔥 AGGRESSION: Derivada de ENERGÍA + PERCUSIÓN + ESPECTRO
         // ═══════════════════════════════════════════════════════════════
         //
-        // Fórmula:
-        // A = (energy * 0.40) + (kickIntensity * 0.25) + (harshness * 0.20) + (bassBoost * 0.15)
+        // 🔧 WAVE 2092.1 (COG-1): Pesos NORMALIZADOS a 1.0
+        // Antes: 0.40 + 0.25 + 0.20 + 0.30 = 1.15 (excedía 1.0, clamp perdía resolución)
+        // Ahora: 0.348 + 0.217 + 0.174 + 0.261 = 1.000 (resolución completa del rango)
+        // Ratio original preservado: energy sigue siendo el mayor contribuyente
+        //
+        // Fórmula normalizada:
+        // A = (energy × 0.348) + (kickIntensity × 0.217) + (harshness × 0.174) + (bassBoost × 0.261)
         const energy = context.energy;
         const kickIntensity = context.rhythm?.drums?.kickIntensity ?? 0;
         const harshness = audioMetrics.harshness ?? 0;
         // Bass ratio: Si bass > mid, más agresión
         const bassRatio = audioMetrics.bass / Math.max(0.1, audioMetrics.mid);
         const bassBoost = this.clamp((bassRatio - 1) * 0.5, 0, 0.5); // Max +0.5 si bass >> mid
-        const aggression = this.clamp((energy * 0.40) +
-            (kickIntensity * 0.25) +
-            (harshness * 0.20) +
-            (bassBoost * 0.30), 0, 1);
+        const aggression = this.clamp((energy * 0.348) +
+            (kickIntensity * 0.217) +
+            (harshness * 0.174) +
+            (bassBoost * 0.261), 0, 1);
         // ═══════════════════════════════════════════════════════════════
         // 🌀 CHAOS: Derivada de SYNCOPATION + SPECTRAL FLATNESS + FILLS
         // ═══════════════════════════════════════════════════════════════
@@ -768,6 +780,8 @@ export class DNAAnalyzer {
     }
     /**
      * Determina la categoría de un efecto basándose en su ID
+     * 🔧 WAVE 2092.1 (COG-4): Añadidas categorías pop-rock y chill-lounge
+     * para que rankEffects() resuelva wildcards correctamente en Middle Void
      */
     getEffectCategory(effectId) {
         // Techno-industrial
@@ -776,13 +790,25 @@ export class DNAAnalyzer {
         }
         // Techno-atmospheric
         // 🔪 WAVE 986: static_pulse PURGED, binary_glitch + seismic_snap ADDED
-        if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap'].includes(effectId)) {
+        if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap',
+            'ambient_strobe', 'sonar_ping', 'fiber_optics', 'core_meltdown', 'abyssal_rise'].includes(effectId)) {
             return 'techno-atmospheric';
         }
         // Latino-organic
         if (['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath',
-            'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'].includes(effectId)) {
+            'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino',
+            'amazon_mist', 'glitch_guaguanco', 'machete_spark', 'latina_meltdown'].includes(effectId)) {
             return 'latino-organic';
+        }
+        // 🔧 WAVE 2092.1: Pop-Rock
+        if (['thunder_struck', 'liquid_solo', 'amp_heat', 'arena_sweep', 'feedback_storm',
+            'power_chord', 'stage_wash', 'spotlight_pulse'].includes(effectId)) {
+            return 'pop-rock';
+        }
+        // 🔧 WAVE 2092.1: Chill-Lounge
+        if (['solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+            'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'].includes(effectId)) {
+            return 'chill-lounge';
         }
         return 'unknown';
     }

@@ -24,7 +24,7 @@ export class EventRouter extends EventEmitter {
         this.isRunning = false;
         this.frameCount = 0;
         this.lastLogTime = 0;
-        console.log('[EventRouter] 🔄 Initialized (WAVE 240)');
+        // WAVE 2098: Boot silence
     }
     /**
      * Conecta los tres módulos principales
@@ -33,7 +33,7 @@ export class EventRouter extends EventEmitter {
         this.brain = brain;
         this.engine = engine;
         this.hal = hal;
-        console.log('[EventRouter] 🔗 Connecting modules...');
+        // WAVE 2098: Boot silence
         // ═══════════════════════════════════════════════════════════════════════
         // BRAIN → ENGINE: MusicalContext
         // ═══════════════════════════════════════════════════════════════════════
@@ -85,10 +85,7 @@ export class EventRouter extends EventEmitter {
             // El HAL ya envía directamente, esto es para observadores externos
             // (visualizadores, logging, etc.)
         });
-        console.log('[EventRouter] ✅ All modules connected');
-        console.log('[EventRouter]    Brain  → [context-update] → Engine');
-        console.log('[EventRouter]    Engine → [lighting-intent] → HAL');
-        console.log('[EventRouter]    HAL    → [dmx-output] → Hardware');
+        // WAVE 2098: Boot silence
     }
     /**
      * Inicia el routing de eventos

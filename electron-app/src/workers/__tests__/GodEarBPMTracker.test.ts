@@ -701,6 +701,205 @@ describe('🔥 WAVE 2122: GodEarBPMTracker Autocorrelation — The 6-Genre Cruci
   })
 
   // ─────────────────────────────────────────────────────────────────────
+  // TEST 10.5: WAVE 2127 — ONSET ENVELOPE INTEGRATION TEST
+  // ─────────────────────────────────────────────────────────────────────
+  // This test simulates the FULL senses.ts pipeline: raw energy → spectral
+  // flux → onset envelope → tracker. This is the test that would have
+  // FAILED before WAVE 2127 (decay 0.85 not frame-rate-compensated).
+  //
+  // The onset envelope must produce a signal whose autocorrelation
+  // peaks at 128 BPM, not at ~94 BPM (the tresillo sub-harmonic).
+  // ─────────────────────────────────────────────────────────────────────
+  describe('🦈 TEST 10.5: WAVE 2127 — Onset Envelope Integration', () => {
+    const PRODUCTION_FRAME_MS = 46.4
+
+    /**
+     * Simulate the FULL senses.ts onset envelope pipeline.
+     * Reproduces the exact code path:
+     *   rawBassEnergy → spectral flux (positive delta) → ×100 amplifier → leaky integrator
+     *
+     * WAVE 2127: Decay is frame-rate-compensated.
+     *   decayPerFrame = 0.85^(frameDurationMs / 21)
+     */
+    function simulateOnsetPipeline(
+      rawFrames: SyntheticFrame[],
+      frameDurationMs: number
+    ): SyntheticFrame[] {
+      const REFERENCE_DECAY = 0.85
+      const REFERENCE_FRAME_MS = 21
+      const decayPerFrame = Math.pow(REFERENCE_DECAY, frameDurationMs / REFERENCE_FRAME_MS)
+
+      let prevEnergy = 0
+      let onsetEnvelope = 0
+      const outputFrames: SyntheticFrame[] = []
+
+      for (const frame of rawFrames) {
+        // Step 1: Spectral flux (positive delta only)
+        const delta = frame.energy - prevEnergy
+        const flux = Math.max(0, delta)
+        prevEnergy = frame.energy
+
+        // Step 2: Amplify (×100)
+        const amplified = flux * 100.0
+
+        // Step 3: Leaky integrator with frame-rate-compensated decay
+        onsetEnvelope = Math.max(amplified, onsetEnvelope * decayPerFrame)
+
+        outputFrames.push({
+          energy: onsetEnvelope,
+          timestamp: frame.timestamp,
+          isKickFrame: frame.isKickFrame,
+        })
+      }
+
+      return outputFrames
+    }
+
+    it('should detect 128 BPM through onset envelope at production frame rate', () => {
+      const prodTracker = new GodEarBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+
+      // Generate raw energy signal at production frame rate
+      const totalFrames = Math.ceil(30000 / PRODUCTION_FRAME_MS) // 30 seconds
+      const beatIntervalMs = 60000 / 128
+      const rawFrames: SyntheticFrame[] = []
+      let kickCount = 0
+
+      for (let i = 0; i < totalFrames; i++) {
+        const timestamp = i * PRODUCTION_FRAME_MS
+        const noise = 0.12 + 0.03 * Math.sin(i * 0.1) * Math.sin(i * 0.037)
+        const timeSinceKick = timestamp % beatIntervalMs
+        let energy = noise
+
+        if (timeSinceKick < PRODUCTION_FRAME_MS) {
+          energy = 0.80
+          kickCount++
+        } else if (timeSinceKick < PRODUCTION_FRAME_MS * 2) {
+          energy = 0.80 * 0.45
+        } else if (timeSinceKick < PRODUCTION_FRAME_MS * 3) {
+          energy = 0.80 * 0.20
+        }
+
+        rawFrames.push({ energy, timestamp, isKickFrame: timeSinceKick < PRODUCTION_FRAME_MS })
+      }
+
+      // Apply onset envelope pipeline (same as senses.ts)
+      const envelopedFrames = simulateOnsetPipeline(rawFrames, PRODUCTION_FRAME_MS)
+
+      // Feed to tracker
+      const results: GodEarBPMResult[] = []
+      for (const frame of envelopedFrames) {
+        results.push(prodTracker.process(frame.energy, false, frame.timestamp))
+      }
+
+      const finalResult = results[results.length - 1]
+      console.log(
+        `🦈 ONSET ENVELOPE @ 46.4ms: detected=${finalResult.bpm}bpm ` +
+        `conf=${finalResult.confidence.toFixed(3)} (target=128)`
+      )
+
+      // MUST detect 128 BPM, NOT ~94 BPM
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(123)
+      expect(finalResult.bpm).toBeLessThanOrEqual(133)
+
+      // MUST NOT be the tresillo sub-harmonic
+      expect(finalResult.bpm).toBeGreaterThan(110)
+    })
+
+    it('should detect 128 BPM through onset envelope at test frame rate (regression)', () => {
+      const testTracker = new GodEarBPMTracker(44100, 2048, FRAME_DURATION_MS)
+
+      // Generate raw energy signal at test frame rate
+      const totalFrames = Math.ceil(30000 / FRAME_DURATION_MS)
+      const beatIntervalMs = 60000 / 128
+      const rawFrames: SyntheticFrame[] = []
+
+      for (let i = 0; i < totalFrames; i++) {
+        const timestamp = i * FRAME_DURATION_MS
+        const noise = 0.12 + 0.03 * Math.sin(i * 0.1) * Math.sin(i * 0.037)
+        const timeSinceKick = timestamp % beatIntervalMs
+        let energy = noise
+
+        if (timeSinceKick < FRAME_DURATION_MS) {
+          energy = 0.80
+        } else if (timeSinceKick < FRAME_DURATION_MS * 2) {
+          energy = 0.80 * 0.45
+        } else if (timeSinceKick < FRAME_DURATION_MS * 3) {
+          energy = 0.80 * 0.20
+        }
+
+        rawFrames.push({ energy, timestamp, isKickFrame: timeSinceKick < FRAME_DURATION_MS })
+      }
+
+      // Apply onset envelope pipeline at TEST frame rate
+      const envelopedFrames = simulateOnsetPipeline(rawFrames, FRAME_DURATION_MS)
+
+      const results: GodEarBPMResult[] = []
+      for (const frame of envelopedFrames) {
+        results.push(testTracker.process(frame.energy, false, frame.timestamp))
+      }
+
+      const finalResult = results[results.length - 1]
+      console.log(
+        `🦈 ONSET ENVELOPE @ 21ms: detected=${finalResult.bpm}bpm ` +
+        `conf=${finalResult.confidence.toFixed(3)} (target=128)`
+      )
+
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(123)
+      expect(finalResult.bpm).toBeLessThanOrEqual(133)
+    })
+
+    it('should detect 126 BPM with Brejcha offbeats through onset envelope', () => {
+      const prodTracker = new GodEarBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+
+      const totalFrames = Math.ceil(30000 / PRODUCTION_FRAME_MS)
+      const beatIntervalMs = 60000 / 126
+      const halfBeatMs = beatIntervalMs / 2
+      const rawFrames: SyntheticFrame[] = []
+
+      for (let i = 0; i < totalFrames; i++) {
+        const timestamp = i * PRODUCTION_FRAME_MS
+        const noise = 0.12 + 0.03 * Math.sin(i * 0.1) * Math.sin(i * 0.037)
+        const timeSinceKick = timestamp % beatIntervalMs
+        let energy = noise
+
+        // Kick
+        if (timeSinceKick < PRODUCTION_FRAME_MS) {
+          energy = 0.80
+        } else if (timeSinceKick < PRODUCTION_FRAME_MS * 2) {
+          energy = 0.80 * 0.45
+        }
+
+        // Brejcha offbeat (energy 0.55 at half-beat)
+        const timeSinceOffbeat = (timestamp + halfBeatMs) % beatIntervalMs
+        if (timeSinceOffbeat < PRODUCTION_FRAME_MS) {
+          energy = Math.max(energy, 0.55)
+        } else if (timeSinceOffbeat < PRODUCTION_FRAME_MS * 2) {
+          energy = Math.max(energy, 0.55 * 0.45)
+        }
+
+        rawFrames.push({ energy, timestamp, isKickFrame: timeSinceKick < PRODUCTION_FRAME_MS })
+      }
+
+      const envelopedFrames = simulateOnsetPipeline(rawFrames, PRODUCTION_FRAME_MS)
+
+      const results: GodEarBPMResult[] = []
+      for (const frame of envelopedFrames) {
+        results.push(prodTracker.process(frame.energy, false, frame.timestamp))
+      }
+
+      const finalResult = results[results.length - 1]
+      console.log(
+        `🦈 ONSET ENVELOPE BREJCHA @ 46.4ms: detected=${finalResult.bpm}bpm ` +
+        `conf=${finalResult.confidence.toFixed(3)} (target=126)`
+      )
+
+      // The tracker should detect 126 BPM, even with strong offbeats
+      expect(finalResult.bpm).toBeGreaterThanOrEqual(121)
+      expect(finalResult.bpm).toBeLessThanOrEqual(131)
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
   // TEST 10: WAVE 2125 — TIME WARP PROTECTION
   // ─────────────────────────────────────────────────────────────────────
   describe('🕳️ TEST 10: WAVE 2125 — Time Warp Protection', () => {

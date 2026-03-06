@@ -46,6 +46,8 @@ export var MessageType;
     MessageType["DISABLE_BRAIN"] = "disable_brain";
     // 🎛️ WAVE 60: Vibe Control
     MessageType["SET_VIBE"] = "set_vibe";
+    // 💓 WAVE 2096.1: PACEMAKER BRIDGE — BPM back to Worker
+    MessageType["SET_BPM"] = "set_bpm";
     // 🔌 WAVE 63.95: System Power Control
     MessageType["SYSTEM_SLEEP"] = "system_sleep";
     MessageType["SYSTEM_WAKE"] = "system_wake";

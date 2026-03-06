@@ -68,10 +68,15 @@ import { MoodController } from '../../mood';
  */
 const MEMBERSHIP_PARAMS = {
     // Energy (0-1 input)
+    // 🩸 WAVE 2107: FUZZY RESURRECTION REAL
+    // Brejcha-style techno oscillates E=0.3-0.6. Old edge 0.65 meant energy.high=0 ALWAYS.
+    // 5 of 7 STRIKE rules use energy.high → Fuzzy was mathematically DEAD.
+    // New edge 0.50 lets energy.high activate from E=0.50 upward.
+    // This doesn't make Fuzzy trigger-happy — suppression rules + defuzzify still gate it.
     energy: {
         low: { center: 0.0, spread: 0.35 }, // Pico en 0, cae hasta 0.35
         medium: { center: 0.5, spread: 0.30 }, // Pico en 0.5, ±0.30
-        high: { center: 1.0, spread: 0.35 }, // Pico en 1, desde 0.65
+        high: { center: 1.0, spread: 0.50 }, // 🩸 WAVE 2107: 0.35→0.50 spread. Activa desde E=0.50
     },
     // Z-Score (calibrado con datos reales)
     zScore: {
@@ -134,16 +139,26 @@ function rightTrapezoid(value, edge, spread) {
  */
 function fuzzify(input) {
     // === ENERGY ===
+    // 🩸 WAVE 2107: energy.high edge moved from 0.65 to 0.50 (spread 0.50)
+    // At E=0.59: old=rightTrapezoid(0.59,0.65,0.35)=0. New=rightTrapezoid(0.59,0.50,0.50)=0.18
+    // At E=0.70: old=0.14. New=0.40. At E=0.85: old=0.57. New=0.70.
+    // Fuzzy can now FEEL energy in Brejcha's 0.4-0.7 range instead of being blind.
     const energy = {
         low: leftTrapezoid(input.energy, 0.3, 0.3),
         medium: triangularMembership(input.energy, 0.5, 0.35),
-        high: rightTrapezoid(input.energy, 0.65, 0.35),
+        high: rightTrapezoid(input.energy, 0.50, 0.50), // 🩸 WAVE 2107: was (0.65, 0.35)
     };
     // === Z-SCORE ===
+    // 🩸 WAVE 2110: Notable curve smoothed. Old notable at Z=1.0σ = 0.40 (too low for strike gate).
+    //   Old formula: Z<1.5 → Z/2.5. At Z=1.0 → 0.40. CLIFF at Z=1.5 → jumps to 1.0.
+    //   New formula: Z<1.5 → Z/2.0. At Z=1.0 → 0.50. Smoother ramp, no cliff.
+    //   This lets Pure_Energy_Strike activate meaningfully from Z≥0.8σ instead of Z≥1.5σ.
+    //   At Z=0.5σ: 0.25 (mild gate). At Z=1.0σ: 0.50 (moderate gate). At Z=1.5σ: 0.75 → 1.0.
+    //   The defuzzify threshold (>0.25) + confidence mapping still prevent spam.
     const absZ = Math.abs(input.zScore);
     const zScore = {
         normal: absZ < 1.5 ? 1 - (absZ / 1.5) * 0.5 : Math.max(0, 1 - (absZ - 1.0)),
-        notable: absZ < 1.5 ? absZ / 2.5 : absZ >= 2.5 ? Math.max(0, 1 - (absZ - 2.5) / 1.0) : 1,
+        notable: absZ < 1.5 ? absZ / 2.0 : absZ >= 2.5 ? Math.max(0, 1 - (absZ - 2.5) / 1.0) : 1, // 🩸 WAVE 2110: /2.5→/2.0
         epic: absZ < 2.5 ? Math.max(0, (absZ - 1.5) / 1.0) : Math.min(1, 0.5 + (absZ - 2.5) * 0.25),
     };
     // === SECTION ===
@@ -207,6 +222,15 @@ function fuzzifyEnergyZone(energyContext) {
 }
 /**
  * Fuzzifica el tipo de sección en quiet/building/peak
+ *
+ * 🩸 WAVE 2100: breakdown REBALANCED
+ * Before: breakdown = { quiet: 0.8, building: 0.2, peak: 0.0 }
+ * This made Fuzzy treat breakdown as near-silence, which in techno is WRONG.
+ * Techno breakdowns still have bass/energy — they're tension-builders, not silences.
+ * All STRIKE rules use section.peak via Math.min() — with peak=0.0, strike=0.0 ALWAYS.
+ * FIX: breakdown = { quiet: 0.3, building: 0.5, peak: 0.2 }
+ * This lets breakdown moments still trigger effects when energy/Z-score/hunt are high.
+ * True silence is handled by EnergyZone suppression rules (weight 1.5).
  */
 function fuzzifySection(sectionType) {
     // Mappeo de secciones a energía narrativa
@@ -217,7 +241,7 @@ function fuzzifySection(sectionType) {
         'bridge': { quiet: 0.4, building: 0.6, peak: 0.2 },
         'buildup': { quiet: 0.0, building: 1.0, peak: 0.3 },
         'drop': { quiet: 0.0, building: 0.0, peak: 1.0 },
-        'breakdown': { quiet: 0.8, building: 0.2, peak: 0.0 },
+        'breakdown': { quiet: 0.3, building: 0.5, peak: 0.2 }, // 🩸 WAVE 2100: was 0.8/0.2/0.0
         'outro': { quiet: 1.0, building: 0.1, peak: 0.0 },
     };
     return sectionProfiles[sectionType] ?? { quiet: 0.5, building: 0.3, peak: 0.2 };
@@ -292,6 +316,69 @@ const FUZZY_RULES = [
         consequent: 'strike',
         weight: 0.65,
     },
+    // 🩸 WAVE 2105: FUZZY RESURRECTION — 2 new STRIKE rules independent of section.peak
+    // PROBLEM: All 5 existing STRIKE rules use section.peak via Math.min().
+    // In buildup, section.peak = 0.3. Math.min(x, 0.3) * weight = MAX 0.255.
+    // Defuzzify needs strike > 0.45. MATHEMATICALLY IMPOSSIBLE without section=drop.
+    // But SimpleSectionTracker NEVER detects drops in Brejcha-style techno
+    // (bassR=1.04 < threshold 1.4, wE=0.19 < threshold 0.75).
+    // FIX: Two new rules that can reach strike WITHOUT section=drop.
+    // They use Hunt worthiness + energy/z-score — the real signals that MATTER.
+    {
+        name: 'Hunt_Buildup_Strike',
+        // Hunt confident + energy high + building = worth a strike even without "drop" label
+        // In buildup: building=1.0, so this can reach 0.8*0.8=0.64 when hunt+energy are high
+        antecedent: (i) => i.huntScore * i.energy.high * Math.max(i.section.building, i.section.peak) * 0.8,
+        consequent: 'strike',
+        weight: 0.80,
+    },
+    {
+        name: 'Notable_Energy_Strike',
+        // Notable z-score + high energy = something big is happening, section label be damned
+        // z-score notable peaks at ~0.8 in typical techno, energy.high at ~0.7
+        // Product: 0.56 * weight 0.75 = 0.42 — combined with other activations pushes past 0.45
+        antecedent: (i) => i.zScore.notable * i.energy.high * i.energyZone.highZone,
+        consequent: 'strike',
+        weight: 0.75,
+    },
+    // 🩸 WAVE 2108→2110: STRIKE RULES — Resurrected + Rebalanced + Z-Smoothed
+    // WAVE 2108: Created Pure_Energy_Strike and Energy_Building_Strike with MAX 2 factors.
+    // WAVE 2109: LOG EVIDENCE (post-2108): 16 FUZZY STRIKE events, but too aggressive.
+    //   FIX 2109: Added Z-Score gate. Energy alone isn't enough — need ANOMALOUS energy.
+    // WAVE 2110: LOG EVIDENCE (post-2109): 2 strikes in 80 samples, 0 pass DecisionMaker.
+    //   Fuzzy is DORMANT. Z-gate too aggressive: notable at Z=1.0σ was only 0.40 (old /2.5).
+    //   FIX 2110: Notable curve smoothed (/2.5→/2.0), gate uses (notable + epic*0.5),
+    //   Energy_Building_Strike gets highZone gate + weight boost (0.65→0.70).
+    //   This restores Fuzzy's ability to contribute without the void-scream problem.
+    {
+        name: 'Pure_Energy_Strike',
+        // 🩸 WAVE 2110: Z-gate SMOOTHED. Old gate: notable alone. At Z=1.0σ → 0.40 → too low.
+        //   Post-2109 log: 80 fuzzy samples, only 2 strikes. Fuzzy is DORMANT.
+        //   NEW: Use (notable + epic*0.5) clamped to [0,1]. This gives:
+        //     Z=0.5σ: gate=0.25. Z=1.0σ: gate=0.50. Z=1.5σ: gate=1.0. Z=3.0σ: gate=1.35→1.0
+        //   Math: E=0.72, Z=1.0σ → energy.high=0.44, highZone≈0.8, gate=0.50
+        //     0.44 * 0.8 * 0.50 * 0.55 = 0.097 × weight 0.70 = 0.068 (still needs other rules)
+        //   E=0.85, Z=1.5σ → energy.high=0.70, highZone≈1.0, gate=1.0
+        //     0.70 * 1.0 * 1.0 * 0.55 = 0.385 × weight 0.70 = 0.270 → passes defuzzify ✓
+        //   E=0.72, Z=0.3σ → gate=0.15 → 0.007 × weight = 0.005 → no chance (correct ✗)
+        antecedent: (i) => {
+            const zGate = Math.min(1, i.zScore.notable + i.zScore.epic * 0.5);
+            return i.energy.high * i.energyZone.highZone * zGate * 0.55;
+        },
+        consequent: 'strike',
+        weight: 0.70, // 🩸 WAVE 2110: 0.65→0.70. Needs slightly more weight with smoothed gate.
+    },
+    {
+        name: 'Energy_Building_Strike',
+        // 🩸 WAVE 2110: Added highZone gate. Without it, this fires in EVERY buildup with E>0.50.
+        //   The highZone factor ensures we only strike when actually in high-energy zone,
+        //   not just because section=buildup and energy barely passed 0.50.
+        //   Old: 0.58 × 1.0 × 0.65 = 0.377. New: 0.58 × 1.0 × 0.8 × 0.70 = 0.325
+        //   In low energy (E=0.45, highZone=0.1): 0.0 × 1.0 × 0.1 × 0.70 = 0.0 (correct)
+        antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * i.energyZone.highZone * 0.70,
+        consequent: 'strike',
+        weight: 0.70, // 🩸 WAVE 2110: 0.65→0.70. Compensates the highZone gate.
+    },
     // ═══════════════════════════════════════════════════════════════════════
     // PREPARE - Anticipación, algo viene
     // ═══════════════════════════════════════════════════════════════════════
@@ -336,7 +423,12 @@ const FUZZY_RULES = [
     },
     {
         name: 'Normal_State',
-        antecedent: (i) => i.zScore.normal * (1 - i.huntScore) * i.section.quiet,
+        // 🩸 WAVE 2108: Added (1 - highZone) factor. In active/intense zones, 
+        // this rule produces near-zero — it shouldn't compete with STRIKE rules
+        // when the energy context says "this is a high-energy moment".
+        // Before: 0.67 × 0.49 × 0.3 × 0.85 = 0.084 (small but beats strike's 0.023)
+        // After in highZone: 0.67 × 0.49 × 0.3 × (1-0.8) × 0.85 = 0.017 (negligible)
+        antecedent: (i) => i.zScore.normal * (1 - i.huntScore) * i.section.quiet * (1 - i.energyZone.highZone),
         consequent: 'hold',
         weight: 0.85,
     },
@@ -356,24 +448,31 @@ const FUZZY_RULES = [
     // 🔋 WAVE 932: SUPRESIÓN ENERGÉTICA
     // La consciencia de zona de energía SUPRIME triggers en zonas bajas
     // Esto evita el "Síndrome del Grito en Biblioteca"
+    //
+    // 🩸 WAVE 2107: WEIGHTS REBALANCED
+    // Old weights (1.5, 1.2, 1.0) produced hold=0.45 in ambient/gentle zones.
+    // With max strike=0.225 in buildup, defuzzify NEVER picks strike (needs >0.45 AND >hold+0.15).
+    // New weights (1.0, 0.85, 0.70) produce hold≈0.30 — still protective but beatable.
+    // True silence (lowZone=1.0) still dominates: 1.0×1.0=1.0 hold. Library is still quiet.
+    // But ambient/gentle (lowZone=0.3) now yields hold≈0.30 — Fuzzy CAN win when music warrants.
     // ═══════════════════════════════════════════════════════════════════════
     {
         name: 'Energy_Silence_Total_Suppress',
         antecedent: (i) => i.energyZone.lowZone * 1.0, // Zona de silencio = HOLD absoluto
         consequent: 'hold',
-        weight: 1.5, // Peso alto para DOMINAR otras reglas
+        weight: 1.0, // 🩸 WAVE 2107: 1.5→1.0. lowZone=1.0 (silence) still wins. lowZone=0.3 (ambient) = 0.30
     },
     {
         name: 'Energy_Valley_Suppress',
         antecedent: (i) => i.energyZone.lowZone * 0.8, // Valle también suprime
         consequent: 'hold',
-        weight: 1.2,
+        weight: 0.85, // 🩸 WAVE 2107: 1.2→0.85
     },
     {
         name: 'Energy_Low_Dampen_Action',
         antecedent: (i) => i.energyZone.lowZone * (1 - i.section.peak), // No en picos
         consequent: 'hold',
-        weight: 1.0,
+        weight: 0.70, // 🩸 WAVE 2107: 1.0→0.70
     },
 ];
 // ═══════════════════════════════════════════════════════════════════════════
@@ -445,9 +544,15 @@ function defuzzify(outputs, activations) {
         action = 'force_strike';
         dominantRule = activations.find(a => a.output === 'forceStrike')?.rule ?? 'Divine_Override';
     }
-    // 🎯 WAVE 1176: OPERATION SNIPER - Más exigente para strike
-    // Prioridad 2: Strike supera Hold significativamente (SUBIDO de 0.3 → 0.45)
-    else if (outputs.strike > outputs.hold + 0.15 && outputs.strike > 0.45) {
+    // 🩸 WAVE 2107→2109: DEFUZZIFY THRESHOLDS RECALIBRATED
+    // WAVE 2107: 0.45/+0.15 → 0.35/+0.08. Still dead — max strike in Brejcha ≈ 0.23
+    // WAVE 2108: 0.35 → 0.20, +0.08 → +0.05. Alive but too aggressive (16 strikes/100s).
+    // WAVE 2109: 0.20 → 0.25, +0.05 → +0.08. The Z-gate on Pure_Energy_Strike already
+    //   filters out normal-energy frames, so the defuzzify can be slightly more selective.
+    //   With Pure_Energy_Strike (E=0.89, Z=1.9): strike≈0.33 vs hold≈0.05 → 0.33>0.13 ✓
+    //   With Pure_Energy_Strike (E=0.79, Z=0.3): strike≈0.07 vs hold≈0.15 → FAILS ✗ (correct!)
+    // Triple safety net: defuzzify + DecisionMaker confidence + Mood threshold.
+    else if (outputs.strike > outputs.hold + 0.08 && outputs.strike > 0.25) {
         action = 'strike';
         dominantRule = activations.find(a => a.output === 'strike')?.rule ?? 'Strike_Rule';
     }
@@ -500,6 +605,19 @@ function calculateIntensity(action, outputs) {
 /**
  * Calcula la confianza basada en qué tan "clara" es la decisión
  * Alta confianza = un output domina claramente sobre los demás
+ *
+ * 🩸 WAVE 2108→2109: CONFIDENCE RECALIBRATED
+ * Old formula: (max + gap) / 2 where gap = max - secondMax across ALL 4 outputs.
+ * Problem: strike=0.38, prepare=0.30, hold=0.08 → gap=0.08, conf=(0.38+0.08)/2=0.23
+ * DecisionMaker needs conf≥0.50 → Fuzzy STRIKE ignored even when defuzzify chose it.
+ *
+ * WAVE 2108: Maps [0.20, 0.70] → [0.50, 0.90]. TOO GENEROUS.
+ *   Log evidence: strike=0.39 → conf=0.67, strike=0.50 → conf=0.82.
+ *   16 FUZZY STRIKEs in 100s, most with conf 0.55-0.90. Spammy.
+ * WAVE 2109: Maps [0.25, 0.65] → [0.50, 0.80]. Tighter.
+ *   strike=0.25 → conf=0.50 (bare minimum), strike=0.40 → conf=0.59, strike=0.55 → conf=0.69
+ *   This means only strong strikes (>0.30) actually pass DecisionMaker's 0.50 gate.
+ * For hold/prepare, use the old gap-based formula (we WANT low confidence for holds).
  */
 function calculateConfidence(outputs) {
     const values = [outputs.forceStrike, outputs.strike, outputs.prepare, outputs.hold];
@@ -507,7 +625,19 @@ function calculateConfidence(outputs) {
     const secondMax = values.filter(v => v !== max).reduce((a, b) => Math.max(a, b), 0);
     // Gap entre el primero y el segundo
     const gap = max - secondMax;
-    // Confianza = promedio del valor máximo y el gap
+    // If strike is the winner, confidence = the strike score itself (0-1 range)
+    // This means strike=0.38 → conf=0.38, which after mood (÷1.20) = 0.317
+    // Still needs to pass DecisionMaker's 0.50 check. So we scale it.
+    // 🩸 WAVE 2109: Tighter mapping. strike=0.30→conf=0.51, strike=0.45→conf=0.65
+    if (outputs.strike === max && outputs.strike > outputs.hold) {
+        // Map strike [0.25, 0.65] → confidence [0.50, 0.80]
+        const normalizedStrike = Math.min(1, Math.max(0, (outputs.strike - 0.25) / 0.40));
+        return 0.50 + normalizedStrike * 0.30;
+    }
+    if (outputs.forceStrike === max && outputs.forceStrike > 0.3) {
+        return 0.80 + outputs.forceStrike * 0.20;
+    }
+    // For prepare/hold: original formula (low confidence is fine)
     return (max + gap) / 2;
 }
 /**
@@ -644,10 +774,14 @@ export class FuzzyDecisionMaker {
         let finalAction = decision.action;
         let wasDowngraded = false;
         // 🎯 WAVE 1176: OPERATION SNIPER - Umbrales más exigentes
-        // Umbrales para cada acción (estos son los "listones")
+        // 🩸 WAVE 2108→2109: strike threshold rebalanced.
+        //   WAVE 2108: 0.60→0.40. Log showed 16 strikes, most passing easily.
+        //   WAVE 2109: 0.40→0.50. With tighter confidence mapping [0.50-0.80],
+        //   effectiveScore = conf/1.20 (BALANCED). conf=0.55→eff=0.458 → FAILS.
+        //   conf=0.62→eff=0.517 → PASSES. Only strong Fuzzy strikes survive.
         const THRESHOLDS = {
             force_strike: 0.7, // Necesitas score alto para force_strike
-            strike: 0.60, // 🎯 WAVE 1176: SUBIDO de 0.5 (Más exigente)
+            strike: 0.50, // 🩸 WAVE 2109: 0.40→0.50. Needs conf≥0.60 raw in BALANCED.
             prepare: 0.35, // 🎯 WAVE 1176: SUBIDO de 0.3 (Más exigente)
             hold: 0.0, // Hold siempre pasa
         };

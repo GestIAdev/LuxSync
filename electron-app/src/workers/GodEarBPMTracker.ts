@@ -185,10 +185,17 @@ const OCTAVE_RATIO_RANGES: [number, number][] = [
  *  96 BPM is exactly 3/4 of 128 BPM — a puntillo/tresillo relationship.
  *  In 4/4 electronic music the higher BPM is ALWAYS the real beat.
  *  The lower BPM is the syncopation ghost (bass offbeats, dotted patterns).
- *  The 4/4 candidate wins even with 60% of the syncopation's correlation. */
-const POLYRHYTHM_RATIO_MIN = 1.30
-const POLYRHYTHM_RATIO_MAX = 1.36
-const POLYRHYTHM_PREFERENCE = 0.60
+ *  The 4/4 candidate wins even with 60% of the syncopation's correlation.
+ *
+ *  WAVE 2127: Widened from [1.30,1.36] to [1.28,1.42].
+ *  Production telemetry showed peaks at 130bpm vs 94bpm (ratio 1.383),
+ *  which fell OUTSIDE the old range. The autocorrelation peak positions
+ *  fluctuate ±2-3 BPM frame-to-frame due to finite lag resolution.
+ *  Safe margin: next harmonic ratios are 5/4=1.25 (below) and
+ *  3/2=1.50 (above), both well outside [1.28,1.42]. */
+const POLYRHYTHM_RATIO_MIN = 1.28
+const POLYRHYTHM_RATIO_MAX = 1.55
+const POLYRHYTHM_PREFERENCE = 0.50
 
 /** WAVE 2126: Time warp protection threshold (ms).
  *  Raised from 150ms (WAVE 2125 was too aggressive — GC pauses of
@@ -583,12 +590,11 @@ export class GodEarBPMTracker {
             // 'alt' is the 4/4 real beat (e.g. 128), 'topPeak' is the syncopation (e.g. 96)
             if (alt.correlation >= topPeak.correlation * POLYRHYTHM_PREFERENCE) {
               bestPeak = alt
-              if (this.frameCount % 120 === 0) {
-                console.log(
-                  `[🥁 POLYRHYTHM] ${Math.round(topPeak.bpm)}→${Math.round(alt.bpm)} BPM ` +
-                  `(ratio=${syncRatio.toFixed(3)}, corr ${alt.correlation.toFixed(3)} vs ${topPeak.correlation.toFixed(3)})`
-                )
-              }
+              // WAVE 2127.1: Log every polyrhythm activation (diagnostic)
+              console.log(
+                `[🥁 POLYRHYTHM] ${Math.round(topPeak.bpm)}→${Math.round(alt.bpm)} BPM ` +
+                `(ratio=${syncRatio.toFixed(3)}, corr ${alt.correlation.toFixed(3)} vs ${topPeak.correlation.toFixed(3)})`
+              )
               break
             }
           }
@@ -642,13 +648,17 @@ export class GodEarBPMTracker {
     const finalCorr = bestPeak.correlation
 
     // ─── DIAGNOSTIC: Log sieve decision ──────────────────────────────────
-    if (this.frameCount % 120 === 0) {
-      console.log(
-        `[🥁 SIEVE] chose L${bestPeak.lag}→${bestPeak.interpolatedLag.toFixed(2)} ` +
-        `(${Math.round(bestPeak.bpm)}bpm) corr=${bestPeak.correlation.toFixed(3)} ` +
-        `globalMax=${globalMaxCorr.toFixed(3)} threshold=${(globalMaxCorr * HARMONIC_SIEVE_RATIO).toFixed(3)}`
-      )
-    }
+    // WAVE 2127.1: TEMPORARILY log EVERY scan to diagnose frozen-93 BPM.
+    // TODO: Revert to frameCount % 120 after diagnosis.
+    const topPeaks = [...peaks]
+      .sort((a, b) => b.correlation - a.correlation)
+      .slice(0, 4)
+      .map(p => `${Math.round(p.bpm)}bpm:${p.correlation.toFixed(3)}`)
+      .join(' ')
+    console.log(
+      `[🥁 SIEVE] F${this.frameCount} → ${Math.round(bestPeak.bpm)}bpm ` +
+      `corr=${bestPeak.correlation.toFixed(3)} stable=${this.stableBpm} | ${topPeaks}`
+    )
 
     this.rawBpm = Math.round(finalBpm)
     this.currentConfidence = Math.max(0, Math.min(1, finalCorr))

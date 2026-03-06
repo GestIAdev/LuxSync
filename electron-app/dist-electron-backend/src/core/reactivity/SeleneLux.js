@@ -109,7 +109,7 @@ export class SeleneLux {
             physicsApplied: 'none',
             energyOverrideActive: false, // 🧠 WAVE 450
         };
-        console.log('[SeleneLux] 🌙 Nervous System initialized (WAVE 450 + Consciousness Integration)');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // API PÚBLICA

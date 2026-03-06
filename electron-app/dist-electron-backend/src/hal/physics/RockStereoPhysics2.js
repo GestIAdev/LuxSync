@@ -122,9 +122,7 @@ export class RockStereoPhysics2 {
         this.CHANGE_THRESHOLD = 0.70; // 70% de samples deben coincidir para cambiar
         this.lastSubgenreChangeFrame = 0;
         this.MIN_FRAMES_BETWEEN_CHANGES = 600; // Mínimo 10 segundos entre cambios
-        console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1018 PROG DETECTOR)');
-        console.log('[RockStereoPhysics2] 🩻 Zones: Front=Kick | Back=Voces | ML=Guitarras | MR=Cymbals');
-        console.log('[RockStereoPhysics2] 🎭 Subgenre Detection: HARD_ROCK (default) | PROG_ROCK (auto-detect)');
+        // WAVE 2098: Boot silence
     }
     // ==========================================================================
     // CORE PROCESSING - SIN SUBGÉNEROS, SIN MODOS

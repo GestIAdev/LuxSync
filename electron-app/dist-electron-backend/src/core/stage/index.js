@@ -19,11 +19,11 @@ createEmptyShowFile, createDefaultFixture, createFixtureGroup,
 // Zone Utilities (WAVE 2040.24)
 normalizeZone, isCanonicalZone, resolveFixtureSelector, // 🔥 WAVE 2040.25 FASE 3
 // Validation
-validateShowFile, getSchemaVersion } from './ShowFileV2';
+validateShowFile, validateShowFileDeep, getSchemaVersion } from './ShowFileV2';
 // ═══════════════════════════════════════════════════════════════════════════
 // MIGRATION
 // ═══════════════════════════════════════════════════════════════════════════
-export { migrateConfigV1ToV2, autoMigrate, parseLegacyScenes } from './ShowFileMigrator';
+export { migrateConfigV1ToV2, autoMigrate, migrateV2ToLatest, LATEST_V2_VERSION, parseLegacyScenes } from './ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // PERSISTENCE - WAVE 365
 // ═══════════════════════════════════════════════════════════════════════════

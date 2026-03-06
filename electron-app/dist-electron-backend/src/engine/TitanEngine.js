@@ -23,7 +23,7 @@
  */
 import { EventEmitter } from 'events';
 import { createDefaultLightingIntent, withHex, } from '../core/protocol/LightingIntent';
-import { SeleneColorEngine } from './color/SeleneColorEngine';
+import { SeleneColorEngine, SeleneColorInterpolator } from './color/SeleneColorEngine';
 import { getColorConstitution } from './color/colorConstitutions';
 import { VibeManager } from './vibe/VibeManager';
 // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
@@ -37,7 +37,7 @@ import { getModifiersFromKey } from './physics/ElementalModifiers';
 // 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
 import { vibeMovementManager } from './movement/VibeMovementManager';
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
-import { getOpticsConfig } from './movement/VibeMovementPresets';
+import { getOpticsConfig, getMovementPhysics } from './movement/VibeMovementPresets';
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
 import { SeleneTitanConscious, 
 // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
@@ -112,7 +112,9 @@ export class TitanEngine extends EventEmitter {
         };
         // Inicializar sub-módulos
         // 🔥 WAVE 269: SeleneColorEngine es estático, no necesita instanciarse
+        // 🎨 WAVE 2096.1: Interpolator para transiciones suaves (LERP + Desaturation Dip)
         this.vibeManager = VibeManager.getInstance();
+        this.colorInterpolator = new SeleneColorInterpolator();
         // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Instanciar Stabilizers
         this.keyStabilizer = new KeyStabilizer();
         this.energyStabilizer = new EnergyStabilizer();
@@ -138,13 +140,7 @@ export class TitanEngine extends EventEmitter {
             previousBass: 0,
             lastGlobalComposition: 0, // 🌊 WAVE 1080: FLUID DYNAMICS - Para evitar spam de logs
         };
-        console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`);
-        console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`);
-        console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`);
-        console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`);
-        console.log(`[TitanEngine]    🧬 Consciousness: SeleneTitanConscious V2✓ (Native Intelligence)`);
-        console.log(`[TitanEngine]    🧨 EffectManager: ${this.effectManager.getState().activeEffects} effects ready`);
-        console.log(`[TitanEngine]    🕰️ ChronosInjector: Ready (Timeline Control)`);
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -395,8 +391,10 @@ export class TitanEngine extends EventEmitter {
                 }
             };
         }
-        // 🎨 GENERAR PALETA CON EL FERRARI (ahora con oceanicModulation si es chill)
-        const selenePalette = SeleneColorEngine.generate(audioAnalysis, constitution);
+        // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
+        // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
+        //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
+        const selenePalette = this.colorInterpolator.update(audioAnalysis, energyOutput.isRelativeDrop ?? false, constitution);
         // Convertir SelenePalette → ColorPalette
         const palette = this.selenePaletteToColorPalette(selenePalette);
         this.state.lastPalette = palette;
@@ -882,6 +880,8 @@ export class TitanEngine extends EventEmitter {
             treble: 0.2,
         };
         const selenePalette = SeleneColorEngine.generate(mockAudio, constitution);
+        // 🎨 WAVE 2096.1: Force immediate en interpolator (sin transición LERP)
+        this.colorInterpolator.forceImmediate(selenePalette);
         const palette = this.selenePaletteToColorPalette(selenePalette);
         this.state.lastPalette = palette;
         console.log(`[TitanEngine] 🎨 FORCED PALETTE REFRESH for vibe: ${vibeProfile.id}`);
@@ -1444,16 +1444,17 @@ export class TitanEngine extends EventEmitter {
      *
      * Calcula el movimiento de fixtures motorizados.
      *
-     * ANTES (WAVE 340-342): Matemática de patrones HARDCODED aquí 🚮
-     * AHORA: Delega TODO al VibeMovementManager ✅
+     * ═══════════════════════════════════════════════════════════════════════════
+     * 🎭 WAVE 2086.1: STEREO MOVEMENT GENERATION
      *
-     * TitanEngine ya no conoce:
-     * - Math.sin/cos para patrones
-     * - Frecuencias por vibe
-     * - Amplitudes por vibe
-     * - Lógica de figure8/mirror/circle/etc
+     * ANTES: VMM generaba UNA posición para TODOS los movers (Borg mode).
+     * AHORA: Llamamos al VMM DOS VECES con fixtureIndex 0 (L) y 1 (R).
+     * El VMM aplica mirror/snake internamente según el vibe.
+     * Pasamos ambas posiciones como mechanicsL/R para que el Arbiter
+     * rutee cada mover a su posición correcta.
      *
-     * Solo sabe: "Oye VMM, dame movimiento para este vibe y audio"
+     * El centerX/centerY global sigue siendo el promedio (para compatibilidad
+     * con single-mover setups y el spread del Arbiter).
      * ═══════════════════════════════════════════════════════════════════════════
      */
     calculateMovement(audio, context, _vibeProfile) {
@@ -1471,36 +1472,62 @@ export class TitanEngine extends EventEmitter {
             beatPhase: audio.beatPhase,
             beatCount: audio.beatCount || 0,
         };
-        // 🎯 DELEGAR al VibeMovementManager
-        // WAVE 347: VMM devuelve VMMMovementIntent (x, y), debemos convertir a MovementIntent del protocolo (centerX, centerY)
-        const vmmIntent = vibeMovementManager.generateIntent(currentVibeId, vmmContext);
         // ═══════════════════════════════════════════════════════════════════════
-        // WAVE 345: Convertir coordenadas con FULL RANGE
+        // 🎭 WAVE 2086.1: STEREO GENERATION — Two calls to VMM
+        // LEFT mover = fixtureIndex 0 of 2
+        // RIGHT mover = fixtureIndex 1 of 2
+        // VMM now applies mirror/snake internally based on vibe's STEREO_CONFIG
         // ═══════════════════════════════════════════════════════════════════════
-        // VMM: -1 = extremo izq/arriba, +1 = extremo der/abajo
-        // HAL espera: 0 = extremo, 0.5 = centro, 1 = extremo opuesto
-        // 
-        // ANTES (BUG): * 0.4 limitaba a 80% del rango (¡causa de los 15°!)
-        // AHORA: * 0.5 usa 100% del rango
+        const STEREO_TOTAL = 2; // L/R pair (standard stereo rig)
         // ═══════════════════════════════════════════════════════════════════════
-        const centerX = 0.5 + (vmmIntent.x * 0.5); // FULL RANGE: 0.0 - 1.0
-        const centerY = 0.5 + (vmmIntent.y * 0.5); // FULL RANGE: 0.0 - 1.0
-        // 🧹 WAVE 671.5: Silenced TITAN OUT spam (kept for future debug if needed)
-        // 🔍 WAVE 347: Debug TitanEngine output (sample 3%)
-        // if (Math.random() < 0.03) {
-        //   const outPan = Math.round((centerX - 0.5) * 540)
-        //   const outTilt = Math.round((centerY - 0.5) * 270)
-        //   console.log(`[🔍 TITAN OUT] VMM.x:${vmmIntent.x.toFixed(3)} VMM.y:${vmmIntent.y.toFixed(3)} → centerX:${centerX.toFixed(3)} centerY:${centerY.toFixed(3)} | Pan:${outPan}° Tilt:${outTilt}°`)
-        // }
+        // 🔧 WAVE 2095.1 FIX VULN-02: GEARBOX BUDGET — FEED THE SPEED LIMIT
+        //
+        // BUG ANTERIOR: generateIntent() se llamaba sin fixtureMaxSpeed (5° arg).
+        //   Default = 250 DMX/s para TODOS los fixtures. El Gearbox calculaba
+        //   amplitudes asumiendo que todo mover puede hacer 250 DMX/s.
+        //   Un mover lento (100 DMX/s) recibía targets inalcanzables.
+        //
+        // FIX: Pasar min(vibeMaxVelocity, SAFETY_CAP=400) como presupuesto.
+        //   Aquí NO conocemos el fixture concreto (el Arbiter lo asigna después),
+        //   pero sí conocemos el máximo del género + el tope del sistema.
+        //   El PhysicsDriver (VULN-01 fix) ya acota por fixture individual.
+        //   Este fix asegura que el GEARBOX no genere amplitudes de fantasía.
+        //
+        //   Chill: min(50, 400) = 50 → amplitud conservadora (correcto)
+        //   Techno: min(600, 400) = 400 → amplitud acotada al cap del sistema
+        //   Latino: min(350, 400) = 350 → amplitud natural del género
+        // ═══════════════════════════════════════════════════════════════════════
+        const SYSTEM_SAFETY_CAP_VELOCITY = 400; // Must mirror FixturePhysicsDriver.SAFETY_CAP.maxVelocity
+        const vibeMaxVelocity = getMovementPhysics(currentVibeId).maxVelocity;
+        const gearboxMaxSpeed = Math.min(vibeMaxVelocity, SYSTEM_SAFETY_CAP_VELOCITY);
+        const vmmIntentL = vibeMovementManager.generateIntent(currentVibeId, vmmContext, 0, STEREO_TOTAL, gearboxMaxSpeed);
+        const vmmIntentR = vibeMovementManager.generateIntent(currentVibeId, vmmContext, 1, STEREO_TOTAL, gearboxMaxSpeed);
+        // Convert VMM coordinates (-1..+1) to protocol coordinates (0..1)
+        const leftX = 0.5 + (vmmIntentL.x * 0.5);
+        const leftY = 0.5 + (vmmIntentL.y * 0.5);
+        const rightX = 0.5 + (vmmIntentR.x * 0.5);
+        const rightY = 0.5 + (vmmIntentR.y * 0.5);
+        // Global center = average of L/R (for single-mover fallback & spread)
+        const centerX = (leftX + rightX) / 2;
+        const centerY = (leftY + rightY) / 2;
         // Convertir VMMMovementIntent → MovementIntent del protocolo
         const protocolIntent = {
-            pattern: vmmIntent.pattern,
-            speed: Math.max(0, Math.min(1, vmmIntent.speed)),
-            amplitude: vmmIntent.amplitude,
-            centerX: Math.max(0, Math.min(1, centerX)), // WAVE 345: Full range 0-1
-            centerY: Math.max(0, Math.min(1, centerY)), // WAVE 345: Full range 0-1
+            pattern: vmmIntentL.pattern,
+            speed: Math.max(0, Math.min(1, vmmIntentL.speed)),
+            amplitude: vmmIntentL.amplitude,
+            centerX: Math.max(0, Math.min(1, centerX)),
+            centerY: Math.max(0, Math.min(1, centerY)),
             beatSync: true,
-            phaseType: vmmIntent.phaseType, // 🔧 WAVE 350: Pasar phaseType del VMM a HAL
+            phaseType: vmmIntentL.phaseType,
+            // 🎭 WAVE 2086.1: Stereo coordinates for MasterArbiter routing
+            mechanicsL: {
+                pan: Math.max(0, Math.min(1, leftX)),
+                tilt: Math.max(0, Math.min(1, leftY)),
+            },
+            mechanicsR: {
+                pan: Math.max(0, Math.min(1, rightX)),
+                tilt: Math.max(0, Math.min(1, rightY)),
+            },
         };
         return protocolIntent;
     }

@@ -62,8 +62,7 @@ export class WasherPhysics {
         this.lastImpactIntensity = 0;
         this.impactCooldown = 0;
         this.lastBassValue = 0;
-        console.log('[WasherPhysics] 🎨 WAVE 1031: Canvas of Light initialized');
-        console.log(`[WasherPhysics] 🌊 BREATHING FLOOR: ${this.INTENSITY_FLOOR}`);
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════════════
     // API PÚBLICA

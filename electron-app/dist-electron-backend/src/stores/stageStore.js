@@ -30,7 +30,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useShallow } from 'zustand/shallow';
-import { createEmptyShowFile, createFixtureGroup, normalizeZone } from '../core/stage/ShowFileV2';
+import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (DETERMINISTIC, NOT RANDOM)
@@ -197,6 +197,21 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             return false;
         }
         try {
+            // ══════════════════════════════════════════════════════════════════
+            // 🛡️ WAVE 2093.2 (CW-AUDIT-8): FRONTEND VALIDATION GATE
+            // Catch corrupt data BEFORE it hits IPC, with user-visible error.
+            // The backend has its own gate too — defense in depth.
+            // ══════════════════════════════════════════════════════════════════
+            const validation = validateShowFileDeep(showFile);
+            if (!validation.valid) {
+                const errorMsg = `Save blocked: ${validation.errors.length} validation error(s): ${validation.errors.slice(0, 3).join('; ')}`;
+                console.error(`[stageStore] 🚨 SAVE BLOCKED — ${errorMsg}`);
+                set({ lastError: errorMsg });
+                return false;
+            }
+            if (validation.warnings.length > 0) {
+                console.warn(`[stageStore] ⚠️ Pre-save warnings (${validation.warnings.length}):`, validation.warnings);
+            }
             // Update modification timestamp
             showFile.modifiedAt = new Date().toISOString();
             const stageAPI = getStageAPI();
@@ -306,6 +321,25 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         const fixture = showFile.fixtures.find(f => f.id === id);
         if (!fixture)
             return;
+        // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Sync invert values to calibration (THE MASTER)
+        // If physics.invertPan or invertTilt changes, mirror it to calibration.
+        // calibration is the single source of truth read by HAL at runtime.
+        if (physics.invertPan !== undefined || physics.invertTilt !== undefined) {
+            if (!fixture.calibration) {
+                fixture.calibration = {
+                    panOffset: 0,
+                    tiltOffset: 0,
+                    panInvert: false,
+                    tiltInvert: false,
+                };
+            }
+            if (physics.invertPan !== undefined) {
+                fixture.calibration.panInvert = physics.invertPan;
+            }
+            if (physics.invertTilt !== undefined) {
+                fixture.calibration.tiltInvert = physics.invertTilt;
+            }
+        }
         fixture.physics = { ...fixture.physics, ...physics };
         get()._syncDerivedState();
         get()._setDirty();

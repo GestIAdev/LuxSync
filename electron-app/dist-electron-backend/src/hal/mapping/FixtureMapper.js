@@ -43,7 +43,7 @@ export class FixtureMapper {
         // 🎨 WAVE 1001: Debug flag
         this.halDebug = false;
         this.halDebugLastLog = 0;
-        console.log('[FixtureMapper] 🎛️ Initialized (WAVE 210 + WAVE 1001 HAL)');
+        // WAVE 2098: Boot silence
     }
     /**
      * 🎨 WAVE 1001: Enable/disable HAL debug logging
@@ -74,7 +74,14 @@ export class FixtureMapper {
         // Calculate pan/tilt with installation type correction
         let panValue = movement.pan;
         let tiltValue = movement.tilt;
-        const isMovingFixture = this.isMovingZone(zone) ||
+        // 🔧 WAVE 2093.2 (CW-5 fix): CAPABILITY-AWARE MOVEMENT GUARD
+        // Only emit movement values if the fixture actually has pan/tilt capability.
+        // Detection order: (1) channel definitions, (2) zone heuristic, (3) type name.
+        // If a strobe/par has no pan/tilt channels, it gets pan=0, tilt=0 — safe defaults.
+        const hasMovementCapability = fixture.hasMovementChannels === true ||
+            (fixture.channels?.some(ch => ch.type === 'pan' || ch.type === 'tilt') ?? false);
+        const isMovingFixture = hasMovementCapability ||
+            this.isMovingZone(zone) ||
             fixture.type?.toLowerCase().includes('moving');
         // ═══════════════════════════════════════════════════════════════════════
         // 🔧 WAVE 343: ELIMINADO MIRROR DUPLICADO
@@ -320,18 +327,12 @@ export class FixtureMapper {
             // ═══════════════════════════════════════════════════════════════════
             case 'red':
                 const redValue = Math.round(state.r);
-                if (redValue > 0)
-                    console.log(`[Mapper] 🔴 RED=${redValue} for ${state.fixtureId}`);
                 return redValue;
             case 'green':
                 const greenValue = Math.round(state.g);
-                if (greenValue > 0)
-                    console.log(`[Mapper] 🟢 GREEN=${greenValue} for ${state.fixtureId}`);
                 return greenValue;
             case 'blue':
                 const blueValue = Math.round(state.b);
-                if (blueValue > 0)
-                    console.log(`[Mapper] 🔵 BLUE=${blueValue} for ${state.fixtureId}`);
                 return blueValue;
             case 'white':
                 return state.white ?? (channel.defaultValue ?? 0);
@@ -402,6 +403,11 @@ export class FixtureMapper {
      *
      * This is the original hardcoded 8-channel format for backwards compatibility
      * with fixtures that don't have a JSON definition.
+     *
+     * 🔧 WAVE 2093.2 (CW-5 hardening): Pan/Tilt values are only emitted if the
+     * fixture state already carries non-zero movement. The FixtureMapper.mapFixture()
+     * capability guard ensures that non-moving fixtures always have pan=0, tilt=0,
+     * so this is a defense-in-depth layer — not the primary guard.
      */
     buildLegacyChannels(state) {
         return [

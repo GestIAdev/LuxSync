@@ -487,12 +487,7 @@ export class FXTParser {
         const parCount = fixtures.filter(f => f.type === 'par').length;
         const strobeCount = fixtures.filter(f => f.type === 'strobe').length;
         const otherCount = fixtures.length - movingCount - parCount - strobeCount;
-        console.log(`[FXTParser] 📊 Scan complete:`);
-        console.log(`  Total: ${fixtures.length} fixtures`);
-        console.log(`  Moving Heads/Wash: ${movingCount}`);
-        console.log(`  PARs: ${parCount}`);
-        console.log(`  Strobes: ${strobeCount}`);
-        console.log(`  Other: ${otherCount}`);
+        // WAVE 2098: Boot silence — scan summary removed
         return fixtures;
     }
 }

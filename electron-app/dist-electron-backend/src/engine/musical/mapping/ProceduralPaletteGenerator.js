@@ -1,6 +1,22 @@
 /**
  * 🎨 PROCEDURAL PALETTE GENERATOR
  * ================================
+ *
+ * ⚠️ WAVE 2096.1: CONSOLIDATION CANDIDATE
+ * ═══════════════════════════════════════════════════════════════
+ * This module is a PARALLEL palette generator that duplicates logic
+ * from SeleneColorEngine (KEY_TO_HUE, MODE_MODIFIERS, strategies).
+ * TitanEngine (the main loop) uses ONLY SeleneColorEngine.generate().
+ *
+ * This module is consumed by:
+ *   - SeleneMusicalBrain (via PaletteManager/MusicToLightMapper)
+ *   - Tests
+ *
+ * DECISION PENDING: Consolidate unique features (section variations,
+ * zodiac element shifts, forced mutation) into SeleneColorEngine,
+ * then deprecate this file. Do NOT add new features here.
+ * ═══════════════════════════════════════════════════════════════
+ *
  * Generador de paletas cromáticas basado en ADN musical
  *
  * PRINCIPIO FUNDAMENTAL:
@@ -539,7 +555,8 @@ export class ProceduralPaletteGenerator extends EventEmitter {
             this.clearMutationFlag();
         }
         // 🔍 DEBUG WAVE 13.5
-        if (Math.random() < 0.02) { // 2% de los frames
+        // 🎯 WAVE 2096.1: Replaced Math.random() with deterministic counter (Axiom Anti-Simulación)
+        if (this.generationCount % 50 === 0) { // ~2% of calls (deterministic)
             const zodiacInfo = fullDNA.zodiacElement ? ` zodiac=${fullDNA.zodiacElement}` : '';
             console.log(`[PaletteGen] 🔮 WAVE 13.5: key=${fullDNA.key || 'null'} mood=${fullDNA.mood}${zodiacInfo} → baseHue=${baseHue.toFixed(0)}° | Energy=${fullDNA.energy.toFixed(2)} (solo brillo)`);
         }

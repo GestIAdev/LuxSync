@@ -37,7 +37,7 @@ export class TrinityBrain extends EventEmitter {
         this.lastValidContext = null;
         this.lastValidTimestamp = 0;
         this.lastContext = createDefaultMusicalContext();
-        console.log('[Brain] 🧠 TrinityBrain initialized (WAVE 227 - REAL RECEPTOR + WAVE 260 MEMORY)');
+        // WAVE 2098: Boot silence
     }
     /**
      * Conecta con TrinityOrchestrator para recibir datos del Worker.
@@ -63,7 +63,6 @@ export class TrinityBrain extends EventEmitter {
         // Escuchar cuando el orquestador está listo
         orchestrator.on('ready', () => {
             this.isConnected = true;
-            console.log('[Brain] 🧠 Connected to Trinity Orchestrator - REAL DATA FLOW ACTIVE');
             this.emit('ready');
         });
         // Escuchar errores del Worker
@@ -71,7 +70,7 @@ export class TrinityBrain extends EventEmitter {
             console.error(`[Brain] 🧠 Worker ${nodeId} error:`, error);
             this.emit('error', new Error(`Worker ${nodeId}: ${error}`));
         });
-        console.log('[Brain] 🧠 Listening to TrinityOrchestrator events');
+        // WAVE 2098: Boot silence
     }
     /**
      * Inicia el orquestador si tenemos uno conectado
@@ -84,7 +83,6 @@ export class TrinityBrain extends EventEmitter {
         }
         try {
             await this.orchestrator.start();
-            console.log('[Brain] 🧠 TrinityOrchestrator started successfully');
         }
         catch (error) {
             console.error('[Brain] 🧠 Failed to start orchestrator:', error);
@@ -181,6 +179,7 @@ export class TrinityBrain extends EventEmitter {
         // Emitir niveles de audio para visualización
         // 🎸 WAVE 1011.1: Extended con métricas FFT para Physics Engines
         // 🔥 WAVE 1162: rawBassEnergy para BeatDetector bypass
+        // 🔥 WAVE 2112: BPM fields restored — Worker is BPM authority again
         this.emit('audio-levels', {
             bass: analysis.bass,
             mid: analysis.mid,
@@ -200,6 +199,12 @@ export class TrinityBrain extends EventEmitter {
             hihatDetected: analysis.hihatDetected,
             // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
             rawBassEnergy: analysis.rawBassEnergy,
+            // 🔥 WAVE 2112: THE RESURRECTION — Real BPM from GodEarBPMTracker
+            bpm: analysis.bpm,
+            bpmConfidence: analysis.bpmConfidence,
+            onBeat: analysis.onBeat,
+            beatPhase: analysis.beatPhase,
+            beatStrength: analysis.beatStrength,
         });
         // Log cada ~30 frames (1 segundo)
         if (this.frameCount % 30 === 0) {

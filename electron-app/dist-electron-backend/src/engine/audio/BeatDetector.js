@@ -1,35 +1,49 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💓 WAVE 1022: THE PACEMAKER - BEAT DETECTOR v2.0
+ * 💓 THE PACEMAKER - BEAT DETECTOR v2.0 + PLL
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * DIAGNÓSTICO DEL CÓDIGO ANTERIOR:
- * - Promedio simple de todos los intervalos → contaminación por sub-divisiones
- * - Media móvil 80/20 por frame → esquizofrenia BPM (120→180→80 en 3 frames)
- * - Cero histéresis → cambios de BPM cada frame
- * - Cero clustering → fills de batería = caos
+ * WAVE 1022: THE PACEMAKER — Clustering + Hysteresis + Octave Protection
+ * WAVE 2090.2: THE PACEMAKER MONOPOLY — Single Source of Truth for BPM
+ * WAVE 2090.3: THE PHANTOM METRONOME — Phase-Locked Loop (PLL)
  *
- * SOLUCIÓN: THE PACEMAKER
+ * ARCHITECTURE:
  *
- * A. 🧹 SMART INTERVAL SELECTOR (Clustering)
- *    - Agrupa intervalos similares (±25ms)
- *    - Usa el CLUSTER DOMINANTE (Moda), NO el promedio
- *    - Ignora sub-divisiones (intervalos < 55% del dominante) si son minoría
+ *   Worker (senses.ts)          Main Thread (here)
+ *   ┌─────────────────┐        ┌──────────────────────────────────┐
+ *   │ FFT + Transients │──IPC──▶│ process() → Kick Detection      │
+ *   │ rawBassEnergy    │        │     ↓                            │
+ *   │ kickDetected     │        │ updateBpmWithPacemaker()         │
+ *   └─────────────────┘        │   (Clustering + Hysteresis)      │
+ *                               │     ↓                            │
+ *                               │ pllCorrectPhase()                │
+ *                               │   (PI Error Correction)          │
+ *                               │     ↓                            │
+ *                               │ tick() ← requestAnimationFrame  │
+ *                               │   (Flywheel + Anticipatory Beat)│
+ *                               │     ↓                            │
+ *                               │ BeatState → Zustand → Lights    │
+ *                               └──────────────────────────────────┘
  *
- * B. ⚓ HYSTERESIS ANCHOR (Estabilidad)
- *    - candidateBpm: lo que calculamos este frame
- *    - stableBpm: lo que USAMOS para las luces
- *    - Solo cambia stableBpm si candidateBpm persiste ±2.5 BPM durante 45 frames (~1.5s)
- *    - Excepción: primeros 16 beats → cambios rápidos permitidos (warm-up)
+ * THE PLL (Phase-Locked Loop):
  *
- * C. 🔒 OCTAVE PROTECTION (Anti-multiplicación)
- *    - Si BPM salta a 2x, 0.5x, 1.5x, o 0.66x → mantiene el actual
- *    - Solo acepta cambio de octava si confidence > 0.85 durante 90 frames (~3s)
+ *   The Flywheel spins continuously based on system clock,
+ *   producing smooth 0→1 phase even between Worker messages.
  *
- * Resultado: BPM clavado como ROCA aunque el baterista se vuelva loco.
+ *   When a REAL kick arrives:
+ *   - Small error (< 80ms) → Proportional-Integral correction
+ *     (gently nudges the prediction without jarring phase jumps)
+ *   - Large error → Hard Reset (snap to grid — song change, etc.)
+ *
+ *   onBeat fires 23ms EARLY (lookahead) to compensate for:
+ *   - Web Audio API latency (~50ms)
+ *   - IPC transfer (~8ms)
+ *   - Render pipeline (~16ms)
+ *
+ *   Result: Lights PREDICT the beat, not chase it.
  *
  * @author PunkOpus
- * @wave 1022
+ * @wave 1022 + 2090.3
  */
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS - THE PACEMAKER TUNING
@@ -51,22 +65,78 @@ const OCTAVE_LOCK_CONFIDENCE = 0.70;
 /** Frames mínimos para aceptar cambio de octava */
 const OCTAVE_CHANGE_FRAMES = 45;
 /**
- * 💀 WAVE 1158: INTERVALO MÍNIMO = 200ms (300 BPM max)
- * A 160 BPM = 375ms/beat
- * A 200 BPM = 300ms/beat
- * BETA usa 200ms y FUNCIONA. El problema no era este.
+ * 💀 WAVE 1158: INTERVALO MÍNIMO entre kicks para clustering.
+ * 🩸 WAVE 2099: Aligned with MIN_PEAK_SPACING_MS (280ms).
+ * No valid interval can be shorter than the debounce window.
+ * 280ms = 214 BPM maximum. DnB at 170 BPM (353ms) still passes fine.
  */
-const MIN_INTERVAL_MS = 200; // Era 300 - Igual que BETA
+const MIN_INTERVAL_MS = 280; // 🩸 WAVE 2099: Was 200 — must match debounce
 /** Intervalo máximo válido (ms) - 40bpm min */
 const MAX_INTERVAL_MS = 1500;
 /** Ratio para detectar sub-división (beat → half-beat) */
 const SUBDIVISION_RATIO = 0.55;
+// ═══════════════════════════════════════════════════════════════════════════
+// 🕰️ WAVE 2090.3: THE PHANTOM METRONOME — PLL CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Phase error threshold (ms) for soft correction vs hard reset.
+ * If the kick arrives within this window of the predicted beat,
+ * we apply proportional correction. Beyond this → hard reset (snap to grid).
+ * 🩸 WAVE 2104: Restored to 120ms (between original 80ms and WAVE 2098's 150ms).
+ * With rawBass ratio-based detection, kicks are more accurately timed than with AGC.
+ * 120ms gives enough tolerance for frame timing variance without being too loose.
+ */
+const PLL_SOFT_CORRECTION_WINDOW_MS = 120;
+/**
+ * Proportional gain for soft phase correction.
+ * 0.0 = ignore error, 1.0 = snap immediately.
+ * 0.3 means we correct 30% of the error per kick — smooth but responsive.
+ */
+const PLL_PROPORTIONAL_GAIN = 0.3;
+/**
+ * Integral gain for BPM drift correction.
+ * Accumulates small errors to slowly adjust smoothedBpm.
+ * Very small to avoid oscillation (0.005 = 0.5% correction per kick).
+ */
+const PLL_INTEGRAL_GAIN = 0.005;
+/**
+ * Lookahead time (ms) for anticipatory beat prediction.
+ * onBeat fires this many ms BEFORE the predicted beat impact.
+ * Compensates Web Audio API + IPC + render latency (~23ms total).
+ * Fine-tuned: 50ms Web Audio + 8ms IPC ≈ 58ms → round to 23ms lookahead
+ * (we only compensate part of it — too much lookahead feels unnatural)
+ */
+const PLL_LOOKAHEAD_MS = 23;
+/**
+ * Beat window: how long (in phase 0-1) onBeat stays true.
+ * 0.12 means the first 12% of each beat cycle fires onBeat.
+ * At 128 BPM (468ms/beat), that's ~56ms window.
+ */
+const PLL_BEAT_WINDOW = 0.12;
+/**
+ * Silence timeout (ms). If no kicks arrive for this duration,
+ * the PLL freewheels on inertia but marks pllLocked = false.
+ */
+const PLL_SILENCE_TIMEOUT_MS = 4000;
 /**
  * 💀 WAVE 1158: DEBOUNCE MÍNIMO ENTRE KICKS
- * A 200 BPM = 300ms entre kicks → debounce 200ms es seguro
- * BETA usa 200ms y FUNCIONA. Nosotros teníamos 80ms (LOCURA)
+ * BETA usa 200ms, nosotros teníamos 80ms.
+ *
+ * 🩸 WAVE 2099: THE GOLDILOCKS DEBOUNCE — 200ms was too low.
+ * At 200ms, intervals of 229ms/264ms/276ms/295ms pass → these are hi-hat
+ * sub-beats, NOT kick drums. The clustering then creates a phantom cluster
+ * at ~280ms (~214 BPM) which dominates over the real kick cluster (~476ms = 126 BPM).
+ *
+ * At 280ms debounce:
+ * - 126 BPM (techno) = 476ms → PASSES ✅
+ * - 170 BPM (DnB)    = 353ms → PASSES ✅
+ * - 200 BPM (fast)   = 300ms → PASSES ✅
+ * - 214 BPM (sub-beat ghost) = 280ms → BLOCKED ❌
+ * - Hi-hat wobbles at 229-276ms → BLOCKED ❌
+ *
+ * This kills the 210 BPM phantom that plagued WAVE 2098.
  */
-const MIN_PEAK_SPACING_MS = 200; // Era 80 - Igual que BETA
+const MIN_PEAK_SPACING_MS = 280; // 🩸 WAVE 2099: Was 200 — sub-beats at 229-276ms were passing
 // ═══════════════════════════════════════════════════════════════════════════
 // THE PACEMAKER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -96,17 +166,27 @@ export class BeatDetector {
         // 🎚️ AUTO-GAIN: Media móvil del bass para calibración
         this.bassHistory = [];
         this.BASS_HISTORY_SIZE = 30; // ~1 segundo @ 30fps
-        this.bassAvg = 0.2; // Valor inicial para RAW (más bajo que AGC)
-        // 🔥 WAVE 1162: Thresholds para audio RAW (sin AGC)
-        // La señal RAW tiene MAYOR dinámica → umbrales más altos
-        // PERO el GOD EAR rawBands ya está parcialmente normalizado
-        // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-        // bassAvg=0.15 → thresh=0.065 (música suave)
-        // bassAvg=0.30 → thresh=0.095 (normal)
-        // bassAvg=0.50 → thresh=0.125 (fuerte)
-        // bassAvg=0.70 → thresh=0.155 (muy fuerte)
-        this.KICK_THRESHOLD_BASE = 0.05;
-        this.KICK_THRESHOLD_MULTIPLIER = 0.15; // Reducido de 0.35 - rawBands ya normalizado
+        this.bassAvg = 0.03; // 🩸 WAVE 2104: Initial value for rawBassEnergy (0.01-0.15 range)
+        // 🩸 WAVE 2104: RATIO-BASED KICK DETECTION — Inspired by GodEarBPMTracker (WAVE 1163)
+        // WAVE 2097/2098 used absolute thresholds on AGC-compressed bass, but AGC progressively
+        // compresses dynamics over time → transients shrink → kicks lost → BPM corrupts.
+        //
+        // WAVE 1163 proved: ratio-based detection is IMMUNE to AGC/gain changes because
+        // it measures RELATIVE change (current / rolling average), not absolute values.
+        //
+        // rawBassEnergy values: 0.01-0.15 (microscopic FFT power, pre-AGC)
+        // Kick transients: 0.005-0.030 above rolling average
+        // Ratio at kick: current/avg > 1.5x (kick is 50%+ above average)
+        //
+        // FORMULA: kickDetected = (bassTransient > 0) AND (current / avg > RATIO_THRESHOLD)
+        //          AND (delta > MIN_DELTA)
+        //
+        // This is the EXACT philosophy from GodEarBPMTracker that worked for 74-188 BPM.
+        this.KICK_RATIO_THRESHOLD = 1.4; // 🩸 WAVE 2104: Current must be 40%+ above average
+        this.KICK_MIN_DELTA = 0.003; // 🩸 WAVE 2104: Minimum absolute rise (noise floor)
+        // Legacy thresholds kept for snare/hihat (still fed frontendBass via mid/treble)
+        this.KICK_THRESHOLD_BASE = 0.035; // 🩸 WAVE 2104: Legacy — not used for kick anymore
+        this.KICK_THRESHOLD_MULTIPLIER = 0.025;
         // Transient detection thresholds (DINÁMICOS - estos son fallbacks)
         this.kickThreshold = 0.12; // Se recalcula cada frame
         this.snareThreshold = 0.10;
@@ -123,6 +203,21 @@ export class BeatDetector {
         this.candidateFrames = 0; // Frames que el candidato ha sido estable
         this.octaveChangeFrames = 0; // Frames intentando cambio de octava
         this.lastDominantInterval = 500; // Último intervalo dominante detectado
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🕰️ WAVE 2090.3: THE PHANTOM METRONOME — PLL STATE
+        // ═══════════════════════════════════════════════════════════════════════════
+        /** The PLL's internal BPM estimate — smoothed separately from the clustering BPM */
+        this.pllSmoothedBpm = 120;
+        /** Predicted timestamp (ms) of the next beat impact */
+        this.pllPredictedNextBeat = 0;
+        /** Accumulated integral error for BPM drift correction */
+        this.pllIntegralError = 0;
+        /** Timestamp of the last kick that was used for PLL correction */
+        this.pllLastCorrectionTime = 0;
+        /** Current continuous phase (0.0 - 1.0), advanced by tick() */
+        this.pllCurrentPhase = 0;
+        /** Is the PLL currently phase-locked to real audio? */
+        this.pllIsLocked = false;
         this.minBpm = config.minBpm || 60;
         this.maxBpm = config.maxBpm || 200;
         this.state = this.createInitialState();
@@ -145,6 +240,12 @@ export class BeatDetector {
             rawBpm: 120,
             isLocked: false,
             lockFrames: 0,
+            // 🕰️ WAVE 2090.3: PLL initial state
+            pllPhase: 0,
+            pllOnBeat: false,
+            predictedNextBeatTime: 0,
+            phaseError: 0,
+            pllLocked: false,
         };
     }
     /**
@@ -164,43 +265,44 @@ export class BeatDetector {
         if (this.bassHistory.length >= 5) {
             this.bassAvg = this.bassHistory.reduce((a, b) => a + b, 0) / this.bassHistory.length;
         }
-        // 3. Calcular threshold DINÁMICO
-        // 💀 WAVE 1161: Recalibrado para audio AGC
-        // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
-        // bassAvg=0.3 → threshold=0.086 (muy sensible)
-        // bassAvg=0.6 → threshold=0.122 (normal - detecta kicks reales)
-        // bassAvg=0.8 → threshold=0.146 (fuerte - ignora wobbles)
-        this.kickThreshold = this.KICK_THRESHOLD_BASE + (this.bassAvg * this.KICK_THRESHOLD_MULTIPLIER);
+        // 3. Calcular threshold DINÁMICO (ratio-based for kick, absolute for snare/hihat)
+        // 🩸 WAVE 2104: RATIO-BASED — immune to AGC gain drift
+        // Instead of: "is transient > fixed threshold?" (fails when AGC compresses)
+        // We ask: "is current bass 40%+ above recent average?" (works regardless of gain)
+        this.kickThreshold = this.bassAvg * this.KICK_RATIO_THRESHOLD; // For diagnostic logging only
         // ═══════════════════════════════════════════════════════════════════════════
         // 4. Detectar transientes (cambios bruscos de energía)
         const bassTransient = metrics.bass - this.prevBass;
         const midTransient = metrics.mid - this.prevMid;
         const trebleTransient = metrics.treble - this.prevTreble;
-        // 5. Detectar instrumentos con threshold DINÁMICO
-        // 💀 WAVE 1161: SOLO el transiente importa, sin condición secundaria
-        // La condición "bass > bassAvg * 0.7" era redundante y restrictiva
-        // Un transiente positivo grande YA indica que estamos en un pico
-        this.state.kickDetected = bassTransient > this.kickThreshold;
+        // 5. Detectar instrumentos con RATIO-BASED detection para kicks
+        // 🩸 WAVE 2104: Ratio detection — inspired by GodEarBPMTracker (WAVE 1163)
+        // Kick = bass rising AND current > 40% above rolling average AND minimum delta
+        // This is IMMUNE to AGC gain drift because it's relative, not absolute.
+        const bassRatio = this.bassAvg > 0.001 ? (metrics.bass / this.bassAvg) : 0;
+        this.state.kickDetected = bassTransient > this.KICK_MIN_DELTA && bassRatio > this.KICK_RATIO_THRESHOLD;
         this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.15;
         this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.10;
-        // 💀 WAVE 1160/1162: Diagnostic logging con threshold dinámico
-        // WAVE 1162: El bass que recibimos ahora es RAW (sin AGC)
+        // 🩸 WAVE 2104: Diagnostic logging — now showing ratio-based metrics
         this.diagnosticFrames++;
         if (this.diagnosticFrames % 60 === 0) {
-            console.log(`[💓 PACEMAKER RAW] bass=${metrics.bass.toFixed(2)} avg=${this.bassAvg.toFixed(2)} thresh=${this.kickThreshold.toFixed(3)} trans=${bassTransient.toFixed(3)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (raw:${this.state.rawBpm.toFixed(0)})`);
+            console.log(`[💓 PACEMAKER] bass=${metrics.bass.toFixed(4)} avg=${this.bassAvg.toFixed(4)} ratio=${bassRatio.toFixed(2)} delta=${bassTransient.toFixed(4)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (PLL:${this.pllSmoothedBpm.toFixed(1)})`);
         }
         // 6. Registrar picos para análisis de BPM
         // 💀 WAVE 1158: Solo kicks reales pasan. El debounce de 200ms filtra el resto.
         if (this.state.kickDetected) {
             this.recordPeak(now, metrics.energy, 'kick');
             this.kicksDetectedTotal++;
+            // 🩸 WAVE 2104: Log kick detection with ratio metrics (throttled)
+            if (this.kicksDetectedTotal <= 10 || this.kicksDetectedTotal % 20 === 0) {
+                console.log(`[💓 KICK #${this.kicksDetectedTotal}] bass=${metrics.bass.toFixed(4)} ratio=${bassRatio.toFixed(2)} delta=${bassTransient.toFixed(4)} > minDelta=${this.KICK_MIN_DELTA}`);
+            }
         }
         // 4. 💓 THE PACEMAKER: Calcular BPM con clustering + histéresis
         this.updateBpmWithPacemaker(now);
-        // 5. Actualizar fase del beat
-        this.updatePhase(now);
-        // 6. Detectar si estamos "en el beat"
-        this.state.onBeat = this.state.phase < 0.12 || this.state.phase > 0.88;
+        // 5. 🕰️ WAVE 2090.3: Advance PLL phase (replaces old updatePhase)
+        // The tick() method drives the Flywheel and produces anticipatory onBeat
+        this.tick(now);
         // 7. Guardar valores anteriores
         this.prevBass = metrics.bass;
         this.prevMid = metrics.mid;
@@ -227,12 +329,158 @@ export class BeatDetector {
         if (type === 'kick') {
             this.state.beatCount++;
             this.state.lastBeatTime = time;
+            // 🕰️ WAVE 2090.3: Feed the PLL with this real kick
+            this.pllCorrectPhase(time);
         }
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🕰️ WAVE 2090.3: THE PHANTOM METRONOME — PLL CORE
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * PHASE 2: Phase Error Correction (El Bucle de Control PI)
+     *
+     * Called when a REAL kick arrives. Computes the error between
+     * when the kick arrived vs when the PLL predicted the beat.
+     *
+     * Small errors → soft proportional-integral correction (smooth lock)
+     * Large errors → hard reset (snap to grid)
+     */
+    pllCorrectPhase(kickTime) {
+        const beatDuration = 60000 / this.pllSmoothedBpm;
+        // ── BOOTSTRAP: First kick ever, or PLL was cold ──
+        if (this.pllPredictedNextBeat === 0 || this.pllLastCorrectionTime === 0) {
+            // Hard init: anchor the metronome to this kick
+            this.pllPredictedNextBeat = kickTime + beatDuration;
+            this.pllCurrentPhase = 0;
+            this.pllLastCorrectionTime = kickTime;
+            this.pllIntegralError = 0;
+            this.pllIsLocked = false;
+            return;
+        }
+        // ── Calculate phase error ──
+        // Positive error = kick arrived LATE (after prediction)
+        // Negative error = kick arrived EARLY (before prediction)
+        // We compare against where the CURRENT beat should have been
+        // (predictedNextBeat - beatDuration = predicted current beat)
+        const predictedCurrentBeat = this.pllPredictedNextBeat - beatDuration;
+        const error = kickTime - predictedCurrentBeat;
+        // Wrap error to ±half beat duration (handle phase ambiguity)
+        const halfBeat = beatDuration / 2;
+        let wrappedError = error % beatDuration;
+        if (wrappedError > halfBeat)
+            wrappedError -= beatDuration;
+        if (wrappedError < -halfBeat)
+            wrappedError += beatDuration;
+        // Store for telemetry
+        this.state.phaseError = wrappedError;
+        if (Math.abs(wrappedError) <= PLL_SOFT_CORRECTION_WINDOW_MS) {
+            // ── SOFT CORRECTION: Proportional-Integral ──
+            // The kick is close to where we expected it. Gently nudge the metronome.
+            // P (Proportional): Shift predicted next beat by a fraction of the error
+            const pCorrection = wrappedError * PLL_PROPORTIONAL_GAIN;
+            this.pllPredictedNextBeat = this.pllPredictedNextBeat + pCorrection;
+            // I (Integral): Accumulate small errors to correct BPM drift
+            this.pllIntegralError += wrappedError;
+            // Clamp integral to prevent windup (±200ms accumulated max)
+            if (this.pllIntegralError > 200)
+                this.pllIntegralError = 200;
+            if (this.pllIntegralError < -200)
+                this.pllIntegralError = -200;
+            // Apply integral correction to BPM
+            // If kicks consistently arrive late → we're too fast → slow down BPM slightly
+            const bpmCorrection = this.pllIntegralError * PLL_INTEGRAL_GAIN;
+            this.pllSmoothedBpm = this.state.bpm - bpmCorrection;
+            // Clamp BPM to sane range
+            this.pllSmoothedBpm = Math.max(this.minBpm, Math.min(this.maxBpm, this.pllSmoothedBpm));
+            // We're locked when we've had at least 2 corrections within tolerance
+            this.pllIsLocked = true;
+        }
+        else {
+            // ── HARD RESET: Snap to Grid ──
+            // The kick is WAY off from prediction. Could be:
+            // - Silence → music resume
+            // - Song change
+            // - BPM changed dramatically
+            // → Reset the metronome to this kick
+            this.pllPredictedNextBeat = kickTime + beatDuration;
+            this.pllCurrentPhase = 0;
+            this.pllIntegralError = 0;
+            this.pllIsLocked = false;
+        }
+        this.pllLastCorrectionTime = kickTime;
+    }
+    /**
+     * PHASE 1 + 3: THE FLYWHEEL — Continuous Phase Advance
+     *
+     * Call this from requestAnimationFrame or any high-frequency tick
+     * in the main thread. Advances the PLL phase mathematically
+     * based on system clock, even if no Worker messages arrive.
+     *
+     * This is what makes the lights PREDICT the music.
+     *
+     * @param now - Current timestamp (performance.now() or Date.now())
+     * @returns Current BeatState with PLL-driven phase and onBeat
+     */
+    tick(now) {
+        const beatDuration = 60000 / this.pllSmoothedBpm;
+        // ── Advance phase from system clock ──
+        if (this.pllPredictedNextBeat > 0) {
+            // Time until next predicted beat
+            const timeToNextBeat = this.pllPredictedNextBeat - now;
+            // Phase: 0.0 = beat impact, 1.0 = just before next beat
+            // We invert: phase goes 0→1 through the beat cycle
+            // At beat impact, phase wraps back to 0
+            this.pllCurrentPhase = 1.0 - (timeToNextBeat / beatDuration);
+            // Wrap phase to 0-1
+            this.pllCurrentPhase = this.pllCurrentPhase % 1.0;
+            if (this.pllCurrentPhase < 0)
+                this.pllCurrentPhase += 1.0;
+            // ── Roll over: advance prediction when we pass a beat ──
+            if (now >= this.pllPredictedNextBeat) {
+                // We've passed the predicted beat → advance to next
+                // Use modular arithmetic to stay aligned
+                const overshoot = now - this.pllPredictedNextBeat;
+                const fullBeatsOvershot = Math.floor(overshoot / beatDuration);
+                this.pllPredictedNextBeat += (fullBeatsOvershot + 1) * beatDuration;
+                this.pllCurrentPhase = (overshoot % beatDuration) / beatDuration;
+            }
+        }
+        // ── Detect silence (freewheel mode) ──
+        const timeSinceLastCorrection = now - this.pllLastCorrectionTime;
+        if (this.pllLastCorrectionTime > 0 && timeSinceLastCorrection > PLL_SILENCE_TIMEOUT_MS) {
+            this.pllIsLocked = false;
+        }
+        // ── Sync PLL BPM to Pacemaker BPM when not locked ──
+        // When the clustering BPM changes and we're not locked, track it
+        if (!this.pllIsLocked && this.state.bpm > 0) {
+            this.pllSmoothedBpm = this.state.bpm;
+        }
+        // ── Anticipatory onBeat with lookahead ──
+        // Fire onBeat slightly BEFORE the predicted impact to compensate latency
+        const lookaheadPhase = PLL_LOOKAHEAD_MS / beatDuration;
+        const adjustedPhase = (this.pllCurrentPhase + lookaheadPhase) % 1.0;
+        const pllOnBeat = adjustedPhase < PLL_BEAT_WINDOW || adjustedPhase > (1.0 - PLL_BEAT_WINDOW);
+        // ── Write PLL state to BeatState ──
+        this.state.pllPhase = this.pllCurrentPhase;
+        this.state.pllOnBeat = pllOnBeat;
+        this.state.predictedNextBeatTime = this.pllPredictedNextBeat;
+        this.state.pllLocked = this.pllIsLocked;
+        // ── Also update the legacy phase/onBeat to use PLL ──
+        // This way ALL consumers get the PLL-driven values automatically
+        this.state.phase = this.pllCurrentPhase;
+        this.state.onBeat = pllOnBeat;
+        return { ...this.state };
     }
     /**
      * 💓 WAVE 1022: THE PACEMAKER - BPM con clustering + histéresis
      */
     updateBpmWithPacemaker(now) {
+        // 🩸 WAVE 2098: PEAK HISTORY DECAY — Purge stale kicks
+        // Without this, old kicks from 30+ seconds ago stay in peakHistory forever.
+        // The intervals between old+new kicks are garbage (989ms, 958ms outliers).
+        // Only keep kicks from the last 10 seconds for fresh, relevant clustering.
+        const PEAK_FRESHNESS_MS = 10000;
+        this.peakHistory = this.peakHistory.filter(p => (now - p.time) < PEAK_FRESHNESS_MS);
         // Necesitamos suficientes kicks para analizar
         const kicks = this.peakHistory.filter(p => p.type === 'kick');
         if (kicks.length < 6)
@@ -331,7 +579,26 @@ export class BeatDetector {
         const requiredFrames = isWarmup ? 8 : HYSTERESIS_FRAMES;
         if (this.candidateFrames >= requiredFrames) {
             // ¡El candidato es estable! Aplicar cambio
-            this.state.bpm = Math.round(this.candidateBpm * 10) / 10; // 1 decimal
+            // 🩸 WAVE 2101.4: BPM RATE LIMITER — máximo ±2 BPM por actualización
+            // El BPM driftaba de 123→163 porque candidateBpm absorbía sub-divisiones
+            // Sin rate limit, 30 frames estables de intervalos cortos = BPM sube de golpe.
+            // 🩸 WAVE 2101.5: BPM SANITY FLOOR — Si BPM candidato está a <70% o >140% del actual,
+            // es un cambio de octava disfrazado o clustering de basura. Rechazar.
+            // Un tema NO cambia de 122 a 57 BPM. Lo que cambia es que los intervalos
+            // entre kicks son erráticos (range 295-1428ms) y el cluster dominante se rompe.
+            const newBpm = Math.round(this.candidateBpm * 10) / 10;
+            // Sanity check: si ya tenemos BPM estable, rechazar candidatos absurdos
+            if (this.state.bpm > 0 && !isWarmup) {
+                const ratio = newBpm / this.state.bpm;
+                if (ratio < 0.70 || ratio > 1.40) {
+                    // Candidato absurdo — resetear y mantener BPM actual
+                    this.candidateFrames = 0;
+                    return;
+                }
+            }
+            const maxBpmChange = isWarmup ? 10 : 2; // Warmup permite cambios rápidos
+            const clampedBpm = Math.max(this.state.bpm - maxBpmChange, Math.min(this.state.bpm + maxBpmChange, newBpm));
+            this.state.bpm = this.state.bpm === 0 ? newBpm : clampedBpm; // First detection = no clamp
             this.state.isLocked = true;
             this.state.lockFrames++;
         }
@@ -471,12 +738,12 @@ export class BeatDetector {
         return Math.max(0, Math.min(1, confidence));
     }
     /**
-     * Actualizar fase del beat (0-1)
+     * @deprecated WAVE 2090.3: Replaced by PLL tick(). Kept for reference only.
+     * Legacy phase calculation — reactive, not anticipatory.
      */
     updatePhase(now) {
         const beatDuration = 60000 / this.state.bpm;
         const timeSinceLastBeat = now - this.state.lastBeatTime;
-        // Calcular fase (0-1)
         this.state.phase = (timeSinceLastBeat % beatDuration) / beatDuration;
     }
     /**
@@ -489,6 +756,9 @@ export class BeatDetector {
             this.candidateFrames = HYSTERESIS_FRAMES; // Forzar lock inmediato
             this.state.confidence = 1.0;
             this.state.isLocked = true;
+            // 🕰️ WAVE 2090.3: Sync PLL to manual BPM
+            this.pllSmoothedBpm = bpm;
+            this.pllIntegralError = 0;
         }
     }
     /**
@@ -505,7 +775,7 @@ export class BeatDetector {
         return { ...this.state };
     }
     /**
-     * 💓 WAVE 1022: Obtener diagnóstico del Pacemaker
+     * 💓 WAVE 1022 + 🕰️ WAVE 2090.3: Obtener diagnóstico del Pacemaker + PLL
      */
     getDiagnostics() {
         return {
@@ -517,6 +787,12 @@ export class BeatDetector {
             confidence: this.state.confidence,
             octaveChangeFrames: this.octaveChangeFrames,
             lastInterval: this.lastDominantInterval,
+            // 🕰️ WAVE 2090.3: PLL
+            pllBpm: this.pllSmoothedBpm,
+            pllPhase: this.pllCurrentPhase,
+            pllError: this.state.phaseError,
+            pllLocked: this.pllIsLocked,
+            pllNextBeat: this.pllPredictedNextBeat,
         };
     }
     /**
@@ -534,6 +810,13 @@ export class BeatDetector {
         // 💀 WAVE 1156: Reset diagnostic counters
         this.diagnosticFrames = 0;
         this.kicksDetectedTotal = 0;
+        // 🕰️ WAVE 2090.3: Reset PLL state
+        this.pllSmoothedBpm = 120;
+        this.pllPredictedNextBeat = 0;
+        this.pllIntegralError = 0;
+        this.pllLastCorrectionTime = 0;
+        this.pllCurrentPhase = 0;
+        this.pllIsLocked = false;
         this.state = this.createInitialState();
     }
 }

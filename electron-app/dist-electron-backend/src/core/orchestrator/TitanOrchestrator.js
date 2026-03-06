@@ -54,7 +54,6 @@ export class TitanOrchestrator {
         // consciousnessEnabled = ONLY Layer 1 (consciousness)
         this.consciousnessEnabled = true;
         // WAVE 255: Real audio buffer from frontend
-        // 🎛️ WAVE 661: Ampliado para incluir textura espectral
         // 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
         // 🔥 WAVE 1162: THE BYPASS - rawBassEnergy para BeatDetector
         this.lastAudioData = {
@@ -75,6 +74,16 @@ export class TitanOrchestrator {
             lowMid: 0,
             highMid: 0,
         };
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
+        // Since BETA worker no longer has beatPhase (Pacemaker is in main thread),
+        // syncopation must be estimated HERE using Pacemaker's real beatPhase.
+        // Uses same algorithm as SimpleRhythmDetector but with real phase data.
+        // ═══════════════════════════════════════════════════════════════════════════
+        this.syncopationPhaseHistory = [];
+        this.smoothedSyncopation = 0.35; // Neutral default (same as Worker)
+        this.SYNC_HISTORY_SIZE = 32;
+        this.SYNC_EMA_ALPHA = 0.08; // Same smoothing factor as Worker
         // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
         // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
         // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
@@ -106,28 +115,22 @@ export class TitanOrchestrator {
             ...config,
         };
         this.eventRouter = getEventRouter();
-        console.log('[TitanOrchestrator] Created (WAVE 243.5)');
+        // WAVE 2098: Boot silence
     }
     /**
      * Initialize all TITAN modules
      */
     async init() {
         if (this.isInitialized) {
-            console.log('[TitanOrchestrator] Already initialized');
             return;
         }
-        console.log('[TitanOrchestrator] ===============================================');
-        console.log('[TitanOrchestrator]   INITIALIZING TITAN 2.0');
-        console.log('[TitanOrchestrator] ===============================================');
         // Initialize Brain
         this.brain = new TrinityBrain();
-        console.log('[TitanOrchestrator] TrinityBrain created');
         // Connect Brain to Trinity Orchestrator and START the neural network
         try {
             const trinity = getTrinity();
             this.trinity = trinity; // 🧠 WAVE 258: Save reference for audio feeding
             this.brain.connectToOrchestrator(trinity);
-            console.log('[TitanOrchestrator] Brain connected to Trinity');
             // ═══════════════════════════════════════════════════════════════════════════
             // 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
             // 
@@ -163,60 +166,42 @@ export class TitanOrchestrator {
                     // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
                     // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
                     rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+                    // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM is the authority
+                    // GodEarBPMTracker runs IN the Worker where FFT data is fresh every ~21ms
+                    // WAVE 2130.3: ?? no bloquea 0 — usar guard explícito para preservar BPM bloqueado
+                    workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+                    workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+                    workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+                    workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+                    workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
                 };
-                // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
-                // Frontend los gestiona a 30fps
             });
-            console.log('[TitanOrchestrator] 🔥 WAVE 1012.5: HYBRID SOURCE - Frontend(30fps)=bass/mid/high, Worker(10fps)=FFT metrics');
-            // 🧠 WAVE 258 CORTEX KICKSTART: Start the Workers!
-            console.log('[TitanOrchestrator] 🧠 Starting Trinity Neural Network...');
             await trinity.start();
-            console.log('[TitanOrchestrator] ✅ Trinity Workers are LIVE!');
         }
         catch (e) {
             console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e);
-            console.log('[TitanOrchestrator] Brain will use simulated context as fallback');
         }
         // Initialize Engine with initial vibe
         this.engine = new TitanEngine({
             debug: this.config.debug,
             initialVibe: this.config.initialVibe
         });
-        console.log('[TitanOrchestrator] TitanEngine created');
-        // ❤️ WAVE 1153: Initialize THE PACEMAKER
-        // The heart that pumps beat data through the entire system
         this.beatDetector = new BeatDetector({
             sampleRate: 44100,
             fftSize: 2048,
             smoothingTimeConstant: 0.8,
-            minBpm: 60, // Slowest heartbeat: 60 BPM ballads
-            maxBpm: 200, // Fastest heartbeat: 200 BPM hardcore
+            minBpm: 60,
+            maxBpm: 200,
         });
-        console.log('[TitanOrchestrator] ❤️ PACEMAKER (BeatDetector) installed - WAVE 1153');
-        // 📜 WAVE 560: Subscribe to TitanEngine log events for Tactical Log
         this.engine.on('log', (logEntry) => {
             this.log(logEntry.category, logEntry.message, logEntry.data);
         });
-        console.log('[TitanOrchestrator] 📜 Tactical Log connected to TitanEngine');
-        // Initialize HAL
-        // 🎨 WAVE 686.10: Pass external driver if provided
         this.hal = new HardwareAbstraction({
             debug: this.config.debug,
             externalDriver: this.config.dmxDriver
         });
-        console.log('[TitanOrchestrator] HardwareAbstraction created');
-        if (this.config.dmxDriver) {
-            console.log('[TitanOrchestrator] 🎨 Using external DMX driver (WAVE 686.10)');
-        }
-        // 🎭 WAVE 374: Initialize MasterArbiter
-        console.log('[TitanOrchestrator] 🎭 MasterArbiter ready (Layer 0-4 arbitration)');
-        // TODO: EventRouter connection needs interface alignment
-        // this.eventRouter.connect(this.brain, this.engine, this.hal)
-        console.log('[TitanOrchestrator] EventRouter ready (direct mode)');
         this.isInitialized = true;
-        console.log('[TitanOrchestrator] ===============================================');
-        console.log('[TitanOrchestrator]   TITAN 2.0 INITIALIZED');
-        console.log('[TitanOrchestrator] ===============================================');
+        // WAVE 2098: Boot silence — all init logs removed, unified banner in main.ts
     }
     /**
      * Start the main loop
@@ -227,11 +212,8 @@ export class TitanOrchestrator {
             return;
         }
         if (this.isRunning) {
-            console.log('[TitanOrchestrator] Already running');
             return;
         }
-        // 🏎️ WAVE 1013: NITRO BOOST - Overclock to 60fps
-        console.log('[TitanOrchestrator] 🏎️ Starting main loop @ 60fps (WAVE 1013: NITRO BOOST)');
         this.isRunning = true;
         this.mainLoopInterval = setInterval(() => {
             this.processFrame();
@@ -251,7 +233,7 @@ export class TitanOrchestrator {
             this.mainLoopInterval = null;
         }
         this.isRunning = false;
-        console.log('[TitanOrchestrator] Stopped');
+        // WAVE 2098: Boot silence
     }
     /**
      * Process a single frame of the Brain -> Engine -> HAL pipeline
@@ -318,8 +300,11 @@ export class TitanOrchestrator {
         // ═══════════════════════════════════════════════════════════════════════════
         this.applyEMASmoothing();
         // ═══════════════════════════════════════════════════════════════════════════
-        // ❤️ WAVE 1153: FEED THE PACEMAKER
-        // El corazón necesita sangre (audio) para latir
+        // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
+        // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
+        // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
+        // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
+        // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
         // ═══════════════════════════════════════════════════════════════════════════
         let beatState = {
             bpm: 120,
@@ -329,67 +314,94 @@ export class TitanOrchestrator {
             confidence: 0,
             kickDetected: false,
             snareDetected: false,
-            hihatDetected: false
+            hihatDetected: false,
+            // PLL defaults
+            pllPhase: 0,
+            pllOnBeat: false,
+            predictedNextBeatTime: 0,
+            phaseError: 0,
+            pllLocked: false,
         };
+        // 🔥 WAVE 2112: Worker BPM — the source of truth
+        const workerBpm = this.lastAudioData.workerBpm ?? 0;
+        const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0;
+        const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
+        const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0;
         if (this.beatDetector && this.hasRealAudio) {
-            // Feed audio metrics to the Pacemaker
-            // AudioMetrics interface requires many fields, but BeatDetector only uses:
-            // bass, mid, treble, energy, timestamp
-            // 🔥 WAVE 1162: THE BYPASS - Usar rawBassEnergy si disponible
-            const rawBassAvailable = this.lastAudioData.rawBassEnergy !== undefined;
-            const rawBass = this.lastAudioData.rawBassEnergy ?? bass;
-            // 🔥 DEBUG: Ver si rawBassEnergy está llegando
-            if (this.frameCount % 120 === 0) {
-                console.log(`[💓 BYPASS DEBUG] rawBassEnergy=${this.lastAudioData.rawBassEnergy?.toFixed(3) ?? 'UNDEFINED'} | frontendBass=${bass.toFixed(3)} | using=${rawBassAvailable ? 'RAW' : 'FRONTEND'}`);
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🔥 WAVE 2112: FEED WORKER BPM TO PLL — No more kick detection here
+            // setBpm() updates the Pacemaker's internal BPM and syncs PLL.
+            // tick() advances the PLL Flywheel for anticipatory beat prediction.
+            // The Pacemaker becomes a PHASE-LOCKED FLYWHEEL: smooth, predictive,
+            // but slaved to the Worker's authoritative BPM detection.
+            // ═══════════════════════════════════════════════════════════════════════
+            if (workerBpm > 0 && workerConfidence > 0.2) {
+                this.beatDetector.setBpm(workerBpm);
             }
-            const audioForBeat = {
-                bass: rawBass, // 🔥 WAVE 1162: BYPASS AGC - Bass crudo para detección de kicks
-                mid,
-                treble: high,
-                energy,
-                peak: energy, // Use energy as peak approximation
-                timestamp: Date.now(),
-                frameIndex: this.frameCount,
-                // These are outputs from BeatDetector, but required by interface
-                // We pass previous state values (circular but harmless)
-                bpm: beatState.bpm,
-                beatPhase: beatState.phase,
-                beatConfidence: beatState.confidence,
-                onBeat: beatState.onBeat,
-            };
-            // THE HEARTBEAT: Process and get the state
-            this.beatDetector.process(audioForBeat);
-            beatState = this.beatDetector.getState();
-            // 💀 WAVE 1159: Log comparison - BETA vs PACEMAKER
-            // Log every ~2 seconds to show which BPM wins
+            // PLL Flywheel: advances phase continuously for smooth beat prediction
+            beatState = this.beatDetector.tick(Date.now());
+            // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
+            if (workerOnBeat) {
+                beatState.onBeat = true;
+                beatState.kickDetected = true;
+            }
             if (this.frameCount % 60 === 0) {
-                const betaBpm = context.bpm || 120;
-                const pacemakerBpm = beatState.bpm;
-                const winner = betaBpm !== 120 ? 'BETA' : 'PACEMAKER';
-                console.log(`[TitanOrchestrator] ❤️ BPM: ${winner}=${winner === 'BETA' ? betaBpm : pacemakerBpm} | BETA=${betaBpm} PACEMAKER=${pacemakerBpm.toFixed(0)} | beat #${beatState.beatCount}`);
+                const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
+                const syncInfo = this.smoothedSyncopation.toFixed(2);
+                console.log(`[TitanOrchestrator] � WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`);
             }
+        }
+        else if (this.beatDetector) {
+            // WAVE 2090.3: THE FLYWHEEL - tick even without audio
+            // The metronome keeps spinning on inertia (freewheel mode)
+            beatState = this.beatDetector.tick(Date.now());
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
+        // The Worker computes its OWN BPM via GodEarBPMTracker now.
+        // The trinity.setBpm() bridge is UNNECESSARY — Worker is the authority.
+        // Kept as comment for archaeology.
+        // ═══════════════════════════════════════════════════════════════════════════
+        // if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
+        //   this.trinity.setBpm(beatState.bpm, beatState.pllPhase, beatState.confidence)
+        // }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2112: BPM INJECTION — Worker BPM is the authority, PLL gives phase
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Worker's GodEarBPMTracker provides authoritative BPM.
+        // PLL Flywheel provides smooth phase prediction for anticipatory effects.
+        // Combined: real BPM + smooth phase = best of both worlds.
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (workerBpm > 0 && workerConfidence > 0.2) {
+            context.bpm = workerBpm;
+            // Use PLL phase (smooth, predictive) if locked, else Worker phase
+            context.beatPhase = beatState.pllLocked
+                ? (beatState.pllPhase ?? beatState.phase)
+                : workerBeatPhase;
+            context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
+        }
+        else if (beatState.bpm > 0 && beatState.confidence > 0) {
+            // Fallback: PLL flywheel if Worker hasn't locked yet
+            context.bpm = beatState.bpm;
+            context.beatPhase = beatState.pllPhase ?? beatState.phase;
+            context.syncopation = this.estimateSyncopation(beatState.pllPhase ?? beatState.phase, bass, mid);
         }
         // For TitanEngine
         // 🎛️ WAVE 661: Incluir textura espectral
         // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
-        // ❤️ WAVE 1153: beatPhase/isBeat/beatCount NOW FROM REAL PACEMAKER
-        // 💀 WAVE 1159: THE FERRARI TAKES THE WHEEL
-        // El PACEMAKER está roto (detecta 64 BPM cuando BETA dice 170+ BPM).
-        // BETA funciona perfectamente → usamos context.bpm de BETA como fuente de verdad.
-        // PACEMAKER solo aporta: beatPhase, onBeat, beatCount (ritmo local)
+        // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
+        // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
         const engineAudioMetrics = {
             bass, // Ya normalizado por AGC - INTOCABLE
             mid, // Ya normalizado por AGC - INTOCABLE
             high, // Ya normalizado por AGC - INTOCABLE
             energy, // Ya normalizado por AGC - INTOCABLE
-            // ❤️ WAVE 1153 + 💀 WAVE 1159: 
-            // - beatPhase/isBeat/beatCount: del PACEMAKER (ritmo local)
-            // - BPM: de BETA/context (el Ferrari que SÍ funciona)
-            beatPhase: beatState.phase,
-            isBeat: beatState.onBeat,
-            beatCount: beatState.beatCount, // 🔥 THE MISSING PIECE! VMM needs this!
-            bpm: context.bpm || beatState.bpm, // 💀 WAVE 1159: BETA primero, Pacemaker fallback
-            beatConfidence: beatState.confidence,
+            // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
+            beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
+            isBeat: workerOnBeat || beatState.onBeat,
+            beatCount: beatState.beatCount,
+            bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
+            beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
             // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
             harshness: this.smoothedMetrics.harshness,
             spectralFlatness: this.smoothedMetrics.spectralFlatness,
@@ -398,10 +410,10 @@ export class TitanOrchestrator {
             subBass: this.smoothedMetrics.subBass,
             lowMid: this.smoothedMetrics.lowMid,
             highMid: this.smoothedMetrics.highMid,
-            // 🎸 WAVE 1011: Transientes - ahora también desde Pacemaker si disponibles
-            kickDetected: beatState.kickDetected || this.lastAudioData.kickDetected,
-            snareDetected: beatState.snareDetected || this.lastAudioData.snareDetected,
-            hihatDetected: beatState.hihatDetected || this.lastAudioData.hihatDetected,
+            // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
+            kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
+            snareDetected: this.lastAudioData.snareDetected,
+            hihatDetected: this.lastAudioData.hihatDetected,
         };
         // For HAL
         const halAudioMetrics = {
@@ -449,11 +461,7 @@ export class TitanOrchestrator {
                 fixtureCount: this.fixtures.length,
             });
         }
-        // WAVE 380: Debug - verify fixtures are present in loop
-        if (this.frameCount === 1 || this.frameCount % 300 === 0) {
-            console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`);
-            console.log(`[TitanOrchestrator] 🎭 Arbitrated fixtures: ${arbitratedTarget.fixtures.length}`);
-        }
+        // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
         // 4. HAL renders arbitrated target -> produces fixture states
         // Now using the new renderFromTarget method that accepts FinalLightingTarget
         let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
@@ -783,41 +791,38 @@ export class TitanOrchestrator {
                     }
                     if (!mov)
                         return f;
+                    // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
+                    // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
+                    // The physics engine will interpolate toward these new targets.
                     let newPan = f.pan;
                     let newTilt = f.tilt;
-                    let newPhysicalPan = f.physicalPan ?? f.pan;
-                    let newPhysicalTilt = f.physicalTilt ?? f.tilt;
                     if (mov.isAbsolute) {
                         // ABSOLUTE MODE: Reemplaza completamente
                         if (mov.pan !== undefined) {
                             // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
                             newPan = Math.round(mov.pan * 255);
-                            newPhysicalPan = newPan;
                         }
                         if (mov.tilt !== undefined) {
                             newTilt = Math.round(mov.tilt * 255);
-                            newPhysicalTilt = newTilt;
                         }
                     }
                     else {
-                        // OFFSET MODE: Suma
+                        // OFFSET MODE: Suma al target
                         if (mov.pan !== undefined) {
                             const panOffset = Math.round((mov.pan - 0.5) * 255);
                             newPan = Math.max(0, Math.min(255, f.pan + panOffset));
-                            newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset));
                         }
                         if (mov.tilt !== undefined) {
                             const tiltOffset = Math.round((mov.tilt - 0.5) * 255);
                             newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
-                            newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset));
                         }
                     }
                     return {
                         ...f,
                         pan: newPan,
                         tilt: newTilt,
-                        physicalPan: newPhysicalPan,
-                        physicalTilt: newPhysicalTilt,
+                        // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
+                        // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
                     };
                 });
                 // Log throttled
@@ -838,42 +843,38 @@ export class TitanOrchestrator {
                 const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined);
                 if (!isMover)
                     return f;
+                // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
+                // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
                 let newPan = f.pan;
                 let newTilt = f.tilt;
-                let newPhysicalPan = f.physicalPan ?? f.pan;
-                let newPhysicalTilt = f.physicalTilt ?? f.tilt;
                 if (mov.isAbsolute) {
-                    // ABSOLUTE MODE: Reemplaza completamente las físicas
+                    // ABSOLUTE MODE: Reemplaza completamente las posiciones target
                     // Convertir -1.0..1.0 → 0..255
                     if (mov.pan !== undefined) {
                         newPan = Math.round(((mov.pan + 1) / 2) * 255);
-                        newPhysicalPan = newPan;
                     }
                     if (mov.tilt !== undefined) {
                         newTilt = Math.round(((mov.tilt + 1) / 2) * 255);
-                        newPhysicalTilt = newTilt;
                     }
                 }
                 else {
-                    // OFFSET MODE: Suma a las físicas existentes
+                    // OFFSET MODE: Suma a los targets existentes
                     // Convertir offset -1.0..1.0 → -127..127 y sumar
                     if (mov.pan !== undefined) {
                         const panOffset = Math.round(mov.pan * 127);
                         newPan = Math.max(0, Math.min(255, f.pan + panOffset));
-                        newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset));
                     }
                     if (mov.tilt !== undefined) {
                         const tiltOffset = Math.round(mov.tilt * 127);
                         newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
-                        newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset));
                     }
                 }
                 return {
                     ...f,
                     pan: newPan,
                     tilt: newTilt,
-                    physicalPan: newPhysicalPan,
-                    physicalTilt: newPhysicalTilt,
+                    // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
+                    // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
                 };
             });
             // Log throttled
@@ -968,8 +969,9 @@ export class TitanOrchestrator {
                         case 'pan': {
                             // ⚒️ WAVE 2030.24: LTP with 16-bit precision
                             // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
+                            // 🛡️ WAVE 2085: ONLY set TARGET. physicalPan is SACRED — owned exclusively
+                            // by FixturePhysicsDriver. HAL will interpolate toward this target.
                             newF.pan = output.value;
-                            newF.physicalPan = newF.pan;
                             // panFine carried in output.fine (if fixture supports 16-bit)
                             if (output.fine !== undefined) {
                                 newF.panFine = output.fine;
@@ -978,8 +980,8 @@ export class TitanOrchestrator {
                         }
                         case 'tilt': {
                             // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+                            // 🛡️ WAVE 2085: ONLY set TARGET. physicalTilt is SACRED.
                             newF.tilt = output.value;
-                            newF.physicalTilt = newF.tilt;
                             if (output.fine !== undefined) {
                                 newF.tiltFine = output.fine;
                             }
@@ -1043,12 +1045,11 @@ export class TitanOrchestrator {
                 console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
             }
         }
-        // ⚒️ WAVE 2030.22g: Send Hephaestus-modified states to DMX
-        // HAL already sent once in renderFromTarget(), but Hephaestus changes
-        // were applied AFTER that initial send. We need to send again with the
-        // parameter overlays applied (white, amber, intensity modulation, etc.)
+        // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
+        // but THROUGH the physics engine so movement is interpolated safely.
+        // The old sendStates() was a physics-bypass backdoor — now sealed.
         if (hephOutputs.length > 0) {
-            this.hal.sendStates(fixtureStates);
+            this.hal.sendStatesWithPhysics(fixtureStates);
         }
         // ═══════════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
@@ -1112,9 +1113,9 @@ export class TitanOrchestrator {
                     fft: new Array(256).fill(0),
                     beat: {
                         onBeat: engineAudioMetrics.isBeat,
-                        confidence: 0.8,
-                        bpm: context.bpm || 120,
-                        beatPhase: context.beatPhase || 0,
+                        confidence: engineAudioMetrics.beatConfidence,
+                        bpm: engineAudioMetrics.bpm, // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
+                        beatPhase: engineAudioMetrics.beatPhase, // 🕰️ WAVE 2090.3: PLL-driven phase
                         barPhase: 0,
                         timeSinceLastBeat: 0
                     },
@@ -1255,15 +1256,6 @@ export class TitanOrchestrator {
                 },
                 timestamp: Date.now()
             };
-            // 🧹 WAVE 671.5: Silenced BROADCAST debug spam (every 2s)
-            // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
-            // 🩸 WAVE 380: Updated to show REAL fixture IDs
-            // if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
-            //   const f0 = truth.hardware.fixtures[0]
-            //   const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ')
-            //   console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`)
-            //   console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`)
-            // }
             this.onBroadcast(truth);
             // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
             // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
@@ -1432,11 +1424,9 @@ export class TitanOrchestrator {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setBroadcastCallback(callback) {
         this.onBroadcast = callback;
-        console.log('[TitanOrchestrator] Broadcast callback registered');
     }
     setLogCallback(callback) {
         this.onLog = callback;
-        console.log('[TitanOrchestrator] Log callback registered');
     }
     /**
      * WAVE 257: Send a log entry to the frontend Tactical Log
@@ -1538,6 +1528,15 @@ export class TitanOrchestrator {
             // El Frontend NO tiene esta métrica, viene solo del BETA Worker vía GOD EAR
             // Sin esta línea, el Frontend (30fps) BORRABA el valor que el Worker (10fps) enviaba
             rawBassEnergy: this.lastAudioData.rawBassEnergy,
+            // 🔥 WAVE 2130.5: CRITICAL FIX - Preservar Worker BPM del Frontend overwrite!
+            // Frontend (30fps) NO tiene BPM — viene solo del Worker vía brain.on('audio-levels')
+            // Sin estas líneas, el Frontend BORRABA workerBpm=185 → undefined → ?? 0 → BPM=0
+            // Resultado: 2 de cada 3 render cycles mostraban BPM=0 (30fps sobrescribe 10fps)
+            workerBpm: this.lastAudioData.workerBpm,
+            workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+            workerOnBeat: this.lastAudioData.workerOnBeat,
+            workerBeatPhase: this.lastAudioData.workerBeatPhase,
+            workerBeatStrength: this.lastAudioData.workerBeatStrength,
         };
         // 🔥 WAVE 1012.5: Frontend también detecta audio real
         const wasAudioActive = this.hasRealAudio;
@@ -1591,9 +1590,7 @@ export class TitanOrchestrator {
             ...f,
             dmxAddress: f.dmxAddress || f.address // Ensure dmxAddress exists regardless of format
         }));
-        // WAVE 380: Log fixture ingestion
-        console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`);
-        console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...');
+        // WAVE 380: Fixture ingestion (WAVE 2098: silenced)
         // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
         // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
         // 🎨 WAVE 1001: Include HAL color flags
@@ -1629,7 +1626,7 @@ export class TitanOrchestrator {
                 }
             }
         }
-        console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} total, ${moverCount} movers registered in PhysicsDriver + Arbiter`);
+        // WAVE 2098: Boot silence
     }
     /**
      * WAVE 252: Get current fixtures count
@@ -1821,6 +1818,43 @@ export class TitanOrchestrator {
                     this.EMA_ALPHA_FAST * raw.highMid;
         }
     }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Syncopation estimator
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Mirror of SimpleRhythmDetector algorithm but using REAL beatPhase
+    // from Pacemaker instead of the dead beatPhase=0 from Worker.
+    //
+    // Syncopation = ratio of off-beat energy to total energy.
+    // On-beat: phase < 0.25 || phase > 0.75 (50% window around beat)
+    // Off-beat: everything else (the "and" of the beat)
+    // High syncopation = energy concentrated off-beat (funk, breakbeat)
+    // Low syncopation = energy on-beat (four-on-floor techno)
+    // ═══════════════════════════════════════════════════════════════════════════
+    estimateSyncopation(beatPhase, bass, mid) {
+        const energy = bass + mid * 0.5;
+        this.syncopationPhaseHistory.push({ phase: beatPhase, energy });
+        if (this.syncopationPhaseHistory.length > this.SYNC_HISTORY_SIZE) {
+            this.syncopationPhaseHistory.shift();
+        }
+        let onBeatEnergy = 0;
+        let offBeatEnergy = 0;
+        for (const frame of this.syncopationPhaseHistory) {
+            const isOnBeat = frame.phase < 0.25 || frame.phase > 0.75;
+            if (isOnBeat) {
+                onBeatEnergy += frame.energy;
+            }
+            else {
+                offBeatEnergy += frame.energy;
+            }
+        }
+        const totalEnergy = onBeatEnergy + offBeatEnergy;
+        const instantSync = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
+        // EMA smoothing — same alpha as Worker for behavioral parity
+        this.smoothedSyncopation =
+            (this.SYNC_EMA_ALPHA * instantSync) +
+                ((1 - this.SYNC_EMA_ALPHA) * this.smoothedSyncopation);
+        return this.smoothedSyncopation;
+    }
 }
 // Singleton instance
 let orchestratorInstance = null;
@@ -1844,5 +1878,4 @@ export function registerTitanOrchestrator(instance) {
         console.warn('[TitanOrchestrator] ⚠️ Replacing existing singleton instance');
     }
     orchestratorInstance = instance;
-    console.log('[TitanOrchestrator] ✅ Instance registered as singleton');
 }

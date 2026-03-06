@@ -282,7 +282,7 @@ function handleMessage(message) {
             case MessageType.INIT:
                 state.isRunning = true;
                 state.startTime = Date.now();
-                console.log('[GAMMA] 🧠 WAVE 230.5: Pure Musical Analyst INITIALIZED');
+                // WAVE 2098: Boot silence
                 sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
                 break;
             case MessageType.SHUTDOWN:
@@ -376,7 +376,7 @@ function sendMessage(type, target, payload, priority = MessagePriority.NORMAL) {
 // ============================================
 if (parentPort) {
     parentPort.on('message', handleMessage);
-    console.log('[GAMMA] 🧠 WAVE 230.5: Pure Musical Analyst ready');
+    // WAVE 2098: Boot silence
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
         console.error('[GAMMA] Uncaught exception:', error);

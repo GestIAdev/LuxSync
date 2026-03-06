@@ -312,7 +312,7 @@ export class EffectDreamSimulator {
          * ```
          */
         this.ghostSpectralContext = null;
-        console.log('[DREAM_SIMULATOR] 🔮 Initialized with Cassandra Pre-Buffer');
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -328,7 +328,9 @@ export class EffectDreamSimulator {
         // Si tenemos un efecto pre-bufferizado y el evento está cerca, USARLO
         // ═══════════════════════════════════════════════════════════════
         const now = Date.now();
-        const timeToEvent = musicalPrediction.timeToEventMs ?? 4000;
+        // 🛡️ WAVE 2093.1: Guard Infinity — `Infinity ?? 4000` returns Infinity (not null).
+        const timeToEvent = (Number.isFinite(musicalPrediction.timeToEventMs) && musicalPrediction.timeToEventMs > 0)
+            ? musicalPrediction.timeToEventMs : 4000;
         const oracleProbability = musicalPrediction.oracleProbability ?? 0;
         const isUrgent = musicalPrediction.isUrgent ?? false;
         // Verificar si el pre-buffer es válido y relevante
@@ -866,7 +868,8 @@ export class EffectDreamSimulator {
             // 🔮 WAVE 1190: PROYECTO CASSANDRA - Boost para efectos sugeridos por el Oráculo
             const isSuggestedByOracle = prediction.suggestedEffects?.some(suggested => effect.includes(suggested) || suggested.includes(effect)) ?? false;
             // 🔮 CASSANDRA: Confidence boost si el Oráculo sugirió este efecto
-            const oracleBoost = isSuggestedByOracle ? 0.15 : 0;
+            // 🩸 WAVE 2104: Reducido de 0.15 a 0.08 — sugerencia, no imposición
+            const oracleBoost = isSuggestedByOracle ? 0.08 : 0;
             const baseConfidence = prediction.confidence * 0.9;
             const finalConfidence = Math.min(1, baseConfidence + oracleBoost);
             candidates.push({
@@ -1088,15 +1091,22 @@ export class EffectDreamSimulator {
     }
     /**
      * 🎨 WAVE 1029: Derive SpectralContext from AudienceSafetyContext
+     * 🧬 WAVE 2093 COG-3: Prioridad: context.spectral (REAL) > ghost > vibe fallback
      *
-     * Si no hay ghost context, derivamos uno básico del vibe y energy.
+     * Antes: hardcodeaba textura por vibe (chill=clean, techno=harsh).
+     * Ahora: usa datos reales del análisis FFT cuando están disponibles.
+     * Dark Ambient ya no se trata como "clean" solo por ser chill-lounge.
      */
     deriveSpectralContext(context, state) {
-        // Si hay ghost context, usarlo
+        // 🧬 WAVE 2093 COG-3: PRIORIDAD 1 — Datos REALES del sensory layer
+        if (context.spectral) {
+            return context.spectral;
+        }
+        // PRIORIDAD 2 — Ghost context (inyectado para testing)
         if (this.ghostSpectralContext) {
             return this.ghostSpectralContext;
         }
-        // Derivar textura del vibe
+        // PRIORIDAD 3 — Fallback: derivar del vibe (legacy, última línea de defensa)
         let texture = 'warm'; // Default safe
         let harshness = 0.4;
         let clarity = 0.5;
@@ -1111,7 +1121,6 @@ export class EffectDreamSimulator {
             clarity = 0.8;
         }
         else if (context.vibe.includes('rock') || context.vibe.includes('pop-rock')) {
-            // Rock: depende de la energía
             if (state.energy > 0.75) {
                 texture = 'harsh';
                 harshness = 0.6;
@@ -1171,8 +1180,8 @@ export class EffectDreamSimulator {
         const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext);
         if (!textureCheck.compatible) {
             // REJECTED by texture filter - return zero relevance
-            // 🧹 WAVE 1178.1: Log SILENCIADO - spam innecesario
-            // console.log(`[DREAM_SIMULATOR] 🎨 TEXTURE REJECT: ${effect.effect} - ${textureCheck.reason}`)
+            // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)
+            console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${EFFECT_DNA_REGISTRY[effect.effect]?.textureAffinity}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`);
             return {
                 relevance: 0,
                 distance: Math.sqrt(3), // Máxima distancia
@@ -1215,6 +1224,11 @@ export class EffectDreamSimulator {
         // Usar el DNAAnalyzer singleton para derivar el Target DNA
         const dnaAnalyzer = getDNAAnalyzer();
         const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics);
+        // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
+        // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
+        if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
+            console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)}`);
+        }
         // Calcular distancia euclidiana 3D (effectDNA es directamente EffectDNA, no tiene .dna)
         const dA = effectDNA.aggression - targetDNA.aggression;
         const dC = effectDNA.chaos - targetDNA.chaos;
@@ -1283,25 +1297,54 @@ export class EffectDreamSimulator {
         return conflicts;
     }
     calculateVibeCoherence(effect, context) {
-        // WAVE 902.1: TRUTH - Only Techno + Latino implemented
+        // ═══════════════════════════════════════════════════════════════
+        // 🩸 WAVE 2104: VIBE COHERENCE REFORM
+        // ANTES: Solo 3 efectos (industrial_strobe, acid_sweep, cyber_dualism) tenían 1.0
+        //        Los otros 12 efectos techno tenían 0.5 → cyber_dualism ganaba +0.09 siempre
+        // AHORA: TODOS los efectos registrados en EFFECTS_BY_VIBE son "de la casa" (0.85)
+        //        Los no registrados (herejía inter-género) son 0.0
+        //        Efectos desconocidos: 0.4
+        // FILOSOFÍA: La coherencia de vibe ya se filtra en generateCandidates() con
+        //            getVibeAllowedEffects(). Si un efecto llegó hasta aquí, ES coherente.
+        //            Dar ventaja injusta a 3 elegidos es ARISTOCRACIA, no democracia.
+        // ═══════════════════════════════════════════════════════════════
+        // TECHNO: Todos los efectos techno registrados son igualmente de casa
         if (context.vibe.includes('techno')) {
-            if (['industrial_strobe', 'acid_sweep', 'cyber_dualism'].includes(effect.effect)) {
-                return 1.0;
+            const TECHNO_FAMILY = [
+                'industrial_strobe', 'gatling_raid', 'core_meltdown',
+                'sky_saw', 'abyssal_rise',
+                'cyber_dualism', 'seismic_snap',
+                'ambient_strobe', 'binary_glitch',
+                'acid_sweep', 'digital_rain',
+                'void_mist', 'fiber_optics',
+                'deep_breath', 'sonar_ping'
+            ];
+            if (TECHNO_FAMILY.includes(effect.effect)) {
+                return 0.85; // Todos son familia — nadie es más techno que otro
             }
-            else if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
-                return 0.0; // HEREJÍA - Latino en sesión Techno
+            // Herejía inter-género
+            if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
+                return 0.0;
             }
-            return 0.5;
+            return 0.4; // Desconocido
         }
-        // WAVE 902.1: TRUTH - Latino effects (all 10)
+        // LATINO: Todos los efectos latinos registrados son igualmente de casa
         if (context.vibe.includes('latino')) {
-            if (['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath',
-                'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'].includes(effect.effect)) {
-                return 1.0;
+            const LATINO_FAMILY = [
+                'ghost_breath', 'amazon_mist',
+                'cumbia_moon', 'tidal_wave',
+                'corazon_latino', 'strobe_burst',
+                'clave_rhythm', 'tropical_pulse',
+                'glitch_guaguanco', 'machete_spark',
+                'salsa_fire', 'solar_flare',
+                'latina_meltdown', 'strobe_storm'
+            ];
+            if (LATINO_FAMILY.includes(effect.effect)) {
+                return 0.85;
             }
-            return 0.6;
+            return 0.4;
         }
-        return 0.7; // Neutral para vibes desconocidos
+        return 0.6; // Neutral para vibes desconocidos
     }
     calculateDiversityScore(effect, context) {
         // ═══════════════════════════════════════════════════════════════
@@ -1360,7 +1403,21 @@ export class EffectDreamSimulator {
             scenario: s,
             score: this.calculateScenarioScore(s, prediction)
         })).sort((a, b) => b.score - a.score);
-        // 🧹 WAVE 1015: Silenciado - spam innecesario
+        // � WAVE 2104.1: DIAGNOSTIC LOG — Top 5 candidatos con desglose completo
+        // SIN ESTO ESTAMOS CIEGOS. Se desactiva cuando el sistema esté calibrado.
+        const top5 = scored.slice(0, 5);
+        const predType = prediction.predictionType ?? 'none';
+        console.log(`[DREAM_RANKING] 🏆 TOP 5 (${scored.length} total) | pred=${predType} conf=${prediction.confidence.toFixed(2)}:\n` +
+            top5.map((s, i) => {
+                const sc = s.scenario;
+                const dna = `DNA=${sc.projectedRelevance.toFixed(2)}`;
+                const div = `DIV=${sc.diversityScore.toFixed(2)}`;
+                const vib = `VIB=${sc.vibeCoherence.toFixed(2)}`;
+                const rsk = `RSK=${sc.riskLevel.toFixed(2)}`;
+                const dist = `dist=${sc.dnaDistance.toFixed(2)}`;
+                const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : '';
+                return `  ${i + 1}. ${sc.effect.effect.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`;
+            }).join('\n'));
         return scored.map(s => s.scenario);
     }
     calculateScenarioScore(scenario, prediction) {
@@ -1385,23 +1442,35 @@ export class EffectDreamSimulator {
         // ═══════════════════════════════════════════════════════════════
         let score = 0;
         const effectName = scenario.effect.effect.toLowerCase();
-        // 🎯 CORE: DNA Relevance MULTIPLICADA por Diversity Factor
-        // diversityScore ya viene con la escalera (1.0 / 0.7 / 0.4 / 0.1)
+        // 🩸 WAVE 2104: adjustedRelevance ya no se usa en pesos principales
+        // (diversity es factor independiente ahora), pero se mantiene para el perfect match check
         const adjustedRelevance = scenario.projectedRelevance * scenario.diversityScore;
         // 🎲 WAVE 1178: ANTI-DETERMINISM - Exploration Factor
-        // Usa el timestamp actual para rotar qué efectos tienen boost
-        // El hash del nombre del efecto crea una "firma" única para cada efecto
-        // que se combina con el timestamp para crear varianza temporal
+        // 🩸 WAVE 2104: Ventana 10s→8s, probabilidad 30%→40%, boost 0.15→0.12
+        // Más efectos rotan más frecuentemente pero con boost más moderado.
+        // Antes: 30% recibían +0.15 cada 10s = picos agresivos infrecuentes
+        // Ahora: 40% reciben +0.12 cada 8s = rotación más suave y constante
         const effectHash = this.hashEffectName(effectName);
-        const timeWindow = Math.floor(Date.now() / 10000); // Cambia cada 10 segundos
+        const timeWindow = Math.floor(Date.now() / 8000); // 🩸 WAVE 2104: Cambia cada 8 segundos (era 10)
         const explorationSeed = (effectHash + timeWindow) % 100;
-        const explorationBoost = (explorationSeed < 30) ? 0.15 : 0; // 30% de efectos reciben boost en cada ventana
+        const explorationBoost = (explorationSeed < 40) ? 0.12 : 0; // 🩸 WAVE 2104: 40% de efectos (era 30%), boost 0.12 (era 0.15)
         // 🧬 Pesos del scoring (ajustados para hacer espacio a exploración)
-        score += adjustedRelevance * 0.45; // 🧬 DNA + Diversity (45% - era 50%)
-        score += scenario.vibeCoherence * 0.18; // Coherencia de vibe (era 20%)
-        score += (1 - scenario.riskLevel) * 0.18; // Bajo riesgo preferido (era 20%)
-        score += scenario.simulationConfidence * 0.09; // Confianza en predicción (era 10%)
-        score += explorationBoost; // 🎲 WAVE 1178: Exploration (10% efectivo)
+        // 🩸 WAVE 2104: REBALANCE — "Cassandra es el copiloto, no el piloto"
+        // ANTES: relevance*0.45, vibe*0.18, risk*0.18, simConf*0.09, exploration*0.10
+        // PROBLEMA: DNA relevance (45%) dominaba todo. cyber_dualism SIEMPRE ganaba porque
+        //           su DNA (A=0.55, C=0.50, O=0.45) está en el CENTRO del espacio y
+        //           la distancia euclidiana es MÍNIMA para energías medias.
+        //           Diversity se multiplicaba DENTRO de relevance → el efecto con mejor
+        //           DNA distance aplastaba cualquier penalización de diversidad.
+        // AHORA: Diversity se pondera SEPARADAMENTE del DNA relevance.
+        //        DNA baja a 0.35, Diversity sube a 0.20 como factor INDEPENDIENTE.
+        //        Exploration sube a 0.12 para más varianza temporal.
+        score += scenario.projectedRelevance * 0.35; // 🧬 DNA puro (era 0.45 con diversity incluida)
+        score += scenario.diversityScore * 0.20; // 🎲 Diversity INDEPENDIENTE (nuevo)
+        score += scenario.vibeCoherence * 0.15; // Coherencia de vibe (era 0.18, ahora que es igualitaria baja)
+        score += (1 - scenario.riskLevel) * 0.13; // Bajo riesgo (era 0.18)
+        score += scenario.simulationConfidence * 0.05; // Confianza (era 0.09)
+        score += explorationBoost; // 🎲 WAVE 1178: Exploration (12% efectivo)
         // Penalizar conflictos
         score -= scenario.cooldownConflicts.length * 0.15;
         score -= scenario.hardwareConflicts.length * 0.20;
@@ -1420,25 +1489,36 @@ export class EffectDreamSimulator {
         // ═══════════════════════════════════════════════════════════════
         const predictionType = prediction.predictionType ?? 'none';
         if (predictionType === 'energy_spike' || predictionType === 'drop_incoming') {
-            // 🎯 WAVE 1176: SPIKE BOOST AUMENTADO - Efectos de IMPACTO ganan +50% (era +25%)
+            // 🎯 WAVE 2093 COG-6: RATIO SIMÉTRICO ±0.40
+            // Era +0.50/-0.70 (ratio 7:5 asimétrico) — destruía candidatos atmosféricos en falsos spike.
+            // Ahora ±0.40 simétrico: boost justo, penalti justo. Equilibrio.
+            //
+            // 🩸 WAVE 2095.3: Añadidos 'saw', 'abyssal', 'rise', 'dualism', 'cyber'
+            // PROBLEMA: Los efectos hard con textureAffinity='dirty' (industrial_strobe, gatling_raid)
+            // eran los únicos con keywords en IMPACT_EFFECTS. Pero en textura CLEAN (Brejcha,
+            // clarity 0.80, harshness 0.01), todos los 'dirty' son VETADOS por texture filter.
+            // Los efectos universal agresivos (sky_saw A=0.80, abyssal_rise A=0.80, cyber_dualism A=0.55)
+            // NO tenían keywords aquí → ninguno recibía el +0.40 boost durante drops.
+            // Resultado: en clean texture + drop_incoming, NADIE recibía boost → acid_sweep seguía ganando.
             const IMPACT_EFFECTS = [
                 'strobe', 'flash', 'blind', 'gatling', 'thunder', 'meltdown',
-                'storm', 'raid', 'snap', 'spark', 'burst', 'strike', 'glitch'
+                'storm', 'raid', 'snap', 'spark', 'burst', 'strike', 'glitch',
+                'saw', 'abyssal', 'rise', 'dualism', 'cyber' // 🩸 WAVE 2095.3: universal agresivos
             ];
             const isImpactEffect = IMPACT_EFFECTS.some(keyword => effectName.includes(keyword));
             if (isImpactEffect) {
-                score += 0.50; // 🎯 WAVE 1176: SUBIDO de 0.25 (¡Prioridad total al impacto!)
+                score += 0.40; // 🎯 WAVE 2093: Simétrico (era 0.50)
                 // También boost intensity del candidato (mutación temporal para scoring)
                 scenario.effect.intensity = Math.min(1.0, scenario.effect.intensity * 1.25);
             }
-            // 🎯 WAVE 1176: SLOW PENALTY AUMENTADO - Efectos LENTOS pierden -70% (era -30%)
+            // 🎯 WAVE 2093 COG-6: Penalti simétrico para lentos
             const SLOW_EFFECTS = [
                 'breath', 'mist', 'drift', 'moon', 'wave', 'sweep', 'ambient',
                 'fiber', 'pulse', 'shimmer', 'plankton', 'whale', 'caustic'
             ];
             const isSlowEffect = SLOW_EFFECTS.some(keyword => effectName.includes(keyword));
             if (isSlowEffect) {
-                score -= 0.70; // 🎯 WAVE 1176: SUBIDO de 0.30 (¡Muerte a los lentos en drops!)
+                score -= 0.40; // 🎯 WAVE 2093: Simétrico (era 0.70 — demasiado destructivo)
             }
         }
         // 🌊 WAVE 1173: Buildup - Boost efectos de tensión
@@ -1463,22 +1543,26 @@ export class EffectDreamSimulator {
         // No hay tiempo para deliberación - el efecto correcto AHORA > perfecto tarde
         // ═══════════════════════════════════════════════════════════════
         const isUrgent = prediction.isUrgent ?? false;
-        const timeToEvent = prediction.timeToEventMs ?? 4000;
+        // 🛡️ WAVE 2093.1: Guard Infinity — same pattern as Cassandra pre-buffer
+        const timeToEvent = (Number.isFinite(prediction.timeToEventMs) && prediction.timeToEventMs > 0)
+            ? prediction.timeToEventMs : 4000;
         const oracleProbability = prediction.oracleProbability ?? 0;
         if (isUrgent && oracleProbability > 0.5) {
             // 🚨 URGENCIA ALTA: < 2 segundos para el evento
-            // Boost MASIVO a efectos que matchean el tipo de predicción
-            const urgencyBoost = Math.min(0.35, (2000 - timeToEvent) / 2000 * 0.35);
+            // 🩸 WAVE 2104: "Cassandra es el copiloto de rally que anticipa curvas, no el piloto"
+            // ANTES: Max +0.35 → dominaba el scoring, convertía al Oráculo en dictador
+            // AHORA: Max +0.18 → influencia significativa pero no dictatorial
+            const urgencyBoost = Math.min(0.18, (2000 - timeToEvent) / 2000 * 0.18);
             score += urgencyBoost;
             // Log para debugging de Cassandra urgency
-            if (urgencyBoost > 0.15) {
+            if (urgencyBoost > 0.10) {
                 console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(2)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(2)})`);
             }
         }
         // 🔮 CASSANDRA: Boost adicional si alta probabilidad del Oráculo (> 0.7)
-        // Esto significa que el Oráculo está MUY seguro de la predicción
+        // 🩸 WAVE 2104: Reducido de 0.2 a 0.10 — apoyo, no dominación
         if (oracleProbability > 0.7) {
-            const confidenceBoost = (oracleProbability - 0.7) * 0.2; // Max +0.06 para prob=1.0
+            const confidenceBoost = (oracleProbability - 0.7) * 0.10; // Max +0.03 para prob=1.0 (era +0.06)
             score += confidenceBoost;
         }
         return Math.max(0, Math.min(1, score));
@@ -1504,10 +1588,21 @@ export class EffectDreamSimulator {
             };
         }
         // MODIFY conditions
-        if (bestScenario.projectedBeauty < 0.5) {
+        // 🧬 WAVE 2093 COG-2: projectedBeauty → projectedRelevance (ghost dependency fix)
+        // projectedBeauty era una métrica legacy deprecada desde WAVE 970.
+        // projectedRelevance es la métrica primaria: distancia euclidiana DNA real.
+        //
+        // 🩸 WAVE 2095.3: Gate bajado 0.45 → 0.30
+        // PROBLEMA: Con drop_incoming, los efectos IMPACT (strobes, aggression=0.85-0.95) 
+        // tienen projectedRelevance BAJA (~0.35) porque el target DNA tiene aggression ~0.35
+        // a energías medias de Brejcha. El ranking de CASSANDRA ya incorporó el boost de
+        // +0.40 para IMPACT_EFFECTS, así que si llegó como bestScenario, GANÓ la competencia.
+        // El gate de 0.45 era un second-guess redundante que MATABA todo efecto hard durante drops.
+        // 0.30 mantiene protección contra efectos genuinamente irrelevantes sin vetar a los ganadores.
+        if (bestScenario.projectedRelevance < 0.30) {
             return {
                 action: 'modify',
-                reason: `Low beauty: ${bestScenario.projectedBeauty.toFixed(2)} - consider alternatives`
+                reason: `Low relevance: ${bestScenario.projectedRelevance.toFixed(2)} - consider alternatives`
             };
         }
         if (bestScenario.cooldownConflicts.length > 0) {
@@ -1519,7 +1614,7 @@ export class EffectDreamSimulator {
         // EXECUTE
         return {
             action: 'execute',
-            reason: `Beauty: ${bestScenario.projectedBeauty.toFixed(2)}, Risk: ${bestScenario.riskLevel.toFixed(2)} - GO!`
+            reason: `Relevance: ${bestScenario.projectedRelevance.toFixed(2)}, Risk: ${bestScenario.riskLevel.toFixed(2)} - GO!`
         };
     }
     detectWarnings(scenarios, context) {

@@ -532,8 +532,7 @@ export class EffectsEngine {
         this.opticEngine = new OpticEngine();
         this.entropy = 0;
         this.frameCount = 0;
-        console.log('[EffectsEngine]  V17 initialized');
-        console.log(`[EffectsEngine]  Mechanical Hold Time: ${MECHANICAL_HOLD_TIME_MS}ms`);
+        // WAVE 2098: Boot silence
     }
     /** Update principal - llamar cada frame */
     update(baseState, paletteIndex = 0) {

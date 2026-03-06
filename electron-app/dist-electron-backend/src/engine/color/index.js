@@ -6,7 +6,7 @@
 export { MovementEngine } from './MovementEngine';
 export { EffectsEngine } from './EffectsEngine';
 // WAVE 68.5: Motor de color PURO (sin género)
-export { SeleneColorEngine, 
+export { SeleneColorEngine, SeleneColorInterpolator, 
 // Utilidades
 hslToRgb, rgbToHsl, paletteToRgb, normalizeHue, clamp, mapRange, 
 // Constantes (matemática musical pura)

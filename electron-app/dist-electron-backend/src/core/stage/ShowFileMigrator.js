@@ -296,19 +296,124 @@ export function migrateConfigV1ToV2(configV1, scenes = [], showName = 'Migrated 
     };
 }
 /**
+ * Ordered list of V2 incremental patches.
+ * Currently empty — schema is at 2.0.0 with no patches needed yet.
+ *
+ * Example future patch:
+ * {
+ *   fromVersion: '2.0.0',
+ *   toVersion: '2.1.0',
+ *   description: 'Add fixture.tags[] field',
+ *   apply: (show) => {
+ *     const fixtures = show.fixtures as Array<Record<string, unknown>>
+ *     for (const f of fixtures) {
+ *       if (!Array.isArray(f.tags)) f.tags = []
+ *     }
+ *   }
+ * }
+ */
+const V2_PATCHES = [
+    // ── PATCHES GO HERE IN ORDER ──
+    // Each patch bumps schemaVersion from fromVersion → toVersion.
+    // They execute sequentially: 2.0.0 → 2.1.0 → 2.2.0 → ...
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Unify invert source of truth
+    // 
+    // BEFORE: physics.invertPan and calibration.panInvert could disagree,
+    //         causing double-invert or silent override depending on code path.
+    // AFTER:  calibration.panInvert is THE MASTER. physics.invertPan is frozen
+    //         at false (deprecated). Any pre-existing physics.invertPan=true
+    //         is migrated INTO calibration.panInvert if calibration doesn't
+    //         already have its own value.
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+        fromVersion: '2.0.0',
+        toVersion: '2.1.0',
+        description: 'CW-AUDIT-4: Migrate physics.invertPan/Tilt → calibration.panInvert/tiltInvert (single source of truth)',
+        apply: (show) => {
+            const fixtures = show.fixtures;
+            for (const f of fixtures) {
+                const physics = f.physics;
+                const calibration = f.calibration;
+                // Ensure calibration object exists
+                if (!calibration) {
+                    f.calibration = {
+                        panOffset: 0,
+                        tiltOffset: 0,
+                        panInvert: physics?.invertPan ?? false,
+                        tiltInvert: physics?.invertTilt ?? false,
+                    };
+                }
+                else {
+                    // Only migrate if calibration doesn't already have its own explicit value
+                    // (i.e., if the tech manually set it in CalibrationView, respect that)
+                    if (calibration.panInvert === undefined || calibration.panInvert === null) {
+                        calibration.panInvert = physics?.invertPan ?? false;
+                    }
+                    if (calibration.tiltInvert === undefined || calibration.tiltInvert === null) {
+                        calibration.tiltInvert = physics?.invertTilt ?? false;
+                    }
+                }
+                // Freeze physics.invertPan/Tilt to false (deprecated — no longer read by runtime)
+                if (physics) {
+                    physics.invertPan = false;
+                    physics.invertTilt = false;
+                }
+            }
+        }
+    },
+];
+/** Current latest V2 schema version */
+export const LATEST_V2_VERSION = '2.1.0';
+/**
+ * Migrate a V2 show file through all incremental patches to latest.
+ *
+ * - If already at latest, returns as-is (zero-copy).
+ * - If patches are needed, applies them in order and logs each.
+ * - Pure function: does NOT mutate the original if no patches apply.
+ *
+ * @returns The show at latest version + array of applied patch descriptions
+ */
+export function migrateV2ToLatest(show) {
+    const appliedPatches = [];
+    // Fast path: already at latest
+    if (show.schemaVersion === LATEST_V2_VERSION && V2_PATCHES.length === 0) {
+        return { show, appliedPatches };
+    }
+    // Work on a shallow clone to avoid mutating the original
+    const mutable = { ...show };
+    let currentVersion = String(mutable.schemaVersion || '2.0.0');
+    for (const patch of V2_PATCHES) {
+        if (patch.fromVersion === currentVersion) {
+            console.log(`[ShowFileMigrator] 🔄 V2 patch: ${patch.description} (${patch.fromVersion} → ${patch.toVersion})`);
+            patch.apply(mutable);
+            mutable.schemaVersion = patch.toVersion;
+            currentVersion = patch.toVersion;
+            appliedPatches.push(patch.description);
+        }
+    }
+    if (appliedPatches.length > 0) {
+        console.log(`[ShowFileMigrator] ✅ V2 migration complete: ${appliedPatches.length} patches applied → v${currentVersion}`);
+    }
+    return { show: mutable, appliedPatches };
+}
+/**
  * Detect if data is V1 or V2 and migrate if needed
  */
 export function autoMigrate(data) {
     const version = getSchemaVersion(data);
     if (version === '2.0.0') {
-        // Already V2
+        // Already V2 — run through incremental patches (CW-10)
+        const { show: patched, appliedPatches } = migrateV2ToLatest(data);
         return {
             success: true,
-            showFile: data,
-            warnings: [],
-            fixturesCount: data.fixtures.length,
-            scenesCount: data.scenes.length,
-            groupsCount: data.groups.length
+            showFile: patched,
+            warnings: appliedPatches.length > 0
+                ? [`V2 incremental migration: ${appliedPatches.length} patches applied`]
+                : [],
+            fixturesCount: patched.fixtures.length,
+            scenesCount: patched.scenes.length,
+            groupsCount: patched.groups.length
         };
     }
     if (version === '1.0.0') {

@@ -265,42 +265,13 @@ export class TitanOrchestrator {
           
           // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM is the authority
           // GodEarBPMTracker runs IN the Worker where FFT data is fresh every ~21ms
-          workerBpm: levels.bpm ?? this.lastAudioData.workerBpm,
-          workerBpmConfidence: levels.bpmConfidence ?? this.lastAudioData.workerBpmConfidence,
+          // WAVE 2130.3: ?? no bloquea 0 — usar guard explícito para preservar BPM bloqueado
+          workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+          workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
           workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
           workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
           workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
         };
-
-        // ══════════════════════════════════════════════════════════════
-        // � WAVE 2114: DIAGNOSTIC PROBE 3 — TITAN ASSIGNMENT GATE
-        // Valor que queda escrito en lastAudioData.workerBpm tras el merge.
-        // Detecta si el ?? fallback enmascaró un BPM=0 del Worker.
-        // ══════════════════════════════════════════════════════════════
-        {
-          const _resolvedBpm   = this.lastAudioData.workerBpm;
-          const _resolvedConf  = this.lastAudioData.workerBpmConfidence;
-          const _incomingBpm   = levels.bpm;
-          const _incomingConf  = levels.bpmConfidence;
-
-          if (_incomingBpm === 0 || _incomingBpm === undefined || _incomingBpm === null) {
-            console.warn(
-              `[PROBE-3 TITAN 🚨 BPM=0] levels.bpm llegó NULO/CERO — fallback a lastAudioData` +
-              ` | incoming.bpm=${_incomingBpm}` +
-              ` | incoming.conf=${_incomingConf}` +
-              ` | resolved.workerBpm=${_resolvedBpm}` +
-              ` | resolved.workerBpmConf=${_resolvedConf}`
-            );
-          } else if (_resolvedBpm === 0 || _resolvedBpm === undefined) {
-            console.warn(
-              `[PROBE-3 TITAN 🔥 MERGE=0] incoming.bpm=${_incomingBpm} pero resolved=0` +
-              ` | POSIBLE SOBRESCRITURA — revisar operador ??` +
-              ` | incoming.conf=${_incomingConf}` +
-              ` | resolved.workerBpmConf=${_resolvedConf}`
-            );
-          }
-        }
-        // ══════════════════════════════════════════════════════════════
       });
       
       await trinity.start()
@@ -1556,6 +1527,14 @@ export class TitanOrchestrator {
         this.hal.setVibe(normalizedVibeId)
         console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`)
       }
+
+      // 🧨 WAVE 2140: AMNESIA PROTOCOL — Hard reset del Pacemaker en BETA.
+      // Un cambio de Vibe = nuevo track = el BPM anterior es basura.
+      // Obligamos al motor a escuchar en blanco.
+      if (this.trinity) {
+        this.trinity.resetPacemaker()
+        console.log(`[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → ${normalizedVibeId}`)
+      }
     }
   }
   
@@ -1810,6 +1789,16 @@ export class TitanOrchestrator {
       // El Frontend NO tiene esta métrica, viene solo del BETA Worker vía GOD EAR
       // Sin esta línea, el Frontend (30fps) BORRABA el valor que el Worker (10fps) enviaba
       rawBassEnergy: this.lastAudioData.rawBassEnergy,
+
+      // 🔥 WAVE 2130.5: CRITICAL FIX - Preservar Worker BPM del Frontend overwrite!
+      // Frontend (30fps) NO tiene BPM — viene solo del Worker vía brain.on('audio-levels')
+      // Sin estas líneas, el Frontend BORRABA workerBpm=185 → undefined → ?? 0 → BPM=0
+      // Resultado: 2 de cada 3 render cycles mostraban BPM=0 (30fps sobrescribe 10fps)
+      workerBpm: this.lastAudioData.workerBpm,
+      workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+      workerOnBeat: this.lastAudioData.workerOnBeat,
+      workerBeatPhase: this.lastAudioData.workerBeatPhase,
+      workerBeatStrength: this.lastAudioData.workerBeatStrength,
     }
     
     // 🔥 WAVE 1012.5: Frontend también detecta audio real

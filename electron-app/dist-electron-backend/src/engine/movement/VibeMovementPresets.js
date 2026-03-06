@@ -22,6 +22,11 @@ export const MOVEMENT_PRESETS = {
     // 🎛️ TECHNO: Velocidad máxima, Aceleración agresiva, Beam cerrado
     // "Los demonios de neón en el bunker noruego"
     // 🔧 WAVE 350.5: maxAcceleration 1500 → 2000 (safety bump para botStabs)
+    // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — basada en hardware real (Sharpy ~257°/s = 121 DMX/s)
+    //    ANTES: revLimitPan=3600 (7624°/s = 25× un Sharpy real), snapFactor=1.0 (sin damping)
+    //    Log probaba velocidades de 7624°/s reales. Epilepsia pura.
+    //    AHORA: REV_LIMIT calibrado a mover pro real. snapFactor<1.0 para damping.
+    //    Referencia: Clay Paky Sharpy Pan=540°/2.1s=257°/s, Robe Robin=300°/s
     // ───────────────────────────────────────────────────────────────
     'techno-club': {
         physics: {
@@ -30,9 +35,23 @@ export const MOVEMENT_PRESETS = {
             friction: 0.05, // Casi sin fricción (libre)
             arrivalThreshold: 0.5, // Precisión alta
             physicsMode: 'snap', // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
-            snapFactor: 1.0, // 🏎️ WAVE 2074.3: Instantáneo — sweep/square siguen target frame a frame
-            revLimitPanPerSec: 3600, // 🏎️ WAVE 2074.3: 120/frame × 30fps — sweeps necesitan velocidad
-            revLimitTiltPerSec: 1800, // 🏎️ WAVE 2074.3: 60/frame × 30fps
+            // ═══════════════════════════════════════════════════════════════════
+            // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+            // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
+            // Pero eso fue con Hermite (ya eliminado en 2088.7). Ahora los targets
+            // son lineales puros y el PhysicsDriver es el ÚNICO filtro.
+            // Con snap=0.35 + revLimit=140: el mover NUNCA alcanza el target.
+            // Un square se convierte en blob, un scan en balanceo tímido.
+            //
+            // CALIBRACIÓN: Para que un scan_x de período 16 beats a 120 BPM
+            // cubra ~200 DMX de rango en ~2s de semi-ciclo, necesitamos:
+            //   - snapFactor=0.85 → el mover alcanza 85% del delta por frame
+            //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
+            // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
+            // ═══════════════════════════════════════════════════════════════════
+            snapFactor: 0.85, // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
+            revLimitPanPerSec: 400, // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
+            revLimitTiltPerSec: 280, // 🔧 WAVE 2088.8: ~297°/s — tilt siempre más lento
         },
         optics: {
             zoomDefault: 30, // Beam cerrado (láser)
@@ -51,6 +70,9 @@ export const MOVEMENT_PRESETS = {
     // 💃 LATINO: Fluido, Circular, Orgánico
     // "La cumbia tiene swing, los movers también"
     // 🔧 WAVE 340.5: Aceleración alta para seguir caderas
+    // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — figure8 suave necesita seguir curva sin lag
+    //    Referencia: 750 DMX/s era ~1588°/s. Un figure8 a 120bpm con período 8 beats
+    //    necesita ~50 DMX/s pico. Le damos 85 DMX/s (~180°/s) para headroom.
     // ───────────────────────────────────────────────────────────────
     'fiesta-latina': {
         physics: {
@@ -59,9 +81,19 @@ export const MOVEMENT_PRESETS = {
             friction: 0.20, // Algo de suavizado orgánico
             arrivalThreshold: 2.0, // Permite overshoot elegante
             physicsMode: 'snap', // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
-            snapFactor: 0.65, // 🏎️ WAVE 2074.3: Suavizado orgánico — curvas sin corners
-            revLimitPanPerSec: 750, // 🏎️ WAVE 2074.3: 25/frame × 30fps — figure8 sin lag
-            revLimitTiltPerSec: 540, // 🏎️ WAVE 2074.3: 18/frame × 30fps
+            // ═══════════════════════════════════════════════════════════════════
+            // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+            // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
+            // SIGA la trayectoria con precisión. Con snap=0.45 + revLimit=85,
+            // un figure8 de período 16 beats se convertía en una elipse aplastada
+            // porque el mover nunca alcanzaba los extremos del Lissajous.
+            //
+            // snap=0.70 → sigue la curva con 70% de fidelidad por frame
+            // revLimit=250 → 4.17 DMX/frame → suficiente para las curvas suaves
+            // ═══════════════════════════════════════════════════════════════════
+            snapFactor: 0.70, // 🔧 WAVE 2088.8: Fiel a las curvas, con suavidad orgánica residual
+            revLimitPanPerSec: 250, // 🔧 WAVE 2088.8: ~530°/s — headroom para figure8 a alta energía
+            revLimitTiltPerSec: 180, // 🔧 WAVE 2088.8: ~191°/s — tilt curvo suave
         },
         optics: {
             zoomDefault: 150, // Zoom medio (spot suave)
@@ -80,6 +112,9 @@ export const MOVEMENT_PRESETS = {
     // 🎸 ROCK: Reactivo, Posiciones fijas, Wall of Light
     // "El muro de luz que golpea con la guitarra"
     // 🔧 WAVE 340.5: Aceleración alta para punch
+    // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — golpes dramáticos pero creíbles
+    //    Rock necesita movimientos con peso, como un headbang — no teleporting.
+    //    Referencia: mover de gama media (~200°/s pan = 94 DMX/s)
     // ───────────────────────────────────────────────────────────────
     'pop-rock': {
         physics: {
@@ -88,9 +123,18 @@ export const MOVEMENT_PRESETS = {
             friction: 0.30, // Fricción para punch (no arrastrar)
             arrivalThreshold: 1.0, // Precisión normal
             physicsMode: 'snap', // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
-            snapFactor: 0.50, // 🏎️ WAVE 2074.3: Punch con algo de suavizado — wall of light
-            revLimitPanPerSec: 450, // 🏎️ WAVE 2074.3: 15/frame × 30fps — dramático pero controlado
-            revLimitTiltPerSec: 300, // 🏎️ WAVE 2074.3: 10/frame × 30fps
+            // ═══════════════════════════════════════════════════════════════════
+            // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
+            // Rock usa circle_big, cancan, dual_sweep. Con snap=0.30 + revLimit=95
+            // un circle_big de 16 beats se convertía en un temblor amorfo.
+            // Los movers de estadio necesitan dibujar ARCOS visibles.
+            //
+            // snap=0.65 → el mover persigue con PESO (más lento que techno)
+            // revLimit=300 → 5 DMX/frame → arcos grandes con gravitas
+            // ═══════════════════════════════════════════════════════════════════
+            snapFactor: 0.65, // 🔧 WAVE 2088.8: Golpes con peso visible — más lento que techno
+            revLimitPanPerSec: 300, // 🔧 WAVE 2088.8: ~636°/s — arcos dramáticos de estadio
+            revLimitTiltPerSec: 200, // 🔧 WAVE 2088.8: ~212°/s — tilt con gravitas
         },
         optics: {
             zoomDefault: 220, // Zoom abierto (wash)
@@ -117,8 +161,9 @@ export const MOVEMENT_PRESETS = {
             arrivalThreshold: 3.0, // Permite mucho overshoot
             physicsMode: 'classic', // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
             snapFactor: 0.0, // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-            revLimitPanPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico — la física clásica controla
-            revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
+            revLimitPanPerSec: 80, // 🔧 WAVE 2088.8: ~170°/s — Chill pero con movimiento VISIBLE
+            //    Antes=30 → drift/sway eran imperceptibles
+            revLimitTiltPerSec: 55, // 🔧 WAVE 2088.8: ~58°/s — tilt orgánico visible
         },
         optics: {
             zoomDefault: 255, // Zoom máximo (wash total)
@@ -145,8 +190,8 @@ export const MOVEMENT_PRESETS = {
             arrivalThreshold: 1.0,
             physicsMode: 'classic', // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
             snapFactor: 0.0, // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-            revLimitPanPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
-            revLimitTiltPerSec: 7650, // 🏎️ WAVE 2074.3: Sin límite práctico
+            revLimitPanPerSec: 120, // 🔧 WAVE 2088.8: ~254°/s — idle visible, no congelado
+            revLimitTiltPerSec: 80, // 🔧 WAVE 2088.8: ~85°/s — tilt suave en idle
         },
         optics: {
             zoomDefault: 127, // Zoom neutro

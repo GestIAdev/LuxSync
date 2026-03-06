@@ -131,7 +131,7 @@ export function makeDecision(inputs, config = {}) {
  * 5. 🧘 Hold
  */
 function determineDecisionType(inputs) {
-    const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator } = inputs;
+    const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision } = inputs;
     // ═══════════════════════════════════════════════════════════════════════
     // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
     // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
@@ -169,10 +169,55 @@ function determineDecisionType(inputs) {
         // console.log(`[DecisionMaker 🛡️] VALLEY PROTECTION: zone=${zone} Z=${currentZ.toFixed(2)} → HOLD`)
         return 'hold'; // BLOQUEADO - música muriendo
     }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2106: BREAKDOWN PROTECTION — La oscuridad es sagrada
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOG EVIDENCE (1123 lines, post-WAVE 2105):
+    //   8 of 15 effects fired during section=breakdown. acid_sweep in darkness.
+    //   gatling_raid 1 tick after buildup→breakdown transition.
+    //   industrial_strobe + abyssal_rise in breakdown back-to-back.
+    // ROOT CAUSE: VALLEY_PROTECTION only blocks zone=valley/silence + Z<0.
+    //   But during breakdowns, energy bounces 0.4-0.9 (zone=gentle/active/intense),
+    //   so VALLEY_PROTECTION never triggers. Breakdowns had ZERO protection.
+    // FIX: If section=breakdown → HOLD. Period. Only DIVINE (Z>3.5σ) can override.
+    //   The DIVINE check above already happened — if we're here, it wasn't divine.
+    //   "Estas ahi en un breakdown con silencio total, disfrutando la oscuridad
+    //    de la sala.... y ala! una acid sweep" — Radwulf, WAVE 2106
+    // ═══════════════════════════════════════════════════════════════════════
+    const section = pattern.section;
+    if (section === 'breakdown') {
+        return 'hold'; // 🖤 Breakdowns are sacred darkness — only DIVINE can override
+    }
     // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
     // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
     if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
         return 'strike'; // DNA aprobó → strike con efecto de DNA
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2105→2109: FUZZY RESURRECTION — The Fuzzy Brain gets a REAL VOTE
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 2105: Fuzzy can now trigger 'strike' → generateStrikeDecision()
+    // WAVE 2109 FIX: Fuzzy was returning 'strike' 16 times but DNA had no proposal.
+    //   generateStrikeDecision() checks dreamIntegration?.approved → FALSE → SILENCE.
+    //   Result: 16x "[FUZZY STRIKE → strike]" immediately followed by "SILENCE: DNA has no proposal"
+    //   This was a VOID SCREAM — Fuzzy ordered fire but nobody loaded the weapon.
+    //   FIX: Fuzzy STRIKE only triggers 'strike' if DNA has a loaded weapon.
+    //   If DNA has nothing, Fuzzy STRIKE falls through to Hunt/prediction/buildup priorities.
+    //   This means Fuzzy still ACCELERATES decision-making when DNA is ready,
+    //   but doesn't create 16 useless log lines when DNA pipeline is on cooldown.
+    // ═══════════════════════════════════════════════════════════════════════
+    const hasDNAProposal = dreamIntegration?.approved && dreamIntegration.effect?.effect;
+    if (fuzzyDecision) {
+        if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
+            console.log(`[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
+                `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+            return 'strike';
+        }
+        if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
+            console.log(`[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
+                `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+            return 'strike';
+        }
     }
     // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)
     // Prioridad 1: Momento digno detectado por HuntEngine
@@ -181,10 +226,20 @@ function determineDecisionType(inputs) {
         return 'strike';
     }
     // Prioridad 2: Drop predicho con alta probabilidad
-    if (prediction.type === 'drop_incoming' && prediction.probability > 0.8) {
+    // 🩸 WAVE 2095: Bajado 0.8 → 0.65 — Brejcha/minimal tienen drops sutiles.
+    // PredictionEngine ya filtra con confianza; 0.8 era redundantemente alto.
+    // También: si section ES drop (detectado por Worker), actuar inmediatamente.
+    if (prediction.type === 'drop_incoming' && prediction.probability > 0.65) {
         return 'prepare_for_drop';
     }
-    // Prioridad 3: Buildup con potencial
+    if (pattern.section === 'drop') {
+        return 'prepare_for_drop';
+    }
+    // Prioridad 3: energy_spike también puede ser un drop (PredictionEngine a veces lo clasifica así)
+    if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6) {
+        return 'prepare_for_drop';
+    }
+    // Prioridad 4: Buildup con potencial
     if (pattern.section === 'buildup' ||
         (prediction.type === 'buildup_starting' && prediction.probability > 0.7)) {
         return 'buildup_enhance';
@@ -382,12 +437,33 @@ function generateStrikeDecision(inputs, output, confidence) {
     return output;
 }
 function generateDropPreparationDecision(inputs, output, confidence) {
-    const { prediction, beauty, pattern } = inputs;
-    output.confidence = confidence;
+    const { prediction, beauty, pattern, zScore, energyContext } = inputs;
+    output.confidence = Math.max(confidence, 0.85); // 🩸 WAVE 2095: Drops merecen alta confianza
     output.source = 'prediction';
     output.debugInfo.huntState = 'evaluating';
     output.debugInfo.beautyScore = beauty.totalBeauty;
-    output.debugInfo.reasoning = `Preparando drop: ${prediction.reasoning}`;
+    output.debugInfo.reasoning = `🔴 DROP PREPARATION: ${prediction.reasoning} | Z=${(zScore ?? 0).toFixed(2)}`;
+    // 🩸 WAVE 2095 / WAVE 2101.2: Si el drop OCURRE AHORA, sugerir efecto HARD
+    // La predicción nos avisa con 'timeToEvent' de hasta 4000-8000ms de antelación.
+    // Solo disparamos la artillería cuando estamos MUY cerca o si ya estamos en section=drop.
+    // Si no, vaciamos el arsenal durante el buildup (spam de CIENTOS de efectos).
+    const isDropImminent = prediction.estimatedTimeMs < 800 || pattern.section === 'drop';
+    if (prediction.probability > 0.7 && isDropImminent) {
+        const vibeId = pattern.vibeId;
+        // Usar el arsenal DIVINE como pool de efectos hard para drops
+        const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club'];
+        const suggestedEffect = dropArsenal[0];
+        output.effectDecision = {
+            effectType: suggestedEffect,
+            intensity: 0.8 + prediction.probability * 0.2, // 0.94-1.0 según probabilidad
+            zones: ['all'],
+            reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | arsenal=${dropArsenal.join(', ')}`,
+            confidence: prediction.probability,
+            divineArsenal: dropArsenal, // Para que SeleneTitanConscious busque alternativas en cooldown
+        };
+        console.log(`[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+            `vibe=${vibeId} | Z=${(zScore ?? 0).toFixed(2)}`);
+    }
     // Color decision: Preparar transición
     output.colorDecision = {
         saturationMod: 1.05, // Sutil aumento

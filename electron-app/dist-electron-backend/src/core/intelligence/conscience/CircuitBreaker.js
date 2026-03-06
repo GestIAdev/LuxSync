@@ -44,7 +44,7 @@ export class CircuitBreaker {
         this.lastSuccess = null;
         this.nextRetryAt = null;
         this.config = { ...DEFAULT_CONFIG, ...config };
-        console.log(`[CIRCUIT_BREAKER] ⚡ Initialized (threshold: ${this.config.failureThreshold})`);
+        // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -164,7 +164,7 @@ export class TimeoutWrapper {
             maxConcurrentOperations: 5,
             ...config
         };
-        console.log(`[TIMEOUT_WRAPPER] ⏱️ Initialized (timeout: ${this.config.defaultTimeoutMs}ms)`);
+        // WAVE 2098: Boot silence
     }
     /**
      * Ejecuta operación con timeout

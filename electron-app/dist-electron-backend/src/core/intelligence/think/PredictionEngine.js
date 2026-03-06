@@ -283,6 +283,7 @@ const MAX_ENERGY_HISTORY = 30; // ~0.5 segundos a 60fps
 let energyHistory = [];
 /** 🔮 WAVE 1172: Umbrales calibrados para mayor sensibilidad */
 /** 🎯 WAVE 1176: OPERATION SNIPER - Sensibilidad x10 */
+/** 🧬 WAVE 2093 COG-5: BASE thresholds (techno/default). Vibes tranquilos escalan arriba. */
 const ENERGY_THRESHOLDS = {
     SPIKE_DELTA: 0.08, // 🎯 WAVE 1176: Era 0.12, ahora x10 sensibilidad
     RISING_DELTA: 0.015, // 🎯 WAVE 1176: Era 0.04, detecta subidas sutiles
@@ -291,6 +292,28 @@ const ENERGY_THRESHOLDS = {
     MIN_ENERGY_FOR_SPIKE: 0.60, // 🎯 WAVE 1176: Era 0.70, más sensible
     TENSION_FOR_DROP: 0.4, // 🎯 WAVE 1176: Era 0.5, más sensible
 };
+/**
+ * 🧬 WAVE 2093 COG-5: Perfil de thresholds por vibe.
+ * Jazz/chill necesitan umbrales más altos (dinámica natural no es "spike").
+ * Techno/industrial usan los BASE (ya calibrados para EDM).
+ *
+ * Formato: multiplicador sobre BASE. >1 = menos sensible, <1 = más sensible.
+ */
+const VIBE_THRESHOLD_PROFILES = {
+    'techno-club': 1.0, // Base — calibrado para EDM
+    'techno-industrial': 0.90, // Ligeramente más sensible (dinámicas más extremas)
+    'techno-atmospheric': 1.15, // Más conservador (ambient tiene dinámicas suaves)
+    'fiesta-latina': 1.0, // Ritmos fuertes, mantener base
+    'pop-rock': 1.20, // Dinámicas naturales, necesita más delta para spike
+    'chill-lounge': 1.50, // MUY conservador: jazz/lounge tiene dinámicas sutiles
+    'ambient-organic': 1.60, // Máxima conservación: ambient puro no tiene "spikes"
+};
+/** Obtiene el multiplicador de threshold para el vibe actual */
+function getVibeThresholdMultiplier(vibeId) {
+    if (!vibeId)
+        return 1.0;
+    return VIBE_THRESHOLD_PROFILES[vibeId] ?? 1.0;
+}
 /**
  * Actualiza el historial de energía
  */
@@ -303,9 +326,10 @@ function updateEnergyHistory(energy) {
 /**
  * Calcula la tendencia de energía (derivada suavizada)
  * 🔮 WAVE 1172: Usa umbrales calibrados
+ * 🧬 WAVE 2093 COG-5: Multiplicador por vibe — jazz/chill más conservadores
  * @returns 'rising' | 'falling' | 'stable' | 'spike'
  */
-function calculateEnergyTrend() {
+function calculateEnergyTrend(vibeMultiplier = 1.0) {
     if (energyHistory.length < 10)
         return 'stable';
     const recent = energyHistory.slice(-10);
@@ -315,12 +339,15 @@ function calculateEnergyTrend() {
     const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
     const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
     const delta = recentAvg - olderAvg;
-    // 🔮 WAVE 1172: Umbrales más sensibles
-    if (delta > ENERGY_THRESHOLDS.SPIKE_DELTA)
+    // 🧬 WAVE 2093 COG-5: Umbrales escalados por vibe
+    const spikeThreshold = ENERGY_THRESHOLDS.SPIKE_DELTA * vibeMultiplier;
+    const risingThreshold = ENERGY_THRESHOLDS.RISING_DELTA * vibeMultiplier;
+    const fallingThreshold = ENERGY_THRESHOLDS.FALLING_DELTA * vibeMultiplier;
+    if (delta > spikeThreshold)
         return 'spike';
-    if (delta > ENERGY_THRESHOLDS.RISING_DELTA)
+    if (delta > risingThreshold)
         return 'rising';
-    if (delta < ENERGY_THRESHOLDS.FALLING_DELTA)
+    if (delta < fallingThreshold)
         return 'falling';
     return 'stable';
 }
@@ -355,18 +382,26 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
     const timestamp = Date.now();
     // Actualizar historial
     updateEnergyHistory(currentEnergy);
-    const trend = calculateEnergyTrend();
+    // 🧬 WAVE 2093 COG-5: Threshold scaling por vibe
+    const vibeMultiplier = getVibeThresholdMultiplier(pattern.vibeId);
+    const trend = calculateEnergyTrend(vibeMultiplier);
     const velocity = calculateEnergyVelocity();
     // ═══════════════════════════════════════════════════════════════════════
     // SPIKE DETECTION: Energía subiendo MUY rápido → Algo grande viene
     // WAVE 1172: Umbral bajado a 0.70
+    // WAVE 2093 COG-5: Thresholds escalados por vibe profile
     // ═══════════════════════════════════════════════════════════════════════
-    if (trend === 'spike' && currentEnergy >= ENERGY_THRESHOLDS.MIN_ENERGY_FOR_SPIKE) {
+    const spikeThreshold = ENERGY_THRESHOLDS.MIN_ENERGY_FOR_SPIKE * vibeMultiplier;
+    const risingThreshold = ENERGY_THRESHOLDS.MIN_ENERGY_FOR_RISING * vibeMultiplier;
+    const dropTensionThreshold = ENERGY_THRESHOLDS.TENSION_FOR_DROP * vibeMultiplier;
+    if (trend === 'spike' && currentEnergy >= spikeThreshold) {
         // Estimar tiempo hasta pico basado en velocidad y energía actual
         const remainingEnergy = 1 - currentEnergy;
         const framesUntilPeak = velocity > 0 ? Math.ceil(remainingEnergy / velocity) : 60;
-        const msPerBeat = 60000 / bpm;
-        const beatsUntilPeak = Math.max(2, Math.round((framesUntilPeak / 60) * (bpm / 60)));
+        // 🛡️ WAVE 2093.1: Guard bpm=0 → Infinity. Default 120 BPM si no hay detección.
+        const safeBpm = (bpm > 0 && Number.isFinite(bpm)) ? bpm : 120;
+        const msPerBeat = 60000 / safeBpm;
+        const beatsUntilPeak = Math.max(2, Math.round((framesUntilPeak / 60) * (safeBpm / 60)));
         return {
             type: 'energy_spike',
             probableSection: 'drop',
@@ -382,11 +417,63 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
         };
     }
     // ═══════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2095: TEXTURAL DROP — Detección para minimal techno / micro-house
+    // 🔧 WAVE 2096.1: DEMOTED — Con Pacemaker Bridge activo, SimpleSectionTracker
+    // detecta drops REALES (bassRatio + hasKick + weightedEnergy).
+    // TEXTURAL DROP se mantiene como FALLBACK con umbrales ESTRICTOS:
+    // Solo activa si la energía es realmente alta Y la tensión es significativa.
+    // Antes: E>0.40, R>0.25, T>0.20 → fired EVERY FRAME (inútil)
+    // Ahora: E>0.65, R>0.40, T>0.35 → solo activa en momentos reales
+    // ═══════════════════════════════════════════════════════════════════════
+    const texturalEnergyOk = currentEnergy > 0.65;
+    const texturalRhythmOk = pattern.rhythmicIntensity > 0.40;
+    const texturalTensionOk = pattern.emotionalTension > 0.35;
+    const texturalTrendOk = trend === 'rising'; // Only rising, NOT stable
+    // 🔧 WAVE 2096.1: Throttled diagnostic — every ~10 seconds (600 frames) instead of 2s
+    if (energyHistory.length % 600 === 0 && currentEnergy > 0.50) {
+        console.log(`[PREDICTION 🔮] TEXTURAL DROP CHECK: ` +
+            `E=${currentEnergy.toFixed(2)}${texturalEnergyOk ? '✅' : '❌>0.65'} | ` +
+            `R=${pattern.rhythmicIntensity.toFixed(2)}${texturalRhythmOk ? '✅' : '❌>0.40'} | ` +
+            `T=${pattern.emotionalTension.toFixed(2)}${texturalTensionOk ? '✅' : '❌>0.35'} | ` +
+            `Trend=${trend}${texturalTrendOk ? '✅' : '❌'}`);
+    }
+    if (texturalEnergyOk && texturalRhythmOk && texturalTensionOk && texturalTrendOk) {
+        const texturalProb = 0.55 + (currentEnergy * 0.12) + (pattern.emotionalTension * 0.08);
+        // 🩸 WAVE 2101.5: Throttle TEXTURAL DROP — máximo 1 log cada 60 frames (~1s)
+        // Antes: spammeaba CADA frame. 30 líneas de TEXTURAL DROP ACTIVATED en 2 segundos.
+        if (energyHistory.length % 60 === 0) {
+            console.log(`[PREDICTION 🔮] 🎭 TEXTURAL DROP ACTIVATED! ` +
+                `E=${(currentEnergy * 100).toFixed(0)}% R=${(pattern.rhythmicIntensity * 100).toFixed(0)}% ` +
+                `T=${(pattern.emotionalTension * 100).toFixed(0)}% Trend=${trend} → prob=${texturalProb.toFixed(2)}`);
+        }
+        // 🩸 WAVE 2101.5: TEXTURAL DROP ya NO es `drop_incoming`.
+        // Es `buildup_starting` con energía alta — indica que algo se construye,
+        // no que viene un drop. Un drop REAL viene del section pattern matching
+        // ([buildup, buildup] → drop, probability 0.90). TEXTURAL DROP no tiene
+        // la certeza para reclamar "drop_incoming" y bypasear gates.
+        return {
+            type: 'buildup_starting',
+            probableSection: 'buildup',
+            probability: Math.min(0.65, texturalProb), // 🩸 Capped más bajo: no competir con drops reales
+            estimatedTimeMs: 3000, // 🩸 WAVE 2101.5: 3s, no 2s — no activar urgency gates
+            estimatedBeats: 4,
+            reasoning: `🎭 TEXTURAL DROP: Energy=${(currentEnergy * 100).toFixed(0)}% sustained | ` +
+                `Rhythm=${(pattern.rhythmicIntensity * 100).toFixed(0)}% | ` +
+                `Tension=${(pattern.emotionalTension * 100).toFixed(0)}%`,
+            suggestedActions: [
+                { type: 'execute', effect: 'flash', intensity: 0.85, durationMs: 200, timingOffsetMs: 0 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     // RISING ENERGY: Subida sostenida → Buildup probable
     // WAVE 1172: Umbral bajado a 0.35
     // ═══════════════════════════════════════════════════════════════════════
-    if (trend === 'rising' && currentEnergy > ENERGY_THRESHOLDS.MIN_ENERGY_FOR_RISING) {
-        const msPerBeat = 60000 / bpm;
+    if (trend === 'rising' && currentEnergy > risingThreshold) {
+        // 🛡️ WAVE 2093.1: Guard bpm=0 → Infinity
+        const safeBpmRising = (bpm > 0 && Number.isFinite(bpm)) ? bpm : 120;
+        const msPerBeat = 60000 / safeBpmRising;
         const estimatedBeats = Math.round(8 - (currentEnergy * 4)); // Menos beats cuanto más alta la energía
         return {
             type: 'buildup_starting',
@@ -421,7 +508,7 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
     // DROP DETECTION: Tensión alta + energía cayendo → Drop incoming
     // WAVE 1172: Umbral de tensión bajado a 0.5
     // ═══════════════════════════════════════════════════════════════════════
-    if (pattern.emotionalTension > ENERGY_THRESHOLDS.TENSION_FOR_DROP && trend === 'falling') {
+    if (pattern.emotionalTension > dropTensionThreshold && trend === 'falling') {
         return {
             type: 'drop_incoming',
             probableSection: 'drop',
@@ -494,9 +581,26 @@ export function predictCombined(pattern, currentEnergy, spectralBuildupScore) {
     // El sonido LITERALMENTE está cambiando hacia un buildup.
     // ═══════════════════════════════════════════════════════════════════════════
     const spectralScore = spectralBuildupScore ?? 0;
-    let bestPrediction = energyPrediction.probability > sectionPrediction.probability
-        ? energyPrediction
-        : sectionPrediction;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 2096.1: ENERGY OVERRIDE REMOVED
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 2096 added an override where energy drops ALWAYS won over section prediction.
+    // This was a workaround for broken SimpleSectionTracker (bpm=0 → section='breakdown' always).
+    // 
+    // With PACEMAKER BRIDGE (WAVE 2096.1), SimpleSectionTracker receives real BPM again.
+    // Section detection works correctly → predict() gives accurate results.
+    // The override caused "always drop_incoming" (TEXTURAL DROP fired every frame).
+    //
+    // RESTORED: Standard probability-based arbitration.
+    // The better prediction wins, regardless of type.
+    // ═══════════════════════════════════════════════════════════════════════
+    let bestPrediction;
+    if (energyPrediction.probability > sectionPrediction.probability) {
+        bestPrediction = energyPrediction;
+    }
+    else {
+        bestPrediction = sectionPrediction;
+    }
     // Si spectral buildup > 0.4, BOOST a la predicción
     if (spectralScore > 0.4) {
         // Si ya estamos prediciendo buildup/drop, aumentar probabilidad

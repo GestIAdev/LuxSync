@@ -65,10 +65,7 @@ export class ArtNetDriver extends EventEmitter {
         this.universeBuffers.set(0, this.dmxBuffer);
         // Intervalo mínimo entre envíos (rate limiting)
         this.minSendInterval = 1000 / this.config.refreshRate;
-        this.log('🎨 ArtNetDriver initialized (WAVE 153)');
-        this.log(`   Target: ${this.config.ip}:${this.config.port}`);
-        this.log(`   Universe: ${this.config.universe}`);
-        this.log(`   Rate: ${this.config.refreshRate} Hz (${this.minSendInterval.toFixed(1)}ms interval)`);
+        // WAVE 2098: Boot silence
     }
     // ─────────────────────────────────────────────────────────────────────────
     // LIFECYCLE

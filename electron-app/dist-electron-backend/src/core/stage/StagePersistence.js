@@ -22,8 +22,8 @@
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { validateShowFile, getSchemaVersion, createEmptyShowFile, normalizeZone } from './ShowFileV2';
-import { autoMigrate } from './ShowFileMigrator';
+import { validateShowFile, validateShowFileDeep, getSchemaVersion, createEmptyShowFile, normalizeZone } from './ShowFileV2';
+import { autoMigrate, migrateV2ToLatest } from './ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -52,12 +52,10 @@ export class StagePersistence {
         // Ensure shows directory exists
         if (!fs.existsSync(this.showsPath)) {
             fs.mkdirSync(this.showsPath, { recursive: true });
-            console.log('[StagePersistence] 📁 Created shows directory:', this.showsPath);
         }
         // Load recent shows list
         this.loadRecentShowsList();
         this.initialized = true;
-        console.log('[StagePersistence] ✅ Initialized');
     }
     /**
      * Get path to the "current active" show file
@@ -75,26 +73,122 @@ export class StagePersistence {
     // SAVE OPERATIONS
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * Save a ShowFile to disk (atomic write)
+     * Save a ShowFile to disk (atomic write with backup)
      *
-     * Uses write-to-temp + rename pattern for safety:
-     * 1. Write to .tmp file
-     * 2. Rename .tmp to target
-     * 3. Delete .tmp on failure
+     * 🛡️ WAVE 2093.2 (CW-AUDIT-2 & CW-AUDIT-8): PARANOIA MODE
+     *
+     * STEP 0: Deep-validate the showFile BEFORE touching disk.
+     *         If hard errors exist → ABORT. No corrupt data hits disk.
+     * STEP 1: If target file exists, rename to .bak (safety net)
+     * STEP 2: Write to .tmp file
+     * STEP 3: Rename .tmp to target (atomic on most filesystems)
+     * STEP 4: Delete .bak ONLY after successful write
+     *
+     * If STEP 2 or 3 fails, .bak survives → manual recovery possible.
      */
     async saveShow(showFile, filePath) {
         try {
+            // ══════════════════════════════════════════════════════════════════
+            // STEP 0: DEEP VALIDATION GATE — NO CORRUPT DATA HITS DISK
+            // ══════════════════════════════════════════════════════════════════
+            const validation = validateShowFileDeep(showFile);
+            if (!validation.valid) {
+                const errorSummary = validation.errors.join('; ');
+                console.error(`[StagePersistence] 🚨 SAVE BLOCKED — Deep validation failed (${validation.errors.length} errors):`);
+                validation.errors.forEach(e => console.error(`  ✗ ${e}`));
+                return {
+                    success: false,
+                    error: `Validation failed: ${errorSummary}`
+                };
+            }
+            // Log warnings (non-fatal but auditable)
+            if (validation.warnings.length > 0) {
+                console.warn(`[StagePersistence] ⚠️ Save proceeding with ${validation.warnings.length} warning(s):`);
+                validation.warnings.forEach(w => console.warn(`  → ${w}`));
+            }
             // Update modification timestamp
             showFile.modifiedAt = new Date().toISOString();
             // Determine target path
             const targetPath = filePath || this.getActiveShowPath();
             const tempPath = targetPath + '.tmp';
-            // Serialize with pretty print
+            const backupPath = targetPath + '.bak';
+            // ══════════════════════════════════════════════════════════════════
+            // STEP 1: CREATE BACKUP — Rename existing file to .bak
+            // ══════════════════════════════════════════════════════════════════
+            let backupCreated = false;
+            if (fs.existsSync(targetPath)) {
+                try {
+                    // Remove stale .bak if it exists from a previous interrupted save
+                    if (fs.existsSync(backupPath)) {
+                        fs.unlinkSync(backupPath);
+                    }
+                    fs.renameSync(targetPath, backupPath);
+                    backupCreated = true;
+                    console.log(`[StagePersistence] 🛡️ Backup created: ${backupPath}`);
+                }
+                catch (backupErr) {
+                    // If we can't create backup, proceed anyway — better to save than lose data
+                    console.warn(`[StagePersistence] ⚠️ Could not create backup: ${backupErr}`);
+                }
+            }
+            // ══════════════════════════════════════════════════════════════════
+            // STEP 2: WRITE TO TEMP FILE
+            // ══════════════════════════════════════════════════════════════════
             const content = JSON.stringify(showFile, null, 2);
-            // Atomic write: temp file first
-            fs.writeFileSync(tempPath, content, 'utf-8');
-            // Rename temp to final (atomic on most filesystems)
-            fs.renameSync(tempPath, targetPath);
+            try {
+                fs.writeFileSync(tempPath, content, 'utf-8');
+            }
+            catch (writeErr) {
+                // Write failed — restore backup if we made one
+                if (backupCreated && fs.existsSync(backupPath)) {
+                    try {
+                        fs.renameSync(backupPath, targetPath);
+                        console.log(`[StagePersistence] 🔄 Backup restored after write failure`);
+                    }
+                    catch (restoreErr) {
+                        console.error(`[StagePersistence] 💀 CRITICAL: Write failed AND backup restore failed: ${restoreErr}`);
+                    }
+                }
+                throw writeErr;
+            }
+            // ══════════════════════════════════════════════════════════════════
+            // STEP 3: ATOMIC RENAME — .tmp → target
+            // ══════════════════════════════════════════════════════════════════
+            try {
+                fs.renameSync(tempPath, targetPath);
+            }
+            catch (renameErr) {
+                // Rename failed — restore backup, clean up temp
+                if (backupCreated && fs.existsSync(backupPath)) {
+                    try {
+                        fs.renameSync(backupPath, targetPath);
+                        console.log(`[StagePersistence] 🔄 Backup restored after rename failure`);
+                    }
+                    catch (restoreErr) {
+                        console.error(`[StagePersistence] 💀 CRITICAL: Rename failed AND backup restore failed: ${restoreErr}`);
+                    }
+                }
+                // Clean orphan temp file
+                if (fs.existsSync(tempPath)) {
+                    try {
+                        fs.unlinkSync(tempPath);
+                    }
+                    catch { /* best effort */ }
+                }
+                throw renameErr;
+            }
+            // ══════════════════════════════════════════════════════════════════
+            // STEP 4: CLEAN UP BACKUP — Only after successful write+rename
+            // ══════════════════════════════════════════════════════════════════
+            if (backupCreated && fs.existsSync(backupPath)) {
+                try {
+                    fs.unlinkSync(backupPath);
+                }
+                catch {
+                    // Non-fatal — backup file lingering is better than crashing
+                    console.warn(`[StagePersistence] ⚠️ Could not clean up backup: ${backupPath}`);
+                }
+            }
             // Update recent shows list
             this.addToRecentShows(targetPath);
             console.log(`[StagePersistence] 💾 Saved show: ${showFile.name} → ${targetPath}`);
@@ -149,11 +243,16 @@ export class StagePersistence {
                 // Already V2, validate and return
                 if (validateShowFile(data)) {
                     const showFile = data;
-                    // 🔥 WAVE 2040.24 FASE 6: Normalizar zonas legacy en archivos V2 existentes
+                    // �️ WAVE 2093.3 (CW-10): Run through V2 incremental migration
+                    const { show: patchedShow, appliedPatches } = migrateV2ToLatest(showFile);
+                    if (appliedPatches.length > 0) {
+                        console.log(`[StagePersistence] 🔄 V2 incremental migration: ${appliedPatches.length} patches applied`);
+                    }
+                    // �🔥 WAVE 2040.24 FASE 6: Normalizar zonas legacy en archivos V2 existentes
                     // Un .luxshow puede tener 'FRONT_PARS', 'stage-left', etc.
                     // Los normalizamos a canonical ('front', 'movers-left', etc.) transparentemente.
                     let zonesNormalized = 0;
-                    for (const fixture of showFile.fixtures) {
+                    for (const fixture of patchedShow.fixtures) {
                         const canonical = normalizeZone(fixture.zone);
                         if (fixture.zone !== canonical) {
                             console.log(`[StagePersistence] 🔄 Zone normalized: "${fixture.zone}" → "${canonical}" (fixture: ${fixture.id})`);
@@ -161,17 +260,17 @@ export class StagePersistence {
                             zonesNormalized++;
                         }
                     }
-                    if (zonesNormalized > 0) {
+                    if (zonesNormalized > 0 || appliedPatches.length > 0) {
                         console.log(`[StagePersistence] ✅ Normalized ${zonesNormalized} fixture zones to canonical`);
-                        // Auto-save con zonas normalizadas
-                        showFile.modifiedAt = new Date().toISOString();
+                        // Auto-save con zonas normalizadas y/o patches aplicados
+                        patchedShow.modifiedAt = new Date().toISOString();
                         const targetSavePath = filePath || this.getActiveShowPath();
-                        fs.writeFileSync(targetSavePath, JSON.stringify(showFile, null, 2), 'utf-8');
+                        fs.writeFileSync(targetSavePath, JSON.stringify(patchedShow, null, 2), 'utf-8');
                         console.log(`[StagePersistence] 💾 Auto-saved with normalized zones`);
                     }
                     this.addToRecentShows(targetPath);
-                    console.log(`[StagePersistence] 📂 Loaded V2 show: ${showFile.name}`);
-                    return { success: true, showFile, migrated: false };
+                    console.log(`[StagePersistence] 📂 Loaded V2 show: ${patchedShow.name}`);
+                    return { success: true, showFile: patchedShow, migrated: appliedPatches.length > 0 };
                 }
                 else {
                     return { success: false, error: 'Show file validation failed' };

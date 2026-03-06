@@ -22,7 +22,6 @@ import { masterArbiter, } from '../arbiter';
  * Setup all Arbiter IPC handlers
  */
 export function setupArbiterHandlers() {
-    console.log('[IPC] 🎭 Setting up Arbiter handlers (WAVE 374)');
     // ═══════════════════════════════════════════════════════════════════════
     // MANUAL OVERRIDE
     // ═══════════════════════════════════════════════════════════════════════

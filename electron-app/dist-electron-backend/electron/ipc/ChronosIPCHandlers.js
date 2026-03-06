@@ -73,7 +73,6 @@ function generateRequestId() {
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
 export function setupChronosIPCHandlers(mainWindow) {
-    console.log('[ChronosIPC] 🎧 Setting up Chronos IPC handlers...');
     const phantom = getPhantomWorker();
     // Setup progress forwarding to main window
     phantom.setProgressCallback((progress) => {
@@ -188,14 +187,13 @@ export function setupChronosIPCHandlers(mainWindow) {
             };
         }
     });
-    console.log('[ChronosIPC] ✅ Chronos IPC handlers ready');
+    // WAVE 2098: Boot silence
     // ─────────────────────────────────────────────────────────────────────────
     // 💾 WAVE 2014: PROJECT FILE HANDLERS
     // ─────────────────────────────────────────────────────────────────────────
     setupProjectIPCHandlers(mainWindow);
 }
 function setupProjectIPCHandlers(mainWindow) {
-    console.log('[ChronosIPC] 💾 Setting up Project IPC handlers...');
     // ─────────────────────────────────────────────────────────────────────────
     // HANDLER: chronos:save-project
     // Save .lux project file with native dialog
@@ -381,7 +379,7 @@ function setupProjectIPCHandlers(mainWindow) {
             return { success: true };
         }
     });
-    console.log('[ChronosIPC] ✅ Project IPC handlers ready');
+    // WAVE 2098: Boot silence
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // CLEANUP

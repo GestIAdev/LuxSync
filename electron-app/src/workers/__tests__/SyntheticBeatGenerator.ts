@@ -25,20 +25,24 @@
 /** Duration of one FFT frame in ms (4096 samples @ 48kHz ≈ 85.3ms, but overlap = ~21ms) */
 export const FRAME_DURATION_MS = 21
 
-/** Default "floor" noise energy — simulates room noise + bass rumble */
-const NOISE_FLOOR = 0.12
+/** Default "floor" noise energy — simulates room noise + bass rumble.
+ *  WAVE 2131: Calibrated to production rawSubBassEnergy values observed in
+ *  debugBPM.md: silence frames 0.0047-0.0191, typical mid-energy ~0.010. */
+const NOISE_FLOOR = 0.010
 
 /** Noise variation range (floor ± this value) — NOT random, uses sine modulation */
-const NOISE_VARIATION = 0.05
+const NOISE_VARIATION = 0.004
 
-/** Default kick peak energy */
-const DEFAULT_KICK_ENERGY = 0.80
+/** Default kick peak energy.
+ *  WAVE 2131: Production kicks measured at 0.040-0.055 rawSubBassEnergy.
+ *  Using 0.050 as canonical kick peak — well above 70% of P90 threshold. */
+const DEFAULT_KICK_ENERGY = 0.050
 
 /** Kick "tail" decay — how many frames the kick energy takes to decay to floor */
-const KICK_TAIL_FRAMES = 4
+const KICK_TAIL_FRAMES = 3
 
 /** Decay multiplier per frame after kick peak */
-const KICK_DECAY_RATE = 0.45
+const KICK_DECAY_RATE = 0.40
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -171,7 +175,7 @@ export function generateHalfTimeBuffer(
   // Half-time: kicks land every OTHER beat
   const halfBpm = bpm / 2
   const buffer = generateSyntheticBeatBuffer(halfBpm, durationSeconds, {
-    kickEnergy: 0.85, // Half-time kicks tend to be heavier
+    kickEnergy: 0.055, // Half-time kicks tend to be heavier (production: ~0.055)
     startTimeMs: options.startTimeMs,
   })
   // Tag with the musical BPM, not the kick rate
@@ -194,7 +198,7 @@ export function generateBreakdownBuffer(
     noiseFloor?: number
   } = {}
 ): SyntheticBuffer {
-  const noiseFloor = options.noiseFloor ?? 0.08 // Lower than normal — energy drops in breakdown
+  const noiseFloor = options.noiseFloor ?? 0.006 // Lower than normal — energy drops in breakdown (production: silence ~0.005)
   const startTimeMs = options.startTimeMs ?? 0
   const totalFrames = Math.ceil((durationSeconds * 1000) / FRAME_DURATION_MS)
   
@@ -355,9 +359,9 @@ export function generateSubBeatBuffer(
     startTimeMs?: number
   } = {}
 ): SyntheticBuffer {
-  const kickEnergy = options.kickEnergy ?? 0.80
-  const subBeatEnergy = options.subBeatEnergy ?? 0.30  // WAVE 2117: 0.45→0.30 — real mastered offbeats are ~37% of kick, not 56%
-  const noiseFloor = options.noiseFloor ?? 0.18  // Higher floor — continuous bass
+  const kickEnergy = options.kickEnergy ?? 0.050
+  const subBeatEnergy = options.subBeatEnergy ?? 0.028  // Sub-beats ~55% of kick (production: offbeats ~0.025-0.030)
+  const noiseFloor = options.noiseFloor ?? 0.012  // Higher floor — continuous bass (production: low-mid bass roll ~0.010-0.015)
   const startTimeMs = options.startTimeMs ?? 0
   
   const totalFrames = Math.ceil((durationSeconds * 1000) / FRAME_DURATION_MS)
@@ -387,9 +391,9 @@ export function generateSubBeatBuffer(
     const timestamp = startTimeMs + (i * FRAME_DURATION_MS)
     
     // Higher noise floor with organic modulation
-    const sineModA = Math.sin(i * 0.13) * 0.04
-    const sineModB = Math.sin(i * 0.37) * 0.03
-    let energy = Math.max(0.05, noiseFloor + sineModA + sineModB)
+    const sineModA = Math.sin(i * 0.13) * 0.003
+    const sineModB = Math.sin(i * 0.37) * 0.002
+    let energy = Math.max(0.005, noiseFloor + sineModA + sineModB)
     let isKickFrame = false
     
     // Check main kicks first

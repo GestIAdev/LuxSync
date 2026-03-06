@@ -75,7 +75,7 @@ export class UniversalDMXDriver extends EventEmitter {
         };
         // Inicializar Universo 0 por defecto (para compatibilidad con código legacy)
         this.initBuffer(0);
-        this.log('🌪️ UniversalDMXDriver (WAVE 2020.2c: Multi-Head Hydra) initialized');
+        // WAVE 2098: Boot silence
     }
     /**
      * Inicializa un buffer DMX para un universo específico
@@ -85,7 +85,6 @@ export class UniversalDMXDriver extends EventEmitter {
             const buf = Buffer.alloc(DMX_CHANNELS + 1, 0);
             buf[0] = DMX_START_CODE;
             this.universeBuffers.set(universe, buf);
-            this.log(`📦 Buffer initialized for Universe ${universe}`);
         }
     }
     // ─────────────────────────────────────────────────────────────────────────

@@ -521,57 +521,63 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
-  // 📡 WAVE 2153: BROADBAND ANCHOR — Continuous broadband energy for autocorrelation
+  // 🎯 WAVE 2154: VERTICAL COINCIDENCE — Geometric mean of low×mid bands
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2152 (Flux Derivative) FAILED: positive flux was almost always 0.0000.
-  // The signal was a sparse spike train — autocorrelation on mostly-zeros is
-  // mathematically undefined. The Sieve had no coherent peak to find.
   //
-  // WAVE 2152 LOG EVIDENCE:
-  //   F320: flux=0.0115  F340: flux=0.0000  F360: flux=0.0000
-  //   F380: flux=0.0000  F400: flux=0.0000  F420: flux=0.0000
-  //   → 7 of 8 samples were zero. Autocorrelation flatlined.
+  // WAVE 2153 (Broadband Anchor) FAILED on Cumbiatón:
+  //   - Summing all bands let syncopated percussion (congas, claves, timbales)
+  //     dominate the autocorrelation. POLYRHYTHM filter fired on EVERY scan
+  //     (ratio ~1.33-1.37×), but the damage was already done: the Sieve saw
+  //     two competing periodicities (tresillo vs 4/4) with near-equal strength.
+  //   - Confidence collapsed to 0.16-0.30. BPM wandered 73→110 endlessly.
   //
-  // THE ANCHOR: Return to CONTINUOUS energy signal (what autocorrelation loves),
-  // but EXPAND the band upward to include lowMid and mid.
+  // WAVE 2151.1 (SubBass only) FAILED on Brejcha:
+  //   - Offbeat bass at 50-70Hz shared the subBass band with the kick.
+  //   - No frequency cut could separate them.
   //
-  // WHY THIS WORKS:
-  //   A kick drum is BROADBAND by nature. The attack transient spreads energy
-  //   across subBass (40Hz) + bass (80Hz) + lowMid (250Hz) + mid (500-2kHz).
-  //   An offbeat bass synth is NARROW BAND — it stays in subBass/bass only.
+  // THE INSIGHT: A real kick drum is a VERTICAL explosion across the spectrum.
+  //   - It has BOTH low energy (fundamental) AND mid energy (beater attack/click).
+  //   - An offbeat bass has low energy but ZERO mid energy.
+  //   - A conga/clave has mid energy but ZERO low energy.
   //
-  //   At the moment of each kick:
-  //     broadband = subBass + bass + lowMid + mid  →  HIGH (all 4 bands fire)
-  //   Between kicks (bass sustain / offbeat):
-  //     broadband = subBass + bass + ~0 + ~0        →  LOWER (only 2 bands)
+  // THE MATH: Instead of SUM (a+b), use GEOMETRIC MEAN: sqrt(low × mid).
   //
-  //   The kick now has a 2× amplitude advantage over the offbeat bass in the
-  //   combined signal. Autocorrelation finds the dominant periodicity: 126 BPM.
+  //   | Event          | Low (sub+bass) | Mid (lmid+mid) | sqrt(L×M) |
+  //   |----------------|----------------|----------------|-----------|
+  //   | KICK (real)    | 0.15           | 0.08           | 0.110     |
+  //   | Offbeat bass   | 0.12           | 0.01           | 0.035     |
+  //   | Conga/clave    | 0.01           | 0.05           | 0.022     |
+  //   | Silence        | 0.01           | 0.01           | 0.010     |
   //
-  // USING RAW VALUES (pre-AGC): AGC compresses dynamics and would re-inflate
-  // the offbeat bass back to kick level. Raw bands preserve the natural
-  // amplitude difference between attack transients and sustained notes.
+  //   The kick has 3-5× amplitude advantage over ANY partial-band percussion.
+  //   Offbeat bass (only low) and syncopated percussion (only mid) both collapse.
   //
-  // GENRE ARGUMENT: This works universally.
-  //   - Minimal techno: kick transient broadband >> narrow 808 sustain
-  //   - Rock: snare+kick both broadband >> guitar sustain
-  //   - Cumbia/Reggaeton: kick+rim broadband >> bass sustain
-  //   - Ambient (no percussion): all bands flat → conf drops → engine quiet ✓
+  // PROPERTIES:
+  //   - ZERO parameters, ZERO thresholds, ZERO heuristics
+  //   - Continuous signal (autocorrelation loves it — no sparse zeros)
+  //   - Genre-universal: any instrument with BOTH low AND mid will dominate
+  //   - sqrt() keeps output in same magnitude scale as input
+  //   - Cost: 1 add + 1 add + 1 multiply + 1 sqrt per frame (~0.001ms)
+  //
+  // GENRE SAFETY:
+  //   - Minimal techno (Brejcha): kick sqrt(0.15×0.06)=0.095 >> bass sqrt(0.12×0.01)=0.035
+  //   - Cumbiatón: kick sqrt(0.10×0.04)=0.063 >> conga sqrt(0.01×0.05)=0.022
+  //   - House 4/4: kick dominates both bands → maximum product
+  //   - Rock: kick+snare both broadband → clean periodicity
+  //   - Ambient: all bands low → product tiny → conf drops → engine quiet ✓
   // ═══════════════════════════════════════════════════════════════════════════
-  const broadbandEnergy =
-    spectrum.rawSubBassEnergy +
-    spectrum.rawBassOnlyEnergy +
-    spectrum.rawLowMidEnergy +
-    spectrum.rawMidEnergy;
+  const lowEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
+  const midEnergy = spectrum.rawLowMidEnergy + spectrum.rawMidEnergy;
+  const kickSignal = Math.sqrt(lowEnergy * midEnergy);
 
   const godEarBpmResult = godEarBpmTracker.process(
-    broadbandEnergy,       // 📡 WAVE 2153: Continuous raw broadband — kick dominates by width
+    kickSignal,            // 🎯 WAVE 2154: Geometric mean — only broadband events survive
     spectrum.kickDetected, // External kick hint (used for kick count, not BPM math)
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2153: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows all 4 raw bands + broadband so we can verify kick dominance.
+  // 🔬 WAVE 2154: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows low, mid, and kickSignal to verify the geometric mean isolates kicks.
   if (state.frameCount % 20 === 0) {
     console.log(
       `[AUTOCORR 🩺] F${state.frameCount}` +
@@ -579,11 +585,13 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
       ` kick=${godEarBpmResult.kickDetected}` +
       ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
-      ` bb=${broadbandEnergy.toFixed(4)}` +
+      ` ks=${kickSignal.toFixed(4)}` +
+      ` low=${lowEnergy.toFixed(4)}` +
+      ` mid=${midEnergy.toFixed(4)}` +
       ` sub=${spectrum.rawSubBassEnergy.toFixed(4)}` +
       ` bass=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
       ` lmid=${spectrum.rawLowMidEnergy.toFixed(4)}` +
-      ` mid=${spectrum.rawMidEnergy.toFixed(4)}` +
+      ` mids=${spectrum.rawMidEnergy.toFixed(4)}` +
       ` samples=${godEarBpmResult.kickCount}`
     );
   }

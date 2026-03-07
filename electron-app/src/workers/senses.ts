@@ -55,6 +55,12 @@ import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 // import { GodEarBPMTracker } from './GodEarBPMTracker';
 import { PacemakerV2 } from './PacemakerV2';
 
+// ⚙️ WAVE 2157: THE GEARBOX — Harmonic reduction post-processor
+//     PacemakerV2 reads polyrhythmic harmonics (129, 161, 190 BPM).
+//     The Gearbox divides by musical ratios (3:2, 5:4, 2:1) to find
+//     the fundamental beat (86, 126, 95 BPM).
+import { GearboxStabilizer } from './HarmonicGearbox';
+
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
   SimpleRhythmDetector,
@@ -187,6 +193,7 @@ const state: BetaState = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const pacemaker = new PacemakerV2();
+const gearbox = new GearboxStabilizer();
 
 // 🔬 WAVE 2155: Persistent state for multiplicative flux computation.
 // Previous frame's raw band energies — needed to compute deltas (rising edges).
@@ -603,28 +610,33 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2155: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows deltaSub, deltaMid, coincidenceFlux, and PacemakerV2 output.
+  // ⚙️ WAVE 2157: THE GEARBOX — Harmonic reduction
+  // PM2 reads polyrhythmic harmonics (129, 161 BPM). The Gearbox divides
+  // by musical ratios (3:2, 5:4) to find the fundamental (86, 126 BPM).
+  const gear = gearbox.process(pmResult.bpm, pmResult.confidence);
+
+  // 🔬 WAVE 2157: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows needle signal, PM2 raw output, AND Gearbox reduction.
   if (state.frameCount % 20 === 0) {
+    const gearTag = gear.shifted ? `÷${gear.appliedDivisor}→${gear.fundamentalBpm}` : 'DIRECT';
     console.log(
       `[NEEDLE 🩺] F${state.frameCount}` +
-      ` bpm=${pmResult.bpm}` +
+      ` bpm=${gear.fundamentalBpm}` +
+      ` raw=${pmResult.bpm}` +
+      ` gear=${gearTag}` +
       ` conf=${pmResult.confidence.toFixed(3)}` +
       ` kick=${pmResult.kickDetected}` +
       ` phase=${pmResult.beatPhase.toFixed(2)}` +
       ` needle=${coincidenceFlux.toFixed(4)}` +
-      ` raw=${coincidenceFluxRaw.toFixed(6)}` +
       ` dSub=${deltaSub.toFixed(4)}` +
       ` dMid=${deltaMid.toFixed(4)}` +
-      ` sub=${subEnergy.toFixed(4)}` +
-      ` mid=${midEnergy.toFixed(4)}` +
       ` kicks=${pmResult.kickCount}`
     );
   }
 
-  // Update Worker BPM state from PacemakerV2
+  // Update Worker BPM state — use GEARBOX output (fundamental), not PM2 raw
   if (pmResult.confidence > 0.25) {
-    state.currentBpm = pmResult.bpm;
+    state.currentBpm = gear.fundamentalBpm;
     state.bpmConfidence = pmResult.confidence;
     state.beatPhase = pmResult.beatPhase;
   }
@@ -985,9 +997,10 @@ function handleMessage(message: WorkerMessage): void {
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
         pacemaker.reset();
+        gearbox.reset();
         prevSubEnergy = 0;
         prevMidEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2155: PacemakerV2 HARD RESET — Amnesia Protocol executed');
+        console.log('[BETA] 🧨 WAVE 2157: PacemakerV2 + Gearbox HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

@@ -41,16 +41,19 @@ import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
 // 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM back in the Worker
 // � WAVE 2151: THE LAZARUS PROTOCOL — GodEarBPMTracker returns as primary engine.
-//     PacemakerV2 (IOI) failed genetically: onset classification is impossible
-//     on complex productions (Brejcha). Autocorrelation finds periodicity
-//     mathematically — no transient classification needed. With clean Radix-2
-//     FFT data (fixed since WAVE 2096.1), the correlation peaks are now accurate.
-import { GodEarBPMTracker } from './GodEarBPMTracker';
-
-// � WAVE 2151: PacemakerV2 archived. 20 WAVEs (2130-2150) of heuristic whack-a-mole
-//     proved IOI is architecturally unfit for complex electronic music.
-//     Preserved in codebase as historical reference.
-// import { PacemakerV2 } from './PacemakerV2';
+// 🎯 WAVE 2155: THE NEEDLE PROTOCOL — PacemakerV2 RESURRECTED
+//     WAVEs 2151-2154 proved autocorrelation is the wrong tool for this signal:
+//     continuous flat energy → ambiguous lags → wrong BPM with low confidence.
+//     PacemakerV2 (IOI) was wrongly convicted: it failed because we fed it RAW
+//     bass energy (which includes offbeat syncopation). With MULTIPLICATIVE FLUX
+//     (deltaSub × deltaMid) as input, syncopation instruments collapse to zero
+//     because they only activate ONE band, never both simultaneously.
+//     The marriage: GodEarFFT Radix-2 (surgical band separation) + PacemakerV2 (IOI clustering).
+//
+// 🪦 WAVE 2151: GodEarBPMTracker (autocorrelation) archived after 5 WAVEs of failure.
+//     Kept in codebase as historical reference — may serve for ambient/drone genres.
+// import { GodEarBPMTracker } from './GodEarBPMTracker';
+import { PacemakerV2 } from './PacemakerV2';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
@@ -177,19 +180,19 @@ const state: BetaState = {
 // GodEarBPMTracker (autocorrelation) was abandoned at WAVE 2130 because of
 // octave bounce — but that was caused by BROKEN FFT (SplitX Radix was kaputt).
 // Since WAVE 2096.1, GodEarFFT Radix-2 DIT sends CLEAN spectral data.
-// The autocorrelation engine now has:
-//   - 4× temporal upsampling (53 lags, 1.7 BPM resolution)
-//   - Harmonic sieve with octave-aware preference
-//   - Octave lock (8 scans ≈ 1.5s confirmation)
-//   - Polyrhythm filter (ratio 1.28-1.55, kills syncopation ghosts)
-//   - Float32Array circular buffer (ZERO GC pressure — no spread/sort per frame)
-//   - Verbose logs gated behind VERBOSE_AUTOCORR_LOGS=false
-//
-// It receives rawBassEnergy (NOT rhythmicPunch) because autocorrelation
-// works on the CONTINUOUS energy signal, not on gated onset events.
+// 🎯 WAVE 2155: THE NEEDLE PROTOCOL — PacemakerV2 resurrected with multiplicative flux.
+// PacemakerV2 receives NEEDLES (isolated spikes from deltaSub × deltaMid),
+// NOT raw continuous energy. Its inner ear (rolling mean × 1.6 + delta + hysteresis)
+// is perfectly suited for spike detection and IOI clustering.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const godEarBpmTracker = new GodEarBPMTracker();
+const pacemaker = new PacemakerV2();
+
+// 🔬 WAVE 2155: Persistent state for multiplicative flux computation.
+// Previous frame's raw band energies — needed to compute deltas (rising edges).
+// Module-scope to survive across processAudioFrame() calls.
+let prevSubEnergy = 0;
+let prevMidEnergy = 0;
 
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
@@ -521,88 +524,111 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
-  // 🎯 WAVE 2154: VERTICAL COINCIDENCE — Geometric mean of low×mid bands
+  // 🎯 WAVE 2155: THE NEEDLE PROTOCOL — Multiplicative Flux + PacemakerV2
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // WAVE 2153 (Broadband Anchor) FAILED on Cumbiatón:
-  //   - Summing all bands let syncopated percussion (congas, claves, timbales)
-  //     dominate the autocorrelation. POLYRHYTHM filter fired on EVERY scan
-  //     (ratio ~1.33-1.37×), but the damage was already done: the Sieve saw
-  //     two competing periodicities (tresillo vs 4/4) with near-equal strength.
-  //   - Confidence collapsed to 0.16-0.30. BPM wandered 73→110 endlessly.
+  // WAVEs 2151-2154 AUTOPSY: All failed because autocorrelation is the WRONG
+  // algorithm for our signal. Autocorrelation needs clean sinusoidal energy
+  // waves. What we produce (even with geometric mean) is a flat, noisy signal
+  // with ambiguous periodicity → wrong BPM, low confidence, octave oscillation.
   //
-  // WAVE 2151.1 (SubBass only) FAILED on Brejcha:
-  //   - Offbeat bass at 50-70Hz shared the subBass band with the kick.
-  //   - No frequency cut could separate them.
+  // THE INSIGHT (PunkArchytect): Multiply the DERIVATIVES (positive flux) of
+  // two distant bands. A real kick is a VERTICAL explosion: sub-bass AND mid
+  // energy BOTH rise simultaneously. Nothing else does this:
   //
-  // THE INSIGHT: A real kick drum is a VERTICAL explosion across the spectrum.
-  //   - It has BOTH low energy (fundamental) AND mid energy (beater attack/click).
-  //   - An offbeat bass has low energy but ZERO mid energy.
-  //   - A conga/clave has mid energy but ZERO low energy.
+  //   | Event          | deltaSub | deltaMid | deltaSub × deltaMid |
+  //   |----------------|----------|----------|---------------------|
+  //   | KICK (real)    | +0.12    | +0.06    | 0.0072 ← NEEDLE    |
+  //   | Offbeat bass   | +0.10    | -0.01    | 0.0000 ← ZERO      |
+  //   | Conga/clave    | -0.01    | +0.05    | 0.0000 ← ZERO      |
+  //   | Silence        | -0.01    | -0.01    | 0.0000 ← ZERO      |
+  //   | Hi-hat         | +0.00    | +0.02    | 0.0000 ← ZERO      |
   //
-  // THE MATH: Instead of SUM (a+b), use GEOMETRIC MEAN: sqrt(low × mid).
+  //   Only events with RISING edges in BOTH bands produce a nonzero product.
+  //   Offbeat bass (only sub rises), percussion (only mid rises), and
+  //   everything else collapses to EXACTLY zero.
   //
-  //   | Event          | Low (sub+bass) | Mid (lmid+mid) | sqrt(L×M) |
-  //   |----------------|----------------|----------------|-----------|
-  //   | KICK (real)    | 0.15           | 0.08           | 0.110     |
-  //   | Offbeat bass   | 0.12           | 0.01           | 0.035     |
-  //   | Conga/clave    | 0.01           | 0.05           | 0.022     |
-  //   | Silence        | 0.01           | 0.01           | 0.010     |
-  //
-  //   The kick has 3-5× amplitude advantage over ANY partial-band percussion.
-  //   Offbeat bass (only low) and syncopated percussion (only mid) both collapse.
+  // THE MARRIAGE: GodEarFFT Radix-2 (surgical band separation, verified WAVE
+  //   2096.1) + PacemakerV2 (IOI clustering with inner ear, P99, hysteresis).
+  //   PacemakerV2 was wrongly convicted in WAVE 2151 — it failed because its
+  //   INPUT was dirty (rawBassEnergy included offbeat syncopation). With clean
+  //   multiplicative needles, its inner ear detects TRUE kick onsets.
   //
   // PROPERTIES:
-  //   - ZERO parameters, ZERO thresholds, ZERO heuristics
-  //   - Continuous signal (autocorrelation loves it — no sparse zeros)
-  //   - Genre-universal: any instrument with BOTH low AND mid will dominate
-  //   - sqrt() keeps output in same magnitude scale as input
-  //   - Cost: 1 add + 1 add + 1 multiply + 1 sqrt per frame (~0.001ms)
+  //   - ZERO new parameters, ZERO new thresholds — uses PacemakerV2's battle-tested
+  //     inner ear (rolling mean × 1.6, delta 0.008, muscle memory, P99 ceiling)
+  //   - SPARSE signal: needles only on real kicks → PERFECT for IOI clustering
+  //   - Genre-universal: kick = broadband explosion in ALL genres
+  //   - Deterministic: no random, no heuristic, pure physics
+  //   - Cost: 2 subtractions + 2 max(0) + 1 multiply per frame (~0.0005ms)
   //
-  // GENRE SAFETY:
-  //   - Minimal techno (Brejcha): kick sqrt(0.15×0.06)=0.095 >> bass sqrt(0.12×0.01)=0.035
-  //   - Cumbiatón: kick sqrt(0.10×0.04)=0.063 >> conga sqrt(0.01×0.05)=0.022
-  //   - House 4/4: kick dominates both bands → maximum product
-  //   - Rock: kick+snare both broadband → clean periodicity
-  //   - Ambient: all bands low → product tiny → conf drops → engine quiet ✓
+  // WHY kickOnset=false: We KILL the external GodEar SlopeBasedOnsetDetector
+  //   path. That detector couldn't distinguish kicks from offbeat bass — that's
+  //   what caused PacemakerV2's 161 BPM vicious circle. PacemakerV2's inner ear
+  //   will classify needles as onsets using its own adaptive threshold system.
   // ═══════════════════════════════════════════════════════════════════════════
-  const lowEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
-  const midEnergy = spectrum.rawLowMidEnergy + spectrum.rawMidEnergy;
-  const kickSignal = Math.sqrt(lowEnergy * midEnergy);
 
-  const godEarBpmResult = godEarBpmTracker.process(
-    kickSignal,            // 🎯 WAVE 2154: Geometric mean — only broadband events survive
-    spectrum.kickDetected, // External kick hint (used for kick count, not BPM math)
+  // Band energies (pre-AGC, from GodEarFFT Radix-2)
+  const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;  // 0-200Hz
+  const midEnergy = spectrum.rawLowMidEnergy + spectrum.rawMidEnergy;        // 200Hz-2kHz
+
+  // Positive flux (rising edges only) — negative flux = release, irrelevant
+  const deltaSub = Math.max(0, subEnergy - prevSubEnergy);
+  const deltaMid = Math.max(0, midEnergy - prevMidEnergy);
+
+  // THE NEEDLE: Product of simultaneous rising edges.
+  // Only nonzero when BOTH bands rise at the same time = kick drum.
+  const coincidenceFluxRaw = deltaSub * deltaMid;
+
+  // DIMENSIONAL NORMALIZATION: sqrt() converts units² back to units.
+  // coincidenceFluxRaw ≈ 0.001-0.010 (energy × energy dimension).
+  // PacemakerV2's inner ear expects energy in 0.01-0.20 range
+  // (DELTA_THRESHOLD=0.008, kickLevel floor=0.045).
+  // sqrt(0.006) = 0.077 — maps naturally to PM2's expected range.
+  // This is NOT a heuristic or scaling factor — it's a dimensional correction,
+  // the same reason we use sqrt in geometric mean, RMS, etc.
+  const coincidenceFlux = Math.sqrt(coincidenceFluxRaw);
+
+  // Update persistent state for next frame's delta computation
+  prevSubEnergy = subEnergy;
+  prevMidEnergy = midEnergy;
+
+  // Feed the needle to PacemakerV2:
+  //   kickOnset = false    → KILL external onset path (SlopeBasedOnsetDetector)
+  //   energy = coincidenceFlux → PacemakerV2's inner ear classifies the spike
+  //   timestamp = deterministic musical clock
+  const pmResult = pacemaker.process(
+    false,                    // 🎯 WAVE 2155: External onset DEAD — inner ear only
+    coincidenceFlux,          // 🎯 WAVE 2155: Multiplicative needle — only kicks survive
     deterministicTimestampMs
   );
 
-  // 🔬 WAVE 2154: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows low, mid, and kickSignal to verify the geometric mean isolates kicks.
+  // 🔬 WAVE 2155: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows deltaSub, deltaMid, coincidenceFlux, and PacemakerV2 output.
   if (state.frameCount % 20 === 0) {
     console.log(
-      `[AUTOCORR 🩺] F${state.frameCount}` +
-      ` bpm=${godEarBpmResult.bpm}` +
-      ` conf=${godEarBpmResult.confidence.toFixed(3)}` +
-      ` kick=${godEarBpmResult.kickDetected}` +
-      ` phase=${godEarBpmResult.beatPhase.toFixed(2)}` +
-      ` ks=${kickSignal.toFixed(4)}` +
-      ` low=${lowEnergy.toFixed(4)}` +
+      `[NEEDLE 🩺] F${state.frameCount}` +
+      ` bpm=${pmResult.bpm}` +
+      ` conf=${pmResult.confidence.toFixed(3)}` +
+      ` kick=${pmResult.kickDetected}` +
+      ` phase=${pmResult.beatPhase.toFixed(2)}` +
+      ` needle=${coincidenceFlux.toFixed(4)}` +
+      ` raw=${coincidenceFluxRaw.toFixed(6)}` +
+      ` dSub=${deltaSub.toFixed(4)}` +
+      ` dMid=${deltaMid.toFixed(4)}` +
+      ` sub=${subEnergy.toFixed(4)}` +
       ` mid=${midEnergy.toFixed(4)}` +
-      ` sub=${spectrum.rawSubBassEnergy.toFixed(4)}` +
-      ` bass=${spectrum.rawBassOnlyEnergy.toFixed(4)}` +
-      ` lmid=${spectrum.rawLowMidEnergy.toFixed(4)}` +
-      ` mids=${spectrum.rawMidEnergy.toFixed(4)}` +
-      ` samples=${godEarBpmResult.kickCount}`
+      ` kicks=${pmResult.kickCount}`
     );
   }
 
-  // Update Worker BPM state from GodEarBPMTracker
-  if (godEarBpmResult.confidence > 0.25) {
-    state.currentBpm = godEarBpmResult.bpm;
-    state.bpmConfidence = godEarBpmResult.confidence;
-    state.beatPhase = godEarBpmResult.beatPhase;
+  // Update Worker BPM state from PacemakerV2
+  if (pmResult.confidence > 0.25) {
+    state.currentBpm = pmResult.bpm;
+    state.bpmConfidence = pmResult.confidence;
+    state.beatPhase = pmResult.beatPhase;
   }
-  if (godEarBpmResult.kickDetected) {
+  if (pmResult.kickDetected) {
     // 🕐 WAVE 2115: lastBeatTime en musical clock — consistente con el tracker
     state.lastBeatTime = deterministicTimestampMs;
   }
@@ -624,7 +650,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     volume: energy,
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    onBeat: pmResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
     timestamp: Date.now(),
     dominantFrequency: spectrum.dominantFrequency,
@@ -640,13 +666,13 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
-  // 🥁 WAVE 2112: Beat state from GodEarBPMTracker (fresh, in-worker)
+  // 🥁 WAVE 2155: Beat state from PacemakerV2 (fresh, in-worker)
   const beatState = {
     bpm: state.currentBpm,
     confidence: state.bpmConfidence,
-    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    onBeat: pmResult.kickDetected || spectrum.kickDetected,
     phase: state.beatPhase,
-    beatCount: godEarBpmResult.kickCount
+    beatCount: pmResult.kickCount
   };
   
   const metricsForMood = {
@@ -725,12 +751,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
     agcGainFactor: agcResult.gainFactor,
     
-    // 🥁 WAVE 2112: BPM fields REAL again — from GodEarBPMTracker in Worker
+    // 🥁 WAVE 2155: BPM fields REAL — from PacemakerV2 in Worker
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: godEarBpmResult.kickDetected || spectrum.kickDetected,
+    onBeat: pmResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
-    beatStrength: godEarBpmResult.kickDetected ? 1 : 0,
+    beatStrength: pmResult.kickDetected ? 1 : 0,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,
@@ -954,12 +980,14 @@ function handleMessage(message: WorkerMessage): void {
         // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
         break;
       
-      // 🧨 WAVE 2140 → 2151: AMNESIA PROTOCOL — Hard reset on Vibe change
+      // 🧨 WAVE 2155: AMNESIA PROTOCOL — Hard reset on Vibe change
       // A vibe change = near-certain song change. Wipe BPM tracker memory
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
-        godEarBpmTracker.reset();
-        console.log('[BETA] 🧨 WAVE 2151: GodEarBPMTracker HARD RESET — Amnesia Protocol executed');
+        pacemaker.reset();
+        prevSubEnergy = 0;
+        prevMidEnergy = 0;
+        console.log('[BETA] 🧨 WAVE 2155: PacemakerV2 HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

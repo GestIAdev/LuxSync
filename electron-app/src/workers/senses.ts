@@ -610,17 +610,21 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // ⚙️ WAVE 2157: THE GEARBOX — Harmonic reduction
-  // PM2 reads polyrhythmic harmonics (129, 161 BPM). The Gearbox divides
-  // by musical ratios (3:2, 5:4) to find the fundamental (86, 126 BPM).
-  const gear = gearbox.process(pmResult.bpm, pmResult.confidence);
+  // WAVE 2158: CLUSTER-AWARE GEARBOX — Harmonic resolution with evidence
+  // PM2 reads polyrhythmic harmonics (129, 161 BPM). The Gearbox searches
+  // PM2's secondary clusters for physical evidence of the fundamental beat.
+  // If a cluster at dominantBpm/divisor exists -> harmonic CONFIRMED -> resolve.
+  // If no evidence -> passthrough (DnB 174, House 128 stay as-is).
+  const gear = gearbox.process(pmResult.bpm, pmResult.confidence, pmResult.clusters);
 
-  // 🔬 WAVE 2157: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows needle signal, PM2 raw output, AND Gearbox reduction.
+  // WAVE 2158: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows needle signal, PM2 raw output, Gearbox resolution + cluster evidence.
   if (state.frameCount % 20 === 0) {
-    const gearTag = gear.shifted ? `÷${gear.appliedDivisor}→${gear.fundamentalBpm}` : 'DIRECT';
+    const gearTag = gear.shifted
+      ? `/${gear.appliedDivisor}->${gear.fundamentalBpm}(ev:${gear.evidenceClusterBpm}bpm@${gear.evidenceClusterVotes}v)`
+      : 'DIRECT';
     console.log(
-      `[NEEDLE 🩺] F${state.frameCount}` +
+      `[NEEDLE] F${state.frameCount}` +
       ` bpm=${gear.fundamentalBpm}` +
       ` raw=${pmResult.bpm}` +
       ` gear=${gearTag}` +
@@ -628,8 +632,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` kick=${pmResult.kickDetected}` +
       ` phase=${pmResult.beatPhase.toFixed(2)}` +
       ` needle=${coincidenceFlux.toFixed(4)}` +
-      ` dSub=${deltaSub.toFixed(4)}` +
-      ` dMid=${deltaMid.toFixed(4)}` +
+      ` clusters=[${pmResult.clusters.slice(0, 4).map(c => c.bpm + ':' + c.votes + 'v').join('|')}]` +
       ` kicks=${pmResult.kickCount}`
     );
   }

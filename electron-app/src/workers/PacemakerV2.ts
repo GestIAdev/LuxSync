@@ -90,6 +90,19 @@ export interface PacemakerV2Result {
   kickDetected: boolean
   /** Beat phase 0-1 (position within current beat cycle) */
   beatPhase: number
+  /** WAVE 2158: Active interval clusters, sorted by vote count descending.
+   *  Exposed for the Cluster-Aware Gearbox to cross-reference harmonic ratios.
+   *  Each entry: { bpm, votes } — the BPM and number of intervals in that cluster. */
+  clusters: ClusterSnapshot[]
+}
+
+/** WAVE 2158: Lightweight cluster snapshot for external consumption.
+ *  Deliberately minimal — only BPM and votes, no internal interval data. */
+export interface ClusterSnapshot {
+  /** BPM of this cluster center (60000 / centerMs) */
+  bpm: number
+  /** Number of intervals grouped in this cluster */
+  votes: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -283,6 +296,12 @@ export class PacemakerV2 {
 
   // ─── Warmup ────────────────────────────────────────────────────────
   private warmupComplete = false
+
+  // ─── WAVE 2158: Cluster snapshots for external consumption ─────────
+  /** Last computed cluster snapshot (sorted descending by votes).
+   *  Updated on every recluster. Exposed via PacemakerV2Result.clusters
+   *  for the Cluster-Aware Gearbox to cross-reference harmonic ratios. */
+  private lastClusters: ClusterSnapshot[] = []
 
   // ─── WAVE 2136: TRUE 1163.5 REPLICA — onset detector state ──────
   /** Circular buffer for rolling average (24 frames ≈ 0.5s) */
@@ -543,6 +562,7 @@ export class PacemakerV2 {
       kickCount: this.onsetCount,
       kickDetected: kickDetectedThisFrame,
       beatPhase,
+      clusters: this.lastClusters,
     }
   }
 
@@ -561,6 +581,12 @@ export class PacemakerV2 {
     // ─── Step 2: Build clusters ──────────────────────────────────
     const clusters = this.buildClusters(values)
     if (clusters.length === 0) return
+
+    // ─── WAVE 2158: Snapshot clusters for external consumption ───
+    // Sorted descending by vote count. Lightweight: only bpm + votes.
+    this.lastClusters = clusters
+      .sort((a, b) => b.count - a.count)
+      .map(c => ({ bpm: Math.round(c.bpm), votes: c.count }))
 
     // ─── Step 3: Find dominant cluster ───────────────────────────
     const dominant = this.findDominantCluster(clusters)
@@ -991,5 +1017,7 @@ export class PacemakerV2 {
     this.kickLevel = 0.025
     // WAVE 2150: P99 CEILING GATE — reset onset energy history
     this.onsetEnergyHistory = []
+    // WAVE 2158: Reset cluster snapshots
+    this.lastClusters = []
   }
 }

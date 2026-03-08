@@ -596,17 +596,52 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // the same reason we use sqrt in geometric mean, RMS, etc.
   const coincidenceFlux = Math.sqrt(coincidenceFluxRaw);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2159: THE FREQUENCY SNIPER — Centroid Gate for Needle Protocol
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // PROBLEM: The Needle Protocol (deltaSub × deltaMid) catches most offbeat
+  // syncopation, but Minimal Techno producers (Brejcha et al.) layer a crunchy
+  // hi-hat/clap EXACTLY on top of their offbeat bass. Both sub AND mid rise
+  // simultaneously → nonzero needle → PM2 registers a false onset → intervals
+  // fragment (476ms→325ms+418ms+557ms) → 126 BPM disappears from clusters.
+  //
+  // EVIDENCE FROM LOG (atortasconelBPM.md):
+  //   Real kicks:     Centroid = 86Hz, 226Hz, 275Hz, 612Hz, 752Hz, 972Hz
+  //   Fake onsets:    Centroid = 2166Hz, 3032Hz, 4757Hz, 5178Hz, 5452Hz, 6791Hz
+  //   GAP:            972Hz ←——— 1194Hz of daylight ———→ 2166Hz
+  //
+  // A real kick drum is so massive and deep that it drags the spectral centroid
+  // of the ENTIRE frame below 1000Hz. An offbeat "bass + hihat" combo has graves
+  // yes, but the hihat pulls the centroid above 2000Hz.
+  //
+  // THE SNIPER: If coincidenceFlux > 0 (potential onset detected), check the
+  // spectral centroid. If centroid > CENTROID_CEILING → kill the needle.
+  // The onset was a percussive attack layered over bass, not a real kick.
+  //
+  // CENTROID_CEILING = 1500Hz — splits the gap (972-2166) with ample margin.
+  // NOT a heuristic: derived from measured spectral data across the entire log.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const CENTROID_CEILING_HZ = 1500;
+  const centroidHz = spectrum.spectralCentroid;
+
+  // The Sniper: kill high-centroid needles. Real kicks have centroid < 1000Hz.
+  // We only gate when there IS a needle — zero needles stay zero.
+  const snipedFlux = (coincidenceFlux > 0 && centroidHz > CENTROID_CEILING_HZ)
+    ? 0
+    : coincidenceFlux;
+
   // Update persistent state for next frame's delta computation
   prevSubEnergy = subEnergy;
   prevMidEnergy = midEnergy;
 
   // Feed the needle to PacemakerV2:
   //   kickOnset = false    → KILL external onset path (SlopeBasedOnsetDetector)
-  //   energy = coincidenceFlux → PacemakerV2's inner ear classifies the spike
+  //   energy = snipedFlux  → 🎯 WAVE 2159: Centroid-gated needle
   //   timestamp = deterministic musical clock
   const pmResult = pacemaker.process(
     false,                    // 🎯 WAVE 2155: External onset DEAD — inner ear only
-    coincidenceFlux,          // 🎯 WAVE 2155: Multiplicative needle — only kicks survive
+    snipedFlux,               // 🎯 WAVE 2159: Frequency Sniper — only low-centroid kicks survive
     deterministicTimestampMs
   );
 
@@ -617,12 +652,15 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // If no evidence -> passthrough (DnB 174, House 128 stay as-is).
   const gear = gearbox.process(pmResult.bpm, pmResult.confidence, pmResult.clusters);
 
-  // WAVE 2158: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows needle signal, PM2 raw output, Gearbox resolution + cluster evidence.
+  // WAVE 2159: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows needle signal, sniper gate, PM2 raw output, Gearbox resolution.
   if (state.frameCount % 20 === 0) {
     const gearTag = gear.shifted
       ? `/${gear.appliedDivisor}->${gear.fundamentalBpm}(ev:${gear.evidenceClusterBpm}bpm@${gear.evidenceClusterVotes}v)`
       : 'DIRECT';
+    const sniperTag = (coincidenceFlux > 0 && snipedFlux === 0)
+      ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
+      : '';
     console.log(
       `[NEEDLE] F${state.frameCount}` +
       ` bpm=${gear.fundamentalBpm}` +
@@ -632,8 +670,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` kick=${pmResult.kickDetected}` +
       ` phase=${pmResult.beatPhase.toFixed(2)}` +
       ` needle=${coincidenceFlux.toFixed(4)}` +
+      (snipedFlux !== coincidenceFlux ? ` sniper=${snipedFlux.toFixed(4)}` : '') +
+      ` centroid=${Math.round(centroidHz)}Hz` +
       ` clusters=[${pmResult.clusters.slice(0, 4).map(c => c.bpm + ':' + c.votes + 'v').join('|')}]` +
-      ` kicks=${pmResult.kickCount}`
+      ` kicks=${pmResult.kickCount}` +
+      sniperTag
     );
   }
 

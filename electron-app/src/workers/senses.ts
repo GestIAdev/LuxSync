@@ -195,11 +195,10 @@ const state: BetaState = {
 const pacemaker = new PacemakerV2();
 const gearbox = new GearboxStabilizer();
 
-// 🔬 WAVE 2155: Persistent state for multiplicative flux computation.
-// Previous frame's raw band energies — needed to compute deltas (rising edges).
+// 🔬 WAVE 2160: Persistent state for raw low flux computation.
+// Previous frame's sub-bass energy — needed to compute delta (rising edge).
 // Module-scope to survive across processAudioFrame() calls.
 let prevSubEnergy = 0;
-let prevMidEnergy = 0;
 
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
@@ -531,117 +530,80 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sampleRate = config.audioSampleRate ?? 44100;
   const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
 
-  // 🎯 WAVE 2155: THE NEEDLE PROTOCOL — Multiplicative Flux + PacemakerV2
+  // 🎯 WAVE 2160: UNCHAIN THE NEEDLE — Raw Low Flux + Centroid-Only Gate
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // WAVEs 2151-2154 AUTOPSY: All failed because autocorrelation is the WRONG
-  // algorithm for our signal. Autocorrelation needs clean sinusoidal energy
-  // waves. What we produce (even with geometric mean) is a flat, noisy signal
-  // with ambiguous periodicity → wrong BPM, low confidence, octave oscillation.
+  // WAVE 2159 AUTOPSY (arranquehonesto.md):
+  // The Frequency Sniper worked perfectly — SNIPED offbeats at 3238Hz, 4974Hz,
+  // 6256Hz. But PM2 was STARVING: IOIs of 2879ms, 3111ms, 5991ms (RANGE-REJECT).
+  // Root cause: a PARADOX created by combining two defenses:
   //
-  // THE INSIGHT (PunkArchytect): Multiply the DERIVATIVES (positive flux) of
-  // two distant bands. A real kick is a VERTICAL explosion: sub-bass AND mid
-  // energy BOTH rise simultaneously. Nothing else does this:
+  //   1. Needle Protocol (WAVE 2155): only fires when deltaSub AND deltaMid > 0
+  //      → Pure sub-kicks (no mid content) produce needle = 0. PM2 misses them.
+  //   2. Frequency Sniper (WAVE 2159): kills needles where centroid > 1500Hz
+  //      → Any kick with a layered transient gets killed.
   //
-  //   | Event          | deltaSub | deltaMid | deltaSub × deltaMid |
-  //   |----------------|----------|----------|---------------------|
-  //   | KICK (real)    | +0.12    | +0.06    | 0.0072 ← NEEDLE    |
-  //   | Offbeat bass   | +0.10    | -0.01    | 0.0000 ← ZERO      |
-  //   | Conga/clave    | -0.01    | +0.05    | 0.0000 ← ZERO      |
-  //   | Silence        | -0.01    | -0.01    | 0.0000 ← ZERO      |
-  //   | Hi-hat         | +0.00    | +0.02    | 0.0000 ← ZERO      |
+  // The double-filter is lethal:
+  //   - Pure kick (no mid)      → needle = 0 × anything = ZERO (Needle kills it)
+  //   - Kick + hi-hat transient → needle > 0 BUT centroid > 1500Hz = ZERO (Sniper kills it)
+  //   - Only kick with EXACTLY the right mid content survives both gates.
+  //   Result: PM2 sees a beat every 3-6 seconds. Starvation. Chaos.
   //
-  //   Only events with RISING edges in BOTH bands produce a nonzero product.
-  //   Offbeat bass (only sub rises), percussion (only mid rises), and
-  //   everything else collapses to EXACTLY zero.
+  // THE INSIGHT (PunkArchytect WAVE 2160):
+  // The multiplicative gate was a workaround for NOT having the Sniper.
+  // Now that the Sniper exists and is proven, it is the ONLY gate we need.
+  // Open the low-end floodgates. Let all bass attacks through.
+  // The Sniper — who reads the spectral centroid — knows who's a kick and
+  // who's a hi-hat layered over bass. He has the final word. Trust him.
   //
-  // THE MARRIAGE: GodEarFFT Radix-2 (surgical band separation, verified WAVE
-  //   2096.1) + PacemakerV2 (IOI clustering with inner ear, P99, hysteresis).
-  //   PacemakerV2 was wrongly convicted in WAVE 2151 — it failed because its
-  //   INPUT was dirty (rawBassEnergy included offbeat syncopation). With clean
-  //   multiplicative needles, its inner ear detects TRUE kick onsets.
+  //   | Event               | rawLowFlux | centroid | snipedFlux |
+  //   |---------------------|------------|----------|------------|
+  //   | Pure sub-kick       | +0.120     | 86Hz     | +0.120 ✅  |
+  //   | Kick (rich attack)  | +0.095     | 752Hz    | +0.095 ✅  |
+  //   | Offbeat bass+hihat  | +0.080     | 4974Hz   | 0.000 🎯   |
+  //   | Pure bass note      | +0.060     | 3238Hz   | 0.000 🎯   |
+  //   | Hi-hat only         | +0.002     | 6256Hz   | 0.000 🎯   |
   //
-  // PROPERTIES:
-  //   - ZERO new parameters, ZERO new thresholds — uses PacemakerV2's battle-tested
-  //     inner ear (rolling mean × 1.6, delta 0.008, muscle memory, P99 ceiling)
-  //   - SPARSE signal: needles only on real kicks → PERFECT for IOI clustering
-  //   - Genre-universal: kick = broadband explosion in ALL genres
-  //   - Deterministic: no random, no heuristic, pure physics
-  //   - Cost: 2 subtractions + 2 max(0) + 1 multiply per frame (~0.0005ms)
-  //
-  // WHY kickOnset=false: We KILL the external GodEar SlopeBasedOnsetDetector
-  //   path. That detector couldn't distinguish kicks from offbeat bass — that's
-  //   what caused PacemakerV2's 161 BPM vicious circle. PacemakerV2's inner ear
-  //   will classify needles as onsets using its own adaptive threshold system.
+  // The Sniper now does ALL the discrimination. It has the data to do it.
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Band energies (pre-AGC, from GodEarFFT Radix-2)
   const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;  // 0-200Hz
-  const midEnergy = spectrum.rawLowMidEnergy + spectrum.rawMidEnergy;        // 200Hz-2kHz
 
-  // Positive flux (rising edges only) — negative flux = release, irrelevant
-  const deltaSub = Math.max(0, subEnergy - prevSubEnergy);
-  const deltaMid = Math.max(0, midEnergy - prevMidEnergy);
-
-  // THE NEEDLE: Product of simultaneous rising edges.
-  // Only nonzero when BOTH bands rise at the same time = kick drum.
-  const coincidenceFluxRaw = deltaSub * deltaMid;
-
-  // DIMENSIONAL NORMALIZATION: sqrt() converts units² back to units.
-  // coincidenceFluxRaw ≈ 0.001-0.010 (energy × energy dimension).
-  // PacemakerV2's inner ear expects energy in 0.01-0.20 range
-  // (DELTA_THRESHOLD=0.008, kickLevel floor=0.045).
-  // sqrt(0.006) = 0.077 — maps naturally to PM2's expected range.
-  // This is NOT a heuristic or scaling factor — it's a dimensional correction,
-  // the same reason we use sqrt in geometric mean, RMS, etc.
-  const coincidenceFlux = Math.sqrt(coincidenceFluxRaw);
+  // Raw low flux: how much the low end ROSE this frame (positive only)
+  // No multiplicative gate — every bass attack enters the Sniper.
+  const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 2159: THE FREQUENCY SNIPER — Centroid Gate for Needle Protocol
+  // 🎯 WAVE 2159/2160: THE FREQUENCY SNIPER — Centroid-Only Gate
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // PROBLEM: The Needle Protocol (deltaSub × deltaMid) catches most offbeat
-  // syncopation, but Minimal Techno producers (Brejcha et al.) layer a crunchy
-  // hi-hat/clap EXACTLY on top of their offbeat bass. Both sub AND mid rise
-  // simultaneously → nonzero needle → PM2 registers a false onset → intervals
-  // fragment (476ms→325ms+418ms+557ms) → 126 BPM disappears from clusters.
-  //
-  // EVIDENCE FROM LOG (atortasconelBPM.md):
+  // EVIDENCE (atortasconelBPM.md + arranquehonesto.md):
   //   Real kicks:     Centroid = 86Hz, 226Hz, 275Hz, 612Hz, 752Hz, 972Hz
-  //   Fake onsets:    Centroid = 2166Hz, 3032Hz, 4757Hz, 5178Hz, 5452Hz, 6791Hz
+  //   Fake onsets:    Centroid = 2166Hz, 3032Hz, 3238Hz, 4974Hz, 6256Hz, 7891Hz
   //   GAP:            972Hz ←——— 1194Hz of daylight ———→ 2166Hz
   //
-  // A real kick drum is so massive and deep that it drags the spectral centroid
-  // of the ENTIRE frame below 1000Hz. An offbeat "bass + hihat" combo has graves
-  // yes, but the hihat pulls the centroid above 2000Hz.
-  //
-  // THE SNIPER: If coincidenceFlux > 0 (potential onset detected), check the
-  // spectral centroid. If centroid > CENTROID_CEILING → kill the needle.
-  // The onset was a percussive attack layered over bass, not a real kick.
-  //
-  // CENTROID_CEILING = 1500Hz — splits the gap (972-2166) with ample margin.
-  // NOT a heuristic: derived from measured spectral data across the entire log.
+  // CENTROID_CEILING = 1500Hz — center of the gap. Not a heuristic.
   // ═══════════════════════════════════════════════════════════════════════════
   const CENTROID_CEILING_HZ = 1500;
   const centroidHz = spectrum.spectralCentroid;
 
-  // The Sniper: kill high-centroid needles. Real kicks have centroid < 1000Hz.
-  // We only gate when there IS a needle — zero needles stay zero.
-  const snipedFlux = (coincidenceFlux > 0 && centroidHz > CENTROID_CEILING_HZ)
+  // The Sniper: sole gatekeeper. Real kicks drag the centroid < 1000Hz.
+  // Offbeat bass + percussion pulls it above 2000Hz. 1500Hz is the wall.
+  const snipedFlux = (rawLowFlux > 0 && centroidHz > CENTROID_CEILING_HZ)
     ? 0
-    : coincidenceFlux;
+    : rawLowFlux;
 
   // Update persistent state for next frame's delta computation
   prevSubEnergy = subEnergy;
-  prevMidEnergy = midEnergy;
 
   // Feed the needle to PacemakerV2:
   //   kickOnset = false    → KILL external onset path (SlopeBasedOnsetDetector)
-  //   energy = snipedFlux  → 🎯 WAVE 2159: Centroid-gated needle
+  //   energy = snipedFlux  → 🎯 WAVE 2160: Centroid-only gated raw low flux
   //   timestamp = deterministic musical clock
   const pmResult = pacemaker.process(
     false,                    // 🎯 WAVE 2155: External onset DEAD — inner ear only
-    snipedFlux,               // 🎯 WAVE 2159: Frequency Sniper — only low-centroid kicks survive
+    snipedFlux,               // 🎯 WAVE 2160: Sniper-filtered raw low flux
     deterministicTimestampMs
   );
 
@@ -652,13 +614,13 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // If no evidence -> passthrough (DnB 174, House 128 stay as-is).
   const gear = gearbox.process(pmResult.bpm, pmResult.confidence, pmResult.clusters);
 
-  // WAVE 2159: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows needle signal, sniper gate, PM2 raw output, Gearbox resolution.
+  // WAVE 2160: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows raw low flux, sniper gate, PM2 raw output, Gearbox resolution.
   if (state.frameCount % 20 === 0) {
     const gearTag = gear.shifted
       ? `/${gear.appliedDivisor}->${gear.fundamentalBpm}(ev:${gear.evidenceClusterBpm}bpm@${gear.evidenceClusterVotes}v)`
       : 'DIRECT';
-    const sniperTag = (coincidenceFlux > 0 && snipedFlux === 0)
+    const sniperTag = (rawLowFlux > 0 && snipedFlux === 0)
       ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
       : '';
     console.log(
@@ -669,8 +631,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` conf=${pmResult.confidence.toFixed(3)}` +
       ` kick=${pmResult.kickDetected}` +
       ` phase=${pmResult.beatPhase.toFixed(2)}` +
-      ` needle=${coincidenceFlux.toFixed(4)}` +
-      (snipedFlux !== coincidenceFlux ? ` sniper=${snipedFlux.toFixed(4)}` : '') +
+      ` lowFlux=${rawLowFlux.toFixed(4)}` +
+      (snipedFlux !== rawLowFlux ? ` sniper=${snipedFlux.toFixed(4)}` : '') +
       ` centroid=${Math.round(centroidHz)}Hz` +
       ` clusters=[${pmResult.clusters.slice(0, 4).map(c => c.bpm + ':' + c.votes + 'v').join('|')}]` +
       ` kicks=${pmResult.kickCount}` +
@@ -1043,7 +1005,6 @@ function handleMessage(message: WorkerMessage): void {
         pacemaker.reset();
         gearbox.reset();
         prevSubEnergy = 0;
-        prevMidEnergy = 0;
         console.log('[BETA] 🧨 WAVE 2157: PacemakerV2 + Gearbox HARD RESET — Amnesia Protocol executed');
         break;
         

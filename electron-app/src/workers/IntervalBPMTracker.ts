@@ -75,8 +75,12 @@ export interface GodEarBPMResult {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Minimum interval between kicks in milliseconds.
- *  200ms = 300 BPM theoretical max (Drum & Bass territory). */
-const MIN_INTERVAL_MS = 200
+ *  WAVE 2171: raised from 200ms → 300ms.
+ *  300ms = 200 BPM absolute ceiling. Brejcha at 126 BPM = 476ms between kicks.
+ *  The old 200ms (300 BPM) was allowing double-triggers from flux spikes that
+ *  arrive 200-250ms apart on the same kick transient's multi-frame tail.
+ *  No legitimate techno/minimal kick can fire twice within 300ms. */
+const MIN_INTERVAL_MS = 300
 
 /** Maximum interval between kicks in milliseconds.
  *  1500ms = 40 BPM minimum. Below this is not rhythmic music. */
@@ -105,11 +109,15 @@ const DELTA_THRESHOLD = 0.008
  *  vicious cycle at 160 BPM. (0.65 caused half-BPM lock). */
 const DEBOUNCE_FACTOR = 0.40
 
-/** Hysteresis release threshold.
- *  Once a kick is detected (inKick=true), energy must drop below
- *  this fraction of the rolling average to release.
- *  0.9 = 10% below average → kick transient has clearly ended. */
-const HYSTERESIS_RELEASE = 0.9
+// HYSTERESIS_RELEASE removed in WAVE 2171.
+// inKick/hysteresis was designed for raw energy (plateau shape: kick rises → stays high → decays).
+// The tracker now receives needle (flux = frame-to-frame energy DELTA), which is spike-shaped:
+//   - Kick frame: flux = high (energy jumped)
+//   - Post-kick frames: flux ≈ noise floor (energy stable or decaying smoothly)
+// With noise floor = 0.010 and rollingAvg ≈ 0.013, any HYSTERESIS_RELEASE value > ~0.77
+// would release inKick correctly. But tuning this for flux is fragile and architecturally wrong.
+// MIN_INTERVAL_MS=300ms is the correct mechanism: no legitimate kick fires twice in 300ms.
+// inKick state and hysteresis release block are removed — see class state and process() method.
 
 /** Peak discriminator ratio.
  *  When the tracker has a stable BPM, a new "kick" candidate must have
@@ -140,9 +148,12 @@ const PEAK_DECAY = 0.995
 const PEAK_DISCRIMINATOR_MIN_KICKS = 6
 
 /** Number of BPM measurements to keep for median calculation.
- *  12 = captures ~6-8 seconds of beat history at 126 BPM.
- *  Odd would give exact median, but 12 works fine (average of middle 2). */
-const BPM_HISTORY_SIZE = 12
+ *  WAVE 2171: reduced from 12 → 8.
+ *  At 126 BPM, 8 samples = ~3 seconds of history. Faster rotation means
+ *  corrupt BPMs from the chaotic startup phase are evicted sooner.
+ *  With 12 slots, a single session of 4 wild BPMs (48, 215, 62, 185)
+ *  contaminates the spread for ~20+ kicks. With 8, they're gone in ~8. */
+const BPM_HISTORY_SIZE = 8
 
 /** Minimum kicks required before reporting a BPM.
  *  Need at least 4 intervals (5 kicks) for any meaningful median. */
@@ -170,7 +181,7 @@ export class IntervalBPMTracker {
 
   // ─── Kick Detection State ──────────────────────────────────────────
   private prevEnergy = 0
-  private inKick = false
+  // inKick removed in WAVE 2171 — MIN_INTERVAL_MS=300ms handles double-trigger prevention
   private lastKickTimestamp = 0
   private totalKicks = 0
 
@@ -230,21 +241,21 @@ export class IntervalBPMTracker {
     const delta = rawBassEnergy - this.prevEnergy
     this.prevEnergy = rawBassEnergy
 
-    // ─── 3. Kick Detection — Ratio + Delta + Hysteresis ────────────
+    // ─── 3. Kick Detection — Ratio + Delta ─────────────────────────
     //
-    // Three conditions must ALL be true:
+    // Two conditions must ALL be true:
     //   a) Energy exceeds rolling average by ENERGY_RATIO_THRESHOLD (1.6×)
     //   b) Energy is RISING (delta > DELTA_THRESHOLD = 0.008)
-    //   c) We are NOT currently inside a kick (hysteresis prevents double-trigger)
     //
-    // Once a kick is detected, inKick=true. It stays true until energy
-    // drops below HYSTERESIS_RELEASE × rollingAvg (0.9×).
-    // This ensures the ENTIRE transient is counted as ONE kick event.
+    // inKick/hysteresis removed in WAVE 2171 — the tracker now receives
+    // needle (flux = energy delta), not raw energy. Flux is spike-shaped:
+    // it spikes on kick frames and returns to noise floor immediately after.
+    // The old inKick mechanism was designed for plateau-shaped raw energy.
+    // Double-trigger prevention is now handled by MIN_INTERVAL_MS=300ms.
 
     let kickDetected = false
 
-    if (!this.inKick
-        && rollingAvg > 0
+    if (rollingAvg > 0
         && rawBassEnergy > rollingAvg * ENERGY_RATIO_THRESHOLD
         && delta > DELTA_THRESHOLD) {
 
@@ -293,7 +304,6 @@ export class IntervalBPMTracker {
         if (passedPeakCheck) {
         // ✅ KICK DETECTED
         kickDetected = true
-        this.inKick = true
         this.totalKicks++
 
         // Update peak energy estimate
@@ -307,16 +317,34 @@ export class IntervalBPMTracker {
           if (intervalMs >= MIN_INTERVAL_MS && intervalMs <= MAX_INTERVAL_MS) {
             const instantBpm = 60000 / intervalMs
 
-            // Push into BPM history ring buffer
-            this.bpmHistory[this.bpmHistoryPos] = instantBpm
-            this.bpmHistoryPos = (this.bpmHistoryPos + 1) % BPM_HISTORY_SIZE
-            this.bpmHistoryCount = Math.min(this.bpmHistoryCount + 1, BPM_HISTORY_SIZE)
-
-            // ─── 5. Compute Median BPM ───────────────────────────
-            if (this.bpmHistoryCount >= 3) {
-              this.stableBpm = this.computeMedianBpm()
-              this.currentConfidence = this.computeConfidence()
+            // ─── 4b. Outlier Rejection ────────────────────────────
+            // WAVE 2171: If we already have a stable BPM reference, reject
+            // any new measurement that is more than 35% off. This catches:
+            //   - Missed kick (1 beat gap → instantBpm = stableBpm/2 → 50% off → REJECT)
+            //   - Double-trigger (half-beat gap → instantBpm = stableBpm×2 → 100% off → REJECT)
+            //   - Breakdown-end re-entry (wildly different tempo phase → REJECT)
+            // Without a stable reference (cold start), all values are accepted
+            // to allow initial lock-in.
+            let acceptBpm = true
+            if (this.stableBpm > 0) {
+              const ratio = instantBpm / this.stableBpm
+              if (ratio < 0.65 || ratio > 1.55) {
+                acceptBpm = false  // outlier — skip this measurement
+              }
             }
+
+            if (acceptBpm) {
+              // Push into BPM history ring buffer
+              this.bpmHistory[this.bpmHistoryPos] = instantBpm
+              this.bpmHistoryPos = (this.bpmHistoryPos + 1) % BPM_HISTORY_SIZE
+              this.bpmHistoryCount = Math.min(this.bpmHistoryCount + 1, BPM_HISTORY_SIZE)
+
+              // ─── 5. Compute Median BPM ───────────────────────────
+              if (this.bpmHistoryCount >= 3) {
+                this.stableBpm = this.computeMedianBpm()
+                this.currentConfidence = this.computeConfidence()
+              }
+            } // end acceptBpm
           }
         }
 
@@ -330,12 +358,7 @@ export class IntervalBPMTracker {
     // changing dynamics (verse → chorus → breakdown).
     this.peakEnergyEstimate *= PEAK_DECAY
 
-    // ─── 6. Hysteresis Release ─────────────────────────────────────
-    if (this.inKick && rawBassEnergy < rollingAvg * HYSTERESIS_RELEASE) {
-      this.inKick = false
-    }
-
-    // ─── 7. Silence Timeout — Reset if no kicks for too long ───────
+    // ─── 6. Silence Timeout — Reset if no kicks for too long ───────
     if (this.lastKickTimestamp > 0
         && (timestamp - this.lastKickTimestamp) > SILENCE_TIMEOUT_MS) {
       // Music probably stopped or changed drastically
@@ -467,7 +490,6 @@ export class IntervalBPMTracker {
     this.energyHistoryCount = 0
     this.energyHistorySum = 0
     this.prevEnergy = 0
-    this.inKick = false
     this.lastKickTimestamp = 0
     this.totalKicks = 0
     this.peakEnergyEstimate = 0

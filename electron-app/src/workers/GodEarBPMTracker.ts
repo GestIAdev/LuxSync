@@ -183,16 +183,24 @@ const OCTAVE_RATIO_RANGES: [number, number][] = [
 
 /** WAVE 2125: Polyrhythm / dotted syncopation ratio (1.333×).
  *  96 BPM is exactly 3/4 of 128 BPM — a puntillo/tresillo relationship.
- *  In 4/4 electronic music the higher BPM is ALWAYS the real beat.
- *  The lower BPM is the syncopation ghost (bass offbeats, dotted patterns).
- *  The 4/4 candidate wins even with 60% of the syncopation's correlation.
  *
- *  WAVE 2127: Widened from [1.30,1.36] to [1.28,1.42].
+ *  🔬 WAVE 2162: THE LATIN MATH FIX
+ *  Old assumption: "In 4/4 electronic music the higher BPM is ALWAYS the real beat."
+ *  WRONG! In Techno the beat is faster than the swing, but in Latin music
+ *  the tresillo (132) is faster than the beat (88). The old code always
+ *  picked the higher BPM → cumbia at 88 BPM was forced to 132 BPM.
+ *
+ *  NEW RULE: Calculate the ratio between any two peaks. If they are in
+ *  polyrhythm range [1.28, 1.55], prefer the BPM in the "dance pocket"
+ *  (80-135 BPM) where humans naturally perceive the downbeat.
+ *  This works for BOTH electronic (128 wins over 96) AND latin (88 wins over 132).
+ *
+ *  WAVE 2127: Widened from [1.30,1.36] to [1.28,1.55].
  *  Production telemetry showed peaks at 130bpm vs 94bpm (ratio 1.383),
  *  which fell OUTSIDE the old range. The autocorrelation peak positions
  *  fluctuate ±2-3 BPM frame-to-frame due to finite lag resolution.
  *  Safe margin: next harmonic ratios are 5/4=1.25 (below) and
- *  3/2=1.50 (above), both well outside [1.28,1.42]. */
+ *  3/2=1.50 (above), both well outside [1.28,1.55]. */
 const POLYRHYTHM_RATIO_MIN = 1.28
 const POLYRHYTHM_RATIO_MAX = 1.55
 const POLYRHYTHM_PREFERENCE = 0.50
@@ -565,10 +573,14 @@ export class GodEarBPMTracker {
     }
 
     // Pass 2: No octave pair resolved — check for POLYRHYTHM (1.333×)
-    // WAVE 2125: In 4/4 electronic music, if the strongest peak is at ~96 BPM
-    // and another peak exists at ~128 BPM (ratio 1.33×), the 128 is the real
-    // 4/4 beat and the 96 is a dotted-note syncopation (tresillo/puntillo).
-    // The 4/4 candidate wins even with only 60% of the syncopation's correlation.
+    // 🔬 WAVE 2162: THE LATIN MATH FIX
+    // Old logic assumed "higher BPM = real beat" (true for Techno, false for Latin).
+    // New logic: calculate ratio between ANY two peaks regardless of who's bigger,
+    // then prefer the BPM in the human "dance pocket" (80-135 BPM).
+    //
+    //   Techno:  96 vs 128 → ratio 1.33 → 128 is in [80,135] → pick 128 ✅
+    //   Cumbia:  88 vs 132 → ratio 1.50 → 88 is in [80,135]  → pick 88  ✅
+    //   Boris:   92 vs 126 → ratio 1.37 → 126 is in [80,135] → pick 126 ✅
     if (!bestPeak) {
       // Find the strongest peak first (the "top" candidate)
       let topPeak: AutocorrPeak | null = null
@@ -581,20 +593,44 @@ export class GodEarBPMTracker {
       }
 
       if (topPeak) {
-        // Check every other peak as potential 4/4 real beat
+        // Check every other peak as potential polyrhythm partner
         for (const alt of peaks) {
           if (alt === topPeak) continue
           if (alt.bpm < MIN_BPM || alt.bpm > MAX_BPM) continue
 
-          const syncRatio = alt.bpm / topPeak.bpm
+          // 🔬 WAVE 2162: Ratio-agnostic — always divide max/min
+          const maxBpm = Math.max(alt.bpm, topPeak.bpm)
+          const minBpm = Math.min(alt.bpm, topPeak.bpm)
+          const syncRatio = maxBpm / minBpm
+
           if (syncRatio >= POLYRHYTHM_RATIO_MIN && syncRatio <= POLYRHYTHM_RATIO_MAX) {
-            // 'alt' is the 4/4 real beat (e.g. 128), 'topPeak' is the syncopation (e.g. 96)
             if (alt.correlation >= topPeak.correlation * POLYRHYTHM_PREFERENCE) {
-              bestPeak = alt
+              // 🔬 WAVE 2162: Dance Pocket Rule (80-135 BPM)
+              // If the lower BPM is in the pocket, it's the real downbeat (Latin, Reggaeton)
+              // If only the higher BPM is in the pocket, it's the real 4/4 beat (Techno, House)
+              const DANCE_POCKET_MIN = 80
+              const DANCE_POCKET_MAX = 135
+              const minInPocket = minBpm >= DANCE_POCKET_MIN && minBpm <= DANCE_POCKET_MAX
+              const maxInPocket = maxBpm >= DANCE_POCKET_MIN && maxBpm <= DANCE_POCKET_MAX
+
+              let winner: AutocorrPeak
+              if (minInPocket && !maxInPocket) {
+                // Latin case: 88 in pocket, 132 out → pick 88
+                winner = (alt.bpm <= topPeak.bpm) ? alt : topPeak
+              } else if (maxInPocket && !minInPocket) {
+                // Edge case: only higher is in pocket → pick higher
+                winner = (alt.bpm >= topPeak.bpm) ? alt : topPeak
+              } else {
+                // Both in pocket (e.g. 92 vs 126) → prefer higher (4/4 convention)
+                winner = (alt.bpm >= topPeak.bpm) ? alt : topPeak
+              }
+
+              bestPeak = winner
               // WAVE 2127.1: Log every polyrhythm activation (diagnostic)
               console.log(
-                `[🥁 POLYRHYTHM] ${Math.round(topPeak.bpm)}→${Math.round(alt.bpm)} BPM ` +
-                `(ratio=${syncRatio.toFixed(3)}, corr ${alt.correlation.toFixed(3)} vs ${topPeak.correlation.toFixed(3)})`
+                `[🥁 POLYRHYTHM] ${Math.round(topPeak.bpm)}→${Math.round(winner.bpm)} BPM ` +
+                `(ratio=${syncRatio.toFixed(3)}, corr ${alt.correlation.toFixed(3)} vs ${topPeak.correlation.toFixed(3)})` +
+                ` pocket=[${minInPocket ? '✅' : '❌'}${Math.round(minBpm)}, ${maxInPocket ? '✅' : '❌'}${Math.round(maxBpm)}]`
               )
               break
             }

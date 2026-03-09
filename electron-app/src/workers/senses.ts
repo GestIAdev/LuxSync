@@ -481,33 +481,39 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // �️ WAVE 670: AUTOMATIC GAIN CONTROL - NORMALIZACIÓN DE ENTRADA
+  // 🔬 WAVE 2162: FFT ANTES DEL AGC — El Oído Escucha Música Cruda
   // ═══════════════════════════════════════════════════════════════════════════
-  // CRÍTICO: Sin esto, los Z-Scores del WAVE 660 son FICCIÓN MATEMÁTICA.
-  // AGC normaliza el buffer ANTES de cualquier análisis para que:
-  // - MP3 silencioso → señal normalizada (~0.25 RMS)
-  // - WAV saturado → señal normalizada (~0.25 RMS)
-  // - Resultado: El FFT y los analizadores ven niveles CONSISTENTES
+  //
+  // AUTOPSIA 2 (logboris.md): El AGC es una bomba de tiempo para el BPM.
+  // Cuando cae un bombo, el AGC aplasta la ganancia. Cuando el bombo pasa,
+  // el AGC "suelta" la compresión y el volumen sube artificialmente.
+  // Esa subida fantasma infla los graves 300ms después del bombo real →
+  // el tracker lee un segundo golpe a ~185 BPM que NO EXISTE.
+  //
+  // SOLUCIÓN: El FFT analiza el buffer CRUDO (con toda la dinámica real).
+  // El AGC se aplica DESPUÉS para normalizar los niveles que consumen
+  // rhythmDetector, harmonyDetector, sectionTracker y la UI.
+  // El BPM tracker nunca ve el buffer — solo ve spectrum.rawSubBassEnergy
+  // que viene del FFT crudo. Cadena limpia.
+  //
+  //   ANTES: buffer → AGC(comprime) → FFT(ve fantasmas) → BPM(lee mentiras)
+  //   AHORA: buffer → FFT(ve la verdad) → AGC(normaliza para UI) → visuales
   // ═══════════════════════════════════════════════════════════════════════════
+
+  // === PHASE 1: Spectrum Analysis — FFT sobre audio CRUDO (sin AGC) ===
+  const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
+
+  // === PHASE 1.5: AGC para el resto del sistema (UI, rhythmDetector, etc.) ===
   const agc = getAGC();
   const agcResult = agc.processBuffer(buffer);
-  
+
   // 🎯 WAVE 14/15: Apply Input Gain DESPUÉS del AGC (si el usuario quiere boost extra)
-  // Normalmente inputGain debería ser 1.0 ahora que tenemos AGC
   const gain = config.inputGain ?? 1.0;
-  
   if (gain !== 1.0) {
     for (let i = 0; i < buffer.length; i++) {
       buffer[i] *= gain;
     }
   }
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 1163: REORDER - Spectrum Analysis FIRST (we need kickDetected)
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  // === PHASE 1: Spectrum Analysis (🧮 FFT REAL with GOD EAR) ===
-  const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🥁 WAVE 2115: THE RELATIVE CLOCK — GodEar BPM Detection (TIMESTAMP FIX)
@@ -536,66 +542,32 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // 🎯 WAVE 2160: UNCHAIN THE NEEDLE — Raw Low Flux + Centroid-Only Gate
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // WAVE 2159 AUTOPSY (arranquehonesto.md):
-  // The Frequency Sniper worked perfectly — SNIPED offbeats at 3238Hz, 4974Hz,
-  // 6256Hz. But PM2 was STARVING: IOIs of 2879ms, 3111ms, 5991ms (RANGE-REJECT).
-  // Root cause: a PARADOX created by combining two defenses:
+  // 🪦 WAVE 2162: EL FRANCOTIRADOR HA SIDO DESPEDIDO.
   //
-  //   1. Needle Protocol (WAVE 2155): only fires when deltaSub AND deltaMid > 0
-  //      → Pure sub-kicks (no mid content) produce needle = 0. PM2 misses them.
-  //   2. Frequency Sniper (WAVE 2159): kills needles where centroid > 1500Hz
-  //      → Any kick with a layered transient gets killed.
+  // AUTOPSIA 1 (logboris.md):
+  // El Sniper mataba por centroide alto, asumiendo "centroide alto = contratiempo".
+  // ¡EN MINIMAL TECHNO ES AL REVÉS!
+  //   - El bombo real lleva un "click" de ataque a 5000Hz+ para sonar fuerte en club
+  //   - El bajo a contratiempo es una senoidal pura y SORDA (~200Hz centroide)
   //
-  // The double-filter is lethal:
-  //   - Pure kick (no mid)      → needle = 0 × anything = ZERO (Needle kills it)
-  //   - Kick + hi-hat transient → needle > 0 BUT centroid > 1500Hz = ZERO (Sniper kills it)
-  //   - Only kick with EXACTLY the right mid content survives both gates.
-  //   Result: PM2 sees a beat every 3-6 seconds. Starvation. Chaos.
+  // Evidencia del log de Brejcha:
+  //   F700  🎯SNIPED(5458Hz)  ← ¡ERA UN BOMBO REAL!
+  //   F1300 🎯SNIPED(5260Hz)  ← ¡ERA UN BOMBO REAL!
   //
-  // THE INSIGHT (PunkArchytect WAVE 2160):
-  // The multiplicative gate was a workaround for NOT having the Sniper.
-  // Now that the Sniper exists and is proven, it is the ONLY gate we need.
-  // Open the low-end floodgates. Let all bass attacks through.
-  // The Sniper — who reads the spectral centroid — knows who's a kick and
-  // who's a hi-hat layered over bass. He has the final word. Trust him.
+  // Al matar los bombos, lo único que sobrevivía era el bajo sincopado.
+  // El Autocorrelador leía la velocidad del bajo (188 BPM) perfectamente.
   //
-  //   | Event               | rawLowFlux | centroid | snipedFlux |
-  //   |---------------------|------------|----------|------------|
-  //   | Pure sub-kick       | +0.120     | 86Hz     | +0.120 ✅  |
-  //   | Kick (rich attack)  | +0.095     | 752Hz    | +0.095 ✅  |
-  //   | Offbeat bass+hihat  | +0.080     | 4974Hz   | 0.000 🎯   |
-  //   | Pure bass note      | +0.060     | 3238Hz   | 0.000 🎯   |
-  //   | Hi-hat only         | +0.002     | 6256Hz   | 0.000 🎯   |
-  //
-  // The Sniper now does ALL the discrimination. It has the data to do it.
+  // La Autocorrelación es un motor de PATRONES GLOBALES. No necesita
+  // pre-filtrado. Las aletas de tiburón del bombo (energía masiva) siempre
+  // dominan el patrón por encima de los contratiempos (energía menor).
+  // La fuerza bruta de la periodicidad matemática es suficiente.
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Band energies (pre-AGC, from GodEarFFT Radix-2)
   const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;  // 0-200Hz
 
   // Raw low flux: how much the low end ROSE this frame (positive only)
-  // No multiplicative gate — every bass attack enters the Sniper.
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 2159/2160: THE FREQUENCY SNIPER — Centroid-Only Gate
-  // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // EVIDENCE (atortasconelBPM.md + arranquehonesto.md):
-  //   Real kicks:     Centroid = 86Hz, 226Hz, 275Hz, 612Hz, 752Hz, 972Hz
-  //   Fake onsets:    Centroid = 2166Hz, 3032Hz, 3238Hz, 4974Hz, 6256Hz, 7891Hz
-  //   GAP:            972Hz ←——— 1194Hz of daylight ———→ 2166Hz
-  //
-  // CENTROID_CEILING = 1500Hz — center of the gap. Not a heuristic.
-  // ═══════════════════════════════════════════════════════════════════════════
-  const CENTROID_CEILING_HZ = 1500;
-  const centroidHz = spectrum.spectralCentroid;
-
-  // The Sniper: sole gatekeeper. Real kicks drag the centroid < 1000Hz.
-  // Offbeat bass + percussion pulls it above 2000Hz. 1500Hz is the wall.
-  const snipedFlux = (rawLowFlux > 0 && centroidHz > CENTROID_CEILING_HZ)
-    ? 0
-    : rawLowFlux;
 
   // Update persistent state for next frame's delta computation
   prevSubEnergy = subEnergy;
@@ -629,7 +601,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // The tail of kick N (~0.20) still overlaps with the rise of kick N+1.
   // ═══════════════════════════════════════════════════════════════════════════
   const SHARK_FIN_DECAY = 0.85;
-  fatNeedle = Math.max(snipedFlux, fatNeedle * SHARK_FIN_DECAY);
+  fatNeedle = Math.max(rawLowFlux, fatNeedle * SHARK_FIN_DECAY);
 
   // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
   //   energy = fatNeedle   → 🦈 WAVE 2161: envelope-followed, snipered low flux
@@ -641,12 +613,10 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // WAVE 2161: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows raw low flux, sniper gate, shark fin, autocorrelation output.
+  // WAVE 2162: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows raw low flux, shark fin, autocorrelation output.
+  // 🪦 Sniper tags removed — the Sniper has been fired (WAVE 2162).
   if (state.frameCount % 20 === 0) {
-    const sniperTag = (rawLowFlux > 0 && snipedFlux === 0)
-      ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
-      : '';
     console.log(
       `[SHARK] F${state.frameCount}` +
       ` bpm=${acResult.bpm}` +
@@ -654,11 +624,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` kick=${acResult.kickDetected}` +
       ` phase=${acResult.beatPhase.toFixed(2)}` +
       ` lowFlux=${rawLowFlux.toFixed(4)}` +
-      (snipedFlux !== rawLowFlux ? ` sniper=${snipedFlux.toFixed(4)}` : '') +
       ` fin=${fatNeedle.toFixed(4)}` +
-      ` centroid=${Math.round(centroidHz)}Hz` +
-      ` samples=${acResult.kickCount}` +
-      sniperTag
+      ` centroid=${Math.round(spectrum.spectralCentroid)}Hz` +
+      ` samples=${acResult.kickCount}`
     );
   }
 

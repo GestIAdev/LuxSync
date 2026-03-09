@@ -573,6 +573,43 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   prevSubEnergy = subEnergy;
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2163: EL REGRESO DEL FRANCOTIRADOR — Sniper Rehabilitado
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // WAVE 2162 AUTOPSY (debugBPM.md):
+  // Sin el Sniper, los platillos (hi-hats, claps a 3000-8000Hz) inflan la
+  // Shark Fin tanto como los bombos reales. El autocorrelador se ciega
+  // leyendo la ametralladora de hi-hats (~170 BPM) en lugar del bombo.
+  //
+  // Evidencia del log (frame = fin → centroid):
+  //   F1500 kick=true  fin=0.2830 centroid=99Hz    ← BOMBO REAL (sub-grave)
+  //   F2160 kick=true  fin=0.2090 centroid=90Hz    ← BOMBO REAL (sub-grave)
+  //   F1460             fin=0.0790 centroid=7346Hz  ← PLATILLO (debe morir)
+  //   F1640             fin=0.2219 centroid=3885Hz  ← CLAP/HAT (debe morir)
+  //   F2000             fin=0.1217 centroid=6852Hz  ← PLATILLO (debe morir)
+  //
+  // Por qué el Sniper es CORRECTO ahora con el AGC arreglado (WAVE 2162):
+  //   ANTES del fix: AGC bombeaba el volumen tras el bombo → centroide se
+  //     inflaba artificialmente en los graves = falsos positivos para kicks.
+  //     El Sniper mataba esos rebounds como si fueran platillos. ERROR.
+  //   AHORA: El FFT ve audio crudo. Los bombos reales tienen centroide 90-100Hz
+  //     con plena dinámica. Los platillos tienen centroide 3000-8000Hz.
+  //     El umbral de 1500Hz es un muro limpio entre dos mundos distintos.
+  //
+  // El Sniper + AGC-antes-del-FFT = la combinación correcta.
+  // El Sniper solo era un traidor porque el AGC lo engañaba. Ya no.
+  // ═══════════════════════════════════════════════════════════════════════════
+  let needle = rawLowFlux;
+  const centroidHz = spectrum.spectralCentroid;
+  const CENTROID_CEILING_HZ = 1500;
+  const SNIPER_MIN_FLUX = 0.015;  // Solo disparar si hay fuerza real (ignorar ruido)
+
+  // Si el impacto tiene fuerza pero el sonido es brillante → platillo/clap → MATAR
+  if (needle > SNIPER_MIN_FLUX && centroidHz > CENTROID_CEILING_HZ) {
+    needle = 0; // 🎯 SNIPED
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // 🦈 WAVE 2161: THE SHARK FIN — Envelope Follower for Autocorrelation
   // ═══════════════════════════════════════════════════════════════════════════
   //
@@ -601,7 +638,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // The tail of kick N (~0.20) still overlaps with the rise of kick N+1.
   // ═══════════════════════════════════════════════════════════════════════════
   const SHARK_FIN_DECAY = 0.85;
-  fatNeedle = Math.max(rawLowFlux, fatNeedle * SHARK_FIN_DECAY);
+  fatNeedle = Math.max(needle, fatNeedle * SHARK_FIN_DECAY);
 
   // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
   //   energy = fatNeedle   → 🦈 WAVE 2161: envelope-followed, snipered low flux
@@ -613,10 +650,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // WAVE 2162: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows raw low flux, shark fin, autocorrelation output.
-  // 🪦 Sniper tags removed — the Sniper has been fired (WAVE 2162).
+  // WAVE 2163: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
+    const sniperTag = (rawLowFlux > SNIPER_MIN_FLUX && needle === 0)
+      ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
+      : '';
     console.log(
       `[SHARK] F${state.frameCount}` +
       ` bpm=${acResult.bpm}` +
@@ -625,8 +663,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` phase=${acResult.beatPhase.toFixed(2)}` +
       ` lowFlux=${rawLowFlux.toFixed(4)}` +
       ` fin=${fatNeedle.toFixed(4)}` +
-      ` centroid=${Math.round(spectrum.spectralCentroid)}Hz` +
-      ` samples=${acResult.kickCount}`
+      ` centroid=${Math.round(centroidHz)}Hz` +
+      ` samples=${acResult.kickCount}` +
+      sniperTag
     );
   }
 

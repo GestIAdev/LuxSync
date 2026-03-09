@@ -39,25 +39,27 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════════
 import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
-// 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM back in the Worker
-// 🎯 WAVE 2161: THE SHARK FIN PROTOCOL — GodEarBPMTracker RESURRECTED
-//     WAVEs 2155-2160 proved PacemakerV2 (IOI + debounce) cannot survive
-//     Brejcha's syncopation: the debounce gate masks real kicks after eating
-//     a single offbeat, fragmenting the 126 BPM interval into 325/372/650ms
-//     garbage. The Frequency Sniper (WAVE 2159) kills high-centroid offbeats
-//     perfectly, but it can't un-mask the debounce gate.
+// 🥁 WAVE 2168: THE RESURRECTION OF WAVE 1163
+// ═══════════════════════════════════════════════════════════════════════════
+// After 10 WAVEs (2159-2167) of trying to make autocorrelation find 126 BPM
+// in Brejcha's sub-bass, the fundamental truth emerged:
 //
-//     Autocorrelation has NO debounce gate. It correlates the ENTIRE energy
-//     buffer and finds periodicity mathematically. The old failure (WAVE 2151)
-//     was caused by needle spikes too thin to overlap — fixed by the Shark Fin
-//     envelope follower (decay 0.85/frame) which fattens each spike into a
-//     broad hump that survives ±2 frame jitter in autocorrelation multiplication.
+//   Autocorrelation at 46.4ms/frame CANNOT produce a peak at 126 BPM.
+//   It only sees ~164 BPM and ~82 BPM (harmonics, not the beat).
+//   126 BPM NEVER appeared in a SINGLE SIEVE event across 1409 frames.
 //
-// 🪦 PacemakerV2 + HarmonicGearbox archived. They did their best.
-//     Kept in codebase as historical reference.
+// The interval-based approach from WAVE 1163 detected Brejcha at 124-126 ±2.
+// It uses ratio-based kick detection + adaptive debounce + median smoothing.
+// Simple. Deterministic. Proven.
+//
+// 🪦 GodEarBPMTracker (autocorrelation v6) ARCHIVED — not deleted.
+//    It's a mathematical jewel with potential future applications.
+// 🪦 PacemakerV2 + HarmonicGearbox — also archived.
+//
+// import { GodEarBPMTracker } from './GodEarBPMTracker';
 // import { PacemakerV2 } from './PacemakerV2';
 // import { GearboxStabilizer } from './HarmonicGearbox';
-import { GodEarBPMTracker } from './GodEarBPMTracker';
+import { IntervalBPMTracker } from './IntervalBPMTracker';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
@@ -173,42 +175,30 @@ const state: BetaState = {
 // ============================================
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// � WAVE 2151: THE LAZARUS PROTOCOL — GodEarBPMTracker resurrected
+// 🥁 WAVE 2168: THE RESURRECTION OF WAVE 1163 — Interval-Based BPM Detection
 // ═══════════════════════════════════════════════════════════════════════════════
-// PacemakerV2 (IOI) died in production: Boris Brejcha 126 BPM → 185→161→92→99
-// across 20 WAVEs of surgery. The onset classification problem is GENETIC:
-//   - SlopeBasedOnsetDetector fires on kicks, syncopations, AND ghost notes
-//   - Energy range of real kicks (0.05-0.22) overlaps with syncopation energy
-//   - Every heuristic (Dynamic Armor, Muscle Memory, P99 Ceiling) killed real kicks
+// After 10 WAVEs of autocorrelation surgery (2159-2167), the fundamental
+// truth: autocorrelation at 46.4ms/frame CANNOT find 126 BPM in Brejcha.
+// The WAVE 1163 interval-based approach detected it at 124-126 ±2.
 //
-// GodEarBPMTracker (autocorrelation) was abandoned at WAVE 2130 because of
-// octave bounce — but that was caused by BROKEN FFT (SplitX Radix was kaputt).
-// Since WAVE 2096.1, GodEarFFT Radix-2 DIT sends CLEAN spectral data.
-// 🎯 WAVE 2161: THE SHARK FIN PROTOCOL — GodEarBPMTracker resurrected.
-// Autocorrelation receives FAT NEEDLES (envelope-followed low flux),
-// NOT thin spikes. The Shark Fin decay (0.85/frame) widens each onset
-// so the autocorrelation overlap produces clean periodicity mountains.
+// IntervalBPMTracker receives RAW bass energy (20-250Hz, pre-AGC),
+// detects kicks via ratio threshold (1.6×), measures intervals between
+// kicks, and reports median BPM. No autocorrelation. No Shark Fin.
+// No harmonic sieve. Just pure ratio detection and adaptive debounce.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const bpmTracker = new GodEarBPMTracker();
+const bpmTracker = new IntervalBPMTracker();
 
-// 🦈 WAVE 2161: Shark Fin envelope state — persists across frames.
-// Each onset explodes to its raw value, then decays ×0.85 per frame.
-// This fattens the 1-frame spike into a ~10-frame hump that the
-// autocorrelation can overlap even with ±2 frame jitter.
-let fatNeedle = 0;
+// � WAVE 2168: Shark Fin ARCHIVED — not needed for interval-based detection.
+// The Shark Fin was an envelope follower (decay 0.85/frame) that fattened
+// thin onset spikes for autocorrelation overlap. Interval detection doesn't
+// need it — it detects kicks directly from raw energy ratios.
+// 🪦 WAVE 2168: fatNeedle REMOVED — Shark Fin envelope not needed for interval detection.
 
-// 🔬 WAVE 2160: Persistent state for raw low flux computation.
-// Previous frame's sub-bass energy — needed to compute delta (rising edge).
-// Module-scope to survive across processAudioFrame() calls.
+// 🔬 WAVE 2168: Flux state for TELEMETRY ONLY (not fed to BPM tracker).
+// The IntervalBPMTracker computes its own deltas internally.
 let prevSubEnergy = 0;
-
-/** Previous bass-only energy (60-250Hz) for flux telemetry — WAVE 2167 */
 let prevBassOnlyEnergy = 0;
-
-// 🔬 WAVE 2164: Persistent state for mid flux (Needle Protocol).
-// The multiplicative needle requires both sub AND mid to rise simultaneously.
-// A pure rolling bass has zero mid content → needle = 0. Impostor slain.
 let prevMidEnergy = 0;
 
 // ============================================
@@ -627,100 +617,86 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   //   subBass:  20-60Hz   ← KICK territory (pure sub-bass thump)
   //   bass:     60-250Hz  ← BASS LINE territory (rolling bass, offbeat)
   //
-  // DEFENSA CONTRA HI-HATS:
-  // FFT is raw (pre-AGC) → sub-bass domina por órdenes de magnitud.
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🥁 WAVE 2168: THE RESURRECTION — Interval-Based BPM Detection
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // FEED: rawBassEnergy = rawSubBassEnergy (20-60Hz) + rawBassOnlyEnergy (60-250Hz)
+  //
+  // This is the SAME signal that WAVE 1163 used: the full bass range 20-250Hz,
+  // pre-AGC. The original WAVE 1163 called it "rawBassEnergy 20-150Hz" but
+  // GodEarFFT's bass band extends to 250Hz. The interval-based tracker doesn't
+  // care about offbeat contamination because it detects kicks by RATIO (1.6×
+  // above rolling average) + RISING EDGE (delta > 0.008). An offbeat bass that
+  // is always present gets absorbed into the rolling average and can't trigger
+  // the ratio threshold. Only sudden TRANSIENTS (kicks) exceed 1.6×.
+  //
+  // WHY NOT sub-bass only (20-60Hz)?
+  // WAVE 2167 proved that sub-bass-only works fine for energy flow, but some
+  // kicks have more energy in 60-150Hz than in 20-60Hz. The ratio detector
+  // is immune to the offbeat contamination that killed autocorrelation because
+  // it compares instantaneous vs average, not periodic structure.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 🔬 WAVE 2167: SOLO sub-bass (20-60Hz) — el bisturí que separa kick de bajo
-  const subEnergy = spectrum.rawSubBassEnergy;
+  // 🥁 WAVE 2168: Full bass range (20-250Hz) pre-AGC — the proven input
+  const rawBassEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
 
-  // Delta positivo = onset (rising edge) de graves
+  // Flux values for TELEMETRY only (not fed to BPM tracker)
+  const subEnergy = spectrum.rawSubBassEnergy;
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
   prevSubEnergy = subEnergy;
 
-  // Bass-only flux (60-250Hz) SOLO para telemetría — el contaminante que extirpamos
   const bassOnlyEnergy = spectrum.rawBassOnlyEnergy;
   const bassOnlyFlux = Math.max(0, bassOnlyEnergy - prevBassOnlyEnergy);
   prevBassOnlyEnergy = bassOnlyEnergy;
 
-  // Medios SOLO para telemetría — ya NO gatea la señal
   const midEnergy = spectrum.rawMidEnergy;
   const rawMidFlux = Math.max(0, midEnergy - prevMidEnergy);
   prevMidEnergy = midEnergy;
 
-  // LA AGUJA DESNUDA: rawLowFlux directo, sin filtros, sin gates
-  const needle = rawLowFlux;
-
-  // Centroide para telemetría solamente
   const centroidHz = spectrum.spectralCentroid;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🦈 WAVE 2161: THE SHARK FIN — Envelope Follower for Autocorrelation
+  // � WAVE 2168: Feed RAW BASS ENERGY to IntervalBPMTracker
   // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // WHY: Autocorrelation works by sliding the signal over itself and
-  // multiplying. A 1-frame spike (the old "needle") produces a nonzero
-  // product ONLY when two spikes align EXACTLY at the same lag. If the
-  // DJ has any swing, groove, or pitch nudge, the spikes miss by 1 frame
-  // and multiply to zero → energy=0.0000 → autocorrelation collapses.
-  //
-  // THE FIX: Instead of a 1-frame spike, create a "Shark Fin" — an
-  // exponential decay envelope. The onset explodes to its raw value,
-  // then decays ×0.85 per frame (~46ms). After 10 frames (~460ms) it's
-  // at 0.85^10 ≈ 0.20 — still significant. After 20 frames it's 0.04.
-  //
-  // When autocorrelation slides two Shark Fins against each other, even
-  // with ±2 frame jitter, the humps OVERLAP and produce a strong positive
-  // product at the correct lag. The periodicity mountain at 126 BPM
-  // becomes unmistakable.
-  //
-  //   Frame:  |  1    2    3    4    5    6    7    8    9   10
-  //   Spike:  |  1.0  0    0    0    0    0    0    0    0    0
-  //   Fin:    |  1.0  0.85 0.72 0.61 0.52 0.44 0.37 0.32 0.27 0.23
-  //
-  // DECAY = 0.85: At ~46ms/frame, half-life ≈ 4.3 frames ≈ 200ms.
-  // A 126 BPM beat (476ms interval) has ~10 frames between kicks.
-  // The tail of kick N (~0.20) still overlaps with the rise of kick N+1.
+  // No Shark Fin. No flux. No needle. Just the raw energy value.
+  // The tracker handles everything internally:
+  //   - Rolling average (24 frames ≈ 1.1s)
+  //   - Ratio detection (current > avg × 1.6)
+  //   - Rising edge confirmation (delta > 0.008)
+  //   - Adaptive debounce (max(200ms, interval × 0.40))
+  //   - Hysteresis (inKick until energy < avg × 0.9)
+  //   - Median BPM (buffer of 12 measurements)
   // ═══════════════════════════════════════════════════════════════════════════
-  const SHARK_FIN_DECAY = 0.85;
-  fatNeedle = Math.max(needle, fatNeedle * SHARK_FIN_DECAY);
-
-  // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
-  //   energy = fatNeedle   → 🦈 WAVE 2167: envelope-followed NAKED sub-bass flux (20-60Hz only)
-  //   kickDetected = false → tracker uses its own internal kick detection
-  //   timestamp = deterministic musical clock
-  const acResult = bpmTracker.process(
-    fatNeedle,
+  const bpmResult = bpmTracker.process(
+    rawBassEnergy,
     false,
     deterministicTimestampMs
   );
 
-  // WAVE 2167: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // SUB-BASS SCALPEL MODE: needle = rawSubBassFlux (20-60Hz only, no bass band).
-  // Also log bassFlux (60-250Hz) separately for diagnosis.
+  // WAVE 2168: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
     console.log(
-      `[SHARK] F${state.frameCount}` +
-      ` bpm=${acResult.bpm}` +
-      ` conf=${acResult.confidence.toFixed(3)}` +
-      ` kick=${acResult.kickDetected}` +
-      ` phase=${acResult.beatPhase.toFixed(2)}` +
+      `[🥁 INTERVAL] F${state.frameCount}` +
+      ` bpm=${bpmResult.bpm}` +
+      ` conf=${bpmResult.confidence.toFixed(3)}` +
+      ` kick=${bpmResult.kickDetected}` +
+      ` phase=${bpmResult.beatPhase.toFixed(2)}` +
+      ` bassE=${rawBassEnergy.toFixed(4)}` +
       ` subFlux=${rawLowFlux.toFixed(4)}` +
       ` bassFlux=${bassOnlyFlux.toFixed(4)}` +
-      ` needle=${needle.toFixed(4)}` +
-      ` fin=${fatNeedle.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
-      ` samples=${acResult.kickCount}`
+      ` kicks=${bpmResult.kickCount}`
     );
   }
 
-  // Update Worker BPM state — direct from autocorrelation (no Gearbox needed)
-  if (acResult.confidence > 0.05) {
-    state.currentBpm = acResult.bpm;
-    state.bpmConfidence = acResult.confidence;
-    state.beatPhase = acResult.beatPhase;
+  // Update Worker BPM state — direct from IntervalBPMTracker
+  if (bpmResult.confidence > 0.05) {
+    state.currentBpm = bpmResult.bpm;
+    state.bpmConfidence = bpmResult.confidence;
+    state.beatPhase = bpmResult.beatPhase;
   }
-  if (acResult.kickDetected) {
+  if (bpmResult.kickDetected) {
     // 🕐 WAVE 2115: lastBeatTime en musical clock — consistente con el tracker
     state.lastBeatTime = deterministicTimestampMs;
   }
@@ -742,7 +718,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     volume: energy,
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: acResult.kickDetected || spectrum.kickDetected,
+    onBeat: bpmResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
     timestamp: Date.now(),
     dominantFrequency: spectrum.dominantFrequency,
@@ -762,9 +738,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const beatState = {
     bpm: state.currentBpm,
     confidence: state.bpmConfidence,
-    onBeat: acResult.kickDetected || spectrum.kickDetected,
+    onBeat: bpmResult.kickDetected || spectrum.kickDetected,
     phase: state.beatPhase,
-    beatCount: acResult.kickCount
+    beatCount: bpmResult.kickCount
   };
   
   const metricsForMood = {
@@ -846,9 +822,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // � WAVE 2161: BPM fields REAL — from GodEarBPMTracker in Worker
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: acResult.kickDetected || spectrum.kickDetected,
+    onBeat: bpmResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
-    beatStrength: acResult.kickDetected ? 1 : 0,
+    beatStrength: bpmResult.kickDetected ? 1 : 0,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,
@@ -1077,11 +1053,10 @@ function handleMessage(message: WorkerMessage): void {
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
         bpmTracker.reset();
-        fatNeedle = 0;
         prevSubEnergy = 0;
         prevBassOnlyEnergy = 0;
         prevMidEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2167: GodEarBPMTracker + SharkFin + Needle HARD RESET — Amnesia Protocol executed');
+        console.log('[BETA] 🧨 WAVE 2168: IntervalBPMTracker HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

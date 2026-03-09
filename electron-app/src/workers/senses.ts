@@ -40,26 +40,24 @@ import {
 import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
 // 🥁 WAVE 2112: THE RESURRECTION — GodEar BPM back in the Worker
-// � WAVE 2151: THE LAZARUS PROTOCOL — GodEarBPMTracker returns as primary engine.
-// 🎯 WAVE 2155: THE NEEDLE PROTOCOL — PacemakerV2 RESURRECTED
-//     WAVEs 2151-2154 proved autocorrelation is the wrong tool for this signal:
-//     continuous flat energy → ambiguous lags → wrong BPM with low confidence.
-//     PacemakerV2 (IOI) was wrongly convicted: it failed because we fed it RAW
-//     bass energy (which includes offbeat syncopation). With MULTIPLICATIVE FLUX
-//     (deltaSub × deltaMid) as input, syncopation instruments collapse to zero
-//     because they only activate ONE band, never both simultaneously.
-//     The marriage: GodEarFFT Radix-2 (surgical band separation) + PacemakerV2 (IOI clustering).
+// 🎯 WAVE 2161: THE SHARK FIN PROTOCOL — GodEarBPMTracker RESURRECTED
+//     WAVEs 2155-2160 proved PacemakerV2 (IOI + debounce) cannot survive
+//     Brejcha's syncopation: the debounce gate masks real kicks after eating
+//     a single offbeat, fragmenting the 126 BPM interval into 325/372/650ms
+//     garbage. The Frequency Sniper (WAVE 2159) kills high-centroid offbeats
+//     perfectly, but it can't un-mask the debounce gate.
 //
-// 🪦 WAVE 2151: GodEarBPMTracker (autocorrelation) archived after 5 WAVEs of failure.
-//     Kept in codebase as historical reference — may serve for ambient/drone genres.
-// import { GodEarBPMTracker } from './GodEarBPMTracker';
-import { PacemakerV2 } from './PacemakerV2';
-
-// ⚙️ WAVE 2157: THE GEARBOX — Harmonic reduction post-processor
-//     PacemakerV2 reads polyrhythmic harmonics (129, 161, 190 BPM).
-//     The Gearbox divides by musical ratios (3:2, 5:4, 2:1) to find
-//     the fundamental beat (86, 126, 95 BPM).
-import { GearboxStabilizer } from './HarmonicGearbox';
+//     Autocorrelation has NO debounce gate. It correlates the ENTIRE energy
+//     buffer and finds periodicity mathematically. The old failure (WAVE 2151)
+//     was caused by needle spikes too thin to overlap — fixed by the Shark Fin
+//     envelope follower (decay 0.85/frame) which fattens each spike into a
+//     broad hump that survives ±2 frame jitter in autocorrelation multiplication.
+//
+// 🪦 PacemakerV2 + HarmonicGearbox archived. They did their best.
+//     Kept in codebase as historical reference.
+// import { PacemakerV2 } from './PacemakerV2';
+// import { GearboxStabilizer } from './HarmonicGearbox';
+import { GodEarBPMTracker } from './GodEarBPMTracker';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
@@ -186,14 +184,19 @@ const state: BetaState = {
 // GodEarBPMTracker (autocorrelation) was abandoned at WAVE 2130 because of
 // octave bounce — but that was caused by BROKEN FFT (SplitX Radix was kaputt).
 // Since WAVE 2096.1, GodEarFFT Radix-2 DIT sends CLEAN spectral data.
-// 🎯 WAVE 2155: THE NEEDLE PROTOCOL — PacemakerV2 resurrected with multiplicative flux.
-// PacemakerV2 receives NEEDLES (isolated spikes from deltaSub × deltaMid),
-// NOT raw continuous energy. Its inner ear (rolling mean × 1.6 + delta + hysteresis)
-// is perfectly suited for spike detection and IOI clustering.
+// 🎯 WAVE 2161: THE SHARK FIN PROTOCOL — GodEarBPMTracker resurrected.
+// Autocorrelation receives FAT NEEDLES (envelope-followed low flux),
+// NOT thin spikes. The Shark Fin decay (0.85/frame) widens each onset
+// so the autocorrelation overlap produces clean periodicity mountains.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const pacemaker = new PacemakerV2();
-const gearbox = new GearboxStabilizer();
+const bpmTracker = new GodEarBPMTracker();
+
+// 🦈 WAVE 2161: Shark Fin envelope state — persists across frames.
+// Each onset explodes to its raw value, then decays ×0.85 per frame.
+// This fattens the 1-frame spike into a ~10-frame hump that the
+// autocorrelation can overlap even with ±2 frame jitter.
+let fatNeedle = 0;
 
 // 🔬 WAVE 2160: Persistent state for raw low flux computation.
 // Previous frame's sub-bass energy — needed to compute delta (rising edge).
@@ -597,56 +600,75 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // Update persistent state for next frame's delta computation
   prevSubEnergy = subEnergy;
 
-  // Feed the needle to PacemakerV2:
-  //   kickOnset = false    → KILL external onset path (SlopeBasedOnsetDetector)
-  //   energy = snipedFlux  → 🎯 WAVE 2160: Centroid-only gated raw low flux
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🦈 WAVE 2161: THE SHARK FIN — Envelope Follower for Autocorrelation
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // WHY: Autocorrelation works by sliding the signal over itself and
+  // multiplying. A 1-frame spike (the old "needle") produces a nonzero
+  // product ONLY when two spikes align EXACTLY at the same lag. If the
+  // DJ has any swing, groove, or pitch nudge, the spikes miss by 1 frame
+  // and multiply to zero → energy=0.0000 → autocorrelation collapses.
+  //
+  // THE FIX: Instead of a 1-frame spike, create a "Shark Fin" — an
+  // exponential decay envelope. The onset explodes to its raw value,
+  // then decays ×0.85 per frame (~46ms). After 10 frames (~460ms) it's
+  // at 0.85^10 ≈ 0.20 — still significant. After 20 frames it's 0.04.
+  //
+  // When autocorrelation slides two Shark Fins against each other, even
+  // with ±2 frame jitter, the humps OVERLAP and produce a strong positive
+  // product at the correct lag. The periodicity mountain at 126 BPM
+  // becomes unmistakable.
+  //
+  //   Frame:  |  1    2    3    4    5    6    7    8    9   10
+  //   Spike:  |  1.0  0    0    0    0    0    0    0    0    0
+  //   Fin:    |  1.0  0.85 0.72 0.61 0.52 0.44 0.37 0.32 0.27 0.23
+  //
+  // DECAY = 0.85: At ~46ms/frame, half-life ≈ 4.3 frames ≈ 200ms.
+  // A 126 BPM beat (476ms interval) has ~10 frames between kicks.
+  // The tail of kick N (~0.20) still overlaps with the rise of kick N+1.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const SHARK_FIN_DECAY = 0.85;
+  fatNeedle = Math.max(snipedFlux, fatNeedle * SHARK_FIN_DECAY);
+
+  // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
+  //   energy = fatNeedle   → 🦈 WAVE 2161: envelope-followed, snipered low flux
+  //   kickDetected = false → tracker uses its own internal kick detection
   //   timestamp = deterministic musical clock
-  const pmResult = pacemaker.process(
-    false,                    // 🎯 WAVE 2155: External onset DEAD — inner ear only
-    snipedFlux,               // 🎯 WAVE 2160: Sniper-filtered raw low flux
+  const acResult = bpmTracker.process(
+    fatNeedle,
+    false,
     deterministicTimestampMs
   );
 
-  // WAVE 2158: CLUSTER-AWARE GEARBOX — Harmonic resolution with evidence
-  // PM2 reads polyrhythmic harmonics (129, 161 BPM). The Gearbox searches
-  // PM2's secondary clusters for physical evidence of the fundamental beat.
-  // If a cluster at dominantBpm/divisor exists -> harmonic CONFIRMED -> resolve.
-  // If no evidence -> passthrough (DnB 174, House 128 stay as-is).
-  const gear = gearbox.process(pmResult.bpm, pmResult.confidence, pmResult.clusters);
-
-  // WAVE 2160: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // Shows raw low flux, sniper gate, PM2 raw output, Gearbox resolution.
+  // WAVE 2161: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // Shows raw low flux, sniper gate, shark fin, autocorrelation output.
   if (state.frameCount % 20 === 0) {
-    const gearTag = gear.shifted
-      ? `/${gear.appliedDivisor}->${gear.fundamentalBpm}(ev:${gear.evidenceClusterBpm}bpm@${gear.evidenceClusterVotes}v)`
-      : 'DIRECT';
     const sniperTag = (rawLowFlux > 0 && snipedFlux === 0)
       ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
       : '';
     console.log(
-      `[NEEDLE] F${state.frameCount}` +
-      ` bpm=${gear.fundamentalBpm}` +
-      ` raw=${pmResult.bpm}` +
-      ` gear=${gearTag}` +
-      ` conf=${pmResult.confidence.toFixed(3)}` +
-      ` kick=${pmResult.kickDetected}` +
-      ` phase=${pmResult.beatPhase.toFixed(2)}` +
+      `[SHARK] F${state.frameCount}` +
+      ` bpm=${acResult.bpm}` +
+      ` conf=${acResult.confidence.toFixed(3)}` +
+      ` kick=${acResult.kickDetected}` +
+      ` phase=${acResult.beatPhase.toFixed(2)}` +
       ` lowFlux=${rawLowFlux.toFixed(4)}` +
       (snipedFlux !== rawLowFlux ? ` sniper=${snipedFlux.toFixed(4)}` : '') +
+      ` fin=${fatNeedle.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
-      ` clusters=[${pmResult.clusters.slice(0, 4).map(c => c.bpm + ':' + c.votes + 'v').join('|')}]` +
-      ` kicks=${pmResult.kickCount}` +
+      ` samples=${acResult.kickCount}` +
       sniperTag
     );
   }
 
-  // Update Worker BPM state — use GEARBOX output (fundamental), not PM2 raw
-  if (pmResult.confidence > 0.25) {
-    state.currentBpm = gear.fundamentalBpm;
-    state.bpmConfidence = pmResult.confidence;
-    state.beatPhase = pmResult.beatPhase;
+  // Update Worker BPM state — direct from autocorrelation (no Gearbox needed)
+  if (acResult.confidence > 0.05) {
+    state.currentBpm = acResult.bpm;
+    state.bpmConfidence = acResult.confidence;
+    state.beatPhase = acResult.beatPhase;
   }
-  if (pmResult.kickDetected) {
+  if (acResult.kickDetected) {
     // 🕐 WAVE 2115: lastBeatTime en musical clock — consistente con el tracker
     state.lastBeatTime = deterministicTimestampMs;
   }
@@ -668,7 +690,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     volume: energy,
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: pmResult.kickDetected || spectrum.kickDetected,
+    onBeat: acResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
     timestamp: Date.now(),
     dominantFrequency: spectrum.dominantFrequency,
@@ -684,13 +706,13 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
-  // 🥁 WAVE 2155: Beat state from PacemakerV2 (fresh, in-worker)
+  // � WAVE 2161: Beat state from GodEarBPMTracker (fresh, in-worker)
   const beatState = {
     bpm: state.currentBpm,
     confidence: state.bpmConfidence,
-    onBeat: pmResult.kickDetected || spectrum.kickDetected,
+    onBeat: acResult.kickDetected || spectrum.kickDetected,
     phase: state.beatPhase,
-    beatCount: pmResult.kickCount
+    beatCount: acResult.kickCount
   };
   
   const metricsForMood = {
@@ -769,12 +791,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
     agcGainFactor: agcResult.gainFactor,
     
-    // 🥁 WAVE 2155: BPM fields REAL — from PacemakerV2 in Worker
+    // � WAVE 2161: BPM fields REAL — from GodEarBPMTracker in Worker
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
-    onBeat: pmResult.kickDetected || spectrum.kickDetected,
+    onBeat: acResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
-    beatStrength: pmResult.kickDetected ? 1 : 0,
+    beatStrength: acResult.kickDetected ? 1 : 0,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,
@@ -998,14 +1020,14 @@ function handleMessage(message: WorkerMessage): void {
         // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
         break;
       
-      // 🧨 WAVE 2155: AMNESIA PROTOCOL — Hard reset on Vibe change
+      // 🧨 WAVE 2161: AMNESIA PROTOCOL — Hard reset on Vibe change
       // A vibe change = near-certain song change. Wipe BPM tracker memory
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
-        pacemaker.reset();
-        gearbox.reset();
+        bpmTracker.reset();
+        fatNeedle = 0;
         prevSubEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2157: PacemakerV2 + Gearbox HARD RESET — Amnesia Protocol executed');
+        console.log('[BETA] 🧨 WAVE 2161: GodEarBPMTracker + SharkFin HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

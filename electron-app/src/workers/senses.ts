@@ -201,6 +201,38 @@ let prevSubEnergy = 0;
 let prevBassOnlyEnergy = 0;
 let prevMidEnergy = 0;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 👻 WAVE 2172: SHADOW LOGGER — Data-Driven MIR Testing
+// ═══════════════════════════════════════════════════════════════════════════
+// Captures ~46 seconds of real audio telemetry from the GodEar pipeline
+// while YouTube/Spotify plays through the system. The dump is written to
+// electron-app/test-data/live_audio_dump.json and used by the cold-lab
+// unit test (IntervalBPMTracker.livedata.test.ts) to replay the exact
+// same signal offline in 50ms. Zero live-tests for DSP tuning.
+//
+// WHAT WE CAPTURE (per frame):
+//   timestampMs  — deterministic musical clock (frame-perfect)
+//   rawLowFlux   — sub-bass onset (20-60Hz rising edge)
+//   rawMidFlux   — mid-range onset (250-2kHz rising edge)
+//   rawBassFlux  — full bass onset (rawLowFlux + bassOnlyFlux, 20-250Hz)
+//   centroid     — spectral centroid in Hz (energy center of gravity)
+//   needle       — the FINAL gated value fed to the tracker
+//
+// The test can replay `needle` directly to verify tracker behavior,
+// or replay raw fluxes + centroid to simulate different gate tunings.
+// ═══════════════════════════════════════════════════════════════════════════
+interface ShadowFrame {
+  timestampMs: number;
+  rawLowFlux: number;
+  rawMidFlux: number;
+  rawBassFlux: number;
+  centroid: number;
+  needle: number;
+}
+const shadowLog: ShadowFrame[] = [];
+const MAX_SHADOW_FRAMES = 1000; // ~46.4 seconds at 2048/44100Hz per frame
+let shadowDumped = false;
+
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
@@ -711,6 +743,32 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // kill it if centroid is clearly bright.
   if (needle > 0.015 && centroidHz > 1500) {
     needle = 0; // SNIPED -- bright transient, not a kick
+  }
+
+  // -- Step 3b: SHADOW LOGGER (WAVE 2172) — capture real telemetry ---
+  // Collects 1000 frames (~46s) of live audio data for offline replay.
+  // Writes once to disk, then goes silent. Zero runtime cost after dump.
+  if (!shadowDumped && shadowLog.length < MAX_SHADOW_FRAMES) {
+    shadowLog.push({
+      timestampMs: deterministicTimestampMs,
+      rawLowFlux,
+      rawMidFlux,
+      rawBassFlux,
+      centroid: centroidHz,
+      needle,
+    });
+
+    if (shadowLog.length === MAX_SHADOW_FRAMES) {
+      try {
+        const dumpPath = require('path').join(process.cwd(), 'electron-app', 'test-data', 'live_audio_dump.json');
+        require('fs').mkdirSync(require('path').dirname(dumpPath), { recursive: true });
+        require('fs').writeFileSync(dumpPath, JSON.stringify(shadowLog, null, 2));
+        console.log(`[SHADOW LOGGER] 🎯 DUMP COMPLETE: ${MAX_SHADOW_FRAMES} frames → ${dumpPath}`);
+        shadowDumped = true;
+      } catch (e) {
+        console.error('[SHADOW LOGGER] ❌ Dump failed:', e);
+      }
+    }
   }
 
   // -- Step 4: DIRECT INJECTION ---------------------------------------

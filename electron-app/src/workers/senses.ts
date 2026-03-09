@@ -203,6 +203,11 @@ let fatNeedle = 0;
 // Module-scope to survive across processAudioFrame() calls.
 let prevSubEnergy = 0;
 
+// 🔬 WAVE 2164: Persistent state for mid flux (Needle Protocol).
+// The multiplicative needle requires both sub AND mid to rise simultaneously.
+// A pure rolling bass has zero mid content → needle = 0. Impostor slain.
+let prevMidEnergy = 0;
+
 // ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
@@ -563,48 +568,54 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // La fuerza bruta de la periodicidad matemática es suficiente.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Band energies (pre-AGC, from GodEarFFT Radix-2)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧩 WAVE 2164: EXODIA — El Motor Definitivo (5 Piezas Ensambladas)
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // Historia completa de por qué cada pieza existe:
+  //
+  // PIEZA 2 — Aguja Multiplicativa (restaurada de WAVE 2155):
+  //   El Bajo Rodante (sub-bass sincopado de Minimal Techno) tiene centroide
+  //   bajísimo (~80-200Hz), igual que el bombo. El Sniper no puede distinguirlos.
+  //   SOLUCIÓN: Exigir que haya una explosión simultánea en Graves Y en Medios.
+  //   Los bombos reales tienen un "click" de ataque en los medios (800-3000Hz).
+  //   El bajo puro es una senoidal → rawMidFlux ≈ 0 → needle = √(X × 0) = 0.
+  //   Bajo rodante a contratiempo: ANIQUILADO matemáticamente.
+  //
+  // PIEZA 3 — Francotirador (WAVE 2163, rehabilitado con AGC fix de WAVE 2162):
+  //   Para el caso Bajo + Platillo simultáneo: rawMidFlux > 0 (el platillo tiene
+  //   medios) → pasa la aguja multiplicativa. Pero el centroide global se dispara
+  //   a >3000Hz por el platillo. El Sniper lo intercepta aquí.
+  //   Con el AGC ANTES del FFT (WAVE 2162), el centroide es real y no bombeado.
+  //
+  // TABLA DE DECISIONES:
+  //   | Evento                  | rawLowFlux | rawMidFlux | centroid | needle |
+  //   |-------------------------|------------|------------|----------|--------|
+  //   | Bombo puro (sub-kick)   | +0.120     | +0.030     | 90Hz     | ✅ OK  |
+  //   | Bombo + click (transnt) | +0.095     | +0.060     | 400Hz    | ✅ OK  |
+  //   | Bajo rodante puro       | +0.080     | ~0.000     | 120Hz    | 🔇 0   |
+  //   | Bajo + platillo         | +0.070     | +0.040     | 5500Hz   | 🎯 0   |
+  //   | Hi-hat solo             | ~0.002     | +0.015     | 7000Hz   | ~0 (min flux) |
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // PIEZA 1: Deltas puros (FFT ya corre sobre audio crudo — WAVE 2162)
   const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;  // 0-200Hz
+  const midEnergy = spectrum.rawMidEnergy;  // 800-3000Hz — el "click" del bombo
 
-  // Raw low flux: how much the low end ROSE this frame (positive only)
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
+  const rawMidFlux = Math.max(0, midEnergy - prevMidEnergy);
 
-  // Update persistent state for next frame's delta computation
   prevSubEnergy = subEnergy;
+  prevMidEnergy = midEnergy;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 2163: EL REGRESO DEL FRANCOTIRADOR — Sniper Rehabilitado
-  // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // WAVE 2162 AUTOPSY (debugBPM.md):
-  // Sin el Sniper, los platillos (hi-hats, claps a 3000-8000Hz) inflan la
-  // Shark Fin tanto como los bombos reales. El autocorrelador se ciega
-  // leyendo la ametralladora de hi-hats (~170 BPM) en lugar del bombo.
-  //
-  // Evidencia del log (frame = fin → centroid):
-  //   F1500 kick=true  fin=0.2830 centroid=99Hz    ← BOMBO REAL (sub-grave)
-  //   F2160 kick=true  fin=0.2090 centroid=90Hz    ← BOMBO REAL (sub-grave)
-  //   F1460             fin=0.0790 centroid=7346Hz  ← PLATILLO (debe morir)
-  //   F1640             fin=0.2219 centroid=3885Hz  ← CLAP/HAT (debe morir)
-  //   F2000             fin=0.1217 centroid=6852Hz  ← PLATILLO (debe morir)
-  //
-  // Por qué el Sniper es CORRECTO ahora con el AGC arreglado (WAVE 2162):
-  //   ANTES del fix: AGC bombeaba el volumen tras el bombo → centroide se
-  //     inflaba artificialmente en los graves = falsos positivos para kicks.
-  //     El Sniper mataba esos rebounds como si fueran platillos. ERROR.
-  //   AHORA: El FFT ve audio crudo. Los bombos reales tienen centroide 90-100Hz
-  //     con plena dinámica. Los platillos tienen centroide 3000-8000Hz.
-  //     El umbral de 1500Hz es un muro limpio entre dos mundos distintos.
-  //
-  // El Sniper + AGC-antes-del-FFT = la combinación correcta.
-  // El Sniper solo era un traidor porque el AGC lo engañaba. Ya no.
-  // ═══════════════════════════════════════════════════════════════════════════
-  let needle = rawLowFlux;
+  // PIEZA 2: Aguja Multiplicativa — mata el bajo puro (rawMidFlux ≈ 0 → needle = 0)
+  let needle = Math.sqrt(rawLowFlux * rawMidFlux);
+
+  // PIEZA 3: Francotirador — mata el bajo + platillo (centroide brillante)
   const centroidHz = spectrum.spectralCentroid;
   const CENTROID_CEILING_HZ = 1500;
-  const SNIPER_MIN_FLUX = 0.015;  // Solo disparar si hay fuerza real (ignorar ruido)
+  const SNIPER_MIN_FLUX = 0.015;
 
-  // Si el impacto tiene fuerza pero el sonido es brillante → platillo/clap → MATAR
   if (needle > SNIPER_MIN_FLUX && centroidHz > CENTROID_CEILING_HZ) {
     needle = 0; // 🎯 SNIPED
   }
@@ -650,11 +661,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // WAVE 2163: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // WAVE 2164: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
-    const sniperTag = (rawLowFlux > SNIPER_MIN_FLUX && needle === 0)
+    const sniperTag = (needle === 0 && Math.sqrt(rawLowFlux * rawMidFlux) > SNIPER_MIN_FLUX)
       ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
       : '';
+    const needleRaw = Math.sqrt(rawLowFlux * rawMidFlux).toFixed(4);
     console.log(
       `[SHARK] F${state.frameCount}` +
       ` bpm=${acResult.bpm}` +
@@ -662,6 +674,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` kick=${acResult.kickDetected}` +
       ` phase=${acResult.beatPhase.toFixed(2)}` +
       ` lowFlux=${rawLowFlux.toFixed(4)}` +
+      ` midFlux=${rawMidFlux.toFixed(4)}` +
+      ` needle=${needleRaw}` +
       ` fin=${fatNeedle.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
       ` samples=${acResult.kickCount}` +
@@ -1034,7 +1048,8 @@ function handleMessage(message: WorkerMessage): void {
         bpmTracker.reset();
         fatNeedle = 0;
         prevSubEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2161: GodEarBPMTracker + SharkFin HARD RESET — Amnesia Protocol executed');
+        prevMidEnergy = 0;
+        console.log('[BETA] 🧨 WAVE 2164: GodEarBPMTracker + SharkFin + Needle HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

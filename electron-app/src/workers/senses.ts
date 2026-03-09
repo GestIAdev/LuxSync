@@ -636,12 +636,20 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // kicks have more energy in 60-150Hz than in 20-60Hz. The ratio detector
   // is immune to the offbeat contamination that killed autocorrelation because
   // it compares instantaneous vs average, not periodic structure.
+  //
+  // WAVE 2169 UPDATE: rawBassEnergy has natural 3-5 frame kick decay that
+  // causes interval jitter (BPM bounces 161/173/185). Solution: feed FLUX
+  // (onset spikes) instead of raw energy. The Gated Needle pipeline:
+  //   1. Compute bass flux (rising edges only — 1 frame wide)
+  //   2. Gate with mid-range flux (kills rolling bass)
+  //   3. Snipe bright transients (centroid > 1500Hz = hi-hat, not kick)
+  //   4. Feed clean 1-frame needle to tracker
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 🥁 WAVE 2168: Full bass range (20-250Hz) pre-AGC — the proven input
+  // Keep rawBassEnergy for downstream consumers (audioMetrics, etc.)
   const rawBassEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
 
-  // Flux values for TELEMETRY only (not fed to BPM tracker)
+  // ── Step 1: BRUTE FORCE FLUX (onset energy — rising edges only) ────
   const subEnergy = spectrum.rawSubBassEnergy;
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
   prevSubEnergy = subEnergy;
@@ -656,35 +664,54 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
 
   const centroidHz = spectrum.spectralCentroid;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // � WAVE 2168: Feed RAW BASS ENERGY to IntervalBPMTracker
-  // ═══════════════════════════════════════════════════════════════════════════
-  // No Shark Fin. No flux. No needle. Just the raw energy value.
-  // The tracker handles everything internally:
-  //   - Rolling average (24 frames ≈ 1.1s)
-  //   - Ratio detection (current > avg × 1.6)
-  //   - Rising edge confirmation (delta > 0.008)
-  //   - Adaptive debounce (max(200ms, interval × 0.40))
-  //   - Hysteresis (inKick until energy < avg × 0.9)
-  //   - Median BPM (buffer of 12 measurements)
-  // ═══════════════════════════════════════════════════════════════════════════
+  // Full bass flux = sub-bass flux + bass-only flux (20-250Hz onset)
+  const rawBassFlux = rawLowFlux + bassOnlyFlux;
+
+  // -- Step 2: THE GATEKEEPER (El Bozal Logico) ----------------------
+  // A real kick drum attacks across multiple frequency bands simultaneously.
+  // Rolling bass (continuous low-end) rises WITHOUT mid-range attack.
+  // Gate: only pass bass flux if mid-range flux confirms a transient.
+  //
+  // Threshold 0.001 is ~20dB below typical mid-range kick attack (~0.02-0.05).
+  // This is intentionally LOW -- we want to gate out the bass roll, not miss kicks.
+  let needle = 0;
+  if (rawMidFlux > 0.001) {
+    needle = rawBassFlux;
+  }
+
+  // -- Step 3: THE SNIPER (El Francotirador) --------------------------
+  // Hi-hats, cymbals, and crashes have spectral centroid > 1500Hz.
+  // A kick drum concentrates energy below 200Hz (centroid typically < 500Hz).
+  // Even when a kick and hi-hat overlap, the centroid stays below 1500Hz
+  // because the kick's energy dominates in the bass range.
+  //
+  // Exception: very bright clicks/snares. The 0.015 energy floor prevents
+  // sniping tiny noise-floor fluctuations that happen to have high centroid.
+  if (needle > 0.015 && centroidHz > 1500) {
+    needle = 0; // SNIPED -- bright transient, not a kick
+  }
+
+  // -- Step 4: DIRECT INJECTION ---------------------------------------
+  // Feed the clean 1-frame spike to the interval tracker.
+  // The tracker's internal rolling average, ratio detection, and adaptive
+  // debounce operate on these spikes -- each spike is one potential kick.
   const bpmResult = bpmTracker.process(
-    rawBassEnergy,
+    needle,
     false,
     deterministicTimestampMs
   );
 
-  // WAVE 2168: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // WAVE 2169: DIAGNOSTIC TELEMETRY -- Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
     console.log(
-      `[🥁 INTERVAL] F${state.frameCount}` +
+      `[INTERVAL] F${state.frameCount}` +
       ` bpm=${bpmResult.bpm}` +
       ` conf=${bpmResult.confidence.toFixed(3)}` +
       ` kick=${bpmResult.kickDetected}` +
       ` phase=${bpmResult.beatPhase.toFixed(2)}` +
-      ` bassE=${rawBassEnergy.toFixed(4)}` +
-      ` subFlux=${rawLowFlux.toFixed(4)}` +
-      ` bassFlux=${bassOnlyFlux.toFixed(4)}` +
+      ` needle=${needle.toFixed(4)}` +
+      ` bassFlux=${rawBassFlux.toFixed(4)}` +
+      ` midFlux=${rawMidFlux.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
       ` kicks=${bpmResult.kickCount}`
     );

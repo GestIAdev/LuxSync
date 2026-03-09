@@ -605,8 +605,10 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       expect(musical).toBeLessThanOrEqual(125)
     })
 
-    it('should fold slow 65 BPM → 130 BPM via ×2.0', () => {
-      // 65 BPM — trap half-time
+    it('should fold slow 65 BPM → ~98 BPM via tresillo inverso ×1.5', () => {
+      // 65 BPM — trap half-time.
+      // WAVE 2180 fold priority: ×1.5 FIRST → 65×1.5=97.5→98 ∈ [90,135] ✅ wins
+      // NOTE: ×2.0 (→130) would also land in pocket, but ×1.5 has higher priority.
       const buffer = generateProductionBuffer(65, 20)
       const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
       for (const frame of buffer.frames) {
@@ -620,10 +622,51 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       expect(raw).toBeGreaterThanOrEqual(55)
       expect(raw).toBeLessThanOrEqual(75)
 
-      // ×2.0 = 130 (inside pocket)
-      expect(musical).toBeGreaterThanOrEqual(110)
-      expect(musical).toBeLessThanOrEqual(135)
+      // ×1.5 = ~98 (inside pocket, first fold-up wins)
+      expect(musical).toBeGreaterThanOrEqual(90)
+      expect(musical).toBeLessThanOrEqual(105)
     })
+
+    // ── WAVE 2180: Extended Polyrhythmic Arsenal ──────────────────────
+    it('should fold 161 BPM → ~121 BPM via dotted ×0.75 (techno pocket [120,135])', () => {
+      // Hard Techno / Minimal: physical kick at 161 BPM (dotted 4:3 bass illusion)
+      // 161 × 0.75 = 120.75 → 121 BPM — lands inside strict techno pocket [120,135]
+      // This is the FIRST fold-down ratio: wins before ÷1.5 (107) or ÷2.0 (80)
+      const buffer = generateProductionBuffer(161, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      expect(raw).toBeGreaterThanOrEqual(155)
+      expect(raw).toBeLessThanOrEqual(168)
+
+      // With strict techno pocket [120,135]: ×0.75=121 wins ✅
+      const musical = prodTracker.getMusicalBpm(120, 135)
+      expect(musical).toBeGreaterThanOrEqual(119)
+      expect(musical).toBeLessThanOrEqual(124)
+    })
+
+    it('should fold slow 86 BPM → ~129 BPM via tresillo inverso ×1.5 (techno pocket [120,135])', () => {
+      // Sub-bass half-time perceived at 86 BPM — tresillo inverso fold-up
+      // 86 × 1.5 = 129 — lands inside strict techno pocket [120,135]
+      const buffer = generateProductionBuffer(86, 20)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      expect(raw).toBeGreaterThanOrEqual(79)
+      expect(raw).toBeLessThanOrEqual(93)
+
+      // With strict techno pocket [120,135]: ×1.5=129 wins ✅
+      const musical = prodTracker.getMusicalBpm(120, 135)
+      expect(musical).toBeGreaterThanOrEqual(124)
+      expect(musical).toBeLessThanOrEqual(134)
+    })
+    // ── END WAVE 2180 ─────────────────────────────────────────────────
 
     it('should return 0 when no signal detected', () => {
       const freshTracker = new IntervalBPMTracker()
@@ -655,10 +698,11 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       const raw = prodTracker.getBpm()
       expect(raw).toBeGreaterThanOrEqual(175)
 
-      // With [100, 140]: ÷1.5 = ~123 → inside [100, 140] ✅
+      // WAVE 2180: ×0.75 is tried FIRST → 185×0.75≈139 ∈ [100,140] ✅ wins
+      // (before WAVE 2180: ÷1.5=123 won because ×0.75 didn't exist)
       const musical = prodTracker.getMusicalBpm(100, 140)
-      expect(musical).toBeGreaterThanOrEqual(117)
-      expect(musical).toBeLessThanOrEqual(130)
+      expect(musical).toBeGreaterThanOrEqual(135)
+      expect(musical).toBeLessThanOrEqual(143)
     })
   })
 

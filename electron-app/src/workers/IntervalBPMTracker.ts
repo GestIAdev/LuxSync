@@ -536,7 +536,7 @@ export class IntervalBPMTracker {
 
   /**
    * ═══════════════════════════════════════════════════════════════════════
-   * 🎯 WAVE 2174: DANCE POCKET FOLDER — getMusicalBpm()
+   * 🎯 WAVE 2174 + WAVE 2180: DANCE POCKET FOLDER — getMusicalBpm()
    * ═══════════════════════════════════════════════════════════════════════
    *
    * The tracker measures RAW rhythmic events per minute. That's mathematically
@@ -545,24 +545,38 @@ export class IntervalBPMTracker {
    * 3:2 pattern), but any DJ will tell you it's a 123 BPM track.
    *
    * This method folds raw BPM into the "dance pocket" — the tempo range where
-   * humans physically groove. No EDM track is danced at 185 BPM. The body
-   * naturally halves or divides-by-tresillo to find the groove.
+   * humans physically groove. No EDM track is danced at 185 BPM.
    *
-   * POLYRHYTHMIC RATIOS (music theory, NOT heuristic):
-   *   ÷1.5 (3:2 tresillo / dotted note):
-   *     185 BPM → 123 BPM ✅ (Brejcha, polyrhythmic techno)
-   *     195 BPM → 130 BPM ✅ (fast tresillo house)
+   * 🔥 WAVE 2180: EXTENDED POLYRHYTHMIC ARSENAL
    *
-   *   ÷2.0 (double-time / half-note pulse):
-   *     250 BPM → 125 BPM ✅ (DnB, hardcore → half-time groove)
-   *     270 BPM → 135 BPM ✅ (extreme DnB → half-time groove)
+   * FOLDING DOWN (raw > targetMax):
+   *   ×0.75  (Dotted 4:3 / semicorchea con puntillo):
+   *     161 BPM × 0.75 = 121 BPM ✅ (Hard Techno dotted-bass ilusión)
+   *     164 BPM × 0.75 = 123 BPM ✅
+   *   ÷1.5   (Tresillo 3:2):
+   *     185 BPM ÷ 1.5 = 123 BPM ✅ (Brejcha, polyrhythmic techno)
+   *     195 BPM ÷ 1.5 = 130 BPM ✅
+   *   ÷2.0   (Double-time → half-note pulse):
+   *     250 BPM ÷ 2.0 = 125 BPM ✅ (DnB, hardcore → half-time groove)
    *
-   *   ×2.0 (half-time folding up):
-   *     65 BPM → 130 BPM ✅ (trap half-time → double-time groove)
+   * FOLDING UP (raw < targetMin):
+   *   ×1.5   (Tresillo inverso):
+   *     86 BPM × 1.5 = 129 BPM ✅ (Medio-tempo Techno dotted groove)
+   *   ×2.0   (Half-time → double-time):
+   *     65 BPM × 2.0 = 130 BPM ✅ (Trap half-time → groove)
    *
-   * PRIORITY: tresillo (÷1.5) is tried BEFORE double-time (÷2.0) because
-   * tresillo patterns are far more common in modern electronic music than
-   * pure double-time. If ÷1.5 lands in the pocket, that's the answer.
+   * PRIORITY ORDER (fold down): ×0.75 → ÷1.5 → ÷2.0
+   *   0.75 first: covers the most common Hard Techno dotted-bass illusion.
+   *   Tresillo second: fast tresillo patterns.
+   *   Double-time last: most aggressive reduction, last resort.
+   *
+   * PRIORITY ORDER (fold up): ×1.5 → ×2.0
+   *   Tresillo inverse first: more musically natural in club contexts.
+   *
+   * Context-aware: pass genre-specific boundaries for strict pocket locking.
+   *   Techno/minimal:   targetMin=120, targetMax=135
+   *   Latin/reggaetón:  targetMin=85,  targetMax=105
+   *   Generic default:  targetMin=90,  targetMax=135
    *
    * @param targetMin - Lower bound of the dance pocket (default 90 BPM)
    * @param targetMax - Upper bound of the dance pocket (default 135 BPM)
@@ -573,33 +587,35 @@ export class IntervalBPMTracker {
     const raw = this.stableBpm
     if (raw === 0) return 0
 
-    // Already in the pocket — no folding needed
+    // Direct hit — already in the pocket
     if (raw >= targetMin && raw <= targetMax) return raw
 
-    // Too fast — try polyrhythmic reduction
+    // ── FOLDING DOWN (raw too fast) ──────────────────────────────────────
     if (raw > targetMax) {
-      // Tresillo first (÷1.5) — the 3:2 polyrhythmic groove
-      const tresBpm = raw / 1.5
-      if (tresBpm >= targetMin && tresBpm <= targetMax) {
-        return Math.round(tresBpm)
-      }
-
-      // Double-time fold (÷2.0) — half-note pulse
-      const halfBpm = raw / 2.0
-      if (halfBpm >= targetMin && halfBpm <= targetMax) {
-        return Math.round(halfBpm)
+      const folds = [
+        raw * 0.75,  // ×0.75 — Dotted 4:3 (semicorchea con puntillo). 161→121
+        raw / 1.5,   // ÷1.5  — Tresillo 3:2. 185→123
+        raw / 2.0,   // ÷2.0  — Double-time. 250→125
+      ]
+      for (const f of folds) {
+        const folded = Math.round(f)
+        if (folded >= targetMin && folded <= targetMax) return folded
       }
     }
 
-    // Too slow — fold up (×2.0)
+    // ── FOLDING UP (raw too slow) ────────────────────────────────────────
     if (raw < targetMin) {
-      const doubleBpm = raw * 2
-      if (doubleBpm >= targetMin && doubleBpm <= targetMax) {
-        return Math.round(doubleBpm)
+      const folds = [
+        raw * 1.5,   // ×1.5 — Tresillo inverso. 86→129
+        raw * 2.0,   // ×2.0 — Half-time inversion. 65→130
+      ]
+      for (const f of folds) {
+        const folded = Math.round(f)
+        if (folded >= targetMin && folded <= targetMax) return folded
       }
     }
 
-    // No ratio lands in the pocket — return raw, unfolded
+    // No ratio lands in the strict pocket — return raw, unfolded
     return raw
   }
 

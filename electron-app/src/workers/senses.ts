@@ -188,6 +188,30 @@ const state: BetaState = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const bpmTracker = new IntervalBPMTracker();
+// 🔥 WAVE 2180: CONTEXT-AWARE POCKET BOUNDS
+// Vibe is set by the DJ via VibeManager (GAMMA), propagated here via SET_VIBE.
+// The Worker is FROZEN (no genre detection), but it CAN use the DJ's manual
+// selection to tighten the dance pocket — ensuring BPM lock is genre-correct.
+let currentVibeId: string = ''
+
+/**
+ * Returns [targetMin, targetMax] for getMusicalBpm() based on active Vibe.
+ * Techno vibes need a strict [120, 135] pocket to reject 107 BPM folds.
+ * Latin vibes need [85, 105] to capture reggaetón/dembow at 100 BPM.
+ * Default [90, 135] for everything else (house, trance, DnB, generic).
+ */
+function getPocketBounds(): [number, number] {
+  const v = currentVibeId.toLowerCase()
+  if (v === 'techno-club' || v === 'techno' || v === 'minimal' || v === 'hard-techno') {
+    return [120, 135]
+  }
+  if (v === 'fiesta-latina' || v === 'reggaeton' || v === 'latin') {
+    return [85, 105]
+  }
+  // Generic default — covers house, trance, drum-n-bass fold targets
+  return [90, 135]
+}
+
 
 // � WAVE 2168: Shark Fin ARCHIVED — not needed for interval-based detection.
 // The Shark Fin was an envelope follower (decay 0.85/frame) that fattened
@@ -783,7 +807,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
 
   // WAVE 2169: DIAGNOSTIC TELEMETRY -- Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
-    const musicalBpm = bpmTracker.getMusicalBpm();
+    const [pocketMin, pocketMax] = getPocketBounds()
+    const musicalBpm = bpmTracker.getMusicalBpm(pocketMin, pocketMax);
     console.log(
       `[INTERVAL] F${state.frameCount}` +
       ` bpm=${musicalBpm}` +
@@ -805,7 +830,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // getMusicalBpm() folds it into the dance pocket [90-135]: 185/1.5 = 123 BPM.
   // The raw bpm is still visible in the [INTERVAL] diagnostic log above.
   if (bpmResult.confidence > 0.05) {
-    state.currentBpm = bpmTracker.getMusicalBpm();
+    state.currentBpm = bpmTracker.getMusicalBpm(pocketMin, pocketMax);
     state.bpmConfidence = bpmResult.confidence;
     state.beatPhase = bpmResult.beatPhase;
   }
@@ -1152,7 +1177,9 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.SET_VIBE:
         const vibePayload = message.payload as { vibeId: string };
         sectionTracker.setVibe(vibePayload.vibeId);
-        console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker`);
+        // 🔥 WAVE 2180: also update pocket bounds for BPM folding
+        currentVibeId = vibePayload.vibeId
+        console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker | pocket=${getPocketBounds()}`);
         break;
       
       // 🥁 WAVE 2112: SET_BPM now a no-op — Worker computes its own BPM via GodEarBPMTracker

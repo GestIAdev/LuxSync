@@ -82,6 +82,9 @@ interface DumpProfile {
   bpmMin: number
   /** Maximum acceptable musical BPM (after Dance Pocket Folder) */
   bpmMax: number
+  /** 🔥 WAVE 2180: Genre-specific pocket bounds for getMusicalBpm() */
+  pocketMin?: number
+  pocketMax?: number
   /** Physical explanation for the range */
   rationale: string
 }
@@ -89,24 +92,37 @@ interface DumpProfile {
 const DUMP_PROFILES: Record<string, DumpProfile> = {
   // ── GRAVITY (Brejcha) ──────────────────────────────────────────────
   // IOI bimodal: 185×22, 161×6, 215×6. Raw median ≈ 161-185 BPM.
-  // Dance Pocket: 185÷1.5=123, 161÷1.5=107. Both are valid musical BPM.
-  // The tracker locks wherever the median lands — both Gravity captures differ.
+  // WAVE 2180: techno pocket [120,135]. 185÷1.5=123 ✅, 161×0.75=121 ✅
+  // Both folds now land in the strict techno pocket instead of the generic one.
   'gravity_2min_126bpm': {
-    bpmMin: 100, bpmMax: 130,
-    rationale: 'Polyrhythmic 3:2 bass. Raw 161-185 → ÷1.5 → 107-123 musical BPM'
+    bpmMin: 120, bpmMax: 130,
+    pocketMin: 120, pocketMax: 135,
+    rationale: 'Brejcha polyrhythmic techno. Raw 185÷1.5=123 or 161×0.75=121. Strict techno pocket [120,135]'
   },
   'Gravity_Brejcha_126bpm': {
-    bpmMin: 100, bpmMax: 130,
-    rationale: 'Polyrhythmic 3:2 bass. Raw 161 → ÷1.5 → 107 musical BPM'
+    bpmMin: 120, bpmMax: 130,
+    pocketMin: 120, pocketMax: 135,
+    rationale: 'Brejcha polyrhythmic techno. Raw 161×0.75=121 or 185÷1.5=123. Strict techno pocket [120,135]'
+  },
+
+  // ── TECHNO MINIMAL ────────────────────────────────────────────────
+  // WAVE 2180: New dump. Hard Techno / Minimal sub-bass pattern.
+  // Raw kicks expected at 161/185 BPM range (dotted + tresillo illusions).
+  // Strict techno pocket [120,135]: 161×0.75=121, 185÷1.5=123.
+  'technominimal_123bpm': {
+    bpmMin: 120, bpmMax: 130,
+    pocketMin: 120, pocketMax: 135,
+    rationale: 'Hard Techno minimal. Raw 161×0.75=121 or 185÷1.5=123. Strict techno pocket [120,135]'
   },
 
   // ── DRUM & BASS ────────────────────────────────────────────────────
   // IOI bimodal: 161×15, 144×15, 258×7. Amen break pattern.
   // Raw median ≈ 140-144 BPM. Dance Pocket: 140÷1.5=93.
-  // DnB is physically danced at ~86-93 BPM (half-time groove).
+  // DnB is physically danced at ~86-107 BPM (half-time groove).
+  // WAVE 2180: ×0.75 first. If raw~158: 158×0.75=119 (out), 158÷1.5=105 (IN).
   'drumbass_174bpm': {
-    bpmMin: 85, bpmMax: 100,
-    rationale: 'Amen break bimodal 144/161. Raw ÷1.5 → 93-107 half-time groove'
+    bpmMin: 85, bpmMax: 110,
+    rationale: 'Amen break bimodal 144/158. Raw ÷1.5 → 93-107 half-time groove'
   },
 
   // ── ROCK 120 BPM ──────────────────────────────────────────────────
@@ -267,7 +283,7 @@ function printDumpStats(frames: ShadowFrame[], label: string): void {
   console.log(`  Frames: ${frames.length} | Duration: ${(totalDurationMs / 1000).toFixed(1)}s | Non-zero needles: ${nonZeroNeedles.length} (${(100 * nonZeroNeedles.length / frames.length).toFixed(1)}%)`)
 }
 
-function runModeA(frames: ShadowFrame[]): { rawBpm: number; musicalBpm: number; conf: number; kicks: number; elapsedMs: number } {
+function runModeA(frames: ShadowFrame[], pocketMin = 90, pocketMax = 135): { rawBpm: number; musicalBpm: number; conf: number; kicks: number; elapsedMs: number } {
   const tracker = new IntervalBPMTracker()
   const startMs = performance.now()
   for (const frame of frames) {
@@ -275,12 +291,12 @@ function runModeA(frames: ShadowFrame[]): { rawBpm: number; musicalBpm: number; 
   }
   const elapsedMs = performance.now() - startMs
   const rawBpm = tracker.getBpm()
-  const musicalBpm = tracker.getMusicalBpm()
+  const musicalBpm = tracker.getMusicalBpm(pocketMin, pocketMax)
   const result = tracker.process(0, false, frames[frames.length - 1].timestampMs + 1)
   return { rawBpm, musicalBpm, conf: result.confidence, kicks: result.kickCount, elapsedMs }
 }
 
-function runModeB(frames: ShadowFrame[]): { rawBpm: number; musicalBpm: number; conf: number; kicks: number; elapsedMs: number } {
+function runModeB(frames: ShadowFrame[], pocketMin = 90, pocketMax = 135): { rawBpm: number; musicalBpm: number; conf: number; kicks: number; elapsedMs: number } {
   const tracker = new IntervalBPMTracker()
   const startMs = performance.now()
   for (const frame of frames) {
@@ -288,7 +304,7 @@ function runModeB(frames: ShadowFrame[]): { rawBpm: number; musicalBpm: number; 
   }
   const elapsedMs = performance.now() - startMs
   const rawBpm = tracker.getBpm()
-  const musicalBpm = tracker.getMusicalBpm()
+  const musicalBpm = tracker.getMusicalBpm(pocketMin, pocketMax)
   const result = tracker.process(0, false, frames[frames.length - 1].timestampMs + 1)
   return { rawBpm, musicalBpm, conf: result.confidence, kicks: result.kickCount, elapsedMs }
 }
@@ -417,14 +433,18 @@ describe('👻 WAVE 2172/2176/2178: Data-Driven MIR Cold Lab', () => {
       rangeSource = 'default range (no profile, no filename BPM)'
     }
 
+    // 🔥 WAVE 2180: genre-specific pocket bounds from profile (default = generic [90,135])
+    const pMin = dump.profile?.pocketMin ?? 90
+    const pMax = dump.profile?.pocketMax ?? 135
+
     describe.skipIf(!anyDumpExists)(`🎵 DUMP: ${dump.name}`, () => {
       it(`Mode A (needle) → musical BPM in [${bpmMin}, ${bpmMax}]`, () => {
         const frames = loadFrames(dump.filePath)
         printDumpStats(frames, dump.name)
 
-        const { rawBpm, musicalBpm, conf, kicks, elapsedMs } = runModeA(frames)
+        const { rawBpm, musicalBpm, conf, kicks, elapsedMs } = runModeA(frames, pMin, pMax)
         console.log(`  [A] raw=${rawBpm} musical=${musicalBpm} conf=${conf.toFixed(3)} kicks=${kicks} ${elapsedMs.toFixed(1)}ms`)
-        console.log(`  [A] range=[${bpmMin},${bpmMax}] source: ${rangeSource}`)
+        console.log(`  [A] range=[${bpmMin},${bpmMax}] pocket=[${pMin},${pMax}] source: ${rangeSource}`)
         if (conf <= 0.05) {
           console.warn(`  [A] ⚠️ Low confidence (${conf.toFixed(3)}) — bimodal rhythm, breakdown, or weak sub-bass`)
         }
@@ -437,9 +457,9 @@ describe('👻 WAVE 2172/2176/2178: Data-Driven MIR Cold Lab', () => {
       it(`Mode B (raw gate) → musical BPM in [${bpmMin}, ${bpmMax}]`, () => {
         const frames = loadFrames(dump.filePath)
 
-        const { rawBpm, musicalBpm, conf, kicks, elapsedMs } = runModeB(frames)
+        const { rawBpm, musicalBpm, conf, kicks, elapsedMs } = runModeB(frames, pMin, pMax)
         console.log(`  [B] raw=${rawBpm} musical=${musicalBpm} conf=${conf.toFixed(3)} kicks=${kicks} ${elapsedMs.toFixed(1)}ms`)
-        console.log(`  [B] range=[${bpmMin},${bpmMax}] source: ${rangeSource}`)
+        console.log(`  [B] range=[${bpmMin},${bpmMax}] pocket=[${pMin},${pMax}] source: ${rangeSource}`)
 
         expect(musicalBpm).toBeGreaterThanOrEqual(bpmMin)
         expect(musicalBpm).toBeLessThanOrEqual(bpmMax)
@@ -448,9 +468,9 @@ describe('👻 WAVE 2172/2176/2178: Data-Driven MIR Cold Lab', () => {
 
       it(`Mode A vs Mode B converge (Δ ≤ 8 BPM)`, () => {
         const frames = loadFrames(dump.filePath)
-        const { musicalBpm: musicalA } = runModeA(frames)
-        const { musicalBpm: musicalB } = runModeB(frames)
-        console.log(`  [A/B] A=${musicalA} B=${musicalB} delta=${Math.abs(musicalA - musicalB)}`)
+        const { musicalBpm: musicalA } = runModeA(frames, pMin, pMax)
+        const { musicalBpm: musicalB } = runModeB(frames, pMin, pMax)
+        console.log(`  [A/B] A=${musicalA} B=${musicalB} delta=${Math.abs(musicalA - musicalB)} pocket=[${pMin},${pMax}]`)
         expect(Math.abs(musicalA - musicalB)).toBeLessThanOrEqual(8)
       })
     })

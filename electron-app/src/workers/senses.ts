@@ -574,28 +574,27 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   //
   // Historia completa de por qué cada pieza existe:
   //
-  // PIEZA 2 — Aguja Multiplicativa (restaurada de WAVE 2155):
-  //   El Bajo Rodante (sub-bass sincopado de Minimal Techno) tiene centroide
-  //   bajísimo (~80-200Hz), igual que el bombo. El Sniper no puede distinguirlos.
-  //   SOLUCIÓN: Exigir que haya una explosión simultánea en Graves Y en Medios.
-  //   Los bombos reales tienen un "click" de ataque en los medios (800-3000Hz).
-  //   El bajo puro es una senoidal → rawMidFlux ≈ 0 → needle = √(X × 0) = 0.
-  //   Bajo rodante a contratiempo: ANIQUILADO matemáticamente.
+  // PIEZA 2 — El Portero Lógico (WAVE 2165, reemplaza la Aguja Multiplicativa):
+  //   El Bajo Rodante tiene centroide bajísimo (~80-200Hz), igual que el bombo.
+  //   El Sniper no puede distinguirlos por centroide.
+  //   SOLUCIÓN ANTERIOR (WAVE 2164): √(lowFlux × midFlux) — aplasta la energía
+  //   real del bombo a la raíz cuadrada. Un bombo con lowFlux=0.2367, midFlux=0.03
+  //   producía needle=0.0842 — ¡el 35% del golpe real! La Shark Fin se encogía.
   //
-  // PIEZA 3 — Francotirador (WAVE 2163, rehabilitado con AGC fix de WAVE 2162):
-  //   Para el caso Bajo + Platillo simultáneo: rawMidFlux > 0 (el platillo tiene
-  //   medios) → pasa la aguja multiplicativa. Pero el centroide global se dispara
-  //   a >3000Hz por el platillo. El Sniper lo intercepta aquí.
-  //   Con el AGC ANTES del FFT (WAVE 2162), el centroide es real y no bombeado.
+  //   SOLUCIÓN CORRECTA (WAVE 2165): Portero lógico.
+  //   Si el mid sube aunque sea un susurro (>0.001) → es un bombo (tiene click).
+  //   Dejamos pasar TODA la energía bruta de los graves → aleta gigante.
+  //   El bajo puro tiene midFlux ≈ 0 → bloqueado en la puerta.
+  //   El platillo+bajo tiene midFlux > 0 PERO centroide >1500Hz → Sniper lo mata.
   //
   // TABLA DE DECISIONES:
-  //   | Evento                  | rawLowFlux | rawMidFlux | centroid | needle |
-  //   |-------------------------|------------|------------|----------|--------|
-  //   | Bombo puro (sub-kick)   | +0.120     | +0.030     | 90Hz     | ✅ OK  |
-  //   | Bombo + click (transnt) | +0.095     | +0.060     | 400Hz    | ✅ OK  |
-  //   | Bajo rodante puro       | +0.080     | ~0.000     | 120Hz    | 🔇 0   |
-  //   | Bajo + platillo         | +0.070     | +0.040     | 5500Hz   | 🎯 0   |
-  //   | Hi-hat solo             | ~0.002     | +0.015     | 7000Hz   | ~0 (min flux) |
+  //   | Evento                  | rawLowFlux | rawMidFlux | centroid | needle    |
+  //   |-------------------------|------------|------------|----------|-----------|
+  //   | Bombo puro (sub-kick)   | +0.237     | +0.030     | 90Hz     | 0.237 ✅  |
+  //   | Bombo + click (transnt) | +0.095     | +0.060     | 400Hz    | 0.095 ✅  |
+  //   | Bajo rodante puro       | +0.080     | ~0.000     | 120Hz    | 0.000 🔇  |
+  //   | Bajo + platillo         | +0.070     | +0.040     | 5500Hz   | 🎯SNIPED  |
+  //   | Hi-hat solo             | ~0.002     | +0.015     | 7000Hz   | ~0 (snpr) |
   // ═══════════════════════════════════════════════════════════════════════════
 
   // PIEZA 1: Deltas puros (FFT ya corre sobre audio crudo — WAVE 2162)
@@ -608,8 +607,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   prevSubEnergy = subEnergy;
   prevMidEnergy = midEnergy;
 
-  // PIEZA 2: Aguja Multiplicativa — mata el bajo puro (rawMidFlux ≈ 0 → needle = 0)
-  let needle = Math.sqrt(rawLowFlux * rawMidFlux);
+  // PIEZA 2: Portero Lógico — el mid como llave, los graves como fuerza
+  // Si escuchamos aunque sea un susurro del "click" de medios → bombo real → pasar TODO
+  // Si midFlux ≈ 0 → bajo puro → bloquear en la puerta
+  const MID_GATE_THRESHOLD = 0.001;
+  let needle = (rawMidFlux > MID_GATE_THRESHOLD) ? rawLowFlux : 0;
 
   // PIEZA 3: Francotirador — mata el bajo + platillo (centroide brillante)
   const centroidHz = spectrum.spectralCentroid;

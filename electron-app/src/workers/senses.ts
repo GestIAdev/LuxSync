@@ -203,6 +203,9 @@ let fatNeedle = 0;
 // Module-scope to survive across processAudioFrame() calls.
 let prevSubEnergy = 0;
 
+/** Previous bass-only energy (60-250Hz) for flux telemetry — WAVE 2167 */
+let prevBassOnlyEnergy = 0;
+
 // 🔬 WAVE 2164: Persistent state for mid flux (Needle Protocol).
 // The multiplicative needle requires both sub AND mid to rise simultaneously.
 // A pure rolling bass has zero mid content → needle = 0. Impostor slain.
@@ -573,41 +576,72 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // ═══════════════════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2166: DESNUDAR EL AUTOCORRELADOR — Feed Everything, Trust Math
+  // 🪦 WAVE 2166: NAKED AUTOCORRELATOR (RIP — offbeat bass contamination)
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // POSTMORTEM WAVES 2159-2165 (7 intentos, 1 semana):
-  // Cada filtro que inventamos para matar el bajo rodante TAMBIÉN mata kicks.
-  // Los kicks de Brejcha son sub-bass puro (centroid 70-150Hz). No tienen
-  // "click" en medios. El bajo rodante tiene el MISMO perfil espectral.
-  // Son gemelos idénticos — imposible separarlos por banda de frecuencia.
+  // Fed rawLowFlux = subBass + bass (0-250Hz) directly. No gates, no filters.
+  // RESULT: Energy flowed (needle=0.2277!) but BPM read 95-97 instead of 126.
+  // ROOT CAUSE: Kick+offbeat bass both at equal amplitude in 0-250Hz band.
+  // Autocorrelation saw half-beat onsets at ~183 BPM, octave lock halved to ~97.
+  // 126 BPM peak NEVER appeared in 78 SIEVE events across 1032-line log.
   //
-  // LA EPIFANÍA (log debugBPM.md, F1680):
-  // Cuando el autocorrelador recibió energía real (el drop), calculó
-  // 131 BPM con conf=0.474 — LA LECTURA MÁS ALTA DEL LOG ENTERO.
-  // El motor FUNCIONA. Solo estábamos matando de hambre su entrada.
+  // INSIGHT RETROACTIVO sobre WAVE 2166:
+  // "Si el kick está en el beat y el bajo en el offbeat, AMBOS repiten
+  // cada 476ms" era INCORRECTO. Sí, repiten cada 476ms individualmente,
+  // pero SUMADOS crean picos cada 238ms (half-beat), que el autocorrelador
+  // lee como ~183-187 BPM — el doble del real.
   //
-  // INSIGHT MATEMÁTICO:
-  // Si el kick está en el beat y el bajo en el offbeat, AMBOS repiten
-  // cada 476ms (126 BPM). La autocorrelación en lag≈476ms será MÁXIMA
-  // porque kick+bass juntos forman un patrón periódico PERFECTO.
-  // El harmonic sieve y octave lock manejan los armónicos superiores.
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔬 WAVE 2167: SUB-BASS SCALPEL
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // WAVE 2166 POSTMORTEM (debugBPM.md, 1032 lines):
+  // ┌──────────────────────────────────────────────────────────────────────┐
+  // │  The naked autocorrelator received energy (needle=0.0576, 0.2277)  │
+  // │  — a massive improvement over the starved zeros of WAVEs 2159-65. │
+  // │  BUT it read ~95-97 BPM instead of ~126 BPM.                       │
+  // │                                                                      │
+  // │  78 SIEVE/OCTAVE events analyzed. NOT A SINGLE ONE shows a peak   │
+  // │  between 120-135 BPM. The sieve ONLY sees:                         │
+  // │    ~183-187 BPM (lag ~28)                                          │
+  // │    ~85-97 BPM  (lag ~53-55)                                        │
+  // │    ~81-84 BPM  (lag ~64)                                           │
+  // │                                                                      │
+  // │  ROOT CAUSE: subEnergy = rawSubBass + rawBassOnly (0-250Hz).      │
+  // │  In Brejcha, the kick (20-60Hz) hits on the beat and the rolling  │
+  // │  bass (60-250Hz) hits on the offbeat. Both have EQUAL amplitude   │
+  // │  in sub+bass combined. The autocorrelation sees energy onsets at   │
+  // │  EVERY half-beat (~238ms = ~252BPM), which aliases to ~183 BPM    │
+  // │  in the lag grid. The full-beat period at ~476ms (126 BPM) is     │
+  // │  INVISIBLE because the offbeat bass reinforces the half-period    │
+  // │  more than the full period.                                        │
+  // │                                                                      │
+  // │  THE FIX: Feed ONLY rawSubBassEnergy (20-60Hz).                   │
+  // │  The kick lives in 20-60Hz. The rolling bass lives in 60-250Hz.   │
+  // │  By excluding the bass band, the offbeat contamination vanishes.  │
+  // │  The autocorrelation sees ONE clean spike per beat at 476ms       │
+  // │  interval = 126 BPM.                                               │
+  // └──────────────────────────────────────────────────────────────────────┘
+  //
+  // GodEarFFT band definitions (from GodEarFFT.ts):
+  //   subBass:  20-60Hz   ← KICK territory (pure sub-bass thump)
+  //   bass:     60-250Hz  ← BASS LINE territory (rolling bass, offbeat)
   //
   // DEFENSA CONTRA HI-HATS:
-  // El problema de hi-hats inundando (WAVE 2162) era con AGC amplificando
-  // agudos. Ahora FFT es raw (pre-AGC) → sub-bass domina la señal por
-  // órdenes de magnitud (0.29 vs 0.03). No necesitamos filtrar.
-  //
-  // SEÑAL: subEnergy incluye 0-250Hz (subBass + bass). La banda lowMid
-  // (250-500Hz) NO se incluye para no meter el "mud" de pads/reverb.
+  // FFT is raw (pre-AGC) → sub-bass domina por órdenes de magnitud.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Energía bruta sub+bass (0-250Hz) — TODO lo rítmico de graves
-  const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
+  // 🔬 WAVE 2167: SOLO sub-bass (20-60Hz) — el bisturí que separa kick de bajo
+  const subEnergy = spectrum.rawSubBassEnergy;
 
   // Delta positivo = onset (rising edge) de graves
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
   prevSubEnergy = subEnergy;
+
+  // Bass-only flux (60-250Hz) SOLO para telemetría — el contaminante que extirpamos
+  const bassOnlyEnergy = spectrum.rawBassOnlyEnergy;
+  const bassOnlyFlux = Math.max(0, bassOnlyEnergy - prevBassOnlyEnergy);
+  prevBassOnlyEnergy = bassOnlyEnergy;
 
   // Medios SOLO para telemetría — ya NO gatea la señal
   const midEnergy = spectrum.rawMidEnergy;
@@ -652,7 +686,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   fatNeedle = Math.max(needle, fatNeedle * SHARK_FIN_DECAY);
 
   // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
-  //   energy = fatNeedle   → 🦈 WAVE 2166: envelope-followed NAKED low flux (no gates)
+  //   energy = fatNeedle   → 🦈 WAVE 2167: envelope-followed NAKED sub-bass flux (20-60Hz only)
   //   kickDetected = false → tracker uses its own internal kick detection
   //   timestamp = deterministic musical clock
   const acResult = bpmTracker.process(
@@ -661,8 +695,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // WAVE 2166: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
-  // NAKED MODE: needle = rawLowFlux (sin filtros). Mostramos midFlux solo para referencia.
+  // WAVE 2167: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // SUB-BASS SCALPEL MODE: needle = rawSubBassFlux (20-60Hz only, no bass band).
+  // Also log bassFlux (60-250Hz) separately for diagnosis.
   if (state.frameCount % 20 === 0) {
     console.log(
       `[SHARK] F${state.frameCount}` +
@@ -670,8 +705,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` conf=${acResult.confidence.toFixed(3)}` +
       ` kick=${acResult.kickDetected}` +
       ` phase=${acResult.beatPhase.toFixed(2)}` +
-      ` lowFlux=${rawLowFlux.toFixed(4)}` +
-      ` midFlux=${rawMidFlux.toFixed(4)}` +
+      ` subFlux=${rawLowFlux.toFixed(4)}` +
+      ` bassFlux=${bassOnlyFlux.toFixed(4)}` +
       ` needle=${needle.toFixed(4)}` +
       ` fin=${fatNeedle.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
@@ -1044,8 +1079,9 @@ function handleMessage(message: WorkerMessage): void {
         bpmTracker.reset();
         fatNeedle = 0;
         prevSubEnergy = 0;
+        prevBassOnlyEnergy = 0;
         prevMidEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2164: GodEarBPMTracker + SharkFin + Needle HARD RESET — Amnesia Protocol executed');
+        console.log('[BETA] 🧨 WAVE 2167: GodEarBPMTracker + SharkFin + Needle HARD RESET — Amnesia Protocol executed');
         break;
         
       default:

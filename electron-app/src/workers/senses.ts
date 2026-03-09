@@ -547,80 +547,78 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // 🎯 WAVE 2160: UNCHAIN THE NEEDLE — Raw Low Flux + Centroid-Only Gate
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // 🪦 WAVE 2162: EL FRANCOTIRADOR HA SIDO DESPEDIDO.
+  // 🪦 WAVES 2159-2165: CEMENTERIO DE FILTROS
   //
-  // AUTOPSIA 1 (logboris.md):
-  // El Sniper mataba por centroide alto, asumiendo "centroide alto = contratiempo".
-  // ¡EN MINIMAL TECHNO ES AL REVÉS!
-  //   - El bombo real lleva un "click" de ataque a 5000Hz+ para sonar fuerte en club
-  //   - El bajo a contratiempo es una senoidal pura y SORDA (~200Hz centroide)
+  // 7 intentos en 1 semana. Todos fallaron por la misma razón:
+  // Los kicks de Boris Brejcha son sub-bass puro (centroid 70-150Hz).
+  // El bajo rodante TAMBIÉN es sub-bass puro (centroid 100-200Hz).
+  // Son gemelos espectrales — imposible separarlos por banda de frecuencia.
   //
-  // Evidencia del log de Brejcha:
-  //   F700  🎯SNIPED(5458Hz)  ← ¡ERA UN BOMBO REAL!
-  //   F1300 🎯SNIPED(5260Hz)  ← ¡ERA UN BOMBO REAL!
+  // Intentos y causas de muerte:
+  //   WAVE 2159: Centroid Sniper (>1500Hz = kill) → mataba kicks reales
+  //   WAVE 2160: Raw low flux only → PM2 debounce comía offbeats
+  //   WAVE 2161: GodEarBPMTracker + Shark Fin → thin spikes, BPM errático
+  //   WAVE 2162: FFT pre-AGC + fire Sniper + Latin math → hi-hats inundaban
+  //   WAVE 2163: Restore Sniper only → rolling bass pasaba ambos gates
+  //   WAVE 2164: √(low×mid) multiplicativa → aplastaba energía real del kick
+  //   WAVE 2165: Portero Lógico (midFlux>0.001) → midFlux=0 en kicks reales
   //
-  // Al matar los bombos, lo único que sobrevivía era el bajo sincopado.
-  // El Autocorrelador leía la velocidad del bajo (188 BPM) perfectamente.
+  // Prueba definitiva (debugBPM.md, F1960):
+  //   lowFlux=0.2939 midFlux=0.0000 needle=0.0000 centroid=121Hz
+  //   ← EL KICK MÁS FUERTE DEL LOG, BLOQUEADO POR midFlux=0
   //
-  // La Autocorrelación es un motor de PATRONES GLOBALES. No necesita
-  // pre-filtrado. Las aletas de tiburón del bombo (energía masiva) siempre
-  // dominan el patrón por encima de los contratiempos (energía menor).
-  // La fuerza bruta de la periodicidad matemática es suficiente.
+  // F1680: Cuando el autocorrelador recibió energía real (el drop),
+  // calculó 131 BPM con conf=0.474 — ¡la lectura más alta del log!
+  // EL MOTOR FUNCIONA. Solo estábamos matando de hambre su entrada.
   // ═══════════════════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🧩 WAVE 2164: EXODIA — El Motor Definitivo (5 Piezas Ensambladas)
+  // 🔥 WAVE 2166: DESNUDAR EL AUTOCORRELADOR — Feed Everything, Trust Math
   // ═══════════════════════════════════════════════════════════════════════════
   //
-  // Historia completa de por qué cada pieza existe:
+  // POSTMORTEM WAVES 2159-2165 (7 intentos, 1 semana):
+  // Cada filtro que inventamos para matar el bajo rodante TAMBIÉN mata kicks.
+  // Los kicks de Brejcha son sub-bass puro (centroid 70-150Hz). No tienen
+  // "click" en medios. El bajo rodante tiene el MISMO perfil espectral.
+  // Son gemelos idénticos — imposible separarlos por banda de frecuencia.
   //
-  // PIEZA 2 — El Portero Lógico (WAVE 2165, reemplaza la Aguja Multiplicativa):
-  //   El Bajo Rodante tiene centroide bajísimo (~80-200Hz), igual que el bombo.
-  //   El Sniper no puede distinguirlos por centroide.
-  //   SOLUCIÓN ANTERIOR (WAVE 2164): √(lowFlux × midFlux) — aplasta la energía
-  //   real del bombo a la raíz cuadrada. Un bombo con lowFlux=0.2367, midFlux=0.03
-  //   producía needle=0.0842 — ¡el 35% del golpe real! La Shark Fin se encogía.
+  // LA EPIFANÍA (log debugBPM.md, F1680):
+  // Cuando el autocorrelador recibió energía real (el drop), calculó
+  // 131 BPM con conf=0.474 — LA LECTURA MÁS ALTA DEL LOG ENTERO.
+  // El motor FUNCIONA. Solo estábamos matando de hambre su entrada.
   //
-  //   SOLUCIÓN CORRECTA (WAVE 2165): Portero lógico.
-  //   Si el mid sube aunque sea un susurro (>0.001) → es un bombo (tiene click).
-  //   Dejamos pasar TODA la energía bruta de los graves → aleta gigante.
-  //   El bajo puro tiene midFlux ≈ 0 → bloqueado en la puerta.
-  //   El platillo+bajo tiene midFlux > 0 PERO centroide >1500Hz → Sniper lo mata.
+  // INSIGHT MATEMÁTICO:
+  // Si el kick está en el beat y el bajo en el offbeat, AMBOS repiten
+  // cada 476ms (126 BPM). La autocorrelación en lag≈476ms será MÁXIMA
+  // porque kick+bass juntos forman un patrón periódico PERFECTO.
+  // El harmonic sieve y octave lock manejan los armónicos superiores.
   //
-  // TABLA DE DECISIONES:
-  //   | Evento                  | rawLowFlux | rawMidFlux | centroid | needle    |
-  //   |-------------------------|------------|------------|----------|-----------|
-  //   | Bombo puro (sub-kick)   | +0.237     | +0.030     | 90Hz     | 0.237 ✅  |
-  //   | Bombo + click (transnt) | +0.095     | +0.060     | 400Hz    | 0.095 ✅  |
-  //   | Bajo rodante puro       | +0.080     | ~0.000     | 120Hz    | 0.000 🔇  |
-  //   | Bajo + platillo         | +0.070     | +0.040     | 5500Hz   | 🎯SNIPED  |
-  //   | Hi-hat solo             | ~0.002     | +0.015     | 7000Hz   | ~0 (snpr) |
+  // DEFENSA CONTRA HI-HATS:
+  // El problema de hi-hats inundando (WAVE 2162) era con AGC amplificando
+  // agudos. Ahora FFT es raw (pre-AGC) → sub-bass domina la señal por
+  // órdenes de magnitud (0.29 vs 0.03). No necesitamos filtrar.
+  //
+  // SEÑAL: subEnergy incluye 0-250Hz (subBass + bass). La banda lowMid
+  // (250-500Hz) NO se incluye para no meter el "mud" de pads/reverb.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // PIEZA 1: Deltas puros (FFT ya corre sobre audio crudo — WAVE 2162)
-  const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;  // 0-200Hz
-  const midEnergy = spectrum.rawMidEnergy;  // 800-3000Hz — el "click" del bombo
+  // Energía bruta sub+bass (0-250Hz) — TODO lo rítmico de graves
+  const subEnergy = spectrum.rawSubBassEnergy + spectrum.rawBassOnlyEnergy;
 
+  // Delta positivo = onset (rising edge) de graves
   const rawLowFlux = Math.max(0, subEnergy - prevSubEnergy);
-  const rawMidFlux = Math.max(0, midEnergy - prevMidEnergy);
-
   prevSubEnergy = subEnergy;
+
+  // Medios SOLO para telemetría — ya NO gatea la señal
+  const midEnergy = spectrum.rawMidEnergy;
+  const rawMidFlux = Math.max(0, midEnergy - prevMidEnergy);
   prevMidEnergy = midEnergy;
 
-  // PIEZA 2: Portero Lógico — el mid como llave, los graves como fuerza
-  // Si escuchamos aunque sea un susurro del "click" de medios → bombo real → pasar TODO
-  // Si midFlux ≈ 0 → bajo puro → bloquear en la puerta
-  const MID_GATE_THRESHOLD = 0.001;
-  let needle = (rawMidFlux > MID_GATE_THRESHOLD) ? rawLowFlux : 0;
+  // LA AGUJA DESNUDA: rawLowFlux directo, sin filtros, sin gates
+  const needle = rawLowFlux;
 
-  // PIEZA 3: Francotirador — mata el bajo + platillo (centroide brillante)
+  // Centroide para telemetría solamente
   const centroidHz = spectrum.spectralCentroid;
-  const CENTROID_CEILING_HZ = 1500;
-  const SNIPER_MIN_FLUX = 0.015;
-
-  if (needle > SNIPER_MIN_FLUX && centroidHz > CENTROID_CEILING_HZ) {
-    needle = 0; // 🎯 SNIPED
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🦈 WAVE 2161: THE SHARK FIN — Envelope Follower for Autocorrelation
@@ -654,7 +652,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   fatNeedle = Math.max(needle, fatNeedle * SHARK_FIN_DECAY);
 
   // Feed the Shark Fin to GodEarBPMTracker (autocorrelation engine):
-  //   energy = fatNeedle   → 🦈 WAVE 2161: envelope-followed, snipered low flux
+  //   energy = fatNeedle   → 🦈 WAVE 2166: envelope-followed NAKED low flux (no gates)
   //   kickDetected = false → tracker uses its own internal kick detection
   //   timestamp = deterministic musical clock
   const acResult = bpmTracker.process(
@@ -663,12 +661,9 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
-  // WAVE 2164: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // WAVE 2166: DIAGNOSTIC TELEMETRY — Every 20 frames (~0.9s)
+  // NAKED MODE: needle = rawLowFlux (sin filtros). Mostramos midFlux solo para referencia.
   if (state.frameCount % 20 === 0) {
-    const sniperTag = (needle === 0 && Math.sqrt(rawLowFlux * rawMidFlux) > SNIPER_MIN_FLUX)
-      ? ` 🎯SNIPED(${Math.round(centroidHz)}Hz)`
-      : '';
-    const needleRaw = Math.sqrt(rawLowFlux * rawMidFlux).toFixed(4);
     console.log(
       `[SHARK] F${state.frameCount}` +
       ` bpm=${acResult.bpm}` +
@@ -677,11 +672,10 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` phase=${acResult.beatPhase.toFixed(2)}` +
       ` lowFlux=${rawLowFlux.toFixed(4)}` +
       ` midFlux=${rawMidFlux.toFixed(4)}` +
-      ` needle=${needleRaw}` +
+      ` needle=${needle.toFixed(4)}` +
       ` fin=${fatNeedle.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
-      ` samples=${acResult.kickCount}` +
-      sniperTag
+      ` samples=${acResult.kickCount}`
     );
   }
 

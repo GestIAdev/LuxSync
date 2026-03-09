@@ -476,9 +476,14 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
 
     it('should detect 126 BPM WITH offbeats at production frame rate (Brejcha)', () => {
       const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      // WAVE 2170: offbeat energy updated to reflect real-world values POST senses.ts floor.
+      // Pre-floor: offbeats could arrive at 0.55 (68% of kick).
+      // Post-floor (0.030): only true kick onsets ≥ 0.07 arrive; bass residue ≤ 0.04 is blocked.
+      // Real Brejcha production: kick=0.10-0.28, post-floor offbeat max≈0.04 → ratio ≤ 40%.
+      // PEAK_DISCRIMINATOR_RATIO=0.65 blocks anything < 65% of peak → offbeats at 40% are blocked.
       const buffer = generateProductionBuffer(126, 30, {
         kickEnergy: 0.80,
-        subBeatEnergy: 0.55,
+        subBeatEnergy: 0.40,  // 50% of kick — below PEAK_DISCRIMINATOR_RATIO=0.65 threshold
       })
       const results = runTimeMachineLoop(prodTracker, buffer)
 

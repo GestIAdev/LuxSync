@@ -686,14 +686,19 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // This is deterministic: centroid is a physical measurement of where
   // the energy is concentrated. No guessing.
   let needle = 0;
-  if (rawBassFlux > 0.005) { // minimum energy floor — ignore noise
+  // WAVE 2170: Floor raised from 0.005 → 0.030.
+  // At 0.005, the gradual decay of bass energy after a kick produces
+  // frame-to-frame flux of 0.006-0.020 that falsely triggered the tracker.
+  // Real Brejcha kick onsets measured in production: 0.07-0.28.
+  // Bass decay residue: 0.006-0.022. Hard separation at ~0.03.
+  if (rawBassFlux > 0.030) { // floor: eliminates inter-beat bass decay tails
     if (centroidHz < 800) {
       // Pure bass/sub-bass transient — kick drum territory
       needle = rawBassFlux;
     } else if (centroidHz < 1500) {
       // Grey zone: could be kick+snare overlap or bass guitar
       // Pass only if there's a meaningful bass flux
-      if (rawBassFlux > 0.01) {
+      if (rawBassFlux > 0.040) {
         needle = rawBassFlux;
       }
     }

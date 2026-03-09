@@ -118,21 +118,15 @@ const HYSTERESIS_RELEASE = 0.9
  *  always weaker than the main kick. Only applied once BPM is stable
  *  (bpmHistoryCount ≥ 6) to not block initial lock-in.
  *
- *  0.55 = offbeat at 55% of kick energy is rejected.
- *  Brejcha: kick=0.80, offbeat=0.55 → 0.55/0.80 = 0.69 > 0.55? Yes.
- *  BUT we track ROLLING peak, not single peak — see implementation.
+ *  WAVE 2170: lowered from 0.75 → 0.50.
+ *  Boris Brejcha minimal techno kicks vary significantly in energy
+ *  depending on mixing (verse vs drop vs breakdown). A strict 0.75 ratio
+ *  was rejecting legitimate kicks that were 55-70% of the running peak.
  *
- *  Actually we use a simpler approach: track a running estimate of kick
- *  peak energy and reject candidates below PEAK_DISCRIMINATOR_RATIO of it.
- *  0.65 means: if your peak was 0.80, anything below 0.52 is rejected.
- *  But offbeats at 0.55 > 0.52... so we need a tighter value.
- *
- *  Solution: we use 0.75 — rejects anything below 75% of the running peak.
- *  kick=0.050, offbeat=0.028 → 0.028/0.050=0.56 < 0.75 → REJECTED ✅
- *  kick=0.80, offbeat=0.55 → 0.55/0.80=0.69 < 0.75 → REJECTED ✅
- *  kick=0.80, weak kick=0.65 → 0.65/0.80=0.81 > 0.75 → ACCEPTED ✅
- *  kick=0.035, floor=0.010 → 0.035/0.035=1.0 > 0.75 → ACCEPTED ✅ */
-const PEAK_DISCRIMINATOR_RATIO = 0.75
+ *  0.50 means: if the running peak is 0.25, anything above 0.125 counts.
+ *  This still filters out true offbeats and hi-hat bleed (typically < 30%
+ *  of kick energy), while accepting softer kicks in verses/breakdowns. */
+const PEAK_DISCRIMINATOR_RATIO = 0.65
 
 /** Smoothing factor for running peak energy estimate.
  *  peakEstimate = max(currentEnergy, peakEstimate × decay).
@@ -372,13 +366,18 @@ export class IntervalBPMTracker {
     // ─── 9. Diagnostic Log (every ~1 second) ──────────────────────
     // Kept sparse to avoid IPC choking (lesson from WAVE 2125)
     if (this.totalKicks > 0 && kickDetected) {
+      // WAVE 2170: dump bpmHistory snapshot for conf=0 diagnostics
+      const histSnapshot = Array.from(this.bpmHistory.slice(0, this.bpmHistoryCount))
+        .map(v => Math.round(v))
+        .join(',')
       console.log(
         `[🥁 INTERVAL BPM] KICK #${this.totalKicks} ` +
         `bpm=${this.stableBpm} conf=${this.currentConfidence.toFixed(2)} ` +
         `energy=${rawBassEnergy.toFixed(4)} avg=${rollingAvg.toFixed(4)} ` +
         `ratio=${rollingAvg > 0 ? (rawBassEnergy / rollingAvg).toFixed(2) : 'N/A'} ` +
         `delta=${delta.toFixed(4)} ` +
-        `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE}`
+        `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
+        `bpmBuf=[${histSnapshot}]`
       )
     }
 
@@ -422,12 +421,17 @@ export class IntervalBPMTracker {
   /**
    * Compute confidence based on how consistent the BPM measurements are.
    *
-   * Confidence = 1 - (spread / expectedInterval)
+   * Confidence = 1 - (spread / NORMALIZATION_RANGE)
    * where spread = max(bpm) - min(bpm) across history.
    *
    * Perfect consistency (all same BPM) → confidence = 1.0
-   * Huge variance (±30 BPM) → confidence approaches 0.0
-   * Moderate variance (±8 BPM, cumbia) → confidence ≈ 0.6-0.7
+   * Huge variance (±60+ BPM) → confidence approaches 0.0
+   * Moderate variance (±8 BPM, Boris Brejcha) → confidence ≈ 0.87
+   *
+   * WAVE 2170: normalization range 40 → 60 BPM.
+   * Production logs showed valid stable BPM (92-104) but spread ~20-24
+   * BPM across the 12-sample ring buffer, giving conf = 1 - 24/40 = 0.40.
+   * With range=60: conf = 1 - 24/60 = 0.60 → crosses the 0.05 gate.
    */
   private computeConfidence(): number {
     const n = this.bpmHistoryCount
@@ -443,9 +447,9 @@ export class IntervalBPMTracker {
     }
 
     const spread = max - min
-    // Normalize: spread of 0 → conf 1.0, spread of 40+ → conf ~0.0
-    // Using a sigmoid-ish mapping for smooth degradation
-    const normalizedSpread = spread / 40
+    // Normalize: spread of 0 → conf 1.0, spread of 60+ → conf ~0.0
+    // WAVE 2170: 60 BPM range (was 40) — more tolerant of natural BPM variation
+    const normalizedSpread = spread / 60
     const confidence = Math.max(0, Math.min(1, 1 - normalizedSpread))
 
     return confidence

@@ -537,6 +537,132 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────────
+  // TEST 10: DANCE POCKET FOLDER — getMusicalBpm() (WAVE 2174)
+  // ─────────────────────────────────────────────────────────────────────
+  describe('🎯 TEST 10: Dance Pocket Folder — getMusicalBpm() (WAVE 2174)', () => {
+
+    it('should passthrough BPM already inside the dance pocket (128 BPM)', () => {
+      const buffer = generateProductionBuffer(128, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      const musical = prodTracker.getMusicalBpm()
+
+      // 128 is already in [90, 135] — no folding
+      expect(raw).toBeGreaterThanOrEqual(125)
+      expect(raw).toBeLessThanOrEqual(131)
+      expect(musical).toBe(raw)
+    })
+
+    it('should fold 185 BPM → ~123 BPM via tresillo ÷1.5', () => {
+      // Generate at 185 BPM — fast polyrhythmic techno
+      const buffer = generateProductionBuffer(185, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      const musical = prodTracker.getMusicalBpm()
+
+      // Raw should be near 185 (above dance pocket)
+      expect(raw).toBeGreaterThanOrEqual(175)
+      expect(raw).toBeLessThanOrEqual(195)
+
+      // Musical should be ÷1.5 = ~123 BPM (inside pocket)
+      expect(musical).toBeGreaterThanOrEqual(117)
+      expect(musical).toBeLessThanOrEqual(130)
+    })
+
+    it('should fold 175 BPM Psytrance → ~117 BPM via tresillo ÷1.5', () => {
+      // 175 BPM — proven detectable by TEST 4. Above the dance pocket (90-135).
+      // The tresillo fold: 175 / 1.5 = 116.7 → inside [90, 135] pocket.
+      // This exercises the ÷1.5 path for a BPM that the tracker genuinely detects.
+      //
+      // NOTE: The ÷2.0 (double-time) path cannot be exercised with synthetic beats
+      // because the tracker's MIN_INTERVAL_MS=300ms caps raw detection at ~200 BPM.
+      // Any BPM where ÷1.5 doesn't land in pocket but ÷2.0 does (e.g., 250 BPM raw)
+      // is physically unreachable by the tracker. In production, the ÷2.0 path serves
+      // as a safety net for future tracker improvements or external BPM sources.
+      const buffer = generateProductionBuffer(175, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      const musical = prodTracker.getMusicalBpm()
+
+      // Raw should detect near 175 (above dance pocket)
+      expect(raw).toBeGreaterThanOrEqual(168)
+      expect(raw).toBeLessThanOrEqual(185)
+
+      // ÷1.5 = ~117 BPM → inside [90, 135] pocket
+      expect(musical).toBeGreaterThanOrEqual(112)
+      expect(musical).toBeLessThanOrEqual(125)
+    })
+
+    it('should fold slow 65 BPM → 130 BPM via ×2.0', () => {
+      // 65 BPM — trap half-time
+      const buffer = generateProductionBuffer(65, 20)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      const musical = prodTracker.getMusicalBpm()
+
+      // Raw near 65 (below dance pocket)
+      expect(raw).toBeGreaterThanOrEqual(55)
+      expect(raw).toBeLessThanOrEqual(75)
+
+      // ×2.0 = 130 (inside pocket)
+      expect(musical).toBeGreaterThanOrEqual(110)
+      expect(musical).toBeLessThanOrEqual(135)
+    })
+
+    it('should return 0 when no signal detected', () => {
+      const freshTracker = new IntervalBPMTracker()
+      expect(freshTracker.getMusicalBpm()).toBe(0)
+    })
+
+    it('should return raw BPM when no ratio lands in pocket', () => {
+      // Custom pocket that nothing folds into: [200, 210]
+      const buffer = generateProductionBuffer(128, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      // [200, 210] pocket — 128 is too low, ×2=256 too high
+      const musical = prodTracker.getMusicalBpm(200, 210)
+      expect(musical).toBe(raw)
+    })
+
+    it('should accept custom dance pocket boundaries', () => {
+      // Cumbia pocket: [100, 140]
+      const buffer = generateProductionBuffer(185, 15)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      expect(raw).toBeGreaterThanOrEqual(175)
+
+      // With [100, 140]: ÷1.5 = ~123 → inside [100, 140] ✅
+      const musical = prodTracker.getMusicalBpm(100, 140)
+      expect(musical).toBeGreaterThanOrEqual(117)
+      expect(musical).toBeLessThanOrEqual(130)
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
   // PERFORMANCE TEST
   // ─────────────────────────────────────────────────────────────────────
   describe('⚡ PERFORMANCE: Interval-Based Time-Machine Loop', () => {

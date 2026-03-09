@@ -76,11 +76,22 @@ export interface GodEarBPMResult {
 
 /** Minimum interval between kicks in milliseconds.
  *  WAVE 2171: raised from 200ms → 300ms.
- *  300ms = 200 BPM absolute ceiling. Brejcha at 126 BPM = 476ms between kicks.
- *  The old 200ms (300 BPM) was allowing double-triggers from flux spikes that
- *  arrive 200-250ms apart on the same kick transient's multi-frame tail.
- *  No legitimate techno/minimal kick can fire twice within 300ms. */
-const MIN_INTERVAL_MS = 300
+ *  WAVE 2175: REVERTED back to 200ms.
+ *
+ *  WHY THE REVERT:
+ *  300ms was set to block the 185 BPM "problem" in Brejcha's polyrhythmic bass.
+ *  But 185 BPM is mathematically correct — the tracker SHOULD see it clearly.
+ *  With 300ms floor: 185 BPM interval = 324ms, but frame-quantized (46.4ms/frame)
+ *  many legitimate 185 BPM intervals land at 278ms (6 frames) → BLOCKED.
+ *  This generates the chaotic bpmBuf=[65,99,144,92,86...] and conf=0.00 in production.
+ *
+ *  THE CORRECT ARCHITECTURE (WAVE 2174/2175):
+ *    - Tracker sees raw rhythm at full resolution (up to 300 BPM)
+ *    - getMusicalBpm() folds the stable raw output into the dance pocket
+ *    - "Don't limit the input data; limit the musical output." — PunkArchytect
+ *
+ *  200ms = 300 BPM absolute ceiling. More than enough for any electronic music. */
+const MIN_INTERVAL_MS = 200
 
 /** Maximum interval between kicks in milliseconds.
  *  1500ms = 40 BPM minimum. Below this is not rhythmic music. */
@@ -323,10 +334,14 @@ export class IntervalBPMTracker {
             //   - Missed kick (1 beat gap → instantBpm = stableBpm/2 → 50% off → REJECT)
             //   - Double-trigger (half-beat gap → instantBpm = stableBpm×2 → 100% off → REJECT)
             //   - Breakdown-end re-entry (wildly different tempo phase → REJECT)
-            // Without a stable reference (cold start), all values are accepted
-            // to allow initial lock-in.
+            //
+            // WAVE 2175: Outlier rejection only activates when the history buffer
+            // is FULL (bpmHistoryCount == BPM_HISTORY_SIZE) AND confidence > 0.3.
+            // During cold start (< 8 kicks), accept all intervals — the median
+            // will self-correct. Activating rejection too early causes lock-in
+            // to a wrong sub-harmonic (e.g., 99 BPM when true BPM is 185).
             let acceptBpm = true
-            if (this.stableBpm > 0) {
+            if (this.bpmHistoryCount >= BPM_HISTORY_SIZE && this.currentConfidence > 0.3) {
               const ratio = instantBpm / this.stableBpm
               if (ratio < 0.65 || ratio > 1.55) {
                 acceptBpm = false  // outlier — skip this measurement
@@ -478,9 +493,78 @@ export class IntervalBPMTracker {
     return confidence
   }
 
-  /** Get current stable BPM */
+  /** Get current stable BPM (raw, unfolded) */
   getBpm(): number {
     return this.stableBpm
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * 🎯 WAVE 2174: DANCE POCKET FOLDER — getMusicalBpm()
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * The tracker measures RAW rhythmic events per minute. That's mathematically
+   * correct — but musically meaningless when the artist uses polyrhythmic
+   * patterns. Boris Brejcha's "Gravity" fires bass events at 185/min (tresillo
+   * 3:2 pattern), but any DJ will tell you it's a 123 BPM track.
+   *
+   * This method folds raw BPM into the "dance pocket" — the tempo range where
+   * humans physically groove. No EDM track is danced at 185 BPM. The body
+   * naturally halves or divides-by-tresillo to find the groove.
+   *
+   * POLYRHYTHMIC RATIOS (music theory, NOT heuristic):
+   *   ÷1.5 (3:2 tresillo / dotted note):
+   *     185 BPM → 123 BPM ✅ (Brejcha, polyrhythmic techno)
+   *     195 BPM → 130 BPM ✅ (fast tresillo house)
+   *
+   *   ÷2.0 (double-time / half-note pulse):
+   *     250 BPM → 125 BPM ✅ (DnB, hardcore → half-time groove)
+   *     270 BPM → 135 BPM ✅ (extreme DnB → half-time groove)
+   *
+   *   ×2.0 (half-time folding up):
+   *     65 BPM → 130 BPM ✅ (trap half-time → double-time groove)
+   *
+   * PRIORITY: tresillo (÷1.5) is tried BEFORE double-time (÷2.0) because
+   * tresillo patterns are far more common in modern electronic music than
+   * pure double-time. If ÷1.5 lands in the pocket, that's the answer.
+   *
+   * @param targetMin - Lower bound of the dance pocket (default 90 BPM)
+   * @param targetMax - Upper bound of the dance pocket (default 135 BPM)
+   * @returns Musical BPM folded into the dance pocket, or raw BPM if
+   *          no folding ratio produces a valid result, or 0 if no signal.
+   */
+  getMusicalBpm(targetMin: number = 90, targetMax: number = 135): number {
+    const raw = this.stableBpm
+    if (raw === 0) return 0
+
+    // Already in the pocket — no folding needed
+    if (raw >= targetMin && raw <= targetMax) return raw
+
+    // Too fast — try polyrhythmic reduction
+    if (raw > targetMax) {
+      // Tresillo first (÷1.5) — the 3:2 polyrhythmic groove
+      const tresBpm = raw / 1.5
+      if (tresBpm >= targetMin && tresBpm <= targetMax) {
+        return Math.round(tresBpm)
+      }
+
+      // Double-time fold (÷2.0) — half-note pulse
+      const halfBpm = raw / 2.0
+      if (halfBpm >= targetMin && halfBpm <= targetMax) {
+        return Math.round(halfBpm)
+      }
+    }
+
+    // Too slow — fold up (×2.0)
+    if (raw < targetMin) {
+      const doubleBpm = raw * 2
+      if (doubleBpm >= targetMin && doubleBpm <= targetMax) {
+        return Math.round(doubleBpm)
+      }
+    }
+
+    // No ratio lands in the pocket — return raw, unfolded
+    return raw
   }
 
   /** Reset tracker state — AMNESIA PROTOCOL */

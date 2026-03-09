@@ -805,9 +805,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     deterministicTimestampMs
   );
 
+  // WAVE 2180.1: pocket bounds en scope del handler, no dentro del if de telemetría
+  const [pocketMin, pocketMax] = getPocketBounds()
+
   // WAVE 2169: DIAGNOSTIC TELEMETRY -- Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
-    const [pocketMin, pocketMax] = getPocketBounds()
     const musicalBpm = bpmTracker.getMusicalBpm(pocketMin, pocketMax);
     console.log(
       `[INTERVAL] F${state.frameCount}` +

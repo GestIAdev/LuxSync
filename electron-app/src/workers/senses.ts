@@ -641,9 +641,13 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // causes interval jitter (BPM bounces 161/173/185). Solution: feed FLUX
   // (onset spikes) instead of raw energy. The Gated Needle pipeline:
   //   1. Compute bass flux (rising edges only — 1 frame wide)
-  //   2. Gate with mid-range flux (kills rolling bass)
-  //   3. Snipe bright transients (centroid > 1500Hz = hi-hat, not kick)
+  //   2. Centroid-based gate (< 800Hz = kick, > 1500Hz = snipe, middle = threshold)
+  //   3. Sniper redundant guard (bright centroid kills needle)
   //   4. Feed clean 1-frame needle to tracker
+  //
+  // REV1 FIX: Original Bozal (midFlux gate) killed Brejcha techno kicks
+  // because minimal techno bombs are SUB-BASS PURE (centroid 60-200Hz,
+  // nearly zero mid energy). Replaced with centroid-based arbiter.
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Keep rawBassEnergy for downstream consumers (audioMetrics, etc.)
@@ -667,26 +671,39 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // Full bass flux = sub-bass flux + bass-only flux (20-250Hz onset)
   const rawBassFlux = rawLowFlux + bassOnlyFlux;
 
-  // -- Step 2: THE GATEKEEPER (El Bozal Logico) ----------------------
-  // A real kick drum attacks across multiple frequency bands simultaneously.
-  // Rolling bass (continuous low-end) rises WITHOUT mid-range attack.
-  // Gate: only pass bass flux if mid-range flux confirms a transient.
+  // -- Step 2: CENTROID-BASED GATING (WAVE 2169 REV1) ---------------
+  // WAVE 2169 original: Bozal gated bass with midFlux > 0.001.
+  // PRODUCTION FAILURE: Brejcha minimal techno kicks are SUB-BASS PURE
+  // (centroid 60-200Hz). They have almost no mid-range energy — the
+  // "click" of the beater is mixed out. The Bozal was killing real kicks.
   //
-  // Threshold 0.001 is ~20dB below typical mid-range kick attack (~0.02-0.05).
-  // This is intentionally LOW -- we want to gate out the bass roll, not miss kicks.
+  // NEW LOGIC: Use spectral centroid as the primary arbiter.
+  //
+  //   centroid < 800Hz  → pure sub/bass transient → PASS (it's a kick)
+  //   centroid > 1500Hz → bright transient → SNIPER (it's a hi-hat/cymbal)
+  //   800-1500Hz grey zone → pass only if bassFlux is significant (> 0.01)
+  //
+  // This is deterministic: centroid is a physical measurement of where
+  // the energy is concentrated. No guessing.
   let needle = 0;
-  if (rawMidFlux > 0.001) {
-    needle = rawBassFlux;
+  if (rawBassFlux > 0.005) { // minimum energy floor — ignore noise
+    if (centroidHz < 800) {
+      // Pure bass/sub-bass transient — kick drum territory
+      needle = rawBassFlux;
+    } else if (centroidHz < 1500) {
+      // Grey zone: could be kick+snare overlap or bass guitar
+      // Pass only if there's a meaningful bass flux
+      if (rawBassFlux > 0.01) {
+        needle = rawBassFlux;
+      }
+    }
+    // centroidHz >= 1500 → bright (hi-hat, cymbal, snare top) → needle stays 0
   }
 
-  // -- Step 3: THE SNIPER (El Francotirador) --------------------------
-  // Hi-hats, cymbals, and crashes have spectral centroid > 1500Hz.
-  // A kick drum concentrates energy below 200Hz (centroid typically < 500Hz).
-  // Even when a kick and hi-hat overlap, the centroid stays below 1500Hz
-  // because the kick's energy dominates in the bass range.
-  //
-  // Exception: very bright clicks/snares. The 0.015 energy floor prevents
-  // sniping tiny noise-floor fluctuations that happen to have high centroid.
+  // -- Step 3: THE SNIPER (El Francotirador) — redundant guard ------
+  // Belt-and-suspenders: if somehow a bright transient leaked through
+  // (e.g. a snare hit with heavy low-end boosting centroid to border zone),
+  // kill it if centroid is clearly bright.
   if (needle > 0.015 && centroidHz > 1500) {
     needle = 0; // SNIPED -- bright transient, not a kick
   }

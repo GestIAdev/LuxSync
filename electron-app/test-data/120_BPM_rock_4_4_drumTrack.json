@@ -1,0 +1,8002 @@
+[
+  {
+    "timestampMs": 92.87981859410431,
+    "rawLowFlux": 0.01588190822188709,
+    "rawMidFlux": 0.028264033618174995,
+    "rawBassFlux": 0.06511148099564795,
+    "centroid": 1075.223311302824,
+    "needle": 0.06511148099564795
+  },
+  {
+    "timestampMs": 139.31972789115645,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.002616337136086798,
+    "rawBassFlux": 0,
+    "centroid": 975.3823701612439,
+    "needle": 0
+  },
+  {
+    "timestampMs": 185.75963718820861,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1320.9747094724498,
+    "needle": 0
+  },
+  {
+    "timestampMs": 232.19954648526078,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 774.5090568674538,
+    "needle": 0
+  },
+  {
+    "timestampMs": 278.6394557823129,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 676.2353085166324,
+    "needle": 0
+  },
+  {
+    "timestampMs": 325.07936507936506,
+    "rawLowFlux": 0.04186912809668766,
+    "rawMidFlux": 0.010267734892451119,
+    "rawBassFlux": 0.10799673855316214,
+    "centroid": 2269.6558885751724,
+    "needle": 0
+  },
+  {
+    "timestampMs": 371.51927437641723,
+    "rawLowFlux": 0.12799913298111354,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.22946856487823236,
+    "centroid": 771.7237997374273,
+    "needle": 0.22946856487823236
+  },
+  {
+    "timestampMs": 417.9591836734694,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 178.51878275081555,
+    "needle": 0
+  },
+  {
+    "timestampMs": 464.39909297052156,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 111.34361003367793,
+    "needle": 0
+  },
+  {
+    "timestampMs": 510.83900226757373,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00906016206151894,
+    "rawBassFlux": 0,
+    "centroid": 2150.2295125309615,
+    "needle": 0
+  },
+  {
+    "timestampMs": 557.2789115646258,
+    "rawLowFlux": 0.13663707710781497,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.24578127247070525,
+    "centroid": 193.7750771233611,
+    "needle": 0.24578127247070525
+  },
+  {
+    "timestampMs": 603.7188208616781,
+    "rawLowFlux": 0.059943006143881594,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.059943006143881594,
+    "centroid": 72.58147923214898,
+    "needle": 0.059943006143881594
+  },
+  {
+    "timestampMs": 650.1587301587301,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 84.5318649720595,
+    "needle": 0
+  },
+  {
+    "timestampMs": 696.5986394557823,
+    "rawLowFlux": 0.0031222598129769102,
+    "rawMidFlux": 0.0102314610340663,
+    "rawBassFlux": 0.0031222598129769102,
+    "centroid": 1602.3322808036778,
+    "needle": 0
+  },
+  {
+    "timestampMs": 743.0385487528345,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.019958116140370255,
+    "rawBassFlux": 0.09858173312811946,
+    "centroid": 1891.4443718257032,
+    "needle": 0
+  },
+  {
+    "timestampMs": 789.4784580498866,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.009121875164695356,
+    "rawBassFlux": 0,
+    "centroid": 2298.434285300132,
+    "needle": 0
+  },
+  {
+    "timestampMs": 835.9183673469388,
+    "rawLowFlux": 0.0073621988603575945,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0073621988603575945,
+    "centroid": 1220.1374168249727,
+    "needle": 0
+  },
+  {
+    "timestampMs": 882.358276643991,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4453.62164339407,
+    "needle": 0
+  },
+  {
+    "timestampMs": 928.7981859410431,
+    "rawLowFlux": 0.005532264965405816,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005532264965405816,
+    "centroid": 9109.77175701135,
+    "needle": 0
+  },
+  {
+    "timestampMs": 975.2380952380952,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8979.765394443448,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1021.6780045351475,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8275.009451461034,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1068.1179138321995,
+    "rawLowFlux": 0.03148632636372968,
+    "rawMidFlux": 0.010577772802933318,
+    "rawBassFlux": 0.08605980014540407,
+    "centroid": 3249.4994118743093,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1114.5578231292516,
+    "rawLowFlux": 0.10735561849118451,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.22661874953688754,
+    "centroid": 210.14262622772412,
+    "needle": 0.22661874953688754
+  },
+  {
+    "timestampMs": 1160.9977324263039,
+    "rawLowFlux": 0.021031483107311233,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.021031483107311233,
+    "centroid": 99.80199420803076,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1207.4376417233561,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 87.03490496671611,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1253.8775510204082,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 78.07508087460042,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1300.3174603174602,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00035682546890251487,
+    "rawBassFlux": 0,
+    "centroid": 1867.1950452757837,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1346.7573696145125,
+    "rawLowFlux": 0.002557140610507262,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.009827449212026492,
+    "centroid": 75.1673372092219,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1393.1972789115646,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00021061376696050022,
+    "rawBassFlux": 0,
+    "centroid": 78.94771229934662,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1439.6371882086166,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.004004778028575045,
+    "rawBassFlux": 0,
+    "centroid": 3109.203399602019,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1486.077097505669,
+    "rawLowFlux": 0.008200502243425861,
+    "rawMidFlux": 0.027984597909992703,
+    "rawBassFlux": 0.1278680224012049,
+    "centroid": 1835.656263190684,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1532.5170068027212,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.006898548240165739,
+    "rawBassFlux": 0,
+    "centroid": 2200.525447914829,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1578.9569160997733,
+    "rawLowFlux": 0.00741653815987179,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00741653815987179,
+    "centroid": 1221.6196837122566,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1625.3968253968253,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1649.239130019234,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1671.8367346938776,
+    "rawLowFlux": 0.00012866361469716838,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00012866361469716838,
+    "centroid": 1290.6146241938168,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1718.2766439909296,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 889.6368905906161,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1764.716553287982,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 751.1788087755559,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1811.156462585034,
+    "rawLowFlux": 0.020791546680502954,
+    "rawMidFlux": 0.007828637196321932,
+    "rawBassFlux": 0.05666871601686776,
+    "centroid": 3856.5413419541105,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1857.5963718820863,
+    "rawLowFlux": 0.13755355171312994,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.2663497815629812,
+    "centroid": 292.17331408322934,
+    "needle": 0.2663497815629812
+  },
+  {
+    "timestampMs": 1904.0362811791383,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 176.58572126438153,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1950.4761904761904,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 113.22118986421539,
+    "needle": 0
+  },
+  {
+    "timestampMs": 1996.9160997732426,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.015975175560928728,
+    "rawBassFlux": 0.043204008873391625,
+    "centroid": 1973.5240572474129,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2043.356009070295,
+    "rawLowFlux": 0.11642280329365927,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.17077592877606676,
+    "centroid": 199.56541387470625,
+    "needle": 0.17077592877606676
+  },
+  {
+    "timestampMs": 2089.795918367347,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.89730622145166,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2136.235827664399,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 190.75090393977237,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2182.675736961451,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.03160868914232334,
+    "rawBassFlux": 0.057939458132131624,
+    "centroid": 1700.348011610086,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2229.115646258503,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1774.761240873441,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2275.5555555555557,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1149.9651370034073,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2321.9954648526077,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2027.596359610426,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2368.4353741496598,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 858.7630364497621,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2414.8752834467123,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 514.2186607188687,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2461.315192743764,
+    "rawLowFlux": 0.0759762691167701,
+    "rawMidFlux": 0.014758587886342062,
+    "rawBassFlux": 0.17602810031175686,
+    "centroid": 2154.3363216165803,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2507.7551020408164,
+    "rawLowFlux": 0.028966573075110608,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0738899770047967,
+    "centroid": 193.69383749025866,
+    "needle": 0.0738899770047967
+  },
+  {
+    "timestampMs": 2554.1950113378684,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 331.13731624271315,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2600.6349206349205,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1800.2316176718743,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2647.074829931973,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4844.132738775059,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2693.514739229025,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 84.02584729657158,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2739.954648526077,
+    "rawLowFlux": 0.005221713368865864,
+    "rawMidFlux": 0.027084147738851875,
+    "rawBassFlux": 0.07454280446948353,
+    "centroid": 2103.992524337882,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2786.394557823129,
+    "rawLowFlux": 0.00563813865136476,
+    "rawMidFlux": 0.00845471963576723,
+    "rawBassFlux": 0.03307187589952388,
+    "centroid": 1831.731738818398,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2832.834467120181,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1232.2715375168077,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2879.2743764172333,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1199.273783659841,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2925.714285714286,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1047.7598306738475,
+    "needle": 0
+  },
+  {
+    "timestampMs": 2972.154195011338,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 791.8328962724435,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3018.5941043083903,
+    "rawLowFlux": 0.0034970089045184274,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008510766361829576,
+    "centroid": 3693.192219376157,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3065.0340136054424,
+    "rawLowFlux": 0.11082137329318735,
+    "rawMidFlux": 0.005333851043750252,
+    "rawBassFlux": 0.27695431732094306,
+    "centroid": 674.785533621484,
+    "needle": 0.27695431732094306
+  },
+  {
+    "timestampMs": 3111.473922902494,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 248.3866823475536,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3157.9138321995465,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 285.4207789014571,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3204.3537414965986,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 189.27263848600563,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3250.7936507936506,
+    "rawLowFlux": 0.0714388700032838,
+    "rawMidFlux": 0.014571689208800578,
+    "rawBassFlux": 0.16104043137012744,
+    "centroid": 2056.3180476083235,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3297.233560090703,
+    "rawLowFlux": 0.037706558201089174,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.050281475972364514,
+    "centroid": 749.5202296174874,
+    "needle": 0.050281475972364514
+  },
+  {
+    "timestampMs": 3343.673469387755,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1347.9724720045074,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3390.1133786848072,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.01864498044343973,
+    "rawBassFlux": 0.06997681433916635,
+    "centroid": 1496.9485257136084,
+    "needle": 0.06997681433916635
+  },
+  {
+    "timestampMs": 3436.5532879818593,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.010089008351048138,
+    "rawBassFlux": 0,
+    "centroid": 2955.9710077503923,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3482.9931972789113,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2985.863017537559,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3529.433106575964,
+    "rawLowFlux": 0.006556003164897711,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.006556003164897711,
+    "centroid": 2997.6232706070086,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3575.873015873016,
+    "rawLowFlux": 0.008515106850387606,
+    "rawMidFlux": 0.009615167022073188,
+    "rawBassFlux": 0.031105833516313335,
+    "centroid": 2014.4399286128687,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3622.312925170068,
+    "rawLowFlux": 0.004473259515024187,
+    "rawMidFlux": 0.003383747994864135,
+    "rawBassFlux": 0.05095204144400943,
+    "centroid": 1774.5588281364983,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3668.7528344671205,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.004912681280522073,
+    "rawBassFlux": 0,
+    "centroid": 1730.5490337878916,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3715.1927437641725,
+    "rawLowFlux": 0.010567812964028336,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.03821569139653139,
+    "centroid": 1672.759846823729,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3761.632653061224,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.008873925101825296,
+    "rawBassFlux": 0,
+    "centroid": 1565.170016859624,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3808.0725623582766,
+    "rawLowFlux": 0.12222172677426757,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.25267484419661995,
+    "centroid": 1144.134551546052,
+    "needle": 0.25267484419661995
+  },
+  {
+    "timestampMs": 3854.5124716553287,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0016276643745858008,
+    "rawBassFlux": 0,
+    "centroid": 3890.585682758567,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3900.9523809523807,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4606.155189645596,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3947.3922902494332,
+    "rawLowFlux": 0.005376079384370458,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005376079384370458,
+    "centroid": 4982.079321976107,
+    "needle": 0
+  },
+  {
+    "timestampMs": 3993.8321995464853,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5222.168444517887,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4040.272108843538,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0011076944572713885,
+    "rawBassFlux": 0,
+    "centroid": 4761.825372203797,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4086.71201814059,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4899.453649617162,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4133.151927437642,
+    "rawLowFlux": 0.0011468848138959783,
+    "rawMidFlux": 0.00210281904994434,
+    "rawBassFlux": 0.0011468848138959783,
+    "centroid": 4557.834994749597,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4179.591836734694,
+    "rawLowFlux": 0.023269203176476228,
+    "rawMidFlux": 0.021801724472348145,
+    "rawBassFlux": 0.14625759208346656,
+    "centroid": 1850.4175629200377,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4226.0317460317465,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2783.743252560561,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4272.471655328798,
+    "rawLowFlux": 0.0075723243682277765,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0075723243682277765,
+    "centroid": 2183.9875025327174,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4318.91156462585,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2740.582031456152,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4365.351473922902,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3661.8298158696907,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4411.791383219955,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3899.8314824923505,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4458.231292517006,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3999.1543935566588,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4504.671201814059,
+    "rawLowFlux": 0.0011287501285416354,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00277731098728784,
+    "centroid": 3840.4432969254462,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4551.111111111111,
+    "rawLowFlux": 0.22310185561953003,
+    "rawMidFlux": 0.004545663851726412,
+    "rawBassFlux": 0.36618935797243524,
+    "centroid": 491.8587565783686,
+    "needle": 0.36618935797243524
+  },
+  {
+    "timestampMs": 4597.551020408163,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 269.9867387713842,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4643.990929705215,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0007318806981599217,
+    "rawBassFlux": 0,
+    "centroid": 936.66760214975,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4690.430839002268,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2556.1387106852158,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4736.8707482993195,
+    "rawLowFlux": 0.1113007393495506,
+    "rawMidFlux": 0.008096421677367653,
+    "rawBassFlux": 0.25662131256264137,
+    "centroid": 364.98034379018054,
+    "needle": 0.25662131256264137
+  },
+  {
+    "timestampMs": 4783.310657596372,
+    "rawLowFlux": 0.04033891567829595,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.04033891567829595,
+    "centroid": 119.06128810995705,
+    "needle": 0.04033891567829595
+  },
+  {
+    "timestampMs": 4829.750566893425,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 251.37878682505678,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4876.190476190477,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 397.3264110581522,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4922.630385487528,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.03169676577121784,
+    "rawBassFlux": 0.09324407309086029,
+    "centroid": 1743.3170141231653,
+    "needle": 0
+  },
+  {
+    "timestampMs": 4969.07029478458,
+    "rawLowFlux": 0.01618264916820914,
+    "rawMidFlux": 0.004736939537214747,
+    "rawBassFlux": 0.01618264916820914,
+    "centroid": 1829.2033357813189,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5015.510204081633,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00046159519168036817,
+    "rawBassFlux": 0,
+    "centroid": 1048.868458717979,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5061.950113378684,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 856.1531081172927,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5108.390022675737,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 764.4431065957766,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5154.829931972789,
+    "rawLowFlux": 0.00011556639136600091,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00011556639136600091,
+    "centroid": 617.4611742361891,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5201.269841269841,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 700.3493589425889,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5247.7097505668935,
+    "rawLowFlux": 0.000636928576671299,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000636928576671299,
+    "centroid": 1922.9784837701072,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5294.149659863946,
+    "rawLowFlux": 0.1267879263958934,
+    "rawMidFlux": 0.014650461001667905,
+    "rawBassFlux": 0.27478325360869627,
+    "centroid": 836.723603244473,
+    "needle": 0.27478325360869627
+  },
+  {
+    "timestampMs": 5340.589569160998,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 119.74568748747846,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5387.02947845805,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 145.99257939623075,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5433.469387755103,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.61556718749199,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5479.909297052154,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1455.5598070567712,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5526.349206349207,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 106.16041027133954,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5572.789115646258,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00007831123477367719,
+    "rawBassFlux": 0,
+    "centroid": 149.90085116513802,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5619.22902494331,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0031519192823308093,
+    "rawBassFlux": 0,
+    "centroid": 1785.656700301318,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5665.668934240362,
+    "rawLowFlux": 0.0315034266043863,
+    "rawMidFlux": 0.032936626799098666,
+    "rawBassFlux": 0.13465378303686568,
+    "centroid": 1967.8009779096985,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5712.108843537415,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1943.8377009884682,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5758.5487528344665,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1044.707963847378,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5804.988662131519,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1442.0279041689494,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5851.428571428572,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 955.5240846058375,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5897.868480725624,
+    "rawLowFlux": 0.0006754144486508375,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0006754144486508375,
+    "centroid": 588.7063029656954,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5944.308390022676,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 613.2018801077588,
+    "needle": 0
+  },
+  {
+    "timestampMs": 5990.748299319728,
+    "rawLowFlux": 0.034499568155482205,
+    "rawMidFlux": 0.00927193294384357,
+    "rawBassFlux": 0.09335497593635589,
+    "centroid": 2386.6964492093734,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6037.188208616781,
+    "rawLowFlux": 0.1008869720539946,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.18149727580672614,
+    "centroid": 435.50039575439274,
+    "needle": 0.18149727580672614
+  },
+  {
+    "timestampMs": 6083.628117913832,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 182.56803945831,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6130.068027210885,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 136.2500393396977,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6176.507936507937,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.004025055267542207,
+    "rawBassFlux": 0,
+    "centroid": 2168.3370414151664,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6222.947845804988,
+    "rawLowFlux": 0.21986854233309389,
+    "rawMidFlux": 0.0028759640146544755,
+    "rawBassFlux": 0.34345404370585275,
+    "centroid": 163.31687591245012,
+    "needle": 0.34345404370585275
+  },
+  {
+    "timestampMs": 6269.3877551020405,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 136.1171232792975,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6315.827664399093,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 88.87563910154331,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6362.267573696145,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02941754418868485,
+    "rawBassFlux": 0.07529427695124684,
+    "centroid": 1631.7120858809863,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6408.707482993197,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0045348529204704766,
+    "rawBassFlux": 0,
+    "centroid": 1929.0645948222916,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6455.14739229025,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00045208500431655196,
+    "rawBassFlux": 0,
+    "centroid": 1346.0354719441095,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6501.587301587301,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 906.045499827532,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6548.027210884354,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 6592.870338489081,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6594.467120181406,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8363.82039372212,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6640.907029478458,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8079.049302157463,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6687.34693877551,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8039.120592178149,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6733.786848072563,
+    "rawLowFlux": 0.004484107592296141,
+    "rawMidFlux": 0.0011064181572178712,
+    "rawBassFlux": 0.011814645408440783,
+    "centroid": 4843.929874749242,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6780.2267573696145,
+    "rawLowFlux": 0.21212178454654107,
+    "rawMidFlux": 0.005879078462378497,
+    "rawBassFlux": 0.3666358048927061,
+    "centroid": 263.751765560561,
+    "needle": 0.3666358048927061
+  },
+  {
+    "timestampMs": 6826.666666666667,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 103.46415379557783,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6873.106575963719,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 99.22077364023714,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6919.546485260771,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 257.05285699464935,
+    "needle": 0
+  },
+  {
+    "timestampMs": 6965.986394557823,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0002441698442125157,
+    "rawBassFlux": 0,
+    "centroid": 5299.510798852572,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7012.426303854875,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 190.2465492676944,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7058.866213151928,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 178.55884864606966,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7105.306122448979,
+    "rawLowFlux": 0.0009953746617263788,
+    "rawMidFlux": 0.005378646719070752,
+    "rawBassFlux": 0.00321947355802456,
+    "centroid": 2267.241896606816,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7151.746031746032,
+    "rawLowFlux": 0.029488813017300497,
+    "rawMidFlux": 0.02787294206742413,
+    "rawBassFlux": 0.13926377958968827,
+    "centroid": 1741.1597562828856,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7198.185941043084,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0010969632375171096,
+    "rawBassFlux": 0,
+    "centroid": 1829.5492911754973,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7244.625850340136,
+    "rawLowFlux": 0.00034735574323421434,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00034735574323421434,
+    "centroid": 1140.3835287701158,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7291.065759637188,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1131.1394643495287,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7337.505668934241,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1157.198819862105,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7383.9455782312925,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 697.8732793886928,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7430.385487528345,
+    "rawLowFlux": 0.0006793680111957894,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0006793680111957894,
+    "centroid": 570.8678001478074,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7476.825396825398,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000545749666076394,
+    "centroid": 2592.68657031337,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7523.265306122448,
+    "rawLowFlux": 0.2361395117074021,
+    "rawMidFlux": 0.006689487091672334,
+    "rawBassFlux": 0.3903832820301296,
+    "centroid": 447.607354910154,
+    "needle": 0.3903832820301296
+  },
+  {
+    "timestampMs": 7569.705215419501,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 131.83247849039168,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7616.145124716553,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0016822798800288853,
+    "rawBassFlux": 0,
+    "centroid": 215.6789621399829,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7662.585034013605,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0016549850227971312,
+    "rawBassFlux": 0,
+    "centroid": 2511.2757435390026,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7709.024943310657,
+    "rawLowFlux": 0.12645365803515152,
+    "rawMidFlux": 0.004436856470101532,
+    "rawBassFlux": 0.2957823185734127,
+    "centroid": 190.7574682936605,
+    "needle": 0.2957823185734127
+  },
+  {
+    "timestampMs": 7755.46485260771,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 126.15140812369887,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7801.9047619047615,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.78692527123171,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7848.344671201814,
+    "rawLowFlux": 0.007588614284800899,
+    "rawMidFlux": 0.021030574838917366,
+    "rawBassFlux": 0.0945983077436848,
+    "centroid": 1164.9848426301596,
+    "needle": 0.0945983077436848
+  },
+  {
+    "timestampMs": 7894.7845804988665,
+    "rawLowFlux": 0.0028033439064622315,
+    "rawMidFlux": 0.0049596965662711545,
+    "rawBassFlux": 0.0028033439064622315,
+    "centroid": 2201.3930442015044,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7941.224489795919,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1705.8050524626528,
+    "needle": 0
+  },
+  {
+    "timestampMs": 7987.664399092971,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1199.248714260085,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8034.104308390022,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2325.1356278856756,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8080.544217687076,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 770.3141612861854,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8126.984126984126,
+    "rawLowFlux": 0.0003716456344725371,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0003716456344725371,
+    "centroid": 605.8889694013988,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8173.42403628118,
+    "rawLowFlux": 0.0013501814988686998,
+    "rawMidFlux": 0.00016302518458474573,
+    "rawBassFlux": 0.0028130056293956406,
+    "centroid": 3051.3158458931016,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8219.86394557823,
+    "rawLowFlux": 0.14346348403187204,
+    "rawMidFlux": 0.007066551377785103,
+    "rawBassFlux": 0.29576212028083176,
+    "centroid": 648.7431070484853,
+    "needle": 0.29576212028083176
+  },
+  {
+    "timestampMs": 8266.303854875285,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 173.41077162400532,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8312.743764172335,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 132.29966010428205,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8359.183673469388,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 105.74736372669187,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8405.62358276644,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2724.9349854011707,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8452.063492063493,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 143.0753484754825,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8498.503401360544,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.004382869976042993,
+    "rawBassFlux": 0,
+    "centroid": 1775.2910364706295,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8544.943310657596,
+    "rawLowFlux": 0.004249597513730637,
+    "rawMidFlux": 0.03098072338465368,
+    "rawBassFlux": 0.09680848884037267,
+    "centroid": 1824.777142538821,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8591.383219954649,
+    "rawLowFlux": 0.019332464042913812,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.019332464042913812,
+    "centroid": 1314.1468420802369,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8637.8231292517,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1025.8053415975685,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8684.263038548754,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1183.820670981309,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8730.702947845804,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 708.2506339496882,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8777.142857142857,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 592.4211090675174,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8823.58276643991,
+    "rawLowFlux": 0.0003095047405194595,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0003095047405194595,
+    "centroid": 555.661619409279,
+    "needle": 0
+  },
+  {
+    "timestampMs": 8870.022675736962,
+    "rawLowFlux": 0.14768439323329152,
+    "rawMidFlux": 0.004164862315466287,
+    "rawBassFlux": 0.2698673411904134,
+    "centroid": 377.05874719506727,
+    "needle": 0.2698673411904134
+  },
+  {
+    "timestampMs": 8916.462585034013,
+    "rawLowFlux": 0.02872970824303203,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.05922755353265967,
+    "centroid": 156.02280913215228,
+    "needle": 0.05922755353265967
+  },
+  {
+    "timestampMs": 8962.902494331067,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 128.6391395905496,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9009.342403628118,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.68703252273612,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9055.78231292517,
+    "rawLowFlux": 0.006296276641907211,
+    "rawMidFlux": 0.012550630762423104,
+    "rawBassFlux": 0.039417408274749106,
+    "centroid": 2288.2595388735963,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9102.222222222223,
+    "rawLowFlux": 0.08029385617228098,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.1558215219681165,
+    "centroid": 197.71899971497263,
+    "needle": 0.1558215219681165
+  },
+  {
+    "timestampMs": 9148.662131519273,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 119.45262210850478,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9195.102040816326,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 131.90268294942445,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9241.541950113378,
+    "rawLowFlux": 0.009732290616667735,
+    "rawMidFlux": 0.034740841518175185,
+    "rawBassFlux": 0.07064174184519288,
+    "centroid": 2007.7227182508952,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9287.98185941043,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1716.420460363004,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9334.421768707482,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1071.5701894705578,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9380.861678004536,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5523.232172027672,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9427.301587301587,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7785.599330179885,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9473.741496598639,
+    "rawLowFlux": 0.0016515415895806285,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0016515415895806285,
+    "centroid": 7901.5535446714985,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9520.181405895692,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7352.533779571864,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9566.621315192744,
+    "rawLowFlux": 0.17330129123720406,
+    "rawMidFlux": 0.004112395310716352,
+    "rawBassFlux": 0.2887521054788385,
+    "centroid": 615.5197961168493,
+    "needle": 0.2887521054788385
+  },
+  {
+    "timestampMs": 9613.061224489797,
+    "rawLowFlux": 0.016008965360556543,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.05067087281390735,
+    "centroid": 93.00036831467084,
+    "needle": 0.05067087281390735
+  },
+  {
+    "timestampMs": 9659.50113378685,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 81.83493020737093,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9705.9410430839,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 114.45182114657918,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9752.380952380954,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 6006.948307289578,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9798.820861678005,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1112.3822062425297,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9845.260770975055,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000012534220503887121,
+    "rawBassFlux": 0,
+    "centroid": 194.20942367593483,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9891.70068027211,
+    "rawLowFlux": 0.00397942741563027,
+    "rawMidFlux": 0.030437805176101614,
+    "rawBassFlux": 0.07110015994156728,
+    "centroid": 2123.011494737428,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9938.14058956916,
+    "rawLowFlux": 0.030076944577144993,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.04022032361248533,
+    "centroid": 1891.7413781553842,
+    "needle": 0
+  },
+  {
+    "timestampMs": 9984.580498866213,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1653.41236497605,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10031.020408163266,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1295.334046656669,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10077.460317460318,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2364.0405703601464,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10123.900226757369,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 680.1041814536575,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10170.340136054423,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 626.6166779450921,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10216.780045351474,
+    "rawLowFlux": 0.0002997913640313172,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0002997913640313172,
+    "centroid": 623.6462776262567,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10263.219954648526,
+    "rawLowFlux": 0.16326610992796195,
+    "rawMidFlux": 0.010909275144539357,
+    "rawBassFlux": 0.286149485127497,
+    "centroid": 988.9162036216773,
+    "needle": 0.286149485127497
+  },
+  {
+    "timestampMs": 10309.659863945579,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.012980923961908919,
+    "centroid": 209.620087226966,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10356.099773242631,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 209.3119753598181,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10402.539682539682,
+    "rawLowFlux": 0.016487843274738442,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.016487843274738442,
+    "centroid": 68.70293321389349,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10448.979591836734,
+    "rawLowFlux": 0.05766357474636542,
+    "rawMidFlux": 0.015321945644510063,
+    "rawBassFlux": 0.14455014107318967,
+    "centroid": 1490.2911731910042,
+    "needle": 0.14455014107318967
+  },
+  {
+    "timestampMs": 10495.419501133787,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 161.68214086406033,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10541.859410430838,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 105.59489995186176,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10588.299319727892,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.020359804036197453,
+    "rawBassFlux": 0.04820490723755124,
+    "centroid": 1515.144812120853,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10634.739229024943,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.012933681980815428,
+    "rawBassFlux": 0,
+    "centroid": 1864.7284230289642,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10681.179138321995,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1137.110943712007,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10727.619047619048,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1446.3240263221269,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10774.0589569161,
+    "rawLowFlux": 0.00036284433122301123,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00036284433122301123,
+    "centroid": 702.2222319227154,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10820.49886621315,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 569.6529925911425,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10866.938775510205,
+    "rawLowFlux": 0.04450841390957188,
+    "rawMidFlux": 0.011107223436705069,
+    "rawBassFlux": 0.11367381996132386,
+    "centroid": 2727.5700611138245,
+    "needle": 0
+  },
+  {
+    "timestampMs": 10913.378684807256,
+    "rawLowFlux": 0.0789610096477858,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.16010176776268087,
+    "centroid": 337.20168497037724,
+    "needle": 0.16010176776268087
+  },
+  {
+    "timestampMs": 10959.818594104308,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 138.94900917846195,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11006.258503401361,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 145.87227725384045,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11052.698412698413,
+    "rawLowFlux": 0.01743285688251476,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.01743285688251476,
+    "centroid": 78.65970045581413,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11099.138321995464,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 867.2873358689283,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11145.578231292517,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.34004840092281,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11192.01814058957,
+    "rawLowFlux": 0.00328592793236427,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00328592793236427,
+    "centroid": 64.94198534432617,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11238.45804988662,
+    "rawLowFlux": 0.005007123152984551,
+    "rawMidFlux": 0.02253008175291129,
+    "rawBassFlux": 0.105851615776975,
+    "centroid": 1075.7422056219486,
+    "needle": 0.105851615776975
+  },
+  {
+    "timestampMs": 11284.897959183674,
+    "rawLowFlux": 0.02742584443985283,
+    "rawMidFlux": 0.004403362601010274,
+    "rawBassFlux": 0.02742584443985283,
+    "centroid": 1779.989457065486,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11331.337868480725,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1598.4610166920024,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11377.777777777777,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1930.4183108265572,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11424.21768707483,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1373.185247221804,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11470.657596371882,
+    "rawLowFlux": 0.00019985726573613785,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00019985726573613785,
+    "centroid": 715.4116911991815,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11517.097505668933,
+    "rawLowFlux": 0.0010114914394055128,
+    "rawMidFlux": 0.00011172233213482341,
+    "rawBassFlux": 0.003679224538190625,
+    "centroid": 2972.4672990839777,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11563.537414965987,
+    "rawLowFlux": 0.09560543393908123,
+    "rawMidFlux": 0.01064961101296864,
+    "rawBassFlux": 0.2705693136507291,
+    "centroid": 593.3340757029226,
+    "needle": 0.2705693136507291
+  },
+  {
+    "timestampMs": 11609.977324263038,
+    "rawLowFlux": 0.00923129534882948,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00923129534882948,
+    "centroid": 280.4106584712569,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11656.417233560092,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 225.77540887761884,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11702.857142857143,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 99.0263143796561,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11749.297052154194,
+    "rawLowFlux": 0.10202115916945144,
+    "rawMidFlux": 0.01616657056103871,
+    "rawBassFlux": 0.19937403024858924,
+    "centroid": 1479.4949079220778,
+    "needle": 0.19937403024858924
+  },
+  {
+    "timestampMs": 11795.736961451248,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.029219146200211585,
+    "centroid": 118.19703854340322,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11842.176870748299,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 114.58104414015558,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11888.616780045351,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02029441108669493,
+    "rawBassFlux": 0.07035777248464445,
+    "centroid": 1324.5007387721762,
+    "needle": 0.07035777248464445
+  },
+  {
+    "timestampMs": 11935.056689342404,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.012587095251780776,
+    "rawBassFlux": 0,
+    "centroid": 2009.6584903677858,
+    "needle": 0
+  },
+  {
+    "timestampMs": 11981.496598639456,
+    "rawLowFlux": 0.000042011964289332196,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000042011964289332196,
+    "centroid": 1223.9747463742597,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12027.936507936507,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1205.1281318823446,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12074.376417233561,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7122.826108935893,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12120.816326530612,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8360.17867208874,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12167.256235827665,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8414.722289457282,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12213.696145124717,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8408.844868603534,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12260.13605442177,
+    "rawLowFlux": 0.1672887908924606,
+    "rawMidFlux": 0.00847275506726208,
+    "rawBassFlux": 0.2822188679728038,
+    "centroid": 980.2071115946599,
+    "needle": 0.2822188679728038
+  },
+  {
+    "timestampMs": 12306.57596371882,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.006193622539401006,
+    "centroid": 146.5108935910448,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12353.015873015875,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 123.10167744874474,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12399.455782312925,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 83.020433245034,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12445.895691609976,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2257.4921983010004,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12492.33560090703,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1377.537992751368,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12538.775510204081,
+    "rawLowFlux": 0.0007661379336500098,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0007661379336500098,
+    "centroid": 113.19879555455228,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12585.215419501134,
+    "rawLowFlux": 0.0014906584112920956,
+    "rawMidFlux": 0.013961818703541658,
+    "rawBassFlux": 0.017163272669056297,
+    "centroid": 2817.057127556576,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12631.655328798186,
+    "rawLowFlux": 0.03384246687205392,
+    "rawMidFlux": 0.01951033665936551,
+    "rawBassFlux": 0.12816734135801497,
+    "centroid": 1782.1448820646838,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12678.095238095239,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0035342919582830243,
+    "rawBassFlux": 0,
+    "centroid": 1525.5124821113277,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12724.53514739229,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1023.8886225455765,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12770.975056689344,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1901.9111215604923,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12817.414965986394,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1007.1083275228119,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12863.854875283447,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 799.5522193626202,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12910.2947845805,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 655.3377813850894,
+    "needle": 0
+  },
+  {
+    "timestampMs": 12956.734693877552,
+    "rawLowFlux": 0.08039617592936854,
+    "rawMidFlux": 0.007063358145168015,
+    "rawBassFlux": 0.19677298601416657,
+    "centroid": 1204.8240967945421,
+    "needle": 0.19677298601416657
+  },
+  {
+    "timestampMs": 13003.174603174602,
+    "rawLowFlux": 0.00043361702671770863,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.03710527091768061,
+    "centroid": 344.96176820974483,
+    "needle": 0.03710527091768061
+  },
+  {
+    "timestampMs": 13049.614512471655,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 262.563318031153,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13096.054421768707,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 201.2119949886082,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13142.494331065758,
+    "rawLowFlux": 0.024829896085044486,
+    "rawMidFlux": 0.01412073775906356,
+    "rawBassFlux": 0.08473506429509138,
+    "centroid": 1891.8216991982624,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13188.934240362812,
+    "rawLowFlux": 0.06315373849481193,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.10612318355613173,
+    "centroid": 176.48279580035148,
+    "needle": 0.10612318355613173
+  },
+  {
+    "timestampMs": 13235.374149659863,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 187.81214368534435,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13281.814058956916,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 86.43319397932243,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13328.253968253968,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.021604949361351992,
+    "rawBassFlux": 0.01365900037318394,
+    "centroid": 2796.5697663094493,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13374.69387755102,
+    "rawLowFlux": 0.010676063343470193,
+    "rawMidFlux": 0.010836586622624895,
+    "rawBassFlux": 0.06869273859351564,
+    "centroid": 1924.1005700274623,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13421.133786848071,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1323.395252687036,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13467.573696145126,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1089.8288616426476,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13514.013605442176,
+    "rawLowFlux": 0.0003390214569457459,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0003390214569457459,
+    "centroid": 1127.7462870877373,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13560.453514739229,
+    "rawLowFlux": 0.0012715524058092308,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0012715524058092308,
+    "centroid": 896.750060369178,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13606.893424036281,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 742.9265364898878,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13653.333333333334,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 654.9138089557772,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13699.773242630385,
+    "rawLowFlux": 0.056134086252016185,
+    "rawMidFlux": 0.0109594072852535,
+    "rawBassFlux": 0.14597366998795416,
+    "centroid": 2153.9542992681368,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13746.213151927437,
+    "rawLowFlux": 0.05205194110513444,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0895615071540935,
+    "centroid": 574.307597805712,
+    "needle": 0.0895615071540935
+  },
+  {
+    "timestampMs": 13792.65306122449,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 211.7183993476573,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13839.092970521542,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 210.52647701681764,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13885.532879818595,
+    "rawLowFlux": 0.020421321461982736,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.020421321461982736,
+    "centroid": 265.5833140297348,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13931.972789115645,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2018.1620306327557,
+    "needle": 0
+  },
+  {
+    "timestampMs": 13978.4126984127,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00012645130068452136,
+    "rawBassFlux": 0,
+    "centroid": 132.023623003162,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14024.85260770975,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 144.0657537563257,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14071.292517006803,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 86.81721579938016,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14117.732426303855,
+    "rawLowFlux": 0.021055379120911297,
+    "rawMidFlux": 0.0316573230577057,
+    "rawBassFlux": 0.08935051970835184,
+    "centroid": 2101.122774741311,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14164.172335600908,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1939.4767516760626,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14210.612244897959,
+    "rawLowFlux": 0.00815630761612898,
+    "rawMidFlux": 0.00004021590226047089,
+    "rawBassFlux": 0.00815630761612898,
+    "centroid": 938.0763953399218,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14257.052154195013,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1034.2250784723676,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14303.492063492064,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1671.2120405330668,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14349.931972789114,
+    "rawLowFlux": 0.00048721900741069543,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00048721900741069543,
+    "centroid": 834.1844849328336,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14396.371882086169,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 761.416283970049,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14442.81179138322,
+    "rawLowFlux": 0.0001098189646167976,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0001098189646167976,
+    "centroid": 666.1008570742084,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14489.251700680272,
+    "rawLowFlux": 0.1256627749575377,
+    "rawMidFlux": 0.014516292112026454,
+    "rawBassFlux": 0.2538205984857469,
+    "centroid": 1624.0643828219963,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14535.691609977324,
+    "rawLowFlux": 0.07352287649145484,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.07352287649145484,
+    "centroid": 227.33403269060724,
+    "needle": 0.07352287649145484
+  },
+  {
+    "timestampMs": 14582.131519274377,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 242.40517660327222,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14628.571428571428,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 130.76978827582568,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14675.011337868482,
+    "rawLowFlux": 0.03276521079950068,
+    "rawMidFlux": 0.014603542467272287,
+    "rawBassFlux": 0.1118471716519168,
+    "centroid": 1581.6329597286192,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14721.451247165533,
+    "rawLowFlux": 0.10742550526317934,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.12603349188082036,
+    "centroid": 712.3484816863908,
+    "needle": 0.12603349188082036
+  },
+  {
+    "timestampMs": 14767.891156462585,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1093.422872131592,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14814.331065759638,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 997.6651137825567,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14860.77097505669,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02205586165151522,
+    "rawBassFlux": 0.04747141057813668,
+    "centroid": 1750.6625154707535,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14907.21088435374,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003696714033689128,
+    "rawBassFlux": 0,
+    "centroid": 2780.619499494716,
+    "needle": 0
+  },
+  {
+    "timestampMs": 14953.650793650795,
+    "rawLowFlux": 0.0010776001008330396,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0010776001008330396,
+    "centroid": 3022.753436776617,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15000.090702947846,
+    "rawLowFlux": 0.0007981517529334885,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.05410937144686381,
+    "centroid": 1486.7578374980696,
+    "needle": 0.05410937144686381
+  },
+  {
+    "timestampMs": 15046.530612244896,
+    "rawLowFlux": 0.0015575535770975708,
+    "rawMidFlux": 0.013077309959325538,
+    "rawBassFlux": 0.0015575535770975708,
+    "centroid": 1808.4582095964738,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15092.97052154195,
+    "rawLowFlux": 0.017112960522637107,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.038070876987793476,
+    "centroid": 1561.3321446095326,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15139.410430839001,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1947.1526844756322,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15185.850340136054,
+    "rawLowFlux": 0.06081215682671828,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.11131916743240206,
+    "centroid": 2187.9809979108722,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15232.290249433107,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3522.9026952123722,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15278.730158730159,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4561.805954942653,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15325.17006802721,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5358.452998753688,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15371.609977324264,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5098.816121678485,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15418.049886621315,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0005003875537143666,
+    "rawBassFlux": 0,
+    "centroid": 5113.5932748402865,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15464.489795918367,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4695.7019376680955,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15510.92970521542,
+    "rawLowFlux": 0.0012562791753145596,
+    "rawMidFlux": 0.009401206158689192,
+    "rawBassFlux": 0.017842019668165898,
+    "centroid": 4124.840868241687,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15557.369614512472,
+    "rawLowFlux": 0.048321098533099134,
+    "rawMidFlux": 0.01695688814644531,
+    "rawBassFlux": 0.14288453964362613,
+    "centroid": 1840.643044178238,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15603.809523809523,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2084.631625780442,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15650.249433106575,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2062.2373487608907,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15696.689342403628,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2852.566442088222,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15743.12925170068,
+    "rawLowFlux": 0.003001504973326792,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.003001504973326792,
+    "centroid": 3357.753903789917,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15789.569160997733,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3943.694664497443,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15836.009070294784,
+    "rawLowFlux": 0.001329890905146805,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0013544340349653018,
+    "centroid": 4210.57722116835,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15882.448979591838,
+    "rawLowFlux": 0.027633568987593133,
+    "rawMidFlux": 0.009109748975595272,
+    "rawBassFlux": 0.08023576158863799,
+    "centroid": 2832.3448707788402,
+    "needle": 0
+  },
+  {
+    "timestampMs": 15928.888888888889,
+    "rawLowFlux": 0.10679698708237617,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.18176751003992825,
+    "centroid": 621.1695042401601,
+    "needle": 0.18176751003992825
+  },
+  {
+    "timestampMs": 15975.328798185941,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 598.1234703382668,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16021.768707482996,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1694.337990634805,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16068.208616780044,
+    "rawLowFlux": 0.008985961586531803,
+    "rawMidFlux": 0.002345136362491789,
+    "rawBassFlux": 0.008985961586531803,
+    "centroid": 2461.928994095652,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16114.648526077097,
+    "rawLowFlux": 0.10579598753749905,
+    "rawMidFlux": 0.004100679556556501,
+    "rawBassFlux": 0.2474104492791478,
+    "centroid": 234.71658463984204,
+    "needle": 0.2474104492791478
+  },
+  {
+    "timestampMs": 16161.088435374151,
+    "rawLowFlux": 0.016554524456392078,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.016554524456392078,
+    "centroid": 152.41328701397396,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16207.528344671204,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 388.05317529409956,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16253.968253968253,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.027971072995462278,
+    "rawBassFlux": 0.041490202875444755,
+    "centroid": 1875.3793859707087,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16300.408163265307,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0046461880193873,
+    "rawBassFlux": 0,
+    "centroid": 1812.9992415782672,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16346.84807256236,
+    "rawLowFlux": 0.008568491338820598,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008568491338820598,
+    "centroid": 994.0689889015532,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16393.28798185941,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 937.9564762364189,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16439.72789115646,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1092.4800119467868,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16486.167800453513,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 775.486327621012,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16532.60770975057,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 715.8382996616969,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16579.04761904762,
+    "rawLowFlux": 0.002927541278470072,
+    "rawMidFlux": 0.0001924821993366855,
+    "rawBassFlux": 0.0047563483810905876,
+    "centroid": 3087.324722549276,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16625.48752834467,
+    "rawLowFlux": 0.1970459438967577,
+    "rawMidFlux": 0.007722412890848752,
+    "rawBassFlux": 0.3359790988310559,
+    "centroid": 441.04887693080735,
+    "needle": 0.3359790988310559
+  },
+  {
+    "timestampMs": 16671.927437641723,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 84.49934629716225,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16718.367346938776,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 117.24107625007967,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16764.80725623583,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 269.3978585098602,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16811.24716553288,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1921.793063109176,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16857.687074829933,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 221.69066679986443,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16904.126984126986,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00021295546978758982,
+    "rawBassFlux": 0,
+    "centroid": 732.4599648098939,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16950.566893424035,
+    "rawLowFlux": 0.02925117109632624,
+    "rawMidFlux": 0.03077762397630091,
+    "rawBassFlux": 0.1465100709744891,
+    "centroid": 1611.4312749893277,
+    "needle": 0
+  },
+  {
+    "timestampMs": 16997.006802721087,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.002087869207720916,
+    "rawBassFlux": 0,
+    "centroid": 2158.425865358602,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17043.446712018143,
+    "rawLowFlux": 0.0014632409454398525,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0014632409454398525,
+    "centroid": 1346.1216205812987,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17089.886621315192,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 927.6855021249546,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17136.326530612245,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1595.0737265339988,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17182.766439909297,
+    "rawLowFlux": 0.000796433135453561,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000796433135453561,
+    "centroid": 803.9838787779053,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17229.20634920635,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 581.1042141223502,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17275.6462585034,
+    "rawLowFlux": 0.0017751505081890222,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0041022076289488705,
+    "centroid": 2445.474142559601,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17322.086167800455,
+    "rawLowFlux": 0.16506067916550285,
+    "rawMidFlux": 0.005760248697970661,
+    "rawBassFlux": 0.33722376173605306,
+    "centroid": 416.1225035113807,
+    "needle": 0.33722376173605306
+  },
+  {
+    "timestampMs": 17368.526077097507,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 169.95368516207432,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17414.96598639456,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 138.86383473399323,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17461.40589569161,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 119.3091636046015,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17507.84580498866,
+    "rawLowFlux": 0.10886113687016918,
+    "rawMidFlux": 0.008758312560054082,
+    "rawBassFlux": 0.21430002403502368,
+    "centroid": 832.1430426279887,
+    "needle": 0.21430002403502368
+  },
+  {
+    "timestampMs": 17554.285714285714,
+    "rawLowFlux": 0.035657954061034086,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.05737306317454899,
+    "centroid": 116.24527861782548,
+    "needle": 0.05737306317454899
+  },
+  {
+    "timestampMs": 17600.725623582766,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 132.52142433878404,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17647.16553287982,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 129.41988834935432,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17693.60544217687,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.023218017547344302,
+    "rawBassFlux": 0.06585538924472539,
+    "centroid": 1543.355546214901,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17740.045351473924,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.005814520261290354,
+    "rawBassFlux": 0,
+    "centroid": 1802.8768123403986,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17786.485260770973,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1441.092567073578,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17832.925170068025,
+    "rawLowFlux": 0.008371578277768266,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008371578277768266,
+    "centroid": 1110.299337764834,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17879.36507936508,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7458.147713355682,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17925.804988662134,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8114.355744468132,
+    "needle": 0
+  },
+  {
+    "timestampMs": 17972.244897959183,
+    "rawLowFlux": 0.0006184748292695966,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0006184748292695966,
+    "centroid": 7781.301181772254,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18018.684807256235,
+    "rawLowFlux": 0.13678730619925886,
+    "rawMidFlux": 0.006098040876138929,
+    "rawBassFlux": 0.24638240776559403,
+    "centroid": 860.0704949501504,
+    "needle": 0.24638240776559403
+  },
+  {
+    "timestampMs": 18065.124716553288,
+    "rawLowFlux": 0.004937220760276112,
+    "rawMidFlux": 0.00006942790236320537,
+    "rawBassFlux": 0.028561271153718412,
+    "centroid": 170.63998133200445,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18111.56462585034,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 75.36277626703566,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18158.004535147393,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0003076433878954753,
+    "rawBassFlux": 0,
+    "centroid": 117.87227384232412,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18204.444444444445,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3133.208330196131,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18250.884353741498,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 394.55719459396727,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18297.324263038547,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 88.9908512050378,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18343.7641723356,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.006581518105397288,
+    "rawBassFlux": 0.0026059685164066906,
+    "centroid": 1926.5725147427484,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18390.20408163265,
+    "rawLowFlux": 0.042760799941256776,
+    "rawMidFlux": 0.02543313879219304,
+    "rawBassFlux": 0.14503021953622633,
+    "centroid": 1755.9748480838853,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18436.643990929708,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0017209367452918414,
+    "rawBassFlux": 0,
+    "centroid": 1706.2754678658446,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18483.083900226757,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1015.3515694686506,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18529.52380952381,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 876.2635561206898,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18575.96371882086,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 616.7721152954131,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18622.403628117914,
+    "rawLowFlux": 0.0014736148715336643,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.002252033393820363,
+    "centroid": 2622.040528732944,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18668.843537414963,
+    "rawLowFlux": 0.18117468484702218,
+    "rawMidFlux": 0.005343427320589145,
+    "rawBassFlux": 0.3491985156107048,
+    "centroid": 457.3710087209528,
+    "needle": 0.3491985156107048
+  },
+  {
+    "timestampMs": 18715.28344671202,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 171.28601005893393,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18761.72335600907,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 125.43840172436975,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18808.163265306124,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00023963734580286487,
+    "rawBassFlux": 0,
+    "centroid": 474.75907966721735,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18854.603174603173,
+    "rawLowFlux": 0.08408401248397224,
+    "rawMidFlux": 0.012569272033649869,
+    "rawBassFlux": 0.2310405242608903,
+    "centroid": 530.7638895671108,
+    "needle": 0.2310405242608903
+  },
+  {
+    "timestampMs": 18901.043083900226,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.56980354779164,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18947.482993197278,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 98.76100617771647,
+    "needle": 0
+  },
+  {
+    "timestampMs": 18993.92290249433,
+    "rawLowFlux": 0.003352700173099535,
+    "rawMidFlux": 0.006680582055827227,
+    "rawBassFlux": 0.003352700173099535,
+    "centroid": 1544.3983237953648,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19040.362811791383,
+    "rawLowFlux": 0.017479061114333748,
+    "rawMidFlux": 0.021235689138717345,
+    "rawBassFlux": 0.14057003129303178,
+    "centroid": 1360.4300911598723,
+    "needle": 0.14057003129303178
+  },
+  {
+    "timestampMs": 19086.802721088436,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1955.7666335452839,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19133.242630385488,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1356.4498796317355,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19179.682539682537,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1296.8716191030765,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19226.122448979593,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 874.1362377200292,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19272.562358276646,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 577.3015483843736,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19319.0022675737,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 562.9234737847798,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19365.442176870747,
+    "rawLowFlux": 0.13856771663283007,
+    "rawMidFlux": 0.007522025070623491,
+    "rawBassFlux": 0.24461579059529695,
+    "centroid": 673.7910225160621,
+    "needle": 0.24461579059529695
+  },
+  {
+    "timestampMs": 19411.8820861678,
+    "rawLowFlux": 0.011078597166393894,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.029734082736487796,
+    "centroid": 212.5920305987784,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19458.321995464852,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 111.62665210423675,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19504.76190476191,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00044290245281262627,
+    "rawBassFlux": 0,
+    "centroid": 137.462262831333,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19551.201814058957,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2914.2739670804867,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19597.64172335601,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 117.90139180539398,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19644.081632653062,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 81.49740879287755,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19690.52154195011,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003284814824683602,
+    "rawBassFlux": 0,
+    "centroid": 1921.4153795321026,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19736.961451247163,
+    "rawLowFlux": 0.012125662732441363,
+    "rawMidFlux": 0.032185271662673244,
+    "rawBassFlux": 0.10690972912654197,
+    "centroid": 1913.9069542462582,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19783.40136054422,
+    "rawLowFlux": 0.0072895354089069775,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0072895354089069775,
+    "centroid": 1245.7689844323077,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19829.841269841272,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 995.782343035865,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19876.28117913832,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 986.8925874585251,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19922.721088435374,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 598.6105676042445,
+    "needle": 0
+  },
+  {
+    "timestampMs": 19969.160997732426,
+    "rawLowFlux": 0.0012185702310399582,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0017216098131180421,
+    "centroid": 2497.99694885665,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20015.60090702948,
+    "rawLowFlux": 0.13311106237399528,
+    "rawMidFlux": 0.006011233451785305,
+    "rawBassFlux": 0.27092205778555145,
+    "centroid": 703.1141466937283,
+    "needle": 0.27092205778555145
+  },
+  {
+    "timestampMs": 20062.04081632653,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 166.21934048565421,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20108.480725623584,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 111.28691040122789,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20154.920634920636,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 97.78558307703386,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20201.360544217685,
+    "rawLowFlux": 0.0830874233042338,
+    "rawMidFlux": 0.014794456837251765,
+    "rawBassFlux": 0.17750434773711085,
+    "centroid": 1456.7948532522942,
+    "needle": 0.17750434773711085
+  },
+  {
+    "timestampMs": 20247.800453514737,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008725434394827106,
+    "centroid": 104.60182130271194,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20294.24036281179,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 97.33822839587945,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20340.680272108846,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 83.50000262699447,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20387.120181405895,
+    "rawLowFlux": 0.005016173884247209,
+    "rawMidFlux": 0.02264261298048585,
+    "rawBassFlux": 0.06662244216069864,
+    "centroid": 1477.5164111222875,
+    "needle": 0.06662244216069864
+  },
+  {
+    "timestampMs": 20433.560090702947,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.012910456967571891,
+    "rawBassFlux": 0,
+    "centroid": 1749.6835220134194,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20480,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1164.7072641319112,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20526.439909297053,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 998.7796605399582,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20572.8798185941,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7624.826182029594,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20619.319727891158,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8541.25420205006,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20665.75963718821,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7411.256145574522,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20712.199546485263,
+    "rawLowFlux": 0.0009626817834409876,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0013228271370583809,
+    "centroid": 7390.636980910769,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20758.63945578231,
+    "rawLowFlux": 0.10000060615540088,
+    "rawMidFlux": 0.009853860446660137,
+    "rawBassFlux": 0.27338150508434783,
+    "centroid": 486.135480447027,
+    "needle": 0.27338150508434783
+  },
+  {
+    "timestampMs": 20805.079365079364,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 106.54851856309523,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20851.519274376416,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 124.552184898039,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20897.95918367347,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 91.73878114715579,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20944.39909297052,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8794.988146497662,
+    "needle": 0
+  },
+  {
+    "timestampMs": 20990.839002267574,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2372.9890793648656,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21037.278911564626,
+    "rawLowFlux": 0.0006070717861758582,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000641657848362392,
+    "centroid": 137.24330651145036,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21083.718820861675,
+    "rawLowFlux": 0.004266384553237418,
+    "rawMidFlux": 0.026792467836285496,
+    "rawBassFlux": 0.05842965292039878,
+    "centroid": 2080.4767747863834,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21130.15873015873,
+    "rawLowFlux": 0.011472260660918498,
+    "rawMidFlux": 0.004173573521926363,
+    "rawBassFlux": 0.05788481495695103,
+    "centroid": 1824.215185569864,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21176.598639455784,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1248.261012701753,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21223.038548752837,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1039.0807152233062,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21269.478458049885,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1564.2143669555876,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21315.918367346938,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 735.9595345849417,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21362.35827664399,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 705.2100206971222,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21408.798185941047,
+    "rawLowFlux": 0.00040080665444641554,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00040080665444641554,
+    "centroid": 625.4913641940481,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21455.238095238095,
+    "rawLowFlux": 0.10288207642305447,
+    "rawMidFlux": 0.007897079911311798,
+    "rawBassFlux": 0.23151245830834874,
+    "centroid": 1088.962076797304,
+    "needle": 0.23151245830834874
+  },
+  {
+    "timestampMs": 21501.678004535148,
+    "rawLowFlux": 0.09316946787029003,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.09316946787029003,
+    "centroid": 367.15284690882265,
+    "needle": 0.09316946787029003
+  },
+  {
+    "timestampMs": 21548.1179138322,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 221.16406955513227,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21594.55782312925,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 120.79619485198458,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21640.9977324263,
+    "rawLowFlux": 0.050262968900136054,
+    "rawMidFlux": 0.014838199657246556,
+    "rawBassFlux": 0.1380094479550683,
+    "centroid": 1318.7914521629102,
+    "needle": 0.1380094479550683
+  },
+  {
+    "timestampMs": 21687.437641723358,
+    "rawLowFlux": 0.03792135044873961,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.04080572228600188,
+    "centroid": 190.20824386758872,
+    "needle": 0.04080572228600188
+  },
+  {
+    "timestampMs": 21733.87755102041,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 109.3136583443549,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21780.31746031746,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 96.35437343791268,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21826.757369614512,
+    "rawLowFlux": 0.0051980014096121505,
+    "rawMidFlux": 0.01246386620407418,
+    "rawBassFlux": 0.0051980014096121505,
+    "centroid": 1637.0987494805759,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21873.197278911564,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.016088424551114762,
+    "rawBassFlux": 0.08056720152704257,
+    "centroid": 1615.807774166109,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21919.637188208617,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1781.4546754772105,
+    "needle": 0
+  },
+  {
+    "timestampMs": 21966.07709750567,
+    "rawLowFlux": 0.008518293235083938,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008518293235083938,
+    "centroid": 1407.5115740057595,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22012.517006802722,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1798.0307794825476,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22058.956916099774,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1296.5994208358936,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22105.396825396827,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 642.563570251726,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22151.836734693876,
+    "rawLowFlux": 0.0032417505563841495,
+    "rawMidFlux": 0.0011137301395759995,
+    "rawBassFlux": 0.006722549042638055,
+    "centroid": 4467.260049869238,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22198.27664399093,
+    "rawLowFlux": 0.1800940023926642,
+    "rawMidFlux": 0.006628248897227905,
+    "rawBassFlux": 0.30866884568996905,
+    "centroid": 462.57857150595163,
+    "needle": 0.30866884568996905
+  },
+  {
+    "timestampMs": 22244.716553287984,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 126.7569066474656,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22291.156462585033,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 85.37290226092978,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22337.596371882086,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 78.59375163371875,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22384.03628117914,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0004045294057524313,
+    "rawBassFlux": 0,
+    "centroid": 1464.5198691550004,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22430.47619047619,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 360.2384649785805,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22476.91609977324,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 80.28363608282638,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22523.356009070296,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 73.76915426518393,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22569.79591836735,
+    "rawLowFlux": 0.011482697228991923,
+    "rawMidFlux": 0.021170593317392974,
+    "rawBassFlux": 0.10977363050803413,
+    "centroid": 1376.411152991614,
+    "needle": 0.10977363050803413
+  },
+  {
+    "timestampMs": 22616.2358276644,
+    "rawLowFlux": 0.004262927703879073,
+    "rawMidFlux": 0.01232709472624658,
+    "rawBassFlux": 0.004262927703879073,
+    "centroid": 2054.429448408059,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22662.67573696145,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1246.7269334968084,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22709.115646258502,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1063.8444065648687,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22755.555555555555,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1872.4954294768597,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22801.995464852607,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 931.5126147162895,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22848.43537414966,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 677.8107113655486,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22894.875283446712,
+    "rawLowFlux": 0.00252163229563814,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005342587709388159,
+    "centroid": 2748.9793983239574,
+    "needle": 0
+  },
+  {
+    "timestampMs": 22941.315192743765,
+    "rawLowFlux": 0.1713573336996061,
+    "rawMidFlux": 0.005314075833773163,
+    "rawBassFlux": 0.2965052009101651,
+    "centroid": 694.6775343898639,
+    "needle": 0.2965052009101651
+  },
+  {
+    "timestampMs": 22987.755102040814,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 344.27709492957206,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23034.195011337866,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 166.42865262243794,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23080.634920634922,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0005516768160919116,
+    "rawBassFlux": 0,
+    "centroid": 885.6765000887343,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23127.074829931975,
+    "rawLowFlux": 0.1563356355525108,
+    "rawMidFlux": 0.010866977424899067,
+    "rawBassFlux": 0.2849269767482398,
+    "centroid": 525.0534743076267,
+    "needle": 0.2849269767482398
+  },
+  {
+    "timestampMs": 23173.514739229024,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 162.67316503426065,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23219.954648526076,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 115.20451630399535,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23266.39455782313,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02106442656955293,
+    "rawBassFlux": 0.0744456453015095,
+    "centroid": 1372.0408750029374,
+    "needle": 0.0744456453015095
+  },
+  {
+    "timestampMs": 23312.834467120185,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.009449385261236651,
+    "rawBassFlux": 0,
+    "centroid": 1754.426682259932,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23359.274376417234,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1257.396910661255,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23405.714285714286,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1188.9399431023317,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23452.15419501134,
+    "rawLowFlux": 0.0024004826117761634,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0024004826117761634,
+    "centroid": 8252.920860427574,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23498.594104308388,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8125.631606955249,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23545.03401360544,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7785.9505556757895,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23591.473922902496,
+    "rawLowFlux": 0.004442914642787933,
+    "rawMidFlux": 0.002040996090726872,
+    "rawBassFlux": 0.013819012064760947,
+    "centroid": 4482.782167802899,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23637.91383219955,
+    "rawLowFlux": 0.2264574688329387,
+    "rawMidFlux": 0.0004693437010316326,
+    "rawBassFlux": 0.35709815517734356,
+    "centroid": 260.6726577170996,
+    "needle": 0.35709815517734356
+  },
+  {
+    "timestampMs": 23684.353741496598,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 136.94478089295683,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23730.79365079365,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 128.33698504542485,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23777.233560090703,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 102.91275569001131,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23823.673469387755,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 9326.397454293678,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23870.113378684808,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 984.8710457268483,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23916.55328798186,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 196.57604299478388,
+    "needle": 0
+  },
+  {
+    "timestampMs": 23962.993197278913,
+    "rawLowFlux": 0.021222097888922955,
+    "rawMidFlux": 0.0248572077104578,
+    "rawBassFlux": 0.10672235358902049,
+    "centroid": 1811.5871654869907,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24009.433106575965,
+    "rawLowFlux": 0.012822869131934988,
+    "rawMidFlux": 0.006878643793165239,
+    "rawBassFlux": 0.014815766886344072,
+    "centroid": 1813.046278656206,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24055.873015873014,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1324.8545010287623,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24102.312925170067,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1137.0778907189215,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24148.752834467123,
+    "rawLowFlux": 0.0018548344173741943,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0018548344173741943,
+    "centroid": 2348.421858698837,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24195.19274376417,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 827.1253454516792,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24241.632653061224,
+    "rawLowFlux": 0.0007964083089199816,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0007964083089199816,
+    "centroid": 675.2643621201745,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24288.072562358277,
+    "rawLowFlux": 0.1328993323035044,
+    "rawMidFlux": 0.011993603963256366,
+    "rawBassFlux": 0.23956317447314457,
+    "centroid": 1682.295762212652,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24334.51247165533,
+    "rawLowFlux": 0.022407747184776644,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.03484348603932218,
+    "centroid": 197.17673403493282,
+    "needle": 0.03484348603932218
+  },
+  {
+    "timestampMs": 24380.952380952378,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 137.4280027099353,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24427.392290249434,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 129.78235264451467,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24473.832199546487,
+    "rawLowFlux": 0.12290202895193729,
+    "rawMidFlux": 0.0152190640883153,
+    "rawBassFlux": 0.2256216981791871,
+    "centroid": 1242.49105437991,
+    "needle": 0.2256216981791871
+  },
+  {
+    "timestampMs": 24520.27210884354,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.010175177167846633,
+    "centroid": 97.59780469491393,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24566.712018140588,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 246.43939479974335,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24613.15192743764,
+    "rawLowFlux": 0.002292165780544239,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.002292165780544239,
+    "centroid": 152.7269158532973,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24659.591836734693,
+    "rawLowFlux": 0.0025221708342731686,
+    "rawMidFlux": 0.019931951780900636,
+    "rawBassFlux": 0.07858588605223521,
+    "centroid": 1380.6286115616786,
+    "needle": 0.07858588605223521
+  },
+  {
+    "timestampMs": 24706.03174603175,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.009417120867146161,
+    "rawBassFlux": 0,
+    "centroid": 1723.8630995514347,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24752.471655328798,
+    "rawLowFlux": 0.00534426945496989,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00534426945496989,
+    "centroid": 1053.5554405466123,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24798.91156462585,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1184.007959080168,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24845.351473922903,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 841.474909261042,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24891.791383219952,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 658.2208275697618,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24938.231292517004,
+    "rawLowFlux": 0.003337594720509645,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005924064332095567,
+    "centroid": 2802.462241693454,
+    "needle": 0
+  },
+  {
+    "timestampMs": 24984.67120181406,
+    "rawLowFlux": 0.1864538230331687,
+    "rawMidFlux": 0.005911698987579338,
+    "rawBassFlux": 0.3073075935531019,
+    "centroid": 600.3100328359819,
+    "needle": 0.3073075935531019
+  },
+  {
+    "timestampMs": 25031.111111111113,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 182.1397822440637,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25077.551020408162,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 101.87373232697138,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25123.990929705215,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 295.83776237282973,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25170.430839002267,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1962.1777467539628,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25216.87074829932,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0012442555752075254,
+    "centroid": 98.23070695889083,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25263.310657596372,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 78.36168734744217,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25309.750566893425,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.016553711691434058,
+    "rawBassFlux": 0.01623110204984438,
+    "centroid": 1977.099302356258,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25356.190476190477,
+    "rawLowFlux": 0.02037131105602978,
+    "rawMidFlux": 0.012131646788432024,
+    "rawBassFlux": 0.12426245936761261,
+    "centroid": 1739.4744131296552,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25402.630385487526,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2576.102883479328,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25449.07029478458,
+    "rawLowFlux": 0.0045152972106361905,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.009235710787902376,
+    "centroid": 1343.3812706841038,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25495.510204081635,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1372.5740191125205,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25541.950113378687,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1264.926376426768,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25588.390022675736,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 847.6370057835378,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25634.82993197279,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 758.0257784201946,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25681.26984126984,
+    "rawLowFlux": 0.1449325188878949,
+    "rawMidFlux": 0.014543824558086112,
+    "rawBassFlux": 0.2761663955678212,
+    "centroid": 1517.2644557824685,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25727.709750566893,
+    "rawLowFlux": 0.013544733069930703,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.02993877263016259,
+    "centroid": 204.8059449441712,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25774.149659863946,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 226.18612278137124,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25820.589569161,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 187.0818829524771,
+    "needle": 0
+  },
+  {
+    "timestampMs": 25867.02947845805,
+    "rawLowFlux": 0.08189268437688968,
+    "rawMidFlux": 0.006533084320953007,
+    "rawBassFlux": 0.20726229001561092,
+    "centroid": 311.5107162459426,
+    "needle": 0.20726229001561092
+  },
+  {
+    "timestampMs": 25913.469387755104,
+    "rawLowFlux": 0.034885172810282916,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.034885172810282916,
+    "centroid": 643.4227260648655,
+    "needle": 0.034885172810282916
+  },
+  {
+    "timestampMs": 25959.909297052152,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 857.8819539570457,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26006.349206349205,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1106.2270031806772,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26052.78911564626,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02071049685079589,
+    "rawBassFlux": 0.03379201571537149,
+    "centroid": 3066.349873189902,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26099.22902494331,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.008749672743629935,
+    "rawBassFlux": 0,
+    "centroid": 2835.6432856315055,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26145.668934240362,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2011.9374275448938,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26192.108843537415,
+    "rawLowFlux": 0.008286895887806746,
+    "rawMidFlux": 0.013300830970338476,
+    "rawBassFlux": 0.08915203285670885,
+    "centroid": 1459.890945440077,
+    "needle": 0.08915203285670885
+  },
+  {
+    "timestampMs": 26238.548752834467,
+    "rawLowFlux": 0.003729307616123518,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.003729307616123518,
+    "centroid": 1632.7038738330173,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26284.988662131516,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0014734805240995824,
+    "rawBassFlux": 0,
+    "centroid": 1466.5685225908132,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26331.428571428572,
+    "rawLowFlux": 0.12982268396283328,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.21174123520164123,
+    "centroid": 1038.7366496717307,
+    "needle": 0.21174123520164123
+  },
+  {
+    "timestampMs": 26377.868480725625,
+    "rawLowFlux": 0.009814381608713368,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.009814381608713368,
+    "centroid": 2003.1564590968555,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26424.308390022677,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4268.735872828355,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26470.748299319726,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005041908128188537,
+    "centroid": 4764.762960100674,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26517.18820861678,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5057.756057530077,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26563.62811791383,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4830.939630157099,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26610.068027210888,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4678.988941171432,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26656.507936507936,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4845.3146566525575,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26702.94784580499,
+    "rawLowFlux": 0.026599541238258684,
+    "rawMidFlux": 0.02797786317368331,
+    "rawBassFlux": 0.1336756123315378,
+    "centroid": 1793.2906329336354,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26749.38775510204,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2451.6340648155806,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26795.82766439909,
+    "rawLowFlux": 0.0017969763507762974,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0017969763507762974,
+    "centroid": 2283.1446704903296,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26842.267573696143,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3338.266666888799,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26888.7074829932,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3691.3502657878316,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26935.14739229025,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4124.832020968915,
+    "needle": 0
+  },
+  {
+    "timestampMs": 26981.5873015873,
+    "rawLowFlux": 0.0071827522551019445,
+    "rawMidFlux": 0.002565559255367154,
+    "rawBassFlux": 0.020109973986488686,
+    "centroid": 3595.520930853133,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27028.027210884353,
+    "rawLowFlux": 0.18237852394998263,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.3076773696955418,
+    "centroid": 568.2056323288341,
+    "needle": 0.3076773696955418
+  },
+  {
+    "timestampMs": 27074.467120181405,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 393.1904990275071,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27120.907029478458,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1825.3570038232422,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27167.34693877551,
+    "rawLowFlux": 0.001084949449808404,
+    "rawMidFlux": 0.0019052853324783708,
+    "rawBassFlux": 0.001084949449808404,
+    "centroid": 2970.024442225111,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27213.786848072563,
+    "rawLowFlux": 0.12248986119778141,
+    "rawMidFlux": 0.006438330518764372,
+    "rawBassFlux": 0.27677509664199706,
+    "centroid": 344.947388905279,
+    "needle": 0.27677509664199706
+  },
+  {
+    "timestampMs": 27260.226757369615,
+    "rawLowFlux": 0.04028453688194522,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.04028453688194522,
+    "centroid": 153.17803323773208,
+    "needle": 0.04028453688194522
+  },
+  {
+    "timestampMs": 27306.666666666668,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1307.1546593966063,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27353.106575963717,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.02330748829382471,
+    "rawBassFlux": 0.03415278976408105,
+    "centroid": 2043.306933211735,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27399.54648526077,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.007140542112895516,
+    "rawBassFlux": 0.04135383160226997,
+    "centroid": 1835.8877372785732,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27445.986394557825,
+    "rawLowFlux": 0.0020467124329976907,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0020467124329976907,
+    "centroid": 1215.6710081395768,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27492.426303854874,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1196.49059869151,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27538.866213151927,
+    "rawLowFlux": 0.00150037960274266,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00150037960274266,
+    "centroid": 1182.9308399043791,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27585.30612244898,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 765.1493766156193,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27631.74603174603,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1773.4165941995868,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27678.185941043084,
+    "rawLowFlux": 0.057403950032785665,
+    "rawMidFlux": 0.011117160320473598,
+    "rawBassFlux": 0.14874718983462418,
+    "centroid": 1894.1365845950784,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27724.625850340137,
+    "rawLowFlux": 0.085895211325581,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.10547740371442096,
+    "centroid": 315.84401013804137,
+    "needle": 0.10547740371442096
+  },
+  {
+    "timestampMs": 27771.06575963719,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 112.88655484325204,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27817.505668934242,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 85.48105033947905,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27863.94557823129,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0003274835066406441,
+    "rawBassFlux": 0,
+    "centroid": 330.94753579997274,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27910.385487528343,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 345.5825265861471,
+    "needle": 0
+  },
+  {
+    "timestampMs": 27956.8253968254,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00015362852546572394,
+    "rawBassFlux": 0,
+    "centroid": 145.3654109091248,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28003.26530612245,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 130.97313700425156,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28049.7052154195,
+    "rawLowFlux": 0.009972274594560612,
+    "rawMidFlux": 0.023988101578340575,
+    "rawBassFlux": 0.09860971483509581,
+    "centroid": 1314.85739931728,
+    "needle": 0.09860971483509581
+  },
+  {
+    "timestampMs": 28096.145124716553,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.002571869689064924,
+    "rawBassFlux": 0,
+    "centroid": 1975.0530710796718,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28142.585034013606,
+    "rawLowFlux": 0.009464476708509955,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.009464476708509955,
+    "centroid": 1702.5764600965992,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28189.024943310655,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1520.0233424757832,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28235.46485260771,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1317.49380200922,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28281.904761904763,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 687.7835785075547,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28328.344671201816,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 657.4588438586649,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28374.784580498865,
+    "rawLowFlux": 0.03692274365648569,
+    "rawMidFlux": 0.010144081258738762,
+    "rawBassFlux": 0.09755720558255698,
+    "centroid": 1929.6174499248734,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28421.224489795917,
+    "rawLowFlux": 0.09656875668104989,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.13994337871709756,
+    "centroid": 472.0234642584711,
+    "needle": 0.13994337871709756
+  },
+  {
+    "timestampMs": 28467.66439909297,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 95.7883615628315,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28514.104308390026,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 70.74181642091693,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28560.544217687075,
+    "rawLowFlux": 0.09211338041174708,
+    "rawMidFlux": 0.009892329247512216,
+    "rawBassFlux": 0.20476695005870463,
+    "centroid": 449.71285292800064,
+    "needle": 0.20476695005870463
+  },
+  {
+    "timestampMs": 28606.984126984127,
+    "rawLowFlux": 0.06300040118739483,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.06300040118739483,
+    "centroid": 120.81442014449269,
+    "needle": 0.06300040118739483
+  },
+  {
+    "timestampMs": 28653.42403628118,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 97.61600493828189,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28699.86394557823,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0002702056748639574,
+    "rawBassFlux": 0,
+    "centroid": 130.7529587337539,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28746.30385487528,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.021492383118300658,
+    "rawBassFlux": 0.009101778188453716,
+    "centroid": 1892.650920087477,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28792.743764172337,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.01289165063430462,
+    "rawBassFlux": 0.0640550262982175,
+    "centroid": 1597.5479385727208,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28839.18367346939,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1334.5237932041118,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28885.62358276644,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 965.9361593508738,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28932.06349206349,
+    "rawLowFlux": 0.0008208686445233893,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0008208686445233893,
+    "centroid": 5205.875720447834,
+    "needle": 0
+  },
+  {
+    "timestampMs": 28978.503401360544,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8450.082908160623,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29024.943310657596,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8934.961888301299,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29071.38321995465,
+    "rawLowFlux": 0.004296342752655717,
+    "rawMidFlux": 0.002040687462181103,
+    "rawBassFlux": 0.012675448740254482,
+    "centroid": 5220.827454465328,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29117.8231292517,
+    "rawLowFlux": 0.18607440398536584,
+    "rawMidFlux": 0.0014541675260748626,
+    "rawBassFlux": 0.33236379332678817,
+    "centroid": 212.22438564171853,
+    "needle": 0.33236379332678817
+  },
+  {
+    "timestampMs": 29164.263038548754,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 98.34092699398586,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29210.702947845806,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 95.83752475419163,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29257.142857142855,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.19967610361643,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29303.582766439908,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0002083440606070666,
+    "rawBassFlux": 0,
+    "centroid": 5426.019315405139,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29350.022675736964,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 140.78677338049258,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29396.462585034013,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000026832897993534543,
+    "rawBassFlux": 0,
+    "centroid": 165.9791908517299,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29442.902494331065,
+    "rawLowFlux": 0.010286133214842712,
+    "rawMidFlux": 0.018498035722944284,
+    "rawBassFlux": 0.09921311805058983,
+    "centroid": 1825.3262068465247,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29489.342403628118,
+    "rawLowFlux": 0.0034938195842782634,
+    "rawMidFlux": 0.01599913465590564,
+    "rawBassFlux": 0.0034938195842782634,
+    "centroid": 1705.8557367123606,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29535.78231292517,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1043.9357958624917,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29582.222222222223,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 955.4685855740227,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29628.662131519275,
+    "rawLowFlux": 0.0019235178483464157,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0019235178483464157,
+    "centroid": 743.7882434131734,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29675.102040816328,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 594.5059708545724,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29721.54195011338,
+    "rawLowFlux": 0.000004792818512330496,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000004792818512330496,
+    "centroid": 827.2549323414029,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29767.98185941043,
+    "rawLowFlux": 0.1509534018280628,
+    "rawMidFlux": 0.01115351297454872,
+    "rawBassFlux": 0.28963720368856066,
+    "centroid": 1160.0071576153691,
+    "needle": 0.28963720368856066
+  },
+  {
+    "timestampMs": 29814.42176870748,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 231.83519819521007,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29860.861678004538,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 165.32138163653028,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29907.30158730159,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 81.04530002713683,
+    "needle": 0
+  },
+  {
+    "timestampMs": 29953.74149659864,
+    "rawLowFlux": 0.11115932766301549,
+    "rawMidFlux": 0.014110194644654484,
+    "rawBassFlux": 0.2337192000653628,
+    "centroid": 788.421963324988,
+    "needle": 0.2337192000653628
+  },
+  {
+    "timestampMs": 30000.18140589569,
+    "rawLowFlux": 0.09845480615802407,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.09845480615802407,
+    "centroid": 74.49349609997209,
+    "needle": 0.09845480615802407
+  },
+  {
+    "timestampMs": 30046.621315192744,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 84.40507436076598,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30093.061224489793,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.028309708340294247,
+    "rawBassFlux": 0.007733272220483145,
+    "centroid": 1821.745658944602,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30139.50113378685,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.041569661620949994,
+    "centroid": 1686.178324460013,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30185.9410430839,
+    "rawLowFlux": 0.00622702163774487,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00622702163774487,
+    "centroid": 1704.1952624555422,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30232.380952380954,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1211.1695270716864,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30278.820861678003,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1026.402873353723,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30325.260770975055,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 741.375394501898,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30371.700680272108,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 603.6934378841985,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30418.140589569164,
+    "rawLowFlux": 0.10037690373695529,
+    "rawMidFlux": 0.0028551137250986793,
+    "rawBassFlux": 0.1795431447404322,
+    "centroid": 634.9113442765508,
+    "needle": 0.1795431447404322
+  },
+  {
+    "timestampMs": 30464.580498866213,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0006740679359208005,
+    "rawBassFlux": 0.04909094289697845,
+    "centroid": 154.3161068252812,
+    "needle": 0.04909094289697845
+  },
+  {
+    "timestampMs": 30511.020408163266,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 117.14546402198361,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30557.460317460318,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 86.41316790884926,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30603.900226757367,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3000.7596202189193,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30650.34013605442,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 291.4176072972667,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30696.780045351476,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 167.01780850740684,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30743.219954648528,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 115.69809281013356,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30789.659863945577,
+    "rawLowFlux": 0.024893769111164553,
+    "rawMidFlux": 0.029229262210446735,
+    "rawBassFlux": 0.09603687433825048,
+    "centroid": 1775.7146989934852,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30836.09977324263,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003707614995190435,
+    "rawBassFlux": 0,
+    "centroid": 1749.2458373199129,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30882.539682539682,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1054.5044586773884,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30928.979591836734,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1042.7051559187628,
+    "needle": 0
+  },
+  {
+    "timestampMs": 30975.419501133787,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 729.6786187986709,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31021.85941043084,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 578.2650318636033,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31068.299319727892,
+    "rawLowFlux": 0.005924340409647727,
+    "rawMidFlux": 0.0012627757549682063,
+    "rawBassFlux": 0.016774583708529734,
+    "centroid": 2692.363644294324,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31114.739229024945,
+    "rawLowFlux": 0.1461062728432747,
+    "rawMidFlux": 0.003274646916812781,
+    "rawBassFlux": 0.29521490345263923,
+    "centroid": 314.4770712611739,
+    "needle": 0.29521490345263923
+  },
+  {
+    "timestampMs": 31161.179138321993,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 114.90528947881644,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31207.619047619046,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000799167361689986,
+    "rawBassFlux": 0,
+    "centroid": 144.3897073000269,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31254.058956916102,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003279805599616496,
+    "rawBassFlux": 0,
+    "centroid": 2455.510414289001,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31300.49886621315,
+    "rawLowFlux": 0.23376090537041502,
+    "rawMidFlux": 0.0010430927308002248,
+    "rawBassFlux": 0.3487449818257185,
+    "centroid": 161.49727597272894,
+    "needle": 0.3487449818257185
+  },
+  {
+    "timestampMs": 31346.938775510203,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.08306673016456,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31393.378684807256,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 213.131922352162,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31439.81859410431,
+    "rawLowFlux": 0.00015910079144739603,
+    "rawMidFlux": 0.0033222953397594943,
+    "rawBassFlux": 0.00015910079144739603,
+    "centroid": 1328.780870360354,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31486.25850340136,
+    "rawLowFlux": 0.0008178810622259079,
+    "rawMidFlux": 0.022408582324643364,
+    "rawBassFlux": 0.12868703838882273,
+    "centroid": 1332.4915766890567,
+    "needle": 0.12868703838882273
+  },
+  {
+    "timestampMs": 31532.698412698413,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2036.0549901590657,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31579.138321995466,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1161.1042479999107,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31625.57823129252,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 9476.320709387044,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31672.018140589567,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 9641.620002479312,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31718.45804988662,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8710.319631438131,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31764.897959183676,
+    "rawLowFlux": 0.007517205594950082,
+    "rawMidFlux": 0.002174242805111053,
+    "rawBassFlux": 0.019889449076052324,
+    "centroid": 4654.102222907094,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31811.33786848073,
+    "rawLowFlux": 0.1316716285352214,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.27432603977891556,
+    "centroid": 189.1829796741136,
+    "needle": 0.27432603977891556
+  },
+  {
+    "timestampMs": 31857.777777777777,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 101.52724858224441,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31904.21768707483,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 83.59210915945195,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31950.657596371882,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2992.938876963471,
+    "needle": 0
+  },
+  {
+    "timestampMs": 31997.09750566893,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 952.4696088976091,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32043.53741496599,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 158.38816226996047,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32089.97732426304,
+    "rawLowFlux": 0.0007123559274321246,
+    "rawMidFlux": 0.0005696016623118565,
+    "rawBassFlux": 0.0007123559274321246,
+    "centroid": 1309.5916821601168,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32136.41723356009,
+    "rawLowFlux": 0.011276807566133425,
+    "rawMidFlux": 0.035341031155287986,
+    "rawBassFlux": 0.07995606185142154,
+    "centroid": 2049.31888881203,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32182.857142857145,
+    "rawLowFlux": 0.0001990746565753189,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0001990746565753189,
+    "centroid": 1325.4469979620335,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32229.297052154194,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1076.557704793209,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32275.736961451243,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1117.527290424007,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32322.176870748302,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 933.8489283298281,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32368.61678004535,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 728.0311471786903,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32415.056689342407,
+    "rawLowFlux": 0.000623852488944021,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000623852488944021,
+    "centroid": 666.9866481278267,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32461.496598639456,
+    "rawLowFlux": 0.10047941355809424,
+    "rawMidFlux": 0.00907551339643361,
+    "rawBassFlux": 0.2061696729234775,
+    "centroid": 1295.6243209487948,
+    "needle": 0.2061696729234775
+  },
+  {
+    "timestampMs": 32507.936507936505,
+    "rawLowFlux": 0.006964525281916392,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0163024538741285,
+    "centroid": 220.96189118111567,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32554.37641723356,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 111.45371668020148,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32600.816326530614,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0004931599284191126,
+    "rawBassFlux": 0,
+    "centroid": 155.94743120750067,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32647.256235827663,
+    "rawLowFlux": 0.09592331081077027,
+    "rawMidFlux": 0.004480290631095308,
+    "rawBassFlux": 0.19603377948031891,
+    "centroid": 221.43638569640862,
+    "needle": 0.19603377948031891
+  },
+  {
+    "timestampMs": 32693.69614512472,
+    "rawLowFlux": 0.022923966098388204,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.04159304981826681,
+    "centroid": 120.76929623793214,
+    "needle": 0.04159304981826681
+  },
+  {
+    "timestampMs": 32740.136054421768,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.28954131916889,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32786.57596371882,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 118.48451950632442,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32833.01587301587,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0260545182662057,
+    "rawBassFlux": 0.033149789384362874,
+    "centroid": 1847.4926509513828,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32879.45578231292,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.002003177590801302,
+    "rawBassFlux": 0.0591860178006063,
+    "centroid": 1728.4529078234464,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32925.89569160998,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1784.1597789726666,
+    "needle": 0
+  },
+  {
+    "timestampMs": 32972.33560090703,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1388.4599301175906,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33018.77551020408,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1041.682089792079,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33065.21541950114,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 781.0259960136412,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33111.65532879819,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 661.850650315355,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33158.09523809524,
+    "rawLowFlux": 0.11165944756567978,
+    "rawMidFlux": 0.015658736601373794,
+    "rawBassFlux": 0.24577048893381348,
+    "centroid": 1426.0826927414173,
+    "needle": 0.24577048893381348
+  },
+  {
+    "timestampMs": 33204.53514739229,
+    "rawLowFlux": 0.07166240492715045,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.07882881045863993,
+    "centroid": 168.06993191588256,
+    "needle": 0.07882881045863993
+  },
+  {
+    "timestampMs": 33250.97505668934,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 124.08412200539213,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33297.41496598639,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 77.33265889266337,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33343.85487528345,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2174.38967210467,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33390.294784580496,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1246.0653950411984,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33436.73469387755,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 158.35646966495244,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33483.1746031746,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0000015862540407174662,
+    "rawBassFlux": 0,
+    "centroid": 122.69289074581545,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33529.61451247166,
+    "rawLowFlux": 0.007732037536058542,
+    "rawMidFlux": 0.024769759207884306,
+    "rawBassFlux": 0.08377664223421952,
+    "centroid": 1681.8034926567939,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33576.05442176871,
+    "rawLowFlux": 0.009449334295426123,
+    "rawMidFlux": 0.008079645361466891,
+    "rawBassFlux": 0.009449334295426123,
+    "centroid": 1902.5708782238191,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33622.49433106576,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1254.9921920301272,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33668.93424036281,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1231.583684093077,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33715.37414965987,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1087.040243324858,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33761.814058956916,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 743.0554288507154,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33808.25396825397,
+    "rawLowFlux": 0.00047274977926643964,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00047274977926643964,
+    "centroid": 659.9549953306389,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33854.69387755102,
+    "rawLowFlux": 0.17172538656138703,
+    "rawMidFlux": 0.00584023747063855,
+    "rawBassFlux": 0.2840918279402237,
+    "centroid": 997.3062315498406,
+    "needle": 0.2840918279402237
+  },
+  {
+    "timestampMs": 33901.13378684807,
+    "rawLowFlux": 0.0019109160848033158,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.007283317970130446,
+    "centroid": 264.04752119865384,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33947.573696145126,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 204.74224596971558,
+    "needle": 0
+  },
+  {
+    "timestampMs": 33994.013605442175,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 144.34075939132467,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34040.45351473922,
+    "rawLowFlux": 0.04824663616831394,
+    "rawMidFlux": 0.014407101617244289,
+    "rawBassFlux": 0.13107796883515715,
+    "centroid": 1513.5324831087005,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34086.89342403629,
+    "rawLowFlux": 0.06741308729712403,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0866734510508829,
+    "centroid": 184.7050073249928,
+    "needle": 0.0866734510508829
+  },
+  {
+    "timestampMs": 34133.333333333336,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 144.30547739586896,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34179.773242630385,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 132.60480954575135,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34226.21315192744,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.011827514609688243,
+    "rawBassFlux": 0.00037843859487111595,
+    "centroid": 2140.6141132451253,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34272.65306122449,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.017349821755658305,
+    "rawBassFlux": 0.10129682440911728,
+    "centroid": 1373.6265007307447,
+    "needle": 0.10129682440911728
+  },
+  {
+    "timestampMs": 34319.092970521546,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1763.5736001977862,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34365.532879818595,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1569.2882715745939,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34411.97278911564,
+    "rawLowFlux": 0.0004396476594007697,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0004396476594007697,
+    "centroid": 4295.953330043507,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34458.4126984127,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7753.297265105059,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34504.85260770975,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7830.645717355289,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34551.2925170068,
+    "rawLowFlux": 0.026000280658709934,
+    "rawMidFlux": 0.008730214264321039,
+    "rawBassFlux": 0.07325061783128478,
+    "centroid": 2866.384599028034,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34597.73242630385,
+    "rawLowFlux": 0.1379908432350996,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.21068692050047555,
+    "centroid": 144.86674247065247,
+    "needle": 0.21068692050047555
+  },
+  {
+    "timestampMs": 34644.17233560091,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 92.21419383337488,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34690.61224489796,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 75.95080407369196,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34737.052154195015,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2394.801218824192,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34783.49206349206,
+    "rawLowFlux": 0.006890163057043961,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.010821572676377835,
+    "centroid": 245.5057694490098,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34829.93197278912,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0002882470182161895,
+    "rawBassFlux": 0,
+    "centroid": 134.27789522909836,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34876.37188208617,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 66.12795316322659,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34922.81179138322,
+    "rawLowFlux": 0.0021582135513496317,
+    "rawMidFlux": 0.027767209056732346,
+    "rawBassFlux": 0.0971995021849626,
+    "centroid": 1845.3985580708763,
+    "needle": 0
+  },
+  {
+    "timestampMs": 34969.251700680274,
+    "rawLowFlux": 0.008529203569871703,
+    "rawMidFlux": 0.0040520311362703815,
+    "rawBassFlux": 0.008529203569871703,
+    "centroid": 1981.2316777646806,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35015.69160997732,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1251.7090481480507,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35062.13151927437,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1099.1437591921415,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35108.57142857143,
+    "rawLowFlux": 0.0009839094027316413,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0009839094027316413,
+    "centroid": 1735.478074887398,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35155.01133786848,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1246.687316115481,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35201.45124716553,
+    "rawLowFlux": 0.0001195803336003381,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0001195803336003381,
+    "centroid": 850.0494747725382,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35247.89115646259,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 668.8779383898905,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35294.33106575964,
+    "rawLowFlux": 0.0032530166546501055,
+    "rawMidFlux": 0.0010027275837673098,
+    "rawBassFlux": 0.010191039580067658,
+    "centroid": 3820.75426758133,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35340.770975056694,
+    "rawLowFlux": 0.201713293139127,
+    "rawMidFlux": 0.0062285949512382735,
+    "rawBassFlux": 0.33712160649947076,
+    "centroid": 354.37859938137746,
+    "needle": 0.33712160649947076
+  },
+  {
+    "timestampMs": 35387.21088435374,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 171.113619490345,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35433.65079365079,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 106.27375683844419,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35480.09070294785,
+    "rawLowFlux": 0.13208831763622123,
+    "rawMidFlux": 0.012533237470198685,
+    "rawBassFlux": 0.23291078669583426,
+    "centroid": 1056.4260101135094,
+    "needle": 0.23291078669583426
+  },
+  {
+    "timestampMs": 35526.5306122449,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.01967756047297939,
+    "centroid": 107.09875148020232,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35572.970521541945,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 135.56910351339042,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35619.410430839,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 130.34125860421747,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35665.85034013605,
+    "rawLowFlux": 0.002376038481567767,
+    "rawMidFlux": 0.02011106632611173,
+    "rawBassFlux": 0.0910458760971372,
+    "centroid": 1571.3588986051866,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35712.29024943311,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.006900186433907635,
+    "rawBassFlux": 0,
+    "centroid": 1812.8786870007134,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35758.73015873016,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1411.267421547219,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35805.17006802721,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1127.2497687825478,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35851.60997732427,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 863.656923142888,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35898.04988662132,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 711.0214371109821,
+    "needle": 0
+  },
+  {
+    "timestampMs": 35944.489795918365,
+    "rawLowFlux": 0.14261389795328303,
+    "rawMidFlux": 0.0014413344055583005,
+    "rawBassFlux": 0.20822852338302167,
+    "centroid": 615.7715685303015,
+    "needle": 0.20822852338302167
+  },
+  {
+    "timestampMs": 35990.92970521542,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0016475428266907607,
+    "rawBassFlux": 0.023845924884811437,
+    "centroid": 191.06950230123232,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36037.36961451247,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 273.4873123420935,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36083.80952380952,
+    "rawLowFlux": 0.004659662229976585,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.004659662229976585,
+    "centroid": 91.47450370097087,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36130.249433106575,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0003905698161679628,
+    "rawBassFlux": 0,
+    "centroid": 3416.7809144103144,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36176.689342403624,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 152.55328030905412,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36223.12925170068,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.56957911913946,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36269.56916099774,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.004753457757016286,
+    "rawBassFlux": 0,
+    "centroid": 2076.215089947588,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36316.009070294785,
+    "rawLowFlux": 0.02630179489705381,
+    "rawMidFlux": 0.02810293237948408,
+    "rawBassFlux": 0.12787051238585234,
+    "centroid": 1796.1063922299031,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36362.44897959184,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1258.5317641771396,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36408.88888888889,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1091.1774510422013,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36455.32879818594,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1258.5363899931788,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36501.768707482996,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1237.961961668301,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36548.208616780044,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 860.8447348657437,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36594.64852607709,
+    "rawLowFlux": 0.00247734866534243,
+    "rawMidFlux": 0.00023967947070609088,
+    "rawBassFlux": 0.0050098537582177844,
+    "centroid": 3446.2753040556763,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36641.08843537415,
+    "rawLowFlux": 0.13921790527015032,
+    "rawMidFlux": 0.0028619759985420764,
+    "rawBassFlux": 0.2791091464233557,
+    "centroid": 496.8917526259014,
+    "needle": 0.2791091464233557
+  },
+  {
+    "timestampMs": 36687.5283446712,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 223.89010529287307,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36733.968253968254,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 197.84742256362676,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36780.4081632653,
+    "rawLowFlux": 0.005384274583176682,
+    "rawMidFlux": 0.00968328766647535,
+    "rawBassFlux": 0.021415680193153003,
+    "centroid": 2731.0477904470376,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36826.84807256236,
+    "rawLowFlux": 0.10713945087203132,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.24780904171978935,
+    "centroid": 346.5223521457369,
+    "needle": 0.24780904171978935
+  },
+  {
+    "timestampMs": 36873.287981859416,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 870.0489085058542,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36919.727891156464,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1488.1682918877693,
+    "needle": 0
+  },
+  {
+    "timestampMs": 36966.16780045351,
+    "rawLowFlux": 0.000538297729736098,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.000538297729736098,
+    "centroid": 845.7279261473509,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37012.60770975057,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.034279015852727045,
+    "rawBassFlux": 0.050991444573643005,
+    "centroid": 2544.7407473079516,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37059.04761904762,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2275.89066017008,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37105.48752834467,
+    "rawLowFlux": 0.004198178559629879,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.004198178559629879,
+    "centroid": 1920.8074912817501,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37151.92743764172,
+    "rawLowFlux": 0.018386205399370775,
+    "rawMidFlux": 0.011813249204720107,
+    "rawBassFlux": 0.08489830450478078,
+    "centroid": 1538.053610952726,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37198.36734693877,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1426.69914645656,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37244.80725623583,
+    "rawLowFlux": 0.05191310351077092,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.08314486667010262,
+    "centroid": 1291.8876754326304,
+    "needle": 0.08314486667010262
+  },
+  {
+    "timestampMs": 37291.24716553288,
+    "rawLowFlux": 0.0027241652614305306,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0027241652614305306,
+    "centroid": 2793.9241476279553,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37337.687074829926,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4175.278534504343,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37384.12698412699,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4926.8357071269575,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37430.56689342404,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5073.767850963515,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37477.00680272109,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0018760389457411243,
+    "rawBassFlux": 0.0018562830416249294,
+    "centroid": 4530.364866048061,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37523.44671201814,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4668.571258011774,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37569.88662131519,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003456779086680865,
+    "rawBassFlux": 0.00032449640386843616,
+    "centroid": 4657.557295616071,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37616.32653061225,
+    "rawLowFlux": 0.016670004287551356,
+    "rawMidFlux": 0.025114348720535865,
+    "rawBassFlux": 0.12119424093046727,
+    "centroid": 2014.974286005834,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37662.7664399093,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2008.4578260655242,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37709.206349206346,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1985.2899368669523,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37755.6462585034,
+    "rawLowFlux": 0.00037233678944447336,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00037233678944447336,
+    "centroid": 2201.662102396009,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37802.08616780045,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3891.5253271400843,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37848.5260770975,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3721.389796177501,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37894.965986394556,
+    "rawLowFlux": 0.003721933438218078,
+    "rawMidFlux": 0.0012899316301911278,
+    "rawBassFlux": 0.011466140033620995,
+    "centroid": 3523.7449065340124,
+    "needle": 0
+  },
+  {
+    "timestampMs": 37941.40589569161,
+    "rawLowFlux": 0.18508921252255076,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.3191712818735519,
+    "centroid": 362.9685607352148,
+    "needle": 0.3191712818735519
+  },
+  {
+    "timestampMs": 37987.84580498866,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 995.947003363005,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38034.28571428572,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2294.296870998483,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38080.725623582766,
+    "rawLowFlux": 0.007411713155242156,
+    "rawMidFlux": 0.0068178268027401364,
+    "rawBassFlux": 0.025451615289583614,
+    "centroid": 2830.399748625129,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38127.16553287982,
+    "rawLowFlux": 0.13356192176692114,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.273903393008443,
+    "centroid": 151.54308166116004,
+    "needle": 0.273903393008443
+  },
+  {
+    "timestampMs": 38173.60544217687,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 209.86418498488598,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38220.04535147392,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 362.1320093595405,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38266.485260770976,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.001136128838940828,
+    "rawBassFlux": 0,
+    "centroid": 1442.2927404519814,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38312.925170068025,
+    "rawLowFlux": 0.0063206556960319245,
+    "rawMidFlux": 0.02948788073410287,
+    "rawBassFlux": 0.09015841130189356,
+    "centroid": 1920.9485727217846,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38359.365079365074,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1562.2525562481005,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38405.80498866213,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1375.8816201223683,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38452.244897959186,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1459.9927063484272,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38498.684807256235,
+    "rawLowFlux": 0.0010102493471062356,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0010102493471062356,
+    "centroid": 1306.3491695555022,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38545.12471655329,
+    "rawLowFlux": 0.0006568263945638574,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0006568263945638574,
+    "centroid": 2058.9294075483745,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38591.56462585034,
+    "rawLowFlux": 0.0019348320685011336,
+    "rawMidFlux": 0.0018175437891535238,
+    "rawBassFlux": 0.005888521896315262,
+    "centroid": 2928.0249204039806,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38638.0045351474,
+    "rawLowFlux": 0.2014944273204486,
+    "rawMidFlux": 0.006288549375577606,
+    "rawBassFlux": 0.33415670047314755,
+    "centroid": 345.9871474718286,
+    "needle": 0.33415670047314755
+  },
+  {
+    "timestampMs": 38684.444444444445,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.02355921761185,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38730.884353741494,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0005273971932678944,
+    "rawBassFlux": 0,
+    "centroid": 165.71154828616267,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38777.32426303855,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 929.1011900087584,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38823.7641723356,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 191.70529624874465,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38870.20408163265,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 492.48481719777715,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38916.643990929704,
+    "rawLowFlux": 0.00007112295584064997,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0003778199915925474,
+    "centroid": 357.63678749167275,
+    "needle": 0
+  },
+  {
+    "timestampMs": 38963.08390022675,
+    "rawLowFlux": 0.023295379152607147,
+    "rawMidFlux": 0.020142337882683138,
+    "rawBassFlux": 0.11158429798185865,
+    "centroid": 1555.604382357753,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39009.52380952382,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.010511530608415365,
+    "rawBassFlux": 0,
+    "centroid": 1633.4964561952277,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39055.963718820865,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1090.929333538743,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39102.403628117914,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1194.2278615229409,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39148.84353741497,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 805.171479776264,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39195.28344671202,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 557.457447590663,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39241.72335600907,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 590.1134111903746,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39288.163265306124,
+    "rawLowFlux": 0.13279468087984206,
+    "rawMidFlux": 0.0050366574431619645,
+    "rawBassFlux": 0.25924092528322046,
+    "centroid": 347.6668605303164,
+    "needle": 0.25924092528322046
+  },
+  {
+    "timestampMs": 39334.60317460317,
+    "rawLowFlux": 0.057565178428009456,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.057565178428009456,
+    "centroid": 178.6149667540838,
+    "needle": 0.057565178428009456
+  },
+  {
+    "timestampMs": 39381.04308390022,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 185.30351305475162,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39427.48299319728,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 112.99551823854361,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39473.92290249433,
+    "rawLowFlux": 0.13142891827176495,
+    "rawMidFlux": 0.007400086290888632,
+    "rawBassFlux": 0.24471135973701155,
+    "centroid": 435.5209611594649,
+    "needle": 0.24471135973701155
+  },
+  {
+    "timestampMs": 39520.36281179138,
+    "rawLowFlux": 0.007877191934471423,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.007877191934471423,
+    "centroid": 99.17584367187132,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39566.80272108844,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 90.58802118192112,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39613.24263038549,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 86.28396986447834,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39659.682539682544,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.023778615642771332,
+    "rawBassFlux": 0.07473891717380787,
+    "centroid": 1437.0816146594495,
+    "needle": 0.07473891717380787
+  },
+  {
+    "timestampMs": 39706.12244897959,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.006272485509252006,
+    "rawBassFlux": 0,
+    "centroid": 1656.8776549146341,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39752.56235827664,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1009.8778725332008,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39799.0022675737,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 888.726386745281,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39845.44217687075,
+    "rawLowFlux": 0.0002609418226349157,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0002609418226349157,
+    "centroid": 5505.793250793287,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39891.882086167796,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7913.948758758752,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39938.32199546485,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7179.2132745322615,
+    "needle": 0
+  },
+  {
+    "timestampMs": 39984.7619047619,
+    "rawLowFlux": 0.1623775813371721,
+    "rawMidFlux": 0.004643933332529519,
+    "rawBassFlux": 0.2743323087082006,
+    "centroid": 430.9441997477931,
+    "needle": 0.2743323087082006
+  },
+  {
+    "timestampMs": 40031.20181405896,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.028441828481928347,
+    "centroid": 97.22724435779247,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40077.641723356006,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 128.9639465619943,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40124.08163265306,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 89.30643074809143,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40170.52154195012,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000025066571130858448,
+    "rawBassFlux": 0,
+    "centroid": 1988.2806525479948,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40216.96145124717,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 796.2327921618642,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40263.401360544216,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 183.392749770837,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40309.84126984127,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 169.10493961780622,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40356.28117913832,
+    "rawLowFlux": 0.020879012752274634,
+    "rawMidFlux": 0.020179115963596228,
+    "rawBassFlux": 0.1215019646372069,
+    "centroid": 1202.6469737135799,
+    "needle": 0.1215019646372069
+  },
+  {
+    "timestampMs": 40402.72108843537,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0060594954442036615,
+    "rawBassFlux": 0,
+    "centroid": 2112.7334535983964,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40449.160997732426,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1370.45765706381,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40495.600907029475,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1313.2148896161134,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40542.04081632653,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1452.3603639942933,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40588.48072562358,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 703.9804136642006,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40634.920634920636,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 666.3634095150791,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40681.36054421769,
+    "rawLowFlux": 0.026652781567078124,
+    "rawMidFlux": 0.009421246463080004,
+    "rawBassFlux": 0.07073468389217254,
+    "centroid": 2624.180106168878,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40727.80045351474,
+    "rawLowFlux": 0.07167444014915954,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.14276355941680613,
+    "centroid": 485.3343816967868,
+    "needle": 0.14276355941680613
+  },
+  {
+    "timestampMs": 40774.24036281179,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 188.23195204835127,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40820.680272108846,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 129.458451755505,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40867.120181405895,
+    "rawLowFlux": 0.12812580133289192,
+    "rawMidFlux": 0.009553914981353426,
+    "rawBassFlux": 0.24096678544532518,
+    "centroid": 820.0231067682332,
+    "needle": 0.24096678544532518
+  },
+  {
+    "timestampMs": 40913.56009070295,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.011171349195379793,
+    "centroid": 130.78688519853424,
+    "needle": 0
+  },
+  {
+    "timestampMs": 40960,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 86.59974543292539,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41006.43990929705,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0006742317255082147,
+    "rawBassFlux": 0,
+    "centroid": 137.04068169126714,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41052.879818594105,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.019701362508017697,
+    "rawBassFlux": 0.07968617606458485,
+    "centroid": 1293.271420369993,
+    "needle": 0.07968617606458485
+  },
+  {
+    "timestampMs": 41099.319727891154,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.00876070141833328,
+    "rawBassFlux": 0,
+    "centroid": 1470.353343913729,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41145.7596371882,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1116.480792000593,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41192.199546485266,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1045.3113288089635,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41238.639455782315,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 951.5955851561152,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41285.079365079364,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 548.4213630221833,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41331.51927437642,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0007396977517053409,
+    "centroid": 2659.3789605850475,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41377.95918367347,
+    "rawLowFlux": 0.18211490483613607,
+    "rawMidFlux": 0.010216965782994952,
+    "rawBassFlux": 0.31788508327767956,
+    "centroid": 457.2904369681108,
+    "needle": 0.31788508327767956
+  },
+  {
+    "timestampMs": 41424.399092970525,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 154.724524386528,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41470.839002267574,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 87.16411685983826,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41517.27891156462,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 885.5247552918668,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41563.71882086168,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000017519217154331104,
+    "rawBassFlux": 0,
+    "centroid": 2125.628763916019,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41610.15873015873,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 115.48644622904851,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41656.59863945578,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 99.26123939268231,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41703.03854875283,
+    "rawLowFlux": 0.00010279754930445908,
+    "rawMidFlux": 0.003172087246194643,
+    "rawBassFlux": 0.0008860355071171897,
+    "centroid": 2109.3570130147054,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41749.47845804989,
+    "rawLowFlux": 0.029932235216273403,
+    "rawMidFlux": 0.02687758404352492,
+    "rawBassFlux": 0.14461512009112693,
+    "centroid": 1619.1964368372514,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41795.91836734694,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 2091.954972940632,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41842.358276643994,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1601.50346349727,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41888.79818594104,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1155.5013135675433,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41935.2380952381,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 954.7521071331735,
+    "needle": 0
+  },
+  {
+    "timestampMs": 41981.67800453515,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 662.723328085685,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42028.1179138322,
+    "rawLowFlux": 0.0013640758063389919,
+    "rawMidFlux": 0.0003672057568518735,
+    "rawBassFlux": 0.00318505964739119,
+    "centroid": 3038.0257184351667,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42074.55782312925,
+    "rawLowFlux": 0.1395602807634931,
+    "rawMidFlux": 0.006565978776120054,
+    "rawBassFlux": 0.27831048469799846,
+    "centroid": 707.4517227468772,
+    "needle": 0.27831048469799846
+  },
+  {
+    "timestampMs": 42120.9977324263,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 171.40629620839795,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42167.43764172335,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 161.15167692594233,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42213.87755102041,
+    "rawLowFlux": 0.006959432893900067,
+    "rawMidFlux": 0.00547903797627057,
+    "rawBassFlux": 0.006959432893900067,
+    "centroid": 2604.5470238698813,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42260.31746031746,
+    "rawLowFlux": 0.15817308911339556,
+    "rawMidFlux": 0.0011465572511270847,
+    "rawBassFlux": 0.2746806719098635,
+    "centroid": 232.12161181430886,
+    "needle": 0.2746806719098635
+  },
+  {
+    "timestampMs": 42306.75736961451,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 103.4649489292853,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42353.19727891157,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 169.5689667628063,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42399.63718820862,
+    "rawLowFlux": 0.004177768559173414,
+    "rawMidFlux": 0.000011449972670860703,
+    "rawBassFlux": 0.008983642982840566,
+    "centroid": 148.82327916919996,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42446.07709750567,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.031274975480239046,
+    "rawBassFlux": 0.08796974080157187,
+    "centroid": 1633.525940680678,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42492.51700680272,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.001214802185988989,
+    "rawBassFlux": 0,
+    "centroid": 1911.8860823973662,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42538.95691609977,
+    "rawLowFlux": 0.011737237061958549,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.011737237061958549,
+    "centroid": 1159.6717020370588,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42585.39682539683,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 6583.748207303527,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42631.836734693876,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 8155.930137984374,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42678.276643990925,
+    "rawLowFlux": 0.001340355719526533,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.001340355719526533,
+    "centroid": 7249.257459575408,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42724.71655328798,
+    "rawLowFlux": 0.07473460788239336,
+    "rawMidFlux": 0.007080487637486114,
+    "rawBassFlux": 0.18097543904797186,
+    "centroid": 1566.2374752247388,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42771.15646258503,
+    "rawLowFlux": 0.07855711703283225,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.07855711703283225,
+    "centroid": 198.05560126442924,
+    "needle": 0.07855711703283225
+  },
+  {
+    "timestampMs": 42817.59637188209,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 93.20368832818244,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42864.03628117914,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 88.12275247366765,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42910.47619047619,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5852.815121331343,
+    "needle": 0
+  },
+  {
+    "timestampMs": 42956.91609977325,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 266.0946496545231,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43003.356009070296,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 123.03128780437673,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43049.795918367345,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 100.2259584402672,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43096.2358276644,
+    "rawLowFlux": 0.0051650270851580455,
+    "rawMidFlux": 0.02718910630101057,
+    "rawBassFlux": 0.056997284388335005,
+    "centroid": 2084.471891485192,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43142.67573696145,
+    "rawLowFlux": 0.011595044738883571,
+    "rawMidFlux": 0.0026668999951081733,
+    "rawBassFlux": 0.057630663032065696,
+    "centroid": 1849.5754366527988,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43189.1156462585,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1507.3405184847675,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43235.555555555555,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1210.0041386828732,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43281.9954648526,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1599.4181050992609,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43328.43537414966,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1032.5773475412789,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43374.875283446716,
+    "rawLowFlux": 0.00003169892194579958,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00003169892194579958,
+    "centroid": 839.5413620330584,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43421.315192743765,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 750.2493705403157,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43467.75510204082,
+    "rawLowFlux": 0.13799673578569016,
+    "rawMidFlux": 0.006224294888848713,
+    "rawBassFlux": 0.2255267819005491,
+    "centroid": 994.4854481892517,
+    "needle": 0.2255267819005491
+  },
+  {
+    "timestampMs": 43514.19501133787,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 207.84223470772986,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43560.63492063492,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 97.21172460719342,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43607.074829931975,
+    "rawLowFlux": 0.0082890130682279,
+    "rawMidFlux": 0.01234191466260846,
+    "rawBassFlux": 0.08222062388436735,
+    "centroid": 1463.4392944056583,
+    "needle": 0.08222062388436735
+  },
+  {
+    "timestampMs": 43653.514739229024,
+    "rawLowFlux": 0.037294025104538636,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.037294025104538636,
+    "centroid": 301.2062602571209,
+    "needle": 0.037294025104538636
+  },
+  {
+    "timestampMs": 43699.95464852607,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 150.18732892885888,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43746.39455782313,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.01595229854478613,
+    "rawBassFlux": 0,
+    "centroid": 1949.1667026665302,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43792.83446712018,
+    "rawLowFlux": 0.00015022609522126647,
+    "rawMidFlux": 0.010519582280632243,
+    "rawBassFlux": 0.1005586329119877,
+    "centroid": 1491.8405330660655,
+    "needle": 0.1005586329119877
+  },
+  {
+    "timestampMs": 43839.274376417234,
+    "rawLowFlux": 0.008702220092646852,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.008702220092646852,
+    "centroid": 1828.0546839372544,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43885.71428571428,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1610.8065680339942,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43932.15419501134,
+    "rawLowFlux": 0.0009145159551003524,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.0009145159551003524,
+    "centroid": 1174.945503111094,
+    "needle": 0
+  },
+  {
+    "timestampMs": 43978.594104308395,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 868.7267261221119,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44025.034013605444,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 681.7996630424295,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44071.47392290249,
+    "rawLowFlux": 0.11487923561512181,
+    "rawMidFlux": 0.0018793414396224457,
+    "rawBassFlux": 0.1690022642242573,
+    "centroid": 429.48524842864373,
+    "needle": 0.1690022642242573
+  },
+  {
+    "timestampMs": 44117.91383219955,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.017716152728299323,
+    "centroid": 145.11576636759645,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44164.3537414966,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 100.63112538379296,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44210.793650793654,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.009119227464181626,
+    "rawBassFlux": 0,
+    "centroid": 2724.9139455323534,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44257.2335600907,
+    "rawLowFlux": 0.044885027379391255,
+    "rawMidFlux": 0.019086395687691233,
+    "rawBassFlux": 0.1475529161725108,
+    "centroid": 1761.0345882231989,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44303.67346938775,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0016029474579008322,
+    "rawBassFlux": 0,
+    "centroid": 1804.5055838069134,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44350.11337868481,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1212.27596025893,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44396.55328798186,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1001.9998251493171,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44442.99319727891,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1864.589933931872,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44489.43310657597,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 699.9003021033126,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44535.87301587302,
+    "rawLowFlux": 0.15804225656590531,
+    "rawMidFlux": 0.001784518670436169,
+    "rawBassFlux": 0.27432790431378323,
+    "centroid": 339.26875211893235,
+    "needle": 0.27432790431378323
+  },
+  {
+    "timestampMs": 44582.31292517007,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 323.25839631280587,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44628.75283446712,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00680239015928015,
+    "centroid": 145.38824384745675,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44675.19274376417,
+    "rawLowFlux": 0.011772058971318583,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.011772058971318583,
+    "centroid": 79.8699425513353,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44721.63265306123,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 143.36274074343342,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44768.07256235828,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.002662393344082512,
+    "rawBassFlux": 0,
+    "centroid": 1844.297904327852,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44814.512471655325,
+    "rawLowFlux": 0.014254335118283345,
+    "rawMidFlux": 0.027552958437490702,
+    "rawBassFlux": 0.11989744617795975,
+    "centroid": 1627.0495826463837,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44860.95238095238,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.0009087414921563688,
+    "rawBassFlux": 0,
+    "centroid": 1664.82633035551,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44907.39229024943,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1199.5343302514827,
+    "needle": 0
+  },
+  {
+    "timestampMs": 44953.83219954648,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 5599.149866727056,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45000.27210884354,
+    "rawLowFlux": 0.00013517686256704848,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.00013517686256704848,
+    "centroid": 7452.249010835099,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45046.71201814059,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 7476.204674456672,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45093.15192743764,
+    "rawLowFlux": 0.005581105712999657,
+    "rawMidFlux": 0.0021811831620548207,
+    "rawBassFlux": 0.01593302228609969,
+    "centroid": 4480.224518913224,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45139.5918367347,
+    "rawLowFlux": 0.16090756081802998,
+    "rawMidFlux": 0.002779944150829253,
+    "rawBassFlux": 0.3272773119210387,
+    "centroid": 223.75009445534968,
+    "needle": 0.3272773119210387
+  },
+  {
+    "timestampMs": 45186.031746031746,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 117.41380614964996,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45232.4716553288,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 4146.552854888745,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45278.91156462585,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1919.3994979011084,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45325.3514739229,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 139.6077082974894,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45371.791383219956,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 123.99141885067732,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45418.231292517004,
+    "rawLowFlux": 0.03226018638500365,
+    "rawMidFlux": 0.019246978953375515,
+    "rawBassFlux": 0.13099563895177513,
+    "centroid": 1312.206165992215,
+    "needle": 0.13099563895177513
+  },
+  {
+    "timestampMs": 45464.67120181405,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.009671787419773127,
+    "rawBassFlux": 0,
+    "centroid": 2098.708476144582,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45511.11111111111,
+    "rawLowFlux": 0.005138100569044153,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.005138100569044153,
+    "centroid": 1860.4366835425362,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45557.551020408166,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1327.2507898707424,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45603.990929705215,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 3315.655039680911,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45650.43083900227,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1071.8556154628177,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45696.87074829932,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 843.7896410289603,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45743.310657596376,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 714.905292677148,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45789.750566893425,
+    "rawLowFlux": 0.07517154935181275,
+    "rawMidFlux": 0.012241607831719119,
+    "rawBassFlux": 0.17916373645342895,
+    "centroid": 1249.6105337783542,
+    "needle": 0.17916373645342895
+  },
+  {
+    "timestampMs": 45836.19047619047,
+    "rawLowFlux": 0.004345774326540264,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.004345774326540264,
+    "centroid": 631.3967415561739,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45882.63038548753,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 154.37455139113243,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45929.07029478458,
+    "rawLowFlux": 0.028874620934048304,
+    "rawMidFlux": 0.013309174912619591,
+    "rawBassFlux": 0.09145870404359865,
+    "centroid": 1917.2385402617929,
+    "needle": 0
+  },
+  {
+    "timestampMs": 45975.51020408163,
+    "rawLowFlux": 0.09966701128597921,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.13047854422278066,
+    "centroid": 138.11663400962638,
+    "needle": 0.13047854422278066
+  },
+  {
+    "timestampMs": 46021.95011337868,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 115.2539791696505,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46068.39002267573,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.000167218250481367,
+    "rawBassFlux": 0,
+    "centroid": 163.84610120390246,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46114.829931972796,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.026077939273461127,
+    "rawBassFlux": 0.052262326075472126,
+    "centroid": 1894.3404999789655,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46161.269841269845,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0.003153465088876036,
+    "rawBassFlux": 0.019434132494974332,
+    "centroid": 1815.9298439452366,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46207.70975056689,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1430.0137723578125,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46254.14965986395,
+    "rawLowFlux": 0.004253219909121586,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.004253219909121586,
+    "centroid": 954.0114175907255,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46300.589569161,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 1723.5616286966222,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46347.02947845805,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 738.2808850890408,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46393.4693877551,
+    "rawLowFlux": 0.0650170986383621,
+    "rawMidFlux": 0.009510294533036185,
+    "rawBassFlux": 0.15738228634860502,
+    "centroid": 1707.8742273694265,
+    "needle": 0
+  },
+  {
+    "timestampMs": 46439.90929705215,
+    "rawLowFlux": 0.05322996319871985,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0.06246362818954142,
+    "centroid": 569.574661348504,
+    "needle": 0.06246362818954142
+  },
+  {
+    "timestampMs": 46486.3492063492,
+    "rawLowFlux": 0,
+    "rawMidFlux": 0,
+    "rawBassFlux": 0,
+    "centroid": 166.4244900823458,
+    "needle": 0
+  }
+]

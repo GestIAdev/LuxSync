@@ -760,7 +760,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
 
     if (shadowLog.length === MAX_SHADOW_FRAMES) {
       try {
-        const dumpPath = require('path').join(process.cwd(), 'electron-app', 'test-data', 'live_audio_dump.json');
+        const dumpPath = require('path').join(process.cwd(), 'test-data', 'live_audio_dump.json');
         require('fs').mkdirSync(require('path').dirname(dumpPath), { recursive: true });
         require('fs').writeFileSync(dumpPath, JSON.stringify(shadowLog, null, 2));
         console.log(`[SHADOW LOGGER] 🎯 DUMP COMPLETE: ${MAX_SHADOW_FRAMES} frames → ${dumpPath}`);
@@ -783,9 +783,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
 
   // WAVE 2169: DIAGNOSTIC TELEMETRY -- Every 20 frames (~0.9s)
   if (state.frameCount % 20 === 0) {
+    const musicalBpm = bpmTracker.getMusicalBpm();
     console.log(
       `[INTERVAL] F${state.frameCount}` +
-      ` bpm=${bpmResult.bpm}` +
+      ` bpm=${musicalBpm}` +
+      ` raw=${bpmResult.bpm}` +
       ` conf=${bpmResult.confidence.toFixed(3)}` +
       ` kick=${bpmResult.kickDetected}` +
       ` phase=${bpmResult.beatPhase.toFixed(2)}` +
@@ -798,8 +800,12 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   }
 
   // Update Worker BPM state — direct from IntervalBPMTracker
+  // WAVE 2175: use getMusicalBpm() — the Dance Pocket Folder output.
+  // bpmResult.bpm is the RAW tracker output (may be 185 BPM for tresillo techno).
+  // getMusicalBpm() folds it into the dance pocket [90-135]: 185/1.5 = 123 BPM.
+  // The raw bpm is still visible in the [INTERVAL] diagnostic log above.
   if (bpmResult.confidence > 0.05) {
-    state.currentBpm = bpmResult.bpm;
+    state.currentBpm = bpmTracker.getMusicalBpm();
     state.bpmConfidence = bpmResult.confidence;
     state.beatPhase = bpmResult.beatPhase;
   }

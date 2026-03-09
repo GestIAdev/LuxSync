@@ -340,6 +340,42 @@ export class IntervalBPMTracker {
             // During cold start (< 8 kicks), accept all intervals — the median
             // will self-correct. Activating rejection too early causes lock-in
             // to a wrong sub-harmonic (e.g., 99 BPM when true BPM is 185).
+            //
+            // WAVE 2177: BUFFER PURGE — breaks the egg-chicken deadlock.
+            //
+            // When the history buffer is full AND confidence is exactly 0.00
+            // (spread ≥ 60 BPM — catastrophically chaotic), the `conf > 0.3`
+            // guard means rejection NEVER fires and garbage accumulates forever.
+            //
+            // Symptoms: dump starts with a breakdown (long IOIs → 56/65 BPM),
+            // then the drop hits with 185 BPM kicks. But bpmBuf=[185,215,258,
+            // 258,161,56,92,65] spread=202 → conf=0.00 → rejection disabled
+            // → new 185 BPM entries keep mixing with the garbage indefinitely.
+            //
+            // Fix: when buffer is full AND conf==0.00, perform a MEDIAN PURGE:
+            // replace every entry that deviates ≥50% from the current median
+            // with the median itself. This aggressively flushes garbage while
+            // preserving legitimate entries near the median cluster.
+            //
+            // Safety: only fires when conf EXACTLY ==0.00 (spread ≥ 60 BPM).
+            // conf=0.07 (spread=56 BPM, e.g. sub-beat contamination) does NOT
+            // trigger the purge — those are handled by the normal rotation.
+            if (this.bpmHistoryCount >= BPM_HISTORY_SIZE && this.currentConfidence < 0.001) {
+              const medianRef = this.stableBpm
+              if (medianRef > 0) {
+                for (let j = 0; j < BPM_HISTORY_SIZE; j++) {
+                  const ratio = this.bpmHistory[j] / medianRef
+                  if (ratio < 0.50 || ratio > 2.00) {
+                    // Replace extreme outlier with the median — neutral contribution
+                    this.bpmHistory[j] = medianRef
+                  }
+                }
+                // Recompute after purge — spread will decrease, conf will rise
+                this.stableBpm = this.computeMedianBpm()
+                this.currentConfidence = this.computeConfidence()
+              }
+            }
+
             let acceptBpm = true
             if (this.bpmHistoryCount >= BPM_HISTORY_SIZE && this.currentConfidence > 0.3) {
               const ratio = instantBpm / this.stableBpm

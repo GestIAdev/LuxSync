@@ -1,4 +1,4 @@
-/**
+﻿/**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
  * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
@@ -88,7 +88,15 @@ export class TitanOrchestrator {
   
   // ❤️ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
   private beatDetector: BeatDetector | null = null
-  
+
+  // 🔥 WAVE 2179: FREEWHEEL MEMORY — Cerebro retiene el último BPM estable del Worker
+  // Cuando Worker conf=0 (break, silencio, transición), el PLL freewheela
+  // en la frecuencia correcta en lugar de caer al default 120 BPM del Pacemaker.
+  // Timeout: 300 frames (~5s a 60fps) → luego cede al Pacemaker interno.
+  private lastStableWorkerBpm = 0
+  private lastStableWorkerBpmFrame = 0
+  private readonly FREEWHEEL_TIMEOUT_FRAMES = 300  // ~5s a 60fps
+
   private config: TitanConfig
   private isInitialized = false
   private isRunning = false
@@ -446,15 +454,25 @@ export class TitanOrchestrator {
     const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0
     
     if (this.beatDetector && this.hasRealAudio) {
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🔥 WAVE 2112: FEED WORKER BPM TO PLL — No more kick detection here
-      // setBpm() updates the Pacemaker's internal BPM and syncs PLL.
-      // tick() advances the PLL Flywheel for anticipatory beat prediction.
-      // The Pacemaker becomes a PHASE-LOCKED FLYWHEEL: smooth, predictive,
-      // but slaved to the Worker's authoritative BPM detection.
+      // 🔥 WAVE 2112 + WAVE 2179: WORKER BPM → PLL
+      // Worker con señal → setBpm() = lock real (PLL anclado a la verdad física)
+      // Worker sordo pero memoria reciente → freewheelAt() = inercia correcta
+      // Worker sordo Y memoria expirada → PLL cae al Pacemaker interno (120 default)
+      // PunkArchytect doctrine: Worker = Oídos (honesto). Cerebro = Memoria (inerte).
       // ═══════════════════════════════════════════════════════════════════════
       if (workerBpm > 0 && workerConfidence > 0.2) {
+        // 🔥 Worker activo: lock real + actualizar memoria
         this.beatDetector.setBpm(workerBpm)
+        this.lastStableWorkerBpm = workerBpm
+        this.lastStableWorkerBpmFrame = this.frameCount
+      } else {
+        // 🔥 WAVE 2179: Worker sordo → ¿tenemos memoria reciente?
+        const framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame
+        if (this.lastStableWorkerBpm > 0 && framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES) {
+          // FREEWHEEL: PLL gira en la frecuencia real, no en 120 BPM
+          this.beatDetector.freewheelAt(this.lastStableWorkerBpm)
+        }
+        // Si el timeout expiró → sin freewheelAt(), PLL se suelta al Pacemaker interno
       }
       
       // PLL Flywheel: advances phase continuously for smooth beat prediction
@@ -469,7 +487,11 @@ export class TitanOrchestrator {
       if (this.frameCount % 60 === 0) {
         const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
         const syncInfo = this.smoothedSyncopation.toFixed(2)
-        console.log(`[TitanOrchestrator] � WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
+        const _framesSinceLog = this.frameCount - this.lastStableWorkerBpmFrame
+        const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
+          ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
+          : ''
+        console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
       }
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
@@ -488,25 +510,31 @@ export class TitanOrchestrator {
     // }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2112: BPM INJECTION — Worker BPM is the authority, PLL gives phase
+    // 🔥 WAVE 2112 + 2179: BPM INJECTION — cadena de prioridad con freewheel memory
     // ═══════════════════════════════════════════════════════════════════════════
-    // Worker's GodEarBPMTracker provides authoritative BPM.
-    // PLL Flywheel provides smooth phase prediction for anticipatory effects.
-    // Combined: real BPM + smooth phase = best of both worlds.
+    // Priority chain:
+    //   1. Worker activo (conf > 0.2)         → BPM del Worker (verdad física)
+    //   2. Worker sordo + memoria reciente    → último BPM estable (inercia)
+    //   3. Sin memoria / timeout expirado     → Pacemaker interno (último recurso)
     // ═══════════════════════════════════════════════════════════════════════════
+    const _framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame
+    const hasFreewheelMemory = this.lastStableWorkerBpm > 0 && _framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES
+
     if (workerBpm > 0 && workerConfidence > 0.2) {
+      // Priority 1: Worker activo
       context.bpm = workerBpm
-      // Use PLL phase (smooth, predictive) if locked, else Worker phase
-      context.beatPhase = beatState.pllLocked 
+      context.beatPhase = beatState.pllLocked
         ? (beatState.pllPhase ?? beatState.phase)
         : workerBeatPhase
-      context.syncopation = this.estimateSyncopation(
-        context.beatPhase,
-        bass,
-        mid
-      )
+      context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid)
+    } else if (hasFreewheelMemory) {
+      // 🔥 WAVE 2179: Priority 2 — FREEWHEEL MEMORY
+      // Las luces no se enteran del break. El show continúa en el BPM real.
+      context.bpm = this.lastStableWorkerBpm
+      context.beatPhase = beatState.pllPhase ?? beatState.phase
+      context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (beatState.bpm > 0 && beatState.confidence > 0) {
-      // Fallback: PLL flywheel if Worker hasn't locked yet
+      // Priority 3: Pacemaker interno (cuando no hay ningún recuerdo del Worker)
       context.bpm = beatState.bpm
       context.beatPhase = beatState.pllPhase ?? beatState.phase
       context.syncopation = this.estimateSyncopation(

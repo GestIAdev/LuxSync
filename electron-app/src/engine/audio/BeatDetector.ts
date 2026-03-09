@@ -943,6 +943,25 @@ export class BeatDetector {
   }
   
   /**
+   * 🔥 WAVE 2179: FREEWHEEL MODE — PLL gira en el BPM conocido sin asumir lock.
+   * 
+   * Llamado por TitanOrchestrator cuando Worker conf=0 pero hay memoria reciente.
+   * Mantiene el PLL girando a la frecuencia correcta durante breaks/silencio.
+   * 
+   * SEPARACIÓN DE RESPONSABILIDADES (PunkArchytect doctrine):
+   * - setBpm() → Worker tiene señal, asume LOCK. Actualiza clustering.
+   * - freewheelAt() → Worker está sordo, Cerebro recuerda. Solo actualiza PLL.
+   *   pllIsLocked permanece false — el Pacemaker es honesto sobre su estado.
+   */
+  freewheelAt(bpm: number): void {
+    if (bpm >= this.minBpm && bpm <= this.maxBpm) {
+      // Solo actualizar la frecuencia del volante. NO tocar clustering ni confidence.
+      this.pllSmoothedBpm = bpm
+      // pllIsLocked permanece false — no hay señal real que lo confirme
+    }
+  }
+
+  /**
    * Tap tempo - usuario marca el beat manualmente
    */
   tap(timestamp: number): void {

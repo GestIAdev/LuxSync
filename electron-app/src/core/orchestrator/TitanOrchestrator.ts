@@ -501,16 +501,8 @@ export class TitanOrchestrator {
     
     // ═══════════════════════════════════════════════════════════════════════════
     //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
-    // The Worker computes its OWN BPM via GodEarBPMTracker now.
-    // The trinity.setBpm() bridge is UNNECESSARY — Worker is the authority.
-    // Kept as comment for archaeology.
     // ═══════════════════════════════════════════════════════════════════════════
-    // if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
-    //   this.trinity.setBpm(beatState.bpm, beatState.pllPhase, beatState.confidence)
-    // }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2112 + 2179: BPM INJECTION — cadena de prioridad con freewheel memory
+    // 🔥 rBPM INJECTION — cadena de prioridad con freewheel memory (WAVE 2179)
     // ═══════════════════════════════════════════════════════════════════════════
     // Priority chain:
     //   1. Worker activo (conf > 0.2)         → BPM del Worker (verdad física)

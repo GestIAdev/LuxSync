@@ -39,26 +39,9 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════════
 import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
-// 🥁 WAVE 2168: THE RESURRECTION OF WAVE 1163
-// ═══════════════════════════════════════════════════════════════════════════
-// After 10 WAVEs (2159-2167) of trying to make autocorrelation find 126 BPM
-// in Brejcha's sub-bass, the fundamental truth emerged:
-//
-//   Autocorrelation at 46.4ms/frame CANNOT produce a peak at 126 BPM.
-//   It only sees ~164 BPM and ~82 BPM (harmonics, not the beat).
-//   126 BPM NEVER appeared in a SINGLE SIEVE event across 1409 frames.
-//
-// The interval-based approach from WAVE 1163 detected Brejcha at 124-126 ±2.
-// It uses ratio-based kick detection + adaptive debounce + median smoothing.
-// Simple. Deterministic. Proven.
-//
-// 🪦 GodEarBPMTracker (autocorrelation v6) ARCHIVED — not deleted.
-//    It's a mathematical jewel with potential future applications.
-// 🪦 PacemakerV2 + HarmonicGearbox — also archived.
-//
-// import { GodEarBPMTracker } from './GodEarBPMTracker';
-// import { PacemakerV2 } from './PacemakerV2';
-// import { GearboxStabilizer } from './HarmonicGearbox';
+// 🥁 WAVE 2168: IntervalBPMTracker — THE EARS
+// Interval-based kick detection + adaptive debounce + median smoothing.
+// Simple. Deterministic. Proven. BPM folded by Dance Pocket (WAVE 2174/2180).
 import { IntervalBPMTracker } from './IntervalBPMTracker';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
@@ -111,7 +94,7 @@ interface BetaState {
   lastHeartbeat: number;
   heartbeatSequence: number;
   
-  // 🥁 WAVE 2112: BPM detection RESTORED in Worker — GodEar is the source of truth
+  // 🥁 rBPM: IntervalBPMTracker → Dance Pocket Folder → context.bpm (Single Source of Truth)
   currentBpm: number;
   bpmConfidence: number;
   beatPhase: number;
@@ -145,7 +128,7 @@ const state: BetaState = {
   lastHeartbeat: Date.now(),
   heartbeatSequence: 0,
   
-  // 🥁 WAVE 2112: BPM detection RESTORED in Worker
+  // 🥁 rBPM state: IntervalBPMTracker
   currentBpm: 0,
   bpmConfidence: 0,
   beatPhase: 0,
@@ -850,7 +833,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const energy = normalizedEnergy;
   
   // === PHASE 3: Wave 8 Rich Analysis ===
-  // 🥁 WAVE 2112: BPM fields are REAL again — from GodEarBPMTracker
+  // 🥁 rBPM fields from IntervalBPMTracker (Dance Pocket folded)
   const audioMetrics: AudioMetrics = {
     bass: spectrum.bass,
     mid: spectrum.mid,
@@ -874,7 +857,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
-  // � WAVE 2161: Beat state from GodEarBPMTracker (fresh, in-worker)
+  // Beat state from IntervalBPMTracker (fresh, in-worker)
   const beatState = {
     bpm: state.currentBpm,
     confidence: state.bpmConfidence,
@@ -903,7 +886,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     genre: 'ELECTRONIC_4X4',
     subgenre: 'none' as const,
     features: {
-      bpm: state.currentBpm,  // 🥁 WAVE 2112: Worker knows BPM again
+      bpm: state.currentBpm,
       syncopation: rhythmOutput.syncopation ?? 0,
       hasFourOnFloor: rhythmOutput.pattern === 'four_on_floor',
       hasDembow: false,
@@ -959,7 +942,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
     agcGainFactor: agcResult.gainFactor,
     
-    // � WAVE 2161: BPM fields REAL — from GodEarBPMTracker in Worker
+    // rBPM fields from IntervalBPMTracker (Single Source of Truth)
     bpm: state.currentBpm,
     bpmConfidence: state.bpmConfidence,
     onBeat: bpmResult.kickDetected || spectrum.kickDetected,
@@ -1184,10 +1167,9 @@ function handleMessage(message: WorkerMessage): void {
         console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker | pocket=${getPocketBounds()}`);
         break;
       
-      // 🥁 WAVE 2112: SET_BPM now a no-op — Worker computes its own BPM via GodEarBPMTracker
-      // Pacemaker BPM is no longer needed here. Worker is the source of truth.
+      // SET_BPM: no-op — Worker computes rBPM via IntervalBPMTracker
       case MessageType.SET_BPM:
-        // Acknowledged but ignored — Worker has fresh BPM from GodEarBPMTracker
+        // Acknowledged but ignored — Worker is the Single Source of Truth
         break;
       
       // 🧨 WAVE 2161: AMNESIA PROTOCOL — Hard reset on Vibe change

@@ -183,13 +183,20 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
     // 🎵 spanish_exotic = pasión/triunfo
     mood = 'triumphant';
   } else if (rawMood === 'universal' || rawMood === 'neutral') {
-    // 🌉 WAVE 260.5: 'universal' = el detector no está seguro
-    // Usar energía de sección para decidir
-    if (sectionEnergy > 0.7) {
+    // � WAVE 2204.2: 'universal' = el detector no está seguro
+    // Usar energía REAL del frame (no de sección — section.energy es demasiado lento)
+    // sectionEnergy es útil para contexto macro pero no para decisión instantánea
+    // analysis.energy es el smoothedEnergy del frame actual — más reactivo
+    const frameEnergy = analysis.energy ?? sectionEnergy;
+    if (frameEnergy > 0.55) {
+      // Alta energía → festividad → BRIGHT
       mood = 'euphoric';
-    } else if (sectionEnergy > 0.4) {
-      mood = 'neutral';
+    } else if (frameEnergy > 0.25) {
+      // Media energía → ambigüedad → NEUTRAL pero con posibilidad
+      // Si hay modo minor detectado, inclinarse a melancólico
+      mood = mode === 'minor' ? 'melancholic' : 'neutral';
     } else {
+      // Baja energía → introspección → DARK/dreamy
       mood = 'dreamy';
     }
   }

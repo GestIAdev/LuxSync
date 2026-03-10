@@ -1055,7 +1055,9 @@ export class SeleneColorEngine {
     // 🎭 WAVE 2204: PURGA LEGACY — data.mood (MoodArbiter, ventana 2s) tiene prioridad absoluta
     // wave8.harmony.mood era el crudo del HarmonyDetector (cambia cada frame, sin histéresis)
     // Ahora usamos el meta-estado estabilizado que viaja en la raíz del objeto
-    const activeMood = data.mood || 'neutral';
+    // 🔒 WAVE 2204.1: .toLowerCase() defensivo — TitanEngine ya convierte BRIGHT→'bright',
+    // pero por si algún path futuro inyecta el enum en mayúsculas, blindamos la comparación.
+    const activeMood = String(data.mood || 'neutral').toLowerCase();
     const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
     const energy = clamp(data.energy ?? 0.5, 0, 1);
     
@@ -1135,7 +1137,14 @@ export class SeleneColorEngine {
 
     // El Hue final es: Base + Modo + Deriva Emocional (SIN GÉNERO)
     let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
-    
+
+    // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
+    // Dispara 1 vez por segundo (~60fps). Busca "[DRIFT RADAR]" en consola de Hyperion.
+    // Cuando veas In: 'BRIGHT' -> Act: 'bright' | Drift: 30°, el Desestancador está vivo.
+    if (this.generateCallCount % 60 === 0) {
+      console.log(`[DRIFT RADAR] In: '${data.mood}' -> Act: '${activeMood}' | Drift: ${moodDrift > 0 ? '+' : ''}${moodDrift}° | BaseHue: ${baseHue}° | FinalHue: ${finalHue.toFixed(0)}°`);
+    }
+
     // 🌡️ WAVE 149.6: THERMAL GRAVITY - Aplicar Gravedad Térmica
     // Antes de restricciones constitucionales, el hue se aclimata al clima del Vibe.
     // Techno (9500K) → arrastra hacia Azul Rey (240°)

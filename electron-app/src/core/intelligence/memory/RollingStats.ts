@@ -39,19 +39,22 @@ const DEFAULT_CONFIG: Required<RollingStatsConfig> = {
   windowSize: 300, // ~5 segundos a 60fps
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔬 WAVE 1181.1: Z-SCORE FLOOR FIX
+  // 🔬 WAVE 2185: RECALIBRATED — 0.08 → 0.05
   // ═══════════════════════════════════════════════════════════════════════════
-  // PROBLEMA: Durante breakdowns con poca variación (stdDev real = 0.02),
-  // cualquier pico moderado se convierte en Z=9σ porque:
-  //   Z = (0.30 - 0.12) / 0.02 = 9σ
+  // PROBLEMA ORIGINAL (1181.1): Durante breakdowns con poca variación
+  // (stdDev real = 0.02), cualquier pico moderado se convierte en Z=9σ.
   //
-  // SOLUCIÓN: Establecer un FLOOR de stdDev realista para música.
-  // En la realidad musical, la variación natural de energía es ~10-15%.
-  // Usamos 0.08 como floor → Máximo Z-Score posible ≈ 10σ con pico de 1.0
+  // WAVE 2185 REFINAMIENTO: 0.08 era demasiado agresivo como floor.
+  // En minimal techno, la variación natural real de energía es ~5-8%.
+  // Con floor=0.08, estábamos APLASTANDO señales legítimas de Z=3-4σ
+  // porque el floor era más alto que la stdDev real del género.
   //
-  // ANTES: minStdDev: 0.001 → Z = 9σ fácilmente
-  // AHORA: minStdDev: 0.08 → Z = (1.0 - 0.2) / 0.08 = 10σ máximo teórico
+  // 0.05 = sweet spot:
+  //   - Máximo Z teórico = (1.0 - 0.1) / 0.05 = 18σ (extremo, irreal)
+  //   - Z típico en drop real = (0.7 - 0.3) / 0.05 = 8σ (filtrado por DIVINE_THRESHOLD=4.0)
+  //   - Z en micro-valley = (0.35 - 0.30) / 0.05 = 1σ (ignorado correctamente)
   // ═══════════════════════════════════════════════════════════════════════════
-  minStdDev: 0.08, // 🔬 WAVE 1181.1: Floor realista (was 0.001)
+  minStdDev: 0.05, // 🔬 WAVE 2185: Recalibrado (was 0.08, was 0.001)
 };
 
 /**

@@ -5,6 +5,7 @@
 //  WAVE 1010 - FRONTAL LOBOTOMY - UNIFIED BRAIN
 //  WAVE 1028 - THE CURATOR - Texture Awareness Integration
 //  WAVE 2183 - DIVERSITY FIX — DROP no puede saltarse la penalización
+//  WAVE 2185 - MINIMAL TECHNO FIX — DIVINE dual validation (Z>4.0 + energy>0.65)
 //  "Combina hunt + prediction + context → Decisión única"
 //  "El General manda. El Bibliotecario obedece."
 // ═══════════════════════════════════════════════════════════════════════════
@@ -37,8 +38,11 @@ import { getDNAAnalyzer, EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
 // ═══════════════════════════════════════════════════════════════════════════
 // Movido desde ContextualEffectSelector - EL GENERAL tiene el control total
 
-/** Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio) */
-export const DIVINE_THRESHOLD = 3.5
+/** 
+ * Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio) 
+ * 🔬 WAVE 2185: Elevado de 3.5 a 4.0 + dual validation con energía efectiva
+ */
+export const DIVINE_THRESHOLD = 4.0
 
 /**
  * 🔪 WAVE 1010: DIVINE ARSENAL BY VIBE
@@ -253,7 +257,7 @@ type DecisionType =
  * 🔒 WAVE 1177: CALIBRATION - Skip DIVINE evaluation if dictator is active
  * 
  * NUEVA JERARQUÍA (WAVE 1010):
- * 0. 🌩️ DIVINE MOMENT (Z > 3.5 + zona válida) - OBLIGATORIO
+ * 0. 🌩️ DIVINE MOMENT (Z > 4.0 + energy > 0.65 + zona válida) - OBLIGATORIO
  * 1. 🧬 DNA Brain Integration (si disponible y aprobado)
  * 2. 🎯 HuntEngine worthiness
  * 3. 📉 Drop predicho
@@ -264,11 +268,16 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision } = inputs
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
+  // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 4.0 + energy gate)
   // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
   // 🔒 WAVE 1177: Skip if dictator is active (prevents log spam)
+  // 🔬 WAVE 2185: DUAL VALIDATION — Z alto + energía real alta
+  //    En minimal techno, Z puede explotar por micro-variaciones estadísticas
+  //    pero la energía real de la pista es baja (0.25-0.45).
+  //    DIVINE solo se justifica cuando la pista REALMENTE está ardiendo.
   // ═══════════════════════════════════════════════════════════════════════
   const currentZ = zScore ?? 0
+  const DIVINE_ENERGY_GATE = 0.65  // 🔬 WAVE 2185: Energía mínima para DIVINE
   
   // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
   // (El efecto activo tiene "la palabra", no le interrumpimos)
@@ -277,14 +286,21 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     // El dictador ya fue anunciado cuando se disparó
   } else if (currentZ >= DIVINE_THRESHOLD) {
     const zone = energyContext?.zone ?? 'gentle'
+    const effectiveEnergy = energyContext?.smoothed ?? 0
     
     // Consciencia energética: NO divine en zonas de silencio
     // (No dispares artillería pesada en un funeral)
     if (zone === 'silence' || zone === 'valley') {
       console.log(`[DecisionMaker 🌩️] DIVINE BLOCKED: Z=${currentZ.toFixed(2)}σ but zone=${zone} (protected)`)
       // Continuar a siguiente prioridad, no return 'hold'
+    } else if (effectiveEnergy < DIVINE_ENERGY_GATE) {
+      // 🔬 WAVE 2185: Z alto pero energía real baja → STRIKE normal, no DIVINE
+      // Esto filtra los falsos positivos de minimal techno donde stdDev es
+      // naturalmente baja y cualquier kick normal genera Z>4σ
+      console.log(`[DecisionMaker 🌩️] DIVINE→STRIKE DOWNGRADE: Z=${currentZ.toFixed(2)}σ but energy=${effectiveEnergy.toFixed(2)} < ${DIVINE_ENERGY_GATE} → processing as normal strike`)
+      return 'strike'
     } else {
-      console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ zone=${zone} → MANDATORY FIRE`)
+      console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ energy=${effectiveEnergy.toFixed(2)} zone=${zone} → MANDATORY FIRE`)
       return 'divine_strike'  // 🔪 WAVE 1010: Nuevo tipo
     }
   }

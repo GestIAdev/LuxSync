@@ -4,27 +4,29 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+ * 🔥 WAVE 2183: APEX STEROIDS — Strobe pre-flash + color melt
  * 
  * FILOSOFÍA:
- * Flash masivo que ciega la pista. Los PARs PINTAN el lienzo con color
- * agresivo a full blast. Los Movers LATCHEAN el mismo color al inicio
- * y lo sostienen — cero cambios mecánicos durante la ejecución.
- * Todo el efecto vive de modular el Dimmer: ADSR de 1 segundo.
+ * Flash masivo que ciega la pista. Pero primero: UN LATIGAZO DE ESTROBO
+ * blanco o de color a 20-25Hz que dura 150-200ms. Solo después de ese
+ * ataque cegador, la sala "funde" al color elegido en decay lento.
  * 
  * COMPORTAMIENTO:
  * - MixBus: 'global' (DICTADOR — necesita el negro previo para el impacto)
- * - Duración: ~1000ms ADSR (Attack 50ms, Decay 950ms)
- * - Pars: Flash al 100% con decaimiento exponencial
- * - Movers: Posición frontal fija (hacia público), color latched, dimmer sync
+ * - Duración: ~1000ms total
+ *   - Fase STROBE: 0-175ms — estrobo blanco/color a 22Hz (latigazo)
+ *   - Fase MELT:   175-1000ms — decay exponencial al color elegido
+ * - Pars: Strobe brutal → funde a color
+ * - Movers: Color latched desde el inicio, dimmer sync con ADSR
  * - oneShot: true — un solo golpe, sin re-trigger
  * 
  * COLORES (según Vibe/Intensity):
- * - Alta intensidad: Rojo Sangre (h:0, s:100, l:50)
- * - Media intensidad: Magenta Eléctrico (h:300, s:100, l:55)
- * - Default: Cian Eléctrico (h:185, s:100, l:55)
+ * - Alta intensidad: Rojo Sangre (h:0, s:100, l:50) + strobe blanco
+ * - Media intensidad: Magenta Eléctrico (h:300, s:100, l:55) + strobe magenta
+ * - Default: Cian Eléctrico (h:185, s:100, l:55) + strobe cian
  * 
  * @module core/effects/library/techno/NeonBlinder
- * @version WAVE 2182 — PARS PAINT, MOVERS PIERCE
+ * @version WAVE 2183 — APEX STEROIDS
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -41,13 +43,19 @@ import {
 interface NeonBlinderConfig {
   /** Duración total del efecto (ms) */
   durationMs: number
-  /** Duración del attack (ms) — subida a full */
+  /** Duración del attack pre-strobe antes del melt (ms) */
   attackMs: number
+  /** Duración de la fase de estrobo cegador (ms) — WAVE 2183 */
+  strobePhaseMs: number
+  /** Frecuencia del strobe inicial (Hz) — WAVE 2183: 22Hz */
+  strobeHz: number
 }
 
 const DEFAULT_CONFIG: NeonBlinderConfig = {
   durationMs: 1000,
   attackMs: 50,
+  strobePhaseMs: 175,   // Latigazo de 175ms
+  strobeHz: 22,         // 22Hz — hipnótico y agresivo
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,6 +72,8 @@ export class NeonBlinder extends BaseEffect {
 
   private config: NeonBlinderConfig
   private flashColor: { h: number; s: number; l: number } = { h: 185, s: 100, l: 55 }
+  /** Color del strobe inicial — igual al flash pero puede ser blanco puro */
+  private strobeColor: { h: number; s: number; l: number } = { h: 185, s: 100, l: 90 }
 
   constructor(config?: Partial<NeonBlinderConfig>) {
     super('neon_blinder')
@@ -76,15 +86,19 @@ export class NeonBlinder extends BaseEffect {
 
     // Color según intensidad del trigger
     if (triggerConfig.intensity > 0.85) {
-      this.flashColor = { h: 0, s: 100, l: 50 }     // Rojo Sangre
+      this.flashColor  = { h: 0,   s: 100, l: 50 }   // Rojo Sangre
+      this.strobeColor = { h: 0,   s: 0,   l: 100 }  // Blanco puro — máximo impacto
     } else if (triggerConfig.intensity > 0.6) {
-      this.flashColor = { h: 300, s: 100, l: 55 }    // Magenta Eléctrico
+      this.flashColor  = { h: 300, s: 100, l: 55 }   // Magenta Eléctrico
+      this.strobeColor = { h: 300, s: 100, l: 85 }   // Magenta muy saturado y brillante
     } else {
-      this.flashColor = { h: 185, s: 100, l: 55 }    // Cian Eléctrico
+      this.flashColor  = { h: 185, s: 100, l: 55 }   // Cian Eléctrico
+      this.strobeColor = { h: 185, s: 100, l: 85 }   // Cian muy brillante
     }
 
     console.log(
-      `[NeonBlinder 💥] TRIGGERED: color=h${this.flashColor.h} intensity=${triggerConfig.intensity.toFixed(2)}`
+      `[NeonBlinder 💥] TRIGGERED: color=h${this.flashColor.h} strobeHz=${this.config.strobeHz} ` +
+      `strobePhase=${this.config.strobePhaseMs}ms intensity=${triggerConfig.intensity.toFixed(2)}`
     )
   }
 
@@ -92,10 +106,10 @@ export class NeonBlinder extends BaseEffect {
     if (this.phase === 'idle' || this.phase === 'finished') return
     this.elapsedMs += deltaMs
 
-    if (this.elapsedMs < this.config.attackMs) {
-      this.phase = 'attack'
+    if (this.elapsedMs < this.config.strobePhaseMs) {
+      this.phase = 'attack'    // Fase strobe (latigazo)
     } else if (this.elapsedMs < this.config.durationMs) {
-      this.phase = 'decay'
+      this.phase = 'decay'     // Fase melt (color fund)
     } else {
       this.phase = 'finished'
     }
@@ -107,20 +121,29 @@ export class NeonBlinder extends BaseEffect {
     const progress = this.getProgress()
 
     // ═════════════════════════════════════════════════════════════════════
-    // ADSR ENVELOPE: Attack 50ms → Exponential Decay 950ms
+    // FASE 1: STROBE LATIGAZO (0 - strobePhaseMs)
+    // Estrobo a 22Hz. Color brillante. La sala parpadea como un rayo.
     // ═════════════════════════════════════════════════════════════════════
     let dimmer: number
-    if (this.elapsedMs < this.config.attackMs) {
-      // Attack: ramp up lineal
-      dimmer = this.elapsedMs / this.config.attackMs
-    } else {
-      // Decay: exponencial suave (e^-3t para caída natural)
-      const decayProgress = (this.elapsedMs - this.config.attackMs)
-        / (this.config.durationMs - this.config.attackMs)
-      dimmer = Math.exp(-3 * decayProgress)
-    }
+    let activeColor: { h: number; s: number; l: number }
 
-    dimmer *= this.triggerIntensity
+    if (this.elapsedMs < this.config.strobePhaseMs) {
+      // Toggle determinístico — sin Math.random(), ciclo puro por tiempo
+      const cycleMs = 1000 / this.config.strobeHz
+      const positionInCycle = this.elapsedMs % cycleMs
+      const isOn = positionInCycle < (cycleMs * 0.45)  // 45% duty cycle
+      dimmer = isOn ? this.triggerIntensity : 0
+      activeColor = this.strobeColor
+    } else {
+      // ═══════════════════════════════════════════════════════════════════
+      // FASE 2: COLOR MELT (strobePhaseMs - durationMs)
+      // Decay exponencial al color elegido. La sala "funde".
+      // ═══════════════════════════════════════════════════════════════════
+      const meltProgress = (this.elapsedMs - this.config.strobePhaseMs)
+        / (this.config.durationMs - this.config.strobePhaseMs)
+      dimmer = Math.exp(-3 * meltProgress) * this.triggerIntensity
+      activeColor = this.flashColor
+    }
 
     const output: EffectFrameOutput = {
       effectId: this.id,
@@ -128,7 +151,7 @@ export class NeonBlinder extends BaseEffect {
       phase: this.phase,
       progress,
       dimmerOverride: dimmer,
-      colorOverride: this.flashColor,
+      colorOverride: activeColor,
       intensity: dimmer,
       zones: ['front', 'all-pars', 'back', 'all-movers'],
       globalComposition: 1.0,
@@ -136,20 +159,20 @@ export class NeonBlinder extends BaseEffect {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // PARS: Flash masivo — color agresivo + dimmer ADSR
+    // PARS: Strobe → Melt según fase
     // ═════════════════════════════════════════════════════════════════════
     const parZones = ['front', 'all-pars', 'back'] as const
     for (const zone of parZones) {
       output.zoneOverrides![zone] = {
-        color: this.flashColor,
+        color: activeColor,
         dimmer,
         blendMode: 'max' as const,
       }
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // MOVERS: Color LATCHED + posición frontal fija + dimmer sync
-    // "Pars paint the canvas, Movers pierce the sky"
+    // MOVERS: Color LATCHED desde el inicio (flashColor, no strobeColor)
+    // "Pars strobe first, Movers melt the sky"
     // ═════════════════════════════════════════════════════════════════════
     output.zoneOverrides!['all-movers'] = this.getMoverColorOverride(
       this.flashColor,

@@ -188,7 +188,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
   'gatling_raid': {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
-    chaos: 0.40,        // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
+    chaos: 0.55,        // � WAVE 2183: 0.40→0.55 — más caótico, más variedad en el mix
     organicity: 0.10,   // Mecánico puro
     textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La ametralladora dispara en cualquier contexto
   },
@@ -223,7 +223,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. Un flash sísmico no necesita que el audio sea dirty
   },
   'digital_rain': {
-    aggression: 0.35,   // 🌧️ WAVE 977: 0.20 → 0.35 (más presencia)
+    aggression: 0.50,   // 🌧️ WAVE 2183: 0.35→0.50 — más presencia, compite en ACTIVE/INTENSE
     chaos: 0.65,        // Caótico (gotas aleatorias)
     organicity: 0.40,   // Semi-orgánico (agua)
     textureAffinity: 'universal',  // 🎨 Matrix versátil
@@ -279,15 +279,16 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   
   // ═══════════════════════════════════════════════════════════════
   // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+  // 🔥 WAVE 2183: APEX STEROIDS — DNA Rebalance (Cognitive Fix)
   // ═══════════════════════════════════════════════════════════════
   'neon_blinder': {
-    aggression: 0.92,   // ⚡ Flash wall masivo — casi tan brutal como industrial_strobe
-    chaos: 0.15,        // Ordenado: ADSR predecible, no caótico
+    aggression: 0.82,   // ⚡ WAVE 2183: 0.92→0.82 — NERF. Deja de ganar SIEMPRE la distancia euclidiana en drops.
+    chaos: 0.15,        // Ordenado: ADSR predecible. Su baja chaos ahora lo diferencia de strobe_storm (0.75)
     organicity: 0.05,   // 100% máquina — descarga eléctrica pura
-    textureAffinity: 'universal',  // Flash funciona en cualquier contexto
+    textureAffinity: 'universal',
   },
   'surgical_strike': {
-    aggression: 0.88,   // 🎯 Quirúrgico: menos bruto que neon_blinder pero letal
+    aggression: 0.88,   // 🎯 Quirúrgico: letal. Se mantiene por encima de neon_blinder
     chaos: 0.25,        // Semi-ordenado: mover targeting determinista
     organicity: 0.02,   // Máquina absoluta — precisión de bisturí
     textureAffinity: 'dirty',  // El bisturí corta en el ruido, no en la calma
@@ -296,7 +297,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.08,   // 👻 Fantasmal: cero violencia — solo presencia
     chaos: 0.15,        // Ordenado: sine waves desfasadas predecibles
     organicity: 0.90,   // Máxima organicidad — parece vida espectral
-    textureAffinity: 'universal',  // Atmósfera versátil — funciona en cualquier textura
+    textureAffinity: 'universal',
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -396,8 +397,8 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'dirty',  // 🎨 Meltdown = intenso, requiere harshness
   },
   'strobe_storm': {
-    aggression: 0.93,   // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
-    chaos: 0.75,        // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
+    aggression: 0.93,   // ⚡ WAVE 1005.14 / WAVE 2183: Se mantiene brutal
+    chaos: 0.55,        // � WAVE 2183: 0.75→0.55 — BUFF masivo. Era tan caótico que la distancia euclidiana lo dejaba fuera de cualquier drop limpio. Ahora compite con neon_blinder.
     organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
     textureAffinity: 'dirty',  // 🎨 Tormenta de strobes = caos dirty
   },

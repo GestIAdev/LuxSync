@@ -4,6 +4,7 @@
 //  WAVE 500 - PROJECT GENESIS - PHASE 3
 //  WAVE 1010 - FRONTAL LOBOTOMY - UNIFIED BRAIN
 //  WAVE 1028 - THE CURATOR - Texture Awareness Integration
+//  WAVE 2183 - DIVERSITY FIX — DROP no puede saltarse la penalización
 //  "Combina hunt + prediction + context → Decisión única"
 //  "El General manda. El Bibliotecario obedece."
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,6 +29,8 @@ import { getContextualEffectSelector } from '../../effects/ContextualEffectSelec
 import type { SpectralContext } from '../../protocol/MusicalContext'
 // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote
 import type { FuzzyDecision } from './FuzzyDecisionMaker'
+// 🎲 WAVE 2183: DIVERSITY FIX — Arsenal selector respeta penalización de diversidad
+import { getDNAAnalyzer, EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
@@ -430,6 +433,66 @@ function calculateCombinedConfidence(
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎲 WAVE 2183: DIVERSITY-AWARE ARSENAL SELECTOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Selecciona el mejor efecto de un arsenal aplicando penalización de diversidad.
+ * 
+ * PROBLEMA ANTERIOR:
+ *   arsenal[0] siempre ganaba (primer efecto del array = neon_blinder).
+ *   El penalizador de diversidad (0.15x) existía en DNAAnalyzer pero
+ *   DIVINE STRIKE y DROP EFFECT lo ignoraban completamente.
+ * 
+ * SOLUCIÓN (WAVE 2183):
+ *   Puntuar cada candidato del arsenal = baseScore * diversityFactor.
+ *   baseScore = 1.0 para todos (todos merecen dispararse en un drop).
+ *   diversityFactor = [1.0, 0.70, 0.35, 0.15] según usos recientes.
+ *   El de mayor puntuación gana. Empates → orden original del array.
+ * 
+ * @param arsenal - Lista de efectos candidatos en orden de prioridad base
+ * @returns El efectoID con mayor diversityScore
+ */
+function selectFromArsenalWithDiversity(arsenal: string[]): string {
+  if (arsenal.length === 0) return ''
+  
+  const analyzer = getDNAAnalyzer()
+  
+  // Target DNA neutral para el cálculo (drops = máxima agresión)
+  // No importa la distancia aquí — todos los del arsenal ya son "adecuados".
+  // Solo nos importa el diversityFactor.
+  const DIVERSITY_FACTORS = [1.0, 0.70, 0.35, 0.15]
+  
+  let bestEffect = arsenal[0]
+  let bestScore = -1
+
+  for (let i = 0; i < arsenal.length; i++) {
+    const effectId = arsenal[i]
+    // Calculamos el relevance del efecto vs un target neutro de drops (A=0.90, C=0.30, O=0.05)
+    // Esto aplica el diversity factor sin necesitar el target real del frame
+    const relevance = analyzer.calculateRelevance(effectId, {
+      aggression: 0.90,
+      chaos: 0.30,
+      organicity: 0.05,
+      confidence: 1.0,
+    })
+    
+    // Tiebreak: si hay empate perfecto, el orden original del array gana
+    if (relevance > bestScore + 0.001) {
+      bestScore = relevance
+      bestEffect = effectId
+    }
+  }
+
+  console.log(
+    `[DecisionMaker 🎲] DIVERSITY SELECT: winner=${bestEffect} score=${bestScore.toFixed(3)} ` +
+    `from [${arsenal.join(', ')}]`
+  )
+  
+  return bestEffect
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE STRIKE - MANDATORY MAXIMUM IMPACT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -496,7 +559,10 @@ function generateDivineStrikeDecision(
     }
   }
   
-  const suggestedEffect = arsenal[0]  // Primer efecto del arsenal (será validado por Repository)
+  // 🎲 WAVE 2183: DIVERSITY FIX — selección respeta penalización de uso reciente
+  // Antes: arsenal[0] siempre ganaba → monopolio de neon_blinder
+  // Ahora: el que menos ha sido usado (y mejor encaja) gana
+  const suggestedEffect = selectFromArsenalWithDiversity(arsenal)
   
   output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`
   
@@ -651,7 +717,11 @@ function generateDropPreparationDecision(
     const vibeId = pattern.vibeId
     // Usar el arsenal DIVINE como pool de efectos hard para drops
     const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club']
-    const suggestedEffect = dropArsenal[0]
+    
+    // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+    // ANTES: dropArsenal[0] → siempre neon_blinder → monopolio total
+    // AHORA: el que menos ha sido usado en la ventana de 120s gana
+    const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
     
     output.effectDecision = {
       effectType: suggestedEffect,

@@ -329,19 +329,37 @@ export class GlitchGuaguanco extends BaseEffect {
       : this.currentDimmer
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1010.8: MOVER SAFETY - Un solo color fijo (MAGENTA)
-    // Los glitches rápidos + cambios de color = riesgo en Color Wheel DMX
-    // PARs/Wash pueden tener glitch multicolor, movers SOLO MAGENTA fijo
+    // 🩸 WAVE 2191: ZONE-COMPLETE DISPATCH — ANTI AUTO-WHITE
+    //
+    // Mismo bug que LatinaMeltdown (WAVE 2190.1): zoneOverrides solo para 'movers'
+    // → ZONE PATH → dispatchGlobalOutput nunca llamado → colorOverride descartado
+    // → PARs sin color + physics dimmer > 0 → AUTO-WHITE INJECTION
+    //
+    // SOLUCIÓN: front + back también en zoneOverrides explícitamente.
+    // Movers = MAGENTA fijo (sin riesgo Color Wheel con cambios cada 100ms)
+    // PARs front/back = glitch multicolor completo
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
-      movers: {
-        color: TOXIC_PALETTE.MAGENTA_VIRUS,  // MAGENTA fijo - virus digital
+      front: {
+        color: color,
         dimmer: dimmer,
         blendMode: 'replace',
-      }
+      },
+      back: {
+        color: color,
+        dimmer: dimmer,
+        blendMode: 'replace',
+      },
+      movers: {
+        color: this.glitchState === 'freeze'
+          ? TOXIC_PALETTE.BLACK_FREEZE
+          : TOXIC_PALETTE.MAGENTA_VIRUS,  // MAGENTA fijo — sin color wheel
+        dimmer: dimmer,
+        blendMode: 'replace',
+      },
     }
-    
+
     return {
       effectId: this.id,
       category: this.category,
@@ -349,15 +367,16 @@ export class GlitchGuaguanco extends BaseEffect {
       progress: elapsed / duration,
       zones: this.zones,
       intensity: dimmer,
-      
+
       dimmerOverride: dimmer,
-      colorOverride: color,  // PARs/Wash mantienen glitch multicolor
-      
-      zoneOverrides,  // 🌊 WAVE 1010.8: Movers con MAGENTA fijo
-      
+      // 🩸 WAVE 2191: colorOverride eliminado — ignorado por ZONE PATH
+      // Toda la autoridad de color vive en zoneOverrides
+
+      zoneOverrides,
+
       // Strobe micro-flicker durante glitch activo (no en freeze)
       strobeRate: this.glitchState === 'flicker' ? 12 : undefined,
-      
+
       globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
     }
   }

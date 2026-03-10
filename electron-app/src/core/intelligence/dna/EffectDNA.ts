@@ -364,9 +364,15 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // ⚔️ ZONA 5: ACTIVE (60-75% Energía)
   'glitch_guaguanco': {
     aggression: 0.64,   // ⚔️ WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
-    chaos: 0.60,        // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
+    chaos: 0.28,        // 🩸 WAVE 2191: 0.60→0.28 — CIRUGÍA MAYOR. chaos=0.60 era LETAL.
+                        // Target ACTIVE (energy≈0.67): chaos≈0.25. Con 0.60 la distancia
+                        // euclidiana era ~0.37 vs machete_spark ~0.17 → perdía siempre.
+                        // 0.28 lo pone a distancia comparable. El "glitch" visual viene del
+                        // DeterministicChaos engine del efecto, no del DNA chaos.
     organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
-    textureAffinity: 'dirty',  // 🎨 Glitch = ruido
+    textureAffinity: 'universal',  // 🩸 WAVE 2191: 'dirty'→'universal'. En reggaetón/dembow
+                                   // la claridad es alta (kick limpio). 'dirty' lo bloqueaba
+                                   // en el filtro de textura antes de competir por DNA.
   },
   'machete_spark': {
     aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)

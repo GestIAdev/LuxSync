@@ -48,7 +48,7 @@ const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   'tropical_pulse': { aggression: 0.54, chaos: 0.25, organicity: 0.65 },
   
   // ACTIVE (60-75%) - Target Center: 0.675
-  'glitch_guaguanco': { aggression: 0.64, chaos: 0.30, organicity: 0.35 },
+  'glitch_guaguanco': { aggression: 0.64, chaos: 0.28, organicity: 0.35 },  // 🩸 WAVE 2191: chaos 0.60→0.28
   'machete_spark': { aggression: 0.70, chaos: 0.20, organicity: 0.30 },
   
   // INTENSE (75-90%) - Target Center: 0.825

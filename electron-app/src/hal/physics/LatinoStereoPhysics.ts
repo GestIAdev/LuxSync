@@ -67,16 +67,18 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_R_DECAY = 0.50;             // WAVE 2195: liquido no estrobo            // WAVE 2194
   private static readonly MOVER_R_GAIN = 4.0;              // WAVE 2195: protocolo Techno     // Boost para que brille
   
-  // BACK PARs -- SNARE SNIPER (WAVE 2197)
-  private static readonly BACK_PAR_GATE = 0.40;             // WAVE 2197: alto y seguro, treble puro
-  private static readonly BACK_PAR_GAIN = 3.5;              // WAVE 2197: compensacion salvaje
+  // BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+  private static readonly BACK_PAR_GATE = 0.40;             // WAVE 2199: clon exacto Techno
+  private static readonly BACK_PAR_GAIN = 5.0;              // WAVE 2199: BACK_PAR_SLAP_MULT clon Techno
   private static readonly BACK_PAR_ATTACK = 0.85;
   private static readonly BACK_PAR_DECAY = 0.25;
   
-  // FRONT PARs -- BOMBO TERMINATOR (WAVE 2197)
-  private static readonly FRONT_PAR_GATE = 0.48;           // WAVE 2197: mismo gate que Techno
-  private static readonly FRONT_PAR_ATTACK = 0.70;         // Ataque rapido
-  private static readonly FRONT_PAR_GAIN = 2.0;            // WAVE 2197: cuadratica pura
+  // FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
+  private static readonly FRONT_PAR_GATE = 0.48;            // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_ON
+  private static readonly FRONT_PAR_GATE_OFF = 0.35;        // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_OFF
+  private static readonly BASS_VITAMIN_BOOST = 1.8;         // WAVE 2199: clon exacto Techno
+  private static readonly FRONT_PAR_ATTACK = 0.70;          // Ataque rapido
+  private static readonly FRONT_PAR_GAIN = 2.0;             // WAVE 2197: cuadratica pura
   
   // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
@@ -98,6 +100,7 @@ export class LatinoStereoPhysics {
   private currentMoverIntensity = 0;
   private currentBackParIntensity = 0;
   private currentFrontParIntensity = 0;
+  private frontParActive = false;       // WAVE 2199: hysteresis ON/OFF clon Techno
   private lastSectionType: string = 'verse';
   private whitePuncturePhase: 'idle' | 'dip' | 'flash' = 'idle';
   private whitePunctureFramesRemaining = 0;
@@ -206,11 +209,16 @@ export class LatinoStereoPhysics {
     //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
     // Gate 0.14: Solo picos reales de treble (>0.14) activan
     // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-    // BACK PARs -- SNARE SNIPER (WAVE 2197)
-    // Treble puro: aplasta voces/highMid, captura solo el latigazo del snare
-    if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
-      const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
-      const target = Math.pow(normalized, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN;
+    // BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+    // Clon exacto de TechnoStereoPhysics: snareAndSynthPower cocktail
+    const snareAndSynthPower = Math.min(1.0,
+      (mid * 0.5) +           // El cuerpo del sinte y la caja
+      (treble * 0.8) +        // El latigazo metalico del snare
+      (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
+    );
+    if (snareAndSynthPower > LatinoStereoPhysics.BACK_PAR_GATE) {
+      const gated = (snareAndSynthPower - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+      const target = Math.min(1.0, Math.pow(gated, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
       this.currentBackParIntensity += (target - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
       this.currentBackParIntensity *= 0.25;
@@ -273,15 +281,27 @@ export class LatinoStereoPhysics {
     if (this.currentMoverIntensityR < 0.05) { this.currentMoverIntensityR = 0; }
     
     // ------------------------------------------------------------------------
-    // FRONT PARs -- BOMBO TERMINATOR (WAVE 2197)
+    // FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
     // ------------------------------------------------------------------------
-    // Accion directa y cuadratica: mata los debiles, explota los fuertes
-    if (bass > LatinoStereoPhysics.FRONT_PAR_GATE) {
-      const normalized = (bass - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
-      const target = Math.pow(normalized, 2.0) * LatinoStereoPhysics.FRONT_PAR_GAIN;
+    // Clon exacto de TechnoStereoPhysics.calculateFrontPar()
+    // Hysteresis ON/OFF + BASS_VITAMIN_BOOST + pow(x,2.0)
+    if (this.frontParActive) {
+      if (bass < LatinoStereoPhysics.FRONT_PAR_GATE_OFF) {
+        this.frontParActive = false;
+        this.currentFrontParIntensity = 0;
+      }
+    } else {
+      if (bass >= LatinoStereoPhysics.FRONT_PAR_GATE) {
+        this.frontParActive = true;
+      }
+    }
+    if (this.frontParActive) {
+      const gated = (bass - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
+      const boosted = gated * LatinoStereoPhysics.BASS_VITAMIN_BOOST;
+      const target = Math.min(1.0, Math.pow(Math.max(0, boosted), 2.0));
       this.currentFrontParIntensity += (target - this.currentFrontParIntensity) * LatinoStereoPhysics.FRONT_PAR_ATTACK;
     } else {
-      this.currentFrontParIntensity *= 0.12; // Caida al vacio instantanea (Techno linear decay)
+      this.currentFrontParIntensity *= 0.12;
       if (this.currentFrontParIntensity < 0.05) this.currentFrontParIntensity = 0;
     }
 
@@ -362,6 +382,7 @@ export class LatinoStereoPhysics {
     this.currentMoverIntensityL = 0;
     this.currentMoverIntensityR = 0;
     this.frontParPeak = 0;
+    this.frontParActive = false;       // WAVE 2199
   }
 
   private hslToRgb(hsl: HSL): RGB {

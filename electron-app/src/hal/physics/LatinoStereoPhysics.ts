@@ -1,38 +1,4 @@
-/**
- * WAVE 297: FIESTA LATINA COMPLETA ????
- * ============================================================================
- * 
- * MISI�N CUMPLIDA - De "roto" a "sublime" en 7 WAVEs (291-297)
- * 
- * ?? WAVE 1004.1: STEREO SPLIT & FAT BASS
- *   - Movers divididos: L (Mid/Voz) vs R (Treble/Trompetas)
- *   - Front Pars: Peak Hold "Gordo" (bombo latino ? click metal)
- * 
- * ARQUITECTURA FINAL:
- *   FRONT PARs ? BASS (Gate 0.55, FAT HOLD 0.85) = BOMBO "BOOM" (gordo)
- *   BACK PARs  ? TREBLE (Gate 0.22, Decay 0.25) = SNARE "tacka"
- *   MOVER L    ? MID PURO (Gate 0.22, Decay 0.60) = VOZ/MELOD�A (El Gal�n)
- *   MOVER R    ? TREBLE (Gate 0.18, Decay 0.40) = TROMPETAS/G�IRA (La Dama)
- * 
- * CALIBRACI�N (An�lisis estad�stico 200+ muestras):
- *   - Beat loss: ~4% (solo silencios arquitect�nicos reales)
- *   - Delta < 0.10: 90% del flujo = CINTURA DE BAILARINA
- *   - Delta > 0.20: 9 casos = PUNCHES INTENCIONALES (drops/entradas)
- * 
- * G�NEROS VALIDADOS:
- *   ? Reggaet�n (T�N-tacka-T�N-tacka)
- *   ? Cumbia (ritmo de acorde�n)
- *   ? Cumbiat�n (h�brido)
- *   ? Remixes de DJ con EQ cuestionable
- * 
- * PRESUPUESTO: $0 y dos gatos ????
- * COMPETENCIA: GrandMA3 = $$$$$$$  |  LuxSync = $800
- * 
- * "Lo espectacular es el 95%. Lo sublime es el 100%." - Radwulf (Virgo)
- * "La luz que respira, no parpadea." - PunkOpus
- * ============================================================================
- */
-
+﻿
 import { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
 export interface RGB { r: number; g: number; b: number; }
@@ -96,28 +62,28 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_L_DECAY = 0.25;            // WAVE 2192: guillotina
   
   // RIGHT (La Dama / Treble / Brass / G�ira) - Nueva l�gica "Brillo"
-  private static readonly MOVER_R_GATE = 0.35;             // WAVE 2194: solo picos reales
+  private static readonly MOVER_R_GATE = 0.18;              // WAVE 2195: Schwarzenegger despierta facil             // WAVE 2194: solo picos reales
   private static readonly MOVER_R_ATTACK = 0.80;  // Ataque r�pido (trompetazo)
-  private static readonly MOVER_R_DECAY = 0.40;            // WAVE 2194
-  private static readonly MOVER_R_GAIN = 2.0;     // Boost para que brille
+  private static readonly MOVER_R_DECAY = 0.50;             // WAVE 2195: liquido no estrobo            // WAVE 2194
+  private static readonly MOVER_R_GAIN = 4.0;              // WAVE 2195: protocolo Techno     // Boost para que brille
   
   // BACK PARs -- GATE DE HIERRO (WAVE 2194)
-  private static readonly BACK_PAR_GATE = 0.45;
-  private static readonly BACK_PAR_GAIN = 2.5;
+  private static readonly BACK_PAR_GATE = 0.35;             // WAVE 2195: Sniper Techno
+  private static readonly BACK_PAR_GAIN = 3.0;              // WAVE 2195: aplasta ruido levanta latigazo
   private static readonly BACK_PAR_ATTACK = 0.85;
   private static readonly BACK_PAR_DECAY = 0.25;
   
   // FRONT PARs (WAVE 760 - KILL THE BRICK)
   // Decay exponencial m�s agresivo para aprovechar motor sin jitter
-  private static readonly FRONT_PAR_GATE = 0.55;           // WAVE 2194: bloquea melodias solo el TUN
+  private static readonly FRONT_PAR_GATE = 0.45;           // WAVE 2195: floor moderado
   private static readonly FRONT_PAR_ATTACK = 0.70;         // Sin cambio
   private static readonly FRONT_PAR_DECAY_LINEAR = 0.12;   // ?? WAVE 760: Subido de 0.05 (m�s del doble de r�pido)
-  private static readonly FRONT_PAR_GAIN = 2.0;            // WAVE 2192
+  private static readonly FRONT_PAR_GAIN = 2.5;             // WAVE 2195: curva cuadratica            // WAVE 2192
   
   // ?? WAVE 1004.1: FAT BASS (Peak Hold)
   // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
   // Hold sostiene el pico visual unos milisegundos para dar PESO
-  private static readonly BASS_HOLD_DECAY = 0.70;          // WAVE 2194: punto G
+  private static readonly BASS_HOLD_DECAY = 0.60;          // WAVE 2195: peso gordo reggaeton
   
   // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
@@ -247,14 +213,14 @@ export class LatinoStereoPhysics {
     //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
     // Gate 0.14: Solo picos reales de treble (>0.14) activan
     // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-    if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
-      // TREBLE: Normalizar sobre rango efectivo (0.14-0.30)
-      const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (0.30 - LatinoStereoPhysics.BACK_PAR_GATE);
-      const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.BACK_PAR_GAIN);
+    // BACK PARs -- SNIPER TECHNO (WAVE 2195)
+    const snareSignal = (mid * 0.3) + (treble * 0.7);
+    if (snareSignal > LatinoStereoPhysics.BACK_PAR_GATE) {
+      const normalized = (snareSignal - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+      const boosted = Math.min(1.0, Math.pow(normalized, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
       this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
-      // Sin snare/hi-hat: Decay R�PIDO para bofetada
-      this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
+      this.currentBackParIntensity *= 0.25;
     }
     
     // MOVERS (WAVE 296 - MID PURO con Treble Rejection)
@@ -302,10 +268,10 @@ export class LatinoStereoPhysics {
       this.currentMoverIntensityL = 0;
     }
     
-    // --- RIGHT CHANNEL (La Dama / TREBLE puro -- Trompetas/Guira) ---
-    // WAVE 2194: treble crudo, sin cocktail -- extirpa el autotune del cantante
+     // --- RIGHT CHANNEL (La Dama / TREBLE -- Schwarzenegger Suavizado WAVE 2195) ---
     if (treble > LatinoStereoPhysics.MOVER_R_GATE) {
-      const target = Math.min(1.0, treble * LatinoStereoPhysics.MOVER_R_GAIN);
+      const normalized = (treble - LatinoStereoPhysics.MOVER_R_GATE) / (1.0 - LatinoStereoPhysics.MOVER_R_GATE);
+      const target = Math.min(1.0, Math.pow(normalized, 1.2) * LatinoStereoPhysics.MOVER_R_GAIN);
       this.currentMoverIntensityR += (target - this.currentMoverIntensityR) * LatinoStereoPhysics.MOVER_R_ATTACK;
     } else {
       this.currentMoverIntensityR *= LatinoStereoPhysics.MOVER_R_DECAY;
@@ -321,10 +287,10 @@ export class LatinoStereoPhysics {
     
     // Fase 1: Deteccion y Ataque
     if (frontTarget > LatinoStereoPhysics.FRONT_PAR_GATE) {
-      const normalized = (frontTarget - LatinoStereoPhysics.FRONT_PAR_GATE) / (1 - LatinoStereoPhysics.FRONT_PAR_GATE);
-      const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.FRONT_PAR_GAIN);
-      
-      // Si el nuevo golpe es más fuerte que el pico actual ? TOMAR (Ataque)
+      const normalized = (frontTarget - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
+      const boosted = Math.min(1.0, Math.pow(normalized, 2.0) * LatinoStereoPhysics.FRONT_PAR_GAIN);
+
+      // Curva cuadratica WAVE 2195: golpes debiles mueren, fuertes explotan
       if (boosted > this.frontParPeak) {
         this.frontParPeak = boosted;
       }

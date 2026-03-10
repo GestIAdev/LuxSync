@@ -260,23 +260,45 @@ export class LatinaMeltdown extends BaseEffect {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1010.8.6: MOVER SAFETY - DORADO FIJO (no alternancia)
-    // PROBLEMA: Alternancia Rojo/Amarillo cada 250ms = riesgo Color Wheel
-    // SOLUCIÓN: Movers reciben NARANJA_FUSION fijo (dorado latino)
-    // PARs/Wash mantienen alternancia Rojo↔Amarillo (RGB safe)
-    // CÓDIGO DEFENSIVO: Aunque HAL limite a 200ms, mejor prevenir desde código
+    // 🩸 WAVE 2190.1: ZONE-COMPLETE DISPATCH — ANTI AUTO-WHITE
+    //
+    // BUG RAÍZ: El TimelineEngine usa ZONE PATH cuando hay zoneOverrides.
+    // ZONE PATH llama dispatchZoneOverrides() y NUNCA dispatchGlobalOutput().
+    // Resultado: colorOverride (para PARs) se descartaba silenciosamente.
+    // PARs quedaban sin color → physics ponía dimmer > 0 → AUTO-WHITE INJECTION.
+    //
+    // SOLUCIÓN: TODAS las zonas van en zoneOverrides explícitas.
+    // No hay colorOverride global — cada zona se pinta a sí misma.
+    // movers → NARANJA_FUSION fijo (sin riesgo Color Wheel)
+    // front/back → alternancia Rojo↔Amarillo (RGB safe)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
+    const isSilent = this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap'
+    const parsColor = isSilent
+      ? { h: 0, s: 0, l: 0 }  // Negro en pre-blackout/gap
+      : color                   // Rojo o Amarillo en flash
+    const moversColor = isSilent
+      ? { h: 0, s: 0, l: 0 }  // Negro en pre-blackout/gap
+      : MELTDOWN_PALETTE.NARANJA_FUSION  // DORADO fijo en flash (sin color wheel)
+
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
-      movers: {
-        color: this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap'
-          ? { h: 0, s: 0, l: 0 }  // Negro en blackout/gap
-          : MELTDOWN_PALETTE.NARANJA_FUSION,  // DORADO fijo en flash
+      front: {
+        color: parsColor,
         dimmer: dimmer,
         blendMode: 'replace',
-      }
+      },
+      back: {
+        color: parsColor,
+        dimmer: dimmer,
+        blendMode: 'replace',
+      },
+      movers: {
+        color: moversColor,
+        dimmer: dimmer,
+        blendMode: 'replace',
+      },
     }
-    
+
     return {
       effectId: this.id,
       category: this.category,
@@ -284,15 +306,13 @@ export class LatinaMeltdown extends BaseEffect {
       progress: elapsed / duration,
       zones: this.zones,
       intensity: dimmer,
-      
+
       dimmerOverride: dimmer,
-      colorOverride: color,  // PARs/Wash con alternancia Rojo↔Amarillo
-      
-      zoneOverrides,  // 🌊 WAVE 1010.8.6: Movers con DORADO fijo
-      
-      // 🩸 WAVE 2190: whiteOverride ELIMINADO — el blanco desaturaba el rojo/amarillo
-      // El punch de la meltdown viene del color puro latino, no del white channel
-      
+      // 🩸 WAVE 2190.1: colorOverride eliminado — era ignorado por ZONE PATH
+      // Toda la autoridad de color vive en zoneOverrides ahora
+
+      zoneOverrides,
+
       globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
     }
   }

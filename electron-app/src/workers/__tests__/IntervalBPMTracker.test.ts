@@ -704,6 +704,47 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       expect(musical).toBeGreaterThanOrEqual(135)
       expect(musical).toBeLessThanOrEqual(143)
     })
+
+    // ── WAVE 2191: DEMBOW CEILING — Octave Corrector ─────────────────
+    it('should fold 200 BPM → 100 BPM via latin pocket [85, 105]', () => {
+      // Dembow redoble scenario: tracker locks to ~200 BPM (maracas/conga)
+      // but the real tempo is 100 BPM. The latin pocket [85, 105] forces
+      // ÷2.0 folding: 200 / 2.0 = 100 ∈ [85, 105] ✅
+      const buffer = generateProductionBuffer(200, 20)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      // 200 BPM is right at MIN_INTERVAL_MS (300ms) — may quantize ±10%
+      expect(raw).toBeGreaterThanOrEqual(175)
+      expect(raw).toBeLessThanOrEqual(215)
+
+      // With latin pocket [85, 105]: ÷2.0 → 100 BPM ∈ [85, 105] ✅
+      const musical = prodTracker.getMusicalBpm(85, 105)
+      expect(musical).toBeGreaterThanOrEqual(85)
+      expect(musical).toBeLessThanOrEqual(108)
+    })
+
+    it('should keep 100 BPM unfolded inside latin pocket [85, 105]', () => {
+      // Correct detection: 100 BPM reggaetón is ALREADY in the latin pocket
+      // → passthrough, no folding applied
+      const buffer = generateProductionBuffer(100, 20)
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      for (const frame of buffer.frames) {
+        prodTracker.process(frame.energy, false, frame.timestamp)
+      }
+
+      const raw = prodTracker.getBpm()
+      expect(raw).toBeGreaterThanOrEqual(97)
+      expect(raw).toBeLessThanOrEqual(103)
+
+      // 100 ∈ [85, 105] → direct hit, no fold → musical === raw
+      const musical = prodTracker.getMusicalBpm(85, 105)
+      expect(musical).toBe(raw)
+    })
+    // ── END WAVE 2191 DEMBOW CEILING ──────────────────────────────────
   })
 
   // ─────────────────────────────────────────────────────────────────────

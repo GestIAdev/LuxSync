@@ -815,7 +815,42 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // getMusicalBpm() folds it into the dance pocket [90-135]: 185/1.5 = 123 BPM.
   // The raw bpm is still visible in the [INTERVAL] diagnostic log above.
   if (bpmResult.confidence > 0.05) {
-    state.currentBpm = bpmTracker.getMusicalBpm(pocketMin, pocketMax);
+    let musicalBpm = bpmTracker.getMusicalBpm(pocketMin, pocketMax);
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 2191: DEMBOW CEILING — OCTAVE CORRECTOR
+    //
+    // PROBLEMA: En reggaetón/cumbia/salsa el tracker puede anclarse en
+    // ~190-210 BPM detectando el redoble de la conga o las maracas.
+    // Aunque getMusicalBpm() tiene ÷2.0 en su arsenal, el outlier
+    // rejection interno congela el stableBpm en el harmónico alto con
+    // confianza alta, y los kicks reales (~100 BPM) son rechazados como
+    // ratio=100/200=0.50 < 0.65 → el fold NUNCA se aplica porque el
+    // tracker ya tiene un stableBpm "estable" en la octava errónea.
+    //
+    // SOLUCIÓN: Post-procesado contextual en la inyección de estado.
+    // Si vibe === fiesta-latina y musicalBpm > 145, dividir entre 2.
+    // 145 BPM = techo de cristal latino. Nada encima de 145 es tempo
+    // bailado en reggaetón/cumbia/salsa (130 BPM absoluto máximo).
+    // Esta división fuerza el pocket correcto ANTES de que el PLL lo use.
+    //
+    // ARQUITECTURA: El tracker interno NO se toca — sigue midiendo raw.
+    // "Don't limit the input data; limit the musical output." — PunkArchytect
+    // ═══════════════════════════════════════════════════════════════════
+    const LATIN_BPM_CEILING = 145
+    const isLatinaVibe = currentVibeId === 'fiesta-latina'
+                      || currentVibeId === 'reggaeton'
+                      || currentVibeId === 'latin'
+    if (isLatinaVibe && musicalBpm > LATIN_BPM_CEILING) {
+      const corrected = Math.round(musicalBpm / 2)
+      console.log(
+        `[DEMBOW CEILING 🩸] Octave corrected: ${musicalBpm}→${corrected} BPM` +
+        ` | vibe=${currentVibeId} | raw=${bpmResult.bpm}`
+      )
+      musicalBpm = corrected
+    }
+
+    state.currentBpm = musicalBpm;
     state.bpmConfidence = bpmResult.confidence;
     state.beatPhase = bpmResult.beatPhase;
   }

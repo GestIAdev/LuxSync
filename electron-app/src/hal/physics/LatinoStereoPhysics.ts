@@ -67,18 +67,18 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_R_DECAY = 0.50;             // WAVE 2195: liquido no estrobo            // WAVE 2194
   private static readonly MOVER_R_GAIN = 4.0;              // WAVE 2195: protocolo Techno     // Boost para que brille
   
-  // BACK PARs -- GATE DE HIERRO (WAVE 2194)
-  private static readonly BACK_PAR_GATE = 0.35;             // WAVE 2195: Sniper Techno
-  private static readonly BACK_PAR_GAIN = 3.0;              // WAVE 2195: aplasta ruido levanta latigazo
+  // BACK PARs -- PERCUSION TROPICAL (WAVE 2196)
+  private static readonly BACK_PAR_GATE = 0.15;             // WAVE 2196: entra todo el ritmo picado
+  private static readonly BACK_PAR_GAIN = 4.0;              // WAVE 2196: cualquier toque = fogonazo
   private static readonly BACK_PAR_ATTACK = 0.85;
   private static readonly BACK_PAR_DECAY = 0.25;
   
   // FRONT PARs (WAVE 760 - KILL THE BRICK)
   // Decay exponencial m�s agresivo para aprovechar motor sin jitter
-  private static readonly FRONT_PAR_GATE = 0.45;           // WAVE 2195: floor moderado
+  private static readonly FRONT_PAR_GATE = 0.35;           // WAVE 2196: captura cuerpo del bombo
   private static readonly FRONT_PAR_ATTACK = 0.70;         // Sin cambio
   private static readonly FRONT_PAR_DECAY_LINEAR = 0.12;   // ?? WAVE 760: Subido de 0.05 (m�s del doble de r�pido)
-  private static readonly FRONT_PAR_GAIN = 2.5;             // WAVE 2195: curva cuadratica            // WAVE 2192
+  private static readonly FRONT_PAR_GAIN = 3.5;            // WAVE 2196: mas volumen menos castigo
   
   // ?? WAVE 1004.1: FAT BASS (Peak Hold)
   // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
@@ -213,11 +213,12 @@ export class LatinoStereoPhysics {
     //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
     // Gate 0.14: Solo picos reales de treble (>0.14) activan
     // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-    // BACK PARs -- SNIPER TECHNO (WAVE 2195)
-    const snareSignal = (mid * 0.3) + (treble * 0.7);
-    if (snareSignal > LatinoStereoPhysics.BACK_PAR_GATE) {
-      const normalized = (snareSignal - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
-      const boosted = Math.min(1.0, Math.pow(normalized, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
+    // BACK PARs -- PERCUSION TROPICAL (WAVE 2196)
+    // Campanas, timbales y el "tacka" del dembow viven en highMid
+    const percSignal = (highMid * 0.7) + (treble * 0.3);
+    if (percSignal > LatinoStereoPhysics.BACK_PAR_GATE) {
+      const normalized = (percSignal - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+      const boosted = Math.min(1.0, Math.pow(normalized, 1.1) * LatinoStereoPhysics.BACK_PAR_GAIN);
       this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
       this.currentBackParIntensity *= 0.25;
@@ -288,9 +289,9 @@ export class LatinoStereoPhysics {
     // Fase 1: Deteccion y Ataque
     if (frontTarget > LatinoStereoPhysics.FRONT_PAR_GATE) {
       const normalized = (frontTarget - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
-      const boosted = Math.min(1.0, Math.pow(normalized, 2.0) * LatinoStereoPhysics.FRONT_PAR_GAIN);
+      const boosted = Math.min(1.0, Math.pow(normalized, 1.3) * LatinoStereoPhysics.FRONT_PAR_GAIN);
 
-      // Curva cuadratica WAVE 2195: golpes debiles mueren, fuertes explotan
+      // Curva 1.3 WAVE 2196: bombo profundo latino capturado, fuertes explotan
       if (boosted > this.frontParPeak) {
         this.frontParPeak = boosted;
       }

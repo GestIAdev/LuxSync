@@ -575,7 +575,8 @@ export class SeleneLux {
           normalizedBass: audioMetrics.normalizedBass,
           normalizedMid: audioMetrics.normalizedMid, // 🆕 WAVE 288.7: Añadir mid para movers
           normalizedEnergy: audioMetrics.avgNormEnergy,
-          normalizedHigh: audioMetrics.normalizedTreble, // 🆕 WAVE 288.7: Añadir treble (aunque no se usa)
+          normalizedHigh: audioMetrics.normalizedTreble, // 🆕 WAVE 288.7: Añadir treble
+          normalizedHighMid: audioMetrics.normalizedMid * 0.6 + audioMetrics.normalizedTreble * 0.4, // 🔥 WAVE 2192: 7-band cocktail
           sectionType: vibeContext.section,  // 🆕 WAVE 290: Sección para White Puncture
         },
         vibeContext.bpm,

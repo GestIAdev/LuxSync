@@ -44,6 +44,7 @@ export interface LatinoAudioMetrics {
   normalizedMid?: number;
   normalizedEnergy: number; 
   normalizedHigh?: number; 
+  normalizedHighMid?: number;   // 🔥 WAVE 2192: 1-3kHz — trompetas/congas/cuerpo del snare
   previousEnergy?: number; 
   deltaTime?: number;
   sectionType?: string;
@@ -85,40 +86,40 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_DECAY_FACTOR = 0.60;       // 🔧 WAVE 760: Bajado de 0.75 (más robot, menos ghost)
   private static readonly MOVER_GATE = 0.22;               // Sin cambio (rescatar zona 0.22-0.24)
   private static readonly MOVER_GAIN = 1.50;               // 🔧 WAVE 760: Subido de 1.30 (compensar decay más rápido)
-  private static readonly MOVER_HYSTERESIS = 0.25;         // Piso de relleno
+  private static readonly MOVER_HYSTERESIS = 0.00;         // 🔥 WAVE 2192: GUILLOTINA — sin piso de relleno
   private static readonly MOVER_TREBLE_REJECTION = 0.30;   // 🏆 ORO PURO - Voces autotune tienen treble
   
   // 🔥 WAVE 1004.1: STEREO SPLIT - MOVERS COMO PAREJA DE BAILE
   // LEFT (El Galán / Mid / Conga / Voz) - Hereda lógica "Mid Puro"
-  private static readonly MOVER_L_GATE = 0.22;
+  private static readonly MOVER_L_GATE = 0.28;             // 🔥 WAVE 2192: Subido de 0.22 (solo mid real, sin ruido)
   private static readonly MOVER_L_ATTACK = 0.65;
-  private static readonly MOVER_L_DECAY = 0.45;            // 🔧 WAVE 1004.1.2: Bajado de 0.60 (más fractura entre sílabas)
+  private static readonly MOVER_L_DECAY = 0.25;            // � WAVE 2192: Bajado de 0.45 (guillotina entre sílabas)
   
-  // RIGHT (La Dama / Treble / Brass / Güira) - Nueva lógica "Brillo"
-  private static readonly MOVER_R_GATE = 0.20;    // Más sensible a agudos
+  // RIGHT (La Dama / HighMid+Treble - Trompetas/Güira) - Cocktail 7-band
+  private static readonly MOVER_R_GATE = 0.30;    // 🔥 WAVE 2192: Subido de 0.20 (gate para damaSignal combinado)
   private static readonly MOVER_R_ATTACK = 0.80;  // Ataque rápido (trompetazo)
-  private static readonly MOVER_R_DECAY = 0.32;   // 🔧 WAVE 1004.1.2: Bajado de 0.40 (más punchy, guacharaca seca)
+  private static readonly MOVER_R_DECAY = 0.45;   // � WAVE 2192: Subido de 0.32 (más sustain en las trompetas)
   private static readonly MOVER_R_GAIN = 2.0;     // Boost para que brille
   
   // BACK PARs - WAVE 760: SURGICAL SNARE (solo snare y hi-hat puros)
   // Treble típico: 0.13-0.22. Gate subido para eliminar voces de fondo completamente
   // Attack instantáneo para respuesta quirúrgica
-  private static readonly BACK_PAR_GATE = 0.24;            // 🔧 WAVE 760: Subido de 0.16 (solo snare/hi-hat puros)
+  private static readonly BACK_PAR_GATE = 0.30;            // � WAVE 2192: Subido de 0.24 (gate para snareSignal combinado)
   private static readonly BACK_PAR_ATTACK = 0.85;          // 🔧 WAVE 760: Subido de 0.70 (instantáneo)
   private static readonly BACK_PAR_DECAY = 0.25;           // Sin cambio (bofetada rápida)
   private static readonly BACK_PAR_GAIN = 1.9;             // Sin cambio
   
   // FRONT PARs (WAVE 760 - KILL THE BRICK)
   // Decay exponencial más agresivo para aprovechar motor sin jitter
-  private static readonly FRONT_PAR_GATE = 0.55;           // 🔧 WAVE 760: Subido de 0.48 (solo bombos reales)
+  private static readonly FRONT_PAR_GATE = 0.45;           // � WAVE 2192: Bajado de 0.55 (más bombos detectados)
   private static readonly FRONT_PAR_ATTACK = 0.70;         // Sin cambio
   private static readonly FRONT_PAR_DECAY_LINEAR = 0.12;   // 🔧 WAVE 760: Subido de 0.05 (más del doble de rápido)
-  private static readonly FRONT_PAR_GAIN = 1.7;            // Sin cambio
+  private static readonly FRONT_PAR_GAIN = 2.0;            // 🔥 WAVE 2192: Subido de 1.7 (bombo más poderoso)
   
   // 🔥 WAVE 1004.1: FAT BASS (Peak Hold)
   // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
   // Hold sostiene el pico visual unos milisegundos para dar PESO
-  private static readonly BASS_HOLD_DECAY = 0.85;          // Caída más lenta = Bombo más gordo
+  private static readonly BASS_HOLD_DECAY = 0.20;          // 🔥 WAVE 2192: Bajado de 0.85 (bombo seco — golpe nítido)
   
   // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
@@ -199,6 +200,9 @@ export class LatinoStereoPhysics {
     const bass = metrics.normalizedBass;
     const mid = metrics.normalizedMid ?? metrics.normalizedEnergy;
     const treble = metrics.normalizedHigh ?? 0;
+    // 🔥 WAVE 2192: highMid — 1-3kHz (trompetas, cuerpo del snare, congas)
+    // Fallback determinista: mezcla ponderada mid/treble si el caller no lo provee
+    const highMid = metrics.normalizedHighMid ?? (mid * 0.6 + treble * 0.4);
     const bassDelta = bass - this.lastBass;
     const energyDelta = previousEnergy - currentEnergy;
     
@@ -245,15 +249,17 @@ export class LatinoStereoPhysics {
     // Filosofía reggaeton: TÚN-tacka-TÚN-tacka
     //   - TÚN = bombo (BASS) → FRONT PARs
     //   - tacka = snare/hi-hat (TREBLE) → BACK PARs
-    // Gate 0.14: Solo picos reales de treble (>0.14) activan
-    // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-    if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
-      // TREBLE: Normalizar sobre rango efectivo (0.14-0.30)
-      const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (0.30 - LatinoStereoPhysics.BACK_PAR_GATE);
+    // 🔥 WAVE 2192: snareSignal — cocktail mid+highMid para capturar el cuerpo del snare latino
+    // El snare de reggaetón tiene cuerpo en mid (golpe del parche) + highMid (crack del rim)
+    const snareSignal = (mid * 0.50) + (highMid * 0.50);
+    
+    if (snareSignal > LatinoStereoPhysics.BACK_PAR_GATE) {
+      // SNARE COCKTAIL: Normalizar sobre rango efectivo
+      const normalized = (snareSignal - LatinoStereoPhysics.BACK_PAR_GATE) / (0.30 - LatinoStereoPhysics.BACK_PAR_GATE);
       const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.BACK_PAR_GAIN);
       this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
-      // Sin snare/hi-hat: Decay RÁPIDO para bofetada
+      // Sin snare: Decay RÁPIDO para bofetada
       this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
     }
     
@@ -266,17 +272,9 @@ export class LatinoStereoPhysics {
       const boostedTarget = Math.min(1.0, moverTarget * LatinoStereoPhysics.MOVER_GAIN);
       this.currentMoverIntensity += (boostedTarget - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_ATTACK;
     } else {
-      // Decay normal
+      // Decay normal — sin histéresis (WAVE 2192: guillotina)
       this.currentMoverIntensity *= LatinoStereoPhysics.MOVER_DECAY_FACTOR;
-      
-    // 🆕 HISTÉRESIS 0.20: Piso más alto rellena microhuecos entre vocales
-      // Estamos en zona de transición - mantener el piso
-      if (this.currentMoverIntensity > LatinoStereoPhysics.MOVER_HYSTERESIS && 
-          this.currentMoverIntensity < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
-        // Estamos en zona de transición - mantener el piso
-        this.currentMoverIntensity = LatinoStereoPhysics.MOVER_HYSTERESIS;
-      } else if (this.currentMoverIntensity < 0.05) {
-        // Silencio real - apagar completamente
+      if (this.currentMoverIntensity < 0.05) {
         this.currentMoverIntensity = 0;
       }
     }
@@ -294,20 +292,21 @@ export class LatinoStereoPhysics {
       this.currentMoverIntensityL *= LatinoStereoPhysics.MOVER_L_DECAY;
     }
     
-    // Histéresis para Left (Voz) - Mantiene el "suelo" para que no parpadee en frases
-    if (this.currentMoverIntensityL > LatinoStereoPhysics.MOVER_HYSTERESIS && 
-        this.currentMoverIntensityL < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
-      this.currentMoverIntensityL = LatinoStereoPhysics.MOVER_HYSTERESIS;
-    } else if (this.currentMoverIntensityL < 0.05) {
+    // 🔥 WAVE 2192: GUILLOTINA — sin histéresis, sin piso de relleno
+    // MOVER_HYSTERESIS = 0.00 → caída libre al silencio real
+    // El contraste perreo/pausa tiene que ser absoluto, no suavizado
+    if (this.currentMoverIntensityL < 0.05) {
       this.currentMoverIntensityL = 0;
     }
     
-    // --- RIGHT CHANNEL (La Dama / TREBLE - Trompetas/Güira) ---
-    // Escucha PURA de agudos, ignorando el mid. Más nerviosa y brillante.
-    const brilloPuro = treble;
+    // --- RIGHT CHANNEL (La Dama / HighMid+Treble - Trompetas/Güira) ---
+    // 🔥 WAVE 2192: damaSignal — cocktail 7-band para capturar la esencia de La Dama
+    // highMid (1-3kHz) = cuerpo de trompeta/tumbadora en la mezcla latina
+    // treble (3-8kHz)  = brillo de güira/shaker y el aire de la trompeta
+    const damaSignal = (highMid * 0.70) + (treble * 0.40);
     
-    if (brilloPuro > LatinoStereoPhysics.MOVER_R_GATE) {
-      const target = Math.min(1.0, brilloPuro * LatinoStereoPhysics.MOVER_R_GAIN);
+    if (damaSignal > LatinoStereoPhysics.MOVER_R_GATE) {
+      const target = Math.min(1.0, damaSignal * LatinoStereoPhysics.MOVER_R_GAIN);
       this.currentMoverIntensityR += (target - this.currentMoverIntensityR) * LatinoStereoPhysics.MOVER_R_ATTACK;
     } else {
       this.currentMoverIntensityR *= LatinoStereoPhysics.MOVER_R_DECAY;
@@ -389,7 +388,9 @@ export class LatinoStereoPhysics {
       moverIntensityL: this.currentMoverIntensityL,  // El Galán (Mid/Voz)
       moverIntensityR: this.currentMoverIntensityR,  // La Dama (Treble/Trompetas)
       debugInfo: { 
-        bass, mid, treble, bassDelta, 
+        bass, mid, treble, highMid, bassDelta, 
+        snareSignal: (mid * 0.50) + (highMid * 0.50),
+        damaSignal: (highMid * 0.70) + (treble * 0.40),
         flareIntensity: this.currentFlareIntensity, 
         detectedBpm,
         whitePuncturePhase: this.whitePuncturePhase,

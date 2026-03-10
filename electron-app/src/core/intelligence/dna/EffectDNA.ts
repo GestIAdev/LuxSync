@@ -391,9 +391,11 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   
   // 💥 ZONA 7: PEAK (90-100% Energía)
   'latina_meltdown': {
-    aggression: 0.97,   // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
-    chaos: 0.20,        // 🔻 WAVE 1009.4: 0.30→0.20 (ULTRA ORDENADO - derretimiento en el kick)
-    organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
+    aggression: 0.92,   // 🩸 WAVE 2190: 0.97→0.92 — NERF QUIRÚRGICO. Era tan alto que ganaba
+                        // SIEMPRE la distancia euclidiana en PEAK. Ahora oro_solido (0.90) y
+                        // strobe_storm (0.93) pueden competir en rotación. Sigue siendo APEX.
+    chaos: 0.20,        // 🔻 WAVE 1009.4: ULTRA ORDENADO - derretimiento en el kick
+    organicity: 0.20,   // 🆙 WAVE 1005.8: alcanzable
     textureAffinity: 'dirty',  // 🎨 Meltdown = intenso, requiere harshness
   },
   'oro_solido': {

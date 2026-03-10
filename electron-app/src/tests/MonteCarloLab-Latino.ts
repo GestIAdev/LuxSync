@@ -56,7 +56,7 @@ const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   'solar_flare': { aggression: 0.86, chaos: 0.25, organicity: 0.45 },
   
   // PEAK (90-100%) - Target Center: 0.95
-  'latina_meltdown': { aggression: 0.97, chaos: 0.20, organicity: 0.20 },
+  'latina_meltdown': { aggression: 0.92, chaos: 0.20, organicity: 0.20 },  // 🩸 WAVE 2190: 0.97→0.92
   'oro_solido': { aggression: 0.90, chaos: 0.15, organicity: 0.40 },       // 🥇 WAVE 2189
   'strobe_storm': { aggression: 0.93, chaos: 0.75, organicity: 0.15 },
 }

@@ -74,13 +74,13 @@ interface LatinaMeltdownConfig {
 
 const DEFAULT_CONFIG: LatinaMeltdownConfig = {
   hitCount: 6,              // 6 golpes nucleares
-  flashDurationMs: 80,      // 80ms por flash (corto y brutal)
-  preBlackoutMs: 50,        // 50ms de oscuridad ANTES de cada golpe
-  gapMs: 120,               // 120ms entre golpes
+  flashDurationMs: 110,     // 🩸 WAVE 2190: 80→110ms — más tiempo ardiendo, más brutal
+  preBlackoutMs: 40,        // 🩸 WAVE 2190: 50→40ms — blackout más corto, golpea antes
+  gapMs: 100,               // 🩸 WAVE 2190: 120→100ms — menos silencio, más densidad
   maxIntensity: 1.0,        // 100% sin piedad
   alternateColors: true,    // Rojo → Amarillo → Rojo → Amarillo
-  fadeInMs: 200,            // 🌊 WAVE 1090: Entrada suave (latino)
-  fadeOutMs: 600,           // 🌊 WAVE 1090: Salida latina (más flow)
+  fadeInMs: 0,              // 🩸 WAVE 2190: 200→0ms — ATAQUE INMEDIATO, sin carita suave
+  fadeOutMs: 400,           // 🩸 WAVE 2190: 600→400ms — salida más corta, el golpe termina seco
 }
 
 // Duración total calculada: ~1500ms (SHORT effect - puede usar color en movers)
@@ -290,8 +290,8 @@ export class LatinaMeltdown extends BaseEffect {
       
       zoneOverrides,  // 🌊 WAVE 1010.8.6: Movers con DORADO fijo
       
-      // White boost durante flash para punch extra
-      whiteOverride: this.hitPhase === 'flash' && dimmer > 0.8 ? 0.3 : undefined,
+      // 🩸 WAVE 2190: whiteOverride ELIMINADO — el blanco desaturaba el rojo/amarillo
+      // El punch de la meltdown viene del color puro latino, no del white channel
       
       globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
     }

@@ -221,14 +221,18 @@ export class TechnoStereoPhysics {
 
     let frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff)
 
-    // 🥁 BACK: THE SNARE SNIPER (Geometric Mean)
-    // 🎯 WAVE 910: Multiplicamos Mid * Treble
-    // Solo si hay AMBOS (Cuerpo + Brillo = Snare/Drop) la señal será fuerte
-    // - Voces solas (Mid alto, Treble bajo) → sqrt(0.8 * 0.1) = 0.28 → APAGADO ❌
-    // - Hats solos (Mid bajo, Treble alto) → sqrt(0.1 * 0.8) = 0.28 → APAGADO ❌
-    // - SNARE (Mid 0.6, Treble 0.6) → sqrt(0.36) = 0.60 → ENCENDIDO ✅
-    const snareSignal = Math.sqrt(mid * treble)
-    let backParIntensity = this.calculateBackPar(snareSignal)
+    // 💊 WAVE 2187: LAS VITAMINAS - Fusión del cuerpo de la caja + el chasquido + los sintes
+    // En vez de solo sqrt(mid*treble), mezclamos:
+    // - mid: el cuerpo del sinte y la caja
+    // - treble: el latigazo metálico del snare
+    // - lowMid (aproximado como mid*0.3): un poco de peso para que la bofetada se sienta gorda
+    // El resultado: un cocktail ultra-puro que entra directo a calculateBackPar
+    const snareAndSynthPower = Math.min(1.0, 
+      (mid * 0.6) +           // El cuerpo del sinte y la caja
+      (treble * 0.8) +        // El latigazo metálico del snare
+      (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
+    );
+    let backParIntensity = this.calculateBackPar(snareAndSynthPower)
 
     // 👯 STEREO ALCHEMY
     
@@ -388,7 +392,7 @@ export class TechnoStereoPhysics {
     // 📉 CAMBIO DE CURVA: De 0.5 (inflar) a 1.5 (suprimir)
     // Esto actúa como un "Noise Gate" suave. Lo débil se hace invisible.
     // Lo fuerte (Snare) se mantiene fuerte.
-    const intensity = Math.pow(gated, 0.9) * this.BACK_PAR_SLAP_MULT
+    const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT
 
     return Math.min(1.0, Math.max(0, intensity))
   }

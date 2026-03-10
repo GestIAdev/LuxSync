@@ -889,6 +889,7 @@ export class ContextualEffectSelector {
     ],
     
     // 🎺 FIESTA LATINA: El Arsenal Tropical
+    // 🔓 WAVE 2186: Purga EDM + resurrección del roster completo
     'fiesta-latina': [
       'ghost_breath',       // Respiro suave
       'tidal_wave',         // Ola oceánica
@@ -897,8 +898,12 @@ export class ContextualEffectSelector {
       'tropical_pulse',     // Pulso de conga
       'salsa_fire',         // Fuego salsero
       'strobe_burst',       // Para drops latinos
-      'solar_flare',        // Explosión solar
+      'solar_flare',        // Explosión solar — APEX de luz latina
       'corazon_latino',     // El alma del arquitecto
+      'amazon_mist',        // 🌿 Neblina amazónica
+      'glitch_guaguanco',   // 🎭 Guaguancó glitcheado
+      'machete_spark',      // ⚔️ Chispa de machete
+      'latina_meltdown',    // ☢️ Nuclear latina
     ],
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -989,16 +994,22 @@ export class ContextualEffectSelector {
     let zoneAdjusted = [...intensityAllowed]
     if (vibe === 'fiesta-latina') {
       if (zone === 'valley') {
-        zoneAdjusted.push('cumbia_moon', 'clave_rhythm')
+        zoneAdjusted.push('cumbia_moon', 'clave_rhythm', 'amazon_mist')
       }
       if (zone === 'ambient') {
-        zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire')
+        zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire', 'amazon_mist')
       }
       if (zone === 'gentle') {
-        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm')
+        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'glitch_guaguanco')
       }
       if (zone === 'active') {
-        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm')
+        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'machete_spark', 'glitch_guaguanco')
+      }
+      if (zone === 'intense') {
+        zoneAdjusted.push('salsa_fire', 'machete_spark', 'glitch_guaguanco', 'strobe_burst')
+      }
+      if (zone === 'peak') {
+        zoneAdjusted.push('latina_meltdown', 'strobe_burst', 'solar_flare')
       }
     }
     

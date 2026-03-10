@@ -104,7 +104,7 @@ export class SalsaFire extends BaseEffect {
   readonly name = 'Salsa Fire'
   readonly category: EffectCategory = 'physical'
   readonly priority = 80  // 🆙 72→80 - INTENSE ZONE
-  readonly mixBus = 'htp' as const  // 🌪️ WAVE 805: HTP - Fuego que suma energía
+  readonly mixBus = 'global' as const  // 🔓 WAVE 2186: Global dictator — blackout durante el fuego
   
   private config: SalsaFireConfig
   private currentIntensity = 0

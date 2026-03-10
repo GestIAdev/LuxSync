@@ -199,8 +199,7 @@ const EFFECT_CATEGORIES = {
     'core_meltdown',      // ☢️ WAVE 988: LA BESTIA - extreme strobe
   ],
   'latino-organic': [
-    'solar_flare',        // ✅ WAVE 600: Takeover
-    'strobe_storm',       // ✅ WAVE 680: Harsh (multi-genre, latina compatible)
+    'solar_flare',        // ✅ WAVE 600: Takeover — APEX de luz latina
     'strobe_burst',       // ✅ WAVE 691: Rhythmic latina strobe
     'tidal_wave',         // ✅ WAVE 680: Wave flow
     'ghost_breath',       // ✅ WAVE 680: Soft breathing
@@ -208,7 +207,11 @@ const EFFECT_CATEGORIES = {
     'salsa_fire',         // ✅ WAVE 692: Fire flicker
     'cumbia_moon',        // ✅ WAVE 692: Moon glow
     'clave_rhythm',       // ✅ WAVE 700.6: 3-2 pattern
-    'corazon_latino'      // ✅ WAVE 750: Heartbeat passion
+    'corazon_latino',     // ✅ WAVE 750: Heartbeat passion
+    'amazon_mist',        // ✅ WAVE 1009.1: Neblina amazónica
+    'glitch_guaguanco',   // ✅ WAVE 1009.1: Guaguancó glitcheado
+    'machete_spark',      // ✅ WAVE 1009.1: Chispa de machete
+    'latina_meltdown',    // ✅ WAVE 1009.1: Nuclear latina
   ]
   // 🚧 chill-ambient: NOT IMPLEMENTED YET
   // ✅ WAVE 1020: pop-rock IMPLEMENTED - Los 5 Magnificos LIVE

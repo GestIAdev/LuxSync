@@ -73,15 +73,15 @@ interface MacheteSparkConfig {
 }
 
 const DEFAULT_CONFIG: MacheteSparkConfig = {
-  cutCount: 2,              // 4 cortes por ráfaga
+  cutCount: 2,              // 2 cortes por ráfaga — EL DOBLE GOLPE
   sparkDurationMs: 25,      // 25ms - destello muy corto (filo del acero)
   preBlackoutMs: 50,        // 50ms de oscuridad antes del corte
-  gapMs: 120,               // 120ms entre cortes (ritmo de trabajo)
+  gapMs: 150,               // 🔓 WAVE 2186: 120→150ms entre cortes — más espacio para que el segundo golpe aterrice
   sparkIntensity: 0.95,     // 95% - brillante pero no cegador
   alternateSides: true,     // Alterna L-R como el swing del machete
 }
 
-// Duración total: (50 + 25 + 120) * 4 = 780ms (SHORT effect)
+// Duración total: (50 + 25 + 150) * 2 = 450ms (SHORT effect, doble golpe asegurado)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 PALETA DEL ACERO
@@ -161,6 +161,10 @@ export class MacheteSpark extends BaseEffect {
     this.cutPhase = 'pre-blackout'
     this.cutPhaseTimer = 0
     this.currentSide = 'left'
+    
+    // 🔓 WAVE 2186: setDuration EXPLÍCITO para que BaseEffect._durationMs
+    // coincida con totalDurationMs. Evita abort prematuro por Chronos.
+    this.setDuration(this.totalDurationMs)
     
     console.log(`[MacheteSpark ⚔️] STEEL CUTS! Cuts=${this.config.cutCount} Duration=${this.totalDurationMs}ms`)
     console.log(`[MacheteSpark ⚔️] DNA: A=0.70 C=0.50 O=0.30 (ACTIVE ZONE)`)

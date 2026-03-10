@@ -560,22 +560,25 @@ function generateDivineStrikeDecision(
   }
   
   // 🎲 WAVE 2183: DIVERSITY FIX — selección respeta penalización de uso reciente
-  // Antes: arsenal[0] siempre ganaba → monopolio de neon_blinder
-  // Ahora: el que menos ha sido usado (y mejor encaja) gana
+  // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+  // Antes: divineArsenal = arsenal completo → Repository cogía índice 0 → monopolio
+  // Ahora: divineArsenal = [winner] → Repository solo valida HARD_COOLDOWN del ganador
   const suggestedEffect = selectFromArsenalWithDiversity(arsenal)
   
   output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`
   
-  // 🔪 WAVE 1010: El General ordena el TIPO de ataque, el Repository elige el arma disponible
+  // 🔪 WAVE 1010 / WAVE 2183.1: El General ya eligió. Repository solo verifica HARD_COOLDOWN.
   output.effectDecision = {
-    effectType: suggestedEffect,  // Sugerencia - Repository puede cambiar si está en cooldown
+    effectType: suggestedEffect,
     intensity: 1.0,  // DIVINE = máxima intensidad
     zones: ['all'],  // DIVINE afecta todo
-    reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Arsenal: ${arsenal.join(', ')}`,
+    reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Winner: ${suggestedEffect} | Full arsenal: ${arsenal.join(', ')}`,
     confidence: 0.99,
-    // 🔪 WAVE 1010: Metadata para el Repository
-    divineArsenal: arsenal,  // Lista de efectos válidos para DIVINE en este vibe
-  } as any  // Type assertion para añadir divineArsenal
+    // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+    // Repository itera este array de 1 elemento: si está en HARD_COOLDOWN → silencio.
+    // No hay plan B aleatorio. El General ya habló.
+    divineArsenal: [suggestedEffect],
+  } as any
   
   // Color decision: Máximo impacto
   output.colorDecision = {
@@ -719,17 +722,19 @@ function generateDropPreparationDecision(
     const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club']
     
     // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
-    // ANTES: dropArsenal[0] → siempre neon_blinder → monopolio total
-    // AHORA: el que menos ha sido usado en la ventana de 120s gana
+    // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+    // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+    // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
     const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
     
     output.effectDecision = {
       effectType: suggestedEffect,
       intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
       zones: ['all'],
-      reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | arsenal=${dropArsenal.join(', ')}`,
+      reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
       confidence: prediction.probability,
-      divineArsenal: dropArsenal,  // Para que SeleneTitanConscious busque alternativas en cooldown
+      // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+      divineArsenal: [suggestedEffect],
     } as any
     
     console.log(

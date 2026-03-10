@@ -179,17 +179,20 @@ const EFFECT_CATEGORIES = {
     'gatling_raid',       // ✅ WAVE 930: Machine gun PAR barrage
     'sky_saw',            // ✅ WAVE 930: Aggressive mover cuts
     'abyssal_rise',       // ⚡ WAVE 988 RECONECTADO: 5s epic rise (was 8s, excluded)
+    'neon_blinder',       // ⚡ WAVE 2182: APEX flash wall
+    'surgical_strike',    // 🎯 WAVE 2182: APEX mover strobe
   ],
   // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
   // 🗑️ WAVE 986: static_pulse ELIMINADO - Reemplazado por binary_glitch
   // 🔮 WAVE 988: fiber_optics AÑADIDO (traveling ambient colors)
   'techno-atmospheric': [
-    'void_mist',          // ✅ WAVE 938: Purple fog breathing
+    'void_mist',          // ✅ WAVE 938: Purple fog breathing (WAVE 2182 rework)
     'digital_rain',       // ✅ WAVE 938: Matrix flicker cyan/lime
     'deep_breath',        // ✅ WAVE 938: Organic 4-bar breathing
     'binary_glitch',      // ⚔️ WAVE 986: Digital stutter chaos
     'seismic_snap',       // ⚔️ WAVE 986: Mechanical impact snap
     'fiber_optics',       // 🔮 WAVE 988: Traveling ambient colors
+    'ghost_chase',        // 👻 WAVE 2182: Phantom dimmer chase
   ],
   // ☢️ WAVE 988: EXTREME ARSENAL (peak/epic zones only)
   'techno-extreme': [
@@ -234,6 +237,10 @@ const EFFECT_BEAUTY_WEIGHTS = {
   // 🔮 WAVE 988: THE FINAL ARSENAL
   'fiber_optics': { base: 0.50, energyMultiplier: 0.4, technoBonus: 0.05 },   // 🌈 Traveling colors - ambient beauty
   'core_meltdown': { base: 0.95, energyMultiplier: 1.5, technoBonus: 0.25 },  // ☢️ LA BESTIA - maximum beauty
+  // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+  'neon_blinder': { base: 0.86, energyMultiplier: 1.38, technoBonus: 0.21 },   // ⚡ APEX flash wall - high impact
+  'surgical_strike': { base: 0.84, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🎯 APEX mover strobe - surgical beauty
+  'ghost_chase': { base: 0.56, energyMultiplier: 0.55, technoBonus: 0.07 },    // 👻 Ghost chase - ambient beauty
   // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
   // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
   // 👻 ZONA 1: SILENCE (0-15%)

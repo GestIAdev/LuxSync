@@ -278,6 +278,28 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   
   // ═══════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+  // ═══════════════════════════════════════════════════════════════
+  'neon_blinder': {
+    aggression: 0.92,   // ⚡ Flash wall masivo — casi tan brutal como industrial_strobe
+    chaos: 0.15,        // Ordenado: ADSR predecible, no caótico
+    organicity: 0.05,   // 100% máquina — descarga eléctrica pura
+    textureAffinity: 'universal',  // Flash funciona en cualquier contexto
+  },
+  'surgical_strike': {
+    aggression: 0.88,   // 🎯 Quirúrgico: menos bruto que neon_blinder pero letal
+    chaos: 0.25,        // Semi-ordenado: mover targeting determinista
+    organicity: 0.02,   // Máquina absoluta — precisión de bisturí
+    textureAffinity: 'dirty',  // El bisturí corta en el ruido, no en la calma
+  },
+  'ghost_chase': {
+    aggression: 0.08,   // 👻 Fantasmal: cero violencia — solo presencia
+    chaos: 0.15,        // Ordenado: sine waves desfasadas predecibles
+    organicity: 0.90,   // Máxima organicidad — parece vida espectral
+    textureAffinity: 'universal',  // Atmósfera versátil — funciona en cualquier textura
+  },
+  
+  // ═══════════════════════════════════════════════════════════════
   //  FIESTA LATINA ARSENAL - THE LATINO LADDER (WAVE 1004.4 + 1005.x)
   // 7 ZONAS DE ENERGÍA - DNA CALIBRADO TRAS MÚLTIPLES WAVES
   // ═══════════════════════════════════════════════════════════════

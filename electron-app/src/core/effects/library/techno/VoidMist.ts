@@ -1,31 +1,35 @@
 ﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌫️ VOID MIST - NEBLINA DEL VACÍO
+ * 🌫️ VOID MIST - NEBLINA DEL VACÍO (REWORK)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * 🔬 WAVE 938: ATMOSPHERIC ARSENAL (PunkOpus)
+ * � WAVE 2182: PARS PAINT, MOVERS PIERCE (Rework from WAVE 938)
  * 
- * FILOSOFÍA:
- * Neblina espectral que flota como humo en un club oscuro.
- * Cada fixture respira independientemente con su propio ritmo.
- * Perfecto para crear ambiente denso en momentos vacíos.
+ * FILOSOFÍA (POST-REWORK):
+ * La neblina ya no es un humo errante — es un pulso de oscuridad viva.
+ * Los PARs respiran UV/Midnight Blue en ciclos deterministas.
+ * Los movers abandonan la oscilación mecánica de pan y se congelan
+ * como obeliscos negros con color LATCHED, modulando solo su dimmer.
+ * 
+ * CAMBIOS WAVE 2182:
+ * ✅ Duración: 4000ms → 3000ms (más táctico)
+ * ✅ Pars: Respiración determinista sin Math.random() (Axioma Anti-Simulación)
+ * ✅ Movers: getMoverColorOverride() con color latch UV estático
+ * ✅ Movers: Pan/Tilt fijo — CERO movimiento mecánico
+ * ✅ Movers: Dimmer modulado por sine wave (la vida está en la luz, no en el motor)
+ * ✅ Eliminado Math.random() — offsets por zona derivados de beatPhase
  * 
  * COMPORTAMIENTO:
- * - MixBus: 'htp' (ADITIVO - flota sobre física)
- * - Pars: Dimmer bajo (0.05-0.15), fade lento (4-6s), cada uno con offset random
- * - Movers: Pan oscila MUY lento (±30° en 8 compases), Tilt fijo horizontal
- * - Usa sine wave con offset aleatorio → cada luz respira independiente
- * 
- * COLORES:
- * - DARK PURPLE (#1a0033) → MIDNIGHT BLUE (#000a1f)
- * - Transición suave durante el efecto
- * 
- * ZONAS:
- * - Perfecto para silence, valley (momentos vacíos antes del drop)
- * - Ideal para crear tensión atmosférica sin ruido visual
+ * - MixBus: 'global' (DICTADOR — controla toda la escena)
+ * - Duración: 3000ms
+ * - Pars: Respiración sine 0.25Hz, UV/Midnight Blue, rango 0.10-0.45
+ * - Movers: Color LATCHED Deep Purple (h:270, s:100, l:12)
+ *   - Sin pan, sin tilt — congelados
+ *   - Dimmer modulado por sine 0.3Hz desfasada left/right
+ * - oneShot: false — cíclico
  * 
  * @module core/effects/library/techno/VoidMist
- * @version WAVE 938 - ATMOSPHERIC ARSENAL (PunkOpus)
+ * @version WAVE 2182 — PARS PAINT, MOVERS PIERCE (rework)
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -49,76 +53,76 @@ interface VoidMistConfig {
   /** Intensidad máxima de pars */
   maxIntensity: number
   
-  /** Período de la onda de respiración (ms) */
-  breathPeriodMs: number
+  /** Frecuencia de respiración de pars (Hz) */
+  parBreathHz: number
   
-  /** Velocidad de oscilación de pan en movers (grados por segundo) */
-  panSpeed: number
+  /** Frecuencia de modulación dimmer de movers (Hz) */
+  moverBreathHz: number
   
-  /** Amplitud de pan (±grados) */
-  panAmplitude: number
+  /** Dimmer máximo de movers */
+  moverMaxDimmer: number
+  
+  /** Dimmer mínimo de movers */
+  moverMinDimmer: number
 }
 
 const DEFAULT_CONFIG: VoidMistConfig = {
-  durationMs: 4000,          // 5 segundos (was 12s) - WAVE 964
-  minIntensity: 0.20,        // 🔪 WAVE 976: 0.05 → 0.20 (más visible)
-  maxIntensity: 0.60,        // 🔪 WAVE 976: 0.15 → 0.60 (respiración más profunda)
-  breathPeriodMs: 5000,      // 5s por ciclo de respiración
-  panSpeed: 3.75,            // 3.75°/s → ±30° en 8 compases (120 BPM)
-  panAmplitude: 30,          // ±30° de oscilación
+  durationMs: 3000,           // WAVE 2182: 4000 → 3000ms (más táctico)
+  minIntensity: 0.10,         // WAVE 2182: respiración suave pero visible
+  maxIntensity: 0.45,         // WAVE 2182: pico moderado
+  parBreathHz: 0.25,          // 4 segundos por ciclo — lento y profundo
+  moverBreathHz: 0.3,         // Movers respiran ligeramente más rápido
+  moverMaxDimmer: 0.25,       // Tenue — los movers son presencias, no protagonistas
+  moverMinDimmer: 0.03,       // Casi invisibles en el valle
 }
+
+// Color de latch para movers: Deep Purple UV
+const VOID_MOVER_COLOR = { h: 270, s: 100, l: 12 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VOID MIST EFFECT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class VoidMist extends BaseEffect {
-  // ─────────────────────────────────────────────────────────────────────────
-  // ILightEffect properties
-  // ─────────────────────────────────────────────────────────────────────────
-  
   readonly effectType = 'void_mist'
   readonly name = 'Void Mist'
-  readonly category: EffectCategory = 'physical'  // Afecta dimmer
-  readonly priority = 60  // Media - WAVE 964: Subida de 35 a 60
-  readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // Internal state
-  // ─────────────────────────────────────────────────────────────────────────
-  
+  readonly category: EffectCategory = 'physical'
+  readonly priority = 60
+  readonly mixBus = 'global' as const
+  readonly isOneShot = false
+
   private config: VoidMistConfig
-  private panOffset: number = 0
   
-  // Offset aleatorio por zona para respiración independiente
-  private breathOffsets: Map<string, number> = new Map()
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // Constructor
-  // ─────────────────────────────────────────────────────────────────────────
-  
+  /**
+   * Offsets de fase por zona para respiración independiente.
+   * Deterministas: derivados del beatPhase en trigger, no de Math.random().
+   * Axioma Anti-Simulación: mismo beatPhase = mismo patrón siempre.
+   */
+  private zonePhaseOffsets: Record<string, number> = {}
+
   constructor(config?: Partial<VoidMistConfig>) {
     super('void_mist')
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // ILightEffect implementation
-  // ─────────────────────────────────────────────────────────────────────────
-  
+
   trigger(triggerConfig: EffectTriggerConfig): void {
     super.trigger(triggerConfig)
+    this.setDuration(this.config.durationMs)
     
-    this.panOffset = 0
-    this.breathOffsets.clear()
+    // Axioma Anti-Simulación: offsets derivados del beatPhase, NO de Math.random()
+    const beatPhase = triggerConfig.musicalContext?.beatPhase ?? 0.0
+    this.zonePhaseOffsets = {
+      'front':        beatPhase * Math.PI * 2,              // 0 a 2π
+      'all-pars':     (beatPhase + 0.33) * Math.PI * 2,     // +120° offset
+      'back':         (beatPhase + 0.66) * Math.PI * 2,     // +240° offset
+      'movers-left':  beatPhase * Math.PI * 1.5,            // Desfase propio
+      'movers-right': (beatPhase + 0.5) * Math.PI * 1.5,    // 180° opuesto a left
+    }
     
-    // Generar offsets aleatorios para cada zona (0-2π)
-    const zones = ['front', 'all-pars', 'back', 'all-movers']
-    zones.forEach(zone => {
-      this.breathOffsets.set(zone, Math.random() * 2 * Math.PI)
-    })
-    
-    console.log(`[VoidMist 🌫️] TRIGGERED! Duration=${this.config.durationMs}ms BreathPeriod=${this.config.breathPeriodMs}ms`)
+    console.log(
+      `[VoidMist 🌫️] TRIGGERED! Duration=${this.config.durationMs}ms ` +
+      `beatPhase=${beatPhase.toFixed(3)} parBreath=${this.config.parBreathHz}Hz`
+    )
   }
 
   update(deltaMs: number): void {
@@ -126,88 +130,104 @@ export class VoidMist extends BaseEffect {
     
     this.elapsedMs += deltaMs
     
-    // Pan de movers: oscilación MUY lenta (sine wave)
-    const panPhase = (this.elapsedMs / 1000) * this.config.panSpeed * (Math.PI / 180)
-    this.panOffset = Math.sin(panPhase) * this.config.panAmplitude
-    
-    // Check si terminó
     if (this.elapsedMs >= this.config.durationMs) {
       this.phase = 'finished'
-      console.log(`[VoidMist 🌫️] FINISHED (${this.config.durationMs}ms)`)
+    } else {
+      this.phase = 'sustain'
     }
   }
   
-  /**
-   * 📤 GET OUTPUT - Devuelve el output del frame actual
-   * 🌫️ WAVE 938: VOID MIST - Cada zona respira independiente
-   */
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
 
-    const progress = this.elapsedMs / this.config.durationMs
+    const progress = this.getProgress()
+
+    // ═════════════════════════════════════════════════════════════════════
+    // FADE ENVELOPE — entrada/salida suaves (300ms cada extremo)
+    // ═════════════════════════════════════════════════════════════════════
+    let envelope = 1.0
+    const fadeMs = 300
+    if (this.elapsedMs < fadeMs) {
+      envelope = this.elapsedMs / fadeMs
+    } else if (this.elapsedMs > this.config.durationMs - fadeMs) {
+      envelope = (this.config.durationMs - this.elapsedMs) / fadeMs
+    }
+    envelope = Math.max(0, Math.min(1, envelope))
+
+    // ═════════════════════════════════════════════════════════════════════
+    // COLOR TRANSITION: DARK PURPLE → MIDNIGHT BLUE (progresiva)
+    // ═════════════════════════════════════════════════════════════════════
+    const hue = 270 - progress * 50 // 270 (purple) → 220 (midnight blue)
+    const parColor = { h: hue, s: 100, l: 10 }
 
     const output: EffectFrameOutput = {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['front', 'all-pars', 'back', 'all-movers'],
+      zones: ['front', 'all-pars', 'back', 'movers-left', 'movers-right'],
       intensity: this.triggerIntensity,
       zoneOverrides: {},
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // COLOR TRANSITION: DARK PURPLE → MIDNIGHT BLUE
+    // PARS: Respiración determinista por zona
+    // Sine wave a parBreathHz con offset derivado de beatPhase
     // ═════════════════════════════════════════════════════════════════════
-    const hue = 270 - progress * 50 // 270 (purple) → 220 (midnight blue)
-    const baseColor = { h: hue, s: 100, l: 10 } // Muy oscuro
-
-    // ═════════════════════════════════════════════════════════════════════
-    // PARS: Respiración independiente por zona
-    // 🔪 WAVE 976: Respiración sinusoidal orgánica con offsets aleatorios
-    // ═════════════════════════════════════════════════════════════════════
+    const parPeriodMs = 1000 / this.config.parBreathHz
     const parZones = ['front', 'all-pars', 'back'] as const
     
-    parZones.forEach(zone => {
-      const offset = this.breathOffsets.get(zone) || 0
-      const breathPhase = (this.elapsedMs / this.config.breathPeriodMs) * 2 * Math.PI + offset
-      
-      // 🔪 WAVE 976: Sine wave con respiración más profunda
-      // (Math.sin(x) + 1) / 2 → oscila entre 0 y 1 suavemente
-      const breathIntensity = (Math.sin(breathPhase) + 1) / 2
-      const dimmer = this.config.minIntensity + 
-        breathIntensity * (this.config.maxIntensity - this.config.minIntensity)
+    for (const zone of parZones) {
+      const phaseOffset = this.zonePhaseOffsets[zone] ?? 0
+      const breathPhase = (this.elapsedMs / parPeriodMs) * 2 * Math.PI + phaseOffset
+      const breathPulse = (Math.sin(breathPhase) + 1) / 2 // 0-1
+
+      const dimmer = (
+        this.config.minIntensity + 
+        breathPulse * (this.config.maxIntensity - this.config.minIntensity)
+      ) * envelope * this.triggerIntensity
       
       output.zoneOverrides![zone] = {
         dimmer,
-        color: baseColor,
+        color: { ...parColor },
         blendMode: 'max' as const,
       }
-    })
+    }
 
     // ═════════════════════════════════════════════════════════════════════
-    // MOVERS: Pan oscilante lento, Tilt horizontal, respiración propia
+    // MOVERS: Color LATCHED (Deep Purple UV), dimmer modulado, SIN MOVIMIENTO
+    // WAVE 2182: "Pars paint, Movers pierce"
+    // - getMoverColorOverride() con color estático
+    // - Sin pan, sin tilt — congelados como monolitos
+    // - La vida está en la modulación del dimmer
     // ═════════════════════════════════════════════════════════════════════
-    const moverOffset = this.breathOffsets.get('all-movers') || 0
-    const moverBreathPhase = (this.elapsedMs / this.config.breathPeriodMs) * 2 * Math.PI + moverOffset
-    const moverBreathIntensity = (Math.sin(moverBreathPhase) + 1) / 2
-    const moverDimmer = this.config.minIntensity + 
-      moverBreathIntensity * (this.config.maxIntensity - this.config.minIntensity)
+    const moverPeriodMs = 1000 / this.config.moverBreathHz
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🛡️ WAVE 984: THE MOVER LAW - Movers en MODO FANTASMA
-    // "Si dura >2s, los Movers tienen PROHIBIDO modular color"
-    // Solo dimmer + movement, sin color (transparente a física)
-    // ═══════════════════════════════════════════════════════════════════════
-    output.zoneOverrides!['all-movers'] = {
-      dimmer: moverDimmer,
-      // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
-      blendMode: 'max' as const,
-      movement: {
-        pan: this.panOffset,
-        tilt: 0, // Horizontal
-      },
-    }
+    const leftPhaseOffset = this.zonePhaseOffsets['movers-left'] ?? 0
+    const rightPhaseOffset = this.zonePhaseOffsets['movers-right'] ?? 0
+    
+    const leftPulse = (Math.sin((this.elapsedMs / moverPeriodMs) * 2 * Math.PI + leftPhaseOffset) + 1) / 2
+    const rightPulse = (Math.sin((this.elapsedMs / moverPeriodMs) * 2 * Math.PI + rightPhaseOffset) + 1) / 2
+
+    const dimmerLeft = (
+      this.config.moverMinDimmer + 
+      (this.config.moverMaxDimmer - this.config.moverMinDimmer) * leftPulse
+    ) * envelope * this.triggerIntensity
+
+    const dimmerRight = (
+      this.config.moverMinDimmer + 
+      (this.config.moverMaxDimmer - this.config.moverMinDimmer) * rightPulse
+    ) * envelope * this.triggerIntensity
+
+    output.zoneOverrides!['movers-left'] = this.getMoverColorOverride(
+      VOID_MOVER_COLOR,
+      dimmerLeft,
+    )
+    
+    output.zoneOverrides!['movers-right'] = this.getMoverColorOverride(
+      VOID_MOVER_COLOR,
+      dimmerRight,
+    )
 
     return output
   }
@@ -218,6 +238,5 @@ export class VoidMist extends BaseEffect {
   
   abort(): void {
     this.phase = 'finished'
-    console.log(`[VoidMist 🌫️] Aborted`)
   }
 }

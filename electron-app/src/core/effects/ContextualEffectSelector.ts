@@ -104,6 +104,9 @@ export const DICTATOR_HARD_MINIMUM_COOLDOWNS: Record<string, number> = {
   'gatling_raid': 15000,      // 15s MÍNIMO ABSOLUTO (efecto de 1.6s + respiro)
   'industrial_strobe': 8000,  // 8s MÍNIMO ABSOLUTO (efecto de ~0.5s pero es STROBE)
   'core_meltdown': 25000,     // 25s MÍNIMO ABSOLUTO (LA BESTIA necesita espacio)
+  // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE (dictadores APEX)
+  'neon_blinder': 12000,       // 12s MÍNIMO ABSOLUTO (flash wall, espacio entre impactos)
+  'surgical_strike': 10000,    // 10s MÍNIMO ABSOLUTO (bisturí rápido, pero no spam)
   // DICTADORES LATINOS (mixBus='global')
   'solar_flare': 20000,       // 20s MÍNIMO ABSOLUTO
   'strobe_storm': 18000,      // 18s MÍNIMO ABSOLUTO
@@ -163,6 +166,11 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   // 🔮 WAVE 988: THE FINAL ARSENAL
   'fiber_optics': 20000,       // 20s base → Traveling colors ambient (long effect, needs space)
   'core_meltdown': 30000,      // 30s base → LA BESTIA es RARA (epic moment only)
+  
+  // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+  'neon_blinder': 10000,        // 10s base → BALANCED:15s — flash wall, impactos espaciados
+  'surgical_strike': 8000,      // 8s base → BALANCED:12s — bisturí rápido, parte de la rotación
+  'ghost_chase': 18000,         // 18s base → BALANCED:27s — atmosférico, no spam
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
@@ -270,6 +278,9 @@ export const EFFECT_TEXTURE_COMPATIBILITY: Record<string, TextureCompatibility> 
   'abyssal_rise': 'universal',     // 🌪️ Transición épica - buildup
   'ambient_strobe': 'universal',   // 📸 Camera flashes - suave
   'sonar_ping': 'universal',       // 🔊 Ping submarino - ambiente
+  'neon_blinder': 'universal',     // ⚡ WAVE 2182: Flash wall masivo - funciona siempre
+  'ghost_chase': 'universal',      // 👻 WAVE 2182: Ghost chase - atmósfera versátil
+  'surgical_strike': 'dirty',      // 🎯 WAVE 2182: Bisturí en la oscuridad - solo con ruido
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🌊 WAVE 1071: THE LIVING OCEAN - CHILL LOUNGE ARSENAL

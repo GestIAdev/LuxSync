@@ -71,6 +71,11 @@ export { CoreMeltdown } from './CoreMeltdown'
 export { SeismicSnap } from './SeismicSnap'
 export { FiberOptics } from './FiberOptics'
 
+// WAVE 2182: PARS PAINT, MOVERS PIERCE - Nuevos efectos + VoidMist rework
+export { NeonBlinder } from './NeonBlinder'
+export { SurgicalStrike } from './SurgicalStrike'
+export { GhostChase } from './GhostChase'
+
 // Default exports map
 export { default as IndustrialStrobeDefault } from './IndustrialStrobe'
 export { default as AcidSweepDefault } from './AcidSweep'

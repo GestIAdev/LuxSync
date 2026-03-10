@@ -67,23 +67,16 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_R_DECAY = 0.50;             // WAVE 2195: liquido no estrobo            // WAVE 2194
   private static readonly MOVER_R_GAIN = 4.0;              // WAVE 2195: protocolo Techno     // Boost para que brille
   
-  // BACK PARs -- PERCUSION TROPICAL (WAVE 2196)
-  private static readonly BACK_PAR_GATE = 0.15;             // WAVE 2196: entra todo el ritmo picado
-  private static readonly BACK_PAR_GAIN = 4.0;              // WAVE 2196: cualquier toque = fogonazo
+  // BACK PARs -- SNARE SNIPER (WAVE 2197)
+  private static readonly BACK_PAR_GATE = 0.40;             // WAVE 2197: alto y seguro, treble puro
+  private static readonly BACK_PAR_GAIN = 3.5;              // WAVE 2197: compensacion salvaje
   private static readonly BACK_PAR_ATTACK = 0.85;
   private static readonly BACK_PAR_DECAY = 0.25;
   
-  // FRONT PARs (WAVE 760 - KILL THE BRICK)
-  // Decay exponencial m�s agresivo para aprovechar motor sin jitter
-  private static readonly FRONT_PAR_GATE = 0.35;           // WAVE 2196: captura cuerpo del bombo
-  private static readonly FRONT_PAR_ATTACK = 0.70;         // Sin cambio
-  private static readonly FRONT_PAR_DECAY_LINEAR = 0.12;   // ?? WAVE 760: Subido de 0.05 (m�s del doble de r�pido)
-  private static readonly FRONT_PAR_GAIN = 3.5;            // WAVE 2196: mas volumen menos castigo
-  
-  // ?? WAVE 1004.1: FAT BASS (Peak Hold)
-  // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
-  // Hold sostiene el pico visual unos milisegundos para dar PESO
-  private static readonly BASS_HOLD_DECAY = 0.60;          // WAVE 2195: peso gordo reggaeton
+  // FRONT PARs -- BOMBO TERMINATOR (WAVE 2197)
+  private static readonly FRONT_PAR_GATE = 0.48;           // WAVE 2197: mismo gate que Techno
+  private static readonly FRONT_PAR_ATTACK = 0.70;         // Ataque rapido
+  private static readonly FRONT_PAR_GAIN = 2.0;            // WAVE 2197: cuadratica pura
   
   // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
@@ -213,15 +206,15 @@ export class LatinoStereoPhysics {
     //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
     // Gate 0.14: Solo picos reales de treble (>0.14) activan
     // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-    // BACK PARs -- PERCUSION TROPICAL (WAVE 2196)
-    // Campanas, timbales y el "tacka" del dembow viven en highMid
-    const percSignal = (highMid * 0.7) + (treble * 0.3);
-    if (percSignal > LatinoStereoPhysics.BACK_PAR_GATE) {
-      const normalized = (percSignal - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
-      const boosted = Math.min(1.0, Math.pow(normalized, 1.1) * LatinoStereoPhysics.BACK_PAR_GAIN);
-      this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
+    // BACK PARs -- SNARE SNIPER (WAVE 2197)
+    // Treble puro: aplasta voces/highMid, captura solo el latigazo del snare
+    if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
+      const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+      const target = Math.pow(normalized, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN;
+      this.currentBackParIntensity += (target - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
       this.currentBackParIntensity *= 0.25;
+      if (this.currentBackParIntensity < 0.05) this.currentBackParIntensity = 0;
     }
     
     // MOVERS (WAVE 296 - MID PURO con Treble Rejection)
@@ -280,32 +273,19 @@ export class LatinoStereoPhysics {
     if (this.currentMoverIntensityR < 0.05) { this.currentMoverIntensityR = 0; }
     
     // ------------------------------------------------------------------------
-    // ?? WAVE 1004.1: FAT BASS - "EL GORDO" (Peak Hold)
+    // FRONT PARs -- BOMBO TERMINATOR (WAVE 2197)
     // ------------------------------------------------------------------------
-    // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
-    // Peak Hold sostiene el pico visual, llenando el hueco entre bombos
-    const frontTarget = bass;
-    
-    // Fase 1: Deteccion y Ataque
-    if (frontTarget > LatinoStereoPhysics.FRONT_PAR_GATE) {
-      const normalized = (frontTarget - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
-      const boosted = Math.min(1.0, Math.pow(normalized, 1.3) * LatinoStereoPhysics.FRONT_PAR_GAIN);
-
-      // Curva 1.3 WAVE 2196: bombo profundo latino capturado, fuertes explotan
-      if (boosted > this.frontParPeak) {
-        this.frontParPeak = boosted;
-      }
+    // Accion directa y cuadratica: mata los debiles, explota los fuertes
+    if (bass > LatinoStereoPhysics.FRONT_PAR_GATE) {
+      const normalized = (bass - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
+      const target = Math.pow(normalized, 2.0) * LatinoStereoPhysics.FRONT_PAR_GAIN;
+      this.currentFrontParIntensity += (target - this.currentFrontParIntensity) * LatinoStereoPhysics.FRONT_PAR_ATTACK;
+    } else {
+      this.currentFrontParIntensity *= 0.12; // Caida al vacio instantanea (Techno linear decay)
+      if (this.currentFrontParIntensity < 0.05) this.currentFrontParIntensity = 0;
     }
-    
-    // Fase 2: Peak Hold & Decay ("El Gordo")
-    // Decay al pico acumulado, NO a la señal cruda ? rellena el hueco visual
-    this.frontParPeak *= LatinoStereoPhysics.BASS_HOLD_DECAY;
-    
-    // Limpieza de ruido de fondo
-    if (this.frontParPeak < 0.05) this.frontParPeak = 0;
 
-    // Usar el pico sostenido como intensidad (no el valor instantáneo)
-    const frontParIntensity = this.frontParPeak;
+    const frontParIntensity = this.currentFrontParIntensity;
     
     // WHITE PUNCTURE STATE MACHINE
     let isWhitePuncture = false;
@@ -359,7 +339,7 @@ export class LatinoStereoPhysics {
         // ?? WAVE 1004.1: Debug stereo
         moverL: this.currentMoverIntensityL,
         moverR: this.currentMoverIntensityR,
-        fatBassPeak: this.frontParPeak,
+        fatBassPeak: this.currentFrontParIntensity,
       },
     };
   }

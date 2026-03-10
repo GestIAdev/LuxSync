@@ -193,8 +193,8 @@ export class MoodArbiter {
   
   // Default config
   private static readonly DEFAULT_CONFIG: MoodArbiterConfig = {
-    bufferSize: 600,           // 10 segundos @ 60fps
-    lockingFrames: 300,        // 5 segundos para confirmar cambio
+    bufferSize: 120,           // 🎭 WAVE 2204: 600→120 (2 segundos @ 60fps — reflejos ágiles)
+    lockingFrames: 60,         // 🎭 WAVE 2204: 300→60  (1 segundo — reacción rápida sin epilepsia)
     dominanceThreshold: 0.60,  // 60% de dominancia requerida
     useEnergyWeighting: true,
     confidenceBonus: 1.5,

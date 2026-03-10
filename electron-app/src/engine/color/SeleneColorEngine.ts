@@ -1052,7 +1052,10 @@ export class SeleneColorEngine {
     
     const key = wave8.harmony.key || data.key || null;
     const mode = wave8.harmony.mode || 'minor';
-    const mood = wave8.harmony.mood || data.mood || 'universal';
+    // 🎭 WAVE 2204: PURGA LEGACY — data.mood (MoodArbiter, ventana 2s) tiene prioridad absoluta
+    // wave8.harmony.mood era el crudo del HarmonyDetector (cambia cada frame, sin histéresis)
+    // Ahora usamos el meta-estado estabilizado que viaja en la raíz del objeto
+    const activeMood = data.mood || 'neutral';
     const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
     const energy = clamp(data.energy ?? 0.5, 0, 1);
     
@@ -1109,17 +1112,29 @@ export class SeleneColorEngine {
         }
       }
       hueSource = isLatinoHueFree ? `key:${key}(tropical-bias)` : `key:${key}`;
-    } else if (mood && MOOD_HUES[mood] !== undefined) {
-      baseHue = MOOD_HUES[mood];
-      hueSource = `mood:${mood}`;
+    } else if (activeMood && MOOD_HUES[activeMood] !== undefined) {
+      baseHue = MOOD_HUES[activeMood];
+      hueSource = `mood:${activeMood}`;
     }
     
     // === C. APLICAR MODIFICADORES DE MODO ===
-    // Solo aplicamos el modifier del modo musical (major/minor)
     const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
     
-    // El Hue final es: Base + Modo (SIN GÉNERO)
-    let finalHue = normalizeHue(baseHue + modeMod.hue);
+    // 🎲 WAVE 2204: CHROMATIC DRIFT (El Desestancador)
+    // El 'activeMood' ya viene purificado y estabilizado (ventana 2s) desde el MoodArbiter.
+    // Resuelve el "congelamiento cromático" del Harmonic Mixing: misma Key durante minutos
+    // → el color ahora respira según la tensión emocional de la pista.
+    let moodDrift = 0;
+    
+    if (activeMood === 'bright') {
+      moodDrift = 30;   // Empuje hacia análogos cálidos/brillantes (Tensión/Euforia)
+    } else if (activeMood === 'dark') {
+      moodDrift = -30;  // Empuje hacia análogos fríos/profundos (Valle/Oscuridad)
+    }
+    // Si es 'neutral', moodDrift es 0 (Se mantiene el color puro de la Key)
+
+    // El Hue final es: Base + Modo + Deriva Emocional (SIN GÉNERO)
+    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
     
     // 🌡️ WAVE 149.6: THERMAL GRAVITY - Aplicar Gravedad Térmica
     // Antes de restricciones constitucionales, el hue se aclimata al clima del Vibe.
@@ -1289,12 +1304,11 @@ export class SeleneColorEngine {
     let correctedLight = primaryLight;
     
     // Detectar si el contexto requiere pureza de color (mood festivo)
-    const isFestiveContext = mood === 'bright' || 
-                             mood === 'energetic' ||
-                             mood === 'euphoric';
+    // 🎭 WAVE 2204: activeMood solo tiene 3 estados (bright/dark/neutral)
+    const isFestiveContext = activeMood === 'bright';
     
     // Detectar contexto oscuro (Techno, Dark, etc)
-    const isDarkContext = mood === 'dark';
+    const isDarkContext = activeMood === 'dark';
     
     if (isFestiveContext) {
       // 1. Detección de "Zona de Peligro Marrón" (Naranjas/Amarillos oscuros)
@@ -1637,7 +1651,7 @@ export class SeleneColorEngine {
     // === L. CONSTRUIR DESCRIPCIÓN ===
     // 🎨 WAVE 68.5: Descripción PURA sin género
     const description = [
-      key ? `${key} ${mode}` : mood,
+      key ? `${key} ${mode}` : activeMood,
       `${temperature}`,
       `E=${(energy * 100).toFixed(0)}%`,
       `S=${(syncopation * 100).toFixed(0)}%`,

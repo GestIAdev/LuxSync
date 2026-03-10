@@ -460,8 +460,9 @@ export class ContextualEffectSelector {
       if (!availability.available) continue
       
       // 🎨 WAVE 1028: THE CURATOR - Texture filtering
+      // 🔓 WAVE 2187: Pass vibeId so fiesta-latina bypasses texture rules
       if (spectralContext) {
-        const textureResult = this.applyTextureFilter(effect, spectralContext)
+        const textureResult = this.applyTextureFilter(effect, spectralContext, vibeId)
         if (!textureResult.allowed) {
           console.log(`[EffectRepository 🎨] Arsenal TEXTURE BLOCKED: ${effect} (${textureResult.reason})`)
           continue
@@ -499,18 +500,37 @@ export class ContextualEffectSelector {
 
   /**
    * 🎨 WAVE 1028: THE CURATOR - Apply Texture Filter
+   * 🔓 WAVE 2187: TEXTURE JAILBREAK — fiesta-latina bypasses all texture rules.
+   *   En una fiesta latina, el contraste entre producción limpia y efectos visuales
+   *   agresivos es estéticamente DESEABLE. El reggaetón moderno tiene clarity > 0.85
+   *   (producción cristalina) pero sus efectos APEX son 'dirty' → CRYSTAL RULE los
+   *   bloqueaba permanentemente. No más. En la cantina: las jaulas están abiertas.
    * 
    * Evalúa si un efecto es apropiado para la textura espectral actual.
    * Implementa las 3 Reglas de Curaduría (Grime, Crystal, Warmth).
    * 
    * @param effectType - Efecto a evaluar
    * @param spectralContext - Contexto espectral del GodEar FFT
+   * @param vibeId - (WAVE 2187) Vibe actual para bypass por género
    * @returns TextureFilterResult con decisión y modificadores
    */
   public applyTextureFilter(
     effectType: string, 
-    spectralContext: SpectralContext
+    spectralContext: SpectralContext,
+    vibeId?: string
   ): TextureFilterResult {
+    // 🔓 WAVE 2187: TEXTURE JAILBREAK — fiesta-latina nunca filtra por textura
+    // La producción del reggaetón es limpia (clarity >0.85) pero sus efectos
+    // son 'dirty' por diseño. El contraste visual/audio ES el arte.
+    if (vibeId === 'fiesta-latina') {
+      return {
+        allowed: true,
+        probabilityMod: 0.0,
+        reason: `JAILBREAK: fiesta-latina bypasses all texture rules`,
+        rule: 'none'
+      }
+    }
+
     const { texture, clarity, harshness } = spectralContext
     const compatibility = EFFECT_TEXTURE_COMPATIBILITY[effectType] || 'universal'
     
@@ -622,12 +642,13 @@ export class ContextualEffectSelector {
    */
   public filterArsenalByTexture(
     arsenal: string[], 
-    spectralContext?: SpectralContext
+    spectralContext?: SpectralContext,
+    vibeId?: string
   ): string[] {
     if (!spectralContext) return arsenal
     
     const filtered = arsenal.filter(effect => {
-      const result = this.applyTextureFilter(effect, spectralContext)
+      const result = this.applyTextureFilter(effect, spectralContext, vibeId)
       if (!result.allowed) {
         console.log(`[TextureFilter 🎨] ${effect} FILTERED OUT: ${result.reason}`)
       }

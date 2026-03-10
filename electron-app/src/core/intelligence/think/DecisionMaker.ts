@@ -51,10 +51,13 @@ export const DIVINE_THRESHOLD = 4.0
  */
 export const DIVINE_ARSENAL: Record<string, string[]> = {
   'fiesta-latina': [
+    'latina_meltdown',   // 🔥 El derretimiento final — APEX LATINO PURO
     'solar_flare',       // ☀️ Explosión dorada
-    'strobe_storm',      // ⚡ Tormenta de strobes
-    'latina_meltdown',   // 🔥 El derretimiento final
-    'corazon_latino',    // ❤️ El alma del arquitecto
+    'salsa_fire',        // 🔥 Fuego salsero como drop de refuerzo
+    //  WAVE 2187: strobe_storm EXILIADO — deportado a techno-club.
+    // El strobe_storm es una criatura techno/industrial. En fiesta-latina
+    // provocaba multi-disparos caóticos y rompía la identidad sonora del show.
+    // Su hogar es el bunker, no la cantina.
   ],
   'techno-club': [
     'neon_blinder',      // ⚡ WAVE 2182: APEX flash wall (primero — más nuevo y brutal)
@@ -62,7 +65,7 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
     'industrial_strobe', // 🔨 El Martillo (fallback clásico)
     'gatling_raid',      // 🔫 Metralladora
     'core_meltdown',     // ☢️ LA BESTIA
-    'strobe_storm',      // ⚡ Tormenta compartida
+    'strobe_storm',      // ⚡ 🛸 WAVE 2187: Tormenta — SOLO techno, su hogar natural
   ],
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎸 WAVE 1020: POP-ROCK LEGENDS - DIVINE ARSENAL
@@ -163,8 +166,50 @@ const DEFAULT_CONFIG: DecisionMakerConfig = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔪 WAVE 975: THE FRONTAL LOBOTOMY
+//  WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
 // ═══════════════════════════════════════════════════════════════════════════
+// 
+// PROBLEMA OBSERVADO (logs):
+//   strobe_storm → latina_meltdown → solar_flare en < 1 segundo durante drops largos.
+//   El DecisionMaker lanzaba 'prepare_for_drop' en CADA frame mientras section=drop.
+//   Resultado: multi-disparos caóticos = show esquizofrénico.
+//
+// SOLUCIÓN:
+//   Un estado de módulo: dropLock.
+//   - Al disparar un DROP EFFECT, se activa el lock con el sectionId del drop.
+//   - Mientras section===drop y el lock esté activo, NO se lanza otro DROP EFFECT.
+//   - El lock se resetea cuando section cambia (sale del drop).
+//
+// Un Drop = Un Efecto principal. El DIVINE (Z>4σ) puede seguir sobreescribiendo
+// porque eso es un evento físico único, no una repetición del drop.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Estado del lock de drop — sección del drop que ya disparó */
+let _dropLockSection: string | null = null
+
+/**
+ * 🔒 WAVE 2187: Resetea el drop lock si la sección cambió.
+ * Debe llamarse al inicio de cada makeDecision() para detectar transición out-of-drop.
+ */
+function updateDropLock(currentSection: string): void {
+  if (_dropLockSection !== null && currentSection !== 'drop') {
+    console.log(`[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→${currentSection}`)
+    _dropLockSection = null
+  }
+}
+
+/**
+ * 🔒 WAVE 2187: Intenta adquirir el drop lock.
+ * @returns true si el lock se adquirió (primera vez en este drop), false si ya estaba bloqueado.
+ */
+function acquireDropLock(): boolean {
+  if (_dropLockSection !== null) {
+    return false  // Ya hay un efecto de drop disparado en esta sección
+  }
+  _dropLockSection = 'drop'
+  console.log(`[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop`)
+  return true
+}
 // 
 // LEGACY CODE ELIMINATED:
 // - selectEffectByVibe() - REMOVED (martillos, cuchillas hardcodeadas)
@@ -193,6 +238,9 @@ export function makeDecision(
   config: Partial<DecisionMakerConfig> = {}
 ): ConsciousnessOutput {
   const cfg = { ...DEFAULT_CONFIG, ...config }
+  
+  // 🔒 WAVE 2187: Actualizar drop lock — detecta salida del drop
+  updateDropLock(inputs.pattern.section)
   
   // Crear output base
   const output = createEmptyOutput()
@@ -550,6 +598,7 @@ function generateDivineStrikeDecision(
   // ═══════════════════════════════════════════════════════════════════════
   if (spectralContext) {
     const selector = getContextualEffectSelector()
+    // 🔓 WAVE 2187: Pass vibeId so fiesta-latina bypasses CRYSTAL RULE
     const filteredArsenal = selector.filterArsenalByTexture(arsenal, {
       clarity: spectralContext.clarity,
       texture: spectralContext.texture,
@@ -559,7 +608,7 @@ function generateDivineStrikeDecision(
       bands: {
         subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0
       }
-    })
+    }, vibeId)
     
     if (filteredArsenal.length > 0) {
       console.log(
@@ -629,8 +678,8 @@ function generateStrikeDecision(
 ): ConsciousnessOutput {
   const { huntDecision, beauty, consonance, pattern, dreamIntegration } = inputs
   
-  // � WAVE 982.5: Silenciado (arqueología del día 2)
-  // �🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
+  //  WAVE 982.5: Silenciado (arqueología del día 2)
+  // 🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
   // console.log(
   //   `[DecisionMaker] 🔍 generateStrikeDecision called | ` +
   //   `DNA approved=${dreamIntegration?.approved ?? false} | ` +
@@ -733,30 +782,38 @@ function generateDropPreparationDecision(
   const isDropImminent = prediction.estimatedTimeMs < 800 || pattern.section === 'drop'
   
   if (prediction.probability > 0.7 && isDropImminent) {
-    const vibeId = pattern.vibeId
-    // Usar el arsenal DIVINE como pool de efectos hard para drops
-    const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club']
-    
-    // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
-    // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
-    // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
-    // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
-    const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
-    
-    output.effectDecision = {
-      effectType: suggestedEffect,
-      intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
-      zones: ['all'],
-      reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
-      confidence: prediction.probability,
-      // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
-      divineArsenal: [suggestedEffect],
-    } as any
-    
-    console.log(
-      `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
-      `vibe=${vibeId} | Z=${(zScore ?? 0).toFixed(2)}`
-    )
+    // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
+    // Si ya disparamos un efecto en este drop, NO volver a disparar.
+    // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.
+    if (!acquireDropLock()) {
+      console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`)
+      // Sin effectDecision — las physics reactivas siguen funcionando
+    } else {
+      const vibeId = pattern.vibeId
+      // Usar el arsenal DIVINE como pool de efectos hard para drops
+      const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club']
+      
+      // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+      // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+      // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+      // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
+      const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
+      
+      output.effectDecision = {
+        effectType: suggestedEffect,
+        intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
+        zones: ['all'],
+        reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
+        confidence: prediction.probability,
+        // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+        divineArsenal: [suggestedEffect],
+      } as any
+      
+      console.log(
+        `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+        `vibe=${vibeId} | Z=${(zScore ?? 0).toFixed(2)}`
+      )
+    }
   }
   
   // Color decision: Preparar transición

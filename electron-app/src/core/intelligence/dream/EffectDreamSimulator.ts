@@ -1344,8 +1344,14 @@ export class EffectDreamSimulator {
    */
   private checkTextureCompatibility(
     effectId: string,
-    spectralContext: SpectralContext | null
+    spectralContext: SpectralContext | null,
+    vibeId?: string  // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK
   ): { compatible: boolean; reason: string; penalty: number } {
+    // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK — fiesta-latina bypassa todo
+    if (vibeId === 'fiesta-latina') {
+      return { compatible: true, reason: 'JAILBREAK: fiesta-latina bypasses Dream texture rules', penalty: 0 }
+    }
+
     // Si no hay contexto espectral, asumir universal
     if (!spectralContext) {
       return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 }
@@ -1507,7 +1513,7 @@ export class EffectDreamSimulator {
     
     // 🎨 WAVE 1029: Check texture compatibility FIRST
     const spectralContext = this.deriveSpectralContext(context, state)
-    const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext)
+    const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext, context.vibe)
     
     if (!textureCheck.compatible) {
       // REJECTED by texture filter - return zero relevance

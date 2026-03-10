@@ -111,6 +111,7 @@ export const DICTATOR_HARD_MINIMUM_COOLDOWNS: Record<string, number> = {
   'solar_flare': 20000,       // 20s MÍNIMO ABSOLUTO
   'strobe_storm': 12000,      // WAVE 2186: 18s→12s — cerrojo 1 abierto
   'latina_meltdown': 25000,   // 25s MÍNIMO ABSOLUTO
+  'oro_solido': 22000,        // 🥇 WAVE 2189: 22s — dictador de oro necesita respiro
 }
 
 export const EFFECT_COOLDOWNS: Record<string, number> = {
@@ -124,6 +125,7 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
   'strobe_burst': 25000,     // 25s base → Bloqueado en CALM
   'strobe_storm': 20000,     // WAVE 2186: 40s→20s — cerrojo 2 abierto
+  'oro_solido': 28000,       // 🥇 WAVE 2189: 28s base → CALM:84s, BALANCED:42s, PUNK:19s
   
   // === EFECTOS AMBIENTE (Relleno sutil) ===
   'ghost_breath': 35000,     // 35s base - fantasma raro
@@ -264,6 +266,7 @@ export const EFFECT_TEXTURE_COMPATIBILITY: Record<string, TextureCompatibility> 
   // Efectos versátiles que funcionan en cualquier contexto
   // ═══════════════════════════════════════════════════════════════════════
   'solar_flare': 'universal',      // ☀️ Explosión dorada - épico universal
+  'oro_solido': 'universal',       // 🥇 WAVE 2189: Muro de oro — impacto puro universal
   'strobe_burst': 'universal',     // 💥 Impacto puntual - versátil
   'tidal_wave': 'universal',       // 🌊 Ola oceánica - momentum
   'tropical_pulse': 'universal',   // 🌴 Pulso de conga - ritmo
@@ -381,7 +384,7 @@ const SECTION_EFFECT_PALETTE: Record<string, {
     primary: 'solar_flare',       // BOOM
     secondary: 'strobe_burst',
     ambient: 'tropical_pulse',
-    latinaOverride: 'strobe_burst',
+    latinaOverride: 'oro_solido',   // 🥇 WAVE 2189: El Trompetazo reemplaza strobe_burst en drops latinos
   },
   'breakdown': {
     primary: 'cumbia_moon',       // 🌙 WAVE 692: Respiro suave
@@ -925,6 +928,7 @@ export class ContextualEffectSelector {
       'glitch_guaguanco',   // 🎭 Guaguancó glitcheado
       'machete_spark',      // ⚔️ Chispa de machete
       'latina_meltdown',    // ☢️ Nuclear latina
+      'oro_solido',         // 🥇 WAVE 2189: El Trompetazo — muro de oro drop APEX
     ],
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1030,7 +1034,7 @@ export class ContextualEffectSelector {
         zoneAdjusted.push('salsa_fire', 'machete_spark', 'glitch_guaguanco', 'strobe_burst')
       }
       if (zone === 'peak') {
-        zoneAdjusted.push('latina_meltdown', 'strobe_burst', 'solar_flare')
+        zoneAdjusted.push('latina_meltdown', 'oro_solido', 'strobe_burst', 'solar_flare')
       }
     }
     

@@ -57,6 +57,7 @@ const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   
   // PEAK (90-100%) - Target Center: 0.95
   'latina_meltdown': { aggression: 0.97, chaos: 0.20, organicity: 0.20 },
+  'oro_solido': { aggression: 0.90, chaos: 0.15, organicity: 0.40 },       // 🥇 WAVE 2189
   'strobe_storm': { aggression: 0.93, chaos: 0.75, organicity: 0.15 },
 }
 
@@ -103,7 +104,7 @@ const ZONES: ZoneDefinition[] = [
   { name: 'GENTLE',  emoji: '🎵', min: 0.45, max: 0.60, expected: ['clave_rhythm', 'tropical_pulse'] },
   { name: 'ACTIVE',  emoji: '⚡', min: 0.60, max: 0.75, expected: ['glitch_guaguanco', 'machete_spark'] },
   { name: 'INTENSE', emoji: '🔥', min: 0.75, max: 0.90, expected: ['salsa_fire', 'solar_flare'] },
-  { name: 'PEAK',    emoji: '☢️', min: 0.90, max: 1.00, expected: ['latina_meltdown', 'strobe_storm'] },
+  { name: 'PEAK',    emoji: '☢️', min: 0.90, max: 1.00, expected: ['latina_meltdown', 'oro_solido'] },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

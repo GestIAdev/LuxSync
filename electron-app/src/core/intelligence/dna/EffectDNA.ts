@@ -396,6 +396,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
     textureAffinity: 'dirty',  // 🎨 Meltdown = intenso, requiere harshness
   },
+  'oro_solido': {
+    // 🥇 WAVE 2189: EL TROMPETAZO — golpe de toda la sección de vientos + bombo masivo
+    aggression: 0.90,   // 🥇 Golpe brutal — toda la sección de vientos de golpe
+    chaos: 0.15,        // Coreografiado y simétrico — cero caos, movimiento de apertura
+    organicity: 0.40,   // Cuerpo físico (vientos + bombo) — no es máquina pura, es músculo
+    textureAffinity: 'universal',  // 🥇 El oro brilla en cualquier textura — no necesita harshness
+  },
   'strobe_storm': {
     aggression: 0.93,   // ⚡ WAVE 1005.14 / WAVE 2183: Se mantiene brutal
     chaos: 0.35,        // � WAVE 2183: 0.75→0.55 — BUFF masivo. Era tan caótico que la distancia euclidiana lo dejaba fuera de cualquier drop limpio. Ahora compite con neon_blinder.

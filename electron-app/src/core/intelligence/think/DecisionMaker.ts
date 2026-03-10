@@ -52,6 +52,7 @@ export const DIVINE_THRESHOLD = 4.0
 export const DIVINE_ARSENAL: Record<string, string[]> = {
   'fiesta-latina': [
     'latina_meltdown',   // 🔥 El derretimiento final — APEX LATINO PURO
+    'oro_solido',        // 🥇 WAVE 2189: El Trompetazo — muro de oro, peso y brillo
     'solar_flare',       // ☀️ Explosión dorada
     'salsa_fire',        // 🔥 Fuego salsero como drop de refuerzo
     //  WAVE 2187: strobe_storm EXILIADO — deportado a techno-club.

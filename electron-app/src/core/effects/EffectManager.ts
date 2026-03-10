@@ -72,6 +72,8 @@ import { AmazonMist } from './library/fiestalatina/AmazonMist'
 import { MacheteSpark } from './library/fiestalatina/MacheteSpark'
 import { GlitchGuaguanco } from './library/fiestalatina/GlitchGuaguanco'
 import { LatinaMeltdown } from './library/fiestalatina/LatinaMeltdown'
+// 🥇 WAVE 2189: EL TROMPETAZO
+import { OroSolido } from './library/fiestalatina/OroSolido'
 
 // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
 import { IndustrialStrobe } from './library/techno/IndustrialStrobe'
@@ -242,6 +244,8 @@ const EFFECT_VIBE_RULES: Record<string, {
   'clave_rhythm': { isDynamic: true },     // 🥁 3-2 Clave pattern with movement
   // ❤️ WAVE 750: THE ARCHITECT'S SOUL
   'corazon_latino': { isDynamic: true },   // ❤️ Heartbeat passion effect
+  // 🥇 WAVE 2189: EL TROMPETAZO
+  'oro_solido': { isDynamic: true },       // 🥇 Muro de oro sólido - drop latino APEX
   // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
   'industrial_strobe': { requiresStrobe: true, isDynamic: true },  // ⚡ Industrial hammer
   'acid_sweep': { isDynamic: true },       // 🧪 Volumetric blade of light
@@ -972,6 +976,9 @@ export class EffectManager extends EventEmitter {
     // 💥 Latina Meltdown - LA BESTIA LATINA para peak zone
     this.effectFactories.set('latina_meltdown', () => new LatinaMeltdown())
     
+    // 🥇 WAVE 2189: EL TROMPETAZO — muro de oro sólido para drops latinos
+    this.effectFactories.set('oro_solido', () => new OroSolido())
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
     // 🤖 WAVE 810: UNLOCK THE TWINS
@@ -1203,14 +1210,14 @@ export class EffectManager extends EventEmitter {
       // WAVE 2101.1: Agregamos TODOS los drops multigenérico para evitar Dictadores Inmortales
       const isEmergency = [
         'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe', 'gatling_raid', 'abyssal_rise', 'acid_sweep', // Techno
-        'latina_meltdown', 'strobe_burst', 'tidal_wave', // Latina
+        'latina_meltdown', 'oro_solido', 'strobe_burst', 'tidal_wave', // Latina
         'thunder_struck', 'feedback_storm', 'power_chord' // PopRock
       ].includes(effectType)
       
       // Dictadores Peak son INMORTALES: Nada puede interrumpirlos
       const dictatorIsPeak = [
         'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe', 
-        'latina_meltdown', 'strobe_burst', 'thunder_struck'
+        'latina_meltdown', 'oro_solido', 'strobe_burst', 'thunder_struck'
       ].includes(activeDictator.effectType)
 
       if (!isEmergency || dictatorIsPeak) {

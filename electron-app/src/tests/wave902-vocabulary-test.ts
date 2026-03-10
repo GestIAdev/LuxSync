@@ -31,7 +31,8 @@ const DREAM_EFFECT_CATEGORIES = {
     'salsa_fire',
     'cumbia_moon',
     'clave_rhythm',
-    'corazon_latino'
+    'corazon_latino',
+    'oro_solido',       // 🥇 WAVE 2189: El Trompetazo
   ]
 }
 

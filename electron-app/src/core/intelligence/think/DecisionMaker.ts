@@ -50,7 +50,9 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
     'corazon_latino',    // ❤️ El alma del arquitecto
   ],
   'techno-club': [
-    'industrial_strobe', // 🔨 El Martillo
+    'neon_blinder',      // ⚡ WAVE 2182: APEX flash wall (primero — más nuevo y brutal)
+    'surgical_strike',   // 🎯 WAVE 2182: Bisturí en la oscuridad
+    'industrial_strobe', // 🔨 El Martillo (fallback clásico)
     'gatling_raid',      // 🔫 Metralladora
     'core_meltdown',     // ☢️ LA BESTIA
     'strobe_storm',      // ⚡ Tormenta compartida

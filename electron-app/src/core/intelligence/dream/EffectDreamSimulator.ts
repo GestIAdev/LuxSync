@@ -720,9 +720,11 @@ export class EffectDreamSimulator {
         'industrial_strobe',  // El martillo
         'gatling_raid',       // Machine gun
         'core_meltdown',      // ☢️ WAVE 988: LA BESTIA
+        'neon_blinder',       // ⚡ WAVE 2182: APEX flash wall
+        'surgical_strike',    // 🎯 WAVE 2182: APEX mover strobe
         // INTENSE (75-90%)
         'sky_saw',            // Cortes agresivos
-        'abyssal_rise',       // �️ WAVE 930: Epic rise
+        'abyssal_rise',       // 🌪️ WAVE 930: Epic rise
         // ACTIVE (60-75%)
         'cyber_dualism',      // Ping-pong L/R
         'seismic_snap',       // ⚔️ WAVE 986: Golpe mecánico
@@ -735,6 +737,7 @@ export class EffectDreamSimulator {
         // VALLEY (15-30%)
         'void_mist',          // 🌫️ WAVE 938: Neblina púrpura
         'fiber_optics',       // 🔮 WAVE 988: Traveling colors
+        'ghost_chase',        // 👻 WAVE 2182: Phantom dimmer chase
         // SILENCE (0-15%)
         'deep_breath',        // 🫁 Respiración orgánica
         'sonar_ping',         // ⚡ WAVE 977: Ping submarino
@@ -742,20 +745,22 @@ export class EffectDreamSimulator {
       // Aliases para techno
       'techno': [
         'industrial_strobe', 'gatling_raid', 'core_meltdown',
+        'neon_blinder', 'surgical_strike',
         'sky_saw', 'abyssal_rise',
         'cyber_dualism', 'seismic_snap',
         'ambient_strobe', 'binary_glitch',
         'acid_sweep', 'digital_rain',
-        'void_mist', 'fiber_optics',
+        'void_mist', 'fiber_optics', 'ghost_chase',
         'deep_breath', 'sonar_ping'
       ],
       'industrial': [
         'industrial_strobe', 'gatling_raid', 'core_meltdown',
+        'neon_blinder', 'surgical_strike',
         'sky_saw', 'abyssal_rise',
         'cyber_dualism', 'seismic_snap',
         'ambient_strobe', 'binary_glitch',
         'acid_sweep', 'digital_rain',
-        'void_mist', 'fiber_optics',
+        'void_mist', 'fiber_optics', 'ghost_chase',
         'deep_breath', 'sonar_ping'
       ],
       

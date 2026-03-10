@@ -882,6 +882,10 @@ export class ContextualEffectSelector {
       // 🔮 WAVE 988: THE FINAL ARSENAL
       'fiber_optics',       // 🌈 Ambient traveling colors (silence/valley)
       'core_meltdown',      // ☢️ LA BESTIA - extreme strobe (peak only)
+      // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+      'neon_blinder',       // ⚡ APEX flash wall (peak)
+      'surgical_strike',    // 🎯 APEX mover strobe (peak)
+      'ghost_chase',        // 👻 Phantom dimmer chase (valley)
     ],
     
     // 🎺 FIESTA LATINA: El Arsenal Tropical
@@ -954,7 +958,7 @@ export class ContextualEffectSelector {
       silence: ['deep_breath', 'sonar_ping', 'void_mist'],
       
       // VALLEY (15-30%): Niebla + fibras + overlap from silence/ambient
-      valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain'],
+      valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain', 'ghost_chase'],
       
       // AMBIENT (30-45%): Lluvia digital + acid + overlap from valley/gentle
       ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch'],
@@ -968,8 +972,8 @@ export class ContextualEffectSelector {
       // INTENSE (75-90%): Sierra + abyssal + overlap from active/peak
       intense: ['sky_saw', 'abyssal_rise', 'cyber_dualism', 'industrial_strobe', 'seismic_snap'],
       
-      // PEAK (90-100%): Artillería pesada + overlap from intense
-      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise'],
+      // PEAK (90-100%): Artillería pesada + overlap from intense + WAVE 2182 APEX
+      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise', 'neon_blinder', 'surgical_strike'],
     }
     
     const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []

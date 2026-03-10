@@ -68,7 +68,7 @@ export class LatinoStereoPhysics {
   private static readonly MOVER_R_GAIN = 4.0;              // WAVE 2195: protocolo Techno     // Boost para que brille
   
   // BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
-  private static readonly BACK_PAR_GATE = 0.40;             // WAVE 2199: clon exacto Techno
+  private static readonly BACK_PAR_GATE = 0.45;             // WAVE 2200: +0.05 sobre Techno (filtra hihats debiles y autotune)
   private static readonly BACK_PAR_GAIN = 5.0;              // WAVE 2199: BACK_PAR_SLAP_MULT clon Techno
   private static readonly BACK_PAR_ATTACK = 0.85;
   private static readonly BACK_PAR_DECAY = 0.25;
@@ -221,7 +221,7 @@ export class LatinoStereoPhysics {
       const target = Math.min(1.0, Math.pow(gated, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
       this.currentBackParIntensity += (target - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
-      this.currentBackParIntensity *= 0.25;
+      this.currentBackParIntensity *= 0.42; // WAVE 2200: decay pesado dembow (+lento que Techno 0.25)
       if (this.currentBackParIntensity < 0.05) this.currentBackParIntensity = 0;
     }
     

@@ -383,9 +383,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   
   // 🔥 ZONA 6: INTENSE (75-90% Energía)
   'salsa_fire': {
-    aggression: 0.81,   // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
-    chaos: 0.30,        // 🔻 WAVE 1009.4: 0.55→0.30 (FUEGO RÍTMICO - llamas siguen el kick)
-    organicity: 0.35,   // 🔻 WAVE 1009.4: 0.40→0.35 (hacerlo un poco menos 'orgánico' para dar ventaja a solar_flare)
+    aggression: 0.75,   // � WAVE 2200: 0.81→0.75 — NERF DROP DOMINATION
+                        // Con A=0.81 coincidía exactamente con el DROP SNAP floor (0.80),
+                        // ganando SIEMPRE la distancia euclidiana en drops.
+                        // Con A=0.75 queda firmemente en INTENSE pre-drop.
+                        // solar_flare (0.86) y oro_solido (0.90) ahora dominan el drop real.
+    chaos: 0.22,        // 🔻 WAVE 2200: 0.30→0.22 (fuego más rítmico, menos caótico)
+    organicity: 0.38,   // 🆙 WAVE 2200: 0.35→0.38 (llamas orgánicas, no máquina)
     textureAffinity: 'universal',  // 🎨 Fuego versátil
   },
   'solar_flare': {

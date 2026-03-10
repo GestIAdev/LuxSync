@@ -109,7 +109,7 @@ export const DICTATOR_HARD_MINIMUM_COOLDOWNS: Record<string, number> = {
   'surgical_strike': 10000,    // 10s MÍNIMO ABSOLUTO (bisturí rápido, pero no spam)
   // DICTADORES LATINOS (mixBus='global')
   'solar_flare': 20000,       // 20s MÍNIMO ABSOLUTO
-  'strobe_storm': 18000,      // 18s MÍNIMO ABSOLUTO
+  'strobe_storm': 12000,      // WAVE 2186: 18s→12s — cerrojo 1 abierto
   'latina_meltdown': 25000,   // 25s MÍNIMO ABSOLUTO
 }
 
@@ -123,7 +123,7 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
   'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
   'strobe_burst': 25000,     // 25s base → Bloqueado en CALM
-  'strobe_storm': 40000,     // 40s base → Bloqueado en CALM
+  'strobe_storm': 20000,     // WAVE 2186: 40s→20s — cerrojo 2 abierto
   
   // === EFECTOS AMBIENTE (Relleno sutil) ===
   'ghost_breath': 35000,     // 35s base - fantasma raro
@@ -885,7 +885,7 @@ export class ContextualEffectSelector {
       // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
       'neon_blinder',       // ⚡ APEX flash wall (peak)
       'surgical_strike',    // 🎯 APEX mover strobe (peak)
-      'ghost_chase',        // 👻 Phantom dimmer chase (valley)
+      'ghost_chase',        // 👻 Phantom dimmer chase (ambient) — WAVE 2186: valley→ambient
     ],
     
     // 🎺 FIESTA LATINA: El Arsenal Tropical
@@ -961,7 +961,7 @@ export class ContextualEffectSelector {
       valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain', 'ghost_chase'],
       
       // AMBIENT (30-45%): Lluvia digital + acid + overlap from valley/gentle
-      ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch'],
+      ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch', 'ghost_chase'],
       
       // GENTLE (45-60%): Flashes + glitches + overlap from ambient/active
       gentle: ['ambient_strobe', 'binary_glitch', 'acid_sweep', 'cyber_dualism', 'digital_rain'],

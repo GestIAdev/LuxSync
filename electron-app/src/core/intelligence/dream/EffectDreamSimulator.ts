@@ -240,7 +240,7 @@ const EFFECT_BEAUTY_WEIGHTS = {
   // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
   'neon_blinder': { base: 0.86, energyMultiplier: 1.38, technoBonus: 0.21 },   // ⚡ APEX flash wall - high impact
   'surgical_strike': { base: 0.84, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🎯 APEX mover strobe - surgical beauty
-  'ghost_chase': { base: 0.56, energyMultiplier: 0.55, technoBonus: 0.07 },    // 👻 Ghost chase - ambient beauty
+  'ghost_chase': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.10 },    // 👻 Ghost chase — WAVE 2186: base 0.56→0.60, multiplier 0.55→0.75, bonus 0.07→0.10
   // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
   // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
   // 👻 ZONA 1: SILENCE (0-15%)

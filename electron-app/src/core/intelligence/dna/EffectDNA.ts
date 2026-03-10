@@ -188,7 +188,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
   'gatling_raid': {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
-    chaos: 0.55,        // � WAVE 2183: 0.40→0.55 — más caótico, más variedad en el mix
+    chaos: 0.40,        // � WAVE 2183: 0.40→0.55 — más caótico, más variedad en el mix
     organicity: 0.10,   // Mecánico puro
     textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La ametralladora dispara en cualquier contexto
   },
@@ -272,7 +272,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   'core_meltdown': {
     aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
-    chaos: 1.00,        // MÁXIMO - Impredecible strobe
+    chaos: 0.65,        // MÁXIMO - Impredecible strobe
     organicity: 0.00,   // 100% máquina apocalíptica
     textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La Bestia despierta cuando ella quiere, no cuando el audio suena sucio
   },
@@ -294,7 +294,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'dirty',  // El bisturí corta en el ruido, no en la calma
   },
   'ghost_chase': {
-    aggression: 0.08,   // 👻 Fantasmal: cero violencia — solo presencia
+    aggression: 0.25,   // 👻 Fantasmal: cero violencia — solo presencia
     chaos: 0.15,        // Ordenado: sine waves desfasadas predecibles
     organicity: 0.90,   // Máxima organicidad — parece vida espectral
     textureAffinity: 'universal',
@@ -398,7 +398,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   'strobe_storm': {
     aggression: 0.93,   // ⚡ WAVE 1005.14 / WAVE 2183: Se mantiene brutal
-    chaos: 0.55,        // � WAVE 2183: 0.75→0.55 — BUFF masivo. Era tan caótico que la distancia euclidiana lo dejaba fuera de cualquier drop limpio. Ahora compite con neon_blinder.
+    chaos: 0.35,        // � WAVE 2183: 0.75→0.55 — BUFF masivo. Era tan caótico que la distancia euclidiana lo dejaba fuera de cualquier drop limpio. Ahora compite con neon_blinder.
     organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
     textureAffinity: 'dirty',  // 🎨 Tormenta de strobes = caos dirty
   },

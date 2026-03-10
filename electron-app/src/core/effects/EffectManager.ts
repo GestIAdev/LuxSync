@@ -338,7 +338,7 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   // 🌫️ VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
   'void_mist': 'valley',
   'fiber_optics': 'valley',
-  'ghost_chase': 'valley',        // 👻 WAVE 2182: Ghost dimmer chase
+  'ghost_chase': 'ambient',       // 👻 WAVE 2186: valley→ambient — liberado del silo. Aggression=0.25 pide ambient (30-45%), no valley
   
   // 🌧️ AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
   'digital_rain': 'ambient',
@@ -1127,8 +1127,8 @@ export class EffectManager extends EventEmitter {
    */
   private static readonly CRITICAL_EFFECTS = new Set([
     'solar_flare',    // Takeover total - nada más puede competir
-    'strobe_storm',   // Strobe intenso - no mezclar
     'blackout',       // Blackout manual
+    // 'strobe_storm' - REMOVIDO WAVE 2186: cooldown propio (DICTATOR 12s) es suficiente, no necesita silo nuclear
     // 'abyssal_rise' - REMOVIDO WAVE 930.1: mixBus='global' es suficiente
   ])
   

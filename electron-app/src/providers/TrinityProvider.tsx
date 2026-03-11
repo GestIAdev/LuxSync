@@ -512,6 +512,8 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   }, [])
   
   // Sync audio metrics to store (from useAudioCapture → audioStore)
+  // 🔧 WAVE 2205.3: BPM excluido — lo gestiona SeleneTruth Audio Bridge (sBPM real).
+  // useAudioCapture tiene su propio detector local (bpm: 120 default) que machaca el sBPM.
   useEffect(() => {
     if (isCapturing) {
       updateAudioStore({
@@ -519,7 +521,7 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
         mid: audioMetrics.mid,
         treble: audioMetrics.treble,
         onBeat: audioMetrics.onBeat,
-        bpm: audioMetrics.bpm,
+        // bpm: EXCLUIDO — fuente autoritativa: SeleneTruth Audio Bridge (data.context.bpm)
       })
     }
   }, [audioMetrics, isCapturing, updateAudioStore])

@@ -246,13 +246,19 @@
 .hyperion-metrics {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
 }
 
 .hyperion-metric {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 0 12px;
+}
+
+/* 🎯 WAVE 2205.1: Separador | entre métricas */
+.hyperion-metric + .hyperion-metric {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .hyperion-metric__icon {

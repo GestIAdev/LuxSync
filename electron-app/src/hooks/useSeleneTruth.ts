@@ -101,7 +101,7 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
       if (beat && audio) {
         const db = Math.max(-60, Math.min(0, 20 * Math.log10(Math.max(0.001, audio.energy))))
         useAudioStore.getState().updateMetrics({
-          bpm:           beat.bpm,
+          bpm:           data.context?.bpm ?? beat.bpm,  // 🎯 WAVE 2205.1: sBPM estabilizado (freewheel), no raw worker
           bpmConfidence: beat.confidence,
           onBeat:        beat.onBeat,
           level:         db,

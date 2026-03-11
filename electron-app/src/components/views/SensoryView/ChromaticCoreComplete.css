@@ -192,6 +192,21 @@
   color: var(--text-muted);
 }
 
+/* 🎭 WAVE 2205: MOOD chromatic telemetry */
+.chromatic-core-complete__mood--bright {
+  color: #fbbf24 !important;  /* Gold — cálido/festivo */
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+.chromatic-core-complete__mood--dark {
+  color: #818cf8 !important;  /* Indigo — frío/dramático */
+  text-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+}
+
+.chromatic-core-complete__mood--neutral {
+  color: rgba(255, 255, 255, 0.5) !important;  /* Blanco apagado */
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    STRATEGY SECTION
    ═══════════════════════════════════════════════════════════════════════════ */

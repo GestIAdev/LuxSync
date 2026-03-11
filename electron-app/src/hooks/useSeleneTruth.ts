@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTruthStore } from '../stores/truthStore'
+import { useAudioStore } from '../stores/audioStore'
 import { injectTransientTruth } from '../stores/transientStore'
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 
@@ -91,6 +92,27 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
       
       // 2. Transient store (para physics - 60fps directo a Three.js)
       injectTransientTruth(data)
+      
+      // 🎯 WAVE 2205: AUDIO STORE BRIDGE — alimentar audioStore desde SeleneTruth
+      // El canal legacy (TrinityProvider → onStateUpdate) puede estar roto.
+      // SeleneTruth es la fuente de verdad única — aquí van los datos reales.
+      const beat = data.sensory?.beat
+      const audio = data.sensory?.audio
+      if (beat && audio) {
+        const db = Math.max(-60, Math.min(0, 20 * Math.log10(Math.max(0.001, audio.energy))))
+        useAudioStore.getState().updateMetrics({
+          bpm:           beat.bpm,
+          bpmConfidence: beat.confidence,
+          onBeat:        beat.onBeat,
+          level:         db,
+          bass:          audio.bass,
+          mid:           audio.mid,
+          treble:        audio.high,
+        })
+        if (beat.onBeat) {
+          useAudioStore.getState().registerBeat()
+        }
+      }
       
       // Callback opcional
       if (onData) {

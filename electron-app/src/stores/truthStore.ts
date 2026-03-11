@@ -171,6 +171,12 @@ export const selectEvolution = (state: TruthState) => state.truth.consciousness.
 /** Selector: Drop state */
 export const selectDropState = (state: TruthState) => state.truth.consciousness.dropState
 
+/** 
+ * Selector: StableEmotion — MoodArbiter output (BRIGHT | DARK | NEUTRAL)
+ * 🎭 WAVE 2205: Primitive selector para Hyperion & ChromaticCore telemetry
+ */
+export const selectStableEmotion = (state: TruthState) => state.truth.consciousness.stableEmotion
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DEBUG
 // ═══════════════════════════════════════════════════════════════════════════

@@ -276,6 +276,21 @@
   color: var(--h-neon-red);
 }
 
+/* 🎭 WAVE 2205: MOOD chromatic telemetry */
+.hyperion-metric__mood--bright {
+  color: #fbbf24;  /* Gold — cálido/festivo */
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.hyperion-metric__mood--dark {
+  color: #818cf8;  /* Indigo — frío/dramático */
+  text-shadow: 0 0 8px rgba(129, 140, 248, 0.6);
+}
+
+.hyperion-metric__mood--neutral {
+  color: rgba(255, 255, 255, 0.55);  /* Blanco apagado — equilibrado */
+}
+
 .hyperion-metric__label {
   font-size: 9px;
   color: rgba(255, 255, 255, 0.35);

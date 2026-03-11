@@ -12,6 +12,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAudioStore, selectHyperionAudio } from '../../../stores/audioStore'
+import { useTruthStore, selectStableEmotion } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
@@ -92,6 +93,7 @@ export function HyperionView({
   // ── Stores ────────────────────────────────────────────────────────────────
   // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { bpm, bpmConfidence, onBeat } = useAudioStore(useShallow(selectHyperionAudio))
+  const stableEmotion = useTruthStore(selectStableEmotion)
   const fixtures = useStageStore(state => state.fixtures)
   const selectedIds = useSelectionStore(state => state.selectedIds)
 
@@ -210,6 +212,17 @@ export function HyperionView({
                     {Math.round(bpmConfidence * 100)}%
                   </span>
                   <span className="hyperion-metric__label">CONF</span>
+                </div>
+
+                {/* 🎭 WAVE 2205: MOOD — StableEmotion del MoodArbiter */}
+                <div className="hyperion-metric">
+                  <span className="hyperion-metric__icon">
+                    {stableEmotion === 'BRIGHT' ? '☀️' : stableEmotion === 'DARK' ? '🌑' : '⚖️'}
+                  </span>
+                  <span className={`hyperion-metric__value hyperion-metric__mood--${(stableEmotion ?? 'neutral').toLowerCase()}`}>
+                    {stableEmotion ?? 'NEUTRAL'}
+                  </span>
+                  <span className="hyperion-metric__label">MOOD</span>
                 </div>
               </div>
             </div>

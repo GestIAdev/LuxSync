@@ -10,7 +10,7 @@
  */
 
 import React, { memo, useMemo } from 'react'
-import { useTruthPaletteThrottled, useTruthContext } from '../../../hooks/useSeleneTruth'
+import { useTruthPaletteThrottled, useTruthContext, useTruthConsciousness } from '../../../hooks/useSeleneTruth'
 import { PaletteChromaticIcon } from '../../icons/LuxIcons'
 import type { HSLColor } from '../../../core/protocol/LightingIntent'
 import './ChromaticCoreComplete.css'
@@ -113,6 +113,7 @@ function getSafeColor(color: HSLColor): HSLColor {
 export const ChromaticCoreComplete: React.FC = memo(() => {
   const palette = useTruthPaletteThrottled()
   const context = useTruthContext()
+  const consciousness = useTruthConsciousness()
   
   const strategyKey = palette.strategy || 'analogous'
   const strategyData = STRATEGY_INFO[strategyKey] || STRATEGY_INFO['analogous']
@@ -208,6 +209,19 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
           </span>
           <span className="chromatic-core-complete__info-desc">
             {context.mode === 'minor' ? 'Minor' : context.mode === 'major' ? 'Major' : 'Detecting...'}
+          </span>
+        </div>
+
+        {/* 🎭 WAVE 2205: MOOD telemetry — StableEmotion del MoodArbiter */}
+        <div className="chromatic-core-complete__info-item">
+          <span className="chromatic-core-complete__info-label">🎭 MOOD</span>
+          <span className={`chromatic-core-complete__info-value chromatic-core-complete__mood--${consciousness.stableEmotion?.toLowerCase() ?? 'neutral'}`}>
+            {consciousness.stableEmotion ?? 'NEUTRAL'}
+          </span>
+          <span className="chromatic-core-complete__info-desc">
+            {consciousness.stableEmotion === 'BRIGHT' ? 'Warm / Festive' :
+             consciousness.stableEmotion === 'DARK'   ? 'Cold / Dramatic' :
+                                                        'Balanced'}
           </span>
         </div>
       </div>

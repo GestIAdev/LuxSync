@@ -203,10 +203,14 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   
   // 🎵 WAVE 2044.5: BPM UNITY — Sync Chronos local BPM → audioStore (global)
   // This ensures Hephaestus always sees current BPM when navigating from Chronos
+  // 🔧 WAVE 2205.3: Solo sincronizar cuando Chronos tiene audio real cargado.
+  // Sin audio propio, el audioStore lo gestiona el SeleneTruth Audio Bridge (live BPM).
+  // Evita la race condition: Chronos default 120 vs SeleneTruth sBPM real.
   useEffect(() => {
+    if (!audioLoader.result) return  // Sin audio cargado → no machacar el live BPM
     useAudioStore.getState().updateMetrics({ bpm })
     console.log(`[ChronosLayout] 🎵 BPM synced to audioStore → ${bpm}`)
-  }, [bpm])
+  }, [bpm, audioLoader.result])
   
   // 🧠 WAVE 2017: Sync audio to session store when loaded (for persistence)
   useEffect(() => {

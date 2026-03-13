@@ -419,8 +419,29 @@ export interface FixtureSelector {
   /** 
    * Phase spread: offset de fase por fixture (para wave/chase effects)
    * 0 = todos en fase, 1 = spread completo (180° entre primero y último)
+   * 
+   * NOTA: Si `phase` está presente, phaseSpread se ignora.
+   * Mantener por backward compatibility.
    */
   phaseSpread?: number  // 0-1
+
+  /**
+   * ⚒️ WAVE 2400: Full phase distribution configuration.
+   * 
+   * Si está presente, `phaseSpread` se ignora y se usa esta configuración
+   * completa que incluye symmetry, wings y direction.
+   * 
+   * EJEMPLO:
+   * ```
+   * phase: {
+   *   spread: 0.5,
+   *   symmetry: 'mirror',
+   *   wings: 2,
+   *   direction: 1,
+   * }
+   * ```
+   */
+  phase?: import('../hephaestus/types').PhaseConfig
 }
 
 /**

@@ -171,6 +171,11 @@ export interface AudioAnalysis {
   spectralCentroid: number;
   spectralFlux: number;
   zeroCrossingRate: number;
+
+  // 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING
+  // 12-bin chromagram from GodEar Worker (pitch classes C through B, normalized 0-1).
+  // Computed via exact bin-frequency → MIDI → pitch class math, no band heuristics.
+  chroma?: number[];
 }
 
 // ============================================

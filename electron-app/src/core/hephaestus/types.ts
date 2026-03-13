@@ -75,6 +75,77 @@ export type HephInterpolation = 'hold' | 'linear' | 'bezier'
 export type HephCurveMode = 'absolute' | 'relative' | 'additive'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PHASE DISTRIBUTION - WAVE 2400: THE PHASER REVOLUTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚒️ WAVE 2400: Modo de distribución de fase entre fixtures.
+ *
+ * 'linear'     → Offset crece linealmente: fixture[i] = i × stepMs
+ * 'mirror'     → Fold simétrico: se pliega desde los extremos al centro
+ * 'center-out' → Expansión desde el centro hacia afuera
+ */
+export type PhaseSymmetryMode = 'linear' | 'mirror' | 'center-out'
+
+/**
+ * ⚒️ WAVE 2400: Dirección de propagación de la fase.
+ *
+ * 1  → Forward:  fixture 0 primero, fixture N último
+ * -1 → Reverse:  fixture N primero, fixture 0 último
+ */
+export type PhaseDirection = 1 | -1
+
+/**
+ * ⚒️ WAVE 2400: Configuración completa de distribución de fase para un clip.
+ *
+ * Se almacena como extensión de FixtureSelector o directamente
+ * en el HephAutomationClip.
+ *
+ * INVARIANTES:
+ * - spread ∈ [0, 1]  (0 = sin offset, 1 = spread completo de durationMs)
+ * - wings ∈ [1, N]   (1 = sin división, N = N sub-grupos)
+ * - wings ≤ fixtureCount (se clampea en runtime)
+ */
+export interface PhaseConfig {
+  /** Spread total: fracción de durationMs que separa al primero del último */
+  spread: number   // 0-1
+
+  /** Modo de simetría */
+  symmetry: PhaseSymmetryMode
+
+  /** Cantidad de wings (sub-grupos con fase independiente) */
+  wings: number    // 1-N, default 1
+
+  /** Dirección de propagación */
+  direction: PhaseDirection  // default 1
+}
+
+/**
+ * ⚒️ WAVE 2400: Resultado pre-calculado de fase para UNA fixture.
+ * Array de estos = lo que PhaseDistributor.resolve() retorna.
+ */
+export interface FixturePhase {
+  /** ID de la fixture (resolved desde FixtureSelector) */
+  fixtureId: string
+
+  /** Offset de fase en ms (se SUMA a clipTimeMs) */
+  phaseOffsetMs: number
+
+  /** Índice normalizado 0-1 dentro de su wing (para UI) */
+  normalizedIndex: number
+}
+
+/**
+ * ⚒️ WAVE 2400: Default PhaseConfig — sin distribución de fase.
+ */
+export const DEFAULT_PHASE_CONFIG: Readonly<PhaseConfig> = {
+  spread: 0,
+  symmetry: 'linear',
+  wings: 1,
+  direction: 1,
+} as const
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PARAMETER IDS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -428,6 +499,8 @@ export interface HephAutomationClipSerialized {
   effectType: string
   curves: Record<string, HephCurve>  // ← Record, no Map
   staticParams: Record<string, number | string | boolean>
+  /** ⚡ WAVE 2403: FixtureSelector survives IPC — PhaseConfig is a POJO, JSON-safe */
+  selector?: import('../stage/ShowFileV2').FixtureSelector
 }
 
 /**
@@ -454,6 +527,7 @@ export function serializeHephClip(clip: HephAutomationClip): HephAutomationClipS
     effectType: clip.effectType,
     curves: curvesRecord,
     staticParams: clip.staticParams,
+    selector: clip.selector,  // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
   }
 }
 
@@ -481,6 +555,7 @@ export function deserializeHephClip(serialized: HephAutomationClipSerialized): H
     effectType: serialized.effectType,
     curves: curvesMap,
     staticParams: serialized.staticParams,
+    selector: serialized.selector,  // ⚡ WAVE 2403: Restore selector from IPC
   }
 }
 

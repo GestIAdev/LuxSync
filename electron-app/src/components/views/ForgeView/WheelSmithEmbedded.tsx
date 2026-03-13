@@ -70,6 +70,23 @@ export interface WheelSmithEmbeddedProps {
   fixtureId?: string | null
   /** Índice del canal color_wheel en el fixture (0-based) */
   channelIndex?: number
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 2100: minChangeTimeMs — velocidad mínima de la rueda mecánica
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Tiempo mínimo entre cambios de color de la rueda mecánica (ms).
+   * El HardwareSafetyLayer usa este valor × safetyMargin para proteger
+   * el motor. Valores típicos:
+   *   - 200ms → Rueda LED rápida (solo protección contra chaos)
+   *   - 500ms → Beam 2R estándar (default industria)
+   *   - 800ms → Mover viejo / rueda pesada
+   *   - 1000ms → CMY flags lentos
+   */
+  minChangeTimeMs?: number
+  /** Callback cuando el usuario ajusta el minChangeTimeMs */
+  onMinChangeTimeMsChange?: (ms: number) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -165,6 +182,8 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   onTestDmx,
   fixtureId,
   channelIndex = 0,
+  minChangeTimeMs = 500,
+  onMinChangeTimeMsChange,
 }) => {
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2072 Phase 1: Ensure stable keys on every render
@@ -707,6 +726,71 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
         </div>
       )}
       
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 🔧 WAVE 2100: MECHANICAL WHEEL SPEED — minChangeTimeMs     */}
+      {/* Protege el motor de la rueda contra cambios demasiado rápidos */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {onMinChangeTimeMsChange && (
+        <div style={{
+          margin: '8px 0',
+          padding: '10px 12px',
+          background: 'rgba(168, 85, 247, 0.06)',
+          border: '1px solid rgba(168, 85, 247, 0.25)',
+          borderRadius: '6px',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '6px',
+          }}>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              color: '#a855f7',
+              letterSpacing: '0.5px',
+              fontFamily: '"JetBrains Mono", monospace',
+            }}>
+              ⚙️ WHEEL MOTOR SPEED
+            </span>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: minChangeTimeMs >= 800 ? '#ef4444' : minChangeTimeMs >= 500 ? '#f59e0b' : '#22c55e',
+              fontFamily: '"JetBrains Mono", monospace',
+            }}>
+              {minChangeTimeMs}ms
+            </span>
+          </div>
+          <input
+            type="range"
+            min={50}
+            max={1500}
+            step={50}
+            value={minChangeTimeMs}
+            onChange={(e) => onMinChangeTimeMsChange(parseInt(e.target.value))}
+            style={{
+              width: '100%',
+              accentColor: '#a855f7',
+              cursor: 'pointer',
+            }}
+            title={`Minimum time between color wheel changes: ${minChangeTimeMs}ms. Lower = faster wheel (LED), higher = slower wheel (mechanical).`}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '8px',
+            color: '#71717a',
+            fontFamily: '"JetBrains Mono", monospace',
+            marginTop: '2px',
+          }}>
+            <span>50ms (LED)</span>
+            <span>500ms (Std)</span>
+            <span>1500ms (Slow)</span>
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* FOOTER STATS */}
       {/* ═══════════════════════════════════════════════════════════ */}

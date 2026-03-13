@@ -36,8 +36,10 @@ import { ZoneSelector } from './ZoneSelector'
 import { createDummyClip } from './dummyData'
 import { getCategoryIcon, generateShapeInWindow } from './curveTemplates'
 import { HephRadar } from './HephRadar'
+import { PhaseControls } from './PhaseControls'
 import { useHephPreview } from './useHephPreview'
 import { useTemporalStore } from './useTemporalStore'
+import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { HephLogoIcon } from '../../icons/LuxIcons'
 import type { 
   HephCurve, 
@@ -46,7 +48,8 @@ import type {
   HephCurveMode, 
   HephAutomationClip,
   HephAutomationClipSerialized,
-  HephKeyframe 
+  HephKeyframe,
+  PhaseConfig 
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip, deserializeHephClip } from '../../../core/hephaestus/types'
@@ -129,6 +132,7 @@ const HephaestusView: React.FC = () => {
   // ── Modal & Dropdown State (WAVE 2030.8) ──
   const [showNewClipModal, setShowNewClipModal] = useState(false)
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
+  const [showPhasePanel, setShowPhasePanel] = useState(false)
 
   // ── WAVE 2030.26: Editable Header State ──
   const [isEditingName, setIsEditingName] = useState(false)
@@ -141,9 +145,13 @@ const HephaestusView: React.FC = () => {
   // ── WAVE 2030.26: Add Param Popover Ref (click-outside dismiss) ──
   const addParamRef = useRef<HTMLDivElement>(null)
 
+  // ── WAVE 2403.1: Phase Panel Floating HUD Ref ──
+  const phasePanelRef = useRef<HTMLDivElement>(null)
+
   // ── Radar Preview State (WAVE 2030.25) ──
   const [showRadar, setShowRadar] = useState(true)
-  const preview = useHephPreview(clip)
+  const stageFixtures = useStageStore(selectFixtures)
+  const preview = useHephPreview(clip, stageFixtures)
 
   /**
    * ⚒️ WAVE 2040.17: DIAMOND CACHE
@@ -519,6 +527,19 @@ const HephaestusView: React.FC = () => {
     setClip(prev => ({
       ...prev,
       zones
+    }))
+    setIsDirty(true)
+  }, [temporalActions])
+
+  // ⚒️ WAVE 2403: Phase Distribution config handler
+  const handlePhaseConfigChange = useCallback((phaseConfig: PhaseConfig) => {
+    temporalActions.snapshot()
+    setClip(prev => ({
+      ...prev,
+      selector: {
+        ...(prev.selector ?? { target: 'all' }),
+        phase: phaseConfig,
+      },
     }))
     setIsDirty(true)
   }, [temporalActions])
@@ -1249,6 +1270,26 @@ const HephaestusView: React.FC = () => {
   }, [showAddParamDropdown])
 
   // ═══════════════════════════════════════════════════════════════════════
+  // ⚡ WAVE 2403.1 — Click-Outside Dismiss for Phase Panel HUD
+  // ═══════════════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!showPhasePanel) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (phasePanelRef.current && !phasePanelRef.current.contains(e.target as Node)) {
+        setShowPhasePanel(false)
+      }
+    }
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 0)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showPhasePanel])
+
+  // ═══════════════════════════════════════════════════════════════════════
   // ⚒️ WAVE 2043: KEYBOARD HANDLER (Undo/Redo + Copy/Paste)
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -1619,6 +1660,36 @@ const HephaestusView: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* ⚡ WAVE 2403.1: Phase Engine Toggle Button + Floating HUD */}
+          <div className="heph-phase-trigger" ref={phasePanelRef}>
+            <button
+              className={`heph-phase-trigger__btn ${showPhasePanel ? 'heph-phase-trigger__btn--open' : ''} ${(clip.selector?.phase?.spread ?? 0) > 0 ? 'heph-phase-trigger__btn--active' : ''}`}
+              onClick={() => setShowPhasePanel(!showPhasePanel)}
+              type="button"
+              title="Phase Distribution Engine"
+            >
+              <span className="heph-phase-trigger__icon">🌊</span>
+              <span className="heph-phase-trigger__label">PHASE ENGINE</span>
+              {(clip.selector?.phase?.spread ?? 0) > 0 && (
+                <span className="heph-phase-trigger__badge">
+                  {Math.round((clip.selector?.phase?.spread ?? 0) * 100)}%
+                </span>
+              )}
+            </button>
+
+            {/* ── Floating Panel ── */}
+            {showPhasePanel && (
+              <div className="heph-phase-float">
+                <PhaseControls
+                  config={clip.selector?.phase ?? null}
+                  onChange={handlePhaseConfigChange}
+                  fixtureCount={clip.zones.length}
+                  disabled={isSaving}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Curve Editor + Radar (main area) ── */}

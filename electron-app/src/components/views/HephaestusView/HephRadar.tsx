@@ -89,10 +89,11 @@ function drawFixtureDot(
   h: number,
   radius: number,
 ) {
-  // Position from Pan/Tilt (0-255 → pixel coords)
-  // Pan = X axis, Tilt = Y axis (inverted: tilt 0 = top)
-  const x = (fixture.pan / 255) * w
-  const y = (fixture.tilt / 255) * h
+  // ⚡ WAVE 2403.2: Use radarX/radarY for spatial layout (0-1 normalized)
+  // radarX = horizontal distribution for wave visualization
+  // radarY = zone-based vertical positioning
+  const x = fixture.radarX * w
+  const y = fixture.radarY * h
 
   // Alpha = dimmer normalized × strobe gate
   const dimmerAlpha = fixture.dimmer / 255

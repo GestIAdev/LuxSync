@@ -1927,3 +1927,366 @@
 .heph-canvas-area__radar-content {
   height: calc(100% - 28px);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⚡ WAVE 2403.1: Phase Distribution — Floating HUD
+   Trigger button sits in sidebar, panel floats over canvas
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Trigger Container (relative anchor for floating panel) ── */
+.heph-phase-trigger {
+  position: relative;
+  margin-top: 6px;
+  padding: 0 8px 8px;
+}
+
+.heph-phase-trigger__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  background: rgba(255, 107, 43, 0.05);
+  border: 1px solid rgba(255, 107, 43, 0.15);
+  border-radius: 5px;
+  color: rgba(255, 107, 43, 0.55);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 10px;
+}
+
+.heph-phase-trigger__btn:hover {
+  background: rgba(255, 107, 43, 0.10);
+  border-color: rgba(255, 107, 43, 0.30);
+  color: rgba(255, 107, 43, 0.85);
+  box-shadow: 0 0 10px rgba(255, 107, 43, 0.12);
+}
+
+.heph-phase-trigger__btn--open {
+  background: rgba(255, 107, 43, 0.14);
+  border-color: rgba(255, 107, 43, 0.50);
+  color: #ff6b2b;
+  box-shadow:
+    0 0 12px rgba(255, 107, 43, 0.25),
+    0 0 24px rgba(255, 107, 43, 0.10);
+}
+
+.heph-phase-trigger__btn--active {
+  border-color: rgba(255, 107, 43, 0.35);
+  color: rgba(255, 107, 43, 0.80);
+  box-shadow: 0 0 6px rgba(255, 107, 43, 0.12);
+}
+
+.heph-phase-trigger__icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.heph-phase-trigger__label {
+  font-size: 9px;
+}
+
+.heph-phase-trigger__badge {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 107, 43, 0.2);
+  color: #ff6b2b;
+  letter-spacing: 0.5px;
+  margin-left: 2px;
+}
+
+/* ── Floating Panel (position: absolute, flies over canvas) ── */
+.heph-phase-float {
+  position: absolute;
+  left: calc(100% + 10px);
+  bottom: 250px;
+  z-index: 100;
+  width: 360px;
+  animation: heph-phase-float-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 0 18px rgba(255, 107, 43, 0.22));
+}
+
+@keyframes heph-phase-float-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) translateY(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+/* ── The panel itself (inside float container) ── */
+.heph-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px 18px;
+  background: rgba(10, 8, 6, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 107, 43, 0.35);
+  border-radius: 8px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 107, 43, 0.08),
+    0 0 16px rgba(255, 107, 43, 0.18),
+    0 0 48px rgba(255, 107, 43, 0.08),
+    inset 0 1px 0 rgba(255, 107, 43, 0.1),
+    inset 0 0 24px rgba(255, 107, 43, 0.03);
+  opacity: 1;
+  transition: background 0.2s ease;
+}
+
+.heph-phase--active {
+  border-color: rgba(255, 107, 43, 0.55);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 107, 43, 0.12),
+    0 0 24px rgba(255, 107, 43, 0.30),
+    0 0 64px rgba(255, 107, 43, 0.12),
+    inset 0 1px 0 rgba(255, 107, 43, 0.14),
+    inset 0 0 32px rgba(255, 107, 43, 0.05);
+}
+
+.heph-phase__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.15);
+  margin-bottom: 4px;
+}
+
+.heph-phase__icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.heph-phase__title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: rgba(255, 107, 43, 0.65);
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.heph-phase--active .heph-phase__title {
+  color: rgba(255, 107, 43, 0.9);
+}
+
+.heph-phase__badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 107, 43, 0.12);
+  color: rgba(255, 107, 43, 0.7);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ── Row Layout ── */
+.heph-phase__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.heph-phase__label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+/* ── Spread Slider ── */
+.heph-phase__slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.heph-phase__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.heph-phase__slider:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.heph-phase__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff6b2b;
+  cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 4px rgba(255, 107, 43, 0.4);
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.heph-phase__slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(255, 107, 43, 0.6);
+  transform: scale(1.15);
+}
+
+.heph-phase__value {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: rgba(255, 107, 43, 0.8);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Symmetry Buttons ── */
+.heph-phase__btn-group {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.heph-phase__sym-btn {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0 4px;
+}
+
+.heph-phase__sym-btn:hover {
+  background: rgba(255, 107, 43, 0.08);
+  border-color: rgba(255, 107, 43, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.heph-phase__sym-btn--active {
+  background: rgba(255, 107, 43, 0.15);
+  border-color: rgba(255, 107, 43, 0.4);
+  color: #ff6b2b;
+  box-shadow: 0 0 4px rgba(255, 107, 43, 0.15);
+}
+
+/* ── Wings Input ── */
+.heph-phase__wings-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.heph-phase__wings-input {
+  width: 44px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.heph-phase__wings-input:focus {
+  border-color: rgba(255, 107, 43, 0.5);
+  box-shadow: 0 0 4px rgba(255, 107, 43, 0.15);
+}
+
+.heph-phase__wings-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+}
+
+/* ── Direction Toggle ── */
+.heph-phase__dir-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  background: rgba(255, 107, 43, 0.08);
+  border: 1px solid rgba(255, 107, 43, 0.2);
+  border-radius: 3px;
+  color: rgba(255, 107, 43, 0.7);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.heph-phase__dir-btn:hover {
+  background: rgba(255, 107, 43, 0.15);
+  border-color: rgba(255, 107, 43, 0.35);
+  color: #ff6b2b;
+}
+
+.heph-phase__dir-btn--reverse {
+  background: rgba(43, 150, 255, 0.08);
+  border-color: rgba(43, 150, 255, 0.2);
+  color: rgba(43, 150, 255, 0.7);
+}
+
+.heph-phase__dir-btn--reverse:hover {
+  background: rgba(43, 150, 255, 0.15);
+  border-color: rgba(43, 150, 255, 0.35);
+  color: #2b96ff;
+}
+
+.heph-phase__dir-arrow {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.heph-phase__dir-label {
+  font-size: 9px;
+}
+
+/* ── Disabled state ── */
+.heph-phase--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

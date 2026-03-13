@@ -194,6 +194,18 @@ export class HardwareAbstraction {
   
   /**
    * 🐍 Aplica phase offset por fixture para crear efecto serpiente
+   * 
+   * @deprecated WAVE 2100 — CÓDIGO MUERTO INTENCIONAL
+   * Este método SOLO es llamado desde renderFromIntent() (línea ~597),
+   * flujo que está INACTIVO desde WAVE 2086.1 cuando se migró a 
+   * renderFromTarget() como único flujo de renderizado activo.
+   * 
+   * NO ELIMINAR: Se mantiene como referencia arquitectónica para una
+   * posible reactivación del flujo intent-based si se implementa
+   * el motor de patrones procedurales (roadmap post-beta).
+   * 
+   * Última auditoría: WAVE 2100 — Confirmado dead code.
+   * 
    * @param baseX - Posición X base del Engine (0-1)
    * @param baseY - Posición Y base del Engine (0-1)
    * @param pattern - Patrón de movimiento activo

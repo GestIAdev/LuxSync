@@ -100,6 +100,34 @@ export class CurveEvaluator {
   private readonly durationMs: number
 
   // ─────────────────────────────────────────────────────────────────────────
+  // ⚒️ WAVE 2400: ZERO-ALLOCATION CACHES
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Pre-allocated HSL result object. Reused across getColorValue() calls.
+   * 
+   * ⚠️ CONTRATO ZERO-ALLOC: El caller NO debe retener la referencia.
+   * La próxima llamada a getColorValue() SOBREESCRIBIRÁ el resultado.
+   * Si necesitas persistir: `const copy = { ...evaluator.getColorValue(...) }`
+   */
+  private readonly _hslResult: HSL = { h: 0, s: 0, l: 0 }
+
+  /**
+   * Pre-allocated snapshot object. Keys created in constructor.
+   * 
+   * ⚠️ CONTRATO ZERO-ALLOC: NO retener referencia al snapshot ni a sus HSL internos.
+   * Se sobreescriben en la siguiente llamada a getSnapshot().
+   */
+  private readonly _snapshotCache: HephParamSnapshot = {}
+
+  /**
+   * Pre-allocated HSL objects for color params in snapshot.
+   * Each color param gets its OWN pre-allocated HSL so getSnapshot()
+   * doesn't overwrite values while iterating.
+   */
+  private readonly _snapshotColorCache: Map<HephParamId, HSL> = new Map()
+
+  // ─────────────────────────────────────────────────────────────────────────
   // CONSTRUCTOR
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -113,6 +141,17 @@ export class CurveEvaluator {
     for (const paramId of curves.keys()) {
       this.cursors.set(paramId, 0)
       this.lastTimeMsPerCurve.set(paramId, -1)
+    }
+
+    // ⚒️ WAVE 2400: Pre-allocate snapshot structure
+    for (const [paramId, curve] of curves) {
+      if (curve.valueType === 'color') {
+        const colorObj: HSL = { h: 0, s: 0, l: 0 }
+        this._snapshotColorCache.set(paramId, colorObj)
+        this._snapshotCache[paramId] = colorObj
+      } else {
+        this._snapshotCache[paramId] = 0
+      }
     }
   }
 
@@ -171,17 +210,29 @@ export class CurveEvaluator {
    * Interpola H, S, L independientemente.
    * Hue se interpola por shortest-path (350° → 10° cruza por 0°).
    * 
+   * ⚒️ WAVE 2400: ZERO-ALLOC — Retorna referencia al buffer interno _hslResult.
+   * ⚠️ CONTRATO: El caller NO debe retener la referencia entre frames.
+   * La próxima llamada a getColorValue() SOBREESCRIBIRÁ el resultado.
+   * Si necesitas persistir: `const copy = { ...evaluator.getColorValue(...) }`
+   * 
    * @param paramId ID del parámetro (debe ser valueType='color')
    * @param timeMs Tiempo en ms desde inicio del clip
-   * @returns Color HSL interpolado
+   * @returns Color HSL interpolado (referencia al buffer interno pre-alocado)
    */
   getColorValue(paramId: HephParamId, timeMs: number): HSL {
     const curve = this.curves.get(paramId)
     if (!curve || curve.keyframes.length === 0) {
       if (curve && typeof curve.defaultValue === 'object') {
-        return curve.defaultValue as HSL
+        const def = curve.defaultValue as HSL
+        this._hslResult.h = def.h
+        this._hslResult.s = def.s
+        this._hslResult.l = def.l
+        return this._hslResult
       }
-      return { h: 0, s: 0, l: 50 }
+      this._hslResult.h = 0
+      this._hslResult.s = 0
+      this._hslResult.l = 50
+      return this._hslResult
     }
 
     const kfs = curve.keyframes
@@ -194,23 +245,50 @@ export class CurveEvaluator {
       typeof v.s === 'number' && Number.isFinite(v.s) &&
       typeof v.l === 'number' && Number.isFinite(v.l)
 
-    const safeDefault = (): HSL =>
-      curve.defaultValue && typeof curve.defaultValue === 'object'
-        ? (curve.defaultValue as HSL)
-        : { h: 0, s: 0, l: 50 }
+    const writeSafeDefault = (): HSL => {
+      if (curve.defaultValue && typeof curve.defaultValue === 'object') {
+        const def = curve.defaultValue as HSL
+        this._hslResult.h = def.h
+        this._hslResult.s = def.s
+        this._hslResult.l = def.l
+      } else {
+        this._hslResult.h = 0
+        this._hslResult.s = 0
+        this._hslResult.l = 50
+      }
+      return this._hslResult
+    }
 
     // ── Edge cases ──────────────────────────────────────────────────────
     if (kfs.length === 1) {
       const val = kfs[0].value as HSL
-      return isValidHSL(val) ? val : safeDefault()
+      if (isValidHSL(val)) {
+        this._hslResult.h = val.h
+        this._hslResult.s = val.s
+        this._hslResult.l = val.l
+        return this._hslResult
+      }
+      return writeSafeDefault()
     }
     if (t <= kfs[0].timeMs) {
       const val = kfs[0].value as HSL
-      return isValidHSL(val) ? val : safeDefault()
+      if (isValidHSL(val)) {
+        this._hslResult.h = val.h
+        this._hslResult.s = val.s
+        this._hslResult.l = val.l
+        return this._hslResult
+      }
+      return writeSafeDefault()
     }
     if (t >= kfs[kfs.length - 1].timeMs) {
       const val = kfs[kfs.length - 1].value as HSL
-      return isValidHSL(val) ? val : safeDefault()
+      if (isValidHSL(val)) {
+        this._hslResult.h = val.h
+        this._hslResult.s = val.s
+        this._hslResult.l = val.l
+        return this._hslResult
+      }
+      return writeSafeDefault()
     }
 
     // ── Encontrar segmento ──────────────────────────────────────────────
@@ -219,13 +297,23 @@ export class CurveEvaluator {
     const kf1 = kfs[segIdx + 1]
 
     const segDuration = kf1.timeMs - kf0.timeMs
-    if (segDuration <= 0) return kf0.value as HSL
+    if (segDuration <= 0) {
+      const val = kf0.value as HSL
+      this._hslResult.h = val.h
+      this._hslResult.s = val.s
+      this._hslResult.l = val.l
+      return this._hslResult
+    }
 
     const rawProgress = (t - kf0.timeMs) / segDuration
 
     // ── Hold: devolver kf0 directamente ─────────────────────────────────
     if (kf0.interpolation === 'hold') {
-      return kf0.value as HSL
+      const val = kf0.value as HSL
+      this._hslResult.h = val.h
+      this._hslResult.s = val.s
+      this._hslResult.l = val.l
+      return this._hslResult
     }
 
     // ── Aplicar curva al progreso ───────────────────────────────────────
@@ -242,14 +330,14 @@ export class CurveEvaluator {
     // ⚒️ WAVE 2040.22c: Validate keyframe values before interpolation
     if (!isValidHSL(c0) || !isValidHSL(c1)) {
       console.warn('[CurveEvaluator] Invalid HSL keyframe values detected:', { c0, c1, paramId })
-      return safeDefault()
+      return writeSafeDefault()
     }
 
-    return {
-      h: this.lerpHue(c0.h, c1.h, easedProgress),
-      s: c0.s + (c1.s - c0.s) * easedProgress,
-      l: c0.l + (c1.l - c0.l) * easedProgress,
-    }
+    // ⚒️ WAVE 2400: Mutate pre-allocated _hslResult instead of creating new object
+    this._hslResult.h = this.lerpHue(c0.h, c1.h, easedProgress)
+    this._hslResult.s = c0.s + (c1.s - c0.s) * easedProgress
+    this._hslResult.l = c0.l + (c1.l - c0.l) * easedProgress
+    return this._hslResult
   }
 
   /**
@@ -259,21 +347,30 @@ export class CurveEvaluator {
    * Es la forma más eficiente de obtener todos los valores de una vez
    * (el cursor cache se beneficia de la localidad temporal).
    * 
+   * ⚒️ WAVE 2400: ZERO-ALLOC — Muta objetos pre-alocados en el constructor.
+   * ⚠️ CONTRATO: NO retener referencia al snapshot ni a sus HSL internos.
+   * Se sobreescriben en la siguiente llamada a getSnapshot().
+   * Si necesitas persistir: `const copy = { ...evaluator.getSnapshot(...) }`
+   * 
    * @param timeMs Tiempo en ms desde inicio del clip
-   * @returns Map parcial de paramId → valor evaluado
+   * @returns Map parcial de paramId → valor evaluado (referencia a cache interno)
    */
   getSnapshot(timeMs: number): HephParamSnapshot {
-    const snapshot: HephParamSnapshot = {}
-
     for (const [paramId, curve] of this.curves) {
       if (curve.valueType === 'color') {
-        snapshot[paramId] = this.getColorValue(paramId, timeMs)
+        // getColorValue writes to _hslResult — copy to the per-param cache
+        const hsl = this.getColorValue(paramId, timeMs)
+        const cached = this._snapshotColorCache.get(paramId)!
+        cached.h = hsl.h
+        cached.s = hsl.s
+        cached.l = hsl.l
+        // _snapshotCache[paramId] already points to `cached` (set in constructor)
       } else {
-        snapshot[paramId] = this.getValue(paramId, timeMs)
+        this._snapshotCache[paramId] = this.getValue(paramId, timeMs)
       }
     }
 
-    return snapshot
+    return this._snapshotCache
   }
 
   /**

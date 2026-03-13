@@ -115,7 +115,7 @@ export class TechnoStereoPhysics {
 
   // 🥁 BACK (SNARE SNIPER - GEOMETRIC MEAN + NOISE GATE)
   // Media geométrica + Curva supresora de ruido
-  private readonly BACK_PAR_GATE = 0.30
+  private readonly BACK_PAR_GATE = 0.40
   private readonly BACK_PAR_SLAP_MULT = 5.0   // ⬆️ Compensar curva supresora (4.0→6.0)
 
   // 👯 MOVERS (STEREO SPLIT)
@@ -228,7 +228,7 @@ export class TechnoStereoPhysics {
     // - lowMid (aproximado como mid*0.3): un poco de peso para que la bofetada se sienta gorda
     // El resultado: un cocktail ultra-puro que entra directo a calculateBackPar
     const snareAndSynthPower = Math.min(1.0, 
-      (mid * 0.6) +           // El cuerpo del sinte y la caja
+      (mid * 0.5) +           // El cuerpo del sinte y la caja
       (treble * 0.8) +        // El latigazo metálico del snare
       (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
     );

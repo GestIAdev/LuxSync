@@ -19,8 +19,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
 import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephaestusRuntime'
-import type { HephAutomationClip, HephParamId } from '../../../core/hephaestus/types'
+import { PhaseDistributor } from '../../../core/hephaestus/runtime/PhaseDistributor'
+import type { HephAutomationClip, HephParamId, PhaseConfig, FixturePhase } from '../../../core/hephaestus/types'
+import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
+import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -33,8 +36,14 @@ import type { EffectZone } from '../../../core/effects/types'
 export interface PreviewFixtureState {
   /** Zone identifier for this virtual fixture */
   zone: EffectZone | 'all'
+  /** Fixture ID (real fixture from show, or zone-based fallback) */
+  fixtureId: string
   /** Display label */
   label: string
+  /** Radar X position (0-1 normalized, for horizontal wave layout) */
+  radarX: number
+  /** Radar Y position (0-1 normalized) */
+  radarY: number
   /** 0-255 */
   dimmer: number
   /** RGB 0-255 each */
@@ -205,8 +214,11 @@ function evaluateClipFrame(
   }
 
   return {
-    zone: 'all',
+    zone: 'all' as const,
+    fixtureId: 'preview-all',
     label: 'ALL',
+    radarX: 0.5,
+    radarY: 0.5,
     dimmer, r, g, b,
     pan, panFine, tilt, tiltFine,
     white, amber, strobe, zoom, focus,
@@ -217,7 +229,7 @@ function evaluateClipFrame(
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function useHephPreview(clip: HephAutomationClip): HephPreviewState & {
+export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV2[] = []): HephPreviewState & {
   play: () => void
   pause: () => void
   stop: () => void
@@ -236,7 +248,13 @@ export function useHephPreview(clip: HephAutomationClip): HephPreviewState & {
   const startClipTimeRef = useRef<number>(0)
   const isPlayingRef = useRef(false)
   const clipRef = useRef(clip)
+  const stageFixturesRef = useRef(stageFixtures)
   const evaluatorRef = useRef<CurveEvaluator | null>(null)
+
+  // Keep stageFixtures ref current
+  useEffect(() => {
+    stageFixturesRef.current = stageFixtures
+  }, [stageFixtures])
 
   // Rebuild evaluator when clip curves change
   useEffect(() => {
@@ -252,56 +270,130 @@ export function useHephPreview(clip: HephAutomationClip): HephPreviewState & {
   }, [clip, clip.curves, clip.durationMs])
 
   /**
-   * Resolve fixtures based on clip zones.
+   * Resolve fixtures based on clip zones + REAL show patch + PhaseDistributor.
    * 
-   * ⚒️ WAVE 2043.10: OPERATION GHOSTBUSTER
-   * Only render fixtures for zones that are ACTUALLY selected.
-   * Uses ZONE_RADAR_POSITIONS for spatial mapping of ALL zone types.
+   * ⚒️ WAVE 2403.2: OPERATION RADAR AWAKENING
+   * Expands zones → real fixture IDs from the show patch.
+   * Each fixture gets its own radar dot, horizontally distributed for wave viz.
+   * PhaseDistributor receives the REAL fixture IDs (N > 1 per zone).
    * 
-   * - 'all' or empty → 1 big fixture (center of radar)
-   * - Specific zones → Only show those zones with correct radar positions
+   * - 'all' or empty → 1 big fixture (center of radar, no phase)
+   * - Specific zones → Lookup real fixtures from stageStore, distribute phase
+   * - Fallback: if no stage fixtures loaded, use zone-based single dots
    */
   const resolveFixtures = useCallback(
     (c: HephAutomationClip, ev: CurveEvaluator, timeMs: number): PreviewFixtureState[] => {
-      // If 'all' is selected → Single fixture at center
+      // ── CASE 1: 'all' selected → Single fixture at center ──
       if (c.zones.includes('all' as EffectZone)) {
         const f = evaluateClipFrame(c, ev, timeMs)
         return [f]
       }
 
-      // No zones selected → Fallback to 'all' (single fixture)
+      // ── CASE 2: No zones selected → Fallback ──
       if (c.zones.length === 0) {
         const f = evaluateClipFrame(c, ev, timeMs)
         return [f]
       }
 
-      // Multi-zone: Build layout from ZONE_RADAR_POSITIONS for each selected zone
+      // ── WAVE 2403.2: Expand zones → real fixture IDs from show patch ──
+      const currentStageFixtures = stageFixturesRef.current
+
+      // Resolve which real fixtures belong to each selected zone
+      // Helper zone groups like 'all-movers' map to multiple canonical zones
+      const ZONE_GROUP_MAP: Record<string, string[]> = {
+        'all-movers':  ['movers-left', 'movers-right'],
+        'all-pars':    ['front', 'back', 'floor'],
+        'all-left':    ['movers-left'],   // simplified
+        'all-right':   ['movers-right'],  // simplified
+      }
+
+      const resolvedFixtures: Array<{ id: string; name: string; zone: EffectZone }> = []
+
+      for (const zoneId of c.zones) {
+        const zoneStr = String(zoneId)
+        // Expand group zones to canonical zones
+        const canonicalZones = ZONE_GROUP_MAP[zoneStr] ?? [zoneStr]
+
+        // Find all stage fixtures in these zones
+        const matchingFixtures = currentStageFixtures.filter(
+          (sf) => canonicalZones.includes(sf.zone) && sf.enabled !== false
+        )
+
+        if (matchingFixtures.length > 0) {
+          // Real fixtures found → add them all
+          for (const sf of matchingFixtures) {
+            resolvedFixtures.push({ id: sf.id, name: sf.name, zone: zoneId })
+          }
+        } else {
+          // No real fixtures in this zone → fallback to zone-based virtual fixture
+          resolvedFixtures.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId })
+        }
+      }
+
+      // ── CASE 3: Still only 1 fixture? Skip phase distribution ──
+      if (resolvedFixtures.length <= 1) {
+        const f = evaluateClipFrame(c, ev, timeMs)
+        const pos = ZONE_RADAR_POSITIONS[String(resolvedFixtures[0]?.zone)] ?? { x: 0.5, y: 0.5 }
+        return [{
+          ...f,
+          fixtureId: resolvedFixtures[0]?.id ?? 'solo',
+          zone: resolvedFixtures[0]?.zone ?? 'all',
+          label: resolvedFixtures[0]?.name?.substring(0, 8).toUpperCase() ?? 'ALL',
+          radarX: pos.x,
+          radarY: pos.y,
+        }]
+      }
+
+      // ── WAVE 2403.2: Phase distribution over REAL fixture IDs ──
+      const phaseConfig: PhaseConfig = c.selector?.phase ?? DEFAULT_PHASE_CONFIG
+      const fixtureIds = resolvedFixtures.map(rf => rf.id)
+      const fixturePhases: FixturePhase[] = PhaseDistributor.resolve(
+        fixtureIds,
+        phaseConfig,
+        c.durationMs
+      )
+
+      // Build lookup: fixtureId → phaseOffsetMs
+      const phaseByFixture = new Map<string, number>()
+      for (const fp of fixturePhases) {
+        phaseByFixture.set(fp.fixtureId, fp.phaseOffsetMs)
+      }
+
+      // ── Build radar layout: horizontal distribution for wave visualization ──
+      const totalFixtures = resolvedFixtures.length
+      const MARGIN = 0.08  // 8% margin from edges
+      const usableWidth = 1 - (MARGIN * 2)
+
       const fixtures: PreviewFixtureState[] = []
 
-      for (let i = 0; i < c.zones.length; i++) {
-        const zoneId = c.zones[i]
-        const pos = ZONE_RADAR_POSITIONS[zoneId as string]
-
-        // Phase offset per zone: 0, 50ms, 100ms, 150ms — shows propagation delay
-        const phaseOffset = i * 50
-        const offsetTime = Math.max(0, timeMs - phaseOffset)
+      for (let i = 0; i < totalFixtures; i++) {
+        const rf = resolvedFixtures[i]
+        const phaseOffset = phaseByFixture.get(rf.id) ?? 0
+        const offsetTime = Math.max(0, timeMs + phaseOffset)
         const f = evaluateClipFrame(c, ev, offsetTime)
 
-        if (pos) {
-          // Known zone → use its mapped radar position
-          fixtures.push({
-            ...f,
-            zone: zoneId,
-            label: pos.label,
-          })
-        } else {
-          // Unknown zone → still show it at center (graceful fallback)
-          fixtures.push({
-            ...f,
-            zone: zoneId,
-            label: (zoneId as string).toUpperCase(),
-          })
-        }
+        // Horizontal distribution: evenly spaced across X axis
+        const radarX = totalFixtures === 1
+          ? 0.5
+          : MARGIN + (i / (totalFixtures - 1)) * usableWidth
+
+        // Vertical: use zone base position for Y, so different zones stack vertically
+        const zonePos = ZONE_RADAR_POSITIONS[String(rf.zone)]
+        const radarY = zonePos?.y ?? 0.5
+
+        // Label: show short fixture name (max 6 chars) + index
+        const shortName = rf.name.length > 6
+          ? rf.name.substring(0, 6)
+          : rf.name
+
+        fixtures.push({
+          ...f,
+          fixtureId: rf.id,
+          zone: rf.zone,
+          label: shortName.toUpperCase(),
+          radarX,
+          radarY,
+        })
       }
 
       return fixtures

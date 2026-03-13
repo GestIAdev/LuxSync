@@ -298,6 +298,8 @@ class SpectrumAnalyzer {
     // 📡 WAVE 2153: BROADBAND ANCHOR — Medios raw para detección de ataque del kick
     rawLowMidEnergy: number;
     rawMidEnergy: number;
+    // 🎹 WAVE 2301: 12-bin chromagram from GodEar (pitch classes C through B, normalized 0-1)
+    chroma: number[];
   } {
     //  Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
@@ -371,6 +373,8 @@ class SpectrumAnalyzer {
       rawBassOnlyEnergy: godEarResult.bandsRaw.bass,
       rawLowMidEnergy: godEarResult.bandsRaw.lowMid,
       rawMidEnergy: godEarResult.bandsRaw.mid,
+      // 🎹 WAVE 2301: Native chromagram from GodEar Worker
+      chroma: godEarResult.chroma,
     };
   }
   
@@ -1022,6 +1026,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
     // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
     rawBassEnergy: spectrum.rawBassEnergy,
+
+    // 🎹 WAVE 2301: Native chromagram from GodEar Worker
+    // 12-bin pitch class vector (C through B, normalized 0-1).
+    // Consumed by HarmonyDetector in GAMMA — replaces spectrumToChroma() heuristic.
+    chroma: spectrum.chroma,
     
     // === WAVE 8 RICH DATA FOR GAMMA ===
     wave8: {

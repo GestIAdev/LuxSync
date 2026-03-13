@@ -386,6 +386,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
   const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
   
+  // 🔧 WAVE 2100: Configurable wheel motor speed
+  const [wheelMinChangeTimeMs, setWheelMinChangeTimeMs] = useState<number>(500)
+  
   // WAVE 1112: Current editing source tracking
   const [editingSource, setEditingSource] = useState<'system' | 'user' | 'new'>('new')
   const [originalFixtureId, setOriginalFixtureId] = useState<string | null>(null)
@@ -450,6 +453,14 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       setWheelColors(def.capabilities.colorWheel.colors)
     } else {
       setWheelColors([])
+    }
+    
+    // 🔧 WAVE 2100: Load minChangeTimeMs from colorWheel config
+    const savedMinChangeTimeMs = def.capabilities?.colorWheel?.minChangeTimeMs
+    if (savedMinChangeTimeMs && savedMinChangeTimeMs > 0) {
+      setWheelMinChangeTimeMs(savedMinChangeTimeMs)
+    } else {
+      setWheelMinChangeTimeMs(500) // Industry default
     }
     
     // Load physics if available - WAVE 1116.3 FIX: Use ACTUAL saved values
@@ -611,7 +622,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         colorWheel: wheelColors.length > 0 ? {
           colors: wheelColors,
           allowsContinuousSpin: false,
-          minChangeTimeMs: 500,
+          minChangeTimeMs: wheelMinChangeTimeMs,
         } : undefined,
         hasPan: fixture.channels.some(ch => ch.type === 'pan'),
         hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
@@ -1158,6 +1169,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               onNavigateToRack={() => setActiveTab('channels')}
               fixtureId={editingFixture?.id ?? null}
               channelIndex={fixture.channels.findIndex(ch => ch.type === 'color_wheel')}
+              minChangeTimeMs={wheelMinChangeTimeMs}
+              onMinChangeTimeMsChange={setWheelMinChangeTimeMs}
             />
           </div>
         )}

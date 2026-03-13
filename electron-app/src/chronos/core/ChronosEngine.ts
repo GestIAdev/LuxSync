@@ -42,6 +42,9 @@ import type {
   ColorOverrideData,
 } from './types'
 
+import type { ClockSourceType } from './ClockSource'
+import { ClockSourceManager } from '../protocols/ClockSourceManager'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎭 EVENT SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,6 +80,201 @@ export interface ChronosEngineEvents {
 
 type EventHandler<T> = (payload: T) => void
 type EventUnsubscribe = () => void
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚀 WAVE 2500: AUTOMATION LANE SORT CACHE (P0-1 FIX)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// PROBLEM: evaluateAutomationLane() was calling [...points].sort() on EVERY
+// frame for EVERY lane. With 20 lanes × 60fps = 1,200 array copies+sorts/sec.
+//
+// SOLUTION: WeakMap cache keyed by the lane's points array reference.
+// The Zustand store produces NEW array references on mutation (immutable pattern),
+// so a simple reference check is sufficient for invalidation.
+// Cost: O(1) cache hit per frame. Sort only on edit.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const sortedPointsCache = new WeakMap<readonly AutomationPoint[], AutomationPoint[]>()
+
+/**
+ * Returns a sorted copy of automation points, cached by array reference.
+ * The Zustand store creates new array references on every mutation,
+ * so WeakMap key invalidation is automatic and zero-cost.
+ */
+function getSortedPoints(points: AutomationPoint[]): AutomationPoint[] {
+  let sorted = sortedPointsCache.get(points)
+  if (!sorted) {
+    sorted = [...points].sort((a, b) => a.timeMs - b.timeMs)
+    sortedPointsCache.set(points, sorted)
+  }
+  return sorted
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚀 WAVE 2500: CLIP BOUNDARY INDEX (P0-2 FIX)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// PROBLEM: getActiveClips() did a linear scan of ALL tracks × ALL clips
+// on EVERY frame. With 7 tracks × 200 clips = 1,400 iterations × 60fps.
+//
+// SOLUTION: Pre-computed boundary event index. A sorted array of "events"
+// (clip start and clip end times) with binary search. On each frame:
+// 1. If timeMs hasn't crossed any boundary since last query → return cached result
+// 2. If boundary crossed → rebuild active set (still uses binary search)
+//
+// Rebuild cost: O(n log n) only when project changes (loadProject / track mutation)
+// Per-frame cost: O(log n) boundary check + O(1) cache hit (typical case)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ClipBoundaryEvent {
+  timeMs: number
+  clipId: string
+  trackIndex: number
+  clipIndex: number
+  type: 'start' | 'end'
+}
+
+interface ClipIndexEntry {
+  clip: TimelineClip
+  track: TimelineTrack
+  startMs: number
+  endMs: number
+}
+
+class ClipBoundaryIndex {
+  /** Sorted boundary events (by timeMs) */
+  private boundaries: ClipBoundaryEvent[] = []
+  /** All clips with precomputed start/end, sorted by startMs */
+  private clipEntries: ClipIndexEntry[] = []
+  /** Cached active clips from last query */
+  private cachedActiveClips: TimelineClip[] | null = null
+  /** Time of last query */
+  private lastQueryTimeMs: number = -1
+  /** Track array reference for staleness detection */
+  private tracksRef: TimelineTrack[] | null = null
+
+  /**
+   * Rebuild the index from project tracks.
+   * Called on loadProject() and when track reference changes.
+   * Cost: O(n log n) where n = total clips across all tracks.
+   */
+  rebuild(tracks: TimelineTrack[]): void {
+    this.tracksRef = tracks
+    this.boundaries = []
+    this.clipEntries = []
+    this.cachedActiveClips = null
+    this.lastQueryTimeMs = -1
+
+    for (let ti = 0; ti < tracks.length; ti++) {
+      const track = tracks[ti]
+      if (!track.enabled) continue
+
+      for (let ci = 0; ci < track.clips.length; ci++) {
+        const clip = track.clips[ci]
+        if (!clip.enabled) continue
+
+        const startMs = clip.startMs
+        const endMs = clip.durationMs === 0
+          ? clip.startMs + 16  // Instantaneous clips get a 16ms window
+          : clip.startMs + clip.durationMs
+
+        this.clipEntries.push({ clip, track, startMs, endMs })
+        this.boundaries.push({ timeMs: startMs, clipId: clip.id, trackIndex: ti, clipIndex: ci, type: 'start' })
+        this.boundaries.push({ timeMs: endMs, clipId: clip.id, trackIndex: ti, clipIndex: ci, type: 'end' })
+      }
+    }
+
+    // Sort boundaries by time (one-time cost)
+    this.boundaries.sort((a, b) => a.timeMs - b.timeMs)
+    // Sort clip entries by startMs for binary search
+    this.clipEntries.sort((a, b) => a.startMs - b.startMs)
+  }
+
+  /**
+   * Check if the index needs rebuild (tracks reference changed).
+   */
+  isStale(tracks: TimelineTrack[]): boolean {
+    return this.tracksRef !== tracks
+  }
+
+  /**
+   * Query active clips at a given time.
+   * Uses boundary crossing detection to avoid recomputation.
+   * 
+   * @returns Active clips sorted by priority (descending)
+   */
+  query(timeMs: number): TimelineClip[] {
+    // Fast path: if no boundaries crossed since last query, return cache
+    if (this.cachedActiveClips !== null && !this.hasCrossedBoundary(this.lastQueryTimeMs, timeMs)) {
+      return this.cachedActiveClips
+    }
+
+    // Boundary was crossed or first query — compute active clips
+    const active: TimelineClip[] = []
+
+    for (const entry of this.clipEntries) {
+      // Early exit: all remaining clips start after timeMs
+      if (entry.startMs > timeMs) break
+
+      // Check if clip is active at this time
+      if (entry.clip.durationMs === 0) {
+        // Instantaneous clip: 16ms window
+        if (Math.abs(timeMs - entry.clip.startMs) < 16) {
+          active.push(entry.clip)
+        }
+      } else if (timeMs >= entry.startMs && timeMs < entry.endMs) {
+        active.push(entry.clip)
+      }
+    }
+
+    // Sort by priority (descending) — typically very small array (3-10 clips)
+    active.sort((a, b) => b.priority - a.priority)
+
+    this.cachedActiveClips = active
+    this.lastQueryTimeMs = timeMs
+    return active
+  }
+
+  /**
+   * Binary search: has any boundary event been crossed between t1 and t2?
+   * Cost: O(log n) where n = number of boundary events
+   */
+  private hasCrossedBoundary(t1: number, t2: number): boolean {
+    if (this.boundaries.length === 0) return false
+    if (t1 === t2) return false
+
+    const lo = Math.min(t1, t2)
+    const hi = Math.max(t1, t2)
+
+    // Binary search for first boundary >= lo
+    let left = 0
+    let right = this.boundaries.length
+
+    while (left < right) {
+      const mid = (left + right) >>> 1
+      if (this.boundaries[mid].timeMs < lo) {
+        left = mid + 1
+      } else {
+        right = mid
+      }
+    }
+
+    // If any boundary exists in (lo, hi], a crossing occurred
+    // We use > lo (exclusive) because at t1=boundary we already computed for that boundary
+    while (left < this.boundaries.length && this.boundaries[left].timeMs <= lo) {
+      left++
+    }
+    return left < this.boundaries.length && this.boundaries[left].timeMs <= hi
+  }
+
+  /**
+   * Invalidate cache (e.g., after seek)
+   */
+  invalidate(): void {
+    this.cachedActiveClips = null
+    this.lastQueryTimeMs = -1
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎚️ INTERPOLATION UTILITIES
@@ -152,6 +350,11 @@ function interpolateBezier(
 
 /**
  * Evalúa una automation lane en un tiempo dado
+ * 
+ * 🚀 WAVE 2500: P0-1 FIX — Zero-Sort Hot Path
+ * Points are sorted ONCE and cached via WeakMap keyed by array reference.
+ * The Zustand store creates new array references on mutation → automatic invalidation.
+ * Binary search replaces linear scan for segment finding.
  */
 function evaluateAutomationLane(lane: AutomationLane, timeMs: TimeMs): number {
   const { points, defaultValue } = lane
@@ -159,8 +362,8 @@ function evaluateAutomationLane(lane: AutomationLane, timeMs: TimeMs): number {
   if (points.length === 0) return defaultValue
   if (points.length === 1) return points[0].value
   
-  // Ordenar por tiempo (debería estar ordenado, pero por seguridad)
-  const sorted = [...points].sort((a, b) => a.timeMs - b.timeMs)
+  // 🚀 WAVE 2500: Cached sorted points (O(1) lookup, sort only on mutation)
+  const sorted = getSortedPoints(points)
   
   // Antes del primer punto
   if (timeMs <= sorted[0].timeMs) return sorted[0].value
@@ -170,19 +373,24 @@ function evaluateAutomationLane(lane: AutomationLane, timeMs: TimeMs): number {
     return sorted[sorted.length - 1].value
   }
   
-  // Encontrar segmento
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const p1 = sorted[i]
-    const p2 = sorted[i + 1]
-    
-    if (timeMs >= p1.timeMs && timeMs < p2.timeMs) {
-      const segmentDuration = p2.timeMs - p1.timeMs
-      const t = (timeMs - p1.timeMs) / segmentDuration
-      return interpolateValue(p1, p2, t)
+  // 🚀 WAVE 2500: Binary search for segment (O(log n) instead of O(n))
+  let lo = 0
+  let hi = sorted.length - 1
+  
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >>> 1
+    if (sorted[mid].timeMs <= timeMs) {
+      lo = mid
+    } else {
+      hi = mid
     }
   }
   
-  return defaultValue
+  const p1 = sorted[lo]
+  const p2 = sorted[hi]
+  const segmentDuration = p2.timeMs - p1.timeMs
+  const t = segmentDuration > 0 ? (timeMs - p1.timeMs) / segmentDuration : 0
+  return interpolateValue(p1, p2, t)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -277,6 +485,12 @@ export class ChronosEngine {
   /** Compensación de latencia (ms) */
   private latencyCompensationMs: TimeMs = 10
   
+  /** 🚀 WAVE 2500: Clip boundary index for O(log n) active clip queries */
+  private clipIndex: ClipBoundaryIndex = new ClipBoundaryIndex()
+  
+  /** 📡 WAVE 2501: External clock source manager (MTC, Art-Net TC, LTC, MIDI Master) */
+  private clockSources: ClockSourceManager = new ClockSourceManager()
+  
   // ═══════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR (PRIVATE - usar getInstance)
   // ═══════════════════════════════════════════════════════════════════════
@@ -326,6 +540,9 @@ export class ChronosEngine {
     this.loopRegion = project.playback.loopRegion
     this.latencyCompensationMs = project.playback.latencyCompensationMs
     this.currentTimeMs = 0
+    
+    // 🚀 WAVE 2500: Build clip boundary index for O(log n) queries
+    this.clipIndex.rebuild(project.tracks)
   }
   
   /**
@@ -380,6 +597,9 @@ export class ChronosEngine {
     
     this.stop()
     this.unloadAudio()
+    
+    // 📡 WAVE 2501: Dispose clock sources
+    this.clockSources.dispose()
     
     if (this.audioContext) {
       this.audioContext.close()
@@ -485,6 +705,9 @@ export class ChronosEngine {
     this.currentTimeMs = clampedTime
     this.playbackStartOffset = clampedTime
     this.playbackStartTime = this.audioContext?.currentTime ?? performance.now() / 1000
+    
+    // 🚀 WAVE 2500: Invalidate clip cache on seek (non-monotonic time jump)
+    this.clipIndex.invalidate()
     
     if (wasPlaying && this.audioBuffer && this.audioContext && this.gainNode) {
       this.startAudioSource(clampedTime / 1000)
@@ -597,6 +820,9 @@ export class ChronosEngine {
     const duration = this.getDurationMs()
     this.currentTimeMs = Math.max(0, Math.min(timeMs, duration))
     
+    // 🚀 WAVE 2500: Invalidate clip cache on scrub (non-monotonic time jump)
+    this.clipIndex.invalidate()
+    
     // Emitir contexto para preview
     this.emitContext()
     this.emit('playback:seek', { timeMs: this.currentTimeMs })
@@ -665,6 +891,29 @@ export class ChronosEngine {
    */
   public isScrubbing(): boolean {
     return this.playbackState === 'scrubbing'
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📡 WAVE 2501: CLOCK SOURCE / PROTOCOL MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Get the ClockSourceManager for protocol configuration.
+   * Use this to switch clock sources, configure MIDI Master, etc.
+   */
+  public getClockSources(): ClockSourceManager {
+    return this.clockSources
+  }
+  
+  /**
+   * Switch the active external clock source.
+   * 'internal' = use AudioContext (default).
+   */
+  public async setClockSource(type: ClockSourceType): Promise<void> {
+    await this.clockSources.setSource(type)
+    
+    // Invalidate clip cache when clock source changes
+    this.clipIndex.invalidate()
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -840,7 +1089,12 @@ export class ChronosEngine {
     const delta = now - this.lastTickTime
     this.lastTickTime = now
     
-    if (this.audioContext) {
+    // 📡 WAVE 2501: Check external clock source first
+    const externalTimeMs = this.clockSources.getExternalTimeMs()
+    if (externalTimeMs !== null) {
+      // External source is driving the clock — use its timecode directly
+      this.currentTimeMs = externalTimeMs
+    } else if (this.audioContext) {
       // Sincronizar con AudioContext para precisión
       const elapsed = (this.audioContext.currentTime - this.playbackStartTime) * 1000
       this.currentTimeMs = this.playbackStartOffset + elapsed * this.playbackRate
@@ -848,6 +1102,10 @@ export class ChronosEngine {
       // Fallback a performance.now()
       this.currentTimeMs += delta * this.playbackRate
     }
+    
+    // 📡 WAVE 2501: Tick MIDI Clock Master (outbound) if running
+    const bpm = this.project?.meta.bpm ?? 120
+    this.clockSources.tickMIDIMaster(bpm)
     
     // Handle loop
     if (this.looping && this.loopRegion) {
@@ -879,33 +1137,22 @@ export class ChronosEngine {
   // PRIVATE - CONTEXT GENERATION HELPERS
   // ═══════════════════════════════════════════════════════════════════════
   
+  /**
+   * 🚀 WAVE 2500: P0-2 FIX — O(log n) Active Clip Query
+   * 
+   * Uses ClipBoundaryIndex with boundary-crossing detection.
+   * Per-frame cost: O(log n) boundary check + O(1) cache hit (typical).
+   * Rebuild cost: O(n log n) only when project.tracks reference changes.
+   */
   private getActiveClips(timeMs: TimeMs): TimelineClip[] {
     if (!this.project) return []
     
-    const active: TimelineClip[] = []
-    
-    for (const track of this.project.tracks) {
-      if (!track.enabled) continue
-      
-      for (const clip of track.clips) {
-        if (!clip.enabled) continue
-        
-        const endMs = clip.startMs + clip.durationMs
-        
-        // Clip instantáneo (durationMs = 0) o clip con duración
-        if (clip.durationMs === 0) {
-          // Para eventos instantáneos, considerar un pequeño buffer
-          if (Math.abs(timeMs - clip.startMs) < 16) {
-            active.push(clip)
-          }
-        } else if (timeMs >= clip.startMs && timeMs < endMs) {
-          active.push(clip)
-        }
-      }
+    // Auto-rebuild if tracks reference changed (Zustand immutable updates)
+    if (this.clipIndex.isStale(this.project.tracks)) {
+      this.clipIndex.rebuild(this.project.tracks)
     }
     
-    // Ordenar por prioridad
-    return active.sort((a, b) => b.priority - a.priority)
+    return this.clipIndex.query(timeMs)
   }
   
   private findActiveClipOfType(

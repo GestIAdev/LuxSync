@@ -679,4 +679,7 @@ export interface AudioAnalysis {
     mid: number;        // 0-1
     treble: number;     // 0-1
   };
+
+  /** 🎹 WAVE 2301: Native 12-bin chromagram from GodEar Worker (pitch classes C through B, normalized 0-1) */
+  chroma?: number[];
 }

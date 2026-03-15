@@ -24,6 +24,7 @@
  * 
  * @layer HAL
  * @version TITAN 2.0 + BABEL FISH
+ * 🎵 WAVE 2211: PIPELINE EXORCISM — Real beatPhase injection + Physics profile cache
  */
 
 import {
@@ -69,6 +70,13 @@ export interface AudioMetrics {
   energy: number
   isRealSilence: boolean
   isAGCTrap: boolean
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎵 WAVE 2211: REAL BEAT PHASE — replaces hardcoded 120 BPM assumption
+  // Sourced from PLL/Worker in TitanOrchestrator, propagated through HAL
+  // for use in applyDynamicOptics() beat-synced effects.
+  // ═══════════════════════════════════════════════════════════════════════
+  beatPhase?: number   // 0-1, from PLL or Worker (defaults to 0 if absent)
+  bpm?: number         // Real BPM for any future beat-duration calculations
 }
 
 /** HAL configuration */
@@ -105,6 +113,16 @@ export class HardwareAbstraction {
   private movementPhysics: FixturePhysicsDriver
   private currentVibeId: string = 'idle'
   private currentOptics: OpticsConfig
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🗑️ WAVE 2211: PHYSICS PROFILE INJECTION CACHE
+  // translateToDriverPhysicsProfile() was called 60×/sec PER FIXTURE,
+  // creating a new DriverPhysicsProfile object each time even though
+  // the fixture's physics profile NEVER changes at runtime.
+  // Cache: Set<fixtureId> tracks which fixtures have already been injected.
+  // Cleared on vibe change (setVibe()) to re-inject with new vibe config.
+  // ═══════════════════════════════════════════════════════════════════════
+  private injectedPhysicsProfiles = new Set<string>()
   
   // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
   private colorTranslator = getColorTranslator()
@@ -639,11 +657,10 @@ export class HardwareAbstraction {
     
     // Get timing info for dynamic optics
     const opticsTimeSeconds = Date.now() / 1000
-    // Beat phase approximation from movement speed
-    const movementSpeed = intent.movement?.speed || 0.5
-    const approxBpm = movementSpeed * 240
-    const beatDuration = 60 / Math.max(60, approxBpm)  // seconds per beat
-    const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration  // 0-1
+    // 🎵 WAVE 2211: USE REAL BEAT PHASE from AudioMetrics (injected by orchestrator)
+    // BEFORE: Calculated fake beatPhase from movement speed → erratic optics
+    // AFTER: Real PLL/Worker beatPhase or 0 if no audio
+    const beatPhase = audio.beatPhase ?? 0
     
     // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
     const physicsDt = this.measurePhysicsDeltaTime()
@@ -678,13 +695,15 @@ export class HardwareAbstraction {
       
       if (isMovingFixture) {
         // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
-        // El profile puede venir en 3 formatos distintos. translateToDriverPhysicsProfile
-        // los normaliza al formato que entiende el FixturePhysicsDriver.
-        const profile = this.getFixtureProfileCached(fixture)
-        const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
-        const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
-        if (driverProfile) {
-          this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
+        // 🗑️ WAVE 2211: Cached — only inject once per fixture (cleared on vibe change)
+        if (!this.injectedPhysicsProfiles.has(fixtureId)) {
+          const profile = this.getFixtureProfileCached(fixture)
+          const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
+          const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
+          if (driverProfile) {
+            this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
+          }
+          this.injectedPhysicsProfiles.add(fixtureId)
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -943,8 +962,18 @@ export class HardwareAbstraction {
     
     // Apply physics and dynamic optics (same as render())
     const opticsTimeSeconds = Date.now() / 1000
-    const beatDuration = 0.5 // Default 120 BPM
-    const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎵 WAVE 2211: USE REAL BEAT PHASE — KILL THE FAKE 120 BPM
+    //
+    // BEFORE: beatDuration = 0.5 (hardcoded 120 BPM assumption)
+    //         beatPhase = (time % 0.5) / 0.5 → constant 2 pulses/sec
+    //         This made chill-lounge optics pulse at rock speed!
+    //
+    // AFTER:  beatPhase comes from PLL/Worker via AudioMetrics.
+    //         If no real beat data, fall back to 0 (no pulsing).
+    //         Optics now sync to ACTUAL music tempo, not a fake metronome.
+    // ═══════════════════════════════════════════════════════════════════════
+    const beatPhase = audio.beatPhase ?? 0
     
     // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
     const physicsDt = this.measurePhysicsDeltaTime()
@@ -973,11 +1002,17 @@ export class HardwareAbstraction {
       
       if (isMovingFixture) {
         // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
-        const profile = this.getFixtureProfileCached(fixture)
-        const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
-        const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
-        if (driverProfile) {
-          this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
+        // 🗑️ WAVE 2211: Only inject on first encounter or after vibe change.
+        // The fixture's physical profile (motor type, max velocity) doesn't change
+        // at runtime. Re-translating + re-injecting 60×/sec was pure GC waste.
+        if (!this.injectedPhysicsProfiles.has(fixtureId)) {
+          const profile = this.getFixtureProfileCached(fixture)
+          const rawPhysics = profile?.physics || (profile as any)?.physicsProfile || profile
+          const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics)
+          if (driverProfile) {
+            this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile)
+          }
+          this.injectedPhysicsProfiles.add(fixtureId)
         }
 
         // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
@@ -1615,6 +1650,12 @@ export class HardwareAbstraction {
     
     // Update movement physics (pan/tilt acceleration, velocity, friction)
     this.movementPhysics.setVibe(vibeId)
+    
+    // 🗑️ WAVE 2211: Invalidate physics profile injection cache on vibe change.
+    // FixturePhysicsDriver.setVibe() changes the physics mode (snap/classic),
+    // but the per-fixture speed factors need re-injection too since the new
+    // vibe's rev limits interact differently with fixture capabilities.
+    this.injectedPhysicsProfiles.clear()
     
     // Update optics defaults (zoom, focus)
     this.currentOptics = getOpticsConfig(vibeId)

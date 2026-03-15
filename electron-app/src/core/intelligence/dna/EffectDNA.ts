@@ -168,10 +168,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // 🔪 TECHNO-INDUSTRIAL: Los Martillos
   // ═══════════════════════════════════════════════════════════════
   'industrial_strobe': {
-    aggression: 0.95,   // 🔥 El martillo más brutal
-    chaos: 0.30,        // Ordenado: flashes predecibles
-    organicity: 0.05,   // 100% máquina
-    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. Un strobe ES el impacto, no necesita harshness del audio
+    aggression: 0.95,   // 🔥 El martillo más brutal — sin cambio, ya era correcto
+    chaos: 0.55,        // 🔨 WAVE 2202: 0.30→0.55. Era demasiado "ordenado" para un strobe industrial.
+                        // chaos=0.30 lo hacía predecible y plano vs gatling_raid (0.40).
+                        // Un strobe industrial REAL no es metronómico — tiene burst irregulares,
+                        // variaciones de intensidad, micro-stutters. 0.55 lo hace vivo y brutal.
+    organicity: 0.05,   // 100% máquina — sin cambio
+    textureAffinity: 'universal',
   },
   'acid_sweep': {
     aggression: 0.70,   // Agresivo pero más fluido
@@ -271,10 +274,12 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'clean',  // 🎨 Elegante, requiere claridad
   },
   'core_meltdown': {
-    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
-    chaos: 0.65,        // MÁXIMO - Impredecible strobe
-    organicity: 0.00,   // 100% máquina apocalíptica
-    textureAffinity: 'universal',  // 🩸 WAVE 2104.2: dirty→universal. La Bestia despierta cuando ella quiere, no cuando el audio suena sucio
+    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA — intocable
+    chaos: 0.75,        // ☢️ WAVE 2202: 0.65→0.75. El meltdown original era más caótico.
+                        // En algún punto entre waves se bajó y perdió personalidad.
+                        // 0.75 lo devuelve a su estado salvaje: impredecible, devastador.
+    organicity: 0.00,   // 100% máquina apocalíptica — intocable
+    textureAffinity: 'universal',
   },
   
   // ═══════════════════════════════════════════════════════════════

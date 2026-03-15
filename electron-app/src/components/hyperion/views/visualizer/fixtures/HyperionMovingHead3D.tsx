@@ -1,22 +1,19 @@
 /**
- * ☀️ HYPERION — HyperionMovingHead3D v3.4
+ * ☀️ HYPERION — HyperionMovingHead3D v3.5
  * 
  * WAVE 2088.12: VIBE-AWARE BEAM CONE — Dynamic zoom visualization
  * 
- * v3.3:         TILT_REST_ANGLE fixed     useFrame(() => {
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteedame(() => {
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteednvisible pan sweep.
- * v3.4 (this):  Beam cone width driven LIVE by zoom DMX from store.
- *               Techno = sable láser (zoom=30 → radius 0.03)
- *               Latino = spot suave (zoom=150 → radius 0.28)
- *               Rock   = wall of light (zoom=220 → radius 0.40)
- *               Chill  = baño de luz (zoom=255 → radius 0.45)
- *               Zoom is smoothed at 0.15 for organic transitions.
+ * v3.3:         TILT_REST_ANGLE fixed
+ * v3.4:         Beam cone width driven LIVE by zoom DMX from store.
+ * v3.5 (this):  HDR BLOOM RESURRECTION (WAVE 2204)
+ *               Lens y beam multiplican color a rango HDR proporcional al dimmer.
+ *               multiplyScalar(1.0 + intensity * 2.0) → luminance ~3.0 a full dimmer.
+ *               Esto rompe el luminanceThreshold (0.85) del Bloom post-processing.
+ *               Beam opacity subida de 0.25 → 0.4 para visibilidad del haz.
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionMovingHead3D
  * @since WAVE 2042.15, WAVE 2088-2088.2
+ * @updated WAVE 2204 — HDR Bloom Resurrection
  */
 
 import React, { useRef } from 'react'
@@ -235,15 +232,28 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     if (headRef.current) headRef.current.quaternion.copy(headQuat.current)
 
     // Update lens color + intensity
+    // 🔧 WAVE 2204: HDR BLOOM RESURRECTION
+    // MeshBasicMaterial color en rango 0-1 NUNCA rompe el luminanceThreshold del Bloom (0.85).
+    // multiplyScalar empuja el color a rango HDR (>1.0) proporcional al dimmer.
+    // A dimmer=1.0: color * 3.0 → luminance ~3.0 → BLOOM explota.
+    // A dimmer=0.0: color * 1.0 → sin HDR → sin bloom (correcto, está apagado).
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(liveColor.current)
+      if (liveIntensity > 0.01) {
+        lensMaterialRef.current.color.multiplyScalar(1.0 + liveIntensity * 2.0)
+      }
       lensMaterialRef.current.opacity = 0.7 + liveIntensity * 0.3
     }
 
     // Update beam color + intensity + ZOOM WIDTH
+    // 🔧 WAVE 2204: Beam también necesita HDR para bloom volumétrico.
+    //    Opacity subida de 0.25 a 0.4 para que el haz sea visible.
     if (beamMaterialRef.current && showBeam) {
       beamMaterialRef.current.color.copy(liveColor.current)
-      beamMaterialRef.current.opacity = liveIntensity * 0.25
+      if (liveIntensity > 0.01) {
+        beamMaterialRef.current.color.multiplyScalar(1.0 + liveIntensity * 1.5)
+      }
+      beamMaterialRef.current.opacity = liveIntensity * 0.4
     }
 
     // 🔦 WAVE 2088.12: DYNAMIC BEAM CONE WIDTH — Vibe-Aware

@@ -11,8 +11,14 @@
  * - OrbitControls para navegación
  * - Click to select fixtures
  * 
+ * 🔧 WAVE 2204: COLOR SPACE EXORCISM
+ * - Canvas gl: toneMapping=NoToneMapping + outputColorSpace=SRGBColorSpace
+ * - Esto mata el tinte rojo en LQ causado por ACESFilmicToneMapping default
+ * - Ambient light neutralizada: #111118 a 0.08 (antes #1a1a2e a 0.15)
+ * 
  * @module components/hyperion/views/visualizer/VisualizerCanvas
  * @since WAVE 2042.6 (Project Hyperion — Phase 4)
+ * @updated WAVE 2204 — Color Space Exorcism: LQ red tint killed
  */
 
 import React, { Suspense, useMemo, useCallback, useRef, useEffect, useState } from 'react'
@@ -243,8 +249,10 @@ const Scene: React.FC<{
 
       {/* ═══════════════════════════════════════════════════════════════════
        * LIGHTING
+       * 🔧 WAVE 2204: Ambient neutralizada — gris neutro en vez de púrpura (#1a1a2e)
+       *    El color púrpura contaminaba los negros en LQ sin bloom para enmascararlo.
        * ═══════════════════════════════════════════════════════════════════ */}
-      <ambientLight intensity={0.15} color="#1a1a2e" />
+      <ambientLight intensity={0.08} color="#111118" />
       <directionalLight
         position={[5, 10, 5]}
         intensity={0.3}
@@ -311,9 +319,12 @@ const Scene: React.FC<{
       ))}
 
       {/* ═══════════════════════════════════════════════════════════════════
-       * POST-PROCESSING (HQ only)
-       * 🎨 WAVE 2042.15.3: RE-ENABLE BLOOM with conservative settings
-       * Let's see if it works now with MeshBasicMaterial fixtures
+       * POST-PROCESSING (HQ ONLY — ZERO GPU cost in LQ)
+       * 
+       * 🔧 WAVE 2205: GUARANTEED BYPASS
+       * qualitySettings.postProcessing=false (LQ) → NeonBloom NO SE MONTA.
+       * EffectComposer se desmonta COMPLETAMENTE — cero render passes,
+       * cero bloom, cero vignette. GPU libre al 100% para fixtures.
        * ═══════════════════════════════════════════════════════════════════ */}
       {qualitySettings.postProcessing && (
         <NeonBloom
@@ -381,6 +392,12 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           powerPreference: 'high-performance',
           stencil: false,
           depth: true,
+          // 🔧 WAVE 2204: Kill LQ red tint
+          // ACESFilmicToneMapping (default de Three.js) añade tinte cálido/rojo.
+          // NoToneMapping = colores lineales puros. EffectComposer (HQ) hace su propia gestión.
+          // En LQ sin EffectComposer, NoToneMapping = colores limpios sin contaminación.
+          toneMapping: THREE.NoToneMapping,
+          outputColorSpace: THREE.SRGBColorSpace,
         }}
         style={{ background: '#050508' }}
       >

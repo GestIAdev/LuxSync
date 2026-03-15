@@ -345,25 +345,23 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       vmm.setManualPattern('square')
       const quadrantsVisited = new Set<string>()
       
-      // Run through one full cycle (16 beats at this period) with sub-beat resolution
-      // WAVE 2088.5: square now interpolates between corners (smooth transition)
-      // so we sample at sub-beat intervals to catch all 4 quadrants
-      for (let beat = 0; beat < 16; beat++) {
-        for (let subBeat = 0; subBeat < 4; subBeat++) {
-          const phase = subBeat * 0.25
-          vi.spyOn(Date, 'now').mockReturnValue(1000 + (beat * 4 + subBeat) * 17)
-          const audio = createBaseAudio({ beatCount: beat, beatPhase: phase, energy: 0.5 })
-          const intent = vmm.generateIntent('techno-club', audio, 0, 1)
-          
-          // Track which quadrant this position is in (skip zero-crossings)
-          if (Math.abs(intent.x) > 0.1 && Math.abs(intent.y) > 0.1) {
-            const qx = intent.x > 0 ? '+' : '-'
-            const qy = intent.y > 0 ? '+' : '-'
-            quadrantsVisited.add(`${qx},${qy}`)
-          }
-          
-          assertSafeRange(intent, `square beat=${beat}.${subBeat}`)
+      // WAVE 2208: Phase is now pure time-domain (dt × baseFrequency × 2π/period).
+      // For pop-rock (baseFrequency=0.20, period=16): full 2π cycle = 80 seconds.
+      // We simulate 100 seconds of wall-clock time to guarantee full coverage.
+      // Each frame = 100ms apart (10fps equivalent) × 1000 frames = 100 seconds.
+      for (let frame = 0; frame < 1000; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100) // 100ms per frame = 100s total
+        const audio = createBaseAudio({ beatCount: frame, beatPhase: 0, energy: 0.5 })
+        const intent = vmm.generateIntent('pop-rock', audio, 0, 1)
+        
+        // Track which quadrant this position is in (skip zero-crossings)
+        if (Math.abs(intent.x) > 0.1 && Math.abs(intent.y) > 0.1) {
+          const qx = intent.x > 0 ? '+' : '-'
+          const qy = intent.y > 0 ? '+' : '-'
+          quadrantsVisited.add(`${qx},${qy}`)
         }
+        
+        assertSafeRange(intent, `square frame=${frame}`)
       }
       
       // Square must visit all 4 quadrants during its cycle
@@ -376,25 +374,23 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       vmm.setManualPattern('chase_position')
       const directionsVisited = new Set<string>()
       
-      // WAVE 2088.5: chase_position now interpolates between positions
-      for (let beat = 0; beat < 16; beat++) {
-        for (let subBeat = 0; subBeat < 4; subBeat++) {
-          const phase = subBeat * 0.25
-          vi.spyOn(Date, 'now').mockReturnValue(1000 + (beat * 4 + subBeat) * 17)
-          const audio = createBaseAudio({ beatCount: beat, beatPhase: phase, energy: 0.5 })
-          const intent = vmm.generateIntent('techno-club', audio, 0, 1)
-          
-          // Track dominant axis direction (skip neutral crossings)
-          const absX = Math.abs(intent.x)
-          const absY = Math.abs(intent.y)
-          if (absX > 0.3 && absX > absY * 1.5) {
-            directionsVisited.add(intent.x > 0 ? 'right' : 'left')
-          } else if (absY > 0.3 && absY > absX * 1.5) {
-            directionsVisited.add(intent.y > 0 ? 'up' : 'down')
-          }
-          
-          assertSafeRange(intent, `chase beat=${beat}.${subBeat}`)
+      // WAVE 2208: Phase is pure time-domain. For pop-rock (0.20, period=16):
+      // full cycle = 80 seconds. Simulate 100 seconds.
+      for (let frame = 0; frame < 1000; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100) // 100ms per frame
+        const audio = createBaseAudio({ beatCount: frame, beatPhase: 0, energy: 0.5 })
+        const intent = vmm.generateIntent('pop-rock', audio, 0, 1)
+        
+        // Track dominant axis direction (skip neutral crossings)
+        const absX = Math.abs(intent.x)
+        const absY = Math.abs(intent.y)
+        if (absX > 0.3 && absX > absY * 1.5) {
+          directionsVisited.add(intent.x > 0 ? 'right' : 'left')
+        } else if (absY > 0.3 && absY > absX * 1.5) {
+          directionsVisited.add(intent.y > 0 ? 'up' : 'down')
         }
+        
+        assertSafeRange(intent, `chase frame=${frame}`)
       }
       
       // Chase must visit all 4 cardinal directions during its cycle
@@ -408,15 +404,17 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       let hasNonZeroX = false
       let hasNonZeroY = false
       
-      for (let beat = 0; beat < 16; beat++) {
-        vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
-        const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.6 })
+      // WAVE 2208: Phase is pure time-domain. For fiesta-latina (0.15, period=16):
+      // full cycle = 16/0.15 ≈ 107 seconds. Simulate 120 seconds.
+      for (let frame = 0; frame < 1200; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100) // 100ms per frame
+        const audio = createBaseAudio({ beatCount: frame, beatPhase: 0, energy: 0.6 })
         const intent = vmm.generateIntent('fiesta-latina', audio, 0, 1)
         
         if (Math.abs(intent.x) > 0.05) hasNonZeroX = true
         if (Math.abs(intent.y) > 0.05) hasNonZeroY = true
         
-        assertSafeRange(intent, `figure8 beat=${beat}`)
+        assertSafeRange(intent, `figure8 frame=${frame}`)
       }
       
       expect(hasNonZeroX, 'figure8 should have non-zero X movement').toBe(true)
@@ -449,14 +447,16 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       vmm.setManualPattern('circle_big')
       let maxAbsX = 0, maxAbsY = 0
       
-      for (let beat = 0; beat < 16; beat++) {
-        vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
-        const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.5 })
+      // WAVE 2208: Phase is pure time-domain. For pop-rock (0.20, period=16):
+      // full cycle = 80 seconds. Simulate 100 seconds.
+      for (let frame = 0; frame < 1000; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100) // 100ms per frame
+        const audio = createBaseAudio({ beatCount: frame, beatPhase: 0, energy: 0.5 })
         const intent = vmm.generateIntent('pop-rock', audio, 0, 1)
         
         maxAbsX = Math.max(maxAbsX, Math.abs(intent.x))
         maxAbsY = Math.max(maxAbsY, Math.abs(intent.y))
-        assertSafeRange(intent, `circle_big beat=${beat}`)
+        assertSafeRange(intent, `circle_big frame=${frame}`)
       }
       
       // Both axes should be active
@@ -490,10 +490,13 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
       vmm.setManualPattern('drift')
       const positions: Array<{ x: number; y: number }> = []
       
-      for (let beat = 0; beat < 32; beat++) {
+      // WAVE 2206: chill-lounge now has frequencyScale=0.15 (GLACIAR mode).
+      // Use pop-rock (frequencyScale=1.0) for pattern geometry validation.
+      // drift period=32 beats — need enough frames for varied positions.
+      for (let beat = 0; beat < 256; beat++) {
         vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
         const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.4 })
-        const intent = vmm.generateIntent('chill-lounge', audio, 0, 1)
+        const intent = vmm.generateIntent('pop-rock', audio, 0, 1)
         
         positions.push({ x: intent.x, y: intent.y })
         assertSafeRange(intent, `drift beat=${beat}`)
@@ -596,14 +599,24 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
     })
 
     test('Every pattern produces movement at least once across a full cycle', () => {
+      // WAVE 2206: Use pop-rock (frequencyScale=1.0) as neutral vibe.
+      // Run 256 beats to guarantee phase accumulator traverses multiple full cycles
+      // even for the longest pattern period (drift=32 beats).
+      // IMPORTANT: Each VMM constructor captures Date.now() for lastUpdate.
+      // We must mock Date.now() BEFORE constructing VMM so time is monotonic.
+      let globalTimeOffset = 1000
+      
       for (const pattern of ALL_PATTERNS) {
+        // Set time BEFORE constructing VMM so lastUpdate starts correctly
+        vi.spyOn(Date, 'now').mockReturnValue(globalTimeOffset)
+        vmm = new VibeMovementManager()
         vmm.setManualPattern(pattern)
         let hasMoved = false
         
-        for (let beat = 0; beat < 64; beat++) {
-          vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
+        for (let beat = 0; beat < 256; beat++) {
+          vi.spyOn(Date, 'now').mockReturnValue(globalTimeOffset + (beat + 1) * 17)
           const audio = createBaseAudio({ beatCount: beat, beatPhase: 0, energy: 0.6 })
-          const intent = vmm.generateIntent('techno-club', audio, 0, 1)
+          const intent = vmm.generateIntent('pop-rock', audio, 0, 1)
           
           if (Math.abs(intent.x) > 0.01 || Math.abs(intent.y) > 0.01) {
             hasMoved = true
@@ -612,8 +625,8 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
         
         expect(hasMoved, `Pattern "${pattern}" never produced any movement`).toBe(true)
         
-        // Reset for next pattern
-        vmm = new VibeMovementManager()
+        // Advance global time so next VMM constructor sees a later timestamp
+        globalTimeOffset += 257 * 17 + 100
       }
       
       vi.restoreAllMocks()
@@ -715,210 +728,209 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
   })
 
   // ═══════════════════════════════════════════════════════════════════════
-  // §4 ENERGY-TO-PERIOD — The Conductor's Tempo (WAVE 2086.4)
-  // "Low energy = slower patterns. High energy = faster patterns."
+  // §4 ENERGY INDEPENDENCE — (WAVE 2208+2209)
+  // "Energy no longer modulates period or amplitude. Phase and geometry
+  //  are completely immune to audio energy fluctuations."
+  //
+  // WAVE 2208: Removed BPM from phase → energy has no speed path.
+  // WAVE 2209: Removed energyBoost → energy has no amplitude path.
+  // These tests verify COMPLETE energy independence.
   // ═══════════════════════════════════════════════════════════════════════
 
-  describe('§4 🎼 ENERGY-TO-PERIOD — The Conductor\'s Tempo', () => {
+  describe('§4 🎼 ENERGY INDEPENDENCE — No Audio Modulation', () => {
 
-    test('energy < 0.3 produces period multiplier > 1.0 (slower)', () => {
-      // At energy = 0, multiplier should be 2.0 (half speed)
-      // At energy = 0.15, multiplier should be ~1.5
-      // At energy = 0.3, multiplier should be 1.0
+    test('Different energy levels produce same position at same time', () => {
+      // Phase is time-domain only, amplitude is static.
+      // Energy 0.1 and energy 1.0 must produce IDENTICAL x,y positions.
+      const energyLevels = [0.0, 0.1, 0.3, 0.5, 0.8, 1.0]
+      const positions: Array<{ x: number; y: number }> = []
       
-      // We verify this indirectly by observing that low-energy movement
-      // traverses LESS distance in the same number of beats
-      const audioLow = createBaseAudio({ energy: 0.1, beatCount: 8, bpm: 128 })
-      const audioMid = createBaseAudio({ energy: 0.5, beatCount: 8, bpm: 128 })
+      for (const energy of energyLevels) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000)
+        const testVMM = new VibeMovementManager()
+        testVMM.setManualPattern('scan_x')
+        const audio = createBaseAudio({ energy, beatCount: 8, bpm: 128 })
+        const intent = testVMM.generateIntent('techno-club', audio, 0, 1)
+        positions.push({ x: intent.x, y: intent.y })
+        
+        assertSafeRange(intent, `energy=${energy}`)
+        assertFinite(intent, `energy=${energy}`)
+      }
       
-      vi.spyOn(Date, 'now').mockReturnValue(1000)
-      const vmmLow = new VibeMovementManager()
-      vmmLow.setManualPattern('scan_x')
-      const intentLow = vmmLow.generateIntent('techno-club', audioLow, 0, 1)
-      
-      vi.spyOn(Date, 'now').mockReturnValue(1000)
-      const vmmMid = new VibeMovementManager()
-      vmmMid.setManualPattern('scan_x')
-      const intentMid = vmmMid.generateIntent('techno-club', audioMid, 0, 1)
-      
-      // Both positions should be safe
-      assertSafeRange(intentLow, 'low energy')
-      assertSafeRange(intentMid, 'mid energy')
-      assertFinite(intentLow, 'low energy')
-      assertFinite(intentMid, 'mid energy')
+      // All positions must be identical (energy doesn't affect x,y)
+      for (let i = 1; i < positions.length; i++) {
+        expect(positions[i].x, `Energy ${energyLevels[i]}: X differs`)
+          .toBe(positions[0].x)
+        expect(positions[i].y, `Energy ${energyLevels[i]}: Y differs`)
+          .toBe(positions[0].y)
+      }
       
       vi.restoreAllMocks()
     })
 
-    test('energy > 0.8 produces period multiplier < 1.0 (faster)', () => {
-      // Verify that high energy doesn't break the safe range
-      const audioHigh = createDropAudio(16)
+    test('Different energy levels produce same amplitude', () => {
+      const energyLevels = [0.0, 0.1, 0.5, 0.9, 1.0]
+      const amplitudes: number[] = []
       
-      vi.spyOn(Date, 'now').mockReturnValue(1000)
-      const intent = vmm.generateIntent('techno-club', audioHigh, 0, 1)
+      for (const energy of energyLevels) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000)
+        const testVMM = new VibeMovementManager()
+        testVMM.setManualPattern('scan_x')
+        const audio = createBaseAudio({ energy, beatCount: 8, bpm: 128 })
+        const intent = testVMM.generateIntent('techno-club', audio, 0, 1)
+        amplitudes.push(intent.amplitude)
+      }
       
-      assertSafeRange(intent, 'high energy fast period')
-      assertFinite(intent, 'high energy fast period')
+      // All amplitudes identical
+      for (let i = 1; i < amplitudes.length; i++) {
+        expect(amplitudes[i], `Energy ${energyLevels[i]}: amplitude differs`)
+          .toBe(amplitudes[0])
+      }
       
       vi.restoreAllMocks()
     })
 
-    test('Energy-period multiplier boundaries: 0.0, 0.3, 0.8, 1.0', () => {
-      // These are the exact boundary values of the piecewise function
-      const boundaries = [
-        { energy: 0.0, expectedMultiplier: 2.0 },
-        { energy: 0.3, expectedMultiplier: 1.0 },
-        { energy: 0.5, expectedMultiplier: 1.0 },  // Neutral zone
-        { energy: 0.8, expectedMultiplier: 1.0 },
-        { energy: 1.0, expectedMultiplier: 0.5 },
-      ]
+    test('Extreme energy values never push output beyond [-1, +1]', () => {
+      const extremeEnergies = [0, 0.001, 0.5, 0.999, 1.0]
       
-      for (const { energy, expectedMultiplier } of boundaries) {
-        // Compute multiplier directly from the same formula as VMM
-        let multiplier = 1.0
-        if (energy < 0.3) {
-          multiplier = 2.0 - (energy / 0.3)
-        } else if (energy > 0.8) {
-          multiplier = 1.0 - ((energy - 0.8) / 0.2) * 0.5
+      for (const vibeId of ALL_VIBES) {
+        for (const energy of extremeEnergies) {
+          vi.spyOn(Date, 'now').mockReturnValue(1000)
+          const testVMM = new VibeMovementManager()
+          const audio = createBaseAudio({ energy, beatCount: 100 })
+          const intent = testVMM.generateIntent(vibeId, audio, 0, 1)
+          
+          assertSafeRange(intent, `vibe=${vibeId} energy=${energy}`)
+          assertFinite(intent, `vibe=${vibeId} energy=${energy}`)
         }
-        
-        expect(multiplier, `Energy ${energy}: multiplier should be ${expectedMultiplier}`)
-          .toBeCloseTo(expectedMultiplier, 5)
       }
+      
+      vi.restoreAllMocks()
     })
 
-    test('Period multiplier is continuous (no jumps at boundaries)', () => {
-      // Test energy values around the 0.3 and 0.8 boundaries
-      const energies = [0.29, 0.30, 0.31, 0.79, 0.80, 0.81]
-      let lastMultiplier = Infinity
+    test('Ghost Protocol still works: energy < 0.03 freezes homeOnSilence vibes', () => {
+      // Energy independence means amplitude is static, but Ghost Protocol
+      // (freeze on silence) must still work for homeOnSilence vibes.
+      vi.spyOn(Date, 'now').mockReturnValue(1000)
+      const testVMM = new VibeMovementManager()
       
-      for (const energy of energies) {
-        let multiplier = 1.0
-        if (energy < 0.3) {
-          multiplier = 2.0 - (energy / 0.3)
-        } else if (energy > 0.8) {
-          multiplier = 1.0 - ((energy - 0.8) / 0.2) * 0.5
-        }
-        
-        // No jump greater than 0.1 between adjacent test points
-        if (lastMultiplier !== Infinity) {
-          const delta = Math.abs(multiplier - lastMultiplier)
-          expect(delta, `Discontinuity at energy=${energy}: delta=${delta}`)
-            .toBeLessThan(0.1)
-        }
-        
-        lastMultiplier = multiplier
-      }
-    })
-
-    test('Period multiplier range is always [0.5, 2.0]', () => {
-      // Sweep the entire energy range
-      for (let e = 0; e <= 100; e++) {
-        const energy = e / 100
-        
-        let multiplier = 1.0
-        if (energy < 0.3) {
-          multiplier = 2.0 - (energy / 0.3)
-        } else if (energy > 0.8) {
-          multiplier = 1.0 - ((energy - 0.8) / 0.2) * 0.5
-        }
-        
-        expect(multiplier, `Energy ${energy}: multiplier out of [0.5, 2.0]`)
-          .toBeGreaterThanOrEqual(0.5)
-        expect(multiplier, `Energy ${energy}: multiplier out of [0.5, 2.0]`)
-          .toBeLessThanOrEqual(2.0)
-      }
+      // First generate a position
+      const audioNormal = createBaseAudio({ energy: 0.5, beatCount: 10 })
+      testVMM.generateIntent('pop-rock', audioNormal, 0, 1) // pop-rock has homeOnSilence=true
+      
+      // Now trigger ghost protocol
+      vi.spyOn(Date, 'now').mockReturnValue(1017)
+      const silentAudio = createBaseAudio({ energy: 0.01, beatCount: 10 })
+      const frozen = testVMM.generateIntent('pop-rock', silentAudio, 0, 1)
+      
+      expect(frozen.pattern).toBe('freeze')
+      expect(frozen.speed).toBe(0)
+      
+      vi.restoreAllMocks()
     })
   })
 
   // ═══════════════════════════════════════════════════════════════════════
-  // §5 PHRASE ENVELOPE — The Breathing Amplifier (WAVE 2086.3)
-  // "32-beat phrase cycle: 0.6 → 1.0 → relax. Smooth cosine."
+  // §5 PHRASE ENVELOPE — FROZEN (WAVE 2209)
+  // "Phrase envelope is frozen at 1.0. Amplitude is static. Sacred geometry."
+  // WAVE 2209 killed all reactive amplitude modulation:
+  //   - energyBoost (±20% from audio.energy) → DEAD
+  //   - phraseEnvelope (0.85-1.0 from beatCount) → FROZEN at 1.0
+  // These tests verify the envelope IS frozen and doesn't affect output.
   // ═══════════════════════════════════════════════════════════════════════
 
-  describe('§5 🫁 PHRASE ENVELOPE — The Breathing Amplifier', () => {
+  describe('§5 🫁 PHRASE ENVELOPE — FROZEN (WAVE 2209)', () => {
 
-    test('Phrase envelope is always in range [0.6, 1.0]', () => {
-      // Sweep all 32 beats of the phrase
-      for (let beat = 0; beat < 32; beat++) {
-        const phraseBeats = 32
-        const phraseProgress = (beat % phraseBeats) / phraseBeats
-        const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
-        const clamped = Math.max(0.6, Math.min(1.0, phraseEnvelope))
-        
-        expect(clamped, `Beat ${beat}: envelope ${clamped} out of [0.6, 1.0]`)
-          .toBeGreaterThanOrEqual(0.6)
-        expect(clamped, `Beat ${beat}: envelope ${clamped} out of [0.6, 1.0]`)
-          .toBeLessThanOrEqual(1.0)
+    test('Amplitude is identical regardless of beatCount (envelope frozen at 1.0)', () => {
+      // With envelope frozen, different beat positions produce SAME amplitude
+      const beatPositions = [0, 4, 8, 12, 16, 20, 24, 28, 31]
+      const amplitudes: number[] = []
+      
+      for (const beat of beatPositions) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000)
+        const testVMM = new VibeMovementManager()
+        testVMM.setManualPattern('scan_x')
+        const audio = createBaseAudio({ beatCount: beat, beatPhase: 0.5, energy: 0.5 })
+        const intent = testVMM.generateIntent('techno-club', audio, 0, 1)
+        amplitudes.push(intent.amplitude)
+        assertSafeRange(intent, `frozen envelope beat=${beat}`)
       }
+      
+      // ALL amplitudes must be identical (envelope is 1.0 for all beats)
+      for (let i = 1; i < amplitudes.length; i++) {
+        expect(amplitudes[i], `Beat ${beatPositions[i]} amplitude differs from beat ${beatPositions[0]}`)
+          .toBe(amplitudes[0])
+      }
+      
+      vi.restoreAllMocks()
     })
 
-    test('Phrase envelope has a peak (reaches > 0.95) in the middle of the phrase', () => {
-      let maxEnvelope = 0
-      let peakBeat = -1
+    test('Amplitude is identical regardless of energy level (energyBoost killed)', () => {
+      // With energyBoost killed, different energy levels produce SAME amplitude
+      const energyLevels = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+      const amplitudes: number[] = []
       
-      for (let beat = 0; beat < 32; beat++) {
-        const phraseProgress = beat / 32
-        const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
-        const clamped = Math.max(0.6, Math.min(1.0, phraseEnvelope))
-        
-        if (clamped > maxEnvelope) {
-          maxEnvelope = clamped
-          peakBeat = beat
+      for (const energy of energyLevels) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000)
+        const testVMM = new VibeMovementManager()
+        testVMM.setManualPattern('scan_x')
+        const audio = createBaseAudio({ beatCount: 10, beatPhase: 0.5, energy })
+        const intent = testVMM.generateIntent('techno-club', audio, 0, 1)
+        amplitudes.push(intent.amplitude)
+        assertSafeRange(intent, `frozen energyBoost energy=${energy}`)
+      }
+      
+      // ALL amplitudes must be identical (no energy modulation)
+      for (let i = 1; i < amplitudes.length; i++) {
+        expect(amplitudes[i], `Energy ${energyLevels[i]} amplitude differs from energy ${energyLevels[0]}`)
+          .toBe(amplitudes[0])
+      }
+      
+      vi.restoreAllMocks()
+    })
+
+    test('Amplitude is always in valid range [0, 1]', () => {
+      for (const vibeId of ALL_VIBES) {
+        for (let beat = 0; beat < 32; beat++) {
+          vi.spyOn(Date, 'now').mockReturnValue(1000)
+          const testVMM = new VibeMovementManager()
+          const audio = createBaseAudio({ beatCount: beat, energy: 0.8 })
+          const intent = testVMM.generateIntent(vibeId, audio, 0, 1)
+          
+          expect(intent.amplitude, `${vibeId} beat=${beat}: amplitude out of [0,1]`)
+            .toBeGreaterThanOrEqual(0)
+          expect(intent.amplitude, `${vibeId} beat=${beat}: amplitude out of [0,1]`)
+            .toBeLessThanOrEqual(1.0)
         }
       }
       
-      expect(maxEnvelope, 'Phrase should reach near 1.0 at peak').toBeGreaterThan(0.95)
-      // Peak should be roughly in the middle-to-late section (beats 10-25)
-      expect(peakBeat, 'Peak should be in mid-phrase').toBeGreaterThanOrEqual(10)
-      expect(peakBeat, 'Peak should be in mid-phrase').toBeLessThanOrEqual(25)
+      vi.restoreAllMocks()
     })
 
-    test('Phrase envelope starts low (< 0.85 at beat 0)', () => {
-      const phraseProgress = 0 / 32
-      const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
-      const clamped = Math.max(0.6, Math.min(1.0, phraseEnvelope))
+    test('Static amplitude produces zero geometry deformation over time', () => {
+      // Run 100 frames with varying audio — amplitude must stay CONSTANT
+      vi.spyOn(Date, 'now').mockReturnValue(1000)
+      const testVMM = new VibeMovementManager()
+      testVMM.setManualPattern('scan_x')
       
-      expect(clamped, 'Phrase should start contained').toBeLessThan(0.85)
-    })
-
-    test('Phrase envelope is smooth (no discontinuities > 0.05 between beats)', () => {
-      let lastEnvelope = -1
+      let firstAmplitude: number | null = null
       
-      for (let beat = 0; beat < 32; beat++) {
-        const phraseProgress = beat / 32
-        const phraseEnvelope = 0.8 + 0.2 * Math.sin(Math.PI * (phraseProgress - 0.15))
-        const clamped = Math.max(0.6, Math.min(1.0, phraseEnvelope))
+      for (let frame = 0; frame < 100; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 17)
+        const audio = createBaseAudio({
+          beatCount: frame,
+          energy: Math.abs(Math.sin(frame * 0.1)), // Energy oscillates wildly
+          bpm: 100 + frame % 60, // BPM varies
+        })
+        const intent = testVMM.generateIntent('techno-club', audio, 0, 1)
         
-        if (lastEnvelope >= 0) {
-          const delta = Math.abs(clamped - lastEnvelope)
-          expect(delta, `Discontinuity at beat ${beat}: delta=${delta}`)
-            .toBeLessThan(0.05)
+        if (firstAmplitude === null) {
+          firstAmplitude = intent.amplitude
+        } else {
+          expect(intent.amplitude, `Frame ${frame}: amplitude changed from ${firstAmplitude}`)
+            .toBe(firstAmplitude)
         }
-        
-        lastEnvelope = clamped
       }
-    })
-
-    test('Phrase envelope integrates into real output (output modulated by beat position)', () => {
-      // Two VMM instances at different phrase positions should produce different amplitudes
-      // Beat 0 (start, envelope low) vs Beat 18 (mid-peak, envelope high)
-      
-      vi.spyOn(Date, 'now').mockReturnValue(1000)
-      const vmmStart = new VibeMovementManager()
-      vmmStart.setManualPattern('scan_x')
-      const intentStart = vmmStart.generateIntent('techno-club',
-        createBaseAudio({ beatCount: 0, beatPhase: 0.5, energy: 0.5 }), 0, 1)
-      
-      vi.spyOn(Date, 'now').mockReturnValue(1000)
-      const vmmPeak = new VibeMovementManager()
-      vmmPeak.setManualPattern('scan_x')
-      const intentPeak = vmmPeak.generateIntent('techno-club',
-        createBaseAudio({ beatCount: 18, beatPhase: 0.5, energy: 0.5 }), 0, 1)
-      
-      // Both must be safe
-      assertSafeRange(intentStart, 'phrase start')
-      assertSafeRange(intentPeak, 'phrase peak')
       
       vi.restoreAllMocks()
     })
@@ -971,11 +983,26 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
     test('Latino snake: L and R have different positions', () => {
       const audio = createBaseAudio({ beatCount: 12, beatPhase: 0.5, energy: 0.6 })
       
-      vi.spyOn(Date, 'now').mockReturnValue(2000)
+      // WAVE 2212: Phase offset is now applied PRE-patternFn (dominio tiempo).
+      // We advance 420 frames × 100ms = 42s. This puts us well past the
+      // pattern rotation boundary at 30s (figure8→wave_y) and past the
+      // 2s LERP transition window. At t=42s both fixtures are stable on wave_y.
+      //
+      // For fiesta-latina (baseFrequency=0.15, period=16, phaseMultiplier=12):
+      //   angularVelocity = 0.15 × 2π/16 × 12 ≈ 0.707 rad/s
+      //   At t=42s: phase ≈ 29.7 rad → sin(29.7) → strong non-trivial position
+      //   Snake offset = fixtureIndex × π/4 → L and R are π/4 apart in time
+      for (let frame = 0; frame < 420; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100)
+        vmm.generateIntent('fiesta-latina', audio, 0, 2)
+      }
+      
+      // Now test L vs R at this accumulated phase (well past any transition)
+      vi.spyOn(Date, 'now').mockReturnValue(1000 + 420 * 100 + 1) // +1ms to pass frame-once guard
       const intentL = vmm.generateIntent('fiesta-latina', audio, 0, 2)
       const intentR = vmm.generateIntent('fiesta-latina', audio, 1, 2)
       
-      // Snake: positions should differ (phase offset creates wave effect)
+      // Snake: positions should differ (patternPhase offset = π/4 per fixture)
       const positionDiffers = 
         Math.abs(intentL.x - intentR.x) > 0.01 ||
         Math.abs(intentL.y - intentR.y) > 0.01
@@ -1737,14 +1764,15 @@ describe('🎭 THE MOVEMENT FORTRESS — Hardware Safety Test Suite', () => {
     })
 
     test('Pattern rotation progresses correctly over phrases', () => {
-      // Pattern should rotate every 8 bars (32 beats)
-      // For techno-club: [scan_x, square, diamond, botstep]
+      // WAVE 2208: Pattern rotation is purely chronological (every 30 real seconds).
+      // For techno-club (4 patterns): need ≥60s simulated to see at least 2 patterns.
+      // We simulate 120 seconds (4 × 30s = all 4 patterns visible).
       const seenPatterns = new Set<string>()
       
-      for (let beat = 0; beat < 256; beat++) {
-        vi.spyOn(Date, 'now').mockReturnValue(1000 + beat * 17)
+      for (let frame = 0; frame < 1200; frame++) {
+        vi.spyOn(Date, 'now').mockReturnValue(1000 + frame * 100) // 100ms per frame = 120s total
         
-        const audio = createBaseAudio({ beatCount: beat, energy: 0.5 })
+        const audio = createBaseAudio({ beatCount: frame, energy: 0.5 })
         const intent = vmm.generateIntent('techno-club', audio, 0, 1)
         
         seenPatterns.add(intent.pattern)

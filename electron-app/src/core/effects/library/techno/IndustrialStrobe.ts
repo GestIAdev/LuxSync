@@ -4,20 +4,24 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🔪 WAVE 770: TECHNO PHYSICS KERNEL
+ * 🔨 WAVE 2202: HAMMER REPOWER — El Martillo era un golpecito. Arreglado.
  * 
  * FILOSOFÍA:
  * El strobe industrial es el martillo que golpea el acero.
  * No pregunta. No espera. Solo EJECUTA.
  * 
- * COMPORTAMIENTO:
+ * COMPORTAMIENTO (WAVE 2202):
  * - MixBus: 'global' (DICTADOR - ignora física, toma control total)
  * - Reactivo a context.spectral.harshness (acid lines)
  * - Reactivo a context.spectral.flatness (noise/CO2)
- * - Pre-ducking: 50ms de negro antes del flash (contraste)
- * - Duración: 30-50ms por flash
+ * - Pre-ducking: 80ms de negro antes del flash (más contraste, más impacto)
+ * - Flash inicial LARGO: 60ms (el primer golpe tiene que doler)
+ * - Flashes de seguimiento: 40ms (3 golpes adicionales rápidos)
+ * - Gaps irregulares: 55ms / 45ms / 55ms (chaos=0.55 reflejado en timing)
+ * - Total de flashes: 4 (era 3, WAVE 2202: +1 para más presencia)
  * 
  * SAFETY:
- * - Anti-epilepsia: máximo 10Hz
+ * - Anti-epilepsia: máximo 10Hz efectivo
  * - Cooldown mínimo: 100ms entre ráfagas
  * 
  * COLORES:
@@ -45,11 +49,14 @@ interface IndustrialStrobeConfig {
   /** Número de flashes en la ráfaga */
   flashCount: number
   
-  /** Duración de cada flash (ms) */
+  /** Duración del primer flash — el golpe inicial, tiene que doler (ms) */
+  firstFlashDurationMs: number
+  
+  /** Duración de los flashes de seguimiento (ms) */
   flashDurationMs: number
   
-  /** Duración del gap entre flashes (ms) */
-  gapDurationMs: number
+  /** Gaps entre flashes — irregulares para reflejar chaos=0.55 (ms[]) */
+  gapDurationsMs: number[]
   
   /** Pre-ducking: negro antes del flash (ms) */
   preDuckMs: number
@@ -72,16 +79,22 @@ interface IndustrialStrobeConfig {
 }
 
 const DEFAULT_CONFIG: IndustrialStrobeConfig = {
-  flashCount: 3,           // 3 flashes por ráfaga
-  flashDurationMs: 35,     // 35ms por flash (corto y brutal)
-  gapDurationMs: 65,       // 65ms entre flashes (100ms ciclo = 10Hz max)
-  preDuckMs: 50,           // 50ms de negro antes del primer flash
-  maxFrequencyHz: 10,      // Máximo 10 Hz (seguro para epilepsia)
-  cooldownMs: 150,         // 150ms entre ráfagas
-  harshnessThreshold: 0.6, // Umbral para modo ácido
-  flatnessThreshold: 0.7,  // Umbral para modo noise
-  fadeInMs: 0,             // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
-  fadeOutMs: 100,          // 🌊 WAVE 1090: Salida muy corta (efecto corto)
+  // 🔨 WAVE 2202: HAMMER REPOWER
+  // Era: 3 flashes × 35ms, gaps 65ms, preDuck 50ms → 345ms total, liviano
+  // Ahora: 4 flashes, primer flash 60ms (impacto), resto 40ms, gaps irregulares,
+  //        preDuck 80ms (más negro = más contraste = más explosión percibida)
+  flashCount: 4,               // +1 flash: 3→4. Más presencia, más martillo.
+  firstFlashDurationMs: 60,    // El primer golpe dura más — establece el impacto
+  flashDurationMs: 40,         // Flashes de seguimiento: cortos y brutales
+  gapDurationsMs: [55, 45, 55],// Gaps irregulares (3 gaps para 4 flashes)
+                                // No son iguales — chaos=0.55 se refleja en timing
+  preDuckMs: 80,               // 80ms de negro (era 50ms). Más negro = más bomba.
+  maxFrequencyHz: 10,          // Máximo 10 Hz (seguro para epilepsia)
+  cooldownMs: 150,             // 150ms entre ráfagas
+  harshnessThreshold: 0.6,     // Umbral para modo ácido
+  flatnessThreshold: 0.7,      // Umbral para modo noise
+  fadeInMs: 0,                 // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 100,              // 🌊 WAVE 1090: Salida muy corta
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -128,10 +141,13 @@ export class IndustrialStrobe extends BaseEffect {
   }
   
   private calculateTotalDuration(): void {
-    // Pre-duck + flashes + gaps
+    // Pre-duck + primer flash (más largo) + flashes de seguimiento + gaps irregulares
+    const followUpFlashes = this.config.flashCount - 1
+    const totalGaps = this.config.gapDurationsMs.reduce((a, b) => a + b, 0)
     this.totalDurationMs = this.config.preDuckMs +
-                           this.config.flashCount * this.config.flashDurationMs + 
-                           (this.config.flashCount - 1) * this.config.gapDurationMs
+                           this.config.firstFlashDurationMs +
+                           followUpFlashes * this.config.flashDurationMs +
+                           totalGaps
   }
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -207,7 +223,12 @@ export class IndustrialStrobe extends BaseEffect {
     // 🔪 FASE 2: Flash/Gap alternante
     if (this.isFlashOn) {
       // Estamos en un flash
-      if (this.phaseTimer >= this.config.flashDurationMs) {
+      // 🔨 WAVE 2202: El primer flash dura más — es el martillo inicial
+      const thisFlashDuration = (this.currentFlash === 0)
+        ? this.config.firstFlashDurationMs
+        : this.config.flashDurationMs
+      
+      if (this.phaseTimer >= thisFlashDuration) {
         this.isFlashOn = false
         this.phaseTimer = 0
         this.currentFlash++
@@ -220,8 +241,13 @@ export class IndustrialStrobe extends BaseEffect {
         }
       }
     } else {
-      // Estamos en un gap
-      if (this.phaseTimer >= this.config.gapDurationMs) {
+      // Estamos en un gap — duración irregular según índice del gap
+      // currentFlash ya fue incrementado al salir del flash anterior,
+      // así que el gap actual es el índice (currentFlash - 1) dentro del array
+      const gapIndex = Math.min(this.currentFlash - 1, this.config.gapDurationsMs.length - 1)
+      const thisGapDuration = this.config.gapDurationsMs[gapIndex]
+      
+      if (this.phaseTimer >= thisGapDuration) {
         this.isFlashOn = true
         this.phaseTimer = 0
       }

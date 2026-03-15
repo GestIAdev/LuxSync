@@ -1,15 +1,20 @@
 /**
  * ☀️ HYPERION — NeonFloor
  * 
- * Floor con grid neon que pulsa con el beat.
- * Grid cyberpunk con líneas cyan y magenta.
+ * Floor con grid neon estático cyberpunk.
+ * Grid CYAN constante — sin pulso, sin reactividad al beat.
+ * Elegante, limpio, profesional.
+ * 
+ * 🔧 WAVE 2205: STATIC GRID — Eliminada TODA modulación reactiva al audio.
+ *   El parpadeo con el beat mareaba al usuario.
+ *   Grid ahora es estático con opacidad y color fijos.
  * 
  * @module components/hyperion/views/visualizer/environment/NeonFloor
  * @since WAVE 2042.6 (Project Hyperion — Phase 4)
+ * @updated WAVE 2205 — Static Grid: Zero beat reactivity
  */
 
-import React, { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import React, { useMemo } from 'react'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,8 +50,7 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
   primaryColor = '#00F0FF',
   secondaryColor = '#FF00E5',
 }) => {
-  const floorRef = useRef<THREE.Mesh>(null)
-  const gridRef = useRef<THREE.LineSegments>(null)
+  const floorRef = null  // Keep for JSX ref compatibility
 
   // ── Grid Geometry ─────────────────────────────────────────────────────────
   const gridGeometry = useMemo(() => {
@@ -84,29 +88,22 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
     />
   ), [])
 
+  // 🔧 WAVE 2205: Opacidad FIJA 0.2 — sin beatIntensity. Grid estático cyberpunk.
   const gridMaterial = useMemo(() => {
     return new THREE.LineBasicMaterial({
       color: primaryColor,
       transparent: true,
-      opacity: 0.15 + beatIntensity * 0.2,
+      opacity: 0.2,
       linewidth: 1,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     })
-  }, [primaryColor, beatIntensity])
+  }, [primaryColor])
 
-  // ── Animation ─────────────────────────────────────────────────────────────
-  useFrame(() => {
-    if (gridRef.current) {
-      const material = gridRef.current.material as THREE.LineBasicMaterial
-      material.opacity = 0.15 + beatIntensity * 0.25
-      
-      // Subtle color shift on beat
-      if (beatIntensity > 0.5) {
-        material.color.set(secondaryColor)
-      } else {
-        material.color.set(primaryColor)
-      }
-    }
-  })
+  // 🔧 WAVE 2205: Grid es completamente estático. Sin useFrame. Sin modulación.
+  //    Opacidad y color fijos en el material.
 
   return (
     <group>
@@ -124,16 +121,17 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
 
       {/* Neon grid lines */}
       {showGrid && (
-        <lineSegments ref={gridRef} geometry={gridGeometry} material={gridMaterial} />
+        <lineSegments geometry={gridGeometry} material={gridMaterial} />
       )}
 
-      {/* Center cross highlight */}
+      {/* Center cross highlight — estático */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <ringGeometry args={[0.05, 0.08, 4]} />
         <meshBasicMaterial 
-          color={secondaryColor} 
+          color={primaryColor} 
           transparent 
-          opacity={0.4 + beatIntensity * 0.3}
+          opacity={0.35}
+          depthWrite={false}
         />
       </mesh>
 

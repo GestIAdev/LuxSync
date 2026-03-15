@@ -1,11 +1,21 @@
 /**
- * ☀️ HYPERION — HyperionPar3D v2
+ * ☀️ HYPERION — HyperionPar3D v2.3
  * 
- * CLEAN REWRITE - No más parches sobre parches
- * Simple PAR fixture con geometría básica y materiales que FUNCIONAN.
+ * Simple PAR fixture — body + lente brillante + halo glow.
+ * SIN cono volumétrico sólido (se veía horrible).
+ * 
+ * 🔧 WAVE 2205: CONE EXORCISM
+ * Eliminado completamente el mesh del beam cone.
+ * 
+ * 🔥 WAVE 2212: HALO RESURRECTION
+ * Los PARs encendidos ahora muestran un halo de luz visible:
+ *   - PointLight reactivo a intensidad y color del fixture
+ *   - Esfera glow con AdditiveBlending (semitransparente, se acumula)
+ *   - Lente HDR boosteada para bloom del EffectComposer
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionPar3D
  * @since WAVE 2042.15 (Clean Rewrite)
+ * @updated WAVE 2212 — Halo Resurrection
  */
 
 import React, { useRef } from 'react'
@@ -42,23 +52,44 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
 }) => {
   const groupRef = useRef<THREE.Group>(null)
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
-  const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
-  
+  const haloMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const haloOuterRef = useRef<THREE.MeshBasicMaterial>(null)
+  const pointLightRef = useRef<THREE.PointLight>(null)
+
   const { id, intensity, color, selected, hasOverride } = fixture
-  const beamLength = 1.5 + intensity * 1.5
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
-    // Update lens - MORE BRIGHTNESS
+    const isOn = intensity > 0.01
+
+    // Lente: HDR boost para bloom del EffectComposer
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.opacity = 0.7 + intensity * 0.3
+      if (isOn) {
+        lensMaterialRef.current.color.multiplyScalar(1.0 + intensity * 3.0)
+      }
+      lensMaterialRef.current.opacity = isOn ? 0.8 + intensity * 0.2 : 0.15
     }
-    
-    // Update beam - MORE OPACITY
-    if (beamMaterialRef.current && showBeam) {
-      beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.3
+
+    // Halo interior — glow denso cerca de la lente
+    if (haloMaterialRef.current) {
+      haloMaterialRef.current.color.copy(color)
+      if (isOn) {
+        haloMaterialRef.current.color.multiplyScalar(1.0 + intensity * 1.5)
+      }
+      haloMaterialRef.current.opacity = isOn ? intensity * 0.65 : 0
+    }
+
+    // Halo exterior — aura suave de mayor radio
+    if (haloOuterRef.current) {
+      haloOuterRef.current.color.copy(color)
+      haloOuterRef.current.opacity = isOn ? intensity * 0.25 : 0
+    }
+
+    // PointLight — ilumina el entorno cercano (paredes, suelo)
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = isOn ? intensity * 2.5 : 0
+      pointLightRef.current.color.copy(color)
     }
   })
 
@@ -69,8 +100,8 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   }
 
   return (
-    <group 
-      ref={groupRef} 
+    <group
+      ref={groupRef}
       position={[fixture.x, fixture.y, fixture.z]}
       onClick={handleClick}
       userData={{ fixtureId: id }}
@@ -85,7 +116,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         />
       </mesh>
 
-      {/* Lens — Bright colored circle (MeshBasicMaterial = no lighting calculations) */}
+      {/* Lente — círculo HDR (MeshBasicMaterial = sin cálculo de luces) */}
       <mesh position={[0, -0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.11, 32]} />
         <meshBasicMaterial
@@ -96,33 +127,51 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         />
       </mesh>
 
-      {/* Beam cone — AdditiveBlending for glow effect 
-          🎨 WAVE 2042.15.3: EXTRA WIDE beam for PARs (full wash light) */}
-      {showBeam && intensity > 0.01 && (
-        <mesh
-          position={[0, -beamLength / 2 - 0.06, 0]}
-          rotation={[0, 0, 0]}
-        >
-          <coneGeometry args={[0.35 + intensity * 0.2, beamLength, 16, 1, true]} />
-          <meshBasicMaterial
-            ref={beamMaterialRef}
-            color={color}
-            transparent
-            opacity={0.3}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      )}
+      {/* � WAVE 2212: HALO INTERIOR — esfera glow densa cerca de la lente */}
+      <mesh position={[0, -0.07, 0]}>
+        <sphereGeometry args={[0.18, 16, 16]} />
+        <meshBasicMaterial
+          ref={haloMaterialRef}
+          color={color}
+          transparent
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* 🔥 WAVE 2212: HALO EXTERIOR — aura suave de mayor radio */}
+      <mesh position={[0, -0.08, 0]}>
+        <sphereGeometry args={[0.42, 16, 16]} />
+        <meshBasicMaterial
+          ref={haloOuterRef}
+          color={color}
+          transparent
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* 🔥 WAVE 2212: POINT LIGHT — ilumina el entorno (suelo, paredes cercanas) */}
+      <pointLight
+        ref={pointLightRef}
+        position={[0, -0.1, 0]}
+        intensity={0}
+        distance={3.5}
+        decay={2}
+        color={color}
+      />
 
       {/* Selection ring */}
       {selected && (
         <mesh position={[0, 0, 0.08]} rotation={[0, 0, 0]}>
           <ringGeometry args={[0.14, 0.17, 32]} />
-          <meshBasicMaterial 
-            color={NEON_CYAN} 
-            transparent 
+          <meshBasicMaterial
+            color={NEON_CYAN}
+            transparent
             opacity={0.8}
             side={THREE.DoubleSide}
           />

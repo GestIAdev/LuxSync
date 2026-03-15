@@ -486,9 +486,7 @@ export class SeleneLux {
         moverR: zonesResult.moverIntensityR  // Split R (Treble-dominant)
       };
       
-      if (this.debug && isStrobeActive) {
-        console.log('[SeleneLux] ⚡ TECHNO PHYSICS | Strobe ACTIVE');
-      }
+      // 🔥 WAVE 2212: Log de strobe eliminado — spameaba a 60fps bloqueando el logging útil
       
     } else if (vibeNormalized.includes('rock') || vibeNormalized.includes('pop')) {
       // ═══════════════════════════════════════════════════════════════════════

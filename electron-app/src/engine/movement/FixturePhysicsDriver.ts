@@ -37,10 +37,10 @@
  * - Installation Presets: ceiling, floor, truss_front, truss_back
  * - Physics Easing: Curva S con aceleración/deceleración
  * - safeDistance Fix V16.1: Protección contra singularidad
- * - Anti-Stuck Mechanism: Detecta fixtures pegados en límites
  * - NaN Guard: Nunca enviar basura al motor
  * - Anti-Jitter Filter: Evita micro-correcciones que calientan servos
  * - 🔧 WAVE 338: Vibe-aware physics (dynamic physics config per vibe)
+ * - 🔥 WAVE 2213: Anti-Stuck Mechanism ELIMINADO — falso positivo con targets en 0/255
  */
 
 import { getMovementPhysics, MOVEMENT_PRESETS, type MovementPhysics } from './VibeMovementPresets'
@@ -677,6 +677,28 @@ export class FixturePhysicsDriver {
    *  PHYSICS EASING: Curva S con aceleración/deceleración
    * V16.1: Fix safeDistance para protección contra singularidad
    */
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 2206: SOFT CLAMP — Eliminación matemática de tirones
+  //
+  // El hard clamp Math.max(-limit, Math.min(limit, delta)) crea una
+  // discontinuidad de velocidad: cuando |delta| cruza el límite, la
+  // aceleración cambia INSTANTÁNEAMENTE de 0 a -∞ (muro). Esto genera
+  // 2-3 tirones visibles por ciclo sinusoidal (en los picos de velocidad).
+  //
+  // Soft clamp usa tanh (tangente hiperbólica) para una transición suave:
+  //   - |delta| << limit → delta sin cambio (zona libre)
+  //   - |delta| ≈ limit → reducción gradual (knee suave)
+  //   - |delta| >> limit → saturación en ±limit (nunca excede)
+  //
+  // Matemáticamente: output = limit * tanh(delta / limit)
+  // La derivada es continua en TODO el dominio → sin discontinuidades
+  // → sin tirones. El movimiento es fluido como seda.
+  // ═══════════════════════════════════════════════════════════════════════
+  private softClampDelta(delta: number, limit: number): number {
+    if (limit <= 0) return 0
+    return limit * Math.tanh(delta / limit)
+  }
+
   private applyPhysicsEasing(fixtureId: string, targetDMX: Position2D, deltaTime: number): Position2D {
     const current = this.currentPositions.get(fixtureId)
     const velocity = this.velocities.get(fixtureId)
@@ -798,9 +820,26 @@ export class FixturePhysicsDriver {
       let deltaPan = (targetDMX.pan - current.pan) * snapFactor
       let deltaTilt = (targetDMX.tilt - current.tilt) * snapFactor
       
-      // 🏎️ WAVE 2074.2: REV LIMITER normalizado por dt (frame-rate independent)
-      deltaPan = Math.max(-maxPanThisFrame, Math.min(maxPanThisFrame, deltaPan))
-      deltaTilt = Math.max(-maxTiltThisFrame, Math.min(maxTiltThisFrame, deltaTilt))
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 2206: FIX-4 — SOFT REV LIMITER (Eliminación de tirones)
+      //
+      // ROOT CAUSE del stuttering: el hard clamp Math.max(-limit, Math.min(limit, delta))
+      // producía discontinuidades en la velocidad. Cuando el target sinusoidal
+      // cruzaba el umbral del REV_LIMIT, la velocidad pasaba bruscamente
+      // de "libre" a "clampeada" → tirón mecánico visible.
+      //
+      // FIX: Soft-knee clamp. Cuando |delta| se acerca al límite, la reducción
+      // es gradual (curva tanh) en lugar de un muro. Esto elimina la
+      // discontinuidad de velocidad que causa los tirones.
+      //
+      //   |delta| < limit * 0.8 → sin restricción (zona libre)
+      //   |delta| ∈ [0.8*limit, limit] → transición suave (knee)
+      //   |delta| > limit → saturación suave (nunca excede ~1.15*limit)
+      //
+      // El resultado es matemáticamente fluido: sin tirones, sin saltos.
+      // ═══════════════════════════════════════════════════════════════════
+      deltaPan = this.softClampDelta(deltaPan, maxPanThisFrame)
+      deltaTilt = this.softClampDelta(deltaTilt, maxTiltThisFrame)
       
       newPos.pan = current.pan + deltaPan
       newPos.tilt = current.tilt + deltaTilt
@@ -880,13 +919,13 @@ export class FixturePhysicsDriver {
         newVel[axis] = 0
       }
 
-      // 
-      //  FIX V16.4: ANTI-STUCK EN LÍMITES
-      // 
-      if ((newPos[axis] >= 254 || newPos[axis] <= 1) && absDistance > 20) {
-        newVel[axis] = -Math.sign(newPos[axis] - 127) * maxSpeed * 0.3
-        console.warn(`[PhysicsDriver]  Unstuck ${axis}: pos=${newPos[axis].toFixed(0)}, target=${target.toFixed(0)}`)
-      }
+      // 🔥 WAVE 2213: ANTI-STUCK ELIMINADO (era FIX V16.4)
+      // Mecanismo legacy de anti-deadlock. Generaba falsos positivos cuando los patrones
+      // de WAVE 2209+ usan los límites absolutos DMX (0, 255) como targets válidos,
+      // y cuando el control manual (XY Pad) devuelve el control a la IA desde pos=0/255.
+      // Con physicsMode:'classic' + anti-overshoot + jitterThreshold, no es necesario.
+      // Deja que el motor físico navegue libremente hacia el target acotado por sus
+      // límites de velocidad. — PunkOpus 2213
     }
 
     // 

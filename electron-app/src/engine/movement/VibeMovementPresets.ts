@@ -11,8 +11,14 @@
  * - Rock = Reactivo, dramático, wall of light
  * - Chill = Glacial, nebuloso, meditativo
  * 
+ * 🔥 WAVE 2212: SNAP EXORCISM
+ * fiesta-latina y pop-rock migrados de snap → classic.
+ * Motivo: snap + targets continuos sinusoidales = staircase effect.
+ * Classic + friction calibrada = curvas fluidas sin fragmentación.
+ * Todos los vibes activos son ahora physicsMode: 'classic'.
+ * 
  * @layer ENGINE/MOVEMENT
- * @version WAVE 338 - Core 2 Kickoff
+ * @version WAVE 2212 — The Snap Exorcism
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -96,26 +102,40 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
     physics: {
       maxAcceleration: 2000,    // 🔧 Arranques agresivos pero seguros (era 1500)
       maxVelocity: 600,         // Muy rápido
-      friction: 0.05,           // Casi sin fricción (libre)
-      arrivalThreshold: 0.5,    // Precisión alta
-      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
       // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
-      // Pero eso fue con Hermite (ya eliminado en 2088.7). Ahora los targets
-      // son lineales puros y el PhysicsDriver es el ÚNICO filtro.
-      // Con snap=0.35 + revLimit=140: el mover NUNCA alcanza el target.
-      // Un square se convierte en blob, un scan en balanceo tímido.
+      // 🔧 WAVE 2210: PHYSICS EXORCISM — SNAP → CLASSIC
       //
-      // CALIBRACIÓN: Para que un scan_x de período 16 beats a 120 BPM
-      // cubra ~200 DMX de rango en ~2s de semi-ciclo, necesitamos:
-      //   - snapFactor=0.85 → el mover alcanza 85% del delta por frame
-      //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
-      // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
+      // PROBLEMA (diagnosticado WAVE 2210):
+      //   snapFactor=0.85 significa: cada frame, el mover avanza 85% del
+      //   delta pendiente. Con un target sinusoidal CONTINUO (phase pura,
+      //   sin jitter), el mover alcanza cada micro-target en <1ms y
+      //   "frena en seco" al siguiente frame → efecto escalera/robótico.
+      //
+      //   RAÍZ: snap mode es correcto para targets DISCRETOS (posiciones
+      //   fijas que hay que alcanzar). Es incorrecto para trayectorias
+      //   CONTINUAS (sin(), figure8, scan) que generan targets nuevos
+      //   cada frame. Snap los persigue uno a uno → staircase.
+      //
+      // SOLUCIÓN: physicsMode 'classic' con inercia/fricción baja.
+      //   Classic mode usa aceleración real → el mover construye velocidad
+      //   y la mantiene a lo largo de la trayectoria. El resultado es
+      //   FLUIDO sobre curvas continuas.
+      //
+      //   friction=0.08 → casi sin fricción (personalidad techno agresiva)
+      //   arrivalThreshold=1.5 → no frena prematuramente en micro-deltas
+      //   maxAcceleration=2000 → arranques brutales (techno)
+      //   maxVelocity=600 → velocidad techo alta
+      //
+      //   Con estos valores, techno SIGUE siendo rápido y seco.
+      //   La inercia del classic mode actúa como un low-pass hardware
+      //   que suaviza la curva sin quitar personalidad.
       // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.85,         // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
-      revLimitPanPerSec: 400,   // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
-      revLimitTiltPerSec: 280,  // 🔧 WAVE 2088.8: ~297°/s — tilt siempre más lento
+      friction: 0.08,           // � WAVE 2210: Casi sin fricción → techno sigue siendo seco
+      arrivalThreshold: 1.5,    // 🔥 WAVE 2210: No frena en micro-deltas (era 0.5 snap)
+      physicsMode: 'classic',   // 🔥 WAVE 2210: Classic para trayectorias continuas sin staircase
+      snapFactor: 0.0,          // 🔥 WAVE 2210: No aplica en classic mode (ignorado)
+      revLimitPanPerSec: 400,   // Mantenido: ~848°/s — rápido pero acotado
+      revLimitTiltPerSec: 280,  // Mantenido: ~297°/s — tilt siempre más lento
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -141,24 +161,25 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
-      maxAcceleration: 1200,    // 🔧 Subido: Seguir caderas rápido
-      maxVelocity: 350,         // 🔧 Subido: Más swing
-      friction: 0.20,           // Algo de suavizado orgánico
-      arrivalThreshold: 2.0,    // Permite overshoot elegante
-      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
+      maxAcceleration: 1500,    // � WAVE 2212: Subido para curvas fluidas a alta velocidad
+      maxVelocity: 350,         // Mantenido: swing orgánico
+      friction: 0.15,           // 🔥 WAVE 2212: Bajado para que las curvas fluyan sin lag
+      arrivalThreshold: 1.5,    // 🔥 WAVE 2212: Balance entre seguimiento y suavidad
+      physicsMode: 'classic',   // 🔥 WAVE 2212: SNAP EXORCISM — classic para sinusoidales continuas
       // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
-      // SIGA la trayectoria con precisión. Con snap=0.45 + revLimit=85,
-      // un figure8 de período 16 beats se convertía en una elipse aplastada
-      // porque el mover nunca alcanzaba los extremos del Lissajous.
+      // � WAVE 2212: SNAP EXORCISM — EL FIN DEL STAIRCASE
+      // Snap mode fue diseñado para targets DISCRETOS (posiciones fijas).
+      // El VMM genera targets CONTINUOS (sinusoidales). Snap + continuo =
+      // staircase effect: cada frame snapea a un micro-target diferente →
+      // la geometría se fragmenta en escalones visibles.
       //
-      // snap=0.70 → sigue la curva con 70% de fidelidad por frame
-      // revLimit=250 → 4.17 DMX/frame → suficiente para las curvas suaves
+      // Classic mode: el physics driver integra la trayectoria de forma
+      // natural con inercia, fricción y aceleración continua.
+      // friction=0.15 → suavizado orgánico sin lag excesivo
       // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.70,         // 🔧 WAVE 2088.8: Fiel a las curvas, con suavidad orgánica residual
-      revLimitPanPerSec: 250,   // 🔧 WAVE 2088.8: ~530°/s — headroom para figure8 a alta energía
-      revLimitTiltPerSec: 180,  // 🔧 WAVE 2088.8: ~191°/s — tilt curvo suave
+      snapFactor: 0.0,          // � WAVE 2212: Ignorado en classic mode
+      revLimitPanPerSec: 250,   // Mantenido: ~530°/s — headroom para figure8 a alta energía
+      revLimitTiltPerSec: 180,  // Mantenido: ~191°/s — tilt curvo suave
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)
@@ -184,23 +205,24 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   'pop-rock': {
     physics: {
-      maxAcceleration: 1100,    // 🔧 Subido: Golpes reactivos duros
-      maxVelocity: 450,         // 🔧 Subido: Rápido en golpes
-      friction: 0.30,           // Fricción para punch (no arrastrar)
-      arrivalThreshold: 1.0,    // Precisión normal
-      physicsMode: 'snap',      // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
+      maxAcceleration: 1500,    // � WAVE 2212: Subido para arcos dramáticos con potencia
+      maxVelocity: 450,         // Mantenido: rápido en golpes
+      friction: 0.20,           // 🔥 WAVE 2212: Bajado para que los arcos tengan peso sin staircase
+      arrivalThreshold: 1.5,    // 🔥 WAVE 2212: Balance dramático con fluidez
+      physicsMode: 'classic',   // 🔥 WAVE 2212: SNAP EXORCISM — classic para sinusoidales continuas
       // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // Rock usa circle_big, cancan, dual_sweep. Con snap=0.30 + revLimit=95
-      // un circle_big de 16 beats se convertía en un temblor amorfo.
-      // Los movers de estadio necesitan dibujar ARCOS visibles.
+      // � WAVE 2212: SNAP EXORCISM — EL FIN DEL STAIRCASE
+      // Snap mode era correcto para targets discretos, pero circle_big,
+      // cancan y dual_sweep son sinusoidales continuas. Snap + continuo =
+      // staircase effect visible → los arcos de estadio se fragmentan.
       //
-      // snap=0.65 → el mover persigue con PESO (más lento que techno)
-      // revLimit=300 → 5 DMX/frame → arcos grandes con gravitas
+      // Classic mode con friction=0.20: los arcos tienen peso dramático
+      // sin los escalones del snap. El mover persigue la trayectoria con
+      // inercia natural — como un spotlight de estadio real.
       // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.65,         // 🔧 WAVE 2088.8: Golpes con peso visible — más lento que techno
-      revLimitPanPerSec: 300,   // 🔧 WAVE 2088.8: ~636°/s — arcos dramáticos de estadio
-      revLimitTiltPerSec: 200,  // 🔧 WAVE 2088.8: ~212°/s — tilt con gravitas
+      snapFactor: 0.0,          // � WAVE 2212: Ignorado en classic mode
+      revLimitPanPerSec: 300,   // Mantenido: ~636°/s — arcos dramáticos de estadio
+      revLimitTiltPerSec: 200,  // Mantenido: ~212°/s — tilt con gravitas
     },
     optics: {
       zoomDefault: 220,         // Zoom abierto (wash)

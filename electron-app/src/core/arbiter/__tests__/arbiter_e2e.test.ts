@@ -57,10 +57,10 @@ function createMockIntent(options: {
   return {
     masterIntensity: options.masterIntensity ?? 0.5,
     palette: {
-      primary: options.primaryColor ?? { h: 0, s: 1, l: 0.5 },  // Red
-      secondary: { h: 120, s: 1, l: 0.5 },  // Green
-      accent: { h: 240, s: 1, l: 0.5 },      // Blue
-      ambient: { h: 0, s: 0, l: 0.1 },       // Dark ambient
+      primary: options.primaryColor ?? { h: 0, s: 1, l: 0.5 },  // Red (h=0)
+      secondary: { h: 0.333, s: 1, l: 0.5 },  // Green (120°/360° = 0.333)
+      accent: { h: 0.667, s: 1, l: 0.5 },      // Blue (240°/360° = 0.667)
+      ambient: { h: 0, s: 0, l: 0.1 },          // Dark ambient
     },
     zones: {},
     movement: {
@@ -130,6 +130,10 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
   beforeEach(() => {
     // Create fresh arbiter for each test (NOT the singleton)
     arbiter = new MasterArbiter({ debug: false })
+    
+    // 🚦 WAVE 1132: Output gate defaults to FALSE (COLD START PROTOCOL).
+    // Tests MUST enable it or all non-manual fixtures get blackout target.
+    arbiter.setOutputEnabled(true)
     
     // Register test fixtures
     arbiter.setFixtures([
@@ -262,16 +266,19 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const mover = result.fixtures.find(f => f.fixtureId === 'mover-1')!
       
       // ASSERT: Pan from manual, color from Titan
-      expect(mover.pan).toBe(200)  // Manual
-      expect(mover._controlSources.pan).toBe(ControlLayer.MANUAL)
+      // 🏗️ WAVE 2074.3: Pan/tilt go through getAdjustedPosition(), NOT mergeChannelForFixture()
+      // So _controlSources does NOT track pan/tilt source — by architectural design.
+      // We verify the VALUE is correct instead.
+      expect(mover.pan).toBe(200)  // Manual value wins
       
-      // Color should still be from Titan (red)
-      expect(mover.color.r).toBeGreaterThan(200)  // Red channel high
+      // Color should still be from Titan
+      // mover-1 is BACK zone → accent color (blue, h:0.667) → B=255, R≈0
+      expect(mover.color.b).toBeGreaterThan(200)  // Blue channel high (accent for BACK zone)
       expect(mover._controlSources.red).toBe(ControlLayer.TITAN_AI)
       expect(mover._controlSources.green).toBe(ControlLayer.TITAN_AI)
       expect(mover._controlSources.blue).toBe(ControlLayer.TITAN_AI)
       
-      console.log(`[CALIBRATION TEST] Pan: ${mover.pan} (Manual), Color R: ${mover.color.r} (Titan) ✓`)
+      console.log(`[CALIBRATION TEST] Pan: ${mover.pan} (Manual), Color B: ${mover.color.b} (Titan) ✓`)
     })
     
     it('should mask multiple channels while leaving others to AI', () => {
@@ -300,10 +307,9 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const mover = result.fixtures.find(f => f.fixtureId === 'mover-1')!
       
       // ASSERT
+      // 🏗️ WAVE 2074.3: Pan/tilt bypasses mergeChannelForFixture → no _controlSources tracking
       expect(mover.pan).toBe(50)
       expect(mover.tilt).toBe(100)
-      expect(mover._controlSources.pan).toBe(ControlLayer.MANUAL)
-      expect(mover._controlSources.tilt).toBe(ControlLayer.MANUAL)
       
       // Dimmer and color from Titan
       expect(mover.dimmer).toBe(255)
@@ -345,8 +351,8 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       mover = result.fixtures.find(f => f.fixtureId === 'mover-1')!
       
       // ASSERT: Tilt still manual, pan transitioning back to AI
-      expect(mover.tilt).toBe(200)  // Still manual
-      expect(mover._controlSources.tilt).toBe(ControlLayer.MANUAL)
+      // 🏗️ WAVE 2074.3: Pan/tilt bypasses mergeChannelForFixture → no _controlSources tracking
+      expect(mover.tilt).toBe(200)  // Still manual value
       
       // Pan should be transitioning or back to AI
       // Note: With instant crossfade, it might already be at AI value
@@ -371,6 +377,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
         debug: false,
         defaultCrossfadeMs: 500
       })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([createMockFixture('par-1')])
       
       // Use a custom crossfade engine with linear easing for predictable testing
@@ -378,16 +385,19 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       // @ts-expect-error - Accessing private for testing
       testArbiter.crossfadeEngine = crossfadeEngine
       
-      // ARRANGE: Test with PAN channel which uses LTP (not HTP like dimmer)
-      // This allows us to test crossfade from manual value back to AI value
-      // regardless of which is higher
-      const intent = createMockIntent({ pan: 0.4 })  // ~102 DMX
+      // 🏗️ WAVE 2074.3: Use RED channel (LTP) instead of PAN.
+      // Pan/tilt go through getAdjustedPosition() + positionReleaseFades,
+      // NOT through mergeChannelForFixture() + crossfadeEngine.
+      // Red IS an LTP channel that flows through the crossfade pipeline.
+      const intent = createMockIntent({
+        primaryColor: { h: 0.667, s: 1, l: 0.5 },  // Pure blue (0-1 scale): R=0, G=0, B=255
+      })
       testArbiter.setTitanIntent(createTitanLayer(intent))
       
       testArbiter.setManualOverride({
         fixtureId: 'par-1',
-        controls: { pan: 200 },  // Manual pan at 200
-        overrideChannels: ['pan'],
+        controls: { red: 200 },  // Manual red at 200
+        overrideChannels: ['red'],
         mode: 'absolute',
         source: 'ui_fader',
         priority: 1,
@@ -396,20 +406,20 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
         timestamp: timer.getTime(),
       })
       
-      // Verify manual override is active (pan = 200)
+      // Verify manual override is active (red = 200)
       let result = testArbiter.arbitrate()
       let par1 = result.fixtures.find(f => f.fixtureId === 'par-1')!
-      expect(par1.pan).toBe(200)
-      console.log(`[CROSSFADE TEST] Initial with manual pan: ${par1.pan}`)
+      expect(par1.color.r).toBe(200)
+      console.log(`[CROSSFADE TEST] Initial with manual red: ${par1.color.r}`)
       
-      // ACT: Release manual, starting crossfade from 200 → ~102
+      // ACT: Release manual, starting crossfade from 200 → 0 (Titan blue has R=0)
       timer.advance(10)
-      testArbiter.releaseManualOverride('par-1', ['pan'])
+      testArbiter.releaseManualOverride('par-1', ['red'])
       
-      // Immediately after release, crossfade should start from 200
+      // Immediately after release, crossfade should start near 200
       result = testArbiter.arbitrate()
       par1 = result.fixtures.find(f => f.fixtureId === 'par-1')!
-      const atStart = par1.pan
+      const atStart = par1.color.r
       console.log(`[CROSSFADE TEST] At t=0ms (crossfade start): ${atStart}`)
       // Should be close to start value (200)
       expect(atStart).toBeGreaterThan(180)
@@ -418,26 +428,26 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       timer.advance(250)
       result = testArbiter.arbitrate()
       par1 = result.fixtures.find(f => f.fixtureId === 'par-1')!
-      const at50percent = par1.pan
+      const at50percent = par1.color.r
       console.log(`[CROSSFADE TEST] At t=250ms (50%): ${at50percent}`)
       
-      // With linear easing from 200 → 102:
-      // at 50%: 200 + (102-200)*0.5 = 200 - 49 = 151
-      expect(at50percent).toBeGreaterThan(130)
-      expect(at50percent).toBeLessThan(170)
+      // With linear easing from 200 → 0:
+      // at 50%: 200 + (0-200)*0.5 = 100
+      expect(at50percent).toBeGreaterThan(80)
+      expect(at50percent).toBeLessThan(120)
       
       // Advance to 100% (remaining 260ms to be safe)
       timer.advance(260)
       result = testArbiter.arbitrate()
       par1 = result.fixtures.find(f => f.fixtureId === 'par-1')!
-      const at100percent = par1.pan
+      const at100percent = par1.color.r
       console.log(`[CROSSFADE TEST] At t=510ms (100%): ${at100percent}`)
       
-      // Should be at target (~102)
-      expect(at100percent).toBeGreaterThanOrEqual(95)
-      expect(at100percent).toBeLessThanOrEqual(110)
+      // Should be at target (0)
+      expect(at100percent).toBeGreaterThanOrEqual(0)
+      expect(at100percent).toBeLessThanOrEqual(10)
       
-      console.log(`[CROSSFADE TEST] Transition 200→151→102 verified ✓`)
+      console.log(`[CROSSFADE TEST] Transition 200→100→0 verified ✓`)
       
       timer.restore()
       testArbiter.reset()
@@ -447,18 +457,21 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false, defaultCrossfadeMs: 500 })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([createMockFixture('par-1')])
       
       const crossfadeEngine = new CrossfadeEngine(500, linear)
       // @ts-expect-error - Accessing private for testing
       testArbiter.crossfadeEngine = crossfadeEngine
       
-      // Setup and release - use PAN (LTP) instead of dimmer (HTP)
-      testArbiter.setTitanIntent(createTitanLayer(createMockIntent({ pan: 0.4 })))  // ~102
+      // 🏗️ WAVE 2074.3: Use RED channel — pan/tilt bypass crossfadeEngine in arbitration
+      testArbiter.setTitanIntent(createTitanLayer(createMockIntent({
+        primaryColor: { h: 0.667, s: 1, l: 0.5 },  // Blue: R=0 (0-1 hue scale)
+      })))
       testArbiter.setManualOverride({
         fixtureId: 'par-1',
-        controls: { pan: 200 },
-        overrideChannels: ['pan'],
+        controls: { red: 200 },
+        overrideChannels: ['red'],
         mode: 'absolute',
         source: 'ui_fader',
         priority: 1,
@@ -471,7 +484,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       
       // Release and check crossfade state
       timer.advance(10)
-      testArbiter.releaseManualOverride('par-1')
+      testArbiter.releaseManualOverride('par-1', ['red'])
       
       let result = testArbiter.arbitrate()
       let par1 = result.fixtures.find(f => f.fixtureId === 'par-1')!
@@ -502,6 +515,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([createMockFixture('par-1')])
       
       // ARRANGE: Titan wants dimmer 0 (so we can see the strobe clearly)
@@ -554,6 +568,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([createMockFixture('par-1')])
       
       // Titan wants dimmer 100
@@ -597,6 +612,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([createMockFixture('par-1')])
       
       testArbiter.setTitanIntent(createTitanLayer(createMockIntent({ masterIntensity: 0.5 })))
@@ -636,6 +652,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([
         createMockFixture('par-1'),
         createMockFixture('par-2'),
@@ -701,6 +718,7 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       const timer = mockPerformanceNow(1000)
       
       const testArbiter = new MasterArbiter({ debug: false })
+      testArbiter.setOutputEnabled(true)
       testArbiter.setFixtures([
         createMockFixture('par-1'),
         createMockFixture('mover-1'),
@@ -744,9 +762,9 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       let mover = result.fixtures.find(f => f.fixtureId === 'mover-1')!
       
       // Mover should have manual position, Titan color
+      // 🏗️ WAVE 2074.3: Pan/tilt bypasses mergeChannelForFixture → no _controlSources tracking
       expect(mover.pan).toBe(200)
       expect(mover.tilt).toBe(100)
-      expect(mover._controlSources.pan).toBe(ControlLayer.MANUAL)
       expect(mover.color.r).toBeGreaterThan(150)  // Red from Titan
       
       console.log(`[COMBINED] Before blackout - Par strobing, Mover calibrating ✓`)
@@ -775,9 +793,9 @@ describe('🧪 WAVE 374.5: ARBITER E2E TEST SUITE', () => {
       mover = result.fixtures.find(f => f.fixtureId === 'mover-1')!
       
       // Manual should still be active after blackout release
+      // 🏗️ WAVE 2074.3: Pan/tilt bypasses mergeChannelForFixture → no _controlSources tracking
       expect(mover.pan).toBe(200)
       expect(mover.tilt).toBe(100)
-      expect(mover._controlSources.pan).toBe(ControlLayer.MANUAL)
       
       console.log(`[COMBINED] Manual restored after blackout release ✓`)
       

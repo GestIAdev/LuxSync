@@ -2,6 +2,7 @@
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
  * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+ * 🔒 WAVE 2211: PIPELINE EXORCISM — Async Stampede Guard + IPC Throttle + GC reduction
  * 
  * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este módulo solo orquesta el flujo de datos.
@@ -102,6 +103,22 @@ export class TitanOrchestrator {
   private isRunning = false
   private mainLoopInterval: NodeJS.Timeout | null = null
   private frameCount = 0
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
+  // setInterval(16) fires every 16ms regardless of whether the previous
+  // processFrame() has finished. Since processFrame() is async (await engine.update()),
+  // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
+  // This flag ensures only ONE processFrame() runs at a time.
+  // ═══════════════════════════════════════════════════════════════════════════
+  private isProcessingFrame = false
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🗑️ WAVE 2211: PRE-ALLOCATED FFT BUFFER — GC pressure reduction
+  // BEFORE: `new Array(256).fill(0)` every frame = 256 floats × 30fps = 7,680 allocs/sec
+  // AFTER: Single buffer reused across frames. Zero GC from FFT.
+  // ═══════════════════════════════════════════════════════════════════════════
+  private readonly EMPTY_FFT_BUFFER: readonly number[] = Object.freeze(new Array(256).fill(0))
   
   // WAVE 252: Real fixtures from ConfigManager (no more mocks)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -357,8 +374,25 @@ export class TitanOrchestrator {
   /**
    * 🎬 PROCESAR FRAME: El latido del universo
    * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
+   * 🔒 WAVE 2211: ASYNC STAMPEDE GUARD — prevents overlapping processFrame() calls
    */
   private async processFrame(): Promise<void> {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔒 WAVE 2211: STAMPEDE GUARD
+    // setInterval(16) doesn't wait for async completion. If engine.update()
+    // takes >16ms, multiple processFrame() calls stack up, corrupting:
+    //   - HAL.measurePhysicsDeltaTime() (dt becomes ~0ms for the interloper)
+    //   - FixturePhysicsDriver positions (two frames writing simultaneously)
+    //   - MasterArbiter state (two arbitrate() calls with different intents)
+    // Result: erratic movement, "chill acting like rock", position jumps.
+    // FIX: Skip frame if previous is still processing. No data loss —
+    //   the NEXT interval will pick up with correct dt measurement.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.isProcessingFrame) return
+    this.isProcessingFrame = true
+    
+    try {
+    
     if (!this.brain || !this.engine || !this.hal) return
     
     this.frameCount++
@@ -567,6 +601,16 @@ export class TitanOrchestrator {
     }
     
     // For HAL
+    // 🎵 WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
+    // BEFORE: HAL calculated its own fake beatPhase from hardcoded 120 BPM
+    // → optics pulsed at constant 2Hz regardless of actual music tempo
+    // → chill-lounge got rock-speed focus punches
+    // AFTER: Real PLL phase flows from Worker → Pacemaker → here → HAL
+    const halBeatPhase = beatState.pllLocked 
+      ? (beatState.pllPhase ?? beatState.phase) 
+      : workerBeatPhase
+    const halBpm = workerBpm > 0 ? workerBpm : beatState.bpm
+    
     const halAudioMetrics = {
       rawBass: bass,
       rawMid: mid,
@@ -574,6 +618,8 @@ export class TitanOrchestrator {
       energy,
       isRealSilence: false,
       isAGCTrap: false,
+      beatPhase: halBeatPhase,
+      bpm: halBpm,
     }
     
     // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
@@ -1305,7 +1351,21 @@ export class TitanOrchestrator {
     }
     
     // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
-    if (this.onBroadcast) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 30fps, not 60fps
+    //
+    // processFrame() runs at ~60fps (setInterval 16ms). Broadcasting the
+    // entire SeleneTruth object 60×/sec through Electron IPC causes:
+    //   1. JSON serialization overhead (~3-5KB per truth object)
+    //   2. 60 Zustand state updates/sec → 60 React re-render triggers
+    //   3. GC pressure from 60 new truth objects + fixture arrays per second
+    //   4. The StageSimulatorCinema canvas only renders at 30fps anyway
+    //
+    // FIX: Broadcast every other frame (frameCount % 2 === 0) → 30fps.
+    // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
+    // Only the UI visualization is throttled.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.onBroadcast && this.frameCount % 2 === 0) {
       const currentVibe = this.engine.getCurrentVibe()
       
       // Build a valid SeleneTruth structure
@@ -1343,7 +1403,7 @@ export class TitanOrchestrator {
             spectralFlux: 0,
             zeroCrossingRate: 0
           },
-          fft: new Array(256).fill(0),
+          fft: this.EMPTY_FFT_BUFFER as number[],
           beat: {
             onBeat: engineAudioMetrics.isBeat,
             confidence: engineAudioMetrics.beatConfidence,
@@ -1513,6 +1573,11 @@ export class TitanOrchestrator {
     //   const currentVibe = this.engine.getCurrentVibe()
     //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
     // }
+    
+    } finally {
+      // 🔒 WAVE 2211: ALWAYS release the guard, even if processFrame() throws
+      this.isProcessingFrame = false
+    }
   }
 
   /**

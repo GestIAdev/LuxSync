@@ -319,7 +319,10 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   const handleDataToggle = useCallback(async () => {
     const newState = !outputEnabled
     try {
-      const result = await window.lux?.arbiter?.setOutputEnabled?.(newState)
+      const arb = window.lux?.arbiter as any
+      const result = arb?.setOutputEnabledTagged
+        ? await arb.setOutputEnabledTagged(newState, 'TransportBar:DATA')
+        : await window.lux?.arbiter?.setOutputEnabled?.(newState, 'TransportBar:DATA')
       if (result?.success) {
         setOutputEnabled(newState)
         console.log(`[TransportBar] 📡 DATA: ${newState ? 'LIVE' : 'ARMED'}`)

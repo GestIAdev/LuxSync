@@ -4,18 +4,34 @@
 //  WAVE 500 - PROJECT GENESIS - PHASE 3
 //  WAVE 1010 - FRONTAL LOBOTOMY - UNIFIED BRAIN
 //  WAVE 1028 - THE CURATOR - Texture Awareness Integration
+//  WAVE 2183 - DIVERSITY FIX — DROP no puede saltarse la penalización
+//  WAVE 2185 - MINIMAL TECHNO FIX — DIVINE dual validation (Z>4.0 + energy>0.65)
+//  WAVE 2200 - SELENE RECALIBRATION — 4 tactical fixes:
+//    2200.1 — Cassandra temporal seal (pre-buffer leak)
+//    2200.2 — Anti-fake-drop sanity check (Z-Score guard on heavy arsenal)
+//    2200.3 — Buildup heavy arsenal restriction (no premature climax)
+//    2200.4 — DIVINE ARSENAL log honesty
+//  WAVE 2203 - FUZZY BUILDUP WALL — Close the bypass gap
+//    The Buildup Restriction (2200.3) only guarded DNA Priority 0.
+//    Fuzzy and Hunt could still sneak heavy arsenal through during buildups.
+//    Now: section=buildup + HEAVY_ARSENAL blocks at ALL decision paths.
 //  "Combina hunt + prediction + context → Decisión única"
 //  "El General manda. El Bibliotecario obedece."
 // ═══════════════════════════════════════════════════════════════════════════
 import { createEmptyOutput } from '../types';
 // 🎨 WAVE 1028: THE CURATOR - Texture Filter integration
 import { getContextualEffectSelector } from '../../effects/ContextualEffectSelector';
+// 🎲 WAVE 2183: DIVERSITY FIX — Arsenal selector respeta penalización de diversidad
+import { getDNAAnalyzer } from '../dna/EffectDNA';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
 // Movido desde ContextualEffectSelector - EL GENERAL tiene el control total
-/** Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio) */
-export const DIVINE_THRESHOLD = 3.5;
+/**
+ * Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio)
+ * 🔬 WAVE 2185: Elevado de 3.5 a 4.0 + dual validation con energía efectiva
+ */
+export const DIVINE_THRESHOLD = 4.0;
 /**
  * 🔪 WAVE 1010: DIVINE ARSENAL BY VIBE
  * Armas de destrucción masiva por género musical.
@@ -23,16 +39,25 @@ export const DIVINE_THRESHOLD = 3.5;
  */
 export const DIVINE_ARSENAL = {
     'fiesta-latina': [
+        'latina_meltdown', // 🔥 El derretimiento final — APEX LATINO PURO
+        'oro_solido', // 🥇 WAVE 2189: El Trompetazo — muro de oro, peso y brillo
         'solar_flare', // ☀️ Explosión dorada
-        'strobe_storm', // ⚡ Tormenta de strobes
-        'latina_meltdown', // 🔥 El derretimiento final
-        'corazon_latino', // ❤️ El alma del arquitecto
+        'salsa_fire', // 🔥 Fuego salsero como drop de refuerzo
+        //  WAVE 2187: strobe_storm EXILIADO — deportado a techno-club.
+        // El strobe_storm es una criatura techno/industrial. En fiesta-latina
+        // provocaba multi-disparos caóticos y rompía la identidad sonora del show.
+        // Su hogar es el bunker, no la cantina.
     ],
     'techno-club': [
-        'industrial_strobe', // 🔨 El Martillo
+        'neon_blinder', // ⚡ WAVE 2182: APEX flash wall (primero — más nuevo y brutal)
+        'industrial_strobe', // 🔨 El Martillo — APEX único, dueño del DROP
         'gatling_raid', // 🔫 Metralladora
         'core_meltdown', // ☢️ LA BESTIA
-        'strobe_storm', // ⚡ Tormenta compartida
+        'strobe_storm', // ⚡ 🛸 WAVE 2187: Tormenta — SOLO techno, su hogar natural
+        // ⚰️ WAVE 2214: surgical_strike EXILIADO del DIVINE_ARSENAL
+        // Era el segundo en el arsenal y ganaba el DROP con score de diversidad inflado.
+        // El surgical_strike es tier INTENSE, no PEAK/DIVINE. Su hogar es la buildup,
+        // no el drop. El DROP pertenece al Martillo.
     ],
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS - DIVINE ARSENAL
@@ -49,6 +74,28 @@ export const DIVINE_ARSENAL = {
         'spotlight_pulse', // 💡 Pulso emotivo - builds épicos
     ],
 };
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2200.3: HEAVY ARSENAL DEFINITION
+// ═══════════════════════════════════════════════════════════════════════════
+// Efectos con aggression >= 0.80 en el DNA registry.
+// Estos efectos son ARMAS NUCLEARES — solo se disparan en:
+//   1. DIVINE (Z > 4.0σ + energy > 0.65) — emergencia estadística real
+//   2. DROP CONFIRMED (section === 'drop') — el clímax ya llegó
+// En buildups, versos y breakdowns están PROHIBIDOS porque:
+//   "Un core_meltdown en un buildup es como tirar fuegos artificiales
+//    antes de las campanadas. Visualmente no queda MAL, pero narrativamente
+//    arruina el clímax." — Radwulf, WAVE 2200
+// ═══════════════════════════════════════════════════════════════════════════
+export const HEAVY_ARSENAL_EFFECTS = new Set([
+    'core_meltdown', // aggression: 1.00, chaos: 0.75 — LA BESTIA (WAVE 2202)
+    'industrial_strobe', // aggression: 0.95, chaos: 0.55 — El Martillo (WAVE 2202)
+    'gatling_raid', // aggression: 0.90, chaos: 0.40 — Metralladora
+    'neon_blinder', // aggression: 0.82, chaos: 0.15 — Flash wall
+    'strobe_storm', // aggression: 0.80, chaos: 0.75 — Tormenta
+    'latina_meltdown', // aggression: 0.95, chaos: ?   — El derretimiento latino
+    'thunder_struck', // aggression: 0.85, chaos: ?   — Stadium blinder
+    'feedback_storm', // aggression: 0.80, chaos: ?   — Caos visual
+]);
 const DEFAULT_CONFIG = {
     minConfidenceThreshold: 0.55,
     huntWeight: 0.40,
@@ -57,8 +104,47 @@ const DEFAULT_CONFIG = {
     aggressiveMode: false,
 };
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔪 WAVE 975: THE FRONTAL LOBOTOMY
+//  WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
 // ═══════════════════════════════════════════════════════════════════════════
+// 
+// PROBLEMA OBSERVADO (logs):
+//   strobe_storm → latina_meltdown → solar_flare en < 1 segundo durante drops largos.
+//   El DecisionMaker lanzaba 'prepare_for_drop' en CADA frame mientras section=drop.
+//   Resultado: multi-disparos caóticos = show esquizofrénico.
+//
+// SOLUCIÓN:
+//   Un estado de módulo: dropLock.
+//   - Al disparar un DROP EFFECT, se activa el lock con el sectionId del drop.
+//   - Mientras section===drop y el lock esté activo, NO se lanza otro DROP EFFECT.
+//   - El lock se resetea cuando section cambia (sale del drop).
+//
+// Un Drop = Un Efecto principal. El DIVINE (Z>4σ) puede seguir sobreescribiendo
+// porque eso es un evento físico único, no una repetición del drop.
+// ═══════════════════════════════════════════════════════════════════════════
+/** Estado del lock de drop — sección del drop que ya disparó */
+let _dropLockSection = null;
+/**
+ * 🔒 WAVE 2187: Resetea el drop lock si la sección cambió.
+ * Debe llamarse al inicio de cada makeDecision() para detectar transición out-of-drop.
+ */
+function updateDropLock(currentSection) {
+    if (_dropLockSection !== null && currentSection !== 'drop') {
+        console.log(`[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→${currentSection}`);
+        _dropLockSection = null;
+    }
+}
+/**
+ * 🔒 WAVE 2187: Intenta adquirir el drop lock.
+ * @returns true si el lock se adquirió (primera vez en este drop), false si ya estaba bloqueado.
+ */
+function acquireDropLock() {
+    if (_dropLockSection !== null) {
+        return false; // Ya hay un efecto de drop disparado en esta sección
+    }
+    _dropLockSection = 'drop';
+    console.log(`[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop`);
+    return true;
+}
 // 
 // LEGACY CODE ELIMINATED:
 // - selectEffectByVibe() - REMOVED (martillos, cuchillas hardcodeadas)
@@ -82,6 +168,8 @@ const DEFAULT_CONFIG = {
  */
 export function makeDecision(inputs, config = {}) {
     const cfg = { ...DEFAULT_CONFIG, ...config };
+    // 🔒 WAVE 2187: Actualizar drop lock — detecta salida del drop
+    updateDropLock(inputs.pattern.section);
     // Crear output base
     const output = createEmptyOutput();
     output.timestamp = inputs.timestamp;
@@ -123,7 +211,7 @@ export function makeDecision(inputs, config = {}) {
  * 🔒 WAVE 1177: CALIBRATION - Skip DIVINE evaluation if dictator is active
  *
  * NUEVA JERARQUÍA (WAVE 1010):
- * 0. 🌩️ DIVINE MOMENT (Z > 3.5 + zona válida) - OBLIGATORIO
+ * 0. 🌩️ DIVINE MOMENT (Z > 4.0 + energy > 0.65 + zona válida) - OBLIGATORIO
  * 1. 🧬 DNA Brain Integration (si disponible y aprobado)
  * 2. 🎯 HuntEngine worthiness
  * 3. 📉 Drop predicho
@@ -133,11 +221,41 @@ export function makeDecision(inputs, config = {}) {
 function determineDecisionType(inputs) {
     const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision } = inputs;
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
+    // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 4.0 + energy gate)
     // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
     // 🔒 WAVE 1177: Skip if dictator is active (prevents log spam)
+    // 🔬 WAVE 2185: DUAL VALIDATION — Z alto + energía real alta
+    //    En minimal techno, Z puede explotar por micro-variaciones estadísticas
+    //    pero la energía real de la pista es baja (0.25-0.45).
+    //    DIVINE solo se justifica cuando la pista REALMENTE está ardiendo.
     // ═══════════════════════════════════════════════════════════════════════
     const currentZ = zScore ?? 0;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔬 WAVE 2201: DIVINE ENERGY GATE — Hard Techno Minimal Calibration
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA DETECTADO (buildupextrema.md + hard-techno-minimal sessions):
+    //   Bombos secos tras silencios largos generan Z-Scores masivos (+7.0σ)
+    //   porque la stdDev acumulada es casi cero (silencio → un golpe = Z enorme).
+    //   Con DIVINE_ENERGY_GATE = 0.65 estos "falsos positivos estadísticos"
+    //   pasaban el gate y disparaban MANDATORY FIRE durante versos y transiciones.
+    //   En techno-club la energía media es 0.78 y el pico real empieza en 0.92.
+    //   0.65 es prácticamente un valle en ese perfil.
+    //
+    // SOLUCIÓN (2 tramos):
+    //   • energy < 0.85 (zone gentle/active pero no hirviendo):
+    //       → FALL THROUGH a prioridades inferiores.
+    //       El Z estadístico NO justifica el arsenal divino si la pista no está
+    //       en zona Intense/Peak. Las prioridades de drop/buildup/hunt siguen activas.
+    //   • 0.85 <= energy (zone intense/peak — la pista REALMENTE está ardiendo):
+    //       → DIVINE STRIKE. Aquí sí tiene sentido el arsenal nuclear.
+    //
+    // CAMBIO vs WAVE 2185:
+    //   Antes: energy < 0.65 → return 'strike' (disparo garantizado, solo no-DIVINE)
+    //   Ahora: energy < 0.85 → fall through (el contexto musical decide, no forzamos)
+    //   El tramo 0.65–0.84 ya NO fuerza ningún strike — deja al resto de prioridades
+    //   evaluar si corresponde o no. Más musical, menos mecánico.
+    // ═══════════════════════════════════════════════════════════════════════
+    const DIVINE_ENERGY_GATE = 0.85; // 🔬 WAVE 2201: zona Intense/Peak threshold
     // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
     // (El efecto activo tiene "la palabra", no le interrumpimos)
     if (activeDictator) {
@@ -146,14 +264,23 @@ function determineDecisionType(inputs) {
     }
     else if (currentZ >= DIVINE_THRESHOLD) {
         const zone = energyContext?.zone ?? 'gentle';
+        const effectiveEnergy = energyContext?.smoothed ?? 0;
         // Consciencia energética: NO divine en zonas de silencio
         // (No dispares artillería pesada en un funeral)
         if (zone === 'silence' || zone === 'valley') {
             console.log(`[DecisionMaker 🌩️] DIVINE BLOCKED: Z=${currentZ.toFixed(2)}σ but zone=${zone} (protected)`);
-            // Continuar a siguiente prioridad, no return 'hold'
+            // Fall through a siguiente prioridad
+        }
+        else if (effectiveEnergy < DIVINE_ENERGY_GATE) {
+            // 🔬 WAVE 2201: Z estadísticamente masivo pero energía real insuficiente
+            // (bombo seco tras silencio, minimal techno transición, verso de baja energía)
+            // → NO forzar ningún strike, dejar que el pipeline musical decida
+            console.log(`[DecisionMaker 🌩️] DIVINE SUPPRESSED: Z=${currentZ.toFixed(2)}σ but energy=${effectiveEnergy.toFixed(2)} < ${DIVINE_ENERGY_GATE} ` +
+                `(gate Intense/Peak) → falling through to musical context priorities`);
+            // Fall through — NO return aquí. Hunt/drop/buildup evaluarán el frame.
         }
         else {
-            console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ zone=${zone} → MANDATORY FIRE`);
+            console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ energy=${effectiveEnergy.toFixed(2)} zone=${zone} → MANDATORY FIRE`);
             return 'divine_strike'; // 🔪 WAVE 1010: Nuevo tipo
         }
     }
@@ -191,7 +318,32 @@ function determineDecisionType(inputs) {
     // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
     // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
     if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
-        return 'strike'; // DNA aprobó → strike con efecto de DNA
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 2200.3: BUILDUP RESTRICTION — Heavy arsenal waits for the climax
+        // ═══════════════════════════════════════════════════════════════════
+        // ROOT CAUSE: DNA Priority 0 retornaba 'strike' INCONDICIONALMENTE.
+        // Un core_meltdown (aggression=1.00) aprobado por DNA durante un buildup
+        // se disparaba sin importar la sección, porque este check está ENCIMA
+        // de los guards de buildup/drop/breakdown.
+        //
+        // FIX: Si section=buildup Y el efecto es HEAVY ARSENAL → demote.
+        // El efecto NO se pierde — queda en pre-buffer o se re-evalúa cuando
+        // la sección cambie a 'drop'. Los efectos light (aggression < 0.80)
+        // pasan normal — un acid_sweep en buildup es musical, un core_meltdown no.
+        //
+        // EVIDENCE: buildupextrema.md frame ~7780:
+        //   DNA approves core_meltdown at Z=0.5σ during buildup → fires as strike
+        //   Should have waited for the drop 3.9s later.
+        // ═══════════════════════════════════════════════════════════════════
+        const proposedEffect = dreamIntegration.effect.effect;
+        if (section === 'buildup' && HEAVY_ARSENAL_EFFECTS.has(proposedEffect)) {
+            console.log(`[DecisionMaker 🛡️] BUILDUP RESTRICTION: "${proposedEffect}" BLOCKED — ` +
+                `section=${section}, Z=${currentZ.toFixed(2)}σ → waiting for climax`);
+            // Fall through — el buildup handler (más abajo) se encargará con efectos suaves
+        }
+        else {
+            return 'strike'; // DNA aprobó → strike con efecto de DNA
+        }
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🩸 WAVE 2105→2109: FUZZY RESURRECTION — The Fuzzy Brain gets a REAL VOTE
@@ -205,25 +357,68 @@ function determineDecisionType(inputs) {
     //   If DNA has nothing, Fuzzy STRIKE falls through to Hunt/prediction/buildup priorities.
     //   This means Fuzzy still ACCELERATES decision-making when DNA is ready,
     //   but doesn't create 16 useless log lines when DNA pipeline is on cooldown.
+    //
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 2203: FUZZY BUILDUP WALL
+    // ═══════════════════════════════════════════════════════════════════════
+    // ROOT CAUSE (LOG EVIDENCE — Radwulf's Minimal Techno session):
+    //   1. BUILDUP RESTRICTION (OBJ 2200.3) blocks core_meltdown @ DNA Priority 0 ✓
+    //   2. Flow falls through to Fuzzy
+    //   3. Zone transition intense→peak fires (E=0.94)
+    //   4. Notable_Energy_Strike: zScore.notable(1.35σ)=0.675 * energy.high(0.94)=0.88 
+    //      * energyZone.highZone=1.0 = 0.594 * weight 0.75 = 0.446 → passes defuzzify
+    //   5. Fuzzy says 'strike', DNA still has core_meltdown loaded → LA BESTIA DESPIERTA
+    //
+    // THE GRIETA: OBJ 2200.3 only guarded DNA Priority 0 path.
+    //   Fuzzy bypass was UNGUARDED — it checked hasDNAProposal (true, the meltdown)
+    //   but never asked "should this specific effect be allowed in a buildup?"
+    //
+    // FIX: Mirror the same BUILDUP + HEAVY_ARSENAL check from OBJ 2200.3.
+    //   If section=buildup AND DNA's loaded weapon is HEAVY_ARSENAL → Fuzzy falls through.
+    //   The Fuzzy's energy reading is REAL (E=0.94 IS high), but the SECTION is wrong.
+    //   The climax hasn't arrived yet. The buildup "wawawa" atmosférico is what pushed
+    //   E=0.94 — the DROP is still 800ms away. Patience.
+    //
+    // NOTE: This does NOT neuter Fuzzy. Fuzzy strike + light effects (acid_sweep,
+    //   liquid_pulse, etc.) still passes in buildups. Only nuclear weapons are gated.
     // ═══════════════════════════════════════════════════════════════════════
     const hasDNAProposal = dreamIntegration?.approved && dreamIntegration.effect?.effect;
+    const fuzzyBlockedByBuildup = hasDNAProposal &&
+        section === 'buildup' &&
+        HEAVY_ARSENAL_EFFECTS.has(dreamIntegration.effect.effect);
     if (fuzzyDecision) {
-        if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
-            console.log(`[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
-                `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
-            return 'strike';
+        if (fuzzyBlockedByBuildup) {
+            console.log(`[DecisionMaker 🛡️] FUZZY BUILDUP WALL: "${dreamIntegration.effect.effect}" ` +
+                `blocked — Fuzzy wanted ${fuzzyDecision.action} (${fuzzyDecision.dominantRule}) ` +
+                `but section=${section}, heavy arsenal waits for climax`);
+            // Fall through — buildup_enhance handler below will manage with soft effects
         }
-        if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
-            console.log(`[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
-                `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
-            return 'strike';
+        else {
+            if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
+                console.log(`[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
+                    `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+                return 'strike';
+            }
+            if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
+                console.log(`[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
+                    `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+                return 'strike';
+            }
         }
     }
     // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)
     // Prioridad 1: Momento digno detectado por HuntEngine
+    // 🛡️ WAVE 2203: Same buildup wall applies — Hunt can't sneak heavy arsenal through
     const WORTHINESS_THRESHOLD = 0.65; // Umbral para considerar "digno de efecto"
     if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && huntDecision.confidence > 0.50) {
-        return 'strike';
+        if (fuzzyBlockedByBuildup) {
+            console.log(`[DecisionMaker 🛡️] HUNT BUILDUP WALL: worthiness=${huntDecision.worthiness.toFixed(2)} ` +
+                `but "${dreamIntegration.effect.effect}" blocked — section=${section}`);
+            // Fall through to buildup_enhance
+        }
+        else {
+            return 'strike';
+        }
     }
     // Prioridad 2: Drop predicho con alta probabilidad
     // 🩸 WAVE 2095: Bajado 0.8 → 0.65 — Brejcha/minimal tienen drops sutiles.
@@ -277,6 +472,56 @@ function calculateCombinedConfidence(inputs, cfg) {
 // GENERADORES DE DECISIONES ESPECÍFICAS
 // ═══════════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎲 WAVE 2183: DIVERSITY-AWARE ARSENAL SELECTOR
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Selecciona el mejor efecto de un arsenal aplicando penalización de diversidad.
+ *
+ * PROBLEMA ANTERIOR:
+ *   arsenal[0] siempre ganaba (primer efecto del array = neon_blinder).
+ *   El penalizador de diversidad (0.15x) existía en DNAAnalyzer pero
+ *   DIVINE STRIKE y DROP EFFECT lo ignoraban completamente.
+ *
+ * SOLUCIÓN (WAVE 2183):
+ *   Puntuar cada candidato del arsenal = baseScore * diversityFactor.
+ *   baseScore = 1.0 para todos (todos merecen dispararse en un drop).
+ *   diversityFactor = [1.0, 0.70, 0.35, 0.15] según usos recientes.
+ *   El de mayor puntuación gana. Empates → orden original del array.
+ *
+ * @param arsenal - Lista de efectos candidatos en orden de prioridad base
+ * @returns El efectoID con mayor diversityScore
+ */
+function selectFromArsenalWithDiversity(arsenal) {
+    if (arsenal.length === 0)
+        return '';
+    const analyzer = getDNAAnalyzer();
+    // Target DNA neutral para el cálculo (drops = máxima agresión)
+    // No importa la distancia aquí — todos los del arsenal ya son "adecuados".
+    // Solo nos importa el diversityFactor.
+    const DIVERSITY_FACTORS = [1.0, 0.70, 0.35, 0.15];
+    let bestEffect = arsenal[0];
+    let bestScore = -1;
+    for (let i = 0; i < arsenal.length; i++) {
+        const effectId = arsenal[i];
+        // Calculamos el relevance del efecto vs un target neutro de drops (A=0.90, C=0.30, O=0.05)
+        // Esto aplica el diversity factor sin necesitar el target real del frame
+        const relevance = analyzer.calculateRelevance(effectId, {
+            aggression: 0.90,
+            chaos: 0.30,
+            organicity: 0.05,
+            confidence: 1.0,
+        });
+        // Tiebreak: si hay empate perfecto, el orden original del array gana
+        if (relevance > bestScore + 0.001) {
+            bestScore = relevance;
+            bestEffect = effectId;
+        }
+    }
+    console.log(`[DecisionMaker 🎲] DIVERSITY SELECT: winner=${bestEffect} score=${bestScore.toFixed(3)} ` +
+        `from [${arsenal.join(', ')}]`);
+    return bestEffect;
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE STRIKE - MANDATORY MAXIMUM IMPACT
 // ═══════════════════════════════════════════════════════════════════════════
 /**
@@ -310,6 +555,7 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
     // ═══════════════════════════════════════════════════════════════════════
     if (spectralContext) {
         const selector = getContextualEffectSelector();
+        // 🔓 WAVE 2187: Pass vibeId so fiesta-latina bypasses CRYSTAL RULE
         const filteredArsenal = selector.filterArsenalByTexture(arsenal, {
             clarity: spectralContext.clarity,
             texture: spectralContext.texture,
@@ -319,7 +565,7 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
             bands: {
                 subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0
             }
-        });
+        }, vibeId);
         if (filteredArsenal.length > 0) {
             console.log(`[DecisionMaker 🎨] DIVINE TEXTURE FILTER: ${arsenal.length} → ${filteredArsenal.length} | ` +
                 `texture=${spectralContext.texture} | clarity=${spectralContext.clarity.toFixed(2)}`);
@@ -330,18 +576,24 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
             console.warn(`[DecisionMaker 🎨] DIVINE TEXTURE FILTER: All effects filtered out! Using original arsenal.`);
         }
     }
-    const suggestedEffect = arsenal[0]; // Primer efecto del arsenal (será validado por Repository)
+    // 🎲 WAVE 2183: DIVERSITY FIX — selección respeta penalización de uso reciente
+    // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+    // Antes: divineArsenal = arsenal completo → Repository cogía índice 0 → monopolio
+    // Ahora: divineArsenal = [winner] → Repository solo valida HARD_COOLDOWN del ganador
+    const suggestedEffect = selectFromArsenalWithDiversity(arsenal);
     output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`;
-    // 🔪 WAVE 1010: El General ordena el TIPO de ataque, el Repository elige el arma disponible
+    // 🔪 WAVE 1010 / WAVE 2183.1: El General ya eligió. Repository solo verifica HARD_COOLDOWN.
     output.effectDecision = {
-        effectType: suggestedEffect, // Sugerencia - Repository puede cambiar si está en cooldown
+        effectType: suggestedEffect,
         intensity: 1.0, // DIVINE = máxima intensidad
         zones: ['all'], // DIVINE afecta todo
-        reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Arsenal: ${arsenal.join(', ')}`,
+        reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Winner: ${suggestedEffect} | Full arsenal: ${arsenal.join(', ')}`,
         confidence: 0.99,
-        // 🔪 WAVE 1010: Metadata para el Repository
-        divineArsenal: arsenal, // Lista de efectos válidos para DIVINE en este vibe
-    }; // Type assertion para añadir divineArsenal
+        // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+        // Repository itera este array de 1 elemento: si está en HARD_COOLDOWN → silencio.
+        // No hay plan B aleatorio. El General ya habló.
+        divineArsenal: [suggestedEffect],
+    };
     // Color decision: Máximo impacto
     output.colorDecision = {
         suggestedStrategy: 'complementary', // Alto contraste
@@ -364,8 +616,8 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
 }
 function generateStrikeDecision(inputs, output, confidence) {
     const { huntDecision, beauty, consonance, pattern, dreamIntegration } = inputs;
-    // � WAVE 982.5: Silenciado (arqueología del día 2)
-    // �🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
+    //  WAVE 982.5: Silenciado (arqueología del día 2)
+    // 🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
     // console.log(
     //   `[DecisionMaker] 🔍 generateStrikeDecision called | ` +
     //   `DNA approved=${dreamIntegration?.approved ?? false} | ` +
@@ -449,20 +701,58 @@ function generateDropPreparationDecision(inputs, output, confidence) {
     // Si no, vaciamos el arsenal durante el buildup (spam de CIENTOS de efectos).
     const isDropImminent = prediction.estimatedTimeMs < 800 || pattern.section === 'drop';
     if (prediction.probability > 0.7 && isDropImminent) {
-        const vibeId = pattern.vibeId;
-        // Usar el arsenal DIVINE como pool de efectos hard para drops
-        const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club'];
-        const suggestedEffect = dropArsenal[0];
-        output.effectDecision = {
-            effectType: suggestedEffect,
-            intensity: 0.8 + prediction.probability * 0.2, // 0.94-1.0 según probabilidad
-            zones: ['all'],
-            reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | arsenal=${dropArsenal.join(', ')}`,
-            confidence: prediction.probability,
-            divineArsenal: dropArsenal, // Para que SeleneTitanConscious busque alternativas en cooldown
-        };
-        console.log(`[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
-            `vibe=${vibeId} | Z=${(zScore ?? 0).toFixed(2)}`);
+        // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
+        // Si ya disparamos un efecto en este drop, NO volver a disparar.
+        // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.
+        if (!acquireDropLock()) {
+            console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`);
+            // Sin effectDecision — las physics reactivas siguen funcionando
+        }
+        else {
+            const vibeId = pattern.vibeId;
+            // Usar el arsenal DIVINE como pool de efectos hard para drops
+            const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club'];
+            // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+            // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+            // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+            // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
+            const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal);
+            // ═══════════════════════════════════════════════════════════════════
+            // 🛡️ WAVE 2200.2: ANTI-FAKE-DROP — Z-Score Sanity Check
+            // ═══════════════════════════════════════════════════════════════════
+            // ROOT CAUSE: generateDropPreparationDecision() tenía CERO validación
+            // energética. Un drop con Z negativo (energía colapsando) seguía
+            // disparando arsenal pesado. El Oracle predice ESTRUCTURA (hay drop),
+            // pero la ENERGÍA puede no acompañar (fake drop, DJ cortó graves).
+            //
+            // FIX: Si el efecto seleccionado es HEAVY ARSENAL Y Z < 0.5σ → abortar.
+            // Los efectos ligeros (no-heavy) pasan sin restricción — un flash suave
+            // en un mini-drop es aceptable. Solo los nucleares requieren energía real.
+            //
+            // EVIDENCE: buildupextrema.md:
+            //   Drop predictions fire during DJ EQ manipulation (bass cut),
+            //   Oracle sees structure → predicts drop, but energy is actually falling.
+            // ═══════════════════════════════════════════════════════════════════
+            const currentZ = zScore ?? 0;
+            if (HEAVY_ARSENAL_EFFECTS.has(suggestedEffect) && currentZ < 0.5) {
+                console.log(`[DecisionMaker 🛡️] ANTI-FAKE-DROP: "${suggestedEffect}" ABORTED — ` +
+                    `Z=${currentZ.toFixed(2)}σ < 0.5 (energy insufficient for heavy arsenal)`);
+                // Sin effectDecision — las physics reactivas manejan la transición suavemente
+            }
+            else {
+                output.effectDecision = {
+                    effectType: suggestedEffect,
+                    intensity: 0.8 + prediction.probability * 0.2, // 0.94-1.0 según probabilidad
+                    zones: ['all'],
+                    reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
+                    confidence: prediction.probability,
+                    // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+                    divineArsenal: [suggestedEffect],
+                };
+                console.log(`[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+                    `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`);
+            }
+        }
     }
     // Color decision: Preparar transición
     output.colorDecision = {

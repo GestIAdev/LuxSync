@@ -91,6 +91,12 @@ export class MasterArbiter extends EventEmitter {
         // State tracking
         this.frameNumber = 0;
         this.lastOutputTimestamp = 0;
+        // 🔎 WAVE 1219.4: Trace throttles (avoid console storms)
+        this._traceLastArbiterLogAtMs = 0;
+        // 🔎 WAVE 2122.2: Output Gate assassination tracking
+        // We keep the last origin (label + stack) so when outputEnabled flips unexpectedly,
+        // we can name the killer.
+        this._lastOutputGateChange = null;
         // 🩸 WAVE 382: Track mover count for spread calculation
         this.moverCount = 0;
         this.config = { ...DEFAULT_ARBITER_CONFIG, ...config };
@@ -618,8 +624,43 @@ export class MasterArbiter extends EventEmitter {
         this._outputEnabled = enabled;
         if (changed) {
             const state = enabled ? '🟢 LIVE' : '🔴 ARMED';
-            console.log(`[MasterArbiter] 🚦 Output Gate: ${state}`);
+            // Capture origin (best-effort). This is intentionally lightweight.
+            const stack = new Error().stack;
+            const last = this._lastOutputGateChange;
+            this._lastOutputGateChange = {
+                enabled,
+                atMs: Date.now(),
+                // label will be set by tagged callers via setOutputEnabledTagged()
+                label: last?.label,
+                stack,
+            };
+            console.log(`[MasterArbiter] 🚦 Output Gate: ${state}`, {
+                prev: last?.enabled,
+                label: this._lastOutputGateChange.label ?? 'unknown',
+            });
+            // Print a trimmed stack once per flip (high-signal, low-frequency)
+            if (stack) {
+                const trimmed = stack.split('\n').slice(0, 8).join('\n');
+                console.log('[MasterArbiter] 🚦 Output Gate origin (trimmed):\n' + trimmed);
+            }
             this.emit('outputEnabled', enabled);
+        }
+    }
+    /**
+     * 🔎 WAVE 2122.2: Tagged gate change — use this from IPC/UI/calibration flows.
+     * Keeps the same public API, but lets us name the caller in logs.
+     */
+    setOutputEnabledTagged(enabled, label) {
+        this._lastOutputGateChange = {
+            enabled: this._outputEnabled,
+            atMs: Date.now(),
+            label,
+            stack: this._lastOutputGateChange?.stack,
+        };
+        this.setOutputEnabled(enabled);
+        // After setOutputEnabled runs, it will emit/log with the label.
+        if (this._lastOutputGateChange) {
+            this._lastOutputGateChange.label = label;
         }
     }
     /**
@@ -1064,7 +1105,17 @@ export class MasterArbiter extends EventEmitter {
         // Log every ~5 seconds when in ARMED state so user knows DMX is blocked
         // ═══════════════════════════════════════════════════════════════════════
         if (!this._outputEnabled && this.frameNumber % 150 === 0) {
-            console.log(`[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | ${this.fixtures.size} fixtures forced to BLACKOUT | Press GO to enable DMX`);
+            const last = this._lastOutputGateChange;
+            console.log(`[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | ${this.fixtures.size} fixtures forced to BLACKOUT | Press GO to enable DMX`, {
+                outputEnabled: this._outputEnabled,
+                lastGateChange: last
+                    ? {
+                        prev: last.enabled,
+                        label: last.label ?? 'unknown',
+                        atMs: last.atMs,
+                    }
+                    : null,
+            });
         }
         // 🧹 WAVE 671.5: Silenced fixture processing spam (every 5s)
         // WAVE 380: Debug fixture IDs being processed
@@ -1116,6 +1167,21 @@ export class MasterArbiter extends EventEmitter {
             // No manual control → full blackout
             return this.createOutputGateBlackout(fixtureId);
         }
+        // 🔎 TRACE (throttled): prove what the Arbiter is *actually* outputting for manual fixtures
+        // This is the fastest way to locate where DMX gets lost: Arbiter vs HAL/Mapper/Driver.
+        if (manualOverride) {
+            const nowMs = Date.now();
+            if (nowMs - this._traceLastArbiterLogAtMs > 750) {
+                this._traceLastArbiterLogAtMs = nowMs;
+                console.log('[TRACE ARBITER] manualOverride active', {
+                    fixtureId,
+                    outputEnabled: this._outputEnabled,
+                    source: manualOverride.source,
+                    overrideChannels: manualOverride.overrideChannels,
+                    controls: manualOverride.controls,
+                });
+            }
+        }
         // LAYER 4: Check blackout first (highest priority after output gate)
         if (this.layer4_blackout) {
             return this.createBlackoutTarget(fixtureId, controlSources);
@@ -1165,6 +1231,24 @@ export class MasterArbiter extends EventEmitter {
         const speed = this.mergeChannelForFixture(fixtureId, 'speed', titanValues, manualOverride, now, controlSources);
         // 🎨 WAVE 1008.6: Merge color_wheel channel (THE WHEELSMITH)
         const color_wheel = this.mergeChannelForFixture(fixtureId, 'color_wheel', titanValues, manualOverride, now, controlSources);
+        // 🔎 TRACE (throttled): final channel values for the manual fixture
+        if (manualOverride) {
+            const nowMs = Date.now();
+            if (nowMs - this._traceLastArbiterLogAtMs > 750) {
+                // NOTE: uses same throttle clock as the log above, but this one happens later in the function.
+                this._traceLastArbiterLogAtMs = nowMs;
+                console.log('[TRACE ARBITER] final merged channels', {
+                    fixtureId,
+                    dimmer,
+                    rgb: { r: red, g: green, b: blue },
+                    pan,
+                    tilt,
+                    speed,
+                    color_wheel,
+                    layer: manualOverride.source,
+                });
+            }
+        }
         // ═══════════════════════════════════════════════════════════════════════
         // 🔥 WAVE 2084: PHANTOM PANEL — Canales Dinámicos para Ingenios
         //

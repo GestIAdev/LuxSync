@@ -6,3 +6,4 @@
 export * from './DMXDriver.interface'
 export * from './MockDriver'
 export * from './ArtNetDriverAdapter'
+export * from './USBDMXDriverAdapter'

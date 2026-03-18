@@ -58,6 +58,8 @@ import { AmazonMist } from './library/fiestalatina/AmazonMist';
 import { MacheteSpark } from './library/fiestalatina/MacheteSpark';
 import { GlitchGuaguanco } from './library/fiestalatina/GlitchGuaguanco';
 import { LatinaMeltdown } from './library/fiestalatina/LatinaMeltdown';
+// 🥇 WAVE 2189: EL TROMPETAZO
+import { OroSolido } from './library/fiestalatina/OroSolido';
 // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
 import { IndustrialStrobe } from './library/techno/IndustrialStrobe';
 import { AcidSweep } from './library/techno/AcidSweep';
@@ -81,6 +83,10 @@ import { SeismicSnap } from './library/techno/SeismicSnap';
 // � WAVE 988: THE FINAL ARSENAL
 import { FiberOptics } from './library/techno/FiberOptics';
 import { CoreMeltdown } from './library/techno/CoreMeltdown';
+// 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+import { NeonBlinder } from './library/techno/NeonBlinder';
+import { SurgicalStrike } from './library/techno/SurgicalStrike';
+import { GhostChase } from './library/techno/GhostChase';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,6 +178,8 @@ const EFFECT_VIBE_RULES = {
     'clave_rhythm': { isDynamic: true }, // 🥁 3-2 Clave pattern with movement
     // ❤️ WAVE 750: THE ARCHITECT'S SOUL
     'corazon_latino': { isDynamic: true }, // ❤️ Heartbeat passion effect
+    // 🥇 WAVE 2189: EL TROMPETAZO
+    'oro_solido': { isDynamic: true }, // 🥇 Muro de oro sólido - drop latino APEX
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
     'industrial_strobe': { requiresStrobe: true, isDynamic: true }, // ⚡ Industrial hammer
     'acid_sweep': { isDynamic: true }, // 🧪 Volumetric blade of light
@@ -195,6 +203,12 @@ const EFFECT_VIBE_RULES = {
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': { isDynamic: false }, // 🌈 Ambient traveling colors - allowed in chill
     'core_meltdown': { requiresStrobe: true, isDynamic: true }, // ☢️ LA BESTIA - extreme strobe
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+    // ═══════════════════════════════════════════════════════════════════════════
+    'neon_blinder': { requiresStrobe: true, isDynamic: true }, // ⚡ APEX flash wall - drops brutales
+    'surgical_strike': { requiresStrobe: true, isDynamic: true }, // 🎯 APEX mover strobe - scalpel in the dark
+    'ghost_chase': { isDynamic: false }, // 👻 Ambient ghost chase - allowed in chill
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
     // ═══════════════════════════════════════════════════════════════════════════
@@ -229,6 +243,7 @@ const EFFECT_ZONE_MAP = {
     // 🌫️ VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
     'void_mist': 'valley',
     'fiber_optics': 'valley',
+    'ghost_chase': 'ambient', // 👻 WAVE 2186: valley→ambient — liberado del silo. Aggression=0.25 pide ambient (30-45%), no valley
     // 🌧️ AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
     'digital_rain': 'ambient',
     'acid_sweep': 'ambient',
@@ -245,6 +260,8 @@ const EFFECT_ZONE_MAP = {
     'gatling_raid': 'peak',
     'core_meltdown': 'peak',
     'industrial_strobe': 'peak',
+    'neon_blinder': 'peak', // ⚡ WAVE 2182: APEX flash wall
+    'surgical_strike': 'intense', // ⚰️ WAVE 2214: DEMOTED peak→intense — deja espacio a IndustrialStrobe
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS - Zone Mapping
     // ═══════════════════════════════════════════════════════════════════════════
@@ -746,6 +763,8 @@ export class EffectManager extends EventEmitter {
         this.effectFactories.set('glitch_guaguanco', () => new GlitchGuaguanco());
         // 💥 Latina Meltdown - LA BESTIA LATINA para peak zone
         this.effectFactories.set('latina_meltdown', () => new LatinaMeltdown());
+        // 🥇 WAVE 2189: EL TROMPETAZO — muro de oro sólido para drops latinos
+        this.effectFactories.set('oro_solido', () => new OroSolido());
         // ═══════════════════════════════════════════════════════════════════════
         // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
         // 🤖 WAVE 810: UNLOCK THE TWINS
@@ -794,6 +813,15 @@ export class EffectManager extends EventEmitter {
         this.effectFactories.set('fiber_optics', () => new FiberOptics());
         // ☢️ Core Meltdown - LA BESTIA extreme strobe (intense/peak)
         this.effectFactories.set('core_meltdown', () => new CoreMeltdown());
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⚡ Neon Blinder - Flash wall APEX (ADSR envelope, movers latched)
+        this.effectFactories.set('neon_blinder', () => new NeonBlinder());
+        // 🎯 Surgical Strike - Scalpel in the dark (par blackout, mover strobe)
+        this.effectFactories.set('surgical_strike', () => new SurgicalStrike());
+        // 👻 Ghost Chase - Phantom dimmer chase (frozen movers, breathing pars)
+        this.effectFactories.set('ghost_chase', () => new GhostChase());
         // ═══════════════════════════════════════════════════════════════════════
         // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
         // ═══════════════════════════════════════════════════════════════════════
@@ -889,13 +917,13 @@ export class EffectManager extends EventEmitter {
             // WAVE 2101.1: Agregamos TODOS los drops multigenérico para evitar Dictadores Inmortales
             const isEmergency = [
                 'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe', 'gatling_raid', 'abyssal_rise', 'acid_sweep', // Techno
-                'latina_meltdown', 'strobe_burst', 'tidal_wave', // Latina
+                'latina_meltdown', 'oro_solido', 'strobe_burst', 'tidal_wave', // Latina
                 'thunder_struck', 'feedback_storm', 'power_chord' // PopRock
             ].includes(effectType);
             // Dictadores Peak son INMORTALES: Nada puede interrumpirlos
             const dictatorIsPeak = [
                 'solar_flare', 'strobe_storm', 'core_meltdown', 'industrial_strobe',
-                'latina_meltdown', 'strobe_burst', 'thunder_struck'
+                'latina_meltdown', 'oro_solido', 'strobe_burst', 'thunder_struck'
             ].includes(activeDictator.effectType);
             if (!isEmergency || dictatorIsPeak) {
                 console.log(`🔒 [GLOBAL_LOCK] ${effectType} BLOQUEADO: ${activeDictator.effectType} tiene la palabra.`);
@@ -925,7 +953,7 @@ export class EffectManager extends EventEmitter {
         }
         // 🌫️ WAVE 998: Rule 3 - ATMOSPHERIC EXCLUSIVITY
         // Solo un efecto atmosférico a la vez
-        const ATMOSPHERIC_EFFECTS = ['void_mist', 'deep_breath', 'sonar_ping', 'fiber_optics', 'digital_rain'];
+        const ATMOSPHERIC_EFFECTS = ['void_mist', 'deep_breath', 'sonar_ping', 'fiber_optics', 'digital_rain', 'ghost_chase'];
         const isAtmospheric = ATMOSPHERIC_EFFECTS.includes(effectType);
         if (isAtmospheric) {
             const atmosphericRunning = Array.from(this.activeEffects.values())
@@ -1150,8 +1178,8 @@ export class EffectManager extends EventEmitter {
  */
 EffectManager.CRITICAL_EFFECTS = new Set([
     'solar_flare', // Takeover total - nada más puede competir
-    'strobe_storm', // Strobe intenso - no mezclar
     'blackout', // Blackout manual
+    // 'strobe_storm' - REMOVIDO WAVE 2186: cooldown propio (DICTATOR 12s) es suficiente, no necesita silo nuclear
     // 'abyssal_rise' - REMOVIDO WAVE 930.1: mixBus='global' es suficiente
 ]);
 /**

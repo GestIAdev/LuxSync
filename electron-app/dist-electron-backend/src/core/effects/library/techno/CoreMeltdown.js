@@ -34,11 +34,14 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    durationMs: 800, // 800ms - SHORT (exento de THE MOVER LAW)
-    strobeRateHz: 12, // 12 Hz - Límite de seguridad (no más de 15)
+    // 🔨 WAVE 2202: VISUAL REPOWER
+    // Era: 800ms, 12Hz, fadeOut 300ms (37% del tiempo en fade = efecto castrado)
+    // Ahora: 1200ms (La Bestia necesita espacio), 14Hz (más violento), fadeOut 150ms (solo 12%)
+    durationMs: 1200, // 1200ms — La Bestia necesita tiempo para devastar
+    strobeRateHz: 14, // 14 Hz — Dentro del límite 15Hz, MUCHO más brutal
     maxIntensity: 1.0, // 100% - SIN PIEDAD
     fadeInMs: 0, // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
-    fadeOutMs: 300, // 🌊 WAVE 1090: TECHNO = Salida limpia (400ms sería 50% del efecto)
+    fadeOutMs: 150, // 🌊 WAVE 2202: 300→150ms. Era el 37% del efecto. Reducido al 12%.
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // COLORES NUCLEARES
@@ -89,10 +92,12 @@ export class CoreMeltdown extends BaseEffect {
         super.trigger(config);
         this.strobeState = true; // Empezar encendido
         this.lastStrobeToggle = 0;
-        // 🔥 WAVE 998.1: MAGENTA NUCLEAR SIEMPRE
-        // ❌ ANTES: Alternaba magenta/blanco (Date.now() % 2)
-        // ✅ AHORA: Siempre MAGENTA (identidad techno, no más blanco)
-        this.useWhiteFlash = false;
+        // 🔥 WAVE 2202: Restaurar devastación visual. 
+        // WAVE 998.1 había castrado esto a siempre-magenta. 
+        // La Bestia alterna: primera ON = magenta (impacto), luego blanco, luego magenta...
+        // El blanco aparece en cada 2º ciclo ON — perceptualmente diferente de magenta
+        // porque el ojo humano procesa el blanco como "más caliente"/más agresivo
+        this.useWhiteFlash = false; // Primer flash: magenta. Luego alterna libremente.
         console.log(`[☢️ CORE_MELTDOWN] ⚠️ LA BESTIA DESPIERTA! Rate=${this.config.strobeRateHz}Hz`);
     }
     update(deltaMs) {

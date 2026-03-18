@@ -135,7 +135,7 @@ const ZONE_DEFINITIONS: ZoneDefinition[] = [
     stereoChannel: 'floor'
   },
   
-  // FLOOR RIGHT (para visual, mismo ID 'floor' en lógica)
+  // FLOOR RIGHT (mismo FixtureZone 'floor', key diferenciado en render con index)
   {
     id: 'floor',
     name: 'FLOOR R',
@@ -262,9 +262,9 @@ const ZoneOverlay: React.FC<ZoneOverlayProps> = ({
   
   return (
     <group name="zone-overlay">
-      {zones.map(zone => (
+      {zones.map((zone, index) => (
         <ZonePlane
-          key={zone.id}
+          key={`${zone.id}-${index}`}
           zone={zone}
           isHighlighted={highlightedZone === zone.id}
           onClick={() => onZoneClick?.(zone.id)}

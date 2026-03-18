@@ -101,6 +101,8 @@ interface TrinityContextValue {
   // WAVE 9.6.4: Audio source controls
   startSystemAudio: () => Promise<void>
   startMicrophone: () => Promise<void>
+  /** WAVE 3000: Detener captura de audio completamente (modo OFF) */
+  stopAudio: () => void
 }
 
 // ============================================================================
@@ -349,26 +351,27 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
         }
       }
       
-      // 3. Start audio capture
-      await startCapture()
+      // Audio capture: NO iniciamos aquí.
+      // El usuario DEBE activar el audio manualmente desde SystemsCheck.
+      // Audio permanece OFFLINE hasta acción explícita del usuario.
       
       // Update state
       setState(prev => ({
         ...prev,
         isConnected: true,
-        isAudioActive: true,
+        isAudioActive: false,  // KILL AUTO-AUDIO: siempre OFF al arrancar
       }))
       setConnected(true)
       setInitialized(true)
       
       addLogEntry({
         type: 'INIT' as LogEntryType,
-        message: '🔺 TRINITY SYSTEM ONLINE',
-        data: { audioActive: true },
+        message: '🔺 TRINITY SYSTEM ONLINE — Audio OFF (manual)',
+        data: { audioActive: false },
       })
       
       // 🧹 WAVE 63.7: Single clean log
-      console.log('[Selene UI] ✅ Trinity Online')
+      console.log('[Selene UI] ✅ Trinity Online — Audio awaiting manual activation')
       
     } catch (error) {
       console.error('[Trinity] ❌ Error starting:', error)
@@ -377,7 +380,7 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
         message: `Trinity start failed: ${error}`,
       })
     }
-  }, [startCapture, handleStateUpdate, setConnected, setInitialized, addLogEntry])
+  }, [handleStateUpdate, setConnected, setInitialized, addLogEntry])
   
   // Stop Trinity System
   const stopTrinity = useCallback(() => {
@@ -527,26 +530,28 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   }, [audioMetrics, isCapturing, updateAudioStore])
   
   // 🔌 WAVE 63.95: TRUE GLOBAL KILL SWITCH
-  // Power-controlled startup - stops ALL audio processing when OFFLINE
+  // Power-controlled startup — inicia workers/subscriptions al ONLINE.
+  // KILL AUTO-AUDIO: el audio NO se inicia aquí, solo los workers de Selene.
+  // El audio es control MANUAL exclusivo del usuario.
   const powerState = usePowerStore((s) => s.powerState)
   const hasStartedRef = useRef(false)
   
   useEffect(() => {
-    // Start when powerState becomes ONLINE (user pressed power button)
+    // Start workers cuando powerState → ONLINE (usuario pulsó power)
     if (powerState === 'ONLINE' && !hasStartedRef.current) {
-      console.log('[Trinity] 🔌 POWER ON - Starting audio & workers')
+      console.log('[Trinity] 🔌 POWER ON - Starting workers (audio MANUAL)')
       hasStartedRef.current = true
-      startTrinity()
+      startTrinity()  // Inicia workers y subscriptions, NO el audio
     }
     
-    // KILL SWITCH: Stop when powerState becomes OFFLINE
+    // KILL SWITCH: Stop todo (incluyendo audio) cuando → OFFLINE
     if (powerState === 'OFFLINE') {
       if (hasStartedRef.current) {
-        console.log('[Trinity] 🔌 POWER OFF - Killing audio & workers')
+        console.log('[Trinity] 🔌 POWER OFF - Killing all (audio + workers)')
         hasStartedRef.current = false
         stopTrinity()
       }
-      // Extra safety: force stop capture even if somehow running
+      // Seguridad extra: forzar stop si audio seguía activo
       if (isCapturing) {
         console.log('[Trinity] 🛑 FORCE STOP - Audio was still running!')
         stopCapture()
@@ -561,6 +566,14 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
+  // B2 FIX: stopAudio wrapper que para captura Y refleja isAudioActive=false en el estado.
+  // Antes: stopAudio: stopCapture → stopCapture no toca state.isAudioActive
+  // Ahora: el estado se actualiza aquí, SystemsCheck detecta el cambio via useEffect
+  const stopAudio = useCallback(() => {
+    stopCapture()
+    setState(prev => ({ ...prev, isAudioActive: false }))
+  }, [stopCapture])
+
   // Context value
   const value: TrinityContextValue = {
     state,
@@ -571,6 +584,7 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     setSimulating,
     startSystemAudio,
     startMicrophone,
+    stopAudio,
   }
   
   return (

@@ -40,6 +40,13 @@ export class FixtureMapper {
         this.safetyLayer = getHardwareSafetyLayer();
         // 🎨 WAVE 1001: Profile cache (avoid repeated lookups)
         this.profileCache = new Map();
+        // 🔎 WAVE 2122.1: Fixture-level DMX trace (surgical, opt-in)
+        // Set window.__luxsyncTraceFixtureId in renderer devtools OR set env var LUXSYNC_TRACE_FIXTURE_ID
+        // to print DMX slices for a single fixture without flooding the console.
+        this.traceFixtureId = (typeof process !== 'undefined' && process?.env?.LUXSYNC_TRACE_FIXTURE_ID)
+            ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+            : null;
+        this.traceLastLogAtMs = 0;
         // 🎨 WAVE 1001: Debug flag
         this.halDebug = false;
         this.halDebugLastLog = 0;
@@ -164,7 +171,7 @@ export class FixtureMapper {
      * @returns DMX packets ready to send to driver
      */
     statesToDMXPackets(states) {
-        return states.map(state => {
+        const packets = states.map(state => {
             // 🎨 WAVE 1001: Apply HAL translation BEFORE building channels
             const translatedState = this.applyHALTranslation(state);
             // 🎨 WAVE 687: Build channel array dynamically from fixture definition
@@ -176,6 +183,43 @@ export class FixtureMapper {
                 fixtureId: translatedState.fixtureId ?? `fixture-${translatedState.dmxAddress}`
             };
         });
+        // 🔎 WAVE 2122.1: Focused DMX slice trace for a single fixture
+        // NOTE: We keep this extremely defensive and throttled.
+        try {
+            const now = Date.now();
+            if (this.traceFixtureId && now - this.traceLastLogAtMs > 350) {
+                const p = packets.find(pkt => pkt.fixtureId === this.traceFixtureId) ?? null;
+                if (p) {
+                    this.traceLastLogAtMs = now;
+                    const addr = Math.max(1, Math.min(512, p.address ?? 1));
+                    const start = Math.max(1, addr - 8);
+                    const end = Math.min(512, addr + Math.min(40, p.channels.length));
+                    const sliceStart = start - addr;
+                    const sliceEnd = end - addr;
+                    const slice = p.channels.slice(Math.max(0, sliceStart), Math.max(0, sliceEnd));
+                    // Pull pan/tilt/speed values if present in state.channels definition
+                    const typed = states.find(s => (s.fixtureId ?? `fixture-${s.dmxAddress}`) === this.traceFixtureId) ?? null;
+                    const pan = typed?.physicalPan ?? typed?.pan;
+                    const tilt = typed?.physicalTilt ?? typed?.tilt;
+                    const speed = typed?.speed;
+                    console.log('[TRACE MAPPER] fixture DMX slice', {
+                        fixtureId: this.traceFixtureId,
+                        universe: p.universe,
+                        address: addr,
+                        range: { start, end },
+                        pan,
+                        tilt,
+                        speed,
+                        channelsLen: p.channels.length,
+                        slice,
+                    });
+                }
+            }
+        }
+        catch (e) {
+            // Never break mapping
+        }
+        return packets;
     }
     /**
      * 🎨 WAVE 1001: HAL TRANSLATION - The Magic Happens Here

@@ -24,12 +24,14 @@
  *
  * @layer HAL
  * @version TITAN 2.0 + BABEL FISH
+ * 🎵 WAVE 2211: PIPELINE EXORCISM — Real beatPhase injection + Physics profile cache
  */
 import { hslToRgb, createEmptyUniverse, } from '../core/protocol';
 import { PhysicsEngine } from './physics/PhysicsEngine';
 import { ZoneRouter } from './mapping/ZoneRouter';
 import { FixtureMapper } from './mapping/FixtureMapper';
 import { MockDMXDriver } from './drivers';
+import { USBDMXDriverAdapter } from './drivers/USBDMXDriverAdapter';
 // � WAVE 2042.20: BABEL FISH - Color Translation Layer
 import { getColorTranslator } from './translation/ColorTranslator';
 import { getProfile, getProfileByModel, needsColorTranslation, generateProfileFromDefinition } from './translation';
@@ -43,6 +45,15 @@ import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
 export class HardwareAbstraction {
     constructor(config = {}) {
         this.currentVibeId = 'idle';
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🗑️ WAVE 2211: PHYSICS PROFILE INJECTION CACHE
+        // translateToDriverPhysicsProfile() was called 60×/sec PER FIXTURE,
+        // creating a new DriverPhysicsProfile object each time even though
+        // the fixture's physics profile NEVER changes at runtime.
+        // Cache: Set<fixtureId> tracks which fixtures have already been injected.
+        // Cleared on vibe change (setVibe()) to re-inject with new vibe config.
+        // ═══════════════════════════════════════════════════════════════════════
+        this.injectedPhysicsProfiles = new Set();
         // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
         this.colorTranslator = getColorTranslator();
         this.safetyLayer = getHardwareSafetyLayer();
@@ -104,8 +115,17 @@ export class HardwareAbstraction {
         // 🔧 WAVE 338: Movement Physics Driver
         this.movementPhysics = new FixturePhysicsDriver();
         this.currentOptics = getOpticsConfig('idle');
-        // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
-        this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType);
+        // 🔥 CORTAFUEGOS ANTI-ZOMBIES:
+        // Si el tipo es 'usb' o 'usb-serial', matamos al externalDriver (suele ser Art-Net residual)
+        // y forzamos la creación del adaptador USB.
+        // Nota: 'usb-serial' viene del frontend (UI), pero el HAL trabaja con DriverType normalizado.
+        if (this.config.driverType === 'usb' || this.config.driverType === 'usb-serial') {
+            this.driver = this.createDriver('usb');
+        }
+        else {
+            // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
+            this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType);
+        }
         // Configure mapper
         this.mapper.setInstallationType(this.config.installationType);
         // Initialize universe 1 (extract Uint8Array from DMXUniverse)
@@ -114,6 +134,18 @@ export class HardwareAbstraction {
     }
     /**
      * 🐍 Aplica phase offset por fixture para crear efecto serpiente
+     *
+     * @deprecated WAVE 2100 — CÓDIGO MUERTO INTENCIONAL
+     * Este método SOLO es llamado desde renderFromIntent() (línea ~597),
+     * flujo que está INACTIVO desde WAVE 2086.1 cuando se migró a
+     * renderFromTarget() como único flujo de renderizado activo.
+     *
+     * NO ELIMINAR: Se mantiene como referencia arquitectónica para una
+     * posible reactivación del flujo intent-based si se implementa
+     * el motor de patrones procedurales (roadmap post-beta).
+     *
+     * Última auditoría: WAVE 2100 — Confirmado dead code.
+     *
      * @param baseX - Posición X base del Engine (0-1)
      * @param baseY - Posición Y base del Engine (0-1)
      * @param pattern - Patrón de movimiento activo
@@ -470,11 +502,10 @@ export class HardwareAbstraction {
         // ═══════════════════════════════════════════════════════════════════════
         // Get timing info for dynamic optics
         const opticsTimeSeconds = Date.now() / 1000;
-        // Beat phase approximation from movement speed
-        const movementSpeed = intent.movement?.speed || 0.5;
-        const approxBpm = movementSpeed * 240;
-        const beatDuration = 60 / Math.max(60, approxBpm); // seconds per beat
-        const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration; // 0-1
+        // 🎵 WAVE 2211: USE REAL BEAT PHASE from AudioMetrics (injected by orchestrator)
+        // BEFORE: Calculated fake beatPhase from movement speed → erratic optics
+        // AFTER: Real PLL/Worker beatPhase or 0 if no audio
+        const beatPhase = audio.beatPhase ?? 0;
         // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
         const physicsDt = this.measurePhysicsDeltaTime();
         const statesWithPhysics = finalStates.map((state, index) => {
@@ -500,13 +531,15 @@ export class HardwareAbstraction {
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
                 // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
-                // El profile puede venir en 3 formatos distintos. translateToDriverPhysicsProfile
-                // los normaliza al formato que entiende el FixturePhysicsDriver.
-                const profile = this.getFixtureProfileCached(fixture);
-                const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
-                const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
-                if (driverProfile) {
-                    this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
+                // 🗑️ WAVE 2211: Cached — only inject once per fixture (cleared on vibe change)
+                if (!this.injectedPhysicsProfiles.has(fixtureId)) {
+                    const profile = this.getFixtureProfileCached(fixture);
+                    const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
+                    const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
+                    if (driverProfile) {
+                        this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
+                    }
+                    this.injectedPhysicsProfiles.add(fixtureId);
                 }
                 // ═══════════════════════════════════════════════════════════════════════
                 // 🔧 WAVE 340.6 + 2074.2: DIRECT DMX INTERPOLATION
@@ -719,8 +752,18 @@ export class HardwareAbstraction {
         });
         // Apply physics and dynamic optics (same as render())
         const opticsTimeSeconds = Date.now() / 1000;
-        const beatDuration = 0.5; // Default 120 BPM
-        const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎵 WAVE 2211: USE REAL BEAT PHASE — KILL THE FAKE 120 BPM
+        //
+        // BEFORE: beatDuration = 0.5 (hardcoded 120 BPM assumption)
+        //         beatPhase = (time % 0.5) / 0.5 → constant 2 pulses/sec
+        //         This made chill-lounge optics pulse at rock speed!
+        //
+        // AFTER:  beatPhase comes from PLL/Worker via AudioMetrics.
+        //         If no real beat data, fall back to 0 (no pulsing).
+        //         Optics now sync to ACTUAL music tempo, not a fake metronome.
+        // ═══════════════════════════════════════════════════════════════════════
+        const beatPhase = audio.beatPhase ?? 0;
         // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
         const physicsDt = this.measurePhysicsDeltaTime();
         const statesWithPhysics = fixtureStates.map((state, index) => {
@@ -741,11 +784,17 @@ export class HardwareAbstraction {
             const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
                 // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
-                const profile = this.getFixtureProfileCached(fixture);
-                const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
-                const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
-                if (driverProfile) {
-                    this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
+                // 🗑️ WAVE 2211: Only inject on first encounter or after vibe change.
+                // The fixture's physical profile (motor type, max velocity) doesn't change
+                // at runtime. Re-translating + re-injecting 60×/sec was pure GC waste.
+                if (!this.injectedPhysicsProfiles.has(fixtureId)) {
+                    const profile = this.getFixtureProfileCached(fixture);
+                    const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
+                    const driverProfile = this.translateToDriverPhysicsProfile(rawPhysics);
+                    if (driverProfile) {
+                        this.movementPhysics.updatePhysicsProfile(fixtureId, driverProfile);
+                    }
+                    this.injectedPhysicsProfiles.add(fixtureId);
                 }
                 // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
                 this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
@@ -1147,10 +1196,10 @@ export class HardwareAbstraction {
             case 'mock':
                 // WAVE 252: Silent mock driver
                 return new MockDMXDriver({ debug: false });
+            case 'usb-serial':
             case 'usb':
-                // For now, fall back to silent mock
-                // Real USB driver would be: return new USBDMXDriverAdapter()
-                return new MockDMXDriver({ debug: false });
+                // 🔥 ARQUITECTURA LIMPIA: Usamos el adaptador oficial (HAL ⇄ Hydra)
+                return new USBDMXDriverAdapter();
             case 'artnet':
                 // For now, fall back to silent mock
                 return new MockDMXDriver({ debug: false });
@@ -1200,6 +1249,12 @@ export class HardwareAbstraction {
         this.sendToDriver(safeStates);
     }
     sendToDriver(states) {
+        // 🔍 TRACE DIRECTIVE: ¿Quién es el driver y qué le pasa?
+        if (this.framesRendered % 100 === 0) {
+            console.log(`[TRACE HAL] Nombre del Driver: ${this.driver?.constructor?.name ?? 'unknown'}`);
+            console.log(`[TRACE HAL] ¿Está conectado?: ${this.driver?.isConnected}`);
+            console.log(`[TRACE HAL] ¿Tiene método send?: ${typeof this.driver?.send === 'function'}`);
+        }
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
         // If driver is not connected, silently drop packets.
         // User MUST manually start ArtNet/USB from Dashboard.
@@ -1219,6 +1274,47 @@ export class HardwareAbstraction {
         }
         // Convert states to DMX packets
         const packets = this.mapper.statesToDMXPackets(states);
+        // 🔎 WAVE 1219.4: DMX trace (throttled)
+        // We log only occasionally to avoid flooding, but enough to pinpoint where DMX output diverges.
+        if (this.framesRendered % 120 === 0) {
+            try {
+                const byUniverse = new Map();
+                for (const p of packets) {
+                    byUniverse.set(p.universe, (byUniverse.get(p.universe) ?? 0) + 1);
+                }
+                // Preview first packet channels (first 24 bytes) — enough to spot sudden reds, shutters, dimmer bursts.
+                // Ensure fixed 24-length output so diffs are meaningful.
+                const firstPacket = packets[0] ?? null;
+                const preview24 = firstPacket
+                    ? Array.from({ length: 24 }, (_, i) => firstPacket.channels[i] ?? 0).join(',')
+                    : null;
+                // Also preview the first packet that has any non-zero byte in the first 24.
+                // This helps when packet[0] is all zeros or belongs to a different fixture.
+                const firstNonZero = packets.find(p => {
+                    for (let i = 0; i < 24; i++) {
+                        const v = p.channels[i] ?? 0;
+                        if (v !== 0)
+                            return true;
+                    }
+                    return false;
+                }) ?? null;
+                const nonZeroPreview24 = firstNonZero
+                    ? Array.from({ length: 24 }, (_, i) => firstNonZero.channels[i] ?? 0).join(',')
+                    : null;
+                console.log('[TRACE HAL] packets', {
+                    statesIn: states.length,
+                    packetsOut: packets.length,
+                    universes: Array.from(byUniverse.entries()),
+                    firstPacketUniverse: firstPacket ? firstPacket.universe : null,
+                    firstPacketPreview24: preview24,
+                    firstNonZeroUniverse: firstNonZero ? firstNonZero.universe : null,
+                    firstNonZeroPreview24: nonZeroPreview24,
+                });
+            }
+            catch (e) {
+                console.warn('[TRACE HAL] packets trace failed:', e);
+            }
+        }
         // Debug output silenced - Wave 2042.29
         // (was spamming console every frame)
         // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
@@ -1282,6 +1378,11 @@ export class HardwareAbstraction {
         this.currentVibeId = vibeId;
         // Update movement physics (pan/tilt acceleration, velocity, friction)
         this.movementPhysics.setVibe(vibeId);
+        // 🗑️ WAVE 2211: Invalidate physics profile injection cache on vibe change.
+        // FixturePhysicsDriver.setVibe() changes the physics mode (snap/classic),
+        // but the per-fixture speed factors need re-injection too since the new
+        // vibe's rev limits interact differently with fixture capabilities.
+        this.injectedPhysicsProfiles.clear();
         // Update optics defaults (zoom, focus)
         this.currentOptics = getOpticsConfig(vibeId);
         // 🔍 WAVE 338.2: Pass optics to FixtureMapper
@@ -1390,4 +1491,4 @@ export class HardwareAbstraction {
     }
 }
 // Export singleton for easy use
-export const hardwareAbstraction = new HardwareAbstraction();
+export const hardwareAbstraction = new HardwareAbstraction({ driverType: 'usb' });

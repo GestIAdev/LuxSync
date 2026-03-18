@@ -71,11 +71,14 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
   ],
   'techno-club': [
     'neon_blinder',      // ⚡ WAVE 2182: APEX flash wall (primero — más nuevo y brutal)
-    'surgical_strike',   // 🎯 WAVE 2182: Bisturí en la oscuridad
-    'industrial_strobe', // 🔨 El Martillo (fallback clásico)
+    'industrial_strobe', // 🔨 El Martillo — APEX único, dueño del DROP
     'gatling_raid',      // 🔫 Metralladora
     'core_meltdown',     // ☢️ LA BESTIA
     'strobe_storm',      // ⚡ 🛸 WAVE 2187: Tormenta — SOLO techno, su hogar natural
+    // ⚰️ WAVE 2214: surgical_strike EXILIADO del DIVINE_ARSENAL
+    // Era el segundo en el arsenal y ganaba el DROP con score de diversidad inflado.
+    // El surgical_strike es tier INTENSE, no PEAK/DIVINE. Su hogar es la buildup,
+    // no el drop. El DROP pertenece al Martillo.
   ],
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎸 WAVE 1020: POP-ROCK LEGENDS - DIVINE ARSENAL

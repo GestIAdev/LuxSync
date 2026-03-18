@@ -14,7 +14,7 @@ export default defineConfig({
                         outDir: 'dist-electron',
                         rollupOptions: {
                             // 🧠 WAVE 10: Excluir módulos nativos del bundle
-                            external: ['better-sqlite3'],
+                            external: ['better-sqlite3', 'serialport'],
                         },
                     },
                 },

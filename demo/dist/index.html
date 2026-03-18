@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 LuxSync Demo - Selene Audio Reactive Lighting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 2px solid #00FFFF;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00FFFF, #8B5CF6, #EC4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 15px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #0891B2, #00FFFF);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #DC2626, #EF4444);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, #D97706, #F59E0B);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-blackout {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-mic {
+            background: linear-gradient(135deg, #059669, #10B981);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-reload {
+            background: linear-gradient(135deg, #8B5CF6, #EC4899) !important;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+        }
+
+        /* Canvas styling - CRÍTICO para que se vea */
+        #dmx-simulator {
+            display: block;
+            width: 100%;
+            max-width: 1200px;
+            height: 600px;
+            margin: 0 auto;
+            background: #000;
+            border: 3px solid #00FFFF !important;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.3),
+                0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .info-panel {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 2px solid #8B5CF6;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00FFFF;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .info-card h3 {
+            color: #00FFFF;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .info-card p {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status.active {
+            background: #00FFFF;
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .status.inactive {
+            background: #666;
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #888;
+        }
+
+        .emoji {
+            font-size: 1.5rem;
+        }
+
+        #log {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            border: 1px solid #00FFFF;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #0f0;
+            box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        .log-error {
+            color: #EC4899;
+            text-shadow: 0 0 5px rgba(236, 72, 153, 0.5);
+        }
+
+        .log-warning {
+            color: #F59E0B;
+        }
+
+        .log-info {
+            color: #00FFFF;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/index-BACKzi2D.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 LuxSync Demo</h1>
+            <p class="subtitle">Selene Consciousness + Audio Reactive DMX Lighting</p>
+            <p class="subtitle" style="font-size: 0.9rem; margin-top: 10px;">
+                <span class="emoji">🎤</span> Audio → 
+                <span class="emoji">🧠</span> Selene → 
+                <span class="emoji">🎨</span> Colors → 
+                <span class="emoji">💡</span> DMX Fixtures
+            </p>
+        </header>
+
+        <div class="controls" style="border: 2px solid #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);">
+            <h3 style="grid-column: 1 / -1; text-align: center; color: #00FFFF; margin: 0; padding: 10px 0;">
+                🎮 Audio Input Mode
+            </h3>
+            <button class="btn-mic" onclick="setAudioMode('microphone')">
+                🎤 Microphone
+            </button>
+            <button class="btn-test" onclick="setAudioMode('simulator')" style="background: linear-gradient(135deg, #8B5CF6, #EC4899);">
+                � Audio Simulator
+            </button>
+            <button class="btn-blackout" onclick="setDMXMode('usb')" style="background: linear-gradient(135deg, #10B981, #059669);">
+                🔌 USB DMX (Tornado)
+            </button>
+        </div>
+
+        <div class="controls">
+            <button class="btn-start" onclick="startDemo()">
+                ▶️ Start Demo
+            </button>
+            <button class="btn-stop" onclick="stopDemo()">
+                ⏹️ Stop Demo
+            </button>
+            <button class="btn-test" onclick="testPattern()">
+                🌈 Test Pattern (7 Colors!)
+            </button>
+            <button class="btn-blackout" onclick="blackout()">
+                ⚫ Blackout
+            </button>
+            <button class="btn-reload" onclick="location.reload(true)">
+                🔄 Force Reload
+            </button>
+        </div>
+
+        <div class="controls" style="margin-top: 15px; border: 2px solid #8B5CF6; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);">
+            <h3 style="grid-column: 1 / -1; text-align: center; color: #8B5CF6; margin: 0; padding: 10px 0;">
+                🎨 Visual Effects
+            </h3>
+            <button class="btn-test" onclick="setEffect('chase')">
+                🏃 Chase Pattern
+            </button>
+            <button class="btn-test" onclick="setEffect('wave')">
+                🌊 Wave Effect
+            </button>
+            <button class="btn-test" onclick="setEffect('strobe')">
+                ⚡ Bass Strobe
+            </button>
+            <button class="btn-test" onclick="setEffect('pulse')">
+                💓 Pulse Beat
+            </button>
+            <button class="btn-test" onclick="setEffect('sparkle')">
+                ✨ Sparkle
+            </button>
+            <button class="btn-blackout" onclick="clearEffects()">
+                🚫 Clear Effects
+            </button>
+        </div>
+
+        <canvas id="dmx-simulator"></canvas>
+
+        <div class="info-panel">
+            <h2>📊 System Status</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>🎮 Simulator</h3>
+                    <p>Status: <span class="status inactive" id="sim-status">Inactive</span></p>
+                    <p id="sim-info">8 Virtual PAR fixtures ready</p>
+                </div>
+                <div class="info-card">
+                    <h3>🎤 Audio Input</h3>
+                    <p>Status: <span class="status inactive" id="audio-status">Inactive</span></p>
+                    <p id="audio-info">Click "Enable Microphone" to start</p>
+                </div>
+                <div class="info-card">
+                    <h3>🧠 Selene Core</h3>
+                    <p>Status: <span class="status active">Ready</span></p>
+                    <p>🌈 7 Nodes Active: DO 🔴 | RE 🟠 | MI 🟡 | FA 🟢 | SOL 🔵 | LA 💙 | SI 🟣</p>
+                </div>
+                <div class="info-card">
+                    <h3>⚡ Performance</h3>
+                    <p>Target: <strong>30 FPS</strong></p>
+                    <p id="perf-info">Waiting to start...</p>
+                </div>
+            </div>
+
+            <div id="log">
+                <div class="log-entry log-info">🎮 LuxSync Demo initialized</div>
+                <div class="log-entry log-info">💡 Ready for audio input...</div>
+            </div>
+        </div>
+
+        <footer>
+            <p>🌟 LuxSync - Transforming consciousness into light</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                Made with ❤️ by Selene AI | Portable Demo (No Hardware Required)
+            </p>
+        </footer>
+    </div>
+
+</body>
+</html>

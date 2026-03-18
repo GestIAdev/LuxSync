@@ -1,37 +1,3 @@
-/**
- * WAVE 297: FIESTA LATINA COMPLETA 🎉🍾
- * ============================================================================
- *
- * MISIÓN CUMPLIDA - De "roto" a "sublime" en 7 WAVEs (291-297)
- *
- * 🔥 WAVE 1004.1: STEREO SPLIT & FAT BASS
- *   - Movers divididos: L (Mid/Voz) vs R (Treble/Trompetas)
- *   - Front Pars: Peak Hold "Gordo" (bombo latino ≠ click metal)
- *
- * ARQUITECTURA FINAL:
- *   FRONT PARs → BASS (Gate 0.55, FAT HOLD 0.85) = BOMBO "BOOM" (gordo)
- *   BACK PARs  → TREBLE (Gate 0.22, Decay 0.25) = SNARE "tacka"
- *   MOVER L    → MID PURO (Gate 0.22, Decay 0.60) = VOZ/MELODÍA (El Galán)
- *   MOVER R    → TREBLE (Gate 0.18, Decay 0.40) = TROMPETAS/GÜIRA (La Dama)
- *
- * CALIBRACIÓN (Análisis estadístico 200+ muestras):
- *   - Beat loss: ~4% (solo silencios arquitectónicos reales)
- *   - Delta < 0.10: 90% del flujo = CINTURA DE BAILARINA
- *   - Delta > 0.20: 9 casos = PUNCHES INTENCIONALES (drops/entradas)
- *
- * GÉNEROS VALIDADOS:
- *   ✅ Reggaetón (TÚN-tacka-TÚN-tacka)
- *   ✅ Cumbia (ritmo de acordeón)
- *   ✅ Cumbiatón (híbrido)
- *   ✅ Remixes de DJ con EQ cuestionable
- *
- * PRESUPUESTO: $0 y dos gatos 🐱🐱
- * COMPETENCIA: GrandMA3 = $$$$$$$  |  LuxSync = $800
- *
- * "Lo espectacular es el 95%. Lo sublime es el 100%." - Radwulf (Virgo)
- * "La luz que respira, no parpadea." - PunkOpus
- * ============================================================================
- */
 export class LatinoStereoPhysics {
     constructor() {
         // ESTADO INTERNO
@@ -44,11 +10,12 @@ export class LatinoStereoPhysics {
         this.currentMoverIntensity = 0;
         this.currentBackParIntensity = 0;
         this.currentFrontParIntensity = 0;
+        this.frontParActive = false; // WAVE 2199: hysteresis ON/OFF clon Techno
         this.lastSectionType = 'verse';
         this.whitePuncturePhase = 'idle';
         this.whitePunctureFramesRemaining = 0;
-        // 🔥 WAVE 1004.1: STEREO SPLIT & FAT BASS STATE
-        this.currentMoverIntensityL = 0; // El Galán (Mid/Voz)
+        // ?? WAVE 1004.1: STEREO SPLIT & FAT BASS STATE
+        this.currentMoverIntensityL = 0; // El Gal�n (Mid/Voz)
         this.currentMoverIntensityR = 0; // La Dama (Treble/Trompetas)
         this.frontParPeak = 0; // Fat Bass Peak Hold
     }
@@ -89,6 +56,7 @@ export class LatinoStereoPhysics {
         const bass = metrics.normalizedBass;
         const mid = metrics.normalizedMid ?? metrics.normalizedEnergy;
         const treble = metrics.normalizedHigh ?? 0;
+        const highMid = metrics.normalizedHighMid ?? (mid * 0.6 + treble * 0.4);
         const bassDelta = bass - this.lastBass;
         const energyDelta = previousEnergy - currentEnergy;
         // MACHINE GUN BLACKOUT
@@ -124,23 +92,29 @@ export class LatinoStereoPhysics {
             }
         }
         // BACK PARs - WAVE 294: BOFETADA PRECISA = Snares, Hi-hats, Platos
-        // Filosofía reggaeton: TÚN-tacka-TÚN-tacka
-        //   - TÚN = bombo (BASS) → FRONT PARs
-        //   - tacka = snare/hi-hat (TREBLE) → BACK PARs
+        // Filosof�a reggaeton: T�N-tacka-T�N-tacka
+        //   - T�N = bombo (BASS) ? FRONT PARs
+        //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
         // Gate 0.14: Solo picos reales de treble (>0.14) activan
         // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
-        if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
-            // TREBLE: Normalizar sobre rango efectivo (0.14-0.30)
-            const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (0.30 - LatinoStereoPhysics.BACK_PAR_GATE);
-            const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.BACK_PAR_GAIN);
-            this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
+        // BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+        // Clon exacto de TechnoStereoPhysics: snareAndSynthPower cocktail
+        const snareAndSynthPower = Math.min(1.0, (mid * 0.5) + // El cuerpo del sinte y la caja
+            (treble * 0.8) + // El latigazo metalico del snare
+            (mid * treble * 0.3) // Un poco de peso para que la bofetada se sienta gorda
+        );
+        if (snareAndSynthPower > LatinoStereoPhysics.BACK_PAR_GATE) {
+            const gated = (snareAndSynthPower - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+            const target = Math.min(1.0, Math.pow(gated, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
+            this.currentBackParIntensity += (target - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
         }
         else {
-            // Sin snare/hi-hat: Decay RÁPIDO para bofetada
-            this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
+            this.currentBackParIntensity *= 0.42; // WAVE 2200: decay pesado dembow (+lento que Techno 0.25)
+            if (this.currentBackParIntensity < 0.05)
+                this.currentBackParIntensity = 0;
         }
         // MOVERS (WAVE 296 - MID PURO con Treble Rejection)
-        // TREBLE_REJECTION 0.30 - las voces con autotune tienen armónicos agudos
+        // TREBLE_REJECTION 0.30 - las voces con autotune tienen arm�nicos agudos
         const midPuro = Math.max(0, mid - treble * LatinoStereoPhysics.MOVER_TREBLE_REJECTION);
         const moverTarget = midPuro;
         if (moverTarget > LatinoStereoPhysics.MOVER_GATE) {
@@ -150,11 +124,11 @@ export class LatinoStereoPhysics {
         else {
             // Decay normal
             this.currentMoverIntensity *= LatinoStereoPhysics.MOVER_DECAY_FACTOR;
-            // 🆕 HISTÉRESIS 0.20: Piso más alto rellena microhuecos entre vocales
-            // Estamos en zona de transición - mantener el piso
+            // ?? HIST�RESIS 0.20: Piso m�s alto rellena microhuecos entre vocales
+            // Estamos en zona de transici�n - mantener el piso
             if (this.currentMoverIntensity > LatinoStereoPhysics.MOVER_HYSTERESIS &&
                 this.currentMoverIntensity < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
-                // Estamos en zona de transición - mantener el piso
+                // Estamos en zona de transici�n - mantener el piso
                 this.currentMoverIntensity = LatinoStereoPhysics.MOVER_HYSTERESIS;
             }
             else if (this.currentMoverIntensity < 0.05) {
@@ -162,11 +136,11 @@ export class LatinoStereoPhysics {
                 this.currentMoverIntensity = 0;
             }
         }
-        // ════════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 1004.1: STEREO SPLIT - "LA PAREJA DE BAILE"
-        // ════════════════════════════════════════════════════════════════════════
-        // --- LEFT CHANNEL (El Galán / MID PURO - Voz/Congas) ---
-        // Hereda lógica probada de Wave 296 (Mid - Treble Rejection)
+        // ------------------------------------------------------------------------
+        // ?? WAVE 1004.1: STEREO SPLIT - "LA PAREJA DE BAILE"
+        // ------------------------------------------------------------------------
+        // --- LEFT CHANNEL (El Gal�n / MID PURO - Voz/Congas) ---
+        // Hereda l�gica probada de Wave 296 (Mid - Treble Rejection)
         if (midPuro > LatinoStereoPhysics.MOVER_L_GATE) {
             const target = Math.min(1.0, midPuro * LatinoStereoPhysics.MOVER_GAIN);
             this.currentMoverIntensityL += (target - this.currentMoverIntensityL) * LatinoStereoPhysics.MOVER_L_ATTACK;
@@ -174,7 +148,7 @@ export class LatinoStereoPhysics {
         else {
             this.currentMoverIntensityL *= LatinoStereoPhysics.MOVER_L_DECAY;
         }
-        // Histéresis para Left (Voz) - Mantiene el "suelo" para que no parpadee en frases
+        // Hist�resis para Left (Voz) - Mantiene el "suelo" para que no parpadee en frases
         if (this.currentMoverIntensityL > LatinoStereoPhysics.MOVER_HYSTERESIS &&
             this.currentMoverIntensityL < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
             this.currentMoverIntensityL = LatinoStereoPhysics.MOVER_HYSTERESIS;
@@ -182,43 +156,46 @@ export class LatinoStereoPhysics {
         else if (this.currentMoverIntensityL < 0.05) {
             this.currentMoverIntensityL = 0;
         }
-        // --- RIGHT CHANNEL (La Dama / TREBLE - Trompetas/Güira) ---
-        // Escucha PURA de agudos, ignorando el mid. Más nerviosa y brillante.
-        const brilloPuro = treble;
-        if (brilloPuro > LatinoStereoPhysics.MOVER_R_GATE) {
-            const target = Math.min(1.0, brilloPuro * LatinoStereoPhysics.MOVER_R_GAIN);
+        // --- RIGHT CHANNEL (La Dama / TREBLE -- Schwarzenegger Suavizado WAVE 2195) ---
+        if (treble > LatinoStereoPhysics.MOVER_R_GATE) {
+            const normalized = (treble - LatinoStereoPhysics.MOVER_R_GATE) / (1.0 - LatinoStereoPhysics.MOVER_R_GATE);
+            const target = Math.min(1.0, Math.pow(normalized, 1.2) * LatinoStereoPhysics.MOVER_R_GAIN);
             this.currentMoverIntensityR += (target - this.currentMoverIntensityR) * LatinoStereoPhysics.MOVER_R_ATTACK;
         }
         else {
             this.currentMoverIntensityR *= LatinoStereoPhysics.MOVER_R_DECAY;
         }
-        // SIN histéresis en Right - queremos que sea "picante" y rápido (güira/shaker)
         if (this.currentMoverIntensityR < 0.05) {
             this.currentMoverIntensityR = 0;
         }
-        // ════════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 1004.1: FAT BASS - "EL GORDO" (Peak Hold)
-        // ════════════════════════════════════════════════════════════════════════
-        // El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
-        // Peak Hold sostiene el pico visual, llenando el hueco entre bombos
-        const frontTarget = bass;
-        // Fase 1: Detección y Ataque
-        if (frontTarget > LatinoStereoPhysics.FRONT_PAR_GATE) {
-            const normalized = (frontTarget - LatinoStereoPhysics.FRONT_PAR_GATE) / (1 - LatinoStereoPhysics.FRONT_PAR_GATE);
-            const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.FRONT_PAR_GAIN);
-            // Si el nuevo golpe es más fuerte que el pico actual → TOMAR (Ataque)
-            if (boosted > this.frontParPeak) {
-                this.frontParPeak = boosted;
+        // ------------------------------------------------------------------------
+        // FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
+        // ------------------------------------------------------------------------
+        // Clon exacto de TechnoStereoPhysics.calculateFrontPar()
+        // Hysteresis ON/OFF + BASS_VITAMIN_BOOST + pow(x,2.0)
+        if (this.frontParActive) {
+            if (bass < LatinoStereoPhysics.FRONT_PAR_GATE_OFF) {
+                this.frontParActive = false;
+                this.currentFrontParIntensity = 0;
             }
         }
-        // Fase 2: Peak Hold & Decay ("El Gordo")
-        // Decay al pico acumulado, NO a la señal cruda → rellena el hueco visual
-        this.frontParPeak *= LatinoStereoPhysics.BASS_HOLD_DECAY;
-        // Limpieza de ruido de fondo
-        if (this.frontParPeak < 0.05)
-            this.frontParPeak = 0;
-        // Usar el pico sostenido como intensidad (no el valor instantáneo)
-        const frontParIntensity = this.frontParPeak;
+        else {
+            if (bass >= LatinoStereoPhysics.FRONT_PAR_GATE) {
+                this.frontParActive = true;
+            }
+        }
+        if (this.frontParActive) {
+            const gated = (bass - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
+            const boosted = gated * LatinoStereoPhysics.BASS_VITAMIN_BOOST;
+            const target = Math.min(1.0, Math.pow(Math.max(0, boosted), 2.0));
+            this.currentFrontParIntensity += (target - this.currentFrontParIntensity) * LatinoStereoPhysics.FRONT_PAR_ATTACK;
+        }
+        else {
+            this.currentFrontParIntensity *= 0.12;
+            if (this.currentFrontParIntensity < 0.05)
+                this.currentFrontParIntensity = 0;
+        }
+        const frontParIntensity = this.currentFrontParIntensity;
         // WHITE PUNCTURE STATE MACHINE
         let isWhitePuncture = false;
         let whitePunctureColor = null;
@@ -254,8 +231,8 @@ export class LatinoStereoPhysics {
             frontParIntensity,
             isWhitePuncture,
             whitePunctureColor,
-            // 🔥 WAVE 1004.1: STEREO SPLIT OUTPUT
-            moverIntensityL: this.currentMoverIntensityL, // El Galán (Mid/Voz)
+            // ?? WAVE 1004.1: STEREO SPLIT OUTPUT
+            moverIntensityL: this.currentMoverIntensityL, // El Gal�n (Mid/Voz)
             moverIntensityR: this.currentMoverIntensityR, // La Dama (Treble/Trompetas)
             debugInfo: {
                 bass, mid, treble, bassDelta,
@@ -263,10 +240,10 @@ export class LatinoStereoPhysics {
                 detectedBpm,
                 whitePuncturePhase: this.whitePuncturePhase,
                 sectionType: currentSection,
-                // 🔥 WAVE 1004.1: Debug stereo
+                // ?? WAVE 1004.1: Debug stereo
                 moverL: this.currentMoverIntensityL,
                 moverR: this.currentMoverIntensityR,
-                fatBassPeak: this.frontParPeak,
+                fatBassPeak: this.currentFrontParIntensity,
             },
         };
     }
@@ -283,10 +260,11 @@ export class LatinoStereoPhysics {
         this.currentMoverIntensity = 0;
         this.currentBackParIntensity = 0;
         this.currentFrontParIntensity = 0;
-        // 🔥 WAVE 1004.1: Reset stereo & fat bass state
+        // ?? WAVE 1004.1: Reset stereo & fat bass state
         this.currentMoverIntensityL = 0;
         this.currentMoverIntensityR = 0;
         this.frontParPeak = 0;
+        this.frontParActive = false; // WAVE 2199
     }
     hslToRgb(hsl) {
         const h = hsl.h / 360;
@@ -371,45 +349,39 @@ LatinoStereoPhysics.KICK_THRESHOLD = 0.55;
 LatinoStereoPhysics.BASS_DELTA_THRESHOLD = 0.08;
 LatinoStereoPhysics.DECAY_RATE = 0.08;
 // MOVERS (WAVE 760 - HIGH-FRAMERATE PRECISION)
-// El nuevo FFT elimina jitter → podemos usar decay más agresivo
-// Análisis estadístico de 200+ muestras de cumbia:
+// El nuevo FFT elimina jitter ? podemos usar decay m�s agresivo
+// An�lisis estad�stico de 200+ muestras de cumbia:
 //   - ~11.5% de beats perdidos con gate 0.24
-//   - Zona 0.20-0.24 tiene voces/melodías rescatables
-//   - Gate 0.22 rescata la mayoría sin meter ruido
-//   - Decay 0.60 (antes 0.75) para respuesta más robot, menos ghost
-LatinoStereoPhysics.MOVER_ATTACK = 0.65; // Subida rápida
-LatinoStereoPhysics.MOVER_DECAY_FACTOR = 0.60; // 🔧 WAVE 760: Bajado de 0.75 (más robot, menos ghost)
+//   - Zona 0.20-0.24 tiene voces/melod�as rescatables
+//   - Gate 0.22 rescata la mayor�a sin meter ruido
+//   - Decay 0.60 (antes 0.75) para respuesta m�s robot, menos ghost
+LatinoStereoPhysics.MOVER_ATTACK = 0.65; // Subida r�pida
+LatinoStereoPhysics.MOVER_DECAY_FACTOR = 0.60; // ?? WAVE 760: Bajado de 0.75 (m�s robot, menos ghost)
 LatinoStereoPhysics.MOVER_GATE = 0.22; // Sin cambio (rescatar zona 0.22-0.24)
-LatinoStereoPhysics.MOVER_GAIN = 1.50; // 🔧 WAVE 760: Subido de 1.30 (compensar decay más rápido)
-LatinoStereoPhysics.MOVER_HYSTERESIS = 0.25; // Piso de relleno
-LatinoStereoPhysics.MOVER_TREBLE_REJECTION = 0.30; // 🏆 ORO PURO - Voces autotune tienen treble
-// 🔥 WAVE 1004.1: STEREO SPLIT - MOVERS COMO PAREJA DE BAILE
-// LEFT (El Galán / Mid / Conga / Voz) - Hereda lógica "Mid Puro"
-LatinoStereoPhysics.MOVER_L_GATE = 0.22;
+LatinoStereoPhysics.MOVER_GAIN = 1.50; // ?? WAVE 760: Subido de 1.30 (compensar decay m�s r�pido)
+LatinoStereoPhysics.MOVER_HYSTERESIS = 0.00; // WAVE 2192: GUILLOTINA         // Piso de relleno
+LatinoStereoPhysics.MOVER_TREBLE_REJECTION = 0.30; // ?? ORO PURO - Voces autotune tienen treble
+// ?? WAVE 1004.1: STEREO SPLIT - MOVERS COMO PAREJA DE BAILE
+// LEFT (El Gal�n / Mid / Conga / Voz) - Hereda l�gica "Mid Puro"
+LatinoStereoPhysics.MOVER_L_GATE = 0.28; // WAVE 2192
 LatinoStereoPhysics.MOVER_L_ATTACK = 0.65;
-LatinoStereoPhysics.MOVER_L_DECAY = 0.45; // 🔧 WAVE 1004.1.2: Bajado de 0.60 (más fractura entre sílabas)
-// RIGHT (La Dama / Treble / Brass / Güira) - Nueva lógica "Brillo"
-LatinoStereoPhysics.MOVER_R_GATE = 0.20; // Más sensible a agudos
-LatinoStereoPhysics.MOVER_R_ATTACK = 0.80; // Ataque rápido (trompetazo)
-LatinoStereoPhysics.MOVER_R_DECAY = 0.32; // 🔧 WAVE 1004.1.2: Bajado de 0.40 (más punchy, guacharaca seca)
-LatinoStereoPhysics.MOVER_R_GAIN = 2.0; // Boost para que brille
-// BACK PARs - WAVE 760: SURGICAL SNARE (solo snare y hi-hat puros)
-// Treble típico: 0.13-0.22. Gate subido para eliminar voces de fondo completamente
-// Attack instantáneo para respuesta quirúrgica
-LatinoStereoPhysics.BACK_PAR_GATE = 0.24; // 🔧 WAVE 760: Subido de 0.16 (solo snare/hi-hat puros)
-LatinoStereoPhysics.BACK_PAR_ATTACK = 0.85; // 🔧 WAVE 760: Subido de 0.70 (instantáneo)
-LatinoStereoPhysics.BACK_PAR_DECAY = 0.25; // Sin cambio (bofetada rápida)
-LatinoStereoPhysics.BACK_PAR_GAIN = 1.9; // Sin cambio
-// FRONT PARs (WAVE 760 - KILL THE BRICK)
-// Decay exponencial más agresivo para aprovechar motor sin jitter
-LatinoStereoPhysics.FRONT_PAR_GATE = 0.55; // 🔧 WAVE 760: Subido de 0.48 (solo bombos reales)
-LatinoStereoPhysics.FRONT_PAR_ATTACK = 0.70; // Sin cambio
-LatinoStereoPhysics.FRONT_PAR_DECAY_LINEAR = 0.12; // 🔧 WAVE 760: Subido de 0.05 (más del doble de rápido)
-LatinoStereoPhysics.FRONT_PAR_GAIN = 1.7; // Sin cambio
-// 🔥 WAVE 1004.1: FAT BASS (Peak Hold)
-// El bombo latino NO es "click" (metal), es "BOOM" (resonancia del parche)
-// Hold sostiene el pico visual unos milisegundos para dar PESO
-LatinoStereoPhysics.BASS_HOLD_DECAY = 0.85; // Caída más lenta = Bombo más gordo
+LatinoStereoPhysics.MOVER_L_DECAY = 0.25; // WAVE 2192: guillotina
+// RIGHT (La Dama / Treble / Brass / G�ira) - Nueva l�gica "Brillo"
+LatinoStereoPhysics.MOVER_R_GATE = 0.18; // WAVE 2195: Schwarzenegger despierta facil             // WAVE 2194: solo picos reales
+LatinoStereoPhysics.MOVER_R_ATTACK = 0.80; // Ataque r�pido (trompetazo)
+LatinoStereoPhysics.MOVER_R_DECAY = 0.50; // WAVE 2195: liquido no estrobo            // WAVE 2194
+LatinoStereoPhysics.MOVER_R_GAIN = 4.0; // WAVE 2195: protocolo Techno     // Boost para que brille
+// BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+LatinoStereoPhysics.BACK_PAR_GATE = 0.45; // WAVE 2200: +0.05 sobre Techno (filtra hihats debiles y autotune)
+LatinoStereoPhysics.BACK_PAR_GAIN = 5.0; // WAVE 2199: BACK_PAR_SLAP_MULT clon Techno
+LatinoStereoPhysics.BACK_PAR_ATTACK = 0.85;
+LatinoStereoPhysics.BACK_PAR_DECAY = 0.25;
+// FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
+LatinoStereoPhysics.FRONT_PAR_GATE = 0.48; // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_ON
+LatinoStereoPhysics.FRONT_PAR_GATE_OFF = 0.35; // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_OFF
+LatinoStereoPhysics.BASS_VITAMIN_BOOST = 1.8; // WAVE 2199: clon exacto Techno
+LatinoStereoPhysics.FRONT_PAR_ATTACK = 0.70; // Ataque rapido
+LatinoStereoPhysics.FRONT_PAR_GAIN = 2.0; // WAVE 2197: cuadratica pura
 // Machine Gun Blackout
 LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD = 0.4;
 LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS = 100;

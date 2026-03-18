@@ -27,7 +27,11 @@ import { useVibeStore } from '../stores/vibeStore'
 // TYPES
 // ============================================================================
 
+// B4 FIX: VibeId = 4 vibes visuales (sin 'idle').
+// VibeIdWithIdle = tipo extendido para setVibe, que permite el toggle-off desde UI.
+// VIBE_PRESETS usa solo VibeId — no hay preset visual para 'idle'.
 export type VibeId = 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge'
+export type VibeIdWithIdle = VibeId | 'idle'
 
 export interface VibeInfo {
   id: VibeId
@@ -81,7 +85,8 @@ export interface UseSeleneVibeReturn {
   isLoading: boolean
   
   // Actions
-  setVibe: (vibeId: VibeId) => Promise<void>
+  // B3 FIX: setVibe acepta 'idle' para toggle-off desde UI
+  setVibe: (vibeId: VibeIdWithIdle) => Promise<void>
   
   // Computed
   isGhostMode: boolean
@@ -154,28 +159,28 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
     }
   }, [setCurrentVibe])
   
-  // Set vibe action
-  const setVibe = useCallback(async (vibeId: VibeId) => {
+  // Set vibe action — B3+B4 FIX: toggle real
+  // Si el vibe YA está activo, envía 'idle' al backend (toggle-off).
+  // Si es otro vibe, lo activa normalmente.
+  const setVibe = useCallback(async (vibeId: VibeIdWithIdle) => {
     if (!window.lux?.setVibe) {
       console.warn('[useSeleneVibe] window.lux.setVibe not available')
       return
     }
-    
+
     const visualVibe = getVisualVibe()
-    if (vibeId === visualVibe) {
-      console.log('[useSeleneVibe] Vibe already active:', vibeId)
-      return  // Already active
-    }
-    
+    // B3 FIX: mismo vibe → toggle a idle en lugar de early-exit
+    const targetVibe: VibeIdWithIdle = vibeId === visualVibe ? 'idle' : vibeId
+
     setTransitioning(true)
-    
+
     try {
-      const result = await window.lux.setVibe(vibeId)
-      
+      const result = await window.lux.setVibe(targetVibe)
+
       if (result.success) {
-        // Optimistic update - backend confirmation will follow via onVibeChange
-        setCurrentVibe(vibeId)
-        console.log('[useSeleneVibe] Vibe set request sent:', vibeId)
+        // Optimistic update — confirmación real llegará via onVibeChange
+        setCurrentVibe(targetVibe)
+        console.log('[useSeleneVibe] Vibe set:', targetVibe)
       } else {
         console.error('[useSeleneVibe] Failed to set vibe:', result.error)
         setTransitioning(false)

@@ -32,9 +32,9 @@ export const MOVEMENT_PRESETS = {
         physics: {
             maxAcceleration: 2000, // 🔧 Arranques agresivos pero seguros (era 1500)
             maxVelocity: 600, // Muy rápido
-            friction: 0.05, // Casi sin fricción (libre)
+            friction: 0.08, // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado (era 0.05 snap)
             arrivalThreshold: 0.5, // Precisión alta
-            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Respuesta instantánea, sin lag
+            physicsMode: 'classic', // 🔥 WAVE 2213: Exorcismo del snap — trayectorias sinusoidales continuas
             // ═══════════════════════════════════════════════════════════════════
             // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
             // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
@@ -78,9 +78,9 @@ export const MOVEMENT_PRESETS = {
         physics: {
             maxAcceleration: 1200, // 🔧 Subido: Seguir caderas rápido
             maxVelocity: 350, // 🔧 Subido: Más swing
-            friction: 0.20, // Algo de suavizado orgánico
+            friction: 0.15, // 🔥 WAVE 2213: Fluido orgánico (era 0.20 snap)
             arrivalThreshold: 2.0, // Permite overshoot elegante
-            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Sigue trayectorias curvas sin lag
+            physicsMode: 'classic', // 🔥 WAVE 2213: Exorcismo del snap — curvas sin escalera
             // ═══════════════════════════════════════════════════════════════════
             // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
             // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
@@ -120,9 +120,9 @@ export const MOVEMENT_PRESETS = {
         physics: {
             maxAcceleration: 1100, // 🔧 Subido: Golpes reactivos duros
             maxVelocity: 450, // 🔧 Subido: Rápido en golpes
-            friction: 0.30, // Fricción para punch (no arrastrar)
+            friction: 0.20, // 🔥 WAVE 2213: Peso con punch (era 0.30 snap)
             arrivalThreshold: 1.0, // Precisión normal
-            physicsMode: 'snap', // 🏎️ WAVE 2074.2: Golpes dramáticos, no arrastre
+            physicsMode: 'classic', // 🔥 WAVE 2213: Exorcismo del snap — arcos con gravitas
             // ═══════════════════════════════════════════════════════════════════
             // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
             // Rock usa circle_big, cancan, dual_sweep. Con snap=0.30 + revLimit=95

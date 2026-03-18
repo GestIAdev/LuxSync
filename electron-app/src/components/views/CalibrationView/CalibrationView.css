@@ -114,14 +114,18 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTENT - DUAL ZONE LAYOUT
+   MAIN CONTENT - DUAL ZONE LAYOUT (WAVE 3000)
+   Left ~42%: Targeting Bay (Radar + DPad + Offsets)
+   Right ~58%: DMX Channel Grid (all channels visible, concurrent)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .lab-content {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1rem;
-  padding: 1rem;
+  grid-template-columns: 42fr 58fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  /* Ocupa exactamente el espacio disponible bajo el header, sin scroll */
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -131,11 +135,13 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .zone-targeting {
-  display: grid;
-  grid-template-rows: 1fr auto auto;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Nunca hace scroll — todo el contenido encaja en la altura disponible */
   min-height: 0;
-  padding: 0.5rem;
+  overflow: hidden;
+  padding: 0.125rem;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -150,19 +156,19 @@
   border: 1px solid rgba(34, 211, 238, 0.1);
   border-radius: 12px;
   overflow: hidden;
-  /* 🔥 WAVE 1135.2: Breathing room */
-  padding: 1rem;
+  padding: 0.5rem;
+  /* Flex shrink: cede espacio a los controles si es necesario */
+  flex: 1 1 0;
   min-height: 0;
 }
 
 .radar-container {
   position: relative;
-  width: 100%;
-  max-width: min(500px, 90%);
-  /* 🔥 WAVE 1135.2: Limit height to prevent overflow */
-  max-height: 90%;
+  /* Se adapta al espacio disponible del flex padre */
+  width: min(100%, 320px);
+  height: min(100%, 320px);
   aspect-ratio: 1;
-  padding: 2rem;
+  padding: 1.25rem;
 }
 
 /* Radar Grid */
@@ -480,15 +486,223 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ZONE B: TOOL RACK
+   ZONE B: DMX CHANNEL GRID (WAVE 3000)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.zone-tools {
+.zone-channels {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   min-height: 0;
+  overflow: hidden;
+}
+
+/* Fixture Rack dentro de zone-channels: altura fija máxima con scroll interno */
+.zone-channels .fixture-rack {
+  flex: 0 0 auto;
+  max-height: 220px;
+}
+
+.zone-channels .fixture-rack .fixture-list {
   overflow-y: auto;
+  max-height: 164px;
+}
+
+.channel-grid-panel {
+  display: flex;
+  flex-direction: column;
+  /* Ocupa TODO el espacio restante de la columna */
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.channel-grid-panel .panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.reset-all-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: #ef4444;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reset-all-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.reset-all-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Channel Grid Layout */
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+/* Channel Card */
+.channel-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.channel-card.active {
+  border-color: rgba(34, 211, 238, 0.25);
+  background: rgba(34, 211, 238, 0.04);
+}
+
+.channel-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.channel-number {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 211, 238, 0.12);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #22d3ee;
+}
+
+.channel-card.active .channel-number {
+  background: rgba(34, 211, 238, 0.25);
+}
+
+.channel-type {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.channel-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Channel Slider */
+.channel-slider-row {
+  margin-bottom: 0.3rem;
+}
+
+.channel-slider {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.channel-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #22d3ee;
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+  transition: box-shadow 0.15s ease;
+}
+
+.channel-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.7);
+}
+
+.channel-slider:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Channel Values */
+.channel-value-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.2rem;
+}
+
+.channel-dmx-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #22d3ee;
+}
+
+.channel-card.active .channel-dmx-value {
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+.channel-pct {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Channel Fill Bar (mini progress) */
+.channel-fill-bar {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.channel-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0891b2, #22d3ee);
+  border-radius: 2px;
+  transition: width 0.08s ease;
+}
+
+/* Channel Grid Scrollbar */
+.channel-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.channel-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.channel-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
 }
 
 /* Tool Panel Base */
@@ -632,109 +846,7 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   DMX SCANNER
-   ───────────────────────────────────────────────────────────────── */
-
-.dmx-scanner .scanner-content {
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.scanner-channel {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.scanner-channel label {
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.scanner-channel select {
-  flex: 1;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #f1f5f9;
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
-  cursor: pointer;
-}
-
-.scanner-channel select:focus {
-  outline: none;
-  border-color: rgba(34, 211, 238, 0.4);
-}
-
-.scanner-slider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.scanner-slider input[type="range"] {
-  flex: 1;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 3px;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.scanner-slider input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  background: #22d3ee;
-  border-radius: 50%;
-  cursor: grab;
-  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
-}
-
-.scanner-value {
-  min-width: 35px;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  color: #22d3ee;
-}
-
-.scanner-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.preset-btn {
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.preset-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.preset-btn.active {
-  background: rgba(34, 211, 238, 0.15);
-  border-color: rgba(34, 211, 238, 0.3);
-  color: #22d3ee;
-}
+/* (scanner styles removed — replaced by channel-grid in WAVE 3000) */
 
 /* ─────────────────────────────────────────────────────────────────
    OFFSET CONFIG
@@ -899,16 +1011,16 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Zone-tools scrollbar */
-.zone-tools::-webkit-scrollbar {
+/* Zone-targeting scrollbar */
+.zone-targeting::-webkit-scrollbar {
   width: 4px;
 }
 
-.zone-tools::-webkit-scrollbar-track {
+.zone-targeting::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.zone-tools::-webkit-scrollbar-thumb {
+.zone-targeting::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
@@ -1019,23 +1131,17 @@
 
 @media (max-width: 1000px) {
   .lab-content {
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: 45fr 55fr;
   }
 }
 
 @media (max-width: 768px) {
   .lab-content {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto 1fr;
   }
   
-  .zone-tools {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  
-  .zone-tools .tool-panel {
-    flex: 1;
-    min-width: 200px;
+  .channel-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }

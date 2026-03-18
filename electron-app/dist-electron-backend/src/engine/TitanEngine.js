@@ -312,7 +312,9 @@ export class TitanEngine extends EventEmitter {
             treble: audio.high,
             // 🧠 WAVE 271: Top-level usa datos ESTABILIZADOS (no crudos)
             syncopation: processedContext.syncopation,
-            // Mood estabilizado: BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
+            // 🎭 WAVE 2204: Mood estabilizado directo del MoodArbiter (ventana 2s, lock 1s)
+            // BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
+            // Inyección directa en raíz del objeto — SeleneColorEngine lo consume sin pasar por wave8
             mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
                 moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',
             // Key ESTABILIZADA (no la cruda que cambia cada frame)

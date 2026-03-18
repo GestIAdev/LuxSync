@@ -57,10 +57,14 @@ export const DICTATOR_HARD_MINIMUM_COOLDOWNS = {
     'gatling_raid': 15000, // 15s MÍNIMO ABSOLUTO (efecto de 1.6s + respiro)
     'industrial_strobe': 8000, // 8s MÍNIMO ABSOLUTO (efecto de ~0.5s pero es STROBE)
     'core_meltdown': 25000, // 25s MÍNIMO ABSOLUTO (LA BESTIA necesita espacio)
+    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE (dictadores APEX)
+    'neon_blinder': 12000, // 12s MÍNIMO ABSOLUTO (flash wall, espacio entre impactos)
+    'surgical_strike': 10000, // 10s MÍNIMO ABSOLUTO (bisturí rápido, pero no spam)
     // DICTADORES LATINOS (mixBus='global')
     'solar_flare': 20000, // 20s MÍNIMO ABSOLUTO
-    'strobe_storm': 18000, // 18s MÍNIMO ABSOLUTO
+    'strobe_storm': 12000, // WAVE 2186: 18s→12s — cerrojo 1 abierto
     'latina_meltdown': 25000, // 25s MÍNIMO ABSOLUTO
+    'oro_solido': 22000, // 🥇 WAVE 2189: 22s — dictador de oro necesita respiro
 };
 export const EFFECT_COOLDOWNS = {
     // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
@@ -71,7 +75,8 @@ export const EFFECT_COOLDOWNS = {
     // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
     'solar_flare': 30000, // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
     'strobe_burst': 25000, // 25s base → Bloqueado en CALM
-    'strobe_storm': 40000, // 40s base → Bloqueado en CALM
+    'strobe_storm': 20000, // WAVE 2186: 40s→20s — cerrojo 2 abierto
+    'oro_solido': 28000, // 🥇 WAVE 2189: 28s base → CALM:84s, BALANCED:42s, PUNK:19s
     // === EFECTOS AMBIENTE (Relleno sutil) ===
     'ghost_breath': 35000, // 35s base - fantasma raro
     'tidal_wave': 20000, // 20s base - ola ocasional
@@ -106,6 +111,10 @@ export const EFFECT_COOLDOWNS = {
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': 20000, // 20s base → Traveling colors ambient (long effect, needs space)
     'core_meltdown': 30000, // 30s base → LA BESTIA es RARA (epic moment only)
+    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+    'neon_blinder': 10000, // 10s base → BALANCED:15s — flash wall, impactos espaciados
+    'surgical_strike': 8000, // 8s base → BALANCED:12s — bisturí rápido, parte de la rotación
+    'ghost_chase': 18000, // 18s base → BALANCED:27s — atmosférico, no spam
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
     // ═══════════════════════════════════════════════════════════════════════════
@@ -170,6 +179,7 @@ export const EFFECT_TEXTURE_COMPATIBILITY = {
     // Efectos versátiles que funcionan en cualquier contexto
     // ═══════════════════════════════════════════════════════════════════════
     'solar_flare': 'universal', // ☀️ Explosión dorada - épico universal
+    'oro_solido': 'universal', // 🥇 WAVE 2189: Muro de oro — impacto puro universal
     'strobe_burst': 'universal', // 💥 Impacto puntual - versátil
     'tidal_wave': 'universal', // 🌊 Ola oceánica - momentum
     'tropical_pulse': 'universal', // 🌴 Pulso de conga - ritmo
@@ -184,6 +194,9 @@ export const EFFECT_TEXTURE_COMPATIBILITY = {
     'abyssal_rise': 'universal', // 🌪️ Transición épica - buildup
     'ambient_strobe': 'universal', // 📸 Camera flashes - suave
     'sonar_ping': 'universal', // 🔊 Ping submarino - ambiente
+    'neon_blinder': 'universal', // ⚡ WAVE 2182: Flash wall masivo - funciona siempre
+    'ghost_chase': 'universal', // 👻 WAVE 2182: Ghost chase - atmósfera versátil
+    'surgical_strike': 'dirty', // 🎯 WAVE 2182: Bisturí en la oscuridad - solo con ruido
     // ═══════════════════════════════════════════════════════════════════════
     // 🌊 WAVE 1071: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
     // Todos son CLEAN - la performance oceánica es pura elegancia
@@ -256,7 +269,7 @@ const SECTION_EFFECT_PALETTE = {
         primary: 'solar_flare', // BOOM
         secondary: 'strobe_burst',
         ambient: 'tropical_pulse',
-        latinaOverride: 'strobe_burst',
+        latinaOverride: 'oro_solido', // 🥇 WAVE 2189: El Trompetazo reemplaza strobe_burst en drops latinos
     },
     'breakdown': {
         primary: 'cumbia_moon', // 🌙 WAVE 692: Respiro suave
@@ -319,8 +332,9 @@ export class ContextualEffectSelector {
             if (!availability.available)
                 continue;
             // 🎨 WAVE 1028: THE CURATOR - Texture filtering
+            // 🔓 WAVE 2187: Pass vibeId so fiesta-latina bypasses texture rules
             if (spectralContext) {
-                const textureResult = this.applyTextureFilter(effect, spectralContext);
+                const textureResult = this.applyTextureFilter(effect, spectralContext, vibeId);
                 if (!textureResult.allowed) {
                     console.log(`[EffectRepository 🎨] Arsenal TEXTURE BLOCKED: ${effect} (${textureResult.reason})`);
                     continue;
@@ -354,15 +368,32 @@ export class ContextualEffectSelector {
     // ═══════════════════════════════════════════════════════════════════════════
     /**
      * 🎨 WAVE 1028: THE CURATOR - Apply Texture Filter
+     * 🔓 WAVE 2187: TEXTURE JAILBREAK — fiesta-latina bypasses all texture rules.
+     *   En una fiesta latina, el contraste entre producción limpia y efectos visuales
+     *   agresivos es estéticamente DESEABLE. El reggaetón moderno tiene clarity > 0.85
+     *   (producción cristalina) pero sus efectos APEX son 'dirty' → CRYSTAL RULE los
+     *   bloqueaba permanentemente. No más. En la cantina: las jaulas están abiertas.
      *
      * Evalúa si un efecto es apropiado para la textura espectral actual.
      * Implementa las 3 Reglas de Curaduría (Grime, Crystal, Warmth).
      *
      * @param effectType - Efecto a evaluar
      * @param spectralContext - Contexto espectral del GodEar FFT
+     * @param vibeId - (WAVE 2187) Vibe actual para bypass por género
      * @returns TextureFilterResult con decisión y modificadores
      */
-    applyTextureFilter(effectType, spectralContext) {
+    applyTextureFilter(effectType, spectralContext, vibeId) {
+        // 🔓 WAVE 2187: TEXTURE JAILBREAK — fiesta-latina nunca filtra por textura
+        // La producción del reggaetón es limpia (clarity >0.85) pero sus efectos
+        // son 'dirty' por diseño. El contraste visual/audio ES el arte.
+        if (vibeId === 'fiesta-latina') {
+            return {
+                allowed: true,
+                probabilityMod: 0.0,
+                reason: `JAILBREAK: fiesta-latina bypasses all texture rules`,
+                rule: 'none'
+            };
+        }
         const { texture, clarity, harshness } = spectralContext;
         const compatibility = EFFECT_TEXTURE_COMPATIBILITY[effectType] || 'universal';
         // ═══════════════════════════════════════════════════════════════════════
@@ -464,11 +495,11 @@ export class ContextualEffectSelector {
      * @param spectralContext - Contexto espectral
      * @returns Arsenal filtrado (solo efectos compatibles con la textura)
      */
-    filterArsenalByTexture(arsenal, spectralContext) {
+    filterArsenalByTexture(arsenal, spectralContext, vibeId) {
         if (!spectralContext)
             return arsenal;
         const filtered = arsenal.filter(effect => {
-            const result = this.applyTextureFilter(effect, spectralContext);
+            const result = this.applyTextureFilter(effect, spectralContext, vibeId);
             if (!result.allowed) {
                 console.log(`[TextureFilter 🎨] ${effect} FILTERED OUT: ${result.reason}`);
             }
@@ -671,17 +702,17 @@ export class ContextualEffectSelector {
             // SILENCE (0-15%): Respiración + eco
             silence: ['deep_breath', 'sonar_ping', 'void_mist'],
             // VALLEY (15-30%): Niebla + fibras + overlap from silence/ambient
-            valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain'],
+            valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain', 'ghost_chase'],
             // AMBIENT (30-45%): Lluvia digital + acid + overlap from valley/gentle
-            ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch'],
+            ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch', 'ghost_chase'],
             // GENTLE (45-60%): Flashes + glitches + overlap from ambient/active
             gentle: ['ambient_strobe', 'binary_glitch', 'acid_sweep', 'cyber_dualism', 'digital_rain'],
             // ACTIVE (60-75%): Dualismo + snaps + overlap from gentle/intense
             active: ['cyber_dualism', 'seismic_snap', 'binary_glitch', 'sky_saw', 'acid_sweep'],
             // INTENSE (75-90%): Sierra + abyssal + overlap from active/peak
             intense: ['sky_saw', 'abyssal_rise', 'cyber_dualism', 'industrial_strobe', 'seismic_snap'],
-            // PEAK (90-100%): Artillería pesada + overlap from intense
-            peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise'],
+            // PEAK (90-100%): Artillería pesada + overlap from intense + WAVE 2182 APEX
+            peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise', 'neon_blinder', 'surgical_strike'],
         };
         const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || [];
         // 🛡️ WAVE 936 + 961: VIBE LEAK SHIELD + LATINA ZONE OVERRIDES
@@ -694,16 +725,22 @@ export class ContextualEffectSelector {
         let zoneAdjusted = [...intensityAllowed];
         if (vibe === 'fiesta-latina') {
             if (zone === 'valley') {
-                zoneAdjusted.push('cumbia_moon', 'clave_rhythm');
+                zoneAdjusted.push('cumbia_moon', 'clave_rhythm', 'amazon_mist');
             }
             if (zone === 'ambient') {
-                zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire');
+                zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire', 'amazon_mist');
             }
             if (zone === 'gentle') {
-                zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm');
+                zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'glitch_guaguanco');
             }
             if (zone === 'active') {
-                zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm');
+                zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'machete_spark', 'glitch_guaguanco');
+            }
+            if (zone === 'intense') {
+                zoneAdjusted.push('salsa_fire', 'machete_spark', 'glitch_guaguanco', 'strobe_burst');
+            }
+            if (zone === 'peak') {
+                zoneAdjusted.push('latina_meltdown', 'oro_solido', 'strobe_burst', 'solar_flare');
             }
         }
         // ═══════════════════════════════════════════════════════════════════════════
@@ -1306,8 +1343,13 @@ ContextualEffectSelector.EFFECTS_BY_VIBE = {
         // 🔮 WAVE 988: THE FINAL ARSENAL
         'fiber_optics', // 🌈 Ambient traveling colors (silence/valley)
         'core_meltdown', // ☢️ LA BESTIA - extreme strobe (peak only)
+        // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+        'neon_blinder', // ⚡ APEX flash wall (peak)
+        'surgical_strike', // 🎯 APEX mover strobe (peak)
+        'ghost_chase', // 👻 Phantom dimmer chase (ambient) — WAVE 2186: valley→ambient
     ],
     // 🎺 FIESTA LATINA: El Arsenal Tropical
+    // 🔓 WAVE 2186: Purga EDM + resurrección del roster completo
     'fiesta-latina': [
         'ghost_breath', // Respiro suave
         'tidal_wave', // Ola oceánica
@@ -1316,8 +1358,13 @@ ContextualEffectSelector.EFFECTS_BY_VIBE = {
         'tropical_pulse', // Pulso de conga
         'salsa_fire', // Fuego salsero
         'strobe_burst', // Para drops latinos
-        'solar_flare', // Explosión solar
+        'solar_flare', // Explosión solar — APEX de luz latina
         'corazon_latino', // El alma del arquitecto
+        'amazon_mist', // 🌿 Neblina amazónica
+        'glitch_guaguanco', // 🎭 Guaguancó glitcheado
+        'machete_spark', // ⚔️ Chispa de machete
+        'latina_meltdown', // ☢️ Nuclear latina
+        'oro_solido', // 🥇 WAVE 2189: El Trompetazo — muro de oro drop APEX
     ],
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS

@@ -872,6 +872,43 @@ class SlopeBasedOnsetDetector {
  * - Advanced spectral metrics
  * - Stereo phase correlation
  */
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING
+// Computes a 12-bin chromagram from the magnitude spectrum produced by Stage 4.
+//
+// Algorithm:
+//   binFreq = bin * (sampleRate / fftSize)
+//   midiNote = 12 * log2(freq / 440) + 69
+//   pitchClass = round(midiNote) % 12   (0=C, 1=C#, ... 11=B)
+//   energy accumulated as power (magnitude²) per pitch class
+//   output normalized to [0, 1]
+//
+// Musical range: A0 (27.5 Hz) → C8 (4186 Hz)
+// ZERO allocation: writes directly into pre-allocated Float32Array(12)
+// ═══════════════════════════════════════════════════════════════════════════════
+function computeChromaFromSpectrum(magnitudes, numBins, sampleRate, fftSize, output // 12 elements, pre-allocated
+) {
+    output.fill(0);
+    const binResolution = sampleRate / fftSize;
+    for (let bin = 1; bin <= numBins; bin++) {
+        const freq = bin * binResolution;
+        if (freq < 27.5 || freq > 4186.0)
+            continue; // musical range only
+        const midiNote = 12 * Math.log2(freq / 440) + 69;
+        const pitchClass = ((Math.round(midiNote) % 12) + 12) % 12; // guard negative modulo
+        output[pitchClass] += magnitudes[bin] * magnitudes[bin]; // power, not amplitude
+    }
+    // Normalize to [0, 1]
+    let maxEnergy = 0;
+    for (let i = 0; i < 12; i++) {
+        if (output[i] > maxEnergy)
+            maxEnergy = output[i];
+    }
+    if (maxEnergy > 0) {
+        for (let i = 0; i < 12; i++)
+            output[i] /= maxEnergy;
+    }
+}
 export class GodEarAnalyzer {
     constructor(sampleRate = 44100, fftSize = 4096) {
         this.frameIndex = 0;
@@ -892,6 +929,8 @@ export class GodEarAnalyzer {
         this.fftImag = new Float32Array(fftSize);
         this.magnitudes = new Float32Array(this.numBins + 1); // Include Nyquist
         this.monoMixBuffer = new Float32Array(fftSize);
+        // 🎹 WAVE 2301: 12-bin chromagram buffer (pitch classes C through B)
+        this.chromaBuffer = new Float32Array(12);
         // ════════════════════════════════════════════════════════════
         // Initialize LR4 filter masks (also one-time)
         getLR4FilterMasks(fftSize, sampleRate);
@@ -924,6 +963,11 @@ export class GodEarAnalyzer {
         computeFFTCore(this.windowedBuffer, this.fftReal, this.fftImag);
         // ═══ STAGE 4: Magnitude Spectrum → magnitudes ═══
         computeMagnitudeSpectrum(this.fftReal, this.fftImag, this.magnitudes, this.numBins);
+        // 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING
+        // Compute 12-bin chromagram directly from magnitude spectrum.
+        // Bin frequency → MIDI note → pitch class (0=C … 11=B), power accumulated, normalized.
+        // Zero-allocation: writes into pre-allocated this.chromaBuffer.
+        computeChromaFromSpectrum(this.magnitudes, this.numBins, this.sampleRate, this.fftSize, this.chromaBuffer);
         // ═══ STAGE 5: LR4 Filter Bank + Band Extraction ═══
         const filterMasks = getLR4FilterMasks(this.fftSize, this.sampleRate);
         const deltaMs = this.lastTimestamp > 0 ? startTime - this.lastTimestamp : 50;
@@ -1007,6 +1051,9 @@ export class GodEarAnalyzer {
             },
             dominantFrequency,
             totalEnergy,
+            // 🎹 WAVE 2301: 12-bin chromagram (C through B, normalized 0-1)
+            // Array.from is a one-time 12-element copy — negligible at 20fps.
+            chroma: Array.from(this.chromaBuffer),
         };
     }
     /**

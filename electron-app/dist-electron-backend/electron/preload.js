@@ -908,6 +908,9 @@ const luxDebug = {
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
 const electronAPI = {
     ipcRenderer: {
+        invoke: (channel, ...args) => {
+            return ipcRenderer.invoke(channel, ...args);
+        },
         on: (channel, listener) => {
             ipcRenderer.on(channel, listener);
         },

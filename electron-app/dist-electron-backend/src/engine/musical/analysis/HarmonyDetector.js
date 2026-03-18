@@ -471,18 +471,21 @@ export class HarmonyDetector extends EventEmitter {
      * Convierte el espectro FFT a 12 pitch classes
      */
     extractChromagrama(audio) {
-        // Si tenemos rawFFT, usarlo para chromagrama real
-        // Si no, aproximar desde las bandas de frecuencia
+        // 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING
+        // Priority 1: Native GodEar chromagram — exact pitch class mapping from Worker FFT
+        // Priority 2: Real FFT fallback (rawFFT path, if ever available)
+        // spectrumToChroma() heuristic EXTIRPATED — uniform distribution beats wrong distribution
         const chroma = new Array(12).fill(0);
-        if (audio.rawFFT && audio.rawFFT.length > 0) {
-            // Chromagrama real desde FFT
+        if (audio.chroma && audio.chroma.length === 12) {
+            // Native chromagram: direct bin-frequency → MIDI → pitch class, computed in Worker
+            for (let i = 0; i < 12; i++)
+                chroma[i] = audio.chroma[i];
+        }
+        else if (audio.rawFFT && audio.rawFFT.length > 0) {
+            // Secondary fallback: compute from rawFFT (rarely available via IPC)
             this.fftToChroma(audio.rawFFT, chroma);
         }
-        else {
-            // Aproximación desde bandas de frecuencia
-            // 🎵 WAVE 2091.2: Usar dominantFrequency para chroma mapping real
-            this.spectrumToChroma(audio.spectrum, chroma, audio.dominantFrequency);
-        }
+        // If neither source is available, chroma stays all zeros — normalized to uniform below
         // Normalizar
         const maxEnergy = Math.max(...chroma, 0.001);
         const normalizedChroma = chroma.map(e => e / maxEnergy);
@@ -531,61 +534,12 @@ export class HarmonyDetector extends EventEmitter {
             }
         }
     }
-    /**
-     * 🎵 WAVE 2091.2: Aproximar chromagrama desde bandas de frecuencia
-     *
-     * Si tenemos dominantFrequency, derivamos la root pitch class real via MIDI math
-     * y distribuimos la energía del bajo en root(I) + third(III) + fifth(V) relativos.
-     * Sin dominantFrequency, fallback a distribución uniforme por banda (sin hardcode).
-     */
-    spectrumToChroma(spectrum, chroma, dominantFrequency) {
-        const { bass, lowMid, mid, highMid, treble } = spectrum;
-        // ═══════════════════════════════════════════════════════════════════
-        // BASS → Root triad (I-III-V) basado en frecuencia dominante REAL
-        // ═══════════════════════════════════════════════════════════════════
-        if (dominantFrequency && dominantFrequency >= 27.5 && dominantFrequency <= 4186) {
-            // MIDI note number → pitch class (0=C, 1=C#, ... 11=B)
-            const midiNote = 12 * Math.log2(dominantFrequency / 440) + 69;
-            const rootPitchClass = Math.round(midiNote) % 12;
-            // Distribuir energía del bajo en la tríada relativa a la root REAL
-            chroma[rootPitchClass] += bass * 0.5; // Root (I)
-            chroma[(rootPitchClass + 4) % 12] += bass * 0.3; // Major third (III)
-            chroma[(rootPitchClass + 7) % 12] += bass * 0.2; // Perfect fifth (V)
-            // HighMid armónicos también siguen la root real
-            chroma[rootPitchClass] += highMid * 0.2;
-            chroma[(rootPitchClass + 4) % 12] += highMid * 0.15;
-            chroma[(rootPitchClass + 7) % 12] += highMid * 0.15;
-        }
-        else {
-            // Sin frecuencia dominante válida: distribuir bass/highMid uniformemente
-            // (mejor que hardcodear C-E-G que introduce bias tonal falso)
-            const bassPerBin = bass / 12;
-            const highMidPerBin = highMid / 12;
-            for (let i = 0; i < 12; i++) {
-                chroma[i] += bassPerBin;
-                chroma[i] += highMidPerBin * 0.5;
-            }
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // LOW-MID → Notas secundarias (2nd, 4th, 6th intervals)
-        // ═══════════════════════════════════════════════════════════════════
-        chroma[2] += lowMid * 0.3; // D / major 2nd
-        chroma[5] += lowMid * 0.3; // F / perfect 4th
-        chroma[9] += lowMid * 0.3; // A / major 6th
-        // ═══════════════════════════════════════════════════════════════════
-        // MID → Melodía principal (distribución uniforme)
-        // ═══════════════════════════════════════════════════════════════════
-        for (let i = 0; i < 12; i++) {
-            chroma[i] += mid * 0.1;
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // TREBLE → Armónicos altos (distribución uniforme leve)
-        // ═══════════════════════════════════════════════════════════════════
-        const treblePerBin = treble * 0.1 / 12;
-        for (let i = 0; i < 12; i++) {
-            chroma[i] += treblePerBin;
-        }
-    }
+    // � WAVE 2301: spectrumToChroma() EXTIRPATED
+    // This method introduced tonal bias by mapping bass/lowMid energy to fixed D/F/A pitch classes
+    // regardless of the actual musical key. It has been replaced by computeChromaFromSpectrum()
+    // inside GodEarFFT.ts (Worker side), which performs exact bin→MIDI→pitchClass math.
+    // The 12-bin result travels through WorkerProtocol AudioAnalysis.chroma and is consumed
+    // directly in extractChromagrama() above. — WAVE 2301 "The Chromagram Awakening"
     /**
      * Promediar chromagramas del historial para smoothing
      */

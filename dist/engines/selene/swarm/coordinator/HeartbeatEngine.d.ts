@@ -1,0 +1,72 @@
+import { EventEmitter } from "events";
+import { NodeId, NodeVitals } from "../core/SwarmTypes.js";
+import { SystemVitals } from "../core/SystemVitals.js";
+import { DigitalSoul } from "../core/DigitalSoul.js";
+import { RedisOptimizer } from "./RedisOptimizer.js";
+declare const RHYTHM_PATTERNS: {
+    readonly STEADY: "steady";
+    readonly ACCELERANDO: "accelerando";
+    readonly RALLENTANDO: "rallentando";
+    readonly STACCATO: "staccato";
+    readonly LEGATO: "legato";
+};
+type RhythmPattern = (typeof RHYTHM_PATTERNS)[keyof typeof RHYTHM_PATTERNS];
+export declare class HeartbeatEngine extends EventEmitter {
+    private _rhythm;
+    private _started;
+    private _beats;
+    private _isRunning;
+    private _isPaused;
+    private _interval;
+    private _sequence;
+    private _pattern;
+    private _redis;
+    private _redisOptimizer;
+    private _nodeId;
+    private _lastPulse;
+    private _systemVitals;
+    private _digitalSoul;
+    constructor(nodeId: NodeId, rhythm: number | undefined, redis: any, redisOptimizer: RedisOptimizer, systemVitals: SystemVitals, digitalSoul: DigitalSoul);
+    get rhythm(): number;
+    get started(): Date | null;
+    get beats(): number;
+    get isRunning(): boolean;
+    get isPaused(): boolean;
+    get sequence(): number;
+    get pattern(): RhythmPattern;
+    get uptime(): number;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    synchronize(otherPulse: HeartbeatEngine): Promise<void>;
+    setPattern(pattern: RhythmPattern): void;
+    getVitals(): Promise<NodeVitals>;
+    private scheduleNextBeat;
+    private pulse;
+    private calculateActualRhythm;
+    private calculateHealthStatus;
+    private getConnectionCount;
+    private getSoulState;
+    private generateHeartbeatPoetry;
+    private publishHeartbeat;
+}
+export declare class EternalPulse extends EventEmitter {
+    private _heartbeatEngine;
+    private _rhythm;
+    private _started;
+    private _totalBeats;
+    constructor(nodeId: NodeId, rhythm: number, redis: any, redisOptimizer: RedisOptimizer, systemVitals: SystemVitals, digitalSoul: DigitalSoul);
+    get rhythm(): number;
+    get started(): Date | null;
+    get beats(): number;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    synchronize(_otherPulse: EternalPulse): Promise<void>;
+    setRhythmPattern(_pattern: RhythmPattern): void;
+    getHeartbeatEngine(): HeartbeatEngine;
+}
+export {};
+//# sourceMappingURL=HeartbeatEngine.d.ts.map

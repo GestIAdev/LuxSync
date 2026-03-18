@@ -875,11 +875,20 @@ const luxApi = {
      * false = ARMED (engine runs but DMX blocked)
      * true = LIVE (DMX flows to fixtures)
      */
-    setOutputEnabled: (enabled: boolean) =>
-      ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled }),
+    setOutputEnabled: (enabled: boolean, label?: string) =>
+      ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled, label }),
+
+    /**
+     * Tagged variant for forensics (always prefer this in UI)
+     */
+    setOutputEnabledTagged: (enabled: boolean, label: string) =>
+      ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled, label }),
     
     /** Toggle output gate (ARMED ↔ LIVE) */
-    toggleOutput: () => ipcRenderer.invoke('lux:arbiter:toggleOutput'),
+    toggleOutput: (label?: string) => ipcRenderer.invoke('lux:arbiter:toggleOutput', { label }),
+
+    /** Tagged variant for forensics */
+    toggleOutputTagged: (label: string) => ipcRenderer.invoke('lux:arbiter:toggleOutput', { label }),
     
     /** Get output enabled state */
     getOutputEnabled: () => ipcRenderer.invoke('lux:arbiter:getOutputEnabled'),
@@ -1255,6 +1264,9 @@ const luxDebug = {
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
 const electronAPI = {
   ipcRenderer: {
+    invoke: (channel: string, ...args: any[]) => {
+      return ipcRenderer.invoke(channel, ...args)
+    },
     on: (channel: string, listener: (event: any, ...args: any[]) => void) => {
       ipcRenderer.on(channel, listener)
     },

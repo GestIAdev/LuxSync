@@ -2,6 +2,7 @@
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
  * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+ * 🔒 WAVE 2211: PIPELINE EXORCISM — Async Stampede Guard + IPC Throttle + GC reduction
  *
  * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este módulo solo orquesta el flujo de datos.
@@ -35,10 +36,31 @@ export class TitanOrchestrator {
         this.trinity = null; // 🧠 WAVE 258: Trinity reference
         // ❤️ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
         this.beatDetector = null;
+        // 🔥 WAVE 2179: FREEWHEEL MEMORY — Cerebro retiene el último BPM estable del Worker
+        // Cuando Worker conf=0 (break, silencio, transición), el PLL freewheela
+        // en la frecuencia correcta en lugar de caer al default 120 BPM del Pacemaker.
+        // Timeout: 300 frames (~5s a 60fps) → luego cede al Pacemaker interno.
+        this.lastStableWorkerBpm = 0;
+        this.lastStableWorkerBpmFrame = 0;
+        this.FREEWHEEL_TIMEOUT_FRAMES = 300; // ~5s a 60fps
         this.isInitialized = false;
         this.isRunning = false;
         this.mainLoopInterval = null;
         this.frameCount = 0;
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
+        // setInterval(16) fires every 16ms regardless of whether the previous
+        // processFrame() has finished. Since processFrame() is async (await engine.update()),
+        // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
+        // This flag ensures only ONE processFrame() runs at a time.
+        // ═══════════════════════════════════════════════════════════════════════════
+        this.isProcessingFrame = false;
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🗑️ WAVE 2211: PRE-ALLOCATED FFT BUFFER — GC pressure reduction
+        // BEFORE: `new Array(256).fill(0)` every frame = 256 floats × 30fps = 7,680 allocs/sec
+        // AFTER: Single buffer reused across frames. Zero GC from FFT.
+        // ═══════════════════════════════════════════════════════════════════════════
+        this.EMPTY_FFT_BUFFER = Object.freeze(new Array(256).fill(0));
         // WAVE 252: Real fixtures from ConfigManager (no more mocks)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.fixtures = [];
@@ -174,6 +196,10 @@ export class TitanOrchestrator {
                     workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
                     workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
                     workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+                    // 🥁 WAVE 2213: Reconectar el cable roto — kickCount es monotónico, siempre avanza
+                    workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
+                        ? levels.kickCount
+                        : this.lastAudioData.workerKickCount,
                 };
             });
             await trinity.start();
@@ -198,6 +224,8 @@ export class TitanOrchestrator {
         });
         this.hal = new HardwareAbstraction({
             debug: this.config.debug,
+            // 🔥 WAVE: USB por defecto. Si hay externalDriver, HardwareAbstraction lo usa y este valor no estorba.
+            driverType: 'usb',
             externalDriver: this.config.dmxDriver
         });
         this.isInitialized = true;
@@ -241,579 +269,687 @@ export class TitanOrchestrator {
     /**
      * 🎬 PROCESAR FRAME: El latido del universo
      * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
+     * 🔒 WAVE 2211: ASYNC STAMPEDE GUARD — prevents overlapping processFrame() calls
      */
     async processFrame() {
-        if (!this.brain || !this.engine || !this.hal)
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2211: STAMPEDE GUARD
+        // setInterval(16) doesn't wait for async completion. If engine.update()
+        // takes >16ms, multiple processFrame() calls stack up, corrupting:
+        //   - HAL.measurePhysicsDeltaTime() (dt becomes ~0ms for the interloper)
+        //   - FixturePhysicsDriver positions (two frames writing simultaneously)
+        //   - MasterArbiter state (two arbitrate() calls with different intents)
+        // Result: erratic movement, "chill acting like rock", position jumps.
+        // FIX: Skip frame if previous is still processing. No data loss —
+        //   the NEXT interval will pick up with correct dt measurement.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this.isProcessingFrame)
             return;
-        this.frameCount++;
-        // WAVE 255: No more auto-rotation, system stays in selected vibe
-        // Vibe changes only via IPC lux:setVibe
-        const shouldLog = this.frameCount % 30 === 0; // Log every ~1 second
-        // � WAVE 671.5: Silenced heartbeat spam (every 5s)
-        // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
-        // const shouldHeartbeat = this.frameCount % 150 === 0
-        // if (shouldHeartbeat) {
-        //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
-        //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
-        // }
-        // 1. Brain produces MusicalContext
-        const context = this.brain.getCurrentContext();
-        // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
-        // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
-        const now = Date.now();
-        if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
-            if (shouldLog) {
-                console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`);
+        this.isProcessingFrame = true;
+        try {
+            if (!this.brain || !this.engine || !this.hal)
+                return;
+            this.frameCount++;
+            // WAVE 255: No more auto-rotation, system stays in selected vibe
+            // Vibe changes only via IPC lux:setVibe
+            const shouldLog = this.frameCount % 30 === 0; // Log every ~1 second
+            // � WAVE 671.5: Silenced heartbeat spam (every 5s)
+            // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
+            // const shouldHeartbeat = this.frameCount % 150 === 0
+            // if (shouldHeartbeat) {
+            //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
+            //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
+            // }
+            // 1. Brain produces MusicalContext
+            const context = this.brain.getCurrentContext();
+            // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
+            // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
+            const now = Date.now();
+            if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
+                if (shouldLog) {
+                    console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`);
+                }
+                this.hasRealAudio = false;
+                // Reset lastAudioData para no mentir con datos viejos
+                // 🎛️ WAVE 661: Incluir reset de textura espectral
+                // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
+                // 🔥 WAVE 1162.2: Incluir reset de rawBassEnergy
+                this.lastAudioData = {
+                    bass: 0, mid: 0, high: 0, energy: 0,
+                    harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
+                    subBass: undefined, lowMid: undefined, highMid: undefined,
+                    kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
+                    rawBassEnergy: undefined, // 🔥 WAVE 1162.2: Reset también el bypass
+                    // 🔥 WAVE 2213: PRESERVAR MEMORIA DEL WORKER DURANTE EL SILENCIO
+                    // Sin esto: workerBpm → undefined → zombie BeatDetector → 200 BPM hardcodeado
+                    workerBpm: this.lastAudioData.workerBpm,
+                    workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+                    workerOnBeat: false, // Es silencio, no hay beat activo
+                    workerBeatPhase: this.lastAudioData.workerBeatPhase,
+                    workerBeatStrength: 0,
+                    workerKickCount: this.lastAudioData.workerKickCount,
+                };
             }
-            this.hasRealAudio = false;
-            // Reset lastAudioData para no mentir con datos viejos
-            // 🎛️ WAVE 661: Incluir reset de textura espectral
-            // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
-            // 🔥 WAVE 1162.2: Incluir reset de rawBassEnergy
-            this.lastAudioData = {
-                bass: 0, mid: 0, high: 0, energy: 0,
-                harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
-                subBass: undefined, lowMid: undefined, highMid: undefined,
-                kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
-                rawBassEnergy: undefined // 🔥 WAVE 1162.2: Reset también el bypass
+            // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
+            let bass, mid, high, energy;
+            if (this.hasRealAudio) {
+                bass = this.lastAudioData.bass * this.inputGain;
+                mid = this.lastAudioData.mid * this.inputGain;
+                high = this.lastAudioData.high * this.inputGain;
+                energy = this.lastAudioData.energy * this.inputGain;
+            }
+            else {
+                // Silence - system in standby
+                bass = 0;
+                mid = 0;
+                high = 0;
+                energy = 0;
+            }
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🌊 WAVE 1011.5: THE DAM - Apply EMA smoothing to FFT metrics
+            // Esto elimina el parpadeo causado por picos/caídas bruscas del FFT crudo
+            // Bass/Mid/Treble ya están normalizados por AGC - NO los tocamos
+            // ═══════════════════════════════════════════════════════════════════════════
+            this.applyEMASmoothing();
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
+            // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
+            // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
+            // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
+            // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
+            // ═══════════════════════════════════════════════════════════════════════════
+            let beatState = {
+                bpm: 120,
+                phase: 0,
+                beatCount: 0,
+                onBeat: false,
+                confidence: 0,
+                kickDetected: false,
+                snareDetected: false,
+                hihatDetected: false,
+                // PLL defaults
+                pllPhase: 0,
+                pllOnBeat: false,
+                predictedNextBeatTime: 0,
+                phaseError: 0,
+                pllLocked: false,
             };
-        }
-        // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
-        let bass, mid, high, energy;
-        if (this.hasRealAudio) {
-            bass = this.lastAudioData.bass * this.inputGain;
-            mid = this.lastAudioData.mid * this.inputGain;
-            high = this.lastAudioData.high * this.inputGain;
-            energy = this.lastAudioData.energy * this.inputGain;
-        }
-        else {
-            // Silence - system in standby
-            bass = 0;
-            mid = 0;
-            high = 0;
-            energy = 0;
-        }
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1011.5: THE DAM - Apply EMA smoothing to FFT metrics
-        // Esto elimina el parpadeo causado por picos/caídas bruscas del FFT crudo
-        // Bass/Mid/Treble ya están normalizados por AGC - NO los tocamos
-        // ═══════════════════════════════════════════════════════════════════════════
-        this.applyEMASmoothing();
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
-        // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
-        // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
-        // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
-        // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
-        // ═══════════════════════════════════════════════════════════════════════════
-        let beatState = {
-            bpm: 120,
-            phase: 0,
-            beatCount: 0,
-            onBeat: false,
-            confidence: 0,
-            kickDetected: false,
-            snareDetected: false,
-            hihatDetected: false,
-            // PLL defaults
-            pllPhase: 0,
-            pllOnBeat: false,
-            predictedNextBeatTime: 0,
-            phaseError: 0,
-            pllLocked: false,
-        };
-        // 🔥 WAVE 2112: Worker BPM — the source of truth
-        const workerBpm = this.lastAudioData.workerBpm ?? 0;
-        const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0;
-        const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
-        const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0;
-        if (this.beatDetector && this.hasRealAudio) {
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔥 WAVE 2112: FEED WORKER BPM TO PLL — No more kick detection here
-            // setBpm() updates the Pacemaker's internal BPM and syncs PLL.
-            // tick() advances the PLL Flywheel for anticipatory beat prediction.
-            // The Pacemaker becomes a PHASE-LOCKED FLYWHEEL: smooth, predictive,
-            // but slaved to the Worker's authoritative BPM detection.
-            // ═══════════════════════════════════════════════════════════════════════
+            // 🔥 WAVE 2112: Worker BPM — the source of truth
+            const workerBpm = this.lastAudioData.workerBpm ?? 0;
+            const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0;
+            const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
+            const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0;
+            if (this.beatDetector && this.hasRealAudio) {
+                // 🔥 WAVE 2112 + WAVE 2179: WORKER BPM → PLL
+                // Worker con señal → setBpm() = lock real (PLL anclado a la verdad física)
+                // Worker sordo pero memoria reciente → freewheelAt() = inercia correcta
+                // Worker sordo Y memoria expirada → PLL cae al Pacemaker interno (120 default)
+                // PunkArchytect doctrine: Worker = Oídos (honesto). Cerebro = Memoria (inerte).
+                // ═══════════════════════════════════════════════════════════════════════
+                if (workerBpm > 0 && workerConfidence > 0.2) {
+                    // 🔥 Worker activo: lock real + actualizar memoria
+                    this.beatDetector.setBpm(workerBpm);
+                    this.lastStableWorkerBpm = workerBpm;
+                    this.lastStableWorkerBpmFrame = this.frameCount;
+                }
+                else {
+                    // 🔥 WAVE 2179: Worker sordo → ¿tenemos memoria reciente?
+                    const framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
+                    if (this.lastStableWorkerBpm > 0 && framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES) {
+                        // FREEWHEEL: PLL gira en la frecuencia real, no en 120 BPM
+                        this.beatDetector.freewheelAt(this.lastStableWorkerBpm);
+                    }
+                    // Si el timeout expiró → sin freewheelAt(), PLL se suelta al Pacemaker interno
+                }
+                // PLL Flywheel: advances phase continuously for smooth beat prediction
+                beatState = this.beatDetector.tick(Date.now());
+                // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
+                if (workerOnBeat) {
+                    beatState.onBeat = true;
+                    beatState.kickDetected = true;
+                }
+                if (this.frameCount % 60 === 0) {
+                    const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
+                    const syncInfo = this.smoothedSyncopation.toFixed(2);
+                    const _framesSinceLog = this.frameCount - this.lastStableWorkerBpmFrame;
+                    const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
+                        ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
+                        : '';
+                    console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0}`);
+                }
+            }
+            else if (this.beatDetector) {
+                // WAVE 2090.3: THE FLYWHEEL - tick even without audio
+                // The metronome keeps spinning on inertia (freewheel mode)
+                beatState = this.beatDetector.tick(Date.now());
+            }
+            // ═══════════════════════════════════════════════════════════════════════════
+            //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🔥 rBPM INJECTION — cadena de prioridad con freewheel memory (WAVE 2179)
+            // ═══════════════════════════════════════════════════════════════════════════
+            // Priority chain:
+            //   1. Worker activo (conf > 0.2)         → BPM del Worker (verdad física)
+            //   2. Worker sordo + memoria reciente    → último BPM estable (inercia)
+            //   3. Sin memoria / timeout expirado     → Pacemaker interno (último recurso)
+            // ═══════════════════════════════════════════════════════════════════════════
+            const _framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
+            const hasFreewheelMemory = this.lastStableWorkerBpm > 0 && _framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES;
             if (workerBpm > 0 && workerConfidence > 0.2) {
-                this.beatDetector.setBpm(workerBpm);
+                // Priority 1: Worker activo
+                context.bpm = workerBpm;
+                context.beatPhase = beatState.pllLocked
+                    ? (beatState.pllPhase ?? beatState.phase)
+                    : workerBeatPhase;
+                context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
             }
-            // PLL Flywheel: advances phase continuously for smooth beat prediction
-            beatState = this.beatDetector.tick(Date.now());
-            // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
-            if (workerOnBeat) {
-                beatState.onBeat = true;
-                beatState.kickDetected = true;
+            else if (hasFreewheelMemory) {
+                // 🔥 WAVE 2179: Priority 2 — FREEWHEEL MEMORY
+                // Las luces no se enteran del break. El show continúa en el BPM real.
+                context.bpm = this.lastStableWorkerBpm;
+                context.beatPhase = beatState.pllPhase ?? beatState.phase;
+                context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
             }
-            if (this.frameCount % 60 === 0) {
-                const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
-                const syncInfo = this.smoothedSyncopation.toFixed(2);
-                console.log(`[TitanOrchestrator] � WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`);
+            else if (beatState.bpm > 0 && beatState.confidence > 0) {
+                // Priority 3: Pacemaker interno (cuando no hay ningún recuerdo del Worker)
+                context.bpm = beatState.bpm;
+                context.beatPhase = beatState.pllPhase ?? beatState.phase;
+                context.syncopation = this.estimateSyncopation(beatState.pllPhase ?? beatState.phase, bass, mid);
             }
-        }
-        else if (this.beatDetector) {
-            // WAVE 2090.3: THE FLYWHEEL - tick even without audio
-            // The metronome keeps spinning on inertia (freewheel mode)
-            beatState = this.beatDetector.tick(Date.now());
-        }
-        // ═══════════════════════════════════════════════════════════════════════════
-        //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
-        // The Worker computes its OWN BPM via GodEarBPMTracker now.
-        // The trinity.setBpm() bridge is UNNECESSARY — Worker is the authority.
-        // Kept as comment for archaeology.
-        // ═══════════════════════════════════════════════════════════════════════════
-        // if (this.trinity && beatState.bpm > 0 && beatState.confidence > 0) {
-        //   this.trinity.setBpm(beatState.bpm, beatState.pllPhase, beatState.confidence)
-        // }
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 2112: BPM INJECTION — Worker BPM is the authority, PLL gives phase
-        // ═══════════════════════════════════════════════════════════════════════════
-        // Worker's GodEarBPMTracker provides authoritative BPM.
-        // PLL Flywheel provides smooth phase prediction for anticipatory effects.
-        // Combined: real BPM + smooth phase = best of both worlds.
-        // ═══════════════════════════════════════════════════════════════════════════
-        if (workerBpm > 0 && workerConfidence > 0.2) {
-            context.bpm = workerBpm;
-            // Use PLL phase (smooth, predictive) if locked, else Worker phase
-            context.beatPhase = beatState.pllLocked
+            // For TitanEngine
+            // 🎛️ WAVE 661: Incluir textura espectral
+            // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
+            // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
+            // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
+            const engineAudioMetrics = {
+                bass, // Ya normalizado por AGC - INTOCABLE
+                mid, // Ya normalizado por AGC - INTOCABLE
+                high, // Ya normalizado por AGC - INTOCABLE
+                energy, // Ya normalizado por AGC - INTOCABLE
+                // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
+                beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
+                isBeat: workerOnBeat || beatState.onBeat,
+                // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
+                // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
+                // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
+                beatCount: this.lastAudioData.workerKickCount ?? beatState.beatCount,
+                bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
+                beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
+                // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
+                harshness: this.smoothedMetrics.harshness,
+                spectralFlatness: this.smoothedMetrics.spectralFlatness,
+                spectralCentroid: this.smoothedMetrics.spectralCentroid,
+                // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
+                subBass: this.smoothedMetrics.subBass,
+                lowMid: this.smoothedMetrics.lowMid,
+                highMid: this.smoothedMetrics.highMid,
+                // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
+                kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
+                snareDetected: this.lastAudioData.snareDetected,
+                hihatDetected: this.lastAudioData.hihatDetected,
+            };
+            // For HAL
+            // 🎵 WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
+            // BEFORE: HAL calculated its own fake beatPhase from hardcoded 120 BPM
+            // → optics pulsed at constant 2Hz regardless of actual music tempo
+            // → chill-lounge got rock-speed focus punches
+            // AFTER: Real PLL phase flows from Worker → Pacemaker → here → HAL
+            const halBeatPhase = beatState.pllLocked
                 ? (beatState.pllPhase ?? beatState.phase)
                 : workerBeatPhase;
-            context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
-        }
-        else if (beatState.bpm > 0 && beatState.confidence > 0) {
-            // Fallback: PLL flywheel if Worker hasn't locked yet
-            context.bpm = beatState.bpm;
-            context.beatPhase = beatState.pllPhase ?? beatState.phase;
-            context.syncopation = this.estimateSyncopation(beatState.pllPhase ?? beatState.phase, bass, mid);
-        }
-        // For TitanEngine
-        // 🎛️ WAVE 661: Incluir textura espectral
-        // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
-        // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
-        // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
-        const engineAudioMetrics = {
-            bass, // Ya normalizado por AGC - INTOCABLE
-            mid, // Ya normalizado por AGC - INTOCABLE
-            high, // Ya normalizado por AGC - INTOCABLE
-            energy, // Ya normalizado por AGC - INTOCABLE
-            // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
-            beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
-            isBeat: workerOnBeat || beatState.onBeat,
-            beatCount: beatState.beatCount,
-            bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
-            beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
-            // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
-            harshness: this.smoothedMetrics.harshness,
-            spectralFlatness: this.smoothedMetrics.spectralFlatness,
-            spectralCentroid: this.smoothedMetrics.spectralCentroid,
-            // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
-            subBass: this.smoothedMetrics.subBass,
-            lowMid: this.smoothedMetrics.lowMid,
-            highMid: this.smoothedMetrics.highMid,
-            // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
-            kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
-            snareDetected: this.lastAudioData.snareDetected,
-            hihatDetected: this.lastAudioData.hihatDetected,
-        };
-        // For HAL
-        const halAudioMetrics = {
-            rawBass: bass,
-            rawMid: mid,
-            rawTreble: high,
-            energy,
-            isRealSilence: false,
-            isAGCTrap: false,
-        };
-        // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
-        const intent = await this.engine.update(context, engineAudioMetrics);
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
-        // Instead of sending intent directly to HAL, we now:
-        // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
-        // 2. Arbiter merges all layers (manual overrides, effects, blackout)
-        // 3. Send arbitrated result to HAL
-        // ═══════════════════════════════════════════════════════════════════════════
-        // Feed Layer 0: AI Intent
-        const titanLayer = {
-            intent,
-            timestamp: Date.now(),
-            vibeId: this.engine.getCurrentVibe(),
-            frameNumber: this.frameCount,
-        };
-        masterArbiter.setTitanIntent(titanLayer);
-        // Arbitrate all layers (this merges manual overrides, effects, blackout)
-        const arbitratedTarget = masterArbiter.arbitrate();
-        // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
-        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
-        this.warlogHeartbeatFrame++;
-        if (this.warlogHeartbeatFrame >= 240) {
-            this.warlogHeartbeatFrame = 0;
-            const currentVibe = this.engine.getCurrentVibe();
-            const brainEnabled = this.useBrain;
-            const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT';
-            const bpm = context.bpm || 120;
-            // Emit heartbeat log
-            this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
-                audioActive: this.hasRealAudio,
-                bpm,
-                vibe: currentVibe,
-                brainEnabled,
-                fixtureCount: this.fixtures.length,
-            });
-        }
-        // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
-        // 4. HAL renders arbitrated target -> produces fixture states
-        // Now using the new renderFromTarget method that accepts FinalLightingTarget
-        let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
-        //
-        // OLD (WAVE 2063): Binary gate — Chronos playing? Block ALL effects everywhere.
-        //   → This killed Selene's reactive colors for the ENTIRE stage during gaps.
-        //
-        // NEW: Chronos only protects the SPECIFIC fixtures it's painting right now.
-        //   Fixtures NOT in the Chronos frame are FREE for EffectManager/Hephaestus.
-        //   This means Selene's music-reactive physics keep working on untouched fixtures.
-        //
-        // The Set<string> contains ONLY the fixture IDs that Chronos is controlling
-        // in THIS exact frame. An empty set = Chronos has nothing to say = full freedom.
-        // ═══════════════════════════════════════════════════════════════════════
-        const isChronosPlaying = masterArbiter.isPlaybackActive();
-        const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
-        // 🔬 WAVE 2065: Telemetry (1 sample every 5s)
-        if (isChronosPlaying && this.frameCount % 300 === 1) {
-            const f0 = fixtureStates[0];
-            console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
-                `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`);
-        }
-        // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
-        // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
-        // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
-        const effectManager = getEffectManager();
-        const effectOutput = effectManager.getCombinedOutput();
-        // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
-        // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
-        // Si no, usar la lógica legacy con colorOverride global
-        // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — now per-fixture inside loop
-        if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
-            // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
-            // Los logs de zoneOverrides están en el EffectManager, no aquí
+            const halBpm = workerBpm > 0 ? workerBpm : beatState.bpm;
+            const halAudioMetrics = {
+                rawBass: bass,
+                rawMid: mid,
+                rawTreble: high,
+                energy,
+                isRealSilence: false,
+                isAGCTrap: false,
+                beatPhase: halBeatPhase,
+                bpm: halBpm,
+            };
+            // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
+            const intent = await this.engine.update(context, engineAudioMetrics);
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
+            // Instead of sending intent directly to HAL, we now:
+            // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
+            // 2. Arbiter merges all layers (manual overrides, effects, blackout)
+            // 3. Send arbitrated result to HAL
+            // ═══════════════════════════════════════════════════════════════════════════
+            // Feed Layer 0: AI Intent
+            const titanLayer = {
+                intent,
+                timestamp: Date.now(),
+                vibeId: this.engine.getCurrentVibe(),
+                frameNumber: this.frameCount,
+            };
+            masterArbiter.setTitanIntent(titanLayer);
+            // Arbitrate all layers (this merges manual overrides, effects, blackout)
+            const arbitratedTarget = masterArbiter.arbitrate();
+            // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
+            // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+            this.warlogHeartbeatFrame++;
+            if (this.warlogHeartbeatFrame >= 240) {
+                this.warlogHeartbeatFrame = 0;
+                const currentVibe = this.engine.getCurrentVibe();
+                const brainEnabled = this.useBrain;
+                const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT';
+                const bpm = context.bpm || 120;
+                // Emit heartbeat log
+                this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
+                    audioActive: this.hasRealAudio,
+                    bpm,
+                    vibe: currentVibe,
+                    brainEnabled,
+                    fixtureCount: this.fixtures.length,
+                });
+            }
+            // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
+            // 4. HAL renders arbitrated target -> produces fixture states
+            // Now using the new renderFromTarget method that accepts FinalLightingTarget
+            let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
             // ═══════════════════════════════════════════════════════════════════════
-            // 🎨 WAVE 740: STRICT ZONAL ISOLATION
-            // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
-            // Las fixtures que NO están en esas zonas NO SE TOCAN - permanecen
-            // con su estado base (del HAL/Vibe) sin modificación alguna.
+            // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
+            //
+            // OLD (WAVE 2063): Binary gate — Chronos playing? Block ALL effects everywhere.
+            //   → This killed Selene's reactive colors for the ENTIRE stage during gaps.
+            //
+            // NEW: Chronos only protects the SPECIFIC fixtures it's painting right now.
+            //   Fixtures NOT in the Chronos frame are FREE for EffectManager/Hephaestus.
+            //   This means Selene's music-reactive physics keep working on untouched fixtures.
+            //
+            // The Set<string> contains ONLY the fixture IDs that Chronos is controlling
+            // in THIS exact frame. An empty set = Chronos has nothing to say = full freedom.
             // ═══════════════════════════════════════════════════════════════════════
-            // 1. Obtener las zonas activas del efecto (SOLO estas se procesan)
-            const activeZones = Object.keys(effectOutput.zoneOverrides);
-            // 2. Crear un Set de índices de fixtures afectadas para tracking
-            const affectedFixtureIndices = new Set();
-            // 3. Para cada zona activa, encontrar y modificar SOLO sus fixtures
-            for (const zoneId of activeZones) {
-                const zoneData = effectOutput.zoneOverrides[zoneId];
-                // Encontrar fixtures que pertenecen a esta zona
-                fixtureStates.forEach((f, index) => {
-                    const fixtureZone = (f.zone || '').toLowerCase();
-                    // 🔊 WAVE 1075.2: Use position.x from original fixtures array
-                    const positionX = this.fixtures[index]?.position?.x ?? 0;
-                    if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
-                        // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-                        const fixtureId = this.fixtures[index]?.id;
-                        if (fixtureId && chronosFixtureIds.has(fixtureId))
-                            return;
-                        // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
-                        affectedFixtureIndices.add(index);
-                        // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
-                        const isGlobalBus = effectOutput.mixBus === 'global';
-                        // Aplicar color si existe
-                        if (zoneData.color) {
-                            const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
-                            // REEMPLAZO DIRECTO - El efecto toma control total del color
-                            fixtureStates[index] = {
-                                ...f,
-                                r: rgb.r,
-                                g: rgb.g,
-                                b: rgb.b,
-                            };
-                        }
-                        // ═══════════════════════════════════════════════════════════════════════
-                        // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
-                        // 
-                        // ANTES (WAVE 765): LTP puro - El efecto siempre manda
-                        // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
-                        // 
-                        // AHORA: Cada efecto declara su intención via blendMode:
-                        // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
-                        // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
-                        // 
-                        // DEFAULT: 'max' - Más seguro para energía general
-                        // 
-                        // 🔗 WAVE 991: THE MISSING LINK
-                        // Si el efecto tiene mixBus='global', forzamos 'replace' SIEMPRE
-                        // El mixBus de la clase es la autoridad máxima
-                        // ═══════════════════════════════════════════════════════════════════════
-                        if (zoneData.dimmer !== undefined) {
-                            const effectDimmer = Math.round(zoneData.dimmer * 255);
-                            // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
-                            const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max');
-                            const physicsDimmer = fixtureStates[index].dimmer;
-                            let finalDimmer;
-                            if (blendMode === 'replace') {
-                                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
-                                // 🔗 WAVE 991: También forzado cuando mixBus='global'
-                                finalDimmer = effectDimmer;
+            const isChronosPlaying = masterArbiter.isPlaybackActive();
+            const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
+            // 🔬 WAVE 2065: Telemetry (1 sample every 5s)
+            if (isChronosPlaying && this.frameCount % 300 === 1) {
+                const f0 = fixtureStates[0];
+                console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
+                    `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`);
+            }
+            // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
+            // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
+            // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
+            const effectManager = getEffectManager();
+            const effectOutput = effectManager.getCombinedOutput();
+            // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
+            // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
+            // Si no, usar la lógica legacy con colorOverride global
+            // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — now per-fixture inside loop
+            if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+                // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
+                // Los logs de zoneOverrides están en el EffectManager, no aquí
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🎨 WAVE 740: STRICT ZONAL ISOLATION
+                // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
+                // Las fixtures que NO están en esas zonas NO SE TOCAN - permanecen
+                // con su estado base (del HAL/Vibe) sin modificación alguna.
+                // ═══════════════════════════════════════════════════════════════════════
+                // 1. Obtener las zonas activas del efecto (SOLO estas se procesan)
+                const activeZones = Object.keys(effectOutput.zoneOverrides);
+                // 2. Crear un Set de índices de fixtures afectadas para tracking
+                const affectedFixtureIndices = new Set();
+                // 3. Para cada zona activa, encontrar y modificar SOLO sus fixtures
+                for (const zoneId of activeZones) {
+                    const zoneData = effectOutput.zoneOverrides[zoneId];
+                    // Encontrar fixtures que pertenecen a esta zona
+                    fixtureStates.forEach((f, index) => {
+                        const fixtureZone = (f.zone || '').toLowerCase();
+                        // 🔊 WAVE 1075.2: Use position.x from original fixtures array
+                        const positionX = this.fixtures[index]?.position?.x ?? 0;
+                        if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
+                            // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                            const fixtureId = this.fixtures[index]?.id;
+                            if (fixtureId && chronosFixtureIds.has(fixtureId))
+                                return;
+                            // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
+                            affectedFixtureIndices.add(index);
+                            // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
+                            const isGlobalBus = effectOutput.mixBus === 'global';
+                            // Aplicar color si existe
+                            if (zoneData.color) {
+                                const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
+                                // REEMPLAZO DIRECTO - El efecto toma control total del color
+                                fixtureStates[index] = {
+                                    ...f,
+                                    r: rgb.r,
+                                    g: rgb.g,
+                                    b: rgb.b,
+                                };
+                            }
+                            // ═══════════════════════════════════════════════════════════════════════
+                            // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
+                            // 
+                            // ANTES (WAVE 765): LTP puro - El efecto siempre manda
+                            // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
+                            // 
+                            // AHORA: Cada efecto declara su intención via blendMode:
+                            // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
+                            // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
+                            // 
+                            // DEFAULT: 'max' - Más seguro para energía general
+                            // 
+                            // 🔗 WAVE 991: THE MISSING LINK
+                            // Si el efecto tiene mixBus='global', forzamos 'replace' SIEMPRE
+                            // El mixBus de la clase es la autoridad máxima
+                            // ═══════════════════════════════════════════════════════════════════════
+                            if (zoneData.dimmer !== undefined) {
+                                const effectDimmer = Math.round(zoneData.dimmer * 255);
+                                // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
+                                const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max');
+                                const physicsDimmer = fixtureStates[index].dimmer;
+                                let finalDimmer;
+                                if (blendMode === 'replace') {
+                                    // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                                    // 🔗 WAVE 991: También forzado cuando mixBus='global'
+                                    finalDimmer = effectDimmer;
+                                }
+                                else {
+                                    // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
+                                    finalDimmer = Math.max(physicsDimmer, effectDimmer);
+                                }
+                                fixtureStates[index] = {
+                                    ...fixtureStates[index],
+                                    dimmer: finalDimmer,
+                                };
+                            }
+                            // ═══════════════════════════════════════════════════════════════════════
+                            // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
+                            // 🔗 WAVE 991: Respetar mixBus='global' también para white/amber
+                            // 🛡️ WAVE 993: THE IRON CURTAIN - Zero-fill para canales no especificados
+                            // 
+                            // PROBLEMA WAVE 991: TropicalPulse/ClaveRhythm enviaban white/amber pero el
+                            // Orchestrator los ignoraba completamente.
+                            // 
+                            // PROBLEMA WAVE 993: Efectos con mixBus='global' no mataban los canales
+                            // que NO especificaban → Physics "sangraba" a través de los huecos.
+                            // 
+                            // SOLUCIÓN WAVE 993 - THE IRON CURTAIN:
+                            // - mixBus='global' → TELÓN DE ACERO: Todo lo no especificado MUERE (0)
+                            // - mixBus='htp' → COLABORACIÓN: Solo procesa lo que trae el efecto
+                            // 
+                            // Ejemplo crítico: DigitalRain (verde puro techno)
+                            //   - Trae: RGB verde, dimmer
+                            //   - NO trae: white, amber
+                            //   - ANTES: white/amber quedaban con valor de physics (dorado bleeding)
+                            //   - AHORA: white=0, amber=0 → VERDE PURO ✅
+                            // ═══════════════════════════════════════════════════════════════════════
+                            if (isGlobalBus) {
+                                // 🛡️ WAVE 993: THE IRON CURTAIN
+                                // Dictador global: Los canales no mencionados MUEREN
+                                // No permitimos que la física "sangre" a través de los huecos
+                                const effectWhite = zoneData.white !== undefined ? Math.round(zoneData.white * 255) : 0;
+                                const effectAmber = zoneData.amber !== undefined ? Math.round(zoneData.amber * 255) : 0;
+                                fixtureStates[index].white = effectWhite;
+                                fixtureStates[index].amber = effectAmber;
                             }
                             else {
-                                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
-                                finalDimmer = Math.max(physicsDimmer, effectDimmer);
+                                // 🎉 HTP MODE (Fiesta Latina): COLABORACIÓN
+                                // Solo procesa los canales que el efecto trae explícitamente
+                                // Si el efecto no menciona white/amber, deja que physics brille
+                                if (zoneData.white !== undefined) {
+                                    const effectWhite = Math.round(zoneData.white * 255);
+                                    const physicsWhite = fixtureStates[index].white || 0;
+                                    fixtureStates[index].white = Math.max(physicsWhite, effectWhite);
+                                }
+                                if (zoneData.amber !== undefined) {
+                                    const effectAmber = Math.round(zoneData.amber * 255);
+                                    const physicsAmber = fixtureStates[index].amber || 0;
+                                    fixtureStates[index].amber = Math.max(physicsAmber, effectAmber);
+                                }
                             }
-                            fixtureStates[index] = {
-                                ...fixtureStates[index],
+                        }
+                        // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
+                    });
+                }
+                // Log throttled para debug
+                if (this.frameCount % 60 === 0) {
+                    const zoneList = activeZones.join(', ');
+                    const unaffectedCount = fixtureStates.length - affectedFixtureIndices.size;
+                    console.log(`[TitanOrchestrator 740] � STRICT ZONAL: [${zoneList}] | Affected: ${affectedFixtureIndices.size}/${fixtureStates.length} | UNTOUCHED: ${unaffectedCount}`);
+                    for (const zoneId of activeZones) {
+                        const zoneData = effectOutput.zoneOverrides[zoneId];
+                        if (zoneData.color) {
+                            const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
+                            console.log(`  🖌️ [${zoneId}] → RGB(${rgb.r},${rgb.g},${rgb.b}) dimmer=${(zoneData.dimmer ?? 1).toFixed(2)}`);
+                        }
+                    }
+                }
+                // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
+                // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
+            }
+            else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+                // ═══════════════════════════════════════════════════════════════════════
+                // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
+                // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — per-fixture check inside
+                // ═══════════════════════════════════════════════════════════════════════
+                const flareIntensity = effectOutput.dimmerOverride; // 0-1
+                // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
+                let flareR = 255, flareG = 200, flareB = 80; // Default: dorado (SolarFlare legacy)
+                if (effectOutput.colorOverride) {
+                    // Convertir HSL a RGB
+                    const { h, s, l } = effectOutput.colorOverride;
+                    const rgb = this.hslToRgb(h, s, l);
+                    flareR = rgb.r;
+                    flareG = rgb.g;
+                    flareB = rgb.b;
+                }
+                // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
+                // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
+                // 🔊 WAVE 2040.27: Added stereo support for frontL/R, backL/R (Chill effects)
+                const shouldApplyToFixture = (f, index) => {
+                    // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
+                    if ((effectOutput.globalComposition ?? 0) > 0)
+                        return true;
+                    // Sin globalComposition, verificar zones
+                    const zones = effectOutput.zones || [];
+                    if (zones.length === 0)
+                        return false;
+                    const fixtureZone = f.zone || '';
+                    const positionX = this.fixtures[index]?.position?.x ?? 0;
+                    // Check if any target zone matches this fixture
+                    // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
+                    for (const zone of zones) {
+                        const tz = zone.toLowerCase();
+                        // Stereo zones need position-based matching
+                        if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' ||
+                            tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
+                            if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
+                                return true;
+                            }
+                        }
+                        else {
+                            // Non-stereo zones
+                            if (this.fixtureMatchesZone(fixtureZone, zone)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                // 🚂 WAVE 800 → 1080: RAILWAY SWITCH + FLUID DYNAMICS
+                // mixBus='global' → Modo dictador (pero ahora con alpha variable)
+                // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
+                // globalComposition → Alpha de mezcla (0-1) para transiciones suaves
+                const globalComp = effectOutput.globalComposition ?? 0;
+                const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0;
+                fixtureStates = fixtureStates.map((f, index) => {
+                    const shouldApply = shouldApplyToFixture(f, index);
+                    if (!shouldApply)
+                        return f; // No afectar esta fixture
+                    // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                    const fixtureId = this.fixtures[index]?.id;
+                    if (fixtureId && chronosFixtureIds.has(fixtureId))
+                        return f;
+                    if (isGlobalMode) {
+                        // ═══════════════════════════════════════════════════════════════════════
+                        // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
+                        // FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
+                        // 
+                        // Esto elimina los "blackouts" bruscos cuando termina un efecto global.
+                        // El océano "sangra" a través de los rayos de sol mientras desaparecen.
+                        // ═══════════════════════════════════════════════════════════════════════
+                        const alpha = globalComp; // 0.0 = física pura, 1.0 = efecto puro
+                        const invAlpha = 1 - alpha;
+                        // LERP para cada componente RGB
+                        const lerpedR = Math.round(f.r * invAlpha + flareR * alpha);
+                        const lerpedG = Math.round(f.g * invAlpha + flareG * alpha);
+                        const lerpedB = Math.round(f.b * invAlpha + flareB * alpha);
+                        // LERP para dimmer también
+                        const baseDimmer = f.dimmer / 255; // Normalizar a 0-1
+                        const lerpedDimmer = baseDimmer * invAlpha + flareIntensity * alpha;
+                        return {
+                            ...f,
+                            r: lerpedR,
+                            g: lerpedG,
+                            b: lerpedB,
+                            dimmer: Math.round(lerpedDimmer * 255),
+                        };
+                    }
+                    else {
+                        // ═══════════════════════════════════════════════════════════════════════
+                        // 🚂 WAVE 800: VÍA HTP - El efecto suma, respeta física
+                        // HTP: El más brillante gana. El efecto complementa, no reemplaza.
+                        // Perfecto para: TropicalPulse, ClaveRhythm, etc.
+                        // ═══════════════════════════════════════════════════════════════════════
+                        const effectDimmer = Math.round(flareIntensity * 255);
+                        const finalDimmer = Math.max(f.dimmer, effectDimmer); // HTP: El más alto gana
+                        // Color: Winner Takes All - si el efecto brilla más, gana el color
+                        if (effectDimmer >= f.dimmer * 0.8) {
+                            return {
+                                ...f,
+                                r: flareR,
+                                g: flareG,
+                                b: flareB,
                                 dimmer: finalDimmer,
                             };
                         }
-                        // ═══════════════════════════════════════════════════════════════════════
-                        // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
-                        // 🔗 WAVE 991: Respetar mixBus='global' también para white/amber
-                        // 🛡️ WAVE 993: THE IRON CURTAIN - Zero-fill para canales no especificados
-                        // 
-                        // PROBLEMA WAVE 991: TropicalPulse/ClaveRhythm enviaban white/amber pero el
-                        // Orchestrator los ignoraba completamente.
-                        // 
-                        // PROBLEMA WAVE 993: Efectos con mixBus='global' no mataban los canales
-                        // que NO especificaban → Physics "sangraba" a través de los huecos.
-                        // 
-                        // SOLUCIÓN WAVE 993 - THE IRON CURTAIN:
-                        // - mixBus='global' → TELÓN DE ACERO: Todo lo no especificado MUERE (0)
-                        // - mixBus='htp' → COLABORACIÓN: Solo procesa lo que trae el efecto
-                        // 
-                        // Ejemplo crítico: DigitalRain (verde puro techno)
-                        //   - Trae: RGB verde, dimmer
-                        //   - NO trae: white, amber
-                        //   - ANTES: white/amber quedaban con valor de physics (dorado bleeding)
-                        //   - AHORA: white=0, amber=0 → VERDE PURO ✅
-                        // ═══════════════════════════════════════════════════════════════════════
-                        if (isGlobalBus) {
-                            // 🛡️ WAVE 993: THE IRON CURTAIN
-                            // Dictador global: Los canales no mencionados MUEREN
-                            // No permitimos que la física "sangre" a través de los huecos
-                            const effectWhite = zoneData.white !== undefined ? Math.round(zoneData.white * 255) : 0;
-                            const effectAmber = zoneData.amber !== undefined ? Math.round(zoneData.amber * 255) : 0;
-                            fixtureStates[index].white = effectWhite;
-                            fixtureStates[index].amber = effectAmber;
+                        else {
+                            // La física gana, mantener su color
+                            return {
+                                ...f,
+                                dimmer: finalDimmer,
+                            };
+                        }
+                    }
+                });
+                // Log throttled
+                if (this.frameCount % 60 === 0) {
+                    const affectedFixtures = fixtureStates.filter(shouldApplyToFixture);
+                    const mode = isGlobalMode ? `GLOBAL(${(globalComp * 100).toFixed(0)}%)` : 'HTP';
+                    // WAVE 1080 DEBUG: Show globalComposition alpha
+                    console.log(`[TitanOrchestrator 🌊] EFFECT [${mode}] mixBus=${effectOutput.mixBus}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
+                    console.log(`[TitanOrchestrator 🌊] Affected: ${affectedFixtures.length}/${fixtureStates.length} fixtures`);
+                }
+            }
+            // ═══════════════════════════════════════════════════════════════════════
+            // ✂️ WAVE 930.2: STEREO MOVEMENT - Movimiento L/R independiente
+            // Para efectos como SkySaw que necesitan scissors pan/tilt
+            // ═══════════════════════════════════════════════════════════════════════
+            if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+                const leftMovement = effectOutput.zoneOverrides['movers_left']?.movement;
+                const rightMovement = effectOutput.zoneOverrides['movers_right']?.movement;
+                if (leftMovement || rightMovement) {
+                    fixtureStates = fixtureStates.map(f => {
+                        const fixtureZone = (f.zone || '').toLowerCase();
+                        const isMover = f.zone?.includes('MOVING') || fixtureZone.includes('ceiling') || (f.pan !== undefined && f.tilt !== undefined);
+                        if (!isMover)
+                            return f;
+                        // Determinar si es izquierda o derecha
+                        const isLeft = fixtureZone.includes('left') || f.zone?.includes('LEFT');
+                        const isRight = fixtureZone.includes('right') || f.zone?.includes('RIGHT');
+                        // Seleccionar el movement correcto según lado
+                        let mov;
+                        if (isLeft && leftMovement) {
+                            mov = leftMovement;
+                        }
+                        else if (isRight && rightMovement) {
+                            mov = rightMovement;
                         }
                         else {
-                            // 🎉 HTP MODE (Fiesta Latina): COLABORACIÓN
-                            // Solo procesa los canales que el efecto trae explícitamente
-                            // Si el efecto no menciona white/amber, deja que physics brille
-                            if (zoneData.white !== undefined) {
-                                const effectWhite = Math.round(zoneData.white * 255);
-                                const physicsWhite = fixtureStates[index].white || 0;
-                                fixtureStates[index].white = Math.max(physicsWhite, effectWhite);
+                            // Si no es claramente L/R, usar el promedio o el que exista
+                            mov = leftMovement || rightMovement;
+                        }
+                        if (!mov)
+                            return f;
+                        // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
+                        // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
+                        // The physics engine will interpolate toward these new targets.
+                        let newPan = f.pan;
+                        let newTilt = f.tilt;
+                        if (mov.isAbsolute) {
+                            // ABSOLUTE MODE: Reemplaza completamente
+                            if (mov.pan !== undefined) {
+                                // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
+                                newPan = Math.round(mov.pan * 255);
                             }
-                            if (zoneData.amber !== undefined) {
-                                const effectAmber = Math.round(zoneData.amber * 255);
-                                const physicsAmber = fixtureStates[index].amber || 0;
-                                fixtureStates[index].amber = Math.max(physicsAmber, effectAmber);
+                            if (mov.tilt !== undefined) {
+                                newTilt = Math.round(mov.tilt * 255);
                             }
                         }
-                    }
-                    // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
-                });
-            }
-            // Log throttled para debug
-            if (this.frameCount % 60 === 0) {
-                const zoneList = activeZones.join(', ');
-                const unaffectedCount = fixtureStates.length - affectedFixtureIndices.size;
-                console.log(`[TitanOrchestrator 740] � STRICT ZONAL: [${zoneList}] | Affected: ${affectedFixtureIndices.size}/${fixtureStates.length} | UNTOUCHED: ${unaffectedCount}`);
-                for (const zoneId of activeZones) {
-                    const zoneData = effectOutput.zoneOverrides[zoneId];
-                    if (zoneData.color) {
-                        const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
-                        console.log(`  🖌️ [${zoneId}] → RGB(${rgb.r},${rgb.g},${rgb.b}) dimmer=${(zoneData.dimmer ?? 1).toFixed(2)}`);
-                    }
-                }
-            }
-            // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
-            // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
-        }
-        else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
-            // ═══════════════════════════════════════════════════════════════════════
-            // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
-            // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — per-fixture check inside
-            // ═══════════════════════════════════════════════════════════════════════
-            const flareIntensity = effectOutput.dimmerOverride; // 0-1
-            // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
-            let flareR = 255, flareG = 200, flareB = 80; // Default: dorado (SolarFlare legacy)
-            if (effectOutput.colorOverride) {
-                // Convertir HSL a RGB
-                const { h, s, l } = effectOutput.colorOverride;
-                const rgb = this.hslToRgb(h, s, l);
-                flareR = rgb.r;
-                flareG = rgb.g;
-                flareB = rgb.b;
-            }
-            // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
-            // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
-            // 🔊 WAVE 2040.27: Added stereo support for frontL/R, backL/R (Chill effects)
-            const shouldApplyToFixture = (f, index) => {
-                // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
-                if ((effectOutput.globalComposition ?? 0) > 0)
-                    return true;
-                // Sin globalComposition, verificar zones
-                const zones = effectOutput.zones || [];
-                if (zones.length === 0)
-                    return false;
-                const fixtureZone = f.zone || '';
-                const positionX = this.fixtures[index]?.position?.x ?? 0;
-                // Check if any target zone matches this fixture
-                // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
-                for (const zone of zones) {
-                    const tz = zone.toLowerCase();
-                    // Stereo zones need position-based matching
-                    if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' ||
-                        tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
-                        if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-                            return true;
+                        else {
+                            // OFFSET MODE: Suma al target
+                            if (mov.pan !== undefined) {
+                                const panOffset = Math.round((mov.pan - 0.5) * 255);
+                                newPan = Math.max(0, Math.min(255, f.pan + panOffset));
+                            }
+                            if (mov.tilt !== undefined) {
+                                const tiltOffset = Math.round((mov.tilt - 0.5) * 255);
+                                newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
+                            }
                         }
-                    }
-                    else {
-                        // Non-stereo zones
-                        if (this.fixtureMatchesZone(fixtureZone, zone)) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            };
-            // 🚂 WAVE 800 → 1080: RAILWAY SWITCH + FLUID DYNAMICS
-            // mixBus='global' → Modo dictador (pero ahora con alpha variable)
-            // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
-            // globalComposition → Alpha de mezcla (0-1) para transiciones suaves
-            const globalComp = effectOutput.globalComposition ?? 0;
-            const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0;
-            fixtureStates = fixtureStates.map((f, index) => {
-                const shouldApply = shouldApplyToFixture(f, index);
-                if (!shouldApply)
-                    return f; // No afectar esta fixture
-                // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-                const fixtureId = this.fixtures[index]?.id;
-                if (fixtureId && chronosFixtureIds.has(fixtureId))
-                    return f;
-                if (isGlobalMode) {
-                    // ═══════════════════════════════════════════════════════════════════════
-                    // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
-                    // FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
-                    // 
-                    // Esto elimina los "blackouts" bruscos cuando termina un efecto global.
-                    // El océano "sangra" a través de los rayos de sol mientras desaparecen.
-                    // ═══════════════════════════════════════════════════════════════════════
-                    const alpha = globalComp; // 0.0 = física pura, 1.0 = efecto puro
-                    const invAlpha = 1 - alpha;
-                    // LERP para cada componente RGB
-                    const lerpedR = Math.round(f.r * invAlpha + flareR * alpha);
-                    const lerpedG = Math.round(f.g * invAlpha + flareG * alpha);
-                    const lerpedB = Math.round(f.b * invAlpha + flareB * alpha);
-                    // LERP para dimmer también
-                    const baseDimmer = f.dimmer / 255; // Normalizar a 0-1
-                    const lerpedDimmer = baseDimmer * invAlpha + flareIntensity * alpha;
-                    return {
-                        ...f,
-                        r: lerpedR,
-                        g: lerpedG,
-                        b: lerpedB,
-                        dimmer: Math.round(lerpedDimmer * 255),
-                    };
-                }
-                else {
-                    // ═══════════════════════════════════════════════════════════════════════
-                    // 🚂 WAVE 800: VÍA HTP - El efecto suma, respeta física
-                    // HTP: El más brillante gana. El efecto complementa, no reemplaza.
-                    // Perfecto para: TropicalPulse, ClaveRhythm, etc.
-                    // ═══════════════════════════════════════════════════════════════════════
-                    const effectDimmer = Math.round(flareIntensity * 255);
-                    const finalDimmer = Math.max(f.dimmer, effectDimmer); // HTP: El más alto gana
-                    // Color: Winner Takes All - si el efecto brilla más, gana el color
-                    if (effectDimmer >= f.dimmer * 0.8) {
                         return {
                             ...f,
-                            r: flareR,
-                            g: flareG,
-                            b: flareB,
-                            dimmer: finalDimmer,
+                            pan: newPan,
+                            tilt: newTilt,
+                            // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
+                            // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
                         };
-                    }
-                    else {
-                        // La física gana, mantener su color
-                        return {
-                            ...f,
-                            dimmer: finalDimmer,
-                        };
+                    });
+                    // Log throttled
+                    if (this.frameCount % 30 === 0) {
+                        console.log(`[TitanOrchestrator ✂️] STEREO MOVEMENT: L=${leftMovement ? `P${leftMovement.pan?.toFixed(2)}/T${leftMovement.tilt?.toFixed(2)}` : 'N/A'} R=${rightMovement ? `P${rightMovement.pan?.toFixed(2)}/T${rightMovement.tilt?.toFixed(2)}` : 'N/A'}`);
                     }
                 }
-            });
-            // Log throttled
-            if (this.frameCount % 60 === 0) {
-                const affectedFixtures = fixtureStates.filter(shouldApplyToFixture);
-                const mode = isGlobalMode ? `GLOBAL(${(globalComp * 100).toFixed(0)}%)` : 'HTP';
-                // WAVE 1080 DEBUG: Show globalComposition alpha
-                console.log(`[TitanOrchestrator 🌊] EFFECT [${mode}] mixBus=${effectOutput.mixBus}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
-                console.log(`[TitanOrchestrator 🌊] Affected: ${affectedFixtures.length}/${fixtureStates.length} fixtures`);
             }
-        }
-        // ═══════════════════════════════════════════════════════════════════════
-        // ✂️ WAVE 930.2: STEREO MOVEMENT - Movimiento L/R independiente
-        // Para efectos como SkySaw que necesitan scissors pan/tilt
-        // ═══════════════════════════════════════════════════════════════════════
-        if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
-            const leftMovement = effectOutput.zoneOverrides['movers_left']?.movement;
-            const rightMovement = effectOutput.zoneOverrides['movers_right']?.movement;
-            if (leftMovement || rightMovement) {
+            // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
+            // Solo se aplica si NO hay zoneOverrides con movement (fallback global)
+            const hasZoneMovement = effectOutput.zoneOverrides &&
+                (effectOutput.zoneOverrides['movers_left']?.movement || effectOutput.zoneOverrides['movers_right']?.movement);
+            if (effectOutput.hasActiveEffects && effectOutput.movementOverride && !hasZoneMovement) {
+                const mov = effectOutput.movementOverride;
+                // Solo aplicar a fixtures que son movers (tienen pan/tilt)
                 fixtureStates = fixtureStates.map(f => {
-                    const fixtureZone = (f.zone || '').toLowerCase();
-                    const isMover = f.zone?.includes('MOVING') || fixtureZone.includes('ceiling') || (f.pan !== undefined && f.tilt !== undefined);
+                    // Detectar si es un mover (zone contiene MOVING o tiene pan/tilt definido)
+                    const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined);
                     if (!isMover)
-                        return f;
-                    // Determinar si es izquierda o derecha
-                    const isLeft = fixtureZone.includes('left') || f.zone?.includes('LEFT');
-                    const isRight = fixtureZone.includes('right') || f.zone?.includes('RIGHT');
-                    // Seleccionar el movement correcto según lado
-                    let mov;
-                    if (isLeft && leftMovement) {
-                        mov = leftMovement;
-                    }
-                    else if (isRight && rightMovement) {
-                        mov = rightMovement;
-                    }
-                    else {
-                        // Si no es claramente L/R, usar el promedio o el que exista
-                        mov = leftMovement || rightMovement;
-                    }
-                    if (!mov)
                         return f;
                     // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
                     // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
-                    // The physics engine will interpolate toward these new targets.
                     let newPan = f.pan;
                     let newTilt = f.tilt;
                     if (mov.isAbsolute) {
-                        // ABSOLUTE MODE: Reemplaza completamente
+                        // ABSOLUTE MODE: Reemplaza completamente las posiciones target
+                        // Convertir -1.0..1.0 → 0..255
                         if (mov.pan !== undefined) {
-                            // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
-                            newPan = Math.round(mov.pan * 255);
+                            newPan = Math.round(((mov.pan + 1) / 2) * 255);
                         }
                         if (mov.tilt !== undefined) {
-                            newTilt = Math.round(mov.tilt * 255);
+                            newTilt = Math.round(((mov.tilt + 1) / 2) * 255);
                         }
                     }
                     else {
-                        // OFFSET MODE: Suma al target
+                        // OFFSET MODE: Suma a los targets existentes
+                        // Convertir offset -1.0..1.0 → -127..127 y sumar
                         if (mov.pan !== undefined) {
-                            const panOffset = Math.round((mov.pan - 0.5) * 255);
+                            const panOffset = Math.round(mov.pan * 127);
                             newPan = Math.max(0, Math.min(255, f.pan + panOffset));
                         }
                         if (mov.tilt !== undefined) {
-                            const tiltOffset = Math.round((mov.tilt - 0.5) * 255);
+                            const tiltOffset = Math.round(mov.tilt * 127);
                             newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
                         }
                     }
@@ -826,454 +962,421 @@ export class TitanOrchestrator {
                     };
                 });
                 // Log throttled
-                if (this.frameCount % 30 === 0) {
-                    console.log(`[TitanOrchestrator ✂️] STEREO MOVEMENT: L=${leftMovement ? `P${leftMovement.pan?.toFixed(2)}/T${leftMovement.tilt?.toFixed(2)}` : 'N/A'} R=${rightMovement ? `P${rightMovement.pan?.toFixed(2)}/T${rightMovement.tilt?.toFixed(2)}` : 'N/A'}`);
+                if (this.frameCount % 15 === 0) {
+                    const mode = mov.isAbsolute ? 'ABSOLUTE' : 'OFFSET';
+                    console.log(`[TitanOrchestrator 🥁] MOVEMENT OVERRIDE [${mode}]: Pan=${mov.pan?.toFixed(2) ?? 'N/A'} Tilt=${mov.tilt?.toFixed(2) ?? 'N/A'}`);
                 }
             }
-        }
-        // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
-        // Solo se aplica si NO hay zoneOverrides con movement (fallback global)
-        const hasZoneMovement = effectOutput.zoneOverrides &&
-            (effectOutput.zoneOverrides['movers_left']?.movement || effectOutput.zoneOverrides['movers_right']?.movement);
-        if (effectOutput.hasActiveEffects && effectOutput.movementOverride && !hasZoneMovement) {
-            const mov = effectOutput.movementOverride;
-            // Solo aplicar a fixtures que son movers (tienen pan/tilt)
-            fixtureStates = fixtureStates.map(f => {
-                // Detectar si es un mover (zone contiene MOVING o tiene pan/tilt definido)
-                const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined);
-                if (!isMover)
-                    return f;
-                // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
-                // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
-                let newPan = f.pan;
-                let newTilt = f.tilt;
-                if (mov.isAbsolute) {
-                    // ABSOLUTE MODE: Reemplaza completamente las posiciones target
-                    // Convertir -1.0..1.0 → 0..255
-                    if (mov.pan !== undefined) {
-                        newPan = Math.round(((mov.pan + 1) / 2) * 255);
+            // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
+            // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+            const shouldLogToTactical = this.frameCount % 240 === 0;
+            if (shouldLogToTactical && this.hasRealAudio) {
+                const avgDimmer = fixtureStates.length > 0
+                    ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
+                    : 0;
+                const movers = fixtureStates.filter(f => f.zone.includes('MOVING'));
+                const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0;
+                const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS');
+                const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0;
+                // Send to Tactical Log
+                this.log('Visual', `🎨 P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
+                    bass, mid, high, energy,
+                    avgDimmer: avgDimmer.toFixed(0),
+                    paletteStrategy: intent.palette.strategy
+                });
+            }
+            // ═══════════════════════════════════════════════════════════════════════════
+            // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
+            // Evaluate all active .lfx clips and merge their outputs with DMX
+            // 
+            // MERGE STRATEGY:
+            //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
+            //   - Color (RGB): LTP (Hephaestus overwrites if present)
+            //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
+            //   - Strobe: Additive (sum clamped to max)
+            //
+            // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
+            // ═══════════════════════════════════════════════════════════════════════════
+            const hephRuntime = getHephaestusRuntime();
+            const hephOutputs = hephRuntime.tick(Date.now());
+            if (hephOutputs.length > 0) {
+                // Group outputs by parameter for efficient processing
+                const hephByZone = new Map();
+                for (const output of hephOutputs) {
+                    const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
+                    if (!hephByZone.has(zoneKey)) {
+                        hephByZone.set(zoneKey, []);
                     }
-                    if (mov.tilt !== undefined) {
-                        newTilt = Math.round(((mov.tilt + 1) / 2) * 255);
-                    }
+                    hephByZone.get(zoneKey).push(output);
                 }
-                else {
-                    // OFFSET MODE: Suma a los targets existentes
-                    // Convertir offset -1.0..1.0 → -127..127 y sumar
-                    if (mov.pan !== undefined) {
-                        const panOffset = Math.round(mov.pan * 127);
-                        newPan = Math.max(0, Math.min(255, f.pan + panOffset));
+                // Apply Hephaestus outputs to fixtures
+                fixtureStates = fixtureStates.map((f, index) => {
+                    // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                    const fixtureId = this.fixtures[index]?.id;
+                    if (fixtureId && chronosFixtureIds.has(fixtureId))
+                        return f;
+                    // Find matching outputs for this fixture's zone
+                    const fixtureZone = (f.zone || '').toLowerCase();
+                    const applicableOutputs = [];
+                    // Check 'all' zone outputs
+                    const allZoneOutputs = hephByZone.get('all');
+                    if (allZoneOutputs)
+                        applicableOutputs.push(...allZoneOutputs);
+                    // Check zone-specific outputs
+                    for (const [zoneKey, outputs] of hephByZone) {
+                        if (zoneKey === 'all')
+                            continue;
+                        if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
+                            applicableOutputs.push(...outputs);
+                        }
                     }
-                    if (mov.tilt !== undefined) {
-                        const tiltOffset = Math.round(mov.tilt * 127);
-                        newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
+                    if (applicableOutputs.length === 0)
+                        return f;
+                    // Apply each parameter with appropriate merge strategy
+                    let newF = { ...f };
+                    // ⚒️ WAVE 2030.21: THE TRANSLATOR
+                    // Values arrive PRE-SCALED from HephaestusRuntime.
+                    // DMX params: already 0-255. Color: already rgb {r,g,b} 0-255.
+                    // TitanOrchestrator ONLY merges. Zero scaling here.
+                    for (const output of applicableOutputs) {
+                        switch (output.parameter) {
+                            case 'intensity': {
+                                // HTP: Highest Takes Precedence (value is already 0-255)
+                                newF.dimmer = Math.max(newF.dimmer, output.value);
+                                break;
+                            }
+                            case 'strobe': {
+                                // Additive: sum clamped to 255 (value is already 0-255)
+                                newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + output.value) };
+                                break;
+                            }
+                            case 'pan': {
+                                // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+                                // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
+                                // 🛡️ WAVE 2085: ONLY set TARGET. physicalPan is SACRED — owned exclusively
+                                // by FixturePhysicsDriver. HAL will interpolate toward this target.
+                                newF.pan = output.value;
+                                // panFine carried in output.fine (if fixture supports 16-bit)
+                                if (output.fine !== undefined) {
+                                    newF.panFine = output.fine;
+                                }
+                                break;
+                            }
+                            case 'tilt': {
+                                // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+                                // 🛡️ WAVE 2085: ONLY set TARGET. physicalTilt is SACRED.
+                                newF.tilt = output.value;
+                                if (output.fine !== undefined) {
+                                    newF.tiltFine = output.fine;
+                                }
+                                break;
+                            }
+                            case 'color': {
+                                // LTP: RGB pre-converted from HSL in Runtime
+                                if (output.rgb) {
+                                    newF.r = output.rgb.r;
+                                    newF.g = output.rgb.g;
+                                    newF.b = output.rgb.b;
+                                }
+                                break;
+                            }
+                            case 'white': {
+                                // LTP overlay (value is already 0-255)
+                                newF.white = output.value;
+                                break;
+                            }
+                            case 'amber': {
+                                // LTP overlay (value is already 0-255)
+                                newF.amber = output.value;
+                                break;
+                            }
+                            // ⚒️ WAVE 2030.24: Extended DMX params (8-bit, LTP overlay)
+                            case 'zoom': {
+                                newF.zoom = output.value;
+                                break;
+                            }
+                            case 'focus': {
+                                newF.focus = output.value;
+                                break;
+                            }
+                            case 'iris': {
+                                // FixtureState doesn't have iris yet — store as dynamic channel
+                                newF.iris = output.value;
+                                break;
+                            }
+                            case 'gobo1': {
+                                newF.gobo = output.value;
+                                break;
+                            }
+                            case 'gobo2': {
+                                // Secondary gobo — store as dynamic channel
+                                newF.gobo2 = output.value;
+                                break;
+                            }
+                            case 'prism': {
+                                newF.prism = output.value;
+                                break;
+                            }
+                            // speed/width/direction/globalComp: engine-internal (0-1 float)
+                            // No DMX channel mapping - consumed by engine subsystems only
+                        }
                     }
+                    return newF;
+                });
+                // Throttled debug log
+                if (this.frameCount % 60 === 0) {
+                    const activeClips = hephRuntime.getStats().activeClips;
+                    console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
                 }
-                return {
+            }
+            // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
+            // but THROUGH the physics engine so movement is interpolated safely.
+            // The old sendStates() was a physics-bypass backdoor — now sealed.
+            if (hephOutputs.length > 0) {
+                this.hal.sendStatesWithPhysics(fixtureStates);
+            }
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
+            // The effects processing above can OVERRIDE the arbiter's gate decision.
+            // This is the FINAL FILTER: if output is disabled (ARMED state), 
+            // force ALL fixtures to safe/blackout state for UI visualization too.
+            // This ensures the StageSimulator respects the Gate, not just DMX output.
+            // ═══════════════════════════════════════════════════════════════════════════
+            if (!masterArbiter.isOutputEnabled()) {
+                // ARMED state: Force blackout for UI visualization
+                fixtureStates = fixtureStates.map(f => ({
                     ...f,
-                    pan: newPan,
-                    tilt: newTilt,
-                    // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
-                    // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
-                };
-            });
-            // Log throttled
-            if (this.frameCount % 15 === 0) {
-                const mode = mov.isAbsolute ? 'ABSOLUTE' : 'OFFSET';
-                console.log(`[TitanOrchestrator 🥁] MOVEMENT OVERRIDE [${mode}]: Pan=${mov.pan?.toFixed(2) ?? 'N/A'} Tilt=${mov.tilt?.toFixed(2) ?? 'N/A'}`);
-            }
-        }
-        // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
-        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
-        const shouldLogToTactical = this.frameCount % 240 === 0;
-        if (shouldLogToTactical && this.hasRealAudio) {
-            const avgDimmer = fixtureStates.length > 0
-                ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
-                : 0;
-            const movers = fixtureStates.filter(f => f.zone.includes('MOVING'));
-            const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0;
-            const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS');
-            const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0;
-            // Send to Tactical Log
-            this.log('Visual', `🎨 P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
-                bass, mid, high, energy,
-                avgDimmer: avgDimmer.toFixed(0),
-                paletteStrategy: intent.palette.strategy
-            });
-        }
-        // ═══════════════════════════════════════════════════════════════════════════
-        // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
-        // Evaluate all active .lfx clips and merge their outputs with DMX
-        // 
-        // MERGE STRATEGY:
-        //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
-        //   - Color (RGB): LTP (Hephaestus overwrites if present)
-        //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
-        //   - Strobe: Additive (sum clamped to max)
-        //
-        // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
-        // ═══════════════════════════════════════════════════════════════════════════
-        const hephRuntime = getHephaestusRuntime();
-        const hephOutputs = hephRuntime.tick(Date.now());
-        if (hephOutputs.length > 0) {
-            // Group outputs by parameter for efficient processing
-            const hephByZone = new Map();
-            for (const output of hephOutputs) {
-                const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
-                if (!hephByZone.has(zoneKey)) {
-                    hephByZone.set(zoneKey, []);
+                    dimmer: 0, // 🚫 No light
+                    r: 0, g: 0, b: 0, // 🖤 Black
+                    pan: 128, // 🎯 Center
+                    tilt: 128, // 🎯 Center
+                }));
+                // Throttled log (every ~5s at 30fps)
+                if (this.frameCount % 150 === 0) {
+                    console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`);
                 }
-                hephByZone.get(zoneKey).push(output);
             }
-            // Apply Hephaestus outputs to fixtures
-            fixtureStates = fixtureStates.map((f, index) => {
-                // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-                const fixtureId = this.fixtures[index]?.id;
-                if (fixtureId && chronosFixtureIds.has(fixtureId))
-                    return f;
-                // Find matching outputs for this fixture's zone
-                const fixtureZone = (f.zone || '').toLowerCase();
-                const applicableOutputs = [];
-                // Check 'all' zone outputs
-                const allZoneOutputs = hephByZone.get('all');
-                if (allZoneOutputs)
-                    applicableOutputs.push(...allZoneOutputs);
-                // Check zone-specific outputs
-                for (const [zoneKey, outputs] of hephByZone) {
-                    if (zoneKey === 'all')
-                        continue;
-                    if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
-                        applicableOutputs.push(...outputs);
-                    }
-                }
-                if (applicableOutputs.length === 0)
-                    return f;
-                // Apply each parameter with appropriate merge strategy
-                let newF = { ...f };
-                // ⚒️ WAVE 2030.21: THE TRANSLATOR
-                // Values arrive PRE-SCALED from HephaestusRuntime.
-                // DMX params: already 0-255. Color: already rgb {r,g,b} 0-255.
-                // TitanOrchestrator ONLY merges. Zero scaling here.
-                for (const output of applicableOutputs) {
-                    switch (output.parameter) {
-                        case 'intensity': {
-                            // HTP: Highest Takes Precedence (value is already 0-255)
-                            newF.dimmer = Math.max(newF.dimmer, output.value);
-                            break;
+            // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 30fps, not 60fps
+            //
+            // processFrame() runs at ~60fps (setInterval 16ms). Broadcasting the
+            // entire SeleneTruth object 60×/sec through Electron IPC causes:
+            //   1. JSON serialization overhead (~3-5KB per truth object)
+            //   2. 60 Zustand state updates/sec → 60 React re-render triggers
+            //   3. GC pressure from 60 new truth objects + fixture arrays per second
+            //   4. The StageSimulatorCinema canvas only renders at 30fps anyway
+            //
+            // FIX: Broadcast every other frame (frameCount % 2 === 0) → 30fps.
+            // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
+            // Only the UI visualization is throttled.
+            // ═══════════════════════════════════════════════════════════════════════
+            if (this.onBroadcast && this.frameCount % 2 === 0) {
+                const currentVibe = this.engine.getCurrentVibe();
+                // Build a valid SeleneTruth structure
+                const truth = {
+                    system: {
+                        frameNumber: this.frameCount,
+                        timestamp: Date.now(),
+                        deltaTime: 33,
+                        targetFPS: 30,
+                        actualFPS: 30,
+                        mode: this.mode === 'auto' ? 'selene' : 'manual',
+                        vibe: currentVibe,
+                        brainStatus: 'peaceful',
+                        uptime: this.frameCount * 33,
+                        titanEnabled: true,
+                        sessionId: 'titan-2.0',
+                        version: '2.0.0',
+                        performance: {
+                            audioProcessingMs: 0,
+                            brainProcessingMs: 0,
+                            colorEngineMs: 0,
+                            dmxOutputMs: 0,
+                            totalFrameMs: 0
                         }
-                        case 'strobe': {
-                            // Additive: sum clamped to 255 (value is already 0-255)
-                            newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + output.value) };
-                            break;
-                        }
-                        case 'pan': {
-                            // ⚒️ WAVE 2030.24: LTP with 16-bit precision
-                            // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
-                            // 🛡️ WAVE 2085: ONLY set TARGET. physicalPan is SACRED — owned exclusively
-                            // by FixturePhysicsDriver. HAL will interpolate toward this target.
-                            newF.pan = output.value;
-                            // panFine carried in output.fine (if fixture supports 16-bit)
-                            if (output.fine !== undefined) {
-                                newF.panFine = output.fine;
-                            }
-                            break;
-                        }
-                        case 'tilt': {
-                            // ⚒️ WAVE 2030.24: LTP with 16-bit precision
-                            // 🛡️ WAVE 2085: ONLY set TARGET. physicalTilt is SACRED.
-                            newF.tilt = output.value;
-                            if (output.fine !== undefined) {
-                                newF.tiltFine = output.fine;
-                            }
-                            break;
-                        }
-                        case 'color': {
-                            // LTP: RGB pre-converted from HSL in Runtime
-                            if (output.rgb) {
-                                newF.r = output.rgb.r;
-                                newF.g = output.rgb.g;
-                                newF.b = output.rgb.b;
-                            }
-                            break;
-                        }
-                        case 'white': {
-                            // LTP overlay (value is already 0-255)
-                            newF.white = output.value;
-                            break;
-                        }
-                        case 'amber': {
-                            // LTP overlay (value is already 0-255)
-                            newF.amber = output.value;
-                            break;
-                        }
-                        // ⚒️ WAVE 2030.24: Extended DMX params (8-bit, LTP overlay)
-                        case 'zoom': {
-                            newF.zoom = output.value;
-                            break;
-                        }
-                        case 'focus': {
-                            newF.focus = output.value;
-                            break;
-                        }
-                        case 'iris': {
-                            // FixtureState doesn't have iris yet — store as dynamic channel
-                            newF.iris = output.value;
-                            break;
-                        }
-                        case 'gobo1': {
-                            newF.gobo = output.value;
-                            break;
-                        }
-                        case 'gobo2': {
-                            // Secondary gobo — store as dynamic channel
-                            newF.gobo2 = output.value;
-                            break;
-                        }
-                        case 'prism': {
-                            newF.prism = output.value;
-                            break;
-                        }
-                        // speed/width/direction/globalComp: engine-internal (0-1 float)
-                        // No DMX channel mapping - consumed by engine subsystems only
-                    }
-                }
-                return newF;
-            });
-            // Throttled debug log
-            if (this.frameCount % 60 === 0) {
-                const activeClips = hephRuntime.getStats().activeClips;
-                console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
-            }
-        }
-        // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
-        // but THROUGH the physics engine so movement is interpolated safely.
-        // The old sendStates() was a physics-bypass backdoor — now sealed.
-        if (hephOutputs.length > 0) {
-            this.hal.sendStatesWithPhysics(fixtureStates);
-        }
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
-        // The effects processing above can OVERRIDE the arbiter's gate decision.
-        // This is the FINAL FILTER: if output is disabled (ARMED state), 
-        // force ALL fixtures to safe/blackout state for UI visualization too.
-        // This ensures the StageSimulator respects the Gate, not just DMX output.
-        // ═══════════════════════════════════════════════════════════════════════════
-        if (!masterArbiter.isOutputEnabled()) {
-            // ARMED state: Force blackout for UI visualization
-            fixtureStates = fixtureStates.map(f => ({
-                ...f,
-                dimmer: 0, // 🚫 No light
-                r: 0, g: 0, b: 0, // 🖤 Black
-                pan: 128, // 🎯 Center
-                tilt: 128, // 🎯 Center
-            }));
-            // Throttled log (every ~5s at 30fps)
-            if (this.frameCount % 150 === 0) {
-                console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`);
-            }
-        }
-        // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
-        if (this.onBroadcast) {
-            const currentVibe = this.engine.getCurrentVibe();
-            // Build a valid SeleneTruth structure
-            const truth = {
-                system: {
-                    frameNumber: this.frameCount,
-                    timestamp: Date.now(),
-                    deltaTime: 33,
-                    targetFPS: 30,
-                    actualFPS: 30,
-                    mode: this.mode === 'auto' ? 'selene' : 'manual',
-                    vibe: currentVibe,
-                    brainStatus: 'peaceful',
-                    uptime: this.frameCount * 33,
-                    titanEnabled: true,
-                    sessionId: 'titan-2.0',
-                    version: '2.0.0',
-                    performance: {
-                        audioProcessingMs: 0,
-                        brainProcessingMs: 0,
-                        colorEngineMs: 0,
-                        dmxOutputMs: 0,
-                        totalFrameMs: 0
-                    }
-                },
-                sensory: {
-                    audio: {
-                        energy,
-                        peak: energy,
-                        average: energy * 0.8,
-                        bass,
-                        mid,
-                        high,
-                        spectralCentroid: 0,
-                        spectralFlux: 0,
-                        zeroCrossingRate: 0
                     },
-                    fft: new Array(256).fill(0),
-                    beat: {
-                        onBeat: engineAudioMetrics.isBeat,
-                        confidence: engineAudioMetrics.beatConfidence,
-                        bpm: engineAudioMetrics.bpm, // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
-                        beatPhase: engineAudioMetrics.beatPhase, // 🕰️ WAVE 2090.3: PLL-driven phase
-                        barPhase: 0,
-                        timeSinceLastBeat: 0
+                    sensory: {
+                        audio: {
+                            energy,
+                            peak: energy,
+                            average: energy * 0.8,
+                            bass,
+                            mid,
+                            high,
+                            spectralCentroid: 0,
+                            spectralFlux: 0,
+                            zeroCrossingRate: 0
+                        },
+                        fft: this.EMPTY_FFT_BUFFER,
+                        beat: {
+                            onBeat: engineAudioMetrics.isBeat,
+                            confidence: engineAudioMetrics.beatConfidence,
+                            bpm: engineAudioMetrics.bpm, // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
+                            beatPhase: engineAudioMetrics.beatPhase, // 🕰️ WAVE 2090.3: PLL-driven phase
+                            barPhase: 0,
+                            timeSinceLastBeat: 0
+                        },
+                        input: {
+                            gain: this.inputGain,
+                            device: 'Microphone',
+                            active: this.hasRealAudio,
+                            isClipping: false
+                        },
+                        // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
+                        spectrumBands: {
+                            subBass: this.smoothedMetrics.subBass,
+                            bass: bass, // Use the already available bass from engineAudioMetrics
+                            lowMid: this.smoothedMetrics.lowMid,
+                            mid: mid, // Use the already available mid from engineAudioMetrics
+                            highMid: this.smoothedMetrics.highMid,
+                            treble: high * 0.8, // Approximate from high
+                            ultraAir: high * 0.3, // Approximate ultra-high from high
+                            dominant: bass > mid && bass > high ? 'bass' :
+                                mid > bass && mid > high ? 'mid' : 'treble',
+                            flux: Math.abs((this.lastAudioData.energy || 0) - energy)
+                        }
                     },
-                    input: {
-                        gain: this.inputGain,
-                        device: 'Microphone',
-                        active: this.hasRealAudio,
-                        isClipping: false
+                    // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
+                    // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
+                    // 🔌 WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
+                    consciousness: {
+                        ...createDefaultCognitive(),
+                        stableEmotion: this.engine.getStableEmotion(),
+                        thermalTemperature: this.engine.getThermalTemperature(),
+                        ai: this.engine.getConsciousnessTelemetry(),
+                        // 🔌 WAVE 1175: Vibe activo REAL (no el default 'idle')
+                        vibe: {
+                            active: currentVibe,
+                            transitioning: false // TODO: implementar transición real
+                        }
                     },
-                    // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
-                    spectrumBands: {
-                        subBass: this.smoothedMetrics.subBass,
-                        bass: bass, // Use the already available bass from engineAudioMetrics
-                        lowMid: this.smoothedMetrics.lowMid,
-                        mid: mid, // Use the already available mid from engineAudioMetrics
-                        highMid: this.smoothedMetrics.highMid,
-                        treble: high * 0.8, // Approximate from high
-                        ultraAir: high * 0.3, // Approximate ultra-high from high
-                        dominant: bass > mid && bass > high ? 'bass' :
-                            mid > bass && mid > high ? 'mid' : 'treble',
-                        flux: Math.abs((this.lastAudioData.energy || 0) - energy)
-                    }
-                },
-                // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
-                // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
-                // 🔌 WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
-                consciousness: {
-                    ...createDefaultCognitive(),
-                    stableEmotion: this.engine.getStableEmotion(),
-                    thermalTemperature: this.engine.getThermalTemperature(),
-                    ai: this.engine.getConsciousnessTelemetry(),
-                    // 🔌 WAVE 1175: Vibe activo REAL (no el default 'idle')
-                    vibe: {
-                        active: currentVibe,
-                        transitioning: false // TODO: implementar transición real
-                    }
-                },
-                // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
-                // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
-                // el contexto que ya obtuvimos de brain.getCurrentContext()
-                context: {
-                    key: context.key,
-                    mode: context.mode,
-                    bpm: context.bpm,
-                    beatPhase: context.beatPhase,
-                    syncopation: context.syncopation,
-                    section: context.section,
-                    energy: context.energy,
-                    mood: context.mood,
-                    genre: context.genre,
-                    confidence: context.confidence,
-                    timestamp: context.timestamp
-                },
-                intent: {
-                    palette: intent.palette,
-                    masterIntensity: intent.masterIntensity,
-                    zones: intent.zones,
-                    movement: intent.movement,
-                    effects: intent.effects,
-                    source: 'procedural',
+                    // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
+                    // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
+                    // el contexto que ya obtuvimos de brain.getCurrentContext()
+                    context: {
+                        key: context.key,
+                        mode: context.mode,
+                        bpm: context.bpm,
+                        beatPhase: context.beatPhase,
+                        syncopation: context.syncopation,
+                        section: context.section,
+                        energy: context.energy,
+                        mood: context.mood,
+                        genre: context.genre,
+                        confidence: context.confidence,
+                        timestamp: context.timestamp
+                    },
+                    intent: {
+                        palette: intent.palette,
+                        masterIntensity: intent.masterIntensity,
+                        zones: intent.zones,
+                        movement: intent.movement,
+                        effects: intent.effects,
+                        source: 'procedural',
+                        timestamp: Date.now()
+                    },
+                    hardware: {
+                        dmx: {
+                            connected: true,
+                            driver: 'none',
+                            universe: 0, // 🔥 WAVE 1219: ArtNet 0-indexed
+                            frameRate: 30,
+                            port: null
+                        },
+                        dmxOutput: new Array(512).fill(0),
+                        fixturesActive: fixtureStates.filter(f => f.dimmer > 0).length,
+                        fixturesTotal: fixtureStates.length,
+                        // Map HAL FixtureState to Protocol FixtureState
+                        // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
+                        // WAVE 256.7: Map zone names for StageSimulator2 compatibility
+                        fixtures: fixtureStates.map((f, i) => {
+                            // 🔧 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
+                            // Soporta AMBOS sistemas de zonas:
+                            //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
+                            //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
+                            const zoneMap = {
+                                // Legacy canvas zones
+                                'FRONT_PARS': 'front',
+                                'BACK_PARS': 'back',
+                                'MOVING_LEFT': 'left',
+                                'MOVING_RIGHT': 'right',
+                                'STROBES': 'center',
+                                'AMBIENT': 'center',
+                                'FLOOR': 'front',
+                                'UNASSIGNED': 'center',
+                                // Constructor 3D zones
+                                'ceiling-left': 'left',
+                                'ceiling-right': 'right',
+                                'floor-front': 'front',
+                                'floor-back': 'back'
+                            };
+                            const mappedZone = zoneMap[f.zone] || f.zone || 'center';
+                            // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
+                            // This is critical for runtimeStateMap matching in StageSimulator2
+                            const originalFixture = this.fixtures[i];
+                            const realId = originalFixture?.id || `fix_${i}`;
+                            return {
+                                id: realId,
+                                name: f.name,
+                                type: f.type,
+                                zone: mappedZone,
+                                dmxAddress: f.dmxAddress,
+                                universe: f.universe,
+                                dimmer: f.dimmer / 255, // Normalize 0-255 → 0-1
+                                intensity: f.dimmer / 255, // Normalize 0-255 → 0-1
+                                color: {
+                                    r: Math.round(f.r), // Keep 0-255 for RGB
+                                    g: Math.round(f.g),
+                                    b: Math.round(f.b)
+                                },
+                                pan: f.pan / 255, // Normalize 0-255 → 0-1
+                                tilt: f.tilt / 255, // Normalize 0-255 → 0-1
+                                // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
+                                zoom: f.zoom, // 0-255 DMX
+                                focus: f.focus, // 0-255 DMX
+                                // ⚒️ WAVE 2030.22g: Extended LED channels
+                                white: f.white ?? 0, // 0-255 DMX
+                                amber: f.amber ?? 0, // 0-255 DMX
+                                // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
+                                physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 → 0-1
+                                physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
+                                panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
+                                tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
+                                online: true,
+                                active: f.dimmer > 0,
+                                // 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — Robust profileId cascade
+                                // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
+                                // NEVER let profileId be undefined — the ExtrasSection IPC depends on it
+                                profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
+                            };
+                        })
+                    },
                     timestamp: Date.now()
-                },
-                hardware: {
-                    dmx: {
-                        connected: true,
-                        driver: 'none',
-                        universe: 0, // 🔥 WAVE 1219: ArtNet 0-indexed
-                        frameRate: 30,
-                        port: null
-                    },
-                    dmxOutput: new Array(512).fill(0),
-                    fixturesActive: fixtureStates.filter(f => f.dimmer > 0).length,
-                    fixturesTotal: fixtureStates.length,
-                    // Map HAL FixtureState to Protocol FixtureState
-                    // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
-                    // WAVE 256.7: Map zone names for StageSimulator2 compatibility
-                    fixtures: fixtureStates.map((f, i) => {
-                        // 🔧 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
-                        // Soporta AMBOS sistemas de zonas:
-                        //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-                        //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
-                        const zoneMap = {
-                            // Legacy canvas zones
-                            'FRONT_PARS': 'front',
-                            'BACK_PARS': 'back',
-                            'MOVING_LEFT': 'left',
-                            'MOVING_RIGHT': 'right',
-                            'STROBES': 'center',
-                            'AMBIENT': 'center',
-                            'FLOOR': 'front',
-                            'UNASSIGNED': 'center',
-                            // Constructor 3D zones
-                            'ceiling-left': 'left',
-                            'ceiling-right': 'right',
-                            'floor-front': 'front',
-                            'floor-back': 'back'
-                        };
-                        const mappedZone = zoneMap[f.zone] || f.zone || 'center';
-                        // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
-                        // This is critical for runtimeStateMap matching in StageSimulator2
-                        const originalFixture = this.fixtures[i];
-                        const realId = originalFixture?.id || `fix_${i}`;
-                        return {
-                            id: realId,
-                            name: f.name,
-                            type: f.type,
-                            zone: mappedZone,
-                            dmxAddress: f.dmxAddress,
-                            universe: f.universe,
-                            dimmer: f.dimmer / 255, // Normalize 0-255 → 0-1
-                            intensity: f.dimmer / 255, // Normalize 0-255 → 0-1
-                            color: {
-                                r: Math.round(f.r), // Keep 0-255 for RGB
-                                g: Math.round(f.g),
-                                b: Math.round(f.b)
-                            },
-                            pan: f.pan / 255, // Normalize 0-255 → 0-1
-                            tilt: f.tilt / 255, // Normalize 0-255 → 0-1
-                            // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
-                            zoom: f.zoom, // 0-255 DMX
-                            focus: f.focus, // 0-255 DMX
-                            // ⚒️ WAVE 2030.22g: Extended LED channels
-                            white: f.white ?? 0, // 0-255 DMX
-                            amber: f.amber ?? 0, // 0-255 DMX
-                            // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
-                            physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 → 0-1
-                            physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
-                            panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
-                            tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
-                            online: true,
-                            active: f.dimmer > 0,
-                            // 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — Robust profileId cascade
-                            // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
-                            // NEVER let profileId be undefined — the ExtrasSection IPC depends on it
-                            profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
-                        };
-                    })
-                },
-                timestamp: Date.now()
-            };
-            this.onBroadcast(truth);
-            // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
-            // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
-            // Log cada 2 segundos (60 frames @ 30fps)
-            // if (this.frameCount % 60 === 0) {
-            //   console.log(
-            //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
-            //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
-            //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
-            //   )
+                };
+                this.onBroadcast(truth);
+                // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
+                // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
+                // Log cada 2 segundos (60 frames @ 30fps)
+                // if (this.frameCount % 60 === 0) {
+                //   console.log(
+                //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
+                //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
+                //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
+                //   )
+                // }
+            }
+            // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
+            // Log every second
+            // if (shouldLog && this.config.debug) {
+            //   const currentVibe = this.engine.getCurrentVibe()
+            //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
             // }
         }
-        // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
-        // Log every second
-        // if (shouldLog && this.config.debug) {
-        //   const currentVibe = this.engine.getCurrentVibe()
-        //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
-        // }
+        finally {
+            // 🔒 WAVE 2211: ALWAYS release the guard, even if processFrame() throws
+            this.isProcessingFrame = false;
+        }
     }
     /**
      * Set the current vibe
@@ -1544,6 +1647,10 @@ export class TitanOrchestrator {
             workerOnBeat: this.lastAudioData.workerOnBeat,
             workerBeatPhase: this.lastAudioData.workerBeatPhase,
             workerBeatStrength: this.lastAudioData.workerBeatStrength,
+            // 🥁 WAVE 2213: NO BORRAR EL CONTADOR DEL WORKER 30 VECES POR SEGUNDO
+            // processAudioFrame() corre a 30fps — sin esta línea, workerKickCount → undefined
+            // → beatCount=0 → VMM atascado en Bar:0 para siempre, patrones nunca cambian
+            workerKickCount: this.lastAudioData.workerKickCount,
         };
         // 🔥 WAVE 1012.5: Frontend también detecta audio real
         const wasAudioActive = this.hasRealAudio;

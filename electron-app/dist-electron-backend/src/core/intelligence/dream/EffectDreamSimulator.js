@@ -52,25 +52,27 @@ const EFFECT_CATEGORIES = {
         'gatling_raid', // ✅ WAVE 930: Machine gun PAR barrage
         'sky_saw', // ✅ WAVE 930: Aggressive mover cuts
         'abyssal_rise', // ⚡ WAVE 988 RECONECTADO: 5s epic rise (was 8s, excluded)
+        'neon_blinder', // ⚡ WAVE 2182: APEX flash wall
+        'surgical_strike', // 🎯 WAVE 2182: APEX mover strobe
     ],
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
     // 🗑️ WAVE 986: static_pulse ELIMINADO - Reemplazado por binary_glitch
     // 🔮 WAVE 988: fiber_optics AÑADIDO (traveling ambient colors)
     'techno-atmospheric': [
-        'void_mist', // ✅ WAVE 938: Purple fog breathing
+        'void_mist', // ✅ WAVE 938: Purple fog breathing (WAVE 2182 rework)
         'digital_rain', // ✅ WAVE 938: Matrix flicker cyan/lime
         'deep_breath', // ✅ WAVE 938: Organic 4-bar breathing
         'binary_glitch', // ⚔️ WAVE 986: Digital stutter chaos
         'seismic_snap', // ⚔️ WAVE 986: Mechanical impact snap
         'fiber_optics', // 🔮 WAVE 988: Traveling ambient colors
+        'ghost_chase', // 👻 WAVE 2182: Phantom dimmer chase
     ],
     // ☢️ WAVE 988: EXTREME ARSENAL (peak/epic zones only)
     'techno-extreme': [
         'core_meltdown', // ☢️ WAVE 988: LA BESTIA - extreme strobe
     ],
     'latino-organic': [
-        'solar_flare', // ✅ WAVE 600: Takeover
-        'strobe_storm', // ✅ WAVE 680: Harsh (multi-genre, latina compatible)
+        'solar_flare', // ✅ WAVE 600: Takeover — APEX de luz latina
         'strobe_burst', // ✅ WAVE 691: Rhythmic latina strobe
         'tidal_wave', // ✅ WAVE 680: Wave flow
         'ghost_breath', // ✅ WAVE 680: Soft breathing
@@ -78,7 +80,11 @@ const EFFECT_CATEGORIES = {
         'salsa_fire', // ✅ WAVE 692: Fire flicker
         'cumbia_moon', // ✅ WAVE 692: Moon glow
         'clave_rhythm', // ✅ WAVE 700.6: 3-2 pattern
-        'corazon_latino' // ✅ WAVE 750: Heartbeat passion
+        'corazon_latino', // ✅ WAVE 750: Heartbeat passion
+        'amazon_mist', // ✅ WAVE 1009.1: Neblina amazónica
+        'glitch_guaguanco', // ✅ WAVE 1009.1: Guaguancó glitcheado
+        'machete_spark', // ✅ WAVE 1009.1: Chispa de machete
+        'latina_meltdown', // ✅ WAVE 1009.1: Nuclear latina
     ]
     // 🚧 chill-ambient: NOT IMPLEMENTED YET
     // ✅ WAVE 1020: pop-rock IMPLEMENTED - Los 5 Magnificos LIVE
@@ -86,7 +92,7 @@ const EFFECT_CATEGORIES = {
 // Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
 const EFFECT_BEAUTY_WEIGHTS = {
     // 🔪 TECHNO-INDUSTRIAL (6 effects - WAVE 996 FIX)
-    'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
+    'industrial_strobe': { base: 0.88, energyMultiplier: 1.45, technoBonus: 0.20 }, // 🔨 WAVE 2202: 0.75→0.88 base, 1.2→1.45 mult, 0.15→0.20 bonus. El Martillo es APEX, no mid-tier.
     'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
     'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
     'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🔫 WAVE 930
@@ -105,7 +111,11 @@ const EFFECT_BEAUTY_WEIGHTS = {
     'seismic_snap': { base: 0.74, energyMultiplier: 1.10, technoBonus: 0.15 }, // 💥 Mechanical snap - impact beauty
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': { base: 0.50, energyMultiplier: 0.4, technoBonus: 0.05 }, // 🌈 Traveling colors - ambient beauty
-    'core_meltdown': { base: 0.95, energyMultiplier: 1.5, technoBonus: 0.25 }, // ☢️ LA BESTIA - maximum beauty
+    'core_meltdown': { base: 0.97, energyMultiplier: 1.6, technoBonus: 0.28 }, // ☢️ WAVE 2202: base 0.95→0.97, mult 1.5→1.6, bonus 0.25→0.28. La Bestia recupera su corona.
+    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+    'neon_blinder': { base: 0.86, energyMultiplier: 1.38, technoBonus: 0.21 }, // ⚡ APEX flash wall - high impact
+    'surgical_strike': { base: 0.62, energyMultiplier: 1.10, technoBonus: 0.12 }, // ⚰️ WAVE 2214: DEMOTED 0.84→0.62 — intense tier, deja peak a IndustrialStrobe
+    'ghost_chase': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.10 }, // 👻 Ghost chase — WAVE 2186: base 0.56→0.60, multiplier 0.55→0.75, bonus 0.07→0.10
     // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
     // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
     // 👻 ZONA 1: SILENCE (0-15%)
@@ -154,7 +164,7 @@ const EFFECT_BEAUTY_WEIGHTS = {
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_GPU_COST = {
     // 🔪 TECHNO-INDUSTRIAL (Alta intensidad)
-    'industrial_strobe': 0.25,
+    'industrial_strobe': 0.35, // 🔨 WAVE 2202: 0.25→0.35. El Martillo es APEX — mismo tier que gatling_raid
     'acid_sweep': 0.30,
     'cyber_dualism': 0.28,
     'gatling_raid': 0.35, // 🔫 Alto costo - muchos PARs disparando
@@ -173,7 +183,7 @@ const EFFECT_GPU_COST = {
     'seismic_snap': 0.18, // 💥 Medio - flash + movement
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': 0.05, // 🌈 Muy bajo - solo colores viajando
-    'core_meltdown': 0.40, // ☢️ ALTO - LA BESTIA consume GPU
+    'core_meltdown': 0.40, // ☢️ ALTO - LA BESTIA consume GPU — intocable, es correcto
     // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
     // WAVE 1009.1: Añadidos nuevos efectos
     // 👻 ZONA 1: SILENCE
@@ -221,7 +231,7 @@ const EFFECT_GPU_COST = {
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_FATIGUE_IMPACT = {
     // 🔪 TECHNO-INDUSTRIAL (Aumenta fatiga)
-    'industrial_strobe': 0.08,
+    'industrial_strobe': 0.11, // 🔨 WAVE 2202: 0.08→0.11. Sube acorde al nuevo rango APEX. Sigue siendo controlado.
     'acid_sweep': 0.07,
     'cyber_dualism': 0.06,
     'gatling_raid': 0.10, // 🔫 Alta fatiga - muy intenso
@@ -240,7 +250,11 @@ const EFFECT_FATIGUE_IMPACT = {
     'seismic_snap': 0.05, // 💥 Moderada fatiga - golpe seco
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': -0.06, // 🌈 Reduce fatiga - efecto hipnótico zen
-    'core_meltdown': 0.15, // ☢️ ALTA fatiga - LA BESTIA agota
+    'core_meltdown': 0.10, // ☢️ WAVE 2202: 0.15→0.10. La fatiga excesiva era el castrador silencioso.
+    // 0.15 era la fatiga más alta del arsenal — tras 2-3 disparos el simulador
+    // la penalizaba tan fuerte que nunca volvía a seleccionarla aunque fuera el
+    // efecto más relevante. La Bestia no se cansa tan rápido. 0.10 = ALTA fatiga
+    // pero no absurda. gatling_raid tiene 0.10 y nadie se queja de él.
     // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
     // WAVE 1009.1: Añadidos nuevos efectos
     // 👻 ZONA 1: SILENCE (REDUCE FATIGA - muy relajante)
@@ -406,6 +420,38 @@ export class EffectDreamSimulator {
         if (simulationTimeMs > 5 && bestScenario) {
             console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effect} (${simulationTimeMs}ms)`);
         }
+        // ═══════════════════════════════════════════════════════════════
+        // 🔮 WAVE 2200.1: CASSANDRA TEMPORAL SEAL
+        // ═══════════════════════════════════════════════════════════════
+        // ROOT CAUSE: Cuando Cassandra almacena un pre-buffer (timeToEvent >= 2000ms),
+        // generateRecommendation() TAMBIÉN devuelve 'execute' si projectedRelevance >= 0.30.
+        // El Integrator ve 'execute' → aprueba → DecisionMaker dispara inmediatamente.
+        // El pre-buffer se vuelve redundante porque el efecto ya se disparó.
+        //
+        // FIX: Si ESTE frame acaba de almacenar un pre-buffer, la recomendación se
+        // degrada a 'modify' (= "tengo algo pero NO es hora"). El efecto queda
+        // sellado en el buffer hasta que el FAST PATH lo libere cuando:
+        //   - timeToEvent < 1500ms (urgencia real)
+        //   - O la sección predicha se confirme
+        //
+        // EVIDENCE: buildupextrema.md frame ~7780:
+        //   CASSANDRA stores core_meltdown for drop in ~3.9s
+        //   → INTEGRATOR ✅ APPROVED (because recommendation was 'execute')
+        //   → core_meltdown fires at Z=0.5σ during buildup. PREMATURO.
+        // ═══════════════════════════════════════════════════════════════
+        const justBuffered = this.preBuffer && this.preBuffer.bufferedAt === now;
+        if (justBuffered && recommendation.action === 'execute') {
+            const deferredReason = `🔮 CASSANDRA DEFERRED: "${bestScenario.effect.effect}" sealed for ${this.preBuffer.predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s — awaiting section confirmation`;
+            console.log(`[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: ${bestScenario.effect.effect} → 'modify' (pre-buffer active, timeToEvent=${timeToEvent}ms)`);
+            return {
+                scenarios: rankedScenarios,
+                bestScenario,
+                recommendation: 'modify',
+                reason: deferredReason,
+                warnings,
+                simulationTimeMs,
+            };
+        }
         return {
             scenarios: rankedScenarios,
             bestScenario,
@@ -508,12 +554,14 @@ export class EffectDreamSimulator {
             // 🎚️ WAVE 996: THE LADDER - 16 efectos techno totales
             'techno-club': [
                 // PEAK (90-100%)
-                'industrial_strobe', // El martillo
+                'industrial_strobe', // El martillo — APEX único en peak
                 'gatling_raid', // Machine gun
                 'core_meltdown', // ☢️ WAVE 988: LA BESTIA
+                'neon_blinder', // ⚡ WAVE 2182: APEX flash wall
                 // INTENSE (75-90%)
+                'surgical_strike', // ⚰️ WAVE 2214: DEMOTED — bisturí de movers, dimmer puro
                 'sky_saw', // Cortes agresivos
-                'abyssal_rise', // �️ WAVE 930: Epic rise
+                'abyssal_rise', // 🌪️ WAVE 930: Epic rise
                 // ACTIVE (60-75%)
                 'cyber_dualism', // Ping-pong L/R
                 'seismic_snap', // ⚔️ WAVE 986: Golpe mecánico
@@ -526,6 +574,7 @@ export class EffectDreamSimulator {
                 // VALLEY (15-30%)
                 'void_mist', // 🌫️ WAVE 938: Neblina púrpura
                 'fiber_optics', // 🔮 WAVE 988: Traveling colors
+                'ghost_chase', // 👻 WAVE 2182: Phantom dimmer chase
                 // SILENCE (0-15%)
                 'deep_breath', // 🫁 Respiración orgánica
                 'sonar_ping', // ⚡ WAVE 977: Ping submarino
@@ -533,20 +582,22 @@ export class EffectDreamSimulator {
             // Aliases para techno
             'techno': [
                 'industrial_strobe', 'gatling_raid', 'core_meltdown',
+                'neon_blinder', 'surgical_strike',
                 'sky_saw', 'abyssal_rise',
                 'cyber_dualism', 'seismic_snap',
                 'ambient_strobe', 'binary_glitch',
                 'acid_sweep', 'digital_rain',
-                'void_mist', 'fiber_optics',
+                'void_mist', 'fiber_optics', 'ghost_chase',
                 'deep_breath', 'sonar_ping'
             ],
             'industrial': [
                 'industrial_strobe', 'gatling_raid', 'core_meltdown',
+                'neon_blinder', 'surgical_strike',
                 'sky_saw', 'abyssal_rise',
                 'cyber_dualism', 'seismic_snap',
                 'ambient_strobe', 'binary_glitch',
                 'acid_sweep', 'digital_rain',
-                'void_mist', 'fiber_optics',
+                'void_mist', 'fiber_optics', 'ghost_chase',
                 'deep_breath', 'sonar_ping'
             ],
             // 🎺 FIESTA LATINA: El Arsenal Tropical Completo (14 efectos)
@@ -1029,7 +1080,12 @@ export class EffectDreamSimulator {
      *
      * @returns { compatible: boolean, reason: string, penalty: number }
      */
-    checkTextureCompatibility(effectId, spectralContext) {
+    checkTextureCompatibility(effectId, spectralContext, vibeId // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK
+    ) {
+        // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK — fiesta-latina bypassa todo
+        if (vibeId === 'fiesta-latina') {
+            return { compatible: true, reason: 'JAILBREAK: fiesta-latina bypasses Dream texture rules', penalty: 0 };
+        }
         // Si no hay contexto espectral, asumir universal
         if (!spectralContext) {
             return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 };
@@ -1177,7 +1233,7 @@ export class EffectDreamSimulator {
         }
         // 🎨 WAVE 1029: Check texture compatibility FIRST
         const spectralContext = this.deriveSpectralContext(context, state);
-        const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext);
+        const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext, context.vibe);
         if (!textureCheck.compatible) {
             // REJECTED by texture filter - return zero relevance
             // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)

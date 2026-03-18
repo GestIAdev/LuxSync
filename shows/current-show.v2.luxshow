@@ -1,0 +1,450 @@
+{
+  "schemaVersion": "2.0.0",
+  "name": "Untitled Stage",
+  "description": "",
+  "createdAt": "2026-01-12T04:59:44.173Z",
+  "modifiedAt": "2026-01-12T05:16:06.060Z",
+  "createdWith": "1.0.0",
+  "stage": {
+    "width": 12,
+    "depth": 8,
+    "height": 5,
+    "gridSize": 0.5
+  },
+  "visuals": {
+    "showGrid": true,
+    "showBeams": true,
+    "showZoneLabels": true,
+    "showFixtureNames": false,
+    "backgroundColor": "#0a0a12"
+  },
+  "fixtures": [
+    {
+      "id": "fixture-1768194787899",
+      "name": "Fixture 1",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 1,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": -4.497930057859102,
+        "y": 3,
+        "z": -0.6963959174567496
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-left",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194802107",
+      "name": "Fixture 9",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 9,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": -4.5195997307582,
+        "y": 3,
+        "z": -2.174090655244923
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-left",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194805564",
+      "name": "Fixture 17",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 17,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": 4.416503018271012,
+        "y": 3,
+        "z": 0.005408244903177817
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-right",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194808394",
+      "name": "Fixture 25",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 25,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": 4.581011241228157,
+        "y": 3,
+        "z": -1.8114861816633763
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-right",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194829226",
+      "name": "Fixture 33",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 33,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": -2.113235544881701,
+        "y": 3,
+        "z": 2.392728981085763
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194831458",
+      "name": "Fixture 41",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 41,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": 0.06351033460284139,
+        "y": 3,
+        "z": 2.352559050855108
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194834210",
+      "name": "Fixture 49",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 49,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": 2.76,
+        "y": 3,
+        "z": 2.5
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194840859",
+      "name": "Fixture 57",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 57,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": -2.7564565133013783,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194843475",
+      "name": "Fixture 65",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 65,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": -0.16364822406384624,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true
+    },
+    {
+      "id": "fixture-1768194845410",
+      "name": "Fixture 73",
+      "model": "Generic",
+      "manufacturer": "Unknown",
+      "type": "par",
+      "address": 73,
+      "universe": 0,
+      "channelCount": 1,
+      "profileId": "generic-dimmer",
+      "position": {
+        "x": 3.2491053936077217,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true
+    }
+  ],
+  "groups": [],
+  "scenes": [],
+  "dmx": {
+    "driver": "virtual",
+    "port": "",
+    "universes": [
+      0
+    ],
+    "frameRate": 40
+  },
+  "audio": {
+    "source": "simulation",
+    "sensitivity": 0.7,
+    "inputGain": 1
+  },
+  "defaultVibe": "techno-club",
+  "seleneMode": "idle"
+}

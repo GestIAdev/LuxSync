@@ -38,6 +38,7 @@ import { PhysicsEngine } from './physics/PhysicsEngine'
 import { ZoneRouter, type PhysicalZone, type VibeRouteConfig, type ZoneIntensityInput } from './mapping/ZoneRouter'
 import { FixtureMapper, type PatchedFixture, type FixtureState, type MovementState } from './mapping/FixtureMapper'
 import { type IDMXDriver, type DriverType, MockDMXDriver } from './drivers'
+import { USBDMXDriverAdapter } from './drivers/USBDMXDriverAdapter'
 
 // � WAVE 2042.20: BABEL FISH - Color Translation Layer
 import { 
@@ -181,8 +182,16 @@ export class HardwareAbstraction {
     this.movementPhysics = new FixturePhysicsDriver()
     this.currentOptics = getOpticsConfig('idle')
     
-    // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
-    this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType)
+    // 🔥 CORTAFUEGOS ANTI-ZOMBIES:
+    // Si el tipo es 'usb' o 'usb-serial', matamos al externalDriver (suele ser Art-Net residual)
+    // y forzamos la creación del adaptador USB.
+    // Nota: 'usb-serial' viene del frontend (UI), pero el HAL trabaja con DriverType normalizado.
+    if ((this.config.driverType as unknown as string) === 'usb' || (this.config.driverType as unknown as string) === 'usb-serial') {
+      this.driver = this.createDriver('usb')
+    } else {
+      // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
+      this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType)
+    }
     
     // Configure mapper
     this.mapper.setInstallationType(this.config.installationType)
@@ -911,7 +920,7 @@ export class HardwareAbstraction {
           // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
           channels,
           // 🎨 WAVE 687: Default values for additional controls
-          shutter: 255,  // Open by default
+          shutter: 0,
           gobo: 0,
           prism: 0,
           strobe: 0,
@@ -1485,16 +1494,16 @@ export class HardwareAbstraction {
   // DRIVER MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════════
   
-  private createDriver(type: DriverType): IDMXDriver {
+  private createDriver(type: DriverType | 'usb-serial'): IDMXDriver {
     switch (type) {
       case 'mock':
         // WAVE 252: Silent mock driver
         return new MockDMXDriver({ debug: false })
       
+      case 'usb-serial':
       case 'usb':
-        // For now, fall back to silent mock
-        // Real USB driver would be: return new USBDMXDriverAdapter()
-        return new MockDMXDriver({ debug: false })
+        // 🔥 ARQUITECTURA LIMPIA: Usamos el adaptador oficial (HAL ⇄ Hydra)
+        return new USBDMXDriverAdapter()
       
       case 'artnet':
         // For now, fall back to silent mock
@@ -1553,6 +1562,11 @@ export class HardwareAbstraction {
   }
   
   private sendToDriver(states: FixtureState[]): void {
+    // 🔍 TRACE: Driver status check (disabled to reduce noise)
+    // Uncomment below to debug driver connectivity
+    // if (this.framesRendered % 100 === 0) {
+    //   console.log(`[TRACE HAL] Driver: ${this.driver?.constructor?.name} | Connected: ${this.driver?.isConnected}`)
+    //
     // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
     // If driver is not connected, silently drop packets.
     // User MUST manually start ArtNet/USB from Dashboard.
@@ -1574,27 +1588,54 @@ export class HardwareAbstraction {
     
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
-    
-    // Debug output silenced - Wave 2042.29
-    // (was spamming console every frame)
-    
-    // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
-    // Feed all packets to driver (buffering by universe internally)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER
+    // Sin esto, sendAll() envía buffers vacíos/stale.
+    // Cada DMXPacket tiene {universe, address, channels[]} que se escribe
+    // en la posición correcta del buffer del universo correspondiente.
+    // ═══════════════════════════════════════════════════════════════════════
     for (const packet of packets) {
       this.driver.send(packet)
     }
-    
-    // 🔥 WAVE 2020.2b: Use sendAll() for parallel UDP dispatch if available
-    // This is the key optimization for 50+ universes
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // �🔎 FORENSIC TRACE (CP3): HAL mutation check (states → DMXPacket)
+    // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
+    // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1'
+      if (traceEnabled) {
+        const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10)
+        const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60
+        if (this.framesRendered % every === 0) {
+          const traceFixtureId =
+            process?.env?.LUXSYNC_TRACE_FIXTURE_ID
+              ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+              : undefined
+
+          // 🔎 TRACE CP3 DISABLED: States→Packets mapper trace (too detailed). Check CP4 serial boundary instead.
+          // const universes = Array.from(new Set(packets.map(p => p.universe))).sort((a, b) => a - b)
+          // console.log('[TRACE CP3] HAL states→DMXPacket', {...})
+        }
+      }
+    } catch {
+      // never block output
+    }
+
+    // 🔎 WAVE 1219.4: HAL packets preview (disabled to reduce noise)
+    // Used for debugging packet mutations; re-enable if tracing color/position divergence
+    // if (this.framesRendered % 120 === 0) {
+    //   console.log('[TRACE HAL] packets', {...})
+    // }
+
+    // Fire and forget - we don't await because render loop is sync
     if (this.driver.sendAll) {
-      // Fire and forget - we don't await because render loop is sync
-      // sendAll internally handles the Promise
       void this.driver.sendAll()
     }
-    // NOTE: Drivers that support sendAll() should buffer in send() and flush in sendAll()
-    // Drivers without sendAll() will send immediately in send() (legacy behavior)
   }
-  
+
   /**
    * Connect to DMX hardware.
    */
@@ -1787,4 +1828,4 @@ export class HardwareAbstraction {
 }
 
 // Export singleton for easy use
-export const hardwareAbstraction = new HardwareAbstraction()
+export const hardwareAbstraction = new HardwareAbstraction({ driverType: 'usb' })

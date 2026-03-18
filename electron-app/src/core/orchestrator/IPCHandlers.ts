@@ -121,9 +121,9 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true, inputGain: savedGain }
   })
   
-  ipcMain.handle('lux:stop', () => {
+  ipcMain.handle('lux:stop', async () => {
     if (titanOrchestrator) {
-      titanOrchestrator.stop()
+      await titanOrchestrator.stop()
     }
     return { success: true }
   })

@@ -27,6 +27,15 @@
  * @module core/hephaestus/types
  * @version WAVE 2030.2
  */
+/**
+ * ⚒️ WAVE 2400: Default PhaseConfig — sin distribución de fase.
+ */
+export const DEFAULT_PHASE_CONFIG = {
+    spread: 0,
+    symmetry: 'linear',
+    wings: 1,
+    direction: 1,
+};
 // ═══════════════════════════════════════════════════════════════════════════
 // BEZIER PRESETS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,6 +99,7 @@ export function serializeHephClip(clip) {
         effectType: clip.effectType,
         curves: curvesRecord,
         staticParams: clip.staticParams,
+        selector: clip.selector, // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
     };
 }
 /**
@@ -115,6 +125,7 @@ export function deserializeHephClip(serialized) {
         effectType: serialized.effectType,
         curves: curvesMap,
         staticParams: serialized.staticParams,
+        selector: serialized.selector, // ⚡ WAVE 2403: Restore selector from IPC
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════

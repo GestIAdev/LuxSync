@@ -448,7 +448,37 @@ export function registerArbiterHandlers(masterArbiter) {
      * When true: System is LIVE - DMX flows to fixtures
      */
     ipcMain.handle('lux:arbiter:setOutputEnabled', (_event, { enabled }) => {
-        masterArbiter.setOutputEnabled(enabled);
+        // 🔎 TRACE: Last-mile visibility for gate flips (IPC callers can be many)
+        try {
+            const stack = new Error().stack;
+            const trimmed = stack ? stack.split('\n').slice(0, 6).join('\n') : undefined;
+            const senderUrl = _event?.senderFrame?.url ?? _event?.sender?.getURL?.() ?? 'unknown';
+            const senderFrame = _event?.senderFrame
+                ? {
+                    url: _event.senderFrame.url,
+                    name: _event.senderFrame.name,
+                    routingId: _event.senderFrame.routingId,
+                }
+                : undefined;
+            console.log('[IPC 📡] lux:arbiter:setOutputEnabled', {
+                enabled,
+                senderUrl,
+                senderFrame,
+                stack: trimmed,
+            });
+        }
+        catch {
+            // ignore
+        }
+        // Prefer tagged call if available (keeps compatibility with older builds)
+        const anyArbiter = masterArbiter;
+        if (typeof anyArbiter.setOutputEnabledTagged === 'function') {
+            // Include enabled in label so a single glance shows intent
+            anyArbiter.setOutputEnabledTagged(enabled, `IPC:lux:arbiter:setOutputEnabled:${enabled ? 'LIVE' : 'ARMED'}`);
+        }
+        else {
+            masterArbiter.setOutputEnabled(enabled);
+        }
         return {
             success: true,
             outputEnabled: masterArbiter.isOutputEnabled(),
@@ -459,6 +489,15 @@ export function registerArbiterHandlers(masterArbiter) {
      * Toggle output gate (ARMED ↔ LIVE)
      */
     ipcMain.handle('lux:arbiter:toggleOutput', () => {
+        // 🔎 TRACE: who toggled the output gate
+        try {
+            const stack = new Error().stack;
+            const trimmed = stack ? stack.split('\n').slice(0, 6).join('\n') : undefined;
+            console.log('[IPC 📡] lux:arbiter:toggleOutput', { stack: trimmed });
+        }
+        catch {
+            // ignore
+        }
         const result = masterArbiter.toggleOutput();
         return {
             success: true,

@@ -20,10 +20,13 @@
  */
 
 import { EventEmitter } from 'events'
+import type { DMXSendStrategy } from './strategies/DMXSendStrategy'
+import { EnttecProStrategy } from './strategies/EnttecProStrategy'
+import { OpenDMXStrategy } from './strategies/OpenDMXStrategy'
 
 // Tipo para SerialPort (se carga dinámicamente)
 type SerialPortModule = typeof import('serialport')
-type SerialPortInstance = InstanceType<SerialPortModule['SerialPort']>
+export type SerialPortInstance = InstanceType<SerialPortModule['SerialPort']>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -47,6 +50,8 @@ export interface UniversalDMXConfig {
   watchdogInterval: number // ms (default: 1000)
   debug: boolean
   promiscuousMode: boolean // Intentar cualquier puerto serial
+  /** Estrategia de envío por defecto ('enttec-pro' | 'open-dmx'). Default: 'enttec-pro' */
+  defaultStrategy: 'enttec-pro' | 'open-dmx'
 }
 
 export type DMXState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting'
@@ -98,6 +103,14 @@ export class UniversalDMXDriver extends EventEmitter {
   private SerialPort: SerialPortModule['SerialPort'] | null = null
   private lastError: string | null = null
   private isScanning: boolean = false
+  private isTransmitting: boolean = false
+
+  // 🏛️ WAVE 3000: Strategy Pattern — estrategia de envío por universo
+  private strategies: Map<number, DMXSendStrategy> = new Map()
+  private defaultStrategy: DMXSendStrategy
+
+  // 🔎 FORENSIC TRACE (CP4): serial write counters (per universe)
+  private traceWriteCountByUniverse: Map<number, number> = new Map()
 
   constructor(config: Partial<UniversalDMXConfig> = {}) {
     super()
@@ -118,7 +131,13 @@ export class UniversalDMXDriver extends EventEmitter {
       watchdogInterval: config.watchdogInterval ?? 1000,
       debug: config.debug ?? true, // Debug ON por defecto
       promiscuousMode: config.promiscuousMode ?? true, // Intentar todo
+      defaultStrategy: config.defaultStrategy ?? 'open-dmx',
     }
+
+    // 🏛️ WAVE 3000: Instanciar estrategia por defecto
+    this.defaultStrategy = this.config.defaultStrategy === 'open-dmx'
+      ? new OpenDMXStrategy()
+      : new EnttecProStrategy()
 
     // Inicializar Universo 0 por defecto (para compatibilidad con código legacy)
     this.initBuffer(0)
@@ -150,9 +169,12 @@ export class UniversalDMXDriver extends EventEmitter {
     try {
       // Importar serialport dinámicamente
       const serialportModule = await import('serialport')
-      this.SerialPort = serialportModule.SerialPort as unknown as SerialPortModule['SerialPort']
       
-      const ports = await serialportModule.SerialPort.list()
+      // FIX PARA ELECTRON: Buscar la clase SerialPort sin importar cómo se exportó
+      const SP = serialportModule.SerialPort || (serialportModule as any).default?.SerialPort || serialportModule;
+      this.SerialPort = SP as unknown as SerialPortModule['SerialPort']
+      
+      const ports = await SP.list()
       
       this.log(`🔍 Scanning ${ports.length} serial ports...`)
       
@@ -363,14 +385,22 @@ export class UniversalDMXDriver extends EventEmitter {
       }
       this.connectedDevices.set(universe, deviceInfo)
 
+      // 🏛️ WAVE 3000: Auto-detect send strategy based on device type
+      if (!this.strategies.has(universe)) {
+        const detectedStrategy = this.detectStrategy(deviceInfo)
+        this.strategies.set(universe, detectedStrategy)
+        this.log(`🏛️ [Univ ${universe}] Auto-detected strategy: ${detectedStrategy.name}`)
+      }
+
       // 🛡️ Eventos de error individuales por universo
       port.on('error', (err: Error) => this.handlePortError(universe, err))
       port.on('close', () => this.handlePortClose(universe))
 
       this.log(`✅ [Univ ${universe}] Connected to ${deviceInfo.friendlyName}`)
       
-      // Asegurar que el loop de salida corre
-      this.startOutputLoop()
+      // 🏛️ WAVE 3000: NO arrancamos un output loop interno.
+      // El HAL es el único dueño del timing de envío (via su render loop → sendAll).
+      // Dos loops compitiendo por el mismo puerto serial causan drops silenciosos.
       
       // Asegurar watchdog activo
       this.startWatchdog()
@@ -425,6 +455,7 @@ export class UniversalDMXDriver extends EventEmitter {
       
       this.ports.delete(universe)
       this.connectedDevices.delete(universe)
+      this.strategies.delete(universe)
       this.emit('disconnected', { universe, device })
       
       this.log(`🔌 [Univ ${universe}] Disconnected`)
@@ -530,13 +561,32 @@ export class UniversalDMXDriver extends EventEmitter {
   /**
    * 🎚️ Establece todo el buffer DMX de un universo de una vez
    */
-  setUniverse(values: Buffer | Uint8Array | number[], universe: number = 0): void {
+  setUniverse(values: Buffer | Uint8Array | number[] | Record<number, number>, universe: number = 0): void {
     this.initBuffer(universe)
     const buf = this.universeBuffers.get(universe)!
-    const len = Math.min(values.length, DMX_CHANNELS)
-    
-    for (let i = 0; i < len; i++) {
-      buf[i + 1] = values[i]
+
+    // Si es un Array o Buffer normal
+    if (Array.isArray(values) || values instanceof Uint8Array || Buffer.isBuffer(values)) {
+      const len = Math.min(values.length, DMX_CHANNELS)
+      for (let i = 0; i < len; i++) {
+        // buf[0] es START CODE, los canales empiezan en buf[1]
+        buf[i + 1] = (values as any)[i]
+      }
+      return
+    }
+
+    // Si el IPC lo mutó a un objeto diccionario { "0": 255, "1": 128 }
+    for (const [ch, val] of Object.entries(values)) {
+      const channel = parseInt(ch, 10)
+      if (!Number.isFinite(channel)) continue
+
+      // Convertimos a base 1 (si el array venía en base 0, le sumamos 1)
+      const dmxChan = channel < DMX_CHANNELS ? channel + 1 : channel
+      if (dmxChan >= 1 && dmxChan <= DMX_CHANNELS) {
+        const v = typeof val === 'number' ? val : parseInt(String(val), 10)
+        if (!Number.isFinite(v)) continue
+        buf[dmxChan] = Math.max(0, Math.min(255, Math.round(v)))
+      }
     }
   }
 
@@ -573,27 +623,25 @@ export class UniversalDMXDriver extends EventEmitter {
    * Compatible con IDMXDriver (WAVE 2020.2b)
    */
   async sendAll(): Promise<boolean> {
-    if (this.ports.size === 0) return false
+    // 🚦 SEMÁFORO: Si el hardware no terminó el frame anterior, DROP silencioso.
+    // Esto evita la corrupción "choque de trenes" cuando el render loop (30Hz)
+    // es más rápido que la transmisión serial (250kbaud ≈ 23ms para 513 bytes).
+    if (this.ports.size === 0 || this.isTransmitting) return false
 
+    this.isTransmitting = true
     const promises: Promise<void>[] = []
 
     for (const [universe, port] of this.ports) {
       const buffer = this.universeBuffers.get(universe)
       if (port.isOpen && buffer) {
-        // Envolver write en promesa para paralelizar
-        const p = new Promise<void>((resolve) => {
-          port.write(buffer, (err: Error | null | undefined) => {
-            if (err) {
-              this.log(`❌ [Univ ${universe}] Write error: ${err.message}`)
-            }
-            resolve() // Resolvemos siempre para no bloquear Promise.all
-          })
-        })
-        promises.push(p)
+        // 🏛️ WAVE 3000: Delegar al Strategy correcto para este universo
+        const strategy = this.strategies.get(universe) ?? this.defaultStrategy
+        promises.push(strategy.send(port, buffer, universe, (msg) => this.log(msg)))
       }
     }
 
     await Promise.all(promises)
+    this.isTransmitting = false // 🚦 Cable libre, listos para el siguiente frame
     return true
   }
 
@@ -604,6 +652,47 @@ export class UniversalDMXDriver extends EventEmitter {
   private sendDMXFrame(): void {
     // Simplemente llamar sendAll (fire and forget)
     void this.sendAll()
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🏛️ WAVE 3000: STRATEGY MANAGEMENT
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Configura la estrategia de envío para un universo específico.
+   * Útil cuando tienes un Enttec Pro en universo 0 y un Open DMX en universo 1.
+   */
+  setStrategy(universe: number, type: 'enttec-pro' | 'open-dmx'): void {
+    const strategy = type === 'open-dmx' ? new OpenDMXStrategy() : new EnttecProStrategy()
+    this.strategies.set(universe, strategy)
+    this.log(`🏛️ [Univ ${universe}] Strategy set: ${strategy.name}`)
+  }
+
+  /**
+   * Auto-detecta la estrategia correcta basándose en el tipo de dispositivo.
+   * 
+   * REGLA: Solo las interfaces con microcontrolador embebido que ENTIENDEN
+   * el protocolo Enttec (Label 6) van a EnttecProStrategy.
+   * 
+   * La IMC UD 7S es un chip FTDI PURO (cable tonto). NO tiene micro.
+   * Debe usar OpenDMXStrategy (port.set BREAK + setTimeout fijo).
+   */
+  private detectStrategy(device: DMXDevice): DMXSendStrategy {
+    // Solo interfaces con firmware que parsea Label 6:
+    // - Enttec DMX USB Pro (tiene PIC18F2550 embebido)
+    // - DMXking ultraDMX Pro (tiene STM32 embebido)
+    const nameLC = device.friendlyName.toLowerCase()
+    const isEnttecProtocol =
+      (nameLC.includes('enttec') && nameLC.includes('pro')) ||
+      nameLC.includes('dmxking')
+
+    if (isEnttecProtocol) {
+      return new EnttecProStrategy()
+    }
+
+    // TODO lo demás: FTDI puro (IMC UD 7S), CH340, Prolific, CP210x, genérico
+    // → cable tonto, necesita BREAK manual vía port.set({ brk }) + setTimeout fijo
+    return new OpenDMXStrategy()
   }
 
   // ─────────────────────────────────────────────────────────────────────────

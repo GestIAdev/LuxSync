@@ -1,0 +1,1124 @@
+{
+  "schemaVersion": "2.0.0",
+  "name": "la_toscana",
+  "description": "",
+  "createdAt": "2026-01-24T21:13:24.866Z",
+  "modifiedAt": "2026-01-25T02:12:11.310Z",
+  "createdWith": "1.0.0",
+  "stage": {
+    "width": 12,
+    "depth": 8,
+    "height": 5,
+    "gridSize": 0.5
+  },
+  "visuals": {
+    "showGrid": true,
+    "showBeams": true,
+    "showZoneLabels": true,
+    "showFixtureNames": false,
+    "backgroundColor": "#0a0a12"
+  },
+  "fixtures": [
+    {
+      "id": "fixture-1769307047184",
+      "name": "LB230N",
+      "model": "LB230N",
+      "manufacturer": "Big Dipper",
+      "type": "moving-head",
+      "address": 1,
+      "universe": 0,
+      "channelCount": 22,
+      "profileId": "lb230n",
+      "position": {
+        "x": -4.645529941433846,
+        "y": 3,
+        "z": 0.2543577721578689
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\LB230N.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Big Dipper",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Jan_K",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Not tested",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "14 Ch\"",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "LB230N",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Gobo1",
+          "type": "gobo",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "efectts movimiento",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Pan16bit",
+          "type": "pan_fine",
+          "is16bit": true
+        },
+        {
+          "index": 16,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "Tilt16bit",
+          "type": "tilt_fine",
+          "is16bit": true
+        },
+        {
+          "index": 18,
+          "name": "marco Funtion",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 19,
+          "name": "reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 20,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 21,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": true,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1769307050633",
+      "name": "LB230N",
+      "model": "LB230N",
+      "manufacturer": "Big Dipper",
+      "type": "moving-head",
+      "address": 9,
+      "universe": 0,
+      "channelCount": 22,
+      "profileId": "lb230n",
+      "position": {
+        "x": 4.3955380061352765,
+        "y": 3,
+        "z": 0.452770594476978
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\LB230N.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Big Dipper",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Jan_K",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Not tested",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "14 Ch\"",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "LB230N",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Gobo1",
+          "type": "gobo",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "efectts movimiento",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Pan16bit",
+          "type": "pan_fine",
+          "is16bit": true
+        },
+        {
+          "index": 16,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "Tilt16bit",
+          "type": "tilt_fine",
+          "is16bit": true
+        },
+        {
+          "index": 18,
+          "name": "marco Funtion",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 19,
+          "name": "reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 20,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 21,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": true,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1769307082584",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 17,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -2.4302979273822047,
+        "y": 3,
+        "z": 1.5726214523594066
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1769307087600",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 25,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": 2.5700456236995652,
+        "y": 3,
+        "z": 1.6443692544197235
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1769307106128",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 33,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -3.6834616489593275,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1769307112576",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 41,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -1.294595106834657,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1769307117299",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 49,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": 1.5013568972577869,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1769307121073",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 57,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": 3.5032454995357405,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par_tec_flat_10_ch_grande.json",
+      "channels": [
+        {
+          "index": 0,
+          "type": "red",
+          "name": "American pro",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "type": "red",
+          "name": "par tec flat  10 ch grande",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Lamp",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "strobe",
+          "name": "Strobe",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "amber",
+          "name": "amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "unknown",
+          "name": "no se",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "green",
+          "name": "Green",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "white",
+          "name": "WW",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    }
+  ],
+  "groups": [],
+  "scenes": [],
+  "dmx": {
+    "driver": "virtual",
+    "port": "",
+    "universes": [
+      0
+    ],
+    "frameRate": 40
+  },
+  "audio": {
+    "source": "simulation",
+    "sensitivity": 0.7,
+    "inputGain": 1
+  },
+  "defaultVibe": "techno-club",
+  "seleneMode": "idle"
+}

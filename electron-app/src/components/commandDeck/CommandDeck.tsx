@@ -149,7 +149,13 @@ export const CommandDeck: React.FC = () => {
       // If disarming, also close the DMX gate (safety)
       if (!willBeArmed && outputEnabled) {
         try {
-          await window.lux?.arbiter?.setOutputEnabled?.(false)
+          // 🔎 WAVE 2122.2: tag gate changes when possible
+          const arb = window.lux?.arbiter as any
+          if (arb?.setOutputEnabledTagged) {
+            await arb.setOutputEnabledTagged(false, 'CommandDeck:disarmSafety')
+          } else {
+            await window.lux?.arbiter?.setOutputEnabled?.(false, 'CommandDeck:disarmSafety')
+          }
           setOutputEnabled(false)
           console.log('[CommandDeck] ⚛️ Safety: DMX gate closed on disarm')
         } catch (e) {
@@ -169,7 +175,10 @@ export const CommandDeck: React.FC = () => {
     
     try {
       // 🚦 Send to backend arbiter
-      const result = await window.lux?.arbiter?.setOutputEnabled?.(newState)
+      const arb = window.lux?.arbiter as any
+      const result = arb?.setOutputEnabledTagged
+        ? await arb.setOutputEnabledTagged(newState, 'CommandDeck:GO')
+        : await window.lux?.arbiter?.setOutputEnabled?.(newState, 'CommandDeck:GO')
       
       if (result?.success) {
         // Update local store to match backend

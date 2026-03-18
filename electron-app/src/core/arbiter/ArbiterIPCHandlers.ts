@@ -625,8 +625,59 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
    * When false: System is ARMED - engine runs, calculates, but DMX stays at safe values
    * When true: System is LIVE - DMX flows to fixtures
    */
-  ipcMain.handle('lux:arbiter:setOutputEnabled', (_event, { enabled }: { enabled: boolean }) => {
-    masterArbiter.setOutputEnabled(enabled)
+  ipcMain.handle(
+    'lux:arbiter:setOutputEnabled',
+    (
+      _event,
+      {
+        enabled,
+        label,
+      }: {
+        enabled: boolean
+        label?: string
+      }
+    ) => {
+    // 🔎 TRACE: Last-mile visibility for gate flips (IPC callers can be many)
+    try {
+      const stack = new Error().stack
+      const trimmed = stack ? stack.split('\n').slice(0, 6).join('\n') : undefined
+      const senderUrl = _event?.senderFrame?.url ?? _event?.sender?.getURL?.() ?? 'unknown'
+      const senderFrame = _event?.senderFrame
+        ? {
+            url: _event.senderFrame.url,
+            name: _event.senderFrame.name,
+            routingId: _event.senderFrame.routingId,
+          }
+        : undefined
+      console.log('[IPC 📡] lux:arbiter:setOutputEnabled', {
+        enabled,
+        label,
+        senderUrl,
+        senderFrame,
+        stack: trimmed,
+      })
+    } catch {
+      // ignore
+    }
+
+    const sanitizedLabel =
+      typeof label === 'string' && label.trim().length > 0
+        ? label.trim().slice(0, 160)
+        : undefined
+
+    // Prefer tagged call if available (keeps compatibility with older builds)
+    const anyArbiter = masterArbiter as unknown as {
+      setOutputEnabledTagged?: (enabled: boolean, label: string) => void
+    }
+    if (typeof anyArbiter.setOutputEnabledTagged === 'function') {
+      // Include enabled in label so a single glance shows intent
+      anyArbiter.setOutputEnabledTagged(
+        enabled,
+        sanitizedLabel ?? `IPC:lux:arbiter:setOutputEnabled:${enabled ? 'LIVE' : 'ARMED'}`
+      )
+    } else {
+      masterArbiter.setOutputEnabled(enabled)
+    }
     return { 
       success: true, 
       outputEnabled: masterArbiter.isOutputEnabled(),
@@ -637,8 +688,36 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
   /**
    * Toggle output gate (ARMED ↔ LIVE)
    */
-  ipcMain.handle('lux:arbiter:toggleOutput', () => {
+  ipcMain.handle('lux:arbiter:toggleOutput', (_event, { label }: { label?: string } = {}) => {
+    // 🔎 TRACE: who toggled the output gate
+    try {
+      const stack = new Error().stack
+      const trimmed = stack ? stack.split('\n').slice(0, 6).join('\n') : undefined
+      console.log('[IPC 📡] lux:arbiter:toggleOutput', { label, stack: trimmed })
+    } catch {
+      // ignore
+    }
     const result = masterArbiter.toggleOutput()
+
+    // If tagged API exists, stamp the origin label for forensics
+    try {
+      const anyArbiter = masterArbiter as unknown as {
+        setOutputEnabledTagged?: (enabled: boolean, label: string) => void
+      }
+      if (typeof anyArbiter.setOutputEnabledTagged === 'function') {
+        const sanitizedLabel =
+          typeof label === 'string' && label.trim().length > 0
+            ? label.trim().slice(0, 160)
+            : undefined
+        anyArbiter.setOutputEnabledTagged(
+          result,
+          sanitizedLabel ?? `IPC:lux:arbiter:toggleOutput:${result ? 'LIVE' : 'ARMED'}`
+        )
+      }
+    } catch {
+      // ignore
+    }
+
     return { 
       success: true, 
       outputEnabled: result,

@@ -5,6 +5,7 @@
  * 
  * WAVE 680: THE ARSENAL - Primera arma de asalto
  * 🪜 WAVE 1004.4: THE LATINO LADDER - Posicionado en PEAK ZONE (A=0.95)
+ * ⚡ WAVE 2214: THE REAL STORM — Era un pequeño flash azul. Arreglado.
  * 
  * EL ARMA DEFINITIVA - Solo para momentos CLIMAX.
  * Strobe caótico pero controlado, reservado para los drops más intensos.
@@ -17,24 +18,20 @@
  * │ Duration:    SHORT → COLOR PERMITIDO en movers │
  * └─────────────────────────────────────────────────┘
  * 
- * COMPORTAMIENTO:
+ * COMPORTAMIENTO (WAVE 2214):
  * - PRE-BLACKOUT: 50ms de negro antes del caos
- * - ATTACK:  Ramp up de frecuencia (0 → 12 Hz)
- * - SUSTAIN: Caos máximo - frecuencia oscila con BPM
+ * - ATTACK:  Arranca a FULL frequency INMEDIATAMENTE (ya no ramp-up lento)
+ * - SUSTAIN: Caos máximo — frecuencia oscila con BPM
  * - DECAY:   Desaceleración gradual
+ * - globalComposition: SIEMPRE 1.0 (era 0 fuera de sustain → efecto invisible)
  * 
  * FÍSICA:
  * - Frecuencia sincronizada al BPM
  * - Intensidad modulada por Z-Score
  * - Asíncrono pero musical (no random puro)
  * 
- * ZONA PEAK:
- * - Compañero de LatinaMeltdown (A=0.95)
- * - SOLO para drops nucleares
- * - Requiere energía > 0.9 para activarse
- * 
  * @module core/effects/library/StrobeStorm
- * @version WAVE 680, 1004.4
+ * @version WAVE 680, 1004.4, 2214
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -74,12 +71,12 @@ interface StrobeStormConfig {
 }
 
 const DEFAULT_CONFIG: StrobeStormConfig = {
-  attackMs: 80,        // 🪜 LADDER: Attack más rápido (antes 100ms)
-  sustainMs: 600,      // 🪜 LADDER: Más sustain para el caos (antes 500ms)
-  decayMs: 150,        // 🪜 LADDER: Decay más rápido (antes 200ms)
-  baseFrequencyHz: 12, // 🪜 LADDER: 12 Hz base - PEAK ZONE (antes 8 Hz)
+  attackMs: 40,        // ⚡ WAVE 2214: 80→40ms. La storm arranca en 40ms, no en 80.
+  sustainMs: 700,      // ⚡ WAVE 2214: 600→700ms. Más tiempo de infierno.
+  decayMs: 120,        // ⚡ WAVE 2214: 150→120ms. Sale más rápido = más impacto percibido.
+  baseFrequencyHz: 14, // ⚡ WAVE 2214: 12→14 Hz base. PEAK = VIOLENTO.
   degradedMode: false,
-  flashColor: { h: 0, s: 0, l: 100 },  // Blanco puro
+  flashColor: { h: 0, s: 0, l: 100 },  // Blanco puro — la storm es blanca, no azul
   preBlackoutMs: 50,   // 🪜 LADDER: 50ms negro antes del caos
 }
 
@@ -190,9 +187,11 @@ export class StrobeStorm extends BaseEffect {
   private processAttack(phaseElapsed: number): void {
     const progress = Math.min(1, phaseElapsed / this.config.attackMs)
     
-    // Ramp up frequency con ease-in
+    // ⚡ WAVE 2214: Arranca a FULL frequency desde el primer ms
+    // Antes: ease-in desde 0 → llegaba al máximo al final del attack (80ms de "nada")
+    // Ahora: 80% del max en el primer frame, sube al 100% en los 40ms restantes
     const targetFreq = this.calculateTargetFrequency()
-    this.currentFrequency = targetFreq * this.easeInOutCubic(progress)
+    this.currentFrequency = targetFreq * (0.8 + 0.2 * this.easeInOutCubic(progress))
     
     if (progress >= 1) {
       this.transitionTo('sustain')
@@ -284,8 +283,9 @@ export class StrobeStorm extends BaseEffect {
       // Color del flash
       colorOverride: this.config.flashColor,
       
-      // 🌊 WAVE 1090: globalOverride → globalComposition
-      globalComposition: (this.phase === 'sustain' && this.currentFrequency > 5) ? 1.0 : 0,
+      // ⚡ WAVE 2214: globalComposition SIEMPRE 1.0 — el efecto era invisible en attack/decay
+      // Antes: (sustain && freq > 5) ? 1.0 : 0 → eso mataba el efecto 230ms de cada activación
+      globalComposition: 1.0,
     }
   }
   

@@ -222,6 +222,9 @@ declare global {
   
   // Lux API (TRINITY PHASE 2)
   lux: {
+    // 🎛️ MASTER ARBITER (legacy window.lux bridge)
+    arbiter: Window['luxsync']['arbiter']
+
     // Control
     start: () => Promise<{ success: boolean; inputGain?: number; alreadyRunning?: boolean }>  // 🔧 WAVE 15.1
     stop: () => Promise<{ success: boolean }>
@@ -533,14 +536,28 @@ declare global {
        * false = ARMED (engine runs but DMX blocked)
        * true = LIVE (DMX flows to fixtures)
        */
-      setOutputEnabled: (enabled: boolean) => Promise<{
+      setOutputEnabled: (enabled: boolean, label?: string) => Promise<{
+        success: boolean
+        outputEnabled: boolean
+        state: 'LIVE' | 'ARMED'
+      }>
+
+      /** Tagged variant for forensics (preferred) */
+      setOutputEnabledTagged: (enabled: boolean, label: string) => Promise<{
         success: boolean
         outputEnabled: boolean
         state: 'LIVE' | 'ARMED'
       }>
       
       /** Toggle output gate (ARMED ↔ LIVE) */
-      toggleOutput: () => Promise<{
+      toggleOutput: (label?: string) => Promise<{
+        success: boolean
+        outputEnabled: boolean
+        state: 'LIVE' | 'ARMED'
+      }>
+
+      /** Tagged variant for forensics */
+      toggleOutputTagged: (label: string) => Promise<{
         success: boolean
         outputEnabled: boolean
         state: 'LIVE' | 'ARMED'

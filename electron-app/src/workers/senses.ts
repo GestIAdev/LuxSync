@@ -987,6 +987,10 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     onBeat: bpmResult.kickDetected || spectrum.kickDetected,
     beatPhase: state.beatPhase,
     beatStrength: bpmResult.kickDetected ? 1 : 0,
+    // 🥁 WAVE 2213: Cumulative kick counter — el pulso que el Orquestador perdió
+    // IntervalBPMTracker.totalKicks es el único contador real y continuo.
+    // Este campo reconecta el cable que se cortó en el refactor Radix-2/sBPM.
+    kickCount: bpmResult.kickCount,
     
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,

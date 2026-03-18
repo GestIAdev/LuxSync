@@ -36,13 +36,13 @@
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
     hitCount: 6, // 6 golpes nucleares
-    flashDurationMs: 80, // 80ms por flash (corto y brutal)
-    preBlackoutMs: 50, // 50ms de oscuridad ANTES de cada golpe
-    gapMs: 120, // 120ms entre golpes
+    flashDurationMs: 110, // 🩸 WAVE 2190: 80→110ms — más tiempo ardiendo, más brutal
+    preBlackoutMs: 40, // 🩸 WAVE 2190: 50→40ms — blackout más corto, golpea antes
+    gapMs: 100, // 🩸 WAVE 2190: 120→100ms — menos silencio, más densidad
     maxIntensity: 1.0, // 100% sin piedad
     alternateColors: true, // Rojo → Amarillo → Rojo → Amarillo
-    fadeInMs: 200, // 🌊 WAVE 1090: Entrada suave (latino)
-    fadeOutMs: 600, // 🌊 WAVE 1090: Salida latina (más flow)
+    fadeInMs: 0, // 🩸 WAVE 2190: 200→0ms — ATAQUE INMEDIATO, sin carita suave
+    fadeOutMs: 400, // 🩸 WAVE 2190: 600→400ms — salida más corta, el golpe termina seco
 };
 // Duración total calculada: ~1500ms (SHORT effect - puede usar color en movers)
 // (50 + 80 + 120) * 6 = 1500ms
@@ -184,20 +184,41 @@ export class LatinaMeltdown extends BaseEffect {
                 break;
         }
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1010.8.6: MOVER SAFETY - DORADO FIJO (no alternancia)
-        // PROBLEMA: Alternancia Rojo/Amarillo cada 250ms = riesgo Color Wheel
-        // SOLUCIÓN: Movers reciben NARANJA_FUSION fijo (dorado latino)
-        // PARs/Wash mantienen alternancia Rojo↔Amarillo (RGB safe)
-        // CÓDIGO DEFENSIVO: Aunque HAL limite a 200ms, mejor prevenir desde código
+        // 🩸 WAVE 2190.1: ZONE-COMPLETE DISPATCH — ANTI AUTO-WHITE
+        //
+        // BUG RAÍZ: El TimelineEngine usa ZONE PATH cuando hay zoneOverrides.
+        // ZONE PATH llama dispatchZoneOverrides() y NUNCA dispatchGlobalOutput().
+        // Resultado: colorOverride (para PARs) se descartaba silenciosamente.
+        // PARs quedaban sin color → physics ponía dimmer > 0 → AUTO-WHITE INJECTION.
+        //
+        // SOLUCIÓN: TODAS las zonas van en zoneOverrides explícitas.
+        // No hay colorOverride global — cada zona se pinta a sí misma.
+        // movers → NARANJA_FUSION fijo (sin riesgo Color Wheel)
+        // front/back → alternancia Rojo↔Amarillo (RGB safe)
         // ═══════════════════════════════════════════════════════════════════════
+        const isSilent = this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap';
+        const parsColor = isSilent
+            ? { h: 0, s: 0, l: 0 } // Negro en pre-blackout/gap
+            : color; // Rojo o Amarillo en flash
+        const moversColor = isSilent
+            ? { h: 0, s: 0, l: 0 } // Negro en pre-blackout/gap
+            : MELTDOWN_PALETTE.NARANJA_FUSION; // DORADO fijo en flash (sin color wheel)
         const zoneOverrides = {
-            movers: {
-                color: this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap'
-                    ? { h: 0, s: 0, l: 0 } // Negro en blackout/gap
-                    : MELTDOWN_PALETTE.NARANJA_FUSION, // DORADO fijo en flash
+            front: {
+                color: parsColor,
                 dimmer: dimmer,
                 blendMode: 'replace',
-            }
+            },
+            back: {
+                color: parsColor,
+                dimmer: dimmer,
+                blendMode: 'replace',
+            },
+            movers: {
+                color: moversColor,
+                dimmer: dimmer,
+                blendMode: 'replace',
+            },
         };
         return {
             effectId: this.id,
@@ -207,10 +228,9 @@ export class LatinaMeltdown extends BaseEffect {
             zones: this.zones,
             intensity: dimmer,
             dimmerOverride: dimmer,
-            colorOverride: color, // PARs/Wash con alternancia Rojo↔Amarillo
-            zoneOverrides, // 🌊 WAVE 1010.8.6: Movers con DORADO fijo
-            // White boost durante flash para punch extra
-            whiteOverride: this.hitPhase === 'flash' && dimmer > 0.8 ? 0.3 : undefined,
+            // 🩸 WAVE 2190.1: colorOverride eliminado — era ignorado por ZONE PATH
+            // Toda la autoridad de color vive en zoneOverrides ahora
+            zoneOverrides,
             globalComposition: fadeOpacity, // 🌊 WAVE 1090: FLUID DYNAMICS
         };
     }

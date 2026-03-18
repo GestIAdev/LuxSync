@@ -60,7 +60,7 @@ export class SalsaFire extends BaseEffect {
         this.name = 'Salsa Fire';
         this.category = 'physical';
         this.priority = 80; // 🆙 72→80 - INTENSE ZONE
-        this.mixBus = 'htp'; // 🌪️ WAVE 805: HTP - Fuego que suma energía
+        this.mixBus = 'global'; // 🔓 WAVE 2186: Global dictator — blackout durante el fuego
         this.currentIntensity = 0;
         this.noisePhase = 0; // Para el flicker pseudo-random
         this.noiseSpeed = 0;

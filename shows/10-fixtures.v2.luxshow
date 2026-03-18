@@ -1,0 +1,1379 @@
+{
+  "schemaVersion": "2.0.0",
+  "name": "10-fixtures.v2",
+  "description": "",
+  "createdAt": "2026-01-14T05:08:02.893Z",
+  "modifiedAt": "2026-01-15T04:23:09.775Z",
+  "createdWith": "1.0.0",
+  "stage": {
+    "width": 12,
+    "depth": 8,
+    "height": 5,
+    "gridSize": 0.5
+  },
+  "visuals": {
+    "showGrid": true,
+    "showBeams": true,
+    "showZoneLabels": true,
+    "showFixtureNames": false,
+    "backgroundColor": "#0a0a12"
+  },
+  "fixtures": [
+    {
+      "id": "fixture-1768367306597",
+      "name": "beam 2r",
+      "model": "beam 2r",
+      "manufacturer": "American pro",
+      "type": "moving-head",
+      "address": 1,
+      "universe": 0,
+      "channelCount": 18,
+      "profileId": "beam_2r",
+      "position": {
+        "x": -4.491850390181669,
+        "y": 3,
+        "z": -2.415658128964778
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\beam 2r.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Belgique",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Juillet 2011",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "beam 2r",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "Open.BMP",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Gobo 4.BMP",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Shutter",
+          "type": "shutter",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "Iris",
+          "type": "iris",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 16,
+          "name": "Reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1768367309794",
+      "name": "beam 2r",
+      "model": "beam 2r",
+      "manufacturer": "American pro",
+      "type": "moving-head",
+      "address": 9,
+      "universe": 0,
+      "channelCount": 18,
+      "profileId": "beam_2r",
+      "position": {
+        "x": -4.492798506126302,
+        "y": 3,
+        "z": 0.06788202005890387
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\beam 2r.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Belgique",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Juillet 2011",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "beam 2r",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "Open.BMP",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Gobo 4.BMP",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Shutter",
+          "type": "shutter",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "Iris",
+          "type": "iris",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 16,
+          "name": "Reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1768367313509",
+      "name": "beam 2r",
+      "model": "beam 2r",
+      "manufacturer": "American pro",
+      "type": "moving-head",
+      "address": 17,
+      "universe": 0,
+      "channelCount": 18,
+      "profileId": "beam_2r",
+      "position": {
+        "x": 4.5343497440059055,
+        "y": 3,
+        "z": -2.655195264651728
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\beam 2r.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Belgique",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Juillet 2011",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "beam 2r",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "Open.BMP",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Gobo 4.BMP",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Shutter",
+          "type": "shutter",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "Iris",
+          "type": "iris",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 16,
+          "name": "Reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1768367317386",
+      "name": "beam 2r",
+      "model": "beam 2r",
+      "manufacturer": "American pro",
+      "type": "moving-head",
+      "address": 25,
+      "universe": 0,
+      "channelCount": 18,
+      "profileId": "beam_2r",
+      "position": {
+        "x": 4.469360651441402,
+        "y": 3,
+        "z": 0.3725807698522625
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "ceiling-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\beam 2r.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "Belgique",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Juillet 2011",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "beam 2r",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "Open.BMP",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "Gobo 4.BMP",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "Shutter",
+          "type": "shutter",
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "name": "Iris",
+          "type": "iris",
+          "is16bit": false
+        },
+        {
+          "index": 11,
+          "name": "Color1",
+          "type": "color_wheel",
+          "is16bit": false
+        },
+        {
+          "index": 12,
+          "name": "Prism",
+          "type": "prism",
+          "is16bit": false
+        },
+        {
+          "index": 13,
+          "name": "PrismRot.",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 14,
+          "name": "Frost",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 15,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 16,
+          "name": "Reset",
+          "type": "control",
+          "is16bit": false
+        },
+        {
+          "index": 17,
+          "name": "0-0-0-0",
+          "type": "unknown",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": true
+      }
+    },
+    {
+      "id": "fixture-1768367324859",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 33,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -3.213678324420107,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1768367326924",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 41,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -0.10309523560255526,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1768367329532",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 49,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": 3.2561261852601797,
+        "y": 3,
+        "z": -4
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1768367331619",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 57,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -3.315035212406395,
+        "y": 3,
+        "z": 2.3856360181463816
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1768367333338",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 65,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": -0.10261037950151261,
+        "y": 3,
+        "z": 2.472010280280396
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    },
+    {
+      "id": "fixture-1768367335668",
+      "name": "par tec flat  10 ch grande",
+      "model": "par tec flat  10 ch grande",
+      "manufacturer": "American pro",
+      "type": "par",
+      "address": 73,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "par_tec_flat_10_ch_grande",
+      "position": {
+        "x": 3.5327792860149203,
+        "y": 3,
+        "z": 2.192650006998284
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "physics": {
+        "motorType": "unknown",
+        "maxAcceleration": 2000,
+        "maxVelocity": 500,
+        "safetyCap": true,
+        "orientation": "ceiling",
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "floor-front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\par tec flat  10 ch grande.fxt",
+      "channels": [
+        {
+          "index": 0,
+          "name": "American pro",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 1,
+          "name": "par tec flat  10 ch grande",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "name": "Lamp",
+          "type": "dimmer",
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "name": "amber",
+          "type": "amber",
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "name": "no se",
+          "type": "unknown",
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "name": "WW",
+          "type": "white",
+          "is16bit": false
+        }
+      ],
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-mkey0wna-1",
+      "name": "Back Par",
+      "fixtureIds": [
+        "fixture-1768367324859",
+        "fixture-1768367326924",
+        "fixture-1768367329532"
+      ],
+      "color": "#00f3ff",
+      "isSystem": false,
+      "order": 0
+    },
+    {
+      "id": "grp-mkey1asr-2",
+      "name": "FRONT PAR",
+      "fixtureIds": [
+        "fixture-1768367331619",
+        "fixture-1768367333338",
+        "fixture-1768367335668"
+      ],
+      "color": "#00f3ff",
+      "isSystem": false,
+      "order": 1
+    },
+    {
+      "id": "grp-mkey1shy-3",
+      "name": "MOVING R",
+      "fixtureIds": [
+        "fixture-1768367313509",
+        "fixture-1768367317386"
+      ],
+      "color": "#00f3ff",
+      "isSystem": false,
+      "order": 2
+    },
+    {
+      "id": "grp-mkey238y-4",
+      "name": "Moving L",
+      "fixtureIds": [
+        "fixture-1768367306597",
+        "fixture-1768367309794"
+      ],
+      "color": "#00f3ff",
+      "isSystem": false,
+      "order": 3
+    }
+  ],
+  "scenes": [],
+  "dmx": {
+    "driver": "virtual",
+    "port": "",
+    "universes": [
+      0
+    ],
+    "frameRate": 40
+  },
+  "audio": {
+    "source": "simulation",
+    "sensitivity": 0.7,
+    "inputGain": 1
+  },
+  "defaultVibe": "techno-club",
+  "seleneMode": "idle"
+}

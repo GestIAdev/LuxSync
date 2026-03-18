@@ -51,29 +51,29 @@ export function useDevicePersistence() {
     }
     
     // Restore audio source
+    // KILL AUTO-AUDIO: solo restaurar estados pasivos (off/simulation).
+    // Las fuentes de captura real (system/microphone) requieren acción MANUAL del usuario.
     if (source) {
-      try {
-        if (source === 'simulation') {
-          trinity.setSimulating(true)
-          setAudioSource('simulation')
-          console.log('[DevicePersistence] ✅ Restored simulation mode')
-          
-        } else if (source === 'system') {
-          await trinity.startSystemAudio()
-          trinity.setSimulating(false)
-          setAudioSource('system')
-          console.log('[DevicePersistence] ✅ Restored system audio')
-          
-        } else if (source === 'microphone') {
-          await trinity.startMicrophone()
-          trinity.setSimulating(false)
-          setAudioSource('microphone')
-          console.log('[DevicePersistence] ✅ Restored microphone')
-        }
-      } catch (err) {
-        console.warn('[DevicePersistence] Audio restore failed, falling back to simulation:', err)
+      if (source === 'off') {
+        // Usuario eligió OFF explícitamente — mantener OFF.
+        trinity.stopAudio()
+        trinity.setSimulating(false)
+        setAudioSource('off')
+        console.log('[DevicePersistence] ✅ Audio OFF restored (user preference)')
+
+      } else if (source === 'simulation') {
+        // Simulation es pasivo, ok restaurar.
         trinity.setSimulating(true)
         setAudioSource('simulation')
+        console.log('[DevicePersistence] ✅ Restored simulation mode')
+
+      } else {
+        // system/microphone: NO restaurar auto. El usuario debe activarlos manualmente.
+        // Dejar en OFF para no capturar audio de fondo sin consentimiento.
+        trinity.stopAudio()
+        trinity.setSimulating(false)
+        setAudioSource('off')
+        console.log(`[DevicePersistence] 🔇 source='${source}' → forced to OFF (manual activation required)`)
       }
     }
   }, [trinity, setAudioSource, setInputGain])

@@ -26,13 +26,13 @@ import './SystemsCheck.css'
 
 // 🎨 WAVE 686: ArtNet API access
 const getArtnetApi = () => (window as any).luxsync?.artnet
-const getDmxApi = () => (window as any).lux?.dmx
+const getDmxApi = () => (window as any).luxsync?.dmx
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-type AudioSource = 'simulation' | 'system' | 'microphone'
+type AudioSource = 'simulation' | 'system' | 'microphone' | 'off'
 type DMXDriver = 'virtual' | 'usb-serial' | 'artnet'
 type AccordionSection = 'audio' | 'dmx'
 
@@ -247,7 +247,9 @@ interface DetectedPort {
 
 const UsbDmxPanel: React.FC = () => {
   // 🛡️ WAVE 2042.13.2: Use stable selector to prevent infinite loops
-  const { dmxComPort, detectedDmxPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore(useShallow(selectUsbDmxPanel))
+  const { dmxComPort, detectedDmxPorts: rawDetectedPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore(useShallow(selectUsbDmxPanel))
+  // 🔥 Defensive: ensure detectedDmxPorts is always an array
+  const detectedDmxPorts = Array.isArray(rawDetectedPorts) ? rawDetectedPorts : []
   const [autoConnect, setAutoConnect] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -258,8 +260,13 @@ const UsbDmxPanel: React.FC = () => {
     try {
       const dmxApi = getDmxApi()
       if (dmxApi?.listDevices) {
-        const devices = await dmxApi.listDevices()
-        setDetectedDmxPorts(devices || [])
+        const response = await dmxApi.listDevices()
+        
+        // 🔥 Abrimos el sobre: Si viene con 'success', sacamos el array 'devices'.
+        // Si por alguna razón histórica viene directo el array, lo tomamos tal cual.
+        const portList = response?.success ? response.devices : (Array.isArray(response) ? response : [])
+        
+        setDetectedDmxPorts(portList || [])
       }
     } catch (err) {
       setError('Scan failed')
@@ -371,7 +378,7 @@ export const SystemsCheck: React.FC = () => {
   
   // Connection status
   const [status, setStatus] = useState<SystemStatus>({
-    audio: 'online',
+    audio: 'offline',
     dmx: hardware?.dmx?.connected ? 'online' : 'offline'
   })
   
@@ -380,7 +387,32 @@ export const SystemsCheck: React.FC = () => {
     setActiveSection(prev => prev === section ? null : section)
   }, [])
   
-  // Update DMX status from truth
+  // 🔌 WAVE 3000: Sync DMX status from REAL driver state via IPC
+  // Query dmx:getStatus on mount + listen to dmx:connected / dmx:disconnected events
+  useEffect(() => {
+    const dmxApi = getDmxApi()
+    
+    // Initial query
+    if (dmxApi?.getStatus) {
+      dmxApi.getStatus().then((res: { connected: boolean }) => {
+        setStatus(prev => ({ ...prev, dmx: res?.connected ? 'online' : 'offline' }))
+      }).catch(() => {/* ignore */})
+    }
+    
+    // Live events from backend
+    if (dmxApi?.onConnected) {
+      dmxApi.onConnected(() => {
+        setStatus(prev => ({ ...prev, dmx: 'online' }))
+      })
+    }
+    if (dmxApi?.onDisconnected) {
+      dmxApi.onDisconnected(() => {
+        setStatus(prev => ({ ...prev, dmx: 'offline' }))
+      })
+    }
+  }, [])
+  
+  // Update DMX status from truth (fallback for backends that push truth)
   useEffect(() => {
     setStatus(prev => ({
       ...prev,
@@ -397,13 +429,6 @@ export const SystemsCheck: React.FC = () => {
       }))
     }
   }, [trinity?.state?.isAudioActive])
-  
-  // Audio source options
-  const audioOptions: { id: AudioSource; label: string; icon: string }[] = [
-    { id: 'simulation', label: 'Simulation', icon: '🎵' },
-    { id: 'system', label: 'System Audio', icon: '🖥️' },
-    { id: 'microphone', label: 'Microphone', icon: '🎤' },
-  ]
   
   // DMX driver options
   const dmxOptions: { id: DMXDriver; label: string; icon: string }[] = [
@@ -426,7 +451,16 @@ export const SystemsCheck: React.FC = () => {
     setIsAudioConnecting(true)
     
     try {
-      if (source === 'simulation') {
+      if (source === 'off') {
+        // ⛔ OFF — detener toda captura de audio. DMX sigue vivo para control manual.
+        if (trinity) {
+          trinity.stopAudio()
+          trinity.setSimulating(false)
+        }
+        setAudioSource('off')
+        console.log('[SystemsCheck] ⛔ Audio OFF — DMX remains LIVE')
+
+      } else if (source === 'simulation') {
         // 🎵 Simulation mode - no hardware needed
         trinity.setSimulating(true)
         setAudioSource('simulation')
@@ -499,6 +533,28 @@ export const SystemsCheck: React.FC = () => {
       await window.lux.saveConfig({ dmx: { driver } } as any)
     }
   }, [setDmxDriver])
+
+  // Audio source options (sin 'off' — eso lo maneja el toggle master)
+  const audioSourceOptions: { id: Exclude<AudioSource, 'off'>; label: string; icon: string }[] = [
+    { id: 'simulation', label: 'Simulation', icon: '🎵' },
+    { id: 'system', label: 'System Audio', icon: '🖥️' },
+    { id: 'microphone', label: 'Microphone', icon: '🎤' },
+  ]
+
+  // KILL AUTO-AUDIO: ¿está el audio encendido? audioSource !== 'off' es el estado master.
+  const isAudioOn = audioSource !== 'off'
+
+  // Toggle master ON/OFF del audio
+  const handleAudioToggle = useCallback(async () => {
+    if (isAudioOn) {
+      await handleAudioChange('off')
+    } else {
+      // Encender con la última fuente real, o simulation si venía de 'off'
+      const lastRealSource: AudioSource =
+        audioSource === 'off' ? 'simulation' : audioSource
+      await handleAudioChange(lastRealSource)
+    }
+  }, [isAudioOn, audioSource, handleAudioChange])
   
   return (
     <div className="systems-check">
@@ -509,35 +565,46 @@ export const SystemsCheck: React.FC = () => {
       </div>
       
       {/* ════════════════════════════════════════════════════════════════════
-          🎵 AUDIO INPUT — WAVE 1203: ACCORDION WITH INLINE VISUALIZER
+          🎵 AUDIO INPUT — TOGGLE DURO ON/OFF + ACORDEÓN DE FUENTE
+          El acordeón solo se abre si el audio está ON.
+          OFF es el estado por defecto — sin auto-start.
           ════════════════════════════════════════════════════════════════════ */}
-      <div className="system-section">
-        <div 
-          className={`section-header clickable ${activeSection === 'audio' ? 'active' : 'inactive'}`}
-          onClick={() => toggleSection('audio')}
-        >
+      <div className={`system-section ${isAudioOn ? 'audio-on' : 'audio-off'}`}>
+        <div className="section-header audio-header">
           <div className="section-icon-badge audio">
             <AudioWaveIcon size={16} />
           </div>
-          <span className="section-title">AUDIO IN</span>
-          {/* WAVE 1203: Visualizer ALWAYS visible in header */}
-          <div className="header-visualizer">
-            <MiniVisualizer />
-          </div>
-          <div className={`status-indicator ${status.audio}`}>
-            <span className="status-dot" />
-            <span className="status-text">
-              {status.audio === 'online' ? 'ACTIVE' : 'IDLE'}
+          <span className={`section-title ${isAudioOn ? '' : 'dimmed'}`}>AUDIO IN</span>
+          {/* Visualizer solo activo cuando hay captura */}
+          {isAudioOn && (
+            <div className="header-visualizer">
+              <MiniVisualizer />
+            </div>
+          )}
+          {/* TOGGLE MASTER ON/OFF — toda la lógica pasa por aquí */}
+          <button
+            className={`audio-power-toggle ${isAudioOn ? 'on' : 'off'} ${isAudioConnecting ? 'connecting' : ''}`}
+            onClick={handleAudioToggle}
+            disabled={isAudioConnecting}
+            title={isAudioOn ? 'Apagar audio' : 'Activar audio'}
+          >
+            <span className="toggle-label">{isAudioConnecting ? '...' : isAudioOn ? 'ON' : 'OFF'}</span>
+          </button>
+          {/* Acordeón de fuente: solo cuando está ON */}
+          {isAudioOn && (
+            <span
+              className={`accordion-arrow ${activeSection === 'audio' ? 'active' : ''}`}
+              onClick={() => toggleSection('audio')}
+            >
+              {activeSection === 'audio' ? '▼' : '▶'}
             </span>
-          </div>
-          <span className="accordion-arrow">{activeSection === 'audio' ? '▼' : '▶'}</span>
+          )}
         </div>
-        
-        {/* Collapsible Content */}
-        <div className={`section-content ${activeSection === 'audio' ? 'expanded' : 'collapsed'}`}>
-          {/* Legacy Segmented Control */}
+
+        {/* Fuente de audio: solo accesible cuando está ON */}
+        <div className={`section-content ${isAudioOn && activeSection === 'audio' ? 'expanded' : 'collapsed'}`}>
           <div className="legacy-button-group">
-            {audioOptions.map(opt => (
+            {audioSourceOptions.map(opt => (
               <button
                 key={opt.id}
                 className={`legacy-btn ${audioSource === opt.id ? 'active' : ''} ${isAudioConnecting && audioSource === opt.id ? 'connecting' : ''}`}
@@ -549,7 +616,7 @@ export const SystemsCheck: React.FC = () => {
               </button>
             ))}
           </div>
-          
+
           {audioError && (
             <div className="system-error">⚠️ {audioError}</div>
           )}

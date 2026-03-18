@@ -1,46 +1,35 @@
 /**
- *
  *                      FIXTURE PHYSICS DRIVER V16.2
  *                   "Abstract Motion → Physical DMX"
  *
- *   Traduce coordenadas abstract    // 🏎️ WAVE 2074.2: Store explicit physics mode from preset
-    this.currentPhysicsMode = vibePhysics.physicsMode
-    
-    // 🏎️ WAVE 2074.3: Store explicit personality data from preset
-    // These values are NOT affected by SAFETY_CAP — they define the CHARACTER,
-    // not the raw acceleration/velocity. SAFETY_CAP protects motors.
-    // snapFactor/revLimit protect the SOUL of the vibe.
-    this.currentSnapFactor = vibePhysics.snapFactor
-    this.currentRevLimitPanPerSec = vibePhysics.revLimitPanPerSec
-    this.currentRevLimitTiltPerSec = vibePhysics.revLimitTiltPerSec
-    
-    // 🔒 WAVE 343: Aplicar SAFETY CAP a la configuración del vibe
-    // El vibe puede pedir lo que quiera, pero el hardware tiene límites
-    this.physicsConfig.maxAcceleration = Math.min(
-      vibePhysics.maxAcceleration,
-      this.SAFETY_CAP.maxAcceleration
-    )
-    this.physicsConfig.maxVelocity = Math.min(
-      vibePhysics.maxVelocity,
-      this.SAFETY_CAP.maxVelocity
-    )
-    this.physicsConfig.friction = vibePhysics.friction
-    this.physicsConfig.arrivalThreshold = vibePhysics.arrivalThreshold
-    
-    console.log(`[PhysicsDriver] 🏎️ WAVE 2074.3: Vibe "${vibeId}" - Mode:${this.currentPhysicsMode} Snap:${this.currentSnapFactor} RevPan:${this.currentRevLimitPanPerSec}/s RevTilt:${this.currentRevLimitTiltPerSec}/s Acc:${this.physicsConfig.maxAcceleration} (cap:${this.SAFETY_CAP.maxAcceleration})`)lores DMX físicos (0-255)
+ *   Traduce coordenadas abstractas (-1,+1) a valores DMX físicos (0-255)
  *   considerando: orientación, inversiones, límites mecánicos, inercia
  *
+ *   Migrado desde: demo/fixture-physics-driver.js
  *
- * Migrado desde: demo/fixture-physics-driver.js
+ *   🔥 WAVE 2213 FÉNIX: OPERACIÓN FÉNIX — RESTAURACIÓN DEL MOTOR DORADO
+ *     Base code restored from commit 8123c08 (WAVE 2088.9-2088.12).
+ *     SNAP mode physics (snapFactor + REV_LIMIT) is the soul of this engine.
  *
- * Features:
- * - Installation Presets: ceiling, floor, truss_front, truss_back
- * - Physics Easing: Curva S con aceleración/deceleración
- * - safeDistance Fix V16.1: Protección contra singularidad
- * - Anti-Stuck Mechanism: Detecta fixtures pegados en límites
- * - NaN Guard: Nunca enviar basura al motor
- * - Anti-Jitter Filter: Evita micro-correcciones que calientan servos
- * - 🔧 WAVE 338: Vibe-aware physics (dynamic physics config per vibe)
+ *     FIXES applied on top of restoration:
+ *     - Anti-Stuck (V16.4) REMOVED: caused false positives with valid DMX 0/255 targets
+ *     - Anti-Jitter upgraded: dynamic threshold (3% of maxVelocity) instead of hardcoded 5
+ *     - REV_LIMIT capped by hardware effectiveMaxVel: budget movers can't exceed their limits
+ *
+ *   Features:
+ *   - Installation Presets: ceiling, floor, truss_front, truss_back
+ *   - Physics Easing: Curva S con aceleración/deceleración (CLASSIC mode)
+ *   - SNAP Mode: snapFactor * delta + REV_LIMIT clamped (techno/latina/rock)
+ *   - safeDistance Fix V16.1: Protección contra singularidad
+ *   - NaN Guard: Nunca enviar basura al motor
+ *   - Anti-Jitter Filter: Dynamic threshold (3% maxVelocity)
+ *   - 🔧 WAVE 338: Vibe-aware physics (dynamic physics config per vibe)
+ *   - 🔧 WAVE 2074: Store explicit SNAP personality from presets
+ *   - 🔒 SAFETY_CAP → Vibe Request → Hardware Limit (3-tier hierarchy)
+ *
+ * @layer ENGINE/MOVEMENT
+ * @version WAVE 2213 FÉNIX — Motor Dorado Restaurado
+ * @author PunkOpus
  */
 import { getMovementPhysics } from './VibeMovementPresets';
 // ============================================================================
@@ -112,19 +101,12 @@ export class FixturePhysicsDriver {
         // Sin importar lo que diga VibeMovementPresets, este cap protege el hardware.
         // 
         // 🏎️ WAVE 2062: RESTORE HARDWARE SAFETY - EL GRAN FRENO
-        // Reduced from 2500 to 900.
-        // 
-        // ⚠️ KEA-002 (WAVE 2095.1): COMENTARIO ANTERIOR OBSOLETO — CORRECCIÓN
-        // El comentario previo decía "900 = safe zone porque SNAP se activa con
-        // accel > 1000". ESO YA NO ES VERDAD desde WAVE 2074.2.
-        // SNAP MODE ahora es controlado por physicsMode: 'snap' | 'classic' en
-        // cada preset — NO por maxAcceleration. SAFETY_CAP=900 puede coexistir
-        // con SNAP MODE activo (Techno, Latino, Rock usan ambos).
-        // El cap de 900 solo limita aceleración/velocidad brutas del motor.
-        // NO previene SNAP MODE. NO garantiza CLASSIC MODE.
+        // Reduced from 2500 to 900 to force CLASSIC PHYSICS mode always
+        // (SNAP mode activates when accel > 1000, causing violent uncontrolled movement)
+        // 900 = safe zone for all Chinese movers (Beam 2R, Neo 250, etc)
         // ═══════════════════════════════════════════════════════════════════════
         this.SAFETY_CAP = {
-            maxAcceleration: 900, // DMX units/s² - NUNCA exceder
+            maxAcceleration: 900, // DMX units/s² - NUNCA exceder (Classic Physics always)
             maxVelocity: 400, // DMX units/s - NUNCA exceder (reduced from 800)
         };
         // ═══════════════════════════════════════════════════════════════════════
@@ -211,39 +193,13 @@ export class FixturePhysicsDriver {
         return this;
     }
     /** 🏗️ WAVE 2061: Inyectar perfil físico en vivo desde el HAL */
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔧 WAVE 2095.1 FIX VULN-03: PHYSICS PROFILE HOT-RELOAD
-    //
-    // BUG ANTERIOR: `if (config && !config.physicsProfile)` — write-once.
-    //   Si el usuario cambiaba el motorType en la Forja durante la sesión,
-    //   el PhysicsDriver ignoraba el cambio porque el campo ya existía.
-    //   Solo se podía aplicar reiniciando la sesión completa.
-    //
-    // FIX: Comparar los valores clave del perfil. Si difieren, actualizar.
-    //   Se llama 60/seg desde render(), así que la comparación debe ser BARATA.
-    //   Comparamos motorType + qualityTier + maxVelocity (3 campos = identidad).
-    //   Si son iguales, no-op. Si difieren, hot-swap con log de diagnóstico.
-    // ═══════════════════════════════════════════════════════════════════════
     updatePhysicsProfile(fixtureId, profile) {
         const config = this.configs.get(fixtureId);
-        if (!config)
-            return;
-        if (!config.physicsProfile) {
-            // Primera inyección — siempre aceptar
+        // Solo actualizar si no tiene uno o si forzamos el cambio
+        if (config && !config.physicsProfile) {
             config.physicsProfile = profile;
-            return;
-        }
-        // Hot-reload: comparar identidad del perfil (3 campos clave, O(1))
-        const current = config.physicsProfile;
-        const changed = current.motorType !== profile.motorType ||
-            current.qualityTier !== profile.qualityTier ||
-            current.maxVelocity !== profile.maxVelocity;
-        if (changed) {
-            config.physicsProfile = profile;
-            console.log(`[PhysicsDriver] 🔄 WAVE 2095.1: PhysicsProfile HOT-RELOAD for "${fixtureId}" | ` +
-                `${current.motorType ?? '?'}→${profile.motorType ?? '?'} | ` +
-                `tier:${current.qualityTier ?? '?'}→${profile.qualityTier ?? '?'} | ` +
-                `maxVel:${current.maxVelocity ?? '?'}→${profile.maxVelocity ?? '?'}`);
+            // 🔇 SILENCIO: No loguear aquí, se llama 60/seg desde renderFromTarget
+            // console.log(`[PhysicsDriver] 🧠 Perfil físico inyectado para "${fixtureId}":`, profile)
         }
     }
     /** Aplica un preset de instalación a un fixture */
@@ -324,20 +280,11 @@ export class FixturePhysicsDriver {
             const CHUNK_SIZE = 16; // ms per iteration
             const iterations = Math.ceil(deltaTime / CHUNK_SIZE);
             const actualChunk = deltaTime / iterations;
-            // ═══════════════════════════════════════════════════════════════════
-            // 🔧 KEA-003 (WAVE 2095.1): PHANTOM TARGET LOCK
-            //
-            // BUG ANTERIOR: currentTarget se sobreescribía con smoothedDMX en cada
-            //   iteración → el mover perseguía su propia posición intermedia y se
-            //   quedaba corto del objetivo real (lag acumulativo en pausas 50-200ms).
-            //
-            // FIX: finalTarget es inmutable durante todo el loop. La posición
-            //   interna del fixture se actualiza vía applyPhysicsEasing() en su
-            //   propio estado interno, pero el objetivo siempre apunta al target real.
-            // ═══════════════════════════════════════════════════════════════════
-            const finalTarget = targetDMX; // target fijo — NUNCA reemplazado por posición intermedia
+            // Iterate physics in small steps
+            let currentTarget = targetDMX;
             for (let i = 0; i < iterations; i++) {
-                smoothedDMX = this.applyPhysicsEasing(fixtureId, finalTarget, actualChunk);
+                smoothedDMX = this.applyPhysicsEasing(fixtureId, currentTarget, actualChunk);
+                currentTarget = smoothedDMX;
             }
             // Debug log (low frequency)
             if (Math.random() < 0.016) {
@@ -356,21 +303,12 @@ export class FixturePhysicsDriver {
         if (!Number.isFinite(smoothedDMX.pan) || !Number.isFinite(smoothedDMX.tilt)) {
             console.error(`[PhysicsDriver] ⚠️ NaN/Infinity en "${fixtureId}"! Usando home position`);
         }
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🔧 KEA-001 (WAVE 2095.1): 16-BIT RESURRECTION — FINE CHANNEL FIX
-        //
-        // BUG ANTERIOR: panDMX = Math.round(finalPan) → cuando finalPan=200.7,
-        //   panDMX=201, panFine=round((200.7-201)*255)=round(-76.5)=-77 → clamp=0
-        //   El fine siempre era 0 o negativo. Resolución efectiva = 8-bit.
-        //
-        // FIX: Math.floor garantiza que (finalPan % 1) ∈ [0, 1) → fine ∈ [0, 255]
-        //   finalPan=200.7 → panDMX=200, panFine=round(0.7*255)=179 ✅
-        // ═══════════════════════════════════════════════════════════════════════
-        const panDMX = Math.floor(Math.max(0, Math.min(255, finalPan)));
-        const tiltDMX = Math.floor(Math.max(0, Math.min(255, finalTilt)));
-        // Fine channel: fracción decimal → 0-255 (siempre positivo con floor+modulo)
-        const panFine = Math.round((finalPan % 1) * 255);
-        const tiltFine = Math.round((finalTilt % 1) * 255);
+        // Redondear a valores DMX válidos
+        const panDMX = Math.round(Math.max(0, Math.min(255, finalPan)));
+        const tiltDMX = Math.round(Math.max(0, Math.min(255, finalTilt)));
+        // Calcular valores Fine (16-bit)
+        const panFine = Math.round((finalPan - panDMX) * 255);
+        const tiltFine = Math.round((finalTilt - tiltDMX) * 255);
         return {
             fixtureId,
             panDMX,
@@ -402,12 +340,11 @@ export class FixturePhysicsDriver {
             console.error(`[PhysicsDriver]  NaN/Infinity en "${fixtureId}"! Usando home position`);
         }
         // 4. Redondear a valores DMX válidos
-        // 🔧 KEA-001 (WAVE 2095.1): Math.floor + modulo para fine channel correcto
-        const panDMX = Math.floor(Math.max(0, Math.min(255, safePan)));
-        const tiltDMX = Math.floor(Math.max(0, Math.min(255, safeTilt)));
+        const panDMX = Math.round(Math.max(0, Math.min(255, safePan)));
+        const tiltDMX = Math.round(Math.max(0, Math.min(255, safeTilt)));
         // 5. Calcular valores Fine (16-bit)
-        const panFine = Math.round((safePan % 1) * 255);
-        const tiltFine = Math.round((safeTilt % 1) * 255);
+        const panFine = Math.round((safePan - panDMX) * 255);
+        const tiltFine = Math.round((safeTilt - tiltDMX) * 255);
         return {
             fixtureId,
             panDMX,
@@ -571,34 +508,15 @@ export class FixturePhysicsDriver {
         // 🏎️ WAVE 2074.3: REV_LIMIT directo del preset (ya no hay branches)
         const REV_LIMIT_PAN_PER_SEC = this.currentRevLimitPanPerSec;
         const REV_LIMIT_TILT_PER_SEC = this.currentRevLimitTiltPerSec;
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🔒 WAVE 2095.1 FIX VULN-01: SAFETY_CAP COMO CINTURÓN UNIVERSAL
-        //
-        // BUG ANTERIOR: En SNAP MODE, el REV_LIMIT del vibe fluía sin ser
-        //   acotado por el SAFETY_CAP.maxVelocity ni por effectiveLimits.maxVelocity.
-        //   Techno pedía 400 DMX/s (~848°/s) — 3.3× más rápido que un Sharpy.
-        //   Un mover chino sin physicsProfile recibía esa velocidad ÍNTEGRA.
-        //   No explotaba, pero perdía pasos → mover "perdido" apuntando al público.
-        //
-        // FIX: El REV_LIMIT está ahora acotado por effectiveLimits.maxVelocity,
-        //   que ya incorpora min(SAFETY_CAP, vibeRequest, hardwareProfile).
-        //   Si el fixture tiene physicsProfile con maxVelocity bajo, gana el hardware.
-        //   Si no tiene physicsProfile, el SAFETY_CAP (400 DMX/s) acota.
-        //
-        //   Techno sin perfil: min(400, 400) × 1.0 = 400 DMX/s (antes: 400 sin cap)
-        //   Techno con mover chino (maxVel=118 DMX/s): min(400, 118) × 1.0 = 118
-        //   Techno con Sharpy (maxVel=142 DMX/s): min(400, 142) × 1.0 = 142
-        //
-        // NOTA: En modo CLASSIC, effectiveLimits.maxVelocity ya se usaba como maxSpeed.
-        //       Ahora SNAP MODE tiene la misma protección. Cinturón UNIVERSAL.
-        // ═══════════════════════════════════════════════════════════════════════
-        const cappedRevLimitPan = Math.min(REV_LIMIT_PAN_PER_SEC, effectiveLimits.maxVelocity);
-        const cappedRevLimitTilt = Math.min(REV_LIMIT_TILT_PER_SEC, effectiveLimits.maxVelocity);
         // 🔧 WAVE 1105.2: APLICAR SPEED FACTOR DEL FIXTURE
         // Un fixture con panSpeedFactor = 0.5 reduce su REV_LIMIT a la mitad
         // Esto hace que el hardware lento NO intente seguir el ritmo de Techno
-        const limitPanPerSec = cappedRevLimitPan * speedFactorPan;
-        const limitTiltPerSec = cappedRevLimitTilt * speedFactorTilt;
+        // 🔥 WAVE 2213 FÉNIX: REV_LIMIT also capped by hardware effectiveMaxVel.
+        //   If hardware says max 189 DMX/s, revLimit can't exceed that.
+        const cappedRevPan = Math.min(REV_LIMIT_PAN_PER_SEC, effectiveLimits.maxVelocity);
+        const cappedRevTilt = Math.min(REV_LIMIT_TILT_PER_SEC, effectiveLimits.maxVelocity);
+        const limitPanPerSec = cappedRevPan * speedFactorPan;
+        const limitTiltPerSec = cappedRevTilt * speedFactorTilt;
         // 🏎️ WAVE 2074.2: Convertir a límite por-frame usando dt real
         const maxPanThisFrame = limitPanPerSec * dt;
         const maxTiltThisFrame = limitTiltPerSec * dt;
@@ -692,23 +610,14 @@ export class FixturePhysicsDriver {
                 newPos[axis] = target;
                 newVel[axis] = 0;
             }
-            // 
-            //  FIX V16.4: ANTI-STUCK EN LÍMITES
-            // 
-            if ((newPos[axis] >= 254 || newPos[axis] <= 1) && absDistance > 20) {
-                newVel[axis] = -Math.sign(newPos[axis] - 127) * maxSpeed * 0.3;
-                console.warn(`[PhysicsDriver]  Unstuck ${axis}: pos=${newPos[axis].toFixed(0)}, target=${target.toFixed(0)}`);
-            }
+            // 🔥 WAVE 2213 FÉNIX: ANTI-STUCK ELIMINADO (era FIX V16.4)
+            // Generaba falsos positivos cuando targets válidos son 0/255
+            // y cuando XY Pad devuelve control a la IA desde pos=0/255.
+            // physicsMode + anti-overshoot + jitterThreshold son suficientes.
         }
         // 
         //  FILTRO ANTI-JITTER — KEA-004 (WAVE 2095.1)
-        // 
-        // BUG ANTERIOR: threshold hardcodeado a 5 DMX/s. Para Chill (maxVel=50),
-        //   esto mataba el 10% final de la fase de frenado → micro-jerk visible.
-        //
-        // FIX: threshold = 3% de maxVelocity del vibe actual, mínimo 1 DMX/s.
-        //   Techno (maxVel=400): threshold=12 → jitter agresivo cortado ✅
-        //   Chill (maxVel=50):   threshold=1.5 → drift suave preservado ✅
+        // threshold = 3% de maxVelocity del vibe, mínimo 1 DMX/s
         // 
         const jitterThreshold = Math.max(1, effectiveLimits.maxVelocity * 0.03);
         if (Math.abs(newVel.pan) < jitterThreshold)

@@ -91,6 +91,7 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     isDirty: false,
     isLoading: false,
     lastError: null,
+    fileLockWarning: null,
     // Derived state (synced from showFile)
     fixtures: [],
     groups: [],
@@ -137,8 +138,55 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     // SHOW FILE ACTIONS (WAVE 365: Connected to Electron IPC)
     // ═══════════════════════════════════════════════════════════════════════
     loadShowFile: async (filePath) => {
-        set({ isLoading: true, lastError: null });
+        set({ isLoading: true, lastError: null, fileLockWarning: null });
         try {
+            // ═══════════════════════════════════════════════════════════════════
+            // 🔒 WAVE 2100: FILE LOCK CHECK
+            // Detecta si otra instancia (o un crash anterior) dejó el archivo
+            // "locked". Usa sessionStorage (local a esta ventana) + localStorage
+            // (compartido entre ventanas/instancias del mismo origen).
+            // ═══════════════════════════════════════════════════════════════════
+            const lockKey = `luxsync-lock:${filePath}`;
+            const existingLock = localStorage.getItem(lockKey);
+            if (existingLock) {
+                try {
+                    const lockData = JSON.parse(existingLock);
+                    const lockAge = Date.now() - (lockData.timestamp || 0);
+                    const maxLockAge = 1000 * 60 * 60 * 2; // 2 horas = stale lock (crash)
+                    if (lockAge < maxLockAge) {
+                        // Lock activo y reciente → otra instancia o mismo usuario re-abriendo
+                        const lockMinutes = Math.round(lockAge / 60000);
+                        set({
+                            fileLockWarning: `⚠️ Este archivo fue abierto hace ${lockMinutes} minuto${lockMinutes !== 1 ? 's' : ''} `
+                                + `(${lockData.instanceId || 'unknown'}). `
+                                + `Si otra ventana de LuxSync lo tiene abierto, los cambios pueden sobreescribirse. `
+                                + `Si la app crasheó, ignora este aviso.`
+                        });
+                        console.warn(`[stageStore] 🔒 File lock detected for: ${filePath} (age: ${lockMinutes}min)`);
+                    }
+                    else {
+                        // Lock viejo (>2h) → probablemente crash, limpiar
+                        localStorage.removeItem(lockKey);
+                        console.log(`[stageStore] 🔓 Stale lock cleaned for: ${filePath} (age: ${Math.round(lockAge / 3600000)}h)`);
+                    }
+                }
+                catch {
+                    // Lock corrupto → limpiar
+                    localStorage.removeItem(lockKey);
+                }
+            }
+            // Escribir nuevo lock
+            const instanceId = sessionStorage.getItem('luxsync-instance-id')
+                || (() => {
+                    const id = `inst-${Date.now().toString(36)}`;
+                    sessionStorage.setItem('luxsync-instance-id', id);
+                    return id;
+                })();
+            localStorage.setItem(lockKey, JSON.stringify({
+                timestamp: Date.now(),
+                instanceId,
+                filePath,
+            }));
             const stageAPI = getStageAPI();
             if (stageAPI) {
                 // WAVE 365: Use Electron IPC
@@ -481,7 +529,22 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         showFile.visuals = { ...showFile.visuals, ...visuals };
         get()._syncDerivedState();
         get()._setDirty();
-    }
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔒 WAVE 2100: FILE LOCK ACTIONS
+    // ═══════════════════════════════════════════════════════════════════════
+    dismissFileLockWarning: () => {
+        set({ fileLockWarning: null });
+    },
+    clearFileLock: () => {
+        const { showFilePath } = get();
+        if (showFilePath) {
+            const lockKey = `luxsync-lock:${showFilePath}`;
+            localStorage.removeItem(lockKey);
+            console.log(`[stageStore] 🔓 File lock cleared for: ${showFilePath}`);
+        }
+        set({ fileLockWarning: null });
+    },
 })));
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS (for optimized renders)
@@ -610,4 +673,12 @@ export function setupStageStoreListeners() {
         useStageStore.getState()._syncDerivedState();
     });
     return unsubscribe;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 WAVE 2100: BEFOREUNLOAD — Clear file lock on window close
+// ═══════════════════════════════════════════════════════════════════════════
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+        useStageStore.getState().clearFileLock();
+    });
 }

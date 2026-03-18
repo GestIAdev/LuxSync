@@ -449,10 +449,16 @@ describe('🏎️ FixturePhysicsDriver — Motor Bodyguard', () => {
 
     it('deltaTime 50-200ms → Phantom Mode (iterative chunking, no freeze)', () => {
       registerDefaultFixture(driver)
-      driver.setVibe('techno-club')
+      // 🔥 WAVE 2213: todos los vibes activos migraron a classic mode.
+      // Phantom Mode en classic acumula velocidad progresivamente — se verifica
+      // con varios frames consecutivos hacia el mismo target (convergencia real).
+      driver.setVibe('fiesta-latina')
       driver.forcePosition('mover-1', 100, 40)
       
       // Phantom mode: 120ms → divide en ~8 chunks de ~15ms
+      // El mover arranca desde reposo, 3 llamadas sucesivas dan convergencia medible
+      driver.translateDMX('mover-1', 200, 40, 120)
+      driver.translateDMX('mover-1', 200, 40, 120)
       const result = driver.translateDMX('mover-1', 200, 40, 120)
       
       // Debe haberse movido hacia el target (no congelado)

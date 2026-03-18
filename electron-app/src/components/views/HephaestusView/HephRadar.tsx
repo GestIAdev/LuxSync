@@ -89,11 +89,16 @@ function drawFixtureDot(
   h: number,
   radius: number,
 ) {
-  // ⚡ WAVE 2403.2: Use radarX/radarY for spatial layout (0-1 normalized)
-  // radarX = horizontal distribution for wave visualization
-  // radarY = zone-based vertical positioning
-  const x = fixture.radarX * w
-  const y = fixture.radarY * h
+  // ── 1. BASE: Posición física en la sala (radarX/radarY, zona y layout espacial) ──
+  // WAVE 2403.2: radarX/radarY = distribución normalizada 0-1 del fixture en el venue
+  const baseX = fixture.radarX * w
+  const baseY = fixture.radarY * h
+
+  // ── 2. TARGET: Hacia dónde apunta el haz (Pan/Tilt DMX reales 0-255) ──
+  // 🔥 WAVE 2213: Pan/Tilt restaurado — la posición del punto en pantalla
+  //   refleja el movimiento real del mover, no solo su posición en la sala
+  const targetX = (fixture.pan / 255) * w
+  const targetY = (fixture.tilt / 255) * h
 
   // Alpha = dimmer normalized × strobe gate
   const dimmerAlpha = fixture.dimmer / 255
@@ -131,6 +136,25 @@ function drawFixtureDot(
     fg = 230
     fb = 200
   }
+
+  // ── ANCLA BASE (Punto de anclaje de la estructura física) ──
+  ctx.fillStyle = `rgba(255, 255, 255, 0.2)`
+  ctx.fillRect(baseX - 3, baseY - 3, 6, 6)
+
+  // ── HAZ DE LUZ (Beam: Base → Target) ──
+  ctx.beginPath()
+  ctx.moveTo(baseX, baseY)
+  ctx.lineTo(targetX, targetY)
+  const beamGrad = ctx.createLinearGradient(baseX, baseY, targetX, targetY)
+  beamGrad.addColorStop(0, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.15})`)
+  beamGrad.addColorStop(1, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.5})`)
+  ctx.strokeStyle = beamGrad
+  ctx.lineWidth = radius * 0.4
+  ctx.stroke()
+
+  // ── 3. X e Y del target: Glow, Core Dot y Label se dibujan donde apunta el haz ──
+  const x = targetX
+  const y = targetY
 
   // ── GLOW (outer) ──
   const glowRadius = radius * 2.5

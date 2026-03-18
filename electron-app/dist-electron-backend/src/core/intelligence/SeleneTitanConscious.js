@@ -795,7 +795,21 @@ export class SeleneTitanConscious extends EventEmitter {
                 if (availableWeapon) {
                     intent = availableWeapon;
                     output.effectDecision.effectType = availableWeapon;
-                    console.log(`[SeleneTitanConscious 🌩️] DIVINE ARSENAL: Selected ${availableWeapon} from [${divineArsenal.join(', ')}]`);
+                    // ═══════════════════════════════════════════════════════════════
+                    // 🛡️ WAVE 2200.4: LOG HONESTY — DIVINE vs DROP origin
+                    // ═══════════════════════════════════════════════════════════════
+                    // ROOT CAUSE: Antes siempre imprimía "🌩️ DIVINE ARSENAL" porque
+                    // el campo divineArsenal lo usan TANTO generateDivineStrikeDecision()
+                    // como generateDropPreparationDecision(). Los drops NO son divinos.
+                    //
+                    // FIX: Inspeccionar effectDecision.reason para determinar el origen real.
+                    // El DecisionMaker ya marca el reason con "🌩️ DIVINE" o "🔴 DROP".
+                    // ═══════════════════════════════════════════════════════════════
+                    const reasonStr = output.effectDecision.reason ?? '';
+                    const isDivineOrigin = reasonStr.includes('🌩️ DIVINE');
+                    const originEmoji = isDivineOrigin ? '🌩️' : '🔴';
+                    const originLabel = isDivineOrigin ? 'DIVINE ARSENAL' : 'DROP ARSENAL';
+                    console.log(`[SeleneTitanConscious ${originEmoji}] ${originLabel}: Selected ${availableWeapon} from [${divineArsenal.join(', ')}]`);
                 }
                 else {
                     // Todo el arsenal en cooldown - silencio forzado

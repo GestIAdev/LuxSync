@@ -527,7 +527,12 @@ export class SeleneColorEngine {
         };
         const key = wave8.harmony.key || data.key || null;
         const mode = wave8.harmony.mode || 'minor';
-        const mood = wave8.harmony.mood || data.mood || 'universal';
+        // 🎭 WAVE 2204: PURGA LEGACY — data.mood (MoodArbiter, ventana 2s) tiene prioridad absoluta
+        // wave8.harmony.mood era el crudo del HarmonyDetector (cambia cada frame, sin histéresis)
+        // Ahora usamos el meta-estado estabilizado que viaja en la raíz del objeto
+        // 🔒 WAVE 2204.1: .toLowerCase() defensivo — TitanEngine ya convierte BRIGHT→'bright',
+        // pero por si algún path futuro inyecta el enum en mayúsculas, blindamos la comparación.
+        const activeMood = String(data.mood || 'neutral').toLowerCase();
         const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
         const energy = clamp(data.energy ?? 0.5, 0, 1);
         // 🎨 WAVE 90: Detectar vibeId temprano (necesario para Golden Reversal)
@@ -580,15 +585,32 @@ export class SeleneColorEngine {
             }
             hueSource = isLatinoHueFree ? `key:${key}(tropical-bias)` : `key:${key}`;
         }
-        else if (mood && MOOD_HUES[mood] !== undefined) {
-            baseHue = MOOD_HUES[mood];
-            hueSource = `mood:${mood}`;
+        else if (activeMood && MOOD_HUES[activeMood] !== undefined) {
+            baseHue = MOOD_HUES[activeMood];
+            hueSource = `mood:${activeMood}`;
         }
         // === C. APLICAR MODIFICADORES DE MODO ===
-        // Solo aplicamos el modifier del modo musical (major/minor)
         const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
-        // El Hue final es: Base + Modo (SIN GÉNERO)
-        let finalHue = normalizeHue(baseHue + modeMod.hue);
+        // 🎲 WAVE 2204: CHROMATIC DRIFT (El Desestancador)
+        // El 'activeMood' ya viene purificado y estabilizado (ventana 2s) desde el MoodArbiter.
+        // Resuelve el "congelamiento cromático" del Harmonic Mixing: misma Key durante minutos
+        // → el color ahora respira según la tensión emocional de la pista.
+        let moodDrift = 0;
+        if (activeMood === 'bright') {
+            moodDrift = 30; // Empuje hacia análogos cálidos/brillantes (Tensión/Euforia)
+        }
+        else if (activeMood === 'dark') {
+            moodDrift = -30; // Empuje hacia análogos fríos/profundos (Valle/Oscuridad)
+        }
+        // Si es 'neutral', moodDrift es 0 (Se mantiene el color puro de la Key)
+        // El Hue final es: Base + Modo + Deriva Emocional (SIN GÉNERO)
+        let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
+        // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
+        // Dispara 1 vez por segundo (~60fps). Busca "[DRIFT RADAR]" en consola de Hyperion.
+        // Cuando veas In: 'BRIGHT' -> Act: 'bright' | Drift: 30°, el Desestancador está vivo.
+        if (this.generateCallCount % 60 === 0) {
+            console.log(`[DRIFT RADAR] In: '${data.mood}' -> Act: '${activeMood}' | Drift: ${moodDrift > 0 ? '+' : ''}${moodDrift}° | BaseHue: ${baseHue}° | FinalHue: ${finalHue.toFixed(0)}°`);
+        }
         // 🌡️ WAVE 149.6: THERMAL GRAVITY - Aplicar Gravedad Térmica
         // Antes de restricciones constitucionales, el hue se aclimata al clima del Vibe.
         // Techno (9500K) → arrastra hacia Azul Rey (240°)
@@ -715,11 +737,10 @@ export class SeleneColorEngine {
         let correctedSat = primarySat;
         let correctedLight = primaryLight;
         // Detectar si el contexto requiere pureza de color (mood festivo)
-        const isFestiveContext = mood === 'bright' ||
-            mood === 'energetic' ||
-            mood === 'euphoric';
+        // 🎭 WAVE 2204: activeMood solo tiene 3 estados (bright/dark/neutral)
+        const isFestiveContext = activeMood === 'bright';
         // Detectar contexto oscuro (Techno, Dark, etc)
-        const isDarkContext = mood === 'dark';
+        const isDarkContext = activeMood === 'dark';
         if (isFestiveContext) {
             // 1. Detección de "Zona de Peligro Marrón" (Naranjas/Amarillos oscuros)
             // Hue 20-55 es naranja/amarillo. Si L < 0.45, se ve marrón/sucio.
@@ -1026,7 +1047,7 @@ export class SeleneColorEngine {
         // === L. CONSTRUIR DESCRIPCIÓN ===
         // 🎨 WAVE 68.5: Descripción PURA sin género
         const description = [
-            key ? `${key} ${mode}` : mood,
+            key ? `${key} ${mode}` : activeMood,
             `${temperature}`,
             `E=${(energy * 100).toFixed(0)}%`,
             `S=${(syncopation * 100).toFixed(0)}%`,

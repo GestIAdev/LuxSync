@@ -14,7 +14,7 @@
  * - Real-time value feedback
  */
 
-import React, { useCallback, useState, useMemo } from 'react'
+import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
 import './TestPanel.css'
 
@@ -41,6 +41,28 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   const [scannerValue, setScannerValue] = useState(0)
   const [showScanner, setShowScanner] = useState(false)
   
+  // Throttle: el slider React actualiza el DOM a 60fps pero el IPC al backend
+  // sólo dispara cada THROTTLE_MS. Coincide con el loop de TitanOrchestrator (40ms/25fps).
+  const THROTTLE_MS = 40  // 25fps — sincronizado con el frame DMX-safe del Orchestrator
+  const lastSendTime = useRef<number>(0)
+  // Ref para capturar el fixtureId actual en el closure del cleanup sin re-registrar el efecto
+  const fixtureIdRef = useRef<string | null>(fixtureId)
+  useEffect(() => { fixtureIdRef.current = fixtureId }, [fixtureId])
+
+  // ── CLEANUP ON UNMOUNT ────────────────────────────────────────────────────
+  // Al desmontar el TestPanel, libera todos los overrides manuales del fixture
+  // activo en el MasterArbiter. Sin esto, los canales quedan "zombies" luchando
+  // contra la LiveView indefinidamente.
+  useEffect(() => {
+    return () => {
+      const id = fixtureIdRef.current
+      if (!id) return
+      window.lux.arbiter.clearManual({ fixtureIds: [id] })
+        .catch((err: unknown) => console.error('[TestPanel] ❌ clearManual en unmount falló:', err))
+    }
+  }, []) // [] = solo se ejecuta el return en unmount, nunca en re-render
+  // ─────────────────────────────────────────────────────────────────────────
+
   // 🔥 WAVE 1008: Get fixture data from store for DMX address calculation
   const fixture = useStageStore(state => {
     const fixtures = state.fixtures || []
@@ -67,58 +89,71 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   }, [fixture])
   
   /**
-   * 🔥 WAVE 1008.1: DIRECT DMX SEND with Arbiter fallback
-   * Tries direct DMX first, falls back to Arbiter if not available
+   * Canales que el Arbiter entiende nativamente (tienen campo propio en ManualControls).
+   * El resto va por phantomChannels para que el HAL los trate como passthrough.
+   * Fuente de verdad: MasterArbiter.ts → NATIVE_CHANNELS set.
+   */
+  const ARBITER_NATIVE_CHANNELS = new Set([
+    'dimmer', 'red', 'green', 'blue', 'pan', 'tilt',
+    'zoom', 'focus', 'speed', 'color_wheel',
+  ])
+
+  /**
+   * Envía un valor al Arbiter vía setManual.
+   * NUNCA bypassa el Arbiter — sin sendDmxChannel, sin dmx.sendDirect.
+   * 
+   * Routing:
+   *   - Canal nativo  → controls: { [type]: value }, channels: [type]
+   *   - Canal phantom → controls: { phantomChannels: { [type]: value } }, channels: [type]
+   * 
+   * Esto evita el tug-of-war entre el TestPanel y el ciclo HAL a 30Hz
+   * que causaba micro-oscilaciones en los motores de los cabezales.
    */
   const sendDirectDMX = useCallback(async (channelIndex: number, value: number) => {
-    if (dmxBaseAddress === null || !fixtureId) {
-      console.warn('[TestPanel] ⚠️ No DMX address or fixture configured')
+    if (!fixtureId) {
+      console.warn('[TestPanel] ⚠️ No fixture configured')
       return
     }
-    
-    // Get channel type for Arbiter
+
     const channelInfo = channels[channelIndex]
     const channelType = channelInfo?.type || 'unknown'
-    
-    // 🔥 CRITICAL: channelIndex is 0-based, dmxBaseAddress is the fixture start address
-    const absoluteAddress = dmxBaseAddress + channelIndex
-    
-    console.log(`[TestPanel] 🎛️ DMX: Universe ${universe}, CH${channelIndex} (${channelType}) → DMX ${absoluteAddress} = ${value}`)
-    
-    // Try direct DMX first
-    const lux = window.lux as any
-    if (lux?.sendDmxChannel) {
-      lux.sendDmxChannel(universe, absoluteAddress, value)
-      return
-    } 
-    if (lux?.dmx?.sendDirect) {
-      lux.dmx.sendDirect(universe, absoluteAddress, value)
+
+    if (channelType === 'unknown') {
+      console.warn(`[TestPanel] ⚠️ Canal ${channelIndex} sin tipo definido — no se envía`)
       return
     }
-    
-    // 🔥 FALLBACK: Use Arbiter.setManual (same as Commander - IT WORKS!)
-    if (lux?.arbiter?.setManual && channelType !== 'unknown') {
-      try {
-        await lux.arbiter.setManual({
-          fixtureIds: [fixtureId],
-          controls: { [channelType]: value },
-          channels: [channelType],
-        })
-        console.log(`[TestPanel] 🎯 Arbiter fallback: ${channelType} = ${value}`)
-      } catch (err) {
-        console.error('[TestPanel] ❌ Arbiter error:', err)
-      }
-    } else {
-      console.error('[TestPanel] ❌ No DMX API available (direct or arbiter)')
+
+    const isNative = ARBITER_NATIVE_CHANNELS.has(channelType)
+
+    const controls: Record<string, unknown> = isNative
+      ? { [channelType]: value }
+      : { phantomChannels: { [channelType]: value } }
+
+    console.log(`[TestPanel] 🎛️ Arbiter.setManual → ${channelType}=${value} (${isNative ? 'native' : 'phantom'})`)
+
+    try {
+      await window.lux.arbiter.setManual({
+        fixtureIds: [fixtureId],
+        controls: controls as Record<string, number>,
+        channels: [channelType],
+      })
+    } catch (err) {
+      console.error('[TestPanel] ❌ Arbiter.setManual falló:', err)
     }
-  }, [dmxBaseAddress, universe, fixtureId, channels])
+  }, [fixtureId, channels])
   
   /**
    * 🔥 WAVE 1008: Scanner slider change
+   * El estado local (UI) se actualiza siempre para que el slider sea fluido.
+   * La llamada al backend se throttlea a ~30fps para no saturar el driver serial.
    */
   const handleScannerChange = useCallback((value: number) => {
     setScannerValue(value)
-    sendDirectDMX(scannerChannel, value)
+    const now = Date.now()
+    if (now - lastSendTime.current >= THROTTLE_MS) {
+      lastSendTime.current = now
+      sendDirectDMX(scannerChannel, value)
+    }
   }, [scannerChannel, sendDirectDMX])
   
   /**

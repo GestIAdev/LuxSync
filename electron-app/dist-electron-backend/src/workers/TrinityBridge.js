@@ -802,15 +802,29 @@ export class SimpleSectionTracker {
         const dropDuration = this.currentSection === 'drop' ? (now - this.dropStartTime) : 0;
         const dropExpired = dropDuration > p.maxDropDuration;
         const energyKillSwitch = weightedEnergy < p.dropEnergyKillThreshold;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2185: DROP HOLD TIME — 1500ms debounce obligatorio
+        // ═══════════════════════════════════════════════════════════════════════
+        // PROBLEMA: En minimal techno, la energía decae entre kicks (58ms gaps).
+        // El killSwitch se activa en esos micro-valleys y aborta el DROP
+        // apenas 58ms después de entrar. El drop REAL dura 16-32 compases.
+        //
+        // SOLUCIÓN: Una vez que el tracker hace DROP ENTER, el killSwitch
+        // tiene PROHIBIDO activarse durante al menos 1500ms (~3 beats @120BPM).
+        // Solo dropExpired (duración máxima) puede forzar la salida antes.
+        // ═══════════════════════════════════════════════════════════════════════
+        const DROP_HOLD_TIME_MS = 1500;
+        const dropHoldActive = dropDuration < DROP_HOLD_TIME_MS;
+        const killSwitchAllowed = energyKillSwitch && !dropHoldActive;
         if (this.currentSection === 'drop') {
             // ¿Deberíamos SALIR del drop?
-            if (dropExpired || energyKillSwitch) {
+            if (dropExpired || killSwitchAllowed) {
                 newSection = 'verse';
                 this.lastDropEndTime = now;
                 this.beatsSinceChange = 0;
                 this.framesSinceTransition = 0;
-                if (this.frameCount % 60 === 0 || dropExpired || energyKillSwitch) {
-                    console.log(`[SimpleSectionTracker] 🔴 DROP EXIT | expired=${dropExpired} | killSwitch=${energyKillSwitch} | duration=${dropDuration}ms | energy=${weightedEnergy.toFixed(2)}`);
+                if (this.frameCount % 60 === 0 || dropExpired || killSwitchAllowed) {
+                    console.log(`[SimpleSectionTracker] 🔴 DROP EXIT | expired=${dropExpired} | killSwitch=${killSwitchAllowed} | holdActive=${dropHoldActive} | duration=${dropDuration}ms | energy=${weightedEnergy.toFixed(2)}`);
                 }
             }
         }

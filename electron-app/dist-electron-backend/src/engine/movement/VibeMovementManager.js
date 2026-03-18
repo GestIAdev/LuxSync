@@ -3,6 +3,24 @@
  * WAVE 2086.1: STEREO RESURRECTION — Phase offset (mirror/snake) lives HERE now
  * WAVE 2086.2: THE MAJESTIC REFORM — Professional period scaling (no more epilepsy)
  *
+ * 🔥 WAVE 2213 FÉNIX: OPERACIÓN FÉNIX — RESTAURACIÓN DEL MOTOR DORADO
+ *   Base code restored from commit 8123c08 (WAVE 2088.9-2088.12).
+ *   The monotonic phase accumulator with smoothedBPM is the heart of this engine.
+ *   WAVES 2206-2210 castrated the system trying to fix stutter caused by IPC/renderer
+ *   throttling (fixed in WAVE 2211). This is the TRUE engine, restored and enhanced.
+ *
+ *   GEOMETRY FIXES applied on top of restoration:
+ *   1. amplitudeScale calibrated: techno=0.40, latina=0.35, rock=0.45 (540° Pan safe)
+ *   2. diamond rewritten: was sin/cos (circle), now linear interpolation between
+ *      cardinal vertices (0,1)→(1,0)→(0,-1)→(-1,0) — true rhombus
+ *   3. ballyhoo fixtureOffset purified: was scaling amplitude per fixture (asymmetric)
+ *   4. wave_y redesigned: was W-bounce (Lissajous 0.5:2), now latin pendulum U-arc
+ *
+ *   FPD FIXES applied on restoration:
+ *   - Anti-Stuck (V16.4) REMOVED: false positives with valid DMX 0/255 targets
+ *   - Anti-Jitter upgraded: dynamic threshold (3% of maxVelocity) instead of hardcoded 5
+ *   - REV_LIMIT capped by hardware effectiveMaxVel (budget movers can't exceed their limits)
+ *
  * FILOSOFIA: "HARMONIC MOTION"
  * El movimiento NO compite con efectos (Flash/Color).
  * El movimiento TRANSPORTA la luz. Es la danza, no el bailarin.
@@ -17,28 +35,28 @@
  *   El Arbiter recibe posiciones L/R ya diferenciadas via mechanicsL/R.
  *
  * @layer ENGINE/MOVEMENT
- * @version WAVE 2086.2 - The Majestic Reform
+ * @version WAVE 2213 FÉNIX — Operación Fénix: Motor Dorado Restaurado
  * @author PunkOpus
  */
 // VIBE CONFIGURATIONS
 const VIBE_CONFIG = {
     // TECHNO: Geometria dura, cortes precisos
     'techno-club': {
-        amplitudeScale: 1.0,
+        amplitudeScale: 0.40, // 🔧 WAVE 2213 FÉNIX: 1.0 → 0.40. En 540° Pan, 1.0 = peonza. 0.40 = barrido contenido profesional.
         baseFrequency: 0.25,
         patterns: ['scan_x', 'square', 'diamond', 'botstep'],
         homeOnSilence: false,
     },
     // LATINO: Curvas, fluidez, caderas
     'fiesta-latina': {
-        amplitudeScale: 0.85,
+        amplitudeScale: 0.35, // 🔧 WAVE 2213 FÉNIX: 0.85 → 0.35. Curvas elegantes sin colapso óptico.
         baseFrequency: 0.15,
         patterns: ['figure8', 'wave_y', 'ballyhoo'],
         homeOnSilence: false,
     },
     // POP-ROCK: Simetria, majestuosidad, estadio
     'pop-rock': {
-        amplitudeScale: 0.80,
+        amplitudeScale: 0.45, // 🔧 WAVE 2213 FÉNIX: 0.80 → 0.45. Barridos medios de estadio, servo-safe.
         baseFrequency: 0.20,
         patterns: ['circle_big', 'cancan', 'dual_sweep'],
         homeOnSilence: true,
@@ -134,23 +152,27 @@ const PATTERNS = {
             y: from.y + (to.y - from.y) * t,
         };
     },
-    // DIAMOND: Rombo agresivo
-    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Diamond toca [-1,1]
-    // ANTES: rawX * SQRT2 * 0.7 = max ~0.9899 (nunca llegaba a 1.0)
-    // AHORA: Normalización exacta. El diamante rota a 45° y sus vértices
-    // tocan exactamente ±1 en cada eje cardinal.
+    // DIAMOND: Rombo con interpolación lineal entre vértices cardinales
+    // � WAVE 2213 FÉNIX: el diamante anterior era un círculo (sin/cos).
+    //   FIX: Mismo método que square — 4 vértices cardinales con interpolación
+    //   lineal a velocidad constante. Vértices: Top(0,1)→Right(1,0)→Bot(0,-1)→Left(-1,0).
+    //   Es square rotado 45°: las aristas son diagonales, no horizontales.
     diamond: (phase, audio) => {
-        const rawX = Math.sin(phase);
-        const rawY = Math.cos(phase);
-        // Rotación 45°: los picos de sin/cos (±1) se mapean a los ejes
-        // La envolvente de |sin| + |cos| tiene máximo SQRT2, así que
-        // dividimos por SQRT2 para normalizar, pero queremos que los VÉRTICES
-        // del diamante (donde un eje = 0 y el otro = ±1) toquen ±1.
-        // En un diamante perfecto: x = sin(phase), y = cos(phase) rotados 45°
-        // Vértices en phase = 0, π/2, π, 3π/2 → ya tocan ±1 en un eje.
+        const vertices = [
+            { x: 0, y: 1 }, // Top
+            { x: 1, y: 0 }, // Right
+            { x: 0, y: -1 }, // Bottom
+            { x: -1, y: 0 }, // Left
+        ];
+        const normalizedPhase = (phase / (Math.PI * 2)) * 4;
+        const currentVertex = Math.floor(normalizedPhase) % 4;
+        const nextVertex = (currentVertex + 1) % 4;
+        const t = normalizedPhase - Math.floor(normalizedPhase);
+        const from = vertices[currentVertex];
+        const to = vertices[nextVertex];
         return {
-            x: rawX,
-            y: rawY,
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
         };
     },
     // BOTSTEP: Posiciones cuantizadas robóticas con interpolación lineal
@@ -184,14 +206,21 @@ const PATTERNS = {
             y: Math.sin(phase * 2) * 0.75,
         };
     },
-    // WAVE_Y: La ola (X lento, Y rapido)
+    // WAVE_Y: Péndulo latino — ola suave en U cadenciosa
+    // 🔥 WAVE 2213 FÉNIX: sin(phase*0.5)/sin(phase*2) generaba W nerviosa.
+    //   FIX: Péndulo real. X = balanceo lateral. Y = arco de gravedad (siempre ≤ 0).
     wave_y: (phase, audio) => {
         return {
-            x: Math.sin(phase * 0.5) * 0.8,
-            y: Math.sin(phase * 2) * 0.7,
+            x: Math.sin(phase) * 0.8,
+            y: -(Math.abs(Math.cos(phase * 0.5)) * 0.6),
         };
     },
     // BALLYHOO: Caos controlado (cierra cada 16 beats)
+    // 🔥 WAVE 2213 FÉNIX: Eliminado fixtureOffset de amplitud — cada foco dibujaba
+    //   la figura a un tamaño distinto. El offset de posición vive en el dominio
+    //   del tiempo (phase/snake), no en la amplitud.
+    // 🔥 WAVE 2213: ×1.8 — la multiplicación sin/cos atenúa severamente la amplitud
+    //   final. El Gearbox y las escalas globales acotan el resultado de forma segura.
     ballyhoo: (phase, audio, index = 0, total = 1) => {
         const x = Math.sin(phase) * 0.5 +
             Math.sin(phase * 3) * 0.3 +
@@ -199,11 +228,7 @@ const PATTERNS = {
         const y = Math.cos(phase) * 0.4 +
             Math.cos(phase * 3) * 0.25 +
             Math.cos(phase * 5) * 0.1;
-        const fixtureOffset = (index / Math.max(total, 1)) * 0.3;
-        return {
-            x: x * (0.85 + fixtureOffset * 0.3),
-            y: y * (0.85 + fixtureOffset * 0.3),
-        };
+        return { x: x * 1.8, y: y * 1.8 };
     },
     // POP-ROCK PATTERNS - Stadium / Symmetry / Majestuosidad
     // CIRCLE_BIG: El rey de los estadios
@@ -499,9 +524,6 @@ export class VibeMovementManager {
         // Coseno desplazado: arranca en 0.85, pico en 1.0 a ~62% de la frase
         const phraseEnvelope = 0.925 + 0.075 * Math.sin(Math.PI * (phraseProgress - 0.15));
         // Clamp final: el envelope escala entre 0.85 y 1.0
-        // ⚠️ KEA-007 (WAVE 2095.1): FLOOR 0.85 aquí + GEARBOX_MIN 0.85 abajo
-        // → amplitud efectiva mínima combinada = 0.85 × 0.85 = 72.25% del rango.
-        // Ver cálculo completo en calculateGearboxAmplitude() → GEARBOX_MIN_AMPLITUDE.
         const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope));
         const finalAmplitude = effectiveAmplitude * clampedEnvelope;
         // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
@@ -574,15 +596,6 @@ export class VibeMovementManager {
             // La posición base (finalPosition) es un punto en una trayectoria
             // circular/elíptica. Rotamos ese punto alrededor del centro (0,0)
             // por el offset del fixture → efecto ola/cadena.
-            //
-            // ⚠️ KEA-005 (WAVE 2095.1): SNAKE + PATRONES Y-ONLY = OSCILACIÓN DIAGONAL
-            // Patrones como 'breath' generan {x:0, y:valor}. Al aplicar snake rotation,
-            // el vector se rota en el plano XY → el fixture NO ejecuta un breath
-            // vertical puro sino una oscilación DIAGONAL cuyo ángulo depende del
-            // fixtureIndex y stereoConfig.offset. Esto es un efecto visual válido
-            // (y normalmente bonito), pero NO es un breath tradicional. El operador
-            // que calibre Forge asumiendo movimiento vertical puro estará equivocado.
-            // Para breath puro en SNAKE: usar SYNC o sobreescribir con patrones 2D.
             const phaseOffset = fixtureIndex * stereoConfig.offset;
             // Magnitud del movimiento (distancia al centro en espacio -1..+1)
             const mag = Math.sqrt(finalPosition.x * finalPosition.x + finalPosition.y * finalPosition.y);
@@ -674,16 +687,6 @@ export class VibeMovementManager {
         // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
         // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
         // ya se encarga de limitar la velocidad real del hardware.
-        //
-        // ⚠️ KEA-007 (WAVE 2095.1): INTERACCIÓN OCULTA GEARBOX × PHRASE_ENVELOPE
-        // El PhraseEnvelope también tiene un floor de 0.85 (clampedEnvelope).
-        // El Gearbox multiplica por encima del envelope → la amplitud efectiva
-        // mínima combinada es: GEARBOX_MIN (0.85) × ENVELOPE_MIN (0.85) = 0.7225
-        //
-        // Implicación práctica: un patrón con amplitud objetivo 1.0 jamás bajará
-        // del 72.25% de su rango teórico, incluso con energía=0 y phrase en valle.
-        // Para un scan_x en fixture de 540°: barrido mínimo real = ~390° (no 540°).
-        // Tenerlo en cuenta al calibrar posiciones de stage en Forge.
         const GEARBOX_MIN_AMPLITUDE = 0.85;
         const gearboxResult = requestedAmplitude * gearboxFactor;
         return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult));

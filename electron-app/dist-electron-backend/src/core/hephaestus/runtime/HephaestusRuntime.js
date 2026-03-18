@@ -36,6 +36,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { deserializeHephClip } from '../types';
 import { CurveEvaluator } from '../CurveEvaluator';
+import { PhaseDistributor } from './PhaseDistributor';
 // ═══════════════════════════════════════════════════════════════════════════
 // HSL → RGB CONVERSION (Pure math, no dependencies)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -164,6 +165,15 @@ export class HephaestusRuntime {
         this.lastTickMs = 0;
         /** Debug mode */
         this.debug = true;
+        // ─────────────────────────────────────────────────────────────────────────
+        // ⚒️ WAVE 2400: ZERO-ALLOCATION OUTPUT BUFFER
+        // ─────────────────────────────────────────────────────────────────────────
+        /** Pre-allocated output buffer */
+        this.outputBuffer = [];
+        /** Current write position in outputBuffer */
+        this.outputCursor = 0;
+        /** Maximum capacity of the output buffer */
+        this.outputCapacity = 0;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // CLIP LOADING
@@ -283,6 +293,8 @@ export class HephaestusRuntime {
      * ▶️ Trigger a .lfx clip
      * Loads the file (cached), starts execution
      *
+     * ⚒️ WAVE 2400: Now resolves PhaseDistributor if clip has phase config.
+     *
      * @param filePath Path to .lfx file
      * @param options Playback options
      * @returns Instance ID for tracking, or null if failed
@@ -296,6 +308,8 @@ export class HephaestusRuntime {
         const now = Date.now();
         // Create the curve evaluator instance for this clip
         const evaluator = new CurveEvaluator(clip.curves, clip.durationMs);
+        // ── WAVE 2400: Resolve phase distribution ─────────────────────────
+        const { fixturePhases, phaseConfig } = this.resolvePhaseForClip(clip, options.durationOverrideMs ?? clip.durationMs, options.fixtureIds);
         const activeClip = {
             instanceId,
             filePath,
@@ -305,11 +319,18 @@ export class HephaestusRuntime {
             durationMs: options.durationOverrideMs ?? clip.durationMs,
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
+            fixturePhases,
+            phaseConfig,
         };
         this.activeClips.set(instanceId, activeClip);
         this.totalTriggered++;
+        // ⚒️ WAVE 2400: Ensure output buffer capacity
+        this.ensureOutputCapacity(this.estimateTotalOutputs());
         if (this.debug) {
-            console.log(`[HephRuntime] ▶️ PLAY: ${clip.name} (${activeClip.durationMs}ms) ID=${instanceId}`);
+            const phaseInfo = fixturePhases
+                ? ` [PHASE: ${fixturePhases.length} fixtures, ${phaseConfig?.symmetry}]`
+                : '';
+            console.log(`[HephRuntime] ▶️ PLAY: ${clip.name} (${activeClip.durationMs}ms)${phaseInfo} ID=${instanceId}`);
         }
         return instanceId;
     }
@@ -320,6 +341,8 @@ export class HephaestusRuntime {
      * inline via the Chronos timeline (serialized in the FXClip, deserialized
      * by IPCHandlers). This is the DIAMOND PATH for Hephaestus clips.
      *
+     * ⚒️ WAVE 2400: Now resolves PhaseDistributor if clip has phase config.
+     *
      * @param clip Pre-deserialized HephAutomationClip with Map<> curves
      * @param options Playback options
      * @returns Instance ID for tracking
@@ -328,6 +351,8 @@ export class HephaestusRuntime {
         const instanceId = `heph_diamond_${++this.instanceCounter}_${Date.now()}`;
         const now = Date.now();
         const evaluator = new CurveEvaluator(clip.curves, clip.durationMs);
+        // ── WAVE 2400: Resolve phase distribution ─────────────────────────
+        const { fixturePhases, phaseConfig } = this.resolvePhaseForClip(clip, options.durationOverrideMs ?? clip.durationMs, options.fixtureIds);
         const activeClip = {
             instanceId,
             filePath: '<diamond-inline>', // No file — curves came inline
@@ -337,11 +362,18 @@ export class HephaestusRuntime {
             durationMs: options.durationOverrideMs ?? clip.durationMs,
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
+            fixturePhases,
+            phaseConfig,
         };
         this.activeClips.set(instanceId, activeClip);
         this.totalTriggered++;
+        // ⚒️ WAVE 2400: Ensure output buffer capacity
+        this.ensureOutputCapacity(this.estimateTotalOutputs());
         if (this.debug) {
-            console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms) ${clip.curves.size} curves ID=${instanceId}`);
+            const phaseInfo = fixturePhases
+                ? ` [PHASE: ${fixturePhases.length} fixtures, ${phaseConfig?.symmetry}]`
+                : '';
+            console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms) ${clip.curves.size} curves${phaseInfo} ID=${instanceId}`);
         }
         return instanceId;
     }
@@ -376,9 +408,14 @@ export class HephaestusRuntime {
      * @returns Array of fixture outputs to apply
      */
     /**
-     * ⚒️ WAVE 2030.21: THE TRANSLATOR
+     * ⚒️ WAVE 2400: THE PHASER REVOLUTION + ZERO-ALLOC
      *
-     * tick() now outputs DMX-READY values. TitanOrchestrator only merges.
+     * tick() now branches between:
+     * - tickWithPhase(): Per-fixture phase evaluation (WAVE 2400 path)
+     * - tickLegacy(): Zone-based, same time for all (backward compat)
+     *
+     * ZERO-ALLOC: Uses pre-allocated outputBuffer with writeOutput().
+     * Only 1 array allocation per frame (getOutputSlice) vs N objects before.
      *
      * SCALING PIPELINE:
      *   1. CurveEvaluator → raw 0-1 (number) or HSL (color)
@@ -390,65 +427,29 @@ export class HephaestusRuntime {
      */
     tick(currentTimeMs) {
         this.lastTickMs = currentTimeMs;
-        const outputs = [];
+        this.outputCursor = 0; // ⚒️ WAVE 2400: Reset cursor — reuse buffer
         const expiredClips = [];
         for (const [instanceId, active] of this.activeClips) {
             // Calculate clip progress
             const elapsedMs = currentTimeMs - active.startTimeMs;
-            let clipTimeMs = elapsedMs;
+            let baseClipTimeMs = elapsedMs;
             // Handle looping
             if (active.loop && elapsedMs >= active.durationMs) {
-                clipTimeMs = elapsedMs % active.durationMs;
+                baseClipTimeMs = elapsedMs % active.durationMs;
             }
             // Check expiration (non-looping)
             if (!active.loop && elapsedMs >= active.durationMs) {
                 expiredClips.push(instanceId);
                 continue;
             }
-            // Resolve output zones once per clip
-            const zones = active.clip.zones.length > 0
-                ? active.clip.zones
-                : ['all'];
-            // Evaluate each curve → scale → output
-            for (const [paramName, curve] of active.clip.curves) {
-                // ─── COLOR CURVE PATH ───────────────────────────────────
-                if (curve.valueType === 'color') {
-                    const hsl = active.evaluator.getColorValue(paramName, clipTimeMs);
-                    // Intensity modulates lightness (dim the color, don't destroy hue/sat)
-                    // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
-                    const modulatedL = (hsl.l / 100) * active.intensity;
-                    const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
-                    for (const zone of zones) {
-                        outputs.push({
-                            fixtureId: `zone:${zone}`,
-                            zone,
-                            parameter: paramName,
-                            value: 0, // Not used for color - rgb field carries the data
-                            rgb,
-                            source: 'hephaestus-runtime',
-                        });
-                    }
-                    continue;
-                }
-                // ─── NUMERIC CURVE PATH ─────────────────────────────────
-                const rawValue = active.evaluator.getValue(paramName, clipTimeMs);
-                const withIntensity = rawValue * active.intensity;
-                const scaledValue = scaleToDMX(paramName, withIntensity);
-                for (const zone of zones) {
-                    const output = {
-                        fixtureId: `zone:${zone}`,
-                        zone,
-                        parameter: paramName,
-                        value: scaledValue,
-                        source: 'hephaestus-runtime',
-                    };
-                    // ⚒️ WAVE 2030.24: 16-bit fine channel for pan/tilt
-                    if (paramName === 'pan' || paramName === 'tilt') {
-                        const { fine } = scaleToDMX16(withIntensity);
-                        output.fine = fine;
-                    }
-                    outputs.push(output);
-                }
+            // ── WAVE 2400: Branch between phase-aware and legacy paths ────
+            if (active.fixturePhases && active.fixturePhases.length > 0) {
+                // 🔥 PER-FIXTURE PHASE EVALUATION
+                this.tickWithPhase(active, baseClipTimeMs);
+            }
+            else {
+                // Legacy: zone-based, same time for all
+                this.tickLegacy(active, baseClipTimeMs);
             }
         }
         // Clean up expired clips
@@ -458,7 +459,211 @@ export class HephaestusRuntime {
                 console.log(`[HephRuntime] ✅ Completed: ${instanceId}`);
             }
         }
-        return outputs;
+        // ⚒️ WAVE 2400: Return slice of pre-allocated buffer
+        return this.getOutputSlice();
+    }
+    /**
+     * ⚒️ WAVE 2400: Phase-aware evaluation path.
+     *
+     * fixturePhases is SORTED by phaseOffsetMs ASC.
+     * This means CurveEvaluator queries go in monotonically
+     * increasing time order → cursor cache stays O(1) amortized.
+     *
+     * For each fixture, we calculate a fixture-specific time
+     * (baseClipTimeMs + phaseOffsetMs) and evaluate all curves at that time.
+     */
+    tickWithPhase(active, baseClipTimeMs) {
+        for (const fp of active.fixturePhases) {
+            // ── Calculate fixture-specific time ──────────────────────────
+            let fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs;
+            // Wrap if looping (phase offset can push beyond duration)
+            if (active.loop) {
+                fixtureTimeMs = ((fixtureTimeMs % active.durationMs) + active.durationMs) % active.durationMs;
+            }
+            else {
+                fixtureTimeMs = Math.min(fixtureTimeMs, active.durationMs);
+            }
+            // ── Evaluate each curve at fixture-specific time ────────────
+            for (const [paramName, curve] of active.clip.curves) {
+                if (curve.valueType === 'color') {
+                    const hsl = active.evaluator.getColorValue(paramName, fixtureTimeMs);
+                    // Intensity modulates lightness (dim the color, don't destroy hue/sat)
+                    const modulatedL = (hsl.l / 100) * active.intensity;
+                    const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
+                    this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb);
+                }
+                else {
+                    const rawValue = active.evaluator.getValue(paramName, fixtureTimeMs);
+                    const withIntensity = rawValue * active.intensity;
+                    const scaledValue = scaleToDMX(paramName, withIntensity);
+                    const fine = (paramName === 'pan' || paramName === 'tilt')
+                        ? scaleToDMX16(withIntensity).fine
+                        : undefined;
+                    this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine);
+                }
+            }
+        }
+    }
+    /**
+     * Legacy path: sin phase distribution.
+     * Mantiene backward compatibility 1:1 con el tick() pre-WAVE 2400.
+     * Used when clip has no PhaseConfig / no FixtureSelector.
+     */
+    tickLegacy(active, clipTimeMs) {
+        // Resolve output zones once per clip
+        const zones = active.clip.zones.length > 0
+            ? active.clip.zones
+            : ['all'];
+        // Evaluate each curve → scale → output
+        for (const [paramName, curve] of active.clip.curves) {
+            // ─── COLOR CURVE PATH ───────────────────────────────────
+            if (curve.valueType === 'color') {
+                const hsl = active.evaluator.getColorValue(paramName, clipTimeMs);
+                // Intensity modulates lightness (dim the color, don't destroy hue/sat)
+                // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
+                const modulatedL = (hsl.l / 100) * active.intensity;
+                const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
+                for (const zone of zones) {
+                    this.writeOutput(`zone:${zone}`, zone, paramName, 0, rgb);
+                }
+                continue;
+            }
+            // ─── NUMERIC CURVE PATH ─────────────────────────────────
+            const rawValue = active.evaluator.getValue(paramName, clipTimeMs);
+            const withIntensity = rawValue * active.intensity;
+            const scaledValue = scaleToDMX(paramName, withIntensity);
+            for (const zone of zones) {
+                const fine = (paramName === 'pan' || paramName === 'tilt')
+                    ? scaleToDMX16(withIntensity).fine
+                    : undefined;
+                this.writeOutput(`zone:${zone}`, zone, paramName, scaledValue, undefined, fine);
+            }
+        }
+    }
+    /**
+     * Ensure output buffer has enough capacity.
+     * Called when clips are added/removed (NOT in tick — outside hot path).
+     * Grows amortized by 2x to avoid frequent resizes.
+     */
+    ensureOutputCapacity(needed) {
+        if (needed <= this.outputCapacity)
+            return;
+        // Grow by 2x or to needed, whichever is larger (min 256)
+        const newCapacity = Math.max(needed, this.outputCapacity * 2, 256);
+        // Extend buffer with pre-allocated empty output objects
+        for (let i = this.outputCapacity; i < newCapacity; i++) {
+            this.outputBuffer[i] = {
+                fixtureId: '',
+                zone: 'all',
+                parameter: '',
+                value: 0,
+                rgb: undefined,
+                fine: undefined,
+                source: 'hephaestus-runtime',
+            };
+        }
+        this.outputCapacity = newCapacity;
+    }
+    /**
+     * Write one output to the pre-allocated buffer.
+     * Mutates in-place — zero allocation in the hot path.
+     * Auto-grows if capacity estimate was wrong (rare).
+     */
+    writeOutput(fixtureId, zone, parameter, value, rgb, fine) {
+        // Auto-grow if needed (rare — only if capacity estimate was wrong)
+        if (this.outputCursor >= this.outputCapacity) {
+            this.ensureOutputCapacity(this.outputCursor + 64);
+        }
+        const out = this.outputBuffer[this.outputCursor++];
+        out.fixtureId = fixtureId;
+        out.zone = zone;
+        out.parameter = parameter;
+        out.value = value;
+        out.rgb = rgb;
+        out.fine = fine;
+        // out.source is always 'hephaestus-runtime' — set once at buffer creation
+    }
+    /**
+     * Return a slice of the output buffer (0..outputCursor).
+     *
+     * ⚠️ CONTRATO: The consumer MUST NOT retain references to the output
+     * objects beyond the current frame. They will be mutated in the next tick.
+     *
+     * Uses Array.slice() which creates ONE new array per frame (array of
+     * references, not copies). This is an accepted trade-off:
+     * 1 array header/frame vs hundreds of object allocations/frame.
+     */
+    getOutputSlice() {
+        return this.outputBuffer.slice(0, this.outputCursor);
+    }
+    /**
+     * Estimate total output count across all active clips.
+     * Used to pre-size the output buffer at play() time.
+     */
+    estimateTotalOutputs() {
+        let total = 0;
+        for (const [, active] of this.activeClips) {
+            const fixtureCount = active.fixturePhases?.length
+                ?? (active.clip.zones.length > 0 ? active.clip.zones.length : 1);
+            total += fixtureCount * active.clip.curves.size;
+        }
+        return total;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // ⚒️ WAVE 2400: PHASE RESOLUTION HELPER
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * Resolves phase distribution for a clip at play() time.
+     *
+     * Resolution priority:
+     * 1. clip.selector.phase (full PhaseConfig) — highest priority
+     * 2. clip.selector.phaseSpread (legacy shorthand → converted to linear PhaseConfig)
+     * 3. null (no phase distribution — legacy zone mode)
+     *
+     * @param clip — The clip to resolve phase for
+     * @param durationMs — Effective duration (may be overridden)
+     * @param externalFixtureIds — Pre-resolved fixture IDs (optional, bypasses selector resolution)
+     * @returns { fixturePhases, phaseConfig } or both null if no phase config
+     */
+    resolvePhaseForClip(clip, durationMs, externalFixtureIds) {
+        const selector = clip.selector;
+        if (!selector) {
+            return { fixturePhases: null, phaseConfig: null };
+        }
+        // Determine PhaseConfig (full config takes precedence over legacy phaseSpread)
+        let config = null;
+        if (selector.phase) {
+            config = selector.phase;
+        }
+        else if (selector.phaseSpread && selector.phaseSpread > 0) {
+            // Legacy shorthand → convert to linear PhaseConfig
+            config = {
+                spread: selector.phaseSpread,
+                symmetry: 'linear',
+                wings: 1,
+                direction: 1,
+            };
+        }
+        if (!config || config.spread === 0) {
+            return { fixturePhases: null, phaseConfig: null };
+        }
+        // Resolve fixture IDs
+        const fixtureIds = externalFixtureIds && externalFixtureIds.length > 0
+            ? externalFixtureIds
+            : []; // Caller should provide pre-resolved IDs; empty = no phase
+        if (fixtureIds.length === 0) {
+            // No fixture IDs available — can't distribute phase
+            // This happens when resolveFixtureSelector() hasn't been called externally.
+            // The runtime doesn't have access to the fixture store directly.
+            // Phase will be resolved when TitanOrchestrator provides fixture IDs.
+            if (this.debug) {
+                console.warn(`[HephRuntime] ⚠️ Phase config present but no fixture IDs provided. Falling back to legacy mode.`);
+            }
+            return { fixturePhases: null, phaseConfig: config };
+        }
+        // Resolve phase distribution
+        const fixturePhases = PhaseDistributor.resolve(fixtureIds, config, durationMs);
+        return { fixturePhases, phaseConfig: config };
     }
     // ─────────────────────────────────────────────────────────────────────────
     // STATUS & STATS

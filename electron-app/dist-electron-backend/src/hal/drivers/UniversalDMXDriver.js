@@ -99,8 +99,10 @@ export class UniversalDMXDriver extends EventEmitter {
         try {
             // Importar serialport dinámicamente
             const serialportModule = await import('serialport');
-            this.SerialPort = serialportModule.SerialPort;
-            const ports = await serialportModule.SerialPort.list();
+            // FIX PARA ELECTRON: Buscar la clase SerialPort sin importar cómo se exportó
+            const SP = serialportModule.SerialPort || serialportModule.default?.SerialPort || serialportModule;
+            this.SerialPort = SP;
+            const ports = await SP.list();
             this.log(`🔍 Scanning ${ports.length} serial ports...`);
             for (const port of ports) {
                 const vid = port.vendorId?.toLowerCase() || '';
@@ -418,9 +420,28 @@ export class UniversalDMXDriver extends EventEmitter {
     setUniverse(values, universe = 0) {
         this.initBuffer(universe);
         const buf = this.universeBuffers.get(universe);
-        const len = Math.min(values.length, DMX_CHANNELS);
-        for (let i = 0; i < len; i++) {
-            buf[i + 1] = values[i];
+        // Si es un Array o Buffer normal
+        if (Array.isArray(values) || values instanceof Uint8Array || Buffer.isBuffer(values)) {
+            const len = Math.min(values.length, DMX_CHANNELS);
+            for (let i = 0; i < len; i++) {
+                // buf[0] es START CODE, los canales empiezan en buf[1]
+                buf[i + 1] = values[i];
+            }
+            return;
+        }
+        // Si el IPC lo mutó a un objeto diccionario { "0": 255, "1": 128 }
+        for (const [ch, val] of Object.entries(values)) {
+            const channel = parseInt(ch, 10);
+            if (!Number.isFinite(channel))
+                continue;
+            // Convertimos a base 1 (si el array venía en base 0, le sumamos 1)
+            const dmxChan = channel < DMX_CHANNELS ? channel + 1 : channel;
+            if (dmxChan >= 1 && dmxChan <= DMX_CHANNELS) {
+                const v = typeof val === 'number' ? val : parseInt(String(val), 10);
+                if (!Number.isFinite(v))
+                    continue;
+                buf[dmxChan] = Math.max(0, Math.min(255, Math.round(v)));
+            }
         }
     }
     /**
@@ -458,14 +479,35 @@ export class UniversalDMXDriver extends EventEmitter {
         for (const [universe, port] of this.ports) {
             const buffer = this.universeBuffers.get(universe);
             if (port.isOpen && buffer) {
-                // Envolver write en promesa para paralelizar
+                // Envolver en promesa para paralelizar. Generamos BREAK + MAB antes de escribir.
                 const p = new Promise((resolve) => {
-                    port.write(buffer, (err) => {
-                        if (err) {
-                            this.log(`❌ [Univ ${universe}] Write error: ${err.message}`);
-                        }
-                        resolve(); // Resolvemos siempre para no bloquear Promise.all
+                    // Algunas implementaciones de serialport pueden no soportar set({ brk })
+                    // pero en la práctica, drivers tipo OpenDMX/IMC UD lo aceptan.
+                    ;
+                    port.set?.({ brk: true }, () => {
+                        setTimeout(() => {
+                            ;
+                            port.set?.({ brk: false }, () => {
+                                setTimeout(() => {
+                                    port.write(buffer, (err) => {
+                                        if (err) {
+                                            this.log(`❌ [Univ ${universe}] Write error: ${err.message}`);
+                                        }
+                                        resolve();
+                                    });
+                                }, 1); // MAB (>8us)
+                            });
+                        }, 2); // BREAK (>88us)
                     });
+                    // Fallback: si no existe port.set, al menos escribimos para no romper envío
+                    if (typeof port.set !== 'function') {
+                        port.write(buffer, (err) => {
+                            if (err) {
+                                this.log(`❌ [Univ ${universe}] Write error: ${err.message}`);
+                            }
+                            resolve();
+                        });
+                    }
                 });
                 promises.push(p);
             }

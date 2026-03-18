@@ -337,6 +337,46 @@
   padding: 6px 10px;
 }
 
+/* 🔥 WAVE 2213: Load Show button + show name badge */
+.heph-header__load-show {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heph-header__btn--load-show {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+}
+
+.heph-header__btn--load-show:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
+}
+
+.heph-header__btn-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.heph-header__show-name {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(251, 191, 36, 0.7);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-left: 1px solid rgba(251, 191, 36, 0.2);
+  padding-left: 6px;
+}
+
 @keyframes pulse-dirty {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 43, 0); }
   50% { box-shadow: 0 0 8px 2px rgba(255, 107, 43, 0.3); }

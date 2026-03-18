@@ -365,7 +365,7 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   'core_meltdown': 'peak',
   'industrial_strobe': 'peak',
   'neon_blinder': 'peak',         // ⚡ WAVE 2182: APEX flash wall
-  'surgical_strike': 'peak',      // 🎯 WAVE 2182: APEX mover strobe
+  'surgical_strike': 'intense',   // ⚰️ WAVE 2214: DEMOTED peak→intense — deja espacio a IndustrialStrobe
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎸 WAVE 1020: POP-ROCK LEGENDS - Zone Mapping

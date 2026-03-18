@@ -12,8 +12,9 @@
  * - Zone C (Footer): Action Bar - Test buttons
  * 
  * INTEGRACIONES:
- * - Output Gate: Fuerza ARMED al entrar (seguridad)
- * - Priority Layer: Calibración tiene prioridad sobre el Gate
+ * - Output Gate: La vista carga en SILENCIO — NO llama a powerOn() ni arma el sistema.
+ *   Si el sistema está OFFLINE, la UI carga. Si está ONLINE, el Arbiter sigue corriendo.
+ *   El modo calibración se activa vía enterCalibrationMode (priority 200 sobre el Gate).
  * - StageStore: Fuente de verdad para fixtures (no TruthStore)
  * 
  * CONTROLES WASD:
@@ -82,9 +83,10 @@ const CalibrationView: React.FC = () => {
   const [pan, setPan] = useState(Math.round(SAFE_PAN_MAX / 2))
   const [tilt, setTilt] = useState(Math.round(SAFE_TILT_MAX / 2))
   const [step, setStep] = useState(5)  // Degrees per step
-  const [scannerChannel, setScannerChannel] = useState(0)
-  const [scannerValue, setScannerValue] = useState(0)
   const [activeTest, setActiveTest] = useState<string | null>(null)
+  
+  // 🏛️ WAVE 3000: Multi-channel concurrent state (all channels independent)
+  const [channelValues, setChannelValues] = useState<Record<number, number>>({})
   
   // Offset state
   const [panOffset, setPanOffset] = useState(0)
@@ -94,31 +96,7 @@ const CalibrationView: React.FC = () => {
   
   // 🔥 WAVE 1135.2: Save feedback state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🛡️ WAVE 1135: OUTPUT GATE SAFETY
-  // Force ARMED state when entering calibration (no accidental DMX)
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  useEffect(() => {
-    const initSafety = async () => {
-      try {
-        // Force output gate closed for safety
-        await window.lux?.arbiter?.setOutputEnabled?.(false)
-        console.log('[CalibrationLab] 🛡️ Output Gate CLOSED for safety')
-      } catch (err) {
-        console.error('[CalibrationLab] Safety init error:', err)
-      }
-    }
-    
-    initSafety()
-    
-    // Cleanup: We don't restore automatically - user must press GO
-    return () => {
-      console.log('[CalibrationLab] 👋 Exiting calibration mode')
-    }
-  }, [])
-  
+
   // ═══════════════════════════════════════════════════════════════════════
   // COMPUTED VALUES
   // ═══════════════════════════════════════════════════════════════════════
@@ -130,6 +108,25 @@ const CalibrationView: React.FC = () => {
   
   // Get selected fixture
   const activeFixtureId = selectedIds.size > 0 ? [...selectedIds][0] : null
+  useEffect(() => {
+    if (!activeFixtureId) {
+      console.warn('[CalibrationLab] ⚠️ No activeFixtureId selected (selectedIds empty)')
+    }
+  }, [activeFixtureId])
+
+  // 🔥 WAVE 1219.3: Auto-select a fixture on entry
+  // Calibration without selection is a dead end (no fixtureId → no IPC calibration mode → no DMX).
+  // This is deterministic: we pick the first fixture in stageFixtures order.
+  useEffect(() => {
+    if (activeFixtureId) return
+    if (!allFixtures || allFixtures.length === 0) return
+
+    const first = allFixtures[0]
+    if (!first?.id) return
+
+    console.log(`[CalibrationLab] 🎯 Auto-selecting fixture for calibration: ${first.id} (${first.name ?? 'unnamed'})`)
+    selectFixture(first.id, 'replace')
+  }, [activeFixtureId, allFixtures, selectFixture])
   
   const activeFixture = useMemo(() => {
     if (!activeFixtureId) return null
@@ -148,6 +145,54 @@ const CalibrationView: React.FC = () => {
   
   const dmxBaseAddress = activeFixture?.address || 1
   const universe = activeFixture?.universe ?? 0
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 377 + 1219: CALIBRATION MODE (COLD DMX PATH)
+  // Even if OutputEnabled=false (ARMED), manualOverride enables per-fixture output.
+  // We enter calibration mode automatically for the currently selected fixture.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    const electron = (window as any).electron
+    if (!electron?.ipcRenderer?.invoke) {
+      console.warn('[CalibrationLab] ⚠️ window.electron.ipcRenderer.invoke unavailable (preload bridge missing?)')
+      return
+    }
+
+  if (!activeFixtureId) return
+
+    let cancelled = false
+
+    const enter = async () => {
+      try {
+        const res = await electron.ipcRenderer.invoke('lux:arbiter:enterCalibrationMode', {
+          fixtureId: activeFixtureId,
+        })
+        if (cancelled) return
+        if (!res?.success) {
+          console.warn('[CalibrationLab] ⚠️ enterCalibrationMode returned:', res)
+        } else {
+          console.log(`[CalibrationLab] 🎯 Calibration mode ENTER for ${activeFixtureId}`)
+        }
+      } catch (err) {
+        if (!cancelled) console.error('[CalibrationLab] enterCalibrationMode error:', err)
+      }
+    }
+
+    void enter()
+
+    return () => {
+      cancelled = true
+      try {
+        void electron.ipcRenderer.invoke('lux:arbiter:exitCalibrationMode', {
+          fixtureId: activeFixtureId,
+        })
+        console.log(`[CalibrationLab] 🎯 Calibration mode EXIT for ${activeFixtureId}`)
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+  }, [activeFixtureId])
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔄 WAVE 1135.2: OFFSET SYNC - Load saved calibration when fixture changes
@@ -200,7 +245,13 @@ const CalibrationView: React.FC = () => {
     
     try {
       // 🔥 PRIORITY LAYER: Use setManual with speed=0 for instant response
-      await window.lux?.arbiter?.setManual({
+      const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
+      if (!arbiter?.setManual) {
+        console.warn('[CalibrationLab] ⚠️ arbiter.setManual unavailable (bridge missing?)')
+        return
+      }
+
+      await arbiter.setManual({
         fixtureIds: [activeFixtureId],
         controls: {
           pan: panDmx,
@@ -249,11 +300,15 @@ const CalibrationView: React.FC = () => {
   }, [pan, tilt, step, sendPosition])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // HANDLERS: DMX SCANNER
+  // HANDLERS: DMX MULTI-CHANNEL GRID
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Send raw DMX value to specific channel
+   * Send DMX via Arbiter Override Lock — NUNCA directo al driver.
+   * El Arbiter aplica Override Lock sobre el canal para que el HAL
+   * no lo sobrescriba a 30Hz con el estado base.
+   * - Nativos (dimmer, pan, tilt...): controls.{tipo}
+   * - Phantoms (unknown, custom, frost...): controls.phantomChannels.{tipo}
    */
   const sendDMX = useCallback(async (channelIndex: number, value: number) => {
     if (!activeFixtureId) return
@@ -261,26 +316,57 @@ const CalibrationView: React.FC = () => {
     const channelInfo = channels[channelIndex]
     const channelType = channelInfo?.type || 'unknown'
     
-    console.log(`[CalibrationLab] 🔬 DMX Scanner: CH${channelIndex + 1} (${channelType}) = ${value}`)
+    // Update local state (concurrent — only this channel changes)
+    setChannelValues(prev => ({ ...prev, [channelIndex]: value }))
+    
+    console.log(`[CalibrationLab] 🔬 CH${channelIndex + 1} (${channelType}) = ${value}`)
     
     try {
-      // Use Arbiter for known channel types
-      if (channelType !== 'unknown' && window.lux?.arbiter?.setManual) {
-        await window.lux.arbiter.setManual({
+      const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
+      if (!arbiter?.setManual) {
+        console.warn('[CalibrationLab] ⚠️ arbiter.setManual not available')
+        return
+      }
+      
+      // Canales que el Arbiter resuelve directamente via getManualChannelValue
+      const NATIVE_CHANNELS = new Set([
+        'dimmer', 'red', 'green', 'blue', 'white', 'amber', 'uv',
+        'pan', 'tilt', 'zoom', 'focus', 'speed', 'strobe', 'gobo', 'color_wheel',
+      ])
+      
+      if (NATIVE_CHANNELS.has(channelType)) {
+        // Canal nativo → controls.{tipo} directo
+        await arbiter.setManual({
           fixtureIds: [activeFixtureId],
           controls: { [channelType]: value },
           channels: [channelType],
         })
+      } else {
+        // Canal phantom (unknown, custom, frost, rotation, etc.)
+        // → controls.phantomChannels.{tipo} para que el Arbiter
+        //   lo lea en resolveFixtureTarget y lo pase al HAL
+        await arbiter.setManual({
+          fixtureIds: [activeFixtureId],
+          controls: { phantomChannels: { [channelType]: value } },
+          channels: [channelType],
+        })
       }
     } catch (err) {
-      console.error('[CalibrationLab] DMX Scanner error:', err)
+      console.error('[CalibrationLab] DMX send error:', err)
     }
   }, [activeFixtureId, channels])
   
-  const handleScannerChange = useCallback((value: number) => {
-    setScannerValue(value)
-    sendDMX(scannerChannel, value)
-  }, [scannerChannel, sendDMX])
+  /**
+   * Reset all channels to 0
+   */
+  const resetAllChannels = useCallback(() => {
+    const zeroed: Record<number, number> = {}
+    channels.forEach((_, idx) => {
+      zeroed[idx] = 0
+      sendDMX(idx, 0)
+    })
+    setChannelValues(zeroed)
+  }, [channels, sendDMX])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS: TEST ACTIONS
@@ -336,8 +422,7 @@ const CalibrationView: React.FC = () => {
   const handleFixtureSelect = useCallback((fixtureId: string) => {
     selectFixture(fixtureId, 'replace')
     setActiveTest(null)
-    setScannerValue(0)
-    setScannerChannel(0)
+    setChannelValues({})
   }, [selectFixture])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -492,12 +577,12 @@ const CalibrationView: React.FC = () => {
       </header>
       
       {/* ═══════════════════════════════════════════════════════════════════
-          MAIN CONTENT - DUAL ZONE
+          MAIN CONTENT - DUAL ZONE (WAVE 3000 LAYOUT)
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="lab-content">
         
         {/* ─────────────────────────────────────────────────────────────────
-            ZONE A: TARGETING BAY (Left 60%)
+            ZONE A: TARGETING + CONTROLS (Left ~42%)
             ───────────────────────────────────────────────────────────────── */}
         <div className="zone-targeting">
           
@@ -617,104 +702,6 @@ const CalibrationView: React.FC = () => {
               <span className="data-max">/ 270°</span>
             </div>
           </div>
-        </div>
-        
-        {/* ─────────────────────────────────────────────────────────────────
-            ZONE B: TOOL RACK (Right 40%)
-            ───────────────────────────────────────────────────────────────── */}
-        <div className="zone-tools">
-          
-          {/* FIXTURE RACK */}
-          <div className="tool-panel fixture-rack">
-            <div className="panel-header">
-              <span className="panel-title">FIXTURE RACK</span>
-              <span className="panel-badge">{allFixtures.length}</span>
-            </div>
-            <div className="fixture-list">
-              {allFixtures.length === 0 ? (
-                <div className="empty-state">
-                  <span className="empty-text">No fixtures in show</span>
-                  <span className="empty-hint">Load a show or add fixtures</span>
-                </div>
-              ) : (
-                allFixtures.map((fixture, idx) => (
-                  <button
-                    key={fixture.id}
-                    className={`fixture-item ${activeFixtureId === fixture.id ? 'selected' : ''}`}
-                    onClick={() => handleFixtureSelect(fixture.id)}
-                  >
-                    <span className="fixture-index">{idx + 1}</span>
-                    <span className="fixture-icon">{getFixtureIcon(fixture.type)}</span>
-                    <span className="fixture-name">{fixture.name}</span>
-                    <span className="fixture-dmx">CH {fixture.address}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-          
-          {/* DMX SCANNER */}
-          <div className="tool-panel dmx-scanner">
-            <div className="panel-header">
-              <span className="panel-title">DMX SCANNER</span>
-              {activeFixture && <span className="panel-badge">DMX {dmxBaseAddress}</span>}
-            </div>
-            
-            {channels.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-text">No channels</span>
-              </div>
-            ) : (
-              <div className="scanner-content">
-                <div className="scanner-channel">
-                  <label>Channel:</label>
-                  <select 
-                    value={scannerChannel}
-                    onChange={(e) => {
-                      setScannerChannel(Number(e.target.value))
-                      setScannerValue(0)
-                    }}
-                  >
-                    {channels.map((ch, idx) => (
-                      <option key={idx} value={idx}>
-                        {idx + 1}: {ch.name} ({ch.type})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="scanner-slider">
-                  <input
-                    type="range"
-                    min="0"
-                    max="255"
-                    value={scannerValue}
-                    onChange={(e) => handleScannerChange(Number(e.target.value))}
-                  />
-                  <span className="scanner-value">{scannerValue}</span>
-                </div>
-                
-                <div className="scanner-presets">
-                  {['dimmer', 'strobe', 'gobo', 'color_wheel', 'pan', 'tilt'].map(type => {
-                    const idx = channels.findIndex(c => c.type === type)
-                    if (idx < 0) return null
-                    return (
-                      <button
-                        key={type}
-                        className={`preset-btn ${scannerChannel === idx ? 'active' : ''}`}
-                        onClick={() => {
-                          setScannerChannel(idx)
-                          setScannerValue(0)
-                        }}
-                      >
-                        {type.replace('_', ' ').toUpperCase().slice(0, 4)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
           
           {/* OFFSET CONFIG */}
           <div className="tool-panel offset-config">
@@ -786,6 +773,96 @@ const CalibrationView: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+        
+        {/* ─────────────────────────────────────────────────────────────────
+            ZONE B: FIXTURE RACK + CHANNEL GRID (Right ~58%)
+            ───────────────────────────────────────────────────────────────── */}
+        <div className="zone-channels">
+
+          {/* FIXTURE RACK (fila superior, max-height fijo) */}
+          <div className="tool-panel fixture-rack">
+            <div className="panel-header">
+              <span className="panel-title">FIXTURE RACK</span>
+              <span className="panel-badge">{allFixtures.length}</span>
+            </div>
+            <div className="fixture-list">
+              {allFixtures.length === 0 ? (
+                <div className="empty-state">
+                  <span className="empty-text">No fixtures in show</span>
+                </div>
+              ) : (
+                allFixtures.map((fixture, idx) => (
+                  <button
+                    key={fixture.id}
+                    className={`fixture-item ${activeFixtureId === fixture.id ? 'selected' : ''}`}
+                    onClick={() => handleFixtureSelect(fixture.id)}
+                  >
+                    <span className="fixture-index">{idx + 1}</span>
+                    <span className="fixture-icon">{getFixtureIcon(fixture.type)}</span>
+                    <span className="fixture-name">{fixture.name}</span>
+                    <span className="fixture-dmx">CH {fixture.address}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* CHANNEL GRID (fila inferior, ocupa espacio restante) */}
+          <div className="tool-panel channel-grid-panel">
+            <div className="panel-header">
+              <span className="panel-title">DMX CHANNEL GRID</span>
+              {activeFixture && <span className="panel-badge">DMX {dmxBaseAddress} · {channels.length}CH</span>}
+              <button 
+                className="reset-all-btn"
+                onClick={resetAllChannels}
+                disabled={!activeFixtureId || channels.length === 0}
+              >
+                RESET ALL
+              </button>
+            </div>
+            
+            {channels.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-text">No channels</span>
+                <span className="empty-hint">Select a fixture with channel data</span>
+              </div>
+            ) : (
+              <div className="channel-grid">
+                {channels.map((ch, idx) => {
+                  const val = channelValues[idx] ?? 0
+                  const pct = Math.round((val / 255) * 100)
+                  return (
+                    <div key={idx} className={`channel-card ${val > 0 ? 'active' : ''}`}>
+                      <div className="channel-card-header">
+                        <span className="channel-number">{idx + 1}</span>
+                        <span className="channel-type">{ch.type.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="channel-name">{ch.name}</div>
+                      <div className="channel-slider-row">
+                        <input
+                          type="range"
+                          className="channel-slider"
+                          min="0"
+                          max="255"
+                          value={val}
+                          onChange={(e) => sendDMX(idx, Number(e.target.value))}
+                          disabled={!activeFixtureId}
+                        />
+                      </div>
+                      <div className="channel-value-row">
+                        <span className="channel-dmx-value">{val}</span>
+                        <span className="channel-pct">{pct}%</span>
+                      </div>
+                      <div className="channel-fill-bar">
+                        <div className="channel-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

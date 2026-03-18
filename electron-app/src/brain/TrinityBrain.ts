@@ -28,7 +28,7 @@ import type { AudioAnalysis } from '../workers/WorkerProtocol'
  */
 export interface TrinityBrainEvents {
   'context-update': (context: MusicalContext) => void
-  'audio-levels': (levels: { bass: number; mid: number; treble: number; energy: number }) => void
+  'audio-levels': (levels: { bass: number; mid: number; treble: number; energy: number; kickCount?: number; [key: string]: unknown }) => void
   'ready': () => void
   'error': (error: Error) => void
 }
@@ -249,6 +249,9 @@ export class TrinityBrain extends EventEmitter {
       onBeat: analysis.onBeat,
       beatPhase: analysis.beatPhase,
       beatStrength: analysis.beatStrength,
+      // 🥁 WAVE 2213: EL TERCER CABLE — Contador monotónico de kicks
+      // Sin esto: kickCount no cruza el puente IPC → workerKickCount=undefined → Bar:0 para siempre
+      kickCount: analysis.kickCount,
     })
 
     // Log cada ~30 frames (1 segundo)

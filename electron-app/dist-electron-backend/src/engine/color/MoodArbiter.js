@@ -149,6 +149,10 @@ export class MoodArbiter {
         //   console.log(`[MoodArbiter] 🎭 Stable=${this.stableEmotion} Instant=${instantEmotion} Dom=${(maxDominance * 100).toFixed(0)}% Temp=${thermalTemperature.toFixed(2)} Votes(B/D/N)=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}${zodiacAffinity.isEarthSign ? ` ♍ Zodiac=${zodiacAffinity.key}` : ''}`);
         //   this.lastLogFrame = this.frameCount;
         // }
+        // 📡 WAVE 2204.2: ARBITER INPUT RADAR — cada 60 frames confirma qué llega
+        if (this.frameCount % 60 === 0) {
+            console.log(`[ARBITER 🎭] In: mood='${input.mood}' mode='${input.mode}' → instant=${instantEmotion} stable=${this.stableEmotion} dom=${(maxDominance * 100).toFixed(0)}% B/D/N=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}`);
+        }
         return {
             stableEmotion: this.stableEmotion,
             instantEmotion,
@@ -317,6 +321,7 @@ MoodArbiter.MOOD_MAP = {
     'playful': 'BRIGHT',
     'bluesy': 'BRIGHT', // Blues tiene energía positiva
     'spanish_exotic': 'BRIGHT', // Flamenco es intenso pero cálido
+    'triumphant': 'BRIGHT', // 🎭 WAVE 2204.2: Triunfo = cálido/festivo
     // DARK
     'sad': 'DARK',
     'tense': 'DARK',
@@ -324,6 +329,7 @@ MoodArbiter.MOOD_MAP = {
     'dramatic': 'DARK',
     'melancholic': 'DARK',
     'aggressive': 'DARK',
+    'mysterious': 'DARK', // 🎭 WAVE 2204.2: Misterio = frío/oscuro
     // NEUTRAL
     'calm': 'NEUTRAL',
     'peaceful': 'NEUTRAL',
@@ -334,8 +340,8 @@ MoodArbiter.MOOD_MAP = {
 };
 // Default config
 MoodArbiter.DEFAULT_CONFIG = {
-    bufferSize: 600, // 10 segundos @ 60fps
-    lockingFrames: 300, // 5 segundos para confirmar cambio
+    bufferSize: 300, // 🎭 WAVE 2205: 120→300 (5 segundos @ 60fps — transatlántico)
+    lockingFrames: 120, // 🎭 WAVE 2205: 60→120  (2 segundos — fade suave en movers)
     dominanceThreshold: 0.60, // 60% de dominancia requerida
     useEnergyWeighting: true,
     confidenceBonus: 1.5,

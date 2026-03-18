@@ -968,6 +968,103 @@
   min-height: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 AUDIO POWER TOGGLE — KILL AUTO-AUDIO
+   Botón ON/OFF duro para el audio. OFF = default absoluto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-power-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1.5px solid;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.audio-power-toggle.off {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.audio-power-toggle.off:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.4);
+  color: rgba(34, 211, 238, 0.8);
+}
+
+.audio-power-toggle.on {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.6);
+  color: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.2);
+}
+
+.audio-power-toggle.on:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: rgba(255, 80, 80, 0.5);
+  color: rgba(255, 100, 100, 0.9);
+  box-shadow: none;
+}
+
+.audio-power-toggle.connecting {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.audio-power-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Header del audio sin el clickable global — el toggle es el único control maestro */
+.audio-header {
+  cursor: default;
+  user-select: none;
+}
+
+/* Título dimmed cuando está OFF */
+.section-title.dimmed {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* Acordeón arrow del audio: clickable solo */
+.audio-header .accordion-arrow {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.audio-header .accordion-arrow:hover {
+  background: rgba(34, 211, 238, 0.08);
+  color: #22d3ee;
+}
+
+.audio-header .accordion-arrow.active {
+  color: #22d3ee;
+}
+
+/* Sección audio cuando está OFF: borde y fondo apagados */
+.system-section.audio-off {
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 0.85;
+}
+
+.system-section.audio-on {
+  border-color: rgba(34, 211, 238, 0.15);
+}
+
 .patch-bay-header {
   display: flex;
   align-items: center;

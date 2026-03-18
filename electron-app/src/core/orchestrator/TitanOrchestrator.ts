@@ -53,6 +53,9 @@ type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'i
 // 🎨 WAVE 686.10: Import IDMXDriver for external driver injection
 import type { IDMXDriver } from '../../hal/drivers'
 
+// 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
+import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
+
 /**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
@@ -96,7 +99,7 @@ export class TitanOrchestrator {
   // Timeout: 300 frames (~5s a 60fps) → luego cede al Pacemaker interno.
   private lastStableWorkerBpm = 0
   private lastStableWorkerBpmFrame = 0
-  private readonly FREEWHEEL_TIMEOUT_FRAMES = 300  // ~5s a 60fps
+  private readonly FREEWHEEL_TIMEOUT_FRAMES = 125  // ~5s a 25fps
 
   private config: TitanConfig
   private isInitialized = false
@@ -106,12 +109,21 @@ export class TitanOrchestrator {
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
-  // setInterval(16) fires every 16ms regardless of whether the previous
+  // setInterval fires every Xms regardless of whether the previous
   // processFrame() has finished. Since processFrame() is async (await engine.update()),
   // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
   // This flag ensures only ONE processFrame() runs at a time.
   // ═══════════════════════════════════════════════════════════════════════════
   private isProcessingFrame = false
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 DMX TIMING — Frame-drop protection for physical DMX timing
+  // DMX512 spec: 1 frame = ~25ms (Break 88µs + MAB 8µs + 512ch × 44µs).
+  // Combined with isProcessingFrame (WAVE 2211), the 40ms loop interval
+  // guarantees ~13ms of margin for the FTDI chip to drain its buffer before
+  // the next frame arrives. No explicit isSendingDMX flag needed: the
+  // Stampede Guard already ensures the pipeline is never re-entered.
+  // ═══════════════════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🗑️ WAVE 2211: PRE-ALLOCATED FFT BUFFER — GC pressure reduction
@@ -162,6 +174,8 @@ export class TitanOrchestrator {
     workerOnBeat?: boolean;
     workerBeatPhase?: number;
     workerBeatStrength?: number;
+    // 🥁 WAVE 2213: Cumulative kick counter from Worker (phrase detection)
+    workerKickCount?: number;
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
@@ -259,6 +273,8 @@ export class TitanOrchestrator {
         // 🔥 WAVE 2112: BPM from GodEarBPMTracker in Worker
         bpm?: number; bpmConfidence?: number; onBeat?: boolean;
         beatPhase?: number; beatStrength?: number;
+        // 🥁 WAVE 2213: Cumulative kick counter (phrase detection)
+        kickCount?: number;
       }) => {
         // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
         // NO sobrescribir bass/mid/high/energy - Frontend tiene prioridad temporal (30fps)
@@ -296,6 +312,10 @@ export class TitanOrchestrator {
           workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
           workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
           workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+          // 🥁 WAVE 2213: Reconectar el cable roto — kickCount es monotónico, siempre avanza
+          workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
+            ? levels.kickCount
+            : this.lastAudioData.workerKickCount,
         };
       });
       
@@ -324,6 +344,8 @@ export class TitanOrchestrator {
     
     this.hal = new HardwareAbstraction({ 
       debug: this.config.debug,
+      // 🔥 WAVE: USB por defecto. Si hay externalDriver, HardwareAbstraction lo usa y este valor no estorba.
+      driverType: 'usb',
       externalDriver: this.config.dmxDriver
     })
     
@@ -347,19 +369,45 @@ export class TitanOrchestrator {
     this.isRunning = true
     this.mainLoopInterval = setInterval(() => {
       this.processFrame()
-    }, 16) // ~60fps (was 33ms/30fps)
+    }, 40) // 25fps — da ~13ms de margen sobre el frame DMX512 físico (~27ms)
+           // DMX512: Break(88µs) + MAB(8µs) + 512ch×44µs ≈ 22.6ms/frame mín.
+           // a 40ms el chip FTDI drena el buffer antes del siguiente frame.
     
     // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
     setTimeout(() => {
-      this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 30fps')
+      this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 25fps (DMX-safe)')
       this.log('Info', `📊 Fixtures loaded: ${this.fixtures.length}`)
     }, 100)
   }
 
   /**
-   * Stop the main loop
+   * Stop the main loop.
+   * 
+   * 🧟 ZOMBIE KILLER: antes de matar el loop, forzamos un frame de ceros
+   * físico al hardware. Sin esto, el último frame de luz queda "congelado"
+   * en el buffer FTDI → los cabezales móviles siguen recibiendo su último
+   * comando y sus motores oscilan (micro-tug-of-war → pérdida de pasos).
+   * 
+   * Secuencia:
+   *   1. Blackout lógico en el HAL (mapper + driver)
+   *   2. Flush físico del buffer a cero vía universalDMX.blackout() + sendAll()
+   *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
+   *   4. clearInterval + isRunning = false
    */
-  stop(): void {
+  async stop(): Promise<void> {
+    // Paso 1: Blackout lógico en el HAL (si ya fue inicializado)
+    if (this.hal) {
+      this.hal.setBlackout(true)
+    }
+
+    // Paso 2: Forzar buffer de ceros directo al driver serial
+    universalDMX.blackout()
+    await universalDMX.sendAll()
+
+    // Paso 3: Dar tiempo al chip FTDI para drenar los bytes al cable RS-485
+    await new Promise<void>(resolve => setTimeout(resolve, 30))
+
+    // Paso 4: Ahora sí podemos matar el loop sin dejar zombis
     if (this.mainLoopInterval) {
       clearInterval(this.mainLoopInterval)
       this.mainLoopInterval = null
@@ -430,7 +478,15 @@ export class TitanOrchestrator {
         harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
         subBass: undefined, lowMid: undefined, highMid: undefined,
         kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
-        rawBassEnergy: undefined  // 🔥 WAVE 1162.2: Reset también el bypass
+        rawBassEnergy: undefined,  // 🔥 WAVE 1162.2: Reset también el bypass
+        // 🔥 WAVE 2213: PRESERVAR MEMORIA DEL WORKER DURANTE EL SILENCIO
+        // Sin esto: workerBpm → undefined → zombie BeatDetector → 200 BPM hardcodeado
+        workerBpm: this.lastAudioData.workerBpm,
+        workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+        workerOnBeat: false, // Es silencio, no hay beat activo
+        workerBeatPhase: this.lastAudioData.workerBeatPhase,
+        workerBeatStrength: 0,
+        workerKickCount: this.lastAudioData.workerKickCount,
       }
     }
     
@@ -525,7 +581,7 @@ export class TitanOrchestrator {
         const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
           ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
           : ''
-        console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${beatState.beatCount}`)
+        console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0}`)
       }
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
@@ -583,7 +639,10 @@ export class TitanOrchestrator {
       // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
       beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
       isBeat: workerOnBeat || beatState.onBeat,
-      beatCount: beatState.beatCount,
+      // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
+      // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
+      // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
+      beatCount: this.lastAudioData.workerKickCount ?? beatState.beatCount,
       bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
       beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
       // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
@@ -644,6 +703,32 @@ export class TitanOrchestrator {
     
     // Arbitrate all layers (this merges manual overrides, effects, blackout)
     const arbitratedTarget = masterArbiter.arbitrate()
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
+    // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
+    // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1'
+      if (traceEnabled) {
+        const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10)
+        const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60
+        if (this.frameCount % every === 0) {
+          const traceFixtureId =
+            process?.env?.LUXSYNC_TRACE_FIXTURE_ID
+              ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+              : undefined
+
+          // const traced = traceFixtureId
+          //   ? arbitratedTarget.fixtures.find(f => f.fixtureId === traceFixtureId)
+          //   : null
+          // 🔎 TRACE CP2 DISABLED: Remove this for now; keeping CP3 + CP4 for final mile forensics
+        }
+      }
+    } catch {
+      // never block the render loop
+    }
     
     // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
     // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
@@ -670,6 +755,9 @@ export class TitanOrchestrator {
     
     // 4. HAL renders arbitrated target -> produces fixture states
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
+    // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
+    // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
+    // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -1344,8 +1432,8 @@ export class TitanOrchestrator {
         tilt: 128,          // 🎯 Center
       }))
       
-      // Throttled log (every ~5s at 30fps)
-      if (this.frameCount % 150 === 0) {
+      // Throttled log (every ~5s a 25fps)
+      if (this.frameCount % 125 === 0) {
         console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`)
       }
     }
@@ -1373,13 +1461,13 @@ export class TitanOrchestrator {
         system: {
           frameNumber: this.frameCount,
           timestamp: Date.now(),
-          deltaTime: 33,
-          targetFPS: 30,
-          actualFPS: 30,
+          deltaTime: 40,
+          targetFPS: 25,
+          actualFPS: 25,
           mode: this.mode === 'auto' ? 'selene' : 'manual',
           vibe: currentVibe,
           brainStatus: 'peaceful',
-          uptime: this.frameCount * 33,
+          uptime: this.frameCount * 40,
           titanEnabled: true,
           sessionId: 'titan-2.0',
           version: '2.0.0',
@@ -1884,6 +1972,10 @@ export class TitanOrchestrator {
       workerOnBeat: this.lastAudioData.workerOnBeat,
       workerBeatPhase: this.lastAudioData.workerBeatPhase,
       workerBeatStrength: this.lastAudioData.workerBeatStrength,
+      // 🥁 WAVE 2213: NO BORRAR EL CONTADOR DEL WORKER 30 VECES POR SEGUNDO
+      // processAudioFrame() corre a 30fps — sin esta línea, workerKickCount → undefined
+      // → beatCount=0 → VMM atascado en Bar:0 para siempre, patrones nunca cambian
+      workerKickCount: this.lastAudioData.workerKickCount,
     }
     
     // 🔥 WAVE 1012.5: Frontend también detecta audio real

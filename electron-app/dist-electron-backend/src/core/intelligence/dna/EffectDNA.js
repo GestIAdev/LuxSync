@@ -86,10 +86,13 @@ export const EFFECT_DNA_REGISTRY = {
     // 🔪 TECHNO-INDUSTRIAL: Los Martillos
     // ═══════════════════════════════════════════════════════════════
     'industrial_strobe': {
-        aggression: 0.95, // 🔥 El martillo más brutal
-        chaos: 0.30, // Ordenado: flashes predecibles
-        organicity: 0.05, // 100% máquina
-        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. Un strobe ES el impacto, no necesita harshness del audio
+        aggression: 0.95, // 🔥 El martillo más brutal — sin cambio, ya era correcto
+        chaos: 0.55, // 🔨 WAVE 2202: 0.30→0.55. Era demasiado "ordenado" para un strobe industrial.
+        // chaos=0.30 lo hacía predecible y plano vs gatling_raid (0.40).
+        // Un strobe industrial REAL no es metronómico — tiene burst irregulares,
+        // variaciones de intensidad, micro-stutters. 0.55 lo hace vivo y brutal.
+        organicity: 0.05, // 100% máquina — sin cambio
+        textureAffinity: 'universal',
     },
     'acid_sweep': {
         aggression: 0.70, // Agresivo pero más fluido
@@ -106,7 +109,7 @@ export const EFFECT_DNA_REGISTRY = {
     // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
     'gatling_raid': {
         aggression: 0.90, // 🔫 Ametralladora de PARs
-        chaos: 0.40, // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
+        chaos: 0.40, // � WAVE 2183: 0.40→0.55 — más caótico, más variedad en el mix
         organicity: 0.10, // Mecánico puro
         textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. La ametralladora dispara en cualquier contexto
     },
@@ -140,7 +143,7 @@ export const EFFECT_DNA_REGISTRY = {
         textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. Un flash sísmico no necesita que el audio sea dirty
     },
     'digital_rain': {
-        aggression: 0.35, // 🌧️ WAVE 977: 0.20 → 0.35 (más presencia)
+        aggression: 0.50, // 🌧️ WAVE 2183: 0.35→0.50 — más presencia, compite en ACTIVE/INTENSE
         chaos: 0.65, // Caótico (gotas aleatorias)
         organicity: 0.40, // Semi-orgánico (agua)
         textureAffinity: 'universal', // 🎨 Matrix versátil
@@ -185,10 +188,34 @@ export const EFFECT_DNA_REGISTRY = {
         textureAffinity: 'clean', // 🎨 Elegante, requiere claridad
     },
     'core_meltdown': {
-        aggression: 1.00, // ☢️ MÁXIMA - LA BESTIA
-        chaos: 1.00, // MÁXIMO - Impredecible strobe
-        organicity: 0.00, // 100% máquina apocalíptica
-        textureAffinity: 'universal', // 🩸 WAVE 2104.2: dirty→universal. La Bestia despierta cuando ella quiere, no cuando el audio suena sucio
+        aggression: 1.00, // ☢️ MÁXIMA - LA BESTIA — intocable
+        chaos: 0.75, // ☢️ WAVE 2202: 0.65→0.75. El meltdown original era más caótico.
+        // En algún punto entre waves se bajó y perdió personalidad.
+        // 0.75 lo devuelve a su estado salvaje: impredecible, devastador.
+        organicity: 0.00, // 100% máquina apocalíptica — intocable
+        textureAffinity: 'universal',
+    },
+    // ═══════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
+    // 🔥 WAVE 2183: APEX STEROIDS — DNA Rebalance (Cognitive Fix)
+    // ═══════════════════════════════════════════════════════════════
+    'neon_blinder': {
+        aggression: 0.82, // ⚡ WAVE 2183: 0.92→0.82 — NERF. Deja de ganar SIEMPRE la distancia euclidiana en drops.
+        chaos: 0.15, // Ordenado: ADSR predecible. Su baja chaos ahora lo diferencia de strobe_storm (0.75)
+        organicity: 0.05, // 100% máquina — descarga eléctrica pura
+        textureAffinity: 'universal',
+    },
+    'surgical_strike': {
+        aggression: 0.88, // 🎯 Quirúrgico: letal. Se mantiene por encima de neon_blinder
+        chaos: 0.25, // Semi-ordenado: mover targeting determinista
+        organicity: 0.02, // Máquina absoluta — precisión de bisturí
+        textureAffinity: 'dirty', // El bisturí corta en el ruido, no en la calma
+    },
+    'ghost_chase': {
+        aggression: 0.25, // 👻 Fantasmal: cero violencia — solo presencia
+        chaos: 0.15, // Ordenado: sine waves desfasadas predecibles
+        organicity: 0.90, // Máxima organicidad — parece vida espectral
+        textureAffinity: 'universal',
     },
     // ═══════════════════════════════════════════════════════════════
     //  FIESTA LATINA ARSENAL - THE LATINO LADDER (WAVE 1004.4 + 1005.x)
@@ -249,9 +276,15 @@ export const EFFECT_DNA_REGISTRY = {
     // ⚔️ ZONA 5: ACTIVE (60-75% Energía)
     'glitch_guaguanco': {
         aggression: 0.64, // ⚔️ WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
-        chaos: 0.60, // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
+        chaos: 0.28, // 🩸 WAVE 2191: 0.60→0.28 — CIRUGÍA MAYOR. chaos=0.60 era LETAL.
+        // Target ACTIVE (energy≈0.67): chaos≈0.25. Con 0.60 la distancia
+        // euclidiana era ~0.37 vs machete_spark ~0.17 → perdía siempre.
+        // 0.28 lo pone a distancia comparable. El "glitch" visual viene del
+        // DeterministicChaos engine del efecto, no del DNA chaos.
         organicity: 0.35, // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
-        textureAffinity: 'dirty', // 🎨 Glitch = ruido
+        textureAffinity: 'universal', // 🩸 WAVE 2191: 'dirty'→'universal'. En reggaetón/dembow
+        // la claridad es alta (kick limpio). 'dirty' lo bloqueaba
+        // en el filtro de textura antes de competir por DNA.
     },
     'machete_spark': {
         aggression: 0.70, // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
@@ -261,9 +294,13 @@ export const EFFECT_DNA_REGISTRY = {
     },
     // 🔥 ZONA 6: INTENSE (75-90% Energía)
     'salsa_fire': {
-        aggression: 0.81, // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
-        chaos: 0.30, // 🔻 WAVE 1009.4: 0.55→0.30 (FUEGO RÍTMICO - llamas siguen el kick)
-        organicity: 0.35, // 🔻 WAVE 1009.4: 0.40→0.35 (hacerlo un poco menos 'orgánico' para dar ventaja a solar_flare)
+        aggression: 0.75, // � WAVE 2200: 0.81→0.75 — NERF DROP DOMINATION
+        // Con A=0.81 coincidía exactamente con el DROP SNAP floor (0.80),
+        // ganando SIEMPRE la distancia euclidiana en drops.
+        // Con A=0.75 queda firmemente en INTENSE pre-drop.
+        // solar_flare (0.86) y oro_solido (0.90) ahora dominan el drop real.
+        chaos: 0.22, // 🔻 WAVE 2200: 0.30→0.22 (fuego más rítmico, menos caótico)
+        organicity: 0.38, // 🆙 WAVE 2200: 0.35→0.38 (llamas orgánicas, no máquina)
         textureAffinity: 'universal', // 🎨 Fuego versátil
     },
     'solar_flare': {
@@ -274,14 +311,23 @@ export const EFFECT_DNA_REGISTRY = {
     },
     // 💥 ZONA 7: PEAK (90-100% Energía)
     'latina_meltdown': {
-        aggression: 0.97, // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
-        chaos: 0.20, // 🔻 WAVE 1009.4: 0.30→0.20 (ULTRA ORDENADO - derretimiento en el kick)
-        organicity: 0.20, // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
+        aggression: 0.92, // 🩸 WAVE 2190: 0.97→0.92 — NERF QUIRÚRGICO. Era tan alto que ganaba
+        // SIEMPRE la distancia euclidiana en PEAK. Ahora oro_solido (0.90) y
+        // strobe_storm (0.93) pueden competir en rotación. Sigue siendo APEX.
+        chaos: 0.20, // 🔻 WAVE 1009.4: ULTRA ORDENADO - derretimiento en el kick
+        organicity: 0.20, // 🆙 WAVE 1005.8: alcanzable
         textureAffinity: 'dirty', // 🎨 Meltdown = intenso, requiere harshness
     },
+    'oro_solido': {
+        // 🥇 WAVE 2189: EL TROMPETAZO — golpe de toda la sección de vientos + bombo masivo
+        aggression: 0.90, // 🥇 Golpe brutal — toda la sección de vientos de golpe
+        chaos: 0.15, // Coreografiado y simétrico — cero caos, movimiento de apertura
+        organicity: 0.40, // Cuerpo físico (vientos + bombo) — no es máquina pura, es músculo
+        textureAffinity: 'universal', // 🥇 El oro brilla en cualquier textura — no necesita harshness
+    },
     'strobe_storm': {
-        aggression: 0.93, // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
-        chaos: 0.75, // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
+        aggression: 0.93, // ⚡ WAVE 1005.14 / WAVE 2183: Se mantiene brutal
+        chaos: 0.35, // � WAVE 2183: 0.75→0.55 — BUFF masivo. Era tan caótico que la distancia euclidiana lo dejaba fuera de cualquier drop limpio. Ahora compite con neon_blinder.
         organicity: 0.15, // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
         textureAffinity: 'dirty', // 🎨 Tormenta de strobes = caos dirty
     },

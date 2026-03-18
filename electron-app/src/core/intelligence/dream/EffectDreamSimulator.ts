@@ -242,7 +242,7 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'core_meltdown': { base: 0.97, energyMultiplier: 1.6, technoBonus: 0.28 },   // ☢️ WAVE 2202: base 0.95→0.97, mult 1.5→1.6, bonus 0.25→0.28. La Bestia recupera su corona.
   // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
   'neon_blinder': { base: 0.86, energyMultiplier: 1.38, technoBonus: 0.21 },   // ⚡ APEX flash wall - high impact
-  'surgical_strike': { base: 0.84, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🎯 APEX mover strobe - surgical beauty
+  'surgical_strike': { base: 0.62, energyMultiplier: 1.10, technoBonus: 0.12 }, // ⚰️ WAVE 2214: DEMOTED 0.84→0.62 — intense tier, deja peak a IndustrialStrobe
   'ghost_chase': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.10 },    // 👻 Ghost chase — WAVE 2186: base 0.56→0.60, multiplier 0.55→0.75, bonus 0.07→0.10
   // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
   // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
@@ -757,12 +757,12 @@ export class EffectDreamSimulator {
       // 🎚️ WAVE 996: THE LADDER - 16 efectos techno totales
       'techno-club': [
         // PEAK (90-100%)
-        'industrial_strobe',  // El martillo
+        'industrial_strobe',  // El martillo — APEX único en peak
         'gatling_raid',       // Machine gun
         'core_meltdown',      // ☢️ WAVE 988: LA BESTIA
         'neon_blinder',       // ⚡ WAVE 2182: APEX flash wall
-        'surgical_strike',    // 🎯 WAVE 2182: APEX mover strobe
         // INTENSE (75-90%)
+        'surgical_strike',    // ⚰️ WAVE 2214: DEMOTED — bisturí de movers, dimmer puro
         'sky_saw',            // Cortes agresivos
         'abyssal_rise',       // 🌪️ WAVE 930: Epic rise
         // ACTIVE (60-75%)

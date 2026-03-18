@@ -132,6 +132,8 @@ export interface AudioAnalysis {
   beatPhase: number;          // 0-1 (position in beat cycle)
   /** WAVE 2112: Real beat strength from GodEarBPMTracker */
   beatStrength: number;       // 0-1
+  /** WAVE 2213: Cumulative kick counter from IntervalBPMTracker (used for phrase detection) */
+  kickCount?: number;         // Total kicks detected since reset
   
   // Rhythm
   syncopation: number;        // 0-1 (off-beat emphasis)

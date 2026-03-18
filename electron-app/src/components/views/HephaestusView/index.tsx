@@ -153,6 +153,10 @@ const HephaestusView: React.FC = () => {
   const stageFixtures = useStageStore(selectFixtures)
   const preview = useHephPreview(clip, stageFixtures)
 
+  // ── WAVE 2213: Load Show desde Hephaestus ──
+  const showFile = useStageStore(state => state.showFile)
+  const [isLoadingShow, setIsLoadingShow] = useState(false)
+
   /**
    * ⚒️ WAVE 2040.17: DIAMOND CACHE
    * Pre-cached serialized clips for zero-latency D&D to Chronos.
@@ -495,6 +499,28 @@ const HephaestusView: React.FC = () => {
   const handleNew = useCallback(() => {
     // WAVE 2030.8: Open modal instead of creating dummy clip
     setShowNewClipModal(true)
+  }, [])
+
+  // 🔥 WAVE 2213: Load Show desde Hephaestus — misma lógica que ActiveSession.tsx
+  const handleLoadShow = useCallback(async () => {
+    setIsLoadingShow(true)
+    try {
+      const luxApi = (window as any).lux
+      if (!luxApi?.stage?.openDialog) {
+        console.error('[HephaestusView] window.lux.stage.openDialog not available')
+        return
+      }
+      const result = await luxApi.stage.openDialog()
+      if (result?.success) {
+        console.log(`✅ [HephaestusView] Show loaded: ${result.filePath}`)
+      } else if (!result?.cancelled) {
+        console.error('[HephaestusView] Failed to load show')
+      }
+    } catch (err) {
+      console.error('[HephaestusView] Error in load show dialog:', err)
+    } finally {
+      setIsLoadingShow(false)
+    }
   }, [])
 
   // WAVE 2030.8: Create clip from modal and save immediately
@@ -1436,6 +1462,27 @@ const HephaestusView: React.FC = () => {
           >
             ↪
           </button>
+
+          {/* 🔥 WAVE 2213: LOAD SHOW — carga el escenario sin salir del Lab */}
+          <div className="heph-header__load-show">
+            <button
+              className={`heph-header__btn heph-header__btn--load-show ${isLoadingShow ? 'heph-header__btn--disabled' : ''}`}
+              onClick={handleLoadShow}
+              disabled={isLoadingShow}
+              title={showFile ? `Show: ${showFile.name} (${stageFixtures.length} fixtures) — Click para cargar otro` : 'Cargar Show File (.luxshow)'}
+            >
+              {isLoadingShow ? '⏳' : '📂'}
+              <span className="heph-header__btn-label">
+                {isLoadingShow ? 'LOADING' : showFile ? `${stageFixtures.length}F` : 'LOAD'}
+              </span>
+            </button>
+            {showFile && (
+              <span className="heph-header__show-name" title={showFile.name}>
+                {showFile.name}
+              </span>
+            )}
+          </div>
+
           <button 
             className="heph-header__btn" 
             onClick={handleNew}

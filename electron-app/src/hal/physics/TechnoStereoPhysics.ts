@@ -117,7 +117,7 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
   // 🥁 BACK (SNARE SNIPER) - Resurrección
-  private readonly BACK_PAR_GATE = 0.35       // 📉 Bajamos el gate para que pase la señal
+  private readonly BACK_PAR_GATE = 0.45       // 🔪 Subimos de 0.35 a 0.45. Cero piedad con los sintes flojos.
   private readonly BACK_PAR_SLAP_MULT = 3.0   // Multiplicador razonable
 
   // 👯 MOVERS (STEREO SPLIT)
@@ -240,8 +240,10 @@ export class TechnoStereoPhysics {
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND
     // =======================================================================
-    const snareAndSynthPower = Math.min(1.0, (mid * 0.25) + (mid * treble * 1.8));
-    let backParIntensity = this.calculateBackPar(snareAndSynthPower);
+    // 🔪 SNARE SNIPER: Exigimos que Mid y Treble choquen violentamente (firma de un Clap/Snare).
+    // Eliminamos el regalo de (mid * 0.25). Si es pura melodía, se queda a oscuras.
+    const snarePower = Math.min(1.0, (mid * treble * 3.0));
+    let backParIntensity = this.calculateBackPar(snarePower);
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
     let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);

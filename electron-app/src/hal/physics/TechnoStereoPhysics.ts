@@ -240,11 +240,10 @@ export class TechnoStereoPhysics {
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND
     // =======================================================================
-    // 🔪 EL CLAP TECHNO: En techno, la caja es una explosión de ruido blanco en los medios.
-    // Usamos 'flatness' (GodEar noise metric) para cazar el impacto del clap,
-    // y dejamos 'mid' suave para que los sintes dibujen el fondo de forma natural.
-    const synthBody = mid * 0.35;
-    const technoClap = mid * flatness * 2.5;
+    // 🔪 EL CLAP TECHNO (High-Mids Sniper): Tu análisis del espectro es la clave.
+    // En GodEarFFT, la métrica 'harshness' mapea exactamente a la banda High-Mid.
+    const synthBody = mid * 0.20; // Sintes muy tenues para no romper la oscuridad
+    const technoClap = (harshness * 2.0) + (treble * 0.5); // El hachazo de la caja
 
     const snarePower = Math.min(1.0, synthBody + technoClap);
     let backParIntensity = this.calculateBackPar(snarePower);

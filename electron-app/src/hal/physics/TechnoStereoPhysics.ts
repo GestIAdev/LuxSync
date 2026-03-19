@@ -117,7 +117,7 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
   // 🥁 BACK (SNARE SNIPER) - Resurrección
-  private readonly BACK_PAR_GATE = 0.45       // 🔪 Subimos de 0.35 a 0.45. Cero piedad con los sintes flojos.
+  private readonly BACK_PAR_GATE = 0.35       // 📉 Lo bajamos otra vez a 0.35
   private readonly BACK_PAR_SLAP_MULT = 3.0   // Multiplicador razonable
 
   // 👯 MOVERS (STEREO SPLIT)
@@ -143,8 +143,6 @@ export class TechnoStereoPhysics {
   private strobeActive = false
   private strobeStartTime = 0
   private lastBass = 0
-  private lastMid = 0      // 🔪 Memoria para transientes
-  private lastTreble = 0   // 🔪 Memoria para transientes
   private kickEnvelope = 0
   private lastKickTrigger = false // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
 
@@ -242,13 +240,13 @@ export class TechnoStereoPhysics {
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND
     // =======================================================================
-    const midSnap = Math.max(0, mid - this.lastMid);
-    const trebleSnap = Math.max(0, treble - this.lastTreble);
+    // 🔪 EL CLAP TECHNO: En techno, la caja es una explosión de ruido blanco en los medios.
+    // Usamos 'flatness' (GodEar noise metric) para cazar el impacto del clap,
+    // y dejamos 'mid' suave para que los sintes dibujen el fondo de forma natural.
+    const synthBody = mid * 0.35;
+    const technoClap = mid * flatness * 2.5;
 
-    // 🔪 SNARE SNIPER V2: Cazador de Transientes
-    // Premiamos la violencia del impacto (Snap) para cazar cajas sutiles.
-    // Los sintes sostenidos tienen snap=0, así que su valor cae en picado y se apagan.
-    const snarePower = Math.min(1.0, (midSnap * 2.5) + (trebleSnap * 2.0) + (mid * treble * 0.8));
+    const snarePower = Math.min(1.0, synthBody + technoClap);
     let backParIntensity = this.calculateBackPar(snarePower);
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
@@ -282,8 +280,6 @@ export class TechnoStereoPhysics {
 
     // Memoria para el siguiente frame
     this.lastBass = bass
-    this.lastMid = mid          // 🔪 Guardamos memoria
-    this.lastTreble = treble    // 🔪 Guardamos memoria
 
     return {
       strobeActive: strobeResult.active,

@@ -195,101 +195,76 @@ export class TechnoStereoPhysics {
     } = input
     const now = Date.now()
 
-    // ?? Modos
+    // 🕵️‍♂️ MODOS Y SILENCIO
     const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD
     const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD
 
-    // 🕵️‍♂️ WAVE 913: DETECCIÓN DE TRANSICIÓN DE SILENCIO
     if (isRealSilence || isAGCTrap) {
       this.inSilence = true
-      this.lastSilenceTime = now // Actualizamos mientras dure el silencio
+      this.lastSilenceTime = now
       return this.handleSilence(acidMode, noiseMode)
-    } else {
-      // Si acabamos de salir del silencio, this.inSilence será true
-      if (this.inSilence) {
-        this.inSilence = false
-        // Aquí empieza el contador de "Recovery" (lastSilenceTime se queda fijo)
-      }
+    } else if (this.inSilence) {
+      this.inSilence = false
     }
 
-    //  FRONT PAR: TRIGGER DIRECTO DEL FFT
-    if (isKick) {
+    // =======================================================================
+    // 1. FRONT PAR: THE HYBRID KICK TRIGGER
+    // =======================================================================
+    const snap = bass - this.lastBass;
+    
+    // a) SEGURO ANTI-SINTETIZADORES: isKick debe venir con graves reales (>0.45)
+    const isValidFFTKick = isKick && bass > 0.45;
+    
+    // b) CAZADOR DE KICKS PERDIDOS: Si el FFT falla, pero hay un impacto físico brutal
+    const isPhysicalKick = snap > 0.15 && bass > 0.70;
+
+    if (isValidFFTKick || isPhysicalKick) {
       this.kickEnvelope = 1.0;
     } else {
-      // Decay artificial rápido (corta la cola muerta en ~3 frames)
-      this.kickEnvelope *= 0.70;
+      this.kickEnvelope *= 0.65; // Decay agresivo (3 frames y a negro)
     }
 
-    let frontParIntensity = 0
-    // Cortamos en 0.15 para asegurar un blackout total rápido en el hardware
-    if (this.kickEnvelope > 0.15) {
+    let frontParIntensity = 0;
+    if (this.kickEnvelope > 0.10) { // Cortamos al 10% para forzar el blackout del hardware
       frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
     }
 
-    // 💊 WAVE 2187: LAS VITAMINAS REFORMULADAS (Resurrección del Snare)
-    // 💊 WAVE 2187: LAS VITAMINAS REFORMULADAS (Recorte de grasa)
-    // 🥁 WAVE 2187.2: SNARE ISOLATION (Muerte a los hi-hats huérfanos)
-    // 🥁 WAVE 2187.2: SNARE ISOLATION (Muerte a los hi-hats huérfanos)
-    // Un snare tiene CUERPO (mid) y LATIGAZO (treble). Un hi-hat solo treble.
-    // Al requerir la multiplicación de ambos, los hi-hats se filtran.
-    const snareAndSynthPower = Math.min(1.0, 
-      (mid * 0.25) +               // Un poco de presencia base
-      (mid * treble * 1.8)         // 🪄 LA MAGIA: Si no hay mid, el treble pesado vale cero.
-    );
-    let backParIntensity = this.calculateBackPar(snareAndSynthPower)
+    // =======================================================================
+    // 2. BACK PAR & MOVERS: THE REST OF THE BAND
+    // =======================================================================
+    const snareAndSynthPower = Math.min(1.0, (mid * 0.25) + (mid * treble * 1.8));
+    let backParIntensity = this.calculateBackPar(snareAndSynthPower);
 
-    // 👯 STEREO ALCHEMY
-    
-    // LEFT: Mid Dominante - "The Body"
-    const rawLeft = Math.max(0, mid - (treble * 0.3))
-    let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST)
+    const rawLeft = Math.max(0, mid - (treble * 0.3));
+    let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
 
-    // RIGHT: Treble "The Sparkle"
-    const rawRight = Math.max(0, treble - (mid * 0.2))
-    let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST)
+    const rawRight = Math.max(0, treble - (mid * 0.2));
+    let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
 
-    // 🔥 WAVE 1014.5: ATMOSPHERIC FLOOR ELIMINADO
-    // Causaba "hilito permanente" - Los Movers ahora se apagan cuando deben, como los PARs
-
-    // 🔥 WAVE 916: APOCALYPSE DETECTION
-    // Si hay mucha distorsión (harshness) Y mucho ruido blanco (flatness),
-    // asumimos que es un Riser/Upswing aunque no haya bajos.
-    const isApocalypse = harshness > 0.5 && flatness > 0.5
-
-    // 🚑 WAVE 916: APOCALYPSE OVERRIDE
-    // Si estamos en el apocalipsis, NO nos importa si no hay bajo.
-    // Usamos la energía del ruido (treble/mid) para encender TODAS LAS LUCES.
-    if (isApocalypse) {
-      // Calculamos la "Energía del Caos"
-      const chaosEnergy = Math.max(mid, treble)
-      
-      // EXENTO: El Front PAR (Bombo) es sagrado, no lo tocamos.
-      
-      // Solo encendemos el resto con el caos
-      backParIntensity = Math.max(backParIntensity, chaosEnergy)
-      moverL = Math.max(moverL, chaosEnergy)
-      moverR = Math.max(moverR, chaosEnergy)
-      
-      // NOTA: Al forzar esto, el "Ghost Kick" (sidechain) queda anulado implícitamente
-      // porque estamos sobrescribiendo los valores al final.
+    // =======================================================================
+    // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE
+    // =======================================================================
+    if (frontParIntensity > 0.1) {
+      // 🔪 LEY ABSOLUTA: Si el bombo existe, aplasta el 90% de todo lo demás
+      const ducking = 1.0 - (frontParIntensity * 0.90);
+      backParIntensity *= ducking;
+      moverL *= ducking;
+      moverR *= ducking;
     } else {
-      // 🔪 LÓGICA TECHNO: THE SIDECHAIN GUILLOTINE
-      // Siempre que el Front PAR (Bombo) dispare, aplastamos el resto de luces.
-      // Esto crea el "Espacio Negativo" necesario para el Techno.
-      if (frontParIntensity > 0.1) {
-        // Ducking Extremo: Un bombo al 100% apaga las demás luces en un 80%
-        const ducking = 1.0 - (frontParIntensity * 0.8);
-        
-        backParIntensity *= ducking
-        moverL *= ducking
-        moverR *= ducking
+      // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups/Risers)
+      const isApocalypse = harshness > 0.55 && flatness > 0.55;
+      if (isApocalypse) {
+        const chaosEnergy = Math.max(mid, treble);
+        backParIntensity = Math.max(backParIntensity, chaosEnergy);
+        moverL = Math.max(moverL, chaosEnergy);
+        moverR = Math.max(moverR, chaosEnergy);
       }
     }
 
     // Strobe (Treble peaks + Noise)
     const strobeResult = this.calculateStrobe(treble, noiseMode)
 
-    // Guardamos el nivel actual de bass para el siguiente frame (Transient detection)
+    // Memoria para el siguiente frame
     this.lastBass = bass
 
     return {
@@ -299,7 +274,7 @@ export class TechnoStereoPhysics {
       backParIntensity,
       moverIntensityL: moverL,
       moverIntensityR: moverR,
-      moverIntensity: Math.max(moverL, moverR), // Fallback mono (Legacy)
+      moverIntensity: Math.max(moverL, moverR),
       moverActive: (moverL > 0.1 || moverR > 0.1),
       physicsApplied: 'techno',
       acidMode,

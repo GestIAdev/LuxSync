@@ -67,6 +67,7 @@ export interface TechnoPhysicsInput {
   isRealSilence: boolean
   isAGCTrap: boolean
   isKick?: boolean
+  isPLLBeat?: boolean // 🎯 WAVE 2305: LA ENTRADA DIVINA
   sectionType?: string
   harshness?: number
   flatness?: number
@@ -208,24 +209,25 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE HYBRID KICK TRIGGER
+    // 1. FRONT PAR: THE INFALLIBLE METRONOME (Hardware Agnostic)
     // =======================================================================
-    const snap = bass - this.lastBass;
-    
-    // a) SEGURO ANTI-SINTETIZADORES: isKick debe venir con graves reales (>0.45)
-    const isValidFFTKick = isKick && bass > 0.45;
-    
-    // b) CAZADOR DE KICKS PERDIDOS: Si el FFT falla, pero hay un impacto físico brutal
-    const isPhysicalKick = snap > 0.15 && bass > 0.70;
+    // Ya no nos importa si el hardware va a 30FPS o a 60FPS.
+    // Si el PLL predictivo (que corre independiente en su propio reloj)
+    // dice que estamos en la fase 0 del compás, disparamos a matar.
 
-    if (isValidFFTKick || isPhysicalKick) {
+    // Unimos la predicción del Cerebro (PLL) con el Oído crudo (FFT)
+    const isPerfectKick = input.isPLLBeat || (isKick && bass > 0.45);
+
+    if (isPerfectKick) {
       this.kickEnvelope = 1.0;
     } else {
-      this.kickEnvelope *= 0.65; // Decay agresivo (3 frames y a negro)
+      // Un decay ligeramente más suave (0.70 en vez de 0.65)
+      // para que a 30FPS no parezca que la luz se rompe, sino que late.
+      this.kickEnvelope *= 0.70;
     }
 
     let frontParIntensity = 0;
-    if (this.kickEnvelope > 0.10) { // Cortamos al 10% para forzar el blackout del hardware
+    if (this.kickEnvelope > 0.12) {
       frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
     }
 

@@ -657,6 +657,8 @@ export class TitanOrchestrator {
       kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
       snareDetected: this.lastAudioData.snareDetected,
       hihatDetected: this.lastAudioData.hihatDetected,
+      // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction
+      isPLLBeat: beatState.pllOnBeat,
     }
     
     // For HAL

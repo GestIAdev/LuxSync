@@ -126,6 +126,8 @@ export interface EngineAudioMetrics {
   kickDetected?: boolean
   snareDetected?: boolean
   hihatDetected?: boolean
+  // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME
+  isPLLBeat?: boolean
 }
 
 /**
@@ -675,6 +677,7 @@ export class TitanEngine extends EventEmitter {
         kickDetected: audio.kickDetected,
         snareDetected: audio.snareDetected,
         hihatDetected: audio.hihatDetected,
+        isPLLBeat: audio.isPLLBeat,  // ⏱️ WAVE 2305
       },
       elementalMods
     )

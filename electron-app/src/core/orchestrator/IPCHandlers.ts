@@ -1380,7 +1380,8 @@ function setupDMXHandlers(deps: IPCDependencies): void {
   ipcMain.handle('dmx:getStatus', () => {
     return {
       connected: universalDMX.isConnected,
-      interface: universalDMX.currentDevice || 'none'
+      interface: universalDMX.currentDevice || 'none',
+      protocol: universalDMX.activeStrategyProtocol,
     }
   })
   
@@ -1476,8 +1477,6 @@ function setupDMXHandlers(deps: IPCDependencies): void {
       // Clamp values to valid DMX range
       const clampedValue = Math.max(0, Math.min(255, Math.floor(value)))
       const clampedAddress = Math.max(1, Math.min(512, Math.floor(address)))
-      
-      console.log(`[IPC] 🎛️ NERVE LINK: Uni ${universe} | Addr ${clampedAddress} | Val ${clampedValue}`)
       
       // Universe 0 = USB (universalDMX), Universe 1+ = ArtNet
       if (universe === 0 || universe === 1) {

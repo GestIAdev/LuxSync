@@ -225,5 +225,7 @@ export interface FixtureDefinition {
     hasRotation?: boolean;
     hasCustomChannels?: boolean;
     hasMacro?: boolean;
+    // 🔥 WAVE 1135.3: Dead Zone floor — valor DMX mínimo donde el dimmer realmente enciende
+    dimmerMin?: number;
   };
 }

@@ -22,7 +22,7 @@
  * @version WAVE 2072
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef } from 'react'
 import {
   PlusIcon,
   TrashIcon,
@@ -288,38 +288,54 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // WAVE 2072 Phase 2: DMX INJECTION — 3-tier fallback
   // ═══════════════════════════════════════════════════════════════════════
 
-  const sendDirectDMX = useCallback(async (dmxValue: number) => {
+  // QUIET ZONE: Throttle de 40ms (25Hz) en el envío DMX desde sliders.
+  // El ojo humano no distingue más de 30Hz. El hardware DMX procesa ~40Hz.
+  // Sin throttle, el arrastre del probe slider genera llamadas IPC a la frecuencia
+  // del mouse (~120Hz en monitores modernos) — satura el event loop de Electron.
+  // Con 40ms: máximo 25 IPCs/sec, liberando el canal para que el Main procese
+  // los renders de React sin competencia.
+  const dmxQuietZoneRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dmxPendingRef = useRef<number | null>(null)
+
+  const sendDirectDMX = useCallback((dmxValue: number): void => {
     const effectiveUniverse = isMoldTest ? 0 : universe
     const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
     
     if (effectiveBaseAddress === null) return
 
     const absoluteAddress = effectiveBaseAddress + (channelIndex || 0)
-    
-    console.log(`[WheelSmith] 🎛️ DMX OUT: Universe ${effectiveUniverse}, ColorWheel CH${channelIndex} → DMX ${absoluteAddress} = ${dmxValue}`)
-    
-    if (lux?.sendDmxChannel) {
-      lux.sendDmxChannel(effectiveUniverse, absoluteAddress, dmxValue)
-      return
-    }
-    if (lux?.dmx?.sendDirect) {
-      lux.dmx.sendDirect(effectiveUniverse, absoluteAddress, dmxValue)
-      return
-    }
-    
-    if (!isMoldTest && lux?.arbiter?.setManual) {
-      try {
-        await lux.arbiter.setManual({
-          fixtureIds: [fixtureId],
-          controls: { color_wheel: dmxValue },
-          channels: ['color_wheel'],
-        })
-      } catch (err) {
-        console.error('[WheelSmith] ❌ Arbiter error:', err)
+
+    // Acumular el último valor — si llega otro antes de 40ms, lo reemplaza.
+    // Solo se envía siempre el valor MÁS RECIENTE, nunca una cola obsoleta.
+    dmxPendingRef.current = dmxValue
+
+    if (dmxQuietZoneRef.current) return  // Ya hay un envío programado
+
+    dmxQuietZoneRef.current = setTimeout(() => {
+      dmxQuietZoneRef.current = null
+      const val = dmxPendingRef.current
+      dmxPendingRef.current = null
+      if (val === null) return
+
+      if (lux?.sendDmxChannel) {
+        lux.sendDmxChannel(effectiveUniverse, absoluteAddress, val)
+        return
       }
-    } else if (isMoldTest) {
-      console.warn('[WheelSmith] ⚠️ Cold injection impossible: no direct DMX API available.')
-    }
+      if (lux?.dmx?.sendDirect) {
+        lux.dmx.sendDirect(effectiveUniverse, absoluteAddress, val)
+        return
+      }
+    
+      if (!isMoldTest && lux?.arbiter?.setManual) {
+        lux.arbiter.setManual({
+          fixtureIds: [fixtureId],
+          controls: { color_wheel: val },
+          channels: ['color_wheel'],
+        }).catch((err: unknown) => {
+          console.error('[WheelSmith] ❌ Arbiter error:', err)
+        })
+      }
+    }, 40) // 25Hz max IPC rate — QUIET ZONE
   }, [fixtureId, dmxBaseAddress, channelIndex, universe, testAddress, lux, isMoldTest])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -394,16 +410,16 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // LIVE PROBE — Real DMX via IPC
   // ═══════════════════════════════════════════════════════════════════════
   
-  const handleProbeChange = useCallback(async (value: number) => {
+  const handleProbeChange = useCallback((value: number) => {
     const clampedValue = Math.max(0, Math.min(255, value))
     setProbeValue(clampedValue)
-    await sendDirectDMX(clampedValue)
+    sendDirectDMX(clampedValue)
     if (onTestDmx) onTestDmx(clampedValue)
   }, [onTestDmx, sendDirectDMX])
   
-  const handleSlotTest = useCallback(async (dmxValue: number) => {
+  const handleSlotTest = useCallback((dmxValue: number) => {
     setProbeValue(dmxValue)
-    await sendDirectDMX(dmxValue)
+    sendDirectDMX(dmxValue)
     if (onTestDmx) onTestDmx(dmxValue)
   }, [onTestDmx, sendDirectDMX])
   

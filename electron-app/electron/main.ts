@@ -40,6 +40,9 @@ import { universalDMX, type DMXDevice } from '../src/hal/drivers/UniversalDMXDri
 import { artNetDriver } from '../src/hal/drivers/ArtNetDriver'
 // 🎨 WAVE 686.10: Import ArtNetDriverAdapter to bridge ArtNet to HAL
 import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter'
+// 🔥 WAVE 2100: CompositeDMXDriver — dual output USB + ArtNet
+import { CompositeDMXDriver } from '../src/hal/drivers/CompositeDMXDriver'
+import { USBDMXDriverAdapter } from '../src/hal/drivers/USBDMXDriverAdapter'
 import { EffectsEngine } from '../src/engine/color/EffectsEngine'
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
@@ -247,6 +250,7 @@ function createWindow(): void {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      backgroundThrottling: false,
     },
   })
 
@@ -340,14 +344,16 @@ async function initTitan(): Promise<void> {
   // Initialize EffectsEngine
   effectsEngine = new EffectsEngine()
   
-  // 🎨 WAVE 686.10: Create ArtNet adapter for HAL integration
+  // 🔥 WAVE 2100: COMPOSITE DRIVER — USB + ArtNet en paralelo
+  const usbAdapter = new USBDMXDriverAdapter()
   const artNetAdapter = createArtNetAdapter(artNetDriver)
+  const compositeDriver = new CompositeDMXDriver(usbAdapter, artNetAdapter)
   
   // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
-  // Pass ArtNet adapter so HAL can output to real hardware
+  // 🔥 WAVE 2100: Pass COMPOSITE driver so HAL outputs to BOTH USB and ArtNet
   titanOrchestrator = new TitanOrchestrator({ 
     debug: isDev,
-    dmxDriver: artNetAdapter
+    dmxDriver: compositeDriver
   })
   
   // WAVE 380: Register as singleton so IPC handlers can access the same instance

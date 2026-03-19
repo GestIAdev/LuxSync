@@ -327,9 +327,24 @@ export class UniversalDMXDriver extends EventEmitter {
 
   /**
    * 🔌 WAVE 2020.2c: Conecta un dispositivo a un Universo específico
+   *
+   * WAVE 2021.4: ARQUITECTURA DE AISLAMIENTO V8
+   *
+   *   Flujo reestructurado para que serialport SOLO se cargue en el main
+   *   process cuando es estrictamente necesario (driver-managed strategies
+   *   como EnttecPro). Para selfManaged strategies (OpenDMX Phantom Worker),
+   *   serialport se carga ÚNICAMENTE en el worker thread.
+   *
+   *   ¿Por qué? El addon nativo serialport (.node) registra callbacks V8
+   *   en el isolate donde se importa. Si se importa en main Y en worker,
+   *   el GC del main puede tocar handles nativos mientras el worker ejecuta
+   *   port.write/port.set → Fatal error: HandleScope::HandleScope.
+   *
+   *   Solución: solo una copia del addon nativo por conexión, en un solo
+   *   isolate. Self-managed → solo en worker. Driver-managed → solo en main.
    */
   async connect(portPath: string, universe: number = 0): Promise<boolean> {
-    if (this.ports.has(universe)) {
+    if (this.ports.has(universe) || this.connectedDevices.has(universe)) {
       this.log(`⚠️ Universe ${universe} already occupied, skipping ${portPath}`)
       return false
     }
@@ -337,71 +352,103 @@ export class UniversalDMXDriver extends EventEmitter {
     this.log(`🔌 [Univ ${universe}] Connecting to ${portPath}...`)
 
     try {
-      // Importar serialport si no está cargado
-      if (!this.SerialPort) {
-        const serialportModule = await import('serialport')
-        this.SerialPort = serialportModule.SerialPort as unknown as SerialPortModule['SerialPort']
+      // ─── PASO 1: Detectar estrategia SIN importar serialport ─────────
+      // detectStrategy() solo necesita el friendlyName para decidir.
+      // Construimos un deviceInfo ligero con los datos que ya tenemos.
+      // Si listDevices() ya fue llamado previamente (autoConnect, scanDevices),
+      // this.SerialPort estará cacheado y podemos usarlo. Si no,
+      // hacemos detección basada SOLO en el path (todos los cables tontos
+      // caen en OpenDMXStrategy que es lo más común).
+      let deviceInfo: DMXDevice
+
+      if (this.SerialPort) {
+        // SerialPort ya cargado de un listDevices() anterior → podemos listar
+        const availableDevices = await this.listDevices()
+        deviceInfo = availableDevices.find(d => d.path === portPath) || {
+          path: portPath,
+          deviceType: 'generic' as const,
+          friendlyName: portPath,
+          confidence: 50,
+        }
+      } else {
+        // SerialPort NO cargado → crear deviceInfo mínimo SIN importar el addon.
+        // Esto evita que el addon nativo se registre en el V8 isolate del main.
+        deviceInfo = {
+          path: portPath,
+          deviceType: 'generic' as const,
+          friendlyName: portPath,
+          confidence: 50,
+        }
       }
 
-      // 🎯 Detectar tipo de dispositivo para configuración específica
-      const availableDevices = await this.listDevices()
-      const targetDevice = availableDevices.find(d => d.path === portPath)
-      const isIMC_UD7S = targetDevice?.deviceType === 'imc-ud7s'
-
-      // Configuración estándar DMX (250000 baud, 8N2)
-      const port = new this.SerialPort({
-        path: portPath,
-        baudRate: 250000,
-        dataBits: 8,
-        stopBits: 2,
-        parity: 'none',
-        autoOpen: false,
-      }) as unknown as SerialPortInstance
-      
-      if (isIMC_UD7S) {
-        this.log(`🎯 [Univ ${universe}] IMC UD 7S detected - optimized config`)
-      }
-
-      // Promesa para esperar apertura con timeout
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Connection timeout')), 3000)
-        
-        port.open((err: Error | null) => {
-          clearTimeout(timeout)
-          err ? reject(err) : resolve()
-        })
-      })
-
-      // Registrar conexión en el Map
-      this.ports.set(universe, port)
-      this.initBuffer(universe)
-      
-      // Guardar info del dispositivo
-      const deviceInfo: DMXDevice = targetDevice || {
-        path: portPath,
-        deviceType: 'generic',
-        friendlyName: portPath,
-        confidence: 50,
-      }
       this.connectedDevices.set(universe, deviceInfo)
 
-      // 🏛️ WAVE 3000: Auto-detect send strategy based on device type
+      // 🏛️ WAVE 3000 + 2021.1: Auto-detect strategy ANTES de crear el puerto.
+      // Las estrategias self-managed (OpenDMX Phantom Worker) abren su propia
+      // conexión serial en un worker_threads aislado.
       if (!this.strategies.has(universe)) {
         const detectedStrategy = this.detectStrategy(deviceInfo)
         this.strategies.set(universe, detectedStrategy)
         this.log(`🏛️ [Univ ${universe}] Auto-detected strategy: ${detectedStrategy.name}`)
       }
 
-      // 🛡️ Eventos de error individuales por universo
-      port.on('error', (err: Error) => this.handlePortError(universe, err))
-      port.on('close', () => this.handlePortClose(universe))
+      const strategy = this.strategies.get(universe)!
 
-      this.log(`✅ [Univ ${universe}] Connected to ${deviceInfo.friendlyName}`)
-      
-      // 🏛️ WAVE 3000: NO arrancamos un output loop interno.
-      // El HAL es el único dueño del timing de envío (via su render loop → sendAll).
-      // Dos loops compitiendo por el mismo puerto serial causan drops silenciosos.
-      
+      // ─── BIFURCACIÓN: Self-managed vs Driver-managed ─────────────────
+      if (strategy.selfManaged && strategy.connect) {
+        // 👻 WAVE 2021.1+4: La estrategia maneja su propio puerto serial.
+        // El driver NO importa serialport aquí → el addon nativo SOLO existe
+        // en el V8 isolate del worker thread. Cero contención de HandleScope.
+        this.initBuffer(universe)
+
+        const success = await strategy.connect(portPath, universe, (msg) => this.log(msg))
+        if (!success) {
+          this.connectedDevices.delete(universe)
+          this.strategies.delete(universe)
+          throw new Error('Strategy self-connect failed')
+        }
+
+        this.log(`✅ [Univ ${universe}] Connected via ${strategy.name} to ${deviceInfo.friendlyName}`)
+
+        // Activar el output loop para flush periódico del buffer al child process.
+        // Sin esto, sendAll() solo se ejecuta desde el HAL musical render loop,
+        // y los canales seteados via dmx:sendDirect/dmx:sendChannel nunca llegan al worker.
+        this.startOutputLoop()
+
+      } else {
+        // 🔧 Driver-managed: cargar serialport AQUÍ y crear SerialPort
+        if (!this.SerialPort) {
+          const serialportModule = await import('serialport')
+          this.SerialPort = serialportModule.SerialPort as unknown as SerialPortModule['SerialPort']
+        }
+
+        const port = new this.SerialPort({
+          path: portPath,
+          baudRate: 250000,
+          dataBits: 8,
+          stopBits: 2,
+          parity: 'none',
+          autoOpen: false,
+        }) as unknown as SerialPortInstance
+
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Connection timeout')), 3000)
+          port.open((err: Error | null) => {
+            clearTimeout(timeout)
+            err ? reject(err) : resolve()
+          })
+        })
+
+        this.ports.set(universe, port)
+        this.initBuffer(universe)
+
+        // 🛡️ Eventos de error individuales por universo
+        port.on('error', (err: Error) => this.handlePortError(universe, err))
+        port.on('close', () => this.handlePortClose(universe))
+
+        this.log(`✅ [Univ ${universe}] Connected to ${deviceInfo.friendlyName}`)
+      }
+
       // Asegurar watchdog activo
       this.startWatchdog()
       
@@ -443,7 +490,18 @@ export class UniversalDMXDriver extends EventEmitter {
   async disconnectUniverse(universe: number): Promise<void> {
     const port = this.ports.get(universe)
     const device = this.connectedDevices.get(universe)
+    const strategy = this.strategies.get(universe)
+
+    // 👻 WAVE 2021.1: Si la estrategia es self-managed, destruirla primero
+    if (strategy?.selfManaged && strategy.destroy) {
+      try {
+        await strategy.destroy((msg) => this.log(msg))
+      } catch (err) {
+        this.log(`⚠️ [Univ ${universe}] Strategy destroy error: ${err}`)
+      }
+    }
     
+    // Cerrar puerto driver-managed (si existe)
     if (port) {
       try {
         if (port.isOpen) {
@@ -452,19 +510,19 @@ export class UniversalDMXDriver extends EventEmitter {
       } catch (err) {
         this.log(`⚠️ [Univ ${universe}] Error closing port: ${err}`)
       }
-      
       this.ports.delete(universe)
-      this.connectedDevices.delete(universe)
-      this.strategies.delete(universe)
-      this.emit('disconnected', { universe, device })
-      
-      this.log(`🔌 [Univ ${universe}] Disconnected`)
-      
-      // Si no quedan puertos conectados, intentar reconectar
-      if (this.ports.size === 0 && this.config.autoReconnect) {
-        this.log('⚠️ All universes disconnected, scheduling reconnect...')
-        this.scheduleReconnect()
-      }
+    }
+
+    this.connectedDevices.delete(universe)
+    this.strategies.delete(universe)
+    this.emit('disconnected', { universe, device })
+    
+    this.log(`🔌 [Univ ${universe}] Disconnected`)
+    
+    // Si no quedan universos conectados, intentar reconectar
+    if (this.ports.size === 0 && this.connectedDevices.size === 0 && this.config.autoReconnect) {
+      this.log('⚠️ All universes disconnected, scheduling reconnect...')
+      this.scheduleReconnect()
     }
   }
 
@@ -478,7 +536,24 @@ export class UniversalDMXDriver extends EventEmitter {
     this.stopWatchdog()
     this.clearReconnectTimer()
 
-    // Cerrar todos los puertos
+    // Cancelar flush pendiente
+    if (this.flushPending) {
+      clearTimeout(this.flushPending)
+      this.flushPending = null
+    }
+
+    // 👻 WAVE 2021.1: Destruir strategies self-managed primero
+    for (const [universe, strategy] of this.strategies) {
+      if (strategy.selfManaged && strategy.destroy) {
+        try {
+          await strategy.destroy((msg) => this.log(msg))
+        } catch (err) {
+          this.log(`⚠️ [Univ ${universe}] Strategy destroy error: ${err}`)
+        }
+      }
+    }
+
+    // Cerrar todos los puertos driver-managed
     const closePromises: Promise<void>[] = []
     
     for (const [universe, port] of this.ports) {
@@ -494,6 +569,7 @@ export class UniversalDMXDriver extends EventEmitter {
     
     this.ports.clear()
     this.connectedDevices.clear()
+    this.strategies.clear()
     
     this.log('🔌 All universes disconnected')
     this.emit('all-disconnected')
@@ -532,30 +608,41 @@ export class UniversalDMXDriver extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * 🎚️ Establece el valor de un canal DMX (1-512) en un universo
+   * 🎚️ Establece el valor de un canal DMX (1-512) en un universo.
+   * Flush inmediato al child process si hay strategies selfManaged conectadas.
    */
   setChannel(channel: number, value: number, universe: number = 0): void {
     if (channel < 1 || channel > DMX_CHANNELS) return
     
     const buf = this.universeBuffers.get(universe)
     if (buf) {
-      buf[channel] = Math.max(0, Math.min(255, Math.round(value)))
+      const clamped = Math.max(0, Math.min(255, Math.round(value)))
+      if (buf[channel] === clamped) return  // No cambio real — skip
+      buf[channel] = clamped
+      this.flushToStrategies()
     }
   }
 
   /**
-   * 🎚️ Establece múltiples canales desde un offset en un universo
+   * 🎚️ Establece múltiples canales desde un offset en un universo.
+   * Flush inmediato al child process.
    */
   setChannels(startChannel: number, values: number[], universe: number = 0): void {
     const buf = this.universeBuffers.get(universe)
     if (!buf) return
     
+    let changed = false
     for (let i = 0; i < values.length; i++) {
       const channel = startChannel + i
       if (channel <= DMX_CHANNELS) {
-        buf[channel] = Math.max(0, Math.min(255, Math.round(values[i])))
+        const clamped = Math.max(0, Math.min(255, Math.round(values[i])))
+        if (buf[channel] !== clamped) {
+          buf[channel] = clamped
+          changed = true
+        }
       }
     }
+    if (changed) this.flushToStrategies()
   }
 
   /**
@@ -572,6 +659,7 @@ export class UniversalDMXDriver extends EventEmitter {
         // buf[0] es START CODE, los canales empiezan en buf[1]
         buf[i + 1] = (values as any)[i]
       }
+      this.flushToStrategies()
       return
     }
 
@@ -588,21 +676,53 @@ export class UniversalDMXDriver extends EventEmitter {
         buf[dmxChan] = Math.max(0, Math.min(255, Math.round(v)))
       }
     }
+
+    this.flushToStrategies()
+  }
+
+  // Throttle del flush IPC: máximo 1 envio cada 20ms (50Hz).
+  // El ojo humano no distingue más de 30Hz. DMX512 procesa ~40Hz.
+  // Sin throttle, un slider a 120Hz de mouse genera 120 IPCs/sec → satura
+  // el event loop del Main con serialización JSON + pipe writes.
+  // El child process sigue enviando el ULTIMO buffer recibido a ~40Hz
+  // al hardware — no pierde datos, solo reduce la frecuencia de IPC.
+  private flushPending: ReturnType<typeof setTimeout> | null = null
+  private readonly FLUSH_THROTTLE_MS = 33 // 🔥 WAVE 2100: 30Hz max IPC — matches Worker Adaptive Pacing (30Hz output)
+
+  /**
+   * Flush throttleado: coalesce cambios rápidos en un solo IPC.
+   * Si hay un flush pendiente, los cambios se acumulan en el buffer
+   * y se envían todos juntos en el siguiente tick.
+   */
+  private flushToStrategies(): void {
+    if (this.flushPending) return  // Ya hay un flush programado
+    this.flushPending = setTimeout(() => {
+      this.flushPending = null
+      void this.sendAll()
+    }, this.FLUSH_THROTTLE_MS)
   }
 
   /**
-   * 🔄 Inicia el loop de salida DMX (opcional - sendAll desde HAL es mejor)
+   * 🔄 Inicia el loop de salida DMX (legacy — solo para driver-managed strategies)
+   * Para selfManaged (OpenDMX): no-op, el flush es reactivo via flushToStrategies().
    */
   private startOutputLoop(): void {
+    // selfManaged strategies no necesitan un output loop en el Main.
+    // El child process tiene su propio loop continuo.
+    // Los cambios se envian reactivamente via setChannel → flushToStrategies → sendAll.
+    // Solo mantener el loop para driver-managed (EnttecPro) si existiera.
+    const hasDriverManaged = this.ports.size > 0
+    if (!hasDriverManaged) {
+      this.log(`🔄 Output flush: reactive mode (selfManaged strategies)`)
+      return
+    }
+
     if (this.outputLoop) return
-
     const intervalMs = 1000 / this.config.refreshRate
-
     this.outputLoop = setInterval(() => {
       this.sendDMXFrame()
     }, intervalMs)
-
-    this.log(`🔄 Output loop started at ${this.config.refreshRate}Hz`)
+    this.log(`🔄 Output loop started at ${this.config.refreshRate}Hz (driver-managed)`)
   }
 
   /**
@@ -624,19 +744,31 @@ export class UniversalDMXDriver extends EventEmitter {
    */
   async sendAll(): Promise<boolean> {
     // 🚦 SEMÁFORO: Si el hardware no terminó el frame anterior, DROP silencioso.
-    // Esto evita la corrupción "choque de trenes" cuando el render loop (30Hz)
-    // es más rápido que la transmisión serial (250kbaud ≈ 23ms para 513 bytes).
-    if (this.ports.size === 0 || this.isTransmitting) return false
+    if (this.isTransmitting) return false
+
+    // Verificar que hay ALGO conectado (driver-managed ports O self-managed strategies)
+    const hasDriverPorts = this.ports.size > 0
+    const hasSelfManaged = Array.from(this.strategies.values()).some(s => s.selfManaged)
+    if (!hasDriverPorts && !hasSelfManaged) return false
 
     this.isTransmitting = true
     const promises: Promise<void>[] = []
 
+    // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
     for (const [universe, port] of this.ports) {
       const buffer = this.universeBuffers.get(universe)
       if (port.isOpen && buffer) {
-        // 🏛️ WAVE 3000: Delegar al Strategy correcto para este universo
         const strategy = this.strategies.get(universe) ?? this.defaultStrategy
         promises.push(strategy.send(port, buffer, universe, (msg) => this.log(msg)))
+      }
+    }
+
+    // ─── Self-managed universes (Phantom Worker): enviar sin port ───────
+    for (const [universe, strategy] of this.strategies) {
+      if (!strategy.selfManaged) continue  // ya procesado arriba
+      const buffer = this.universeBuffers.get(universe)
+      if (buffer) {
+        promises.push(strategy.send(null, buffer, universe, (msg) => this.log(msg)))
       }
     }
 
@@ -662,7 +794,13 @@ export class UniversalDMXDriver extends EventEmitter {
    * Configura la estrategia de envío para un universo específico.
    * Útil cuando tienes un Enttec Pro en universo 0 y un Open DMX en universo 1.
    */
-  setStrategy(universe: number, type: 'enttec-pro' | 'open-dmx'): void {
+  async setStrategy(universe: number, type: 'enttec-pro' | 'open-dmx'): Promise<void> {
+    // Destruir strategy anterior si era self-managed
+    const previous = this.strategies.get(universe)
+    if (previous?.selfManaged && previous.destroy) {
+      await previous.destroy((msg) => this.log(msg))
+    }
+
     const strategy = type === 'open-dmx' ? new OpenDMXStrategy() : new EnttecProStrategy()
     this.strategies.set(universe, strategy)
     this.log(`🏛️ [Univ ${universe}] Strategy set: ${strategy.name}`)
@@ -675,12 +813,13 @@ export class UniversalDMXDriver extends EventEmitter {
    * el protocolo Enttec (Label 6) van a EnttecProStrategy.
    * 
    * La IMC UD 7S es un chip FTDI PURO (cable tonto). NO tiene micro.
-   * Debe usar OpenDMXStrategy (port.set BREAK + setTimeout fijo).
+   * Usa OpenDMXStrategy con Phantom Worker (worker_threads) para aislar
+   * el bit-banging del Event Loop principal.
    */
   private detectStrategy(device: DMXDevice): DMXSendStrategy {
-    // Solo interfaces con firmware que parsea Label 6:
-    // - Enttec DMX USB Pro (tiene PIC18F2550 embebido)
-    // - DMXking ultraDMX Pro (tiene STM32 embebido)
+    // Interfaces con microcontrolador embebido que hablan protocolo Enttec:
+    // - Enttec DMX USB Pro (PIC18F2550)
+    // - DMXking ultraDMX Pro (STM32)
     const nameLC = device.friendlyName.toLowerCase()
     const isEnttecProtocol =
       (nameLC.includes('enttec') && nameLC.includes('pro')) ||
@@ -690,8 +829,9 @@ export class UniversalDMXDriver extends EventEmitter {
       return new EnttecProStrategy()
     }
 
-    // TODO lo demás: FTDI puro (IMC UD 7S), CH340, Prolific, CP210x, genérico
-    // → cable tonto, necesita BREAK manual vía port.set({ brk }) + setTimeout fijo
+    // Todo lo demás: FTDI puro (IMC UD 7S), CH340, Prolific, CP210x, genérico
+    // → cable tonto, BREAK manual delegado al Phantom Worker para no bloquear
+    //   el Event Loop con setTimeout + port.set (WAVE 2021.1)
     return new OpenDMXStrategy()
   }
 
@@ -742,13 +882,13 @@ export class UniversalDMXDriver extends EventEmitter {
     this.setUniverse(frame, universe)
   }
 
-  // Getters públicos
+  // Getters públicos — incluyen tanto driver-managed (ports) como self-managed (strategies)
   get isConnected(): boolean {
-    return this.ports.size > 0
+    return this.connectedDevices.size > 0
   }
 
   get connectedUniverses(): number {
-    return this.ports.size
+    return this.connectedDevices.size
   }
 
   get devices(): Map<number, DMXDevice> {
@@ -757,6 +897,24 @@ export class UniversalDMXDriver extends EventEmitter {
 
   get error(): string | null {
     return this.lastError
+  }
+
+  /** Nombre del primer dispositivo conectado (universe 0). Compat. con IPCHandlers. */
+  get currentDevice(): string | null {
+    const dev = this.connectedDevices.get(0)
+    return dev ? dev.friendlyName : null
+  }
+
+  /**
+   * Nombre de la estrategia activa para el universo 0.
+   * 'worker' si es Phantom Worker (selfManaged), 'pro' si es EnttecPro, 'open-dmx' para el resto.
+   */
+  get activeStrategyProtocol(): 'WORKER' | 'PRO' | 'OPEN-DMX' | null {
+    if (!this.isConnected) return null
+    const strategy = this.strategies.get(0) ?? this.defaultStrategy
+    if (strategy.selfManaged) return 'WORKER'
+    if (strategy.name.includes('Enttec Pro')) return 'PRO'
+    return 'OPEN-DMX'
   }
 
   /**

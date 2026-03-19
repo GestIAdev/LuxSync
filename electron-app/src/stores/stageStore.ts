@@ -152,6 +152,9 @@ interface StageStoreActions {
   /** Batch update fixtures (for undo/redo operations) */
   batchUpdateFixtures: (updates: Array<{ id: string; changes: Partial<FixtureV2> }>) => void
   
+  /** 🔄 WAVE 384: Hot-reload fixtures when fixture profile is updated */
+  reconcileFixturesWithProfile: (updatedProfile: any) => void
+  
   // ═══════════════════════════════════════════════════════════════════════
   // GROUP ACTIONS
   // ═══════════════════════════════════════════════════════════════════════
@@ -644,6 +647,49 @@ export const useStageStore = create<StageStore>()(
       
       get()._syncDerivedState()
       get()._setDirty()
+    },
+    
+    reconcileFixturesWithProfile: (updatedProfile) => {
+      const { showFile } = get()
+      if (!showFile) return
+      
+      let updatedCount = 0
+      const newFixtures = showFile.fixtures.map(fixture => {
+        // Si el foco en el escenario usa el perfil que acabamos de guardar...
+        if (fixture.profileId === updatedProfile.id) {
+          updatedCount++
+          return {
+            ...fixture,
+            channelCount: updatedProfile.channels.length,
+            // 🔄 HOT-RELOAD: Actualizamos la caché inline de la WAVE 384
+            channels: updatedProfile.channels.map((ch: any) => ({
+              index: ch.index,
+              name: ch.name || ch.type,
+              type: ch.type,
+              is16bit: ch.is16bit || false,
+              defaultValue: ch.defaultValue
+            })),
+            // 🔄 HOT-RELOAD: Actualizamos las capabilities
+            capabilities: {
+              ...fixture.capabilities,
+              colorEngine: updatedProfile.capabilities?.colorEngine,
+              colorWheel: updatedProfile.capabilities?.colorWheel,
+              hasMovementChannels: updatedProfile.capabilities?.hasPan || updatedProfile.capabilities?.hasTilt,
+              has16bitMovement: updatedProfile.channels.some((ch: any) => ch.type === 'pan_fine' || ch.type === 'tilt_fine'),
+              hasColorMixing: updatedProfile.capabilities?.hasColorMixing,
+              hasColorWheel: updatedProfile.capabilities?.hasColorWheel
+            }
+          }
+        }
+        return fixture
+      })
+
+      if (updatedCount > 0) {
+        showFile.fixtures = newFixtures
+        console.log(`[StageStore] 🔄 Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}`)
+        get()._syncDerivedState()
+        get()._setDirty()
+      }
     },
     
     // ═══════════════════════════════════════════════════════════════════════

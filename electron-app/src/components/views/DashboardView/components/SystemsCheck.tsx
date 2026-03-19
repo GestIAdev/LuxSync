@@ -381,33 +381,43 @@ export const SystemsCheck: React.FC = () => {
     audio: 'offline',
     dmx: hardware?.dmx?.connected ? 'online' : 'offline'
   })
+
+  // 👻 WAVE 2021.1: Protocol badge (PRO / WORKER / OPEN-DMX)
+  const [dmxProtocol, setDmxProtocol] = useState<string | null>(null)
+  const [isDmxDisconnecting, setIsDmxDisconnecting] = useState(false)
+  const [isDmxReconnecting, setIsDmxReconnecting] = useState(false)
   
   // 🪗 WAVE 1203: Toggle accordion (click mismo = cierra)
   const toggleSection = useCallback((section: AccordionSection) => {
     setActiveSection(prev => prev === section ? null : section)
   }, [])
   
-  // 🔌 WAVE 3000: Sync DMX status from REAL driver state via IPC
-  // Query dmx:getStatus on mount + listen to dmx:connected / dmx:disconnected events
+  // 🔌 WAVE 3000 + 2021.1: Sync DMX status + protocol from REAL driver state via IPC
   useEffect(() => {
     const dmxApi = getDmxApi()
-    
-    // Initial query
-    if (dmxApi?.getStatus) {
-      dmxApi.getStatus().then((res: { connected: boolean }) => {
+
+    const syncStatus = async () => {
+      if (!dmxApi?.getStatus) return
+      try {
+        const res = await dmxApi.getStatus() as { connected: boolean; protocol?: string }
         setStatus(prev => ({ ...prev, dmx: res?.connected ? 'online' : 'offline' }))
-      }).catch(() => {/* ignore */})
+        setDmxProtocol(res?.protocol ?? null)
+      } catch { /* ignore */ }
     }
+
+    syncStatus()
     
     // Live events from backend
     if (dmxApi?.onConnected) {
       dmxApi.onConnected(() => {
         setStatus(prev => ({ ...prev, dmx: 'online' }))
+        syncStatus()  // re-query para obtener el protocolo detectado
       })
     }
     if (dmxApi?.onDisconnected) {
       dmxApi.onDisconnected(() => {
         setStatus(prev => ({ ...prev, dmx: 'offline' }))
+        setDmxProtocol(null)
       })
     }
   }, [])
@@ -497,6 +507,36 @@ export const SystemsCheck: React.FC = () => {
     }
   }, [trinity, setAudioSource])
   
+  // ─── WAVE 2021.1: DMX STOP / RECONNECT ──────────────────────────────────
+  const handleDmxStop = useCallback(async () => {
+    const dmxApi = getDmxApi()
+    if (!dmxApi?.disconnect) return
+    setIsDmxDisconnecting(true)
+    try {
+      await dmxApi.disconnect()
+      setStatus(prev => ({ ...prev, dmx: 'offline' }))
+      setDmxProtocol(null)
+    } catch (err) {
+      console.error('[SystemsCheck] DMX disconnect failed:', err)
+    } finally {
+      setIsDmxDisconnecting(false)
+    }
+  }, [])
+
+  const handleDmxReconnect = useCallback(async () => {
+    const dmxApi = getDmxApi()
+    if (!dmxApi?.autoConnect) return
+    setIsDmxReconnecting(true)
+    try {
+      await dmxApi.autoConnect()
+      // El evento dmx:connected disparará syncStatus y actualizará el badge
+    } catch (err) {
+      console.error('[SystemsCheck] DMX reconnect failed:', err)
+    } finally {
+      setIsDmxReconnecting(false)
+    }
+  }, [])
+
   // 🔥 WAVE 1003: DMX DRIVER CHANGE WITH FULL CONNECTION
   const handleDmxChange = useCallback(async (driver: DMXDriver) => {
     setDmxDriver(driver)
@@ -640,7 +680,39 @@ export const SystemsCheck: React.FC = () => {
             <span className="status-text">
               {status.dmx === 'online' ? 'ONLINE' : 'OFFLINE'}
             </span>
+            {/* 👻 WAVE 2021.1: Protocol badge */}
+            {status.dmx === 'online' && dmxProtocol && (
+              <span className={`dmx-protocol-badge dmx-protocol-badge--${dmxProtocol.toLowerCase()}`}>
+                {dmxProtocol}
+              </span>
+            )}
           </div>
+          {/* STOP / RESET DMX button — visible solo cuando está online */}
+          {status.dmx === 'online' && (
+            <button
+              className="dmx-stop-btn"
+              onClick={(e) => { e.stopPropagation(); handleDmxStop() }}
+              disabled={isDmxDisconnecting}
+              title="Kill DMX output — terminates Phantom Worker thread"
+            >
+              {isDmxDisconnecting
+                ? <span className="dmx-stop-spinner">...</span>
+                : <><span className="dmx-stop-icon">⏹</span><span className="dmx-stop-label">STOP</span></>}
+            </button>
+          )}
+          {/* RECONNECT button — visible solo cuando está offline */}
+          {status.dmx === 'offline' && (
+            <button
+              className="dmx-reconnect-btn"
+              onClick={(e) => { e.stopPropagation(); handleDmxReconnect() }}
+              disabled={isDmxReconnecting}
+              title="Auto-reconnect DMX"
+            >
+              {isDmxReconnecting
+                ? <span>🔄</span>
+                : <><span className="dmx-reconnect-icon">↺</span><span className="dmx-reconnect-label">RESET</span></>}
+            </button>
+          )}
           <span className="accordion-arrow">{activeSection === 'dmx' ? '▼' : '▶'}</span>
         </div>
         

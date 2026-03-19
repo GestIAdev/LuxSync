@@ -1764,14 +1764,21 @@ export class MasterArbiter extends EventEmitter {
     const speedChannel = (fixture?.channels as any)?.find((c: any) => c.type === 'speed')
     const defaultSpeed = speedChannel?.defaultValue ?? 0
 
+    // 🔥 WAVE 1135.3: Leer defaultValue real de pan/tilt desde el JSON del fixture
+    // El Forge permite configurar el centro mecánico del equipo — aquí lo honramos
+    const panChannel = (fixture?.channels as any)?.find((c: any) => c.type === 'pan')
+    const tiltChannel = (fixture?.channels as any)?.find((c: any) => c.type === 'tilt')
+    const defaultPan = panChannel?.defaultValue ?? 128
+    const defaultTilt = tiltChannel?.defaultValue ?? 128
+
     const defaults: Record<ChannelType, number> = {
       dimmer: 0,
       red: 0,
       green: 0,
       blue: 0,
       white: 0,
-      pan: 128,
-      tilt: 128,
+      pan: defaultPan,
+      tilt: defaultTilt,
       zoom: 128,
       focus: 128,
       gobo: 0,
@@ -1895,7 +1902,14 @@ export class MasterArbiter extends EventEmitter {
     // Acceso dinámico seguro (TypeScript-friendly)
     const zoneIntent = (intent.zones as any)?.[intentZone]
     const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity
-    defaults.dimmer = zoneIntensity * 255
+
+    // 🔥 WAVE 1135.3: Dead Zone interpolation
+    // dimmerMin = valor DMX mínimo donde el hardware realmente enciende.
+    // Escala: 0 → 0 (blackout estricto), >0 → mapea [0,1] al rango [dMin, 255]
+    const dMin = (fixture?.capabilities as any)?.dimmerMin ?? 0
+    defaults.dimmer = zoneIntensity > 0
+      ? Math.round(dMin + (zoneIntensity * (255 - dMin)))
+      : 0
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎨 WAVE 382: ZONE-BASED COLOR MAPPING (No more monochrome!)
@@ -1998,8 +2012,12 @@ export class MasterArbiter extends EventEmitter {
           defaults.tilt = mechanic.tilt * 255
           
           // WAVE 1048: Intensity coupling (if present)
+          // 🔥 WAVE 1135.3: Aplicamos Dead Zone también a intensidad de mechanics
           if (mechanic.intensity !== undefined) {
-            defaults.dimmer = mechanic.intensity * 255
+            const dMinMech = (fixture?.capabilities as any)?.dimmerMin ?? 0
+            defaults.dimmer = mechanic.intensity > 0
+              ? Math.round(dMinMech + (mechanic.intensity * (255 - dMinMech)))
+              : 0
           }
           
           // ═══════════════════════════════════════════════════════════════════

@@ -182,15 +182,14 @@ export class HardwareAbstraction {
     this.movementPhysics = new FixturePhysicsDriver()
     this.currentOptics = getOpticsConfig('idle')
     
-    // 🔥 CORTAFUEGOS ANTI-ZOMBIES:
-    // Si el tipo es 'usb' o 'usb-serial', matamos al externalDriver (suele ser Art-Net residual)
-    // y forzamos la creación del adaptador USB.
-    // Nota: 'usb-serial' viene del frontend (UI), pero el HAL trabaja con DriverType normalizado.
-    if ((this.config.driverType as unknown as string) === 'usb' || (this.config.driverType as unknown as string) === 'usb-serial') {
+    // 🔥 WAVE 2100: Si hay externalDriver (ej. CompositeDMXDriver), usarlo SIEMPRE.
+    // El Composite ya tiene USB + ArtNet internamente, no crear otro adaptador USB.
+    if (this.config.externalDriver) {
+      this.driver = this.config.externalDriver
+    } else if ((this.config.driverType as unknown as string) === 'usb' || (this.config.driverType as unknown as string) === 'usb-serial') {
       this.driver = this.createDriver('usb')
     } else {
-      // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
-      this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType)
+      this.driver = this.createDriver(this.config.driverType)
     }
     
     // Configure mapper

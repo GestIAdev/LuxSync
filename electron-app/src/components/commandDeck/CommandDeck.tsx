@@ -86,7 +86,7 @@ export const CommandDeck: React.FC = () => {
     fetchStatus()
     
     // Subscribe to changes
-    const unsubscribe = window.lux?.arbiter?.onStatusChange?.((status) => {
+    const unsubscribe = window.lux?.arbiter?.onStatusChange?.((status: any) => {
       const rawGM = status.grandMaster ?? 1.0
       const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
       

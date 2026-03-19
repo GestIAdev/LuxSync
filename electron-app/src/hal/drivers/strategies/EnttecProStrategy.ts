@@ -11,7 +11,12 @@
  * Nosotros solo empaquetamos y enviamos.
  * 
  * Protocolo:
- *   [0x7E] [Label=0x06] [Len LSB] [Len MSB] [Payload...] [0xE7]
+ *   [0x7E] [Label] [Len LSB] [Len MSB] [Payload...] [0xE7]
+ *
+ * Labels por universo:
+ *   Universo 0 → Label 0x06 (6)   — Send DMX Packet
+ *   Universo 1 → Label 0xA9 (169) — Send DMX Packet Port 2
+ *                                   (Enttec USB Pro Mk2 / Tornado / IMC UD 7S dual)
  */
 
 import type { DMXSendStrategy } from './DMXSendStrategy'
@@ -20,20 +25,34 @@ import type { SerialPortInstance } from '../UniversalDMXDriver'
 /** Timeout de seguridad para port.drain() — evita deadlock si USB muere */
 const DRAIN_TIMEOUT_MS = 100
 
+/** Mapping universo → Label del protocolo Enttec Pro */
+const ENTTEC_LABEL: Record<number, number> = {
+  0: 0x06,  // Label 6: Send DMX Packet (universo 0)
+  1: 0xA9,  // Label 169: Send DMX Packet Port 2 (universo 1, Mk2/Tornado/IMC UD 7S)
+}
+const ENTTEC_LABEL_FALLBACK = 0x06  // cualquier universo mayor → Label 6 (best-effort)
+
 export class EnttecProStrategy implements DMXSendStrategy {
-  readonly name = 'Enttec Pro (Label 6)'
+  readonly name = 'Enttec Pro (Label 6 / 0xA9)'
+  readonly selfManaged = false
 
   async send(
-    port: SerialPortInstance,
+    port: SerialPortInstance | null,
     buffer: Buffer,
     universe: number,
     log: (msg: string) => void,
   ): Promise<void> {
+    if (!port) {
+      log(`❌ [Univ ${universe}] EnttecPro requires a driver-managed port`)
+      return
+    }
+
     const dataLen = buffer.length
     const packet = new Uint8Array(dataLen + 5)
+    const label = ENTTEC_LABEL[universe] ?? ENTTEC_LABEL_FALLBACK
 
     packet[0] = 0x7E        // Start Code
-    packet[1] = 0x06        // Label 6: Send DMX Packet
+    packet[1] = label       // Label: 0x06 (uni 0) | 0xA9 (uni 1)
     packet[2] = dataLen & 0xFF          // Length LSB
     packet[3] = (dataLen >> 8) & 0xFF   // Length MSB
     packet.set(buffer, 4)               // Payload (start code DMX + 512 canales)

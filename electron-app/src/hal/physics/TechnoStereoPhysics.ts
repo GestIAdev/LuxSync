@@ -10,119 +10,93 @@
  * - NO HAY INTENSITY_SMOOTHING (fue erradicado)
  * - Decay instantáneo (1-2 frames, no gradual)
  * - "The Slap": BACK_PAR multiplicador 1.8x + Gate alto
- * - Spectral integration (harshness, flatness)
- * 
- * ARQUITECTURA ZONE:
- * - FRONT PARs = BASS (Bombo 4x4, el corazón del techno)
- * - BACK PARs = MID con "The Slap" (snare/clap, bofetada brutal)
- * - MOVERS = TREBLE vitaminado (leads sintetizados, acid lines)
- * 
- * SPECTRAL FEATURES:
- * - context.spectral.harshness ? Acid colors (0.6+ = toxic green)
- * - context.spectral.flatness ? CO2/White Noise detection (0.7+ = strobe)
- * 
- * * CAMBIOS WAVE 906:
- * - ?? BASS ROIDS: Multiplicador x2.5 post-gate en FrontPars.
- * - ?? STEREO SPLIT: Movers L (Mids) vs Movers R (Treble).
- * - ?? BACK PAR SNIPER: Gate alto para aislar Snares de Melod�as.
- * 
- * @module hal/physics/TechnoStereoPhysics
- * @version WAVE 770 - THE BLADE
- */
+    const now = Date.now()
 
-import { hslToRgb } from '../../engine/color/SeleneColorEngine';
-import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
+    // 🕵️‍♂️ MODOS Y SILENCIO
+    const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD
+    const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD
 
-// ===========================================================================
-// TYPES - LEGACY API (Colores/Strobe)
-// ===========================================================================
+    if (isRealSilence || isAGCTrap) {
+      this.inSilence = true
+      this.lastSilenceTime = now
+      return this.handleSilence(acidMode, noiseMode)
+    } else if (this.inSilence) {
+      this.inSilence = false
+    }
 
-interface TechnoPalette {
-  primary: { r: number; g: number; b: number };
-  secondary: { r: number; g: number; b: number };
-  accent: { r: number; g: number; b: number };
-}
+    // =======================================================================
+    // 1. FRONT PAR: THE HYBRID KICK TRIGGER
+    // =======================================================================
+    const snap = bass - this.lastBass;
+    
+    // a) SEGURO ANTI-SINTETIZADORES: isKick debe venir con graves reales (>0.45)
+    const isValidFFTKick = isKick && bass > 0.45;
+    
+    // b) CAZADOR DE KICKS PERDIDOS: Si el FFT falla, pero hay un impacto físico brutal
+    const isPhysicalKick = snap > 0.15 && bass > 0.70;
 
-interface TechnoAudioMetrics {
-  normalizedTreble: number;
-  normalizedBass: number;
-}
+    if (isValidFFTKick || isPhysicalKick) {
+      this.kickEnvelope = 1.0;
+    } else {
+      this.kickEnvelope *= 0.65; // Decay agresivo (3 frames y a negro)
+    }
 
-interface TechnoLegacyResult {
-  palette: TechnoPalette;
-  isStrobeActive: boolean;
-  debugInfo: Record<string, unknown>;
-}
+    let frontParIntensity = 0;
+    if (this.kickEnvelope > 0.10) { // Cortamos al 10% para forzar el blackout del hardware
+      frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
+    }
 
-// ===========================================================================
-// TYPES - NEW API (Zonas/Intensidades)
-// ===========================================================================
+    // =======================================================================
+    // 2. BACK PAR & MOVERS: THE REST OF THE BAND
+    // =======================================================================
+    const snareAndSynthPower = Math.min(1.0, (mid * 0.25) + (mid * treble * 1.8));
+    let backParIntensity = this.calculateBackPar(snareAndSynthPower);
 
-export interface TechnoPhysicsInput {
-  bass: number
-  mid: number
-  treble: number
-  bpm: number
-  melodyThreshold: number
-  isRealSilence: boolean
-  isAGCTrap: boolean
-  sectionType?: string
-  harshness?: number
-  flatness?: number
-}
+    const rawLeft = Math.max(0, mid - (treble * 0.3));
+    let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
 
-export interface TechnoPhysicsResult {
-  strobeActive: boolean
-  strobeIntensity: number
-  frontParIntensity: number
-  backParIntensity: number
-  // ?? STEREO SPLIT: Intensidades separadas
-  moverIntensityL: number  // Mids (Voces)
-  moverIntensityR: number  // Treble (Melodías)
-  moverIntensity: number   // Legacy fallback (Max L/R)
-  moverActive: boolean
-  physicsApplied: 'techno'
-  acidMode: boolean
-  noiseMode: boolean
-}
+    const rawRight = Math.max(0, treble - (mid * 0.2));
+    let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
 
-// ===========================================================================
-// ?? WAVE 906: TECHNO STEREO PHYSICS ENGINE
-// ===========================================================================
+    // =======================================================================
+    // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE
+    // =======================================================================
+    if (frontParIntensity > 0.1) {
+      // 🔪 LEY ABSOLUTA: Si el bombo existe, aplasta el 90% de todo lo demás
+      const ducking = 1.0 - (frontParIntensity * 0.90);
+      backParIntensity *= ducking;
+      moverL *= ducking;
+      moverR *= ducking;
+    } else {
+      // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups/Risers)
+      const isApocalypse = harshness > 0.55 && flatness > 0.55;
+      if (isApocalypse) {
+        const chaosEnergy = Math.max(mid, treble);
+        backParIntensity = Math.max(backParIntensity, chaosEnergy);
+        moverL = Math.max(moverL, chaosEnergy);
+        moverR = Math.max(moverR, chaosEnergy);
+      }
+    }
 
-export class TechnoStereoPhysics {
-  // LEGACY CONSTANTS
-  private static readonly STROBE_BASE_THRESHOLD = 0.6;
-  private static readonly STROBE_HUE = 300;
-  private static readonly STROBE_SATURATION = 100;
-  private static readonly STROBE_LIGHTNESS = 85;
+    // Strobe (Treble peaks + Noise)
+    const strobeResult = this.calculateStrobe(treble, noiseMode)
 
-  // =========================================================================
-  // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
-  // =========================================================================
+    // Memoria para el siguiente frame
+    this.lastBass = bass
 
-  // 🔊 FRONT (BASS) - Dry & Punchy (Corte militar)
-  private readonly FRONT_PAR_GATE_ON = 0.48   // ⬆️ Más estricto (evita Sidechain accidental)
-  private readonly FRONT_PAR_GATE_OFF = 0.35  // ⬆️ Corte alto (Secar el bajo)
-  private readonly BASS_VITAMIN_BOOST = 1.8
-
-  // 🛡️ PARANOIA GATE (Para el rebote del AGC)
-  // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
-  // Esto filtra el ruido de fondo inflado, pero deja pasar el Drop (100%)
-  private readonly RECOVERY_GATE_ON = 0.80    // 🚨 Gate paranoico post-silencio
-  private readonly RECOVERY_GATE_OFF = 0.60   // 🚨 Gate off proporcionalmente alto
-  private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
-
-  // 🥁 BACK (SNARE SNIPER - GEOMETRIC MEAN + NOISE GATE)
-  // Media geométrica + Curva supresora de ruido
-  private readonly BACK_PAR_GATE = 0.40
-  private readonly BACK_PAR_SLAP_MULT = 5.0   // ⬆️ Compensar curva supresora (4.0→6.0)
-
-  // 👯 MOVERS (STEREO SPLIT)
-  
-  // LEFT (Mid/Voces) - "The Body"
-  private readonly MOVER_L_GATE = 0.20
-  private readonly MOVER_L_BOOST = 4.0
+    return {
+      strobeActive: strobeResult.active,
+      strobeIntensity: strobeResult.intensity,
+      frontParIntensity,
+      backParIntensity,
+      moverIntensityL: moverL,
+      moverIntensityR: moverR,
+      moverIntensity: Math.max(moverL, moverR),
+      moverActive: (moverL > 0.1 || moverR > 0.1),
+      physicsApplied: 'techno',
+      acidMode,
+      noiseMode
+    }
 
   // RIGHT (Treble/Hats) - "SCHWARZENEGGER MODE" 🤖
   private readonly MOVER_R_GATE = 0.14        // 📉 Hypersensitive (confirmado)
@@ -140,11 +114,13 @@ export class TechnoStereoPhysics {
 
   private strobeActive = false
   private strobeStartTime = 0
-  private frontParActive = false
+  private lastBass = 0
+  private kickEnvelope = 0
 
   // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
   private lastSilenceTime = 0
   private inSilence = false
+  
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -156,7 +132,7 @@ export class TechnoStereoPhysics {
     audio: TechnoAudioMetrics,
     mods?: ElementalModifiers
   ): TechnoLegacyResult {
-      // (Mismo c�digo legacy para compatibilidad de colores)
+      // (Mismo codigo legacy para compatibilidad de colores)
       const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
       const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
       const normalizedTreble = audio.normalizedTreble ?? 0;
@@ -186,6 +162,7 @@ export class TechnoStereoPhysics {
       treble, 
       isRealSilence, 
       isAGCTrap, 
+      isKick = false,
       harshness = 0.45,  // 🎛️ Default agresivo (Techno = duro)
       flatness = 0.35    // 🎛️ Default para pads/atmos
     } = input
@@ -208,29 +185,29 @@ export class TechnoStereoPhysics {
       }
     }
 
-    // 🛡️ WAVE 913: CÁLCULO DE PARANOIA
-    // ¿Cuánto tiempo ha pasado desde que volvió la música?
-    const timeSinceSilence = now - this.lastSilenceTime
-    const isRecovering = timeSinceSilence < this.RECOVERY_DURATION
+    //  FRONT PAR: TRIGGER DIRECTO DEL FFT
+    if (isKick) {
+      this.kickEnvelope = 1.0;
+    } else {
+      // Decay artificial rápido (corta la cola muerta en ~3 frames)
+      this.kickEnvelope *= 0.70;
+    }
 
-    // 🔊 FRONT PAR: LÓGICA DINÁMICA
-    // Si estamos recuperando, usamos el Gate Paranoico (0.80). Si no, el normal (0.48).
-    const effectiveGateOn = isRecovering ? this.RECOVERY_GATE_ON : this.FRONT_PAR_GATE_ON
-    // También subimos el Gate Off proporcionalmente para evitar colas largas sucias
-    const effectiveGateOff = isRecovering ? this.RECOVERY_GATE_OFF : this.FRONT_PAR_GATE_OFF
+    let frontParIntensity = 0
+    // Cortamos en 0.15 para asegurar un blackout total rápido en el hardware
+    if (this.kickEnvelope > 0.15) {
+      frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
+    }
 
-    let frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff)
-
-    // 💊 WAVE 2187: LAS VITAMINAS - Fusión del cuerpo de la caja + el chasquido + los sintes
-    // En vez de solo sqrt(mid*treble), mezclamos:
-    // - mid: el cuerpo del sinte y la caja
-    // - treble: el latigazo metálico del snare
-    // - lowMid (aproximado como mid*0.3): un poco de peso para que la bofetada se sienta gorda
-    // El resultado: un cocktail ultra-puro que entra directo a calculateBackPar
+    // 💊 WAVE 2187: LAS VITAMINAS REFORMULADAS (Resurrección del Snare)
+    // 💊 WAVE 2187: LAS VITAMINAS REFORMULADAS (Recorte de grasa)
+    // 🥁 WAVE 2187.2: SNARE ISOLATION (Muerte a los hi-hats huérfanos)
+    // 🥁 WAVE 2187.2: SNARE ISOLATION (Muerte a los hi-hats huérfanos)
+    // Un snare tiene CUERPO (mid) y LATIGAZO (treble). Un hi-hat solo treble.
+    // Al requerir la multiplicación de ambos, los hi-hats se filtran.
     const snareAndSynthPower = Math.min(1.0, 
-      (mid * 0.5) +           // El cuerpo del sinte y la caja
-      (treble * 0.8) +        // El latigazo metálico del snare
-      (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
+      (mid * 0.25) +               // Un poco de presencia base
+      (mid * treble * 1.8)         // 🪄 LA MAGIA: Si no hay mid, el treble pesado vale cero.
     );
     let backParIntensity = this.calculateBackPar(snareAndSynthPower)
 
@@ -259,12 +236,9 @@ export class TechnoStereoPhysics {
       // Calculamos la "Energía del Caos"
       const chaosEnergy = Math.max(mid, treble)
       
-      // FORZAMOS EL ENCENDIDO (Override)
-      // Si el Front estaba apagado por falta de bajos, lo encendemos con el ruido.
-      // Math.max asegura que usamos lo que sea más alto: el bajo real o el caos.
-      frontParIntensity = Math.max(frontParIntensity, chaosEnergy)
+      // EXENTO: El Front PAR (Bombo) es sagrado, no lo tocamos.
       
-      // Lo mismo para los demás. ¡QUE TODO BRILLE!
+      // Solo encendemos el resto con el caos
       backParIntensity = Math.max(backParIntensity, chaosEnergy)
       moverL = Math.max(moverL, chaosEnergy)
       moverR = Math.max(moverR, chaosEnergy)
@@ -272,18 +246,12 @@ export class TechnoStereoPhysics {
       // NOTA: Al forzar esto, el "Ghost Kick" (sidechain) queda anulado implícitamente
       // porque estamos sobrescribiendo los valores al final.
     } else {
-      // LÓGICA NORMAL: GHOST KICK (Logic Sidechain)
-      // Solo aplicamos ducking si NO es el apocalipsis.
-      // Si hay mucho ruido (Trance/DnB) O el bajo es brutal,
-      // usamos el BOMBO para empujar hacia abajo el resto
-      
-      // Detectamos "Muro de Sonido" si flatness es alto o si todo está alto
-      const wallOfSound = flatness > 0.6 || (bass > 0.6 && mid > 0.6 && treble > 0.6)
-
-      if (wallOfSound && frontParIntensity > 0.5) {
-        // Ducking Factor: Cuanto más fuerte el bombo, más agachamos lo demás
-        // Invertimos el bombo: 1.0 (golpe) -> 0.4 (ducking del 60%)
-        const ducking = 1.0 - (frontParIntensity * 0.6)
+      // 🔪 LÓGICA TECHNO: THE SIDECHAIN GUILLOTINE
+      // Siempre que el Front PAR (Bombo) dispare, aplastamos el resto de luces.
+      // Esto crea el "Espacio Negativo" necesario para el Techno.
+      if (frontParIntensity > 0.1) {
+        // Ducking Extremo: Un bombo al 100% apaga las demás luces en un 80%
+        const ducking = 1.0 - (frontParIntensity * 0.8);
         
         backParIntensity *= ducking
         moverL *= ducking
@@ -293,6 +261,9 @@ export class TechnoStereoPhysics {
 
     // Strobe (Treble peaks + Noise)
     const strobeResult = this.calculateStrobe(treble, noiseMode)
+
+    // Guardamos el nivel actual de bass para el siguiente frame (Transient detection)
+    this.lastBass = bass
 
     return {
       strobeActive: strobeResult.active,
@@ -312,7 +283,7 @@ export class TechnoStereoPhysics {
   public reset(): void {
     this.strobeActive = false
     this.strobeStartTime = 0
-    this.frontParActive = false
+    this.kickEnvelope = 0
   }
 
   // =========================================================================
@@ -320,6 +291,9 @@ export class TechnoStereoPhysics {
   // =========================================================================
 
   private handleSilence(acidMode: boolean, noiseMode: boolean): TechnoPhysicsResult {
+    // A clean silence resets the sidechain envelope to avoid ghosting.
+    this.kickEnvelope = 0
+
     return {
       strobeActive: false,
       strobeIntensity: 0,
@@ -335,41 +309,7 @@ export class TechnoStereoPhysics {
     }
   }
 
-  /**
-   * 🔊 FRONT PAR (BASS) - AHORA ACEPTA GATES DINÁMICOS
-   * 🛡️ WAVE 913: Soporta Recovery Gates para AGC Rebound Protection
-   * 
-   * @param bass - Señal de bajo normalizada
-   * @param gateOn - Umbral de activación (dinámico: 0.48 normal / 0.80 paranoia)
-   * @param gateOff - Umbral de desactivación (dinámico: 0.35 normal / 0.60 paranoia)
-   */
-  private calculateFrontPar(bass: number, gateOn: number, gateOff: number): number {
-    if (this.frontParActive) {
-      // Usamos el gateOff dinámico
-      if (bass < gateOff) {
-        this.frontParActive = false
-        return 0
-      }
-    } else {
-      // Usamos el gateOn dinámico
-      if (bass < gateOn) return 0
-      this.frontParActive = true
-    }
-
-    // Normalizamos usando el gate actual para mantener la curva correcta
-    const gated = (bass - gateOn) / (1 - gateOn)
-
-    // ?? INYECCIÓN DE VITAMINAS (Gain post-gate)
-    // Multiplicamos para saturar rápido. Si bass es decente, llegamos al 100%.
-    const boosted = gated * this.BASS_VITAMIN_BOOST
-
-    // 3. Curva de potencia para mantener contraste en la bajada
-    // x^2.0 es un buen compromiso entre golpe y sustain
-    const intensity = Math.pow(Math.max(0, boosted), 2.0)
-
-    return Math.min(1.0, Math.max(0, intensity)) // Cap al 100%
-  }
-
+  
   /**
    * 🥁 BACK PAR - THE CLEANER (NOISE GATE MODE)
    * 🧹 WAVE 911: Media geométrica + Curva supresora de ruido
@@ -386,12 +326,9 @@ export class TechnoStereoPhysics {
    */
   private calculateBackPar(signal: number): number {
     if (signal < this.BACK_PAR_GATE) return 0
-
     const gated = (signal - this.BACK_PAR_GATE) / (1 - this.BACK_PAR_GATE)
 
-    // 📉 CAMBIO DE CURVA: De 0.5 (inflar) a 1.5 (suprimir)
-    // Esto actúa como un "Noise Gate" suave. Lo débil se hace invisible.
-    // Lo fuerte (Snare) se mantiene fuerte.
+    // 📉 Curva x^1.5 (El x^3 era un agujero negro que se tragaba la luz)
     const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT
 
     return Math.min(1.0, Math.max(0, intensity))

@@ -184,10 +184,16 @@ const CalibrationView: React.FC = () => {
     return () => {
       cancelled = true
       try {
+        // 🔬 WAVE 2200: EXORCISMO DEL OVERRIDE — limpieza estricta al desmontar
+        // exitCalibrationMode libera solo pan/tilt del enterCalibrationMode.
+        // clearAllManual limpia TODOS los overrides manuales instalados vía
+        // sendDMX / sendPosition / TestPanel durante la sesión de calibración.
+        // Sin esto, dimmer, colores, gobo, etc. quedan pegados al navegar a LiveView.
         void electron.ipcRenderer.invoke('lux:arbiter:exitCalibrationMode', {
           fixtureId: activeFixtureId,
         })
-        console.log(`[CalibrationLab] 🎯 Calibration mode EXIT for ${activeFixtureId}`)
+        void electron.ipcRenderer.invoke('lux:arbiter:clearAllManual')
+        console.log(`[CalibrationLab] 🧹 Calibration EXIT + clearAllManual for ${activeFixtureId}`)
       } catch {
         // ignore cleanup errors
       }

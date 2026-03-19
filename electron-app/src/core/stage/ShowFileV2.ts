@@ -650,6 +650,8 @@ export interface FixtureV2 {
         hasTexture?: boolean
       }>
     }
+    // 🔥 WAVE 1135.3: Dead Zone floor — valor DMX mínimo donde el dimmer realmente enciende
+    dimmerMin?: number
   }
   
   /**

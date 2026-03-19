@@ -374,6 +374,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     getFixtureById,
   } = useLibraryStore(useShallow(selectFixtureForge))
   const { targetFixtureId, clearTargetFixture } = useNavigationStore(useShallow(selectFixtureForgeNav))
+  const { reconcileFixturesWithProfile } = useStageStore()
   
   // ═══════════════════════════════════════════════════════════════════════
   // STATE
@@ -697,6 +698,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
     
     console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name, '| ID:', completeFixture.id)
+    
+    // 🔥 WAVE 384: Hot-reload fixtures in stage when profile is saved
+    reconcileFixturesWithProfile(completeFixture)
     
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)
@@ -1053,6 +1057,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               <div className="rack-header">
                 <span>Channel</span>
                 <span>Function</span>
+                <span style={{ fontSize: '10px', color: '#22d3ee', textAlign: 'center' }}>MIN</span>
                 <span>Default</span>
                 <span></span>
               </div>
@@ -1110,6 +1115,29 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                         <span className="channel-empty">Drop function here</span>
                       )}
                     </div>
+                    {/* �️ NUEVA COLUMNA REAL: MIN VALUE (Solo para dimmer por ahora) */}
+                    {channel.type === 'dimmer' ? (
+                      <input
+                        type="number"
+                        className="channel-default"
+                        min={0}
+                        max={255}
+                        title="Dead Zone: Valor mínimo de encendido"
+                        value={fixture.capabilities?.dimmerMin ?? 0}
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
+                          setFixture(prev => ({
+                            ...prev,
+                            capabilities: { ...prev.capabilities, dimmerMin: val }
+                          }))
+                        }}
+                      />
+                    ) : (
+                      /* Placeholder vacío para mantener el Grid intacto en los demás canales */
+                      <div className="channel-min-placeholder"></div>
+                    )}
+
+                    {/* 🎯 COLUMNA DEFAULT ORIGINAL */}
                     <input
                       type="number"
                       className="channel-default"

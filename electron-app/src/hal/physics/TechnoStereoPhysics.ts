@@ -210,29 +210,29 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE ONE-SHOT METRONOME (Edge Detector)
+    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER
     // =======================================================================
-    // En electrónica, cuando necesitas una aguja (1 frame) en vez de una salchicha
-    // (N frames), usas un Edge Detector de flanco de subida.
-    // Aquí: solo disparamos si el cable acaba de pasar de false → true.
-    // ═══════════════════════════════════════════════════════════════════════════
+    const snap = bass - this.lastBass;
 
-    const currentTrigger = input.isPLLBeat || (input.isKick && bass > 0.45);
+    // a) EL OÍDO DEL FFT: Si GodEar oye un kick, exigimos un suelo bajo (0.35) 
+    // para ignorar sintes, pero dejamos que la luz pase.
+    const isValidFFTKick = input.isKick && bass > 0.35;
 
-    // 🔫 DETECTOR DE FLANCO: Solo dispara si en el frame anterior estaba apagado.
-    // Esto convierte una señal larga (salchicha) en una aguja de 1 frame.
-    if (currentTrigger && !this.lastKickTrigger) {
+    // b) LA FUERZA BRUTA (30 FPS): A 33ms por frame, el salto de audio se reparte.
+    // Un delta de 0.08 (8%) en un solo frame ya es un impacto violento.
+    // Bajamos el suelo a 0.50 para pillar el bombo aunque el frame lo corte por la mitad.
+    const isPhysicalKick = snap > 0.08 && bass > 0.50;
+
+    // Disparamos la luz si alguna de las dos condiciones se cumple
+    if (isValidFFTKick || isPhysicalKick) {
       this.kickEnvelope = 1.0;
     } else {
-      // 🔪 Aceleramos un poco el decay (0.60) para que a 30FPS el estrobo sea
-      // cortante y violento (dura exactamente 4 frames = ~130ms de luz).
-      this.kickEnvelope *= 0.60;
+      // Decay agresivo para que no quede luz residual (cae a 0 en ~4 frames)
+      this.kickEnvelope *= 0.65;
     }
 
-    // Guardamos el estado del cable para el próximo frame
-    this.lastKickTrigger = currentTrigger;
-
     let frontParIntensity = 0;
+    // Cortamos en 0.12 para forzar el blackout absoluto en el hardware barato
     if (this.kickEnvelope > 0.12) {
       frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
     }

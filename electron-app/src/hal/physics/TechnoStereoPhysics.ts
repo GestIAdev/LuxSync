@@ -116,9 +116,9 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_GATE_OFF = 0.60   // 🚨 Gate off proporcionalmente alto
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
-  // 🥁 BACK (SNARE SNIPER) - Resurrección
-  private readonly BACK_PAR_GATE = 0.35       // 📉 Lo bajamos otra vez a 0.35
-  private readonly BACK_PAR_SLAP_MULT = 3.0   // Multiplicador razonable
+  // 🥁 BACK (SNARE SNIPER) - Resurrección (Importado de Latino)
+  private readonly BACK_PAR_GATE = 0.45       // 🔪 Mantenemos el muro alto para que no entre basura
+  private readonly BACK_PAR_SLAP_MULT = 5.0   // 🚀 BOOM. De 3.0 a 5.0 para bofetadas nucleares
 
   // 👯 MOVERS (STEREO SPLIT)
   
@@ -240,12 +240,13 @@ export class TechnoStereoPhysics {
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND
     // =======================================================================
-    // 🔪 EL CLAP TECHNO (High-Mids Sniper): Tu análisis del espectro es la clave.
-    // En GodEarFFT, la métrica 'harshness' mapea exactamente a la banda High-Mid.
-    const synthBody = mid * 0.20; // Sintes muy tenues para no romper la oscuridad
-    const technoClap = (harshness * 2.0) + (treble * 0.5); // El hachazo de la caja
-
-    const snarePower = Math.min(1.0, synthBody + technoClap);
+    // 🔪 EL CLAP TECHNO: Recuperado de la WAVE 2199 (El Clon Latino).
+    // Mezcla perfecta de cuerpo (mids) y chasquido (treble), con peso extra.
+    const snarePower = Math.min(1.0, 
+      (mid * 0.5) +           // El cuerpo del sinte y la caja
+      (treble * 0.8) +        // El latigazo metalico del snare
+      (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
+    );
     let backParIntensity = this.calculateBackPar(snarePower);
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));

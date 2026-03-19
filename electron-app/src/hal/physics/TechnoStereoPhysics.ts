@@ -143,6 +143,8 @@ export class TechnoStereoPhysics {
   private strobeActive = false
   private strobeStartTime = 0
   private lastBass = 0
+  private lastMid = 0      // 🔪 Memoria para transientes
+  private lastTreble = 0   // 🔪 Memoria para transientes
   private kickEnvelope = 0
   private lastKickTrigger = false // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
 
@@ -240,9 +242,13 @@ export class TechnoStereoPhysics {
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND
     // =======================================================================
-    // 🔪 SNARE SNIPER: Exigimos que Mid y Treble choquen violentamente (firma de un Clap/Snare).
-    // Eliminamos el regalo de (mid * 0.25). Si es pura melodía, se queda a oscuras.
-    const snarePower = Math.min(1.0, (mid * treble * 3.0));
+    const midSnap = Math.max(0, mid - this.lastMid);
+    const trebleSnap = Math.max(0, treble - this.lastTreble);
+
+    // 🔪 SNARE SNIPER V2: Cazador de Transientes
+    // Premiamos la violencia del impacto (Snap) para cazar cajas sutiles.
+    // Los sintes sostenidos tienen snap=0, así que su valor cae en picado y se apagan.
+    const snarePower = Math.min(1.0, (midSnap * 2.5) + (trebleSnap * 2.0) + (mid * treble * 0.8));
     let backParIntensity = this.calculateBackPar(snarePower);
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
@@ -276,6 +282,8 @@ export class TechnoStereoPhysics {
 
     // Memoria para el siguiente frame
     this.lastBass = bass
+    this.lastMid = mid          // 🔪 Guardamos memoria
+    this.lastTreble = treble    // 🔪 Guardamos memoria
 
     return {
       strobeActive: strobeResult.active,

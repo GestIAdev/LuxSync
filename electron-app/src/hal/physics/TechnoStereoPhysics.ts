@@ -144,6 +144,7 @@ export class TechnoStereoPhysics {
   private strobeStartTime = 0
   private lastBass = 0
   private kickEnvelope = 0
+  private lastKickTrigger = false // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
 
   // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
   private lastSilenceTime = 0
@@ -209,22 +210,27 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE INFALLIBLE METRONOME (Hardware Agnostic)
+    // 1. FRONT PAR: THE ONE-SHOT METRONOME (Edge Detector)
     // =======================================================================
-    // Ya no nos importa si el hardware va a 30FPS o a 60FPS.
-    // Si el PLL predictivo (que corre independiente en su propio reloj)
-    // dice que estamos en la fase 0 del compás, disparamos a matar.
+    // En electrónica, cuando necesitas una aguja (1 frame) en vez de una salchicha
+    // (N frames), usas un Edge Detector de flanco de subida.
+    // Aquí: solo disparamos si el cable acaba de pasar de false → true.
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // Unimos la predicción del Cerebro (PLL) con el Oído crudo (FFT)
-    const isPerfectKick = input.isPLLBeat || (isKick && bass > 0.45);
+    const currentTrigger = input.isPLLBeat || (input.isKick && bass > 0.45);
 
-    if (isPerfectKick) {
+    // 🔫 DETECTOR DE FLANCO: Solo dispara si en el frame anterior estaba apagado.
+    // Esto convierte una señal larga (salchicha) en una aguja de 1 frame.
+    if (currentTrigger && !this.lastKickTrigger) {
       this.kickEnvelope = 1.0;
     } else {
-      // Un decay ligeramente más suave (0.70 en vez de 0.65)
-      // para que a 30FPS no parezca que la luz se rompe, sino que late.
-      this.kickEnvelope *= 0.70;
+      // 🔪 Aceleramos un poco el decay (0.60) para que a 30FPS el estrobo sea
+      // cortante y violento (dura exactamente 4 frames = ~130ms de luz).
+      this.kickEnvelope *= 0.60;
     }
+
+    // Guardamos el estado del cable para el próximo frame
+    this.lastKickTrigger = currentTrigger;
 
     let frontParIntensity = 0;
     if (this.kickEnvelope > 0.12) {

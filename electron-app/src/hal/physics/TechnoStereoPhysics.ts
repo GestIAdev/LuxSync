@@ -143,6 +143,7 @@ export class TechnoStereoPhysics {
   private strobeActive = false
   private strobeStartTime = 0
   private lastBass = 0
+  private lastFrontParFire = 0 // ⏱️ Memoria del cerrojo dinámico
   private kickEnvelope = 0
   private lastKickTrigger = false // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
 
@@ -210,29 +211,32 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER
+    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER (BPM-Aware Lockout)
     // =======================================================================
     const snap = bass - this.lastBass;
-
-    // a) EL OÍDO DEL FFT: Si GodEar oye un kick, exigimos un suelo bajo (0.35) 
-    // para ignorar sintes, pero dejamos que la luz pase.
     const isValidFFTKick = input.isKick && bass > 0.35;
-
-    // b) LA FUERZA BRUTA (30 FPS): A 33ms por frame, el salto de audio se reparte.
-    // Un delta de 0.08 (8%) en un solo frame ya es un impacto violento.
-    // Bajamos el suelo a 0.50 para pillar el bombo aunque el frame lo corte por la mitad.
     const isPhysicalKick = snap > 0.08 && bass > 0.50;
 
-    // Disparamos la luz si alguna de las dos condiciones se cumple
-    if (isValidFFTKick || isPhysicalKick) {
+    // ⏱️ EL CERROJO DINÁMICO (Pro-Level)
+    // 1. ¿Cuántos milisegundos dura un golpe a este BPM?
+    const currentBpm = input.bpm > 0 ? input.bpm : 120; // Fallback por si acaso
+    const beatIntervalMs = 60000 / currentBpm;
+    
+    // 2. Cerramos la puerta durante el 65% de ese tiempo.
+    // A 130 BPM (beat=461ms), el cerrojo dura 300ms. Aniquila el rodillo de graves de Boris,
+    // pero está perfectamente abierto para el siguiente bombo a los 461ms.
+    const frontLockoutMs = beatIntervalMs * 0.65;
+    const timeSinceLastFire = now - this.lastFrontParFire;
+
+    // Disparamos si hay bombo Y el cerrojo está abierto
+    if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
       this.kickEnvelope = 1.0;
+      this.lastFrontParFire = now; // 🔒 Echamos el cerrojo
     } else {
-      // Decay agresivo para que no quede luz residual (cae a 0 en ~4 frames)
-      this.kickEnvelope *= 0.65;
+      this.kickEnvelope *= 0.65; // Decay normal
     }
 
     let frontParIntensity = 0;
-    // Cortamos en 0.12 para forzar el blackout absoluto en el hardware barato
     if (this.kickEnvelope > 0.12) {
       frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
     }

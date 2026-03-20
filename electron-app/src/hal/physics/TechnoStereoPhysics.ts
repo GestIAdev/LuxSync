@@ -243,6 +243,7 @@ export class TechnoStereoPhysics {
     const lockoutRatio = 0.40; 
     const frontLockoutMs = beatIntervalMs * lockoutRatio;
     const timeSinceLastFire = now - this.lastFrontParFire;
+    const isLockOpen = timeSinceLastFire > frontLockoutMs;
 
     if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
       this.kickEnvelope = 1.0;
@@ -274,13 +275,20 @@ export class TechnoStereoPhysics {
         backParIntensity = Math.pow(gated, 2.0) * this.BACK_PAR_SLAP_MULT;
     }
 
-    // NOTE: Telemetría presente (no purgar). Descomenta si necesitas logs temporales.
-    /*
-    if (now - this.lastLogTime > 33) {
-      console.log(`TLOG B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} FOUT:${frontParIntensity.toFixed(2)} BP:${backParIntensity.toFixed(2)} Morph:${morphFactor.toFixed(2)}`)
-      this.lastLogTime = now;
+// =======================================================================
+    // 📊 TELEMETRÍA LUXSYNC (Caja Negra)
+    // Descomenta para capturar tus 10 segundos de gloria
+    // =======================================================================
+    
+    if (now - this.lastLogTime > 33) { 
+       console.log(
+         `[F] B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} L:${isLockOpen ? 'O':'C'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
+         `[M] Morph:${morphFactor.toFixed(2)}`
+       );
+       this.lastLogTime = now;
     }
-    */
+    
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
     let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);

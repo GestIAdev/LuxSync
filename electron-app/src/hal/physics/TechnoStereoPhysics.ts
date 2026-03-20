@@ -255,33 +255,34 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 🥁 BACK PAR: THE BALANCED DIAMOND (WAVE 2317)
+    // 🥁 BACK PAR: THE HIGH-MID MULTIPLIER (Domesticando al Boss)
     // =======================================================================
     
-    // 1. Filtro de Voces: Ajustamos para no asfixiar el impacto
-    const vocalReject = 0.20 + (0.20 * morphFactor); // Máximo 40% de rechazo
-    const cleanMid = Math.max(0, mid - (treble * vocalReject)); 
+    // 1. Aislamiento del Intruso (Sintes/Voces)
+    // Subimos el rechazo: si el mid es muy superior al treble, es ruido ambiental.
+    const midExcess = Math.max(0, mid - treble);
+    const midCrusher = 0.50 + (0.30 * morphFactor); // Castigo de hasta el 80%
+    const superCleanMid = Math.max(0, mid - (midExcess * midCrusher));
+
+    // 2. La Chispa (High-Mid / Harshness)
+    const harshSpark = (harshness ?? 0) * (2.0 + 1.5 * morphFactor);
     
-    // 2. Vitamina de Impacto: Subimos el Harshness (High-Mids)
-    // Es el hierro que le faltaba para despertar tras el gate
-    const harshSpark = (harshness ?? 0) * (2.2 + 2.0 * morphFactor);
-    
-    // 3. SnarePower: Reequilibrio de pesos para Anyma
+    // 3. LA FÓRMULA MAESTRA: Multiplicación de Impacto
+    // En lugar de sumar, multiplicamos para que solo el "choque" de frecuencias brille.
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.12) +       // Un 12% de cuerpo (masa mínima necesaria)
-      (treble * (1.2 + 1.2 * morphFactor)) + // Latigazo de 2.4x
-      (harshSpark * 0.5)        // El chasquido multibanda tiene más peso
+      (superCleanMid * 0.05) +            // 🧴 Solo un 5% de cuerpo (el "glitter")
+      (treble * (0.6 + 0.8 * morphFactor)) + // Brillo base
+      (harshSpark * treble * 4.0)         // ⚡ LA EXPLOSIÓN: Solo si hay High-Mid + Treble
     );
 
     let backParIntensity = 0;
-    // Bajamos la gate melódica un punto más (0.30 en Anyma total)
-    const dynamicBackGate = 0.54 - (0.24 * morphFactor); 
+    // Gate de seguridad para Melodic (0.32)
+    const dynamicBackGate = 0.54 - (0.22 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // 💎 EXPONENTE 2.8: El "Número Áureo" para esta mezcla.
-        // Suficientemente agresivo para matar la voz, suficientemente suave para dejar pasar el clep.
-        backParIntensity = Math.pow(gated, 2.8) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 3.2: Oscuridad absoluta para el resto, luz cristalina para el snare.
+        backParIntensity = Math.pow(gated, 3.2) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

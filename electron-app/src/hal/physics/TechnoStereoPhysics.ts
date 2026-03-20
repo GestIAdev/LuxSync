@@ -255,30 +255,33 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 🥁 BACK PAR: THE HYBRID POWER (WAVE 2320 - Resurrección)
+    // 🥁 BACK PAR: THE TRANSIENT VALIDATOR (WAVE 2321)
     // =======================================================================
     
-    // 1. Sensibilidad Anyma: Bajamos la gate melódica a un suelo real (0.24)
-    const dynamicBackGate = 0.50 - (0.26 * morphFactor); 
+    // 1. RECHAZO VOCAL AGRESIVO: Si el medio es mucho más fuerte que el agudo, es VOZ.
+    // Usamos un multiplicador de castigo basado en la morphología.
+    const midToTrebleRatio = mid / (treble + 0.01); 
+    const rejectionFactor = Math.min(1.0, midToTrebleRatio * (0.3 + 0.5 * morphFactor));
+    const cleanMid = Math.max(0, mid * (1.0 - rejectionFactor));
 
-    // 2. Vitaminas de Impacto: Recuperamos el SnareCore del High-Mid
-    const harshSpark = (harshness ?? 0) * (2.0 + 1.5 * morphFactor);
-    
-    // 3. Fórmula de Energía Sumada (No restada)
-    // Usamos un filtro suave de voz (20%) para que no se quede pegado.
-    const cleanMid = Math.max(0, mid - (treble * 0.20)); 
+    // 2. EL FILTRO DE COINCIDENCIA (La "Puerta" del Snare)
+    // El snare solo existe si hay Harshness Y Treble al mismo tiempo.
+    const sharpImpact = (harshness ?? 0) * treble * (8.0 + 4.0 * morphFactor);
     
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.15) +       // Cuerpo mínimo para que el flash sea "gordo"
-      (treble * (1.2 + 1.8 * morphFactor)) + // Latigazo 3.0x (Terminator Boost)
-      (harshSpark * 0.6)        // El chasquido de la caja
+      (cleanMid * 0.03) +       // Bajamos el cuerpo al 3% (casi invisible)
+      (treble * 0.8) +          // El brillo base es moderado
+      sharpImpact               // ⚡ SOLO ESTO debe encender el foco con fuerza
     );
 
     let backParIntensity = 0;
+    // Subimos la gate de nuevo a un valor seguro (0.42 en Anyma total)
+    const dynamicBackGate = 0.58 - (0.16 * morphFactor); 
+
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.2: Curva musical. Oscuridad para el ruido, brillo para el snare.
-        backParIntensity = Math.pow(gated, 2.2) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 3.5: Para que la voz residual no brille NADA.
+        backParIntensity = Math.pow(gated, 3.5) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

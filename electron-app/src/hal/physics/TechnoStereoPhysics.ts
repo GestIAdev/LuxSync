@@ -267,34 +267,37 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 BACK PAR: THE SNARE SNIPER (WAVE 2326)
+    // 🥁 BACK PAR: THE DE-BRICKER (Limpieza de Low-Mids)
     // =======================================================================
     
-    // 1. Detección de Transientes (Aumentamos la sensibilidad al agudo)
+    // 🧼 LIMPIEZA DE LADRILLOS: Filtramos los medios-bajos que ensucian.
+    // Usamos el 'harshness' (high-mids) para el impacto y 'treble' para el brillo.
+    // Reducimos el peso del 'mid' genérico que trae el fango de la voz y sintes graves.
+    const sharpMid = (harshness ?? mid * 0.5);
+
+    // ⚡ VITAMINA DE COINCIDENCIA QUIRÚRGICA (High-Mid * Treble)
+    // Ya no usamos el 'mid' total, usamos solo la parte "afilada" (sharpMid).
+    const snareRescue = (sharpMid * treble * (4.5 + 2.5 * morphFactor));
+
+    // Aseguramos un cleanMid base (filtro suave de voz)
+    const cleanMid = Math.max(0, mid - (1.0 - Math.min(1.0, ((treble * 1.5) + ((harshness ?? 0) * 1.0)) * 2.0)) * mid * 0.6);
+
     const transientImpact = Math.min(1.0, (treble * 1.5) + ((harshness ?? 0) * 1.0));
 
-    // 2. Vitaminas de Impacto (Tu idea: Medios * Treble vitaminado)
-    // Esto es lo que rescatará los redobles de Brejcha sin sintes
-    const snareRescue = (mid * treble * (4.0 + 2.0 * morphFactor));
-
-    // Ensure we have a cleanMid (soft voice filter)
-    const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
-
-    // 3. Fórmula de Energía (Menos masa, más impacto)
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.05) +       // Bajamos el cuerpo al 5% (adiós saturación de sintes)
-      (transientImpact * 0.4) + // El impacto base
-      snareRescue               // 🚀 LA VITAMINA: El multiplicador de coincidencia
+      (cleanMid * 0.03) +       // Bajamos el cuerpo al 3% (adiós fango)
+      (transientImpact * 0.3) + // El impacto base es más sutil
+      snareRescue               // La explosión real
     );
 
     let backParIntensity = 0;
-    // Bajamos la gate industrial un pelín (de 0.52 a 0.48) para que Boris respire
-    const dynamicBackGate = 0.48 - (0.18 * morphFactor); 
+    // Mantenemos la gate para asegurar el negro absoluto entre bombos
+    const dynamicBackGate = 0.50 - (0.20 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.5: Mantenemos el contraste cristalino
-        backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
+        // Exponente 2.8: Un pelín más agresivo para que el "ladrillo" no pase.
+        backParIntensity = Math.pow(gated, 2.8) * dynamicSlapMult;
     }
 
 // =======================================================================

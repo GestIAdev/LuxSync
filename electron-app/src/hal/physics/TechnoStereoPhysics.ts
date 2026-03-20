@@ -117,7 +117,7 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
   // 🥁 BACK (SNARE SNIPER) - Resurrección (Importado de Latino)
-  private readonly BACK_PAR_GATE = 0.45       // 🔪 Mantenemos el muro alto para que no entre basura
+  private readonly BACK_PAR_GATE = 0.50       // 🔪 Mantenemos el muro alto para que no entre basura
   private readonly BACK_PAR_SLAP_MULT = 5.0   // 🚀 BOOM. De 3.0 a 5.0 para bofetadas nucleares
 
   // 👯 MOVERS (STEREO SPLIT)
@@ -143,6 +143,8 @@ export class TechnoStereoPhysics {
   private strobeActive = false
   private strobeStartTime = 0
   private lastBass = 0
+  private lastLogTime = 0;
+  private avgMidProfiler = 0.0;
   private lastFrontParFire = 0 // ⏱️ Memoria del cerrojo dinámico
   private kickEnvelope = 0
   private lastKickTrigger = false // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
@@ -198,6 +200,25 @@ export class TechnoStereoPhysics {
     } = input
     const now = Date.now()
 
+    // =======================================================================
+    // 🔍 PROFILER ACÚSTICO (Sonda Temporal)
+    // =======================================================================
+    // Calculamos la niebla (sustain de medios) para ver si la teoría funciona
+    this.avgMidProfiler = (this.avgMidProfiler * 0.95) + (mid * 0.05);
+
+    if (now - this.lastLogTime > 1000) { // Imprime 1 vez por segundo
+      console.log(
+        `[🔍 PROFILER] ` +
+        `Bass: ${bass.toFixed(3)} | ` +
+        `Mid: ${mid.toFixed(3)} | ` +
+        `Treble: ${treble.toFixed(3)} | ` +
+        `AvgMid(Niebla): ${this.avgMidProfiler.toFixed(3)} | ` +
+        `Harsh: ${harshness?.toFixed(3) ?? 0} | ` +
+        `Flat: ${flatness?.toFixed(3) ?? 0}`
+      );
+      this.lastLogTime = now;
+    }
+
     // 🕵️‍♂️ MODOS Y SILENCIO
     const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD
     const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD
@@ -214,8 +235,8 @@ export class TechnoStereoPhysics {
     // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER (BPM-Aware Lockout)
     // =======================================================================
     const snap = bass - this.lastBass;
-    const isValidFFTKick = input.isKick && bass > 0.35;
-    const isPhysicalKick = snap > 0.08 && bass > 0.50;
+    const isValidFFTKick = input.isKick && bass > 0.40;
+    const isPhysicalKick = snap > 0.08 && bass > 0.55;
 
     // ⏱️ EL CERROJO DINÁMICO (Pro-Level)
     // 1. ¿Cuántos milisegundos dura un golpe a este BPM?
@@ -247,8 +268,8 @@ export class TechnoStereoPhysics {
     // 🔪 EL CLAP TECHNO: Recuperado de la WAVE 2199 (El Clon Latino).
     // Mezcla perfecta de cuerpo (mids) y chasquido (treble), con peso extra.
     const snarePower = Math.min(1.0, 
-      (mid * 0.5) +           // El cuerpo del sinte y la caja
-      (treble * 0.8) +        // El latigazo metalico del snare
+      (mid * 0.4) +           // El cuerpo del sinte y la caja
+      (treble * 1.0) +        // El latigazo metalico del snare
       (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
     );
     let backParIntensity = this.calculateBackPar(snarePower);

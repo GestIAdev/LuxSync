@@ -201,21 +201,21 @@ export class TechnoStereoPhysics {
     const now = Date.now()
 
     // =======================================================================
-    // 🔍 PROFILER ACÚSTICO (Sonda Temporal)
+    // 🔍 PROFILER & ADAPTIVE GATING (Modo Anyma vs Boris)
     // =======================================================================
-    // Calculamos la niebla (sustain de medios) para ver si la teoría funciona
-    this.avgMidProfiler = (this.avgMidProfiler * 0.95) + (mid * 0.05);
+    // Actualizamos la niebla de medios (EMA lenta)
+    this.avgMidProfiler = (this.avgMidProfiler * 0.98) + (mid * 0.02);
 
-    if (now - this.lastLogTime > 1000) { // Imprime 1 vez por segundo
-      console.log(
-        `[🔍 PROFILER] ` +
-        `Bass: ${bass.toFixed(3)} | ` +
-        `Mid: ${mid.toFixed(3)} | ` +
-        `Treble: ${treble.toFixed(3)} | ` +
-        `AvgMid(Niebla): ${this.avgMidProfiler.toFixed(3)} | ` +
-        `Harsh: ${harshness?.toFixed(3) ?? 0} | ` +
-        `Flat: ${flatness?.toFixed(3) ?? 0}`
-      );
+    // 🕵️‍♂️ Umbral de detección: Anyma marcó 0.469, Boris 0.307. 
+    // Usamos 0.40 como frontera de decisión.
+    const isMelodicMode = this.avgMidProfiler > 0.40;
+
+    // Gates dinámicos: Se abren en Melodic, se cierran en Hard Techno
+    const currentFrontGate = isMelodicMode ? 0.35 : 0.50; 
+    const currentBackGate = isMelodicMode ? 0.25 : 0.45;
+
+    if (now - this.lastLogTime > 2000) {
+      console.log(`[🎭 STYLE] ${isMelodicMode ? 'MELODIC (Anyma)' : 'HARD (Boris)'} | Niebla: ${this.avgMidProfiler.toFixed(3)}`);
       this.lastLogTime = now;
     }
 
@@ -232,35 +232,53 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER (BPM-Aware Lockout)
+    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER
     // =======================================================================
     const snap = bass - this.lastBass;
-    const isValidFFTKick = input.isKick && bass > 0.40;
-    const isPhysicalKick = snap > 0.08 && bass > 0.55;
+    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
+    const isPhysicalKick = snap > 0.08 && bass > currentFrontGate;
 
-    // ⏱️ EL CERROJO DINÁMICO (Pro-Level)
-    // 1. ¿Cuántos milisegundos dura un golpe a este BPM?
-    const currentBpm = input.bpm > 0 ? input.bpm : 120; // Fallback por si acaso
+    const currentBpm = input.bpm > 0 ? input.bpm : 120;
     const beatIntervalMs = 60000 / currentBpm;
-    
-    // 2. Cerramos la puerta durante el 65% de ese tiempo.
-    // A 130 BPM (beat=461ms), el cerrojo dura 300ms. Aniquila el rodillo de graves de Boris,
-    // pero está perfectamente abierto para el siguiente bombo a los 461ms.
     const frontLockoutMs = beatIntervalMs * 0.65;
     const timeSinceLastFire = now - this.lastFrontParFire;
 
-    // Disparamos si hay bombo Y el cerrojo está abierto
     if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
       this.kickEnvelope = 1.0;
-      this.lastFrontParFire = now; // 🔒 Echamos el cerrojo
+      this.lastFrontParFire = now; 
     } else {
-      this.kickEnvelope *= 0.65; // Decay normal
+      this.kickEnvelope *= 0.65; 
     }
 
     let frontParIntensity = 0;
     if (this.kickEnvelope > 0.12) {
       frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
     }
+
+    // =======================================================================
+    // 2. BACK PAR & MOVERS: THE REST OF THE BAND
+    // =======================================================================
+    // En modo Melodic, el Treble (el 'clep') se potencia x2 para brillar sobre la niebla
+    const trebleBoost = isMelodicMode ? 1.6 : 0.8;
+
+    const snarePower = Math.min(1.0, 
+      (mid * 0.4) +           
+      (treble * trebleBoost) + 
+      (mid * treble * 0.3)    
+    );
+
+    // Aplicamos el Gate dinámico al Back PAR
+    let backParIntensity = 0;
+    if (snarePower > currentBackGate) {
+        const gated = (snarePower - currentBackGate) / (1.0 - currentBackGate);
+        backParIntensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT;
+    }
+
+    const rawLeft = Math.max(0, mid - (treble * 0.3));
+    let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
+
+    const rawRight = Math.max(0, treble - (mid * 0.2));
+    let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
 
     // =======================================================================
     // 2. BACK PAR & MOVERS: THE REST OF THE BAND

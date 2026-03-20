@@ -210,7 +210,7 @@ export class TechnoStereoPhysics {
     // Front: de 0.55 (Hard) a 0.35 (Melodic)
     const currentFrontGate = 0.55 - (0.20 * morphFactor); 
     // Back: de 0.52 (Hard) a 0.28 (Melodic) -- Bajamos para rescatar claps sutiles
-    const currentBackGate = 0.52 - (0.24 * morphFactor);
+    const currentBackGate = 0.52 - (0.17 * morphFactor);
 
     // 🕵️‍♂️ MODOS Y SILENCIO
     const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
@@ -255,24 +255,34 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 2. BACK PAR: THE AMBIENT RESCUE
+    // 2. BACK PAR: MULTI-BAND ISOLATION (Usando las 7 bandas)
     // =======================================================================
-    // Anyma tiene claps muy agudos. Subimos el rechazo de medios para limpiar voces
-    // pero potenciamos el treble Boost.
-    const cleanMid = Math.max(0, mid - (treble * 0.30)); 
-    const trebleBoost = 1.0 + (1.5 * morphFactor); // 🚀 Boost masivo de agudos en Anyma
     
+    // 1. Identificamos a los "Intrusos" (Voces y Sintes de relleno)
+    // Usamos la banda de medios pura (lowMid / mid) como base de ruido
+    const synthNoise = mid * (0.45 + 0.35 * morphFactor);
+
+    // 2. Identificamos al "Objetivo" (El Snare/Clap)
+    // El 'harshness' en GodEar mapea a la banda High-Mid (2k-4kHz)
+    // Es el lugar perfecto donde la caja destaca sobre la voz.
+    const snareCore = (harshness ?? 0) * (1.5 + 1.5 * morphFactor);
+    
+    // 3. Sustracción Destructiva
+    // Restamos el ruido del sinte/voz del núcleo del snare.
+    const cleanSnare = Math.max(0, snareCore - synthNoise);
+
+    // 4. Cocktail de Potencia
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.15) +       // Menos cuerpo de sinte
-      (treble * trebleBoost) +  // Más latigazo de "clep"
-      (cleanMid * treble * 0.5) 
+      (cleanSnare * 0.8) +      // El núcleo limpio de la caja
+      (treble * 0.4) +          // El brillo final del hi-hat
+      (cleanSnare * treble * 1.5) // Multiplicador de impacto
     );
 
     let backParIntensity = 0;
     if (snarePower > currentBackGate) {
         const gated = (snarePower - currentBackGate) / (1.0 - currentBackGate);
-        // Exponente 2.0: Un poco más suave para que los claps duren un pelín más en Anyma
-        backParIntensity = Math.pow(gated, 2.0) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 3.0: Mantenemos la agresividad para asegurar oscuridad
+        backParIntensity = Math.pow(gated, 3.0) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

@@ -201,33 +201,46 @@ export class TechnoStereoPhysics {
     const now = Date.now()
 
     // =======================================================================
-    // 🔍 LIQUID STYLE MORPHING (Niebla Dinámica)
+    // 🔍 LIQUID MORPHING (Ajustado según animalog.md)
     // =======================================================================
-    // Suavizamos la entrada de la niebla para evitar jitter
-    this.avgMidProfiler = (this.avgMidProfiler * 0.90) + (mid * 0.10);
+    this.avgMidProfiler = (this.avgMidProfiler * 0.94) + (mid * 0.06); 
+    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.25) / 0.25));
 
-    // Mapeamos la niebla (0.30 a 0.50) a un factor de 0.0 (Hard) a 1.0 (Melodic)
-    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.20));
+    // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
+    // Front: de 0.55 (Hard) a 0.35 (Melodic)
+    const currentFrontGate = 0.55 - (0.20 * morphFactor); 
+    // Back: de 0.52 (Hard) a 0.28 (Melodic) -- Bajamos para rescatar claps sutiles
+    const currentBackGate = 0.52 - (0.24 * morphFactor);
 
-    // Gates Líquidos: Ya no hay saltos, hay una transición invisible.
-    // Front: de 0.55 (Hard) a 0.38 (Melodic)
-    const currentFrontGate = 0.55 - (0.17 * morphFactor); 
-    // Back: de 0.50 (Hard) a 0.32 (Melodic) -- Subimos un poco para evitar que el sinte se quede pegado
-    const currentBackGate = 0.50 - (0.18 * morphFactor);
+    // 🕵️‍♂️ MODOS Y SILENCIO
+    const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
+    const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD;
+
+    if (isRealSilence || isAGCTrap) {
+      this.inSilence = true;
+      this.lastSilenceTime = now;
+      return this.handleSilence(acidMode, noiseMode);
+    } else if (this.inSilence) {
+      this.inSilence = false;
+    }
 
     // =======================================================================
-    // 1. FRONT PAR: THE ELASTIC SNIPER (Anti-Arritmia)
+    // 1. FRONT PAR: THE FLOW SNIPER V2
     // =======================================================================
     const snap = bass - this.lastBass;
-    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.05);
-    const isPhysicalKick = snap > 0.07 && bass > currentFrontGate;
+    
+    // 👁️ ANALOGÍA DE LOGS: Anyma tiene snaps de 0.02-0.04 que ignoramos.
+    // Bajamos el umbral para ser más sensibles en modo melódico.
+    const snapThreshold = 0.06 - (0.04 * morphFactor); 
+    
+    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
+    const isPhysicalKick = snap > snapThreshold && bass > currentFrontGate;
 
     const currentBpm = input.bpm > 0 ? input.bpm : 120;
     const beatIntervalMs = 60000 / currentBpm;
     
-    // Cerrojo Elástico: Si hay mucha energía (Hard), el cerrojo es más agresivo (0.70). 
-    // Si es ambiental, es más corto (0.50) para no perder bombos sutiles.
-    const lockoutRatio = 0.70 - (0.20 * morphFactor); 
+    // Cerrojo dinámico: 40% del beat. Suficiente para limpiar, corto para no perder flow.
+    const lockoutRatio = 0.40; 
     const frontLockoutMs = beatIntervalMs * lockoutRatio;
     const timeSinceLastFire = now - this.lastFrontParFire;
 
@@ -238,30 +251,36 @@ export class TechnoStereoPhysics {
       this.kickEnvelope *= 0.65; 
     }
 
-    let frontParIntensity = 0;
-    if (this.kickEnvelope > 0.12) {
-      frontParIntensity = this.kickEnvelope * this.FRONT_MAX_INTENSITY;
-    }
+    let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 2. BACK PAR: THE SNARE SNIPER V3 (Intervención para Sintes Pegados)
+    // 2. BACK PAR: THE AMBIENT RESCUE
     // =======================================================================
-    // Boost de agudos adaptativo (de 0.8x a 1.6x)
-    const trebleBoost = 0.8 + (0.8 * morphFactor);
-
+    // Anyma tiene claps muy agudos. Subimos el rechazo de medios para limpiar voces
+    // pero potenciamos el treble Boost.
+    const cleanMid = Math.max(0, mid - (treble * 0.30)); 
+    const trebleBoost = 1.0 + (1.5 * morphFactor); // 🚀 Boost masivo de agudos en Anyma
+    
     const snarePower = Math.min(1.0, 
-      (mid * 0.35) +           // Reducimos el peso del cuerpo (era 0.4) para soltar los sintes pegados
-      (treble * trebleBoost) + 
-      (mid * treble * 0.3)
+      (cleanMid * 0.15) +       // Menos cuerpo de sinte
+      (treble * trebleBoost) +  // Más latigazo de "clep"
+      (cleanMid * treble * 0.5) 
     );
 
     let backParIntensity = 0;
     if (snarePower > currentBackGate) {
         const gated = (snarePower - currentBackGate) / (1.0 - currentBackGate);
-        // Exponente 2.0 en lugar de 1.5 para que la curva sea más cóncava: 
-        // los sintes medios se quedan abajo y solo el pico del snare explota.
+        // Exponente 2.0: Un poco más suave para que los claps duren un pelín más en Anyma
         backParIntensity = Math.pow(gated, 2.0) * this.BACK_PAR_SLAP_MULT;
     }
+
+    // NOTE: Telemetría presente (no purgar). Descomenta si necesitas logs temporales.
+    /*
+    if (now - this.lastLogTime > 33) {
+      console.log(`TLOG B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} FOUT:${frontParIntensity.toFixed(2)} BP:${backParIntensity.toFixed(2)} Morph:${morphFactor.toFixed(2)}`)
+      this.lastLogTime = now;
+    }
+    */
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
     let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);

@@ -267,23 +267,33 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 BACK PAR: THE PROTECTED SNIPER
+    // 🥁 BACK PAR: THE SNARE SNIPER (WAVE 2326)
     // =======================================================================
-    const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
-    const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
+    // 1. Detección de Transientes (Aumentamos la sensibilidad al agudo)
+    const transientImpact = Math.min(1.0, (treble * 1.5) + ((harshness ?? 0) * 1.0));
+
+    // 2. Vitaminas de Impacto (Tu idea: Medios * Treble vitaminado)
+    // Esto es lo que rescatará los redobles de Brejcha sin sintes
+    const snareRescue = (mid * treble * (4.0 + 2.0 * morphFactor));
+
+    // Ensure we have a cleanMid (soft voice filter)
+    const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
+
+    // 3. Fórmula de Energía (Menos masa, más impacto)
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.08) + 
-      (transientImpact * (1.1 + 1.4 * morphFactor))
+      (cleanMid * 0.05) +       // Bajamos el cuerpo al 5% (adiós saturación de sintes)
+      (transientImpact * 0.4) + // El impacto base
+      snareRescue               // 🚀 LA VITAMINA: El multiplicador de coincidencia
     );
 
     let backParIntensity = 0;
-    // Gate adaptativa con el nuevo rango 0.70
-    const dynamicBackGate = 0.52 - (0.22 * morphFactor); 
+    // Bajamos la gate industrial un pelín (de 0.52 a 0.48) para que Boris respire
+    const dynamicBackGate = 0.48 - (0.18 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.5: Perfecto para esos colores fríos y "boreales"
+        // Exponente 2.5: Mantenemos el contraste cristalino
         backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
     }
 

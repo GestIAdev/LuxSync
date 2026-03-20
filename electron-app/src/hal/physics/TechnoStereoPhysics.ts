@@ -255,32 +255,32 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 2. BACK PAR: THE HYBRID TRANSIENT HUNTER
+    // 🥁 BACK PAR: THE ELITIST SNIPER (Ajuste Post-Saturación)
     // =======================================================================
     
-    // 🕵️‍♂️ Usamos el Harshness (High-Mids) como "chispa" de la caja
-    const harshSpark = (harshness ?? 0) * (2.0 + 1.5 * morphFactor);
+    // 1. Filtro Anti-Voz/Sinte: Subimos el rechazo para limpiar el 'muro'
+    const vocalReject = 0.25 + (0.30 * morphFactor); // Hasta 55% de rechazo en máxima niebla
+    const cleanMid = Math.max(0, mid - (treble * vocalReject)); 
     
-    // Filtro suave de voces: Restamos solo un 15% de medios si no hay agudos
-    const cleanMid = Math.max(0, mid - (treble * 0.15)); 
+    // 2. Vitamina Harshness: La bajamos para que no sume tanto ruido de fondo
+    const harshSpark = (harshness ?? 0) * (1.2 + 1.0 * morphFactor);
     
-    // Potenciamos el agudo (el 'clep') para que sea el líder
-    const trebleBoost = 1.2 + (1.8 * morphFactor); 
-    
+    // 3. SnarePower: Reducimos pesos para ganar rango dinámico
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.15) +       // Un pequeño cuerpo de sinte para dar 'masa' a la luz
-      (treble * trebleBoost) +  // El latigazo principal
-      (harshSpark * 0.6)        // El chasquido multibanda
+      (cleanMid * 0.05) +       // Solo un 5% de cuerpo (casi nada)
+      (treble * (0.8 + 1.2 * morphFactor)) + // Latigazo de 2.0x max
+      (harshSpark * 0.35)       // El chasquido es un apoyo sutil
     );
 
     let backParIntensity = 0;
-    // Bajamos la gate melódica un poco más para asegurar que salgan (0.25 en modo Anyma)
-    const dynamicBackGate = 0.50 - (0.25 * morphFactor); 
+    // Subimos la gate para obligar a la señal a ser más alta (0.38 en modo melódico)
+    const dynamicBackGate = 0.56 - (0.18 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.0: Curva natural. Permite que Anyma respire sin ser una farola fija.
-        backParIntensity = Math.pow(gated, 2.0) * this.BACK_PAR_SLAP_MULT;
+        // 💎 EXPONENTE 4.0: La clave de la oscuridad. 
+        // Esto hará que los sintes al 60% den casi 0 luz, y solo el 95% de la caja explote.
+        backParIntensity = Math.pow(gated, 4.0) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

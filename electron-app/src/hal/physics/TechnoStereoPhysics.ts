@@ -255,32 +255,33 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 🥁 BACK PAR: THE ELITIST SNIPER (Ajuste Post-Saturación)
+    // 🥁 BACK PAR: THE BALANCED DIAMOND (WAVE 2317)
     // =======================================================================
     
-    // 1. Filtro Anti-Voz/Sinte: Subimos el rechazo para limpiar el 'muro'
-    const vocalReject = 0.25 + (0.30 * morphFactor); // Hasta 55% de rechazo en máxima niebla
+    // 1. Filtro de Voces: Ajustamos para no asfixiar el impacto
+    const vocalReject = 0.20 + (0.20 * morphFactor); // Máximo 40% de rechazo
     const cleanMid = Math.max(0, mid - (treble * vocalReject)); 
     
-    // 2. Vitamina Harshness: La bajamos para que no sume tanto ruido de fondo
-    const harshSpark = (harshness ?? 0) * (1.2 + 1.0 * morphFactor);
+    // 2. Vitamina de Impacto: Subimos el Harshness (High-Mids)
+    // Es el hierro que le faltaba para despertar tras el gate
+    const harshSpark = (harshness ?? 0) * (2.2 + 2.0 * morphFactor);
     
-    // 3. SnarePower: Reducimos pesos para ganar rango dinámico
+    // 3. SnarePower: Reequilibrio de pesos para Anyma
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.05) +       // Solo un 5% de cuerpo (casi nada)
-      (treble * (0.8 + 1.2 * morphFactor)) + // Latigazo de 2.0x max
-      (harshSpark * 0.35)       // El chasquido es un apoyo sutil
+      (cleanMid * 0.12) +       // Un 12% de cuerpo (masa mínima necesaria)
+      (treble * (1.2 + 1.2 * morphFactor)) + // Latigazo de 2.4x
+      (harshSpark * 0.5)        // El chasquido multibanda tiene más peso
     );
 
     let backParIntensity = 0;
-    // Subimos la gate para obligar a la señal a ser más alta (0.38 en modo melódico)
-    const dynamicBackGate = 0.56 - (0.18 * morphFactor); 
+    // Bajamos la gate melódica un punto más (0.30 en Anyma total)
+    const dynamicBackGate = 0.54 - (0.24 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // 💎 EXPONENTE 4.0: La clave de la oscuridad. 
-        // Esto hará que los sintes al 60% den casi 0 luz, y solo el 95% de la caja explote.
-        backParIntensity = Math.pow(gated, 4.0) * this.BACK_PAR_SLAP_MULT;
+        // 💎 EXPONENTE 2.8: El "Número Áureo" para esta mezcla.
+        // Suficientemente agresivo para matar la voz, suficientemente suave para dejar pasar el clep.
+        backParIntensity = Math.pow(gated, 2.8) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

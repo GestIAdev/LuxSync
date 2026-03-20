@@ -204,7 +204,11 @@ export class TechnoStereoPhysics {
     // 🔍 LIQUID MORPHING (Ajustado según animalog.md)
     // =======================================================================
     this.avgMidProfiler = (this.avgMidProfiler * 0.94) + (mid * 0.06); 
-    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.25) / 0.25));
+    // Morph factor expandido: zona 0.30 - 0.70
+    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40));
+
+    // LIMITADOR DE INTENSIDAD GLOBAL: reduce BACK_PAR_SLAP_MULT según morphFactor
+    const dynamicSlapMult = this.BACK_PAR_SLAP_MULT * (1.0 - (morphFactor * 0.5));
 
     // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
     // Front: de 0.55 (Hard) a 0.35 (Melodic)
@@ -255,30 +259,32 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 🥁 BACK PAR: THE FLUID PRECISION (WAVE 2323)
+    // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
     // =======================================================================
-    
-    // 1. Impacto de Transientes (Mantenemos la Suma Armónica pero con techo)
-    const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
+    // (avgMidProfiler ya actualizado arriba)
+    // 🛡️ LIMITADOR DE INTENSIDAD GLOBAL (Opción 1)
+    // Si la morfología sube (Buildup/Melodic), bajamos el techo de luz
+    // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
-    // 2. Filtro de Voces "Cisne": Más elegante, menos brusco.
-    // Si hay impacto, dejamos pasar un poco de cuerpo. Si no, lo hundimos.
-    const bodyWeight = 0.04 + (0.06 * morphFactor); // Solo entre 4% y 10% de peso de medios
+    // =======================================================================
+    // 🥁 BACK PAR: THE PROTECTED SNIPER
+    // =======================================================================
+    const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
     const snarePower = Math.min(1.0, 
-      (cleanMid * bodyWeight) +       // Cuerpo dinámico muy controlado
-      (transientImpact * (1.1 + 1.4 * morphFactor)) // Vitaminas de impacto (hasta 2.5x)
+      (cleanMid * 0.08) + 
+      (transientImpact * (1.1 + 1.4 * morphFactor))
     );
 
     let backParIntensity = 0;
-    // Gate equilibrada: 0.32 en modo Anyma total para evitar el "sol" constante
-    const dynamicBackGate = 0.52 - (0.20 * morphFactor); 
+    // Gate adaptativa con el nuevo rango 0.70
+    const dynamicBackGate = 0.52 - (0.22 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 3.0: Volvemos a la disciplina para limpiar la voz residual.
-        backParIntensity = Math.pow(gated, 3.0) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 2.5: Perfecto para esos colores fríos y "boreales"
+        backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
     }
 
 // =======================================================================

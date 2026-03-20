@@ -255,34 +255,31 @@ export class TechnoStereoPhysics {
     let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
-    // 2. BACK PAR: MULTI-BAND ISOLATION (Usando las 7 bandas)
+    // 2. BACK PAR: THE BALANCED ISOLATOR (Vitamina Post-Limpieza)
     // =======================================================================
     
-    // 1. Identificamos a los "Intrusos" (Voces y Sintes de relleno)
-    // Usamos la banda de medios pura (lowMid / mid) como base de ruido
-    const synthNoise = mid * (0.45 + 0.35 * morphFactor);
+    // 1. Ruido de fondo (Sintes/Voces)
+    const synthNoise = mid * (0.35 + 0.30 * morphFactor); // Un pelín menos agresivo
 
-    // 2. Identificamos al "Objetivo" (El Snare/Clap)
-    // El 'harshness' en GodEar mapea a la banda High-Mid (2k-4kHz)
-    // Es el lugar perfecto donde la caja destaca sobre la voz.
-    const snareCore = (harshness ?? 0) * (1.5 + 1.5 * morphFactor);
+    // 2. El Objetivo (Snare/Clap) - Vitaminamos el Harshness
+    // Multiplicamos por 4.5 en lugar de 1.5 para compensar la sustracción.
+    const snareCore = (harshness ?? 0) * (2.5 + 2.0 * morphFactor);
     
-    // 3. Sustracción Destructiva
-    // Restamos el ruido del sinte/voz del núcleo del snare.
+    // 3. Sustracción: Si hay snare real, debe ganar al ruido por goleada.
     const cleanSnare = Math.max(0, snareCore - synthNoise);
 
-    // 4. Cocktail de Potencia
+    // 4. Cocktail de Potencia (Ajustado para Anyma)
     const snarePower = Math.min(1.0, 
-      (cleanSnare * 0.8) +      // El núcleo limpio de la caja
-      (treble * 0.4) +          // El brillo final del hi-hat
-      (cleanSnare * treble * 1.5) // Multiplicador de impacto
+      (cleanSnare * 1.2) +      // Aumentamos peso del núcleo limpio
+      (treble * 0.6) +          // Recuperamos un poco de brillo agudo
+      (cleanSnare * treble * 2.0) // Potenciamos la coincidencia rítmica
     );
 
     let backParIntensity = 0;
     if (snarePower > currentBackGate) {
         const gated = (snarePower - currentBackGate) / (1.0 - currentBackGate);
-        // Exponente 3.0: Mantenemos la agresividad para asegurar oscuridad
-        backParIntensity = Math.pow(gated, 3.0) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 2.5: Volvemos a una curva más humana (era 3.5).
+        backParIntensity = Math.pow(gated, 2.5) * this.BACK_PAR_SLAP_MULT;
     }
 
 // =======================================================================

@@ -280,23 +280,7 @@ export class TechnoStereoPhysics {
     const rawRight = Math.max(0, treble - (mid * 0.2));
     let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
 
-    // =======================================================================
-    // 2. BACK PAR & MOVERS: THE REST OF THE BAND
-    // =======================================================================
-    // 🔪 EL CLAP TECHNO: Recuperado de la WAVE 2199 (El Clon Latino).
-    // Mezcla perfecta de cuerpo (mids) y chasquido (treble), con peso extra.
-    const snarePower = Math.min(1.0, 
-      (mid * 0.4) +           // El cuerpo del sinte y la caja
-      (treble * 1.0) +        // El latigazo metalico del snare
-      (mid * treble * 0.3)    // Un poco de peso para que la bofetada se sienta gorda
-    );
-    let backParIntensity = this.calculateBackPar(snarePower);
-
-    const rawLeft = Math.max(0, mid - (treble * 0.3));
-    let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
-
-    const rawRight = Math.max(0, treble - (mid * 0.2));
-    let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
+    
 
     // =======================================================================
     // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE

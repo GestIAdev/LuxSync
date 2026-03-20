@@ -201,46 +201,34 @@ export class TechnoStereoPhysics {
     const now = Date.now()
 
     // =======================================================================
-    // 🔍 PROFILER & ADAPTIVE GATING (Modo Anyma vs Boris)
+    // 🔍 LIQUID STYLE MORPHING (Niebla Dinámica)
     // =======================================================================
-    // Actualizamos la niebla de medios (EMA lenta)
-    this.avgMidProfiler = (this.avgMidProfiler * 0.98) + (mid * 0.02);
+    // Suavizamos la entrada de la niebla para evitar jitter
+    this.avgMidProfiler = (this.avgMidProfiler * 0.90) + (mid * 0.10);
 
-    // 🕵️‍♂️ Umbral de detección: Anyma marcó 0.469, Boris 0.307. 
-    // Usamos 0.40 como frontera de decisión.
-    const isMelodicMode = this.avgMidProfiler > 0.40;
+    // Mapeamos la niebla (0.30 a 0.50) a un factor de 0.0 (Hard) a 1.0 (Melodic)
+    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.20));
 
-    // Gates dinámicos: Se abren en Melodic, se cierran en Hard Techno
-    const currentFrontGate = isMelodicMode ? 0.35 : 0.50; 
-    const currentBackGate = isMelodicMode ? 0.25 : 0.45;
-
-    if (now - this.lastLogTime > 2000) {
-      console.log(`[🎭 STYLE] ${isMelodicMode ? 'MELODIC (Anyma)' : 'HARD (Boris)'} | Niebla: ${this.avgMidProfiler.toFixed(3)}`);
-      this.lastLogTime = now;
-    }
-
-    // 🕵️‍♂️ MODOS Y SILENCIO
-    const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD
-    const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD
-
-    if (isRealSilence || isAGCTrap) {
-      this.inSilence = true
-      this.lastSilenceTime = now
-      return this.handleSilence(acidMode, noiseMode)
-    } else if (this.inSilence) {
-      this.inSilence = false
-    }
+    // Gates Líquidos: Ya no hay saltos, hay una transición invisible.
+    // Front: de 0.55 (Hard) a 0.38 (Melodic)
+    const currentFrontGate = 0.55 - (0.17 * morphFactor); 
+    // Back: de 0.50 (Hard) a 0.32 (Melodic) -- Subimos un poco para evitar que el sinte se quede pegado
+    const currentBackGate = 0.50 - (0.18 * morphFactor);
 
     // =======================================================================
-    // 1. FRONT PAR: THE 30FPS PHYSICAL SNIPER
+    // 1. FRONT PAR: THE ELASTIC SNIPER (Anti-Arritmia)
     // =======================================================================
     const snap = bass - this.lastBass;
-    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
-    const isPhysicalKick = snap > 0.08 && bass > currentFrontGate;
+    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.05);
+    const isPhysicalKick = snap > 0.07 && bass > currentFrontGate;
 
     const currentBpm = input.bpm > 0 ? input.bpm : 120;
     const beatIntervalMs = 60000 / currentBpm;
-    const frontLockoutMs = beatIntervalMs * 0.65;
+    
+    // Cerrojo Elástico: Si hay mucha energía (Hard), el cerrojo es más agresivo (0.70). 
+    // Si es ambiental, es más corto (0.50) para no perder bombos sutiles.
+    const lockoutRatio = 0.70 - (0.20 * morphFactor); 
+    const frontLockoutMs = beatIntervalMs * lockoutRatio;
     const timeSinceLastFire = now - this.lastFrontParFire;
 
     if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
@@ -256,22 +244,23 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 2. BACK PAR & MOVERS: THE REST OF THE BAND
+    // 2. BACK PAR: THE SNARE SNIPER V3 (Intervención para Sintes Pegados)
     // =======================================================================
-    // En modo Melodic, el Treble (el 'clep') se potencia x2 para brillar sobre la niebla
-    const trebleBoost = isMelodicMode ? 1.6 : 0.8;
+    // Boost de agudos adaptativo (de 0.8x a 1.6x)
+    const trebleBoost = 0.8 + (0.8 * morphFactor);
 
     const snarePower = Math.min(1.0, 
-      (mid * 0.4) +           
+      (mid * 0.35) +           // Reducimos el peso del cuerpo (era 0.4) para soltar los sintes pegados
       (treble * trebleBoost) + 
-      (mid * treble * 0.3)    
+      (mid * treble * 0.3)
     );
 
-    // Aplicamos el Gate dinámico al Back PAR
     let backParIntensity = 0;
     if (snarePower > currentBackGate) {
         const gated = (snarePower - currentBackGate) / (1.0 - currentBackGate);
-        backParIntensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT;
+        // Exponente 2.0 en lugar de 1.5 para que la curva sea más cóncava: 
+        // los sintes medios se quedan abajo y solo el pico del snare explota.
+        backParIntensity = Math.pow(gated, 2.0) * this.BACK_PAR_SLAP_MULT;
     }
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));

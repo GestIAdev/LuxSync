@@ -1580,10 +1580,8 @@ export class HardwareAbstraction {
     
     // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
     const withWhite = states.filter(s => s.white !== undefined && s.white > 0)
-    if (withWhite.length > 0) {
-      const first = withWhite[0]
-      console.log(`[HAL] 🔆 WHITE PRE-DMX: ${first.name} → white=${first.white}, dimmer=${first.dimmer}`)
-    }
+    // Removed noisy retina-killing log: [HAL] 🔆 WHITE PRE-DMX
+    // If you need this debug info, enable it temporarily or use a debug flag.
     
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)

@@ -71,6 +71,9 @@ export interface TechnoPhysicsInput {
   sectionType?: string
   harshness?: number
   flatness?: number
+  crestFactor?: number // 🔍 WAVE 2340: Pico dinámico (Crest)/RMS para detectar boom vs compresión
+  centroid?: number // 🔍 WAVE 2340: Centro de masa espectral (Hz), para frenar saturación aguda
+  lowMid?: number // 🔍 WAVE 2340: Energía de medios-graves (808 / bajos sostenidos)
 }
 
 export interface TechnoPhysicsResult {
@@ -201,13 +204,18 @@ export class TechnoStereoPhysics {
     const now = Date.now()
 
     // =======================================================================
-    // 🔍 LIQUID MORPHING (Ajustado según animalog.md)
+    // 🧬 1. MORFOLOGÍA LÍQUIDA: VISCOSIDAD ASIMÉTRICA (WAVE 2340)
     // =======================================================================
-    this.avgMidProfiler = (this.avgMidProfiler * 0.94) + (mid * 0.06); 
-    // Morph factor expandido: zona 0.30 - 0.70
+    
+    // Inercia orgánica: Emoción rápida (Ataque 0.85), Caída densa (Decay 0.98)
+    if (mid > this.avgMidProfiler) {
+        this.avgMidProfiler = (this.avgMidProfiler * 0.85) + (mid * 0.15); 
+    } else {
+        this.avgMidProfiler = (this.avgMidProfiler * 0.98) + (mid * 0.02); 
+    }
+    
+    // UMBRAL SAGRADO: Suelo en 0.30, techo en 0.70.
     const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40));
-
-    // LIMITADOR DE INTENSIDAD GLOBAL: reduce BACK_PAR_SLAP_MULT según morphFactor
     const dynamicSlapMult = this.BACK_PAR_SLAP_MULT * (1.0 - (morphFactor * 0.5));
 
     // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
@@ -229,34 +237,42 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 1. FRONT PAR: THE FLOW SNIPER V2
+    // 💥 3. FRONT PAR: BASS MORPHOLOGY & KICK HUNTER
     // =======================================================================
-    const snap = bass - this.lastBass;
     
-    // 👁️ ANALOGÍA DE LOGS: Anyma tiene snaps de 0.02-0.04 que ignoramos.
-    // Bajamos el umbral para ser más sensibles en modo melódico.
-    const snapThreshold = 0.06 - (0.04 * morphFactor); 
-    
-    const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
-    const isPhysicalKick = snap > snapThreshold && bass > currentFrontGate;
+    // Nota al ejecutor: Asegurar que las variables crestFactor, flatness, centroid y lowMid 
+    // se estén extrayendo correctamente del frame actual de GodEarFFT.
+    const currentCrestFactor = (input.crestFactor ?? 0);
+    const currentFlatness = (input.flatness ?? 1.0);
+    const currentCentroid = (input.centroid ?? 0);
+    const lowMid = (input.lowMid ?? 0);
 
-    const currentBpm = input.bpm > 0 ? input.bpm : 120;
-    const beatIntervalMs = 60000 / currentBpm;
-    
-    // Cerrojo dinámico: 40% del beat. Suficiente para limpiar, corto para no perder flow.
-    const lockoutRatio = 0.40; 
-    const frontLockoutMs = beatIntervalMs * lockoutRatio;
-    const timeSinceLastFire = now - this.lastFrontParFire;
-    const isLockOpen = timeSinceLastFire > frontLockoutMs;
+    // A. KICK SNIPER: Bombo seco (Mucha energía, pico muy dinámico)
+    // CrestFactor alto (> 12.0) significa que es un impacto, no un zumbido.
+    const isKickDetected = (bass > 0.4) && (currentCrestFactor > 12.0); 
 
-    if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
-      this.kickEnvelope = 1.0;
-      this.lastFrontParFire = now; 
+    // B. ROLLING BASS: Línea de bajo continua o subgrave 808
+    // Energía en graves/medios-graves, pero muy plano y sostenido (CrestFactor bajo, Flatness bajo)
+    const isRollingBass = (bass > 0.3 || lowMid > 0.3) && (currentCrestFactor <= 12.0) && (currentFlatness < 0.2);
+
+    // C. CENTROID DUCKING: Freno de saturación
+    // Si el muro de sintes está muy agudo (> 3000Hz), atenuamos el frente para dar contraste a los Backs.
+    const centroidDucking = currentCentroid > 3000 ? 0.6 : 1.0; 
+
+    let frontParIntensity = 0;
+
+    if (isKickDetected) {
+        // Impacto brutal: Potencia al cuadrado para que el decaimiento visual sea un latigazo.
+        const kickPower = Math.min(1.0, bass * 1.3);
+        frontParIntensity = Math.pow(kickPower, 2.0) * centroidDucking;
+    } else if (isRollingBass) {
+        // Glow Melódico: Si es una nota larga, la luz "respira" a un máximo del 35% de intensidad.
+        const glowPower = Math.min(1.0, (bass + lowMid) * 0.6);
+        frontParIntensity = glowPower * 0.35 * centroidDucking; 
     } else {
-      this.kickEnvelope *= 0.65; 
+        // Negro absoluto si no hay graves ni impacto
+        frontParIntensity = 0; 
     }
-
-    let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
@@ -287,13 +303,13 @@ export class TechnoStereoPhysics {
     );
 
     let backParIntensity = 0;
-    // La gate intocable que funcionaba modo Dios
-    const dynamicBackGate = 0.52 - (0.22 * morphFactor); 
+    // Gate agresiva en modo Industrial (0.40), sensible en Melodic (0.20)
+    const dynamicBackGate = 0.40 - (0.20 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.5 original: El punto dulce del contraste
-        backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
+        // Exponente 3.5: Cero miniflashes, solo latigazos
+        backParIntensity = Math.pow(gated, 3.5) * dynamicSlapMult;
     }
 
 // =======================================================================
@@ -303,7 +319,7 @@ export class TechnoStereoPhysics {
     
     if (now - this.lastLogTime > 33) { 
        console.log(
-         `[F] B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} L:${isLockOpen ? 'O':'C'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] B:${bass.toFixed(2)} CrF:${currentCrestFactor.toFixed(2)} Kick:${isKickDetected ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );

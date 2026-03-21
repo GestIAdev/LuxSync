@@ -153,6 +153,8 @@ export interface AudioAnalysis {
   // 🎸 WAVE 1011: Spectral texture metrics (FFT.ts advanced)
   harshness?: number;         // 0-1 (ratio 2-5kHz vs total)
   spectralFlatness?: number;  // 0-1 (0=tonal, 1=noise)
+  // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral (dinámicas de kick)
+  crestFactor?: number;       // ratio (>10 = kick percusivo, <10 = bajo rolling)
   
   // 🎸 WAVE 1011: Transient detection (kick/snare/hihat)
   kickDetected?: boolean;

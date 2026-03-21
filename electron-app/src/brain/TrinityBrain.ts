@@ -237,6 +237,8 @@ export class TrinityBrain extends EventEmitter {
       harshness: analysis.harshness,
       spectralFlatness: analysis.spectralFlatness,
       spectralCentroid: analysis.spectralCentroid,
+      // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor cruza el puente
+      crestFactor: analysis.crestFactor,
       // 🎸 WAVE 1011.1: Transientes
       kickDetected: analysis.kickDetected,
       snareDetected: analysis.snareDetected,

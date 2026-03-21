@@ -306,6 +306,8 @@ class SpectrumAnalyzer {
     rawMidEnergy: number;
     // 🎹 WAVE 2301: 12-bin chromagram from GodEar (pitch classes C through B, normalized 0-1)
     chroma: number[];
+    // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral para kick vs rolling bass
+    crestFactor: number;
   } {
     //  Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
@@ -357,6 +359,8 @@ class SpectrumAnalyzer {
       // 🤖 Texture metrics - GOD EAR native
       harshness: godEarResult.bands.highMid, // Proxy para harshness
       spectralFlatness: godEarResult.spectral.flatness,
+      // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor entra al flujo de datos
+      crestFactor: godEarResult.spectral.crestFactor,
       
       // 🎭 WAVE 1018: Clarity para PROG ROCK detection
       clarity: godEarResult.spectral.clarity,

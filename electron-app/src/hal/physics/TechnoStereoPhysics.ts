@@ -247,55 +247,45 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: GOD EAR HUNTER (WAVE 2343)
+    // 💥 3. FRONT PAR: GOD EAR HUNTER (WAVE 2347 - El Tubo Arreglado)
     // =======================================================================
     
-    // 1. TELEMETRÍA DE 4ª GENERACIÓN (Ahora sí, sin excusas)
+    // 1. TELEMETRÍA DE 4ª GENERACIÓN (Ahora sí, conectada y real)
     const currentCrestFactor = input.spectralData?.crestFactor ?? 0;
     const currentFlatness = input.spectralData?.flatness ?? 1.0;
     const currentCentroid = input.spectralData?.centroid ?? 0;
 
-    // 2. FÍSICA DEL GRAVE
+    // 2. EL SALTO PURO (Sin promedios ciegos)
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
-    
-    // Calculamos el "suelo" de graves de la sala
-    this.avgBass = ((this.avgBass ?? 0) * 0.98) + (bass * 0.02);
 
-    // 3. EL GATILLO CORRECTO
-    // ¿El grave supera la media Y dio un salto rápido (> 0.04)?
-    const isBassHit = (bass > this.avgBass + 0.05) && (bassSnap > 0.04);
+    // 3. EL GATILLO ABSOLUTO
+    const isBassHit = bassSnap > 0.05;
 
-    // 4. INTELIGENCIA ANALÍTICA
-    // Si hay un hit, el CrestFactor decide qué tipo de golpe es.
-    // > 12.0 es un bombo seco (como el 24.67 de tu log)
-    const isKickDetected = isBassHit && (currentCrestFactor > 12.0); 
-    const isRollingBass = isBassHit && (currentCrestFactor <= 12.0) && (currentFlatness < 0.25);
-    const centroidDucking = currentCentroid > 3000 ? 0.6 : 1.0; 
+    // 4. LA INTELIGENCIA DEL CRESTFACTOR
+    const isKickDetected = isBassHit && (currentCrestFactor > 10.0); 
+    const isRollingBass = isBassHit && (currentCrestFactor <= 10.0) && (currentFlatness < 0.25);
+    const centroidDucking = currentCentroid > 3500 ? 0.6 : 1.0; 
 
-    // 5. CAÍDA ORGÁNICA LÍQUIDA (La Viscosidad)
-    const frontDecay = 0.82 + (0.10 * morphFactor);
+    // 5. CAÍDA LÍQUIDA (Garantiza el negro absoluto entre bombos a 140BPM)
+    const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 6. DISPARADOR CON CERROJO
+    // 6. CEREBRO Y CERROJO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickDetected) {
-        // 🚀 BOMBO: Latigazo violento vitaminado por la morfología
-        this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.5 * morphFactor)) * centroidDucking;
-        this.frontLockout = 6 + Math.floor(4 * morphFactor); 
+        // 🚀 BOMBO: Latigazo ciego. Sincronía 1:1.
+        this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor)) * centroidDucking;
+        this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 BAJO MELÓDICO: Glow suave
-        this.frontIntensity = Math.min(1.0, bass * 0.5) * centroidDucking;
-        this.frontLockout = 4;
-    } else if (isBassHit) {
-        // 🛡️ FALLBACK: Si no es ni bombo ni bajo claro, pero es un golpe
-        this.frontIntensity = Math.min(1.0, bass * 0.9) * centroidDucking;
-        this.frontLockout = 5;
+        // 🌊 BAJO MELÓDICO: Glow envolvente.
+        this.frontIntensity = Math.min(1.0, bass * 0.4) * centroidDucking;
+        this.frontLockout = 3;
     }
 
-    // 7. LIMPIEZA FINAL
-    let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;
+    // 7. LIMPIEZA FINAL (Anti-minipulsos)
+    let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)

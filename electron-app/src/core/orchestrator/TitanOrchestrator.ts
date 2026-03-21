@@ -168,7 +168,9 @@ export class TitanOrchestrator {
     snareDetected?: boolean;    // 🎸 WAVE 1011: Snare transient
     hihatDetected?: boolean;    // 🎸 WAVE 1011: Hihat transient
     rawBassEnergy?: number;     // 🔥 WAVE 1162: Bass SIN AGC para BeatDetector
-    // 🔥 WAVE 2112: Worker BPM fields — GodEarBPMTracker is the authority
+    // � WAVE 2347: crestFactor desde GodEar para kick classification
+    crestFactor?: number;
+    // �🔥 WAVE 2112: Worker BPM fields — GodEarBPMTracker is the authority
     workerBpm?: number;
     workerBpmConfidence?: number;
     workerOnBeat?: boolean;
@@ -195,6 +197,7 @@ export class TitanOrchestrator {
     subBass: 0,
     lowMid: 0,
     highMid: 0,
+    crestFactor: 0,  // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -268,6 +271,7 @@ export class TitanOrchestrator {
         bass: number; mid: number; treble: number; energy: number;
         subBass?: number; lowMid?: number; highMid?: number;
         harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
+        crestFactor?: number;  // 💥 WAVE 2347: EL TUBO ARREGLADO
         kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
         rawBassEnergy?: number;  // 🔥 WAVE 1162: THE BYPASS
         // 🔥 WAVE 2112: BPM from GodEarBPMTracker in Worker
@@ -294,6 +298,8 @@ export class TitanOrchestrator {
           harshness: levels.harshness ?? this.lastAudioData.harshness,
           spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
           spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+          // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor llega al lastAudioData
+          crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
           
           // Transient detection - WORKER AUTHORITATIVE (detección precisa)
           kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
@@ -649,6 +655,8 @@ export class TitanOrchestrator {
       harshness: this.smoothedMetrics.harshness,
       spectralFlatness: this.smoothedMetrics.spectralFlatness,
       spectralCentroid: this.smoothedMetrics.spectralCentroid,
+      // 💥 WAVE 2347: crestFactor suavizado disponible para physics engines
+      crestFactor: this.smoothedMetrics.crestFactor,
       // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
       subBass: this.smoothedMetrics.subBass,
       lowMid: this.smoothedMetrics.lowMid,
@@ -2285,6 +2293,13 @@ export class TitanOrchestrator {
       this.smoothedMetrics.highMid = 
         (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid + 
         this.EMA_ALPHA_FAST * raw.highMid;
+    }
+
+    // 💥 WAVE 2347: CrestFactor: FAST - los transients de kick son eventos, deben sentirse
+    if (typeof raw.crestFactor === 'number') {
+      this.smoothedMetrics.crestFactor =
+        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.crestFactor +
+        this.EMA_ALPHA_FAST * raw.crestFactor;
     }
   }
 

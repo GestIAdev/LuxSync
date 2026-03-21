@@ -128,6 +128,8 @@ export interface EngineAudioMetrics {
   hihatDetected?: boolean
   // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME
   isPLLBeat?: boolean
+  // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral (kick vs rolling bass)
+  crestFactor?: number
 }
 
 /**
@@ -678,6 +680,7 @@ export class TitanEngine extends EventEmitter {
         snareDetected: audio.snareDetected,
         hihatDetected: audio.hihatDetected,
         isPLLBeat: audio.isPLLBeat,  // ⏱️ WAVE 2305
+        crestFactor: audio.crestFactor,  // 💥 WAVE 2347
       },
       elementalMods
     )

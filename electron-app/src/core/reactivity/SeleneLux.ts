@@ -108,6 +108,8 @@ export interface SeleneLuxAudioMetrics {
 
   // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME (Hardware-agnostic trigger)
   isPLLBeat?: boolean;
+  // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral
+  crestFactor?: number;
 }
 
 /**
@@ -478,7 +480,13 @@ export class SeleneLux {
         sectionType: vibeContext.section,
         // 🎛️ WAVE 1012: Métricas espectrales para Acid/Noise modes
         harshness: audioMetrics.harshness ?? 0.45,      // Default más agresivo que Rock (Techno = duro)
-        flatness: audioMetrics.spectralFlatness ?? 0.35  // Default para pads/atmos
+        flatness: audioMetrics.spectralFlatness ?? 0.35,  // Default para pads/atmos
+        // 💥 WAVE 2347: EL TUBO ARREGLADO — spectralData ahora llega a la física
+        spectralData: {
+          crestFactor: audioMetrics.crestFactor,
+          flatness: audioMetrics.spectralFlatness,
+          centroid: audioMetrics.spectralCentroid,
+        }
       });
       
       // Guardar overrides para usar después

@@ -156,6 +156,10 @@ export class TechnoStereoPhysics {
   private lastSilenceTime = 0
   private inSilence = false
   
+  // 💥 WAVE 2341: FRONT PAR STATE (Autonomous decay & lockout)
+  private bassThr = 0.0  // Auto-calibrating threshold
+  private frontIntensity = 0.0  // Persistente intensity para decay orgánico
+  private frontLockout = 0  // Frame counter para evitar re-triggers
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -237,42 +241,60 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: BASS MORPHOLOGY & KICK HUNTER
+    // 💥 3. FRONT PAR: BASS MORPHOLOGY & KICK HUNTER (Corregido)
     // =======================================================================
     
-    // Nota al ejecutor: Asegurar que las variables crestFactor, flatness, centroid y lowMid 
-    // se estén extrayendo correctamente del frame actual de GodEarFFT.
-    const currentCrestFactor = (input.crestFactor ?? 0);
-    const currentFlatness = (input.flatness ?? 1.0);
-    const currentCentroid = (input.centroid ?? 0);
-    const lowMid = (input.lowMid ?? 0);
+    // Obtenemos la telemetría de 4ª Generación
+    const currentCrestFactor = input.crestFactor ?? 0;
+    const currentFlatness = input.flatness ?? 1.0;
+    const currentCentroid = input.centroid ?? 0;
 
-    // A. KICK SNIPER: Bombo seco (Mucha energía, pico muy dinámico)
-    // CrestFactor alto (> 12.0) significa que es un impacto, no un zumbido.
-    const isKickDetected = (bass > 0.4) && (currentCrestFactor > 12.0); 
+    // 1. DETECCIÓN DE IMPACTO (El gatillo)
+    const bassSnap = bass - (this.lastBass ?? 0);
+    this.lastBass = bass;
+    
+    // Auto-calibración de umbral (Para que se adapte al volumen del bombo)
+    this.bassThr = (this.bassThr * 0.98) + (bass * 0.02);
+    const dynamicThr = this.bassThr + 0.04; // Umbral de seguridad anti-ruido
 
-    // B. ROLLING BASS: Línea de bajo continua o subgrave 808
-    // Energía en graves/medios-graves, pero muy plano y sostenido (CrestFactor bajo, Flatness bajo)
-    const isRollingBass = (bass > 0.3 || lowMid > 0.3) && (currentCrestFactor <= 12.0) && (currentFlatness < 0.2);
-
-    // C. CENTROID DUCKING: Freno de saturación
-    // Si el muro de sintes está muy agudo (> 3000Hz), atenuamos el frente para dar contraste a los Backs.
+    // 2. INTELIGENCIA ANALÍTICA
+    // Un CrestFactor alto (> 8.0) significa que es un impacto súper rápido (Bombo)
+    const isKickDetected = currentCrestFactor > 8.0; 
+    
+    // Si el CrestFactor es bajo y es un tono puro (Flatness < 0.25), es un bajo rodante
+    const isRollingBass = currentCrestFactor <= 8.0 && currentFlatness < 0.25;
+    
+    // Freno de saturación: Si hay demasiado agudo en la sala, el Front se atenúa
     const centroidDucking = currentCentroid > 3000 ? 0.6 : 1.0; 
 
-    let frontParIntensity = 0;
+    // 3. CAÍDA ORGÁNICA (Decay)
+    // Esto es lo que soluciona que se quede fijo. La luz cae un 12% cada frame.
+    this.frontIntensity = (this.frontIntensity ?? 0) * 0.88; 
 
-    if (isKickDetected) {
-        // Impacto brutal: Potencia al cuadrado para que el decaimiento visual sea un latigazo.
-        const kickPower = Math.min(1.0, bass * 1.3);
-        frontParIntensity = Math.pow(kickPower, 2.0) * centroidDucking;
-    } else if (isRollingBass) {
-        // Glow Melódico: Si es una nota larga, la luz "respira" a un máximo del 35% de intensidad.
-        const glowPower = Math.min(1.0, (bass + lowMid) * 0.6);
-        frontParIntensity = glowPower * 0.35 * centroidDucking; 
-    } else {
-        // Negro absoluto si no hay graves ni impacto
-        frontParIntensity = 0; 
+    // 4. DISPARADOR CON CERROJO (Lockout)
+    if ((this.frontLockout ?? 0) > 0) {
+        this.frontLockout--; // Descontamos el cerrojo
+    } else if (bassSnap > dynamicThr) {
+        
+        // ¡GATILLO ACTIVADO! Evaluamos la Morfología del Grave
+        if (isKickDetected) {
+            // Bombo Seco: Latigazo potente (1.6x) y cerrojo largo para evitar dobles disparos
+            this.frontIntensity = Math.min(1.0, bass * 1.6) * centroidDucking;
+            this.frontLockout = 8; 
+        } else if (isRollingBass) {
+            // Bajo Melódico (Glow): Impacto suave (0.35x) y cerrojo corto para que "respire"
+            this.frontIntensity = Math.min(1.0, bass * 0.35) * centroidDucking;
+            this.frontLockout = 4; 
+        } else {
+            // Fallback genérico para graves normales
+            this.frontIntensity = Math.min(1.0, bass * 1.0) * centroidDucking;
+            this.frontLockout = 6;
+        }
     }
+
+    // 5. LIMPIEZA FINAL
+    // Si la intensidad cae por debajo de 0.05, apagamos a cero negro absoluto
+    let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
@@ -319,7 +341,7 @@ export class TechnoStereoPhysics {
     
     if (now - this.lastLogTime > 33) { 
        console.log(
-         `[F] B:${bass.toFixed(2)} CrF:${currentCrestFactor.toFixed(2)} Kick:${isKickDetected ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] B:${bass.toFixed(2)} Snap:${bassSnap.toFixed(3)} Kick:${isKick ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );

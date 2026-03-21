@@ -38,20 +38,20 @@ export class TechnoStereoPhysics {
         // =========================================================================
         // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
         // =========================================================================
-        // 🔊 FRONT (BASS) - Dry & Punchy (Corte militar)
-        this.FRONT_PAR_GATE_ON = 0.48; // ⬆️ Más estricto (evita Sidechain accidental)
-        this.FRONT_PAR_GATE_OFF = 0.35; // ⬆️ Corte alto (Secar el bajo)
-        this.BASS_VITAMIN_BOOST = 1.8;
+        // 🔊 FRONT (BASS) - EL CERROJO ORGÁNICO
+        this.FRONT_PAR_GATE_ON = 0.50; // 💥 Bajamos un poco para cazar más kicks
+        this.FRONT_PAR_GATE_OFF = 0.35; // 🔪 Suelo razonable para el decay
+        this.BASS_VITAMIN_BOOST = 3.0; // 🚀 Empuje para el cuerpo de la luz
+        this.FRONT_MAX_INTENSITY = 0.80; // 🚨 EL TECHO DEL 80%
         // 🛡️ PARANOIA GATE (Para el rebote del AGC)
         // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
         // Esto filtra el ruido de fondo inflado, pero deja pasar el Drop (100%)
         this.RECOVERY_GATE_ON = 0.80; // 🚨 Gate paranoico post-silencio
         this.RECOVERY_GATE_OFF = 0.60; // 🚨 Gate off proporcionalmente alto
         this.RECOVERY_DURATION = 2000; // 2 segundos de desconfianza
-        // 🥁 BACK (SNARE SNIPER - GEOMETRIC MEAN + NOISE GATE)
-        // Media geométrica + Curva supresora de ruido
-        this.BACK_PAR_GATE = 0.40;
-        this.BACK_PAR_SLAP_MULT = 5.0; // ⬆️ Compensar curva supresora (4.0→6.0)
+        // 🥁 BACK (SNARE SNIPER) - Resurrección (Importado de Latino)
+        this.BACK_PAR_GATE = 0.50; // 🔪 Mantenemos el muro alto para que no entre basura
+        this.BACK_PAR_SLAP_MULT = 5.0; // 🚀 BOOM. De 3.0 a 5.0 para bofetadas nucleares
         // 👯 MOVERS (STEREO SPLIT)
         // LEFT (Mid/Voces) - "The Body"
         this.MOVER_L_GATE = 0.20;
@@ -69,7 +69,12 @@ export class TechnoStereoPhysics {
         // =========================================================================
         this.strobeActive = false;
         this.strobeStartTime = 0;
-        this.frontParActive = false;
+        this.lastBass = 0;
+        this.lastLogTime = 0;
+        this.avgMidProfiler = 0.0;
+        this.lastFrontParFire = 0; // ⏱️ Memoria del cerrojo dinámico
+        this.kickEnvelope = 0;
+        this.lastKickTrigger = false; // 🔫 WAVE 2306: Memory del One-Shot Edge Detector
         // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
         this.lastSilenceTime = 0;
         this.inSilence = false;
@@ -77,7 +82,7 @@ export class TechnoStereoPhysics {
     }
     // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...
     static apply(palette, audio, mods) {
-        // (Mismo c�digo legacy para compatibilidad de colores)
+        // (Mismo codigo legacy para compatibilidad de colores)
         const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
         const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
         const normalizedTreble = audio.normalizedTreble ?? 0;
@@ -99,95 +104,118 @@ export class TechnoStereoPhysics {
     applyZones(input) {
         // 🔥 WAVE 1012: Defaults inteligentes para métricas espectrales
         // Sin estos, acidMode/noiseMode/atmosphericFloor quedan MUERTOS
-        const { bass, mid, treble, isRealSilence, isAGCTrap, harshness = 0.45, // 🎛️ Default agresivo (Techno = duro)
+        const { bass, mid, treble, isRealSilence, isAGCTrap, isKick = false, harshness = 0.45, // 🎛️ Default agresivo (Techno = duro)
         flatness = 0.35 // 🎛️ Default para pads/atmos
          } = input;
         const now = Date.now();
-        // ?? Modos
+        // =======================================================================
+        // 🔍 LIQUID MORPHING (Ajustado según animalog.md)
+        // =======================================================================
+        this.avgMidProfiler = (this.avgMidProfiler * 0.94) + (mid * 0.06);
+        // Morph factor expandido: zona 0.30 - 0.70
+        const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40));
+        // LIMITADOR DE INTENSIDAD GLOBAL: reduce BACK_PAR_SLAP_MULT según morphFactor
+        const dynamicSlapMult = this.BACK_PAR_SLAP_MULT * (1.0 - (morphFactor * 0.5));
+        // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
+        // Front: de 0.55 (Hard) a 0.35 (Melodic)
+        const currentFrontGate = 0.55 - (0.20 * morphFactor);
+        // Back: de 0.52 (Hard) a 0.28 (Melodic) -- Bajamos para rescatar claps sutiles
+        const currentBackGate = 0.52 - (0.17 * morphFactor);
+        // 🕵️‍♂️ MODOS Y SILENCIO
         const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
         const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD;
-        // 🕵️‍♂️ WAVE 913: DETECCIÓN DE TRANSICIÓN DE SILENCIO
         if (isRealSilence || isAGCTrap) {
             this.inSilence = true;
-            this.lastSilenceTime = now; // Actualizamos mientras dure el silencio
+            this.lastSilenceTime = now;
             return this.handleSilence(acidMode, noiseMode);
         }
-        else {
-            // Si acabamos de salir del silencio, this.inSilence será true
-            if (this.inSilence) {
-                this.inSilence = false;
-                // Aquí empieza el contador de "Recovery" (lastSilenceTime se queda fijo)
-            }
+        else if (this.inSilence) {
+            this.inSilence = false;
         }
-        // 🛡️ WAVE 913: CÁLCULO DE PARANOIA
-        // ¿Cuánto tiempo ha pasado desde que volvió la música?
-        const timeSinceSilence = now - this.lastSilenceTime;
-        const isRecovering = timeSinceSilence < this.RECOVERY_DURATION;
-        // 🔊 FRONT PAR: LÓGICA DINÁMICA
-        // Si estamos recuperando, usamos el Gate Paranoico (0.80). Si no, el normal (0.48).
-        const effectiveGateOn = isRecovering ? this.RECOVERY_GATE_ON : this.FRONT_PAR_GATE_ON;
-        // También subimos el Gate Off proporcionalmente para evitar colas largas sucias
-        const effectiveGateOff = isRecovering ? this.RECOVERY_GATE_OFF : this.FRONT_PAR_GATE_OFF;
-        let frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff);
-        // 💊 WAVE 2187: LAS VITAMINAS - Fusión del cuerpo de la caja + el chasquido + los sintes
-        // En vez de solo sqrt(mid*treble), mezclamos:
-        // - mid: el cuerpo del sinte y la caja
-        // - treble: el latigazo metálico del snare
-        // - lowMid (aproximado como mid*0.3): un poco de peso para que la bofetada se sienta gorda
-        // El resultado: un cocktail ultra-puro que entra directo a calculateBackPar
-        const snareAndSynthPower = Math.min(1.0, (mid * 0.5) + // El cuerpo del sinte y la caja
-            (treble * 0.8) + // El latigazo metálico del snare
-            (mid * treble * 0.3) // Un poco de peso para que la bofetada se sienta gorda
-        );
-        let backParIntensity = this.calculateBackPar(snareAndSynthPower);
-        // 👯 STEREO ALCHEMY
-        // LEFT: Mid Dominante - "The Body"
+        // =======================================================================
+        // 1. FRONT PAR: THE FLOW SNIPER V2
+        // =======================================================================
+        const snap = bass - this.lastBass;
+        // 👁️ ANALOGÍA DE LOGS: Anyma tiene snaps de 0.02-0.04 que ignoramos.
+        // Bajamos el umbral para ser más sensibles en modo melódico.
+        const snapThreshold = 0.06 - (0.04 * morphFactor);
+        const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
+        const isPhysicalKick = snap > snapThreshold && bass > currentFrontGate;
+        const currentBpm = input.bpm > 0 ? input.bpm : 120;
+        const beatIntervalMs = 60000 / currentBpm;
+        // Cerrojo dinámico: 40% del beat. Suficiente para limpiar, corto para no perder flow.
+        const lockoutRatio = 0.40;
+        const frontLockoutMs = beatIntervalMs * lockoutRatio;
+        const timeSinceLastFire = now - this.lastFrontParFire;
+        const isLockOpen = timeSinceLastFire > frontLockoutMs;
+        if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
+            this.kickEnvelope = 1.0;
+            this.lastFrontParFire = now;
+        }
+        else {
+            this.kickEnvelope *= 0.65;
+        }
+        let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
+        // =======================================================================
+        // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
+        // =======================================================================
+        // (avgMidProfiler ya actualizado arriba)
+        // 🛡️ LIMITADOR DE INTENSIDAD GLOBAL (Opción 1)
+        // Si la morfología sube (Buildup/Melodic), bajamos el techo de luz
+        // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
+        // =======================================================================
+        // 🥁 BACK PAR: THE PROTECTED SNIPER
+        // =======================================================================
+        const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
+        const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
+        const snarePower = Math.min(1.0, (cleanMid * 0.08) +
+            (transientImpact * (1.1 + 1.4 * morphFactor)));
+        let backParIntensity = 0;
+        // Gate adaptativa con el nuevo rango 0.70
+        const dynamicBackGate = 0.52 - (0.22 * morphFactor);
+        if (snarePower > dynamicBackGate) {
+            const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
+            // Exponente 2.5: Perfecto para esos colores fríos y "boreales"
+            backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
+        }
+        // =======================================================================
+        // 📊 TELEMETRÍA LUXSYNC (Caja Negra)
+        // Descomenta para capturar tus 10 segundos de gloria
+        // =======================================================================
+        if (now - this.lastLogTime > 33) {
+            console.log(`[F] B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} L:${isLockOpen ? 'O' : 'C'} OUT:${frontParIntensity.toFixed(2)} | ` +
+                `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
+                `[M] Morph:${morphFactor.toFixed(2)}`);
+            this.lastLogTime = now;
+        }
         const rawLeft = Math.max(0, mid - (treble * 0.3));
         let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
-        // RIGHT: Treble "The Sparkle"
         const rawRight = Math.max(0, treble - (mid * 0.2));
         let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
-        // 🔥 WAVE 1014.5: ATMOSPHERIC FLOOR ELIMINADO
-        // Causaba "hilito permanente" - Los Movers ahora se apagan cuando deben, como los PARs
-        // 🔥 WAVE 916: APOCALYPSE DETECTION
-        // Si hay mucha distorsión (harshness) Y mucho ruido blanco (flatness),
-        // asumimos que es un Riser/Upswing aunque no haya bajos.
-        const isApocalypse = harshness > 0.5 && flatness > 0.5;
-        // 🚑 WAVE 916: APOCALYPSE OVERRIDE
-        // Si estamos en el apocalipsis, NO nos importa si no hay bajo.
-        // Usamos la energía del ruido (treble/mid) para encender TODAS LAS LUCES.
-        if (isApocalypse) {
-            // Calculamos la "Energía del Caos"
-            const chaosEnergy = Math.max(mid, treble);
-            // FORZAMOS EL ENCENDIDO (Override)
-            // Si el Front estaba apagado por falta de bajos, lo encendemos con el ruido.
-            // Math.max asegura que usamos lo que sea más alto: el bajo real o el caos.
-            frontParIntensity = Math.max(frontParIntensity, chaosEnergy);
-            // Lo mismo para los demás. ¡QUE TODO BRILLE!
-            backParIntensity = Math.max(backParIntensity, chaosEnergy);
-            moverL = Math.max(moverL, chaosEnergy);
-            moverR = Math.max(moverR, chaosEnergy);
-            // NOTA: Al forzar esto, el "Ghost Kick" (sidechain) queda anulado implícitamente
-            // porque estamos sobrescribiendo los valores al final.
+        // =======================================================================
+        // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE
+        // =======================================================================
+        if (frontParIntensity > 0.1) {
+            // 🔪 LEY ABSOLUTA: Si el bombo existe, aplasta el 90% de todo lo demás
+            const ducking = 1.0 - (frontParIntensity * 0.90);
+            backParIntensity *= ducking;
+            moverL *= ducking;
+            moverR *= ducking;
         }
         else {
-            // LÓGICA NORMAL: GHOST KICK (Logic Sidechain)
-            // Solo aplicamos ducking si NO es el apocalipsis.
-            // Si hay mucho ruido (Trance/DnB) O el bajo es brutal,
-            // usamos el BOMBO para empujar hacia abajo el resto
-            // Detectamos "Muro de Sonido" si flatness es alto o si todo está alto
-            const wallOfSound = flatness > 0.6 || (bass > 0.6 && mid > 0.6 && treble > 0.6);
-            if (wallOfSound && frontParIntensity > 0.5) {
-                // Ducking Factor: Cuanto más fuerte el bombo, más agachamos lo demás
-                // Invertimos el bombo: 1.0 (golpe) -> 0.4 (ducking del 60%)
-                const ducking = 1.0 - (frontParIntensity * 0.6);
-                backParIntensity *= ducking;
-                moverL *= ducking;
-                moverR *= ducking;
+            // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups/Risers)
+            const isApocalypse = harshness > 0.55 && flatness > 0.55;
+            if (isApocalypse) {
+                const chaosEnergy = Math.max(mid, treble);
+                backParIntensity = Math.max(backParIntensity, chaosEnergy);
+                moverL = Math.max(moverL, chaosEnergy);
+                moverR = Math.max(moverR, chaosEnergy);
             }
         }
         // Strobe (Treble peaks + Noise)
         const strobeResult = this.calculateStrobe(treble, noiseMode);
+        // Memoria para el siguiente frame
+        this.lastBass = bass;
         return {
             strobeActive: strobeResult.active,
             strobeIntensity: strobeResult.intensity,
@@ -195,7 +223,7 @@ export class TechnoStereoPhysics {
             backParIntensity,
             moverIntensityL: moverL,
             moverIntensityR: moverR,
-            moverIntensity: Math.max(moverL, moverR), // Fallback mono (Legacy)
+            moverIntensity: Math.max(moverL, moverR),
             moverActive: (moverL > 0.1 || moverR > 0.1),
             physicsApplied: 'techno',
             acidMode,
@@ -205,12 +233,14 @@ export class TechnoStereoPhysics {
     reset() {
         this.strobeActive = false;
         this.strobeStartTime = 0;
-        this.frontParActive = false;
+        this.kickEnvelope = 0;
     }
     // =========================================================================
     // PRIVATE CALCULATIONS
     // =========================================================================
     handleSilence(acidMode, noiseMode) {
+        // A clean silence resets the sidechain envelope to avoid ghosting.
+        this.kickEnvelope = 0;
         return {
             strobeActive: false,
             strobeIntensity: 0,
@@ -224,38 +254,6 @@ export class TechnoStereoPhysics {
             acidMode,
             noiseMode
         };
-    }
-    /**
-     * 🔊 FRONT PAR (BASS) - AHORA ACEPTA GATES DINÁMICOS
-     * 🛡️ WAVE 913: Soporta Recovery Gates para AGC Rebound Protection
-     *
-     * @param bass - Señal de bajo normalizada
-     * @param gateOn - Umbral de activación (dinámico: 0.48 normal / 0.80 paranoia)
-     * @param gateOff - Umbral de desactivación (dinámico: 0.35 normal / 0.60 paranoia)
-     */
-    calculateFrontPar(bass, gateOn, gateOff) {
-        if (this.frontParActive) {
-            // Usamos el gateOff dinámico
-            if (bass < gateOff) {
-                this.frontParActive = false;
-                return 0;
-            }
-        }
-        else {
-            // Usamos el gateOn dinámico
-            if (bass < gateOn)
-                return 0;
-            this.frontParActive = true;
-        }
-        // Normalizamos usando el gate actual para mantener la curva correcta
-        const gated = (bass - gateOn) / (1 - gateOn);
-        // ?? INYECCIÓN DE VITAMINAS (Gain post-gate)
-        // Multiplicamos para saturar rápido. Si bass es decente, llegamos al 100%.
-        const boosted = gated * this.BASS_VITAMIN_BOOST;
-        // 3. Curva de potencia para mantener contraste en la bajada
-        // x^2.0 es un buen compromiso entre golpe y sustain
-        const intensity = Math.pow(Math.max(0, boosted), 2.0);
-        return Math.min(1.0, Math.max(0, intensity)); // Cap al 100%
     }
     /**
      * 🥁 BACK PAR - THE CLEANER (NOISE GATE MODE)
@@ -275,9 +273,7 @@ export class TechnoStereoPhysics {
         if (signal < this.BACK_PAR_GATE)
             return 0;
         const gated = (signal - this.BACK_PAR_GATE) / (1 - this.BACK_PAR_GATE);
-        // 📉 CAMBIO DE CURVA: De 0.5 (inflar) a 1.5 (suprimir)
-        // Esto actúa como un "Noise Gate" suave. Lo débil se hace invisible.
-        // Lo fuerte (Snare) se mantiene fuerte.
+        // 📉 Curva x^1.5 (El x^3 era un agujero negro que se tragaba la luz)
         const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT;
         return Math.min(1.0, Math.max(0, intensity));
     }

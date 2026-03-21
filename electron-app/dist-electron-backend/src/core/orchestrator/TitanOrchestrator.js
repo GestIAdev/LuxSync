@@ -25,6 +25,8 @@ import { BeatDetector } from '../../engine/audio/BeatDetector';
 import { MoodController } from '../mood/MoodController';
 // ⚒️ WAVE 2030.19: HephaestusRuntime for .lfx execution
 import { getHephaestusRuntime } from './IPCHandlers';
+// 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
+import { universalDMX } from '../../hal/drivers/UniversalDMXDriver';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -42,19 +44,27 @@ export class TitanOrchestrator {
         // Timeout: 300 frames (~5s a 60fps) → luego cede al Pacemaker interno.
         this.lastStableWorkerBpm = 0;
         this.lastStableWorkerBpmFrame = 0;
-        this.FREEWHEEL_TIMEOUT_FRAMES = 300; // ~5s a 60fps
+        this.FREEWHEEL_TIMEOUT_FRAMES = 125; // ~5s a 25fps
         this.isInitialized = false;
         this.isRunning = false;
         this.mainLoopInterval = null;
         this.frameCount = 0;
         // ═══════════════════════════════════════════════════════════════════════════
         // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
-        // setInterval(16) fires every 16ms regardless of whether the previous
+        // setInterval fires every Xms regardless of whether the previous
         // processFrame() has finished. Since processFrame() is async (await engine.update()),
         // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
         // This flag ensures only ONE processFrame() runs at a time.
         // ═══════════════════════════════════════════════════════════════════════════
         this.isProcessingFrame = false;
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔧 DMX TIMING — Frame-drop protection for physical DMX timing
+        // DMX512 spec: 1 frame = ~25ms (Break 88µs + MAB 8µs + 512ch × 44µs).
+        // Combined with isProcessingFrame (WAVE 2211), the 40ms loop interval
+        // guarantees ~13ms of margin for the FTDI chip to drain its buffer before
+        // the next frame arrives. No explicit isSendingDMX flag needed: the
+        // Stampede Guard already ensures the pipeline is never re-entered.
+        // ═══════════════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════════════
         // 🗑️ WAVE 2211: PRE-ALLOCATED FFT BUFFER — GC pressure reduction
         // BEFORE: `new Array(256).fill(0)` every frame = 256 floats × 30fps = 7,680 allocs/sec
@@ -245,17 +255,40 @@ export class TitanOrchestrator {
         this.isRunning = true;
         this.mainLoopInterval = setInterval(() => {
             this.processFrame();
-        }, 16); // ~60fps (was 33ms/30fps)
+        }, 40); // 25fps — da ~13ms de margen sobre el frame DMX512 físico (~27ms)
+        // DMX512: Break(88µs) + MAB(8µs) + 512ch×44µs ≈ 22.6ms/frame mín.
+        // a 40ms el chip FTDI drena el buffer antes del siguiente frame.
         // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
         setTimeout(() => {
-            this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 30fps');
+            this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 25fps (DMX-safe)');
             this.log('Info', `📊 Fixtures loaded: ${this.fixtures.length}`);
         }, 100);
     }
     /**
-     * Stop the main loop
+     * Stop the main loop.
+     *
+     * 🧟 ZOMBIE KILLER: antes de matar el loop, forzamos un frame de ceros
+     * físico al hardware. Sin esto, el último frame de luz queda "congelado"
+     * en el buffer FTDI → los cabezales móviles siguen recibiendo su último
+     * comando y sus motores oscilan (micro-tug-of-war → pérdida de pasos).
+     *
+     * Secuencia:
+     *   1. Blackout lógico en el HAL (mapper + driver)
+     *   2. Flush físico del buffer a cero vía universalDMX.blackout() + sendAll()
+     *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
+     *   4. clearInterval + isRunning = false
      */
-    stop() {
+    async stop() {
+        // Paso 1: Blackout lógico en el HAL (si ya fue inicializado)
+        if (this.hal) {
+            this.hal.setBlackout(true);
+        }
+        // Paso 2: Forzar buffer de ceros directo al driver serial
+        universalDMX.blackout();
+        await universalDMX.sendAll();
+        // Paso 3: Dar tiempo al chip FTDI para drenar los bytes al cable RS-485
+        await new Promise(resolve => setTimeout(resolve, 30));
+        // Paso 4: Ahora sí podemos matar el loop sin dejar zombis
         if (this.mainLoopInterval) {
             clearInterval(this.mainLoopInterval);
             this.mainLoopInterval = null;
@@ -487,6 +520,8 @@ export class TitanOrchestrator {
                 kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
                 snareDetected: this.lastAudioData.snareDetected,
                 hihatDetected: this.lastAudioData.hihatDetected,
+                // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction
+                isPLLBeat: beatState.pllOnBeat,
             };
             // For HAL
             // 🎵 WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
@@ -527,6 +562,30 @@ export class TitanOrchestrator {
             masterArbiter.setTitanIntent(titanLayer);
             // Arbitrate all layers (this merges manual overrides, effects, blackout)
             const arbitratedTarget = masterArbiter.arbitrate();
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
+            // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
+            // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
+            // ═══════════════════════════════════════════════════════════════════════
+            try {
+                const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1';
+                if (traceEnabled) {
+                    const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10);
+                    const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60;
+                    if (this.frameCount % every === 0) {
+                        const traceFixtureId = process?.env?.LUXSYNC_TRACE_FIXTURE_ID
+                            ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+                            : undefined;
+                        // const traced = traceFixtureId
+                        //   ? arbitratedTarget.fixtures.find(f => f.fixtureId === traceFixtureId)
+                        //   : null
+                        // 🔎 TRACE CP2 DISABLED: Remove this for now; keeping CP3 + CP4 for final mile forensics
+                    }
+                }
+            }
+            catch {
+                // never block the render loop
+            }
             // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
             // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
             this.warlogHeartbeatFrame++;
@@ -548,6 +607,9 @@ export class TitanOrchestrator {
             // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
             // 4. HAL renders arbitrated target -> produces fixture states
             // Now using the new renderFromTarget method that accepts FinalLightingTarget
+            // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
+            // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
+            // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
             let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
             // ═══════════════════════════════════════════════════════════════════════
             // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
@@ -1151,8 +1213,8 @@ export class TitanOrchestrator {
                     pan: 128, // 🎯 Center
                     tilt: 128, // 🎯 Center
                 }));
-                // Throttled log (every ~5s at 30fps)
-                if (this.frameCount % 150 === 0) {
+                // Throttled log (every ~5s a 25fps)
+                if (this.frameCount % 125 === 0) {
                     console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`);
                 }
             }
@@ -1178,13 +1240,13 @@ export class TitanOrchestrator {
                     system: {
                         frameNumber: this.frameCount,
                         timestamp: Date.now(),
-                        deltaTime: 33,
-                        targetFPS: 30,
-                        actualFPS: 30,
+                        deltaTime: 40,
+                        targetFPS: 25,
+                        actualFPS: 25,
                         mode: this.mode === 'auto' ? 'selene' : 'manual',
                         vibe: currentVibe,
                         brainStatus: 'peaceful',
-                        uptime: this.frameCount * 33,
+                        uptime: this.frameCount * 40,
                         titanEnabled: true,
                         sessionId: 'titan-2.0',
                         version: '2.0.0',

@@ -267,37 +267,33 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 BACK PAR: THE DE-BRICKER (Limpieza de Low-Mids)
+    // 2. BACK PAR: THE PROTECTED SNIPER (Con Vitamina Segura)
     // =======================================================================
+    const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
     
-    // 🧼 LIMPIEZA DE LADRILLOS: Filtramos los medios-bajos que ensucian.
-    // Usamos el 'harshness' (high-mids) para el impacto y 'treble' para el brillo.
-    // Reducimos el peso del 'mid' genérico que trae el fango de la voz y sintes graves.
-    const sharpMid = (harshness ?? mid * 0.5);
-
-    // ⚡ VITAMINA DE COINCIDENCIA QUIRÚRGICA (High-Mid * Treble)
-    // Ya no usamos el 'mid' total, usamos solo la parte "afilada" (sharpMid).
-    const snareRescue = (sharpMid * treble * (4.5 + 2.5 * morphFactor));
-
-    // Aseguramos un cleanMid base (filtro suave de voz)
-    const cleanMid = Math.max(0, mid - (1.0 - Math.min(1.0, ((treble * 1.5) + ((harshness ?? 0) * 1.0)) * 2.0)) * mid * 0.6);
-
-    const transientImpact = Math.min(1.0, (treble * 1.5) + ((harshness ?? 0) * 1.0));
+    // Filtro de voces original (Se mantiene idéntico, es seguro)
+    const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
+    
+    // ⚡ LA VITAMINA SEGURA (El secreto que perdimos)
+    // Multiplicar Harshness x Treble garantiza que NUNCA saltará con un bombo 
+    // ni con una voz plana. Solo caza claps y snares, dándoles el empuje para cruzar la gate.
+    const pureHarshness = (harshness ?? 0);
+    const snareVitamin = pureHarshness * treble * (4.5 + 2.5 * morphFactor);
 
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.03) +       // Bajamos el cuerpo al 3% (adiós fango)
-      (transientImpact * 0.3) + // El impacto base es más sutil
-      snareRescue               // La explosión real
+      (cleanMid * 0.05) +  // Ajustamos el cuerpo al 5% para que la luz sea rítmica y menos "lámpara"
+      (transientImpact * (1.1 + 1.2 * morphFactor)) + // Base dinámica
+      snareVitamin // 🚀 El latigazo que faltaba
     );
 
     let backParIntensity = 0;
-    // Mantenemos la gate para asegurar el negro absoluto entre bombos
-    const dynamicBackGate = 0.50 - (0.20 * morphFactor); 
+    // La gate intocable que funcionaba modo Dios
+    const dynamicBackGate = 0.52 - (0.22 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.8: Un pelín más agresivo para que el "ladrillo" no pase.
-        backParIntensity = Math.pow(gated, 2.8) * dynamicSlapMult;
+        // Exponente 2.5 original: El punto dulce del contraste
+        backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
     }
 
 // =======================================================================

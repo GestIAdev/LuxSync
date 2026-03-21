@@ -1167,21 +1167,14 @@ export class MasterArbiter extends EventEmitter {
             // No manual control → full blackout
             return this.createOutputGateBlackout(fixtureId);
         }
-        // 🔎 TRACE (throttled): prove what the Arbiter is *actually* outputting for manual fixtures
-        // This is the fastest way to locate where DMX gets lost: Arbiter vs HAL/Mapper/Driver.
-        if (manualOverride) {
-            const nowMs = Date.now();
-            if (nowMs - this._traceLastArbiterLogAtMs > 750) {
-                this._traceLastArbiterLogAtMs = nowMs;
-                console.log('[TRACE ARBITER] manualOverride active', {
-                    fixtureId,
-                    outputEnabled: this._outputEnabled,
-                    source: manualOverride.source,
-                    overrideChannels: manualOverride.overrideChannels,
-                    controls: manualOverride.controls,
-                });
-            }
-        }
+        // 🔎 TRACE DISABLED: Manual override detection (too spammy). Re-enable if investigating merged channel issues.
+        // if (manualOverride) {
+        //   const nowMs = Date.now()
+        //   if (nowMs - this._traceLastArbiterLogAtMs > 750) {
+        //     this._traceLastArbiterLogAtMs = nowMs
+        //     console.log('[TRACE ARBITER] manualOverride active', {...})
+        //   }
+        // }
         // LAYER 4: Check blackout first (highest priority after output gate)
         if (this.layer4_blackout) {
             return this.createBlackoutTarget(fixtureId, controlSources);
@@ -1231,24 +1224,7 @@ export class MasterArbiter extends EventEmitter {
         const speed = this.mergeChannelForFixture(fixtureId, 'speed', titanValues, manualOverride, now, controlSources);
         // 🎨 WAVE 1008.6: Merge color_wheel channel (THE WHEELSMITH)
         const color_wheel = this.mergeChannelForFixture(fixtureId, 'color_wheel', titanValues, manualOverride, now, controlSources);
-        // 🔎 TRACE (throttled): final channel values for the manual fixture
-        if (manualOverride) {
-            const nowMs = Date.now();
-            if (nowMs - this._traceLastArbiterLogAtMs > 750) {
-                // NOTE: uses same throttle clock as the log above, but this one happens later in the function.
-                this._traceLastArbiterLogAtMs = nowMs;
-                console.log('[TRACE ARBITER] final merged channels', {
-                    fixtureId,
-                    dimmer,
-                    rgb: { r: red, g: green, b: blue },
-                    pan,
-                    tilt,
-                    speed,
-                    color_wheel,
-                    layer: manualOverride.source,
-                });
-            }
-        }
+        // 🔎 TRACE DISABLED: Final merged channels (too spammy). Re-enable if investigating merge strategy.
         // ═══════════════════════════════════════════════════════════════════════
         // 🔥 WAVE 2084: PHANTOM PANEL — Canales Dinámicos para Ingenios
         //
@@ -1482,14 +1458,20 @@ export class MasterArbiter extends EventEmitter {
         // channels es Array<{ index, name, type, is16bit, defaultValue }>
         const speedChannel = fixture?.channels?.find((c) => c.type === 'speed');
         const defaultSpeed = speedChannel?.defaultValue ?? 0;
+        // 🔥 WAVE 1135.3: Leer defaultValue real de pan/tilt desde el JSON del fixture
+        // El Forge permite configurar el centro mecánico del equipo — aquí lo honramos
+        const panChannel = fixture?.channels?.find((c) => c.type === 'pan');
+        const tiltChannel = fixture?.channels?.find((c) => c.type === 'tilt');
+        const defaultPan = panChannel?.defaultValue ?? 128;
+        const defaultTilt = tiltChannel?.defaultValue ?? 128;
         const defaults = {
             dimmer: 0,
             red: 0,
             green: 0,
             blue: 0,
             white: 0,
-            pan: 128,
-            tilt: 128,
+            pan: defaultPan,
+            tilt: defaultTilt,
             zoom: 128,
             focus: 128,
             gobo: 0,
@@ -1608,7 +1590,13 @@ export class MasterArbiter extends EventEmitter {
         // Acceso dinámico seguro (TypeScript-friendly)
         const zoneIntent = intent.zones?.[intentZone];
         const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity;
-        defaults.dimmer = zoneIntensity * 255;
+        // 🔥 WAVE 1135.3: Dead Zone interpolation
+        // dimmerMin = valor DMX mínimo donde el hardware realmente enciende.
+        // Escala: 0 → 0 (blackout estricto), >0 → mapea [0,1] al rango [dMin, 255]
+        const dMin = fixture?.capabilities?.dimmerMin ?? 0;
+        defaults.dimmer = zoneIntensity > 0
+            ? Math.round(dMin + (zoneIntensity * (255 - dMin)))
+            : 0;
         // ═══════════════════════════════════════════════════════════════════════
         // 🎨 WAVE 382: ZONE-BASED COLOR MAPPING (No more monochrome!)
         // NOW WITH: Zone-based paletteRole mapping
@@ -1700,8 +1688,12 @@ export class MasterArbiter extends EventEmitter {
                     defaults.pan = mechanic.pan * 255;
                     defaults.tilt = mechanic.tilt * 255;
                     // WAVE 1048: Intensity coupling (if present)
+                    // 🔥 WAVE 1135.3: Aplicamos Dead Zone también a intensidad de mechanics
                     if (mechanic.intensity !== undefined) {
-                        defaults.dimmer = mechanic.intensity * 255;
+                        const dMinMech = fixture?.capabilities?.dimmerMin ?? 0;
+                        defaults.dimmer = mechanic.intensity > 0
+                            ? Math.round(dMinMech + (mechanic.intensity * (255 - dMinMech)))
+                            : 0;
                     }
                     // ═══════════════════════════════════════════════════════════════════
                     // 🌊 WAVE 1072: DEPRECATED - colorOverride bypass removed

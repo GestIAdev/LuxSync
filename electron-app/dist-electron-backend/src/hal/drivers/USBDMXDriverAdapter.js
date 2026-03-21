@@ -40,7 +40,9 @@ export class USBDMXDriverAdapter {
      */
     send(packet) {
         try {
-            universalDMX.setUniverse(packet.channels, packet.universe);
+            // DMXPacket representa canales de un fixture desde su address base.
+            // Enviar como escritura parcial al buffer del universo (no machacar desde canal 1).
+            universalDMX.setChannels(packet.address, packet.channels, packet.universe);
             return true;
         }
         catch {

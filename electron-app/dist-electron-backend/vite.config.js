@@ -63,6 +63,23 @@ export default defineConfig({
                     },
                 },
             },
+            // 👻 WAVE 2021.1: DMX Phantom Worker — bit-banging aislado del Event Loop
+            {
+                entry: 'src/hal/drivers/strategies/openDmxWorker.ts',
+                vite: {
+                    build: {
+                        outDir: 'dist-electron',
+                        lib: {
+                            entry: 'src/hal/drivers/strategies/openDmxWorker.ts',
+                            formats: ['cjs'],
+                            fileName: () => 'openDmxWorker.js',
+                        },
+                        rollupOptions: {
+                            external: ['worker_threads', 'serialport'],
+                        },
+                    },
+                },
+            },
         ]),
     ],
     resolve: {

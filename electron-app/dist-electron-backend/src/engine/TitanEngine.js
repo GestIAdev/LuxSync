@@ -211,6 +211,24 @@ export class TitanEngine extends EventEmitter {
         // Obtener perfil del vibe actual
         const vibeProfile = this.vibeManager.getActiveVibe();
         // ─────────────────────────────────────────────────────────────────────
+        // 🔬 WAVE 2200: QUIRÓFANO ESTÉRIL — idle = blackout absoluto
+        //
+        // Cuando no hay vibe seleccionado (estado 'idle'), el engine NO debe
+        // correr osciladores, Selene, VMM ni ningún generador de color.
+        // El intent base es un lienzo en blanco: dimmer=0, paleta negra,
+        // motores en posición Home (0.5 = DMX 128).
+        //
+        // Esto garantiza que la CalibrationView opere en quirófano estéril:
+        // la única luz visible es la que el calibrador ordena explícitamente
+        // via manual overrides. El TitanEngine no contamina ningún canal.
+        // ─────────────────────────────────────────────────────────────────────
+        if (vibeProfile.id === 'idle') {
+            const idleIntent = createDefaultLightingIntent();
+            idleIntent.timestamp = now;
+            this.state.currentIntent = idleIntent;
+            return idleIntent;
+        }
+        // ─────────────────────────────────────────────────────────────────────
         // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline Injection Point
         // Si Chronos está activo, modificamos el contexto antes de Stabilizers
         // ─────────────────────────────────────────────────────────────────────
@@ -439,6 +457,7 @@ export class TitanEngine extends EventEmitter {
             kickDetected: audio.kickDetected,
             snareDetected: audio.snareDetected,
             hihatDetected: audio.hihatDetected,
+            isPLLBeat: audio.isPLLBeat, // ⏱️ WAVE 2305
         }, elementalMods);
         // Log del sistema nervioso (cada 60 frames si hay energía)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {

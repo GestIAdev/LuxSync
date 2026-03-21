@@ -74,6 +74,8 @@ const state = {
     lastHarmonyOutput: null,
     lastSectionOutput: null,
     lastGenreOutput: null,
+    // ⏱️ WAVE 2307: Absolute sample counter
+    totalSamplesProcessed: 0,
     messagesProcessed: 0,
     totalProcessingTime: 0,
     errors: [],
@@ -262,18 +264,20 @@ function processAudioBuffer(incomingBuffer) {
     // 1. Copiar incoming buffer al ring buffer
     const incomingLength = incomingBuffer.length;
     const startIndex = state.ringBufferWriteIndex;
+    // ⏱️ WAVE 2307: THE ABSOLUTE CLOCK — Accumulate real samples processed.
+    // La fórmula anterior (frameCount * incomingLength) asume que TODOS los frames
+    // tienen el mismo tamaño. Con salidas adaptativas (30Hz Tornado / 44Hz Enttec),
+    // el tamaño del buffer IPC puede fluctuar entre frames, causando que el reloj
+    // salte hacia atrás o se dilate (Time Warp). El acumulador es monótono por
+    // construcción: siempre suma, nunca retrocede.
+    state.totalSamplesProcessed += incomingLength;
     for (let i = 0; i < incomingLength; i++) {
         state.ringBuffer[state.ringBufferWriteIndex] = incomingBuffer[i];
         state.ringBufferWriteIndex = (state.ringBufferWriteIndex + 1) % 4096;
     }
-    // Marcar como lleno cuando el índice wraps around (volvemos al inicio)
-    // Esto ocurre cuando el nuevo índice es MENOR que el índice inicial + incoming length
-    // O más simple: después de acumular suficientes samples (al menos 4096)
+    // Marcar como lleno cuando hemos acumulado suficientes samples reales
     if (!state.ringBufferFilled) {
-        // Si el writeIndex dio la vuelta (era mayor, ahora es menor que startIndex + length)
-        // O si ya hemos procesado suficientes samples totales
-        const totalSamplesWritten = state.frameCount * incomingLength;
-        if (totalSamplesWritten >= 4096) {
+        if (state.totalSamplesProcessed >= 4096) {
             state.ringBufferFilled = true;
         }
     }
@@ -354,26 +358,31 @@ function processAudioBuffer(incomingBuffer) {
     // ═══════════════════════════════════════════════════════════════════════════
     // 🥁 WAVE 2115: THE RELATIVE CLOCK — GodEar BPM Detection (TIMESTAMP FIX)
     // ═══════════════════════════════════════════════════════════════════════════
-    // WAVE 2112 original usaba Date.now() — tiempo de CPU real.
-    // PROBLEMA: El Worker procesa en bursts. Si el SO pausa el thread 200ms,
-    // el tracker ve un "silencio" de 200ms entre kicks y calcula BPM=30.
-    // Los intervalos del log lo confirman: [448,511,451,558,961,511] — ese 961ms
-    // es un stall de CPU, no un beat de 62 BPM.
+    // ⏱️ WAVE 2307: THE ABSOLUTE CLOCK — GodEar BPM Detection (TIMESTAMP FIX v2)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WAVE 2115 usaba: frameCount * incomingLength / sampleRate * 1000
+    // PROBLEMA: Esa fórmula asume que TODOS los buffers tienen el mismo tamaño.
+    // Con dos fuentes de audio activas en el sistema:
+    //   - useAudioCapture.ts:    FFT_SIZE = 2048 → buffer de 2048 samples
+    //   - useLiveAudioInput.ts:  FFT_SIZE = 4096 → buffer de 4096 samples
+    // Y con el throttling adaptativo de BUFFER_INTERVAL_MS (50ms backpressure),
+    // el tamaño real del buffer entrante puede variar.
     //
-    // SOLUCIÓN: Timestamp basado en la posición del sample en el flujo de audio.
-    // Cada frame recibe exactamente `incomingLength` samples.
-    // Tiempo musical acumulado = frameCount * incomingLength / sampleRate * 1000ms
+    // MECANISMO DE FALLO (THE TIME WARP):
+    //   Frame 10 recibe buffer de 2048:  10 * 2048 / 44100 * 1000 = 464.4ms
+    //   Frame 11 recibe buffer de 4096:  11 * 4096 / 44100 * 1000 = 1021.8ms  [+557ms]
+    //   Frame 12 recibe buffer de 2048:  12 * 2048 / 44100 * 1000 = 557.3ms   [-464ms!!]
+    //   → El reloj RETROCEDE. Los intervalos entre kicks se comprimen/estiran,
+    //     generando BPMs fantasma cuantizados (ej. [161,144,161,144...]).
     //
-    // Con incomingLength=2048, sampleRate=44100:
-    //   frameCount=1  → t=46.4ms
-    //   frameCount=10 → t=464ms
-    // El tracker siempre ve intervalos perfectamente proporcionales al tempo real,
-    // sin importar cuánto tarde la CPU en procesar cada frame.
+    // SOLUCIÓN: Acumulador estricto de samples. Siempre suma, nunca retrocede.
+    //   totalSamplesProcessed += incomingLength (ya hecho arriba en el ring buffer)
+    //   deterministicTimestampMs = totalSamplesProcessed / sampleRate * 1000
     //
-    // INVARIANTE: deterministicTimestampMs es MONOTÓNICO (nunca retrocede).
+    // INVARIANTE: deterministicTimestampMs es MONÓTONO por construcción.
     // ═══════════════════════════════════════════════════════════════════════════
     const sampleRate = config.audioSampleRate ?? 44100;
-    const deterministicTimestampMs = (state.frameCount * incomingLength / sampleRate) * 1000;
+    const deterministicTimestampMs = (state.totalSamplesProcessed / sampleRate) * 1000;
     // 🎯 WAVE 2160: UNCHAIN THE NEEDLE — Raw Low Flux + Centroid-Only Gate
     // ═══════════════════════════════════════════════════════════════════════════
     //

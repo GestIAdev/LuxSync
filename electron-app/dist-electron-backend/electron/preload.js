@@ -628,9 +628,15 @@ const luxApi = {
          * false = ARMED (engine runs but DMX blocked)
          * true = LIVE (DMX flows to fixtures)
          */
-        setOutputEnabled: (enabled) => ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled }),
+        setOutputEnabled: (enabled, label) => ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled, label }),
+        /**
+         * Tagged variant for forensics (always prefer this in UI)
+         */
+        setOutputEnabledTagged: (enabled, label) => ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled, label }),
         /** Toggle output gate (ARMED ↔ LIVE) */
-        toggleOutput: () => ipcRenderer.invoke('lux:arbiter:toggleOutput'),
+        toggleOutput: (label) => ipcRenderer.invoke('lux:arbiter:toggleOutput', { label }),
+        /** Tagged variant for forensics */
+        toggleOutputTagged: (label) => ipcRenderer.invoke('lux:arbiter:toggleOutput', { label }),
         /** Get output enabled state */
         getOutputEnabled: () => ipcRenderer.invoke('lux:arbiter:getOutputEnabled'),
         /** Check if fixture has manual override */

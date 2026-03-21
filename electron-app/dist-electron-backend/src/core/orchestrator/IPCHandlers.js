@@ -52,9 +52,9 @@ function setupSeleneLuxHandlers(deps) {
         const savedGain = savedConfig?.audio?.inputGain ?? 1.0;
         return { success: true, inputGain: savedGain };
     });
-    ipcMain.handle('lux:stop', () => {
+    ipcMain.handle('lux:stop', async () => {
         if (titanOrchestrator) {
-            titanOrchestrator.stop();
+            await titanOrchestrator.stop();
         }
         return { success: true };
     });
@@ -1114,7 +1114,8 @@ function setupDMXHandlers(deps) {
     ipcMain.handle('dmx:getStatus', () => {
         return {
             connected: universalDMX.isConnected,
-            interface: universalDMX.currentDevice || 'none'
+            interface: universalDMX.currentDevice || 'none',
+            protocol: universalDMX.activeStrategyProtocol,
         };
     });
     ipcMain.handle('dmx:scan', async () => {
@@ -1206,7 +1207,6 @@ function setupDMXHandlers(deps) {
             // Clamp values to valid DMX range
             const clampedValue = Math.max(0, Math.min(255, Math.floor(value)));
             const clampedAddress = Math.max(1, Math.min(512, Math.floor(address)));
-            console.log(`[IPC] 🎛️ NERVE LINK: Uni ${universe} | Addr ${clampedAddress} | Val ${clampedValue}`);
             // Universe 0 = USB (universalDMX), Universe 1+ = ArtNet
             if (universe === 0 || universe === 1) {
                 // Primary universe - send via USB/Serial

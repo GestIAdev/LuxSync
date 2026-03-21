@@ -163,6 +163,8 @@ export class SeleneLux {
                 melodyThreshold: 0.4,
                 isRealSilence: audioMetrics.avgNormEnergy < 0.01,
                 isAGCTrap: false,
+                isKick: audioMetrics.kickDetected ?? false,
+                isPLLBeat: audioMetrics.isPLLBeat ?? false, // 🎯 WAVE 2305: EL CABLE CONECTADO
                 sectionType: vibeContext.section,
                 // 🎛️ WAVE 1012: Métricas espectrales para Acid/Noise modes
                 harshness: audioMetrics.harshness ?? 0.45, // Default más agresivo que Rock (Techno = duro)

@@ -115,16 +115,16 @@ export class HardwareAbstraction {
         // 🔧 WAVE 338: Movement Physics Driver
         this.movementPhysics = new FixturePhysicsDriver();
         this.currentOptics = getOpticsConfig('idle');
-        // 🔥 CORTAFUEGOS ANTI-ZOMBIES:
-        // Si el tipo es 'usb' o 'usb-serial', matamos al externalDriver (suele ser Art-Net residual)
-        // y forzamos la creación del adaptador USB.
-        // Nota: 'usb-serial' viene del frontend (UI), pero el HAL trabaja con DriverType normalizado.
-        if (this.config.driverType === 'usb' || this.config.driverType === 'usb-serial') {
+        // 🔥 WAVE 2100: Si hay externalDriver (ej. CompositeDMXDriver), usarlo SIEMPRE.
+        // El Composite ya tiene USB + ArtNet internamente, no crear otro adaptador USB.
+        if (this.config.externalDriver) {
+            this.driver = this.config.externalDriver;
+        }
+        else if (this.config.driverType === 'usb' || this.config.driverType === 'usb-serial') {
             this.driver = this.createDriver('usb');
         }
         else {
-            // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
-            this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType);
+            this.driver = this.createDriver(this.config.driverType);
         }
         // Configure mapper
         this.mapper.setInstallationType(this.config.installationType);
@@ -709,7 +709,7 @@ export class HardwareAbstraction {
                     // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
                     channels,
                     // 🎨 WAVE 687: Default values for additional controls
-                    shutter: 255, // Open by default
+                    shutter: 0,
                     gobo: 0,
                     prism: 0,
                     strobe: 0,
@@ -1249,12 +1249,11 @@ export class HardwareAbstraction {
         this.sendToDriver(safeStates);
     }
     sendToDriver(states) {
-        // 🔍 TRACE DIRECTIVE: ¿Quién es el driver y qué le pasa?
-        if (this.framesRendered % 100 === 0) {
-            console.log(`[TRACE HAL] Nombre del Driver: ${this.driver?.constructor?.name ?? 'unknown'}`);
-            console.log(`[TRACE HAL] ¿Está conectado?: ${this.driver?.isConnected}`);
-            console.log(`[TRACE HAL] ¿Tiene método send?: ${typeof this.driver?.send === 'function'}`);
-        }
+        // 🔍 TRACE: Driver status check (disabled to reduce noise)
+        // Uncomment below to debug driver connectivity
+        // if (this.framesRendered % 100 === 0) {
+        //   console.log(`[TRACE HAL] Driver: ${this.driver?.constructor?.name} | Connected: ${this.driver?.isConnected}`)
+        //
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
         // If driver is not connected, silently drop packets.
         // User MUST manually start ArtNet/USB from Dashboard.
@@ -1268,69 +1267,51 @@ export class HardwareAbstraction {
         }
         // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
         const withWhite = states.filter(s => s.white !== undefined && s.white > 0);
-        if (withWhite.length > 0) {
-            const first = withWhite[0];
-            console.log(`[HAL] 🔆 WHITE PRE-DMX: ${first.name} → white=${first.white}, dimmer=${first.dimmer}`);
-        }
+        // Removed noisy retina-killing log: [HAL] 🔆 WHITE PRE-DMX
+        // If you need this debug info, enable it temporarily or use a debug flag.
         // Convert states to DMX packets
         const packets = this.mapper.statesToDMXPackets(states);
-        // 🔎 WAVE 1219.4: DMX trace (throttled)
-        // We log only occasionally to avoid flooding, but enough to pinpoint where DMX output diverges.
-        if (this.framesRendered % 120 === 0) {
-            try {
-                const byUniverse = new Map();
-                for (const p of packets) {
-                    byUniverse.set(p.universe, (byUniverse.get(p.universe) ?? 0) + 1);
-                }
-                // Preview first packet channels (first 24 bytes) — enough to spot sudden reds, shutters, dimmer bursts.
-                // Ensure fixed 24-length output so diffs are meaningful.
-                const firstPacket = packets[0] ?? null;
-                const preview24 = firstPacket
-                    ? Array.from({ length: 24 }, (_, i) => firstPacket.channels[i] ?? 0).join(',')
-                    : null;
-                // Also preview the first packet that has any non-zero byte in the first 24.
-                // This helps when packet[0] is all zeros or belongs to a different fixture.
-                const firstNonZero = packets.find(p => {
-                    for (let i = 0; i < 24; i++) {
-                        const v = p.channels[i] ?? 0;
-                        if (v !== 0)
-                            return true;
-                    }
-                    return false;
-                }) ?? null;
-                const nonZeroPreview24 = firstNonZero
-                    ? Array.from({ length: 24 }, (_, i) => firstNonZero.channels[i] ?? 0).join(',')
-                    : null;
-                console.log('[TRACE HAL] packets', {
-                    statesIn: states.length,
-                    packetsOut: packets.length,
-                    universes: Array.from(byUniverse.entries()),
-                    firstPacketUniverse: firstPacket ? firstPacket.universe : null,
-                    firstPacketPreview24: preview24,
-                    firstNonZeroUniverse: firstNonZero ? firstNonZero.universe : null,
-                    firstNonZeroPreview24: nonZeroPreview24,
-                });
-            }
-            catch (e) {
-                console.warn('[TRACE HAL] packets trace failed:', e);
-            }
-        }
-        // Debug output silenced - Wave 2042.29
-        // (was spamming console every frame)
-        // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
-        // Feed all packets to driver (buffering by universe internally)
+        // ═══════════════════════════════════════════════════════════════════════
+        // � WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER
+        // Sin esto, sendAll() envía buffers vacíos/stale.
+        // Cada DMXPacket tiene {universe, address, channels[]} que se escribe
+        // en la posición correcta del buffer del universo correspondiente.
+        // ═══════════════════════════════════════════════════════════════════════
         for (const packet of packets) {
             this.driver.send(packet);
         }
-        // 🔥 WAVE 2020.2b: Use sendAll() for parallel UDP dispatch if available
-        // This is the key optimization for 50+ universes
+        // ═══════════════════════════════════════════════════════════════════════
+        // �🔎 FORENSIC TRACE (CP3): HAL mutation check (states → DMXPacket)
+        // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
+        // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+            const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1';
+            if (traceEnabled) {
+                const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10);
+                const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60;
+                if (this.framesRendered % every === 0) {
+                    const traceFixtureId = process?.env?.LUXSYNC_TRACE_FIXTURE_ID
+                        ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+                        : undefined;
+                    // 🔎 TRACE CP3 DISABLED: States→Packets mapper trace (too detailed). Check CP4 serial boundary instead.
+                    // const universes = Array.from(new Set(packets.map(p => p.universe))).sort((a, b) => a - b)
+                    // console.log('[TRACE CP3] HAL states→DMXPacket', {...})
+                }
+            }
+        }
+        catch {
+            // never block output
+        }
+        // 🔎 WAVE 1219.4: HAL packets preview (disabled to reduce noise)
+        // Used for debugging packet mutations; re-enable if tracing color/position divergence
+        // if (this.framesRendered % 120 === 0) {
+        //   console.log('[TRACE HAL] packets', {...})
+        // }
+        // Fire and forget - we don't await because render loop is sync
         if (this.driver.sendAll) {
-            // Fire and forget - we don't await because render loop is sync
-            // sendAll internally handles the Promise
             void this.driver.sendAll();
         }
-        // NOTE: Drivers that support sendAll() should buffer in send() and flush in sendAll()
-        // Drivers without sendAll() will send immediately in send() (legacy behavior)
     }
     /**
      * Connect to DMX hardware.

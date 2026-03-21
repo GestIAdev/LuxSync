@@ -172,117 +172,25 @@ export class FixtureMapper {
      */
     statesToDMXPackets(states) {
         const packets = states.map(state => {
-            // 🎨 WAVE 1001: Apply HAL translation BEFORE building channels
-            const translatedState = this.applyHALTranslation(state);
             // 🎨 WAVE 687: Build channel array dynamically from fixture definition
-            const channels = this.buildDynamicChannels(translatedState);
+            const channels = this.buildDynamicChannels(state);
             return {
-                universe: translatedState.universe,
-                address: translatedState.dmxAddress,
+                universe: state.universe,
+                address: state.dmxAddress,
                 channels,
-                fixtureId: translatedState.fixtureId ?? `fixture-${translatedState.dmxAddress}`
+                fixtureId: state.fixtureId ?? `fixture-${state.dmxAddress}`
             };
         });
-        // 🔎 WAVE 2122.1: Focused DMX slice trace for a single fixture
-        // NOTE: We keep this extremely defensive and throttled.
-        try {
-            const now = Date.now();
-            if (this.traceFixtureId && now - this.traceLastLogAtMs > 350) {
-                const p = packets.find(pkt => pkt.fixtureId === this.traceFixtureId) ?? null;
-                if (p) {
-                    this.traceLastLogAtMs = now;
-                    const addr = Math.max(1, Math.min(512, p.address ?? 1));
-                    const start = Math.max(1, addr - 8);
-                    const end = Math.min(512, addr + Math.min(40, p.channels.length));
-                    const sliceStart = start - addr;
-                    const sliceEnd = end - addr;
-                    const slice = p.channels.slice(Math.max(0, sliceStart), Math.max(0, sliceEnd));
-                    // Pull pan/tilt/speed values if present in state.channels definition
-                    const typed = states.find(s => (s.fixtureId ?? `fixture-${s.dmxAddress}`) === this.traceFixtureId) ?? null;
-                    const pan = typed?.physicalPan ?? typed?.pan;
-                    const tilt = typed?.physicalTilt ?? typed?.tilt;
-                    const speed = typed?.speed;
-                    console.log('[TRACE MAPPER] fixture DMX slice', {
-                        fixtureId: this.traceFixtureId,
-                        universe: p.universe,
-                        address: addr,
-                        range: { start, end },
-                        pan,
-                        tilt,
-                        speed,
-                        channelsLen: p.channels.length,
-                        slice,
-                    });
-                }
-            }
-        }
-        catch (e) {
-            // Never break mapping
-        }
+        // 🔎 WAVE 2122.1: Focused DMX slice trace disabled (was too spammy)
+        // Uncomment below to re-enable fixture-level DMX inspection
+        // try {
+        //   const now = Date.now()
+        //   if (this.traceFixtureId && now - this.traceLastLogAtMs > 350) {
+        //     const p = packets.find(pkt => pkt.fixtureId === this.traceFixtureId) ?? null
+        //     if (p) { console.log('[TRACE MAPPER] ...', {...}) }
+        //   }
+        // } catch (e) { /* never block render */ }
         return packets;
-    }
-    /**
-     * 🎨 WAVE 1001: HAL TRANSLATION - The Magic Happens Here
-     *
-     * Translates Selene's RGB dreams into physical DMX reality:
-     * 1. Detect if fixture has color wheel or RGB
-     * 2. If wheel: Find nearest color, apply safety debounce
-     * 3. If RGB: Pass-through (no translation needed)
-     *
-     * PHILOSOPHY: "Selene dreams in RGB, Beams speak their dialect"
-     */
-    applyHALTranslation(state) {
-        // Skip if fixture has RGB mixing (no translation needed)
-        if (state.hasColorMixing && !state.hasColorWheel) {
-            return state;
-        }
-        // Skip if fixture explicitly has no color wheel
-        if (!state.hasColorWheel) {
-            return state;
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // 🎨 FIXTURE HAS COLOR WHEEL - TRANSLATE!
-        // ═══════════════════════════════════════════════════════════════════
-        // Get or cache the fixture profile
-        const profile = this.getFixtureProfile(state.name, state.profileId);
-        // If no profile found, pass-through (assume RGB)
-        if (!profile) {
-            return state;
-        }
-        // Translate RGB to wheel color
-        const targetRGB = { r: state.r, g: state.g, b: state.b };
-        const translation = this.colorTranslator.translate(targetRGB, profile);
-        // If not translated (RGB fixture detected by profile), pass-through
-        if (!translation.wasTranslated) {
-            return state;
-        }
-        // Apply safety filter (debounce, latch, strobe delegation)
-        const fixtureId = state.fixtureId ?? `fixture-${state.dmxAddress}`;
-        const safetyResult = this.safetyLayer.filter(fixtureId, translation.colorWheelDmx ?? 0, profile, state.dimmer);
-        // Create translated state
-        const translatedState = {
-            ...state,
-            // 🎨 Replace RGB with translated color (for consistency)
-            r: translation.outputRGB.r,
-            g: translation.outputRGB.g,
-            b: translation.outputRGB.b,
-            // 🎨 Set color wheel DMX value
-            colorWheel: safetyResult.finalColorDmx,
-        };
-        // 🛡️ Handle strobe delegation (if color is changing too fast)
-        if (safetyResult.delegateToStrobe) {
-            // Force strobe instead of color changes
-            translatedState.strobe = safetyResult.suggestedShutter;
-        }
-        // 🔍 Debug logging (throttled)
-        if (this.halDebug) {
-            const now = Date.now();
-            if (now - this.halDebugLastLog > 1000) { // Log max once per second
-                this.halDebugLastLog = now;
-                console.log(`[HAL 🎨] ${state.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}${safetyResult.delegateToStrobe ? ' [→STROBE]' : ''}`);
-            }
-        }
-        return translatedState;
     }
     /**
      * 🎨 WAVE 1001: Get fixture profile (with caching)

@@ -247,45 +247,47 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: GOD EAR HUNTER (WAVE 2347 - El Tubo Arreglado)
+    // 💥 3. FRONT PAR: EL BOMBO INMORTAL (WAVE 2348)
     // =======================================================================
     
-    // 1. TELEMETRÍA DE 4ª GENERACIÓN (Ahora sí, conectada y real)
     const currentCrestFactor = input.spectralData?.crestFactor ?? 0;
     const currentFlatness = input.spectralData?.flatness ?? 1.0;
     const currentCentroid = input.spectralData?.centroid ?? 0;
 
-    // 2. EL SALTO PURO (Sin promedios ciegos)
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
 
-    // 3. EL GATILLO ABSOLUTO
-    const isBassHit = bassSnap > 0.05;
+    // 1. Sensibilidad a la compresión: Anyma no deja silencios, el "salto" es más corto.
+    const isBassHit = bassSnap > 0.035;
 
-    // 4. LA INTELIGENCIA DEL CRESTFACTOR
-    const isKickDetected = isBassHit && (currentCrestFactor > 10.0); 
-    const isRollingBass = isBassHit && (currentCrestFactor <= 10.0) && (currentFlatness < 0.25);
-    const centroidDucking = currentCentroid > 3500 ? 0.6 : 1.0; 
+    // 2. CrestFactor realista: Un bombo de Techno masterizado ronda el 5.5 - 8.0
+    const isKickConfirmed = isBassHit && (currentCrestFactor > 5.5); 
+    const isRollingBass = isBassHit && (currentCrestFactor <= 5.5) && (currentFlatness < 0.25);
+    
+    // 3. Ducking suavizado: Si el Back grita (>4000Hz), el Front solo cede un 20% (0.8), no un 40%.
+    const centroidDucking = currentCentroid > 4000 ? 0.8 : 1.0; 
 
-    // 5. CAÍDA LÍQUIDA (Garantiza el negro absoluto entre bombos a 140BPM)
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 6. CEREBRO Y CERROJO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
-    } else if (isKickDetected) {
-        // 🚀 BOMBO: Latigazo ciego. Sincronía 1:1.
+    } else if (isKickConfirmed) {
+        // 🚀 BOMBO CONFIRMADO
         this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor)) * centroidDucking;
         this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 BAJO MELÓDICO: Glow envolvente.
+        // 🌊 BAJO MELÓDICO
         this.frontIntensity = Math.min(1.0, bass * 0.4) * centroidDucking;
         this.frontLockout = 3;
+    } else if (isBassHit) {
+        // 🛡️ PLAN B RESTAURADO: Si es un golpe fuerte pero GodEar está dudando, DISPARA.
+        this.frontIntensity = Math.min(1.0, bass * 0.95) * centroidDucking;
+        this.frontLockout = 4;
     }
 
-    // 7. LIMPIEZA FINAL (Anti-minipulsos)
-    let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
+    // Limpieza final ajustada para no matar colas de luz muy pronto
+    let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
@@ -296,32 +298,29 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 2. BACK PAR: THE PROTECTED SNIPER (Con Vitamina Segura)
+    // 🥁 2. BACK PAR: CALLANDO AL CHARLATÁN
     // =======================================================================
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
     
     // Filtro de voces original (Se mantiene idéntico, es seguro)
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
-    // ⚡ LA VITAMINA SEGURA (El secreto que perdimos)
-    // Multiplicar Harshness x Treble garantiza que NUNCA saltará con un bombo 
-    // ni con una voz plana. Solo caza claps y snares, dándoles el empuje para cruzar la gate.
     const pureHarshness = (harshness ?? 0);
     const snareVitamin = pureHarshness * treble * (4.5 + 2.5 * morphFactor);
 
     const snarePower = Math.min(1.0, 
-      (cleanMid * 0.05) +  // Ajustamos el cuerpo al 5% para que la luz sea rítmica y menos "lámpara"
-      (transientImpact * (1.1 + 1.2 * morphFactor)) + // Base dinámica
-      snareVitamin // 🚀 El latigazo que faltaba
+      (cleanMid * 0.05) + 
+      (transientImpact * (1.1 + 1.2 * morphFactor)) + 
+      snareVitamin 
     );
 
     let backParIntensity = 0;
-    // Gate agresiva en modo Industrial (0.40), sensible en Melodic (0.20)
-    const dynamicBackGate = 0.40 - (0.20 * morphFactor); 
+    // 🔒 SUBIMOS LA PUERTA: De base 0.40 a 0.48. 
+    // En modo Anyma caerá a 0.26 (suficiente para brillar, pero filtrando la basura)
+    const dynamicBackGate = 0.48 - (0.22 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 3.5: Cero miniflashes, solo latigazos
         backParIntensity = Math.pow(gated, 3.5) * dynamicSlapMult;
     }
 
@@ -332,7 +331,7 @@ export class TechnoStereoPhysics {
     
     if (now - this.lastLogTime > 33) { 
        console.log(
-         `[F] B:${bass.toFixed(2)} Snap:${bassSnap.toFixed(3)} Kick:${isKick ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] B:${bass.toFixed(2)} Snap:${bassSnap.toFixed(3)} Kick:${isKickConfirmed ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );

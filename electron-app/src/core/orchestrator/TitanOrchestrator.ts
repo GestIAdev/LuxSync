@@ -655,8 +655,9 @@ export class TitanOrchestrator {
       harshness: this.smoothedMetrics.harshness,
       spectralFlatness: this.smoothedMetrics.spectralFlatness,
       spectralCentroid: this.smoothedMetrics.spectralCentroid,
-      // 💥 WAVE 2347: crestFactor suavizado disponible para physics engines
-      crestFactor: this.smoothedMetrics.crestFactor,
+      // 💥 WAVE 2352: crestFactor RAW para physics engines - los transitorios de kick NO se suavizan
+      // El EMA destruye el pico que diferencia un bombo de un rolling bass
+      crestFactor: this.lastAudioData.crestFactor ?? this.smoothedMetrics.crestFactor,
       // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
       subBass: this.smoothedMetrics.subBass,
       lowMid: this.smoothedMetrics.lowMid,

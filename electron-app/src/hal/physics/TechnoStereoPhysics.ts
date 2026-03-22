@@ -246,48 +246,7 @@ export class TechnoStereoPhysics {
       this.inSilence = false;
     }
 
-    // =======================================================================
-    // 💥 3. FRONT PAR: EL BOMBO INMORTAL (WAVE 2348)
-    // =======================================================================
-    
-    const currentCrestFactor = input.spectralData?.crestFactor ?? 0;
-    const currentFlatness = input.spectralData?.flatness ?? 1.0;
-    const currentCentroid = input.spectralData?.centroid ?? 0;
 
-    const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
-    this.lastBass = bass;
-
-    // 1. Sensibilidad a la compresión: Anyma no deja silencios, el "salto" es más corto.
-    const isBassHit = bassSnap > 0.035;
-
-    // 2. CrestFactor realista: Un bombo de Techno masterizado ronda el 5.5 - 8.0
-    const isKickConfirmed = isBassHit && (currentCrestFactor > 5.5); 
-    const isRollingBass = isBassHit && (currentCrestFactor <= 5.5) && (currentFlatness < 0.25);
-    
-    // 3. Ducking suavizado: Si el Back grita (>4000Hz), el Front solo cede un 20% (0.8), no un 40%.
-    const centroidDucking = currentCentroid > 4000 ? 0.8 : 1.0; 
-
-    const frontDecay = 0.70 + (0.15 * morphFactor);
-    this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
-
-    if ((this.frontLockout ?? 0) > 0) {
-        this.frontLockout--; 
-    } else if (isKickConfirmed) {
-        // 🚀 BOMBO CONFIRMADO
-        this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor)) * centroidDucking;
-        this.frontLockout = 5 + Math.floor(2 * morphFactor); 
-    } else if (isRollingBass) {
-        // 🌊 BAJO MELÓDICO
-        this.frontIntensity = Math.min(1.0, bass * 0.4) * centroidDucking;
-        this.frontLockout = 3;
-    } else if (isBassHit) {
-        // 🛡️ PLAN B RESTAURADO: Si es un golpe fuerte pero GodEar está dudando, DISPARA.
-        this.frontIntensity = Math.min(1.0, bass * 0.95) * centroidDucking;
-        this.frontLockout = 4;
-    }
-
-    // Limpieza final ajustada para no matar colas de luz muy pronto
-    let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
@@ -298,7 +257,7 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 2. BACK PAR: CALLANDO AL CHARLATÁN
+    // 🥁 2. BACK PAR: LA PUERTA AL 0.44 Y CERO COMPETENCIA
     // =======================================================================
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
     
@@ -315,21 +274,59 @@ export class TechnoStereoPhysics {
     );
 
     let backParIntensity = 0;
-    // 🔒 SUBIMOS LA PUERTA: De base 0.40 a 0.48. 
-    // En modo Anyma caerá a 0.26 (suficiente para brillar, pero filtrando la basura)
-    const dynamicBackGate = 0.48 - (0.22 * morphFactor); 
+    // 🔒 LA PUERTA BAJA A 0.44 (A petición del Arquitecto para no perder snares)
+    // En modo Anyma caerá a 0.22, súper sensible pero limpio gracias al exponente 3.5
+    const dynamicBackGate = 0.44 - (0.22 * morphFactor); 
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
         backParIntensity = Math.pow(gated, 3.5) * dynamicSlapMult;
     }
 
-// =======================================================================
-    // 📊 TELEMETRÍA LUXSYNC (Caja Negra)
-    // Descomenta para capturar tus 10 segundos de gloria
+    // =======================================================================
+    // 💥 3. FRONT PAR: RAW TRUTH & PROGRESSIVE GROOVE (WAVE 2352)
     // =======================================================================
     
-    if (now - this.lastLogTime > 33) { 
+    // Con el cable crudo restaurado, el CrestFactor volverá a rugir.
+    const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
+    
+    const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
+    this.lastBass = bass;
+
+    // 1. GATILLO CRUDO (Restaurado a la magia de la 2347)
+    const isBassHit = bassSnap > 0.045;
+
+    // 2. ESCUDO ANTI-VOCES INTELIGENTE
+    // Ya no se activa por error. Solo bloquea si hay una barbaridad de medios y el bajo es débil.
+    const isVoiceLeak = mid > 0.50 && mid > (bass * 0.80);
+
+    // 3. LA DECISIÓN CLARA
+    // Con señal cruda, un CrestFactor > 5.0 es un bombo incontestable.
+    const isKickConfirmed = isBassHit && !isVoiceLeak && (currentCrestFactor > 5.0); 
+
+    // Si salta pero no es puntiagudo, es el ronroneo progresivo.
+    const isRollingBass = isBassHit && !isVoiceLeak && !isKickConfirmed;
+
+    const frontDecay = 0.70 + (0.15 * morphFactor);
+    this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
+
+    if ((this.frontLockout ?? 0) > 0) {
+        this.frontLockout--; 
+    } else if (isKickConfirmed) {
+        // 🚀 BOMBO BRUTAL
+        this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor));
+        this.frontLockout = 5 + Math.floor(2 * morphFactor); 
+    } else if (isRollingBass) {
+        // 🌊 RONRONEO PROGRESIVO
+        const progressivePulse = bass * (0.45 + 0.2 * morphFactor);
+        this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
+        this.frontLockout = 2; 
+    }
+
+    let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;
+
+    // TELEMETRÍA (mantener formato original)
+    if (now - this.lastLogTime > 33) {
        console.log(
          `[F] B:${bass.toFixed(2)} Snap:${bassSnap.toFixed(3)} Kick:${isKickConfirmed ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
@@ -337,7 +334,6 @@ export class TechnoStereoPhysics {
        );
        this.lastLogTime = now;
     }
-    
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
     let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
@@ -345,20 +341,18 @@ export class TechnoStereoPhysics {
     const rawRight = Math.max(0, treble - (mid * 0.2));
     let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
 
-    
-
     // =======================================================================
     // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE
     // =======================================================================
     if (frontParIntensity > 0.1) {
-      // 🔪 LEY ABSOLUTA: Si el bombo existe, aplasta el 90% de todo lo demás
+      // 🔪 LEY ABSOLUTA: Solo aplasta los MOVERS (Sables). 
+      // ¡EL BACK PAR ES LIBRE! ducking exterminado para el snare.
       const ducking = 1.0 - (frontParIntensity * 0.90);
-      backParIntensity *= ducking;
       moverL *= ducking;
       moverR *= ducking;
     } else {
-      // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups/Risers)
-      const isApocalypse = harshness > 0.55 && flatness > 0.55;
+      // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups)
+      const isApocalypse = harshness > 0.55 && (input.spectralData?.flatness ?? 0) > 0.55;
       if (isApocalypse) {
         const chaosEnergy = Math.max(mid, treble);
         backParIntensity = Math.max(backParIntensity, chaosEnergy);

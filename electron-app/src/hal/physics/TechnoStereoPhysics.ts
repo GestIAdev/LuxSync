@@ -291,13 +291,19 @@ export class TechnoStereoPhysics {
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
 
-    // 1. EL SUELO DINÁMICO (La Cama Musical)
-    // Sube muy lento (0.02) para ignorar el impacto del bombo.
-    // Baja muy rápido (0.15) para no quedarse sordo cuando el bajo termina.
+    // =======================================================================
+    // 1. EL SUELO DINÁMICO: ESCUDO ANTI-BREJCHA (WAVE 2356)
+    // =======================================================================
+    
     if (bass > (this.bassFloor ?? 0)) {
+        // El suelo sube lento (0.02) para dejar que el bombo destaque y rompa el umbral
         this.bassFloor = ((this.bassFloor ?? 0) * 0.98) + (bass * 0.02);
     } else {
-        this.bassFloor = ((this.bassFloor ?? 0) * 0.85) + (bass * 0.15);
+        // 🛡️ LA VISCOSIDAD RÍTMICA
+        // Morph 0.0 (Brejcha): Cae hiper-lento (0.97). El suelo se queda alto y se traga los subgraves a contratiempo.
+        // Morph 1.0 (Anyma): Cae muy rápido (0.85). El suelo se limpia al instante para leer líneas de bajo complejas.
+        const floorFriction = 0.97 - (0.12 * morphFactor);
+        this.bassFloor = ((this.bassFloor ?? 0) * floorFriction) + (bass * (1.0 - floorFriction));
     }
 
     // 2. EL ESCUDO ANTI-VOCES (Intocable)

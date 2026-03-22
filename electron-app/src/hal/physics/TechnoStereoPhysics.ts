@@ -166,6 +166,7 @@ export class TechnoStereoPhysics {
   private avgBass = 0.0  // 🌊 WAVE 2343: Moving average floor de graves (para detectar hits)
   private frontIntensity = 0.0  // Persistente intensity para decay orgánico
   private frontLockout = 0  // Frame counter para evitar re-triggers
+  private bassFloor = 0.0  // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -284,40 +285,50 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: RAW TRUTH & PROGRESSIVE GROOVE (WAVE 2352)
+    // 💥 3. FRONT PAR: THE ASYMMETRIC ENVELOPE (WAVE 2354)
     // =======================================================================
-    
-    // Con el cable crudo restaurado, el CrestFactor volverá a rugir.
-    const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
     
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
 
-    // 1. GATILLO CRUDO (Restaurado a la magia de la 2347)
-    const isBassHit = bassSnap > 0.045;
+    // 1. EL SUELO DINÁMICO (La Cama Musical)
+    // Sube muy lento (0.02) para ignorar el impacto del bombo.
+    // Baja muy rápido (0.15) para no quedarse sordo cuando el bajo termina.
+    if (bass > (this.bassFloor ?? 0)) {
+        this.bassFloor = ((this.bassFloor ?? 0) * 0.98) + (bass * 0.02);
+    } else {
+        this.bassFloor = ((this.bassFloor ?? 0) * 0.85) + (bass * 0.15);
+    }
 
-    // 2. ESCUDO ANTI-VOCES INTELIGENTE
-    // Ya no se activa por error. Solo bloquea si hay una barbaridad de medios y el bajo es débil.
+    // 2. EL ESCUDO ANTI-VOCES (Intocable)
     const isVoiceLeak = mid > 0.50 && mid > (bass * 0.80);
 
-    // 3. LA DECISIÓN CLARA
-    // Con señal cruda, un CrestFactor > 5.0 es un bombo incontestable.
-    const isKickConfirmed = isBassHit && !isVoiceLeak && (currentCrestFactor > 5.0); 
+    // 3. LA DECISIÓN INTELIGENTE (Adiós a la dictadura del 0.05)
+    // Es un kick SI:
+    // - El volumen supera a la "cama musical" en un 12% (1.12x)
+    // - Hay un salto dinámico mínimo (> 0.025) para descartar crescendos lentos.
+    // - Hay energía real (bass > 0.30) para no disparar con ruido de fondo.
+    const isKickConfirmed = !isVoiceLeak && 
+                            (bass > this.bassFloor * 1.12) && 
+                            (bassSnap > 0.025) && 
+                            (bass > 0.30);
 
-    // Si salta pero no es puntiagudo, es el ronroneo progresivo.
-    const isRollingBass = isBassHit && !isVoiceLeak && !isKickConfirmed;
+    // Es ronroneo si hay salto dinámico pero no logra reventar el techo del 12%
+    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (bassSnap > 0.015) && (bass > 0.40);
 
+    // 4. VISCOSIDAD LÍQUIDA
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
+    // 5. CEREBRO Y CERROJO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
-        // 🚀 BOMBO BRUTAL
+        // 🚀 BOMBO: Latigazo que rompe la mezcla
         this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor));
         this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 RONRONEO PROGRESIVO
+        // 🌊 RONRONEO: Pianos graves, sintes oscilantes o 808s
         const progressivePulse = bass * (0.45 + 0.2 * morphFactor);
         this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
         this.frontLockout = 2; 

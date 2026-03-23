@@ -287,7 +287,7 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: ZERO-CROSSING ESCAPE & ANTI-WOBBLE (WAVE 2367)
+    // 💥 3. FRONT PAR: MACHINE GUN MODE (WAVE 2369)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
@@ -303,43 +303,43 @@ export class TechnoStereoPhysics {
     this.lastPunch = punch;
     this.lastVelocity = velocity;
 
-    // 🚀 EL ESCAPE INTELIGENTE (Blindado Anti-Wobble)
-    // Ya no nos engaña la vibración de un sinte LFO (-0.010).
-    // Exigimos que la onda caiga por un precipicio (-0.040) o frene en seco (-0.080)
-    // para confirmar que el impacto físico del bombo realmente acabó.
-    if (velocity < -0.040 || acceleration < -0.080) {
+    // 🚀 EL ESCAPE DE EMERGENCIA (Caída libre)
+    if (velocity < -0.060) {
         this.frontLockout = 0;
     }
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
-    
-    // Subimos la energía mínima un pelo (0.25) para ignorar basura y reverberaciones.
     const hasEnergy = punch > 0.25;
 
-    // 3. DETECCIÓN DE PRECISIÓN (El Filtro Anti-Sinte)
-    // Camino A: Salto violento. AHORA exigimos que acelere (> 0.010). 
-    // Los sintes suben rápido, pero de forma constante (aceleración ~ 0). El bombo explota.
-    const isStrongJump = velocity > 0.045 && acceleration > 0.010;
-    
-    // Camino B: Salto afilado (CrestFactor alto)
-    const isSharpJump = velocity > 0.025 && acceleration > 0.015 && currentCrestFactor > 4.5;
-
+    // 3. DETECCIÓN DE PRECISIÓN 
+    const isStrongJump = velocity > 0.050 && acceleration > 0.015;
+    const isSharpJump = velocity > 0.030 && acceleration > 0.015 && currentCrestFactor > 4.5;
     const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
+
+    // 🧨 MUNICIÓN PERFORANTE (Armor Piercing)
+    // Latigazos tan masivos y rápidos que ignoran cualquier candado. (Típico de redobles fuertes).
+    const isArmorPiercing = velocity > 0.070 && acceleration > 0.040;
 
     // 4. LA MATERIA OSCURA / MURO ANYMA
     const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
 
-    // 5. MORFOLOGÍA LÍQUIDA: DECAY ACELERADO
+    // 5. MORFOLOGÍA LÍQUIDA
     const frontDecay = 0.60 + (0.20 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
     // 6. CEREBRO Y RENDERIZADO
-    if ((this.frontLockout ?? 0) > 0) {
+    // Si hay candado, PERO llega munición perforante, lo rompemos al instante.
+    if ((this.frontLockout ?? 0) > 0 && !isArmorPiercing) {
         this.frontLockout--; 
-    } else if (isKickConfirmed) {
-        // 🚀 KICK
+    } else if (isKickConfirmed || isArmorPiercing) {
+        // 🚀 KICK O REDOBLE MASIVO
         this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
-        this.frontLockout = 5 + Math.floor(4 * morphFactor); 
+        
+        // 🔫 MODO AMETRALLADORA
+        // Si el Orquestador detecta un "buildup", el candado baja a 2 frames (~30ms) 
+        // para poder parpadear a la velocidad de la luz. Si no, candado normal sólido.
+        const isBuildup = input.sectionType === 'buildup';
+        this.frontLockout = isBuildup ? 2 : (5 + Math.floor(4 * morphFactor)); 
     } else if (isRollingBass) {
         // 🌊 MURO ANYMA
         const auraCap = 0.25 * Math.pow(morphFactor, 2); 
@@ -349,7 +349,6 @@ export class TechnoStereoPhysics {
         this.frontLockout = 2; 
     }
 
-    // Subimos el umbral de limpieza a 0.10 para un oscuro más puro
     let frontParIntensity = this.frontIntensity > 0.10 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)

@@ -349,11 +349,12 @@ export class TechnoStereoPhysics {
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
     // 2. LA PUERTA CON MEMORIA
-    // 🔬 WAVE 2382: Puerta Morfomórfica — el margen del gate depende del estilo.
-    // Minimal (Morph 0.0): margen estricto 0.045 → bloquea sintes staccato de Boris.
-    // Anyma  (Morph 1.0): margen relajado 0.02  → deja respirar el muro de sonido.
-    const gateMargin = 0.045 - (0.025 * morphFactor);
-    const dynamicGate = avgPunchEffective + gateMargin;
+    // 🔬 WAVE 2383: Smart Crusher — revert gateMargin a 0.02 fijo.
+    // WAVE 2382 subía el margen a 0.045 en Minimal para bloquear sintes,
+    // pero Boris Brejcha (subgrave rodante P:0.73-0.77) inflaba avgPunch
+    // y el gate quedaba en 0.77, BLOQUEANDO bombos reales.
+    // Nuevo enfoque: gate bajo (deja pasar), exponente alto (aplasta lo débil).
+    const dynamicGate = avgPunchEffective + 0.02;
     
     let kickPower = 0;
     let ghostPower = 0;
@@ -369,14 +370,21 @@ export class TechnoStereoPhysics {
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        kickPower = Math.pow(rawPower, 1.5);
+        // 🔬 WAVE 2383: Smart Crusher — exponente dinámico por morphFactor.
+        // Minimal (Morph 0.0): exp 3.0 → aplasta sintes staccato débiles.
+        // Anyma  (Morph 1.0): exp 2.0 → deja fluir el muro de sonido.
+        // Un sinte con rawPower 0.3 → pow(0.3, 3.0) = 0.027 (invisible).
+        // Un bombo con rawPower 0.8 → pow(0.8, 3.0) = 0.512 (visible).
+        const crushExponent = 2.0 + (1.0 * (1.0 - morphFactor));
+        kickPower = Math.pow(rawPower, crushExponent);
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
         // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
-        // 🔬 WAVE 2382: ghostPower escalado por morphFactor.
-        // Minimal (0.0) = 0% brillo fantasma → oscuridad absoluta entre bombos.
-        // Anyma  (1.0) = 100% del brillo calculado → fluidez y glow.
+        // 🔬 WAVE 2383: ghostPower restaurado SIN morphFactor.
+        // El glow tenue (max 4%) conecta las melodías y evita negro absoluto.
+        // WAVE 2382 lo multiplicaba por morphFactor, cortándolo en Minimal.
+        // Esto provocaba parpadeo epiléptico al pasar por la guillotina 0.08.
         const proximity = (punch - avgPunchEffective) / 0.02;
-        ghostPower = Math.min(0.04, proximity * 0.04) * morphFactor;
+        ghostPower = Math.min(0.04, proximity * 0.04);
     }
 
     // 4. MORFOLOGÍA LÍQUIDA: DECAY
@@ -400,7 +408,13 @@ export class TechnoStereoPhysics {
         this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
     }
 
-    let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
+    // 🔬 WAVE 2383: Reemplazar guillotina binaria por smooth fade.
+    // La guillotina (> 0.08 ? x : 0) creaba saltos bruscos de 0.07→0.00
+    // que destruían el glow del ghostPower y el decay natural.
+    // Smooth fade: por debajo de 0.08 se atenúa cuadráticamente → fundido suave.
+    const fadeZone = 0.08;
+    const fadeFactor = this.frontIntensity >= fadeZone ? 1.0 : Math.pow(this.frontIntensity / fadeZone, 2);
+    let frontParIntensity = this.frontIntensity * fadeFactor;
 
     // TELEMETRÍA (mantener formato original)
     if (now - this.lastLogTime > 33) {

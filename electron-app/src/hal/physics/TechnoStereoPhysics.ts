@@ -171,6 +171,7 @@ export class TechnoStereoPhysics {
   private avgPunchPeak = 0.0  // 🏔️ WAVE 2377: Memoria del pico de avgPunch (caída ultra-lenta)
   private wasBreakdown = false  // 🔄 WAVE 2378: Estado previo de sección (para detectar transición breakdown→drop)
   private breakdownExitTime = 0  // ⏱️ WAVE 2378: Timestamp de salida del breakdown
+  private lastPunch = 0  // 🔬 WAVE 2380: Velocity gate — detecta pads por velocidad de subida lenta
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -305,21 +306,21 @@ export class TechnoStereoPhysics {
     const sectionType = input.sectionType ?? 'drop';
     const isBreakdown = sectionType === 'breakdown' || sectionType === 'buildup';
     
-    // 🔄 WAVE 2378: Detectar transición breakdown→drop para aplicar rampa de reentrada.
-    // Cuando salimos del breakdown, los primeros frames del drop tienen el gate bajo
-    // y el primer kick genera KickP:1.000 instantáneo. La rampa suaviza eso.
-    if (this.wasBreakdown && !isBreakdown) {
-        this.breakdownExitTime = now;
-    }
-    this.wasBreakdown = isBreakdown;
-    
-    const POST_BREAKDOWN_RAMP = 1500; // 1.5 segundos de rampa post-breakdown
-    const timeSinceBreakdownExit = now - this.breakdownExitTime;
-    const isPostBreakdown = this.breakdownExitTime > 0 && timeSinceBreakdownExit < POST_BREAKDOWN_RAMP;
-    // Rampa cuadrática: arranca lenta (no corta el primer impulso a cero) y acelera.
-    const postBreakdownFactor = isPostBreakdown
-        ? Math.pow(Math.min(1.0, timeSinceBreakdownExit / POST_BREAKDOWN_RAMP), 2)
-        : 1.0;
+    // 🔬 WAVE 2380/2381: Velocity Gate — cinemática de ataque puro.
+    //
+    // WAVE 2380: Los pads suben lento (velocity baja), los bombos explotan (velocity alta).
+    //   isPadSwell bloquea pads en secciones tranquilas.
+    //
+    // WAVE 2381: Attack-Only Trigger — la reverberación acústica del bombo cae lentamente
+    //   por encima del gate, haciendo que el motor genere nanorrestos (KickP:0.7, 0.3, 0.12...)
+    //   mientras la onda BAJA. Solución puramente física: solo disparamos luz cuando la onda
+    //   está CRECIENDO (atacando). Si baja, el decay orgánico se encarga de la cola.
+    //   Margen de -0.005 para absorber micro-fluctuaciones de cuantización.
+    const velocity = punch - (this.lastPunch ?? 0);
+    this.lastPunch = punch;
+    const isAttacking = velocity >= -0.005;
+    const isQuietSection = isBreakdown || sectionType === 'intro';
+    const isPadSwell = isQuietSection && velocity < 0.02;
     
     // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
     if (punch > (this.avgPunch ?? 0)) {
@@ -358,18 +359,13 @@ export class TechnoStereoPhysics {
     // Los sintes no deberían encender los focos del bombo.
     const breakdownPenalty = isBreakdown ? 0.06 : 0;
     
-    if (punch > dynamicGate && !isVoiceLeak && punch > 0.15) {
+    if (punch > dynamicGate && !isVoiceLeak && !isPadSwell && isAttacking && punch > 0.15) {
         const requiredJump = 0.14 - (0.07 * morphFactor) + breakdownPenalty; 
         
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
         kickPower = Math.pow(rawPower, 1.5);
-        
-        // 🔄 WAVE 2378: Rampa post-breakdown — atenúa el KickP en los primeros
-        // 1.5 segundos tras salir del breakdown. Evita el pico KickP:1.000 instantáneo
-        // cuando el gate estaba bajo y llega el primer kick del drop.
-        kickPower *= postBreakdownFactor;
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
         // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
         const proximity = (punch - avgPunchEffective) / 0.02;

@@ -248,7 +248,15 @@ export class TechnoStereoPhysics {
       this.inSilence = false;
     }
 
-
+    // 🛡️ AGC REBOUND PROTECTION (WAVE 2376)
+    // Los primeros 2 segundos tras un silencio, el AGC está recalibrando y
+    // la señal llega inflada. Aplicamos un atenuador que va de 0.0 a 1.0
+    // linealmente durante RECOVERY_DURATION para que la luz suba suave.
+    const timeSinceSilence = now - this.lastSilenceTime;
+    const isRecovering = this.lastSilenceTime > 0 && timeSinceSilence < this.RECOVERY_DURATION;
+    const recoveryFactor = isRecovering 
+      ? Math.min(1.0, timeSinceSilence / this.RECOVERY_DURATION) 
+      : 1.0;
 
     // =======================================================================
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
@@ -286,14 +294,13 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: THE GROOVE SAVER (WAVE 2375)
+    // 💥 3. FRONT PAR: SOFT KNEE & GROOVE SAVER (WAVE 2376)
     // =======================================================================
     
     const punch = bass; 
     const rumble = input.sub ?? 0; 
     
     // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
-    // Mantenemos exactamente la inercia que genera las ghost notes perfectas.
     if (punch > (this.avgPunch ?? 0)) {
         this.avgPunch = ((this.avgPunch ?? 0) * 0.98) + (punch * 0.02);
     } else {
@@ -303,24 +310,26 @@ export class TechnoStereoPhysics {
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
     // 2. LA PUERTA REBAJADA
-    // Quitamos la penalización exagerada. Un margen fijo de 0.02 sobre el suelo
-    // es suficiente para frenar la basura gracias a la curva exponencial, 
-    // pero deja pasar a los bombos que están "apretados" en la mezcla.
     const dynamicGate = this.avgPunch + 0.02;
     
     let kickPower = 0;
+    let ghostPower = 0;
 
     // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor)
     if (punch > dynamicGate && !isVoiceLeak && punch > 0.15) {
-        // En pistas limpias (Morph bajo), exigimos un salto duro de 0.14 para el 100%.
-        // En pistas aplastadas (Morph alto), nos conformamos con un salto de solo 0.07.
         const requiredJump = 0.14 - (0.07 * morphFactor); 
         
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // La curva musical 1.5 que mantiene los synths fantasma en 10-15%
         kickPower = Math.pow(rawPower, 1.5); 
+    } else if (punch > this.avgPunch && punch > 0.15 && !isVoiceLeak) {
+        // 👻 RODILLA SUAVE (Soft Knee)
+        // La nota no superó el gate, pero SÍ supera el suelo de ruido.
+        // Le damos un brillo fantasma proporcional a cuánto se acercó a la puerta.
+        // Rango: 0% (en el suelo) a 4% (rozando la puerta). Mantiene la melodía conectada.
+        const proximity = (punch - this.avgPunch) / 0.02;
+        ghostPower = Math.min(0.04, proximity * 0.04);
     }
 
     // 4. MORFOLOGÍA LÍQUIDA: DECAY
@@ -331,6 +340,9 @@ export class TechnoStereoPhysics {
     if (kickPower > 0.02) {
         const hit = Math.min(1.0, kickPower * (1.2 + 0.8 * morphFactor));
         this.frontIntensity = Math.max(this.frontIntensity, hit);
+    } else if (ghostPower > 0) {
+        // 👻 FUGA FANTASMA: brillo mínimo que mantiene la melodía viva
+        this.frontIntensity = Math.max(this.frontIntensity, ghostPower);
     }
 
     // 6. MATERIA OSCURA (Muro Subgrave)
@@ -381,6 +393,16 @@ export class TechnoStereoPhysics {
 
     // Strobe (Treble peaks + Noise)
     const strobeResult = this.calculateStrobe(treble, noiseMode)
+
+    // 🛡️ AGC REBOUND ATTENUATION (WAVE 2376)
+    // Si estamos en recuperación post-silencio, atenuar todas las zonas progresivamente.
+    // recoveryFactor va de 0.0 (silencio acaba de terminar) a 1.0 (recuperación completa).
+    if (isRecovering) {
+      frontParIntensity *= recoveryFactor;
+      backParIntensity *= recoveryFactor;
+      moverL *= recoveryFactor;
+      moverR *= recoveryFactor;
+    }
 
     return {
       strobeActive: strobeResult.active,

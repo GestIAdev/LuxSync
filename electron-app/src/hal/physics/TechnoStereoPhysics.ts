@@ -286,15 +286,14 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: THE STABLE GROOVE (WAVE 2374)
+    // 💥 3. FRONT PAR: THE GROOVE SAVER (WAVE 2375)
     // =======================================================================
     
     const punch = bass; 
     const rumble = input.sub ?? 0; 
     
-    // 1. EL SUELO ESTABLE (The Concrete Floor)
-    // Se acabó el gate saltarín. Sube y baja con inercia para crear un 
-    // cimiento sólido que no tiembla con las frecuencias del bombo.
+    // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
+    // Mantenemos exactamente la inercia que genera las ghost notes perfectas.
     if (punch > (this.avgPunch ?? 0)) {
         this.avgPunch = ((this.avgPunch ?? 0) * 0.98) + (punch * 0.02);
     } else {
@@ -303,23 +302,24 @@ export class TechnoStereoPhysics {
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 2. LA PUERTA INTELIGENTE (Sonnet's Logic)
-    // Morph alto (Anyma) = pista densa/sucia = Gate más estricto (+0.09)
-    // Morph bajo (Minimal) = pista limpia = Gate más relajado (+0.04)
-    const gateMargin = 0.04 + (0.05 * morphFactor); 
-    const dynamicGate = this.avgPunch + gateMargin;
+    // 2. LA PUERTA REBAJADA
+    // Quitamos la penalización exagerada. Un margen fijo de 0.02 sobre el suelo
+    // es suficiente para frenar la basura gracias a la curva exponencial, 
+    // pero deja pasar a los bombos que están "apretados" en la mezcla.
+    const dynamicGate = this.avgPunch + 0.02;
     
     let kickPower = 0;
 
-    // 3. EL PUNTO DULCE (Sweet Spot Expander)
+    // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor)
     if (punch > dynamicGate && !isVoiceLeak && punch > 0.15) {
-        // Un salto de 0.15 por encima del Gate sólido nos da el 100% de fuerza
-        let rawPower = (punch - dynamicGate) / 0.15;
+        // En pistas limpias (Morph bajo), exigimos un salto duro de 0.14 para el 100%.
+        // En pistas aplastadas (Morph alto), nos conformamos con un salto de solo 0.07.
+        const requiredJump = 0.14 - (0.07 * morphFactor); 
+        
+        let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // 🎛️ LA MAGIA: Curva musical (1.5). 
-        // Un sinte que supera el gate por los pelos genera una luz tenue (10-15%).
-        // Un bombo que revienta el gate llega al 100%. Puro Groove.
+        // La curva musical 1.5 que mantiene los synths fantasma en 10-15%
         kickPower = Math.pow(rawPower, 1.5); 
     }
 

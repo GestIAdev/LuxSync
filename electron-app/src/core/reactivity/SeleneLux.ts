@@ -482,6 +482,8 @@ export class SeleneLux {
         harshness: audioMetrics.harshness ?? 0.45,      // Default más agresivo que Rock (Techno = duro)
         flatness: audioMetrics.spectralFlatness ?? 0.35,  // Default para pads/atmos
         // 💥 WAVE 2347: EL TUBO ARREGLADO — spectralData ahora llega a la física
+        crestFactor: audioMetrics.crestFactor,  // RAW (sin EMA) - WAVE 2363
+        sub: audioMetrics.subBass,              // 💥 WAVE 2363: SubBass RAW (20-60Hz) para rumble detector
         spectralData: {
           crestFactor: audioMetrics.crestFactor,
           flatness: audioMetrics.spectralFlatness,

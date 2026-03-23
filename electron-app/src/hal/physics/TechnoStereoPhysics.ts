@@ -74,6 +74,7 @@ export interface TechnoPhysicsInput {
   crestFactor?: number // 🔍 WAVE 2340: Pico dinámico (Crest)/RMS para detectar boom vs compresión
   centroid?: number // 🔍 WAVE 2340: Centro de masa espectral (Hz), para frenar saturación aguda
   lowMid?: number // 🔍 WAVE 2340: Energía de medios-graves (808 / bajos sostenidos)
+  sub?: number // 💥 WAVE 2363: SubBass RAW (20-60Hz) - rumble de LFOs y bajos continuos
   spectralData?: {
     crestFactor?: number
     flatness?: number
@@ -167,6 +168,8 @@ export class TechnoStereoPhysics {
   private frontIntensity = 0.0  // Persistente intensity para decay orgánico
   private frontLockout = 0  // Frame counter para evitar re-triggers
   private bassFloor = 0.0  // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
+  private lastPunch = 0.0  // 💥 WAVE 2363: Última energía de banda Punch (60-250Hz)
+  private lastVelocity = 0.0  // 💥 WAVE 2363: Última velocidad de subida del Punch
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -285,61 +288,66 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: EL MARGEN ABSOLUTO (WAVE 2360)
+    // 💥 3. FRONT PAR: FREQUENCY SPLIT & KINEMATICS (WAVE 2363)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
     
-    const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
-    this.lastBass = bass;
+    // 1. SEPARACIÓN QUIRÚRGICA
+    // punch (60-250Hz): El latigazo físico del bombo.
+    // rumble (20-60Hz): El subgrave pastoso (LFOs, bajos continuos).
+    const punch = bass; 
+    const rumble = input.sub ?? 0; 
+    
+    // 2. CINEMÁTICA PURA (Solo aplicable al Punch)
+    const velocity = punch - (this.lastPunch ?? 0);
+    const acceleration = velocity - (this.lastVelocity ?? 0);
 
-    // 1. EL SUELO DINÁMICO ÁGIL
-    // Un seguimiento rápido (EMA) que persigue la densidad de la pista sin quedarse atascado.
-    this.bassFloor = ((this.bassFloor ?? 0) * 0.90) + (bass * 0.10);
+    this.lastPunch = punch;
+    this.lastVelocity = velocity;
 
-    const isVoiceLeak = mid > 0.50 && mid > (bass * 0.80);
+    // Escudo anti-voces (las voces viven en los medios)
+    const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 2. LA BARRERA DEL MARGEN ABSOLUTO
-    // En lugar de porcentajes trampa, exigimos que el pico sobresalga 0.05 puntos físicos.
-    // Si el suelo está en 0.80, solo necesita llegar a 0.85 para romper la barrera.
-    const piercesFloor = bass > (this.bassFloor + 0.05);
+    // 3. EL GATILLO DEL BOMBO (Ignoramos el subgrave por completo)
+    // Buscamos energía en la banda 60-250Hz, velocidad de subida, y explosión (aceleración).
+    // Opcional: Si el CrestFactor es altísimo, somos un poco más permisivos con la aceleración.
+    const isKickConfirmed = !isVoiceLeak && (punch > 0.35) && 
+                            (velocity > 0.02) && 
+                            (acceleration > 0.015 || (velocity > 0.03 && currentCrestFactor > 3.5));
 
-    // 3. DETECCIÓN HÍBRIDA INERCIAL
-    // Para ser Kick: Rompe el suelo Y pega un latigazo (Snap > 0.035).
-    const isKickConfirmed = !isVoiceLeak && piercesFloor && 
-                            (bassSnap > 0.035 || (bassSnap > 0.025 && currentCrestFactor > 3.5));
+    // 4. LA MATERIA OSCURA / MURO ANYMA (Lee exclusivamente el Subgrave)
+    // Si no hay latigazo, pero el subgrave ruge, activamos el ronroneo.
+    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.45);
 
-    // Rolling bass: Sobresale del suelo pero el ataque es redondo/lento (Snap > 0.015)
-    // Aquí es donde caen atrapados los subgraves a contratiempo de Brejcha.
-    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (bass > this.bassFloor + 0.03) && (bassSnap > 0.015);
-
-    // 4. MORFOLOGÍA LÍQUIDA: EL DECAY
+    // 5. MORFOLOGÍA LÍQUIDA: EL DECAY
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 5. CEREBRO Y RENDERIZADO
+    // 6. CEREBRO Y RENDERIZADO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
-        // 🚀 KICK: Sincronía brutal y limpia
-        this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor));
+        // 🚀 KICK: Estalla usando la energía del Punch
+        this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
         this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 MATERIA OSCURA: El ronroneo atmosférico
+        // 🌊 MURO ANYMA: El ambiente respira con el Subgrave puro
+        // En Morph bajo (Boris), el muro es del 0%. En Morph alto (Anyma), se levanta con fuerza.
         const auraCap = 0.25 * Math.pow(morphFactor, 2); 
-        const progressivePulse = bass * auraCap;
+        const progressivePulse = rumble * auraCap; // Usamos rumble en vez de bass
         
         this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
         this.frontLockout = 2; 
     }
 
-    // Limpieza de fantasmas
+    // 7. LIMPIEZA FINAL
     let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)
     if (now - this.lastLogTime > 33) {
        console.log(
-         `[F] B:${bass.toFixed(2)} Snap:${bassSnap.toFixed(3)} Kick:${isKickConfirmed ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Vel:${velocity.toFixed(3)} Acc:${acceleration.toFixed(3)} Kick:${isKickConfirmed ? 'Y':'N'} Roll:${isRollingBass ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );
@@ -374,9 +382,6 @@ export class TechnoStereoPhysics {
 
     // Strobe (Treble peaks + Noise)
     const strobeResult = this.calculateStrobe(treble, noiseMode)
-
-    // Memoria para el siguiente frame
-    this.lastBass = bass
 
     return {
       strobeActive: strobeResult.active,

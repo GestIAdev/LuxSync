@@ -288,66 +288,72 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: FREQUENCY SPLIT & KINEMATICS (WAVE 2363)
+    // 💥 3. FRONT PAR: THE RHYTHMIC ENFORCER (WAVE 2364)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
     
     // 1. SEPARACIÓN QUIRÚRGICA
-    // punch (60-250Hz): El latigazo físico del bombo.
-    // rumble (20-60Hz): El subgrave pastoso (LFOs, bajos continuos).
-    const punch = bass; 
-    const rumble = input.sub ?? 0; 
+    const punch = bass; // La banda 60-250Hz
+    const rumble = input.sub ?? 0; // La banda 20-60Hz
     
-    // 2. CINEMÁTICA PURA (Solo aplicable al Punch)
+    // 2. CINEMÁTICA PURA
     const velocity = punch - (this.lastPunch ?? 0);
     const acceleration = velocity - (this.lastVelocity ?? 0);
 
     this.lastPunch = punch;
     this.lastVelocity = velocity;
 
-    // Escudo anti-voces (las voces viven en los medios)
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 3. EL GATILLO DEL BOMBO (Ignoramos el subgrave por completo)
-    // Buscamos energía en la banda 60-250Hz, velocidad de subida, y explosión (aceleración).
-    // Opcional: Si el CrestFactor es altísimo, somos un poco más permisivos con la aceleración.
-    const isKickConfirmed = !isVoiceLeak && (punch > 0.35) && 
-                            (velocity > 0.02) && 
-                            (acceleration > 0.015 || (velocity > 0.03 && currentCrestFactor > 3.5));
+    // 3. LA GUILLOTINA DE RUIDO
+    // Un bombo masterizado en un club JAMÁS baja de 0.45 de energía en esta banda.
+    // Todo lo que esté por debajo es ruido de fondo, ecos o sintes débiles.
+    const hasEnergy = punch > 0.45;
 
-    // 4. LA MATERIA OSCURA / MURO ANYMA (Lee exclusivamente el Subgrave)
-    // Si no hay latigazo, pero el subgrave ruge, activamos el ronroneo.
-    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.45);
+    // 4. DETECCIÓN DE PRECISIÓN (El Francotirador)
+    // Camino A: Salto violento incuestionable
+    const isStrongJump = velocity > 0.045;
+    // Camino B: Salto menor, pero muy afilado (CrestFactor alto) y con aceleración clara
+    const isSharpJump = velocity > 0.028 && acceleration > 0.015 && currentCrestFactor > 5.0;
 
-    // 5. MORFOLOGÍA LÍQUIDA: EL DECAY
+    const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
+
+    // 5. LA MATERIA OSCURA / MURO ANYMA
+    // Solo permitimos ronroneo si el subgrave es pesado y no hay bombo.
+    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
+
+    // 6. MORFOLOGÍA LÍQUIDA: EL DECAY
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 6. CEREBRO Y RENDERIZADO
+    // 7. CEREBRO Y RENDERIZADO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
         // 🚀 KICK: Estalla usando la energía del Punch
         this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
-        this.frontLockout = 5 + Math.floor(2 * morphFactor); 
+        
+        // 🔒 CUANTIZADOR RÍTMICO
+        // Subimos el cerrojo base a 7 frames (~115ms).
+        // A 130 BPM, esto garantiza ignorar las notas semicorcheas fantasma, 
+        // pero está listo a tiempo para el siguiente bombo a negras o corcheas.
+        this.frontLockout = 7 + Math.floor(4 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 MURO ANYMA: El ambiente respira con el Subgrave puro
-        // En Morph bajo (Boris), el muro es del 0%. En Morph alto (Anyma), se levanta con fuerza.
+        // 🌊 MURO ANYMA
         const auraCap = 0.25 * Math.pow(morphFactor, 2); 
-        const progressivePulse = rumble * auraCap; // Usamos rumble en vez de bass
+        const progressivePulse = rumble * auraCap;
         
         this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
         this.frontLockout = 2; 
     }
 
-    // 7. LIMPIEZA FINAL
     let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)
     if (now - this.lastLogTime > 33) {
        console.log(
-         `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Vel:${velocity.toFixed(3)} Acc:${acceleration.toFixed(3)} Kick:${isKickConfirmed ? 'Y':'N'} Roll:${isRollingBass ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Vel:${velocity.toFixed(3)} Acc:${acceleration.toFixed(3)} HasE:${hasEnergy ? 'Y':'N'} Kick:${isKickConfirmed ? 'Y':'N'} Roll:${isRollingBass ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );

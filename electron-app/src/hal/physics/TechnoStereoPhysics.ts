@@ -151,7 +151,6 @@ export class TechnoStereoPhysics {
 
   private strobeActive = false
   private strobeStartTime = 0
-  private lastBass = 0
   private lastLogTime = 0;
   private avgMidProfiler = 0.0;
   private lastFrontParFire = 0 // ⏱️ Memoria del cerrojo dinámico
@@ -288,14 +287,14 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: THE ELASTIC SNIPER (WAVE 2365)
+    // 💥 3. FRONT PAR: ZERO-CROSSING ESCAPE & ANTI-WOBBLE (WAVE 2367)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
     
     // 1. SEPARACIÓN QUIRÚRGICA
-    const punch = bass; // La banda 60-250Hz
-    const rumble = input.sub ?? 0; // La banda 20-60Hz
+    const punch = bass; 
+    const rumble = input.sub ?? 0; 
     
     // 2. CINEMÁTICA PURA
     const velocity = punch - (this.lastPunch ?? 0);
@@ -304,37 +303,42 @@ export class TechnoStereoPhysics {
     this.lastPunch = punch;
     this.lastVelocity = velocity;
 
+    // 🚀 EL ESCAPE INTELIGENTE (Blindado Anti-Wobble)
+    // Ya no nos engaña la vibración de un sinte LFO (-0.010).
+    // Exigimos que la onda caiga por un precipicio (-0.040) o frene en seco (-0.080)
+    // para confirmar que el impacto físico del bombo realmente acabó.
+    if (velocity < -0.040 || acceleration < -0.080) {
+        this.frontLockout = 0;
+    }
+
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
+    
+    // Subimos la energía mínima un pelo (0.25) para ignorar basura y reverberaciones.
+    const hasEnergy = punch > 0.25;
 
-    // 3. LA GUILLOTINA FLEXIBLE (Para transiciones de DJ)
-    // Bajamos a 0.20. Si el DJ mete un filtro y saca los graves, el bombo físico
-    // bajará, pero mientras haya salto dinámico, queremos que la luz lo siga.
-    const hasEnergy = punch > 0.20;
-
-    // 4. DETECCIÓN DE PRECISIÓN
-    // Camino A: Salto fuerte adaptado (0.040 permite cazar bombos filtrados)
-    const isStrongJump = velocity > 0.040;
-    // Camino B: Salto afilado
-    const isSharpJump = velocity > 0.025 && acceleration > 0.012 && currentCrestFactor > 4.5;
+    // 3. DETECCIÓN DE PRECISIÓN (El Filtro Anti-Sinte)
+    // Camino A: Salto violento. AHORA exigimos que acelere (> 0.010). 
+    // Los sintes suben rápido, pero de forma constante (aceleración ~ 0). El bombo explota.
+    const isStrongJump = velocity > 0.045 && acceleration > 0.010;
+    
+    // Camino B: Salto afilado (CrestFactor alto)
+    const isSharpJump = velocity > 0.025 && acceleration > 0.015 && currentCrestFactor > 4.5;
 
     const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
 
-    // 5. LA MATERIA OSCURA
+    // 4. LA MATERIA OSCURA / MURO ANYMA
     const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
 
-    // 6. MORFOLOGÍA LÍQUIDA: EL DECAY
-    const frontDecay = 0.70 + (0.15 * morphFactor);
+    // 5. MORFOLOGÍA LÍQUIDA: DECAY ACELERADO
+    const frontDecay = 0.60 + (0.20 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 7. CEREBRO Y RENDERIZADO
+    // 6. CEREBRO Y RENDERIZADO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
         // 🚀 KICK
         this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
-        
-        // 🔒 CUANTIZADOR ALTA VELOCIDAD
-        // Bajamos a 5 frames base (~80ms). A prueba de balas para Psytrance a 150BPM.
         this.frontLockout = 5 + Math.floor(4 * morphFactor); 
     } else if (isRollingBass) {
         // 🌊 MURO ANYMA
@@ -345,7 +349,8 @@ export class TechnoStereoPhysics {
         this.frontLockout = 2; 
     }
 
-    let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
+    // Subimos el umbral de limpieza a 0.10 para un oscuro más puro
+    let frontParIntensity = this.frontIntensity > 0.10 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)
     if (now - this.lastLogTime > 33) {
@@ -438,23 +443,6 @@ export class TechnoStereoPhysics {
    * Matemática:
    * - Signal ya viene como sqrt(mid * treble) desde applyZones
    * - Solo valores altos (Snare completo) pasan el gate 0.25
-   * - 📉 CURVA x^1.5 (exponencial) → SUPRIME ruido, mantiene potencia
-   *   * Valores débiles (synth ruido) → Se hacen invisibles
-   *   * Valores fuertes (Snare) → Se mantienen fuertes
-   * - Mult x6.0 → Compensar la supresión
-   * 
-   * @param signal - Media geométrica de mid y treble
-   */
-  private calculateBackPar(signal: number): number {
-    if (signal < this.BACK_PAR_GATE) return 0
-    const gated = (signal - this.BACK_PAR_GATE) / (1 - this.BACK_PAR_GATE)
-
-    // 📉 Curva x^1.5 (El x^3 era un agujero negro que se tragaba la luz)
-    const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT
-
-    return Math.min(1.0, Math.max(0, intensity))
-  }
-
   /**
    * 👯 MOVER CHANNEL - GENERIC GATE + BOOST
    * 🧹 WAVE 911: THE CLEANER

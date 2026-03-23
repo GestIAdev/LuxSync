@@ -168,6 +168,9 @@ export class TechnoStereoPhysics {
   private frontLockout = 0  // Frame counter para evitar re-triggers
   private bassFloor = 0.0  // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
   private avgPunch = 0.0  // 💥 WAVE 2371: Auto-gate dinámico analógico
+  private avgPunchPeak = 0.0  // 🏔️ WAVE 2377: Memoria del pico de avgPunch (caída ultra-lenta)
+  private wasBreakdown = false  // 🔄 WAVE 2378: Estado previo de sección (para detectar transición breakdown→drop)
+  private breakdownExitTime = 0  // ⏱️ WAVE 2378: Timestamp de salida del breakdown
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -294,11 +297,29 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: SOFT KNEE & GROOVE SAVER (WAVE 2376)
+    // 💥 3. FRONT PAR: SOFT KNEE + BREAKDOWN SHIELD (WAVE 2377)
     // =======================================================================
     
     const punch = bass; 
     const rumble = input.sub ?? 0; 
+    const sectionType = input.sectionType ?? 'drop';
+    const isBreakdown = sectionType === 'breakdown' || sectionType === 'buildup';
+    
+    // 🔄 WAVE 2378: Detectar transición breakdown→drop para aplicar rampa de reentrada.
+    // Cuando salimos del breakdown, los primeros frames del drop tienen el gate bajo
+    // y el primer kick genera KickP:1.000 instantáneo. La rampa suaviza eso.
+    if (this.wasBreakdown && !isBreakdown) {
+        this.breakdownExitTime = now;
+    }
+    this.wasBreakdown = isBreakdown;
+    
+    const POST_BREAKDOWN_RAMP = 1500; // 1.5 segundos de rampa post-breakdown
+    const timeSinceBreakdownExit = now - this.breakdownExitTime;
+    const isPostBreakdown = this.breakdownExitTime > 0 && timeSinceBreakdownExit < POST_BREAKDOWN_RAMP;
+    // Rampa cuadrática: arranca lenta (no corta el primer impulso a cero) y acelera.
+    const postBreakdownFactor = isPostBreakdown
+        ? Math.pow(Math.min(1.0, timeSinceBreakdownExit / POST_BREAKDOWN_RAMP), 2)
+        : 1.0;
     
     // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
     if (punch > (this.avgPunch ?? 0)) {
@@ -307,28 +328,51 @@ export class TechnoStereoPhysics {
         this.avgPunch = ((this.avgPunch ?? 0) * 0.95) + (punch * 0.05);
     }
 
+    // 🏔️ MEMORIA DE PICO (avgPunchPeak)
+    // Sube rápido con avgPunch, pero cae ULTRA-lento (0.998 = ~15 segundos para caer 50%).
+    // Evita que el gate se desplome en breakdowns y nos blinde contra el rebote del AGC.
+    if (this.avgPunch > this.avgPunchPeak) {
+        this.avgPunchPeak = this.avgPunch;
+    } else {
+        this.avgPunchPeak = (this.avgPunchPeak * 0.998) + (this.avgPunch * 0.002);
+    }
+
+    // El gate efectivo nunca cae por debajo del 70% del pico reciente.
+    // Esto evita que el breakdown arrastre avgPunch al abismo y luego el bombo
+    // vuelva con KickP:1.000 instantáneo por tener el gate en el suelo.
+    // 🏗️ WAVE 2378: GATE FLOOR ABSOLUTO — El gate NUNCA baja de 0.42.
+    // Sub-bass pads de psytrance (P:0.44-0.47) ya no pasan el gate,
+    // pero kicks reales (P:0.63+) siguen funcionando perfecto.
+    const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.70, 0.42);
+
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 2. LA PUERTA REBAJADA
-    const dynamicGate = this.avgPunch + 0.02;
+    // 2. LA PUERTA CON MEMORIA
+    const dynamicGate = avgPunchEffective + 0.02;
     
     let kickPower = 0;
     let ghostPower = 0;
 
     // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor)
+    // En breakdowns/buildups, exigimos el doble de salto para activar front PAR.
+    // Los sintes no deberían encender los focos del bombo.
+    const breakdownPenalty = isBreakdown ? 0.06 : 0;
+    
     if (punch > dynamicGate && !isVoiceLeak && punch > 0.15) {
-        const requiredJump = 0.14 - (0.07 * morphFactor); 
+        const requiredJump = 0.14 - (0.07 * morphFactor) + breakdownPenalty; 
         
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        kickPower = Math.pow(rawPower, 1.5); 
-    } else if (punch > this.avgPunch && punch > 0.15 && !isVoiceLeak) {
-        // 👻 RODILLA SUAVE (Soft Knee)
-        // La nota no superó el gate, pero SÍ supera el suelo de ruido.
-        // Le damos un brillo fantasma proporcional a cuánto se acercó a la puerta.
-        // Rango: 0% (en el suelo) a 4% (rozando la puerta). Mantiene la melodía conectada.
-        const proximity = (punch - this.avgPunch) / 0.02;
+        kickPower = Math.pow(rawPower, 1.5);
+        
+        // 🔄 WAVE 2378: Rampa post-breakdown — atenúa el KickP en los primeros
+        // 1.5 segundos tras salir del breakdown. Evita el pico KickP:1.000 instantáneo
+        // cuando el gate estaba bajo y llega el primer kick del drop.
+        kickPower *= postBreakdownFactor;
+    } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
+        // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
+        const proximity = (punch - avgPunchEffective) / 0.02;
         ghostPower = Math.min(0.04, proximity * 0.04);
     }
 

@@ -167,9 +167,7 @@ export class TechnoStereoPhysics {
   private frontIntensity = 0.0  // Persistente intensity para decay orgánico
   private frontLockout = 0  // Frame counter para evitar re-triggers
   private bassFloor = 0.0  // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
-  private lastPunch = 0.0  // 💥 WAVE 2363: Última energía de banda Punch (60-250Hz)
-  private lastVelocity = 0.0  // 💥 WAVE 2363: Última velocidad de subida del Punch
-  private punchMinus2 = 0.0  // 💥 WAVE 2370: Memoria de 2 frames para anti-smear
+  private avgPunch = 0.0  // 💥 WAVE 2371: Auto-gate dinámico analógico
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -288,79 +286,68 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: ANTI-SMEAR & MACHINE GUN (WAVE 2370)
+    // 💥 3. FRONT PAR: GATES & CRUSHING CURVES (WAVE 2371)
     // =======================================================================
     
-    const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
+    // 1. SEPARACIÓN DE FRECUENCIAS
+    const punch = bass; // 60-250Hz (El impacto físico)
+    const rumble = input.sub ?? 0; // 20-60Hz (La cola y los sintes graves)
     
-    // 1. SEPARACIÓN QUIRÚRGICA
-    const punch = bass; 
-    const rumble = input.sub ?? 0; 
-    
-    // 2. CINEMÁTICA PURA (Expansión temporal anti-desfase)
-    const velocity = punch - (this.lastPunch ?? 0);
-    const velocity2 = punch - (this.punchMinus2 ?? 0); // El salto total en 32ms (2 frames)
-    const acceleration = velocity - (this.lastVelocity ?? 0);
-
-    // Actualizamos la memoria temporal
-    this.punchMinus2 = this.lastPunch;
-    this.lastPunch = punch;
-    this.lastVelocity = velocity;
-
-    // 🚀 EL ESCAPE DE EMERGENCIA (Ajustado para caídas reales)
-    // Relajamos a -0.040 (o -0.060 en 2 frames) para que el candado se rompa
-    // sin quedarse atascado en colas de bombo lentas.
-    if (velocity < -0.040 || velocity2 < -0.060) {
-        this.frontLockout = 0;
+    // 2. EL AUTO-GATE (Suelo Dinámico Analógico)
+    // Sigue el cuerpo de la pista. Sube lento para no comerse el ataque del bombo,
+    // pero baja rápido en los silencios para mantener la limpieza.
+    if (punch > (this.avgPunch ?? 0)) {
+        this.avgPunch = ((this.avgPunch ?? 0) * 0.95) + (punch * 0.05);
+    } else {
+        this.avgPunch = ((this.avgPunch ?? 0) * 0.80) + (punch * 0.20);
     }
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
-    const hasEnergy = punch > 0.20; // Un pelín más bajo para rescatar bombos filtrados
 
-    // 3. DETECCIÓN DE PRECISIÓN (El Ojo Biónico)
-    // El bombo puede ser un impacto perfecto en 1 frame (vel > 0.045) 
-    // O puede estar desfasado y requerir lectura de 2 frames (vel2 > 0.060)
-    const isStrongJump = (velocity > 0.045 || velocity2 > 0.060) && acceleration > 0.010;
+    // 3. LA PUERTA Y LA CURVA DE APLASTAMIENTO (La idea del Arquitecto)
+    // El Gate se coloca un pelo por encima del ruido de fondo (avgPunch).
+    // Con Morph bajo (Minimal) el gate es duro (+0.05). Con Morph alto (Anyma) es más suave (+0.02).
+    const dynamicGate = this.avgPunch + 0.05 - (0.03 * morphFactor);
     
-    const isSharpJump = (velocity > 0.025 || velocity2 > 0.040) && acceleration > 0.010 && currentCrestFactor > 4.5;
-    
-    const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
+    let kickPower = 0;
 
-    // 🧨 MUNICIÓN PERFORANTE (Armor Piercing anti-desfase)
-    const isArmorPiercing = (velocity > 0.065 || velocity2 > 0.080) && acceleration > 0.030;
+    if (punch > dynamicGate && !isVoiceLeak && punch > 0.30) {
+        // Normalizamos la señal que supera la puerta
+        const rawPower = (punch - dynamicGate) / (1.0 - dynamicGate);
+        
+        // 🔥 LA MAGIA: CURVA EXΡΟNENCIAL (Expander)
+        // x^2.5 aplasta sin piedad cualquier sinte o rebote que haya superado el gate por poco,
+        // pero permite que el bombo real (que llega arriba) mantenga su energía destructiva.
+        kickPower = Math.pow(rawPower, 2.5); 
+    }
 
-    // 4. LA MATERIA OSCURA / MURO ANYMA (Esto ya funcionaba genial, no se toca)
-    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
-
-    // 5. MORFOLOGÍA LÍQUIDA
+    // 4. MORFOLOGÍA LÍQUIDA: DECAY
+    // Define lo rápido que cae la luz tras el impacto.
     const frontDecay = 0.60 + (0.20 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 6. CEREBRO Y RENDERIZADO
-    if ((this.frontLockout ?? 0) > 0 && !isArmorPiercing) {
-        this.frontLockout--; 
-    } else if (isKickConfirmed || isArmorPiercing) {
-        // 🚀 KICK O REDOBLE MASIVO
-        this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
-        
-        // 🔫 MODO AMETRALLADORA (Contexto del Orquestador)
-        const isBuildup = input.sectionType === 'buildup';
-        this.frontLockout = isBuildup ? 2 : (5 + Math.floor(4 * morphFactor)); 
-    } else if (isRollingBass) {
-        // 🌊 MURO ANYMA
-        const auraCap = 0.25 * Math.pow(morphFactor, 2); 
-        const progressivePulse = rumble * auraCap;
-        
-        this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
-        this.frontLockout = 2; 
+    // 5. RENDERIZADO RÍTMICO LIBRE DE CANDADOS
+    if (kickPower > 0.05) {
+        // Multiplicador agresivo para reventar el techo sin importar la compresión de la pista.
+        const hit = Math.min(1.0, kickPower * (1.5 + 1.0 * morphFactor));
+        this.frontIntensity = Math.max(this.frontIntensity, hit);
     }
 
-    let frontParIntensity = this.frontIntensity > 0.10 ? this.frontIntensity : 0;
+    // 6. EL MURO ANYMA (Materia Oscura)
+    const auraCap = 0.25 * Math.pow(morphFactor, 2); 
+    const progressivePulse = rumble * auraCap;
+    
+    // Si no hay un bombo fuerte dominando, dejamos que el subgrave respire de fondo
+    if (kickPower < 0.2) {
+        this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
+    }
+
+    let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)
     if (now - this.lastLogTime > 33) {
        console.log(
-         `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Vel:${velocity.toFixed(3)} Acc:${acceleration.toFixed(3)} HasE:${hasEnergy ? 'Y':'N'} Kick:${isKickConfirmed ? 'Y':'N'} Roll:${isRollingBass ? 'Y':'N'} OUT:${frontParIntensity.toFixed(2)} | ` +
+         `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Gate:${dynamicGate.toFixed(2)} KickP:${kickPower.toFixed(3)} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );

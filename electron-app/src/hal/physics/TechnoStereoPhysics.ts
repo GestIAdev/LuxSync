@@ -286,59 +286,57 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: GATES & CRUSHING CURVES (WAVE 2371)
+    // 💥 3. FRONT PAR: THE STABLE GROOVE (WAVE 2374)
     // =======================================================================
     
-    // 1. SEPARACIÓN DE FRECUENCIAS
-    const punch = bass; // 60-250Hz (El impacto físico)
-    const rumble = input.sub ?? 0; // 20-60Hz (La cola y los sintes graves)
+    const punch = bass; 
+    const rumble = input.sub ?? 0; 
     
-    // 2. EL AUTO-GATE (Suelo Dinámico Analógico)
-    // Sigue el cuerpo de la pista. Sube lento para no comerse el ataque del bombo,
-    // pero baja rápido en los silencios para mantener la limpieza.
+    // 1. EL SUELO ESTABLE (The Concrete Floor)
+    // Se acabó el gate saltarín. Sube y baja con inercia para crear un 
+    // cimiento sólido que no tiembla con las frecuencias del bombo.
     if (punch > (this.avgPunch ?? 0)) {
-        this.avgPunch = ((this.avgPunch ?? 0) * 0.95) + (punch * 0.05);
+        this.avgPunch = ((this.avgPunch ?? 0) * 0.98) + (punch * 0.02);
     } else {
-        this.avgPunch = ((this.avgPunch ?? 0) * 0.80) + (punch * 0.20);
+        this.avgPunch = ((this.avgPunch ?? 0) * 0.95) + (punch * 0.05);
     }
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 3. LA PUERTA Y LA CURVA DE APLASTAMIENTO
-    // En minimal (morph=0): gate BASE mínimo, cualquier pico limpio es bombo.
-    // En Anyma (morph=1): gate MÁS ALTO porque el subgrave continuo compite con el kick.
-    // La dirección es: más morph = más energía de fondo = necesitamos un gate más selectivo.
-    const dynamicGate = this.avgPunch + 0.02 + (0.06 * morphFactor);
+    // 2. LA PUERTA INTELIGENTE (Sonnet's Logic)
+    // Morph alto (Anyma) = pista densa/sucia = Gate más estricto (+0.09)
+    // Morph bajo (Minimal) = pista limpia = Gate más relajado (+0.04)
+    const gateMargin = 0.04 + (0.05 * morphFactor); 
+    const dynamicGate = this.avgPunch + gateMargin;
     
     let kickPower = 0;
 
-    if (punch > dynamicGate && !isVoiceLeak && punch > 0.25) {
-        // Normalizamos la señal que supera la puerta
-        const rawPower = (punch - dynamicGate) / (1.0 - dynamicGate);
+    // 3. EL PUNTO DULCE (Sweet Spot Expander)
+    if (punch > dynamicGate && !isVoiceLeak && punch > 0.15) {
+        // Un salto de 0.15 por encima del Gate sólido nos da el 100% de fuerza
+        let rawPower = (punch - dynamicGate) / 0.15;
+        rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // 🔥 CURVA MUSICAL (x^1.8)
-        // 2.5 aplastaba demasiado: un bombo moderado (rawPower=0.4) daba 0.10.
-        // 1.8 le da 0.23 al mismo bombo. Mucho más útil para mantener el ritmo.
-        kickPower = Math.pow(rawPower, 1.8); 
+        // 🎛️ LA MAGIA: Curva musical (1.5). 
+        // Un sinte que supera el gate por los pelos genera una luz tenue (10-15%).
+        // Un bombo que revienta el gate llega al 100%. Puro Groove.
+        kickPower = Math.pow(rawPower, 1.5); 
     }
 
     // 4. MORFOLOGÍA LÍQUIDA: DECAY
-    // Define lo rápido que cae la luz tras el impacto.
     const frontDecay = 0.60 + (0.20 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 5. RENDERIZADO RÍTMICO LIBRE DE CANDADOS
-    if (kickPower > 0.05) {
-        // Multiplicador agresivo para reventar el techo sin importar la compresión de la pista.
-        const hit = Math.min(1.0, kickPower * (1.5 + 1.0 * morphFactor));
+    // 5. RENDERIZADO RÍTMICO
+    if (kickPower > 0.02) {
+        const hit = Math.min(1.0, kickPower * (1.2 + 0.8 * morphFactor));
         this.frontIntensity = Math.max(this.frontIntensity, hit);
     }
 
-    // 6. EL MURO ANYMA (Materia Oscura)
+    // 6. MATERIA OSCURA (Muro Subgrave)
     const auraCap = 0.25 * Math.pow(morphFactor, 2); 
     const progressivePulse = rumble * auraCap;
     
-    // Si no hay un bombo fuerte dominando, dejamos que el subgrave respire de fondo
     if (kickPower < 0.2) {
         this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
     }

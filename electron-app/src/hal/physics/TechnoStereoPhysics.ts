@@ -285,7 +285,7 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: EL NÚCLEO LÍQUIDO (WAVE 2358)
+    // 💥 3. FRONT PAR: EL MARGEN ABSOLUTO (WAVE 2360)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
@@ -293,33 +293,39 @@ export class TechnoStereoPhysics {
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
 
-    // Escudo anti-voces calibrado (Se mantiene tu código intacto)
+    // 1. EL SUELO DINÁMICO ÁGIL
+    // Un seguimiento rápido (EMA) que persigue la densidad de la pista sin quedarse atascado.
+    this.bassFloor = ((this.bassFloor ?? 0) * 0.90) + (bass * 0.10);
+
     const isVoiceLeak = mid > 0.50 && mid > (bass * 0.80);
 
-    // 1. DETECCIÓN HÍBRIDA (Adiós a la dictadura)
-    // Camino A: Salto de volumen puro (> 0.04). Si pega fuerte, es bombo.
-    // Camino B: Salto moderado (> 0.025) PERO con CrestFactor afilado (> 3.5).
-    const isKickConfirmed = !isVoiceLeak && (bassSnap > 0.04 || (bassSnap > 0.025 && currentCrestFactor > 3.5));
+    // 2. LA BARRERA DEL MARGEN ABSOLUTO
+    // En lugar de porcentajes trampa, exigimos que el pico sobresalga 0.05 puntos físicos.
+    // Si el suelo está en 0.80, solo necesita llegar a 0.85 para romper la barrera.
+    const piercesFloor = bass > (this.bassFloor + 0.05);
 
-    // Si hay vibración fuerte pero no cumple los requisitos de bombo, es ronroneo de sintes
-    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (bassSnap > 0.015);
+    // 3. DETECCIÓN HÍBRIDA INERCIAL
+    // Para ser Kick: Rompe el suelo Y pega un latigazo (Snap > 0.035).
+    const isKickConfirmed = !isVoiceLeak && piercesFloor && 
+                            (bassSnap > 0.035 || (bassSnap > 0.025 && currentCrestFactor > 3.5));
 
-    // 2. MORFOLOGÍA LÍQUIDA: EL DECAY
+    // Rolling bass: Sobresale del suelo pero el ataque es redondo/lento (Snap > 0.015)
+    // Aquí es donde caen atrapados los subgraves a contratiempo de Brejcha.
+    const isRollingBass = !isVoiceLeak && !isKickConfirmed && (bass > this.bassFloor + 0.03) && (bassSnap > 0.015);
+
+    // 4. MORFOLOGÍA LÍQUIDA: EL DECAY
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 3. CEREBRO Y RENDERIZADO
+    // 5. CEREBRO Y RENDERIZADO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
-        // 🚀 KICK: Latigazo de luz escalado por morfología
+        // 🚀 KICK: Sincronía brutal y limpia
         this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor));
         this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 MATERIA OSCURA (El Ronroneo Inteligente)
-        // Elevamos la morfología al cuadrado.
-        // En Techno (morph bajo), el techo de luz es casi 0% (puro contraste).
-        // En Progresivo/Melódico (morph alto), el techo llega a un 25% (Aura ambiental).
+        // 🌊 MATERIA OSCURA: El ronroneo atmosférico
         const auraCap = 0.25 * Math.pow(morphFactor, 2); 
         const progressivePulse = bass * auraCap;
         
@@ -327,7 +333,7 @@ export class TechnoStereoPhysics {
         this.frontLockout = 2; 
     }
 
-    // 4. LIMPIEZA DE FANTASMAS (Mantenemos tu umbral en 0.08 para corte en seco)
+    // Limpieza de fantasmas
     let frontParIntensity = this.frontIntensity > 0.08 ? this.frontIntensity : 0;
 
     // TELEMETRÍA (mantener formato original)

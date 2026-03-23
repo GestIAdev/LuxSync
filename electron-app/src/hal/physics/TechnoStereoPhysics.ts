@@ -288,7 +288,7 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: THE RHYTHMIC ENFORCER (WAVE 2364)
+    // 💥 3. FRONT PAR: THE ELASTIC SNIPER (WAVE 2365)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
@@ -306,21 +306,20 @@ export class TechnoStereoPhysics {
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 3. LA GUILLOTINA DE RUIDO
-    // Un bombo masterizado en un club JAMÁS baja de 0.45 de energía en esta banda.
-    // Todo lo que esté por debajo es ruido de fondo, ecos o sintes débiles.
-    const hasEnergy = punch > 0.45;
+    // 3. LA GUILLOTINA FLEXIBLE (Para transiciones de DJ)
+    // Bajamos a 0.20. Si el DJ mete un filtro y saca los graves, el bombo físico
+    // bajará, pero mientras haya salto dinámico, queremos que la luz lo siga.
+    const hasEnergy = punch > 0.20;
 
-    // 4. DETECCIÓN DE PRECISIÓN (El Francotirador)
-    // Camino A: Salto violento incuestionable
-    const isStrongJump = velocity > 0.045;
-    // Camino B: Salto menor, pero muy afilado (CrestFactor alto) y con aceleración clara
-    const isSharpJump = velocity > 0.028 && acceleration > 0.015 && currentCrestFactor > 5.0;
+    // 4. DETECCIÓN DE PRECISIÓN
+    // Camino A: Salto fuerte adaptado (0.040 permite cazar bombos filtrados)
+    const isStrongJump = velocity > 0.040;
+    // Camino B: Salto afilado
+    const isSharpJump = velocity > 0.025 && acceleration > 0.012 && currentCrestFactor > 4.5;
 
     const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
 
-    // 5. LA MATERIA OSCURA / MURO ANYMA
-    // Solo permitimos ronroneo si el subgrave es pesado y no hay bombo.
+    // 5. LA MATERIA OSCURA
     const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
 
     // 6. MORFOLOGÍA LÍQUIDA: EL DECAY
@@ -331,14 +330,12 @@ export class TechnoStereoPhysics {
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
-        // 🚀 KICK: Estalla usando la energía del Punch
+        // 🚀 KICK
         this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
         
-        // 🔒 CUANTIZADOR RÍTMICO
-        // Subimos el cerrojo base a 7 frames (~115ms).
-        // A 130 BPM, esto garantiza ignorar las notas semicorcheas fantasma, 
-        // pero está listo a tiempo para el siguiente bombo a negras o corcheas.
-        this.frontLockout = 7 + Math.floor(4 * morphFactor); 
+        // 🔒 CUANTIZADOR ALTA VELOCIDAD
+        // Bajamos a 5 frames base (~80ms). A prueba de balas para Psytrance a 150BPM.
+        this.frontLockout = 5 + Math.floor(4 * morphFactor); 
     } else if (isRollingBass) {
         // 🌊 MURO ANYMA
         const auraCap = 0.25 * Math.pow(morphFactor, 2); 

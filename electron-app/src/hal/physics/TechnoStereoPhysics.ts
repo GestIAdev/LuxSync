@@ -349,7 +349,11 @@ export class TechnoStereoPhysics {
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
     // 2. LA PUERTA CON MEMORIA
-    const dynamicGate = avgPunchEffective + 0.02;
+    // 🔬 WAVE 2382: Puerta Morfomórfica — el margen del gate depende del estilo.
+    // Minimal (Morph 0.0): margen estricto 0.045 → bloquea sintes staccato de Boris.
+    // Anyma  (Morph 1.0): margen relajado 0.02  → deja respirar el muro de sonido.
+    const gateMargin = 0.045 - (0.025 * morphFactor);
+    const dynamicGate = avgPunchEffective + gateMargin;
     
     let kickPower = 0;
     let ghostPower = 0;
@@ -368,8 +372,11 @@ export class TechnoStereoPhysics {
         kickPower = Math.pow(rawPower, 1.5);
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
         // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
+        // 🔬 WAVE 2382: ghostPower escalado por morphFactor.
+        // Minimal (0.0) = 0% brillo fantasma → oscuridad absoluta entre bombos.
+        // Anyma  (1.0) = 100% del brillo calculado → fluidez y glow.
         const proximity = (punch - avgPunchEffective) / 0.02;
-        ghostPower = Math.min(0.04, proximity * 0.04);
+        ghostPower = Math.min(0.04, proximity * 0.04) * morphFactor;
     }
 
     // 4. MORFOLOGÍA LÍQUIDA: DECAY

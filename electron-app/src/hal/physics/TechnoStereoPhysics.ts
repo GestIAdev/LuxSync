@@ -285,59 +285,54 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: THE ASYMMETRIC ENVELOPE (WAVE 2354)
+    // 💥 3. FRONT PAR: LFO TRAP & DARK MATTER (WAVE 2357)
     // =======================================================================
+    
+    const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
     
     const bassSnap = Math.max(0, bass - (this.lastBass ?? 0));
     this.lastBass = bass;
 
-    // =======================================================================
-    // 1. EL SUELO DINÁMICO: ESCUDO ANTI-BREJCHA (WAVE 2356)
-    // =======================================================================
-    
+    // 1. EL SUELO DINÁMICO (Escudo Anti-Brejcha inercial)
     if (bass > (this.bassFloor ?? 0)) {
-        // El suelo sube lento (0.02) para dejar que el bombo destaque y rompa el umbral
         this.bassFloor = ((this.bassFloor ?? 0) * 0.98) + (bass * 0.02);
     } else {
-        // 🛡️ LA VISCOSIDAD RÍTMICA
-        // Morph 0.0 (Brejcha): Cae hiper-lento (0.97). El suelo se queda alto y se traga los subgraves a contratiempo.
-        // Morph 1.0 (Anyma): Cae muy rápido (0.85). El suelo se limpia al instante para leer líneas de bajo complejas.
         const floorFriction = 0.97 - (0.12 * morphFactor);
         this.bassFloor = ((this.bassFloor ?? 0) * floorFriction) + (bass * (1.0 - floorFriction));
     }
 
-    // 2. EL ESCUDO ANTI-VOCES (Intocable)
     const isVoiceLeak = mid > 0.50 && mid > (bass * 0.80);
 
-    // 3. LA DECISIÓN INTELIGENTE (Adiós a la dictadura del 0.05)
-    // Es un kick SI:
-    // - El volumen supera a la "cama musical" en un 12% (1.12x)
-    // - Hay un salto dinámico mínimo (> 0.025) para descartar crescendos lentos.
-    // - Hay energía real (bass > 0.30) para no disparar con ruido de fondo.
+    // 2. LA TRAMPA DEL LFO (El Filtro Definitivo)
+    // Exigimos que rompa el suelo (volumen) Y que sea puntiagudo (CrestFactor > 4.0)
     const isKickConfirmed = !isVoiceLeak && 
                             (bass > this.bassFloor * 1.12) && 
                             (bassSnap > 0.025) && 
-                            (bass > 0.30);
+                            (currentCrestFactor > 4.0); // 🔪 La guillotina del sinte
 
-    // Es ronroneo si hay salto dinámico pero no logra reventar el techo del 12%
+    // Si salta fuerte pero es un sinte gordo y continuo (CrestFactor <= 4.0), es ronroneo
     const isRollingBass = !isVoiceLeak && !isKickConfirmed && (bassSnap > 0.015) && (bass > 0.40);
 
-    // 4. VISCOSIDAD LÍQUIDA
     const frontDecay = 0.70 + (0.15 * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 5. CEREBRO Y CERROJO
     if ((this.frontLockout ?? 0) > 0) {
         this.frontLockout--; 
     } else if (isKickConfirmed) {
-        // 🚀 BOMBO: Latigazo que rompe la mezcla
+        // 🚀 BOMBO BRUTAL: Latigazo ciego al 100%
         this.frontIntensity = Math.min(1.0, bass * (1.3 + 0.6 * morphFactor));
         this.frontLockout = 5 + Math.floor(2 * morphFactor); 
     } else if (isRollingBass) {
-        // 🌊 RONRONEO: Pianos graves, sintes oscilantes o 808s
-        const progressivePulse = bass * (0.45 + 0.2 * morphFactor);
-        this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
-        this.frontLockout = 2; 
+        // 🌊 MATERIA OSCURA: El ronroneo ambiental
+        // El techo máximo se calcula exponencialmente: $auraCap = 0.25 \times morphFactor^2$
+        const auraCap = 0.25 * Math.pow(morphFactor, 2); 
+        const progressivePulse = bass * auraCap;
+        
+        // Solo permitimos niebla si el ambiente musical es denso (> 0.4)
+        if (morphFactor > 0.4) {
+            this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
+            this.frontLockout = 2; 
+        }
     }
 
     let frontParIntensity = this.frontIntensity > 0.05 ? this.frontIntensity : 0;

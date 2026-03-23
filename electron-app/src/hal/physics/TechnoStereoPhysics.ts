@@ -304,21 +304,22 @@ export class TechnoStereoPhysics {
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 3. LA PUERTA Y LA CURVA DE APLASTAMIENTO (La idea del Arquitecto)
-    // El Gate se coloca un pelo por encima del ruido de fondo (avgPunch).
-    // Con Morph bajo (Minimal) el gate es duro (+0.05). Con Morph alto (Anyma) es más suave (+0.02).
-    const dynamicGate = this.avgPunch + 0.05 - (0.03 * morphFactor);
+    // 3. LA PUERTA Y LA CURVA DE APLASTAMIENTO
+    // En minimal (morph=0): gate BASE mínimo, cualquier pico limpio es bombo.
+    // En Anyma (morph=1): gate MÁS ALTO porque el subgrave continuo compite con el kick.
+    // La dirección es: más morph = más energía de fondo = necesitamos un gate más selectivo.
+    const dynamicGate = this.avgPunch + 0.02 + (0.06 * morphFactor);
     
     let kickPower = 0;
 
-    if (punch > dynamicGate && !isVoiceLeak && punch > 0.30) {
+    if (punch > dynamicGate && !isVoiceLeak && punch > 0.25) {
         // Normalizamos la señal que supera la puerta
         const rawPower = (punch - dynamicGate) / (1.0 - dynamicGate);
         
-        // 🔥 LA MAGIA: CURVA EXΡΟNENCIAL (Expander)
-        // x^2.5 aplasta sin piedad cualquier sinte o rebote que haya superado el gate por poco,
-        // pero permite que el bombo real (que llega arriba) mantenga su energía destructiva.
-        kickPower = Math.pow(rawPower, 2.5); 
+        // 🔥 CURVA MUSICAL (x^1.8)
+        // 2.5 aplastaba demasiado: un bombo moderado (rawPower=0.4) daba 0.10.
+        // 1.8 le da 0.23 al mismo bombo. Mucho más útil para mantener el ritmo.
+        kickPower = Math.pow(rawPower, 1.8); 
     }
 
     // 4. MORFOLOGÍA LÍQUIDA: DECAY

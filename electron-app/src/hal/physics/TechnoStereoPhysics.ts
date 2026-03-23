@@ -169,6 +169,7 @@ export class TechnoStereoPhysics {
   private bassFloor = 0.0  // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
   private lastPunch = 0.0  // 💥 WAVE 2363: Última energía de banda Punch (60-250Hz)
   private lastVelocity = 0.0  // 💥 WAVE 2363: Última velocidad de subida del Punch
+  private punchMinus2 = 0.0  // 💥 WAVE 2370: Memoria de 2 frames para anti-smear
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -287,7 +288,7 @@ export class TechnoStereoPhysics {
     }
 
     // =======================================================================
-    // 💥 3. FRONT PAR: MACHINE GUN MODE (WAVE 2369)
+    // 💥 3. FRONT PAR: ANTI-SMEAR & MACHINE GUN (WAVE 2370)
     // =======================================================================
     
     const currentCrestFactor = input.crestFactor ?? input.spectralData?.crestFactor ?? 0;
@@ -296,31 +297,39 @@ export class TechnoStereoPhysics {
     const punch = bass; 
     const rumble = input.sub ?? 0; 
     
-    // 2. CINEMÁTICA PURA
+    // 2. CINEMÁTICA PURA (Expansión temporal anti-desfase)
     const velocity = punch - (this.lastPunch ?? 0);
+    const velocity2 = punch - (this.punchMinus2 ?? 0); // El salto total en 32ms (2 frames)
     const acceleration = velocity - (this.lastVelocity ?? 0);
 
+    // Actualizamos la memoria temporal
+    this.punchMinus2 = this.lastPunch;
     this.lastPunch = punch;
     this.lastVelocity = velocity;
 
-    // 🚀 EL ESCAPE DE EMERGENCIA (Caída libre)
-    if (velocity < -0.060) {
+    // 🚀 EL ESCAPE DE EMERGENCIA (Ajustado para caídas reales)
+    // Relajamos a -0.040 (o -0.060 en 2 frames) para que el candado se rompa
+    // sin quedarse atascado en colas de bombo lentas.
+    if (velocity < -0.040 || velocity2 < -0.060) {
         this.frontLockout = 0;
     }
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
-    const hasEnergy = punch > 0.25;
+    const hasEnergy = punch > 0.20; // Un pelín más bajo para rescatar bombos filtrados
 
-    // 3. DETECCIÓN DE PRECISIÓN 
-    const isStrongJump = velocity > 0.050 && acceleration > 0.015;
-    const isSharpJump = velocity > 0.030 && acceleration > 0.015 && currentCrestFactor > 4.5;
+    // 3. DETECCIÓN DE PRECISIÓN (El Ojo Biónico)
+    // El bombo puede ser un impacto perfecto en 1 frame (vel > 0.045) 
+    // O puede estar desfasado y requerir lectura de 2 frames (vel2 > 0.060)
+    const isStrongJump = (velocity > 0.045 || velocity2 > 0.060) && acceleration > 0.010;
+    
+    const isSharpJump = (velocity > 0.025 || velocity2 > 0.040) && acceleration > 0.010 && currentCrestFactor > 4.5;
+    
     const isKickConfirmed = !isVoiceLeak && hasEnergy && (isStrongJump || isSharpJump);
 
-    // 🧨 MUNICIÓN PERFORANTE (Armor Piercing)
-    // Latigazos tan masivos y rápidos que ignoran cualquier candado. (Típico de redobles fuertes).
-    const isArmorPiercing = velocity > 0.070 && acceleration > 0.040;
+    // 🧨 MUNICIÓN PERFORANTE (Armor Piercing anti-desfase)
+    const isArmorPiercing = (velocity > 0.065 || velocity2 > 0.080) && acceleration > 0.030;
 
-    // 4. LA MATERIA OSCURA / MURO ANYMA
+    // 4. LA MATERIA OSCURA / MURO ANYMA (Esto ya funcionaba genial, no se toca)
     const isRollingBass = !isVoiceLeak && !isKickConfirmed && (rumble > 0.40);
 
     // 5. MORFOLOGÍA LÍQUIDA
@@ -328,16 +337,13 @@ export class TechnoStereoPhysics {
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
     // 6. CEREBRO Y RENDERIZADO
-    // Si hay candado, PERO llega munición perforante, lo rompemos al instante.
     if ((this.frontLockout ?? 0) > 0 && !isArmorPiercing) {
         this.frontLockout--; 
     } else if (isKickConfirmed || isArmorPiercing) {
         // 🚀 KICK O REDOBLE MASIVO
         this.frontIntensity = Math.min(1.0, punch * (1.3 + 0.6 * morphFactor));
         
-        // 🔫 MODO AMETRALLADORA
-        // Si el Orquestador detecta un "buildup", el candado baja a 2 frames (~30ms) 
-        // para poder parpadear a la velocidad de la luz. Si no, candado normal sólido.
+        // 🔫 MODO AMETRALLADORA (Contexto del Orquestador)
         const isBuildup = input.sectionType === 'buildup';
         this.frontLockout = isBuildup ? 2 : (5 + Math.floor(4 * morphFactor)); 
     } else if (isRollingBass) {

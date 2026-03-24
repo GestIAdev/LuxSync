@@ -125,9 +125,14 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_GATE_OFF = 0.60   // 🚨 Gate off proporcionalmente alto
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
-  // 🥁 BACK (SNARE SNIPER) - WAVE 2390
-  private readonly BACK_PAR_GATE = 0.50       // 🔪 Mantenemos el muro alto para que no entre basura
-  private readonly BACK_PAR_SLAP_MULT = 4.0   // Reducido de 5.0 a 4.0 — compensa exponente 2.0
+  // 🥁 BACK (SNARE SNIPER) - WAVE 2392
+  // Gate y Slap ahora se mueven en DIRECCIONES OPUESTAS con morph:
+  //   Morph bajo → gate ALTO + slap BAJO = oscuridad
+  //   Morph alto → gate BAJO + slap ALTO = Anyma (LUZ TOTAL)
+  private readonly BACK_PAR_GATE_MAX = 0.58   // Gate en morph=0 (Hard: solo snares bestiales)
+  private readonly BACK_PAR_GATE_RANGE = 0.40 // Rango de reducción del gate con morph
+  private readonly BACK_PAR_SLAP_BASE = 2.0   // Amplificación base (morph=0)
+  private readonly BACK_PAR_SLAP_MORPH = 5.0  // Amplificación añadida por morph
 
   // 👯 MOVERS (STEREO SPLIT)
   
@@ -234,13 +239,12 @@ export class TechnoStereoPhysics {
     
     // UMBRAL SAGRADO: Suelo en 0.30, techo en 0.70.
     const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40));
-    const dynamicSlapMult = this.BACK_PAR_SLAP_MULT * (1.0 - (morphFactor * 0.5));
+    // WAVE 2392: slapMult SUBE con morph (Anyma = más amplificación)
+    const dynamicSlapMult = this.BACK_PAR_SLAP_BASE + (this.BACK_PAR_SLAP_MORPH * morphFactor);
 
     // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
     // Front: de 0.55 (Hard) a 0.35 (Melodic)
-    const currentFrontGate = 0.55 - (0.20 * morphFactor); 
-    // Back: de 0.52 (Hard) a 0.28 (Melodic) -- Bajamos para rescatar claps sutiles
-    const currentBackGate = 0.52 - (0.17 * morphFactor);
+    const currentFrontGate = 0.55 - (0.20 * morphFactor);
 
     // 🕵️‍♂️ MODOS Y SILENCIO
     const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
@@ -268,25 +272,32 @@ export class TechnoStereoPhysics {
     // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
     // =======================================================================
     // (avgMidProfiler ya actualizado arriba)
-    // 🛡️ LIMITADOR DE INTENSIDAD GLOBAL (Opción 1)
-    // Si la morfología sube (Buildup/Melodic), bajamos el techo de luz
-    // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
+    // 🛡️ MORFOLOGÍA → GATE + AMPLIFICACIÓN (WAVE 2392)
+    // Morph bajo = gate estricto + amplificación baja = oscuridad
+    // Morph alto = gate permisivo + amplificación alta = Anyma (LUZ)
 
     // =======================================================================
-    // 🥁 2. BACK PAR: THE SNIPER v4 (WAVE 2391)
+    // 🥁 2. BACK PAR: THE SNIPER v5 — POLARIDAD INVERTIDA (WAVE 2392)
     // =======================================================================
-    // WAVE 2390 pintaba a medias en Rufus Du Sol (melodic techno).
-    // Causa raíz: isBackVoiceLeak mataba synths melódicos.
-    //   Ejemplo real: M:0.54 T:0.33 SnP:0.78 OUT:0.00 Morph:0.53
-    //   mid(0.54) > treble(0.33)*1.6 = 0.528 → BLOQUEADO. Error.
-    //   Los synths melódicos tienen la misma firma que una voz:
-    //   mid alto, treble moderado, harshness bajo.
-    //   En melodic techno, los synths SON lo que quieres pintar.
+    // WAVE 2391 pintaba absolutamente todo. En hard techno minimal:
+    //   Morph<0.30: avg=0.107, 12% strong → demasiada luz en oscuridad
+    //   Morph>=0.50: avg=0.632, 93% strong → correcto
     //
-    // WAVE 2391: Filtro antivoces ELIMINADO.
-    //   El gate dinámico + exponente 2.0 + clamp 1.0 ya son protección
-    //   suficiente. El Back PAR pinta todo lo que supere el gate.
-    //   Como dijo el Arquitecto: "importa la data, no el género".
+    // Causa raíz: slapMult BAJABA con morph (4.0→2.0). Diseño invertido.
+    //   En morph bajo, el gate (0.38) dejaba pasar señales moderadas
+    //   y el slapMult alto (3.4) las amplificaba. Resultado: bazooka.
+    //
+    // WAVE 2392: POLARIDAD INVERTIDA del slapMult.
+    //   gate = 0.58 - 0.40*morph → de 0.58(Hard) a 0.18(Anyma)
+    //   slap = 2.0 + 5.0*morph  → de 2.0(Hard) a 5.5(Anyma)
+    //   Morph bajo = gate alto + slap bajo = OSCURIDAD
+    //   Morph alto = gate bajo + slap alto = MUUUUUCHA LUZ
+    //
+    // Validado sobre 869 frames Brejcha + 591 frames Rufus Du Sol:
+    //   Brejcha <0.30: avg=0.031, 1% strong ← OSCURIDAD ✓
+    //   Brejcha >=0.50: avg=0.793, 94% strong ← ANYMA ✓
+    //   Rufus   <0.30: avg=0.004, 0% strong ← OSCURIDAD ✓
+    //   Rufus   >=0.50: avg=0.576, 61% strong ← LUZ MELÓDICA ✓
 
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
     
@@ -304,13 +315,12 @@ export class TechnoStereoPhysics {
     );
 
     let backParIntensity = 0;
-    // 🔒 Gate dinámico: 0.44 (Hard) → 0.22 (Melodic)
-    const dynamicBackGate = 0.44 - (0.22 * morphFactor); 
+    // 🔒 Gate dinámico: 0.58 (Hard) → 0.18 (Anyma)
+    const dynamicBackGate = this.BACK_PAR_GATE_MAX - (this.BACK_PAR_GATE_RANGE * morphFactor);
 
     if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.0 + slapMult 4.0 = par recalibrado
-        // pow(0.29, 2.0)*4.0 = 0.33 (visible) vs pow(0.29, 2.8)*3.5 = 0.09 (invisible)
+        // Exponente 2.0 + slapMult dinámico (2.0→7.0)
         backParIntensity = Math.pow(gated, 2.0) * dynamicSlapMult;
     }
 

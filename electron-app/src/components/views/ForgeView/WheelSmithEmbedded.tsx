@@ -70,6 +70,10 @@ export interface WheelSmithEmbeddedProps {
   fixtureId?: string | null
   /** Índice del canal color_wheel en el fixture (0-based) */
   channelIndex?: number
+  /** Índice del canal dimmer en el fixture (0-based). WAVE 2073: Light Switch */
+  dimmerChannelIndex?: number
+  /** Índice del canal shutter en el fixture (0-based). WAVE 2073: Light Switch */
+  shutterChannelIndex?: number
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 2100: minChangeTimeMs — velocidad mínima de la rueda mecánica
@@ -182,6 +186,8 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   onTestDmx,
   fixtureId,
   channelIndex = 0,
+  dimmerChannelIndex,
+  shutterChannelIndex,
   minChangeTimeMs = 500,
   onMinChangeTimeMsChange,
 }) => {
@@ -417,11 +423,44 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     if (onTestDmx) onTestDmx(clampedValue)
   }, [onTestDmx, sendDirectDMX])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2073: THE LIGHT SWITCH — Test con Dimmer+Shutter abiertos
+  // Cuando el usuario pulsa ⚡TEST en un slot, además del canal de rueda
+  // enviamos Dimmer=255 y Shutter=255 para que la cabeza emita luz.
+  // Sin esto, la rueda gira pero el haz no sale (dimmer a 0).
+  // ═══════════════════════════════════════════════════════════════════════
+  const sendTestWithLight = useCallback((wheelDmxValue: number): void => {
+    const effectiveUniverse = isMoldTest ? 0 : universe
+    const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
+    if (effectiveBaseAddress === null) return
+
+    const send = (absoluteAddress: number, val: number) => {
+      if (lux?.sendDmxChannel) {
+        lux.sendDmxChannel(effectiveUniverse, absoluteAddress, val)
+      } else if (lux?.dmx?.sendDirect) {
+        lux.dmx.sendDirect(effectiveUniverse, absoluteAddress, val)
+      }
+    }
+
+    // Canal rueda de color
+    send(effectiveBaseAddress + channelIndex, wheelDmxValue)
+
+    // Canal dimmer: open (255) si está definido
+    if (dimmerChannelIndex !== undefined && dimmerChannelIndex >= 0) {
+      send(effectiveBaseAddress + dimmerChannelIndex, 255)
+    }
+
+    // Canal shutter: open (255) si está definido
+    if (shutterChannelIndex !== undefined && shutterChannelIndex >= 0) {
+      send(effectiveBaseAddress + shutterChannelIndex, 255)
+    }
+  }, [isMoldTest, universe, testAddress, dmxBaseAddress, channelIndex, dimmerChannelIndex, shutterChannelIndex, lux])
+
   const handleSlotTest = useCallback((dmxValue: number) => {
     setProbeValue(dmxValue)
-    sendDirectDMX(dmxValue)
+    sendTestWithLight(dmxValue)
     if (onTestDmx) onTestDmx(dmxValue)
-  }, [onTestDmx, sendDirectDMX])
+  }, [onTestDmx, sendTestWithLight])
   
   const handleCreateFromProbe = useCallback(() => {
     const newColor: WheelColor = {

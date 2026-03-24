@@ -223,6 +223,9 @@ function getSaturation(c: RGB): number {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ColorTranslator {
+  // WAVE 2073: Log-once guard — evita spam por frame cuando la rueda no tiene colores mapeados
+  private static readonly warnedProfiles = new Set<string>()
+
   // Cache de traducciones (LRU)
   private translationCache = new Map<string, ColorTranslationResult>()
   
@@ -312,8 +315,12 @@ export class ColorTranslator {
     }
     
     // CASO 3b: Is wheel but empty → Fallback to white
+    // WAVE 2073: Log-once guard — no spam por frame. Solo avisa una vez por perfil.
     if (!hasWheelData) {
-      console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped`)
+      if (!ColorTranslator.warnedProfiles.has(profile.id)) {
+        ColorTranslator.warnedProfiles.add(profile.id)
+        console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped`)
+      }
       return {
         outputRGB: { r: 255, g: 255, b: 255 },
         colorWheelDmx: 0,

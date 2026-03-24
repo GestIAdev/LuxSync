@@ -1197,6 +1197,12 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               onNavigateToRack={() => setActiveTab('channels')}
               fixtureId={editingFixture?.id ?? null}
               channelIndex={fixture.channels.findIndex(ch => ch.type === 'color_wheel')}
+              dimmerChannelIndex={fixture.channels.findIndex(ch => ch.type === 'dimmer') >= 0
+                ? fixture.channels.findIndex(ch => ch.type === 'dimmer')
+                : undefined}
+              shutterChannelIndex={fixture.channels.findIndex(ch => ch.type === 'shutter') >= 0
+                ? fixture.channels.findIndex(ch => ch.type === 'shutter')
+                : undefined}
               minChangeTimeMs={wheelMinChangeTimeMs}
               onMinChangeTimeMsChange={setWheelMinChangeTimeMs}
             />

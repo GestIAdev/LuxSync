@@ -77,9 +77,9 @@ interface ArbiterEvents {
  */
 interface PatternConfig {
   type: 'circle' | 'eight' | 'sweep'
-  speed: number      // 0-1 (cycles per second)
-  size: number       // 0-1 (amplitude as fraction of full range)
-  center: { pan: number; tilt: number }  // 0-65535
+  speed: number      // 0.05-1.5 Hz (cycles per second)
+  size: number       // 0-1 (amplitude as fraction of half DMX range)
+  center: { pan: number; tilt: number }  // DMX 0-255 anchor position
   startTime: number
 }
 

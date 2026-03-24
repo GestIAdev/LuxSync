@@ -29,8 +29,8 @@ export interface GhostPoint {
 }
 
 export interface RadarXYProps {
-  pan: number            // 0-540 degrees (center of gravity)
-  tilt: number           // 0-270 degrees (center of gravity)
+  pan: number            // 0-513 degrees (95% safe limit)
+  tilt: number           // 0-256 degrees (95% safe limit)
   onChange: (pan: number, tilt: number) => void
   onCenter?: () => void
   isCalibrating?: boolean
@@ -55,9 +55,15 @@ export const RadarXY: React.FC<RadarXYProps> = ({
   const radarRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   
-  // Normalize to 0-1 range for display
-  const normalizedX = pan / 540
-  const normalizedY = tilt / 270
+  // 🔧 WAVE 2182: Use SAFE limits matching XYPad and handlePositionChange
+  // Before: normalized to 540/270 (full range) but handler clamps to 513/256.
+  // That caused visual desync — radar showed positions beyond actual output.
+  const SAFE_PAN_MAX = 513   // 95% of 540°
+  const SAFE_TILT_MAX = 256  // 95% of 270°
+  
+  // Normalize to 0-1 range for display using safe limits
+  const normalizedX = pan / SAFE_PAN_MAX
+  const normalizedY = tilt / SAFE_TILT_MAX
   
   // Convert to centered coordinates (-1 to 1)
   const centeredX = (normalizedX - 0.5) * 2
@@ -80,9 +86,9 @@ export const RadarXY: React.FC<RadarXYProps> = ({
     x = Math.max(0, Math.min(1, x))
     y = Math.max(0, Math.min(1, y))
     
-    // Convert to degrees
-    const newPan = Math.round(x * 540)
-    const newTilt = Math.round(y * 270)
+    // Convert to degrees (safe limits)
+    const newPan = Math.round(x * SAFE_PAN_MAX)
+    const newTilt = Math.round(y * SAFE_TILT_MAX)
     
     onChange(newPan, newTilt)
   }, [onChange, disabled])

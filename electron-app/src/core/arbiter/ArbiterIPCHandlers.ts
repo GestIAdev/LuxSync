@@ -461,8 +461,11 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
 
     // Convert UI values (0-100) to engine values
-    // Speed: 0-100 → 0-3 Hz | Size: 0-100 → 0-1
-    const speedNormalized = (speed / 100) * 3
+    // 🔧 WAVE 2182: Speed capped at 1.5 Hz (was 3 Hz — too aggressive for
+    // moving heads without Gearbox protection). At 1.5 Hz with size=100%,
+    // the pattern requests ±128 DMX 1.5 times/second — physically achievable.
+    // Speed: 0-100 → 0.05-1.5 Hz | Size: 0-100 → 0-1
+    const speedNormalized = 0.05 + (speed / 100) * 1.45
     const sizeNormalized = amplitude / 100
 
     // If pattern already exists with same type → hot-update (no phase reset)
@@ -505,12 +508,42 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       return { success: false, error: 'No fixture IDs provided' }
     }
     
-    // Get movement overrides (global - applies to all fixtures)
-    const movementOverrides = vibeMovementManager.getManualOverrides()
-    
     // Get fixture-specific override for FIRST fixture (Leader strategy)
     const leaderId = fixtureIds[0]
     const fixtureOverride = masterArbiter.getManualOverride(leaderId)
+    
+    // 🔧 WAVE 2182: Read pattern from Layer 2 (MasterArbiter.activePatterns)
+    // NOT from Layer 0 (VibeMovementManager/CHOREO) — the Programmer stores
+    // patterns in Layer 2 via setManualFixturePattern, not in CHOREO.
+    // Reading from CHOREO always returned null → UI lost pattern state on fixture switch.
+    const layer2Pattern = masterArbiter.getPattern(leaderId)
+    
+    // If fixture has a manual override for pan/tilt but NO active pattern,
+    // it's in HOLD mode (frozen position). If it has an active pattern,
+    // return the pattern type.
+    const hasManualPosition = fixtureOverride?.overrideChannels?.includes('pan' as any) ||
+                              fixtureOverride?.overrideChannels?.includes('tilt' as any)
+    
+    // Determine effective pattern state for UI:
+    // - Layer 2 pattern active → return pattern type (circle/eight/sweep)
+    // - Manual position override but no pattern → 'hold' (frozen)
+    // - Neither → null (AI control)
+    let effectivePattern: string | null = null
+    let effectiveSpeed: number | null = null
+    let effectiveAmplitude: number | null = null
+    
+    if (layer2Pattern) {
+      effectivePattern = layer2Pattern.type
+      // Convert engine values back to UI scale:
+      // speed 0.05-1.5 Hz → 0-100 (inverse of: 0.05 + (ui/100) * 1.45)
+      // size 0-1 → 0-100
+      effectiveSpeed = Math.round(Math.max(0, Math.min(100, ((layer2Pattern.speed - 0.05) / 1.45) * 100)))
+      effectiveAmplitude = Math.round(layer2Pattern.size * 100)
+    } else if (hasManualPosition) {
+      effectivePattern = 'hold'
+      effectiveSpeed = null
+      effectiveAmplitude = null
+    }
     
     // Build unified state snapshot
     const state = {
@@ -536,10 +569,10 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
         ? Math.round((fixtureOverride.controls.tilt / 255) * 270) // 0-255 → 0-270
         : null,
       
-      // === MOVEMENT (global overrides) ===
-      pattern: movementOverrides.pattern,  // 'circle', 'hold', etc. or null
-      speed: movementOverrides.speed,      // 0-100 or null
-      amplitude: movementOverrides.amplitude, // 0-100 or null
+      // === MOVEMENT (Layer 2 — MasterArbiter patterns) ===
+      pattern: effectivePattern,   // 'circle', 'eight', 'sweep', 'hold', or null
+      speed: effectiveSpeed,       // 0-100 or null
+      amplitude: effectiveAmplitude, // 0-100 or null
       
       // === BEAM (from fixture override) ===
       zoom: fixtureOverride?.controls?.zoom !== undefined

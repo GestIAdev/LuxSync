@@ -673,8 +673,9 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       expect(freshTracker.getMusicalBpm()).toBe(0)
     })
 
-    it('should return raw BPM when no ratio lands in pocket', () => {
+    it('should clamp to pocket boundary when no ratio lands in pocket (WAVE 2181)', () => {
       // Custom pocket that nothing folds into: [200, 210]
+      // WAVE 2181: instead of returning raw (dangerous), clamp to nearest boundary
       const buffer = generateProductionBuffer(128, 15)
       const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
       for (const frame of buffer.frames) {
@@ -682,9 +683,10 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       }
 
       const raw = prodTracker.getBpm()
-      // [200, 210] pocket — 128 is too low, ×2=256 too high
+      // [200, 210] pocket — 128 is too low, all folds miss
+      // pocketCenter = 205, raw (128) < 205 → clamp to targetMin (200)
       const musical = prodTracker.getMusicalBpm(200, 210)
-      expect(musical).toBe(raw)
+      expect(musical).toBe(200)
     })
 
     it('should accept custom dance pocket boundaries', () => {
@@ -745,6 +747,77 @@ describe('🥁 WAVE 2168: IntervalBPMTracker — The Resurrection', () => {
       expect(musical).toBe(raw)
     })
     // ── END WAVE 2191 DEMBOW CEILING ──────────────────────────────────
+
+    // ── WAVE 2181: THE EXTREME FOLDER & SAFETY NET ───────────────────
+    it('should fold 275 BPM DnB → ~92 BPM via ÷3.0 (extreme fold)', () => {
+      // 275 BPM DnB — the bug that started WAVE 2181.
+      // ×0.75=206 ✗, ÷1.5=183 ✗, ÷2.0=138 ✗ (all above 135)
+      // ÷3.0=91.7→92 ∈ [90,135] ✅ — THE FIX
+      // Without this fold, 275 BPM would hit physics → 4.6 Hz oscillation → mechanical death
+      //
+      // NOTE: We can't generate 275 BPM with the synthetic buffer because
+      // MIN_INTERVAL_MS=200 caps detection at ~300 BPM. So we test the fold
+      // logic directly by setting stableBpm via the median filter stabilization.
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      // Force stableBpm to 275 by filling the median buffer
+      // Access internal state to simulate extreme BPM detection
+      ;(prodTracker as any).stableBpm = 275
+
+      const musical = prodTracker.getMusicalBpm()
+      // ÷3.0 = 91.67 → 92 ∈ [90, 135] ✅
+      expect(musical).toBe(92)
+    })
+
+    it('should fold 360 BPM Speedcore → 120 BPM via ÷3.0', () => {
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      ;(prodTracker as any).stableBpm = 360
+
+      const musical = prodTracker.getMusicalBpm()
+      // ÷3.0 = 120 ∈ [90, 135] ✅
+      expect(musical).toBe(120)
+    })
+
+    it('should fold 440 BPM Gabber → 110 BPM via ÷4.0', () => {
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      ;(prodTracker as any).stableBpm = 440
+
+      // ×0.75=330 ✗, ÷1.5=293 ✗, ÷2.0=220 ✗, ÷3.0=147 ✗ (above 135)
+      // ÷4.0 = 110 ∈ [90, 135] ✅
+      const musical = prodTracker.getMusicalBpm()
+      expect(musical).toBe(110)
+    })
+
+    it('should clamp to targetMax when ALL folds fail (safety net)', () => {
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      ;(prodTracker as any).stableBpm = 600
+
+      // With absurdly narrow pocket [120, 121]:
+      // ÷3=200 ✗, ÷4=150 ✗ — nothing lands
+      // pocketCenter = 120.5, raw(600) > 120.5 → clamp to targetMax (121)
+      const musical = prodTracker.getMusicalBpm(120, 121)
+      expect(musical).toBe(121)
+    })
+
+    it('should fold very slow 30 BPM → 90 BPM via ×3.0 (WAVE 2181 fold-up)', () => {
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      ;(prodTracker as any).stableBpm = 30
+
+      // ×1.5=45 ✗, ×2.0=60 ✗ (below 90)
+      // ×3.0 = 90 ∈ [90, 135] ✅
+      const musical = prodTracker.getMusicalBpm()
+      expect(musical).toBe(90)
+    })
+
+    it('should fold ultra-slow 25 BPM → 100 BPM via ×4.0 (WAVE 2181 fold-up)', () => {
+      const prodTracker = new IntervalBPMTracker(44100, 2048, PRODUCTION_FRAME_MS)
+      ;(prodTracker as any).stableBpm = 25
+
+      // ×1.5=37.5 ✗, ×2.0=50 ✗, ×3.0=75 ✗ (below 90)
+      // ×4.0 = 100 ∈ [90, 135] ✅
+      const musical = prodTracker.getMusicalBpm()
+      expect(musical).toBe(100)
+    })
+    // ── END WAVE 2181 ─────────────────────────────────────────────────
   })
 
   // ─────────────────────────────────────────────────────────────────────

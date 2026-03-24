@@ -273,31 +273,56 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 2. BACK PAR: LA PUERTA AL 0.44 Y CERO COMPETENCIA
+    // 🥁 2. BACK PAR: THE SNIPER (WAVE 2388)
     // =======================================================================
+    // El Back PAR es el rifle de francotirador del snare/clap: bofetada corta,
+    // brillante, y que JAMÁS supere el 100%. Tres capas de protección:
+    //   1. Velocity Gate: solo transientes rápidos (snare), no colchones (voces)
+    //   2. Dieta de Vitaminas: fórmula recalibrada para no saturar
+    //   3. Clamp termodinámico: OUT nunca supera 1.0
+
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
+
+    // 🎤 FILTRO ANTIVOCES (The Gag) — WAVE 2388
+    // Las voces viven en mid-high con transientes LENTOS (notas sostenidas).
+    // Un snare tiene treble >= mid y transientImpact alto (pico afilado).
+    // Una voz tiene mid > treble y transientImpact moderado (onda suave).
+    // Si mid domina sobre treble Y la estridencia es baja → es voz, silenciar.
+    const isBackVoiceLeak = mid > (treble * 1.4) && (harshness ?? 0) < 0.25;
     
-    // Filtro de voces original (Se mantiene idéntico, es seguro)
+    // Filtro de voces original (limpiar mids con transientImpact)
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
     const pureHarshness = (harshness ?? 0);
-    const snareVitamin = pureHarshness * treble * (4.5 + 2.5 * morphFactor);
+
+    // 💊 DIETA DE VITAMINAS — WAVE 2388
+    // Antes: harshness * treble * (4.5 + 2.5 * morph) → con H=0.39, T=0.39
+    // el vitamin ya era 0.87, saturando snarePower a 1.0 en cada frame activo.
+    // Nuevo: multiplicador reducido (3.0 + 1.5*morph) y gateado por transientImpact.
+    // Solo picos afilados (transientImpact > 0.5) reciben la vitamina completa.
+    // Hi-hats constantes (T:0.35, H:0.15 → transient 0.58) pasan atenuados.
+    // Colchones (T:0.20, H:0.05 → transient 0.30) quedan prácticamente a 0.
+    const vitaminGate = Math.max(0, (transientImpact - 0.3) / 0.7); // 0→1 en rango [0.3, 1.0]
+    const snareVitamin = pureHarshness * treble * (3.0 + 1.5 * morphFactor) * vitaminGate;
 
     const snarePower = Math.min(1.0, 
       (cleanMid * 0.05) + 
-      (transientImpact * (1.1 + 1.2 * morphFactor)) + 
+      (transientImpact * (0.8 + 0.7 * morphFactor)) +  // Reducido de (1.1+1.2) a (0.8+0.7)
       snareVitamin 
     );
 
     let backParIntensity = 0;
-    // 🔒 LA PUERTA BAJA A 0.44 (A petición del Arquitecto para no perder snares)
-    // En modo Anyma caerá a 0.22, súper sensible pero limpio gracias al exponente 3.5
+    // 🔒 Gate dinámico: 0.44 (Hard) → 0.22 (Melodic)
     const dynamicBackGate = 0.44 - (0.22 * morphFactor); 
 
-    if (snarePower > dynamicBackGate) {
+    if (snarePower > dynamicBackGate && !isBackVoiceLeak) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
         backParIntensity = Math.pow(gated, 3.5) * dynamicSlapMult;
     }
+
+    // 🔒 CLAMP TERMODINÁMICO — WAVE 2388
+    // Nunca más OUT:2.94. El foco trasero es un sniper, no un bazooka.
+    backParIntensity = Math.min(1.0, backParIntensity);
 
     // =======================================================================
     // 💥 3. FRONT PAR: SOFT KNEE + BREAKDOWN SHIELD (WAVE 2377)

@@ -405,15 +405,17 @@ export class TechnoStereoPhysics {
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // 🔬 WAVE 2384: Pressure Relief Valve — exponente reducido a 2.0-2.5.
-        // WAVE 2383 usaba rango 2.0-3.0 (1.0 * (1-morph)). Cuando el gate estaba
-        // inflado post-drop, rawPower de kicks reales caía a 0.2-0.4.
-        // pow(0.3, 2.8) = 0.031 → bombo real INVISIBLE. Doble castigo: gate alta + crush.
-        // Rango 2.0-2.5 mantiene la separación bombo/sinte:
-        //   Sinte staccato rawPower 0.2: pow(0.2, 2.5) = 0.018 (invisible ✓)
-        //   Bombo real rawPower 0.4:     pow(0.4, 2.5) = 0.101 (visible ✓)
-        //   Bombo gordo rawPower 0.6:    pow(0.6, 2.5) = 0.279 (bien visible ✓)
-        const crushExponent = 2.0 + (0.5 * (1.0 - morphFactor));
+        // � WAVE 2387: Return to Origins — exponente reducido a 1.5-1.8.
+        // WAVE 2381 (golden reference) usaba 1.5 FIJO. Funcionaba perfecto.
+        // WAVEs 2383-2384 subieron a 2.0-2.5 para "aplastar synths" pero
+        // crearon DOBLE CASTIGO: gate inflado + crush agresivo. Un bombo con
+        // rawPower 0.3 pasaba de pow(0.3,1.5)=0.164 a pow(0.3,2.5)=0.049.
+        // Invisible. Con 1.5-1.8 recuperamos el rango de WAVE 2381:
+        //   rawPower 0.3 → pow(0.3, 1.5) = 0.164 / pow(0.3, 1.8) = 0.099 (visible ✓)
+        //   rawPower 0.5 → pow(0.5, 1.5) = 0.354 / pow(0.5, 1.8) = 0.287 (sólido ✓)
+        //   rawPower 0.7 → pow(0.7, 1.5) = 0.586 / pow(0.7, 1.8) = 0.530 (fuerte ✓)
+        //   Sinte staccato rawPower 0.15 → pow(0.15, 1.8) = 0.035 (aplastado ✓)
+        const crushExponent = 1.5 + (0.3 * (1.0 - morphFactor));
         kickPower = Math.pow(rawPower, crushExponent);
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
         // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.

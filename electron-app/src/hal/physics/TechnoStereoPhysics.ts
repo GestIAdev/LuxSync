@@ -273,41 +273,40 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 2. BACK PAR: THE SNIPER (WAVE 2388)
+    // 🥁 2. BACK PAR: THE SNIPER v2 (WAVE 2389)
     // =======================================================================
-    // El Back PAR es el rifle de francotirador del snare/clap: bofetada corta,
-    // brillante, y que JAMÁS supere el 100%. Tres capas de protección:
-    //   1. Velocity Gate: solo transientes rápidos (snare), no colchones (voces)
-    //   2. Dieta de Vitaminas: fórmula recalibrada para no saturar
-    //   3. Clamp termodinámico: OUT nunca supera 1.0
+    // WAVE 2388 mató al paciente: exitCode=muerte_clinica.
+    //   - transientImpact*(0.8+0.7*morph) demasiado bajo → snarePower ~0.45 máx
+    //   - vitaminGate estrangulaba señales con transient moderado (0.3-0.6)
+    //   - Con gate ~0.43, snarePower apenas lo superaba → gated ~0.04
+    //   - pow(0.04, 3.5) = 0.00001 → invisible
+    //
+    // WAVE 2389: Revive al snare sin resucitar al bazooka.
+    //   - transientImpact coeficientes restaurados a (1.0+1.0*morph) — punto medio
+    //   - vitaminGate suavizado: threshold 0.2 (era 0.3), rango más ancho
+    //   - Multiplicador vitamin: (3.5+2.0*morph) — entre el viejo 4.5+2.5 y el 3.0+1.5
+    //   - Exponente reducido a 2.8 (era 3.5) — menos castigo a señales moderadas
+    //   - Antivoces y clamp INTACTOS — las protecciones se mantienen
 
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
 
-    // 🎤 FILTRO ANTIVOCES (The Gag) — WAVE 2388
-    // Las voces viven en mid-high con transientes LENTOS (notas sostenidas).
-    // Un snare tiene treble >= mid y transientImpact alto (pico afilado).
-    // Una voz tiene mid > treble y transientImpact moderado (onda suave).
-    // Si mid domina sobre treble Y la estridencia es baja → es voz, silenciar.
+    // 🎤 FILTRO ANTIVOCES (The Gag) — WAVE 2388, INTACTO
+    // Si mid domina sobre treble Y la estridencia es baja → es voz, no snare.
     const isBackVoiceLeak = mid > (treble * 1.4) && (harshness ?? 0) < 0.25;
     
-    // Filtro de voces original (limpiar mids con transientImpact)
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
     const pureHarshness = (harshness ?? 0);
 
-    // 💊 DIETA DE VITAMINAS — WAVE 2388
-    // Antes: harshness * treble * (4.5 + 2.5 * morph) → con H=0.39, T=0.39
-    // el vitamin ya era 0.87, saturando snarePower a 1.0 en cada frame activo.
-    // Nuevo: multiplicador reducido (3.0 + 1.5*morph) y gateado por transientImpact.
-    // Solo picos afilados (transientImpact > 0.5) reciben la vitamina completa.
-    // Hi-hats constantes (T:0.35, H:0.15 → transient 0.58) pasan atenuados.
-    // Colchones (T:0.20, H:0.05 → transient 0.30) quedan prácticamente a 0.
-    const vitaminGate = Math.max(0, (transientImpact - 0.3) / 0.7); // 0→1 en rango [0.3, 1.0]
-    const snareVitamin = pureHarshness * treble * (3.0 + 1.5 * morphFactor) * vitaminGate;
+    // 💊 VITAMINA RECALIBRADA — WAVE 2389
+    // vitaminGate suavizado: activa desde transientImpact 0.2 (era 0.3)
+    // Multiplicador: (3.5 + 2.0*morph) — punto medio entre original y WAVE 2388
+    const vitaminGate = Math.max(0, (transientImpact - 0.2) / 0.8);
+    const snareVitamin = pureHarshness * treble * (3.5 + 2.0 * morphFactor) * vitaminGate;
 
     const snarePower = Math.min(1.0, 
       (cleanMid * 0.05) + 
-      (transientImpact * (0.8 + 0.7 * morphFactor)) +  // Reducido de (1.1+1.2) a (0.8+0.7)
+      (transientImpact * (1.0 + 1.0 * morphFactor)) +  // Restaurado: punto medio (1.0+1.0)
       snareVitamin 
     );
 
@@ -317,11 +316,12 @@ export class TechnoStereoPhysics {
 
     if (snarePower > dynamicBackGate && !isBackVoiceLeak) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        backParIntensity = Math.pow(gated, 3.5) * dynamicSlapMult;
+        // Exponente 2.8 (era 3.5): menos castigo a señales gated moderadas
+        // pow(0.25, 2.8) = 0.019 vs pow(0.25, 3.5) = 0.003 → 6x más visible
+        backParIntensity = Math.pow(gated, 2.8) * dynamicSlapMult;
     }
 
-    // 🔒 CLAMP TERMODINÁMICO — WAVE 2388
-    // Nunca más OUT:2.94. El foco trasero es un sniper, no un bazooka.
+    // 🔒 CLAMP TERMODINÁMICO — WAVE 2388, INTACTO
     backParIntensity = Math.min(1.0, backParIntensity);
 
     // =======================================================================

@@ -1195,7 +1195,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               onColorsChange={setWheelColors}
               hasColorWheelChannel={fixture.channels.some(ch => ch.type === 'color_wheel')}
               onNavigateToRack={() => setActiveTab('channels')}
-              fixtureId={editingFixture?.id ?? null}
+              fixtureId={originalFixtureId}
               channelIndex={fixture.channels.findIndex(ch => ch.type === 'color_wheel')}
               minChangeTimeMs={wheelMinChangeTimeMs}
               onMinChangeTimeMsChange={setWheelMinChangeTimeMs}

@@ -201,6 +201,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   const [probeValue, setProbeValue] = useState<number>(0)
   const [testAddress, setTestAddress] = useState<number>(1)
   
+  // WAVE 2074: Kill Switch — qué slot está encendido
+  const [activeTestSlotKey, setActiveTestSlotKey] = useState<string | null>(null)
+  
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 2093.3 (CW-AUDIT-7): DMX VALIDATION ENGINE
   // Detects: duplicate DMX values, non-monotonic ordering, spin overlap
@@ -369,18 +372,6 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     console.log('[WheelSmith] ➕ Added slot at DMX:', nextDmx)
   }, [colors, onColorsChange])
   
-  const handleAddPreset = useCallback((preset: typeof COLOR_PRESETS[0]) => {
-    const nextDmx = suggestNextDmx(colors)
-    const newColor: WheelColor = {
-      dmx: nextDmx,
-      name: preset.name,
-      rgb: { ...preset.rgb },
-      _key: generateSlotKey(),
-    }
-    onColorsChange([...colors, newColor])
-    console.log('[WheelSmith] ➕ Added preset:', preset.name)
-  }, [colors, onColorsChange])
-  
   const handleRemoveColor = useCallback((key: string) => {
     onColorsChange(colors.filter(c => c._key !== key))
     setValidationError(null)
@@ -513,11 +504,40 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     }
   }, [effectiveTestFixtureId, lux, effectiveTestFixture, fixtureChannelTypes, ARBITER_NATIVE_CHANNELS, isMoldTest, testAddress, dmxBaseAddress, universe, channelIndex])
 
-  const handleSlotTest = useCallback((dmxValue: number) => {
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2074: KILL SWITCH — Test/Stop toggle por slot
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const killLight = useCallback(async (): Promise<void> => {
+    if (!effectiveTestFixtureId || !lux?.arbiter?.clearManual) return
+    try {
+      await lux.arbiter.clearManual({
+        fixtureIds: [effectiveTestFixtureId],
+        channels: ['color_wheel', 'dimmer', 'shutter', 'strobe'],
+      })
+    } catch (err) {
+      console.error('[WheelSmith] ❌ killLight falló:', err)
+    }
+  }, [effectiveTestFixtureId, lux])
+
+  const handleSlotTest = useCallback((slotKey: string, dmxValue: number) => {
+    if (activeTestSlotKey === slotKey) {
+      // Toggle OFF — Kill Switch
+      killLight()
+      setActiveTestSlotKey(null)
+      return
+    }
+    // Toggle ON (apaga anterior automáticamente vía Arbiter overwrite)
+    setActiveTestSlotKey(slotKey)
     setProbeValue(dmxValue)
     sendTestWithLight(dmxValue)
     if (onTestDmx) onTestDmx(dmxValue)
-  }, [onTestDmx, sendTestWithLight])
+  }, [activeTestSlotKey, onTestDmx, sendTestWithLight, killLight])
+
+  // WAVE 2074: Mini-paleta — sobrescribir RGB de un slot con preset exacto
+  const handlePresetApply = useCallback((slotKey: string, preset: typeof COLOR_PRESETS[0]) => {
+    onColorsChange(updateColorSlot(colors, slotKey, { name: preset.name, rgb: { ...preset.rgb } }))
+  }, [colors, onColorsChange])
   
   const handleCreateFromProbe = useCallback(() => {
     const newColor: WheelColor = {
@@ -655,37 +675,14 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
       </div>
       
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* PRESETS BAR */}
-      {/* ═══════════════════════════════════════════════════════════ */}
-      <div className="wheel-presets-bar">
-        <span className="presets-label">Quick Add:</span>
-        <div className="presets-list">
-          {COLOR_PRESETS.map((preset, i) => (
-            <button
-              key={i}
-              className="preset-btn"
-              onClick={() => handleAddPreset(preset)}
-              title={preset.name}
-              style={{ 
-                backgroundColor: rgbToHex(preset.rgb),
-                color: (preset.rgb.r + preset.rgb.g + preset.rgb.b) / 3 > 128 ? '#000' : '#fff'
-              }}
-            >
-              {preset.name.substring(0, 3)}
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════ */}
-      {/* COLOR SLOTS — Cyberpunk Card Layout */}
+      {/* COLOR SLOTS — WAVE 2074: Grid Táctico */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div className="wheelsmith-body">
         {colors.length === 0 ? (
           <div className="wheel-empty-state">
             <PaletteChromaticIcon size={48} />
             <p>No colors defined</p>
-            <p className="hint">Use presets above or add colors manually</p>
+            <p className="hint">Add a slot, tune its DMX with the probe, then assign the color</p>
           </div>
         ) : (
           <div className="wheel-slot-grid">
@@ -695,11 +692,11 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
               const isLast = index === colors.length - 1
               
               return (
-                <div key={key} className={`wheel-slot-card${warnedSlotKeys.has(key) ? ' wheel-slot-warned' : ''}`}
+                <div key={key} className={`wheel-slot-card${warnedSlotKeys.has(key) ? ' wheel-slot-warned' : ''}${activeTestSlotKey === key ? ' wheel-slot-active' : ''}`}
                   style={warnedSlotKeys.has(key) ? { borderColor: 'rgba(245, 158, 11, 0.6)', boxShadow: '0 0 8px rgba(245, 158, 11, 0.15)' } : undefined}
                 >
                   
-                  {/* ── Slot Header: Index + Color Orb + Name ── */}
+                  {/* ── Slot Header: Index + Orb + Name + Actions ── */}
                   <div className="slot-header">
                     <span className="slot-index">#{index + 1}</span>
                     <div 
@@ -713,18 +710,16 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
                       value={color.name}
                       onChange={(e) => handleNameChange(key, e.target.value)}
                     />
-                    
-                    {/* Gobo/Texture badge */}
                     <button
                       className={`slot-gobo-badge ${color.hasTexture ? 'active' : ''}`}
                       onClick={() => handleTextureToggle(key, color.hasTexture || false)}
                       title={color.hasTexture ? 'Has gobo/texture' : 'No texture'}
                     >
-                      <GoboIcon size={14} />
+                      <GoboIcon size={12} />
                     </button>
                   </div>
                   
-                  {/* ── Slot Body: DMX + Color Picker ── */}
+                  {/* ── Slot Body: DMX + Color Picker (compact) ── */}
                   <div className="slot-body">
                     <div className="slot-dmx-group">
                       <label className="slot-field-label">DMX</label>
@@ -739,31 +734,41 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
                     </div>
                     
                     <div className="slot-color-group">
-                      <label className="slot-field-label">RGB</label>
-                      <div className="slot-color-picker-wrap">
-                        <input
-                          type="color"
-                          value={rgbToHex(color.rgb)}
-                          onChange={(e) => handleColorChange(key, e.target.value)}
-                          className="slot-color-input"
-                          title="Select color"
-                        />
-                        <span className="slot-hex-label">{rgbToHex(color.rgb)}</span>
-                      </div>
+                      <input
+                        type="color"
+                        value={rgbToHex(color.rgb)}
+                        onChange={(e) => handleColorChange(key, e.target.value)}
+                        className="slot-color-input"
+                        title="Custom RGB"
+                      />
+                      <span className="slot-hex-label">{rgbToHex(color.rgb)}</span>
                     </div>
                   </div>
+
+                  {/* ── WAVE 2074: Mini-paleta de presets RGB exactos ── */}
+                  <div className="slot-mini-palette">
+                    {COLOR_PRESETS.map((preset, pi) => (
+                      <button
+                        key={pi}
+                        className="mini-preset-swatch"
+                        onClick={() => handlePresetApply(key, preset)}
+                        title={preset.name}
+                        style={{ backgroundColor: rgbToHex(preset.rgb) }}
+                      />
+                    ))}
+                  </div>
                   
-                  {/* ── Slot Actions: Test + Move + Delete ── */}
+                  {/* ── Slot Actions: Test/Stop + Move + Delete ── */}
                   <div className="slot-actions">
-                    {/* Per-slot TEST button — WAVE 2072 Phase 2 */}
+                    {/* WAVE 2074: Kill Switch — TEST / STOP toggle */}
                     <button 
-                      className="slot-action-btn test"
-                      onClick={() => handleSlotTest(color.dmx)}
-                      title={`⚡ Test DMX ${color.dmx}`}
+                      className={`slot-action-btn ${activeTestSlotKey === key ? 'stop' : 'test'}`}
+                      onClick={() => handleSlotTest(key, color.dmx)}
+                      title={activeTestSlotKey === key ? '🛑 Stop light' : `⚡ Test DMX ${color.dmx}`}
                       disabled={!canSendLive}
                     >
-                      <OracleEyeIcon size={13} />
-                      <span>TEST</span>
+                      <OracleEyeIcon size={12} />
+                      <span>{activeTestSlotKey === key ? 'STOP' : 'TEST'}</span>
                     </button>
                     
                     <div className="slot-action-spacer" />
@@ -774,7 +779,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
                       disabled={isFirst}
                       title="Move up"
                     >
-                      <ChevronUpIcon size={14} />
+                      <ChevronUpIcon size={12} />
                     </button>
                     <button 
                       className="slot-action-btn move"
@@ -782,7 +787,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
                       disabled={isLast}
                       title="Move down"
                     >
-                      <ChevronDownIcon size={14} />
+                      <ChevronDownIcon size={12} />
                     </button>
                     
                     <button 
@@ -790,7 +795,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
                       onClick={() => handleRemoveColor(key)}
                       title="Remove slot"
                     >
-                      <TrashIcon size={14} />
+                      <TrashIcon size={12} />
                     </button>
                   </div>
                 </div>

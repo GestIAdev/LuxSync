@@ -131,7 +131,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 function suggestNextDmx(colors: WheelColor[]): number {
   if (colors.length === 0) return 0
   const maxDmx = Math.max(...colors.map(c => c.dmx))
-  return Math.min(255, maxDmx + 15)
+  return Math.min(255, maxDmx + 10)
 }
 
 /** WAVE 2072: Generate a stable unique key for each color slot */

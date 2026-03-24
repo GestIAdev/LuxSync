@@ -172,6 +172,7 @@ export class TechnoStereoPhysics {
   private wasBreakdown = false  // 🔄 WAVE 2378: Estado previo de sección (para detectar transición breakdown→drop)
   private breakdownExitTime = 0  // ⏱️ WAVE 2378: Timestamp de salida del breakdown
   private lastPunch = 0  // 🔬 WAVE 2380: Velocity gate — detecta pads por velocidad de subida lenta
+  private lastKickFireTime = 0  // 🌊 WAVE 2385: Tidal Gate — timestamp del último kick real
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -330,21 +331,37 @@ export class TechnoStereoPhysics {
     }
 
     // 🏔️ MEMORIA DE PICO (avgPunchPeak)
-    // Sube rápido con avgPunch, pero cae ULTRA-lento (0.998 = ~15 segundos para caer 50%).
-    // Evita que el gate se desplome en breakdowns y nos blinde contra el rebote del AGC.
+    // 🌊 WAVE 2385: Tidal Gate — decay condicional. Cuando no hay kicks durante
+    // mucho tiempo, el pico se libera más rápido para que el gate baje a encontrar
+    // los kicks de la siguiente pista en la mezcla.
+    //   Normal (kicks activos): 0.993 → ~4.7s para caer 50%
+    //   Seco (>2s sin kick):    0.985 → ~1.5s para caer 50%
+    // Hadtechnominimal: gate se quedaba en 0.44 durante 200+ frames porque
+    // avgPunchPeak de la pista anterior no caía, mientras kickloop no se ve
+    // afectado porque sus kicks constantes mantienen lastKickFireTime fresco.
+    const timeSinceLastKick = this.lastKickFireTime > 0 ? now - this.lastKickFireTime : 0;
+    const isDrySpell = timeSinceLastKick > 2000;
+    const peakDecay = isDrySpell ? 0.985 : 0.993;
     if (this.avgPunch > this.avgPunchPeak) {
         this.avgPunchPeak = this.avgPunch;
     } else {
-        this.avgPunchPeak = (this.avgPunchPeak * 0.998) + (this.avgPunch * 0.002);
+        this.avgPunchPeak = (this.avgPunchPeak * peakDecay) + (this.avgPunch * (1.0 - peakDecay));
     }
 
     // El gate efectivo nunca cae por debajo del 70% del pico reciente.
-    // Esto evita que el breakdown arrastre avgPunch al abismo y luego el bombo
-    // vuelva con KickP:1.000 instantáneo por tener el gate en el suelo.
     // 🏗️ WAVE 2378: GATE FLOOR ABSOLUTO — El gate NUNCA baja de 0.42.
-    // Sub-bass pads de psytrance (P:0.44-0.47) ya no pasan el gate,
-    // pero kicks reales (P:0.63+) siguen funcionando perfecto.
-    const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.70, 0.42);
+    // Sub-bass pads de psytrance (P:0.44-0.47) ya no pasan el gate.
+    // 🌊 WAVE 2385: Floor adaptativo — degrada el floor de 0.42 → 0.30 cuando
+    // no hay kicks durante 3+ segundos. Esto permite que mezclas de minimal
+    // techno con kicks sutiles (P:0.50-0.65) pasen el gate.
+    //   Sin dry spell: floor = 0.42 (protección psytrance intacta)
+    //   3s sin kick:   floor empieza a bajar
+    //   6s sin kick:   floor = 0.30 (captura kicks sutiles de mezcla)
+    const drySpellFloorDecay = timeSinceLastKick > 3000
+      ? Math.min(1.0, (timeSinceLastKick - 3000) / 3000)
+      : 0;
+    const adaptiveFloor = 0.42 - (0.12 * drySpellFloorDecay);
+    const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.70, adaptiveFloor);
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
@@ -370,12 +387,15 @@ export class TechnoStereoPhysics {
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // 🔬 WAVE 2383: Smart Crusher — exponente dinámico por morphFactor.
-        // Minimal (Morph 0.0): exp 3.0 → aplasta sintes staccato débiles.
-        // Anyma  (Morph 1.0): exp 2.0 → deja fluir el muro de sonido.
-        // Un sinte con rawPower 0.3 → pow(0.3, 3.0) = 0.027 (invisible).
-        // Un bombo con rawPower 0.8 → pow(0.8, 3.0) = 0.512 (visible).
-        const crushExponent = 2.0 + (1.0 * (1.0 - morphFactor));
+        // 🔬 WAVE 2384: Pressure Relief Valve — exponente reducido a 2.0-2.5.
+        // WAVE 2383 usaba rango 2.0-3.0 (1.0 * (1-morph)). Cuando el gate estaba
+        // inflado post-drop, rawPower de kicks reales caía a 0.2-0.4.
+        // pow(0.3, 2.8) = 0.031 → bombo real INVISIBLE. Doble castigo: gate alta + crush.
+        // Rango 2.0-2.5 mantiene la separación bombo/sinte:
+        //   Sinte staccato rawPower 0.2: pow(0.2, 2.5) = 0.018 (invisible ✓)
+        //   Bombo real rawPower 0.4:     pow(0.4, 2.5) = 0.101 (visible ✓)
+        //   Bombo gordo rawPower 0.6:    pow(0.6, 2.5) = 0.279 (bien visible ✓)
+        const crushExponent = 2.0 + (0.5 * (1.0 - morphFactor));
         kickPower = Math.pow(rawPower, crushExponent);
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
         // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
@@ -393,6 +413,7 @@ export class TechnoStereoPhysics {
 
     // 5. RENDERIZADO RÍTMICO
     if (kickPower > 0.02) {
+        this.lastKickFireTime = now; // 🌊 WAVE 2385: Resetear timer de Tidal Gate
         const hit = Math.min(1.0, kickPower * (1.2 + 0.8 * morphFactor));
         this.frontIntensity = Math.max(this.frontIntensity, hit);
     } else if (ghostPower > 0) {

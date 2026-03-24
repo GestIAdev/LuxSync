@@ -273,43 +273,28 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 2. BACK PAR: THE SNIPER v3 (WAVE 2390)
+    // 🥁 2. BACK PAR: THE SNIPER v4 (WAVE 2391)
     // =======================================================================
-    // WAVE 2389 seguía muerto. borisbrejcha test: 2 disparos de 195 frames.
-    // Causa: exponente 2.8 + slapMult 3.5-5.0 = señales gated moderadas
-    // (0.25-0.35) producen OUT < 0.10. Invisible.
+    // WAVE 2390 pintaba a medias en Rufus Du Sol (melodic techno).
+    // Causa raíz: isBackVoiceLeak mataba synths melódicos.
+    //   Ejemplo real: M:0.54 T:0.33 SnP:0.78 OUT:0.00 Morph:0.53
+    //   mid(0.54) > treble(0.33)*1.6 = 0.528 → BLOQUEADO. Error.
+    //   Los synths melódicos tienen la misma firma que una voz:
+    //   mid alto, treble moderado, harshness bajo.
+    //   En melodic techno, los synths SON lo que quieres pintar.
     //
-    // WAVE 2390: Recalibración del par exponente/multiplicador.
-    //   - Exponente: 2.8 → 2.0 — curva más suave, señales moderadas VIVEN
-    //   - BACK_PAR_SLAP_MULT: 5.0 → 4.0 (compensar para que picos no exploten)
-    //   - Filtro antivoces relajado: harshness < 0.15 (era 0.25)
-    //     Boris Brejcha = minimal, TODO tiene harshness bajo
-    //   - vitaminGate eliminado: demasiada complejidad para un beneficio nulo
-    //     La vitamin ya es proporcional a harshness*treble — se autoregula
-    //
-    // Matemáticas con datos reales del drop (M:0.43, T:0.32, H~0.12, morph 0.30):
-    //   transientImpact = min(1, 0.32*1.3 + 0.12*0.8) = 0.512
-    //   snareVitamin = 0.12*0.32*(3.5+2.0*0.30) = 0.12*0.32*4.1 = 0.157
-    //   snarePower = 0.013 + 0.512*1.30 + 0.157 = 0.013+0.666+0.157 = 0.836
-    //   gate = 0.44-0.22*0.30 = 0.374
-    //   gated = (0.836-0.374)/(1-0.374) = 0.738
-    //   OUT = pow(0.738, 2.0) * 4.0 = 0.545*4.0 = 2.18 → clamp → 1.0 ✅
-    //   
-    //   Señal moderada (SnP:0.55, gate 0.37):
-    //   gated = 0.286, pow(0.286, 2.0)*4.0 = 0.327 ← VISIBLE! ✅
+    // WAVE 2391: Filtro antivoces ELIMINADO.
+    //   El gate dinámico + exponente 2.0 + clamp 1.0 ya son protección
+    //   suficiente. El Back PAR pinta todo lo que supere el gate.
+    //   Como dijo el Arquitecto: "importa la data, no el género".
 
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
-
-    // 🎤 FILTRO ANTIVOCES (The Gag) — relajado para minimal techno
-    // harshness < 0.15 (era 0.25): en Boris Brejcha todo tiene H bajo,
-    // solo bloqueamos voces MUY limpias donde mid domina claramente
-    const isBackVoiceLeak = mid > (treble * 1.6) && (harshness ?? 0) < 0.15;
     
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
     const pureHarshness = (harshness ?? 0);
 
-    // 💊 VITAMINA — sin vitaminGate, la fórmula se autoregula por H*T
+    // 💊 VITAMINA — H*T se autoregula: harsh alto + treble alto = snare, resto = atenuado
     const snareVitamin = pureHarshness * treble * (3.5 + 2.0 * morphFactor);
 
     const snarePower = Math.min(1.0, 
@@ -322,7 +307,7 @@ export class TechnoStereoPhysics {
     // 🔒 Gate dinámico: 0.44 (Hard) → 0.22 (Melodic)
     const dynamicBackGate = 0.44 - (0.22 * morphFactor); 
 
-    if (snarePower > dynamicBackGate && !isBackVoiceLeak) {
+    if (snarePower > dynamicBackGate) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
         // Exponente 2.0 + slapMult 4.0 = par recalibrado
         // pow(0.29, 2.0)*4.0 = 0.33 (visible) vs pow(0.29, 2.8)*3.5 = 0.09 (invisible)

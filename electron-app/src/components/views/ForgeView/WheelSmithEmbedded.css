@@ -140,6 +140,46 @@
   border-color: #f59e0b;
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
+/* WAVE 2073 rev4: Target Test Fixture selector */
+.probe-target-fixture {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 6px;
+}
+.target-fixture-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #818cf8;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.target-fixture-select {
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 4px;
+  color: #c7d2fe;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  max-width: 180px;
+}
+.target-fixture-select:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+}
+.target-fixture-select option {
+  background: #1a1a2e;
+  color: #c7d2fe;
+}
+
 .probe-dmx-status {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;

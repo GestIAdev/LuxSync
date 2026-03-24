@@ -266,14 +266,28 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // STORE — Fixture from Stage
   // ═══════════════════════════════════════════════════════════════════════
   
+  // Todos los fixtures del Stage (para el selector cuando el perfil es huérfano)
+  const stageFixtures = useStageStore(state => state.fixtures || [])
+
   const fixture = useStageStore(state => {
     if (!fixtureId) return null
     const fixtures = state.fixtures || []
     return fixtures.find(f => f.id === fixtureId) || null
   })
-  
-  const dmxBaseAddress = fixture?.address ?? null
-  const universe = fixture?.universe ?? 0
+
+  // Si el fixtureId no está en Stage (es un ID de librería/borrador), el perfil es huérfano.
+  // En ese caso el usuario elige un fixture real del Stage como conejillo de indias.
+  const isOrphanProfile = fixtureId !== null && fixture === null
+
+  // ID del fixture que realmente recibirá las órdenes DMX del TEST
+  const [targetTestFixtureId, setTargetTestFixtureId] = useState<string | null>(null)
+
+  // El fixture efectivo para el test: si está en Stage usamos ese, si no el target elegido
+  const effectiveTestFixture = fixture ?? (stageFixtures.find(f => f.id === targetTestFixtureId) || null)
+  const effectiveTestFixtureId = fixture ? fixtureId : targetTestFixtureId
+
+  const dmxBaseAddress = effectiveTestFixture?.address ?? null
+  const universe = effectiveTestFixture?.universe ?? 0
   
   // ═══════════════════════════════════════════════════════════════════════
   // DMX ENGINE DETECTION
@@ -281,8 +295,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   
   const lux = (typeof window !== 'undefined' ? window.lux : null) as any
   const hasDmxEngine = !!lux?.sendDmxChannel || !!lux?.dmx?.sendDirect || !!lux?.arbiter
-  const canSendLive = hasDmxEngine
-  const isMoldTest = !fixtureId || dmxBaseAddress === null
+  // canSendLive: tiene motor DMX Y hay un fixture real para apuntar
+  const canSendLive = hasDmxEngine && !!effectiveTestFixtureId
+  const isMoldTest = !effectiveTestFixtureId || dmxBaseAddress === null
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2072 Phase 2: DMX INJECTION — 3-tier fallback
@@ -326,9 +341,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
         return
       }
     
-      if (!isMoldTest && lux?.arbiter?.setManual) {
+      if (!isMoldTest && effectiveTestFixtureId && lux?.arbiter?.setManual) {
         lux.arbiter.setManual({
-          fixtureIds: [fixtureId],
+          fixtureIds: [effectiveTestFixtureId],
           controls: { color_wheel: val },
           channels: ['color_wheel'],
         }).catch((err: unknown) => {
@@ -336,7 +351,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
         })
       }
     }, 40) // 25Hz max IPC rate — QUIET ZONE
-  }, [fixtureId, dmxBaseAddress, channelIndex, universe, testAddress, lux, isMoldTest])
+  }, [effectiveTestFixtureId, dmxBaseAddress, channelIndex, universe, testAddress, lux, isMoldTest])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS — All use deep-copy updateColorSlot or fresh arrays
@@ -435,14 +450,14 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     'zoom', 'focus', 'speed', 'color_wheel',
   ]), [])
 
-  // Extraer tipos de canal del fixture (ya cargado del store)
+  // Extraer tipos de canal del fixture efectivo (Stage, no el perfil de librería)
   const fixtureChannelTypes = useMemo(() => {
-    if (!fixture?.channels) return new Set<string>()
-    return new Set(fixture.channels.map((ch: any) => ch.type as string).filter(Boolean))
-  }, [fixture])
+    if (!effectiveTestFixture?.channels) return new Set<string>()
+    return new Set(effectiveTestFixture.channels.map((ch: any) => ch.type as string).filter(Boolean))
+  }, [effectiveTestFixture])
 
   const sendTestWithLight = useCallback(async (wheelDmxValue: number): Promise<void> => {
-    if (!fixtureId || !lux?.arbiter?.setManual) {
+    if (!effectiveTestFixtureId || !lux?.arbiter?.setManual) {
       // Fallback: si no hay arbiter ni fixtureId (mold-test), usar sendDmxChannel directo
       const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
       if (effectiveBaseAddress === null) return
@@ -489,14 +504,14 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
 
     try {
       await lux.arbiter.setManual({
-        fixtureIds: [fixtureId],
+        fixtureIds: [effectiveTestFixtureId],
         controls: controls as Record<string, number>,
         channels: channelsList,
       })
     } catch (err) {
       console.error('[WheelSmith] ❌ Arbiter.setManual falló:', err)
     }
-  }, [fixtureId, lux, fixture, fixtureChannelTypes, ARBITER_NATIVE_CHANNELS, isMoldTest, testAddress, dmxBaseAddress, universe, channelIndex])
+  }, [effectiveTestFixtureId, lux, effectiveTestFixture, fixtureChannelTypes, ARBITER_NATIVE_CHANNELS, isMoldTest, testAddress, dmxBaseAddress, universe, channelIndex])
 
   const handleSlotTest = useCallback((dmxValue: number) => {
     setProbeValue(dmxValue)
@@ -574,10 +589,30 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
             </div>
           )}
           
+          {/* WAVE 2073 rev4: Target Test Fixture — cuando el perfil es huérfano (librería/borrador) */}
+          {isOrphanProfile && hasDmxEngine && (
+            <div className="probe-target-fixture">
+              <span className="target-fixture-label">🎯 TEST en:</span>
+              <select
+                className="target-fixture-select"
+                value={targetTestFixtureId ?? ''}
+                onChange={(e) => setTargetTestFixtureId(e.target.value || null)}
+                title="Elige un fixture real del Stage como conejillo de indias"
+              >
+                <option value="">— elige fixture —</option>
+                {stageFixtures.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.name ?? f.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* DMX Status */}
           <span 
             className={`probe-dmx-status ${canSendLive ? 'connected' : 'offline'}`}
-            title={canSendLive ? 'DMX Connected' : 'Offline (Open from Stage)'}
+            title={canSendLive ? 'DMX Connected' : (isOrphanProfile ? 'Elige un fixture del Stage' : 'Offline (Open from Stage)')}
           >
             {canSendLive ? '🟢' : '🔴'}
           </span>

@@ -454,7 +454,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // ═══════════════════════════════════════════════════════════════════════
     
     // Validate pattern type
-    const validPatterns = ['circle', 'eight', 'sweep']
+    const validPatterns = ['circle', 'eight', 'sweep', 'tornado', 'gravity_bounce', 'butterfly', 'heartbeat']
     if (!validPatterns.includes(pattern)) {
       console.warn(`[Arbiter IPC] Invalid pattern: ${pattern}, using 'circle'`)
       pattern = 'circle'

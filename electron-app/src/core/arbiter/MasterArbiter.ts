@@ -76,7 +76,7 @@ interface ArbiterEvents {
  * Pattern configuration for movement generation
  */
 interface PatternConfig {
-  type: 'circle' | 'eight' | 'sweep'
+  type: 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
   speed: number      // 0.05-1.5 Hz (cycles per second)
   size: number       // 0-1 (amplitude as fraction of half DMX range)
   center: { pan: number; tilt: number }  // DMX 0-255 anchor position
@@ -1684,6 +1684,30 @@ export class MasterArbiter extends EventEmitter {
         // Sweep: x = sin(t), y = 0
         panOffset = Math.sin(t)
         tiltOffset = 0
+        break
+
+      case 'tornado':
+        // 🌪️ Tornado: Spiral that grows and shrinks — mesmerizing vortex
+        panOffset = Math.cos(t) * Math.sin(t * 0.25)
+        tiltOffset = Math.sin(t) * Math.sin(t * 0.25)
+        break
+
+      case 'gravity_bounce':
+        // 🏓 Gravity Bounce: Realistic bouncing ball with lateral sweep
+        panOffset = Math.sin(t)
+        tiltOffset = Math.abs(Math.cos(t * 1.5)) * -1
+        break
+
+      case 'butterfly':
+        // 🦋 Butterfly: Lissajous figure — celtic knot / infinity flower
+        panOffset = Math.sin(t * 3)
+        tiltOffset = Math.sin(t * 2)
+        break
+
+      case 'heartbeat':
+        // ⚡ Heartbeat: Violent techno pulse — sharp tilt spikes
+        panOffset = 0
+        tiltOffset = Math.pow(Math.sin(t * 2), 8) * Math.sign(Math.sin(t * 2))
         break
     }
     

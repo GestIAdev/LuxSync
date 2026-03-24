@@ -170,9 +170,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TACTICAL LAYOUT - THE MAIN STAGE (290px - dejando espacio para 2 filas de patrones)
+   TACTICAL LAYOUT - THE MAIN STAGE
+   🔧 WAVE 2184: Taller layout (340px) for longer sliders = better mouse precision
    [SPEED] [═══════ RADAR ═══════] [AMP]
-   ═══════════════════════════════════════════════════════════════════════ */
+   ═════════════════════════════════════════════════════════════════════ */
 
 .tactical-compact-layout {
   display: flex;
@@ -180,7 +181,7 @@
   align-items: stretch;
   justify-content: space-between;
   width: 100%;
-  height: 290px;
+  height: 340px;
   padding: 0 !important;
   margin: 0 !important;
   background: rgba(5, 5, 15, 0.9);
@@ -250,12 +251,12 @@
 .v-slider-input {
   transform: rotate(-90deg);
   transform-origin: center center;
-  width: 230px;
-  height: 24px;
+  width: 280px;
+  height: 28px;
   -webkit-appearance: none;
   appearance: none;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 14px;
   outline: none;
   cursor: pointer;
   margin: 0;
@@ -265,12 +266,12 @@
 .v-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   background: #00ffff;
   border-radius: 50%;
   cursor: grab;
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
 }
 
 .v-slider-input::-webkit-slider-thumb:active {
@@ -322,7 +323,7 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 .tactical-compact-layout.sniper-layout {
-  height: 260px; /* Shorter than group mode (290px) */
+  height: 310px; /* 🔧 WAVE 2184: Taller (was 260px) for longer sliders */
 }
 
 /* Sniper sliders - more compact */
@@ -333,8 +334,8 @@
 }
 
 .sniper-layout .v-slider-input {
-  width: 200px; /* Shorter track */
-  height: 20px;
+  width: 250px; /* 🔧 WAVE 2184: Longer track (was 200px) */
+  height: 24px;
 }
 
 .sniper-layout .v-slider-icon {

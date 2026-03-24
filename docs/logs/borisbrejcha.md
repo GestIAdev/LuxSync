@@ -1,1056 +1,838 @@
-00 | [M] Morph:0.28
-[F] P:0.67 R:0.21 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.20 SnP:0.39 OUT:0.00 | [M] Morph:0.28
-[IPC 📡] audioBuffer #977 | titan.running=true | size=8192
-[F] P:0.76 R:0.16 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.35 SnP:0.69 OUT:0.39 | [M] Morph:0.28
-[F] P:0.76 R:0.14 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.68 OUT:0.34 | [M] Morph:0.28
-[F] P:0.77 R:0.14 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.30 SnP:0.61 OUT:0.15 | [M] Morph:0.28
-[F] P:0.77 R:0.13 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.29 SnP:0.58 OUT:0.08 | [M] Morph:0.28
-[INTERVAL] F980 bpm=123 raw=185 conf=0.595 kick=false phase=0.86 needle=0.0404 bassFlux=0.0404 midFlux=0.0009 centroid=351Hz kicks=78
-[F] P:0.74 R:0.11 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.28
-[F] P:0.77 R:0.17 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.28
-[F] P:0.72 R:0.22 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.27
-[F] P:0.68 R:0.24 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.26
-[F] P:0.62 R:0.22 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.08 SnP:0.16 OUT:0.00 | [M] Morph:0.25
-[F] P:0.60 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.26 SnP:0.49 OUT:0.01 | [M] Morph:0.25
-[F] P:0.65 R:0.15 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.35 SnP:0.69 OUT:0.40 | [M] Morph:0.27
-[F] P:0.67 R:0.11 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.35 SnP:0.71 OUT:0.49 | [M] Morph:0.27
-[F] P:0.66 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.67 OUT:0.30 | [M] Morph:0.27
-[F] P:0.70 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.59 OUT:0.10 | [M] Morph:0.27
-[F] P:0.70 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.25 SnP:0.50 OUT:0.01 | [M] Morph:0.27
-[F] P:0.75 R:0.09 Gate:0.75 KickP:0.010 OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.30
-[🥁 INTERVAL BPM] KICK #79 bpm=185 conf=0.59 energy=0.2354 avg=0.0271 ratio=8.68 delta=0.2354 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.72 R:0.18 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.30
-[F] P:0.67 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.15 SnP:0.32 OUT:0.00 | [M] Morph:0.30
-[F] P:0.65 R:0.22 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.29
-[F] P:0.62 R:0.22 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.09 SnP:0.19 OUT:0.00 | [M] Morph:0.29
-[F] P:0.69 R:0.18 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.36 SnP:0.72 OUT:0.52 | [M] Morph:0.29
-[F] P:0.69 R:0.15 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.36 SnP:0.72 OUT:0.52 | [M] Morph:0.29
-[F] P:0.67 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.71 OUT:0.47 | [M] Morph:0.29
-[F] P:0.65 R:0.12 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.29
-[F] P:0.64 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.55 OUT:0.05 | [M] Morph:0.29
-[F] P:0.71 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.29
-[F] P:0.68 R:0.10 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.28
-[F] P:0.67 R:0.21 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.27
-[F] P:0.62 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.11 SnP:0.22 OUT:0.00 | [M] Morph:0.26
-[F] P:0.61 R:0.23 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.25
-[F] P:0.61 R:0.22 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.35 SnP:0.68 OUT:0.36 | [M] Morph:0.28
-[INTERVAL] F1000 bpm=123 raw=185 conf=0.576 kick=false phase=0.58 needle=0.0000 bassFlux=0.0000 midFlux=0.0332 centroid=3044Hz kicks=79
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=58% B/D/N=127/249/55
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.64 R:0.18 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.35 SnP:0.71 OUT:0.50 | [M] Morph:0.30
-[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:19 | Pan:97 Tilt:65 | sBPM:123 phase:39°
-[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:19 | Pan:-97 Tilt:65 | sBPM:123 phase:39°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.941 (Rock target: >0.7)
-   Flatness:    0.057 (Tonal<0.3, Noise>0.7)
-   Centroid:    1665Hz (Bright>2000, Dark<1200)
-   CrestFactor: 13.11 (Dynamics)
-   Rolloff:     1367Hz (85% energy)
-   Latency:     0.67ms
-   UltraAir:    0.012 (NEW: 16-22kHz sizzle)
-[SHADOW LOGGER] 🎯 DUMP COMPLETE: 1000 frames → C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\test-data\live_audio_dump.json
-[F] P:0.67 R:0.15 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.31 SnP:0.64 OUT:0.21 | [M] Morph:0.30
-[F] P:0.71 R:0.13 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.30 SnP:0.61 OUT:0.13 | [M] Morph:0.30
-[F] P:0.70 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.28 SnP:0.56 OUT:0.06 | [M] Morph:0.30
-[F] P:0.75 R:0.11 Gate:0.72 KickP:0.080 OUT:0.12 | [B] M:0.44 T:0.26 SnP:0.52 OUT:0.02 | [M] Morph:0.30
-[🥁 INTERVAL BPM] KICK #80 bpm=185 conf=0.57 energy=0.1782 avg=0.0321 ratio=5.55 delta=0.1782 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.73 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.30
-[F] P:0.71 R:0.22 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.30
-[F] P:0.67 R:0.21 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.30
-[F] P:0.66 R:0.21 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.13 SnP:0.26 OUT:0.00 | [M] Morph:0.30
-[F] P:0.68 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.36 SnP:0.72 OUT:0.54 | [M] Morph:0.32
-[F] P:0.67 R:0.16 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.36 SnP:0.75 OUT:0.70 | [M] Morph:0.33
-[TitanOrchestrator] 🎧 WORKER BPM=123 conf=0.57 | PLL=FREEWHEEL [mem=123@-0f] phase=0.00 sync=0.50 | beat #80
-[F] P:0.65 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.32 SnP:0.69 OUT:0.38 | [M] Morph:0.33
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.65 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.67 OUT:0.31 | [M] Morph:0.33
-[IPC 📡] audioBuffer #1010 | titan.running=true | size=8192
-[F] P:0.63 R:0.11 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.32
-[F] P:0.73 R:0.10 Gate:0.71 KickP:0.019 OUT:0.00 | [B] M:0.35 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.71 R:0.10 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.31
-[🥁 INTERVAL BPM] KICK #81 bpm=185 conf=0.62 energy=0.1401 avg=0.0324 ratio=4.33 delta=0.1401 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.68 R:0.18 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.31
-[F] P:0.65 R:0.19 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.23 T:0.12 SnP:0.24 OUT:0.00 | [M] Morph:0.30
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[F] P:0.67 R:0.19 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.23 T:0.10 SnP:0.20 OUT:0.00 | [M] Morph:0.29
-[F] P:0.78 R:0.19 Gate:0.71 KickP:0.201 OUT:0.29 | [B] M:0.43 T:0.33 SnP:0.64 OUT:0.22 | [M] Morph:0.29
-[F] P:0.79 R:0.17 Gate:0.72 KickP:0.000 OUT:0.19 | [B] M:0.41 T:0.33 SnP:0.67 OUT:0.32 | [M] Morph:0.29
-[F] P:0.84 R:0.15 Gate:0.72 KickP:0.526 OUT:0.75 | [B] M:0.37 T:0.30 SnP:0.61 OUT:0.15 | [M] Morph:0.29
-[F] P:0.85 R:0.17 Gate:0.72 KickP:0.000 OUT:0.50 | [B] M:0.37 T:0.29 SnP:0.58 OUT:0.08 | [M] Morph:0.29
-[F] P:0.87 R:0.19 Gate:0.73 KickP:0.000 OUT:0.33 | [B] M:0.31 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.28
-[F] P:0.85 R:0.19 Gate:0.73 KickP:0.000 OUT:0.21 | [B] M:0.38 T:0.22 SnP:0.43 OUT:0.00 | [M] Morph:0.28
-[F] P:0.85 R:0.18 Gate:0.73 KickP:0.000 OUT:0.14 | [B] M:0.46 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.30
-[INTERVAL] F1020 bpm=123 raw=185 conf=0.607 kick=false phase=0.15 needle=0.0959 bassFlux=0.0959 midFlux=0.0000 centroid=382Hz kicks=81
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1020: bpm=123, energy=0.64
-[F] P:0.80 R:0.25 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.41 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.30
-[F] P:0.75 R:0.30 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.30
-[AGC 🎚️] Gain: 0.70x | In: 0.200 → Out: 0.140 | Peak: 0.781 | ✅ ACTIVE
-[F] P:0.71 R:0.28 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.09 SnP:0.20 OUT:0.00 | [M] Morph:0.29
-[F] P:0.75 R:0.24 Gate:0.74 KickP:0.009 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.55 OUT:0.05 | [M] Morph:0.29
-[F] P:0.76 R:0.20 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.63 OUT:0.18 | [M] Morph:0.29
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.12 wE=0.55 ΔE=0.051 kick=false
-[F] P:0.78 R:0.17 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.31 SnP:0.61 OUT:0.15 | [M] Morph:0.29
-[F] P:0.80 R:0.15 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.60 OUT:0.12 | [M] Morph:0.29
-[F] P:0.84 R:0.13 Gate:0.75 KickP:0.350 OUT:0.50 | [B] M:0.34 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.28
-[F] P:0.85 R:0.14 Gate:0.75 KickP:0.000 OUT:0.33 | [B] M:0.35 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.28
-[🥁 INTERVAL BPM] KICK #82 bpm=185 conf=0.60 energy=0.1598 avg=0.0303 ratio=5.27 delta=0.1248 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.84 R:0.14 Gate:0.75 KickP:0.000 OUT:0.21 | [B] M:0.30 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.27
-[F] P:0.80 R:0.26 Gate:0.75 KickP:0.000 OUT:0.14 | [B] M:0.26 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.27
-[F] P:0.76 R:0.28 Gate:0.75 KickP:0.000 OUT:0.09 | [B] M:0.24 T:0.13 SnP:0.24 OUT:0.00 | [M] Morph:0.26
-[F] P:0.73 R:0.28 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.25
-[F] P:0.77 R:0.29 Gate:0.76 KickP:0.031 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.62 OUT:0.15 | [M] Morph:0.26
-[F] P:0.79 R:0.23 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.34 SnP:0.67 OUT:0.30 | [M] Morph:0.27
-[F] P:0.80 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.33 SnP:0.65 OUT:0.23 | [M] Morph:0.26
-[F] P:0.80 R:0.17 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.31 SnP:0.61 OUT:0.13 | [M] Morph:0.26
-[F] P:0.81 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.25 SnP:0.50 OUT:0.01 | [M] Morph:0.26
-[F] P:0.80 R:0.22 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.23 SnP:0.45 OUT:0.00 | [M] Morph:0.26
-[F] P:0.82 R:0.20 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.21 SnP:0.44 OUT:0.00 | [M] Morph:0.28
-[F] P:0.78 R:0.27 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.29
-[F] P:0.72 R:0.27 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.13 SnP:0.28 OUT:0.00 | [M] Morph:0.28
-[F] P:0.72 R:0.27 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.28
-[F] P:0.70 R:0.24 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.30 SnP:0.60 OUT:0.11 | [M] Morph:0.28
-[F] P:0.72 R:0.21 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.66 OUT:0.26 | [M] Morph:0.29
-[F] P:0.73 R:0.18 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.33 SnP:0.66 OUT:0.29 | [M] Morph:0.29
-[F] P:0.73 R:0.17 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.62 OUT:0.17 | [M] Morph:0.29
-[INTERVAL] F1040 bpm=123 raw=185 conf=0.588 kick=false phase=0.86 needle=0.0000 bassFlux=0.0000 midFlux=0.0122 centroid=1395Hz kicks=82
-[F] P:0.70 R:0.14 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.29 SnP:0.58 OUT:0.09 | [M] Morph:0.28
-[F] P:0.70 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.28
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.990 (Rock target: >0.7)
-   Flatness:    0.004 (Tonal<0.3, Noise>0.7)
-   Centroid:    360Hz (Bright>2000, Dark<1200)
-   CrestFactor: 15.98 (Dynamics)
-   Rolloff:     549Hz (85% energy)
-   Latency:     1.05ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[F] P:0.76 R:0.12 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.20 SnP:0.40 OUT:0.00 | [M] Morph:0.28
-[IPC 📡] audioBuffer #1042 | titan.running=true | size=8192
-[🥁 INTERVAL BPM] KICK #83 bpm=185 conf=0.59 energy=0.1350 avg=0.0274 ratio=4.92 delta=0.1350 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.74 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.18 SnP:0.35 OUT:0.00 | [M] Morph:0.27
-[F] P:0.70 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.26
-[F] P:0.66 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.11 SnP:0.22 OUT:0.00 | [M] Morph:0.25
-[F] P:0.64 R:0.18 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.27 SnP:0.51 OUT:0.02 | [M] Morph:0.25
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=57% B/D/N=140/248/47
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.69 R:0.14 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.32 SnP:0.63 OUT:0.17 | [M] Morph:0.25
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(39%) | Safety:✅OK
-[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:20 | Pan:-160 Tilt:34 | sBPM:123 phase:297°
-[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:20 | Pan:160 Tilt:34 | sBPM:123 phase:297°
-[F] P:0.68 R:0.11 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.32 SnP:0.62 OUT:0.16 | [M] Morph:0.25
-[F] P:0.69 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.31 SnP:0.60 OUT:0.12 | [M] Morph:0.25
-[F] P:0.72 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.25 SnP:0.49 OUT:0.01 | [M] Morph:0.24
-[F] P:0.71 R:0.11 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.23 SnP:0.45 OUT:0.00 | [M] Morph:0.24
-[🥁 INTERVAL BPM] KICK #84 bpm=185 conf=0.62 energy=0.1165 avg=0.0289 ratio=4.03 delta=0.1165 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.78 R:0.16 Gate:0.75 KickP:0.046 OUT:0.00 | [B] M:0.45 T:0.23 SnP:0.46 OUT:0.00 | [M] Morph:0.26
-[F] P:0.72 R:0.20 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.18 SnP:0.36 OUT:0.00 | [M] Morph:0.26
-[F] P:0.69 R:0.25 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.15 SnP:0.31 OUT:0.00 | [M] Morph:0.26
-[F] P:0.67 R:0.24 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.25
-[F] P:0.62 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.17 SnP:0.34 OUT:0.00 | [M] Morph:0.25
-[F] P:0.66 R:0.19 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.28 SnP:0.55 OUT:0.04 | [M] Morph:0.25
-[TitanOrchestrator] 🎧 WORKER BPM=123 conf=0.61 | PLL=FREEWHEEL [mem=123@-0f] phase=0.00 sync=0.53 | beat #84
-[F] P:0.70 R:0.15 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.31 SnP:0.60 OUT:0.10 | [M] Morph:0.24
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.2952
-[F] P:0.71 R:0.13 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.30 SnP:0.57 OUT:0.07 | [M] Morph:0.24
-[F] P:0.66 R:0.11 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.26 SnP:0.50 OUT:0.01 | [M] Morph:0.24
-[F] P:0.64 R:0.10 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.24 SnP:0.47 OUT:0.00 | [M] Morph:0.23
-[F] P:0.74 R:0.09 Gate:0.74 KickP:0.002 OUT:0.00 | [B] M:0.29 T:0.18 SnP:0.35 OUT:0.00 | [M] Morph:0.23
-[🥁 INTERVAL BPM] KICK #85 bpm=185 conf=0.62 energy=0.1854 avg=0.0252 ratio=7.35 delta=0.1854 history=8/8 bpmBuf=[161,185,161,161,185,185,185,185]
-[F] P:0.72 R:0.19 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.22
-[F] P:0.69 R:0.22 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.14 SnP:0.26 OUT:0.00 | [M] Morph:0.22
-[F] P:0.67 R:0.24 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.23 T:0.12 SnP:0.22 OUT:0.00 | [M] Morph:0.21
-[F] P:0.62 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.11 SnP:0.20 OUT:0.00 | [M] Morph:0.20
-[INTERVAL] F1060 bpm=123 raw=185 conf=0.612 kick=false phase=0.43 needle=0.0000 bassFlux=0.0000 midFlux=0.0084 centroid=7189Hz kicks=85
-[F] P:0.64 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.27 SnP:0.50 OUT:0.01 | [M] Morph:0.20
-[F] P:0.62 R:0.16 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.31 SnP:0.59 OUT:0.09 | [M] Morph:0.20
-[F] P:0.60 R:0.13 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.30 SnP:0.58 OUT:0.07 | [M] Morph:0.19
-[F] P:0.68 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.26 SnP:0.49 OUT:0.01 | [M] Morph:0.19
-[F] P:0.69 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.24 SnP:0.45 OUT:0.00 | [M] Morph:0.19
-[F] P:0.77 R:0.10 Gate:0.72 KickP:0.112 OUT:0.15 | [B] M:0.50 T:0.24 SnP:0.46 OUT:0.00 | [M] Morph:0.23
-[🥁 INTERVAL BPM] KICK #86 bpm=185 conf=0.62 energy=0.1229 avg=0.0275 ratio=4.47 delta=0.0821 history=8/8 bpmBuf=[161,185,161,185,185,185,185,185]
-[F] P:0.75 R:0.15 Gate:0.72 KickP:0.000 OUT:0.10 | [B] M:0.48 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.27
-[F] P:0.69 R:0.21 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.26
-[F] P:0.67 R:0.23 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.26
-[F] P:0.62 R:0.22 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.08 SnP:0.16 OUT:0.00 | [M] Morph:0.26
-[F] P:0.61 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.28 SnP:0.54 OUT:0.03 | [M] Morph:0.26
-[F] P:0.66 R:0.17 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.67 OUT:0.31 | [M] Morph:0.26
-[F] P:0.66 R:0.15 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.67 OUT:0.32 | [M] Morph:0.28
-[F] P:0.68 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.31 SnP:0.64 OUT:0.22 | [M] Morph:0.29
-[F] P:0.64 R:0.12 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.27 SnP:0.56 OUT:0.07 | [M] Morph:0.29
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.63 wE=0.13 ΔE=-0.171 kick=false
-[F] P:0.76 R:0.09 Gate:0.71 KickP:0.130 OUT:0.19 | [B] M:0.37 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.29
-[🥁 INTERVAL BPM] KICK #87 bpm=185 conf=0.62 energy=0.1647 avg=0.0263 ratio=6.27 delta=0.1647 history=8/8 bpmBuf=[161,185,161,185,161,185,185,185]
-[F] P:0.74 R:0.16 Gate:0.71 KickP:0.000 OUT:0.12 | [B] M:0.35 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.29
-[F] P:0.70 R:0.22 Gate:0.72 KickP:0.000 OUT:0.08 | [B] M:0.29 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.28
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[F] P:0.68 R:0.24 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.12 SnP:0.24 OUT:0.00 | [M] Morph:0.27
-[F] P:0.68 R:0.22 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.08 SnP:0.16 OUT:0.00 | [M] Morph:0.27
-[IPC 📡] audioBuffer #1075 | titan.running=true | size=8192
-[F] P:0.76 R:0.19 Gate:0.72 KickP:0.133 OUT:0.19 | [B] M:0.41 T:0.28 SnP:0.54 OUT:0.04 | [M] Morph:0.27
-[F] P:0.81 R:0.17 Gate:0.72 KickP:0.339 OUT:0.48 | [B] M:0.44 T:0.35 SnP:0.69 OUT:0.39 | [M] Morph:0.28
-[F] P:0.81 R:0.16 Gate:0.72 KickP:0.000 OUT:0.32 | [B] M:0.43 T:0.33 SnP:0.68 OUT:0.35 | [M] Morph:0.29
-[F] P:0.84 R:0.15 Gate:0.73 KickP:0.491 OUT:0.70 | [B] M:0.43 T:0.30 SnP:0.61 OUT:0.14 | [M] Morph:0.29
-[F] P:0.84 R:0.14 Gate:0.73 KickP:0.000 OUT:0.46 | [B] M:0.41 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.29
-[F] P:0.84 R:0.12 Gate:0.73 KickP:0.855 OUT:1.00 | [B] M:0.49 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.32
-[F] P:0.81 R:0.11 Gate:0.73 KickP:0.000 OUT:0.67 | [B] M:0.46 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #88 bpm=173 conf=0.62 energy=0.1298 avg=0.0268 ratio=4.84 delta=0.1298 history=8/8 bpmBuf=[161,185,161,185,161,161,185,185]
-[INTERVAL] F1080 bpm=130 raw=173 conf=0.615 kick=true phase=0.00 needle=0.1298 bassFlux=0.1298 midFlux=0.0000 centroid=420Hz kicks=88
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1080: bpm=130, energy=0.80
-[F] P:0.75 R:0.20 Gate:0.73 KickP:0.000 OUT:0.44 | [B] M:0.39 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.33
-[F] P:0.74 R:0.26 Gate:0.73 KickP:0.000 OUT:0.30 | [B] M:0.37 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.33
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.992 (Rock target: >0.7)
-   Flatness:    0.002 (Tonal<0.3, Noise>0.7)
-   Centroid:    197Hz (Bright>2000, Dark<1200)
-   CrestFactor: 29.14 (Dynamics)
-   Rolloff:     75Hz (85% energy)
-   Latency:     1.55ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.71x | In: 0.201 → Out: 0.143 | Peak: 0.745 | ✅ ACTIVE
-[F] P:0.69 R:0.25 Gate:0.73 KickP:0.000 OUT:0.20 | [B] M:0.32 T:0.09 SnP:0.21 OUT:0.00 | [M] Morph:0.32
-[F] P:0.74 R:0.22 Gate:0.73 KickP:0.003 OUT:0.13 | [B] M:0.46 T:0.31 SnP:0.64 OUT:0.22 | [M] Morph:0.33
-[F] P:0.75 R:0.19 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.44 T:0.34 SnP:0.72 OUT:0.53 | [M] Morph:0.33
-[F] P:0.75 R:0.16 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.70 OUT:0.45 | [M] Morph:0.33
-[F] P:0.75 R:0.14 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.67 OUT:0.32 | [M] Morph:0.33
-[F] P:0.77 R:0.13 Gate:0.74 KickP:0.089 OUT:0.13 | [B] M:0.40 T:0.27 SnP:0.58 OUT:0.09 | [M] Morph:0.33
-[F] P:0.77 R:0.12 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.39 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #89 bpm=173 conf=0.62 energy=0.1589 avg=0.0240 ratio=6.62 delta=0.1589 history=8/8 bpmBuf=[161,185,161,185,161,161,185,185]
-[F] P:0.80 R:0.19 Gate:0.74 KickP:0.192 OUT:0.28 | [B] M:0.33 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.32
-[F] P:0.76 R:0.23 Gate:0.74 KickP:0.000 OUT:0.19 | [B] M:0.29 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.32
-[F] P:0.75 R:0.25 Gate:0.75 KickP:0.000 OUT:0.12 | [B] M:0.27 T:0.13 SnP:0.26 OUT:0.00 | [M] Morph:0.31
-[F] P:0.70 R:0.25 Gate:0.74 KickP:0.000 OUT:0.08 | [B] M:0.23 T:0.08 SnP:0.17 OUT:0.00 | [M] Morph:0.30
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=57% B/D/N=133/244/53
-[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 300 frames (5.0s)
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.70 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.24 SnP:0.47 OUT:0.00 | [M] Morph:0.29
-[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:22 | Pan:-42 Tilt:-93 | sBPM:127 phase:197°
-[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:22 | Pan:42 Tilt:-93 | sBPM:127 phase:197°
-[F] P:0.76 R:0.19 Gate:0.75 KickP:0.023 OUT:0.00 | [B] M:0.41 T:0.37 SnP:0.72 OUT:0.52 | [M] Morph:0.29
-[F] P:0.75 R:0.15 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.35 SnP:0.71 OUT:0.48 | [M] Morph:0.29
-[F] P:0.79 R:0.13 Gate:0.75 KickP:0.100 OUT:0.14 | [B] M:0.41 T:0.30 SnP:0.61 OUT:0.15 | [M] Morph:0.29
-[F] P:0.78 R:0.12 Gate:0.75 KickP:0.000 OUT:0.09 | [B] M:0.38 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.29
-[F] P:0.83 R:0.12 Gate:0.75 KickP:0.289 OUT:0.42 | [B] M:0.50 T:0.26 SnP:0.54 OUT:0.04 | [M] Morph:0.32
-[F] P:0.82 R:0.12 Gate:0.75 KickP:0.000 OUT:0.28 | [B] M:0.50 T:0.25 SnP:0.53 OUT:0.04 | [M] Morph:0.35
-[🥁 INTERVAL BPM] KICK #90 bpm=161 conf=0.62 energy=0.1219 avg=0.0255 ratio=4.78 delta=0.1219 history=8/8 bpmBuf=[161,185,161,185,161,161,185,161]
-[F] P:0.76 R:0.21 Gate:0.75 KickP:0.000 OUT:0.19 | [B] M:0.43 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.35
-[F] P:0.74 R:0.28 Gate:0.75 KickP:0.000 OUT:0.13 | [B] M:0.41 T:0.17 SnP:0.37 OUT:0.00 | [M] Morph:0.35
-[F] P:0.68 R:0.27 Gate:0.75 KickP:0.000 OUT:0.08 | [B] M:0.34 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.34
-[F] P:0.68 R:0.23 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.34
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.61 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.50 | beat #90
-[F] P:0.73 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.34 SnP:0.72 OUT:0.55 | [M] Morph:0.34
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.73 R:0.16 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.33 SnP:0.72 OUT:0.53 | [M] Morph:0.34
-[F] P:0.71 R:0.16 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.30 SnP:0.65 OUT:0.25 | [M] Morph:0.34
-[INTERVAL] F1100 bpm=121 raw=161 conf=0.610 kick=false phase=0.62 needle=0.0000 bassFlux=0.0000 midFlux=0.0084 centroid=966Hz kicks=90
-[F] P:0.72 R:0.14 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.27 SnP:0.57 OUT:0.07 | [M] Morph:0.33
-[F] P:0.71 R:0.12 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.33
-[F] P:0.76 R:0.11 Gate:0.75 KickP:0.008 OUT:0.00 | [B] M:0.35 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #91 bpm=173 conf=0.62 energy=0.1732 avg=0.0258 ratio=6.70 delta=0.1732 history=8/8 bpmBuf=[185,185,161,185,161,161,185,161]
-[F] P:0.68 R:0.18 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.13 SnP:0.26 OUT:0.00 | [M] Morph:0.32
-[F] P:0.67 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.31
-[F] P:0.62 R:0.19 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.07 SnP:0.15 OUT:0.00 | [M] Morph:0.30
-[F] P:0.61 R:0.18 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.29
-[F] P:0.67 R:0.14 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.37 SnP:0.75 OUT:0.69 | [M] Morph:0.30
-[F] P:0.66 R:0.12 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.34 SnP:0.69 OUT:0.40 | [M] Morph:0.30
-[IPC 📡] audioBuffer #1107 | titan.running=true | size=8192
-[F] P:0.65 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.67 OUT:0.31 | [M] Morph:0.30
-[F] P:0.72 R:0.08 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.29
-[F] P:0.69 R:0.08 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.24 SnP:0.49 OUT:0.01 | [M] Morph:0.30
-[🥁 INTERVAL BPM] KICK #92 bpm=173 conf=0.62 energy=0.1468 avg=0.0288 ratio=5.09 delta=0.0918 history=8/8 bpmBuf=[185,185,161,185,161,161,185,161]
-[F] P:0.70 R:0.19 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.30
-[F] P:0.68 R:0.27 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.30
-[F] P:0.65 R:0.28 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.16 SnP:0.32 OUT:0.00 | [M] Morph:0.30
-[F] P:0.61 R:0.28 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.10 SnP:0.22 OUT:0.00 | [M] Morph:0.29
-[F] P:0.63 R:0.25 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.27 SnP:0.55 OUT:0.04 | [M] Morph:0.29
-[F] P:0.72 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.36 SnP:0.72 OUT:0.54 | [M] Morph:0.29
-[F] P:0.71 R:0.17 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.35 SnP:0.71 OUT:0.50 | [M] Morph:0.29
-[F] P:0.68 R:0.16 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.32 SnP:0.66 OUT:0.26 | [M] Morph:0.29
-[F] P:0.68 R:0.14 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.30 SnP:0.62 OUT:0.16 | [M] Morph:0.28
-[F] P:0.70 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.28
-[🥁 INTERVAL BPM] KICK #93 bpm=185 conf=0.62 energy=0.1919 avg=0.0302 ratio=6.35 delta=0.1919 history=8/8 bpmBuf=[185,185,185,185,161,161,185,161]
-[F] P:0.73 R:0.19 Gate:0.73 KickP:0.010 OUT:0.00 | [B] M:0.34 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.28
-[F] P:0.69 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.27
-[F] P:0.68 R:0.27 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.19 SnP:0.37 OUT:0.00 | [M] Morph:0.28
-[F] P:0.65 R:0.29 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.19 SnP:0.41 OUT:0.00 | [M] Morph:0.31
-[F] P:0.63 R:0.26 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.32
-[INTERVAL] F1120 bpm=123 raw=185 conf=0.611 kick=false phase=0.57 needle=0.0000 bassFlux=0.0178 midFlux=0.0186 centroid=4160Hz kicks=93
-[F] P:0.72 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.36 SnP:0.78 OUT:0.90 | [M] Morph:0.36
-[F] P:0.72 R:0.16 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.35 SnP:0.79 OUT:1.03 | [M] Morph:0.38
+[F] P:0.91 R:0.32 Gate:0.61 KickP:0.000 OUT:0.73 | [B] M:0.54 T:0.44 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.91 R:0.37 Gate:0.61 KickP:1.000 OUT:1.00 | [B] M:0.54 T:0.44 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.89 R:0.40 Gate:0.62 KickP:0.000 OUT:0.73 | [B] M:0.54 T:0.47 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.88 R:0.42 Gate:0.63 KickP:0.000 OUT:0.53 | [B] M:0.56 T:0.50 SnP:1.00 OUT:3.41 | [M] Morph:0.63
+[F] P:0.86 R:0.34 Gate:0.63 KickP:0.000 OUT:0.38 | [B] M:0.55 T:0.50 SnP:1.00 OUT:3.41 | [M] Morph:0.63
+[F] P:0.84 R:0.27 Gate:0.64 KickP:0.000 OUT:0.28 | [B] M:0.56 T:0.50 SnP:1.00 OUT:3.41 | [M] Morph:0.64
+[F] P:0.83 R:0.22 Gate:0.64 KickP:1.000 OUT:1.00 | [B] M:0.52 T:0.46 SnP:1.00 OUT:3.41 | [M] Morph:0.64
+[F] P:0.82 R:0.20 Gate:0.64 KickP:0.000 OUT:0.73 | [B] M:0.55 T:0.45 SnP:1.00 OUT:3.41 | [M] Morph:0.64
+[F] P:0.91 R:0.21 Gate:0.65 KickP:1.000 OUT:1.00 | [B] M:0.50 T:0.39 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[🥁 INTERVAL BPM] KICK #7 bpm=173 conf=0.10 energy=0.2312 avg=0.0378 ratio=6.11 delta=0.1610 history=6/8 bpmBuf=[161,185,161,215,161,185]
+[F] P:0.90 R:0.38 Gate:0.65 KickP:0.000 OUT:0.73 | [B] M:0.45 T:0.34 SnP:0.92 OUT:2.27 | [M] Morph:0.63
+[F] P:0.86 R:0.52 Gate:0.66 KickP:0.000 OUT:0.53 | [B] M:0.39 T:0.29 SnP:0.77 OUT:0.88 | [M] Morph:0.62
+[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.10 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #7
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4569K
+[F] P:0.82 R:0.48 Gate:0.66 KickP:0.000 OUT:0.38 | [B] M:0.35 T:0.23 SnP:0.61 OUT:0.20 | [M] Morph:0.61
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.80 R:0.43 Gate:0.67 KickP:0.000 OUT:0.27 | [B] M:0.44 T:0.40 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.84 R:0.34 Gate:0.67 KickP:1.000 OUT:1.00 | [B] M:0.53 T:0.50 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.84 R:0.29 Gate:0.67 KickP:1.000 OUT:1.00 | [B] M:0.52 T:0.52 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.84 R:0.25 Gate:0.68 KickP:0.000 OUT:0.72 | [B] M:0.54 T:0.51 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.83 R:0.23 Gate:0.68 KickP:0.000 OUT:0.52 | [B] M:0.50 T:0.48 SnP:1.00 OUT:3.50 | [M] Morph:0.60
+[F] P:0.89 R:0.24 Gate:0.69 KickP:1.000 OUT:1.00 | [B] M:0.55 T:0.44 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.90 R:0.24 Gate:0.69 KickP:1.000 OUT:1.00 | [B] M:0.56 T:0.44 SnP:1.00 OUT:3.47 | [M] Morph:0.61
+[🥁 INTERVAL BPM] KICK #8 bpm=161 conf=0.10 energy=0.1692 avg=0.0350 ratio=4.83 delta=0.1692 history=7/8 bpmBuf=[161,185,161,215,161,185,161]
+[F] P:0.90 R:0.34 Gate:0.69 KickP:1.000 OUT:1.00 | [B] M:0.54 T:0.42 SnP:1.00 OUT:3.47 | [M] Morph:0.61
+[F] P:0.84 R:0.41 Gate:0.70 KickP:0.000 OUT:0.72 | [B] M:0.53 T:0.36 SnP:0.97 OUT:2.99 | [M] Morph:0.61
+[INTERVAL] F60 bpm=121 raw=161 conf=0.102 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0303 centroid=1019Hz kicks=8
+[BETA 🎵] Key Detected: A minor (Confidence: 0.91)
+[GAMMA 🎵] Frame 60: bpm=121, energy=0.60
+[F] P:0.82 R:0.43 Gate:0.70 KickP:0.000 OUT:0.52 | [B] M:0.53 T:0.34 SnP:0.91 OUT:2.15 | [M] Morph:0.61
+[AGC 🎚️] Gain: 0.57x | In: 0.835 → Out: 0.478 | Peak: 0.855 | ✅ ACTIVE
+[F] P:0.77 R:0.34 Gate:0.70 KickP:0.000 OUT:0.38 | [B] M:0.52 T:0.43 SnP:1.00 OUT:3.48 | [M] Morph:0.61
+[F] P:0.80 R:0.27 Gate:0.71 KickP:0.981 OUT:1.00 | [B] M:0.59 T:0.51 SnP:1.00 OUT:3.44 | [M] Morph:0.62
+[F] P:0.80 R:0.22 Gate:0.71 KickP:0.000 OUT:0.73 | [B] M:0.57 T:0.52 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.79 R:0.18 Gate:0.71 KickP:0.000 OUT:0.53 | [B] M:0.58 T:0.52 SnP:1.00 OUT:3.39 | [M] Morph:0.64
+[F] P:0.84 R:0.17 Gate:0.71 KickP:1.000 OUT:1.00 | [B] M:0.54 T:0.48 SnP:1.00 OUT:3.40 | [M] Morph:0.64
+[IPC 📡] audioBuffer #65 | titan.running=true | size=8192
+[F] P:0.83 R:0.19 Gate:0.72 KickP:0.000 OUT:0.73 | [B] M:0.52 T:0.44 SnP:1.00 OUT:3.40 | [M] Morph:0.64
+[F] P:0.94 R:0.20 Gate:0.72 KickP:1.000 OUT:1.00 | [B] M:0.51 T:0.41 SnP:1.00 OUT:3.41 | [M] Morph:0.64
+[Arbiter IPC] 🧠 State Hydration for 1 fixtures (Leader: fixture-1773868758301)
+[Arbiter IPC] 🧠 State Hydration for 1 fixtures (Leader: fixture-1773868758301)
+[Arbiter IPC] 🧠 State Hydration for 1 fixtures (Leader: fixture-1773868758301)
+[F] P:0.94 R:0.30 Gate:0.72 KickP:1.000 OUT:1.00 | [B] M:0.48 T:0.39 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.91 R:0.37 Gate:0.73 KickP:0.000 OUT:0.73 | [B] M:0.44 T:0.35 SnP:0.95 OUT:2.71 | [M] Morph:0.63
+[F] P:0.89 R:0.48 Gate:0.73 KickP:0.000 OUT:0.53 | [B] M:0.43 T:0.33 SnP:0.88 OUT:1.74 | [M] Morph:0.62
+[F] P:0.83 R:0.56 Gate:0.73 KickP:0.000 OUT:0.38 | [B] M:0.45 T:0.40 SnP:1.00 OUT:3.46 | [M] Morph:0.62
+[F] P:0.83 R:0.47 Gate:0.74 KickP:0.858 OUT:1.00 | [B] M:0.53 T:0.49 SnP:1.00 OUT:3.46 | [M] Morph:0.62
+[F] P:0.84 R:0.39 Gate:0.74 KickP:1.000 OUT:1.00 | [B] M:0.55 T:0.52 SnP:1.00 OUT:3.46 | [M] Morph:0.62
+[F] P:0.81 R:0.32 Gate:0.74 KickP:0.000 OUT:0.72 | [B] M:0.57 T:0.53 SnP:1.00 OUT:3.44 | [M] Morph:0.62
+[F] P:0.83 R:0.26 Gate:0.74 KickP:0.745 OUT:1.00 | [B] M:0.56 T:0.52 SnP:1.00 OUT:3.43 | [M] Morph:0.63
+[F] P:0.83 R:0.23 Gate:0.75 KickP:0.836 OUT:1.00 | [B] M:0.54 T:0.47 SnP:1.00 OUT:3.44 | [M] Morph:0.63
+[F] P:0.91 R:0.21 Gate:0.75 KickP:1.000 OUT:1.00 | [B] M:0.57 T:0.47 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.92 R:0.20 Gate:0.75 KickP:1.000 OUT:1.00 | [B] M:0.55 T:0.44 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[🥁 INTERVAL BPM] KICK #9 bpm=161 conf=0.00 energy=0.2038 avg=0.0431 ratio=4.73 delta=0.1411 history=8/8 bpmBuf=[161,185,161,215,161,185,161,92]
+[F] P:0.88 R:0.34 Gate:0.76 KickP:0.000 OUT:0.73 | [B] M:0.51 T:0.40 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.83 R:0.40 Gate:0.76 KickP:0.000 OUT:0.53 | [B] M:0.45 T:0.34 SnP:0.92 OUT:2.23 | [M] Morph:0.63
+[F] P:0.81 R:0.44 Gate:0.76 KickP:0.000 OUT:0.38 | [B] M:0.43 T:0.33 SnP:0.86 OUT:1.56 | [M] Morph:0.62
+[F] P:0.86 R:0.47 Gate:0.76 KickP:0.933 OUT:1.00 | [B] M:0.56 T:0.50 SnP:1.00 OUT:3.44 | [M] Morph:0.62
+[F] P:0.86 R:0.39 Gate:0.76 KickP:1.000 OUT:1.00 | [B] M:0.56 T:0.53 SnP:1.00 OUT:3.43 | [M] Morph:0.63
+[F] P:0.84 R:0.32 Gate:0.77 KickP:0.000 OUT:0.73 | [B] M:0.61 T:0.53 SnP:1.00 OUT:3.37 | [M] Morph:0.65
+[F] P:0.87 R:0.26 Gate:0.77 KickP:1.000 OUT:1.00 | [B] M:0.59 T:0.52 SnP:1.00 OUT:3.34 | [M] Morph:0.66
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=41% B/D/N=72/72/99
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.87 R:0.22 Gate:0.77 KickP:1.000 OUT:1.00 | [B] M:0.57 T:0.47 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:2 | Pan:24 Tilt:0 | sBPM:120 phase:174°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:2 | Pan:137 Tilt:0 | sBPM:120 phase:174°
+[🥁 INTERVAL BPM] KICK #10 bpm=173 conf=0.00 energy=0.1774 avg=0.0379 ratio=4.68 delta=0.1774 history=8/8 bpmBuf=[215,185,161,215,161,185,161,92]
+[SimpleSectionTracker] 📍 verse → buildup | bassR=1.11 wE=0.71 ΔE=0.044 kick=true
+[F] P:0.91 R:0.26 Gate:0.77 KickP:0.794 OUT:1.00 | [B] M:0.56 T:0.45 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[INTERVAL] F80 bpm=130 raw=173 conf=0.000 kick=false phase=0.13 needle=0.0838 bassFlux=0.0838 midFlux=0.0000 centroid=165Hz kicks=10
+[F] P:0.93 R:0.34 Gate:0.78 KickP:0.000 OUT:0.73 | [B] M:0.51 T:0.40 SnP:1.00 OUT:3.34 | [M] Morph:0.66
+[F] P:0.91 R:0.40 Gate:0.78 KickP:0.000 OUT:0.54 | [B] M:0.49 T:0.38 SnP:1.00 OUT:3.35 | [M] Morph:0.66
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
    Clarity:     0.964 (Rock target: >0.7)
-   Flatness:    0.029 (Tonal<0.3, Noise>0.7)
-   Centroid:    866Hz (Bright>2000, Dark<1200)
-   CrestFactor: 21.51 (Dynamics)
-   Rolloff:     517Hz (85% energy)
-   Latency:     1.11ms
-   UltraAir:    0.009 (NEW: 16-22kHz sizzle)
-[F] P:0.70 R:0.14 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.32 SnP:0.72 OUT:0.57 | [M] Morph:0.39
-[F] P:0.68 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.28 SnP:0.63 OUT:0.21 | [M] Morph:0.38
-[F] P:0.70 R:0.11 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.26 SnP:0.58 OUT:0.10 | [M] Morph:0.39
-[F] P:0.73 R:0.11 Gate:0.72 KickP:0.016 OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.53 OUT:0.04 | [M] Morph:0.39
-[🥁 INTERVAL BPM] KICK #94 bpm=173 conf=0.62 energy=0.2045 avg=0.0368 ratio=5.55 delta=0.2045 history=8/8 bpmBuf=[185,185,185,161,161,161,185,161]
-[F] P:0.68 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.39
-[F] P:0.66 R:0.27 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.17 SnP:0.40 OUT:0.00 | [M] Morph:0.39
-[F] P:0.63 R:0.29 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.38
-[F] P:0.61 R:0.26 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.38
-[F] P:0.65 R:0.24 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.36 SnP:0.78 OUT:0.94 | [M] Morph:0.38
-[F] P:0.65 R:0.20 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.35 SnP:0.77 OUT:0.86 | [M] Morph:0.37
-[F] P:0.64 R:0.17 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.70 OUT:0.46 | [M] Morph:0.37
-[F] P:0.66 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.30 SnP:0.66 OUT:0.29 | [M] Morph:0.37
-[F] P:0.61 R:0.11 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.24 SnP:0.53 OUT:0.04 | [M] Morph:0.37
-[F] P:0.68 R:0.08 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.24 SnP:0.51 OUT:0.03 | [M] Morph:0.36
-[F] P:0.62 R:0.08 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.36
-[F] P:0.60 R:0.06 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.35
-[F] P:0.59 R:0.05 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.34
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=59% B/D/N=124/254/55
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.70 R:0.04 Gate:0.70 KickP:0.001 OUT:0.00 | [B] M:0.35 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.34
-[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:23 | Pan:188 Tilt:-18 | sBPM:128 phase:104°
-[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:23 | Pan:-188 Tilt:-18 | sBPM:128 phase:104°
-[F] P:0.82 R:0.05 Gate:0.70 KickP:0.567 OUT:0.84 | [B] M:0.46 T:0.37 SnP:0.76 OUT:0.82 | [M] Morph:0.35
-[F] P:0.82 R:0.06 Gate:0.70 KickP:0.000 OUT:0.56 | [B] M:0.44 T:0.36 SnP:0.75 OUT:0.75 | [M] Morph:0.35
-[F] P:0.84 R:0.07 Gate:0.71 KickP:0.000 OUT:0.38 | [B] M:0.42 T:0.33 SnP:0.69 OUT:0.41 | [M] Morph:0.35
-[F] P:0.86 R:0.07 Gate:0.71 KickP:0.000 OUT:0.25 | [B] M:0.42 T:0.30 SnP:0.64 OUT:0.23 | [M] Morph:0.35
-[F] P:0.87 R:0.09 Gate:0.71 KickP:0.000 OUT:0.17 | [B] M:0.36 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.34
-[F] P:0.87 R:0.10 Gate:0.72 KickP:0.000 OUT:0.11 | [B] M:0.42 T:0.25 SnP:0.53 OUT:0.04 | [M] Morph:0.34
-[IPC 📡] audioBuffer #1138 | titan.running=true | size=8192
-[F] P:0.79 R:0.14 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.34
-[F] P:0.77 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.34
-[INTERVAL] F1140 bpm=130 raw=173 conf=0.599 kick=false phase=0.14 needle=0.0000 bassFlux=0.0094 midFlux=0.0154 centroid=5183Hz kicks=94
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1140: bpm=130, energy=0.19
-[F] P:0.70 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.34
-[F] P:0.70 R:0.08 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.26 SnP:0.55 OUT:0.06 | [M] Morph:0.33
-[AGC 🎚️] Gain: 0.69x | In: 0.518 → Out: 0.360 | Peak: 0.789 | ✅ ACTIVE
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.60 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=0.52 | beat #94
-[F] P:0.81 R:0.07 Gate:0.73 KickP:0.308 OUT:0.45 | [B] M:0.47 T:0.35 SnP:0.74 OUT:0.68 | [M] Morph:0.35
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[🥁 INTERVAL BPM] KICK #95 bpm=173 conf=0.60 energy=0.1220 avg=0.0287 ratio=4.26 delta=0.0791 history=8/8 bpmBuf=[185,185,185,161,161,161,185,161]
-[F] P:0.81 R:0.09 Gate:0.73 KickP:0.000 OUT:0.30 | [B] M:0.46 T:0.35 SnP:0.75 OUT:0.71 | [M] Morph:0.35
-[F] P:0.83 R:0.10 Gate:0.73 KickP:0.433 OUT:0.64 | [B] M:0.42 T:0.32 SnP:0.69 OUT:0.38 | [M] Morph:0.35
-[F] P:0.86 R:0.11 Gate:0.73 KickP:0.634 OUT:0.95 | [B] M:0.47 T:0.32 SnP:0.68 OUT:0.36 | [M] Morph:0.36
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.11 wE=0.71 ΔE=0.035 kick=false
-[F] P:0.87 R:0.12 Gate:0.74 KickP:0.000 OUT:0.64 | [B] M:0.43 T:0.28 SnP:0.60 OUT:0.13 | [M] Morph:0.36
-[F] P:0.87 R:0.11 Gate:0.74 KickP:0.000 OUT:0.43 | [B] M:0.42 T:0.27 SnP:0.58 OUT:0.10 | [M] Morph:0.36
-[F] P:0.80 R:0.13 Gate:0.74 KickP:0.000 OUT:0.29 | [B] M:0.36 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.36
-[F] P:0.75 R:0.15 Gate:0.74 KickP:0.000 OUT:0.19 | [B] M:0.35 T:0.26 SnP:0.54 OUT:0.05 | [M] Morph:0.35
-[F] P:0.71 R:0.13 Gate:0.74 KickP:0.000 OUT:0.13 | [B] M:0.36 T:0.29 SnP:0.60 OUT:0.12 | [M] Morph:0.35
-[F] P:0.67 R:0.11 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.32 T:0.27 SnP:0.56 OUT:0.07 | [M] Morph:0.34
-[F] P:0.73 R:0.09 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.35 SnP:0.73 OUT:0.60 | [M] Morph:0.35
-[F] P:0.80 R:0.08 Gate:0.74 KickP:0.185 OUT:0.27 | [B] M:0.43 T:0.36 SnP:0.76 OUT:0.77 | [M] Morph:0.35
-[F] P:0.81 R:0.09 Gate:0.75 KickP:0.000 OUT:0.18 | [B] M:0.44 T:0.33 SnP:0.71 OUT:0.50 | [M] Morph:0.35
-[F] P:0.84 R:0.10 Gate:0.75 KickP:0.358 OUT:0.53 | [B] M:0.44 T:0.32 SnP:0.68 OUT:0.37 | [M] Morph:0.35
-[F] P:0.84 R:0.12 Gate:0.75 KickP:0.000 OUT:0.35 | [B] M:0.38 T:0.27 SnP:0.57 OUT:0.07 | [M] Morph:0.34
-[F] P:0.86 R:0.12 Gate:0.75 KickP:0.000 OUT:0.24 | [B] M:0.49 T:0.28 SnP:0.60 OUT:0.14 | [M] Morph:0.37
-[F] P:0.83 R:0.13 Gate:0.76 KickP:0.000 OUT:0.16 | [B] M:0.49 T:0.28 SnP:0.62 OUT:0.17 | [M] Morph:0.38
-[F] P:0.75 R:0.13 Gate:0.76 KickP:0.000 OUT:0.11 | [B] M:0.43 T:0.25 SnP:0.57 OUT:0.09 | [M] Morph:0.38
-[F] P:0.70 R:0.11 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.30 SnP:0.66 OUT:0.29 | [M] Morph:0.38
-[F] P:0.67 R:0.08 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.62 OUT:0.18 | [M] Morph:0.37
-[F] P:0.70 R:0.07 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.31 SnP:0.69 OUT:0.42 | [M] Morph:0.37
-[F] P:0.76 R:0.06 Gate:0.75 KickP:0.007 OUT:0.00 | [B] M:0.46 T:0.35 SnP:0.78 OUT:0.92 | [M] Morph:0.38
-[F] P:0.77 R:0.07 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.34 SnP:0.74 OUT:0.66 | [M] Morph:0.37
-[F] P:0.77 R:0.07 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.33 SnP:0.72 OUT:0.54 | [M] Morph:0.37
-[F] P:0.76 R:0.09 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.62 OUT:0.18 | [M] Morph:0.37
-[F] P:0.79 R:0.11 Gate:0.76 KickP:0.073 OUT:0.11 | [B] M:0.39 T:0.27 SnP:0.61 OUT:0.14 | [M] Morph:0.37
-[INTERVAL] F1160 bpm=130 raw=173 conf=0.580 kick=false phase=0.41 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=783Hz kicks=95
-[F] P:0.79 R:0.10 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.59 OUT:0.12 | [M] Morph:0.36
+   Flatness:    0.027 (Tonal<0.3, Noise>0.7)
+   Centroid:    799Hz (Bright>2000, Dark<1200)
+   CrestFactor: 24.55 (Dynamics)
+   Rolloff:     484Hz (85% energy)
+   Latency:     0.75ms
+   UltraAir:    0.007 (NEW: 16-22kHz sizzle)
+[Harmony ⚠️] Freq 43Hz fuera de rango musical
+[F] P:0.88 R:0.47 Gate:0.78 KickP:0.000 OUT:0.39 | [B] M:0.50 T:0.39 SnP:1.00 OUT:3.36 | [M] Morph:0.66
+[F] P:0.86 R:0.43 Gate:0.79 KickP:0.000 OUT:0.29 | [B] M:0.51 T:0.41 SnP:1.00 OUT:3.37 | [M] Morph:0.65
+[F] P:0.86 R:0.39 Gate:0.79 KickP:0.000 OUT:0.21 | [B] M:0.58 T:0.52 SnP:1.00 OUT:3.35 | [M] Morph:0.66
+[F] P:0.88 R:0.32 Gate:0.79 KickP:0.331 OUT:0.57 | [B] M:0.57 T:0.53 SnP:1.00 OUT:3.35 | [M] Morph:0.66
+[F] P:0.88 R:0.27 Gate:0.79 KickP:0.000 OUT:0.42 | [B] M:0.58 T:0.53 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[F] P:0.88 R:0.23 Gate:0.79 KickP:0.000 OUT:0.31 | [B] M:0.57 T:0.52 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[F] P:0.88 R:0.22 Gate:0.80 KickP:0.000 OUT:0.23 | [B] M:0.54 T:0.48 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[F] P:0.94 R:0.20 Gate:0.80 KickP:0.828 OUT:1.00 | [B] M:0.57 T:0.47 SnP:1.00 OUT:3.32 | [M] Morph:0.67
+[F] P:0.94 R:0.20 Gate:0.80 KickP:0.000 OUT:0.73 | [B] M:0.56 T:0.44 SnP:1.00 OUT:3.32 | [M] Morph:0.67
+[🥁 INTERVAL BPM] KICK #11 bpm=161 conf=0.00 energy=0.1688 avg=0.0429 ratio=3.93 delta=0.1688 history=8/8 bpmBuf=[215,144,161,215,161,185,161,92]
+[F] P:0.90 R:0.32 Gate:0.80 KickP:0.000 OUT:0.54 | [B] M:0.56 T:0.41 SnP:1.00 OUT:3.33 | [M] Morph:0.67
+[F] P:0.84 R:0.41 Gate:0.81 KickP:0.000 OUT:0.40 | [B] M:0.57 T:0.35 SnP:1.00 OUT:3.31 | [M] Morph:0.67
+[F] P:0.80 R:0.39 Gate:0.81 KickP:0.000 OUT:0.29 | [B] M:0.53 T:0.33 SnP:0.93 OUT:2.38 | [M] Morph:0.67
+[F] P:0.82 R:0.31 Gate:0.81 KickP:0.000 OUT:0.21 | [B] M:0.61 T:0.49 SnP:1.00 OUT:3.29 | [M] Morph:0.68
+[F] P:0.86 R:0.25 Gate:0.81 KickP:0.091 OUT:0.16 | [B] M:0.61 T:0.52 SnP:1.00 OUT:3.26 | [M] Morph:0.70
+[F] P:0.85 R:0.22 Gate:0.81 KickP:0.000 OUT:0.12 | [B] M:0.60 T:0.51 SnP:1.00 OUT:3.24 | [M] Morph:0.70
+[F] P:0.85 R:0.20 Gate:0.81 KickP:0.000 OUT:0.09 | [B] M:0.63 T:0.51 SnP:1.00 OUT:3.20 | [M] Morph:0.72
+[F] P:0.88 R:0.18 Gate:0.81 KickP:0.161 OUT:0.29 | [B] M:0.62 T:0.50 SnP:1.00 OUT:3.17 | [M] Morph:0.73
+[F] P:0.95 R:0.20 Gate:0.82 KickP:0.836 OUT:1.00 | [B] M:0.61 T:0.46 SnP:1.00 OUT:3.16 | [M] Morph:0.74
+[🥁 INTERVAL BPM] KICK #12 bpm=173 conf=0.00 energy=0.2318 avg=0.0402 ratio=5.77 delta=0.2318 history=8/8 bpmBuf=[215,144,185,215,161,185,161,92]
+[F] P:0.95 R:0.33 Gate:0.82 KickP:0.000 OUT:0.75 | [B] M:0.59 T:0.40 SnP:1.00 OUT:3.16 | [M] Morph:0.74
+[IPC 📡] audioBuffer #96 | titan.running=true | size=8192
+[F] P:0.92 R:0.43 Gate:0.82 KickP:0.000 OUT:0.56 | [B] M:0.61 T:0.36 SnP:1.00 OUT:3.14 | [M] Morph:0.74
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #12
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4542K
+[F] P:0.88 R:0.49 Gate:0.82 KickP:0.000 OUT:0.42 | [B] M:0.63 T:0.34 SnP:1.00 OUT:3.11 | [M] Morph:0.75
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.82 R:0.44 Gate:0.82 KickP:0.000 OUT:0.32 | [B] M:0.64 T:0.30 SnP:0.94 OUT:2.23 | [M] Morph:0.77
+[F] P:0.79 R:0.38 Gate:0.82 KickP:0.000 OUT:0.24 | [B] M:0.66 T:0.45 SnP:1.00 OUT:3.03 | [M] Morph:0.79
+[F] P:0.80 R:0.33 Gate:0.82 KickP:0.000 OUT:0.18 | [B] M:0.66 T:0.49 SnP:1.00 OUT:3.00 | [M] Morph:0.80
+[F] P:0.78 R:0.27 Gate:0.82 KickP:0.000 OUT:0.14 | [B] M:0.65 T:0.49 SnP:1.00 OUT:2.97 | [M] Morph:0.81
+[INTERVAL] F100 bpm=130 raw=173 conf=0.000 kick=false phase=0.67 needle=0.0000 bassFlux=0.0210 midFlux=0.0037 centroid=6765Hz kicks=12
+[RADAR 1 - ENTRADA] UI mandó control a fixture-1773868758301: { dimmer: 0 }
+[F] P:0.79 R:0.23 Gate:0.82 KickP:0.000 OUT:0.11 | [B] M:0.65 T:0.49 SnP:1.00 OUT:2.95 | [M] Morph:0.82
+[F] P:0.75 R:0.19 Gate:0.82 KickP:0.000 OUT:0.08 | [B] M:0.62 T:0.44 SnP:1.00 OUT:2.95 | [M] Morph:0.82
+[F] P:0.91 R:0.19 Gate:0.82 KickP:0.360 OUT:0.67 | [B] M:0.63 T:0.43 SnP:1.00 OUT:2.95 | [M] Morph:0.82
+[F] P:0.92 R:0.20 Gate:0.82 KickP:0.000 OUT:0.51 | [B] M:0.61 T:0.42 SnP:1.00 OUT:2.96 | [M] Morph:0.82
+[🥁 INTERVAL BPM] KICK #13 bpm=161 conf=0.00 energy=0.2180 avg=0.0308 ratio=7.08 delta=0.2180 history=8/8 bpmBuf=[215,144,185,161,161,185,161,92]
+[F] P:0.90 R:0.37 Gate:0.82 KickP:0.000 OUT:0.39 | [B] M:0.59 T:0.40 SnP:1.00 OUT:2.96 | [M] Morph:0.82
+[F] P:0.85 R:0.50 Gate:0.83 KickP:0.000 OUT:0.30 | [B] M:0.54 T:0.35 SnP:1.00 OUT:2.97 | [M] Morph:0.81
+[F] P:0.82 R:0.55 Gate:0.83 KickP:0.000 OUT:0.23 | [B] M:0.51 T:0.31 SnP:0.96 OUT:2.41 | [M] Morph:0.81
+[Harmony 🎵] Key Change: A → A# (28% dominance)
+[F] P:0.81 R:0.52 Gate:0.83 KickP:0.000 OUT:0.17 | [B] M:0.54 T:0.44 SnP:1.00 OUT:3.00 | [M] Morph:0.80
+[F] P:0.80 R:0.41 Gate:0.83 KickP:0.000 OUT:0.13 | [B] M:0.58 T:0.49 SnP:1.00 OUT:3.00 | [M] Morph:0.80
+[F] P:0.78 R:0.34 Gate:0.82 KickP:0.000 OUT:0.10 | [B] M:0.56 T:0.50 SnP:1.00 OUT:3.01 | [M] Morph:0.80
+[F] P:0.79 R:0.28 Gate:0.82 KickP:0.000 OUT:0.07 | [B] M:0.57 T:0.49 SnP:1.00 OUT:3.01 | [M] Morph:0.79
+[F] P:0.81 R:0.24 Gate:0.82 KickP:0.000 OUT:0.03 | [B] M:0.55 T:0.45 SnP:1.00 OUT:3.02 | [M] Morph:0.79
+[F] P:0.89 R:0.21 Gate:0.83 KickP:0.188 OUT:0.34 | [B] M:0.53 T:0.40 SnP:1.00 OUT:3.03 | [M] Morph:0.79
+[🥁 INTERVAL BPM] KICK #14 bpm=173 conf=0.00 energy=0.1965 avg=0.0340 ratio=5.79 delta=0.1965 history=8/8 bpmBuf=[215,144,185,161,185,185,161,92]
+[F] P:0.91 R:0.26 Gate:0.83 KickP:0.326 OUT:0.59 | [B] M:0.47 T:0.34 SnP:1.00 OUT:3.05 | [M] Morph:0.78
+[F] P:0.88 R:0.29 Gate:0.83 KickP:0.000 OUT:0.45 | [B] M:0.43 T:0.30 SnP:0.87 OUT:1.54 | [M] Morph:0.77
+[F] P:0.84 R:0.37 Gate:0.83 KickP:0.000 OUT:0.34 | [B] M:0.40 T:0.28 SnP:0.79 OUT:0.93 | [M] Morph:0.76
+[F] P:0.81 R:0.38 Gate:0.83 KickP:0.000 OUT:0.25 | [B] M:0.37 T:0.22 SnP:0.62 OUT:0.24 | [M] Morph:0.75
+[F] P:0.81 R:0.36 Gate:0.83 KickP:0.000 OUT:0.19 | [B] M:0.42 T:0.37 SnP:1.00 OUT:3.15 | [M] Morph:0.74
+[F] P:0.83 R:0.35 Gate:0.83 KickP:0.000 OUT:0.14 | [B] M:0.50 T:0.47 SnP:1.00 OUT:3.17 | [M] Morph:0.73
+[F] P:0.83 R:0.28 Gate:0.83 KickP:0.000 OUT:0.10 | [B] M:0.50 T:0.49 SnP:1.00 OUT:3.18 | [M] Morph:0.73
+[F] P:0.87 R:0.25 Gate:0.83 KickP:0.049 OUT:0.09 | [B] M:0.51 T:0.49 SnP:1.00 OUT:3.19 | [M] Morph:0.72
+[F] P:0.87 R:0.23 Gate:0.83 KickP:0.000 OUT:0.04 | [B] M:0.47 T:0.45 SnP:1.00 OUT:3.20 | [M] Morph:0.72
+[F] P:0.86 R:0.22 Gate:0.83 KickP:0.000 OUT:0.02 | [B] M:0.50 T:0.42 SnP:1.00 OUT:3.21 | [M] Morph:0.71
+[F] P:0.95 R:0.27 Gate:0.84 KickP:0.547 OUT:0.97 | [B] M:0.54 T:0.41 SnP:1.00 OUT:3.22 | [M] Morph:0.71
+[F] P:0.91 R:0.30 Gate:0.84 KickP:0.000 OUT:0.72 | [B] M:0.51 T:0.38 SnP:1.00 OUT:3.23 | [M] Morph:0.71
+[F] P:0.84 R:0.36 Gate:0.84 KickP:0.000 OUT:0.53 | [B] M:0.51 T:0.33 SnP:0.93 OUT:2.31 | [M] Morph:0.70
+[INTERVAL] F120 bpm=130 raw=173 conf=0.000 kick=false phase=0.34 needle=0.0000 bassFlux=0.0000 midFlux=0.0564 centroid=1081Hz kicks=14
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 120: bpm=121, energy=0.40
+[F] P:0.80 R:0.33 Gate:0.84 KickP:0.000 OUT:0.39 | [B] M:0.49 T:0.29 SnP:0.83 OUT:1.23 | [M] Morph:0.70
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.955 (Rock target: >0.7)
-   Flatness:    0.032 (Tonal<0.3, Noise>0.7)
-   Centroid:    1124Hz (Bright>2000, Dark<1200)
-   CrestFactor: 16.46 (Dynamics)
-   Rolloff:     1001Hz (85% energy)
-   Latency:     0.70ms
-   UltraAir:    0.005 (NEW: 16-22kHz sizzle)
-[F] P:0.74 R:0.11 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.24 SnP:0.51 OUT:0.03 | [M] Morph:0.36
-[F] P:0.69 R:0.09 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.28 SnP:0.61 OUT:0.15 | [M] Morph:0.35
-[F] P:0.67 R:0.07 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.27 SnP:0.59 OUT:0.11 | [M] Morph:0.35
-[F] P:0.63 R:0.06 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.35
-[F] P:0.64 R:0.05 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.35 SnP:0.76 OUT:0.77 | [M] Morph:0.35
-[F] P:0.64 R:0.05 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.34 SnP:0.73 OUT:0.58 | [M] Morph:0.35
-[F] P:0.68 R:0.05 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.32 SnP:0.68 OUT:0.37 | [M] Morph:0.34
-[F] P:0.74 R:0.06 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.25 SnP:0.54 OUT:0.05 | [M] Morph:0.34
-[F] P:0.74 R:0.06 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.34
-[F] P:0.72 R:0.06 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.24 SnP:0.52 OUT:0.03 | [M] Morph:0.34
-[F] P:0.70 R:0.08 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.34
-[F] P:0.63 R:0.07 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.33
-[F] P:0.58 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.55 OUT:0.06 | [M] Morph:0.33
-[IPC 📡] audioBuffer #1170 | titan.running=true | size=8192
-[F] P:0.55 R:0.05 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.32
-[F] P:0.63 R:0.05 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.65 OUT:0.26 | [M] Morph:0.32
-[F] P:0.70 R:0.08 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.29 SnP:0.60 OUT:0.13 | [M] Morph:0.32
-[F] P:0.72 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.61 OUT:0.14 | [M] Morph:0.32
-[F] P:0.73 R:0.08 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.26 SnP:0.54 OUT:0.04 | [M] Morph:0.32
-[F] P:0.71 R:0.08 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.32
-[F] P:0.73 R:0.10 Gate:0.73 KickP:0.006 OUT:0.00 | [B] M:0.36 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.31
-[F] P:0.71 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.31
-[F] P:0.63 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.27 SnP:0.56 OUT:0.06 | [M] Morph:0.31
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=49% B/D/N=156/213/66
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.61 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.26 SnP:0.54 OUT:0.04 | [M] Morph:0.30
+[F] P:0.77 R:0.30 Gate:0.84 KickP:0.000 OUT:0.29 | [B] M:0.48 T:0.37 SnP:1.00 OUT:3.26 | [M] Morph:0.69
+   Clarity:     0.886 (Rock target: >0.7)
+   Flatness:    0.138 (Tonal<0.3, Noise>0.7)
+   Centroid:    3323Hz (Bright>2000, Dark<1200)
+   CrestFactor: 18.19 (Dynamics)
+   Rolloff:     9475Hz (85% energy)
+   Latency:     0.57ms
+   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.60x | In: 0.866 → Out: 0.519 | Peak: 0.866 | ✅ ACTIVE
+[F] P:0.83 R:0.24 Gate:0.84 KickP:0.000 OUT:0.21 | [B] M:0.57 T:0.50 SnP:1.00 OUT:3.26 | [M] Morph:0.69
+[F] P:0.83 R:0.20 Gate:0.84 KickP:0.000 OUT:0.16 | [B] M:0.57 T:0.51 SnP:1.00 OUT:3.27 | [M] Morph:0.69
+[F] P:0.84 R:0.17 Gate:0.84 KickP:0.000 OUT:0.12 | [B] M:0.57 T:0.50 SnP:1.00 OUT:3.27 | [M] Morph:0.69
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=40% B/D/N=116/124/70
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.88 R:0.15 Gate:0.84 KickP:0.072 OUT:0.13 | [B] M:0.53 T:0.46 SnP:1.00 OUT:3.27 | [M] Morph:0.69
 [SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:23 | Pan:38 Tilt:92 | sBPM:130 phase:15°
-[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:23 | Pan:-38 Tilt:92 | sBPM:130 phase:15°
-[F] P:0.56 R:0.07 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.25 SnP:0.49 OUT:0.01 | [M] Morph:0.30
-[F] P:0.67 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.32 SnP:0.64 OUT:0.21 | [M] Morph:0.30
-[F] P:0.69 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.32 SnP:0.65 OUT:0.25 | [M] Morph:0.29
-[INTERVAL] F1180 bpm=130 raw=173 conf=0.560 kick=false phase=0.09 needle=0.0456 bassFlux=0.0456 midFlux=0.0000 centroid=924Hz kicks=95
-[F] P:0.67 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.29
-[F] P:0.67 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.29 SnP:0.58 OUT:0.09 | [M] Morph:0.29
-[F] P:0.67 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.27 SnP:0.54 OUT:0.04 | [M] Morph:0.29
-[F] P:0.71 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.26 SnP:0.54 OUT:0.05 | [M] Morph:0.32
-[F] P:0.66 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.32
-[F] P:0.63 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.27 SnP:0.58 OUT:0.08 | [M] Morph:0.32
-[F] P:0.60 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.32
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.56 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=0.55 | beat #95
-[F] P:0.56 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.27 SnP:0.55 OUT:0.05 | [M] Morph:0.31
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.62 R:0.03 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.67 OUT:0.31 | [M] Morph:0.32
-[F] P:0.64 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.31 SnP:0.65 OUT:0.24 | [M] Morph:0.31
-[F] P:0.64 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.31 SnP:0.65 OUT:0.25 | [M] Morph:0.31
-[F] P:0.64 R:0.03 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.29 SnP:0.61 OUT:0.14 | [M] Morph:0.32
-[F] P:0.61 R:0.03 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.32
-[F] P:0.70 R:0.08 Gate:0.69 KickP:0.013 OUT:0.00 | [B] M:0.39 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.68 R:0.12 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.32
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.49 wE=0.10 ΔE=-0.199 kick=false
-[F] P:0.62 R:0.09 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.26 SnP:0.52 OUT:0.03 | [M] Morph:0.31
-[F] P:0.63 R:0.08 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.31
-[F] P:0.74 R:0.06 Gate:0.69 KickP:0.115 OUT:0.17 | [B] M:0.36 T:0.25 SnP:0.52 OUT:0.02 | [M] Morph:0.31
-[F] P:0.77 R:0.07 Gate:0.70 KickP:0.281 OUT:0.41 | [B] M:0.41 T:0.30 SnP:0.61 OUT:0.15 | [M] Morph:0.31
-[F] P:0.82 R:0.08 Gate:0.70 KickP:0.548 OUT:0.79 | [B] M:0.37 T:0.30 SnP:0.63 OUT:0.18 | [M] Morph:0.30
-[F] P:0.83 R:0.08 Gate:0.70 KickP:0.000 OUT:0.52 | [B] M:0.39 T:0.29 SnP:0.60 OUT:0.12 | [M] Morph:0.30
-[F] P:0.87 R:0.10 Gate:0.71 KickP:0.896 OUT:1.00 | [B] M:0.36 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.30
-[F] P:0.88 R:0.11 Gate:0.71 KickP:0.000 OUT:0.66 | [B] M:0.40 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.30
-[F] P:0.89 R:0.12 Gate:0.72 KickP:0.000 OUT:0.44 | [B] M:0.47 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.84 R:0.14 Gate:0.72 KickP:0.000 OUT:0.29 | [B] M:0.45 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.33
-[F] P:0.77 R:0.12 Gate:0.72 KickP:0.000 OUT:0.19 | [B] M:0.43 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.33
-[F] P:0.74 R:0.10 Gate:0.72 KickP:0.000 OUT:0.13 | [B] M:0.42 T:0.26 SnP:0.54 OUT:0.04 | [M] Morph:0.33
-[INTERVAL] F1200 bpm=130 raw=173 conf=0.540 kick=false phase=0.77 needle=0.0000 bassFlux=0.0193 midFlux=0.0000 centroid=1188Hz kicks=95
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1200: bpm=130, energy=0.20
-[F] P:0.71 R:0.08 Gate:0.72 KickP:0.000 OUT:0.09 | [B] M:0.38 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.32
-[F] P:0.76 R:0.07 Gate:0.72 KickP:0.111 OUT:0.16 | [B] M:0.41 T:0.28 SnP:0.58 OUT:0.10 | [M] Morph:0.32
-[BETA 📡] AUDIO_BUFFER #1200 | size=2048
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:3 | Pan:-196 Tilt:0 | sBPM:120 phase:300°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:3 | Pan:59 Tilt:0 | sBPM:120 phase:300°
+[🥁 INTERVAL BPM] KICK #15 bpm=161 conf=0.00 energy=0.1602 avg=0.0342 ratio=4.69 delta=0.1602 history=8/8 bpmBuf=[215,144,185,161,185,92,161,92]
+[F] P:0.90 R:0.20 Gate:0.84 KickP:0.000 OUT:0.09 | [B] M:0.55 T:0.43 SnP:1.00 OUT:3.28 | [M] Morph:0.69
+[F] P:0.97 R:0.22 Gate:0.84 KickP:0.634 OUT:1.00 | [B] M:0.47 T:0.36 SnP:1.00 OUT:3.25 | [M] Morph:0.68
+[F] P:0.93 R:0.24 Gate:0.84 KickP:0.000 OUT:0.74 | [B] M:0.43 T:0.31 SnP:0.86 OUT:1.58 | [M] Morph:0.68
+[F] P:0.87 R:0.42 Gate:0.85 KickP:0.000 OUT:0.54 | [B] M:0.38 T:0.27 SnP:0.73 OUT:0.63 | [M] Morph:0.67
+[F] P:0.83 R:0.42 Gate:0.85 KickP:0.000 OUT:0.39 | [B] M:0.35 T:0.24 SnP:0.63 OUT:0.24 | [M] Morph:0.66
+[F] P:0.80 R:0.36 Gate:0.84 KickP:0.000 OUT:0.29 | [B] M:0.40 T:0.38 SnP:0.98 OUT:3.00 | [M] Morph:0.65
+[IPC 📡] audioBuffer #129 | titan.running=true | size=8192
+[F] P:0.79 R:0.32 Gate:0.84 KickP:0.000 OUT:0.21 | [B] M:0.47 T:0.46 SnP:1.00 OUT:3.39 | [M] Morph:0.64
+[F] P:0.79 R:0.26 Gate:0.84 KickP:0.000 OUT:0.15 | [B] M:0.47 T:0.49 SnP:1.00 OUT:3.40 | [M] Morph:0.64
+[F] P:0.80 R:0.23 Gate:0.84 KickP:0.000 OUT:0.11 | [B] M:0.49 T:0.50 SnP:1.00 OUT:3.41 | [M] Morph:0.64
+[F] P:0.84 R:0.21 Gate:0.84 KickP:0.000 OUT:0.08 | [B] M:0.46 T:0.45 SnP:1.00 OUT:3.42 | [M] Morph:0.63
+[F] P:0.85 R:0.18 Gate:0.84 KickP:0.000 OUT:0.03 | [B] M:0.48 T:0.42 SnP:1.00 OUT:3.43 | [M] Morph:0.63
+[F] P:0.92 R:0.17 Gate:0.84 KickP:0.230 OUT:0.39 | [B] M:0.53 T:0.41 SnP:1.00 OUT:3.43 | [M] Morph:0.63
+[🥁 INTERVAL BPM] KICK #16 bpm=153 conf=0.00 energy=0.1635 avg=0.0428 ratio=3.82 delta=0.1635 history=8/8 bpmBuf=[215,144,185,161,185,92,144,92]
+[SimpleSectionTracker] 📍 buildup → verse | bassR=1.05 wE=0.74 ΔE=0.008 kick=true
+[F] P:0.90 R:0.26 Gate:0.84 KickP:0.000 OUT:0.28 | [B] M:0.50 T:0.39 SnP:1.00 OUT:3.44 | [M] Morph:0.62
+[F] P:0.83 R:0.38 Gate:0.84 KickP:0.000 OUT:0.21 | [B] M:0.43 T:0.33 SnP:0.87 OUT:1.71 | [M] Morph:0.62
+[F] P:0.81 R:0.46 Gate:0.84 KickP:0.000 OUT:0.15 | [B] M:0.39 T:0.29 SnP:0.75 OUT:0.76 | [M] Morph:0.61
+[F] P:0.79 R:0.47 Gate:0.84 KickP:0.000 OUT:0.11 | [B] M:0.36 T:0.25 SnP:0.66 OUT:0.32 | [M] Morph:0.60
+[F] P:0.80 R:0.41 Gate:0.84 KickP:0.000 OUT:0.07 | [B] M:0.53 T:0.49 SnP:1.00 OUT:3.50 | [M] Morph:0.60
+[F] P:0.82 R:0.37 Gate:0.84 KickP:0.000 OUT:0.03 | [B] M:0.53 T:0.51 SnP:1.00 OUT:3.50 | [M] Morph:0.60
+[F] P:0.82 R:0.29 Gate:0.84 KickP:0.000 OUT:0.01 | [B] M:0.55 T:0.51 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.81 R:0.25 Gate:0.84 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.49 SnP:1.00 OUT:3.49 | [M] Morph:0.60
+[F] P:0.86 R:0.23 Gate:0.84 KickP:0.035 OUT:0.03 | [B] M:0.51 T:0.44 SnP:1.00 OUT:3.50 | [M] Morph:0.60
+[F] P:0.90 R:0.22 Gate:0.84 KickP:0.286 OUT:0.48 | [B] M:0.47 T:0.40 SnP:1.00 OUT:3.50 | [M] Morph:0.60
+[INTERVAL] F140 bpm=153 raw=153 conf=0.000 kick=false phase=0.83 needle=0.0975 bassFlux=0.0975 midFlux=0.0000 centroid=818Hz kicks=16
+[F] P:0.89 R:0.23 Gate:0.84 KickP:0.000 OUT:0.34 | [B] M:0.42 T:0.35 SnP:0.93 OUT:2.44 | [M] Morph:0.59
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #16
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4707K
+[F] P:0.83 R:0.31 Gate:0.84 KickP:0.000 OUT:0.25 | [B] M:0.38 T:0.30 SnP:0.78 OUT:0.90 | [M] Morph:0.58
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.83 R:0.36 Gate:0.84 KickP:0.000 OUT:0.18 | [B] M:0.35 T:0.26 SnP:0.66 OUT:0.33 | [M] Morph:0.58
+[F] P:0.80 R:0.40 Gate:0.84 KickP:0.000 OUT:0.13 | [B] M:0.34 T:0.26 SnP:0.64 OUT:0.26 | [M] Morph:0.57
+[F] P:0.78 R:0.37 Gate:0.84 KickP:0.000 OUT:0.09 | [B] M:0.50 T:0.45 SnP:1.00 OUT:3.59 | [M] Morph:0.56
+[F] P:0.78 R:0.31 Gate:0.84 KickP:0.000 OUT:0.04 | [B] M:0.50 T:0.49 SnP:1.00 OUT:3.59 | [M] Morph:0.56
+[F] P:0.80 R:0.25 Gate:0.84 KickP:0.000 OUT:0.01 | [B] M:0.54 T:0.49 SnP:1.00 OUT:3.58 | [M] Morph:0.57
+[F] P:0.82 R:0.22 Gate:0.84 KickP:0.000 OUT:0.01 | [B] M:0.51 T:0.45 SnP:1.00 OUT:3.58 | [M] Morph:0.57
+[F] P:0.89 R:0.20 Gate:0.84 KickP:0.212 OUT:0.35 | [B] M:0.52 T:0.42 SnP:1.00 OUT:3.58 | [M] Morph:0.57
+[F] P:0.93 R:0.21 Gate:0.84 KickP:0.817 OUT:1.00 | [B] M:0.56 T:0.42 SnP:1.00 OUT:3.55 | [M] Morph:0.58
+[🥁 INTERVAL BPM] KICK #17 bpm=153 conf=0.00 energy=0.2053 avg=0.0375 ratio=5.47 delta=0.2053 history=8/8 bpmBuf=[215,144,185,161,185,92,144,86]
+[F] P:0.90 R:0.32 Gate:0.84 KickP:0.000 OUT:0.72 | [B] M:0.53 T:0.39 SnP:1.00 OUT:3.55 | [M] Morph:0.58
+[F] P:0.88 R:0.36 Gate:0.84 KickP:0.000 OUT:0.51 | [B] M:0.52 T:0.37 SnP:0.96 OUT:2.92 | [M] Morph:0.58
+[F] P:0.83 R:0.39 Gate:0.84 KickP:0.000 OUT:0.37 | [B] M:0.52 T:0.32 SnP:0.82 OUT:1.19 | [M] Morph:0.58
+[F] P:0.83 R:0.31 Gate:0.84 KickP:0.000 OUT:0.26 | [B] M:0.49 T:0.35 SnP:0.90 OUT:2.06 | [M] Morph:0.58
+[F] P:0.84 R:0.27 Gate:0.84 KickP:0.000 OUT:0.19 | [B] M:0.57 T:0.46 SnP:1.00 OUT:3.52 | [M] Morph:0.59
+[F] P:0.86 R:0.23 Gate:0.85 KickP:0.007 OUT:0.14 | [B] M:0.58 T:0.49 SnP:1.00 OUT:3.48 | [M] Morph:0.61
+[F] P:0.88 R:0.19 Gate:0.85 KickP:0.101 OUT:0.17 | [B] M:0.59 T:0.50 SnP:1.00 OUT:3.43 | [M] Morph:0.63
+[F] P:0.90 R:0.17 Gate:0.85 KickP:0.276 OUT:0.47 | [B] M:0.58 T:0.47 SnP:1.00 OUT:3.40 | [M] Morph:0.64
+[F] P:0.89 R:0.20 Gate:0.85 KickP:0.000 OUT:0.34 | [B] M:0.58 T:0.44 SnP:1.00 OUT:3.38 | [M] Morph:0.65
+[F] P:0.96 R:0.18 Gate:0.85 KickP:1.000 OUT:1.00 | [B] M:0.53 T:0.38 SnP:1.00 OUT:3.39 | [M] Morph:0.65
+[F] P:0.95 R:0.17 Gate:0.85 KickP:0.000 OUT:0.73 | [B] M:0.49 T:0.34 SnP:0.93 OUT:2.33 | [M] Morph:0.64
+[🥁 INTERVAL BPM] KICK #18 bpm=153 conf=0.00 energy=0.2642 avg=0.0402 ratio=6.57 delta=0.2642 history=8/8 bpmBuf=[161,144,185,161,185,92,144,86]
+[F] P:0.91 R:0.36 Gate:0.86 KickP:0.000 OUT:0.53 | [B] M:0.45 T:0.31 SnP:0.82 OUT:1.22 | [M] Morph:0.64
+[F] P:0.84 R:0.41 Gate:0.86 KickP:0.000 OUT:0.38 | [B] M:0.41 T:0.26 SnP:0.69 OUT:0.43 | [M] Morph:0.63
+[F] P:0.82 R:0.36 Gate:0.86 KickP:0.000 OUT:0.28 | [B] M:0.40 T:0.24 SnP:0.62 OUT:0.22 | [M] Morph:0.62
+[F] P:0.80 R:0.29 Gate:0.85 KickP:0.000 OUT:0.20 | [B] M:0.49 T:0.42 SnP:1.00 OUT:3.45 | [M] Morph:0.62
+[F] P:0.79 R:0.23 Gate:0.85 KickP:0.000 OUT:0.15 | [B] M:0.51 T:0.46 SnP:1.00 OUT:3.46 | [M] Morph:0.62
+[INTERVAL] F160 bpm=153 raw=153 conf=0.000 kick=false phase=0.47 needle=0.0000 bassFlux=0.0156 midFlux=0.0014 centroid=8028Hz kicks=18
+[Harmony ⚠️] Freq 5835Hz fuera de rango musical
+[F] P:0.79 R:0.20 Gate:0.85 KickP:0.000 OUT:0.11 | [B] M:0.52 T:0.48 SnP:1.00 OUT:3.46 | [M] Morph:0.62
+[IPC 📡] audioBuffer #161 | titan.running=true | size=8192
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.840 (Rock target: >0.7)
+   Flatness:    0.240 (Tonal<0.3, Noise>0.7)
+   Centroid:    5319Hz (Bright>2000, Dark<1200)
+   CrestFactor: 14.17 (Dynamics)
+   Rolloff:     10573Hz (85% energy)
+   Latency:     1.18ms
+   UltraAir:    0.029 (NEW: 16-22kHz sizzle)
+[F] P:0.80 R:0.17 Gate:0.85 KickP:0.000 OUT:0.07 | [B] M:0.52 T:0.47 SnP:1.00 OUT:3.46 | [M] Morph:0.61
+[F] P:0.82 R:0.15 Gate:0.85 KickP:0.000 OUT:0.03 | [B] M:0.49 T:0.42 SnP:1.00 OUT:3.47 | [M] Morph:0.61
+[F] P:0.89 R:0.16 Gate:0.85 KickP:0.176 OUT:0.30 | [B] M:0.53 T:0.40 SnP:1.00 OUT:3.47 | [M] Morph:0.61
+[🥁 INTERVAL BPM] KICK #19 bpm=161 conf=0.00 energy=0.1987 avg=0.0408 ratio=4.87 delta=0.1497 history=8/8 bpmBuf=[161,185,185,161,185,92,144,86]
+[F] P:0.89 R:0.26 Gate:0.85 KickP:0.000 OUT:0.21 | [B] M:0.50 T:0.39 SnP:1.00 OUT:3.48 | [M] Morph:0.61
+[F] P:0.83 R:0.39 Gate:0.85 KickP:0.000 OUT:0.15 | [B] M:0.45 T:0.34 SnP:0.89 OUT:1.86 | [M] Morph:0.60
+[F] P:0.80 R:0.49 Gate:0.85 KickP:0.000 OUT:0.11 | [B] M:0.41 T:0.29 SnP:0.77 OUT:0.85 | [M] Morph:0.60
+[F] P:0.77 R:0.47 Gate:0.85 KickP:0.000 OUT:0.08 | [B] M:0.38 T:0.26 SnP:0.66 OUT:0.33 | [M] Morph:0.59
+[F] P:0.76 R:0.42 Gate:0.84 KickP:0.000 OUT:0.03 | [B] M:0.48 T:0.43 SnP:1.00 OUT:3.53 | [M] Morph:0.59
+[F] P:0.77 R:0.33 Gate:0.84 KickP:0.000 OUT:0.01 | [B] M:0.51 T:0.47 SnP:1.00 OUT:3.54 | [M] Morph:0.59
+[F] P:0.78 R:0.26 Gate:0.84 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.47 SnP:1.00 OUT:3.54 | [M] Morph:0.58
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=48% B/D/N=153/178/42
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.79 R:0.22 Gate:0.84 KickP:0.000 OUT:0.00 | [B] M:0.52 T:0.45 SnP:1.00 OUT:3.54 | [M] Morph:0.58
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(47%) | Safety:✅OK
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:4 | Pan:210 Tilt:0 | sBPM:120 phase:66°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:4 | Pan:-214 Tilt:0 | sBPM:120 phase:66°
+[F] P:0.75 R:0.19 Gate:0.83 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.40 SnP:1.00 OUT:3.54 | [M] Morph:0.58
+[F] P:0.84 R:0.17 Gate:0.83 KickP:0.007 OUT:0.00 | [B] M:0.46 T:0.36 SnP:0.95 OUT:2.71 | [M] Morph:0.58
+[F] P:0.84 R:0.16 Gate:0.83 KickP:0.003 OUT:0.00 | [B] M:0.42 T:0.32 SnP:0.82 OUT:1.25 | [M] Morph:0.57
+[🥁 INTERVAL BPM] KICK #20 bpm=161 conf=0.00 energy=0.1854 avg=0.0464 ratio=4.00 delta=0.1073 history=8/8 bpmBuf=[161,185,161,161,185,92,144,86]
+[F] P:0.79 R:0.26 Gate:0.83 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.26 SnP:0.66 OUT:0.34 | [M] Morph:0.56
+[F] P:0.79 R:0.28 Gate:0.83 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.24 SnP:0.60 OUT:0.17 | [M] Morph:0.56
+[F] P:0.76 R:0.27 Gate:0.83 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.21 SnP:0.51 OUT:0.04 | [M] Morph:0.54
+[F] P:0.75 R:0.27 Gate:0.83 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.40 SnP:0.96 OUT:2.94 | [M] Morph:0.54
+[F] P:0.74 R:0.24 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.43 SnP:1.00 OUT:3.66 | [M] Morph:0.54
+[F] P:0.75 R:0.20 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.44 SnP:1.00 OUT:3.67 | [M] Morph:0.53
+[F] P:0.76 R:0.17 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.41 SnP:1.00 OUT:3.68 | [M] Morph:0.53
+[F] P:0.75 R:0.16 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.39 SnP:0.99 OUT:3.42 | [M] Morph:0.52
+[F] P:0.81 R:0.15 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.37 SnP:0.92 OUT:2.45 | [M] Morph:0.52
+[🥁 INTERVAL BPM] KICK #21 bpm=161 conf=0.00 energy=0.1651 avg=0.0421 ratio=3.92 delta=0.1651 history=8/8 bpmBuf=[161,185,161,185,185,92,144,86]
+[F] P:0.82 R:0.21 Gate:0.82 KickP:0.001 OUT:0.00 | [B] M:0.46 T:0.36 SnP:0.88 OUT:1.89 | [M] Morph:0.52
+[F] P:0.80 R:0.26 Gate:0.82 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.84 OUT:1.48 | [M] Morph:0.51
+[F] P:0.76 R:0.33 Gate:0.81 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.30 SnP:0.75 OUT:0.74 | [M] Morph:0.51
+[INTERVAL] F180 bpm=121 raw=161 conf=0.000 kick=false phase=0.25 needle=0.0000 bassFlux=0.0000 midFlux=0.0560 centroid=1031Hz kicks=21
+[SimpleSectionTracker] 📍 verse → breakdown | bassR=0.78 wE=0.21 ΔE=-0.102 kick=false
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 180: bpm=121, energy=0.24
+[F] P:0.71 R:0.27 Gate:0.81 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.25 SnP:0.61 OUT:0.18 | [M] Morph:0.51
+[AGC 🎚️] Gain: 0.58x | In: 0.730 → Out: 0.427 | Peak: 0.837 | ✅ ACTIVE
+[F] P:0.68 R:0.22 Gate:0.80 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.35 SnP:0.85 OUT:1.59 | [M] Morph:0.50
+[F] P:0.68 R:0.18 Gate:0.80 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.41 SnP:1.00 OUT:3.74 | [M] Morph:0.50
+[F] P:0.69 R:0.15 Gate:0.79 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.43 SnP:1.00 OUT:3.75 | [M] Morph:0.50
+[F] P:0.69 R:0.13 Gate:0.79 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.43 SnP:1.00 OUT:3.75 | [M] Morph:0.50
+[F] P:0.67 R:0.12 Gate:0.79 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.40 SnP:1.00 OUT:3.75 | [M] Morph:0.50
+[F] P:0.75 R:0.11 Gate:0.79 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.83 OUT:1.35 | [M] Morph:0.50
+[F] P:0.79 R:0.12 Gate:0.79 KickP:0.001 OUT:0.00 | [B] M:0.39 T:0.29 SnP:0.72 OUT:0.59 | [M] Morph:0.49
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #21
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4747K
+[F] P:0.79 R:0.24 Gate:0.79 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.66 OUT:0.31 | [M] Morph:0.48
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.1347
+[F] P:0.74 R:0.32 Gate:0.78 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.22 SnP:0.53 OUT:0.05 | [M] Morph:0.48
+[F] P:0.70 R:0.30 Gate:0.78 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.19 SnP:0.44 OUT:0.00 | [M] Morph:0.46
+[F] P:0.66 R:0.25 Gate:0.78 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.29 SnP:0.65 OUT:0.29 | [M] Morph:0.46
+[F] P:0.65 R:0.20 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.34 SnP:0.80 OUT:1.08 | [M] Morph:0.45
+[F] P:0.66 R:0.16 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.39 SnP:0.92 OUT:2.46 | [M] Morph:0.45
+[F] P:0.68 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.41 SnP:0.96 OUT:3.08 | [M] Morph:0.44
+[F] P:0.70 R:0.12 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.38 SnP:0.89 OUT:2.01 | [M] Morph:0.44
+[F] P:0.73 R:0.12 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.34 SnP:0.80 OUT:1.08 | [M] Morph:0.43
+[F] P:0.81 R:0.12 Gate:0.76 KickP:0.063 OUT:0.10 | [B] M:0.43 T:0.33 SnP:0.76 OUT:0.78 | [M] Morph:0.43
+[IPC 📡] audioBuffer #194 | titan.running=true | size=8192
+[🥁 INTERVAL BPM] KICK #22 bpm=153 conf=0.00 energy=0.1761 avg=0.0370 ratio=4.75 delta=0.1338 history=8/8 bpmBuf=[161,185,161,185,81,92,144,86]
+[F] P:0.80 R:0.19 Gate:0.76 KickP:0.000 OUT:0.05 | [B] M:0.41 T:0.31 SnP:0.72 OUT:0.55 | [M] Morph:0.43
+[F] P:0.74 R:0.26 Gate:0.76 KickP:0.000 OUT:0.02 | [B] M:0.37 T:0.27 SnP:0.61 OUT:0.16 | [M] Morph:0.42
+[F] P:0.71 R:0.25 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.23 SnP:0.52 OUT:0.04 | [M] Morph:0.42
+[F] P:0.67 R:0.25 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.27 SnP:0.59 OUT:0.13 | [M] Morph:0.41
+[F] P:0.67 R:0.24 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.35 SnP:0.77 OUT:0.84 | [M] Morph:0.41
+[F] P:0.69 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.40 SnP:0.88 OUT:2.01 | [M] Morph:0.40
+[F] P:0.69 R:0.15 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.40 SnP:0.91 OUT:2.31 | [M] Morph:0.40
+[F] P:0.74 R:0.13 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.39 SnP:0.89 OUT:2.06 | [M] Morph:0.40
+[INTERVAL] F200 bpm=153 raw=153 conf=0.000 kick=false phase=0.71 needle=0.0000 bassFlux=0.0215 midFlux=0.0138 centroid=1939Hz kicks=22
+[F] P:0.71 R:0.11 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.78 OUT:0.94 | [M] Morph:0.40
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.970 (Rock target: >0.7)
+   Flatness:    0.023 (Tonal<0.3, Noise>0.7)
+   Centroid:    653Hz (Bright>2000, Dark<1200)
+   CrestFactor: 13.50 (Dynamics)
+   Rolloff:     463Hz (85% energy)
+   Latency:     0.69ms
+   UltraAir:    0.004 (NEW: 16-22kHz sizzle)
+[F] P:0.80 R:0.11 Gate:0.75 KickP:0.050 OUT:0.07 | [B] M:0.41 T:0.30 SnP:0.69 OUT:0.39 | [M] Morph:0.40
+[🥁 INTERVAL BPM] KICK #23 bpm=161 conf=0.00 energy=0.1825 avg=0.0300 ratio=6.07 delta=0.1825 history=8/8 bpmBuf=[161,185,161,185,81,161,144,86]
+[F] P:0.80 R:0.21 Gate:0.75 KickP:0.000 OUT:0.02 | [B] M:0.34 T:0.24 SnP:0.54 OUT:0.05 | [M] Morph:0.39
+[F] P:0.75 R:0.28 Gate:0.75 KickP:0.000 OUT:0.01 | [B] M:0.29 T:0.19 SnP:0.43 OUT:0.00 | [M] Morph:0.38
+[F] P:0.70 R:0.30 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.37
+[F] P:0.69 R:0.27 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.36
+[F] P:0.69 R:0.24 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.32 SnP:0.68 OUT:0.34 | [M] Morph:0.36
+[F] P:0.69 R:0.22 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.39 SnP:0.83 OUT:1.43 | [M] Morph:0.36
+[F] P:0.69 R:0.18 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.40 SnP:0.88 OUT:2.03 | [M] Morph:0.36
+[F] P:0.70 R:0.16 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.38 SnP:0.84 OUT:1.47 | [M] Morph:0.36
+[F] P:0.69 R:0.15 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.33 SnP:0.74 OUT:0.69 | [M] Morph:0.36
+[F] P:0.78 R:0.12 Gate:0.74 KickP:0.033 OUT:0.02 | [B] M:0.46 T:0.32 SnP:0.72 OUT:0.52 | [M] Morph:0.36
+[🥁 INTERVAL BPM] KICK #24 bpm=161 conf=0.00 energy=0.1567 avg=0.0345 ratio=4.54 delta=0.1567 history=8/8 bpmBuf=[161,185,161,185,81,161,185,86]
+[F] P:0.78 R:0.17 Gate:0.74 KickP:0.000 OUT:0.01 | [B] M:0.43 T:0.30 SnP:0.68 OUT:0.35 | [M] Morph:0.36
+[F] P:0.74 R:0.26 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.27 SnP:0.60 OUT:0.13 | [M] Morph:0.36
+[F] P:0.69 R:0.23 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.21 SnP:0.48 OUT:0.01 | [M] Morph:0.36
+[F] P:0.69 R:0.20 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.21 SnP:0.46 OUT:0.01 | [M] Morph:0.36
+[F] P:0.70 R:0.17 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.70 OUT:0.43 | [M] Morph:0.36
+[F] P:0.74 R:0.14 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.41 SnP:0.92 OUT:2.48 | [M] Morph:0.38
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=52% B/D/N=173/221/32
+[StrategyArbiter] 🔄 Running... frame=600 | current=analogous | commitment=1201
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 1200 frames (20.0s)
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.78 R:0.12 Gate:0.74 KickP:0.029 OUT:0.01 | [B] M:0.48 T:0.42 SnP:0.94 OUT:2.92 | [M] Morph:0.39
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:6 | Pan:-45 Tilt:0 | sBPM:120 phase:191°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:6 | Pan:191 Tilt:0 | sBPM:120 phase:191°
+[F] P:0.80 R:0.11 Gate:0.74 KickP:0.099 OUT:0.15 | [B] M:0.49 T:0.40 SnP:0.91 OUT:2.37 | [M] Morph:0.40
+[F] P:0.81 R:0.10 Gate:0.74 KickP:0.000 OUT:0.10 | [B] M:0.47 T:0.37 SnP:0.84 OUT:1.48 | [M] Morph:0.40
+[F] P:0.85 R:0.10 Gate:0.75 KickP:0.322 OUT:0.49 | [B] M:0.44 T:0.31 SnP:0.72 OUT:0.54 | [M] Morph:0.40
+[🥁 INTERVAL BPM] KICK #25 bpm=161 conf=0.00 energy=0.1298 avg=0.0328 ratio=3.96 delta=0.1298 history=8/8 bpmBuf=[161,185,161,185,81,161,185,161]
+[F] P:0.84 R:0.16 Gate:0.75 KickP:0.000 OUT:0.33 | [B] M:0.39 T:0.25 SnP:0.57 OUT:0.09 | [M] Morph:0.40
+[F] P:0.79 R:0.20 Gate:0.75 KickP:0.000 OUT:0.23 | [B] M:0.37 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.39
+[F] P:0.75 R:0.22 Gate:0.75 KickP:0.000 OUT:0.15 | [B] M:0.38 T:0.19 SnP:0.42 OUT:0.00 | [M] Morph:0.39
+[F] P:0.70 R:0.19 Gate:0.75 KickP:0.000 OUT:0.10 | [B] M:0.35 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.38
+[INTERVAL] F220 bpm=121 raw=161 conf=0.000 kick=false phase=0.37 needle=0.0000 bassFlux=0.0021 midFlux=0.0000 centroid=7762Hz kicks=25
+[F] P:0.68 R:0.16 Gate:0.75 KickP:0.000 OUT:0.05 | [B] M:0.42 T:0.33 SnP:0.71 OUT:0.48 | [M] Morph:0.38
+[F] P:0.65 R:0.13 Gate:0.74 KickP:0.000 OUT:0.02 | [B] M:0.47 T:0.39 SnP:0.85 OUT:1.65 | [M] Morph:0.39
+[F] P:0.62 R:0.11 Gate:0.74 KickP:0.000 OUT:0.01 | [B] M:0.46 T:0.39 SnP:0.88 OUT:1.92 | [M] Morph:0.39
+[F] P:0.65 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.38 SnP:0.86 OUT:1.74 | [M] Morph:0.39
+[F] P:0.65 R:0.10 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.37 SnP:0.83 OUT:1.34 | [M] Morph:0.39
+[F] P:0.73 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.71 OUT:0.51 | [M] Morph:0.39
+[🥁 INTERVAL BPM] KICK #26 bpm=161 conf=0.00 energy=0.1711 avg=0.0326 ratio=5.25 delta=0.1711 history=8/8 bpmBuf=[161,185,161,185,81,161,185,161]
+[F] P:0.80 R:0.16 Gate:0.73 KickP:0.122 OUT:0.18 | [B] M:0.45 T:0.31 SnP:0.69 OUT:0.40 | [M] Morph:0.39
+[F] P:0.78 R:0.20 Gate:0.73 KickP:0.000 OUT:0.12 | [B] M:0.42 T:0.29 SnP:0.64 OUT:0.24 | [M] Morph:0.39
+[F] P:0.72 R:0.28 Gate:0.73 KickP:0.000 OUT:0.08 | [B] M:0.37 T:0.24 SnP:0.54 OUT:0.05 | [M] Morph:0.38
+[IPC 📡] audioBuffer #227 | titan.running=true | size=8192
+[F] P:0.68 R:0.26 Gate:0.73 KickP:0.000 OUT:0.03 | [B] M:0.32 T:0.19 SnP:0.42 OUT:0.00 | [M] Morph:0.38
+[F] P:0.66 R:0.24 Gate:0.73 KickP:0.000 OUT:0.01 | [B] M:0.36 T:0.31 SnP:0.65 OUT:0.27 | [M] Morph:0.37
+[F] P:0.66 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.38 SnP:0.83 OUT:1.35 | [M] Morph:0.38
+[F] P:0.67 R:0.17 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.39 SnP:0.88 OUT:1.95 | [M] Morph:0.38
+[F] P:0.71 R:0.15 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.38 SnP:0.86 OUT:1.66 | [M] Morph:0.39
+[F] P:0.73 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.74 OUT:0.69 | [M] Morph:0.39
+[F] P:0.78 R:0.11 Gate:0.73 KickP:0.063 OUT:0.10 | [B] M:0.41 T:0.30 SnP:0.67 OUT:0.33 | [M] Morph:0.39
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #26
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4875K
+[F] P:0.79 R:0.09 Gate:0.73 KickP:0.000 OUT:0.04 | [B] M:0.35 T:0.24 SnP:0.53 OUT:0.04 | [M] Morph:0.38
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[🥁 INTERVAL BPM] KICK #27 bpm=161 conf=0.00 energy=0.1615 avg=0.0276 ratio=5.86 delta=0.1615 history=8/8 bpmBuf=[161,161,161,185,81,161,185,161]
+[F] P:0.77 R:0.18 Gate:0.73 KickP:0.000 OUT:0.01 | [B] M:0.32 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.37
+[F] P:0.71 R:0.21 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.37
+[F] P:0.70 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.13 SnP:0.28 OUT:0.00 | [M] Morph:0.36
+[F] P:0.69 R:0.17 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.29 SnP:0.61 OUT:0.16 | [M] Morph:0.35
+[F] P:0.70 R:0.15 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.35 SnP:0.73 OUT:0.63 | [M] Morph:0.35
+[F] P:0.71 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.37 SnP:0.79 OUT:1.03 | [M] Morph:0.35
+[F] P:0.69 R:0.12 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.37 SnP:0.79 OUT:1.04 | [M] Morph:0.35
+[F] P:0.68 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.34 SnP:0.73 OUT:0.62 | [M] Morph:0.34
+[F] P:0.74 R:0.09 Gate:0.73 KickP:0.002 OUT:0.00 | [B] M:0.42 T:0.31 SnP:0.67 OUT:0.30 | [M] Morph:0.34
+[INTERVAL] F240 bpm=121 raw=161 conf=0.000 kick=false phase=0.87 needle=0.0000 bassFlux=0.0295 midFlux=0.0000 centroid=1558Hz kicks=27
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 240: bpm=121, energy=0.30
+[F] P:0.78 R:0.09 Gate:0.73 KickP:0.062 OUT:0.09 | [B] M:0.44 T:0.31 SnP:0.65 OUT:0.26 | [M] Morph:0.34
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.945 (Rock target: >0.7)
+   Flatness:    0.038 (Tonal<0.3, Noise>0.7)
+   Centroid:    1281Hz (Bright>2000, Dark<1200)
+   CrestFactor: 17.74 (Dynamics)
+   Rolloff:     2153Hz (85% energy)
+   Latency:     0.68ms
+   UltraAir:    0.006 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.66x | In: 0.485 → Out: 0.320 | Peak: 0.742 | ✅ ACTIVE
+[F] P:0.75 R:0.12 Gate:0.73 KickP:0.000 OUT:0.03 | [B] M:0.41 T:0.27 SnP:0.57 OUT:0.08 | [M] Morph:0.34
+[F] P:0.71 R:0.15 Gate:0.73 KickP:0.000 OUT:0.01 | [B] M:0.43 T:0.24 SnP:0.53 OUT:0.04 | [M] Morph:0.34
+[F] P:0.68 R:0.15 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.34
+[F] P:0.67 R:0.14 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.33 SnP:0.71 OUT:0.51 | [M] Morph:0.34
+[F] P:0.67 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.36 SnP:0.79 OUT:1.01 | [M] Morph:0.35
+[F] P:0.69 R:0.11 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.38 SnP:0.85 OUT:1.59 | [M] Morph:0.35
+[F] P:0.69 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.39 SnP:0.88 OUT:1.95 | [M] Morph:0.36
+[F] P:0.69 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.35 SnP:0.79 OUT:0.99 | [M] Morph:0.36
+[F] P:0.68 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.32 SnP:0.71 OUT:0.48 | [M] Morph:0.35
+[F] P:0.77 R:0.11 Gate:0.72 KickP:0.059 OUT:0.09 | [B] M:0.36 T:0.26 SnP:0.58 OUT:0.10 | [M] Morph:0.35
+[F] P:0.74 R:0.18 Gate:0.72 KickP:0.000 OUT:0.03 | [B] M:0.32 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.34
+[F] P:0.71 R:0.18 Gate:0.72 KickP:0.000 OUT:0.01 | [B] M:0.31 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.34
+[F] P:0.66 R:0.18 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.15 SnP:0.32 OUT:0.00 | [M] Morph:0.33
+[F] P:0.64 R:0.15 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.33 SnP:0.67 OUT:0.30 | [M] Morph:0.33
+[F] P:0.67 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.38 SnP:0.79 OUT:1.02 | [M] Morph:0.33
+[F] P:0.70 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.39 SnP:0.84 OUT:1.50 | [M] Morph:0.33
+[F] P:0.70 R:0.08 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.40 SnP:0.87 OUT:1.92 | [M] Morph:0.33
+[F] P:0.68 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.36 SnP:0.79 OUT:0.99 | [M] Morph:0.33
+[F] P:0.73 R:0.08 Gate:0.72 KickP:0.005 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.73 OUT:0.59 | [M] Morph:0.33
+[🥁 INTERVAL BPM] KICK #28 bpm=161 conf=0.00 energy=0.1236 avg=0.0233 ratio=5.30 delta=0.1236 history=8/8 bpmBuf=[161,161,56,185,81,161,185,161]
+[F] P:0.77 R:0.10 Gate:0.72 KickP:0.054 OUT:0.08 | [B] M:0.46 T:0.32 SnP:0.70 OUT:0.46 | [M] Morph:0.34
+[F] P:0.76 R:0.15 Gate:0.72 KickP:0.000 OUT:0.02 | [B] M:0.43 T:0.31 SnP:0.66 OUT:0.29 | [M] Morph:0.34
+[F] P:0.69 R:0.17 Gate:0.72 KickP:0.000 OUT:0.01 | [B] M:0.36 T:0.25 SnP:0.54 OUT:0.04 | [M] Morph:0.34
+[F] P:0.67 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.21 SnP:0.46 OUT:0.00 | [M] Morph:0.33
+[F] P:0.65 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.30 SnP:0.62 OUT:0.17 | [M] Morph:0.33
+[INTERVAL] F260 bpm=121 raw=161 conf=0.000 kick=false phase=0.50 needle=0.0000 bassFlux=0.0104 midFlux=0.0059 centroid=7339Hz kicks=28
+[F] P:0.66 R:0.15 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.37 SnP:0.79 OUT:1.04 | [M] Morph:0.34
+[IPC 📡] audioBuffer #261 | titan.running=true | size=8192
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=53% B/D/N=162/238/50
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.65 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.39 SnP:0.87 OUT:1.80 | [M] Morph:0.35
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:7 | Pan:-151 Tilt:0 | sBPM:120 phase:318°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:7 | Pan:-12 Tilt:0 | sBPM:120 phase:318°
+[F] P:0.68 R:0.11 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.41 SnP:0.93 OUT:2.66 | [M] Morph:0.37
+[F] P:0.69 R:0.09 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.40 SnP:0.91 OUT:2.45 | [M] Morph:0.38
+[F] P:0.72 R:0.08 Gate:0.71 KickP:0.001 OUT:0.00 | [B] M:0.44 T:0.35 SnP:0.80 OUT:1.09 | [M] Morph:0.38
+[F] P:0.77 R:0.09 Gate:0.71 KickP:0.080 OUT:0.12 | [B] M:0.44 T:0.31 SnP:0.70 OUT:0.47 | [M] Morph:0.38
+[F] P:0.76 R:0.09 Gate:0.71 KickP:0.000 OUT:0.08 | [B] M:0.37 T:0.25 SnP:0.56 OUT:0.08 | [M] Morph:0.38
+[F] P:0.73 R:0.16 Gate:0.71 KickP:0.000 OUT:0.03 | [B] M:0.34 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.37
+[F] P:0.71 R:0.18 Gate:0.72 KickP:0.000 OUT:0.01 | [B] M:0.32 T:0.18 SnP:0.39 OUT:0.00 | [M] Morph:0.37
+[F] P:0.69 R:0.17 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.36
+[F] P:0.68 R:0.16 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.35 SnP:0.73 OUT:0.60 | [M] Morph:0.36
+[F] P:0.69 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.38 SnP:0.83 OUT:1.37 | [M] Morph:0.37
+[F] P:0.71 R:0.12 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.41 SnP:0.91 OUT:2.43 | [M] Morph:0.38
+[F] P:0.69 R:0.11 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.38 SnP:0.85 OUT:1.64 | [M] Morph:0.39
+[F] P:0.69 R:0.10 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.35 SnP:0.79 OUT:1.00 | [M] Morph:0.39
+[F] P:0.80 R:0.09 Gate:0.72 KickP:0.194 OUT:0.29 | [B] M:0.48 T:0.32 SnP:0.73 OUT:0.63 | [M] Morph:0.40
+[🥁 INTERVAL BPM] KICK #29 bpm=161 conf=0.00 energy=0.1627 avg=0.0229 ratio=7.11 delta=0.1627 history=8/8 bpmBuf=[161,161,161,81,81,161,185,161]
+[F] P:0.81 R:0.14 Gate:0.72 KickP:0.000 OUT:0.20 | [B] M:0.47 T:0.31 SnP:0.72 OUT:0.54 | [M] Morph:0.40
+[F] P:0.77 R:0.17 Gate:0.72 KickP:0.000 OUT:0.14 | [B] M:0.44 T:0.28 SnP:0.64 OUT:0.23 | [M] Morph:0.40
+[F] P:0.72 R:0.20 Gate:0.72 KickP:0.000 OUT:0.09 | [B] M:0.47 T:0.23 SnP:0.54 OUT:0.05 | [M] Morph:0.41
+[F] P:0.74 R:0.16 Gate:0.72 KickP:0.000 OUT:0.04 | [B] M:0.44 T:0.20 SnP:0.47 OUT:0.01 | [M] Morph:0.40
+[F] P:0.77 R:0.16 Gate:0.72 KickP:0.050 OUT:0.07 | [B] M:0.49 T:0.34 SnP:0.79 OUT:0.99 | [M] Morph:0.42
+[F] P:0.79 R:0.14 Gate:0.72 KickP:0.000 OUT:0.02 | [B] M:0.51 T:0.39 SnP:0.92 OUT:2.45 | [M] Morph:0.43
+[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.57 ΔE=0.050 kick=false
+[F] P:0.82 R:0.14 Gate:0.73 KickP:0.280 OUT:0.44 | [B] M:0.51 T:0.39 SnP:0.94 OUT:2.79 | [M] Morph:0.44
+[F] P:0.81 R:0.13 Gate:0.73 KickP:0.000 OUT:0.30 | [B] M:0.50 T:0.37 SnP:0.90 OUT:2.14 | [M] Morph:0.45
+[F] P:0.78 R:0.13 Gate:0.73 KickP:0.000 OUT:0.21 | [B] M:0.48 T:0.34 SnP:0.82 OUT:1.26 | [M] Morph:0.45
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #29
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=5000K
+[F] P:0.81 R:0.12 Gate:0.73 KickP:0.196 OUT:0.31 | [B] M:0.46 T:0.32 SnP:0.76 OUT:0.82 | [M] Morph:0.45
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[🥁 INTERVAL BPM] KICK #30 bpm=161 conf=0.00 energy=0.1439 avg=0.0203 ratio=7.08 delta=0.1439 history=8/8 bpmBuf=[161,161,161,81,161,161,185,161]
+[INTERVAL] F280 bpm=121 raw=161 conf=0.000 kick=true phase=0.00 needle=0.1439 bassFlux=0.1439 midFlux=0.0000 centroid=285Hz kicks=30
+[F] P:0.77 R:0.15 Gate:0.73 KickP:0.000 OUT:0.21 | [B] M:0.41 T:0.28 SnP:0.65 OUT:0.27 | [M] Morph:0.45
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.925 (Rock target: >0.7)
+   Flatness:    0.084 (Tonal<0.3, Noise>0.7)
+   Centroid:    4488Hz (Bright>2000, Dark<1200)
+   CrestFactor: 14.27 (Dynamics)
+   Rolloff:     10282Hz (85% energy)
+   Latency:     0.84ms
+   UltraAir:    0.003 (NEW: 16-22kHz sizzle)
+[F] P:0.75 R:0.12 Gate:0.73 KickP:0.000 OUT:0.15 | [B] M:0.39 T:0.26 SnP:0.60 OUT:0.14 | [M] Morph:0.44
+[F] P:0.66 R:0.09 Gate:0.73 KickP:0.000 OUT:0.10 | [B] M:0.36 T:0.22 SnP:0.50 OUT:0.02 | [M] Morph:0.44
+[F] P:0.62 R:0.07 Gate:0.73 KickP:0.000 OUT:0.05 | [B] M:0.34 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.43
+[F] P:0.60 R:0.06 Gate:0.72 KickP:0.000 OUT:0.02 | [B] M:0.43 T:0.34 SnP:0.76 OUT:0.83 | [M] Morph:0.43
+[F] P:0.65 R:0.06 Gate:0.72 KickP:0.000 OUT:0.01 | [B] M:0.46 T:0.38 SnP:0.87 OUT:1.78 | [M] Morph:0.43
+[F] P:0.68 R:0.05 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.39 SnP:0.90 OUT:2.24 | [M] Morph:0.43
+[F] P:0.69 R:0.05 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.38 SnP:0.88 OUT:1.97 | [M] Morph:0.43
+[F] P:0.69 R:0.04 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.35 SnP:0.80 OUT:1.11 | [M] Morph:0.43
+[F] P:0.76 R:0.03 Gate:0.72 KickP:0.031 OUT:0.02 | [B] M:0.45 T:0.33 SnP:0.76 OUT:0.76 | [M] Morph:0.43
+[F] P:0.75 R:0.04 Gate:0.72 KickP:0.000 OUT:0.01 | [B] M:0.43 T:0.30 SnP:0.69 OUT:0.43 | [M] Morph:0.42
+[F] P:0.68 R:0.05 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.27 SnP:0.61 OUT:0.15 | [M] Morph:0.42
+[F] P:0.64 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.24 SnP:0.53 OUT:0.05 | [M] Morph:0.41
+[F] P:0.58 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.40
+[F] P:0.64 R:0.03 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.74 OUT:0.68 | [M] Morph:0.40
+[F] P:0.67 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.39 SnP:0.86 OUT:1.66 | [M] Morph:0.41
+[F] P:0.68 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.40 SnP:0.91 OUT:2.39 | [M] Morph:0.41
+[F] P:0.71 R:0.04 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.39 SnP:0.92 OUT:2.42 | [M] Morph:0.42
+[IPC 📡] audioBuffer #294 | titan.running=true | size=8192
+[F] P:0.73 R:0.04 Gate:0.71 KickP:0.011 OUT:0.00 | [B] M:0.46 T:0.36 SnP:0.84 OUT:1.43 | [M] Morph:0.42
+[F] P:0.80 R:0.04 Gate:0.71 KickP:0.256 OUT:0.39 | [B] M:0.43 T:0.32 SnP:0.74 OUT:0.64 | [M] Morph:0.42
+[F] P:0.77 R:0.07 Gate:0.71 KickP:0.000 OUT:0.27 | [B] M:0.39 T:0.28 SnP:0.65 OUT:0.27 | [M] Morph:0.42
+[F] P:0.70 R:0.06 Gate:0.71 KickP:0.000 OUT:0.18 | [B] M:0.32 T:0.23 SnP:0.53 OUT:0.04 | [M] Morph:0.41
+[F] P:0.64 R:0.05 Gate:0.71 KickP:0.000 OUT:0.12 | [B] M:0.30 T:0.20 SnP:0.44 OUT:0.00 | [M] Morph:0.40
+[F] P:0.64 R:0.04 Gate:0.71 KickP:0.000 OUT:0.08 | [B] M:0.28 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.39
+[F] P:0.65 R:0.03 Gate:0.70 KickP:0.000 OUT:0.03 | [B] M:0.36 T:0.32 SnP:0.68 OUT:0.38 | [M] Morph:0.39
+[F] P:0.67 R:0.04 Gate:0.70 KickP:0.000 OUT:0.01 | [B] M:0.43 T:0.38 SnP:0.83 OUT:1.43 | [M] Morph:0.39
+[INTERVAL] F300 bpm=121 raw=161 conf=0.000 kick=false phase=0.49 needle=0.0000 bassFlux=0.0070 midFlux=0.0061 centroid=6781Hz kicks=30
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 300: bpm=121, energy=0.29
+[F] P:0.68 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.39 SnP:0.88 OUT:1.91 | [M] Morph:0.39
+[BETA 📡] AUDIO_BUFFER #300 | size=2048
+[AGC 🎚️] Gain: 0.64x | In: 0.580 → Out: 0.374 | Peak: 0.760 | ✅ ACTIVE
+[SimpleSectionTracker] 📊 section=buildup | bassR=0.93/1.4 wE=0.27/0.75 kick=false cool=false
+[F] P:0.70 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.40 SnP:0.91 OUT:2.36 | [M] Morph:0.38
+[F] P:0.71 R:0.05 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.38 SnP:0.86 OUT:1.71 | [M] Morph:0.38
+[F] P:0.75 R:0.05 Gate:0.71 KickP:0.047 OUT:0.05 | [B] M:0.41 T:0.32 SnP:0.72 OUT:0.54 | [M] Morph:0.38
+[F] P:0.76 R:0.06 Gate:0.71 KickP:0.000 OUT:0.02 | [B] M:0.41 T:0.31 SnP:0.69 OUT:0.42 | [M] Morph:0.38
+[F] P:0.69 R:0.06 Gate:0.71 KickP:0.000 OUT:0.01 | [B] M:0.37 T:0.27 SnP:0.59 OUT:0.12 | [M] Morph:0.38
+[F] P:0.66 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.26 SnP:0.57 OUT:0.08 | [M] Morph:0.37
+[F] P:0.62 R:0.05 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.20 SnP:0.46 OUT:0.01 | [M] Morph:0.37
+[F] P:0.61 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.25 SnP:0.55 OUT:0.06 | [M] Morph:0.37
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=53% B/D/N=125/227/75
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.65 R:0.03 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.37 SnP:0.81 OUT:1.19 | [M] Morph:0.38
+[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:7 | Pan:222 Tilt:0 | sBPM:120 phase:84°
+[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:7 | Pan:-174 Tilt:0 | sBPM:120 phase:84°
+[F] P:0.68 R:0.03 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.39 SnP:0.87 OUT:1.89 | [M] Morph:0.39
+[F] P:0.71 R:0.04 Gate:0.70 KickP:0.003 OUT:0.00 | [B] M:0.48 T:0.40 SnP:0.92 OUT:2.58 | [M] Morph:0.40
+[F] P:0.72 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.39 SnP:0.89 OUT:2.12 | [M] Morph:0.41
+[F] P:0.76 R:0.06 Gate:0.70 KickP:0.089 OUT:0.14 | [B] M:0.45 T:0.34 SnP:0.78 OUT:0.97 | [M] Morph:0.40
+[F] P:0.79 R:0.07 Gate:0.70 KickP:0.231 OUT:0.35 | [B] M:0.43 T:0.33 SnP:0.75 OUT:0.70 | [M] Morph:0.40
+[🥁 INTERVAL BPM] KICK #31 bpm=161 conf=0.00 energy=0.1568 avg=0.0149 ratio=10.52 delta=0.1568 history=8/8 bpmBuf=[161,161,161,81,161,42,185,161]
+[F] P:0.76 R:0.13 Gate:0.70 KickP:0.000 OUT:0.24 | [B] M:0.36 T:0.28 SnP:0.63 OUT:0.20 | [M] Morph:0.40
+[F] P:0.74 R:0.13 Gate:0.71 KickP:0.000 OUT:0.16 | [B] M:0.35 T:0.27 SnP:0.60 OUT:0.13 | [M] Morph:0.39
+[F] P:0.67 R:0.13 Gate:0.71 KickP:0.000 OUT:0.11 | [B] M:0.31 T:0.21 SnP:0.46 OUT:0.01 | [M] Morph:0.39
+[F] P:0.66 R:0.11 Gate:0.70 KickP:0.000 OUT:0.06 | [B] M:0.32 T:0.25 SnP:0.54 OUT:0.05 | [M] Morph:0.38
+[F] P:0.69 R:0.09 Gate:0.70 KickP:0.000 OUT:0.02 | [B] M:0.44 T:0.38 SnP:0.83 OUT:1.34 | [M] Morph:0.38
+[F] P:0.71 R:0.07 Gate:0.70 KickP:0.000 OUT:0.01 | [B] M:0.45 T:0.40 SnP:0.89 OUT:2.12 | [M] Morph:0.38
+[F] P:0.71 R:0.06 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.41 SnP:0.94 OUT:2.88 | [M] Morph:0.38
+[F] P:0.71 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.39 SnP:0.90 OUT:2.31 | [M] Morph:0.39
+[F] P:0.69 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.79 OUT:1.00 | [M] Morph:0.39
+[F] P:0.78 R:0.07 Gate:0.71 KickP:0.118 OUT:0.18 | [B] M:0.45 T:0.32 SnP:0.72 OUT:0.53 | [M] Morph:0.39
+[F] P:0.77 R:0.12 Gate:0.71 KickP:0.000 OUT:0.12 | [B] M:0.43 T:0.31 SnP:0.69 OUT:0.42 | [M] Morph:0.39
+[F] P:0.71 R:0.15 Gate:0.71 KickP:0.000 OUT:0.08 | [B] M:0.39 T:0.27 SnP:0.62 OUT:0.17 | [M] Morph:0.38
+[INTERVAL] F320 bpm=121 raw=161 conf=0.000 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=2930Hz kicks=31
+[F] P:0.65 R:0.14 Gate:0.71 KickP:0.000 OUT:0.03 | [B] M:0.35 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.38
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
    Clarity:     0.935 (Rock target: >0.7)
-   Flatness:    0.063 (Tonal<0.3, Noise>0.7)
-   Centroid:    1403Hz (Bright>2000, Dark<1200)
-   CrestFactor: 13.94 (Dynamics)
-   Rolloff:     1357Hz (85% energy)
-   Latency:     0.83ms
-   UltraAir:    0.012 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.67x | In: 0.601 → Out: 0.402 | Peak: 0.813 | ✅ ACTIVE
-[🥁 INTERVAL BPM] KICK #96 bpm=173 conf=0.54 energy=0.1091 avg=0.0137 ratio=7.95 delta=0.1091 history=8/8 bpmBuf=[185,185,185,161,161,161,185,161]
-[SimpleSectionTracker] 📊 section=breakdown | bassR=0.93/1.4 wE=0.54/0.75 kick=false cool=false
-[F] P:0.79 R:0.07 Gate:0.73 KickP:0.237 OUT:0.35 | [B] M:0.39 T:0.32 SnP:0.66 OUT:0.28 | [M] Morph:0.32
-[CHOREO] Pattern transition: diamond -> botstep (2s LERP)
-[IPC 📡] audioBuffer #1202 | titan.running=true | size=8192
-[F] P:0.81 R:0.07 Gate:0.73 KickP:0.340 OUT:0.49 | [B] M:0.40 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.32
-[F] P:0.87 R:0.08 Gate:0.73 KickP:0.663 OUT:0.97 | [B] M:0.44 T:0.28 SnP:0.59 OUT:0.10 | [M] Morph:0.32
-[F] P:0.87 R:0.09 Gate:0.74 KickP:0.000 OUT:0.64 | [B] M:0.42 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.32
-[F] P:0.86 R:0.10 Gate:0.74 KickP:0.000 OUT:0.43 | [B] M:0.41 T:0.26 SnP:0.53 OUT:0.04 | [M] Morph:0.32
-[F] P:0.81 R:0.13 Gate:0.74 KickP:0.000 OUT:0.28 | [B] M:0.36 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.32
-[F] P:0.74 R:0.11 Gate:0.74 KickP:0.000 OUT:0.19 | [B] M:0.35 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.31
-[F] P:0.72 R:0.09 Gate:0.74 KickP:0.000 OUT:0.12 | [B] M:0.34 T:0.26 SnP:0.52 OUT:0.03 | [M] Morph:0.31
-[F] P:0.67 R:0.08 Gate:0.74 KickP:0.000 OUT:0.08 | [B] M:0.30 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.30
-[F] P:0.66 R:0.08 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.30
-[F] P:0.72 R:0.07 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.28 SnP:0.58 OUT:0.08 | [M] Morph:0.30
-[F] P:0.79 R:0.07 Gate:0.74 KickP:0.158 OUT:0.23 | [B] M:0.37 T:0.28 SnP:0.56 OUT:0.06 | [M] Morph:0.29
-[F] P:0.84 R:0.07 Gate:0.74 KickP:0.419 OUT:0.60 | [B] M:0.38 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.29
-[F] P:0.84 R:0.09 Gate:0.75 KickP:0.000 OUT:0.40 | [B] M:0.36 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.29
-[F] P:0.85 R:0.09 Gate:0.75 KickP:0.000 OUT:0.26 | [B] M:0.45 T:0.24 SnP:0.50 OUT:0.01 | [M] Morph:0.30
-[F] P:0.83 R:0.08 Gate:0.75 KickP:0.000 OUT:0.17 | [B] M:0.44 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.31
-[F] P:0.75 R:0.07 Gate:0.75 KickP:0.000 OUT:0.11 | [B] M:0.37 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.31
-[F] P:0.73 R:0.06 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.31
-[F] P:0.66 R:0.05 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.22 SnP:0.46 OUT:0.00 | [M] Morph:0.30
-[F] P:0.66 R:0.05 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.30
-[F] P:0.73 R:0.04 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.67 OUT:0.30 | [M] Morph:0.30
-[F] P:0.74 R:0.06 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.32 SnP:0.64 OUT:0.22 | [M] Morph:0.30
-[F] P:0.80 R:0.08 Gate:0.75 KickP:0.150 OUT:0.22 | [B] M:0.46 T:0.29 SnP:0.59 OUT:0.11 | [M] Morph:0.31
-[F] P:0.80 R:0.10 Gate:0.75 KickP:0.000 OUT:0.15 | [B] M:0.44 T:0.27 SnP:0.56 OUT:0.07 | [M] Morph:0.32
-[F] P:0.78 R:0.08 Gate:0.75 KickP:0.000 OUT:0.10 | [B] M:0.44 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.33
-[F] P:0.79 R:0.08 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.32
-[INTERVAL] F1220 bpm=130 raw=173 conf=0.521 kick=false phase=0.54 needle=0.0343 bassFlux=0.0343 midFlux=0.0037 centroid=501Hz kicks=96
-[F] P:0.70 R:0.10 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.32
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=43% B/D/N=152/184/92
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.68 R:0.08 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.32
-[CHOREO] techno-club | botstep [LERP] [MIRROR F0/2] | Bar:24 | Pan:-150 Tilt:35 | sBPM:130 phase:288°
-[CHOREO] techno-club | botstep [LERP] [MIRROR F1/2] | Bar:24 | Pan:150 Tilt:35 | sBPM:130 phase:288°
-[F] P:0.61 R:0.06 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.31
-[F] P:0.60 R:0.05 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.26 SnP:0.52 OUT:0.03 | [M] Morph:0.31
-[F] P:0.66 R:0.04 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.69 OUT:0.38 | [M] Morph:0.31
-[F] P:0.67 R:0.04 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.32 SnP:0.66 OUT:0.29 | [M] Morph:0.31
-[F] P:0.68 R:0.04 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.30 SnP:0.64 OUT:0.21 | [M] Morph:0.32
-[F] P:0.75 R:0.04 Gate:0.74 KickP:0.013 OUT:0.00 | [B] M:0.43 T:0.28 SnP:0.58 OUT:0.09 | [M] Morph:0.32
-[🥁 INTERVAL BPM] KICK #97 bpm=173 conf=0.52 energy=0.1058 avg=0.0102 ratio=10.38 delta=0.1058 history=8/8 bpmBuf=[185,185,185,161,161,161,185,161]
-[F] P:0.77 R:0.06 Gate:0.74 KickP:0.068 OUT:0.10 | [B] M:0.39 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.32
-[F] P:0.79 R:0.08 Gate:0.74 KickP:0.146 OUT:0.21 | [B] M:0.44 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.32
-[F] P:0.71 R:0.08 Gate:0.74 KickP:0.000 OUT:0.14 | [B] M:0.38 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.32
-[F] P:0.67 R:0.08 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.40 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.32
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.51 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=0.48 | beat #97
-[F] P:0.61 R:0.07 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.32
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.59 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.22 SnP:0.46 OUT:0.00 | [M] Morph:0.31
-[F] P:0.68 R:0.05 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.67 OUT:0.31 | [M] Morph:0.32
-[F] P:0.74 R:0.05 Gate:0.73 KickP:0.017 OUT:0.00 | [B] M:0.37 T:0.31 SnP:0.63 OUT:0.20 | [M] Morph:0.31
-[F] P:0.73 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.60 OUT:0.13 | [M] Morph:0.31
-[F] P:0.69 R:0.07 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.25 SnP:0.54 OUT:0.04 | [M] Morph:0.32
-[IPC 📡] audioBuffer #1234 | titan.running=true | size=8192
-[F] P:0.69 R:0.07 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.31
-[CHOREO] Transition complete -> botstep
-[F] P:0.70 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.31
-[🥁 INTERVAL BPM] KICK #98 bpm=173 conf=0.32 energy=0.0818 avg=0.0136 ratio=6.00 delta=0.0818 history=8/8 bpmBuf=[185,185,185,161,144,161,185,161]
-[F] P:0.66 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.30
-[F] P:0.62 R:0.08 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.30
-[F] P:0.58 R:0.07 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.22 SnP:0.46 OUT:0.00 | [M] Morph:0.29
-[F] P:0.55 R:0.07 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.29
-[F] P:0.54 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.31 SnP:0.62 OUT:0.16 | [M] Morph:0.30
-[F] P:0.57 R:0.05 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.31 SnP:0.65 OUT:0.25 | [M] Morph:0.31
-[🥁 INTERVAL BPM] KICK #99 bpm=185 conf=0.00 energy=0.1388 avg=0.0194 ratio=7.15 delta=0.1388 history=8/8 bpmBuf=[185,185,185,161,144,258,185,161]
-[INTERVAL] F1240 bpm=123 raw=185 conf=0.000 kick=true phase=0.00 needle=0.1388 bassFlux=0.1388 midFlux=0.0000 centroid=418Hz kicks=99
-[F] P:0.63 R:0.08 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.29 SnP:0.60 OUT:0.13 | [M] Morph:0.32
-[F] P:0.64 R:0.11 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.27 SnP:0.57 OUT:0.07 | [M] Morph:0.32
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.981 (Rock target: >0.7)
-   Flatness:    0.014 (Tonal<0.3, Noise>0.7)
-   Centroid:    848Hz (Bright>2000, Dark<1200)
-   CrestFactor: 14.82 (Dynamics)
-   Rolloff:     980Hz (85% energy)
-   Latency:     1.18ms
-   UltraAir:    0.004 (NEW: 16-22kHz sizzle)
-[F] P:0.61 R:0.10 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.32
-[F] P:0.67 R:0.10 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.33
-[F] P:0.61 R:0.10 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.33
-[F] P:0.59 R:0.09 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.33
-[F] P:0.56 R:0.08 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.33
-[F] P:0.53 R:0.08 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.32
-[F] P:0.62 R:0.06 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.32 SnP:0.67 OUT:0.31 | [M] Morph:0.33
-[F] P:0.68 R:0.05 Gate:0.68 KickP:0.005 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.67 OUT:0.30 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #100 bpm=185 conf=0.00 energy=0.1176 avg=0.0249 ratio=4.73 delta=0.1176 history=8/8 bpmBuf=[185,185,185,161,144,258,185,161]
-[F] P:0.65 R:0.05 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.61 OUT:0.14 | [M] Morph:0.33
-[F] P:0.63 R:0.06 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.27 SnP:0.57 OUT:0.08 | [M] Morph:0.33
-[F] P:0.60 R:0.05 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.33
-[F] P:0.75 R:0.07 Gate:0.68 KickP:0.257 OUT:0.38 | [B] M:0.39 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.73 R:0.17 Gate:0.68 KickP:0.000 OUT:0.25 | [B] M:0.37 T:0.32 SnP:0.67 OUT:0.32 | [M] Morph:0.32
-[F] P:0.71 R:0.25 Gate:0.68 KickP:0.000 OUT:0.17 | [B] M:0.35 T:0.33 SnP:0.70 OUT:0.43 | [M] Morph:0.32
-[F] P:0.69 R:0.28 Gate:0.68 KickP:0.000 OUT:0.11 | [B] M:0.33 T:0.33 SnP:0.71 OUT:0.48 | [M] Morph:0.31
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[F] P:0.74 R:0.28 Gate:0.68 KickP:0.162 OUT:0.24 | [B] M:0.38 T:0.35 SnP:0.76 OUT:0.78 | [M] Morph:0.31
-[F] P:0.81 R:0.27 Gate:0.69 KickP:0.571 OUT:0.83 | [B] M:0.46 T:0.39 SnP:0.85 OUT:1.59 | [M] Morph:0.32
-[F] P:0.84 R:0.27 Gate:0.69 KickP:0.740 OUT:1.00 | [B] M:0.44 T:0.38 SnP:0.84 OUT:1.50 | [M] Morph:0.33
-[F] P:0.84 R:0.24 Gate:0.69 KickP:0.000 OUT:0.66 | [B] M:0.40 T:0.35 SnP:0.76 OUT:0.78 | [M] Morph:0.32
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.05 wE=0.79 ΔE=0.030 kick=false
-[F] P:0.86 R:0.24 Gate:0.70 KickP:0.000 OUT:0.44 | [B] M:0.38 T:0.32 SnP:0.69 OUT:0.41 | [M] Morph:0.32
-[F] P:0.86 R:0.23 Gate:0.70 KickP:0.000 OUT:0.29 | [B] M:0.35 T:0.27 SnP:0.57 OUT:0.08 | [M] Morph:0.32
-[F] P:0.87 R:0.23 Gate:0.71 KickP:0.000 OUT:0.19 | [B] M:0.43 T:0.26 SnP:0.56 OUT:0.06 | [M] Morph:0.32
-[F] P:0.84 R:0.28 Gate:0.71 KickP:0.000 OUT:0.13 | [B] M:0.39 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.32
-[F] P:0.80 R:0.31 Gate:0.71 KickP:0.000 OUT:0.09 | [B] M:0.35 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.31
-[F] P:0.77 R:0.32 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.31
-[F] P:0.74 R:0.34 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.30
-[INTERVAL] F1260 bpm=123 raw=185 conf=0.000 kick=false phase=0.86 needle=0.0000 bassFlux=0.0266 midFlux=0.0018 centroid=2046Hz kicks=100
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1260: bpm=130, energy=0.44
-[F] P:0.80 R:0.28 Gate:0.72 KickP:0.310 OUT:0.45 | [B] M:0.42 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.30
-[AGC 🎚️] Gain: 0.67x | In: 0.613 → Out: 0.410 | Peak: 0.788 | ✅ ACTIVE
-[F] P:0.81 R:0.27 Gate:0.72 KickP:0.000 OUT:0.29 | [B] M:0.41 T:0.32 SnP:0.65 OUT:0.23 | [M] Morph:0.30
-[F] P:0.79 R:0.25 Gate:0.72 KickP:0.000 OUT:0.19 | [B] M:0.39 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.30
-[F] P:0.81 R:0.24 Gate:0.73 KickP:0.000 OUT:0.13 | [B] M:0.39 T:0.26 SnP:0.52 OUT:0.03 | [M] Morph:0.30
-[F] P:0.82 R:0.21 Gate:0.73 KickP:0.000 OUT:0.08 | [B] M:0.34 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.29
-[F] P:0.85 R:0.24 Gate:0.73 KickP:0.555 OUT:0.79 | [B] M:0.33 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.29
-[F] P:0.81 R:0.25 Gate:0.73 KickP:0.000 OUT:0.52 | [B] M:0.26 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.28
-[🥁 INTERVAL BPM] KICK #101 bpm=185 conf=0.00 energy=0.1205 avg=0.0224 ratio=5.39 delta=0.0579 history=8/8 bpmBuf=[185,185,185,161,144,258,185,72]
-[SimpleSectionTracker] 🔴 DROP ENTER | vibe=techno-club | bassRatio=1.69 | energy=0.82 | bass=0.61 | kick=true
-[SimpleSectionTracker] 📍 buildup → drop | bassR=1.69 wE=0.82 ΔE=0.248 kick=true
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=38% B/D/N=156/158/107
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.79 R:0.36 Gate:0.74 KickP:0.000 OUT:0.34 | [B] M:0.25 T:0.13 SnP:0.25 OUT:0.00 | [M] Morph:0.27
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:25 | Pan:124 Tilt:-27 | sBPM:130 phase:202°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:25 | Pan:-124 Tilt:-27 | sBPM:130 phase:202°
-[IPC 📡] audioBuffer #1266 | titan.running=true | size=8192
-[F] P:0.73 R:0.35 Gate:0.74 KickP:0.000 OUT:0.22 | [B] M:0.20 T:0.08 SnP:0.16 OUT:0.00 | [M] Morph:0.26
-[F] P:0.72 R:0.35 Gate:0.74 KickP:0.000 OUT:0.14 | [B] M:0.19 T:0.07 SnP:0.14 OUT:0.00 | [M] Morph:0.25
-[F] P:0.76 R:0.34 Gate:0.74 KickP:0.071 OUT:0.10 | [B] M:0.43 T:0.33 SnP:0.62 OUT:0.16 | [M] Morph:0.26
-[F] P:0.79 R:0.28 Gate:0.74 KickP:0.284 OUT:0.40 | [B] M:0.42 T:0.34 SnP:0.67 OUT:0.32 | [M] Morph:0.27
-[F] P:0.83 R:0.24 Gate:0.74 KickP:0.606 OUT:0.86 | [B] M:0.40 T:0.31 SnP:0.62 OUT:0.15 | [M] Morph:0.27
-[F] P:0.84 R:0.20 Gate:0.75 KickP:0.732 OUT:1.00 | [B] M:0.41 T:0.30 SnP:0.58 OUT:0.09 | [M] Morph:0.27
-[F] P:0.82 R:0.19 Gate:0.75 KickP:0.000 OUT:0.65 | [B] M:0.34 T:0.23 SnP:0.45 OUT:0.00 | [M] Morph:0.27
-[F] P:0.85 R:0.18 Gate:0.75 KickP:0.783 OUT:1.00 | [B] M:0.43 T:0.23 SnP:0.45 OUT:0.00 | [M] Morph:0.27
-[🥁 INTERVAL BPM] KICK #102 bpm=185 conf=0.00 energy=0.1649 avg=0.0247 ratio=6.67 delta=0.1649 history=8/8 bpmBuf=[185,185,185,161,144,258,185,185]
-[F] P:0.81 R:0.27 Gate:0.75 KickP:0.000 OUT:0.66 | [B] M:0.44 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.29
-[F] P:0.79 R:0.34 Gate:0.75 KickP:0.000 OUT:0.43 | [B] M:0.42 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.29
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.31 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=0.95 | beat #102
-[F] P:0.73 R:0.38 Gate:0.75 KickP:0.000 OUT:0.28 | [B] M:0.35 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.28
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3084
-[F] P:0.70 R:0.38 Gate:0.75 KickP:0.000 OUT:0.19 | [B] M:0.33 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.28
-[F] P:0.73 R:0.35 Gate:0.75 KickP:0.000 OUT:0.12 | [B] M:0.43 T:0.32 SnP:0.62 OUT:0.17 | [M] Morph:0.29
-[F] P:0.74 R:0.27 Gate:0.75 KickP:0.000 OUT:0.08 | [B] M:0.40 T:0.32 SnP:0.63 OUT:0.19 | [M] Morph:0.29
-[F] P:0.73 R:0.25 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.29 SnP:0.58 OUT:0.08 | [M] Morph:0.28
-[F] P:0.73 R:0.23 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.27 SnP:0.55 OUT:0.05 | [M] Morph:0.28
-[F] P:0.72 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.28
-[F] P:0.78 R:0.17 Gate:0.76 KickP:0.104 OUT:0.15 | [B] M:0.33 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.28
-[🥁 INTERVAL BPM] KICK #103 bpm=185 conf=0.00 energy=0.2577 avg=0.0345 ratio=7.46 delta=0.2577 history=8/8 bpmBuf=[185,161,185,161,144,258,185,185]
-[INTERVAL] F1280 bpm=123 raw=185 conf=0.000 kick=true phase=0.00 needle=0.2577 bassFlux=0.2577 midFlux=0.0000 centroid=79Hz kicks=103
-[F] P:0.75 R:0.30 Gate:0.76 KickP:0.000 OUT:0.10 | [B] M:0.27 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.27
-[F] P:0.71 R:0.40 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.23 T:0.12 SnP:0.23 OUT:0.00 | [M] Morph:0.26
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.995 (Rock target: >0.7)
-   Flatness:    0.002 (Tonal<0.3, Noise>0.7)
-   Centroid:    96Hz (Bright>2000, Dark<1200)
-   CrestFactor: 25.62 (Dynamics)
-   Rolloff:     75Hz (85% energy)
-   Latency:     1.47ms
+   Flatness:    0.061 (Tonal<0.3, Noise>0.7)
+   Centroid:    1792Hz (Bright>2000, Dark<1200)
+   CrestFactor: 17.12 (Dynamics)
+   Rolloff:     4360Hz (85% energy)
+   Latency:     0.84ms
    UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[F] P:0.67 R:0.38 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.09 SnP:0.17 OUT:0.00 | [M] Morph:0.25
-[F] P:0.64 R:0.35 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.20 T:0.06 SnP:0.12 OUT:0.00 | [M] Morph:0.24
-[F] P:0.69 R:0.27 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.31 SnP:0.61 OUT:0.13 | [M] Morph:0.26
-[F] P:0.73 R:0.22 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.66 OUT:0.26 | [M] Morph:0.27
-[F] P:0.73 R:0.18 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.31 SnP:0.63 OUT:0.18 | [M] Morph:0.27
-[F] P:0.75 R:0.15 Gate:0.75 KickP:0.004 OUT:0.00 | [B] M:0.40 T:0.29 SnP:0.59 OUT:0.09 | [M] Morph:0.27
-[F] P:0.76 R:0.15 Gate:0.75 KickP:0.010 OUT:0.00 | [B] M:0.35 T:0.26 SnP:0.51 OUT:0.02 | [M] Morph:0.27
-[F] P:0.80 R:0.14 Gate:0.75 KickP:0.208 OUT:0.30 | [B] M:0.46 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.29
-[F] P:0.76 R:0.21 Gate:0.75 KickP:0.000 OUT:0.20 | [B] M:0.43 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.29
-[F] P:0.72 R:0.26 Gate:0.75 KickP:0.000 OUT:0.13 | [B] M:0.40 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.29
-[F] P:0.68 R:0.29 Gate:0.75 KickP:0.000 OUT:0.08 | [B] M:0.34 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.29
-[SimpleSectionTracker] 🔴 DROP EXIT | expired=false | killSwitch=true | holdActive=false | duration=1501ms | energy=0.40
-[SimpleSectionTracker] 📍 drop → verse | bassR=1.11 wE=0.40 ΔE=0.033 kick=false
-[F] P:0.66 R:0.30 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.10 SnP:0.21 OUT:0.00 | [M] Morph:0.28
-[F] P:0.67 R:0.27 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.32 SnP:0.64 OUT:0.22 | [M] Morph:0.30
-[F] P:0.68 R:0.23 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.33 SnP:0.68 OUT:0.34 | [M] Morph:0.31
-[F] P:0.71 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.30 SnP:0.61 OUT:0.14 | [M] Morph:0.31
-[F] P:0.70 R:0.16 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.59 OUT:0.10 | [M] Morph:0.31
-[F] P:0.68 R:0.14 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.31
-[F] P:0.71 R:0.11 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.31
-[🥁 INTERVAL BPM] KICK #104 bpm=173 conf=0.00 energy=0.2418 avg=0.0374 ratio=6.46 delta=0.2418 history=8/8 bpmBuf=[185,161,86,161,144,258,185,185]
-[F] P:0.74 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.30
-[F] P:0.71 R:0.28 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.29
-[F] P:0.67 R:0.31 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.10 SnP:0.21 OUT:0.00 | [M] Morph:0.29
-[F] P:0.65 R:0.31 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.09 SnP:0.18 OUT:0.00 | [M] Morph:0.28
-[IPC 📡] audioBuffer #1298 | titan.running=true | size=8192
-[F] P:0.67 R:0.25 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.31 SnP:0.63 OUT:0.18 | [M] Morph:0.29
-[F] P:0.66 R:0.20 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.33 SnP:0.69 OUT:0.40 | [M] Morph:0.30
-[F] P:0.62 R:0.16 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.32 SnP:0.67 OUT:0.30 | [M] Morph:0.29
-[INTERVAL] F1300 bpm=130 raw=173 conf=0.000 kick=false phase=0.67 needle=0.0000 bassFlux=0.0031 midFlux=0.0000 centroid=1575Hz kicks=104
-[F] P:0.67 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.31 SnP:0.65 OUT:0.24 | [M] Morph:0.30
-[F] P:0.66 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.30
-[F] P:0.72 R:0.12 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.32
-[F] P:0.71 R:0.12 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.21 SnP:0.46 OUT:0.01 | [M] Morph:0.34
-[F] P:0.69 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.19 SnP:0.43 OUT:0.00 | [M] Morph:0.34
-[F] P:0.66 R:0.32 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.34
-[F] P:0.63 R:0.34 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.13 SnP:0.29 OUT:0.00 | [M] Morph:0.34
-[F] P:0.63 R:0.30 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.34
-[F] P:0.65 R:0.24 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.36 SnP:0.80 OUT:1.07 | [M] Morph:0.37
-[F] P:0.68 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.33 SnP:0.74 OUT:0.67 | [M] Morph:0.38
-[F] P:0.71 R:0.17 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.32 SnP:0.72 OUT:0.58 | [M] Morph:0.41
-[F] P:0.70 R:0.17 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.30 SnP:0.70 OUT:0.46 | [M] Morph:0.42
-[F] P:0.77 R:0.14 Gate:0.72 KickP:0.281 OUT:0.43 | [B] M:0.46 T:0.25 SnP:0.59 OUT:0.12 | [M] Morph:0.42
-[F] P:0.78 R:0.12 Gate:0.72 KickP:0.413 OUT:0.63 | [B] M:0.41 T:0.22 SnP:0.50 OUT:0.03 | [M] Morph:0.42
-[🥁 INTERVAL BPM] KICK #105 bpm=179 conf=0.00 energy=0.2231 avg=0.0374 ratio=5.96 delta=0.2231 history=8/8 bpmBuf=[185,161,173,86,144,258,185,185]
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=39% B/D/N=168/164/102
-[StrategyArbiter] 🔄 Running... frame=1800 | current=analogous | commitment=1
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.73 R:0.21 Gate:0.72 KickP:0.000 OUT:0.43 | [B] M:0.34 T:0.16 SnP:0.37 OUT:0.00 | [M] Morph:0.41
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(37%) | Safety:✅OK
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:26 | Pan:-4 Tilt:15 | sBPM:130 phase:116°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:26 | Pan:4 Tilt:15 | sBPM:130 phase:116°
-[F] P:0.68 R:0.26 Gate:0.72 KickP:0.000 OUT:0.29 | [B] M:0.28 T:0.11 SnP:0.26 OUT:0.00 | [M] Morph:0.40
-[F] P:0.72 R:0.26 Gate:0.73 KickP:0.000 OUT:0.20 | [B] M:0.26 T:0.09 SnP:0.20 OUT:0.00 | [M] Morph:0.39
-[F] P:0.80 R:0.23 Gate:0.73 KickP:0.533 OUT:0.81 | [B] M:0.42 T:0.27 SnP:0.59 OUT:0.13 | [M] Morph:0.39
-[F] P:0.85 R:0.20 Gate:0.73 KickP:1.000 OUT:1.00 | [B] M:0.49 T:0.35 SnP:0.76 OUT:0.81 | [M] Morph:0.40
-[F] P:0.88 R:0.19 Gate:0.73 KickP:1.000 OUT:1.00 | [B] M:0.45 T:0.34 SnP:0.74 OUT:0.68 | [M] Morph:0.40
-[F] P:0.88 R:0.17 Gate:0.74 KickP:0.000 OUT:0.68 | [B] M:0.46 T:0.31 SnP:0.69 OUT:0.42 | [M] Morph:0.40
-[F] P:0.88 R:0.17 Gate:0.74 KickP:1.000 OUT:1.00 | [B] M:0.40 T:0.26 SnP:0.58 OUT:0.10 | [M] Morph:0.40
-[F] P:0.89 R:0.17 Gate:0.74 KickP:1.000 OUT:1.00 | [B] M:0.48 T:0.26 SnP:0.58 OUT:0.11 | [M] Morph:0.41
-[F] P:0.84 R:0.19 Gate:0.75 KickP:0.000 OUT:0.68 | [B] M:0.46 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.41
-[F] P:0.82 R:0.27 Gate:0.75 KickP:0.000 OUT:0.46 | [B] M:0.43 T:0.19 SnP:0.45 OUT:0.00 | [M] Morph:0.41
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.31 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=1.00 | beat #105
-[F] P:0.74 R:0.26 Gate:0.75 KickP:0.000 OUT:0.32 | [B] M:0.36 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.40
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.72 R:0.25 Gate:0.75 KickP:0.000 OUT:0.21 | [B] M:0.34 T:0.12 SnP:0.28 OUT:0.00 | [M] Morph:0.40
-[INTERVAL] F1320 bpm=134 raw=179 conf=0.000 kick=false phase=0.39 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=175Hz kicks=105
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1320: bpm=130, energy=0.29
-[F] P:0.77 R:0.23 Gate:0.75 KickP:0.089 OUT:0.15 | [B] M:0.44 T:0.29 SnP:0.63 OUT:0.21 | [M] Morph:0.39
-[F] P:0.80 R:0.21 Gate:0.75 KickP:0.300 OUT:0.45 | [B] M:0.46 T:0.34 SnP:0.73 OUT:0.58 | [M] Morph:0.40
+[F] P:0.64 R:0.11 Gate:0.70 KickP:0.000 OUT:0.01 | [B] M:0.35 T:0.26 SnP:0.56 OUT:0.07 | [M] Morph:0.37
+[F] P:0.71 R:0.09 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.39 SnP:0.88 OUT:2.01 | [M] Morph:0.38
+[F] P:0.72 R:0.08 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.40 SnP:0.92 OUT:2.56 | [M] Morph:0.40
+[F] P:0.69 R:0.08 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.40 SnP:0.96 OUT:3.15 | [M] Morph:0.41
+[F] P:0.68 R:0.07 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.39 SnP:0.94 OUT:2.76 | [M] Morph:0.42
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #31
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=5205K
+[F] P:0.69 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.35 SnP:0.82 OUT:1.32 | [M] Morph:0.42
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.69 R:0.05 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.35 SnP:0.81 OUT:1.22 | [M] Morph:0.42
+[🥁 INTERVAL BPM] KICK #32 bpm=161 conf=0.00 energy=0.2099 avg=0.0200 ratio=10.48 delta=0.2099 history=8/8 bpmBuf=[161,161,161,81,161,161,86,161]
+[F] P:0.73 R:0.09 Gate:0.71 KickP:0.008 OUT:0.00 | [B] M:0.43 T:0.30 SnP:0.70 OUT:0.45 | [M] Morph:0.42
+[CHOREO] Pattern transition: scan_x -> square (2s LERP)
+[IPC 📡] audioBuffer #327 | titan.running=true | size=8192
+[F] P:0.70 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.29 SnP:0.66 OUT:0.29 | [M] Morph:0.42
+[F] P:0.69 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.28 SnP:0.64 OUT:0.24 | [M] Morph:0.42
+[F] P:0.70 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.26 SnP:0.62 OUT:0.18 | [M] Morph:0.42
+[F] P:0.71 R:0.13 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.36 SnP:0.85 OUT:1.55 | [M] Morph:0.44
+[F] P:0.69 R:0.10 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.38 SnP:0.91 OUT:2.26 | [M] Morph:0.45
+[F] P:0.64 R:0.08 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.39 SnP:0.95 OUT:2.93 | [M] Morph:0.45
+[Harmony ⚠️] Freq 7063Hz fuera de rango musical
+[F] P:0.64 R:0.07 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.37 SnP:0.90 OUT:2.17 | [M] Morph:0.46
+[F] P:0.62 R:0.06 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.32 SnP:0.78 OUT:0.93 | [M] Morph:0.46
+[F] P:0.72 R:0.05 Gate:0.70 KickP:0.004 OUT:0.00 | [B] M:0.49 T:0.31 SnP:0.75 OUT:0.74 | [M] Morph:0.46
+[🥁 INTERVAL BPM] KICK #33 bpm=161 conf=0.00 energy=0.1443 avg=0.0236 ratio=6.11 delta=0.1443 history=8/8 bpmBuf=[161,161,161,81,161,161,86,161]
+[F] P:0.71 R:0.11 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.28 SnP:0.68 OUT:0.37 | [M] Morph:0.46
+[F] P:0.68 R:0.15 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.26 SnP:0.62 OUT:0.20 | [M] Morph:0.46
+[F] P:0.64 R:0.14 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.22 SnP:0.54 OUT:0.06 | [M] Morph:0.46
+[F] P:0.63 R:0.12 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.20 SnP:0.49 OUT:0.02 | [M] Morph:0.46
+[F] P:0.63 R:0.09 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.36 SnP:0.86 OUT:1.72 | [M] Morph:0.47
+[F] P:0.63 R:0.08 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.52 T:0.37 SnP:0.92 OUT:2.43 | [M] Morph:0.48
+[F] P:0.65 R:0.06 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.37 SnP:0.93 OUT:2.59 | [M] Morph:0.50
+[F] P:0.67 R:0.06 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.36 SnP:0.93 OUT:2.56 | [M] Morph:0.51
+[F] P:0.69 R:0.06 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.35 SnP:0.89 OUT:2.03 | [M] Morph:0.52
+[INTERVAL] F340 bpm=121 raw=161 conf=0.000 kick=false phase=0.75 needle=0.0000 bassFlux=0.0168 midFlux=0.0000 centroid=2317Hz kicks=33
+[F] P:0.77 R:0.06 Gate:0.69 KickP:0.208 OUT:0.34 | [B] M:0.51 T:0.31 SnP:0.81 OUT:1.18 | [M] Morph:0.52
+[F] P:0.76 R:0.08 Gate:0.69 KickP:0.000 OUT:0.24 | [B] M:0.50 T:0.29 SnP:0.74 OUT:0.65 | [M] Morph:0.52
+[F] P:0.73 R:0.10 Gate:0.70 KickP:0.000 OUT:0.17 | [B] M:0.50 T:0.25 SnP:0.66 OUT:0.30 | [M] Morph:0.52
+[F] P:0.65 R:0.09 Gate:0.69 KickP:0.000 OUT:0.12 | [B] M:0.52 T:0.22 SnP:0.57 OUT:0.10 | [M] Morph:0.53
+[F] P:0.63 R:0.08 Gate:0.69 KickP:0.000 OUT:0.08 | [B] M:0.52 T:0.20 SnP:0.53 OUT:0.06 | [M] Morph:0.53
+[F] P:0.61 R:0.06 Gate:0.69 KickP:0.000 OUT:0.03 | [B] M:0.53 T:0.34 SnP:0.87 OUT:1.76 | [M] Morph:0.54
+[F] P:0.60 R:0.05 Gate:0.69 KickP:0.000 OUT:0.01 | [B] M:0.54 T:0.37 SnP:0.96 OUT:2.95 | [M] Morph:0.55
+[F] P:0.64 R:0.05 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.38 SnP:0.99 OUT:3.46 | [M] Morph:0.55
+[F] P:0.65 R:0.04 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.37 SnP:0.97 OUT:3.02 | [M] Morph:0.55
+[F] P:0.66 R:0.04 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.32 SnP:0.84 OUT:1.39 | [M] Morph:0.55
+[F] P:0.79 R:0.05 Gate:0.69 KickP:0.373 OUT:0.61 | [B] M:0.50 T:0.30 SnP:0.78 OUT:0.94 | [M] Morph:0.55
+[F] P:0.78 R:0.06 Gate:0.69 KickP:0.000 OUT:0.44 | [B] M:0.49 T:0.28 SnP:0.73 OUT:0.60 | [M] Morph:0.55
+[🥁 INTERVAL BPM] KICK #34 bpm=161 conf=0.00 energy=0.1274 avg=0.0235 ratio=5.42 delta=0.1274 history=8/8 bpmBuf=[86,161,161,81,161,161,86,161]
+[F] P:0.72 R:0.09 Gate:0.69 KickP:0.000 OUT:0.31 | [B] M:0.45 T:0.24 SnP:0.63 OUT:0.24 | [M] Morph:0.55
+[F] P:0.68 R:0.09 Gate:0.69 KickP:0.000 OUT:0.22 | [B] M:0.43 T:0.22 SnP:0.57 OUT:0.11 | [M] Morph:0.54
+[F] P:0.64 R:0.08 Gate:0.69 KickP:0.000 OUT:0.15 | [B] M:0.41 T:0.19 SnP:0.48 OUT:0.02 | [M] Morph:0.54
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=52% B/D/N=88/208/107
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.61 R:0.06 Gate:0.69 KickP:0.000 OUT:0.11 | [B] M:0.43 T:0.32 SnP:0.79 OUT:0.99 | [M] Morph:0.53
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
+[CHOREO] techno-club | square [LERP] [MIRROR F0/2] | Bar:8 | Pan:-208 Tilt:-36 | sBPM:120 phase:210°
+[CHOREO] techno-club | square [LERP] [MIRROR F1/2] | Bar:8 | Pan:208 Tilt:-35 | sBPM:120 phase:210°
+[F] P:0.65 R:0.05 Gate:0.69 KickP:0.000 OUT:0.07 | [B] M:0.48 T:0.37 SnP:0.91 OUT:2.21 | [M] Morph:0.53
+[F] P:0.69 R:0.05 Gate:0.69 KickP:0.000 OUT:0.03 | [B] M:0.47 T:0.38 SnP:0.97 OUT:3.07 | [M] Morph:0.53
+[F] P:0.70 R:0.06 Gate:0.69 KickP:0.000 OUT:0.01 | [B] M:0.47 T:0.38 SnP:0.96 OUT:2.89 | [M] Morph:0.53
+[F] P:0.67 R:0.05 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.33 SnP:0.82 OUT:1.21 | [M] Morph:0.52
+[F] P:0.71 R:0.05 Gate:0.69 KickP:0.011 OUT:0.00 | [B] M:0.41 T:0.30 SnP:0.73 OUT:0.62 | [M] Morph:0.52
+[F] P:0.77 R:0.06 Gate:0.69 KickP:0.183 OUT:0.29 | [B] M:0.37 T:0.25 SnP:0.62 OUT:0.20 | [M] Morph:0.51
+[F] P:0.75 R:0.08 Gate:0.69 KickP:0.000 OUT:0.21 | [B] M:0.36 T:0.23 SnP:0.57 OUT:0.10 | [M] Morph:0.51
+[F] P:0.71 R:0.08 Gate:0.69 KickP:0.000 OUT:0.14 | [B] M:0.34 T:0.20 SnP:0.48 OUT:0.02 | [M] Morph:0.50
+[F] P:0.71 R:0.08 Gate:0.69 KickP:0.000 OUT:0.10 | [B] M:0.33 T:0.18 SnP:0.43 OUT:0.00 | [M] Morph:0.49
+[CHOREO] Transition complete -> square
+[F] P:0.69 R:0.07 Gate:0.69 KickP:0.000 OUT:0.05 | [B] M:0.38 T:0.31 SnP:0.71 OUT:0.49 | [M] Morph:0.48
+[IPC 📡] audioBuffer #360 | titan.running=true | size=8192
+[INTERVAL] F360 bpm=121 raw=161 conf=0.000 kick=false phase=0.37 needle=0.0000 bassFlux=0.0269 midFlux=0.0079 centroid=5601Hz kicks=34
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 360: bpm=121, energy=0.30
+[F] P:0.68 R:0.07 Gate:0.69 KickP:0.000 OUT:0.02 | [B] M:0.39 T:0.33 SnP:0.77 OUT:0.83 | [M] Morph:0.48
+[F] P:0.64 R:0.06 Gate:0.69 KickP:0.000 OUT:0.01 | [B] M:0.39 T:0.35 SnP:0.84 OUT:1.42 | [M] Morph:0.47
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.907 (Rock target: >0.7)
-   Flatness:    0.102 (Tonal<0.3, Noise>0.7)
-   Centroid:    2209Hz (Bright>2000, Dark<1200)
-   CrestFactor: 21.08 (Dynamics)
-   Rolloff:     6848Hz (85% energy)
-   Latency:     0.89ms
-   UltraAir:    0.016 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.68x | In: 0.570 → Out: 0.386 | Peak: 0.792 | ✅ ACTIVE
-[F] P:0.81 R:0.18 Gate:0.76 KickP:0.374 OUT:0.57 | [B] M:0.42 T:0.33 SnP:0.71 OUT:0.52 | [M] Morph:0.39
-[F] P:0.81 R:0.19 Gate:0.76 KickP:0.365 OUT:0.55 | [B] M:0.42 T:0.31 SnP:0.67 OUT:0.35 | [M] Morph:0.39
-[F] P:0.84 R:0.18 Gate:0.76 KickP:0.581 OUT:0.88 | [B] M:0.36 T:0.26 SnP:0.56 OUT:0.08 | [M] Morph:0.39
-[F] P:0.86 R:0.18 Gate:0.76 KickP:0.842 OUT:1.00 | [B] M:0.35 T:0.23 SnP:0.50 OUT:0.02 | [M] Morph:0.38
-[F] P:0.84 R:0.19 Gate:0.76 KickP:0.000 OUT:0.67 | [B] M:0.29 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.37
-[F] P:0.80 R:0.29 Gate:0.77 KickP:0.000 OUT:0.45 | [B] M:0.26 T:0.15 SnP:0.32 OUT:0.00 | [M] Morph:0.36
-[F] P:0.76 R:0.36 Gate:0.77 KickP:0.000 OUT:0.30 | [B] M:0.24 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.35
-[F] P:0.72 R:0.35 Gate:0.77 KickP:0.000 OUT:0.20 | [B] M:0.21 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.34
-[F] P:0.73 R:0.30 Gate:0.77 KickP:0.000 OUT:0.14 | [B] M:0.35 T:0.26 SnP:0.54 OUT:0.04 | [M] Morph:0.34
-[F] P:0.77 R:0.26 Gate:0.77 KickP:0.014 OUT:0.09 | [B] M:0.42 T:0.34 SnP:0.70 OUT:0.46 | [M] Morph:0.34
-[F] P:0.77 R:0.22 Gate:0.77 KickP:0.005 OUT:0.00 | [B] M:0.37 T:0.32 SnP:0.68 OUT:0.35 | [M] Morph:0.33
-[F] P:0.81 R:0.18 Gate:0.77 KickP:0.168 OUT:0.25 | [B] M:0.37 T:0.31 SnP:0.65 OUT:0.25 | [M] Morph:0.33
-[IPC 📡] audioBuffer #1330 | titan.running=true | size=8192
-[F] P:0.80 R:0.18 Gate:0.77 KickP:0.135 OUT:0.20 | [B] M:0.32 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.33
-[F] P:0.82 R:0.16 Gate:0.77 KickP:0.253 OUT:0.37 | [B] M:0.42 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.33
-[F] P:0.82 R:0.16 Gate:0.78 KickP:0.252 OUT:0.37 | [B] M:0.45 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #106 bpm=182 conf=0.00 energy=0.1571 avg=0.0313 ratio=5.03 delta=0.1571 history=8/8 bpmBuf=[185,161,173,179,59,258,185,185]
-[F] P:0.78 R:0.25 Gate:0.78 KickP:0.000 OUT:0.25 | [B] M:0.41 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.33
-[F] P:0.73 R:0.26 Gate:0.78 KickP:0.000 OUT:0.16 | [B] M:0.34 T:0.16 SnP:0.35 OUT:0.00 | [M] Morph:0.33
-[F] P:0.68 R:0.28 Gate:0.77 KickP:0.000 OUT:0.11 | [B] M:0.28 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.32
-[F] P:0.65 R:0.26 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.31
-[F] P:0.71 R:0.22 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.60 OUT:0.13 | [M] Morph:0.31
-[F] P:0.71 R:0.19 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.31
-[F] P:0.72 R:0.16 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.29 SnP:0.58 OUT:0.08 | [M] Morph:0.30
-[F] P:0.70 R:0.16 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.26 SnP:0.53 OUT:0.03 | [M] Morph:0.30
-[F] P:0.70 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.23 SnP:0.46 OUT:0.00 | [M] Morph:0.29
-[F] P:0.77 R:0.11 Gate:0.77 KickP:0.008 OUT:0.00 | [B] M:0.28 T:0.19 SnP:0.37 OUT:0.00 | [M] Morph:0.29
-[🥁 INTERVAL BPM] KICK #107 bpm=183 conf=0.61 energy=0.2158 avg=0.0263 ratio=8.22 delta=0.2158 history=8/8 bpmBuf=[185,161,173,179,182,185,185,185]
-[F] P:0.71 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.28
-[INTERVAL] F1340 bpm=122 raw=183 conf=0.607 kick=false phase=0.14 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=187Hz kicks=107
-[F] P:0.66 R:0.21 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.20 T:0.12 SnP:0.23 OUT:0.00 | [M] Morph:0.27
-[F] P:0.64 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.19 T:0.10 SnP:0.20 OUT:0.00 | [M] Morph:0.25
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[F] P:0.61 R:0.17 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.24 SnP:0.46 OUT:0.00 | [M] Morph:0.25
-[F] P:0.67 R:0.14 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.35 SnP:0.66 OUT:0.25 | [M] Morph:0.25
-[F] P:0.67 R:0.11 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.33 SnP:0.65 OUT:0.22 | [M] Morph:0.25
-[F] P:0.71 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.33 SnP:0.65 OUT:0.22 | [M] Morph:0.25
-[F] P:0.73 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.28 SnP:0.56 OUT:0.06 | [M] Morph:0.24
-[F] P:0.72 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.27 SnP:0.53 OUT:0.03 | [M] Morph:0.24
-[🥁 INTERVAL BPM] KICK #108 bpm=183 conf=0.61 energy=0.2004 avg=0.0290 ratio=6.92 delta=0.2004 history=8/8 bpmBuf=[185,161,173,179,182,185,185,185]
-[F] P:0.79 R:0.20 Gate:0.75 KickP:0.166 OUT:0.23 | [B] M:0.46 T:0.26 SnP:0.53 OUT:0.03 | [M] Morph:0.26
-[F] P:0.75 R:0.28 Gate:0.75 KickP:0.000 OUT:0.15 | [B] M:0.43 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.27
-[F] P:0.70 R:0.27 Gate:0.75 KickP:0.000 OUT:0.10 | [B] M:0.37 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.27
-[F] P:0.68 R:0.26 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.27
-[F] P:0.63 R:0.24 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.27
-[F] P:0.69 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.66 OUT:0.26 | [M] Morph:0.27
-[F] P:0.70 R:0.17 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.31 SnP:0.63 OUT:0.17 | [M] Morph:0.27
-[Harmony 🎵] Key Change: A# → C (20% dominance)
-[F] P:0.69 R:0.15 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.32 SnP:0.63 OUT:0.18 | [M] Morph:0.26
-[F] P:0.67 R:0.12 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.59 OUT:0.10 | [M] Morph:0.26
-[StrategyArbiter] 🎨 STRATEGY SHIFT: analogous → complementary | avgSync=0.70 | commitment=1800 frames (30s) | canChange=true | isLocked=true | framesSinceChange=1858
-[F] P:0.64 R:0.10 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.26 SnP:0.52 OUT:0.02 | [M] Morph:0.26
-[F] P:0.76 R:0.09 Gate:0.74 KickP:0.067 OUT:0.09 | [B] M:0.33 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.26
-[🥁 INTERVAL BPM] KICK #109 bpm=181 conf=0.62 energy=0.2057 avg=0.0325 ratio=6.34 delta=0.2057 history=8/8 bpmBuf=[185,161,173,179,182,185,185,161]
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=43% B/D/N=189/160/91
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.72 R:0.19 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.25
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:27 | Pan:-124 Tilt:7 | sBPM:125 phase:30°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:27 | Pan:124 Tilt:7 | sBPM:125 phase:30°
-[F] P:0.68 R:0.27 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.28
-[F] P:0.65 R:0.27 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.23 SnP:0.49 OUT:0.01 | [M] Morph:0.32
-[SimpleSectionTracker] 📍 verse → breakdown | bassR=0.70 wE=0.25 ΔE=-0.139 kick=false
-[F] P:0.62 R:0.25 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.28 SnP:0.63 OUT:0.20 | [M] Morph:0.36
-[F] P:0.66 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.34 SnP:0.79 OUT:1.02 | [M] Morph:0.39
-[F] P:0.63 R:0.15 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.33 SnP:0.76 OUT:0.82 | [M] Morph:0.40
-[F] P:0.67 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.33 SnP:0.76 OUT:0.81 | [M] Morph:0.41
-[F] P:0.67 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.29 SnP:0.67 OUT:0.34 | [M] Morph:0.41
-[INTERVAL] F1360 bpm=121 raw=181 conf=0.609 kick=false phase=0.84 needle=0.0000 bassFlux=0.0364 midFlux=0.0000 centroid=2246Hz kicks=109
-[F] P:0.71 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.28 SnP:0.63 OUT:0.22 | [M] Morph:0.41
-[IPC 📡] audioBuffer #1361 | titan.running=true | size=8192
-[F] P:0.75 R:0.11 Gate:0.72 KickP:0.064 OUT:0.10 | [B] M:0.49 T:0.25 SnP:0.59 OUT:0.12 | [M] Morph:0.42
+   Clarity:     0.875 (Rock target: >0.7)
+   Flatness:    0.156 (Tonal<0.3, Noise>0.7)
+   Centroid:    7383Hz (Bright>2000, Dark<1200)
+   CrestFactor: 5.63 (Dynamics)
+   Rolloff:     11606Hz (85% energy)
+   Latency:     0.79ms
+   UltraAir:    0.017 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.77x | In: 0.466 → Out: 0.360 | Peak: 0.634 | ✅ ACTIVE
+[F] P:0.63 R:0.06 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.34 SnP:0.81 OUT:1.20 | [M] Morph:0.47
+[F] P:0.61 R:0.05 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.29 SnP:0.69 OUT:0.43 | [M] Morph:0.46
+[F] P:0.68 R:0.04 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.28 SnP:0.66 OUT:0.30 | [M] Morph:0.45
+[F] P:0.75 R:0.04 Gate:0.69 KickP:0.087 OUT:0.14 | [B] M:0.37 T:0.24 SnP:0.56 OUT:0.08 | [M] Morph:0.45
+[🥁 INTERVAL BPM] KICK #35 bpm=124 conf=0.00 energy=0.1963 avg=0.0196 ratio=10.02 delta=0.1963 history=8/8 bpmBuf=[86,86,161,81,161,161,86,161]
+[F] P:0.72 R:0.10 Gate:0.69 KickP:0.000 OUT:0.09 | [B] M:0.34 T:0.21 SnP:0.48 OUT:0.02 | [M] Morph:0.44
+[F] P:0.70 R:0.10 Gate:0.69 KickP:0.000 OUT:0.04 | [B] M:0.33 T:0.20 SnP:0.46 OUT:0.01 | [M] Morph:0.43
+[F] P:0.66 R:0.08 Gate:0.69 KickP:0.000 OUT:0.01 | [B] M:0.30 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.42
+[F] P:0.64 R:0.07 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.30 SnP:0.68 OUT:0.36 | [M] Morph:0.42
+[F] P:0.63 R:0.06 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.35 SnP:0.78 OUT:0.97 | [M] Morph:0.42
+[F] P:0.63 R:0.05 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.36 SnP:0.82 OUT:1.28 | [M] Morph:0.41
+[F] P:0.63 R:0.04 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.35 SnP:0.82 OUT:1.23 | [M] Morph:0.41
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #35
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=5203K
+[F] P:0.63 R:0.04 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.31 SnP:0.72 OUT:0.54 | [M] Morph:0.41
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.73 R:0.04 Gate:0.68 KickP:0.058 OUT:0.09 | [B] M:0.38 T:0.29 SnP:0.66 OUT:0.29 | [M] Morph:0.40
+[F] P:0.74 R:0.05 Gate:0.68 KickP:0.000 OUT:0.03 | [B] M:0.35 T:0.25 SnP:0.57 OUT:0.09 | [M] Morph:0.40
+[F] P:0.72 R:0.10 Gate:0.68 KickP:0.000 OUT:0.01 | [B] M:0.33 T:0.23 SnP:0.52 OUT:0.03 | [M] Morph:0.39
+[F] P:0.68 R:0.14 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.21 SnP:0.45 OUT:0.01 | [M] Morph:0.38
+[F] P:0.64 R:0.13 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.37
+[F] P:0.64 R:0.10 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.32 SnP:0.68 OUT:0.38 | [M] Morph:0.37
+[F] P:0.63 R:0.08 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.75 OUT:0.70 | [M] Morph:0.37
+[F] P:0.60 R:0.07 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.35 SnP:0.78 OUT:0.96 | [M] Morph:0.36
+[F] P:0.59 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.36 SnP:0.80 OUT:1.07 | [M] Morph:0.36
+[F] P:0.60 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.34 SnP:0.76 OUT:0.79 | [M] Morph:0.36
+[F] P:0.64 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.64 OUT:0.24 | [M] Morph:0.35
+[🥁 INTERVAL BPM] KICK #36 bpm=86 conf=0.00 energy=0.1644 avg=0.0234 ratio=7.04 delta=0.1644 history=8/8 bpmBuf=[86,86,86,81,161,161,86,161]
+[F] P:0.73 R:0.10 Gate:0.67 KickP:0.084 OUT:0.12 | [B] M:0.38 T:0.26 SnP:0.57 OUT:0.08 | [M] Morph:0.35
+[F] P:0.73 R:0.14 Gate:0.67 KickP:0.000 OUT:0.08 | [B] M:0.37 T:0.25 SnP:0.54 OUT:0.05 | [M] Morph:0.35
+[INTERVAL] F380 bpm=129 raw=86 conf=0.000 kick=false phase=0.07 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=761Hz kicks=36
+[F] P:0.67 R:0.14 Gate:0.67 KickP:0.000 OUT:0.03 | [B] M:0.33 T:0.20 SnP:0.44 OUT:0.00 | [M] Morph:0.34
+[F] P:0.65 R:0.11 Gate:0.67 KickP:0.000 OUT:0.01 | [B] M:0.32 T:0.18 SnP:0.39 OUT:0.00 | [M] Morph:0.34
+[F] P:0.64 R:0.09 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.32 SnP:0.66 OUT:0.30 | [M] Morph:0.33
+[F] P:0.64 R:0.08 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.35 SnP:0.72 OUT:0.56 | [M] Morph:0.33
+[F] P:0.66 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.35 SnP:0.77 OUT:0.83 | [M] Morph:0.33
+[F] P:0.69 R:0.07 Gate:0.67 KickP:0.003 OUT:0.00 | [B] M:0.43 T:0.36 SnP:0.78 OUT:0.92 | [M] Morph:0.33
+[F] P:0.67 R:0.07 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.71 OUT:0.51 | [M] Morph:0.33
+[F] P:0.64 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.30 SnP:0.65 OUT:0.24 | [M] Morph:0.33
+[F] P:0.79 R:0.05 Gate:0.68 KickP:0.344 OUT:0.50 | [B] M:0.34 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.32
+[SimpleSectionTracker] 📍 buildup → verse | bassR=1.06 wE=0.44 ΔE=-0.005 kick=false
+[F] P:0.77 R:0.08 Gate:0.68 KickP:0.000 OUT:0.33 | [B] M:0.32 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.32
+[F] P:0.74 R:0.09 Gate:0.68 KickP:0.000 OUT:0.22 | [B] M:0.30 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.31
+[F] P:0.70 R:0.09 Gate:0.68 KickP:0.000 OUT:0.15 | [B] M:0.29 T:0.17 SnP:0.34 OUT:0.00 | [M] Morph:0.30
+[F] P:0.67 R:0.07 Gate:0.68 KickP:0.000 OUT:0.10 | [B] M:0.34 T:0.25 SnP:0.50 OUT:0.02 | [M] Morph:0.30
+[F] P:0.65 R:0.06 Gate:0.68 KickP:0.000 OUT:0.04 | [B] M:0.36 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.30
+[F] P:0.65 R:0.06 Gate:0.68 KickP:0.000 OUT:0.01 | [B] M:0.38 T:0.30 SnP:0.62 OUT:0.17 | [M] Morph:0.30
+[F] P:0.65 R:0.06 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.33 SnP:0.67 OUT:0.32 | [M] Morph:0.29
+[F] P:0.60 R:0.06 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.28 SnP:0.59 OUT:0.09 | [M] Morph:0.29
+[IPC 📡] audioBuffer #393 | titan.running=true | size=8192
+[F] P:0.59 R:0.05 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.27 SnP:0.56 OUT:0.06 | [M] Morph:0.30
+[F] P:0.73 R:0.04 Gate:0.68 KickP:0.155 OUT:0.22 | [B] M:0.44 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.30
+[🥁 INTERVAL BPM] KICK #37 bpm=86 conf=0.00 energy=0.1757 avg=0.0229 ratio=7.66 delta=0.1757 history=8/8 bpmBuf=[86,86,86,86,161,161,86,161]
+[F] P:0.71 R:0.09 Gate:0.68 KickP:0.000 OUT:0.15 | [B] M:0.43 T:0.22 SnP:0.46 OUT:0.00 | [M] Morph:0.31
+[F] P:0.69 R:0.11 Gate:0.68 KickP:0.000 OUT:0.10 | [B] M:0.43 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.31
+[F] P:0.66 R:0.10 Gate:0.68 KickP:0.000 OUT:0.04 | [B] M:0.44 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.32
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=46% B/D/N=55/177/148
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.64 R:0.08 Gate:0.68 KickP:0.000 OUT:0.01 | [B] M:0.46 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.33
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:9 | Pan:100 Tilt:106 | sBPM:120 phase:336°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:9 | Pan:-100 Tilt:106 | sBPM:120 phase:336°
+[F] P:0.63 R:0.07 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.33 SnP:0.71 OUT:0.51 | [M] Morph:0.36
+[F] P:0.62 R:0.06 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.36 SnP:0.81 OUT:1.20 | [M] Morph:0.39
+[F] P:0.64 R:0.05 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.52 T:0.36 SnP:0.83 OUT:1.37 | [M] Morph:0.42
+[F] P:0.63 R:0.05 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.33 SnP:0.79 OUT:1.00 | [M] Morph:0.43
+[INTERVAL] F400 bpm=129 raw=86 conf=0.000 kick=false phase=0.40 needle=0.0000 bassFlux=0.0085 midFlux=0.0000 centroid=2798Hz kicks=37
+[F] P:0.60 R:0.05 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.30 SnP:0.72 OUT:0.58 | [M] Morph:0.45
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.957 (Rock target: >0.7)
-   Flatness:    0.033 (Tonal<0.3, Noise>0.7)
-   Centroid:    1371Hz (Bright>2000, Dark<1200)
-   CrestFactor: 14.75 (Dynamics)
-   Rolloff:     2670Hz (85% energy)
-   Latency:     0.74ms
-   UltraAir:    0.005 (NEW: 16-22kHz sizzle)
-[F] P:0.73 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.56 OUT:0.08 | [M] Morph:0.43
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.61 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.71 | beat #109
-[F] P:0.70 R:0.23 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.22 SnP:0.52 OUT:0.04 | [M] Morph:0.43
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.67 R:0.26 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.20 SnP:0.48 OUT:0.02 | [M] Morph:0.43
-[F] P:0.63 R:0.23 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.20 SnP:0.49 OUT:0.02 | [M] Morph:0.43
-[F] P:0.68 R:0.21 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.32 SnP:0.75 OUT:0.72 | [M] Morph:0.44
-[F] P:0.69 R:0.16 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.33 SnP:0.80 OUT:1.07 | [M] Morph:0.44
-[F] P:0.65 R:0.15 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.33 SnP:0.80 OUT:1.12 | [M] Morph:0.45
-[F] P:0.70 R:0.13 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.32 SnP:0.77 OUT:0.85 | [M] Morph:0.46
-[F] P:0.66 R:0.12 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.29 SnP:0.71 OUT:0.50 | [M] Morph:0.46
-[F] P:0.74 R:0.10 Gate:0.72 KickP:0.039 OUT:0.00 | [B] M:0.49 T:0.28 SnP:0.68 OUT:0.37 | [M] Morph:0.46
-[🥁 INTERVAL BPM] KICK #110 bpm=181 conf=0.60 energy=0.2104 avg=0.0305 ratio=6.91 delta=0.2104 history=8/8 bpmBuf=[185,161,173,179,182,185,185,161]
-[F] P:0.76 R:0.17 Gate:0.72 KickP:0.120 OUT:0.19 | [B] M:0.46 T:0.25 SnP:0.60 OUT:0.15 | [M] Morph:0.46
-[F] P:0.73 R:0.21 Gate:0.72 KickP:0.000 OUT:0.13 | [B] M:0.44 T:0.21 SnP:0.52 OUT:0.04 | [M] Morph:0.46
-[F] P:0.71 R:0.24 Gate:0.72 KickP:0.000 OUT:0.09 | [B] M:0.44 T:0.18 SnP:0.44 OUT:0.01 | [M] Morph:0.46
-[F] P:0.72 R:0.25 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.46
-[F] P:0.77 R:0.21 Gate:0.72 KickP:0.145 OUT:0.23 | [B] M:0.49 T:0.29 SnP:0.69 OUT:0.43 | [M] Morph:0.46
-[F] P:0.80 R:0.18 Gate:0.73 KickP:0.295 OUT:0.46 | [B] M:0.50 T:0.34 SnP:0.81 OUT:1.13 | [M] Morph:0.47
-[F] P:0.81 R:0.17 Gate:0.73 KickP:0.000 OUT:0.32 | [B] M:0.51 T:0.33 SnP:0.79 OUT:1.02 | [M] Morph:0.47
-[F] P:0.84 R:0.16 Gate:0.73 KickP:0.561 OUT:0.89 | [B] M:0.51 T:0.30 SnP:0.72 OUT:0.57 | [M] Morph:0.48
-[F] P:0.85 R:0.14 Gate:0.73 KickP:0.000 OUT:0.62 | [B] M:0.50 T:0.28 SnP:0.68 OUT:0.39 | [M] Morph:0.48
-[F] P:0.83 R:0.13 Gate:0.74 KickP:0.000 OUT:0.43 | [B] M:0.53 T:0.25 SnP:0.62 OUT:0.20 | [M] Morph:0.50
-[F] P:0.82 R:0.16 Gate:0.74 KickP:0.000 OUT:0.30 | [B] M:0.51 T:0.22 SnP:0.55 OUT:0.08 | [M] Morph:0.50
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[F] P:0.78 R:0.25 Gate:0.74 KickP:0.000 OUT:0.21 | [B] M:0.47 T:0.19 SnP:0.48 OUT:0.02 | [M] Morph:0.50
-[F] P:0.74 R:0.25 Gate:0.74 KickP:0.000 OUT:0.15 | [B] M:0.45 T:0.16 SnP:0.41 OUT:0.00 | [M] Morph:0.50
-[F] P:0.71 R:0.25 Gate:0.74 KickP:0.000 OUT:0.10 | [B] M:0.42 T:0.13 SnP:0.33 OUT:0.00 | [M] Morph:0.50
-[F] P:0.75 R:0.23 Gate:0.74 KickP:0.009 OUT:0.00 | [B] M:0.45 T:0.21 SnP:0.52 OUT:0.04 | [M] Morph:0.49
-[INTERVAL] F1380 bpm=121 raw=181 conf=0.590 kick=false phase=0.54 needle=0.0000 bassFlux=0.0692 midFlux=0.0051 centroid=2741Hz kicks=110
-[BETA 🎵] Key Detected: C minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1380: bpm=121, energy=0.53
-[F] P:0.77 R:0.19 Gate:0.74 KickP:0.084 OUT:0.13 | [B] M:0.46 T:0.33 SnP:0.79 OUT:1.04 | [M] Morph:0.49
-[AGC 🎚️] Gain: 0.68x | In: 0.623 → Out: 0.421 | Peak: 0.774 | ✅ ACTIVE
-[F] P:0.77 R:0.16 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.45 T:0.32 SnP:0.77 OUT:0.89 | [M] Morph:0.49
-[F] P:0.78 R:0.14 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.29 SnP:0.70 OUT:0.49 | [M] Morph:0.49
-[F] P:0.80 R:0.15 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.26 SnP:0.62 OUT:0.20 | [M] Morph:0.49
-[F] P:0.80 R:0.14 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.23 SnP:0.54 OUT:0.06 | [M] Morph:0.48
-[🥁 INTERVAL BPM] KICK #111 bpm=181 conf=0.59 energy=0.1422 avg=0.0273 ratio=5.21 delta=0.1422 history=8/8 bpmBuf=[185,161,173,179,182,185,185,161]
-[F] P:0.84 R:0.19 Gate:0.75 KickP:0.370 OUT:0.59 | [B] M:0.42 T:0.20 SnP:0.47 OUT:0.01 | [M] Morph:0.48
-[F] P:0.76 R:0.24 Gate:0.75 KickP:0.000 OUT:0.41 | [B] M:0.34 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.47
-[F] P:0.74 R:0.26 Gate:0.75 KickP:0.000 OUT:0.28 | [B] M:0.33 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.46
-[F] P:0.71 R:0.27 Gate:0.75 KickP:0.000 OUT:0.19 | [B] M:0.31 T:0.11 SnP:0.26 OUT:0.00 | [M] Morph:0.45
-[F] P:0.70 R:0.24 Gate:0.75 KickP:0.000 OUT:0.13 | [B] M:0.36 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.45
-[F] P:0.76 R:0.20 Gate:0.75 KickP:0.012 OUT:0.09 | [B] M:0.44 T:0.35 SnP:0.80 OUT:1.11 | [M] Morph:0.45
-[F] P:0.77 R:0.18 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.33 SnP:0.77 OUT:0.88 | [M] Morph:0.44
-[F] P:0.79 R:0.17 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.31 SnP:0.72 OUT:0.54 | [M] Morph:0.44
-[F] P:0.81 R:0.16 Gate:0.76 KickP:0.196 OUT:0.30 | [B] M:0.44 T:0.29 SnP:0.67 OUT:0.35 | [M] Morph:0.44
-[F] P:0.79 R:0.14 Gate:0.76 KickP:0.000 OUT:0.21 | [B] M:0.46 T:0.25 SnP:0.57 OUT:0.10 | [M] Morph:0.44
-[F] P:0.83 R:0.15 Gate:0.76 KickP:0.260 OUT:0.40 | [B] M:0.49 T:0.24 SnP:0.57 OUT:0.09 | [M] Morph:0.45
-[F] P:0.78 R:0.21 Gate:0.76 KickP:0.000 OUT:0.28 | [B] M:0.44 T:0.20 SnP:0.46 OUT:0.01 | [M] Morph:0.44
-[F] P:0.74 R:0.24 Gate:0.76 KickP:0.000 OUT:0.19 | [B] M:0.40 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.44
-[IPC 📡] audioBuffer #1394 | titan.running=true | size=8192
-[F] P:0.69 R:0.27 Gate:0.76 KickP:0.000 OUT:0.13 | [B] M:0.35 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.43
-[F] P:0.68 R:0.27 Gate:0.76 KickP:0.000 OUT:0.09 | [B] M:0.34 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.43
-[F] P:0.75 R:0.22 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.36 SnP:0.79 OUT:1.05 | [M] Morph:0.43
-[F] P:0.75 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.35 SnP:0.78 OUT:0.97 | [M] Morph:0.42
-[F] P:0.76 R:0.17 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.71 OUT:0.51 | [M] Morph:0.42
-[F] P:0.76 R:0.15 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.65 OUT:0.28 | [M] Morph:0.42
-[F] P:0.74 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.24 SnP:0.54 OUT:0.05 | [M] Morph:0.42
-[🥁 INTERVAL BPM] KICK #112 bpm=181 conf=0.57 energy=0.1251 avg=0.0255 ratio=4.91 delta=0.1251 history=8/8 bpmBuf=[185,161,173,179,182,185,185,161]
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=45% B/D/N=172/197/70
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.79 R:0.17 Gate:0.76 KickP:0.050 OUT:0.00 | [B] M:0.38 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.41
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:28 | Pan:-167 Tilt:40 | sBPM:121 phase:284°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:28 | Pan:167 Tilt:40 | sBPM:121 phase:284°
-[INTERVAL] F1400 bpm=121 raw=181 conf=0.572 kick=false phase=0.14 needle=0.0536 bassFlux=0.0536 midFlux=0.0000 centroid=104Hz kicks=112
-[F] P:0.74 R:0.23 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.17 SnP:0.37 OUT:0.00 | [M] Morph:0.41
-[F] P:0.72 R:0.29 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.40
+   Clarity:     0.970 (Rock target: >0.7)
+   Flatness:    0.019 (Tonal<0.3, Noise>0.7)
+   Centroid:    1301Hz (Bright>2000, Dark<1200)
+   CrestFactor: 11.57 (Dynamics)
+   Rolloff:     1604Hz (85% energy)
+   Latency:     1.02ms
+   UltraAir:    0.003 (NEW: 16-22kHz sizzle)
+[F] P:0.74 R:0.04 Gate:0.67 KickP:0.324 OUT:0.50 | [B] M:0.44 T:0.24 SnP:0.57 OUT:0.10 | [M] Morph:0.44
+[🥁 INTERVAL BPM] KICK #38 bpm=86 conf=0.00 energy=0.1324 avg=0.0228 ratio=5.81 delta=0.1324 history=8/8 bpmBuf=[86,86,86,86,161,161,86,161]
+[F] P:0.71 R:0.06 Gate:0.67 KickP:0.000 OUT:0.35 | [B] M:0.43 T:0.22 SnP:0.52 OUT:0.04 | [M] Morph:0.44
+[F] P:0.64 R:0.07 Gate:0.67 KickP:0.000 OUT:0.24 | [B] M:0.41 T:0.18 SnP:0.42 OUT:0.00 | [M] Morph:0.44
+[F] P:0.62 R:0.06 Gate:0.67 KickP:0.000 OUT:0.16 | [B] M:0.40 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.44
+[F] P:0.63 R:0.05 Gate:0.67 KickP:0.000 OUT:0.11 | [B] M:0.43 T:0.24 SnP:0.53 OUT:0.05 | [M] Morph:0.43
+[F] P:0.65 R:0.05 Gate:0.67 KickP:0.000 OUT:0.07 | [B] M:0.45 T:0.28 SnP:0.64 OUT:0.25 | [M] Morph:0.43
+[F] P:0.66 R:0.05 Gate:0.67 KickP:0.000 OUT:0.02 | [B] M:0.46 T:0.31 SnP:0.72 OUT:0.55 | [M] Morph:0.43
+[F] P:0.67 R:0.05 Gate:0.67 KickP:0.000 OUT:0.01 | [B] M:0.46 T:0.33 SnP:0.76 OUT:0.82 | [M] Morph:0.43
+[F] P:0.69 R:0.04 Gate:0.67 KickP:0.024 OUT:0.01 | [B] M:0.45 T:0.31 SnP:0.72 OUT:0.57 | [M] Morph:0.43
+[F] P:0.72 R:0.04 Gate:0.67 KickP:0.137 OUT:0.21 | [B] M:0.44 T:0.29 SnP:0.67 OUT:0.35 | [M] Morph:0.43
+[F] P:0.81 R:0.04 Gate:0.67 KickP:1.000 OUT:1.00 | [B] M:0.43 T:0.27 SnP:0.62 OUT:0.18 | [M] Morph:0.43
+[F] P:0.78 R:0.06 Gate:0.68 KickP:0.000 OUT:0.68 | [B] M:0.39 T:0.23 SnP:0.52 OUT:0.04 | [M] Morph:0.42
+[F] P:0.73 R:0.06 Gate:0.68 KickP:0.000 OUT:0.47 | [B] M:0.36 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.42
+[F] P:0.68 R:0.04 Gate:0.68 KickP:0.000 OUT:0.32 | [B] M:0.34 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.41
+[F] P:0.66 R:0.04 Gate:0.68 KickP:0.000 OUT:0.22 | [B] M:0.33 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.40
+[F] P:0.65 R:0.03 Gate:0.68 KickP:0.000 OUT:0.15 | [B] M:0.42 T:0.35 SnP:0.75 OUT:0.73 | [M] Morph:0.40
+[F] P:0.65 R:0.03 Gate:0.68 KickP:0.000 OUT:0.10 | [B] M:0.43 T:0.36 SnP:0.79 OUT:1.04 | [M] Morph:0.40
+[F] P:0.67 R:0.03 Gate:0.68 KickP:0.000 OUT:0.05 | [B] M:0.43 T:0.37 SnP:0.82 OUT:1.31 | [M] Morph:0.40
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #38
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=5290K
+[F] P:0.71 R:0.04 Gate:0.68 KickP:0.035 OUT:0.02 | [B] M:0.42 T:0.36 SnP:0.80 OUT:1.08 | [M] Morph:0.40
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.71 R:0.05 Gate:0.68 KickP:0.032 OUT:0.02 | [B] M:0.42 T:0.36 SnP:0.80 OUT:1.09 | [M] Morph:0.39
+[F] P:0.81 R:0.05 Gate:0.68 KickP:1.000 OUT:1.00 | [B] M:0.39 T:0.31 SnP:0.68 OUT:0.37 | [M] Morph:0.39
+[F] P:0.78 R:0.08 Gate:0.69 KickP:0.000 OUT:0.68 | [B] M:0.37 T:0.29 SnP:0.64 OUT:0.22 | [M] Morph:0.39
+[F] P:0.71 R:0.06 Gate:0.69 KickP:0.000 OUT:0.46 | [B] M:0.32 T:0.23 SnP:0.51 OUT:0.03 | [M] Morph:0.38
+[F] P:0.68 R:0.05 Gate:0.69 KickP:0.000 OUT:0.31 | [B] M:0.30 T:0.21 SnP:0.44 OUT:0.00 | [M] Morph:0.37
+[F] P:0.64 R:0.04 Gate:0.69 KickP:0.000 OUT:0.21 | [B] M:0.28 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.36
+[INTERVAL] F420 bpm=129 raw=86 conf=0.000 kick=false phase=0.20 needle=0.0000 bassFlux=0.0001 midFlux=0.0006 centroid=1574Hz kicks=38
+[BETA 🎵] Key Detected: A# minor (Confidence: 0.93)
+[GAMMA 🎵] Frame 420: bpm=121, energy=0.26
+[F] P:0.65 R:0.04 Gate:0.68 KickP:0.000 OUT:0.14 | [B] M:0.34 T:0.30 SnP:0.63 OUT:0.19 | [M] Morph:0.36
+[AGC 🎚️] Gain: 0.77x | In: 0.431 → Out: 0.334 | Peak: 0.648 | ✅ ACTIVE
+[F] P:0.67 R:0.04 Gate:0.68 KickP:0.000 OUT:0.09 | [B] M:0.36 T:0.33 SnP:0.69 OUT:0.42 | [M] Morph:0.35
+[F] P:0.67 R:0.03 Gate:0.68 KickP:0.000 OUT:0.04 | [B] M:0.36 T:0.33 SnP:0.70 OUT:0.43 | [M] Morph:0.35
+[F] P:0.71 R:0.04 Gate:0.69 KickP:0.028 OUT:0.01 | [B] M:0.37 T:0.34 SnP:0.73 OUT:0.61 | [M] Morph:0.35
+[F] P:0.71 R:0.04 Gate:0.69 KickP:0.018 OUT:0.00 | [B] M:0.35 T:0.31 SnP:0.66 OUT:0.28 | [M] Morph:0.34
+[F] P:0.69 R:0.04 Gate:0.69 KickP:0.000 OUT:0.01 | [B] M:0.38 T:0.29 SnP:0.62 OUT:0.17 | [M] Morph:0.34
+[F] P:0.74 R:0.06 Gate:0.69 KickP:0.161 OUT:0.24 | [B] M:0.36 T:0.27 SnP:0.56 OUT:0.07 | [M] Morph:0.34
+[IPC 📡] audioBuffer #425 | titan.running=true | size=8192
+[F] P:0.67 R:0.05 Gate:0.69 KickP:0.000 OUT:0.16 | [B] M:0.31 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.33
+[F] P:0.65 R:0.04 Gate:0.69 KickP:0.000 OUT:0.10 | [B] M:0.29 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.32
+[F] P:0.61 R:0.04 Gate:0.69 KickP:0.000 OUT:0.05 | [B] M:0.27 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.32
+[F] P:0.59 R:0.03 Gate:0.68 KickP:0.000 OUT:0.02 | [B] M:0.31 T:0.26 SnP:0.52 OUT:0.03 | [M] Morph:0.31
+[F] P:0.62 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.68 OUT:0.37 | [M] Morph:0.31
+[F] P:0.62 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.70 OUT:0.42 | [M] Morph:0.31
+[F] P:0.64 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.70 OUT:0.44 | [M] Morph:0.30
+[F] P:0.65 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.33 SnP:0.67 OUT:0.30 | [M] Morph:0.30
+[F] P:0.68 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.63 OUT:0.18 | [M] Morph:0.30
+[F] P:0.73 R:0.03 Gate:0.68 KickP:0.137 OUT:0.20 | [B] M:0.36 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.30
+[🥁 INTERVAL BPM] KICK #39 bpm=86 conf=0.00 energy=0.1102 avg=0.0157 ratio=7.03 delta=0.1102 history=8/8 bpmBuf=[86,86,86,86,161,43,86,161]
+[F] P:0.68 R:0.07 Gate:0.68 KickP:0.000 OUT:0.13 | [B] M:0.32 T:0.24 SnP:0.49 OUT:0.01 | [M] Morph:0.29
+[F] P:0.64 R:0.05 Gate:0.68 KickP:0.000 OUT:0.09 | [B] M:0.30 T:0.21 SnP:0.42 OUT:0.00 | [M] Morph:0.29
+[F] P:0.60 R:0.04 Gate:0.67 KickP:0.000 OUT:0.03 | [B] M:0.26 T:0.17 SnP:0.34 OUT:0.00 | [M] Morph:0.28
+[F] P:0.59 R:0.04 Gate:0.67 KickP:0.000 OUT:0.01 | [B] M:0.33 T:0.28 SnP:0.55 OUT:0.04 | [M] Morph:0.28
+[F] P:0.65 R:0.04 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.33 SnP:0.65 OUT:0.23 | [M] Morph:0.27
+[F] P:0.64 R:0.04 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.33 SnP:0.65 OUT:0.25 | [M] Morph:0.27
+[F] P:0.59 R:0.05 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.35 SnP:0.69 OUT:0.38 | [M] Morph:0.27
+[F] P:0.59 R:0.04 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.33 SnP:0.66 OUT:0.26 | [M] Morph:0.27
+[F] P:0.72 R:0.03 Gate:0.67 KickP:0.178 OUT:0.25 | [B] M:0.37 T:0.28 SnP:0.55 OUT:0.05 | [M] Morph:0.27
+[🥁 INTERVAL BPM] KICK #40 bpm=86 conf=0.00 energy=0.1264 avg=0.0190 ratio=6.65 delta=0.1264 history=8/8 bpmBuf=[86,86,86,86,161,43,185,161]
+[F] P:0.72 R:0.05 Gate:0.67 KickP:0.134 OUT:0.19 | [B] M:0.34 T:0.25 SnP:0.50 OUT:0.01 | [M] Morph:0.26
+[INTERVAL] F440 bpm=129 raw=86 conf=0.000 kick=false phase=0.07 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=1923Hz kicks=40
+[F] P:0.65 R:0.04 Gate:0.67 KickP:0.000 OUT:0.12 | [B] M:0.30 T:0.20 SnP:0.40 OUT:0.00 | [M] Morph:0.26
+[F] P:0.61 R:0.04 Gate:0.67 KickP:0.000 OUT:0.08 | [B] M:0.28 T:0.18 SnP:0.34 OUT:0.00 | [M] Morph:0.25
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.987 (Rock target: >0.7)
-   Flatness:    0.006 (Tonal<0.3, Noise>0.7)
-   Centroid:    222Hz (Bright>2000, Dark<1200)
-   CrestFactor: 22.63 (Dynamics)
-   Rolloff:     97Hz (85% energy)
-   Latency:     0.92ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[F] P:0.67 R:0.28 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.39
-[F] P:0.65 R:0.25 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.38
-[F] P:0.73 R:0.22 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.71 OUT:0.49 | [M] Morph:0.37
-[F] P:0.73 R:0.18 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.34 SnP:0.72 OUT:0.57 | [M] Morph:0.37
-[F] P:0.71 R:0.16 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.30 SnP:0.64 OUT:0.22 | [M] Morph:0.37
-[F] P:0.72 R:0.14 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.28 SnP:0.59 OUT:0.12 | [M] Morph:0.36
-[F] P:0.71 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.35
-[F] P:0.77 R:0.12 Gate:0.76 KickP:0.024 OUT:0.00 | [B] M:0.44 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.35
-[🥁 INTERVAL BPM] KICK #113 bpm=176 conf=0.62 energy=0.1990 avg=0.0305 ratio=6.52 delta=0.1990 history=8/8 bpmBuf=[161,161,173,179,182,185,185,161]
-[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.62 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=0.51 | beat #113
-[F] P:0.73 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.18 SnP:0.39 OUT:0.00 | [M] Morph:0.35
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[Harmony ⚠️] Freq 54Hz fuera de rango musical
-[F] P:0.68 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.35
-[F] P:0.65 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.34
-[F] P:0.62 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.33
-[F] P:0.72 R:0.17 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.35 SnP:0.70 OUT:0.46 | [M] Morph:0.33
-[F] P:0.73 R:0.15 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.34 SnP:0.72 OUT:0.52 | [M] Morph:0.33
-[F] P:0.72 R:0.13 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.31 SnP:0.64 OUT:0.21 | [M] Morph:0.33
-[F] P:0.71 R:0.12 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.61 OUT:0.14 | [M] Morph:0.33
-[F] P:0.67 R:0.10 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.24 SnP:0.49 OUT:0.01 | [M] Morph:0.32
-[F] P:0.75 R:0.09 Gate:0.75 KickP:0.002 OUT:0.00 | [B] M:0.31 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.31
-[F] P:0.70 R:0.09 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.24 T:0.15 SnP:0.31 OUT:0.00 | [M] Morph:0.30
-[🥁 INTERVAL BPM] KICK #114 bpm=176 conf=0.62 energy=0.1828 avg=0.0303 ratio=6.04 delta=0.1828 history=8/8 bpmBuf=[161,161,173,179,182,185,185,161]
-[F] P:0.67 R:0.20 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.29
-[F] P:0.63 R:0.23 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.19 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.28
-[F] P:0.62 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.18 T:0.09 SnP:0.17 OUT:0.00 | [M] Morph:0.27
-[Harmony ⚠️] Freq 6944Hz fuera de rango musical
-[F] P:0.63 R:0.16 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.36 SnP:0.72 OUT:0.55 | [M] Morph:0.28
-[F] P:0.65 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.37 SnP:0.75 OUT:0.73 | [M] Morph:0.28
-[F] P:0.63 R:0.10 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.34 SnP:0.70 OUT:0.44 | [M] Morph:0.28
-[INTERVAL] F1420 bpm=132 raw=176 conf=0.610 kick=false phase=0.68 needle=0.0000 bassFlux=0.0105 midFlux=0.0000 centroid=1977Hz kicks=114
-[F] P:0.66 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.29 SnP:0.60 OUT:0.11 | [M] Morph:0.28
-[F] P:0.63 R:0.09 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.26 SnP:0.51 OUT:0.02 | [M] Morph:0.27
-[F] P:0.63 R:0.10 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.27
-[🥁 INTERVAL BPM] KICK #115 bpm=181 conf=0.62 energy=0.2086 avg=0.0344 ratio=6.07 delta=0.2086 history=8/8 bpmBuf=[161,161,185,179,182,185,185,161]
-[F] P:0.65 R:0.19 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.19 SnP:0.40 OUT:0.00 | [M] Morph:0.27
-[F] P:0.64 R:0.23 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.18 SnP:0.36 OUT:0.00 | [M] Morph:0.27
-[F] P:0.61 R:0.26 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.27
-[F] P:0.59 R:0.27 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.26
-[F] P:0.60 R:0.24 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.31 SnP:0.60 OUT:0.12 | [M] Morph:0.27
-[IPC 📡] audioBuffer #1426 | titan.running=true | size=8192
-[F] P:0.64 R:0.20 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.34 SnP:0.68 OUT:0.35 | [M] Morph:0.27
-[F] P:0.65 R:0.17 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.31 SnP:0.64 OUT:0.21 | [M] Morph:0.29
-[F] P:0.66 R:0.16 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.30 SnP:0.62 OUT:0.16 | [M] Morph:0.30
-[F] P:0.62 R:0.13 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.25 SnP:0.51 OUT:0.02 | [M] Morph:0.30
-[F] P:0.72 R:0.13 Gate:0.70 KickP:0.025 OUT:0.00 | [B] M:0.37 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.29
-[🥁 INTERVAL BPM] KICK #116 bpm=172 conf=0.62 energy=0.1322 avg=0.0315 ratio=4.19 delta=0.0979 history=8/8 bpmBuf=[161,161,185,161,182,185,185,161]
-[F] P:0.70 R:0.22 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.28 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.29
-[F] P:0.69 R:0.29 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.28
-[F] P:0.67 R:0.30 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.22 T:0.10 SnP:0.20 OUT:0.00 | [M] Morph:0.27
-[F] P:0.76 R:0.28 Gate:0.71 KickP:0.179 OUT:0.25 | [B] M:0.34 T:0.22 SnP:0.42 OUT:0.00 | [M] Morph:0.27
-[F] P:0.80 R:0.24 Gate:0.71 KickP:0.366 OUT:0.52 | [B] M:0.41 T:0.30 SnP:0.59 OUT:0.10 | [M] Morph:0.27
-[F] P:0.83 R:0.21 Gate:0.71 KickP:0.494 OUT:0.70 | [B] M:0.41 T:0.34 SnP:0.67 OUT:0.32 | [M] Morph:0.27
-[F] P:0.83 R:0.19 Gate:0.72 KickP:0.000 OUT:0.46 | [B] M:0.40 T:0.32 SnP:0.65 OUT:0.24 | [M] Morph:0.27
-[F] P:0.85 R:0.19 Gate:0.72 KickP:0.594 OUT:0.84 | [B] M:0.37 T:0.28 SnP:0.55 OUT:0.05 | [M] Morph:0.27
-[F] P:0.85 R:0.18 Gate:0.72 KickP:0.000 OUT:0.55 | [B] M:0.33 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.26
-[F] P:0.86 R:0.17 Gate:0.73 KickP:0.000 OUT:0.36 | [B] M:0.40 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.26
-[🥁 INTERVAL BPM] KICK #117 bpm=173 conf=0.62 energy=0.1409 avg=0.0317 ratio=4.45 delta=0.1409 history=8/8 bpmBuf=[161,161,185,161,185,185,185,161]
-[F] P:0.81 R:0.26 Gate:0.73 KickP:0.000 OUT:0.23 | [B] M:0.41 T:0.19 SnP:0.38 OUT:0.00 | [M] Morph:0.27
-[F] P:0.75 R:0.27 Gate:0.73 KickP:0.000 OUT:0.15 | [B] M:0.35 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.26
-[F] P:0.70 R:0.27 Gate:0.73 KickP:0.000 OUT:0.10 | [B] M:0.29 T:0.11 SnP:0.22 OUT:0.00 | [M] Morph:0.26
-[F] P:0.69 R:0.26 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.25
-[INTERVAL] F1440 bpm=130 raw=173 conf=0.612 kick=false phase=0.40 needle=0.0000 bassFlux=0.0275 midFlux=0.0034 centroid=1327Hz kicks=117
-[BETA 🎵] Key Detected: C minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1440: bpm=130, energy=0.33
-[F] P:0.78 R:0.21 Gate:0.73 KickP:0.127 OUT:0.18 | [B] M:0.44 T:0.34 SnP:0.66 OUT:0.28 | [M] Morph:0.26
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.898 (Rock target: >0.7)
-   Flatness:    0.118 (Tonal<0.3, Noise>0.7)
-   Centroid:    2645Hz (Bright>2000, Dark<1200)
-   CrestFactor: 12.48 (Dynamics)
-   Rolloff:     7720Hz (85% energy)
-   Latency:     0.80ms
-   UltraAir:    0.018 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.71x | In: 0.636 → Out: 0.450 | Peak: 0.737 | ✅ ACTIVE
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.07 wE=0.51 ΔE=0.031 kick=false
-[F] P:0.78 R:0.19 Gate:0.73 KickP:0.000 OUT:0.12 | [B] M:0.42 T:0.34 SnP:0.68 OUT:0.34 | [M] Morph:0.27
-[F] P:0.77 R:0.18 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.31 SnP:0.62 OUT:0.17 | [M] Morph:0.27
-[F] P:0.79 R:0.17 Gate:0.74 KickP:0.173 OUT:0.25 | [B] M:0.38 T:0.29 SnP:0.58 OUT:0.08 | [M] Morph:0.27
-[F] P:0.82 R:0.16 Gate:0.74 KickP:0.319 OUT:0.45 | [B] M:0.33 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.26
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=50% B/D/N=169/222/52
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.85 R:0.16 Gate:0.74 KickP:0.432 OUT:0.61 | [B] M:0.33 T:0.22 SnP:0.44 OUT:0.00 | [M] Morph:0.26
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:29 | Pan:179 Tilt:-7 | sBPM:128 phase:188°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:29 | Pan:-179 Tilt:-7 | sBPM:128 phase:188°
-[F] P:0.82 R:0.15 Gate:0.74 KickP:0.000 OUT:0.40 | [B] M:0.25 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.25
-[🥁 INTERVAL BPM] KICK #118 bpm=161 conf=0.62 energy=0.1662 avg=0.0325 ratio=5.12 delta=0.1662 history=8/8 bpmBuf=[161,161,185,161,185,161,185,161]
-[F] P:0.80 R:0.28 Gate:0.75 KickP:0.000 OUT:0.26 | [B] M:0.23 T:0.14 SnP:0.27 OUT:0.00 | [M] Morph:0.24
-[F] P:0.73 R:0.29 Gate:0.75 KickP:0.000 OUT:0.17 | [B] M:0.19 T:0.11 SnP:0.21 OUT:0.00 | [M] Morph:0.23
-[F] P:0.69 R:0.26 Gate:0.75 KickP:0.000 OUT:0.11 | [B] M:0.17 T:0.09 SnP:0.16 OUT:0.00 | [M] Morph:0.22
-[F] P:0.74 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.29 SnP:0.56 OUT:0.05 | [M] Morph:0.22
-[F] P:0.77 R:0.18 Gate:0.75 KickP:0.036 OUT:0.00 | [B] M:0.39 T:0.32 SnP:0.60 OUT:0.11 | [M] Morph:0.22
-[F] P:0.79 R:0.17 Gate:0.75 KickP:0.104 OUT:0.14 | [B] M:0.34 T:0.30 SnP:0.59 OUT:0.08 | [M] Morph:0.22
-[F] P:0.79 R:0.17 Gate:0.75 KickP:0.000 OUT:0.09 | [B] M:0.35 T:0.29 SnP:0.56 OUT:0.05 | [M] Morph:0.22
-[F] P:0.82 R:0.17 Gate:0.75 KickP:0.227 OUT:0.31 | [B] M:0.30 T:0.25 SnP:0.47 OUT:0.00 | [M] Morph:0.21
-[F] P:0.85 R:0.17 Gate:0.76 KickP:0.356 OUT:0.49 | [B] M:0.44 T:0.23 SnP:0.44 OUT:0.00 | [M] Morph:0.24
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.61 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.51 | beat #118
-[F] P:0.83 R:0.15 Gate:0.76 KickP:0.000 OUT:0.32 | [B] M:0.46 T:0.21 SnP:0.42 OUT:0.00 | [M] Morph:0.26
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[🥁 INTERVAL BPM] KICK #119 bpm=161 conf=0.62 energy=0.1514 avg=0.0286 ratio=5.28 delta=0.1514 history=8/8 bpmBuf=[161,161,185,161,185,161,161,161]
-[F] P:0.78 R:0.25 Gate:0.76 KickP:0.000 OUT:0.21 | [B] M:0.42 T:0.18 SnP:0.36 OUT:0.00 | [M] Morph:0.27
-[F] P:0.73 R:0.27 Gate:0.76 KickP:0.000 OUT:0.14 | [B] M:0.35 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.26
-[F] P:0.71 R:0.28 Gate:0.76 KickP:0.000 OUT:0.09 | [B] M:0.33 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.26
-[F] P:0.74 R:0.27 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.31 SnP:0.60 OUT:0.11 | [M] Morph:0.26
-[Harmony 🎵] Key Change (fallback): C → A#
-[F] P:0.76 R:0.23 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.66 OUT:0.26 | [M] Morph:0.26
-[F] P:0.76 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.32 SnP:0.62 OUT:0.16 | [M] Morph:0.26
-[F] P:0.76 R:0.18 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.31 SnP:0.61 OUT:0.13 | [M] Morph:0.26
-[F] P:0.76 R:0.16 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.26 SnP:0.52 OUT:0.02 | [M] Morph:0.25
-[IPC 📡] audioBuffer #1459 | titan.running=true | size=8192
-[F] P:0.77 R:0.15 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.25 SnP:0.49 OUT:0.01 | [M] Morph:0.25
-[🥁 INTERVAL BPM] KICK #120 bpm=161 conf=0.62 energy=0.1641 avg=0.0288 ratio=5.70 delta=0.1316 history=8/8 bpmBuf=[161,161,185,161,185,161,161,185]
-[INTERVAL] F1460 bpm=121 raw=161 conf=0.615 kick=true phase=0.00 needle=0.1641 bassFlux=0.1641 midFlux=0.0000 centroid=111Hz kicks=120
-[F] P:0.79 R:0.23 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.21 SnP:0.41 OUT:0.00 | [M] Morph:0.25
-[F] P:0.77 R:0.28 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.19 SnP:0.37 OUT:0.00 | [M] Morph:0.24
-[F] P:0.74 R:0.30 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.24
-[F] P:0.70 R:0.29 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.24 T:0.13 SnP:0.24 OUT:0.00 | [M] Morph:0.23
-[F] P:0.66 R:0.29 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.31 SnP:0.58 OUT:0.08 | [M] Morph:0.23
-[F] P:0.70 R:0.24 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.65 OUT:0.22 | [M] Morph:0.24
-[F] P:0.70 R:0.19 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.33 SnP:0.63 OUT:0.16 | [M] Morph:0.23
-[F] P:0.74 R:0.15 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.30 SnP:0.58 OUT:0.07 | [M] Morph:0.23
-[F] P:0.72 R:0.12 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.25 SnP:0.48 OUT:0.01 | [M] Morph:0.23
-[F] P:0.71 R:0.11 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.25 SnP:0.48 OUT:0.00 | [M] Morph:0.23
-[F] P:0.77 R:0.13 Gate:0.76 KickP:0.021 OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.47 OUT:0.01 | [M] Morph:0.26
-[F] P:0.73 R:0.20 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.27
-[F] P:0.68 R:0.22 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.16 SnP:0.32 OUT:0.00 | [M] Morph:0.27
-[F] P:0.64 R:0.23 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.13 SnP:0.26 OUT:0.00 | [M] Morph:0.27
-[F] P:0.60 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.26 SnP:0.51 OUT:0.02 | [M] Morph:0.26
-[F] P:0.67 R:0.18 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.60 OUT:0.11 | [M] Morph:0.26
-[F] P:0.68 R:0.16 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.30 SnP:0.60 OUT:0.12 | [M] Morph:0.26
-[F] P:0.69 R:0.13 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.30 SnP:0.58 OUT:0.09 | [M] Morph:0.26
-[F] P:0.67 R:0.13 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.27 SnP:0.53 OUT:0.03 | [M] Morph:0.25
-[F] P:0.65 R:0.11 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.23 SnP:0.46 OUT:0.00 | [M] Morph:0.25
-[F] P:0.75 R:0.09 Gate:0.74 KickP:0.015 OUT:0.00 | [B] M:0.27 T:0.18 SnP:0.35 OUT:0.00 | [M] Morph:0.24
-[🥁 INTERVAL BPM] KICK #121 bpm=161 conf=0.60 energy=0.1678 avg=0.0273 ratio=6.15 delta=0.1678 history=8/8 bpmBuf=[161,161,185,161,185,161,161,185]
-[F] P:0.73 R:0.19 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.16 SnP:0.31 OUT:0.00 | [M] Morph:0.23
-[F] P:0.66 R:0.20 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.21 T:0.11 SnP:0.22 OUT:0.00 | [M] Morph:0.22
-[F] P:0.65 R:0.21 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.19 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.21
-[F] P:0.62 R:0.21 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.19 SnP:0.35 OUT:0.00 | [M] Morph:0.21
-[F] P:0.66 R:0.17 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.29 SnP:0.55 OUT:0.04 | [M] Morph:0.22
-[F] P:0.66 R:0.14 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.58 OUT:0.07 | [M] Morph:0.22
-[F] P:0.65 R:0.12 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.30 SnP:0.58 OUT:0.08 | [M] Morph:0.22
-[INTERVAL] F1480 bpm=121 raw=161 conf=0.596 kick=false phase=0.62 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=1761Hz kicks=121
-[F] P:0.68 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.26 SnP:0.50 OUT:0.01 | [M] Morph:0.22
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.972 (Rock target: >0.7)
-   Flatness:    0.018 (Tonal<0.3, Noise>0.7)
-   Centroid:    953Hz (Bright>2000, Dark<1200)
-   CrestFactor: 15.02 (Dynamics)
-   Rolloff:     678Hz (85% energy)
-   Latency:     0.75ms
+   Clarity:     0.926 (Rock target: >0.7)
+   Flatness:    0.079 (Tonal<0.3, Noise>0.7)
+   Centroid:    2180Hz (Bright>2000, Dark<1200)
+   CrestFactor: 11.39 (Dynamics)
+   Rolloff:     3521Hz (85% energy)
+   Latency:     0.72ms
    UltraAir:    0.002 (NEW: 16-22kHz sizzle)
-[F] P:0.72 R:0.10 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.24 SnP:0.47 OUT:0.00 | [M] Morph:0.23
-[F] P:0.76 R:0.11 Gate:0.73 KickP:0.061 OUT:0.09 | [B] M:0.48 T:0.23 SnP:0.47 OUT:0.00 | [M] Morph:0.27
-[🥁 INTERVAL BPM] KICK #122 bpm=173 conf=0.62 energy=0.1768 avg=0.0283 ratio=6.24 delta=0.1768 history=8/8 bpmBuf=[185,161,185,161,185,161,161,185]
-[F] P:0.74 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.22 SnP:0.46 OUT:0.00 | [M] Morph:0.29
-[F] P:0.69 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.29
-[F] P:0.68 R:0.26 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.28
-[F] P:0.65 R:0.27 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.15 SnP:0.31 OUT:0.00 | [M] Morph:0.28
-[F] P:0.69 R:0.24 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.31 SnP:0.62 OUT:0.16 | [M] Morph:0.28
-[F] P:0.72 R:0.20 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.32 SnP:0.65 OUT:0.22 | [M] Morph:0.28
-[F] P:0.71 R:0.18 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.28
-[F] P:0.68 R:0.16 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.56 OUT:0.05 | [M] Morph:0.28
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=59% B/D/N=154/265/33
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.69 R:0.14 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.24 SnP:0.49 OUT:0.01 | [M] Morph:0.28
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:30 | Pan:-140 Tilt:-49 | sBPM:125 phase:89°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:30 | Pan:140 Tilt:-49 | sBPM:125 phase:89°
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.64 wE=0.15 ΔE=-0.159 kick=false
-[F] P:0.79 R:0.11 Gate:0.73 KickP:0.216 OUT:0.31 | [B] M:0.36 T:0.21 SnP:0.43 OUT:0.00 | [M] Morph:0.27
-[🥁 INTERVAL BPM] KICK #123 bpm=173 conf=0.62 energy=0.2501 avg=0.0305 ratio=8.19 delta=0.2501 history=8/8 bpmBuf=[185,161,185,161,185,161,161,185]
-[F] P:0.77 R:0.20 Gate:0.73 KickP:0.000 OUT:0.20 | [B] M:0.32 T:0.18 SnP:0.35 OUT:0.00 | [M] Morph:0.27
-[IPC 📡] audioBuffer #1491 | titan.running=true | size=8192
-[F] P:0.72 R:0.24 Gate:0.73 KickP:0.000 OUT:0.13 | [B] M:0.28 T:0.14 SnP:0.27 OUT:0.00 | [M] Morph:0.26
-[F] P:0.70 R:0.27 Gate:0.73 KickP:0.000 OUT:0.09 | [B] M:0.26 T:0.11 SnP:0.22 OUT:0.00 | [M] Morph:0.26
-[F] P:0.76 R:0.27 Gate:0.73 KickP:0.055 OUT:0.00 | [B] M:0.35 T:0.14 SnP:0.27 OUT:0.00 | [M] Morph:0.25
-[F] P:0.79 R:0.24 Gate:0.74 KickP:0.185 OUT:0.26 | [B] M:0.41 T:0.27 SnP:0.53 OUT:0.03 | [M] Morph:0.26
-[F] P:0.82 R:0.22 Gate:0.74 KickP:0.315 OUT:0.44 | [B] M:0.42 T:0.32 SnP:0.64 OUT:0.19 | [M] Morph:0.26
-[F] P:0.82 R:0.18 Gate:0.74 KickP:0.000 OUT:0.29 | [B] M:0.46 T:0.30 SnP:0.62 OUT:0.16 | [M] Morph:0.28
-[F] P:0.84 R:0.16 Gate:0.74 KickP:0.000 OUT:0.19 | [B] M:0.44 T:0.28 SnP:0.57 OUT:0.08 | [M] Morph:0.29
-[F] P:0.85 R:0.17 Gate:0.74 KickP:0.000 OUT:0.13 | [B] M:0.48 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.32
-[TitanOrchestrator] 🎧 WORKER BPM=130 conf=0.61 | PLL=FREEWHEEL [mem=130@-0f] phase=0.00 sync=0.58 | beat #123
-[F] P:0.86 R:0.18 Gate:0.75 KickP:0.000 OUT:0.09 | [B] M:0.53 T:0.24 SnP:0.51 OUT:0.03 | [M] Morph:0.35
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.83 R:0.20 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.21 SnP:0.47 OUT:0.01 | [M] Morph:0.38
-[F] P:0.77 R:0.24 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.17 SnP:0.38 OUT:0.00 | [M] Morph:0.38
-[F] P:0.75 R:0.24 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.37
-[INTERVAL] F1500 bpm=130 raw=173 conf=0.605 kick=false phase=0.34 needle=0.0000 bassFlux=0.0000 midFlux=0.0086 centroid=519Hz kicks=123
-[BETA 🎵] Key Detected: A# minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 1500: bpm=130, energy=0.27
-[F] P:0.72 R:0.21 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.13 SnP:0.29 OUT:0.00 | [M] Morph:0.37
-[F] P:0.75 R:0.19 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.28 SnP:0.60 OUT:0.13 | [M] Morph:0.37
-[BETA 📡] AUDIO_BUFFER #1500 | size=2048
-[AGC 🎚️] Gain: 0.72x | In: 0.586 → Out: 0.423 | Peak: 0.744 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=0.95/1.4 wE=0.42/0.75 kick=false cool=true
-[F] P:0.76 R:0.16 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.31 SnP:0.67 OUT:0.34 | [M] Morph:0.37
-[F] P:0.75 R:0.14 Gate:0.75 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.30 SnP:0.64 OUT:0.24 | [M] Morph:0.37
-[F] P:0.78 R:0.15 Gate:0.75 KickP:0.060 OUT:0.09 | [B] M:0.45 T:0.27 SnP:0.60 OUT:0.12 | [M] Morph:0.37
-[F] P:0.80 R:0.16 Gate:0.76 KickP:0.136 OUT:0.20 | [B] M:0.43 T:0.26 SnP:0.56 OUT:0.07 | [M] Morph:0.37
-[F] P:0.84 R:0.15 Gate:0.76 KickP:0.316 OUT:0.47 | [B] M:0.39 T:0.21 SnP:0.46 OUT:0.01 | [M] Morph:0.37
-[F] P:0.82 R:0.17 Gate:0.76 KickP:0.000 OUT:0.32 | [B] M:0.36 T:0.19 SnP:0.41 OUT:0.00 | [M] Morph:0.36
-[F] P:0.78 R:0.18 Gate:0.76 KickP:0.000 OUT:0.21 | [B] M:0.32 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.35
-[F] P:0.74 R:0.20 Gate:0.76 KickP:0.000 OUT:0.14 | [B] M:0.28 T:0.13 SnP:0.28 OUT:0.00 | [M] Morph:0.35
-[F] P:0.71 R:0.22 Gate:0.76 KickP:0.000 OUT:0.10 | [B] M:0.34 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.34
-[F] P:0.74 R:0.18 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.30 SnP:0.63 OUT:0.19 | [M] Morph:0.34
-[F] P:0.76 R:0.15 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.34 SnP:0.71 OUT:0.50 | [M] Morph:0.34
-[F] P:0.76 R:0.13 Gate:0.76 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.32 SnP:0.69 OUT:0.38 | [M] Morph:0.34
-[F] P:0.79 R:0.11 Gate:0.76 KickP:0.041 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.60 OUT:0.13 | [M] Morph:0.34
-[F] P:0.78 R:0.11 Gate:0.77 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.26 SnP:0.56 OUT:0.06 | [M] Morph:0.33
-[F] P:0.84 R:0.11 Gate:0.77 KickP:0.254 OUT:0.38 | [B] M:0.50 T:0.26 SnP:0.55 OUT:0.06 | [M] Morph:0.36
-[🥁 INTERVAL BPM] KICK #124 bpm=173 conf=0.59 energy=0.1460 avg=0.0265 ratio=5.51 delta=0.1460 history=
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=45% B/D/N=40/165/161
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 900 frames (15.0s)
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 0° | FinalHue: 345°
+[F] P:0.57 R:0.03 Gate:0.66 KickP:0.000 OUT:0.02 | [B] M:0.26 T:0.14 SnP:0.27 OUT:0.00 | [M] Morph:0.24
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:10 | Pan:158 Tilt:-109 | sBPM:120 phase:102°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:10 | Pan:-158 Tilt:-109 | sBPM:120 phase:102°
+[F] P:0.55 R:0.03 Gate:0.66 KickP:0.000 OUT:0.01 | [B] M:0.32 T:0.23 SnP:0.43 OUT:0.00 | [M] Morph:0.24
+[F] P:0.68 R:0.04 Gate:0.66 KickP:0.027 OUT:0.01 | [B] M:0.45 T:0.35 SnP:0.70 OUT:0.44 | [M] Morph:0.26
+[F] P:0.67 R:0.05 Gate:0.66 KickP:0.000 OUT:0.01 | [B] M:0.44 T:0.35 SnP:0.71 OUT:0.50 | [M] Morph:0.27
+[F] P:0.66 R:0.05 Gate:0.66 KickP:0.000 OUT:0.01 | [B] M:0.45 T:0.35 SnP:0.73 OUT:0.56 | [M] Morph:0.29
+[F] P:0.68 R:0.05 Gate:0.66 KickP:0.024 OUT:0.01 | [B] M:0.44 T:0.33 SnP:0.69 OUT:0.39 | [M] Morph:0.30
+[F] P:0.65 R:0.05 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.60 OUT:0.11 | [M] Morph:0.30
+[F] P:0.76 R:0.04 Gate:0.66 KickP:0.669 OUT:0.96 | [B] M:0.40 T:0.27 SnP:0.55 OUT:0.05 | [M] Morph:0.30
+[🥁 INTERVAL BPM] KICK #41 bpm=86 conf=0.00 energy=0.1118 avg=0.0180 ratio=6.22 delta=0.1118 history=8/8 bpmBuf=[86,86,86,86,161,43,86,161]
+[F] P:0.67 R:0.07 Gate:0.66 KickP:0.000 OUT:0.63 | [B] M:0.32 T:0.20 SnP:0.42 OUT:0.00 | [M] Morph:0.29
+[F] P:0.65 R:0.06 Gate:0.66 KickP:0.000 OUT:0.42 | [B] M:0.32 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.29
+[F] P:0.60 R:0.05 Gate:0.66 KickP:0.000 OUT:0.27 | [B] M:0.30 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.28
+[F] P:0.60 R:0.05 Gate:0.66 KickP:0.000 OUT:0.18 | [B] M:0.34 T:0.21 SnP:0.42 OUT:0.00 | [M] Morph:0.28
+[F] P:0.71 R:0.04 Gate:0.66 KickP:0.133 OUT:0.19 | [B] M:0.40 T:0.32 SnP:0.63 OUT:0.18 | [M] Morph:0.28
+[F] P:0.68 R:0.03 Gate:0.66 KickP:0.000 OUT:0.12 | [B] M:0.41 T:0.32 SnP:0.63 OUT:0.18 | [M] Morph:0.28
+[F] P:0.67 R:0.04 Gate:0.66 KickP:0.000 OUT:0.08 | [B] M:0.42 T:0.31 SnP:0.63 OUT:0.17 | [M] Morph:0.28
+[F] P:0.68 R:0.04 Gate:0.66 KickP:0.011 OUT:0.02 | [B] M:0.43 T:0.29 SnP:0.59 OUT:0.10 | [M] Morph:0.29
+[F] P:0.67 R:0.04 Gate:0.66 KickP:0.000 OUT:0.01 | [B] M:0.44 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.30
+[F] P:0.72 R:0.04 Gate:0.66 KickP:0.152 OUT:0.22 | [B] M:0.43 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.30
+[🥁 INTERVAL BPM] KICK #42 bpm=86 conf=0.00 energy=0.1461 avg=0.0225 ratio=6.50 delta=0.1461 history=8/8 bpmBuf=[185,86,86,86,161,43,86,161]
+[F] P:0.66 R:0.07 Gate:0.66 KickP:0.000 OUT:0.14 | [B] M:0.37 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.30
+[F] P:0.64 R:0.06 Gate:0.66 KickP:0.000 OUT:0.10 | [B] M:0.37 T:0.17 SnP:0.34 OUT:0.00 | [M] Morph:0.30
+[F] P:0.61 R:0.05 Gate:0.66 KickP:0.000 OUT:0.04 | [B] M:0.36 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.29
+[F] P:0.59 R:0.04 Gate:0.66 KickP:0.000 OUT:0.01 | [B] M:0.41 T:0.26 SnP:0.52 OUT:0.02 | [M] Morph:0.29
+[IPC 📡] audioBuffer #457 | titan.running=true | size=8192
+[F] P:0.65 R:0.03 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.33 SnP:0.68 OUT:0.35 | [M] Morph:0.32
+[F] P:0.63 R:0.04 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.33 SnP:0.69 OUT:0.41 | [M] Morph:0.34
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.09 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #42
+[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=5285K
+[F] P:0.60 R:0.04 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.30 SnP:0.65 OUT:0.26 | [M] Morph:0.35
+[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=fire
+[F] P:0.58 R:0.03 Gate:0.65 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.27 SnP:0.59 OUT:0.12 | [M] Morph:0.37
+[INTERVAL] F460 bpm=129 raw=86 conf=0.000 kick=false phase=0.40 needle=0.0000 bassFlux=0.0022 midFlux=0.0000 centroid=1148Hz kicks=42
+[F] P:0.55 R:0.03 Gate:0.65 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.25 SnP:0.57 OUT:0.09 | [M] Morph:0.39
+[F] P:0.60 R:0.03 Gate:0.65 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.24 SnP:0.56 OUT:0.07 | [M] Morph:0.40
+[F] P:0.55 R:0.02 Gate:0.65 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.19 SnP:0.44 OUT:0.00 | [M] Morph:0.40
+[F] P:0.51 R:0.03 Gate:0.64 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.41
+[F] P:0.48 R:0.03 Gate:0.63 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.41
+[F] P:0.45 R:0.03 Gate:0.62 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.11 SnP:0.27 OUT:0.00 | [M] Morph:0.42
+[F] P:0.47 R:0.03 Gate:0.62 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.31 SnP:0.72 OUT:0.58 | [M] Morph:0.45
+[F] P:0.47 R:0.02 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.31 SnP:0.76 OUT:0.79 | [M] Morph:0.48
+[F] P:0.44 R:0.02 Gate:0.60 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.29 SnP:0.71 OUT:0.52 | [M] Morph:0.50
+[F] P:0.43 R:0.02 Gate:0.60 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.27 SnP:0.69 OUT:0.43 | [M] Morph:0.52
+[F] P:0.41 R:0.02 Gate:0.59 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.24 SnP:0.63 OUT:0.22 | [M] Morph:0.53
+[F] P:0.51 R:0.02 Gate:0.59 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.24 SnP:0.63 OUT:0.23 | [M] Morph:0.54
+[F] P:0.50 R:0.02 Gate:0.58 KickP:0.000 OUT:0.00 | [B] M:0.52 T:0.22 SnP:0.57 OUT:0.10 | [M] Morph:0.54
+[SimpleSectionTracker] 📍 verse → breakdown | bassR=0.40 wE=0.08 ΔE=-0.102 kick=false
+[F] P:0.46 R:0.02 Gate:0.58 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.18 SnP:0.48 OUT:0.02 | [M] Morph:0.54
+[F] P:0.41 R:0.01 Gate:0.57 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.13 SnP:0.34 OUT:0.00 | [M] Morph:0.54
+[F] P:0.39 R:0.01 Gate:0.56 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.15 SnP:0.39 OUT:0.00 | [M] Morph:0.54
+[F] P:0.42 R:0.01 Gate:0.56 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.29 SnP:0.74 OUT:0.70 | [M] Morph:0.55
+[F] P:0.41 R:0.01 Gate:0.55 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.30 SnP:0.78 OUT:0.91 | [M] Morph:0.56
+[F] P:0.38 R:0.01 Gate:0.54 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.29 SnP:0.78 OUT:0.92 | [M] Morph:0.57
+[F] P:0.48 R:0.01 Gate:0.54 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.26 SnP:0.70 OUT:0.48 | [M] Morph:0.58
+[F] P:0.45 R:0.02 Gate:0.54 KickP:0.000 OUT:0.00 | [B] M:0.55 T:0.23 SnP:0.64 OUT:0.25 | [M] Morph:0.58

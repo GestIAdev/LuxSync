@@ -173,6 +173,7 @@ export class TechnoStereoPhysics {
   private breakdownExitTime = 0  // ⏱️ WAVE 2378: Timestamp de salida del breakdown
   private lastPunch = 0  // 🔬 WAVE 2380: Velocity gate — detecta pads por velocidad de subida lenta
   private lastKickFireTime = 0  // 🌊 WAVE 2385: Tidal Gate — timestamp del último kick real
+  private wasAttacking = false  // 🌊 WAVE 2386: Inercia de ataque — 1 frame de gracia post-pico
 
   constructor() {
     // WAVE 2098: Boot silence
@@ -317,17 +318,31 @@ export class TechnoStereoPhysics {
     //   mientras la onda BAJA. Solución puramente física: solo disparamos luz cuando la onda
     //   está CRECIENDO (atacando). Si baja, el decay orgánico se encarga de la cola.
     //   Margen de -0.005 para absorber micro-fluctuaciones de cuantización.
+    // 🌊 WAVE 2386: The Undertow — inercia de ataque.
+    //   Un kick real dura 2-3 frames. Con isAttacking estricto, solo el frame de subida
+    //   disparaba. Boris Brejcha: P:0.95 (frame 1, dispara) → P:0.90 (frame 2, NO dispara
+    //   porque velocity < 0). Si el frame ANTERIOR fue ataque genuino (velocity > 0.01),
+    //   permitimos 1 frame de gracia con caída moderada (velocity > -0.03).
     const velocity = punch - (this.lastPunch ?? 0);
     this.lastPunch = punch;
-    const isAttacking = velocity >= -0.005;
+    const isRisingAttack = velocity >= -0.005;
+    const isGraceFrame = this.wasAttacking && velocity >= -0.03;
+    const isAttacking = isRisingAttack || isGraceFrame;
+    this.wasAttacking = isRisingAttack && velocity > 0.01;
     const isQuietSection = isBreakdown || sectionType === 'intro';
     const isPadSwell = isQuietSection && velocity < 0.02;
     
     // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
+    // 🌊 WAVE 2386: The Undertow — decay asimétrico AGRESIVO.
+    // Boris Brejcha tiene subgrave rodante que NUNCA baja de P:0.75.
+    // Con decay 0.95/0.05 anterior, avgPunch subía a ~0.82 y el gate quedaba en 0.84,
+    // bloqueando el 80% de los kicks (solo P:0.96+ pasaba).
+    // Decay 0.88/0.12 permite que avgPunch baje en los micro-valles entre kicks.
+    // Kickloop no se rompe porque sus valles son profundos (P:0.45-0.60).
     if (punch > (this.avgPunch ?? 0)) {
         this.avgPunch = ((this.avgPunch ?? 0) * 0.98) + (punch * 0.02);
     } else {
-        this.avgPunch = ((this.avgPunch ?? 0) * 0.95) + (punch * 0.05);
+        this.avgPunch = ((this.avgPunch ?? 0) * 0.88) + (punch * 0.12);
     }
 
     // 🏔️ MEMORIA DE PICO (avgPunchPeak)
@@ -348,7 +363,10 @@ export class TechnoStereoPhysics {
         this.avgPunchPeak = (this.avgPunchPeak * peakDecay) + (this.avgPunch * (1.0 - peakDecay));
     }
 
-    // El gate efectivo nunca cae por debajo del 70% del pico reciente.
+    // El gate efectivo nunca cae por debajo del 55% del pico reciente.
+    // 🌊 WAVE 2386: The Undertow — reducido de 70% a 55%.
+    // Con peak 0.95: antes floor=0.665, ahora floor=0.523.
+    // Esto da ~0.14 de headroom extra para que kicks de P:0.83-0.88 pasen.
     // 🏗️ WAVE 2378: GATE FLOOR ABSOLUTO — El gate NUNCA baja de 0.42.
     // Sub-bass pads de psytrance (P:0.44-0.47) ya no pasan el gate.
     // 🌊 WAVE 2385: Floor adaptativo — degrada el floor de 0.42 → 0.30 cuando
@@ -361,7 +379,7 @@ export class TechnoStereoPhysics {
       ? Math.min(1.0, (timeSinceLastKick - 3000) / 3000)
       : 0;
     const adaptiveFloor = 0.42 - (0.12 * drySpellFloorDecay);
-    const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.70, adaptiveFloor);
+    const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.55, adaptiveFloor);
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 

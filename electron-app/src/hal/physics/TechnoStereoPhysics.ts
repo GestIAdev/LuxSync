@@ -125,9 +125,9 @@ export class TechnoStereoPhysics {
   private readonly RECOVERY_GATE_OFF = 0.60   // 🚨 Gate off proporcionalmente alto
   private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
-  // 🥁 BACK (SNARE SNIPER) - Resurrección (Importado de Latino)
+  // 🥁 BACK (SNARE SNIPER) - WAVE 2390
   private readonly BACK_PAR_GATE = 0.50       // 🔪 Mantenemos el muro alto para que no entre basura
-  private readonly BACK_PAR_SLAP_MULT = 5.0   // 🚀 BOOM. De 3.0 a 5.0 para bofetadas nucleares
+  private readonly BACK_PAR_SLAP_MULT = 4.0   // Reducido de 5.0 a 4.0 — compensa exponente 2.0
 
   // 👯 MOVERS (STEREO SPLIT)
   
@@ -273,40 +273,48 @@ export class TechnoStereoPhysics {
     // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
 
     // =======================================================================
-    // 🥁 2. BACK PAR: THE SNIPER v2 (WAVE 2389)
+    // 🥁 2. BACK PAR: THE SNIPER v3 (WAVE 2390)
     // =======================================================================
-    // WAVE 2388 mató al paciente: exitCode=muerte_clinica.
-    //   - transientImpact*(0.8+0.7*morph) demasiado bajo → snarePower ~0.45 máx
-    //   - vitaminGate estrangulaba señales con transient moderado (0.3-0.6)
-    //   - Con gate ~0.43, snarePower apenas lo superaba → gated ~0.04
-    //   - pow(0.04, 3.5) = 0.00001 → invisible
+    // WAVE 2389 seguía muerto. borisbrejcha test: 2 disparos de 195 frames.
+    // Causa: exponente 2.8 + slapMult 3.5-5.0 = señales gated moderadas
+    // (0.25-0.35) producen OUT < 0.10. Invisible.
     //
-    // WAVE 2389: Revive al snare sin resucitar al bazooka.
-    //   - transientImpact coeficientes restaurados a (1.0+1.0*morph) — punto medio
-    //   - vitaminGate suavizado: threshold 0.2 (era 0.3), rango más ancho
-    //   - Multiplicador vitamin: (3.5+2.0*morph) — entre el viejo 4.5+2.5 y el 3.0+1.5
-    //   - Exponente reducido a 2.8 (era 3.5) — menos castigo a señales moderadas
-    //   - Antivoces y clamp INTACTOS — las protecciones se mantienen
+    // WAVE 2390: Recalibración del par exponente/multiplicador.
+    //   - Exponente: 2.8 → 2.0 — curva más suave, señales moderadas VIVEN
+    //   - BACK_PAR_SLAP_MULT: 5.0 → 4.0 (compensar para que picos no exploten)
+    //   - Filtro antivoces relajado: harshness < 0.15 (era 0.25)
+    //     Boris Brejcha = minimal, TODO tiene harshness bajo
+    //   - vitaminGate eliminado: demasiada complejidad para un beneficio nulo
+    //     La vitamin ya es proporcional a harshness*treble — se autoregula
+    //
+    // Matemáticas con datos reales del drop (M:0.43, T:0.32, H~0.12, morph 0.30):
+    //   transientImpact = min(1, 0.32*1.3 + 0.12*0.8) = 0.512
+    //   snareVitamin = 0.12*0.32*(3.5+2.0*0.30) = 0.12*0.32*4.1 = 0.157
+    //   snarePower = 0.013 + 0.512*1.30 + 0.157 = 0.013+0.666+0.157 = 0.836
+    //   gate = 0.44-0.22*0.30 = 0.374
+    //   gated = (0.836-0.374)/(1-0.374) = 0.738
+    //   OUT = pow(0.738, 2.0) * 4.0 = 0.545*4.0 = 2.18 → clamp → 1.0 ✅
+    //   
+    //   Señal moderada (SnP:0.55, gate 0.37):
+    //   gated = 0.286, pow(0.286, 2.0)*4.0 = 0.327 ← VISIBLE! ✅
 
     const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
 
-    // 🎤 FILTRO ANTIVOCES (The Gag) — WAVE 2388, INTACTO
-    // Si mid domina sobre treble Y la estridencia es baja → es voz, no snare.
-    const isBackVoiceLeak = mid > (treble * 1.4) && (harshness ?? 0) < 0.25;
+    // 🎤 FILTRO ANTIVOCES (The Gag) — relajado para minimal techno
+    // harshness < 0.15 (era 0.25): en Boris Brejcha todo tiene H bajo,
+    // solo bloqueamos voces MUY limpias donde mid domina claramente
+    const isBackVoiceLeak = mid > (treble * 1.6) && (harshness ?? 0) < 0.15;
     
     const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
     
     const pureHarshness = (harshness ?? 0);
 
-    // 💊 VITAMINA RECALIBRADA — WAVE 2389
-    // vitaminGate suavizado: activa desde transientImpact 0.2 (era 0.3)
-    // Multiplicador: (3.5 + 2.0*morph) — punto medio entre original y WAVE 2388
-    const vitaminGate = Math.max(0, (transientImpact - 0.2) / 0.8);
-    const snareVitamin = pureHarshness * treble * (3.5 + 2.0 * morphFactor) * vitaminGate;
+    // 💊 VITAMINA — sin vitaminGate, la fórmula se autoregula por H*T
+    const snareVitamin = pureHarshness * treble * (3.5 + 2.0 * morphFactor);
 
     const snarePower = Math.min(1.0, 
       (cleanMid * 0.05) + 
-      (transientImpact * (1.0 + 1.0 * morphFactor)) +  // Restaurado: punto medio (1.0+1.0)
+      (transientImpact * (1.0 + 1.0 * morphFactor)) +
       snareVitamin 
     );
 
@@ -316,12 +324,12 @@ export class TechnoStereoPhysics {
 
     if (snarePower > dynamicBackGate && !isBackVoiceLeak) {
         const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-        // Exponente 2.8 (era 3.5): menos castigo a señales gated moderadas
-        // pow(0.25, 2.8) = 0.019 vs pow(0.25, 3.5) = 0.003 → 6x más visible
-        backParIntensity = Math.pow(gated, 2.8) * dynamicSlapMult;
+        // Exponente 2.0 + slapMult 4.0 = par recalibrado
+        // pow(0.29, 2.0)*4.0 = 0.33 (visible) vs pow(0.29, 2.8)*3.5 = 0.09 (invisible)
+        backParIntensity = Math.pow(gated, 2.0) * dynamicSlapMult;
     }
 
-    // 🔒 CLAMP TERMODINÁMICO — WAVE 2388, INTACTO
+    // 🔒 CLAMP TERMODINÁMICO — INTACTO
     backParIntensity = Math.min(1.0, backParIntensity);
 
     // =======================================================================

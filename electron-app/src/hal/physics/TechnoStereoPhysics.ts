@@ -447,7 +447,7 @@ export class TechnoStereoPhysics {
         let rawPower = (punch - dynamicGate) / requiredJump;
         rawPower = Math.min(1.0, Math.max(0, rawPower)); 
         
-        // � WAVE 2387: Return to Origins — exponente reducido a 1.5-1.8.
+        //  WAVE 2387: Return to Origins — exponente reducido a 1.5-1.8.
         // WAVE 2381 (golden reference) usaba 1.5 FIJO. Funcionaba perfecto.
         // WAVEs 2383-2384 subieron a 2.0-2.5 para "aplastar synths" pero
         // crearon DOBLE CASTIGO: gate inflado + crush agresivo. Un bombo con
@@ -511,14 +511,14 @@ export class TechnoStereoPhysics {
     let frontParIntensity = this.frontIntensity * fadeFactor;
 
     // TELEMETRÍA (mantener formato original)
-    if (now - this.lastLogTime > 33) {
+    /*if (now - this.lastLogTime > 33) {
        console.log(
          `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Gate:${dynamicGate.toFixed(2)} KickP:${kickPower.toFixed(3)} OUT:${frontParIntensity.toFixed(2)} | ` +
          `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
          `[M] Morph:${morphFactor.toFixed(2)}`
        );
        this.lastLogTime = now;
-    }
+    }*/
 
     const rawLeft = Math.max(0, mid - (treble * 0.3));
     let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);

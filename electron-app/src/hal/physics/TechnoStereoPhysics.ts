@@ -118,17 +118,20 @@ export class TechnoStereoPhysics {
   private readonly BASS_VITAMIN_BOOST = 3.0   // 🚀 Empuje para el cuerpo de la luz
   private readonly FRONT_MAX_INTENSITY = 0.80 // 🚨 EL TECHO DEL 80%
 
-  // 🔄 WAVE 2393: POLARIDAD INVERTIDA FRONT PAR
-  // Morph bajo → margen ALTO (anti-synths) + decay RÁPIDO + ghost OFF
-  // Morph alto → margen BAJO (sensibilidad) + decay LENTO + ghost ON
-  // Validado: 0 kicks fuertes perdidos en Brejcha (115/115), 6 synths espurios eliminados en Rufus
-  private readonly FRONT_GATE_MARGIN_MAX = 0.06  // Margen en morph=0 (muro anti-synths)
-  private readonly FRONT_GATE_MARGIN_RANGE = 0.05 // Reducción del margen con morph
-  private readonly FRONT_DECAY_MIN = 0.45         // Decay en morph=0 (cola corta: 3 frames)
-  private readonly FRONT_DECAY_RANGE = 0.35       // Rango de decay con morph (0.45→0.80)
+  // 🔄 WAVE 2394: IGNITION SQUELCH + REVERT P.I. FRONT
+  // WAVE 2393 subió gate margin a 0.06 → mató 90% kicks Brejcha. REVERTIDO A 0.02.
+  // WAVE 2393 bajó decay a 0.45 → ritmo descafeinado. REVERTIDO A 0.60+0.20*mf.
+  // NUEVO: Ignition Squelch = max(0.02, 0.20-0.80*mf) en umbral de kickPower.
+  //   morph=0: squelch=0.20 → pad fantasma (KickP=0.161) BLOQUEADO
+  //   morph≥0.225: squelch=0.02 → idéntico al umbral original, cero impacto
+  // Validado: 56/70 kicks Brejcha pasan (3 micro-kicks bloqueados a mF<0.13)
+  private readonly FRONT_GATE_MARGIN = 0.02       // Margen fijo (WAVE 2381 golden ref)
+  private readonly FRONT_DECAY_BASE = 0.60        // Decay base (WAVE 2392 golden ref)
+  private readonly FRONT_DECAY_RANGE = 0.20       // Rango de decay con morph (0.60→0.80)
   private readonly FRONT_GHOST_CAP = 0.04         // Ghost máximo (solo en morph alto)
-  private readonly FRONT_BREAKDOWN_PENALTY_MAX = 0.08  // Penalización breakdown en morph=0
-  private readonly FRONT_BREAKDOWN_PENALTY_RANGE = 0.06 // Reducción con morph
+  private readonly FRONT_BREAKDOWN_PENALTY = 0.06 // Penalización breakdown fija
+  private readonly FRONT_IGNITION_SQUELCH_BASE = 0.20  // Squelch en morph=0
+  private readonly FRONT_IGNITION_SQUELCH_SLOPE = 0.80 // Pendiente de caída
 
   // 🛡️ PARANOIA GATE (Para el rebote del AGC)
   // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
@@ -423,25 +426,20 @@ export class TechnoStereoPhysics {
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 2. LA PUERTA CON MEMORIA — POLARIDAD INVERTIDA (WAVE 2393)
-    // WAVE 2383: gate bajo + crush alto era correcto pero el margen fijo de 0.02
-    // dejaba pasar synths/piano que superaban el promedio por solo 0.03-0.04.
-    // WAVE 2393: margen dinámico con morph — en Hard (morph bajo) el margen sube
-    // a 0.06 bloqueando synths espurios. En Melodic (morph alto) baja a 0.01
-    // para máxima sensibilidad. Validado: 0/115 kicks fuertes perdidos en Brejcha.
-    const gateMargin = this.FRONT_GATE_MARGIN_MAX - (this.FRONT_GATE_MARGIN_RANGE * morphFactor);
-    const dynamicGate = avgPunchEffective + gateMargin;
+    // 2. LA PUERTA CON MEMORIA — MARGEN FIJO (WAVE 2394)
+    // WAVE 2393 usaba margen dinámico 0.06-0.05*mf pero mataba 90% de kicks
+    // en Brejcha (mf=0.10-0.30 → margen 0.035-0.055, triple del original).
+    // WAVE 2394: revert a margen fijo 0.02 (golden ref WAVE 2381).
+    // Anti-pad-ghost se maneja con Ignition Squelch, no con el gate.
+    const dynamicGate = avgPunchEffective + this.FRONT_GATE_MARGIN;
     
     let kickPower = 0;
     let ghostPower = 0;
 
-    // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor) — WAVE 2393
-    // En breakdowns/buildups, penalización modulada por morph:
-    //   Morph bajo → 0.08 (muro total, piano de Brejcha no pasa)
-    //   Morph alto → 0.02 (permisivo, kicks sutiles de Anyma sí pasan)
-    const breakdownPenalty = isBreakdown 
-      ? this.FRONT_BREAKDOWN_PENALTY_MAX - (this.FRONT_BREAKDOWN_PENALTY_RANGE * morphFactor)
-      : 0;
+    // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor) — WAVE 2394
+    // Penalización fija 0.06 en breakdowns (revert de WAVE 2393 que usaba 0.08-0.06*mf).
+    // WAVE 2393 con 0.08 en morph=0 creaba doble castigo con gate margin alto.
+    const breakdownPenalty = isBreakdown ? this.FRONT_BREAKDOWN_PENALTY : 0;
     
     if (punch > dynamicGate && !isVoiceLeak && !isPadSwell && isAttacking && punch > 0.15) {
         const requiredJump = 0.14 - (0.07 * morphFactor) + breakdownPenalty; 
@@ -472,17 +470,22 @@ export class TechnoStereoPhysics {
         ghostPower = Math.min(ghostCap, proximity * ghostCap);
     }
 
-    // 4. MORFOLOGÍA LÍQUIDA: DECAY — POLARIDAD INVERTIDA (WAVE 2393)
-    // WAVE 2392: decay 0.60→0.80. Cola de 5-6 frames en morph bajo = colas largas.
-    // WAVE 2393: decay 0.45→0.80. En morph bajo, cola de 3 frames (más seco).
-    //   morph=0.0: 0.45 → 1.0→0.45→0.20→0.09 (3 frames visibles)
-    //   morph=0.5: 0.625 → 1.0→0.63→0.39→0.24→0.15 (4 frames visibles)
+    // 4. MORFOLOGÍA LÍQUIDA: DECAY — REVERT A WAVE 2392 (WAVE 2394)
+    // WAVE 2393 bajó decay a 0.45 en morph=0 → ritmo descafeinado (3 frames).
+    // WAVE 2394: revert a 0.60+0.20*mf (WAVE 2392 golden ref).
+    //   morph=0.0: 0.60 → 1.0→0.60→0.36→0.22→0.13 (4 frames, pulso sólido)
+    //   morph=0.5: 0.70 → 1.0→0.70→0.49→0.34→0.24 (4-5 frames, fluido)
     //   morph=1.0: 0.80 → 1.0→0.80→0.64→0.51→0.41 (5+ frames, intacto)
-    const frontDecay = this.FRONT_DECAY_MIN + (this.FRONT_DECAY_RANGE * morphFactor);
+    const frontDecay = this.FRONT_DECAY_BASE + (this.FRONT_DECAY_RANGE * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
-    // 5. RENDERIZADO RÍTMICO
-    if (kickPower > 0.02) {
+    // 5. RENDERIZADO RÍTMICO — IGNITION SQUELCH (WAVE 2394)
+    // El squelch reemplaza el umbral fijo 0.02 con una rampa anti-pad-ghost:
+    //   morph=0.00: squelch=0.200 → pad fantasma KickP=0.161 MUERE
+    //   morph=0.10: squelch=0.120 → micro-kick 0.05 muere, kick real 0.30 vive
+    //   morph≥0.225: squelch=0.020 → umbral original, cero impacto en operación normal
+    const ignitionSquelch = Math.max(0.02, this.FRONT_IGNITION_SQUELCH_BASE - (this.FRONT_IGNITION_SQUELCH_SLOPE * morphFactor));
+    if (kickPower > ignitionSquelch) {
         this.lastKickFireTime = now; // 🌊 WAVE 2385: Resetear timer de Tidal Gate
         const hit = Math.min(1.0, kickPower * (1.2 + 0.8 * morphFactor));
         this.frontIntensity = Math.max(this.frontIntensity, hit);

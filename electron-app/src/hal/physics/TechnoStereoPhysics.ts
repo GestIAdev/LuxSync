@@ -112,11 +112,23 @@ export class TechnoStereoPhysics {
   // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
   // =========================================================================
 
-  // 🔊 FRONT (BASS) - EL CERROJO ORGÁNICO
+  // 🔊 FRONT (BASS) - EL CERROJO ORGÁNICO + POLARIDAD INVERTIDA (WAVE 2393)
   private readonly FRONT_PAR_GATE_ON = 0.50   // 💥 Bajamos un poco para cazar más kicks
   private readonly FRONT_PAR_GATE_OFF = 0.35  // 🔪 Suelo razonable para el decay
   private readonly BASS_VITAMIN_BOOST = 3.0   // 🚀 Empuje para el cuerpo de la luz
   private readonly FRONT_MAX_INTENSITY = 0.80 // 🚨 EL TECHO DEL 80%
+
+  // 🔄 WAVE 2393: POLARIDAD INVERTIDA FRONT PAR
+  // Morph bajo → margen ALTO (anti-synths) + decay RÁPIDO + ghost OFF
+  // Morph alto → margen BAJO (sensibilidad) + decay LENTO + ghost ON
+  // Validado: 0 kicks fuertes perdidos en Brejcha (115/115), 6 synths espurios eliminados en Rufus
+  private readonly FRONT_GATE_MARGIN_MAX = 0.06  // Margen en morph=0 (muro anti-synths)
+  private readonly FRONT_GATE_MARGIN_RANGE = 0.05 // Reducción del margen con morph
+  private readonly FRONT_DECAY_MIN = 0.45         // Decay en morph=0 (cola corta: 3 frames)
+  private readonly FRONT_DECAY_RANGE = 0.35       // Rango de decay con morph (0.45→0.80)
+  private readonly FRONT_GHOST_CAP = 0.04         // Ghost máximo (solo en morph alto)
+  private readonly FRONT_BREAKDOWN_PENALTY_MAX = 0.08  // Penalización breakdown en morph=0
+  private readonly FRONT_BREAKDOWN_PENALTY_RANGE = 0.06 // Reducción con morph
 
   // 🛡️ PARANOIA GATE (Para el rebote del AGC)
   // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
@@ -411,21 +423,25 @@ export class TechnoStereoPhysics {
 
     const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
 
-    // 2. LA PUERTA CON MEMORIA
-    // 🔬 WAVE 2383: Smart Crusher — revert gateMargin a 0.02 fijo.
-    // WAVE 2382 subía el margen a 0.045 en Minimal para bloquear sintes,
-    // pero Boris Brejcha (subgrave rodante P:0.73-0.77) inflaba avgPunch
-    // y el gate quedaba en 0.77, BLOQUEANDO bombos reales.
-    // Nuevo enfoque: gate bajo (deja pasar), exponente alto (aplasta lo débil).
-    const dynamicGate = avgPunchEffective + 0.02;
+    // 2. LA PUERTA CON MEMORIA — POLARIDAD INVERTIDA (WAVE 2393)
+    // WAVE 2383: gate bajo + crush alto era correcto pero el margen fijo de 0.02
+    // dejaba pasar synths/piano que superaban el promedio por solo 0.03-0.04.
+    // WAVE 2393: margen dinámico con morph — en Hard (morph bajo) el margen sube
+    // a 0.06 bloqueando synths espurios. En Melodic (morph alto) baja a 0.01
+    // para máxima sensibilidad. Validado: 0/115 kicks fuertes perdidos en Brejcha.
+    const gateMargin = this.FRONT_GATE_MARGIN_MAX - (this.FRONT_GATE_MARGIN_RANGE * morphFactor);
+    const dynamicGate = avgPunchEffective + gateMargin;
     
     let kickPower = 0;
     let ghostPower = 0;
 
-    // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor)
-    // En breakdowns/buildups, exigimos el doble de salto para activar front PAR.
-    // Los sintes no deberían encender los focos del bombo.
-    const breakdownPenalty = isBreakdown ? 0.06 : 0;
+    // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor) — WAVE 2393
+    // En breakdowns/buildups, penalización modulada por morph:
+    //   Morph bajo → 0.08 (muro total, piano de Brejcha no pasa)
+    //   Morph alto → 0.02 (permisivo, kicks sutiles de Anyma sí pasan)
+    const breakdownPenalty = isBreakdown 
+      ? this.FRONT_BREAKDOWN_PENALTY_MAX - (this.FRONT_BREAKDOWN_PENALTY_RANGE * morphFactor)
+      : 0;
     
     if (punch > dynamicGate && !isVoiceLeak && !isPadSwell && isAttacking && punch > 0.15) {
         const requiredJump = 0.14 - (0.07 * morphFactor) + breakdownPenalty; 
@@ -446,17 +462,23 @@ export class TechnoStereoPhysics {
         const crushExponent = 1.5 + (0.3 * (1.0 - morphFactor));
         kickPower = Math.pow(rawPower, crushExponent);
     } else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
-        // 👻 RODILLA SUAVE (Soft Knee) — Solo activa fuera de breakdowns.
-        // 🔬 WAVE 2383: ghostPower restaurado SIN morphFactor.
-        // El glow tenue (max 4%) conecta las melodías y evita negro absoluto.
-        // WAVE 2382 lo multiplicaba por morphFactor, cortándolo en Minimal.
-        // Esto provocaba parpadeo epiléptico al pasar por la guillotina 0.08.
+        // 👻 RODILLA SUAVE (Soft Knee) — POLARIDAD INVERTIDA (WAVE 2393)
+        // WAVE 2383 restauró ghostPower SIN morphFactor para evitar parpadeo epiléptico.
+        // WAVE 2393: ghostCap modulado por morph. En morph=0 el cap es 0 (oscuridad pura,
+        // sin fantasmas). En morph=1 el cap sube a 0.04 (glow máximo de melodía).
+        // Esto elimina microflashes en intros/breakdowns sin matar el glow en Anyma.
+        const ghostCap = this.FRONT_GHOST_CAP * morphFactor;
         const proximity = (punch - avgPunchEffective) / 0.02;
-        ghostPower = Math.min(0.04, proximity * 0.04);
+        ghostPower = Math.min(ghostCap, proximity * ghostCap);
     }
 
-    // 4. MORFOLOGÍA LÍQUIDA: DECAY
-    const frontDecay = 0.60 + (0.20 * morphFactor);
+    // 4. MORFOLOGÍA LÍQUIDA: DECAY — POLARIDAD INVERTIDA (WAVE 2393)
+    // WAVE 2392: decay 0.60→0.80. Cola de 5-6 frames en morph bajo = colas largas.
+    // WAVE 2393: decay 0.45→0.80. En morph bajo, cola de 3 frames (más seco).
+    //   morph=0.0: 0.45 → 1.0→0.45→0.20→0.09 (3 frames visibles)
+    //   morph=0.5: 0.625 → 1.0→0.63→0.39→0.24→0.15 (4 frames visibles)
+    //   morph=1.0: 0.80 → 1.0→0.80→0.64→0.51→0.41 (5+ frames, intacto)
+    const frontDecay = this.FRONT_DECAY_MIN + (this.FRONT_DECAY_RANGE * morphFactor);
     this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay; 
 
     // 5. RENDERIZADO RÍTMICO

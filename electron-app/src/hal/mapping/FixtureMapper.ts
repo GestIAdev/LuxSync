@@ -429,6 +429,19 @@ export class FixtureMapper {
     
     return profile ?? null
   }
+
+  /**
+   * 🔥 WAVE 2183: GHOST EXORCISM — Invalidate profile cache entries
+   * Called when a profile is renamed, updated, or deleted in the library.
+   * @param profileId - Specific profile ID to invalidate, or omit to clear all
+   */
+  invalidateProfileCache(profileId?: string): void {
+    if (profileId) {
+      this.profileCache.delete(profileId)
+    } else {
+      this.profileCache.clear()
+    }
+  }
   
   /**
    * 🎨 WAVE 687: Build DMX channel array from fixture definition

@@ -1200,6 +1200,29 @@ export class HardwareAbstraction {
     this.profileCache.set(cacheKey, profile);
     return profile;
   }
+
+  /**
+   * 🔥 WAVE 2183: GHOST EXORCISM — Invalidate profile caches across HAL + Mapper
+   * Called when a library profile is renamed, updated, or deleted.
+   * Purges stale cached profiles so the next render frame fetches fresh data.
+   * @param profileId - Specific profile ID to invalidate, or omit to clear all
+   */
+  invalidateProfileCache(profileId?: string): void {
+    if (profileId) {
+      this.profileCache.delete(profileId)
+    } else {
+      this.profileCache.clear()
+    }
+    // Also clear injected physics profiles so they re-inject on next frame
+    if (profileId) {
+      this.injectedPhysicsProfiles.delete(profileId)
+    } else {
+      this.injectedPhysicsProfiles.clear()
+    }
+    // Cascade to FixtureMapper's own cache
+    this.mapper.invalidateProfileCache(profileId)
+    console.log(`[HAL] 🔥 WAVE 2183: Profile cache invalidated${profileId ? ` for "${profileId}"` : ' (ALL)'}`)
+  }
   
   /**
    * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor

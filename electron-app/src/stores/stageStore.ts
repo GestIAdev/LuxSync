@@ -660,6 +660,12 @@ export const useStageStore = create<StageStore>()(
           updatedCount++
           return {
             ...fixture,
+            // 🔥 WAVE 2183: GHOST EXORCISM — Sync name/model/manufacturer
+            // Without this, renaming a profile in the Forge leaves the old
+            // name fossilized in the ShowFile forever.
+            name: updatedProfile.name || fixture.name,
+            model: updatedProfile.name || fixture.model,
+            manufacturer: updatedProfile.manufacturer || fixture.manufacturer,
             channelCount: updatedProfile.channels.length,
             // 🔄 HOT-RELOAD: Actualizamos la caché inline de la WAVE 384
             channels: updatedProfile.channels.map((ch: any) => ({
@@ -678,7 +684,17 @@ export const useStageStore = create<StageStore>()(
               has16bitMovement: updatedProfile.channels.some((ch: any) => ch.type === 'pan_fine' || ch.type === 'tilt_fine'),
               hasColorMixing: updatedProfile.capabilities?.hasColorMixing,
               hasColorWheel: updatedProfile.capabilities?.hasColorWheel
-            }
+            },
+            // 🔥 WAVE 2183: Sync physics if profile provides them
+            ...(updatedProfile.physics ? {
+              physics: {
+                ...fixture.physics,
+                motorType: updatedProfile.physics.motorType || fixture.physics.motorType,
+                maxAcceleration: updatedProfile.physics.maxAcceleration ?? fixture.physics.maxAcceleration,
+                maxVelocity: updatedProfile.physics.maxVelocity ?? fixture.physics.maxVelocity,
+                safetyCap: updatedProfile.physics.safetyCap ?? fixture.physics.safetyCap,
+              }
+            } : {})
           }
         }
         return fixture
@@ -686,7 +702,7 @@ export const useStageStore = create<StageStore>()(
 
       if (updatedCount > 0) {
         showFile.fixtures = newFixtures
-        console.log(`[StageStore] 🔄 Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}`)
+        console.log(`[StageStore] 🔄 WAVE 2183: Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name} (name+model+channels+capabilities synced)`)
         get()._syncDerivedState()
         get()._setDirty()
       }

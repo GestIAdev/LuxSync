@@ -2052,7 +2052,12 @@ export class TitanOrchestrator {
       dmxAddress: f.dmxAddress || f.address  // Ensure dmxAddress exists regardless of format
     }))
     
-    // WAVE 380: Fixture ingestion (WAVE 2098: silenced)
+    // 🔥 WAVE 2183: GHOST EXORCISM — Invalidate HAL profile caches on fixture sync
+    // When the Forge renames/edits a profile, reconcileFixturesWithProfile updates the
+    // stageStore, TitanSyncBridge re-sends fixtures here, and HAL must drop its stale cache.
+    if (this.hal) {
+      this.hal.invalidateProfileCache()
+    }
     
     // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
     // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)

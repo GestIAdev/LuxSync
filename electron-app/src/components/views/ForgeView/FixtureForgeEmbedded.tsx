@@ -642,8 +642,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     
     const completeFixture = buildCompleteFixture()
     
+    // 🔥 WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
+    // When system→user clone happens, fixtures in the show still point to the old system ID.
+    let previousProfileId: string | undefined
+    
     // WAVE 1114 FIX: Handle system vs user vs new correctly
     if (editingSource === 'system') {
+      // 🔥 WAVE 2183.5: Capture the system profileId BEFORE cloning
+      previousProfileId = completeFixture.id
+      
       // System fixture: Clone with new ID + "(User Copy)" suffix
       const clonedName = `${completeFixture.name} (User Copy)`
       const clonedFixture = {
@@ -659,6 +666,11 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         setOriginalFixtureId(clonedFixture.id)
         setSaveMessage('✅ Saved as User Copy (System fixtures are read-only)')
         setTimeout(() => setSaveMessage(null), 3000)
+        
+        // 🔥 WAVE 2183.5: Reconcile using the CLONED fixture (with new user ID)
+        // AND pass previousProfileId so stage fixtures pointing to the old system
+        // ID get their profileId migrated to the new user ID.
+        reconcileFixturesWithProfile(clonedFixture, previousProfileId)
       } else {
         setSaveMessage(`❌ Save failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
@@ -675,6 +687,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       if (result.success) {
         setSaveMessage('✅ Updated in User Library')
         setTimeout(() => setSaveMessage(null), 3000)
+        
+        // 🔥 WAVE 2183.5: Reconcile with the updatedFixture (correct ID)
+        reconcileFixturesWithProfile(updatedFixture)
       } else {
         setSaveMessage(`❌ Update failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
@@ -691,6 +706,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         setOriginalFixtureId(completeFixture.id)
         setSaveMessage('✅ Saved to User Library')
         setTimeout(() => setSaveMessage(null), 3000)
+        
+        // 🔥 WAVE 2183.5: Reconcile for new fixtures too (in case they match by ID)
+        reconcileFixturesWithProfile(completeFixture)
       } else {
         setSaveMessage(`❌ Save failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
@@ -699,12 +717,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     
     console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name, '| ID:', completeFixture.id)
     
-    // 🔥 WAVE 384: Hot-reload fixtures in stage when profile is saved
-    reconcileFixturesWithProfile(completeFixture)
-    
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)
-  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture])
+  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile])
 
   const handleExportJSON = useCallback(() => {
     const completeFixture = buildCompleteFixture()

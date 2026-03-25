@@ -152,8 +152,11 @@ interface StageStoreActions {
   /** Batch update fixtures (for undo/redo operations) */
   batchUpdateFixtures: (updates: Array<{ id: string; changes: Partial<FixtureV2> }>) => void
   
-  /** 🔄 WAVE 384: Hot-reload fixtures when fixture profile is updated */
-  reconcileFixturesWithProfile: (updatedProfile: any) => void
+  /** 🔄 WAVE 384: Hot-reload fixtures when fixture profile is updated
+   *  @param previousProfileId — If the profile was cloned (system→user), pass the OLD profileId
+   *                             so fixtures referencing the original can be migrated to the new one.
+   */
+  reconcileFixturesWithProfile: (updatedProfile: any, previousProfileId?: string) => void
   
   // ═══════════════════════════════════════════════════════════════════════
   // GROUP ACTIONS
@@ -649,20 +652,30 @@ export const useStageStore = create<StageStore>()(
       get()._setDirty()
     },
     
-    reconcileFixturesWithProfile: (updatedProfile) => {
+    reconcileFixturesWithProfile: (updatedProfile, previousProfileId) => {
       const { showFile } = get()
       if (!showFile) return
       
       let updatedCount = 0
       const newFixtures = showFile.fixtures.map(fixture => {
-        // Si el foco en el escenario usa el perfil que acabamos de guardar...
-        if (fixture.profileId === updatedProfile.id) {
+        // 🔥 WAVE 2183.5: MULTI-MATCH RECONCILIATION
+        // Match by CURRENT profileId OR by the PREVIOUS profileId (system→user clone migration).
+        // This handles the case where a system fixture was cloned in the Forge:
+        //   - Fixture in showFile has profileId: "EL_1140" (original system ID)
+        //   - Updated profile has id: "user-1770473024494-..." (new cloned ID)
+        //   - Without previousProfileId, the match NEVER connects and names stay fossilized.
+        const matchesCurrent = fixture.profileId === updatedProfile.id
+        const matchesPrevious = previousProfileId && fixture.profileId === previousProfileId
+        
+        if (matchesCurrent || matchesPrevious) {
           updatedCount++
           return {
             ...fixture,
+            // 🔥 WAVE 2183.5: MIGRATE profileId to new profile identity
+            // When a system fixture is cloned to user, ALL stage fixtures using the
+            // old system profileId must now point to the new user profileId.
+            profileId: updatedProfile.id,
             // 🔥 WAVE 2183: GHOST EXORCISM — Sync name/model/manufacturer
-            // Without this, renaming a profile in the Forge leaves the old
-            // name fossilized in the ShowFile forever.
             name: updatedProfile.name || fixture.name,
             model: updatedProfile.name || fixture.model,
             manufacturer: updatedProfile.manufacturer || fixture.manufacturer,
@@ -702,7 +715,8 @@ export const useStageStore = create<StageStore>()(
 
       if (updatedCount > 0) {
         showFile.fixtures = newFixtures
-        console.log(`[StageStore] 🔄 WAVE 2183: Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name} (name+model+channels+capabilities synced)`)
+        const migrationNote = previousProfileId ? ` (migrated from profileId: ${previousProfileId})` : ''
+        console.log(`[StageStore] 🔄 WAVE 2183.5: Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}${migrationNote} (name+model+profileId+channels+capabilities synced)`)
         get()._syncDerivedState()
         get()._setDirty()
       }

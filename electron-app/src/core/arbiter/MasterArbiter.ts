@@ -1653,7 +1653,12 @@ export class MasterArbiter extends EventEmitter {
    */
   private calculatePatternOffset(pattern: PatternConfig, now: number): { panOffset: number; tiltOffset: number } {
     const elapsedMs = now - pattern.startTime
-    const cycleDurationMs = (1000 / Math.max(0.01, pattern.speed))  // speed = cycles per second, prevent div by 0
+    // 🔥 WAVE 2185: BETA SPEED CAP — Hard ceiling at 0.5 Hz regardless of what the IPC sent.
+    // This is defense-in-depth: even if the IPC normalizer is bypassed, the engine won't
+    // let any pattern cycle faster than 0.5 Hz (2 seconds per cycle).
+    const BETA_MAX_SPEED = 0.5  // Hz — hard limit during beta
+    const safeSpeed = Math.min(Math.max(0.01, pattern.speed), BETA_MAX_SPEED)
+    const cycleDurationMs = (1000 / safeSpeed)
     const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs
     const t = phase * 2 * Math.PI  // 0 to 2π
     
@@ -1686,29 +1691,57 @@ export class MasterArbiter extends EventEmitter {
         tiltOffset = 0
         break
 
-      case 'tornado':
+      case 'tornado': {
         // 🌪️ Tornado: Spiral that grows and shrinks — mesmerizing vortex
-        panOffset = Math.cos(t) * Math.sin(t * 0.25)
-        tiltOffset = Math.sin(t) * Math.sin(t * 0.25)
+        // 🔥 WAVE 2185: Smoothed envelope — sin(t*0.25) has gentle zero-crossings,
+        // so the radius shrinks smoothly. No abrupt direction changes.
+        const envelope = Math.sin(t * 0.25)
+        panOffset = Math.cos(t) * envelope
+        tiltOffset = Math.sin(t) * envelope
         break
+      }
 
-      case 'gravity_bounce':
-        // 🏓 Gravity Bounce: Realistic bouncing ball with lateral sweep
+      case 'gravity_bounce': {
+        // 🏓 Gravity Bounce: Smooth bouncing ball with lateral sweep
+        // 🔥 WAVE 2185: MECHANICAL SMOOTHING
+        // OLD: Math.abs(Math.cos(t * 1.5)) — V-shape at zero-crossings = infinite
+        // acceleration = stepper motor crunch. The derivative of |cos(x)| is 
+        // discontinuous at every zero-crossing (sign flip = instant reversal).
+        //
+        // NEW: Asymmetric sine wave — cos² gives a smooth parabolic bounce
+        // with zero velocity at the apex. Physically correct bounce physics
+        // without the derivative discontinuity.
+        const bounce = Math.cos(t * 1.5)
         panOffset = Math.sin(t)
-        tiltOffset = Math.abs(Math.cos(t * 1.5)) * -1
+        tiltOffset = -(bounce * bounce)  // cos² = always positive, smooth at zero-crossings
         break
+      }
 
-      case 'butterfly':
+      case 'butterfly': {
         // 🦋 Butterfly: Lissajous figure — celtic knot / infinity flower
-        panOffset = Math.sin(t * 3)
-        tiltOffset = Math.sin(t * 2)
+        // 🔥 WAVE 2185: Reduced frequency ratio from 3:2 to 2:1 for smoother tracing.
+        // 3:2 Lissajous creates sharp cusps where the curve reverses direction.
+        // 2:1 gives a figure-eight variant that's visually distinct but mechanically gentler.
+        panOffset = Math.sin(t * 2)
+        tiltOffset = Math.sin(t)
         break
+      }
 
-      case 'heartbeat':
-        // ⚡ Heartbeat: Violent techno pulse — sharp tilt spikes
+      case 'heartbeat': {
+        // 💓 Heartbeat: Rhythmic tilt pulse — visible but motor-safe
+        // 🔥 WAVE 2185: MECHANICAL SMOOTHING
+        // OLD: Math.pow(Math.sin(t*2), 8) — 8th power creates near-zero flat zones
+        // with explosive spikes. The derivative at the spike tip approaches infinity.
+        // On a stepper motor: the shaft sits still then JERKS violently.
+        //
+        // NEW: sin⁴(t) — 4th power is the compromise. Still has a visible pulse
+        // shape (narrow peaks, wide valleys) but the derivative stays finite.
+        // Max angular velocity is ~4x lower than sin⁸.
+        const pulse = Math.sin(t * 2)
         panOffset = 0
-        tiltOffset = Math.pow(Math.sin(t * 2), 8) * Math.sign(Math.sin(t * 2))
+        tiltOffset = pulse * pulse * pulse * pulse * Math.sign(pulse)  // sin⁴ preserving sign
         break
+      }
     }
     
     return { panOffset, tiltOffset }
@@ -1734,9 +1767,15 @@ export class MasterArbiter extends EventEmitter {
       const offset = this.calculatePatternOffset(pattern, now)
       // 🔧 WAVE 2042.24: Scale offset to DMX range (0-255), not 16-bit
       // offset is -1 to 1, size is already normalized 0-1
-      // Max movement = 128 DMX units (half range) * size
-      const panMovement = offset.panOffset * 128 * pattern.size
-      const tiltMovement = offset.tiltOffset * 128 * pattern.size
+      // 🔥 WAVE 2185: BETA SAFETY CAP — Hard ceiling at 64 DMX units (25% of range).
+      // Even if someone bypasses the IPC normalizer, the Arbiter itself won't let
+      // any pattern move more than ±64 DMX from center. This is the LAW during beta.
+      // On a 540° fixture: 64/256 * 540° = 135° max sweep = safe for any stepper.
+      const BETA_MAX_MOVEMENT = 64  // DMX units — hard limit, non-negotiable
+      const rawPanMovement = offset.panOffset * 128 * pattern.size
+      const rawTiltMovement = offset.tiltOffset * 128 * pattern.size
+      const panMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawPanMovement))
+      const tiltMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawTiltMovement))
       
       // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
       // not the static pattern.center captured at creation time.

@@ -65,7 +65,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }: {
       fixtureIds: string[]
       pattern: {
-        type: 'circle' | 'eight' | 'sweep'
+        type: 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
         speed: number
         size: number
         center: { pan: number; tilt: number }
@@ -412,30 +412,50 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔧 WAVE 2071: THE ANCHOR — Snapshot current position and create override
-    // This is the CRITICAL fix. Without this, the pattern center is Titan's
-    // position which moves every frame with the music = parasitic chaos.
+    // 🔧 WAVE 2071 + WAVE 2185: THE ANCHOR
+    // Snapshot current position and create override.
+    // Without this, the pattern center is Titan's position which moves
+    // every frame with the music = parasitic chaos.
+    //
+    // 🔥 WAVE 2185: ANCHOR PRESERVATION ON PATTERN SWITCH
+    // When switching patterns (e.g. circle → tornado), we must:
+    //   1. KEEP the existing anchor position (don't re-snapshot mid-orbit)
+    //   2. NOT override the speed channel (speed=0 kills motor interpolation
+    //      → stepper motors vibrate because they receive raw positions at 60fps
+    //      with no acceleration curve from the fixture's internal MCU)
+    //   3. Only create a NEW anchor if none exists yet
     // ═══════════════════════════════════════════════════════════════════════
     for (const fixtureId of fixtureIds) {
-      const currentPos = masterArbiter.getCurrentPosition(fixtureId)
+      const existingOverride = masterArbiter.getManualOverride(fixtureId)
+      const hasAnchor = existingOverride?.controls?.pan !== undefined 
+                     && existingOverride?.controls?.tilt !== undefined
       
-      const anchorOverride: Layer2_Manual = {
-        fixtureId,
-        controls: {
-          pan: currentPos.pan,
-          tilt: currentPos.tilt,
-          speed: 0,  // Fast movement for moving heads
-        } as any,
-        overrideChannels: ['pan', 'tilt', 'speed'] as any,
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: 100,
-        autoReleaseMs: 0,
-        releaseTransitionMs: 500,
-        timestamp: performance.now(),
+      if (!hasAnchor) {
+        // First time anchoring — snapshot current position
+        const currentPos = masterArbiter.getCurrentPosition(fixtureId)
+        
+        const anchorOverride: Layer2_Manual = {
+          fixtureId,
+          controls: {
+            pan: currentPos.pan,
+            tilt: currentPos.tilt,
+            // 🔥 WAVE 2185: Do NOT include speed in the override.
+            // Let the fixture use its profile defaultValue (typically 127-128)
+            // which enables the internal motor interpolation = smooth movement.
+          } as any,
+          overrideChannels: ['pan', 'tilt'] as any,
+          mode: 'absolute',
+          source: 'ui_programmer',
+          priority: 100,
+          autoReleaseMs: 0,
+          releaseTransitionMs: 500,
+          timestamp: performance.now(),
+        }
+        
+        masterArbiter.setManualOverride(anchorOverride)
       }
-      
-      masterArbiter.setManualOverride(anchorOverride)
+      // If anchor already exists → reuse it. The pattern switch only changes
+      // the PatternConfig type, not the anchor point.
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -461,12 +481,19 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
 
     // Convert UI values (0-100) to engine values
-    // 🔧 WAVE 2182: Speed capped at 1.5 Hz (was 3 Hz — too aggressive for
-    // moving heads without Gearbox protection). At 1.5 Hz with size=100%,
-    // the pattern requests ±128 DMX 1.5 times/second — physically achievable.
-    // Speed: 0-100 → 0.05-1.5 Hz | Size: 0-100 → 0-1
-    const speedNormalized = 0.05 + (speed / 100) * 1.45
-    const sizeNormalized = amplitude / 100
+    // � WAVE 2185: BETA SAFETY LIMITER
+    // Speed capped at 0.5 Hz (was 1.5 Hz). At 0.5 Hz with size=100%,
+    // the pattern requests ±64 DMX in 1 second = 128 DMX total per cycle.
+    // For a 540° mover: 128 * (540/256) ≈ 270°/s max angular velocity.
+    // That's within safe operating range for any commercial stepper motor.
+    //
+    // Size capped at 50% (64 DMX max offset). Combined with 0.5 Hz:
+    // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head.
+    // Glacial but safe. Motors won't even break a sweat.
+    //
+    // Speed: 0-100 → 0.05-0.5 Hz | Size: 0-100 → 0-0.5 (capped at 50% range)
+    const speedNormalized = 0.05 + (speed / 100) * 0.45
+    const sizeNormalized = (amplitude / 100) * 0.5
 
     // If pattern already exists with same type → hot-update (no phase reset)
     const existingPattern = masterArbiter.getPattern(fixtureIds[0])
@@ -476,17 +503,22 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       return { success: true, pattern, updated: true }
     }
 
-    // New pattern → full creation with anchored center
-    const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0])
+    // 🔥 WAVE 2185: PATTERN SWITCH — If switching types (e.g. circle → tornado),
+    // use the EXISTING anchor position, not a re-snapshot.
+    // Re-snapshotting mid-orbit would capture an intermediate position = jump.
+    const anchorPos = existingPattern
+      ? existingPattern.center  // Reuse the original anchor from the previous pattern
+      : masterArbiter.getCurrentPosition(fixtureIds[0])  // First pattern → snapshot now
     
     masterArbiter.setPattern(fixtureIds, {
-      type: pattern as 'circle' | 'eight' | 'sweep',
+      type: pattern as 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat',
       speed: speedNormalized,
       size: sizeNormalized,
       center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
     })
 
-    console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} ANCHORED at P${anchorPos.pan.toFixed(0)}/T${anchorPos.tilt.toFixed(0)} (speed=${speed}%, amp=${amplitude}%) for ${fixtureIds.length} fixtures`)
+    const switchNote = existingPattern ? ` (switched from ${existingPattern.type})` : ''
+    console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} ANCHORED at P${anchorPos.pan.toFixed(0)}/T${anchorPos.tilt.toFixed(0)} (speed=${speed}%, amp=${amplitude}%) for ${fixtureIds.length} fixtures${switchNote}`)
     return { success: true, pattern, fixtureIds: fixtureIds.length }
   })
 

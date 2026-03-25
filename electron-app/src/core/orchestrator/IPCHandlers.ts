@@ -1021,51 +1021,66 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
   
   // WAVE 388 EXT: Delete fixture definition from library
   // WAVE 389: Rescan library after delete to invalidate cache
+  // WAVE 2185: Accept paths from BOTH factory and custom library folders
   // Accepts either full filePath or fixture name to search
   ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier: string) => {
     try {
       const fs = await import('fs')
       const path = await import('path')
-      const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : ''
+      const customPath = getCustomLibPath()
+      const factoryPath = getFactoryLibPath()
       
-      if (!libraryPath) {
-        return { success: false, error: 'Library path not configured' }
+      if (!customPath && !factoryPath) {
+        return { success: false, error: 'Library paths not configured' }
       }
       
       let fileToDelete: string | null = null
       
       // WAVE 388.7: Check if identifier is already a full path
       if (identifier.includes(path.sep) && fs.existsSync(identifier)) {
-        // It's a full path - verify it's inside library folder
-        if (identifier.startsWith(libraryPath)) {
+        // It's a full path — verify it's inside EITHER library folder
+        // 🔥 WAVE 2185: The old code only checked customPath (via fxtParser.getLibraryPath()),
+        // so factory fixtures with paths like "C:\...\librerias\user-xxx.json" were rejected
+        // with "File path outside library folder" — even though they ARE library files.
+        const normalizedId = path.normalize(identifier)
+        const isInCustom = customPath && normalizedId.startsWith(path.normalize(customPath))
+        const isInFactory = factoryPath && normalizedId.startsWith(path.normalize(factoryPath))
+        
+        if (isInCustom || isInFactory) {
           fileToDelete = identifier
         } else {
           return { success: false, error: 'File path outside library folder' }
         }
       } else {
-        // Search by scanning the library
-        const files = fs.readdirSync(libraryPath)
+        // Search by scanning BOTH library folders
+        const searchFolders = [customPath, factoryPath].filter(Boolean) as string[]
         
-        for (const file of files) {
-          if (!file.endsWith('.json')) continue
+        for (const folder of searchFolders) {
+          if (!fs.existsSync(folder)) continue
+          const files = fs.readdirSync(folder)
           
-          const filePath = path.join(libraryPath, file)
-          try {
-            const content = fs.readFileSync(filePath, 'utf-8')
-            const fixture = JSON.parse(content)
+          for (const file of files) {
+            if (!file.endsWith('.json')) continue
             
-            // Match by id OR by name OR by filename
-            if (fixture.id === identifier || 
-                fixture.name === identifier || 
-                file === identifier ||
-                file === `${identifier}.json`) {
-              fileToDelete = filePath
-              break
+            const filePath = path.join(folder, file)
+            try {
+              const content = fs.readFileSync(filePath, 'utf-8')
+              const fixture = JSON.parse(content)
+              
+              // Match by id OR by name OR by filename
+              if (fixture.id === identifier || 
+                  fixture.name === identifier || 
+                  file === identifier ||
+                  file === `${identifier}.json`) {
+                fileToDelete = filePath
+                break
+              }
+            } catch (parseErr) {
+              // Skip files that can't be parsed
+              continue
             }
-          } catch (parseErr) {
-            // Skip files that can't be parsed
-            continue
           }
+          if (fileToDelete) break
         }
       }
       

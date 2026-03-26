@@ -97,7 +97,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxAcceleration: 2000,    // 🔧 Arranques agresivos pero seguros (era 1500)
       maxVelocity: 600,         // Muy rápido
       friction: 0.08,           // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado (era 0.05 snap)
-      arrivalThreshold: 0.5,    // Precisión alta
+      arrivalThreshold: 0.1,    // 🔧 WAVE 2233: 0.5 → 0.1. Esquinas clavadas en botstep/diamond
       physicsMode: 'snap',      // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS — classic mata geometría con S-curve/inercia
       // ═══════════════════════════════════════════════════════════════════
       // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
@@ -113,7 +113,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
       // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
       // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.85,         // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
+      snapFactor: 1.0,          // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.85 → 1.0. Target instantáneo, la inercia la manda el revLimit + hardware físico
       revLimitPanPerSec: 400,   // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
       revLimitTiltPerSec: 400,  // 🔧 WAVE 2221 MENDOZA: 280→400. Igualar al pan para geometrías rectas (square, diamond)
     },

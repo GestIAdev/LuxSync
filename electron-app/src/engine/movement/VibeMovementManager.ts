@@ -125,7 +125,7 @@ type GoldenPattern =
 const VIBE_CONFIG: Record<string, VibeConfig> = {
   // TECHNO: Geometria dura, cortes precisos
   'techno-club': {
-    amplitudeScale: 0.55,  // 🔧 WAVE 2221 MENDOZA: 0.40 → 0.55. 60% del rango = visible y profesional. 7 capas de seguridad protegen.
+    amplitudeScale: 0.70,  // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.55 → 0.70. ~350° Pan en 540° movers. 7 capas de seguridad + Gearbox protegen.
     baseFrequency: 0.25,
     patterns: ['scan_x', 'square', 'diamond', 'botstep'],
     homeOnSilence: false,
@@ -738,7 +738,8 @@ export class VibeMovementManager {
     
     // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
     // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
-    const tiltOffset = vibeId === 'techno-club' ? -0.35 : 0
+    // 🔧 WAVE 2233: -0.35 → -0.20. Con amplitudeScale 0.70, -0.35 empujaba tilt contra límite inferior.
+    const tiltOffset = vibeId === 'techno-club' ? -0.20 : 0
     const position = {
       x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
       y: Math.max(-1, Math.min(1, (rawPosition.y * finalAmplitude) + tiltOffset)),

@@ -128,10 +128,6 @@ export class FixturePhysicsDriver {
   
   // 🔧 WAVE 338: Current vibe for physics adaptation
   private currentVibeId: string = 'idle'
-  // 🔒 WAVE 2229: Physics pause — freezes interpolation when output disabled
-  // When paused, translateDMX() returns frozen positions and velocities stay at 0.
-  // This prevents phantom physics accumulating and causing a "whip" on GO.
-  private _paused: boolean = false
   // 🏎️ WAVE 2074.2: Explicit physics mode — no more dead code
   private currentPhysicsMode: 'snap' | 'classic' = 'classic'
   // 🏎️ WAVE 2074.3: Explicit personality data — no more maxAccel branches
@@ -361,23 +357,6 @@ export class FixturePhysicsDriver {
       return { fixtureId, panDMX: 127, tiltDMX: 127, panFine: 0, tiltFine: 0 }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔒 WAVE 2229: PHYSICS PAUSE GUARD
-    // When paused (outputEnabled=false), return frozen position.
-    // No interpolation, no velocity accumulation, no phantom movement.
-    // This prevents the "whip" effect when the user presses GO.
-    // ═══════════════════════════════════════════════════════════════════════
-    if (this._paused) {
-      const frozen = this.currentPositions.get(fixtureId) || { pan: 127, tilt: 127 }
-      return {
-        fixtureId,
-        panDMX: Math.round(frozen.pan),
-        tiltDMX: Math.round(frozen.tilt),
-        panFine: 0,
-        tiltFine: 0,
-      }
-    }
-
     // Aplicar límites de seguridad directamente
     const safePan = Math.max(0, Math.min(255, targetPanDMX))
     const safeTilt = Math.max(config.limits.tiltMin, Math.min(config.limits.tiltMax, targetTiltDMX))
@@ -477,18 +456,6 @@ export class FixturePhysicsDriver {
     if (!config) {
       console.warn(`[PhysicsDriver] Fixture "${fixtureId}" no configurado`)
       return { fixtureId, panDMX: 127, tiltDMX: 127, panFine: 0, tiltFine: 0 }
-    }
-
-    // 🔒 WAVE 2229: PHYSICS PAUSE GUARD (same as translateDMX)
-    if (this._paused) {
-      const frozen = this.currentPositions.get(fixtureId) || { pan: 127, tilt: 127 }
-      return {
-        fixtureId,
-        panDMX: Math.round(frozen.pan),
-        tiltDMX: Math.round(frozen.tilt),
-        panFine: 0,
-        tiltFine: 0,
-      }
     }
 
     // 1. Convertir coordenadas abstractas (-1 a +1) a DMX objetivo
@@ -987,43 +954,5 @@ export class FixturePhysicsDriver {
     })
     
     return states
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🔒 WAVE 2229: PHYSICS PAUSE/RESUME — Anti-Whip Safety
-  //
-  // When output is disabled (ARMED state), the physics engine must FREEZE:
-  //   - translateDMX() returns frozen positions (no interpolation)
-  //   - All velocities are zeroed (no momentum accumulation)
-  //
-  // When output is re-enabled (GO → LIVE), physics resumes from frozen positions
-  // with zero velocity. The mover starts smoothly from where it froze — no whip.
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Freeze all physics interpolation. translateDMX() will return current
-   * frozen positions until resumePhysics() is called.
-   * Velocities are zeroed to prevent momentum from building up.
-   */
-  pausePhysics(): void {
-    if (this._paused) return
-    this._paused = true
-    // Zero all velocities — no whip on resume
-    this.velocities.forEach((_vel, id) => {
-      this.velocities.set(id, { pan: 0, tilt: 0 })
-    })
-  }
-
-  /**
-   * Resume physics interpolation from frozen positions with zero velocity.
-   * The mover will smoothly accelerate toward its target — no instant jump.
-   */
-  resumePhysics(): void {
-    this._paused = false
-  }
-
-  /** Check if physics is currently paused */
-  isPaused(): boolean {
-    return this._paused
   }
 }

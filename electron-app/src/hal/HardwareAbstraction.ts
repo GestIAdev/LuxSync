@@ -117,8 +117,6 @@ export class HardwareAbstraction {
   private movementPhysics: FixturePhysicsDriver
   private currentVibeId: string = 'idle'
   private currentOptics: OpticsConfig
-  // 🔒 WAVE 2229: Track outputEnabled transitions to pause/resume physics
-  private _lastOutputEnabled: boolean = true
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🗑️ WAVE 2211: PHYSICS PROFILE INJECTION CACHE
@@ -1607,45 +1605,21 @@ export class HardwareAbstraction {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🚧 WAVE 2228: DMX ADUANA — Last-mile output gate
-    // 🔒 WAVE 2229: + Physics pause/resume on output transitions
-    // 🎯 WAVE 2230: + Manual position override keeps physics alive
-    //
-    // The Arbiter calculates the FULL show always (for UI preview).
-    // The gate lives HERE, microseconds before USB/ArtNet output.
+    // 🔒 WAVE 2229: + physicalPan/physicalTilt also gated
+    // 🔥 WAVE 2231: Physics runs 100% always. The Aduana is the ONLY gate.
+    //   No more pausePhysics/resumePhysics. HyperionView 3D stays alive.
+    //   The physics engine feeds both the 3D preview and the DMX output.
+    //   The Aduana filters at the DMX boundary, microseconds before hardware.
     //
     // When outputEnabled=false (ARMED, not LIVE):
     //   - Channels controlled by MANUAL (Layer 2) → pass through (calibration)
     //   - ALL other channels → safe values (dimmer=0, color=black, pos=center)
     //   - physicalPan/physicalTilt also gated (WAVE 2229)
-    //   - Physics engine paused UNLESS manual pan/tilt is active (WAVE 2230)
     //
     // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
+    // Physics always runs. The Aduana is the sole gate.
     // ═══════════════════════════════════════════════════════════════════════════
     const outputEnabled = masterArbiter.isOutputEnabled()
-
-    // 🎯 WAVE 2230: Check if ANY fixture has manual pan/tilt control.
-    // If so, the physics engine must stay running to interpolate manual targets smoothly.
-    // Without this, the radar sends targets but the frozen physics driver ignores them.
-    const hasManualPosition = !outputEnabled && states.some(state => {
-      const sources = state._controlSources
-      return sources && (
-        sources['pan'] === ControlLayer.MANUAL ||
-        sources['tilt'] === ControlLayer.MANUAL
-      )
-    })
-
-    // 🔒 WAVE 2229+2230: Detect output transitions → pause/resume physics
-    // Physics is paused when output OFF *and* no manual position override.
-    // Physics is resumed when output ON *or* manual position override exists.
-    const shouldPausePhysics = !outputEnabled && !hasManualPosition
-    if (shouldPausePhysics !== this.movementPhysics.isPaused()) {
-      if (shouldPausePhysics) {
-        this.movementPhysics.pausePhysics()
-      } else {
-        this.movementPhysics.resumePhysics()
-      }
-    }
-    this._lastOutputEnabled = outputEnabled
 
     if (!outputEnabled) {
       states = states.map(state => {

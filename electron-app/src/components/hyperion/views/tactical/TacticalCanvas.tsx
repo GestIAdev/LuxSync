@@ -25,6 +25,10 @@ import React, {
 import { useAudioStore } from '../../../../stores/audioStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useFixtureData } from './useFixtureData'
+import { getTransientTruth } from '../../../../stores/transientStore'
+import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
+import { useControlStore, selectCinemaControl } from '../../../../stores/controlStore'
+import { useOverrideStore } from '../../../../stores/overrideStore'
 import { 
   renderGridLayer, 
   renderZoneLayer, 
@@ -128,13 +132,16 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const toggleSelection = useSelectionStore(state => state.toggleSelection)
   const deselectAll = useSelectionStore(state => state.deselectAll)
   
-  const onBeat = useAudioStore(state => state.onBeat)
-  // Beat intensity can be derived from onBeat (1.0 when on beat, 0 otherwise)
-  const beatIntensity = onBeat ? 1.0 : 0
+  // 🔥 WAVE 2405: Beat data read IMPERATIVELY in RAF loop via useAudioStore.getState()
+  // No longer a reactive subscription — prevents RAF restart on every beat
 
   // ── Fixture Data ────────────────────────────────────────────────────────
+  // Structural scaffold (~2fps from truthStore — positions, zones, types)
+  // Dynamic data (intensity, color, pan/tilt) hydrated from transientStore in RAF
   
   const fixtures = useFixtureData()
+  const fixturesRef = useRef(fixtures)
+  fixturesRef.current = fixtures
   
   // ── Tooltip Hook ────────────────────────────────────────────────────────
   
@@ -207,6 +214,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     }
     return counts
   }, [fixtures])
+  const zoneCountsRef = useRef(zoneCounts)
+  zoneCountsRef.current = zoneCounts
 
   // ── Render Loop ─────────────────────────────────────────────────────────
   
@@ -234,9 +243,17 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         metricsRef.current.fps = avgFps
       }
 
+      // 🔥 WAVE 2405: Read structural scaffold from ref (updated by React at ~2fps)
+      const currentFixtures = fixturesRef.current
+
       metricsRef.current.frameTime = delta
-      metricsRef.current.fixtureCount = fixtures.length
+      metricsRef.current.fixtureCount = currentFixtures.length
       metricsRef.current.lastRenderTime = timestamp
+
+      // 🔥 WAVE 2405: Read beat IMPERATIVELY — no reactive subscription
+      const audioState = useAudioStore.getState()
+      const currentOnBeat = audioState.onBeat
+      const currentBeatIntensity = currentOnBeat ? 1.0 : 0
 
       // Get CSS dimensions
       const rect = canvas.getBoundingClientRect()
@@ -264,9 +281,35 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       if (showZoneLabels) {
         renderZoneLayer(ctx, width, height, {
           showCounts: true,
-          zoneCounts,
+          zoneCounts: zoneCountsRef.current,
         })
       }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🔥 WAVE 2405: TRANSIENT HYDRATION — Fresh dynamic data every frame
+      //
+      // The scaffold (x, y, zone, type, id) comes from useFixtureData (~2fps).
+      // Dynamic fields (intensity, color, pan/tilt/zoom) are OVERWRITTEN here
+      // with fresh data from getTransientTruth() (~12.5fps IPC, zero React cost).
+      //
+      // This is the same pattern used by 3D components (HyperionPar3D, etc.)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const transientTruth = getTransientTruth()
+      const transientFixtures = transientTruth?.hardware?.fixtures
+      
+      // Build a lookup map for O(1) access by fixture ID
+      let transientMap: Map<string, any> | null = null
+      if (transientFixtures && Array.isArray(transientFixtures)) {
+        transientMap = new Map()
+        for (const f of transientFixtures) {
+          if (f?.id) transientMap.set(f.id, f)
+        }
+      }
+
+      // Read control params imperatively for calculateFixtureRenderValues
+      const controlState = useControlStore.getState()
+      const cinema = selectCinemaControl(controlState)
+      const overrides = useOverrideStore.getState().overrides
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // PHYSICS INTERPOLATION — Smooth pan/tilt/zoom (Inercia Táctica)
@@ -278,43 +321,83 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       
       const SMOOTHING_FACTOR = 0.10  // 0.1 = slow/heavy, 0.3 = fast/snappy
       
-      const smoothedFixtures = fixtures.map(fixture => {
+      const smoothedFixtures = currentFixtures.map((fixture, index) => {
+        // 🔥 WAVE 2405: Hydrate with FRESH transient data
+        let hydrated = fixture
+        const transientState = transientMap?.get(fixture.id)
+        if (transientState) {
+          const fixtureOverride = overrides.get(fixture.id)
+          const renderData = calculateFixtureRenderValues(
+            transientState,
+            cinema.globalMode,
+            cinema.flowParams,
+            cinema.activePaletteId,
+            cinema.globalIntensity,
+            cinema.globalSaturation,
+            index,
+            fixtureOverride?.values,
+            fixtureOverride?.mask,
+            cinema.targetPalette,
+            cinema.transitionProgress
+          )
+          
+          const rawIntensity = renderData.intensity ?? 0
+          const normalizedIntensity = !Number.isFinite(rawIntensity)
+            ? 0
+            : rawIntensity > 1.0 ? rawIntensity / 255 : rawIntensity
+          
+          hydrated = {
+            ...fixture,
+            // Dynamic fields — FRESH from transient
+            r: Number.isFinite(renderData.color.r) ? renderData.color.r : 0,
+            g: Number.isFinite(renderData.color.g) ? renderData.color.g : 0,
+            b: Number.isFinite(renderData.color.b) ? renderData.color.b : 0,
+            intensity: Math.max(0, Math.min(1, normalizedIntensity)),
+            physicalPan: Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5,
+            physicalTilt: Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5,
+            zoom: Number.isFinite(renderData.zoom) ? renderData.zoom : 127,
+            focus: Number.isFinite(renderData.focus) ? renderData.focus : 127,
+            panVelocity: Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0,
+            tiltVelocity: Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0,
+          }
+        }
+        
         // Get or initialize physics state for this fixture
-        let state = physicsStoreRef.current.get(fixture.id)
+        let state = physicsStoreRef.current.get(hydrated.id)
         
         if (!state) {
           // First frame: initialize with current values (no interpolation)
           state = {
-            pan: fixture.physicalPan,
-            tilt: fixture.physicalTilt,
-            zoom: fixture.zoom,
+            pan: hydrated.physicalPan,
+            tilt: hydrated.physicalTilt,
+            zoom: hydrated.zoom,
           }
-          physicsStoreRef.current.set(fixture.id, state)
+          physicsStoreRef.current.set(hydrated.id, state)
         }
 
         // Interpolate towards target (exponential smoothing)
         // This creates the "inercia" effect — fixture remembers momentum
-        state.pan += (fixture.physicalPan - state.pan) * SMOOTHING_FACTOR
-        state.tilt += (fixture.physicalTilt - state.tilt) * SMOOTHING_FACTOR
-        state.zoom += (fixture.zoom - state.zoom) * SMOOTHING_FACTOR
+        state.pan += (hydrated.physicalPan - state.pan) * SMOOTHING_FACTOR
+        state.tilt += (hydrated.physicalTilt - state.tilt) * SMOOTHING_FACTOR
+        state.zoom += (hydrated.zoom - state.zoom) * SMOOTHING_FACTOR
 
         // Update physics memory for next frame
-        physicsStoreRef.current.set(fixture.id, state)
+        physicsStoreRef.current.set(hydrated.id, state)
 
         // Return fixture with SMOOTHED values (not raw DMX)
         return {
-          ...fixture,
+          ...hydrated,
           physicalPan: state.pan,
           physicalTilt: state.tilt,
           zoom: state.zoom,
         }
       })
 
-      // ── LAYER 3: FIXTURES (with smoothed physics) ────────────────────
+      // ── LAYER 3: FIXTURES (with smoothed physics + transient data) ────
       renderFixtureLayer(ctx, width, height, smoothedFixtures, {
         quality,
-        onBeat,
-        beatIntensity,
+        onBeat: currentOnBeat,
+        beatIntensity: currentBeatIntensity,
       })
 
       // ── LAYER 4: SELECTION ────────────────────────────────────────────
@@ -345,18 +428,18 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         cancelAnimationFrame(animationRef.current)
       }
     }
+  // 🔥 WAVE 2405: STABLE RAF DEPS
+  // Removed: fixtures, onBeat, beatIntensity, zoneCounts
+  // These are now read IMPERATIVELY via refs and getState() inside the RAF loop.
+  // The RAF loop is mount-once, run-forever — no more destroy/recreate on data changes.
   }, [
     isReady,
-    fixtures,
     quality,
     showGrid,
     showZoneLabels,
-    onBeat,
-    beatIntensity,
     selectedIds,
     hoveredFixtureId,
     lassoBounds,
-    zoneCounts,
     baseRadius,
   ])
 

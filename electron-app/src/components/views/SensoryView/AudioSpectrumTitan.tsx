@@ -17,7 +17,7 @@
  */
 
 import React, { memo, useRef, useEffect } from 'react'
-import { useTruthStore } from '../../../stores/truthStore'
+import { getTransientTruth } from '../../../stores/transientStore'
 import { SpectrumBarsIcon, LiveDotIcon } from '../../icons/LuxIcons'
 import './AudioSpectrumTitan.css'
 
@@ -150,10 +150,13 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
     let frameId: number
 
     const tick = (now: number) => {
-      // Read store IMPERATIVELY — no React subscription, no re-render
-      const state = useTruthStore.getState()
-      const audio = state.truth.sensory.audio
-      const beat = state.truth.sensory.beat
+      // 🔥 WAVE 2405: Read TRANSIENT store — updated every IPC frame (~12.5fps)
+      // Before: useTruthStore.getState() → throttled to ~2fps (WAVE 2236 sedation)
+      // After: getTransientTruth() → every IPC frame, zero React cost
+      const truth = getTransientTruth()
+      if (!truth) { frameId = requestAnimationFrame(tick); return }
+      const audio = truth.sensory.audio
+      const beat = truth.sensory.beat
 
       // ── Interpolate bands (zero allocation) ──
       interpolateTo32BandsInPlace(

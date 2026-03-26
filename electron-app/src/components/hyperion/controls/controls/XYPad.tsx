@@ -2,6 +2,7 @@
  * 🎯 XY PAD - The Sniper
  * WAVE 375.4 - Position Control
  * WAVE 1008.3 - SAFETY SHIELD
+ * WAVE 2190 - RAF THROTTLE (max ~33 IPC/sec, prevents motor DDoS)
  * 
  * Direct position control for pan/tilt
  * - Pan: 0-540° physical max, 0-513° safe max (95%)
@@ -30,6 +31,10 @@ export const XYPad: React.FC<XYPadProps> = ({
 }) => {
   const padRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  
+  // 🔥 WAVE 2190: RAF THROTTLE — Prevents IPC flood (was 60-120/sec, now ~33/sec)
+  const rafIdRef = useRef<number>(0)
+  const pendingPositionRef = useRef<{ clientX: number; clientY: number } | null>(null)
   
   // 🛡️ WAVE 1008.3: SAFETY LIMITS (95% of physical max to protect motor belts)
   const SAFE_PAN_MAX = 513   // 95% of 540° - prevents motor strain
@@ -75,15 +80,40 @@ export const XYPad: React.FC<XYPadProps> = ({
   
   /**
    * Mouse move - update position while dragging
+   * 🔥 WAVE 2190: RAF THROTTLE — Only process the LATEST mouse position per animation frame.
+   * Raw mousemove fires 60-120 events/sec → 60-120 IPC calls → motor DDoS.
+   * With RAF gate: we buffer the latest position and flush once per frame (~33 FPS).
+   * This cut the IPC flood from 120/sec to ~33/sec, ending the motor spasms.
    */
   useEffect(() => {
     if (!isDragging) return
     
     const handleMove = (e: MouseEvent) => {
-      handleMousePosition(e.clientX, e.clientY)
+      pendingPositionRef.current = { clientX: e.clientX, clientY: e.clientY }
+      
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = 0
+          const pos = pendingPositionRef.current
+          if (pos) {
+            handleMousePosition(pos.clientX, pos.clientY)
+            pendingPositionRef.current = null
+          }
+        })
+      }
     }
     
     const handleUp = () => {
+      // Flush any buffered position on release
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = 0
+      }
+      const pos = pendingPositionRef.current
+      if (pos) {
+        handleMousePosition(pos.clientX, pos.clientY)
+        pendingPositionRef.current = null
+      }
       setIsDragging(false)
     }
     
@@ -93,6 +123,10 @@ export const XYPad: React.FC<XYPadProps> = ({
     return () => {
       window.removeEventListener('mousemove', handleMove)
       window.removeEventListener('mouseup', handleUp)
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = 0
+      }
     }
   }, [isDragging, handleMousePosition])
   

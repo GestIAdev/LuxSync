@@ -55,6 +55,10 @@ export const RadarXY: React.FC<RadarXYProps> = ({
   const radarRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   
+  // 🔥 WAVE 2190: RAF THROTTLE — Prevents IPC flood (was 60-120/sec, now ~33/sec)
+  const rafIdRef = useRef<number>(0)
+  const pendingPositionRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  
   // 🔧 WAVE 2182: Use SAFE limits matching XYPad and handlePositionChange
   // Before: normalized to 540/270 (full range) but handler clamps to 513/256.
   // That caused visual desync — radar showed positions beyond actual output.
@@ -104,15 +108,40 @@ export const RadarXY: React.FC<RadarXYProps> = ({
   
   /**
    * Mouse move - update position while dragging
+   * 🔥 WAVE 2190: RAF THROTTLE — Only process the LATEST mouse position per animation frame.
+   * Raw mousemove fires 60-120 events/sec → 60-120 IPC calls → motor DDoS.
+   * With RAF gate: we buffer the latest position and flush once per frame (~33 FPS).
+   * This cut the IPC flood from 120/sec to ~33/sec, ending the motor spasms.
    */
   useEffect(() => {
     if (!isDragging) return
     
     const handleMove = (e: MouseEvent) => {
-      handleMousePosition(e.clientX, e.clientY)
+      pendingPositionRef.current = { clientX: e.clientX, clientY: e.clientY }
+      
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = 0
+          const pos = pendingPositionRef.current
+          if (pos) {
+            handleMousePosition(pos.clientX, pos.clientY)
+            pendingPositionRef.current = null
+          }
+        })
+      }
     }
     
     const handleUp = () => {
+      // Flush any buffered position on release
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = 0
+      }
+      const pos = pendingPositionRef.current
+      if (pos) {
+        handleMousePosition(pos.clientX, pos.clientY)
+        pendingPositionRef.current = null
+      }
       setIsDragging(false)
     }
     
@@ -122,6 +151,10 @@ export const RadarXY: React.FC<RadarXYProps> = ({
     return () => {
       window.removeEventListener('mousemove', handleMove)
       window.removeEventListener('mouseup', handleUp)
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = 0
+      }
     }
   }, [isDragging, handleMousePosition])
   

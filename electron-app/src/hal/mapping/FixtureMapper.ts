@@ -375,6 +375,8 @@ export class FixtureMapper {
    * @param states - Array of fixture states with control values
    * @returns DMX packets ready to send to driver
    */
+
+
   public statesToDMXPackets(states: FixtureState[]): DMXPacket[] {
     const packets = states.map(state => {
       // 🎨 WAVE 687: Build channel array dynamically from fixture definition
@@ -387,6 +389,8 @@ export class FixtureMapper {
         fixtureId: state.fixtureId ?? `fixture-${state.dmxAddress}`
       }
     })
+
+
 
     // 🔎 WAVE 2122.1: Focused DMX slice trace disabled (was too spammy)
     // Uncomment below to re-enable fixture-level DMX inspection

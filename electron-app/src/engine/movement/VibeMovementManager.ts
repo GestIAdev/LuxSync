@@ -125,7 +125,7 @@ type GoldenPattern =
 const VIBE_CONFIG: Record<string, VibeConfig> = {
   // TECHNO: Geometria dura, cortes precisos
   'techno-club': {
-    amplitudeScale: 0.40,  // 🔧 WAVE 2213 FÉNIX: 1.0 → 0.40. En 540° Pan, 1.0 = peonza. 0.40 = barrido contenido profesional.
+    amplitudeScale: 0.55,  // 🔧 WAVE 2221 MENDOZA: 0.40 → 0.55. 60% del rango = visible y profesional. 7 capas de seguridad protegen.
     baseFrequency: 0.25,
     patterns: ['scan_x', 'square', 'diamond', 'botstep'],
     homeOnSilence: false,
@@ -179,7 +179,7 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
 
 const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   // TECHNO — geometría industrial, pero DELIBERADA
-  scan_x: 16,       // 4 compases: barrido majestuoso, no epiléptico
+  scan_x: 8,        // 🔧 WAVE 2221: 16→8. 2 compases: barrido rápido, no letárgico
   square: 16,       // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
   diamond: 8,       // 2 compases: rombo contenido pero fluido
   botstep: 8,       // 2 compases: posiciones robóticas con gravitas
@@ -245,12 +245,15 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   
   // TECHNO PATTERNS - Industrial / Sharp / Geometria Dura
   
-  // SCAN_X: Barrido horizontal puro (Coche Fantastico / policia)
+  // SCAN_X: Barrido horizontal con ondulación vertical (Lissajous 1:2 suave)
+  // 🔧 WAVE 2221 MENDOZA: Añadido Y sinusoidal. Sin offset hardcodeado.
+  // La orientación floor/ceiling la gestiona el PhysicsDriver con su preset.
+  // Centro en y=0.0 — el FPD aplica tiltOffset según instalación.
   scan_x: (phase, audio, index = 0, total = 1) => {
     const fixtureOffset = (index / Math.max(total, 1)) * Math.PI * 0.5
     return {
       x: Math.sin(phase + fixtureOffset),
-      y: 0,
+      y: Math.sin((phase + fixtureOffset) * 2) * 0.45, // WAVE 2224: 0.3→0.45, oscilación vertical más dramática
     }
   },
   
@@ -317,9 +320,9 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const t = normalizedPhase - Math.floor(normalizedPhase)
     
     const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9
-    const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.6
+    const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.9  // 🔧 WAVE 2221: 0.6→0.9. Tilt agresivo para saltos verticales obvios
     const toX = Math.sin(nextStep * phi * Math.PI) * 0.9
-    const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.6
+    const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.9  // 🔧 WAVE 2221: 0.6→0.9
     
     return {
       x: fromX + (toX - fromX) * t,
@@ -734,9 +737,11 @@ export class VibeMovementManager {
     const finalAmplitude = effectiveAmplitude * clampedEnvelope
     
     // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
+    // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
+    const tiltOffset = vibeId === 'techno-club' ? -0.35 : 0
     const position = {
       x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
-      y: Math.max(-1, Math.min(1, rawPosition.y * finalAmplitude)),
+      y: Math.max(-1, Math.min(1, (rawPosition.y * finalAmplitude) + tiltOffset)),
     }
     
     // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
@@ -924,11 +929,12 @@ export class VibeMovementManager {
     // Factor de reduccion si excede el presupuesto
     const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel)
     
-    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Hard floor 0.85
-    // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
-    // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
-    // ya se encarga de limitar la velocidad real del hardware.
-    const GEARBOX_MIN_AMPLITUDE = 0.85
+    // 🔧 WAVE 2192: GEARBOX LIBERATION — Floor 0.85 → 0.10
+    // WAVE 2088.7 puso floor en 0.85 para "intentar recorrido completo",
+    // pero eso ANULA cualquier amplitudeScale < 0.85 del preset.
+    // Techno con amplitudeScale=0.40 se forzaba a 0.85 = movimiento gigante.
+    // Floor 0.10 permite que los presets controlen la amplitud real.
+    const GEARBOX_MIN_AMPLITUDE = 0.10
     const gearboxResult = requestedAmplitude * gearboxFactor
     return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult))
   }

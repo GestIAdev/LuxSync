@@ -57,6 +57,23 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   // WAVE 430.5: Fan control for group mode
   const [fanValue, setFanValue] = useState(0)  // -100 to 100
+
+  // 🔧 WAVE 2223: POLTERGEIST FIX — Reset local state when parent clears override
+  // Without this, handleUnlockAll purges the backend but PositionSection's
+  // activePattern stays stale → next XY touch re-injects a hold anchor.
+  const prevHasOverrideRef = React.useRef(hasOverride)
+  useEffect(() => {
+    if (prevHasOverrideRef.current && !hasOverride) {
+      // Parent cleared our override (UNLOCK ALL) → flush local state
+      setActivePattern('none')
+      setIsCalibrating(false)
+      setPan(270)
+      setTilt(135)
+      setPatternSpeed(50)
+      setPatternSize(50)
+    }
+    prevHasOverrideRef.current = hasOverride
+  }, [hasOverride])
   
   // WAVE 430.5: Detect multi-selection mode
   const isMultiSelection = selectedIds.length > 1
@@ -228,9 +245,12 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         controls: {
           pan: panDmx,
           tilt: tiltDmx,
-          speed: 0,  // 🚀 WAVE 1008.2: Fast movement for moving heads
+          // 🔥 WAVE 2190: PURGA SPEED:0 — Eliminado speed:0 que mataba la interpolación
+          // del motor. Sin speed en el override, mergeChannelForFixture cae al
+          // defaultValue del fixture (~128 = velocidad moderada con interpolación).
+          // speed:0 = velocidad máxima sin interpolar = stepper motor en espasmo.
         },
-        channels: ['pan', 'tilt', 'speed'],
+        channels: ['pan', 'tilt'],
       })
       
       // 🔧 WAVE 2071: If a pattern is running, DON'T kill it.

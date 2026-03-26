@@ -124,6 +124,7 @@ export class FixturePhysicsDriver {
   private currentPositions: Map<string, Position2D> = new Map()
   private velocities: Map<string, Position2D> = new Map()
   private lastUpdate: number = Date.now()
+
   
   // 🔧 WAVE 338: Current vibe for physics adaptation
   private currentVibeId: string = 'idle'
@@ -355,7 +356,8 @@ export class FixturePhysicsDriver {
       console.warn(`[PhysicsDriver] Fixture "${fixtureId}" no configurado`)
       return { fixtureId, panDMX: 127, tiltDMX: 127, panFine: 0, tiltFine: 0 }
     }
-    
+
+
     // Aplicar límites de seguridad directamente
     const safePan = Math.max(0, Math.min(255, targetPanDMX))
     const safeTilt = Math.max(config.limits.tiltMin, Math.min(config.limits.tiltMax, targetTiltDMX))

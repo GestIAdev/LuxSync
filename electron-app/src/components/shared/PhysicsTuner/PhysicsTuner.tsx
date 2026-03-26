@@ -275,7 +275,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             {/* Max Acceleration Slider */}
             <div className="slider-group">
               <label className="slider-label">
-                Max Acceleration
+                Max Acceleration (°/s²)
                 <span className="slider-value" style={{ color: riskLevel.color }}>
                   {physics.maxAcceleration}
                 </span>
@@ -302,7 +302,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             {/* Max Velocity Slider */}
             <div className="slider-group">
               <label className="slider-label">
-                Max Velocity
+                Max Velocity (°/s - Grados por seg)
                 <span className="slider-value">{physics.maxVelocity}</span>
               </label>
               <input

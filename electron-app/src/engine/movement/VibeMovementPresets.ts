@@ -98,7 +98,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       maxVelocity: 600,         // Muy rápido
       friction: 0.08,           // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado (era 0.05 snap)
       arrivalThreshold: 0.5,    // Precisión alta
-      physicsMode: 'classic',   // 🔥 WAVE 2213: Exorcismo del snap — trayectorias sinusoidales continuas
+      physicsMode: 'snap',      // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS — classic mata geometría con S-curve/inercia
       // ═══════════════════════════════════════════════════════════════════
       // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
       // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
@@ -115,7 +115,7 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
       // ═══════════════════════════════════════════════════════════════════
       snapFactor: 0.85,         // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
       revLimitPanPerSec: 400,   // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
-      revLimitTiltPerSec: 280,  // 🔧 WAVE 2088.8: ~297°/s — tilt siempre más lento
+      revLimitTiltPerSec: 400,  // 🔧 WAVE 2221 MENDOZA: 280→400. Igualar al pan para geometrías rectas (square, diamond)
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)

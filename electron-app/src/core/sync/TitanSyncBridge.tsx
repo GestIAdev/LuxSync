@@ -102,6 +102,9 @@ const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.Mutabl
       hasColorWheel: (f as any).hasColorWheel || Boolean(f.capabilities?.hasColorWheel) || false,
       hasColorMixing: (f as any).hasColorMixing || Boolean(f.capabilities?.hasColorMixing) || false,
       profileId: (f as any).profileId || f.id,  // Use fixture ID as default profile ID
+      // 🔧 WAVE 2221: Pass orientation from Forge physics → backend installationType
+      // Without this, TitanOrchestrator always falls back to 'ceiling'
+      installationType: f.physics?.orientation || 'ceiling',
       position: f.position,
       rotation: f.rotation,
     }

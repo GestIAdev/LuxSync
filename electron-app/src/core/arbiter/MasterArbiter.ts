@@ -552,12 +552,17 @@ export class MasterArbiter extends EventEmitter {
       // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
       // BEFORE purging the override, grab the current position for interpolation.
       // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
+      //
+      // 🔧 WAVE 2225: THE CRYSTAL BRIDGE — startTime MUST use performance.now(),
+      // NOT Date.now(). arbitrate() compares with performance.now(). Mixing clocks
+      // caused elapsed = performance.now() - Date.now() ≈ -1.7 TRILLION ms →
+      // fade NEVER expired → smoothT = infinity → pan clamped to 0 forever.
       const lastManualPan = override.controls.pan ?? 128
       const lastManualTilt = override.controls.tilt ?? 128
       this.positionReleaseFades.set(fixtureId, {
         fromPan: lastManualPan,
         fromTilt: lastManualTilt,
-        startTime: Date.now(),
+        startTime: performance.now(),
         durationMs: this.POSITION_RELEASE_MS,
       })
       console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`)
@@ -2069,6 +2074,8 @@ export class MasterArbiter extends EventEmitter {
         }
         
         // 3. Apply mechanics if found
+
+
         if (mechanic) {
           // THE DEEP FIELD / CELESTIAL MOVERS: Use explicit coordinates
           defaults.pan = mechanic.pan * 255

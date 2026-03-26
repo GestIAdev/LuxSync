@@ -146,6 +146,7 @@ export class HardwareAbstraction {
   private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
   // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
   private lastPhysicsFrameTime = 0
+
   
   // Current vibe preset (for physics)
   // 🔥 WAVE 279.5: HEART vs SLAP - Filosofía de zonas
@@ -919,7 +920,9 @@ export class HardwareAbstraction {
           // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
           channels,
           // 🎨 WAVE 687: Default values for additional controls
-          shutter: 0,
+          // 🔥 WAVE 2190: shutter UNDEFINED — Let FixtureMapper fall through to
+          // channel.defaultValue ?? 255 (Open). Hardcoding 0 = CLOSED = blackout
+          // on any fixture with a mechanical shutter channel.
           gobo: 0,
           prism: 0,
           strobe: 0,
@@ -1026,7 +1029,9 @@ export class HardwareAbstraction {
         // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
         this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
-        
+
+
+
         // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
         const calibrated = this.applyCalibrationOffsets(
           physicsState.physicalPan,

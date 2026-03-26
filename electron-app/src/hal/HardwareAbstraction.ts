@@ -117,6 +117,8 @@ export class HardwareAbstraction {
   private movementPhysics: FixturePhysicsDriver
   private currentVibeId: string = 'idle'
   private currentOptics: OpticsConfig
+  // 🔒 WAVE 2229: Track outputEnabled transitions to pause/resume physics
+  private _lastOutputEnabled: boolean = true
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🗑️ WAVE 2211: PHYSICS PROFILE INJECTION CACHE
@@ -1605,6 +1607,7 @@ export class HardwareAbstraction {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🚧 WAVE 2228: DMX ADUANA — Last-mile output gate
+    // 🔒 WAVE 2229: + Physics pause/resume on output transitions
     //
     // The Arbiter calculates the FULL show always (for UI preview).
     // The gate lives HERE, microseconds before USB/ArtNet output.
@@ -1612,32 +1615,54 @@ export class HardwareAbstraction {
     // When outputEnabled=false (ARMED, not LIVE):
     //   - Channels controlled by MANUAL (Layer 2) → pass through (calibration)
     //   - ALL other channels → safe values (dimmer=0, color=black, pos=center)
+    //   - physicalPan/physicalTilt also gated (WAVE 2229)
+    //   - Physics engine paused (no phantom momentum accumulation)
     //
     // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
     // ═══════════════════════════════════════════════════════════════════════════
-    if (!masterArbiter.isOutputEnabled()) {
+    const outputEnabled = masterArbiter.isOutputEnabled()
+
+    // 🔒 WAVE 2229: Detect output transitions → pause/resume physics
+    if (outputEnabled !== this._lastOutputEnabled) {
+      if (!outputEnabled) {
+        this.movementPhysics.pausePhysics()
+      } else {
+        this.movementPhysics.resumePhysics()
+      }
+      this._lastOutputEnabled = outputEnabled
+    }
+
+    if (!outputEnabled) {
       states = states.map(state => {
         const sources = state._controlSources
         if (!sources) {
           // No source metadata → full blackout for safety
-          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128 }
+          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 }
         }
 
         // Check if ANY channel is manual — if none, full blackout shortcut
         const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL)
         if (!hasAnyManual) {
-          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128 }
+          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 }
         }
 
         // Per-channel gate: manual channels pass, rest → safe values
+        // 🚧 WAVE 2229: physicalPan/physicalTilt MUST also be gated.
+        // The FixtureMapper reads physicalPan/physicalTilt with priority over pan/tilt.
+        // If we only gate pan/tilt but leave physicalPan/physicalTilt untouched,
+        // physics-interpolated values leak to DMX hardware.
+        const panSafe = sources['pan'] === ControlLayer.MANUAL
+        const tiltSafe = sources['tilt'] === ControlLayer.MANUAL
         return {
           ...state,
           dimmer: sources['dimmer'] === ControlLayer.MANUAL ? state.dimmer : 0,
           r: sources['red'] === ControlLayer.MANUAL ? state.r : 0,
           g: sources['green'] === ControlLayer.MANUAL ? state.g : 0,
           b: sources['blue'] === ControlLayer.MANUAL ? state.b : 0,
-          pan: sources['pan'] === ControlLayer.MANUAL ? state.pan : 128,
-          tilt: sources['tilt'] === ControlLayer.MANUAL ? state.tilt : 128,
+          pan: panSafe ? state.pan : 128,
+          tilt: tiltSafe ? state.tilt : 128,
+          physicalPan: panSafe ? state.physicalPan : 128,
+          physicalTilt: tiltSafe ? state.physicalTilt : 128,
         }
       })
     }

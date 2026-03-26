@@ -262,11 +262,11 @@ export function HyperionView({
               className={`hyperion-liquid-toggle ${useLiquidStereo ? 'active' : ''}`}
               onClick={handleLiquidStereoToggle}
               title={useLiquidStereo 
-                ? '7.1 Liquid Stereo — 7-band per-zone envelopes (click for God Mode)' 
-                : 'God Mode — Classic 3-band stereo (click for Liquid Stereo)'
+                ? '7.1 Liquid Stereo — 7-band per-zone envelopes (click for 4.1 Mode)' 
+                : '4.1 Classic Stereo — 3-band legacy mode (click for Liquid Stereo)'
               }
             >
-              {useLiquidStereo ? '🌊 7.1' : '⚡ GOD'}
+              {useLiquidStereo ? '🌊 7.1' : '⚡ 4.1'}
             </button>
             <button
               className={`hyperion-quality-toggle ${qualityMode.toLowerCase()}`}

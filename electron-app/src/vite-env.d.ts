@@ -471,6 +471,11 @@ declare global {
         connected: boolean
         device: string | null
       }>
+
+      /** 🔥 WAVE 2241: Subscribe to profile save events from La Forja.
+       *  Fires immediately after the backend persists and rescans the library.
+       *  Returns an unsubscribe function. */
+      onProfileUpdated: (callback: (fixture: FixtureDefinition) => void) => () => void
     }
     
     // 🎭 WAVE 26: Show Management - PURGED WAVE 365

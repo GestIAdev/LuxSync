@@ -55,13 +55,15 @@ const IPC_READY_TIMEOUT_MS = 5000
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Generate a hash from fixtures array to detect actual changes
+ * Generate a hash from fixtures array to detect actual changes.
+ * 🔥 WAVE 2241: Include channelCount + profileId so Forge profile edits
+ * (channel additions, type changes, defaults) always trigger a backend resync.
  */
 const generateFixturesHash = (fixtureList: any[]): string => {
   if (!fixtureList || fixtureList.length === 0) return 'empty'
   
   return fixtureList
-    .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}`)
+    .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`)
     .sort()
     .join('|')
 }
@@ -215,6 +217,35 @@ export const TitanSyncBridge: React.FC = () => {
     }
   }, []) // Empty deps - only run once on mount
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // EFFECT: WAVE 2241 — THE FORGE HOT-RELOAD
+  // Listen for lux:profile:updated (pushed by backend after Forge save).
+  // 1. Reconcile stage fixtures in Zustand (names, channels, capabilities, physics)
+  // 2. Invalidate the hash so the Zustand subscriber above ALWAYS fires a resync
+  //    to TitanOrchestrator, even when dmxAddress/universe didn't change.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    const lux = (window as any).lux
+    if (!lux?.library?.onProfileUpdated) return
+
+    const unsubProfileUpdated = lux.library.onProfileUpdated((updatedProfile: any) => {
+      console.log(`[TitanSyncBridge] 🔥 WAVE 2241: Profile hot-reload — id: ${updatedProfile.id}, name: ${updatedProfile.name}`)
+
+      // Step 1: Bust the hash BEFORE mutating the store.
+      // Zustand may call the subscriber synchronously inside reconcile,
+      // so if we invalidate after, the subscriber sees the old hash and skips the resync.
+      lastSyncedHashRef.current = ''
+
+      // Step 2: Hydrate stageStore fixtures that use this profileId.
+      // This calls _syncDerivedState() which triggers the Zustand subscriber above,
+      // which (with the busted hash) will schedule syncToBackend with the updated channels.
+      useStageStore.getState().reconcileFixturesWithProfile(updatedProfile)
+    })
+
+    return () => unsubProfileUpdated?.()
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER - Invisible component (renders ONCE, never re-renders)
   // ═══════════════════════════════════════════════════════════════════════

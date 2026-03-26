@@ -1268,7 +1268,12 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       
       // Rescan to update cache
       await rescanAllLibraries()
-      
+
+      // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
+      // Push the updated profile to the renderer so TitanSyncBridge can
+      // force a backend resync without waiting for a full show reload.
+      safeWebSend(getMainWindow(), 'lux:profile:updated', fixture)
+
       return {
         success: true,
         filePath,

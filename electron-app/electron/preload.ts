@@ -774,6 +774,16 @@ const luxApi = {
     
     /** Get DMX connection status for Live Probe */
     dmxStatus: () => ipcRenderer.invoke('lux:library:dmx-status'),
+
+    // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
+    // Fired by backend after lux:library:save-user succeeds.
+    // Carries the full updated fixture profile so the frontend
+    // can rehidrate active stage fixtures without reloading the show.
+    onProfileUpdated: (callback: (fixture: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, fixture: any) => callback(fixture)
+      ipcRenderer.on('lux:profile:updated', handler)
+      return () => ipcRenderer.removeListener('lux:profile:updated', handler)
+    },
   },
   
   // ============================================

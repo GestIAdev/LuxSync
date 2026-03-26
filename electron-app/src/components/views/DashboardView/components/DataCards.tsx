@@ -48,9 +48,13 @@ const DataCard: React.FC<DataCardProps> = ({
   </div>
 )
 
+const getDmxApi = () => (window as any).luxsync?.dmx
+
 export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) => {
   const [fps, setFps] = useState(60)
   const [frameCount, setFrameCount] = useState(0)
+  // 🔒 WAVE 2240: Estado IPC reactivo — no espera el ciclo de SeleneTruth
+  const [dmxIpcState, setDmxIpcState] = useState<'connected' | 'disconnected' | 'connecting' | null>(null)
   
   // Store data - REAL from truthStore
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
@@ -60,13 +64,35 @@ export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) 
   // Real hardware data
   const fixtureCount = hardware?.fixturesTotal || 0
   const fixturesActive = hardware?.fixturesActive || 0
-  const dmxConnected = hardware?.dmx?.connected || false
+  // IPC events tienen prioridad sobre SeleneTruth (llegada más rápida)
+  const dmxConnected = dmxIpcState === 'connected'
+    ? true
+    : dmxIpcState === 'disconnected'
+      ? false
+      : hardware?.dmx?.connected || false
+  const dmxConnecting = dmxIpcState === 'connecting'
   const bpm = beat?.bpm || 0
   const energy = audio?.energy || 0
   // Audio level from peak/average, connected if we have energy
   const level = audio?.peak || audio?.average || 0
   const audioConnected = energy > 0 || (audio?.peak ?? 0) > 0
   
+  // 🔒 WAVE 2240: Suscribir a eventos IPC de DMX para reflejar estado inmediato
+  useEffect(() => {
+    const dmxApi = getDmxApi()
+    if (!dmxApi) return
+
+    const unsubConnecting = dmxApi.onConnecting?.(() => setDmxIpcState('connecting'))
+    const unsubConnected = dmxApi.onConnected?.(() => setDmxIpcState('connected'))
+    const unsubDisconnected = dmxApi.onDisconnected?.(() => setDmxIpcState('disconnected'))
+
+    return () => {
+      unsubConnecting?.()
+      unsubConnected?.()
+      unsubDisconnected?.()
+    }
+  }, [])
+
   // FPS counter
   useEffect(() => {
     let lastTime = performance.now()
@@ -112,9 +138,9 @@ export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) 
       <DataCard
         icon={<IconDmxBolt />}
         label="DMX"
-        value={dmxConnected ? 'ONLINE' : 'OFFLINE'}
-        status={dmxConnected ? 'ok' : 'error'}
-        sublabel={dmxConnected ? 'Enttec Open DMX' : 'No device found'}
+        value={dmxConnecting ? 'CONNECTING' : dmxConnected ? 'ONLINE' : 'OFFLINE'}
+        status={dmxConnecting ? 'warning' : dmxConnected ? 'ok' : 'error'}
+        sublabel={dmxConnecting ? 'Scanning...' : dmxConnected ? 'Enttec Open DMX' : 'No device found'}
       />
       
       <DataCard

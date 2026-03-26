@@ -1982,7 +1982,9 @@ export class MasterArbiter extends EventEmitter {
     
     // Acceso dinámico seguro (TypeScript-friendly)
     const zoneIntent = (intent.zones as any)?.[intentZone]
-    const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity
+    const rawIntensity = zoneIntent?.intensity ?? intent.masterIntensity
+    // 🛡️ WAVE 2402: NaN ANTIDOTE — última barrera antes del DMX/3D
+    const zoneIntensity = (typeof rawIntensity === 'number' && !Number.isNaN(rawIntensity)) ? rawIntensity : 0
 
     // 🔥 WAVE 1135.3: Dead Zone interpolation
     // dimmerMin = valor DMX mínimo donde el hardware realmente enciende.

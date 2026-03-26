@@ -500,14 +500,16 @@ export class SeleneLux {
       
       if (this.useLiquidStereo) {
         // 🌊 RECONSTRUCT GodEarBands from SeleneLuxAudioMetrics
+        // 🛡️ WAVE 2402: safe() atrapa NaN + undefined + null → 0
+        const safe = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
         const bands: GodEarBands = {
-          subBass: audioMetrics.subBass ?? 0,
-          bass: audioMetrics.normalizedBass,
-          lowMid: audioMetrics.lowMid ?? audioMetrics.normalizedBass * 0.5,
-          mid: audioMetrics.normalizedMid,
-          highMid: audioMetrics.highMid ?? audioMetrics.normalizedMid * 0.6,
-          treble: audioMetrics.normalizedTreble,
-          ultraAir: audioMetrics.ultraAir ?? 0,
+          subBass: safe(audioMetrics.subBass),
+          bass: safe(audioMetrics.normalizedBass),
+          lowMid: safe(audioMetrics.lowMid) || safe(audioMetrics.normalizedBass) * 0.5,
+          mid: safe(audioMetrics.normalizedMid),
+          highMid: safe(audioMetrics.highMid) || safe(audioMetrics.normalizedMid) * 0.6,
+          treble: safe(audioMetrics.normalizedTreble),
+          ultraAir: safe(audioMetrics.ultraAir),
         };
         
         const liquidInput: LiquidStereoInput = {
@@ -525,14 +527,15 @@ export class SeleneLux {
         isStrobeActive = liquidResult.strobeActive;
         physicsApplied = 'liquid-stereo';
         
+        // 🛡️ WAVE 2402: NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.
         // Store 7-zone overrides
         this.liquidStereoOverrides = {
-          frontL: liquidResult.frontLeftIntensity,
-          frontR: liquidResult.frontRightIntensity,
-          backL: liquidResult.backLeftIntensity,
-          backR: liquidResult.backRightIntensity,
-          moverL: liquidResult.moverLeftIntensity,
-          moverR: liquidResult.moverRightIntensity,
+          frontL: safe(liquidResult.frontLeftIntensity),
+          frontR: safe(liquidResult.frontRightIntensity),
+          backL: safe(liquidResult.backLeftIntensity),
+          backR: safe(liquidResult.backRightIntensity),
+          moverL: safe(liquidResult.moverLeftIntensity),
+          moverR: safe(liquidResult.moverRightIntensity),
         };
         
         // Legacy compat — para que el AGC TRUST block no rompa

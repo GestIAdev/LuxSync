@@ -131,18 +131,12 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
   })
 
   // ─── ARBITER OUTPUT FEEDBACK (Backend → Frontend) ───
-  // 🛡️ WAVE 2234: try-catch guards against "Render frame disposed" crash.
-  // The arbiter emits 'output' at 60fps. Between isDestroyed() check and
-  // the actual send(), a Ctrl+R reload can destroy the frame mid-flight.
-  masterArbiter.on('output', (data) => {
-    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-      try {
-        mainWindow.webContents.send('lux:arbiter:output', data)
-      } catch {
-        // Renderer was destroyed between isDestroyed() check and send() — normal during reload
-      }
-    }
-  })
+  // � WAVE 2236: KILLED — This broadcast was 60fps of pure waste.
+  // Audit (WAVE 2235) confirmed: window.lux.arbiter.onOutput is exposed in
+  // preload.ts but ZERO frontend components ever subscribe to it.
+  // 60 serializations/sec crossing IPC bridge for nothing = ~900KB/s garbage.
+  // Frontend reads fixture physics from selene:truth (via transientStore).
+  // If a future feature needs arbiter output, reactivate with a subscriber check.
 
   // WAVE 2098: Boot silence
 }

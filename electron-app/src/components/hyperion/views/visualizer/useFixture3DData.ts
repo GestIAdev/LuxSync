@@ -11,9 +11,9 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useStageStore } from '../../../../stores/stageStore'
-import { useHardware } from '../../../../stores/truthStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useOverrideStore, type Override } from '../../../../stores/overrideStore'
+import { getTransientFixture } from '../../../../stores/transientStore'
 import { 
   normalizeZone, 
   ZONE_LAYOUT_3D, 
@@ -96,9 +96,21 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const overrides = useOverrideStore(state => state.overrides)
   
-  // 🛡️ WAVE 2042.13.15: Use reactive hook instead of getState()
-  // This subscribes to truthStore updates (60fps) so fixtures light up in real-time
-  const hardwareState = useHardware()
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2236: THE DECOUPLING — No reactive hardware subscription
+  //
+  // BEFORE: useHardware() subscribed to truthStore → useMemo recalculated
+  //   Fixture3DData[] at 30fps → new array refs → all 3D children re-mounted.
+  //   This was the #1 cause of GC pressure killing the renderer.
+  //
+  // NOW: This hook only reacts to STRUCTURAL changes (fixtures added/removed,
+  //   zone changes, selection, overrides). Dynamic values (color, intensity,
+  //   pan, tilt) are read by each 3D component directly from transientStore
+  //   inside useFrame() at native R3F frame rate.
+  //
+  // For override resolution, we read getTransientFixture() at build time —
+  // this is a one-time snapshot, not a subscription.
+  // ═══════════════════════════════════════════════════════════════════════
   
   // ── Stage Dimensions ──────────────────────────────────────────────────────
   const halfWidth = options.stageConfig?.width 
@@ -155,47 +167,40 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           z = layout.depthFactor * halfDepth
         }
 
-        // ── Get live DMX values from truthStore ─────────────────────────────
-        // 🛡️ WAVE 2042.13.15: Use reactive hardwareState from useHardware()
-        // hardwareState.fixtures contains live FixtureState[] updated at 60fps
-        const fixtureState = hardwareState?.fixtures?.find(
-          (f: FixtureState) => f.id === fixture.id
-        )
-        
-        // ── Apply overrides if present ──────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2236: STATIC SNAPSHOT — Dynamic values read in useFrame()
+        //
+        // These are "initial/default" values. The actual live data (color,
+        // intensity, pan, tilt, zoom, focus) is read by HyperionMovingHead3D
+        // and HyperionPar3D inside their useFrame() from transientStore.
+        //
+        // Overrides ARE resolved here because they're user-driven events
+        // (click slider → override changes → useMemo recalculates).
+        // ═══════════════════════════════════════════════════════════════════
         const override = overrides.get(fixture.id)
         
-        // ── Resolve final values ────────────────────────────────────────────
-        // 🛡️ WAVE 2042.13.18: FIX - Backend already normalizes dimmer to 0-1
-        // truthStore receives: dimmer: f.dimmer / 255 (see TitanOrchestrator.ts:1389)
-        // Override.values has: dimmer (0-255), r, g, b, pan, tilt
-        // FixtureState has: dimmer (0-1 NORMALIZED!), color.r (0-255), pan (0-1)
+        // Snapshot from transientStore (non-reactive, zero React cost)
+        const fixtureState = getTransientFixture(fixture.id)
         
-        // Dimmer: override is 0-255, fixtureState is 0-1
+        // Intensity: only override needs resolution here; live dimmer read in useFrame
         const intensity = override?.values?.dimmer !== undefined 
-          ? override.values.dimmer / 255  // Override: convert 0-255 → 0-1
-          : (fixtureState?.dimmer ?? 0)   // FixtureState: already 0-1
+          ? override.values.dimmer / 255
+          : (fixtureState?.dimmer ?? 0)
         
-        // Colors: both are 0-255
+        // Colors: override resolution or snapshot
         const r = override?.values?.r ?? fixtureState?.color?.r ?? 255
         const g = override?.values?.g ?? fixtureState?.color?.g ?? 255
         const b = override?.values?.b ?? fixtureState?.color?.b ?? 255
         
-        // Pan/Tilt: override is 0-255, fixtureState is 0-1 normalized
+        // Pan/Tilt: override resolution or snapshot
         const pan = override?.values?.pan !== undefined
-          ? override.values.pan / 255     // Override: convert 0-255 → 0-1
-          : (fixtureState?.pan ?? 0.5)    // FixtureState: already 0-1
+          ? override.values.pan / 255
+          : (fixtureState?.pan ?? 0.5)
         const tilt = override?.values?.tilt !== undefined
-          ? override.values.tilt / 255    // Override: convert 0-255 → 0-1
-          : (fixtureState?.tilt ?? 0.5)   // FixtureState: already 0-1
+          ? override.values.tilt / 255
+          : (fixtureState?.tilt ?? 0.5)
           
-        // ═══════════════════════════════════════════════════════════════════
-        // 🛡️ WAVE 2088: PHYSICAL POSITION — The Real Deal
-        // pan/tilt = TARGET (where the motor wants to go)
-        // physicalPan/physicalTilt = ACTUAL (interpolated by FixturePhysicsDriver)
-        // The 3D render must use physicalPan for smooth, realistic movement.
-        // Override bypasses physics — use target directly.
-        // ═══════════════════════════════════════════════════════════════════
+        // Physical position: override or snapshot
         const physicalPan = override?.values?.pan !== undefined
           ? override.values.pan / 255
           : (fixtureState?.physicalPan ?? fixtureState?.pan ?? 0.5)
@@ -203,7 +208,6 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           ? override.values.tilt / 255
           : (fixtureState?.physicalTilt ?? fixtureState?.tilt ?? 0.5)
           
-        // Zoom/Focus: fixtureState is 0-1 normalized
         const zoom = fixtureState?.zoom ?? 0.5
         const focus = fixtureState?.focus ?? 0.5
 
@@ -233,7 +237,7 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
     }
 
     return result
-  }, [fixtures, fixturesByZone, selectedIds, overrides, hardwareState, halfWidth, halfDepth, trussHeight])
+  }, [fixtures, fixturesByZone, selectedIds, overrides, halfWidth, halfDepth, trussHeight])
 
   // ── Separate by type for instancing ───────────────────────────────────────
   const movingHeads = useMemo(

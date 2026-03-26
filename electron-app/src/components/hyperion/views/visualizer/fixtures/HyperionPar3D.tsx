@@ -21,6 +21,7 @@
 import React, { useRef } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
+import { getTransientFixture } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,40 +57,64 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   const haloOuterRef = useRef<THREE.MeshBasicMaterial>(null)
   const pointLightRef = useRef<THREE.PointLight>(null)
 
-  const { id, intensity, color, selected, hasOverride } = fixture
+  const { id, selected, hasOverride } = fixture
+
+  // Reusable THREE.Color for useFrame (no allocations per frame)
+  const liveColor = useRef(new THREE.Color())
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
-    const isOn = intensity > 0.01
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2236: READ LIVE DATA FROM TRANSIENT STORE — zero React cost
+    //
+    // Same pattern as HyperionMovingHead3D (WAVE 2088.9).
+    // Props are stale (last React render). For live animation data,
+    // read directly from the mutable ref store inside useFrame().
+    // ═══════════════════════════════════════════════════════════════════════
+    const fixtureState = getTransientFixture(id)
+    
+    const liveIntensity = fixtureState?.dimmer ?? fixture.intensity
+    const isOn = liveIntensity > 0.01
+    
+    // Color from store (0-255 RGB) or fallback to prop
+    if (fixtureState?.color) {
+      liveColor.current.setRGB(
+        fixtureState.color.r / 255,
+        fixtureState.color.g / 255,
+        fixtureState.color.b / 255
+      )
+    } else {
+      liveColor.current.copy(fixture.color)
+    }
 
     // Lente: HDR boost para bloom del EffectComposer
     if (lensMaterialRef.current) {
-      lensMaterialRef.current.color.copy(color)
+      lensMaterialRef.current.color.copy(liveColor.current)
       if (isOn) {
-        lensMaterialRef.current.color.multiplyScalar(1.0 + intensity * 3.0)
+        lensMaterialRef.current.color.multiplyScalar(1.0 + liveIntensity * 3.0)
       }
-      lensMaterialRef.current.opacity = isOn ? 0.8 + intensity * 0.2 : 0.15
+      lensMaterialRef.current.opacity = isOn ? 0.8 + liveIntensity * 0.2 : 0.15
     }
 
     // Halo interior — glow denso cerca de la lente
     if (haloMaterialRef.current) {
-      haloMaterialRef.current.color.copy(color)
+      haloMaterialRef.current.color.copy(liveColor.current)
       if (isOn) {
-        haloMaterialRef.current.color.multiplyScalar(1.0 + intensity * 1.5)
+        haloMaterialRef.current.color.multiplyScalar(1.0 + liveIntensity * 1.5)
       }
-      haloMaterialRef.current.opacity = isOn ? intensity * 0.65 : 0
+      haloMaterialRef.current.opacity = isOn ? liveIntensity * 0.65 : 0
     }
 
     // Halo exterior — aura suave de mayor radio
     if (haloOuterRef.current) {
-      haloOuterRef.current.color.copy(color)
-      haloOuterRef.current.opacity = isOn ? intensity * 0.25 : 0
+      haloOuterRef.current.color.copy(liveColor.current)
+      haloOuterRef.current.opacity = isOn ? liveIntensity * 0.25 : 0
     }
 
     // PointLight — ilumina el entorno cercano (paredes, suelo)
     if (pointLightRef.current) {
-      pointLightRef.current.intensity = isOn ? intensity * 2.5 : 0
-      pointLightRef.current.color.copy(color)
+      pointLightRef.current.intensity = isOn ? liveIntensity * 2.5 : 0
+      pointLightRef.current.color.copy(liveColor.current)
     }
   })
 
@@ -121,7 +146,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         <circleGeometry args={[0.11, 32]} />
         <meshBasicMaterial
           ref={lensMaterialRef}
-          color={color}
+          color={fixture.color}
           transparent
           opacity={1.0}
         />
@@ -132,7 +157,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         <sphereGeometry args={[0.18, 16, 16]} />
         <meshBasicMaterial
           ref={haloMaterialRef}
-          color={color}
+          color={fixture.color}
           transparent
           opacity={0}
           blending={THREE.AdditiveBlending}
@@ -146,7 +171,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         <sphereGeometry args={[0.42, 16, 16]} />
         <meshBasicMaterial
           ref={haloOuterRef}
-          color={color}
+          color={fixture.color}
           transparent
           opacity={0}
           blending={THREE.AdditiveBlending}
@@ -162,7 +187,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         intensity={0}
         distance={3.5}
         decay={2}
-        color={color}
+        color={fixture.color}
       />
 
       {/* Selection ring */}

@@ -19,7 +19,7 @@
 import React, { useRef } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useTruthStore } from '../../../../../stores/truthStore'
+import { getTransientFixture } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -168,18 +168,17 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   useFrame(() => {
 
     // ═══════════════════════════════════════════════════════════════════════
-    // � WAVE 2088.9: READ LIVE DATA DIRECTLY FROM STORE — 60fps guaranteed
+    // 🔥 WAVE 2236: READ LIVE DATA FROM TRANSIENT STORE — zero React cost
     //
-    // CRITICAL R3F PATTERN: Inside useFrame, props are stale (last React
-    // render). For high-frequency data like movement, read from the store
-    // using getState() — this gives the LATEST value at frame rate.
+    // BEFORE (WAVE 2088.9): useTruthStore.getState() — Zustand getState()
+    //   called 60fps inside useFrame, then .find() on entire fixtures array.
+    //   Zustand getState() is cheap but not free (proxy snapshot + ref).
     //
-    // This is THE canonical solution for live animation data in R3F.
+    // NOW: getTransientFixture() reads from a mutable ref (transientStore).
+    //   Pure object property access — zero proxies, zero snapshots.
+    //   transientStore receives EVERY IPC frame at 30fps.
     // ═══════════════════════════════════════════════════════════════════════
-    const truth = useTruthStore.getState().truth
-    const fixtureState = truth.hardware.fixtures.find(
-      (f: any) => f.id === fixtureId
-    )
+    const fixtureState = getTransientFixture(fixtureId)
 
     // If fixture not found in store, use prop values as fallback
     const livePan = fixtureState?.physicalPan ?? fixtureState?.pan ?? fixture.physicalPan

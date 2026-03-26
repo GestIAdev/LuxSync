@@ -68,6 +68,18 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
   const frameCountRef = useRef(0)
   const lastLogRef = useRef(Date.now())
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2236: THROTTLE REFS — Decouple physics from React
+  //
+  // BEFORE: setTruth(data) + audioStore.updateMetrics() called EVERY frame
+  //   = 60 Zustand set() per second = 600-900 React re-renders/sec
+  // AFTER: transientStore gets EVERY frame (mutable ref, zero React cost),
+  //   truthStore + audioStore get updates at ~5fps (every 6th frame)
+  //   This preserves UI responsiveness while R3F reads physics from transient.
+  // ═══════════════════════════════════════════════════════════════════════
+  const truthThrottleCountRef = useRef(0)
+  const TRUTH_THROTTLE_INTERVAL = 6  // Every 6th frame ≈ 5fps out of 30fps IPC
+  
   useEffect(() => {
     // Verificar que window.lux existe (preload cargado)
     if (!window.lux?.onTruthUpdate) {
@@ -86,32 +98,54 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         console.log(`[useSeleneTruth] 🩸 Received ${fixtureCount} fixtures:`, firstIds, '...')
       }
       
-      // 🔥 WAVE 348: DUAL UPDATE
-      // 1. Zustand store (para layout changes, vibe changes - cosas LENTAS)
-      setTruth(data)
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 2236: THE DECOUPLING
+      //
+      // Path 1: transientStore — EVERY frame, zero React overhead
+      //   R3F useFrame() reads this directly for physics animation.
+      //   This is the ONLY path that needs 30fps.
+      //
+      // Path 2: truthStore — Throttled to ~5fps
+      //   React components (UI panels, controls) read from here.
+      //   They don't need 30fps — fixture list/zones change per-song, not per-frame.
+      //
+      // Path 3: audioStore — Throttled to ~5fps
+      //   Audio meters, BPM display don't need 30fps updates.
+      //   Exception: registerBeat() fires on actual beats (not throttled).
+      // ═══════════════════════════════════════════════════════════════════
       
-      // 2. Transient store (para physics - 60fps directo a Three.js)
+      // PATH 1: ALWAYS — Transient store (mutable ref, zero cost)
       injectTransientTruth(data)
       
-      // 🎯 WAVE 2205: AUDIO STORE BRIDGE — alimentar audioStore desde SeleneTruth
-      // El canal legacy (TrinityProvider → onStateUpdate) puede estar roto.
-      // SeleneTruth es la fuente de verdad única — aquí van los datos reales.
-      const beat = data.sensory?.beat
-      const audio = data.sensory?.audio
-      if (beat && audio) {
-        const db = Math.max(-60, Math.min(0, 20 * Math.log10(Math.max(0.001, audio.energy))))
-        useAudioStore.getState().updateMetrics({
-          bpm:           data.context?.bpm ?? beat.bpm,  // 🎯 WAVE 2205.1: sBPM estabilizado (freewheel), no raw worker
-          bpmConfidence: beat.confidence,
-          onBeat:        beat.onBeat,
-          level:         db,
-          bass:          audio.bass,
-          mid:           audio.mid,
-          treble:        audio.high,
-        })
-        if (beat.onBeat) {
-          useAudioStore.getState().registerBeat()
+      // PATH 2 + 3: THROTTLED — Zustand stores (~5fps)
+      truthThrottleCountRef.current++
+      if (truthThrottleCountRef.current >= TRUTH_THROTTLE_INTERVAL) {
+        truthThrottleCountRef.current = 0
+        
+        // Zustand truthStore — structural data for UI
+        setTruth(data)
+        
+        // Zustand audioStore — metrics for UI displays
+        const beat = data.sensory?.beat
+        const audio = data.sensory?.audio
+        if (beat && audio) {
+          const db = Math.max(-60, Math.min(0, 20 * Math.log10(Math.max(0.001, audio.energy))))
+          useAudioStore.getState().updateMetrics({
+            bpm:           data.context?.bpm ?? beat.bpm,
+            bpmConfidence: beat.confidence,
+            onBeat:        beat.onBeat,
+            level:         db,
+            bass:          audio.bass,
+            mid:           audio.mid,
+            treble:        audio.high,
+          })
         }
+      }
+      
+      // 🎯 WAVE 2205: Beat registration — NOT throttled (beats are sparse events)
+      const beat = data.sensory?.beat
+      if (beat?.onBeat) {
+        useAudioStore.getState().registerBeat()
       }
       
       // Callback opcional

@@ -128,12 +128,12 @@ export class HardwareAbstraction {
   // ═══════════════════════════════════════════════════════════════════════
   private injectedPhysicsProfiles = new Set<string>()
   
-  // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
+  //  WAVE 2042.20: BABEL FISH - Color Translation Singletons
   private colorTranslator = getColorTranslator()
   private safetyLayer = getHardwareSafetyLayer()
   private profileCache = new Map<string, FixtureProfile | null>()
   
-  // �🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
+  // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
   private smoothedZoomMod: number = 0
   private smoothedFocusMod: number = 0
   

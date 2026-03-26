@@ -5,6 +5,7 @@
  * WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 replaces legacy
  * WAVE 1031: THE PHOTON WEAVER - Laser & Washer physics
  * WAVE 1044: THE DEEP FIELD - Chill ecosystem rewrite
+ * WAVE 2401: THE LIQUID STEREO - 7-band engine + LiquidEnvelope
  */
 
 export * from './PhysicsEngine'
@@ -61,3 +62,25 @@ export {
   type WasherPhysicsResult,
   type WasherMode,
 } from './WasherPhysics'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 2401: THE LIQUID STEREO - 7-Band Envelope Engine
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// LiquidEnvelope: Abstracción universal de banda (1 clase, N instancias)
+// LiquidStereoPhysics: Motor de 7 zonas independientes (6 envelopes + 1 strobe)
+// Recibe GodEarBands DIRECTAS — sin toLegacyFormat.
+// Coexiste con TechnoStereoPhysics (God Mode). SeleneLux elige vía feature flag.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  LiquidEnvelope,
+  type LiquidEnvelopeConfig,
+} from './LiquidEnvelope'
+
+export {
+  LiquidStereoPhysics,
+  liquidStereoPhysics,
+  type LiquidStereoInput,
+  type LiquidStereoResult,
+} from './LiquidStereoPhysics'

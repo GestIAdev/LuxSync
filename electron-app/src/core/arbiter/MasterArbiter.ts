@@ -2443,6 +2443,23 @@ export class MasterArbiter extends EventEmitter {
   }
   
   /**
+   * 🧹 WAVE 2227: Selective cleanup — purge AI state only
+   * Called on disarm (stop). Clears Layer 0 titan intent, position release
+   * fades, ghost positions, fixture origins, crossfades, frame counter.
+   * PRESERVES: outputEnabled, manual overrides (L2), effects (L3),
+   * blackout (L4), grandMaster, active patterns, active formations.
+   */
+  clearTitanState(): void {
+    this.layer0_titan = null
+    this.positionReleaseFades.clear()
+    this.lastKnownPositions.clear()
+    this.fixtureOrigins.clear()
+    this.crossfadeEngine.clearAll()
+    this.frameNumber = 0
+    console.log('[MasterArbiter] 🧹 WAVE 2227: Titan state cleared (operator state preserved)')
+  }
+
+  /**
    * Reset arbiter state
    * 🚦 WAVE 1132: Reset also sets outputEnabled to false (back to COLD)
    */

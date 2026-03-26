@@ -56,6 +56,9 @@ import type { IDMXDriver } from '../../hal/drivers'
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 
+// 🧹 WAVE 2227: VMM singleton para cleanup en stop()
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
+
 /**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
@@ -419,7 +422,24 @@ export class TitanOrchestrator {
       this.mainLoopInterval = null
     }
     this.isRunning = false
-    // WAVE 2098: Boot silence
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧹 WAVE 2227: REACTOR CLEANUP — Purgar estado residual
+    // Sin esto, al re-armar el engine retoma desde la fase congelada:
+    // VMM con acumuladores viejos, Arbiter con ghost positions, BeatDetector
+    // con BPM acumulado. El resultado: saltos de posición al rearmar.
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Purgar acumuladores de fase del movement engine
+    vibeMovementManager.resetTime()
+
+    // Purgar caches AI del Arbiter (preserva manual overrides + outputEnabled)
+    masterArbiter.clearTitanState()
+
+    // Purgar estado acumulado del beat detector
+    if (this.beatDetector) {
+      this.beatDetector.reset()
+    }
   }
 
   /**
@@ -1427,27 +1447,13 @@ export class TitanOrchestrator {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
-    // The effects processing above can OVERRIDE the arbiter's gate decision.
-    // This is the FINAL FILTER: if output is disabled (ARMED state), 
-    // force ALL fixtures to safe/blackout state for UI visualization too.
-    // This ensures the StageSimulator respects the Gate, not just DMX output.
+    // 🧹 WAVE 2227: VISUAL GATE REMOVED
+    // Previously (WAVE 1133), this block zerified ALL fixtureStates when
+    // outputEnabled=false, killing the HyperionView preview. The DMX gate
+    // already lives in MasterArbiter.arbitrateFixture() — that's the real
+    // enforcement. The UI now receives live engine data for private preview
+    // regardless of the DMX gate state.
     // ═══════════════════════════════════════════════════════════════════════════
-    if (!masterArbiter.isOutputEnabled()) {
-      // ARMED state: Force blackout for UI visualization
-      fixtureStates = fixtureStates.map(f => ({
-        ...f,
-        dimmer: 0,          // 🚫 No light
-        r: 0, g: 0, b: 0,   // 🖤 Black
-        pan: 128,           // 🎯 Center
-        tilt: 128,          // 🎯 Center
-      }))
-      
-      // Throttled log (every ~5s a 25fps)
-      if (this.frameCount % 125 === 0) {
-        console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`)
-      }
-    }
     
     // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     // ═══════════════════════════════════════════════════════════════════════

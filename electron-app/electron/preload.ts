@@ -125,6 +125,12 @@ const api = {
       ipcRenderer.on('dmx:disconnected', handler)
       return () => ipcRenderer.removeListener('dmx:disconnected', handler)
     },
+    // 🔒 WAVE 2240: Evento de conexión en progreso — para bloquear UI durante operación de hardware
+    onConnecting: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('dmx:connecting', handler)
+      return () => ipcRenderer.removeListener('dmx:connecting', handler)
+    },
   },
 
   // ============================================

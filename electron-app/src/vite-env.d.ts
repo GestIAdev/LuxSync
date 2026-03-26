@@ -166,6 +166,8 @@ declare global {
       onStatus: (callback: (status: { state: string; device?: DMXDevice; error?: string }) => void) => () => void
       onConnected: (callback: (device: DMXDevice) => void) => () => void
       onDisconnected: (callback: () => void) => () => void
+      /** 🔒 WAVE 2240: Fired when a connect/autoConnect operation starts (mutex acquired) */
+      onConnecting: (callback: () => void) => () => void
     }
 
     // Audio

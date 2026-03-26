@@ -1,4 +1,4 @@
-/**
+﻿/**
  * WAVE 243.5: IPC HANDLERS - SIMPLIFIED V2
  * 
  * Centraliza todos los handlers IPC.
@@ -1396,10 +1396,14 @@ function setupDMXHandlers(deps: IPCDependencies): void {
   
   ipcMain.handle('dmx:connect', async (_event, devicePath: string) => {
     try {
+      // 🔒 WAVE 2240: Notificar al frontend ANTES de iniciar — UI se bloquea inmediatamente
+      safeWebSend(getMainWindow(), 'dmx:connecting')
       await universalDMX.connect(devicePath)
       safeWebSend(getMainWindow(), 'dmx:connected', universalDMX.currentDevice)
       return { success: true }
     } catch (err) {
+      // En caso de fallo, notificar estado real
+      safeWebSend(getMainWindow(), 'dmx:disconnected')
       return { success: false, error: String(err) }
     }
   })
@@ -1410,6 +1414,8 @@ function setupDMXHandlers(deps: IPCDependencies): void {
       safeWebSend(getMainWindow(), 'dmx:disconnected')
       return { success: true }
     } catch (err) {
+      // Limpiar estado incluso en error — el hardware podría haber muerto
+      safeWebSend(getMainWindow(), 'dmx:disconnected')
       return { success: false, error: String(err) }
     }
   })
@@ -1424,19 +1430,26 @@ function setupDMXHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
 
-  // ðŸŒªï¸ WAVE 688: Auto-connect to best available device
+  // WAVE 688 + WAVE 2240: Auto-connect to best available device
   ipcMain.handle('dmx:autoConnect', async () => {
     try {
+      // 🔒 WAVE 2240: Notificar al frontend ANTES de iniciar — UI se bloquea inmediatamente
+      safeWebSend(getMainWindow(), 'dmx:connecting')
       const success = await universalDMX.autoConnect()
       if (success) {
         const mainWindow = getMainWindow()
         safeWebSend(mainWindow, 'dmx:connected', universalDMX.currentDevice)
+      } else {
+        // autoConnect falló o fue rechazado por mutex — notificar estado real
+        safeWebSend(getMainWindow(), 'dmx:disconnected')
       }
       return { success, device: universalDMX.currentDevice }
     } catch (err) {
+      safeWebSend(getMainWindow(), 'dmx:disconnected')
       return { success: false, error: String(err) }
     }
   })
+
 
   // ðŸŒªï¸ WAVE 688: Blackout - all channels to 0
   ipcMain.handle('dmx:blackout', () => {

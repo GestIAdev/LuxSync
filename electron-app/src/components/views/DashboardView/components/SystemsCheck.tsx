@@ -250,8 +250,13 @@ const UsbDmxPanel: React.FC = () => {
   const { dmxComPort, detectedDmxPorts: rawDetectedPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore(useShallow(selectUsbDmxPanel))
   // 🔥 Defensive: ensure detectedDmxPorts is always an array
   const detectedDmxPorts = Array.isArray(rawDetectedPorts) ? rawDetectedPorts : []
-  const [autoConnect, setAutoConnect] = useState(true)
+  // 🔧 WAVE 2239 OBJ1: autoConnect OFF por defecto — usuario tiene control total del dropdown desde el segundo cero
+  const [autoConnect, setAutoConnect] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 🔒 WAVE 2240: Hardware busy flag — bloquea toda la UI mientras una op de conexión está en curso
+  const [isHardwareBusy, setIsHardwareBusy] = useState(false)
+  // Derivado: combinación de todos los estados que bloquean controles
+  const isControlsDisabled = isHardwareBusy || isDmxScanning
 
   const handleRescan = useCallback(async () => {
     setDmxScanning(true)
@@ -297,8 +302,14 @@ const UsbDmxPanel: React.FC = () => {
     const dmxApi = getDmxApi()
     if (auto && dmxApi?.autoConnect) {
       try {
-        await dmxApi.autoConnect()
+        const result = await dmxApi.autoConnect()
+        // 🔧 WAVE 2239 OBJ1: Si autoConnect falla, volver a OFF y desbloquear dropdown
+        if (!result?.success) {
+          setAutoConnect(false)
+          console.warn('[UsbDmxPanel] Auto-connect failed, reverting to manual mode')
+        }
       } catch (err) {
+        setAutoConnect(false)
         console.warn('[UsbDmxPanel] Auto-connect failed:', err)
       }
     }
@@ -311,6 +322,44 @@ const UsbDmxPanel: React.FC = () => {
     }
   }, [])
 
+  // 🔧 WAVE 2239 OBJ2 + 🔒 WAVE 2240 OBJ3: Sincronizar estado real del backend → UI
+  // Cuando el worker conecta en background, actualizar dropdown y store
+  // WAVE 2240: isHardwareBusy se activa en 'connecting' y libera en 'connected'/'disconnected'
+  useEffect(() => {
+    const dmxApi = getDmxApi()
+    if (!dmxApi) return
+
+    // 🔒 WAVE 2240: Mutex en progreso — bloquear todos los controles
+    const unsubConnecting = dmxApi.onConnecting?.(() => {
+      setIsHardwareBusy(true)
+    })
+
+    // Al conectar: sincronizar puerto activo en el dropdown + liberar mutex visual
+    const unsubConnected = dmxApi.onConnected?.(() => {
+      setIsHardwareBusy(false)
+      // Re-query status para saber QUÉ puerto se conectó
+      dmxApi.getStatus?.().then((res: { connected: boolean; interface?: string }) => {
+        if (res?.connected && res.interface && res.interface !== 'none') {
+          // Extraer el path del COM del nombre (ej: "IMC UD 7S (COM6)" → "COM6")
+          const comMatch = res.interface.match(/\(([A-Za-z0-9/]+)\)/)
+          const portPath = comMatch ? comMatch[1] : res.interface
+          setDmxPort(portPath)
+        }
+      }).catch(() => { /* ignore */ })
+    })
+
+    const unsubDisconnected = dmxApi.onDisconnected?.(() => {
+      setIsHardwareBusy(false)
+      // No limpiar dmxComPort — el usuario puede querer reconectar al mismo
+    })
+
+    return () => {
+      unsubConnecting?.()
+      unsubConnected?.()
+      unsubDisconnected?.()
+    }
+  }, [setDmxPort])
+
   return (
     <div className="usb-panel">
       {/* WAVE 1203: Compact header - Auto-connect + Rescan inline */}
@@ -320,18 +369,21 @@ const UsbDmxPanel: React.FC = () => {
             type="checkbox"
             checked={autoConnect}
             onChange={(e) => handleAutoConnectChange(e.target.checked)}
+            disabled={isControlsDisabled}
           />
           <span className="usb-toggle-slider" />
-          <span className="usb-toggle-label">Auto-connect</span>
+          <span className="usb-toggle-label">
+            {isHardwareBusy ? 'Connecting...' : 'Auto-connect'}
+          </span>
         </label>
         
         <button 
           className={`usb-rescan-btn ${isDmxScanning ? 'scanning' : ''}`}
           onClick={handleRescan}
-          disabled={isDmxScanning}
+          disabled={isControlsDisabled}
           title="Rescan ports"
         >
-          {isDmxScanning ? '🔄' : '🔍'}
+          {isDmxScanning || isHardwareBusy ? '🔄' : '🔍'}
         </button>
       </div>
       
@@ -339,7 +391,7 @@ const UsbDmxPanel: React.FC = () => {
         className="usb-port-dropdown"
         value={dmxComPort || ''}
         onChange={(e) => handlePortSelect(e.target.value)}
-        disabled={autoConnect || detectedDmxPorts.length === 0}
+        disabled={autoConnect || isControlsDisabled || detectedDmxPorts.length === 0}
       >
         <option value="">-- Select Port --</option>
         {detectedDmxPorts.map((port) => (
@@ -407,18 +459,29 @@ export const SystemsCheck: React.FC = () => {
 
     syncStatus()
     
+    // 🔒 WAVE 2240: Mientras hay op en curso, marcar el badge como 'connecting'
+    const unsubConnecting = dmxApi?.onConnecting?.(() => {
+      setIsDmxReconnecting(true)
+      setStatus(prev => ({ ...prev, dmx: 'offline' }))  // badge intermedio
+    })
+
     // Live events from backend
-    if (dmxApi?.onConnected) {
-      dmxApi.onConnected(() => {
-        setStatus(prev => ({ ...prev, dmx: 'online' }))
-        syncStatus()  // re-query para obtener el protocolo detectado
-      })
-    }
-    if (dmxApi?.onDisconnected) {
-      dmxApi.onDisconnected(() => {
-        setStatus(prev => ({ ...prev, dmx: 'offline' }))
-        setDmxProtocol(null)
-      })
+    const unsubConnected = dmxApi?.onConnected?.(() => {
+      setIsDmxReconnecting(false)
+      setStatus(prev => ({ ...prev, dmx: 'online' }))
+      syncStatus()  // re-query para obtener el protocolo detectado
+    })
+
+    const unsubDisconnected = dmxApi?.onDisconnected?.(() => {
+      setIsDmxReconnecting(false)
+      setStatus(prev => ({ ...prev, dmx: 'offline' }))
+      setDmxProtocol(null)
+    })
+
+    return () => {
+      unsubConnecting?.()
+      unsubConnected?.()
+      unsubDisconnected?.()
     }
   }, [])
   
@@ -523,11 +586,20 @@ export const SystemsCheck: React.FC = () => {
     }
   }, [])
 
+  // 🔧 WAVE 2239 OBJ3: RESET USB SECUENCIAL — disconnect → await muerte → reconnect
+  // Sin esta secuencia, Windows bloquea el COM con "Access Denied"
   const handleDmxReconnect = useCallback(async () => {
     const dmxApi = getDmxApi()
     if (!dmxApi?.autoConnect) return
     setIsDmxReconnecting(true)
     try {
+      // PASO 1: Matar el worker actual y esperar a que libere el COM
+      if (dmxApi.disconnect) {
+        await dmxApi.disconnect()
+        // PASO 2: Dar 500ms de gracia al OS para liberar el handle del puerto
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      // PASO 3: Ahora sí, escanear y reconectar limpiamente
       await dmxApi.autoConnect()
       // El evento dmx:connected disparará syncStatus y actualizará el badge
     } catch (err) {

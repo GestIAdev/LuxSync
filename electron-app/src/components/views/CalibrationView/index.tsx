@@ -257,14 +257,18 @@ const CalibrationView: React.FC = () => {
         return
       }
 
+      // 🔥 WAVE 2232: SPEED DEMON PURGE — Eliminado speed:0 que mataba
+      // la interpolación del FixturePhysicsDriver. DMX speed 0 = velocidad
+      // máxima sin interpolar = stepper motor en espasmo.
+      // Sin speed en el override, mergeChannelForFixture cae al defaultValue
+      // del fixture (~128 = velocidad moderada con interpolación suave).
       await arbiter.setManual({
         fixtureIds: [activeFixtureId],
         controls: {
           pan: panDmx,
           tilt: tiltDmx,
-          speed: 0,  // MAX SPEED during calibration
         },
-        channels: ['pan', 'tilt', 'speed'],
+        channels: ['pan', 'tilt'],
       })
     } catch (err) {
       console.error('[CalibrationLab] Position error:', err)

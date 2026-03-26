@@ -1438,7 +1438,26 @@ export class MasterArbiter extends EventEmitter {
     const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+    // � WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+    //
+    // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
+    // never get their controlSource stamped. Without this, the HAL Aduana
+    // sees no metadata for pan/tilt and gates them to center (128)
+    // even when the user has manual override active.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (manualOverride?.overrideChannels.includes('pan')) {
+      controlSources['pan'] = ControlLayer.MANUAL
+    } else {
+      controlSources['pan'] = ControlLayer.TITAN_AI
+    }
+    if (manualOverride?.overrideChannels.includes('tilt')) {
+      controlSources['tilt'] = ControlLayer.MANUAL
+    } else {
+      controlSources['tilt'] = ControlLayer.TITAN_AI
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
     //
     // Si hay un fade activo para este fixture, interpolamos entre la última
     // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).

@@ -131,9 +131,16 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
   })
 
   // ─── ARBITER OUTPUT FEEDBACK (Backend → Frontend) ───
+  // 🛡️ WAVE 2234: try-catch guards against "Render frame disposed" crash.
+  // The arbiter emits 'output' at 60fps. Between isDestroyed() check and
+  // the actual send(), a Ctrl+R reload can destroy the frame mid-flight.
   masterArbiter.on('output', (data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('lux:arbiter:output', data)
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      try {
+        mainWindow.webContents.send('lux:arbiter:output', data)
+      } catch {
+        // Renderer was destroyed between isDestroyed() check and send() — normal during reload
+      }
     }
   })
 

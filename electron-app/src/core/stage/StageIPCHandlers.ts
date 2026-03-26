@@ -51,12 +51,16 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
     if (result.success && result.showFile) {
       // Broadcast loaded show to renderer
       const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('lux:stage:loaded', {
-          showFile: result.showFile,
-          migrated: result.migrated,
-          warnings: result.warnings
-        })
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        try {
+          mainWindow.webContents.send('lux:stage:loaded', {
+            showFile: result.showFile,
+            migrated: result.migrated,
+            warnings: result.warnings
+          })
+        } catch {
+          // Renderer disposed during reload
+        }
       }
     }
     
@@ -176,13 +180,17 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
     
     if (loadResult.success && loadResult.showFile) {
       // Broadcast to renderer
-      if (mainWindow) {
-        mainWindow.webContents.send('lux:stage:loaded', {
-          showFile: loadResult.showFile,
-          filePath: filePath,
-          migrated: loadResult.migrated,
-          warnings: loadResult.warnings
-        })
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        try {
+          mainWindow.webContents.send('lux:stage:loaded', {
+            showFile: loadResult.showFile,
+            filePath: filePath,
+            migrated: loadResult.migrated,
+            warnings: loadResult.warnings
+          })
+        } catch {
+          // Renderer disposed during reload
+        }
       }
     }
     

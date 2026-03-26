@@ -267,6 +267,10 @@ export const RadarXY: React.FC<RadarXYProps> = ({
         {/* CENTER BUTTON - Overlay integrado (no desborda) */}
         <button 
           className="radar-center-btn"
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
           onClick={(e) => {
             e.stopPropagation()
             onCenter?.()

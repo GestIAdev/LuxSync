@@ -203,6 +203,10 @@ export const XYPad: React.FC<XYPadProps> = ({
         {/* Center button - Overlay in corner */}
         <button 
           className="center-btn-overlay"
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
           onClick={(e) => {
             e.stopPropagation()
             onCenter?.()

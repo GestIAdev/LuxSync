@@ -1608,6 +1608,7 @@ export class HardwareAbstraction {
     // ═══════════════════════════════════════════════════════════════════════════
     // 🚧 WAVE 2228: DMX ADUANA — Last-mile output gate
     // 🔒 WAVE 2229: + Physics pause/resume on output transitions
+    // 🎯 WAVE 2230: + Manual position override keeps physics alive
     //
     // The Arbiter calculates the FULL show always (for UI preview).
     // The gate lives HERE, microseconds before USB/ArtNet output.
@@ -1616,21 +1617,35 @@ export class HardwareAbstraction {
     //   - Channels controlled by MANUAL (Layer 2) → pass through (calibration)
     //   - ALL other channels → safe values (dimmer=0, color=black, pos=center)
     //   - physicalPan/physicalTilt also gated (WAVE 2229)
-    //   - Physics engine paused (no phantom momentum accumulation)
+    //   - Physics engine paused UNLESS manual pan/tilt is active (WAVE 2230)
     //
     // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
     // ═══════════════════════════════════════════════════════════════════════════
     const outputEnabled = masterArbiter.isOutputEnabled()
 
-    // 🔒 WAVE 2229: Detect output transitions → pause/resume physics
-    if (outputEnabled !== this._lastOutputEnabled) {
-      if (!outputEnabled) {
+    // 🎯 WAVE 2230: Check if ANY fixture has manual pan/tilt control.
+    // If so, the physics engine must stay running to interpolate manual targets smoothly.
+    // Without this, the radar sends targets but the frozen physics driver ignores them.
+    const hasManualPosition = !outputEnabled && states.some(state => {
+      const sources = state._controlSources
+      return sources && (
+        sources['pan'] === ControlLayer.MANUAL ||
+        sources['tilt'] === ControlLayer.MANUAL
+      )
+    })
+
+    // 🔒 WAVE 2229+2230: Detect output transitions → pause/resume physics
+    // Physics is paused when output OFF *and* no manual position override.
+    // Physics is resumed when output ON *or* manual position override exists.
+    const shouldPausePhysics = !outputEnabled && !hasManualPosition
+    if (shouldPausePhysics !== this.movementPhysics.isPaused()) {
+      if (shouldPausePhysics) {
         this.movementPhysics.pausePhysics()
       } else {
         this.movementPhysics.resumePhysics()
       }
-      this._lastOutputEnabled = outputEnabled
     }
+    this._lastOutputEnabled = outputEnabled
 
     if (!outputEnabled) {
       states = states.map(state => {

@@ -195,7 +195,14 @@ export const RadarXY: React.FC<RadarXYProps> = ({
       <div className="radar-actions">
         <button 
           className="action-btn center-btn"
-          onClick={onCenter}
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onCenter?.()
+          }}
           disabled={disabled}
           title="Center position"
         >

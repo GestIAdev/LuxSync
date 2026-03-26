@@ -1336,13 +1336,14 @@ export class MasterArbiter extends EventEmitter {
     this.cleanupExpiredEffects()
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚦 WAVE 1132: OUTPUT GATE STATUS LOGGING (Throttled)
-    // Log every ~5 seconds when in ARMED state so user knows DMX is blocked
+    // 🚦 WAVE 2228: OUTPUT GATE STATUS LOGGING (Throttled)
+    // Log every ~5 seconds when in ARMED state so user knows DMX is gated
+    // (Gate enforcement is now in HAL.sendToDriver, not here)
     // ═══════════════════════════════════════════════════════════════════════
     if (!this._outputEnabled && this.frameNumber % 150 === 0) {
       const last = this._lastOutputGateChange
       console.log(
-        `[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | ${this.fixtures.size} fixtures forced to BLACKOUT | Press GO to enable DMX`,
+        `[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | DMX gate active in HAL | Press GO to enable DMX`,
         {
           outputEnabled: this._outputEnabled,
           lastGateChange: last
@@ -1404,28 +1405,21 @@ export class MasterArbiter extends EventEmitter {
     const controlSources: Partial<Record<ChannelType, ControlLayer>> = {}
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚦 WAVE 1132 + 1219: OUTPUT GATE - WITH CALIBRATION BYPASS
-    // When output is DISABLED (ARMED state), AI/effects get BLACKOUT
-    // BUT: Manual overrides (from Calibration/Commander) still work!
-    // This allows testing hardware before going LIVE.
+    // 🧠 WAVE 2228: ARBITER IS PURE BRAIN — NO OUTPUT GATE HERE
+    //
+    // Previously (WAVE 1132+1219), the Arbiter would early-return with
+    // createOutputGateBlackout() when outputEnabled=false. This had 2 problems:
+    //   1. The HyperionView 3D preview got killed (couldn't see the show)
+    //   2. Manual override on ONE channel gave "VIP pass" to ALL channels,
+    //      leaking AI dimmer/color through to real DMX hardware.
+    //
+    // The DMX gate now lives in HAL.sendToDriver() (WAVE 2228 DMX ADUANA),
+    // which filters per-channel using _controlSources metadata.
+    // The Arbiter calculates 100% of the show, always, for all layers.
     // ═══════════════════════════════════════════════════════════════════════
     const manualOverride = this.layer2_manualOverrides.get(fixtureId)
     
-    if (!this._outputEnabled && !manualOverride) {
-      // No manual control → full blackout
-      return this.createOutputGateBlackout(fixtureId)
-    }
-
-    // 🔎 TRACE DISABLED: Manual override detection (too spammy). Re-enable if investigating merged channel issues.
-    // if (manualOverride) {
-    //   const nowMs = Date.now()
-    //   if (nowMs - this._traceLastArbiterLogAtMs > 750) {
-    //     this._traceLastArbiterLogAtMs = nowMs
-    //     console.log('[TRACE ARBITER] manualOverride active', {...})
-    //   }
-    // }
-    
-    // LAYER 4: Check blackout first (highest priority after output gate)
+    // LAYER 4: Check blackout first (highest priority)
     if (this.layer4_blackout) {
       return this.createBlackoutTarget(fixtureId, controlSources)
     }

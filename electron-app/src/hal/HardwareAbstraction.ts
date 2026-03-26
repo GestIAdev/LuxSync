@@ -59,6 +59,9 @@ import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
 import { FixturePhysicsDriver, type PhysicsProfile as DriverPhysicsProfile } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
 
+// 🚧 WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
+import { masterArbiter, ControlLayer } from '../core/arbiter'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -928,6 +931,8 @@ export class HardwareAbstraction {
           strobe: 0,
           // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
           phantomChannels: fixtureTarget.phantomChannels,
+          // 🚧 WAVE 2228: DMX ADUANA — Propagate control sources for HAL gate
+          _controlSources: fixtureTarget._controlSources as Record<string, number>,
         }
         
         // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
@@ -1589,21 +1594,52 @@ export class HardwareAbstraction {
   }
   
   private sendToDriver(states: FixtureState[]): void {
-    // 🔍 TRACE: Driver status check (disabled to reduce noise)
-    // Uncomment below to debug driver connectivity
-    // if (this.framesRendered % 100 === 0) {
-    //   console.log(`[TRACE HAL] Driver: ${this.driver?.constructor?.name} | Connected: ${this.driver?.isConnected}`)
-    //
     // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
     // If driver is not connected, silently drop packets.
-    // User MUST manually start ArtNet/USB from Dashboard.
-    // This respects "Manual First" doctrine: hardware = explicit human action.
     if (!this.driver.isConnected) {
-      // 🔥 WAVE 1219: Debug - driver not connected
       if (this.framesRendered % 100 === 0) {
         console.warn(`[HAL] ⚠️ Driver not connected, dropping frames`)
       }
       return
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🚧 WAVE 2228: DMX ADUANA — Last-mile output gate
+    //
+    // The Arbiter calculates the FULL show always (for UI preview).
+    // The gate lives HERE, microseconds before USB/ArtNet output.
+    //
+    // When outputEnabled=false (ARMED, not LIVE):
+    //   - Channels controlled by MANUAL (Layer 2) → pass through (calibration)
+    //   - ALL other channels → safe values (dimmer=0, color=black, pos=center)
+    //
+    // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (!masterArbiter.isOutputEnabled()) {
+      states = states.map(state => {
+        const sources = state._controlSources
+        if (!sources) {
+          // No source metadata → full blackout for safety
+          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128 }
+        }
+
+        // Check if ANY channel is manual — if none, full blackout shortcut
+        const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL)
+        if (!hasAnyManual) {
+          return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128 }
+        }
+
+        // Per-channel gate: manual channels pass, rest → safe values
+        return {
+          ...state,
+          dimmer: sources['dimmer'] === ControlLayer.MANUAL ? state.dimmer : 0,
+          r: sources['red'] === ControlLayer.MANUAL ? state.r : 0,
+          g: sources['green'] === ControlLayer.MANUAL ? state.g : 0,
+          b: sources['blue'] === ControlLayer.MANUAL ? state.b : 0,
+          pan: sources['pan'] === ControlLayer.MANUAL ? state.pan : 128,
+          tilt: sources['tilt'] === ControlLayer.MANUAL ? state.tilt : 128,
+        }
+      })
     }
     
     // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion

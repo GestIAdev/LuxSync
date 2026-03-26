@@ -151,6 +151,10 @@ export interface FixtureState {
   hasColorMixing?: boolean       // From fixture definition
   profileId?: string             // HAL profile ID
   fixtureId?: string             // Unique ID for safety layer tracking
+  // 🚧 WAVE 2228: DMX ADUANA — Per-channel control source metadata
+  // Propagated from MasterArbiter. Used by HAL.sendToDriver() to enforce
+  // the DMX gate: when outputEnabled=false, only MANUAL channels pass.
+  _controlSources?: Record<string, number>  // ChannelType -> ControlLayer enum value
 }
 
 /** Color palette in RGB format */

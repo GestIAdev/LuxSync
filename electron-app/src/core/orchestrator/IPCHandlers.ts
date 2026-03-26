@@ -174,6 +174,15 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
+  // 🌊 WAVE 2401: Liquid Stereo toggle (7-band per-zone envelopes)
+  ipcMain.handle('lux:setLiquidStereo', (_event, enabled: boolean) => {
+    console.log('[IPC] lux:setLiquidStereo:', enabled)
+    if (titanOrchestrator) {
+      titanOrchestrator.setLiquidStereo(enabled)
+    }
+    return { success: true }
+  })
+  
   // ðŸ§¨ WAVE 610: FORCE STRIKE - Manual Effect Detonator
   ipcMain.handle('lux:forceStrike', (_event, config: { effect: string; intensity: number }) => {
     console.log('[IPC] ðŸ§¨ lux:forceStrike:', config)

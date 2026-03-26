@@ -16,6 +16,7 @@ import { useTruthStore, selectStableEmotion } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
+import { useControlStore } from '../../../stores/controlStore'
 import { useShallow } from 'zustand/shallow'
 import { FolderIcon, NetworkIcon } from '../../icons/LuxIcons'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
@@ -96,6 +97,10 @@ export function HyperionView({
   const stableEmotion = useTruthStore(selectStableEmotion)
   const fixtures = useStageStore(state => state.fixtures)
   const selectedIds = useSelectionStore(state => state.selectedIds)
+  
+  // 🌊 WAVE 2401: Liquid Stereo toggle
+  const useLiquidStereo = useControlStore(state => state.useLiquidStereo)
+  const setLiquidStereo = useControlStore(state => state.setLiquidStereo)
 
   // ── Derived State ─────────────────────────────────────────────────────────
   const fixtureCount = useMemo(() => fixtures.length, [fixtures])
@@ -137,6 +142,13 @@ export function HyperionView({
   const handleDmxNexus = useCallback(() => {
     setActiveTab('nexus')
   }, [setActiveTab])
+
+  // 🌊 WAVE 2401: Liquid Stereo toggle — syncs store + backend via IPC
+  const handleLiquidStereoToggle = useCallback(async () => {
+    const newState = !useLiquidStereo
+    setLiquidStereo(newState)
+    await window.lux?.setLiquidStereo?.(newState)
+  }, [useLiquidStereo, setLiquidStereo])
 
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
@@ -245,6 +257,16 @@ export function HyperionView({
             >
               <NetworkIcon size={16} />
               <span>DMX NEXUS</span>
+            </button>
+            <button
+              className={`hyperion-liquid-toggle ${useLiquidStereo ? 'active' : ''}`}
+              onClick={handleLiquidStereoToggle}
+              title={useLiquidStereo 
+                ? '7.1 Liquid Stereo — 7-band per-zone envelopes (click for God Mode)' 
+                : 'God Mode — Classic 3-band stereo (click for Liquid Stereo)'
+              }
+            >
+              {useLiquidStereo ? '🌊 7.1' : '⚡ GOD'}
             </button>
             <button
               className={`hyperion-quality-toggle ${qualityMode.toLowerCase()}`}

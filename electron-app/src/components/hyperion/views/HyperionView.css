@@ -240,6 +240,36 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * 🌊 WAVE 2401 — LIQUID STEREO TOGGLE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.hyperion-liquid-toggle {
+  padding: 4px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(100, 180, 255, 0.2);
+  background: rgba(10, 10, 18, 0.8);
+  color: #64b4ff;
+  font-family: var(--h-font-primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all var(--h-transition-fast);
+}
+
+.hyperion-liquid-toggle:hover {
+  background: rgba(100, 180, 255, 0.08);
+  border-color: rgba(100, 180, 255, 0.35);
+}
+
+.hyperion-liquid-toggle.active {
+  background: rgba(100, 180, 255, 0.12);
+  border-color: rgba(100, 180, 255, 0.45);
+  color: #90d0ff;
+  box-shadow: 0 0 12px rgba(100, 180, 255, 0.15), inset 0 0 8px rgba(100, 180, 255, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * METRICS DISPLAY — BPM, FPS, Confidence
  * ═══════════════════════════════════════════════════════════════════════════ */
 

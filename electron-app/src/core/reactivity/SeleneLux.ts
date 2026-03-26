@@ -43,7 +43,12 @@ import {
   WasherPhysics,
   washerPhysics,
   type WasherPhysicsInput,
+  // 🌊 WAVE 2401: LIQUID STEREO - 7-Band Envelope Engine
+  liquidStereoPhysics,
+  type LiquidStereoInput,
 } from '../../hal/physics';
+
+import type { GodEarBands } from '../../workers/GodEarFFT';
 
 import { 
   ElementalModifiers, 
@@ -372,8 +377,24 @@ export class SeleneLux {
     breathingFactor: number;
   } | null = null;
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 2401: LIQUID STEREO FLAG — 7-band vs God Mode routing
+  // ═══════════════════════════════════════════════════════════════════════
+  private useLiquidStereo: boolean;
+  
+  // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
+  private liquidStereoOverrides: {
+    frontL: number;   // SubBass zone
+    frontR: number;   // Bass zone
+    backL: number;    // LowMid zone
+    backR: number;    // Mid zone
+    moverL: number;   // HighMid zone
+    moverR: number;   // Treble zone
+  } | null = null;
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
+    this.useLiquidStereo = false;  // 🌊 WAVE 2401: Starts in God Mode
     
     // Inicializar físicas stateful
     this.latinoPhysics = new LatinoStereoPhysics();
@@ -410,6 +431,14 @@ export class SeleneLux {
   // API PÚBLICA
   // ═══════════════════════════════════════════════════════════════════════════
   
+  /**
+   * 🌊 WAVE 2401: Set Liquid Stereo mode (called from TitanEngine via IPC)
+   */
+  public setLiquidStereo(enabled: boolean): void {
+    this.useLiquidStereo = enabled;
+    console.log(`[SeleneLux 🌊] Liquid Stereo: ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
+  }
+
   /**
    * 🧠 Recibe actualización desde TitanEngine y aplica física reactiva
    * 
@@ -463,7 +492,60 @@ export class SeleneLux {
       physicsApplied = 'techno';
       debugInfo = result.debugInfo;
       
-      // 2. WAVE 290.3: Nueva API para zonas/intensidades
+      // ═══════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 2401: LIQUID STEREO ROUTING
+      // Si useLiquidStereo → 7-band LiquidStereoPhysics
+      // Si no → God Mode legacy (TechnoStereoPhysics.applyZones)
+      // ═══════════════════════════════════════════════════════════════════
+      
+      if (this.useLiquidStereo) {
+        // 🌊 RECONSTRUCT GodEarBands from SeleneLuxAudioMetrics
+        const bands: GodEarBands = {
+          subBass: audioMetrics.subBass ?? 0,
+          bass: audioMetrics.normalizedBass,
+          lowMid: audioMetrics.lowMid ?? audioMetrics.normalizedBass * 0.5,
+          mid: audioMetrics.normalizedMid,
+          highMid: audioMetrics.highMid ?? audioMetrics.normalizedMid * 0.6,
+          treble: audioMetrics.normalizedTreble,
+          ultraAir: audioMetrics.ultraAir ?? 0,
+        };
+        
+        const liquidInput: LiquidStereoInput = {
+          bands,
+          sectionType: vibeContext.section,
+          isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+          isAGCTrap: false,
+          harshness: audioMetrics.harshness,
+          flatness: audioMetrics.spectralFlatness,
+        };
+        
+        const liquidResult = liquidStereoPhysics.applyBands(liquidInput);
+        
+        // Override strobe from liquid engine (replaces techno legacy strobe)
+        isStrobeActive = liquidResult.strobeActive;
+        physicsApplied = 'liquid-stereo';
+        
+        // Store 7-zone overrides
+        this.liquidStereoOverrides = {
+          frontL: liquidResult.frontLeftIntensity,
+          frontR: liquidResult.frontRightIntensity,
+          backL: liquidResult.backLeftIntensity,
+          backR: liquidResult.backRightIntensity,
+          moverL: liquidResult.moverLeftIntensity,
+          moverR: liquidResult.moverRightIntensity,
+        };
+        
+        // Legacy compat — para que el AGC TRUST block no rompa
+        this.technoOverrides = {
+          front: liquidResult.frontParIntensity,
+          back: liquidResult.backParIntensity,
+          mover: liquidResult.moverIntensity,
+          moverL: liquidResult.moverIntensityL,
+          moverR: liquidResult.moverIntensityR,
+        };
+        
+      } else {
+      // 2. WAVE 290.3: Nueva API para zonas/intensidades (GOD MODE LEGACY)
       // 🔥 WAVE 1012: TECHNO NEEDS SPECTRAL DATA!
       // Sin harshness/flatness, Techno opera en modo degradado (acidMode=false, noiseMode=false)
       // Esto mata el atmosphericFloor y el Apocalypse Detection
@@ -500,6 +582,10 @@ export class SeleneLux {
         moverL: zonesResult.moverIntensityL, // Split L (Mid-dominant)
         moverR: zonesResult.moverIntensityR  // Split R (Treble-dominant)
       };
+      
+      this.liquidStereoOverrides = null;  // Clean when not active
+      
+      } // end if/else useLiquidStereo
       
       // 🔥 WAVE 2212: Log de strobe eliminado — spameaba a 60fps bloqueando el logging útil
       
@@ -856,6 +942,33 @@ export class SeleneLux {
       // 🔧 WAVE 1049: NO limpiar overrides - se sobrescriben en próximo tick
       // this.technoOverrides = null;
       
+    } else if (this.liquidStereoOverrides && physicsApplied === 'liquid-stereo') {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 2401: LIQUID STEREO — 7-Band Envelope Engine
+      // ═══════════════════════════════════════════════════════════════════════
+      // FrontL: SubBass (floor shaker)   | FrontR: Bass (kick body)
+      // BackL: LowMid (warmth)           | BackR: Mid (snare sniper)
+      // MoverL: HighMid (presence)       | MoverR: Treble (schwarzenegger)
+      // Strobe: UltraAir + Treble binary trigger
+      // ═══════════════════════════════════════════════════════════════════════
+      frontIntensity = Math.min(0.95, 
+        ((this.liquidStereoOverrides.frontL + this.liquidStereoOverrides.frontR) / 2) * brightMod);
+      backIntensity = Math.min(0.95, 
+        (this.liquidStereoOverrides.backL + this.liquidStereoOverrides.backR) / 2);
+      moverIntensity = Math.min(1.0, 
+        (this.liquidStereoOverrides.moverL + this.liquidStereoOverrides.moverR) / 2);
+      
+      // No temp vars needed — liquidStereoOverrides are spread directly in zoneIntensities
+      
+      if (this.frameCount % 30 === 0) {
+        const ls = this.liquidStereoOverrides;
+        console.log(
+          `[AGC TRUST 🌊LIQUID 7B] FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
+          `BL:${ls.backL.toFixed(2)} BR:${ls.backR.toFixed(2)} | ` +
+          `ML:${ls.moverL.toFixed(2)} MR:${ls.moverR.toFixed(2)}`
+        );
+      }
+      
     } else if (this.rockOverrides && physicsApplied === 'rock') {
       // ═══════════════════════════════════════════════════════════════════════
       // 🎸 WAVE 1011: HIGH VOLTAGE ROCK - 4 Bandas con L/R Split
@@ -994,6 +1107,15 @@ export class SeleneLux {
         frontR: (this as any).chillStereoSplit.frontR,
         backL: (this as any).chillStereoSplit.backL,
         backR: (this as any).chillStereoSplit.backR,
+      }),
+      // 🌊 WAVE 2401: LIQUID STEREO - 7 zonas independientes
+      ...(this.liquidStereoOverrides && {
+        frontL: this.liquidStereoOverrides.frontL,
+        frontR: this.liquidStereoOverrides.frontR,
+        backL: this.liquidStereoOverrides.backL,
+        backR: this.liquidStereoOverrides.backR,
+        moverL: this.liquidStereoOverrides.moverL,
+        moverR: this.liquidStereoOverrides.moverR,
       }),
       // ═══════════════════════════════════════════════════════════════════════
       // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Zones

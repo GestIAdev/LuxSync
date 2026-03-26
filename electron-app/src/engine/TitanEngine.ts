@@ -708,10 +708,12 @@ export class TitanEngine extends EventEmitter {
     // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
     // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
     // 🌊 WAVE 1035: CHILL 7-ZONE - Si Chill tiene Front/Back L/R, usarlos
+    // 🌊 WAVE 2401: LIQUID STEREO - 7-Band per-zone envelopes
     if (nervousOutput.physicsApplied === 'latino' || 
         nervousOutput.physicsApplied === 'techno' || 
         nervousOutput.physicsApplied === 'rock' ||
-        nervousOutput.physicsApplied === 'chill') {
+        nervousOutput.physicsApplied === 'chill' ||
+        nervousOutput.physicsApplied === 'liquid-stereo') {
       const ni = nervousOutput.zoneIntensities;
       
       // 🧪 WAVE 908 + 🎺 WAVE 1004.1: Si tenemos L/R separados (Techno/Latino), usarlos
@@ -725,12 +727,13 @@ export class TitanEngine extends EventEmitter {
       const backL = ni.backL ?? (ni.back ?? 0);     // Fallback a mono back
       const backR = ni.backR ?? (ni.back ?? 0);     // Fallback a mono back
       
-      // 🌊 WAVE 1035: Si tenemos valores stereo, construir zonas expandidas
-      const hasChillStereo = nervousOutput.physicsApplied === 'chill' && 
+      // 🌊 WAVE 1035 + WAVE 2401: Si tenemos valores stereo, construir zonas expandidas
+      const has7ZoneStereo = (nervousOutput.physicsApplied === 'chill' || 
+                              nervousOutput.physicsApplied === 'liquid-stereo') && 
                              (ni.frontL !== undefined || ni.frontR !== undefined);
       
-      if (hasChillStereo) {
-        // CHILL 7-ZONE MODE: Todas las zonas stereo
+      if (has7ZoneStereo) {
+        // 7-ZONE STEREO MODE: Todas las zonas stereo (Chill / Liquid Stereo)
         zones = {
           // Stereo Front (new)
           frontL: { intensity: frontL, paletteRole: 'primary' },
@@ -749,7 +752,8 @@ export class TitanEngine extends EventEmitter {
         
         // Log de debug para ver 7-zone en acción
         if (this.state.frameCount % 60 === 0) {
-          console.log(`[TitanEngine �] CHILL 7-ZONE: FL:${(frontL*100).toFixed(0)}% FR:${(frontR*100).toFixed(0)}% BL:${(backL*100).toFixed(0)}% BR:${(backR*100).toFixed(0)}%`)
+          const tag = nervousOutput.physicsApplied === 'liquid-stereo' ? '🌊 LIQUID' : '🌊 CHILL';
+          console.log(`[TitanEngine ${tag} 7-ZONE] FL:${(frontL*100).toFixed(0)}% FR:${(frontR*100).toFixed(0)}% BL:${(backL*100).toFixed(0)}% BR:${(backR*100).toFixed(0)}%`)
         }
       } else {
         // LEGACY MODE: Mono front/back + stereo movers
@@ -1211,6 +1215,14 @@ export class TitanEngine extends EventEmitter {
     this.selene.setEnabled(enabled)
     console.log(`[TitanEngine] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
     this.emit('consciousness-toggled', enabled)
+  }
+  
+  /**
+   * 🌊 WAVE 2401: Toggle Liquid Stereo mode (7-band per-zone envelopes)
+   */
+  public setLiquidStereo(enabled: boolean): void {
+    this.nervousSystem.setLiquidStereo(enabled);
+    console.log(`[TitanEngine] 🌊 Liquid Stereo ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
   }
   
   /**

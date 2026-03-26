@@ -178,6 +178,20 @@ export interface ControlState {
   /** Establecer intensidad global */
   setGlobalIntensity: (value: number) => void
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 2401: LIQUID STEREO - 7-Band Physics Toggle
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * ¿Usar motor Liquid Stereo (7 bandas independientes)?
+   * false = God Mode Techno (legacy 3-band stereo)
+   * true = Liquid Stereo (7-band per-zone envelopes)
+   */
+  useLiquidStereo: boolean
+  
+  /** Toggle Liquid Stereo on/off */
+  setLiquidStereo: (enabled: boolean) => void
+  
   /** Reset a valores por defecto */
   reset: () => void
 }
@@ -217,6 +231,8 @@ const DEFAULT_STATE = {
   transitionProgress: 1,  // 1 = no transition in progress
   globalSaturation: 1.0,
   globalIntensity: 1.0,
+  // 🌊 WAVE 2401: Liquid Stereo starts OFF (God Mode legacy by default)
+  useLiquidStereo: false,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -375,6 +391,16 @@ export const useControlStore = create<ControlState>()(
         set({ globalIntensity: clamped })
       },
       
+      // ═══════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 2401: LIQUID STEREO TOGGLE
+      // ═══════════════════════════════════════════════════════════════════
+      
+      setLiquidStereo: (enabled) => {
+        const mode = enabled ? '7.1 LIQUID STEREO' : 'GOD MODE (legacy)'
+        console.log(`[ControlStore] 🌊 Physics engine: ${mode}`)
+        set({ useLiquidStereo: enabled })
+      },
+      
       reset: () => {
         console.log('[ControlStore] 🔄 Reset to defaults')
         set(DEFAULT_STATE)
@@ -382,7 +408,7 @@ export const useControlStore = create<ControlState>()(
     }),
     {
       name: 'luxsync-control-store',
-      version: 2, // Bumped for WAVE 33.2
+      version: 3, // Bumped for WAVE 2401: Liquid Stereo flag
       partialize: (state) => ({
         // Solo persistir preferencias de UI, no estados temporales
         viewMode: state.viewMode,
@@ -393,6 +419,8 @@ export const useControlStore = create<ControlState>()(
         activePalette: state.activePalette,
         globalSaturation: state.globalSaturation,
         globalIntensity: state.globalIntensity,
+        // WAVE 2401: Persist Liquid Stereo preference
+        useLiquidStereo: state.useLiquidStereo,
       }),
     }
   )

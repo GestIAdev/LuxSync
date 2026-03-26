@@ -308,6 +308,8 @@ declare global {
     
     // 🧬 WAVE 500: Consciousness Kill Switch
     setConsciousnessEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+    // 🌊 WAVE 2401: Liquid Stereo toggle
+    setLiquidStereo: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
     
     // 🧨 WAVE 610: Force Strike - Manual Effect Detonator
     forceStrike: (config: { effect: string; intensity: number }) => Promise<{ success: boolean }>

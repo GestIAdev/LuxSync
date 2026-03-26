@@ -1809,6 +1809,17 @@ export class TitanOrchestrator {
   }
   
   /**
+   * 🌊 WAVE 2401: Set Liquid Stereo mode (7-band per-zone envelopes)
+   */
+  setLiquidStereo(enabled: boolean): void {
+    if (this.engine) {
+      this.engine.setLiquidStereo(enabled)
+    }
+    console.log(`[TitanOrchestrator] 🌊 Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF'}`)
+    this.log('Physics', `🌊 Liquid Stereo: ${enabled ? '7-BAND' : 'GOD MODE'}`)
+  }
+  
+  /**
    * 🧬 WAVE 560: Get consciousness state
    */
   isConsciousnessEnabled(): boolean {

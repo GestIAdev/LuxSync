@@ -631,6 +631,15 @@ const luxApi = {
   setConsciousnessEnabled: (enabled: boolean) => ipcRenderer.invoke('lux:setConsciousness', enabled),
   
   /**
+   * 🌊 WAVE 2401: Liquid Stereo Toggle — 7-Band Per-Zone Envelopes
+   * 
+   * Switches between God Mode (legacy 3-band) and Liquid Stereo (7-band):
+   * - When OFF: TechnoStereoPhysics.applyZones() (classic behavior)
+   * - When ON: LiquidStereoPhysics.applyBands() (per-zone envelopes)
+   */
+  setLiquidStereo: (enabled: boolean) => ipcRenderer.invoke('lux:setLiquidStereo', enabled),
+  
+  /**
    * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
    * 
    * Dispara un efecto (Solar Flare) manualmente sin esperar decisión de HuntEngine.

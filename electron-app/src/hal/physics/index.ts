@@ -64,13 +64,12 @@ export {
 } from './WasherPhysics'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 WAVE 2401: THE LIQUID STEREO - 7-Band Envelope Engine
+// 🌊 WAVE 2411: THE LIQUID STEREO - 7-Band Omni-Liquid Engine + Profiles
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // LiquidEnvelope: Abstracción universal de banda (1 clase, N instancias)
-// LiquidStereoPhysics: Motor de 7 zonas independientes (6 envelopes + 1 strobe)
-// Recibe GodEarBands DIRECTAS — sin toLegacyFormat.
-// Coexiste con TechnoStereoPhysics (God Mode). SeleneLux elige vía feature flag.
+// LiquidStereoPhysics: Motor de 7 zonas, parametrizado por ILiquidProfile
+// Profiles: TECHNO_PROFILE (default), futuro: ROCK, LATINO, CHILL...
 // ═══════════════════════════════════════════════════════════════════════════
 
 export {
@@ -84,3 +83,6 @@ export {
   type LiquidStereoInput,
   type LiquidStereoResult,
 } from './LiquidStereoPhysics'
+
+export type { ILiquidProfile } from './profiles/ILiquidProfile'
+export { TECHNO_PROFILE, PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE } from './profiles'

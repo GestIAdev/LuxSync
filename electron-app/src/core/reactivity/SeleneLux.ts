@@ -519,6 +519,7 @@ export class SeleneLux {
           isAGCTrap: false,
           harshness: audioMetrics.harshness,
           flatness: audioMetrics.spectralFlatness,
+          isKick: audioMetrics.kickDetected ?? false,
         };
         
         const liquidResult = liquidStereoPhysics.applyBands(liquidInput);

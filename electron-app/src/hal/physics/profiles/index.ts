@@ -11,7 +11,8 @@ export { POPROCK_PROFILE } from './poprock'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROFILE REGISTRY — SeleneLux usa esto para hot-swap por vibe
-// Cada key matchea contra vibeNormalized.includes(key)
+// Keys deben matchear TANTO el vibeId completo (UI: 'fiesta-latina')
+// COMO los aliases cortos (internos: 'latino', 'reggaeton', etc.)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { ILiquidProfile } from './ILiquidProfile'
@@ -20,6 +21,12 @@ import { LATINO_PROFILE } from './latino'
 import { POPROCK_PROFILE } from './poprock'
 
 export const PROFILE_REGISTRY: Record<string, ILiquidProfile> = {
+  // Full vibeIds (como llegan desde TitanOrchestrator → SeleneLux)
+  'techno-club':    TECHNO_PROFILE,
+  'fiesta-latina':  LATINO_PROFILE,
+  'pop-rock':       POPROCK_PROFILE,
+  'chill-lounge':   TECHNO_PROFILE,   // TODO: CHILL_PROFILE cuando exista
+  // Aliases cortos (legacy, internos, Chronos)
   'techno':    TECHNO_PROFILE,
   'electro':   TECHNO_PROFILE,
   'latino':    LATINO_PROFILE,

@@ -113,6 +113,13 @@ export function HyperionView({
     onViewModeChange?.(viewMode)
   }, [viewMode, onViewModeChange])
 
+  // 🌊 WAVE 2436: Sync persisted liquidLayout → backend on mount
+  // controlStore persists layout in localStorage. SeleneLux always boots '4.1'.
+  // Without this, UI shows '7.1' but motor runs '4.1' after restart.
+  useEffect(() => {
+    window.lux?.setLiquidLayout?.(liquidLayout)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- mount-only sync
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)

@@ -229,24 +229,55 @@ export const LATINO_PROFILE: ILiquidProfile = {
   kickVetoFrames: 0,         // CERO — la síncopa 3-3-2 no puede aguantar vetos
 
   // ═══════════════════════════════════════════════════════════════
-  // WAVE 2435: OVERRIDES 4.1 — Compensación de compactación max()
+  // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()
   //
-  // En 4.1, routeZones() hace backPar = max(backLeft, backRight).
-  // - backLeft (tumbao) = continuo, avg ≈ 0.15-0.30
-  // - backRight (TAcka) = impulsivo, avg ≈ 0.02, picos ≈ 0.70
+  // PROBLEMA 1 (WAVE 2435): compactación max()
+  //   backPar = max(backLeft, backRight) → tumbao continuo asfixia TAcka.
   //
-  // Sin overrides: el tumbao sostiene backPar encendido SIEMPRE,
-  // asfixiando el contraste percusivo del TAcka.
+  // PROBLEMA 2 (WAVE 2436): AUTOTUNE COMO GENERADOR DE CUADRADAS
+  //   El autotune aplana la voz en mid (~0.40-0.52 constante) mientras
+  //   genera picos sintéticos en treble (consonantes T/K/S).
+  //   → transientShaper ve trebleDelta alto + mid alto = "percusión" falsa
+  //   → envelopeHighMid ve muro de mid = tumbao falso
+  //   → max() junta ambos → Back PAR = monitor de voz
   //
-  // Solución: subir gateOn del tumbao (backL) para que solo responda
-  // a mid REAL, y bajar decay para que suelte rápido dando paso al TAcka.
-  // También subir gateOn del SubBass porque en 4.1 el RMS está mezclado
-  // (no separado como en 7.1) y el gate original de 0.15 captura ruido.
+  // CONTRAMEDIDA: percMidSubtract × 2.5 (0.6→1.5)
+  //   Un hi-hat real tiene agudos SIN medios.
+  //   Una voz con autotune tiene agudos CON medios.
+  //   Si mid acompaña al treble spike → es voz, no percusión → cancelar.
+  //
+  // CONTRAMEDIDA: backL weights invertidos (mid↓ lowMid↑)
+  //   El tumbao real vive en lowMid (bajo melódico profundo).
+  //   La voz autotuneada vive en mid. Ignorar mid, cazar lowMid.
+  //
+  // CONTRAMEDIDA: envelopeTreble (El Galán) — devolver punch a movers
+  //   Los muros altos de WAVE 2435 eran para compensar el desastre
+  //   del autotune. Con percMidSubtract corregido, los movers pueden
+  //   bajar gateOn y subir boost para recuperar presencia escénica.
   // ═══════════════════════════════════════════════════════════════
   overrides41: {
-    // Back L (Tumbao & Teclados) — el principal problema de compactación
-    // En 7.1 gateOn=0.04 es correcto (va a hardware separado).
-    // En 4.1 ese tumbao compite via max() con el TAcka.
+    // ── ANTI-AUTOTUNE: Matar falsos latigazos en Back R ──────────
+    // percMidSubtract controla cuánto mid se resta del trebleDelta
+    // antes de calcular percRaw. A 1.5, si mid≈0.45 y trebleDelta≈0.03
+    // → percRaw ≈ (0.03 - 0.45×1.5×factor) → aplastado a 0.
+    // Un hi-hat real (mid≈0.05, trebleDelta≈0.03) sobrevive intacto.
+    percMidSubtract: 1.5,  // 0.6→1.5: voz+autotune cancelada en transient shaper
+
+    // ── TUMBAO LIMPIO: Back L ignora voz, caza bajo melódico ─────
+    // backLMidWeight baja: el muro de mid del autotune ya no enciende backL
+    // backLLowMidWeight sube: solo el bajo profundo mueve el tumbao
+    backLMidWeight: 0.30,      // 0.60→0.30: la voz autotuneada no es tumbao
+    backLLowMidWeight: 0.90,   // default→0.90: el bajo melódico profundo SÍ es tumbao
+
+    // ── PUNCH A MOVERS: El Galán recupera presencia escénica ─────
+    // Con el autotune neutralizado arriba, los muros pueden bajar
+    envelopeTreble: {
+      gateOn: 0.22,        // 0.30→0.22: El Galán responde antes, más fluidez
+      boost: 3.5,          // 2.5→3.5: más punch escénico para los movers
+    },
+
+    // ── COMPACTACIÓN max() (heredado de WAVE 2435) ───────────────
+    // Back L (Tumbao & Teclados) — tumbao compite via max() con TAcka
     envelopeHighMid: {
       gateOn: 0.18,      // 0.04→0.18: ignora mid ambiente, solo tumbao REAL
       decayBase: 0.40,   // 0.65→0.40: suelta rápido, da paso al TAcka impulsivo
@@ -254,20 +285,16 @@ export const LATINO_PROFILE: ILiquidProfile = {
     },
 
     // Front L (SubBass) — RMS mezclado en 4.1
-    // WAVE 2434 Monte Carlo: winner con 0% leak en captura 4.1
     envelopeSubBass: {
       decayBase: 0.25,   // 0.30→0.25: golpe más limpio sin cola
     },
 
-    // Back R (TAcka) — el snare envelope se beneficia de un boost extra
-    // porque ahora compite con el tumbao dentro del mismo backPar
+    // Back R (TAcka) — boost extra para ganar el max() al tumbao
     envelopeSnare: {
       boost: 4.5,        // 3.5→4.5: más presencia para ganar el max() al tumbao
     },
 
-    // Sidechain más suave — en 4.1 el frontPar compactado tiene más energía
-    // constante que en 7.1 (max de frontL y frontR), así que un sidechain
-    // igual de agresivo asfixiaría los movers permanentemente
+    // Sidechain más suave — frontPar compactado tiene más energía constante
     sidechainDepth: 0.08,     // 0.12→0.08: menos ducking para compensar frontPar elevado
   },
 }

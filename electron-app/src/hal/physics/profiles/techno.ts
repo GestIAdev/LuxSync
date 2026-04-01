@@ -26,14 +26,17 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   // Front L — El Océano de Subgraves (WAVE 2407b Monte Carlo)
+  // WAVE 2436.2: decay 0.40→0.30 — Techno flash: staccato extremo, máximo contraste.
+  //              boost 3.0→3.5 — compensar decay más corto con más punch.
+  //              maxI 0.72→0.70 — ligeramente más bajo que latino/poprock (staccato)
   envelopeSubBass: {
     name: 'Front L (SubBass Groove)',
     gateOn: 0.12,
-    boost: 3.0,
+    boost: 3.5,
     crushExponent: 2.6,
-    decayBase: 0.40,
+    decayBase: 0.30,
     decayRange: 0.15,
-    maxIntensity: 0.72,
+    maxIntensity: 0.70,
     squelchBase: 0.04,
     squelchSlope: 0.55,
     ghostCap: 0.06,
@@ -97,14 +100,16 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // Back L — Mid Synths / Atmósfera (WAVE 2417: MONTE CARLO RESURRECTION)
   // gateOn 0.10→0.02 (señal ~0.14 pasa), boost 4.5→5.0, decay 0.60→0.75 (colchón)
   // crush 1.2→1.0 (lineal), decayRange 0.15→0.03 (morph sutil)
+  // WAVE 2436.2: decay 0.75→0.60 — teclados/pads techno: cortantes, no colchón.
+  //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
     gateOn: 0.02,
     boost: 5.0,
     crushExponent: 1.0,
-    decayBase: 0.75,
+    decayBase: 0.60,
     decayRange: 0.03,
-    maxIntensity: 1.0,
+    maxIntensity: 0.85,
     squelchBase: 0.02,
     squelchSlope: 0.10,
     ghostCap: 0.05,

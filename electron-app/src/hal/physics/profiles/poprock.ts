@@ -44,17 +44,21 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   // para separar del bajo — queremos solo los golpes del pedal.
   // ROCK_UNIFIED: frontPar gate=0.28, gain=2.6, decay=0.20 (pump effect)
   // Traducción: gate alto, boost alto, decay rápido = kick puro y seco.
+  // WAVE 2436.2: decay 0.25→0.65 — bombo acústico: resonancia de parche real.
+  //              Más sustain que techno (0.30) pero menos que latino (0.88).
+  //              boost 3.0→2.8 — ajuste fino para sustain orgánico.
+  //              maxI 0.78→0.82 — más headroom que techno (0.70).
   envelopeSubBass: {
     name: 'Front L (Kick Drum Acústico)',
-    gateOn: 0.15,          // Más bajo que Rock2 (0.28) — ghost notes del bombo
-    boost: 3.0,            // Compensar el gate más bajo
-    crushExponent: 2.2,    // Compresión moderada — dynamic range humano
-    decayBase: 0.25,       // Pump rápido pero no staccato techno — resonancia parche
+    gateOn: 0.15,
+    boost: 2.8,
+    crushExponent: 2.2,
+    decayBase: 0.65,
     decayRange: 0.10,
-    maxIntensity: 0.78,
+    maxIntensity: 0.82,
     squelchBase: 0.03,
     squelchSlope: 0.45,
-    ghostCap: 0.04,        // Ghost sutil — el bombo respira entre golpes
+    ghostCap: 0.04,
     gateMargin: 0.01,
   },
 
@@ -100,17 +104,19 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   // usa el Transient Shaper (trebleDelta×4) — perfecto para cazar el
   // snap del snare/rimshot y los crashes.
   // Decay orgánico: la caja resuena más que en techno (parche real).
+  // WAVE 2436.2: decay 0.15→0.35 — snap orgánico: parche real que resuena.
+  //              boost 3.0→3.5 — más presencia del rimshot/crash.
   envelopeSnare: {
     name: 'Back R (Snare & Cymbal Snap)',
-    gateOn: 0.10,          // Bajo — ghost notes de caja son esenciales en rock
-    boost: 3.0,            // Moderado — no saturar con crashes
-    crushExponent: 0.8,    // Expansivo — los ghost notes suaves saturan
-    decayBase: 0.15,       // Orgánico: más lento que techno (0.05), más rápido que latino (0.25)
-    decayRange: 0.12,      // Morph: secciones intensas → más sustain
+    gateOn: 0.10,
+    boost: 3.5,
+    crushExponent: 0.8,
+    decayBase: 0.35,
+    decayRange: 0.12,
     maxIntensity: 0.85,
     squelchBase: 0.02,
     squelchSlope: 0.12,
-    ghostCap: 0.03,        // Ghost sutil — el hi-hat siempre susurra
+    ghostCap: 0.03,
     gateMargin: 0.01,
   },
 
@@ -118,17 +124,19 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   // En rock: la guitarra rítmica, el órgano Hammond, los pads.
   // ROCK_UNIFIED: moverLeft era LowMid+HighMid (guitarras+bajo).
   // Aquí Back L captura el cuerpo de la mezcla (mid synths).
+  // WAVE 2436.2: decay 0.60→0.80 — guitarra rítmica orgánica con sustain real.
+  //              Entre techno staccato (0.60) y latino groove (0.92).
   envelopeHighMid: {
     name: 'Back L (Rhythm Guitar & Keys)',
-    gateOn: 0.03,          // Sensible — la guitarra rítmica es constante
-    boost: 4.0,            // ROCK_UNIFIED backPar gain=2.0, más boost aquí por gate bajo
-    crushExponent: 1.0,    // Lineal
-    decayBase: 0.60,       // Entre techno (0.75) y latino (0.65) — sustain de guitarra
+    gateOn: 0.03,
+    boost: 4.0,
+    crushExponent: 1.0,
+    decayBase: 0.80,
     decayRange: 0.05,
     maxIntensity: 0.90,
     squelchBase: 0.02,
     squelchSlope: 0.10,
-    ghostCap: 0.05,        // Ghost medio — la guitarra rítmica nunca para
+    ghostCap: 0.05,
     gateMargin: 0.005,
   },
 

@@ -36,17 +36,22 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // bajo continuo. Gate bajo para que entre todo, decay alto para que respire.
   // WAVE 2199: clon de Techno FRONT_PAR_GATE=0.48 → aquí más permisivo en gate
   // porque el bajo latino es más melódico y menos percusivo.
+  // WAVE 2436.2: decay 0.30→0.88 — latino GROOVE: la luz RESPIRA con el ritmo.
+  //              El bajo del reggaeton/salsa es continuo y melódico, no staccato.
+  //              boost 2.5→2.0 — menos pico, más sustain (la ola, no el flash).
+  //              maxI 0.75→0.80 — techo más alto para el groove continuo.
+  //              ghostCap 0.08→0.10 — el bajo latino NUNCA se apaga del todo.
   envelopeSubBass: {
     name: 'Front L (TÚN del Dembow)',
-    gateOn: 0.15,          // WAVE 2434: Monte Carlo 530 frames reales 4.1 — winner (0% leak, 30.6% picos) vs 0.22 que en 4.1 era demasiado alto (RMS mezclado, no separado como 7.1)
-    boost: 2.5,            // Menos boost que techno (3.0) — no queremos clipear
-    crushExponent: 2.0,    // Más suave que techno (2.6) — curva menos agresiva
-    decayBase: 0.30,       // WAVE 2434: Monte Carlo winner — más rápido que 0.38, golpe más limpio sin cola en el dembow
-    decayRange: 0.10,
-    maxIntensity: 0.75,
+    gateOn: 0.15,
+    boost: 2.0,
+    crushExponent: 2.0,
+    decayBase: 0.88,
+    decayRange: 0.05,
+    maxIntensity: 0.80,
     squelchBase: 0.03,
     squelchSlope: 0.50,
-    ghostCap: 0.08,        // Más ghost que techno — el bajo latino nunca se apaga del todo
+    ghostCap: 0.10,
     gateMargin: 0.01,
   },
 
@@ -74,10 +79,10 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // treble×0.9 + highMid×0.1 hacia este envelope (ver moverRTrebleSub).
   envelopeVocal: {
     name: 'Mover R (La Dama — Brillo)',
-    gateOn: 0.25,          // WAVE 2434: Monte Carlo winner — treble avg real=0.187 en captura 4.1; con 0.32 La Dama nunca disparaba; 0.25 balanceado: silencio en susurros (treble<0.18), canta con fuerza real (treble>0.25)
+    gateOn: 0.15,          // WAVE 2436.2: 0.25→0.15 — el 0.25 era muro para reggaeton (treble avg=0.187); 0.15 deja pasar trompetas/güira real sin abrir a ruido de fondo
     boost: 4.0,            // WAVE 2195: protocolo Schwarzenegger
     crushExponent: 1.2,    // Ligeramente convexa — suaviza los picos
-    decayBase: 0.50,       // WAVE 2195: líquido no estrobo
+    decayBase: 0.70,       // WAVE 2436.2: 0.50→0.70 — La Dama baila con sustain latino
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.03,
@@ -92,17 +97,19 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // porque el dembow tiene un swing más ancho.
   // NOTA: En el Omni-Liquid, Back R usa el Transient Shaper (trebleDelta×4).
   // El decay largo del envelope suaviza las ráfagas de transitories.
+  // WAVE 2436.2: decay 0.25→0.45 — el TAcka del dembow tiene swing ancho.
+  //              La caja del reggaeton RESPIRA más que el snare techno.
   envelopeSnare: {
     name: 'Back R (TAcka del Dembow)',
-    gateOn: 0.28,          // WAVE 2433: el transient shaper entrega trebleDelta×4; en 7.1 el ruido de fondo tiene delta≈0.05-0.10 (gateOn 0.12 lo activaba); el latigazo real de caja llega a delta>0.35→×4=1.4; sweet spot 0.28 = muro que ignora respiración ambiental y caza solo el TAcka limpio
-    boost: 3.5,            // Moderado (techno=2.0) — más presencia para el hi-hat
-    crushExponent: 1.0,    // Lineal — sin distorsión
-    decayBase: 0.25,       // WAVE 2200: decay pesado del dembow
-    decayRange: 0.10,      // Más rango que techno — morph afecta más
+    gateOn: 0.28,
+    boost: 3.5,
+    crushExponent: 1.0,
+    decayBase: 0.45,
+    decayRange: 0.10,
     maxIntensity: 0.85,
     squelchBase: 0.03,
     squelchSlope: 0.15,
-    ghostCap: 0.04,        // Ghost sutil — el hi-hat siempre susurra
+    ghostCap: 0.04,
     gateMargin: 0.01,
   },
 
@@ -110,17 +117,22 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // En latino, este canal captura el tumbao del bajo melódico y las
   // congas graves. Más presencia mid que techno, menos substracción de bass
   // porque el bajo latino ES la melodía.
+  // WAVE 2436.2: decay 0.65→0.92 — el tumbao RESPIRA. Back L es el corazón
+  //              rítmico del latino — congas, bajo melódico, teclados.
+  //              boost 4.0→3.0 — menos pico, más sustain continuo.
+  //              maxI 0.90→0.95 — headroom alto para groove perenne.
+  //              ghostCap 0.06→0.08 — el tumbao SIEMPRE late.
   envelopeHighMid: {
     name: 'Back L (Tumbao & Teclados)',
-    gateOn: 0.04,          // Más permisivo que techno (0.02) — sutil
-    boost: 4.0,            // Menos que techno (5.0) — no competir con movers
+    gateOn: 0.04,
+    boost: 3.0,
     crushExponent: 1.0,
-    decayBase: 0.65,       // Más corto que techno (0.75) — más pulso, menos colchón
-    decayRange: 0.05,
-    maxIntensity: 0.90,
+    decayBase: 0.92,
+    decayRange: 0.03,
+    maxIntensity: 0.95,
     squelchBase: 0.02,
     squelchSlope: 0.10,
-    ghostCap: 0.06,        // Ghost más alto — el tumbao siempre late
+    ghostCap: 0.08,
     gateMargin: 0.005,
   },
 
@@ -129,17 +141,20 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // MOVER_GAIN=1.50, MOVER_TREBLE_REJECTION=0.30
   // El Galán busca la zona media — voces, congas, piano.
   // El cross-filter ruta highMid×0.8 + treble×0.2 (ver moverLHighMidWeight).
+  // WAVE 2436.2: decay 0.45→0.75 — El Galán baila con swing latino, no staccato.
+  //              boost 2.5→3.5 — más presencia escénica para congas y voz.
+  //              ghostCap 0.05→0.06 — El Galán nunca duerme del todo.
   envelopeTreble: {
     name: 'Mover L (El Galán — Conga & Voz)',
-    gateOn: 0.30,          // WAVE 2433: en 7.1 highMid separado tiene ruido de transición ≈0.14-0.22; platillo real highMid+treble sumado ≥0.28; sweet spot 0.30 caza platillo limpio sin estática de transición
-    boost: 2.5,            // WAVE 1004.1: MOVER_GAIN×1.67 ajustado
+    gateOn: 0.30,
+    boost: 3.5,
     crushExponent: 1.0,
-    decayBase: 0.45,       // Más elástico que techno (0.78) — PERO más corto
-    decayRange: 0.05,      // que el decay original 0.25 porque el envelope tiene
-    maxIntensity: 0.85,    // su propio squelch que simula la histéresis
-    squelchBase: 0.04,     // Histéresis simulada — piso de voz
+    decayBase: 0.75,
+    decayRange: 0.05,
+    maxIntensity: 0.85,
+    squelchBase: 0.04,
     squelchSlope: 0.15,
-    ghostCap: 0.05,        // Ghost medio — El Galán nunca duerme del todo
+    ghostCap: 0.06,
     gateMargin: 0.01,
   },
 
@@ -270,23 +285,34 @@ export const LATINO_PROFILE: ILiquidProfile = {
     backLLowMidWeight: 0.90,   // default→0.90: el bajo melódico profundo SÍ es tumbao
 
     // ── PUNCH A MOVERS: El Galán recupera presencia escénica ─────
-    // Con el autotune neutralizado arriba, los muros pueden bajar
+    // WAVE 2436.2: Con percMidSubtract conectado, el anti-autotune actúa
+    // en el Transient Shaper (Back R) donde debe. Los movers ya no necesitan
+    // compensar con gates extremos. Gate baja para capturar congas reales.
     envelopeTreble: {
-      gateOn: 0.22,        // 0.30→0.22: El Galán responde antes, más fluidez
-      boost: 3.5,          // 2.5→3.5: más punch escénico para los movers
+      gateOn: 0.14,        // 0.30→0.14: El Galán caza congas/voces sin muro
+      boost: 4.5,          // 2.5→4.5: presencia escénica del Galán en compactación 4.1
     },
 
-    // ── COMPACTACIÓN max() (heredado de WAVE 2435) ───────────────
-    // Back L (Tumbao & Teclados) — tumbao compite via max() con TAcka
+    // ── TONAL GATE: Permisivo con autotune ──────────────────────
+    // flatness >0.45 (autotune) ya no debe asesinar a El Galán.
+    // Con percMidSubtract activo, el autotune no contamina Back R,
+    // así que El Galán puede bailar libre.
+    moverLTonalThreshold: 0.60,  // 0.45→0.60: el autotune (flatness≈0.50) ya no mata
+
+    // ── COMPACTACIÓN max() (WAVE 2435 + WAVE 2436.2) ───────────
+    // Back L (Tumbao) — el base tiene decay 0.92 (groove continuo en 7.1).
+    // En 4.1, max(backL, backR) haría que el tumbao asfixie al TAcka.
+    // Bajamos decay para que el tumbao pulse pero suelte entre golpes.
     envelopeHighMid: {
-      gateOn: 0.18,      // 0.04→0.18: ignora mid ambiente, solo tumbao REAL
-      decayBase: 0.40,   // 0.65→0.40: suelta rápido, da paso al TAcka impulsivo
-      ghostCap: 0.02,    // 0.06→0.02: el tumbao no debe latir en background del backPar
+      gateOn: 0.12,      // 0.04→0.12: ignora mid ambiente suave
+      decayBase: 0.70,   // 0.92→0.70: pulsa y suelta, da paso al TAcka
+      ghostCap: 0.03,    // 0.08→0.03: tumbao sutil en background del backPar
     },
 
-    // Front L (SubBass) — RMS mezclado en 4.1
+    // Front L (SubBass) — el base tiene decay 0.88 (groove continuo en 7.1).
+    // En 4.1 la energía RMS es más alta por compactación. Decay más corto.
     envelopeSubBass: {
-      decayBase: 0.25,   // 0.30→0.25: golpe más limpio sin cola
+      decayBase: 0.75,   // 0.88→0.75: groove pero sin saturar en 4.1
     },
 
     // Back R (TAcka) — boost extra para ganar el max() al tumbao

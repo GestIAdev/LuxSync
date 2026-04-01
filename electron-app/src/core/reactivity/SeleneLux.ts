@@ -477,8 +477,12 @@ export class SeleneLux {
     liquidEngine41.setProfile(profile);
     liquidEngine71.setProfile(profile);
     latinoEngine41Telemetry.setProfile(profile);
-    console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile === DEFAULT_LIQUID_PROFILE ? 'TECHNO (default)' : normalizedKey.toUpperCase()}`);  
+    this._activeProfileId = profile.id;
+    console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);  
   }
+
+  /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */
+  private _activeProfileId: string = 'techno-industrial';
 
   /**
    * 🧠 Recibe actualización desde TitanEngine y aplica física reactiva
@@ -1044,7 +1048,7 @@ export class SeleneLux {
       if (this.frameCount % 30 === 0) {
         const ls = this.liquidStereoOverrides;
         console.log(
-          `[AGC TRUST 🌊LIQUID 7B] FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
+          `[AGC TRUST 🌊LIQUID 7B] profile:${this._activeProfileId} | FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
           `BL:${ls.backL.toFixed(2)} BR:${ls.backR.toFixed(2)} | ` +
           `ML:${ls.moverL.toFixed(2)} MR:${ls.moverR.toFixed(2)}`
         );

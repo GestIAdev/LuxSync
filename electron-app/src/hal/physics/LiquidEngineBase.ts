@@ -286,10 +286,14 @@ export abstract class LiquidEngineBase {
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
     // --- BACK R (El Látigo): WAVE 2427 TRANSIENT SHAPER ---
+    // WAVE 2436.2: percMidSubtract CONECTADO — aísla percusión real del autotune.
+    // Un hi-hat (trebleDelta alto, mid bajo) sobrevive.
+    // Una voz autotuneada (trebleDelta + mid alto) se cancela.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
-    const rawRight = trebleDelta * 4.0
+    const midPenalty = bands.mid * p.percMidSubtract
+    const rawRight = Math.max(0, trebleDelta * 4.0 - midPenalty)
 
     let trImp = 0.0
     if (rawRight > p.percGate) {

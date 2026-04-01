@@ -98,9 +98,9 @@ export function HyperionView({
   const fixtures = useStageStore(state => state.fixtures)
   const selectedIds = useSelectionStore(state => state.selectedIds)
   
-  // 🌊 WAVE 2401: Liquid Stereo toggle
-  const useLiquidStereo = useControlStore(state => state.useLiquidStereo)
-  const setLiquidStereo = useControlStore(state => state.setLiquidStereo)
+  // 🌊 WAVE 2432: Omni-Liquid Layout switch (4.1 / 7.1)
+  const liquidLayout = useControlStore(state => state.liquidLayout)
+  const setLiquidLayout = useControlStore(state => state.setLiquidLayout)
 
   // ── Derived State ─────────────────────────────────────────────────────────
   const fixtureCount = useMemo(() => fixtures.length, [fixtures])
@@ -143,12 +143,12 @@ export function HyperionView({
     setActiveTab('nexus')
   }, [setActiveTab])
 
-  // 🌊 WAVE 2401: Liquid Stereo toggle — syncs store + backend via IPC
-  const handleLiquidStereoToggle = useCallback(async () => {
-    const newState = !useLiquidStereo
-    setLiquidStereo(newState)
-    await window.lux?.setLiquidStereo?.(newState)
-  }, [useLiquidStereo, setLiquidStereo])
+  // 🌊 WAVE 2432: Omni-Liquid Layout switch — toggles 4.1 ↔ 7.1 via IPC
+  const handleLiquidLayoutToggle = useCallback(async () => {
+    const newMode = liquidLayout === '7.1' ? '4.1' : '7.1'
+    setLiquidLayout(newMode)
+    await window.lux?.setLiquidLayout?.(newMode)
+  }, [liquidLayout, setLiquidLayout])
 
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
@@ -258,16 +258,19 @@ export function HyperionView({
               <NetworkIcon size={16} />
               <span>DMX NEXUS</span>
             </button>
-            <button
-              className={`hyperion-liquid-toggle ${useLiquidStereo ? 'active' : ''}`}
-              onClick={handleLiquidStereoToggle}
-              title={useLiquidStereo 
-                ? '7.1 Liquid Stereo — 7-band per-zone envelopes (click for 4.1 Mode)' 
-                : '4.1 Classic Stereo — 3-band legacy mode (click for Liquid Stereo)'
-              }
-            >
-              {useLiquidStereo ? '🌊 7.1' : '⚡ 4.1'}
-            </button>
+            <div className="hyperion-liquid-layout-wrapper">
+              <button
+                className={`hyperion-liquid-toggle active mode-${liquidLayout.replace('.', '')}`}
+                onClick={handleLiquidLayoutToggle}
+                title={liquidLayout === '7.1' 
+                  ? '7.1 Asymmetric Stereo — 7-zone per-band envelopes (click for 4.1)' 
+                  : '4.1 Compact Stereo — 4-zone envelopes (click for 7.1)'
+                }
+              >
+                <span className="liquid-mode-label">{liquidLayout === '7.1' ? '🌊' : '⚡'}</span>
+                <span className="liquid-mode-value">{liquidLayout}</span>
+              </button>
+            </div>
             <button
               className={`hyperion-quality-toggle ${qualityMode.toLowerCase()}`}
               onClick={handleQualityToggle}

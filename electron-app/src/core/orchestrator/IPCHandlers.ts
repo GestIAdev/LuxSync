@@ -183,7 +183,16 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
-  // ðŸ§¨ WAVE 610: FORCE STRIKE - Manual Effect Detonator
+  // 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+  ipcMain.handle('lux:setLiquidLayout', (_event, mode: string) => {
+    console.log('[IPC] lux:setLiquidLayout:', mode)
+    if (titanOrchestrator && (mode === '4.1' || mode === '7.1')) {
+      titanOrchestrator.setLiquidLayout(mode as '4.1' | '7.1')
+    }
+    return { success: true }
+  })
+  
+  // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
   ipcMain.handle('lux:forceStrike', (_event, config: { effect: string; intensity: number }) => {
     console.log('[IPC] ðŸ§¨ lux:forceStrike:', config)
     if (titanOrchestrator) {

@@ -179,17 +179,23 @@ export interface ControlState {
   setGlobalIntensity: (value: number) => void
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 2401: LIQUID STEREO - 7-Band Physics Toggle
+  // 🌊 WAVE 2401 → WAVE 2432: LIQUID STEREO - Omni-Liquid Layout
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * ¿Usar motor Liquid Stereo (7 bandas independientes)?
-   * false = God Mode Techno (legacy 3-band stereo)
-   * true = Liquid Stereo (7-band per-zone envelopes)
+   * Layout del motor Omni-Liquid activo:
+   * '4.1' = LiquidEngine41 (4-zone compact)
+   * '7.1' = LiquidEngine71 (7-zone asymmetric stereo)
    */
+  liquidLayout: '4.1' | '7.1'
+  
+  /** @deprecated Use liquidLayout — kept for backward compat */
   useLiquidStereo: boolean
   
-  /** Toggle Liquid Stereo on/off */
+  /** Switch layout mode (4.1 / 7.1) */
+  setLiquidLayout: (mode: '4.1' | '7.1') => void
+  
+  /** @deprecated Use setLiquidLayout — kept for backward compat */
   setLiquidStereo: (enabled: boolean) => void
   
   /** Reset a valores por defecto */
@@ -231,8 +237,9 @@ const DEFAULT_STATE = {
   transitionProgress: 1,  // 1 = no transition in progress
   globalSaturation: 1.0,
   globalIntensity: 1.0,
-  // 🌊 WAVE 2401: Liquid Stereo starts OFF (God Mode legacy by default)
-  useLiquidStereo: false,
+  // 🌊 WAVE 2432: Omni-Liquid always active, default 4.1 layout
+  useLiquidStereo: true,
+  liquidLayout: '4.1' as '4.1' | '7.1',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -392,12 +399,17 @@ export const useControlStore = create<ControlState>()(
       },
       
       // ═══════════════════════════════════════════════════════════════════
-      // 🌊 WAVE 2401: LIQUID STEREO TOGGLE
+      // 🌊 WAVE 2432: OMNI-LIQUID LAYOUT SWITCH
       // ═══════════════════════════════════════════════════════════════════
       
+      setLiquidLayout: (mode) => {
+        console.log(`[ControlStore] 🌊 Layout: ${mode}`)
+        set({ liquidLayout: mode, useLiquidStereo: true })
+      },
+      
       setLiquidStereo: (enabled) => {
-        const mode = enabled ? '7.1 LIQUID STEREO' : 'GOD MODE (legacy)'
-        console.log(`[ControlStore] 🌊 Physics engine: ${mode}`)
+        // Legacy compat — always liquid, just log
+        console.log(`[ControlStore] 🌊 Liquid Stereo: ${enabled ? 'ON' : 'OFF (compat)'}`)
         set({ useLiquidStereo: enabled })
       },
       
@@ -419,8 +431,9 @@ export const useControlStore = create<ControlState>()(
         activePalette: state.activePalette,
         globalSaturation: state.globalSaturation,
         globalIntensity: state.globalIntensity,
-        // WAVE 2401: Persist Liquid Stereo preference
+        // WAVE 2432: Persist Liquid Layout preference
         useLiquidStereo: state.useLiquidStereo,
+        liquidLayout: state.liquidLayout,
       }),
     }
   )

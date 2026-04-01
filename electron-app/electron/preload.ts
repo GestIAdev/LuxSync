@@ -640,6 +640,12 @@ const luxApi = {
   setLiquidStereo: (enabled: boolean) => ipcRenderer.invoke('lux:setLiquidStereo', enabled),
   
   /**
+   * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+   * Switches between compact (4-zone) and full (7-zone) Omni-Liquid Engine.
+   */
+  setLiquidLayout: (mode: '4.1' | '7.1') => ipcRenderer.invoke('lux:setLiquidLayout', mode),
+  
+  /**
    * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
    * 
    * Dispara un efecto (Solar Flare) manualmente sin esperar decisión de HuntEngine.
@@ -1281,9 +1287,26 @@ const luxDebug = {
     console.log('\n🔥 LUXDEBUG - Available Commands:')
     console.log('  window.luxDebug.testConstructor()     - Test WAVE 384 data flow')
     console.log('  window.luxDebug.inspectFixture(id)    - Inspect a fixture')
+    console.log('  window.luxDebug.telemetry.export()    - Volcar captura latino 4.1 a disco')
+    console.log('  window.luxDebug.telemetry.stop()      - Detener captura latino 4.1')
+    console.log('  window.luxDebug.telemetry.start()     - Reanudar captura latino 4.1')
+    console.log('  window.luxDebug.telemetry.flush()     - Limpiar buffer latino 4.1')
     console.log('  window.luxDebug.help()                - Show this help')
     console.log('')
-  }
+  },
+
+  // ── WAVE 2434: TELEMETRY LATINO 4.1 ──────────────────────────────────────
+  // Uso:
+  //   await window.luxDebug.telemetry.export()          → escribe docs/logs/latinocalib41.md
+  //   await window.luxDebug.telemetry.stop()            → detiene captura
+  //   await window.luxDebug.telemetry.flush()           → limpia el buffer
+  // ─────────────────────────────────────────────────────────────────────────
+  telemetry: {
+    export: (outputPath?: string) => ipcRenderer.invoke('telemetry:lt41:export', outputPath),
+    stop: () => ipcRenderer.invoke('telemetry:lt41:stop'),
+    start: () => ipcRenderer.invoke('telemetry:lt41:start'),
+    flush: () => ipcRenderer.invoke('telemetry:lt41:flush'),
+  },
 }
 
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos

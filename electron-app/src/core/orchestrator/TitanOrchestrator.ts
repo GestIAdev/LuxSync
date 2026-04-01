@@ -1725,6 +1725,9 @@ export class TitanOrchestrator {
         this.trinity.resetPacemaker()
         console.log(`[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → ${normalizedVibeId}`)
       }
+
+      // 🌊 WAVE 2432: THE GREAT WIRING — Hot-swap profile on vibe change
+      this.engine.setActiveProfile(normalizedVibeId)
     }
   }
   
@@ -1817,6 +1820,17 @@ export class TitanOrchestrator {
     }
     console.log(`[TitanOrchestrator] 🌊 Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF'}`)
     this.log('Physics', `🌊 Liquid Stereo: ${enabled ? '7-BAND' : 'GOD MODE'}`)
+  }
+
+  /**
+   * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+   */
+  setLiquidLayout(mode: '4.1' | '7.1'): void {
+    if (this.engine) {
+      this.engine.setLiquidLayout(mode)
+    }
+    console.log(`[TitanOrchestrator] 🌊 Layout: ${mode}`)
+    this.log('Physics', `🌊 Layout switched to ${mode}`)
   }
   
   /**

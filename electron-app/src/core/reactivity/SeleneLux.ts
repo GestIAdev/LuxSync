@@ -46,6 +46,14 @@ import {
   // 🌊 WAVE 2401: LIQUID STEREO - 7-Band Envelope Engine
   liquidStereoPhysics,
   type LiquidStereoInput,
+  // 🌊 WAVE 2429: A/B FOUNDATION — Omni-Liquid Engines
+  liquidEngine41,
+  liquidEngine71,
+  // 🌊 WAVE 2432: THE GREAT WIRING — Profile hot-swap
+  PROFILE_REGISTRY,
+  DEFAULT_LIQUID_PROFILE,
+  // 🌊 WAVE 2434: TELEMETRY ENGINE — swap in/out de liquidEngine41
+  latinoEngine41Telemetry,
 } from '../../hal/physics';
 
 import type { GodEarBands } from '../../workers/GodEarFFT';
@@ -382,6 +390,10 @@ export class SeleneLux {
   // ═══════════════════════════════════════════════════════════════════════
   private useLiquidStereo: boolean;
   
+  // 🌊 WAVE 2429 → WAVE 2432: Layout mode for Omni-Liquid routing
+  // 'legacy' = DEPRECATED (backwards compat only), '4.1' = LiquidEngine41, '7.1' = LiquidEngine71
+  private liquidLayout: 'legacy' | '4.1' | '7.1' = '4.1';
+  
   // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
   private liquidStereoOverrides: {
     frontL: number;   // SubBass zone
@@ -394,7 +406,7 @@ export class SeleneLux {
   
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
-    this.useLiquidStereo = false;  // 🌊 WAVE 2401: Starts in God Mode
+    this.useLiquidStereo = true;  // 🌊 WAVE 2432: Omni-Liquid siempre activo — legacy jubilado
     
     // Inicializar físicas stateful
     this.latinoPhysics = new LatinoStereoPhysics();
@@ -432,11 +444,40 @@ export class SeleneLux {
   // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * 🌊 WAVE 2401: Set Liquid Stereo mode (called from TitanEngine via IPC)
+   * 🌊 WAVE 2401 → WAVE 2432: Set Liquid Stereo mode
+   * Legacy ON/OFF toggle — ahora siempre fuerza liquid activo.
+   * Mantenido por compatibilidad IPC.
    */
   public setLiquidStereo(enabled: boolean): void {
     this.useLiquidStereo = enabled;
-    console.log(`[SeleneLux 🌊] Liquid Stereo: ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
+    console.log(`[SeleneLux 🌊] Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF (legacy fallback)'}`);
+  }
+
+  /**
+   * 🌊 WAVE 2432: THE GREAT WIRING — Set layout mode (4.1 / 7.1)
+   * El switch bifurcado que conecta la UI con el motor Omni-Líquido.
+   * 'legacy' se acepta por compatibilidad pero redirige a '4.1'.
+   */
+  public setLiquidLayout(mode: 'legacy' | '4.1' | '7.1'): void {
+    // Legacy ya no existe — redirigir silenciosamente a 4.1
+    const actualMode = mode === 'legacy' ? '4.1' : mode;
+    this.liquidLayout = actualMode;
+    this.useLiquidStereo = true; // Siempre liquid activo
+    console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
+  }
+
+  /**
+   * 🌊 WAVE 2432: HOT-SWAP PROFILE — Cambia el perfil del motor activo
+   * Llamado cuando el usuario cambia de vibe (ej. 'techno' → 'latino').
+   * Propaga el perfil a AMBOS motores para que el switch sea instantáneo.
+   */
+  public setActiveProfile(vibeKey: string): void {
+    const normalizedKey = vibeKey.toLowerCase();
+    const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
+    liquidEngine41.setProfile(profile);
+    liquidEngine71.setProfile(profile);
+    latinoEngine41Telemetry.setProfile(profile);
+    console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile === DEFAULT_LIQUID_PROFILE ? 'TECHNO (default)' : normalizedKey.toUpperCase()}`);  
   }
 
   /**
@@ -472,12 +513,114 @@ export class SeleneLux {
     let debugInfo: Record<string, unknown> = {};
     
     // ─────────────────────────────────────────────────────────────────────
-    // PHYSICS DISPATCH POR GÉNERO
+    // 🌊 WAVE 2432: THE GREAT WIRING — UNIVERSAL OMNI-LIQUID DISPATCH
+    // ─────────────────────────────────────────────────────────────────────
+    // Cuando Liquid está activo, TODOS los vibes pasan por el Omni-Liquid Engine.
+    // El perfil correcto ya está inyectado en los motores via setActiveProfile().
+    // Los efectos de paleta per-genre (accent, strobe visual) se aplican aparte.
     // ─────────────────────────────────────────────────────────────────────
     
-    if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
-      // ⚡ TECHNO: Industrial Strobe Physics
-      // 1. API Legacy para colores/strobe
+    if (this.useLiquidStereo) {
+      // ═══════════════════════════════════════════════════════════════════
+      // PALETTE EFFECTS PER-GENRE (visual only — no zone physics)
+      // ═══════════════════════════════════════════════════════════════════
+      if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+        const result = TechnoStereoPhysics.apply(
+          inputPalette,
+          {
+            normalizedTreble: audioMetrics.normalizedTreble,
+            normalizedBass: audioMetrics.normalizedBass,
+          },
+          elementalMods
+        );
+        outputPalette.accent = result.palette.accent;
+        debugInfo = result.debugInfo;
+      } else if (
+        vibeNormalized.includes('latin') || vibeNormalized.includes('fiesta') ||
+        vibeNormalized.includes('reggae') || vibeNormalized.includes('cumbia') ||
+        vibeNormalized.includes('salsa') || vibeNormalized.includes('bachata')
+      ) {
+        const result = this.latinoPhysics.apply(
+          inputPalette,
+          {
+            normalizedBass: audioMetrics.normalizedBass,
+            normalizedMid: audioMetrics.normalizedMid,
+            normalizedEnergy: audioMetrics.avgNormEnergy,
+            normalizedHigh: audioMetrics.normalizedTreble,
+            normalizedHighMid: audioMetrics.normalizedMid * 0.6 + audioMetrics.normalizedTreble * 0.4,
+            sectionType: vibeContext.section,
+          },
+          vibeContext.bpm,
+          elementalMods
+        );
+        outputPalette.primary = result.palette.primary;
+        outputPalette.accent = result.palette.accent;
+        isSolarFlare = result.isSolarFlare;
+        forceMovement = result.forceMovement;
+        if (result.dimmerOverride !== null) {
+          dimmerOverride = result.dimmerOverride;
+        }
+        debugInfo = { flavor: result.flavor, ...result.debugInfo };
+      }
+      // Rock/Pop y Chill no modifican paleta — la entrada se preserva
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🌊 OMNI-LIQUID ENGINE — ZONE PHYSICS (UNIVERSAL)
+      // ═══════════════════════════════════════════════════════════════════
+      const safe = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
+      const bands: GodEarBands = {
+        subBass: safe(audioMetrics.subBass),
+        bass: safe(audioMetrics.normalizedBass),
+        lowMid: safe(audioMetrics.lowMid) || safe(audioMetrics.normalizedBass) * 0.5,
+        mid: safe(audioMetrics.normalizedMid),
+        highMid: safe(audioMetrics.highMid) || safe(audioMetrics.normalizedMid) * 0.6,
+        treble: safe(audioMetrics.normalizedTreble),
+        ultraAir: safe(audioMetrics.ultraAir),
+      };
+      
+      const liquidInput: LiquidStereoInput = {
+        bands,
+        sectionType: vibeContext.section,
+        isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+        isAGCTrap: false,
+        harshness: audioMetrics.harshness,
+        flatness: audioMetrics.spectralFlatness,
+        isKick: audioMetrics.kickDetected ?? false,
+      };
+      
+      // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
+      // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa latinoEngine41Telemetry
+      const liquidEngine = this.liquidLayout === '7.1'
+        ? liquidEngine71
+        : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
+      const liquidResult = liquidEngine.applyBands(liquidInput);
+      
+      isStrobeActive = liquidResult.strobeActive;
+      physicsApplied = 'liquid-stereo';
+      
+      // 🛡️ NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.
+      this.liquidStereoOverrides = {
+        frontL: safe(liquidResult.frontLeftIntensity),
+        frontR: safe(liquidResult.frontRightIntensity),
+        backL: safe(liquidResult.backLeftIntensity),
+        backR: safe(liquidResult.backRightIntensity),
+        moverL: safe(liquidResult.moverLeftIntensity),
+        moverR: safe(liquidResult.moverRightIntensity),
+      };
+      
+      // Legacy compat — para que el AGC TRUST block no rompa
+      this.technoOverrides = {
+        front: liquidResult.frontParIntensity,
+        back: liquidResult.backParIntensity,
+        mover: liquidResult.moverIntensity,
+        moverL: liquidResult.moverIntensityL,
+        moverR: liquidResult.moverIntensityR,
+      };
+      
+    } else if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+      // ═══════════════════════════════════════════════════════════════════
+      // ⚡ LEGACY FALLBACK: TECHNO GOD MODE (useLiquidStereo === false)
+      // ═══════════════════════════════════════════════════════════════════
       const result = TechnoStereoPhysics.apply(
         inputPalette,
         {
@@ -486,73 +629,11 @@ export class SeleneLux {
         },
         elementalMods
       );
-      
       outputPalette.accent = result.palette.accent;
       isStrobeActive = result.isStrobeActive;
       physicsApplied = 'techno';
       debugInfo = result.debugInfo;
-      
-      // ═══════════════════════════════════════════════════════════════════
-      // 🌊 WAVE 2401: LIQUID STEREO ROUTING
-      // Si useLiquidStereo → 7-band LiquidStereoPhysics
-      // Si no → God Mode legacy (TechnoStereoPhysics.applyZones)
-      // ═══════════════════════════════════════════════════════════════════
-      
-      if (this.useLiquidStereo) {
-        // 🌊 RECONSTRUCT GodEarBands from SeleneLuxAudioMetrics
-        // 🛡️ WAVE 2402: safe() atrapa NaN + undefined + null → 0
-        const safe = (v: unknown): number => (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
-        const bands: GodEarBands = {
-          subBass: safe(audioMetrics.subBass),
-          bass: safe(audioMetrics.normalizedBass),
-          lowMid: safe(audioMetrics.lowMid) || safe(audioMetrics.normalizedBass) * 0.5,
-          mid: safe(audioMetrics.normalizedMid),
-          highMid: safe(audioMetrics.highMid) || safe(audioMetrics.normalizedMid) * 0.6,
-          treble: safe(audioMetrics.normalizedTreble),
-          ultraAir: safe(audioMetrics.ultraAir),
-        };
-        
-        const liquidInput: LiquidStereoInput = {
-          bands,
-          sectionType: vibeContext.section,
-          isRealSilence: audioMetrics.avgNormEnergy < 0.01,
-          isAGCTrap: false,
-          harshness: audioMetrics.harshness,
-          flatness: audioMetrics.spectralFlatness,
-          isKick: audioMetrics.kickDetected ?? false,
-        };
-        
-        const liquidResult = liquidStereoPhysics.applyBands(liquidInput);
-        
-        // Override strobe from liquid engine (replaces techno legacy strobe)
-        isStrobeActive = liquidResult.strobeActive;
-        physicsApplied = 'liquid-stereo';
-        
-        // 🛡️ WAVE 2402: NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.
-        // Store 7-zone overrides
-        this.liquidStereoOverrides = {
-          frontL: safe(liquidResult.frontLeftIntensity),
-          frontR: safe(liquidResult.frontRightIntensity),
-          backL: safe(liquidResult.backLeftIntensity),
-          backR: safe(liquidResult.backRightIntensity),
-          moverL: safe(liquidResult.moverLeftIntensity),
-          moverR: safe(liquidResult.moverRightIntensity),
-        };
-        
-        // Legacy compat — para que el AGC TRUST block no rompa
-        this.technoOverrides = {
-          front: liquidResult.frontParIntensity,
-          back: liquidResult.backParIntensity,
-          mover: liquidResult.moverIntensity,
-          moverL: liquidResult.moverIntensityL,
-          moverR: liquidResult.moverIntensityR,
-        };
-        
-      } else {
-      // 2. WAVE 290.3: Nueva API para zonas/intensidades (GOD MODE LEGACY)
-      // 🔥 WAVE 1012: TECHNO NEEDS SPECTRAL DATA!
-      // Sin harshness/flatness, Techno opera en modo degradado (acidMode=false, noiseMode=false)
-      // Esto mata el atmosphericFloor y el Apocalypse Detection
+
       const zonesResult = technoStereoPhysics.applyZones({
         bass: audioMetrics.normalizedBass,
         mid: audioMetrics.normalizedMid,
@@ -588,10 +669,6 @@ export class SeleneLux {
       };
       
       this.liquidStereoOverrides = null;  // Clean when not active
-      
-      } // end if/else useLiquidStereo
-      
-      // 🔥 WAVE 2212: Log de strobe eliminado — spameaba a 60fps bloqueando el logging útil
       
     } else if (vibeNormalized.includes('rock') || vibeNormalized.includes('pop')) {
       // ═══════════════════════════════════════════════════════════════════════

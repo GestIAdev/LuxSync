@@ -84,5 +84,12 @@ export {
   type LiquidStereoResult,
 } from './LiquidStereoPhysics'
 
+// 🌊 WAVE 2429: THE A/B FOUNDATION — Omni-Liquid Engine (Base + 4.1 + 7.1)
+export { LiquidEngineBase, type ProcessedFrame } from './LiquidEngineBase'
+export { LiquidEngine71, liquidEngine71 } from './LiquidEngine71'
+export { LiquidEngine41, liquidEngine41 } from './LiquidEngine41'
+// 🌊 WAVE 2434: TELEMETRY ENGINE — Drop-in replacement de liquidEngine41 para captura de datos
+export { LiquidEngine41Telemetry, latinoEngine41Telemetry, type Latino41TelemetryRecord } from './LiquidEngine41Telemetry'
+
 export type { ILiquidProfile } from './profiles/ILiquidProfile'
-export { TECHNO_PROFILE, PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE } from './profiles'
+export { TECHNO_PROFILE, LATINO_PROFILE, POPROCK_PROFILE, PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE } from './profiles'

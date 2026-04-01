@@ -1224,6 +1224,22 @@ export class TitanEngine extends EventEmitter {
     this.nervousSystem.setLiquidStereo(enabled);
     console.log(`[TitanEngine] 🌊 Liquid Stereo ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
   }
+
+  /**
+   * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+   */
+  public setLiquidLayout(mode: '4.1' | '7.1'): void {
+    this.nervousSystem.setLiquidLayout(mode);
+    console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
+  }
+
+  /**
+   * 🌊 WAVE 2432: HOT-SWAP — Profile change on vibe switch
+   */
+  public setActiveProfile(vibeKey: string): void {
+    this.nervousSystem.setActiveProfile(vibeKey);
+    console.log(`[TitanEngine] 🌊 Profile: ${vibeKey}`);
+  }
   
   /**
    * 🧬 WAVE 500: Obtiene estado de la consciencia

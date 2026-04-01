@@ -29,7 +29,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeSubBass: {
     name: 'Front L (SubBass Groove)',
     gateOn: 0.12,
-    gateOff: 0.06,
     boost: 3.0,
     crushExponent: 2.6,
     decayBase: 0.40,
@@ -49,7 +48,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeKick: {
     name: 'Front R (Kick Sniper)',
     gateOn: 0.15,
-    gateOff: 0.08,
     boost: 3.0,
     crushExponent: 0.6,
     decayBase: 0.04,
@@ -67,7 +65,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeVocal: {
     name: 'Mover R (Vocal & Synth Wash)',
     gateOn: 0.01,
-    gateOff: 0.005,
     boost: 1.5,
     crushExponent: 1.5,
     decayBase: 0.70,
@@ -86,7 +83,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
     gateOn: 0.15,
-    gateOff: 0.02,
     boost: 2.0,
     crushExponent: 1.0,
     decayBase: 0.05,
@@ -104,7 +100,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
     gateOn: 0.02,
-    gateOff: 0.01,
     boost: 5.0,
     crushExponent: 1.0,
     decayBase: 0.75,
@@ -122,7 +117,6 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeTreble: {
     name: 'Mover L (Tonal Melodies)',
     gateOn: 0.02,
-    gateOff: 0.01,
     boost: 4.0,
     crushExponent: 1.0,
     decayBase: 0.78,
@@ -151,21 +145,30 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   bassSubtractRange: 0.45,
 
   // ═══════════════════════════════════════════════════════════════
-  // BACK L (MID SYNTHS): Cross-filter (WAVE 2411 Asymmetric Split)
-  // input = max(0, lowMid×0.5 + mid×0.5 - treble×0.3)
+  // BACK L (MID SYNTHS): Cross-filter (WAVE 2411 → WAVE 2430 PARAMETRIZADO)
+  // Original hardcodeado: mid×0.6 - bass×0.2
+  // Nuevo: lowMid×backLLowMidWeight + mid×backLMidWeight - treble×backLTrebleSub
+  // Para Techno: lowMid×0.0 + mid×0.6 - treble×0.0 (bass×0.2 se pierde, era marginal)
+  // NOTA: El original restaba bass, el nuevo resta treble. Para mantener exactitud,
+  // usamos lowMid=-0.2 como proxy (lowMid ≈ bass en techno). Pero lowMid no existe
+  // como peso negativo limpio. Solucón pragmática: mid×0.6, el resto en 0.
   // ═══════════════════════════════════════════════════════════════
 
-  backLLowMidWeight: 0.5,
-  backLMidWeight: 0.5,
-  backLTrebleSub: 0.3,
+  backLLowMidWeight: 0.0,   // WAVE 2430: original no usaba lowMid
+  backLMidWeight: 0.6,      // WAVE 2430: original = mid×0.6
+  backLTrebleSub: 0.0,      // WAVE 2430: original no restaba treble
+  backLBassSub: 0.2,        // WAVE 2430: original = -bass×0.2
 
   // ═══════════════════════════════════════════════════════════════
-  // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411)
-  // input = max(0, highMid×0.6 + treble×0.4) × isTonal
+  // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)
+  // Original hardcodeado: mid×0.4 + highMid×1.0 - bass×0.1
+  // Nuevo: highMid×moverLHighMidWeight + treble×moverLTrebleWeight - bass×0.1
+  // Para Techno: highMid×1.0 + treble×0.0 (mid×0.4 se mueve a highMid)
   // ═══════════════════════════════════════════════════════════════
 
-  moverLHighMidWeight: 0.6,
-  moverLTrebleWeight: 0.4,
+  moverLHighMidWeight: 1.0,   // WAVE 2430: original = highMid×1.0
+  moverLTrebleWeight: 0.0,    // WAVE 2430: original no usaba treble directo aquí
+  moverLMidWeight: 0.4,       // WAVE 2430: original = mid×0.4
   moverLTonalThreshold: 0.40,
 
   // ═══════════════════════════════════════════════════════════════

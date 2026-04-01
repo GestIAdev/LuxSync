@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * WAVE 2411: ILiquidProfile — Contrato de Perfil para el Omni-Liquid 7.1
+ * WAVE 2435: ILiquidProfile — Contrato de Perfil para el Omni-Liquid Engine
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Contiene TODA la parametría que varía entre géneros musicales.
@@ -10,8 +10,11 @@
  * Un perfil es puro dato: sin lógica, sin funciones, sin imports pesados.
  * Misma mecánica, resultado completamente distinto según los números.
  *
+ * WAVE 2435: Añade overrides41 — parametría específica para layout 4.1.
+ * La fusión ocurre en setProfile(), NO en el hot-path.
+ *
  * @module hal/physics/profiles/ILiquidProfile
- * @version WAVE 2411 — THE ARCHITECTURE FORGE
+ * @version WAVE 2435 — OMNILIQUID OVERRIDES
  */
 
 import type { LiquidEnvelopeConfig } from '../LiquidEnvelope'
@@ -77,6 +80,8 @@ export interface ILiquidProfile {
   readonly backLMidWeight: number
   /** Factor de resta de treble en Back L */
   readonly backLTrebleSub: number
+  /** Factor de resta de bass en Back L (Techno: bass ensucia mid synths) */
+  readonly backLBassSub: number
 
   // ═══════════════════════════════════════════════════════════════
   // MOVER L (MELODÍAS): Cross-filter + tonal gate
@@ -88,6 +93,8 @@ export interface ILiquidProfile {
   readonly moverLHighMidWeight: number
   /** Peso de treble en la mezcla de Mover L */
   readonly moverLTrebleWeight: number
+  /** Peso de mid en la mezcla de Mover L (para géneros con mid melódico) */
+  readonly moverLMidWeight: number
   /** Umbral de flatness para el gate tonal (por debajo = tonal = pasa) */
   readonly moverLTonalThreshold: number
 
@@ -140,4 +147,58 @@ export interface ILiquidProfile {
   readonly kickEdgeMinInterval: number
   /** Frames de veto post-kick (input kill en Mover R) */
   readonly kickVetoFrames: number
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2435: OVERRIDES DE LAYOUT 4.1
+  //
+  // Cuando un perfil 7.1 corre en layout 4.1, routeZones() compacta
+  // las zonas con max(). El tumbao continuo (backLeft) asfixia al
+  // TAcka impulsivo (backRight) porque max() nunca se apaga.
+  //
+  // Estos overrides permiten ajustar la parametría para compensar
+  // la compactación. Se fusionan UNA VEZ en setProfile() cuando
+  // el engine tiene layout '4.1'. El hot-path no se entera.
+  //
+  // Solo los campos que necesitan cambiar. Los ausentes se heredan
+  // del perfil base sin modificación.
+  // ═══════════════════════════════════════════════════════════════
+
+  readonly overrides41?: {
+    // Envelopes — Partial permite overridear campos individuales
+    // sin repetir los 12 campos del envelope completo
+    readonly envelopeSubBass?: Partial<LiquidEnvelopeConfig>
+    readonly envelopeKick?: Partial<LiquidEnvelopeConfig>
+    readonly envelopeVocal?: Partial<LiquidEnvelopeConfig>
+    readonly envelopeSnare?: Partial<LiquidEnvelopeConfig>
+    readonly envelopeHighMid?: Partial<LiquidEnvelopeConfig>
+    readonly envelopeTreble?: Partial<LiquidEnvelopeConfig>
+
+    // Transient Shaper
+    readonly percGate?: number
+    readonly percBoost?: number
+    readonly percExponent?: number
+    readonly percMidSubtract?: number
+
+    // Back L: Cross-filter
+    readonly backLLowMidWeight?: number
+    readonly backLMidWeight?: number
+    readonly backLTrebleSub?: number
+    readonly backLBassSub?: number
+
+    // Mover L: Melody Gate
+    readonly moverLTonalThreshold?: number
+    readonly moverLHighMidWeight?: number
+    readonly moverLTrebleWeight?: number
+    readonly moverLMidWeight?: number
+
+    // Mover R: Bass Subtractor
+    readonly bassSubtractBase?: number
+    readonly bassSubtractRange?: number
+    readonly moverRTrebleSub?: number
+
+    // Sidechain
+    readonly sidechainThreshold?: number
+    readonly sidechainDepth?: number
+    readonly snareSidechainDepth?: number
+  }
 }

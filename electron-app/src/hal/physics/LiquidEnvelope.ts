@@ -32,8 +32,8 @@ export interface LiquidEnvelopeConfig {
 
   /** Umbral de activación del gate (0-1) */
   readonly gateOn: number
-  /** Umbral de desactivación / histéresis inferior (0-1) */
-  readonly gateOff: number
+  // gateOff: PURGADO (WAVE 2435) — nunca se leyó en process(). El apagado
+  // lo maneja el decay exponencial (etapa 6) + fadeZone cuadrático (etapa 9).
   /** Multiplicador de ganancia post-gate */
   readonly boost: number
   /** Exponente de compresión base (>1 = selectivo, <1 = expansivo) */

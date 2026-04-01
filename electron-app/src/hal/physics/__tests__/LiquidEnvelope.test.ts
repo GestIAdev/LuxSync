@@ -16,7 +16,6 @@ import { LiquidEnvelope, type LiquidEnvelopeConfig } from '../LiquidEnvelope'
 const GOD_MODE_BASS_CONFIG: LiquidEnvelopeConfig = {
   name: 'Front R (Bass)',
   gateOn: 0.50,
-  gateOff: 0.35,
   boost: 3.0,
   crushExponent: 1.5,
   decayBase: 0.60,
@@ -32,7 +31,6 @@ const GOD_MODE_BASS_CONFIG: LiquidEnvelopeConfig = {
 const SUBBASS_CONFIG: LiquidEnvelopeConfig = {
   name: 'Front L (SubBass)',
   gateOn: 0.55,
-  gateOff: 0.40,
   boost: 2.5,
   crushExponent: 1.5,
   decayBase: 0.55,
@@ -48,7 +46,6 @@ const SUBBASS_CONFIG: LiquidEnvelopeConfig = {
 const TREBLE_CONFIG: LiquidEnvelopeConfig = {
   name: 'Mover R (Treble)',
   gateOn: 0.14,
-  gateOff: 0.08,
   boost: 8.0,
   crushExponent: 1.2,
   decayBase: 0.50,

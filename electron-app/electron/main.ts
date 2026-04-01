@@ -44,6 +44,7 @@ import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter'
 import { CompositeDMXDriver } from '../src/hal/drivers/CompositeDMXDriver'
 import { USBDMXDriverAdapter } from '../src/hal/drivers/USBDMXDriverAdapter'
 import { EffectsEngine } from '../src/engine/color/EffectsEngine'
+import { latinoEngine41Telemetry } from '../src/hal/physics'
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
 
@@ -642,5 +643,37 @@ ipcMain.handle('audio:getDesktopSources', async () => {
     return []
   }
 })
+
+// ── WAVE 2434: TELEMETRY LATINO 4.1 — IPC handlers ──────────────────────────
+// Uso desde DevTools renderer: await window.luxDebug.telemetry.export()
+ipcMain.handle('telemetry:lt41:export', (_event, outputPath?: string) => {
+  try {
+    // Si no se pasa outputPath, calcula la ruta absoluta desde app.getAppPath()
+    // app.getAppPath() en dev = .../electron-app  → sube un nivel al repo raíz
+    const resolvedPath = outputPath ?? path.join(app.getAppPath(), '..', 'docs', 'logs', 'latinocalib41.md')
+    const count = latinoEngine41Telemetry.exportToFile(resolvedPath)
+    return { success: true, framesExported: count, path: resolvedPath }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[TELEMETRY] exportToFile failed:', msg)
+    return { success: false, error: msg }
+  }
+})
+
+ipcMain.handle('telemetry:lt41:stop', () => {
+  latinoEngine41Telemetry.setTelemetryEnabled(false)
+  return { success: true }
+})
+
+ipcMain.handle('telemetry:lt41:start', () => {
+  latinoEngine41Telemetry.setTelemetryEnabled(true)
+  return { success: true }
+})
+
+ipcMain.handle('telemetry:lt41:flush', () => {
+  latinoEngine41Telemetry.flushBuffer()
+  return { success: true }
+})
+// ─────────────────────────────────────────────────────────────────────────────
 
 // WAVE 2098: Boot silence — module load log removed

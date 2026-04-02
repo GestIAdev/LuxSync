@@ -40,6 +40,7 @@ export interface ProcessedFrame {
   recoveryFactor: number
   isBreakdown: boolean
   isVetoed: boolean
+  isKick: boolean        // Señal cruda del IntervalBPMTracker — fonte del candado
   isKickEdge: boolean
   acidMode: boolean
   noiseMode: boolean
@@ -383,6 +384,7 @@ export abstract class LiquidEngineBase {
       recoveryFactor,
       isBreakdown,
       isVetoed,
+      isKick,
       isKickEdge,
       acidMode,
       noiseMode,

@@ -49,7 +49,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
     let fR = frontRight
 
     if (this.profile.auraCapExponent > 0) {
-      const auraCap = this.profile.auraCapBase * Math.pow(morphFactor, this.profile.auraCapExponent)
+      const auraCap = this.profile.auraCapBase * Math.pow(frame.morphFactor, this.profile.auraCapExponent)
       if (fL > auraCap) fL = auraCap
     }
 

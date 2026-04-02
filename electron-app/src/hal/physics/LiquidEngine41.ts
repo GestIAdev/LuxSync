@@ -33,9 +33,6 @@ export class LiquidEngine41 extends LiquidEngineBase {
     super(profile, '4.1')
   }
 
-  // Telemetría — throttle de frames
-  private _telemFrame = 0
-
   protected routeZones(frame: ProcessedFrame): LiquidStereoResult {
     const {
       frontLeft, frontRight,
@@ -77,18 +74,15 @@ export class LiquidEngine41 extends LiquidEngineBase {
       outMoverR = moverRight
     }
 
-    // ── TELEMETRÍA (~20fps, solo techno-industrial) ───────────────────────
+    // ── DIAGNÓSTICO FRONT PAR — cada frame, sin throttle ─────────────────
     if (this.profile.id === 'techno-industrial') {
-      if (++this._telemFrame % 3 === 0) {
-        const f = (n: number) => n.toFixed(3)
-        const kick = isKickEdge ? 'KICK' : '----'
-        console.log(
-          `[4.1 FRONT] kick:${f(frontPar)} back:${f(backPar)} | ` +
-          `mL:${f(outMoverL)} mR:${f(outMoverR)} | ` +
-          `sB:${f(frontLeft)} kE:${f(frontRight)} sn:${f(backRight)} | ` +
-          `morph:${f(frame.morphFactor)} ${kick}`
-        )
-      }
+      const f = (n: number) => n.toFixed(3)
+      const flash = frontPar > 0.5 ? ' *FLASH*' : ''
+      console.log(
+        `[FRONT DIAG] In(sB:${f(frame.bands.subBass)} kE:${f(frame.bands.bass)}) | ` +
+        `Env(fL:${f(frontLeft)} fR:${f(frontRight)}) | ` +
+        `OUT:${f(frontPar)} | morph:${f(frame.morphFactor)}${flash}`
+      )
     }
 
     return {

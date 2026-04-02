@@ -58,7 +58,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     crushExponent: 0.4877,
     decayBase: 0.0077,
     decayRange: 0.0329,
-    maxIntensity: 1.0,
+    maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
     squelchBase: 0.0388,
     squelchSlope: 0.0,
     ghostCap: 0.00,

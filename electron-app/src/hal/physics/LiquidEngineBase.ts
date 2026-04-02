@@ -286,7 +286,11 @@ export abstract class LiquidEngineBase {
     let frontLeft = this.envSubBass.process(bands.subBass, morphFactor, now, isBreakdown)
 
     // --- FRONT R: Kick edge detection (El Francotirador) ---
-    const kickSignal = isKickEdge ? bands.bass : 0
+    // WAVE 2439.2: Candado del Metrónomo — en strict-split, el IntervalBPMTracker
+    // es la única fuente de verdad. Si !isKick, energia = 0, sin excepciones.
+    // En modo default la energía cruda del isKickEdge puede seguir disparando.
+    const kickLocked = this.profile.layout41Strategy === 'strict-split' && !isKick
+    const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
     // --- BACK R (El Látigo): WAVE 2427 TRANSIENT SHAPER ---

@@ -272,8 +272,13 @@ function debouncedSave(save: () => Promise<boolean>) {
     clearTimeout(saveTimeout)
   }
   saveTimeout = setTimeout(async () => {
-    await save()
-    saveTimeout = null
+    try {
+      await save()
+    } catch (err) {
+      console.error('[stageStore] debouncedSave failed:', err)
+    } finally {
+      saveTimeout = null
+    }
   }, SAVE_DEBOUNCE)
 }
 

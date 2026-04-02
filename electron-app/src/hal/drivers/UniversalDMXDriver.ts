@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🌪️ UniversalDMXDriver.ts - WAVE 2020.2c: USB MULTI-HEAD HYDRA
  * 
  * Driver profesional para CUALQUIER interfaz DMX USB:
@@ -898,11 +898,12 @@ export class UniversalDMXDriver extends EventEmitter {
     this.clearReconnectTimer()
     
     this.log(`⏰ Reconnecting in ${this.config.reconnectDelay}ms...`)
-    
     this.reconnectTimer = setTimeout(async () => {
-      // Intentar reconectar todos los dispositivos disponibles
-      this.log('� Attempting hydra reconnect...')
-      await this.autoConnect()
+      try {
+        await this.autoConnect()
+      } catch (err) {
+        this.log(`Reconnect failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }, this.config.reconnectDelay)
   }
 

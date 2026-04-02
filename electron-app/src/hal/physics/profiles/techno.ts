@@ -25,41 +25,44 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ENVELOPE CONFIGS — Valores exactos de LiquidStereoPhysics pre-2411
   // ═══════════════════════════════════════════════════════════════
 
-  // Front L — El Océano de Subgraves (WAVE 2407b Monte Carlo)
-  // WAVE 2436.2: decay 0.40→0.30 — Techno flash: staccato extremo, máximo contraste.
-  //              boost 3.0→3.5 — compensar decay más corto con más punch.
-  //              maxI 0.72→0.70 — ligeramente más bajo que latino/poprock (staccato)
+  // Front L — El Océano de Subgraves (WAVE 2437: Monte Carlo co-optimizado con envelopeKick)
+  // gateOn 0.12→0.0656 — responde a subgraves más débiles, groove más lleno.
+  // boost 3.5→2.7 — menos agresivo, equilibrio con fR a maxI=1.0.
+  // maxIntensity 0.70→0.529 — fL cede protagonismo al kick (fR=1.0).
+  // squelchBase 0.04→0.0613 — squelch ligeramente más alto para limpiar el piso.
   envelopeSubBass: {
     name: 'Front L (SubBass Groove)',
-    gateOn: 0.12,
-    boost: 3.5,
-    crushExponent: 2.6,
-    decayBase: 0.30,
-    decayRange: 0.15,
-    maxIntensity: 0.70,
-    squelchBase: 0.04,
-    squelchSlope: 0.55,
-    ghostCap: 0.06,
-    gateMargin: 0.01,
+    gateOn: 0.0656,
+    boost: 2.7054,
+    crushExponent: 2.4156,
+    decayBase: 0.2218,
+    decayRange: 0.166,
+    maxIntensity: 0.5291,
+    squelchBase: 0.0613,
+    squelchSlope: 0.5788,
+    ghostCap: 0.0357,
+    gateMargin: 0.0288,
   },
 
-  // Front R — El Francotirador (WAVE 2415: Monte Carlo Kick Calibration)
-  // Problema: decay 0.12 dejaba tail visible de 0.15-0.18 en frames garbage.
-  // Solución: decay 0.04 → 0.75×0.04=0.03 (debajo de fadeZone 0.08, invisible).
-  // crush 0.6 expansivo: asegura que bass 0.70+ siempre sature al maxI.
-  // boost 3.0: sweet spot para kicks débiles sin oversaturar los fuertes.
+  // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
+  // decayBase 0.04→0.0077 — el killer fix: decay ultrarrápido, fR muere entre kicks.
+  // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
+  // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
+  // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
+  // squelchSlope 0.10→0.0 — sin squelch dinámico, el gate fijo es suficiente.
+  // boost 3.0→3.3 — leve compensación por gate más bajo.
   envelopeKick: {
     name: 'Front R (Kick Sniper)',
-    gateOn: 0.15,
-    boost: 3.0,
-    crushExponent: 0.6,
-    decayBase: 0.04,
-    decayRange: 0.10,
-    maxIntensity: 0.85,
-    squelchBase: 0.03,
-    squelchSlope: 0.10,
+    gateOn: 0.1098,
+    boost: 3.3013,
+    crushExponent: 0.4877,
+    decayBase: 0.0077,
+    decayRange: 0.0329,
+    maxIntensity: 1.0,
+    squelchBase: 0.0388,
+    squelchSlope: 0.0,
     ghostCap: 0.00,
-    gateMargin: 0.01,
+    gateMargin: 0.0213,
   },
 
   // Mover R — El Coro / Voces (WAVE 2419 MONTE CARLO RIGHT HEMISPHERE)

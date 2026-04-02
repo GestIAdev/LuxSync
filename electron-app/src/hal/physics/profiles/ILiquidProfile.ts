@@ -137,21 +137,19 @@ export interface ILiquidProfile {
   readonly auraCapExponent: number
 
   /**
-   * WAVE 2439 — KICK WINDOW 4.1: Ventana temporal post-kick
-   * Número de frames tras un isKickEdge donde fL (subBass) puede pasar al frontPar.
-   * Fuera de esa ventana, fL = 0: el front solo vive cuando hay kick activo o su eco.
-   * 0 = desactivado (comportamiento legacy — subBass siempre visible).
-   * A 60fps: 6 frames ≈ 100ms de ventana (sigue al kick sin corte abrupto).
+   * WAVE 2439 — ESTRATEGIA DE ENRUTAMIENTO 4.1
+   *
+   * 'default'       — Comportamiento legacy: frontPar=max(subBass,kick), backPar=max(snare,highMid)
+   *
+   * 'strict-split'  — METRÓNOMO/LIENZO (Techno industrial):
+   *   frontPar = envKick solo          → El Metrónomo. Pulso rítmico puro.
+   *   backPar  = envSnare solo         → El Látigo. Percusión alta pura.
+   *   moverL   = max(subBass, highMid, treble)  → Lienzo L: todo el muro atmosférico.
+   *   moverR   = max(subBass, highMid, vocal)   → Lienzo R: muro + aire vocal.
+   *
+   * undefined / ausente → 'default'
    */
-  readonly kickWindowFrames: number
-
-  /**
-   * WAVE 2439 — KICK BOOST 4.1: Amplificación del pulso en el momento del kick
-   * Multiplicador sobre fR (envKick) aplicado en el frame del isKickEdge.
-   * Crea un impacto visual más contundente y define el ritmo con claridad.
-   * 1.0 = sin boost. 1.5 = +50% en el momento del golpe.
-   */
-  readonly kickBoost: number
+  readonly layout41Strategy?: 'default' | 'strict-split'
 
   // ═══════════════════════════════════════════════════════════════
   // STROBE
@@ -240,8 +238,7 @@ export interface ILiquidProfile {
     readonly frontKickSidechainThreshold?: number
     readonly auraCapBase?: number
     readonly auraCapExponent?: number
-    // WAVE 2439 — Kick Window + Boost
-    readonly kickWindowFrames?: number
-    readonly kickBoost?: number
+    // WAVE 2439 — Estrategia de enrutamiento 4.1
+    readonly layout41Strategy?: 'default' | 'strict-split'
   }
 }

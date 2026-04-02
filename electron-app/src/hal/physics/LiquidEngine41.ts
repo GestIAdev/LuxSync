@@ -4,16 +4,22 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Hereda toda la matemática de LiquidEngineBase.
- * Compacta las 7 zonas en 4 + strobe para rigs pequeños:
+ * Compacta las 7 zonas en 4 + strobe para rigs pequeños, con dos estrategias:
  *
- *   frontPar  = max(frontLeft, frontRight) — Un solo par frontal
- *   backPar   = max(backLeft, backRight)   — Un solo par trasero
- *   moverL    = moverLeft                  — El Galán
- *   moverR    = moverRight                 — La Dama
- *   strobe    = strobe binario
+ * ── 'default' ────────────────────────────────────────────────────────────
+ *   frontPar  = max(subBass, kick)          — Océano + Francotirador
+ *   backPar   = max(snare, highMid)         — Látigo + Sintetizadores
+ *   moverL    = envTreble                   — Melodías
+ *   moverR    = envVocal                    — Voces
+ *
+ * ── 'strict-split' (Metrónomo/Lienzo — Techno industrial) ─────────────
+ *   frontPar  = envKick                     — Solo el Metrónomo
+ *   backPar   = envSnare                    — Solo el Látigo
+ *   moverL    = max(subBass, highMid, treble) — Lienzo L: muro atmosférico
+ *   moverR    = max(subBass, highMid, vocal)  — Lienzo R: muro + aire vocal
  *
  * @module hal/physics/LiquidEngine41
- * @version WAVE 2435 — OMNILIQUID OVERRIDES
+ * @version WAVE 2439 — METRÓNOMO/LIENZO
  */
 
 import { LiquidEngineBase, type ProcessedFrame } from './LiquidEngineBase'
@@ -27,11 +33,8 @@ export class LiquidEngine41 extends LiquidEngineBase {
     super(profile, '4.1')
   }
 
-  // WAVE 2436.2 TELEMETRÍA TEMPORAL — contador de frames para throttle
+  // Telemetría — throttle de frames
   private _telemFrame = 0
-
-  // WAVE 2439 — KICK WINDOW: contador de frames desde el último kick
-  private _kickWindowCounter = 0
 
   protected routeZones(frame: ProcessedFrame): LiquidStereoResult {
     const {
@@ -43,91 +46,69 @@ export class LiquidEngine41 extends LiquidEngineBase {
       isKickEdge,
     } = frame
 
-    // ── WAVE 2439: KICK WINDOW + KICK BOOST ─────────────────────────────────
-    //
-    // KICK WINDOW: fL (subBass) solo puede vivir en el frontPar durante
-    // kickWindowFrames frames tras un kick. Fuera de esa ventana → fL = 0.
-    // Esto elimina las melodías bajas y basses que se colaban entre bombo y bombo.
-    //
-    // KICK BOOST: en el frame exacto del kick, fR se amplifica para que el
-    // pulso visual sea contundente y defina el ritmo por sí solo.
-    let fL = frontLeft
-    let fR = frontRight
+    let frontPar: number
+    let backPar: number
+    let outMoverL: number
+    let outMoverR: number
 
-    if (isKickEdge) {
-      this._kickWindowCounter = this.profile.kickWindowFrames
-    } else if (this._kickWindowCounter > 0) {
-      this._kickWindowCounter--
+    if (this.profile.layout41Strategy === 'strict-split') {
+      // ── METRÓNOMO / LIENZO ────────────────────────────────────────────────
+      //
+      // PARs: ritmo puro y militarmente separado.
+      //   Front = solo Kick      → El Metrónomo. Parpadea con el bombo.
+      //   Back  = solo Snare     → El Látigo. Percusión aguda sin contaminar.
+      //
+      // MOVERS: absorben TODO el muro de sonido continuo.
+      //   envSubBass  = frontLeft   (El Océano rodante)
+      //   envHighMid  = backLeft    (Sintetizadores medios)
+      //   envTreble   = moverLeft   (Melodías tonales)
+      //   envVocal    = moverRight  (Voces / aire)
+      //
+      frontPar  = frontRight                                          // envKick
+      backPar   = backRight                                           // envSnare
+      outMoverL = Math.max(frontLeft, backLeft, moverLeft)            // sB + hMid + treble
+      outMoverR = Math.max(frontLeft, backLeft, moverRight)           // sB + hMid + vocal
+
+    } else {
+      // ── DEFAULT (legacy) ─────────────────────────────────────────────────
+      frontPar  = Math.max(frontLeft, frontRight)
+      backPar   = Math.max(backLeft, backRight)
+      outMoverL = moverLeft
+      outMoverR = moverRight
     }
 
-    // Ventana cerrada → subBass silenciado en el front
-    if (this.profile.kickWindowFrames > 0 && this._kickWindowCounter === 0) {
-      fL = 0
-    }
-
-    // Boost de impacto en el frame del kick
-    if (isKickEdge && this.profile.kickBoost > 1.0) {
-      fR = Math.min(1.0, fR * this.profile.kickBoost)
-    }
-
-    // ── WAVE 2438: GUILLOTINA 4.1 — Sidechain Interno Exclusivo + Aura Cap ──
-    //
-    // AURA CAP MORFOLÓGICO: En modo industrial (morphFactor ≈ 0), el subBass
-    // no puede formar un muro de luz. El techo sube cuadráticamente con la
-    // presencia melódica. A morphFactor=0 → auraCap=0 (kill total del océano).
-    // A morphFactor=1 → auraCap=auraCapBase (techo alto, sin efecto práctico).
-    if (this.profile.auraCapExponent > 0) {
-      const auraCap = this.profile.auraCapBase * Math.pow(frame.morphFactor, this.profile.auraCapExponent)
-      if (fL > auraCap) fL = auraCap
-    }
-
-    // SIDECHAIN INTERNO EXCLUSIVO (GUILLOTINA BINARIA):
-    // Si el bombo dispara fuerte (fR > umbral), el subBass se calla.
-    // No hay competencia en el max() — el kick siempre gana.
-    if (this.profile.frontKickSidechainThreshold > 0 && fR > this.profile.frontKickSidechainThreshold) {
-      fL = 0
-    }
-
-    // Compactar: max de cada hemisferio para los PARs simétricos
-    const frontPar = Math.max(fL, fR)
-    const backPar = Math.max(backLeft, backRight)
-
-    // ── TELEMETRÍA FRONT PAR (WAVE 2436.2 + 2438 + 2439) — ~20fps (cada 3 frames a 60fps) ──
+    // ── TELEMETRÍA (~20fps, solo techno-industrial) ───────────────────────
     if (this.profile.id === 'techno-industrial') {
       if (++this._telemFrame % 3 === 0) {
         const f = (n: number) => n.toFixed(3)
-        const win = this._kickWindowCounter > 0 ? `W${this._kickWindowCounter}` : `W!`
-        const kick = isKickEdge ? `KICK` : `----`
+        const kick = isKickEdge ? 'KICK' : '----'
         console.log(
-          `[TECHNO-FRONT] sB:${f(frame.bands.subBass)} kE:${f(frame.bands.bass)} | ` +
-          `fL:${f(frontLeft)}->${f(fL)} fR:${f(frontRight)}->${f(fR)} | ` +
-          `fPar:${f(frontPar)} | morph:${f(frame.morphFactor)} | ${kick} ${win}`
+          `[4.1 FRONT] kick:${f(frontPar)} back:${f(backPar)} | ` +
+          `mL:${f(outMoverL)} mR:${f(outMoverR)} | ` +
+          `sB:${f(frontLeft)} kE:${f(frontRight)} sn:${f(backRight)} | ` +
+          `morph:${f(frame.morphFactor)} ${kick}`
         )
       }
     }
-    // ── FIN TELEMETRÍA ────────────────────────────────────────────────────────
 
     return {
-      // En 4.1, Front L y R reciben la misma intensidad (compactada)
-      frontLeftIntensity: frontPar,
+      frontLeftIntensity:  frontPar,
       frontRightIntensity: frontPar,
-      // Back L y R reciben la misma intensidad (compactada)
-      backLeftIntensity: backPar,
-      backRightIntensity: backPar,
-      // Movers mantienen separación L/R (Galán y Dama)
-      moverLeftIntensity: moverLeft,
-      moverRightIntensity: moverRight,
+      backLeftIntensity:   backPar,
+      backRightIntensity:  backPar,
+      moverLeftIntensity:  outMoverL,
+      moverRightIntensity: outMoverR,
       strobeActive,
       strobeIntensity,
 
       // Legacy compat
       frontParIntensity: frontPar,
-      backParIntensity: backPar,
-      moverIntensityL: moverLeft,
-      moverIntensityR: moverRight,
-      moverIntensity: Math.max(moverLeft, moverRight),
-      moverActive: moverLeft > 0.1 || moverRight > 0.1,
-      physicsApplied: 'liquid-stereo',
+      backParIntensity:  backPar,
+      moverIntensityL:   outMoverL,
+      moverIntensityR:   outMoverR,
+      moverIntensity:    Math.max(outMoverL, outMoverR),
+      moverActive:       outMoverL > 0.1 || outMoverR > 0.1,
+      physicsApplied:    'liquid-stereo',
       acidMode,
       noiseMode,
     }
@@ -138,3 +119,4 @@ export class LiquidEngine41 extends LiquidEngineBase {
 // SINGLETON — Default TECHNO_PROFILE
 // ═══════════════════════════════════════════════════════════════════════════
 export const liquidEngine41 = new LiquidEngine41()
+

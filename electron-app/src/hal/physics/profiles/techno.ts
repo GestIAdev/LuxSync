@@ -193,20 +193,15 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   sidechainDepth: 0.30,  // WAVE 2412: ducking suave — techno tiene graves continuos, no asfixiar movers
   snareSidechainDepth: 0.15,  // WAVE 2420: 0.80→0.15 (liberamos Mover R — la guillotina era fratricida)
 
-  // WAVE 2438 — GUILLOTINA 4.1
-  // Cuando fR (kick) supera 0.2, fL (subBass) se corta a 0. El bombo manda.
+  // WAVE 2438 — valores legacy, ya no usados en strict-split pero se conservan
+  // para compatibilidad con el path 'default' si se cambia la estrategia.
   frontKickSidechainThreshold: 0.2,
-  // auraCap = 0.25 * morphFactor^2. Industrial puro (morph=0) → cap=0 (silencio).
-  // Melodía plena (morph=1) → cap=0.25 (el subBass puede llegar hasta 0.25 máx).
   auraCapBase: 0.25,
   auraCapExponent: 2,
 
-  // WAVE 2439 — KICK WINDOW: fL solo vive 8 frames tras cada kick (~133ms a 60fps).
-  // Fuera de esa ventana, el front se apaga — solo el bombo define el frente.
-  kickWindowFrames: 8,
-  // KICK BOOST: el impacto del kick se amplifica x1.4 en el frame del disparo.
-  // Crea el pulso visual contundente que el AuraCap recortaba.
-  kickBoost: 1.4,
+  // WAVE 2439 — METRÓNOMO/LIENZO: enrutamiento estricto para Techno 4.1.
+  // Front=kick, Back=snare, Movers=todo el muro atmosférico.
+  layout41Strategy: 'strict-split' as const,
 
   // ═══════════════════════════════════════════════════════════════
   // STROBE (God Mode exacto)

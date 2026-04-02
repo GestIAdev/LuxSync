@@ -226,8 +226,6 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   frontKickSidechainThreshold: 0,  // 0 = off
   auraCapBase: 0,                  // 0 = off
   auraCapExponent: 0,
-  kickWindowFrames: 0,
-  kickBoost: 1.0,
 
   // ═══════════════════════════════════════════════════════════════
   // STROBE — Conservador en rock (es concierto, no rave)

@@ -128,6 +128,8 @@ function fuseProfileFor41(base: ILiquidProfile): ILiquidProfile {
     frontKickSidechainThreshold: ov.frontKickSidechainThreshold ?? base.frontKickSidechainThreshold,
     auraCapBase: ov.auraCapBase ?? base.auraCapBase,
     auraCapExponent: ov.auraCapExponent ?? base.auraCapExponent,
+    kickWindowFrames: ov.kickWindowFrames ?? base.kickWindowFrames,
+    kickBoost: ov.kickBoost ?? base.kickBoost,
   }
 }
 

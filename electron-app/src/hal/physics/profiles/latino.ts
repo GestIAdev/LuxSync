@@ -222,6 +222,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
   frontKickSidechainThreshold: 0,  // 0 = off
   auraCapBase: 0,                  // 0 = off (subBass tiene rienda suelta)
   auraCapExponent: 0,
+  kickWindowFrames: 0,
+  kickBoost: 1.0,
 
   // ═══════════════════════════════════════════════════════════════
   // STROBE — Menos agresivo en latino (es fiesta, no industrial)

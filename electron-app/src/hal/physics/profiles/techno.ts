@@ -201,6 +201,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   auraCapBase: 0.25,
   auraCapExponent: 2,
 
+  // WAVE 2439 — KICK WINDOW: fL solo vive 8 frames tras cada kick (~133ms a 60fps).
+  // Fuera de esa ventana, el front se apaga — solo el bombo define el frente.
+  kickWindowFrames: 8,
+  // KICK BOOST: el impacto del kick se amplifica x1.4 en el frame del disparo.
+  // Crea el pulso visual contundente que el AuraCap recortaba.
+  kickBoost: 1.4,
+
   // ═══════════════════════════════════════════════════════════════
   // STROBE (God Mode exacto)
   // ═══════════════════════════════════════════════════════════════

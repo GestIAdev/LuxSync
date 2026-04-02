@@ -125,6 +125,9 @@ function fuseProfileFor41(base: ILiquidProfile): ILiquidProfile {
     sidechainThreshold: ov.sidechainThreshold ?? base.sidechainThreshold,
     sidechainDepth: ov.sidechainDepth ?? base.sidechainDepth,
     snareSidechainDepth: ov.snareSidechainDepth ?? base.snareSidechainDepth,
+    frontKickSidechainThreshold: ov.frontKickSidechainThreshold ?? base.frontKickSidechainThreshold,
+    auraCapBase: ov.auraCapBase ?? base.auraCapBase,
+    auraCapExponent: ov.auraCapExponent ?? base.auraCapExponent,
   }
 }
 

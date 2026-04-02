@@ -218,6 +218,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
   sidechainDepth: 0.12,         // MUCHO MENOS que techno (0.30) — no asfixiar
   snareSidechainDepth: 0.05,    // Mínimo — el snare latino es compañero, no rival
 
+  // WAVE 2438 — GUILLOTINA 4.1 (desactivada en latino: el groove es continuo)
+  frontKickSidechainThreshold: 0,  // 0 = off
+  auraCapBase: 0,                  // 0 = off (subBass tiene rienda suelta)
+  auraCapExponent: 0,
+
   // ═══════════════════════════════════════════════════════════════
   // STROBE — Menos agresivo en latino (es fiesta, no industrial)
   // ═══════════════════════════════════════════════════════════════

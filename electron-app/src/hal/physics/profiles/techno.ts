@@ -193,6 +193,14 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   sidechainDepth: 0.30,  // WAVE 2412: ducking suave — techno tiene graves continuos, no asfixiar movers
   snareSidechainDepth: 0.15,  // WAVE 2420: 0.80→0.15 (liberamos Mover R — la guillotina era fratricida)
 
+  // WAVE 2438 — GUILLOTINA 4.1
+  // Cuando fR (kick) supera 0.2, fL (subBass) se corta a 0. El bombo manda.
+  frontKickSidechainThreshold: 0.2,
+  // auraCap = 0.25 * morphFactor^2. Industrial puro (morph=0) → cap=0 (silencio).
+  // Melodía plena (morph=1) → cap=0.25 (el subBass puede llegar hasta 0.25 máx).
+  auraCapBase: 0.25,
+  auraCapExponent: 2,
+
   // ═══════════════════════════════════════════════════════════════
   // STROBE (God Mode exacto)
   // ═══════════════════════════════════════════════════════════════

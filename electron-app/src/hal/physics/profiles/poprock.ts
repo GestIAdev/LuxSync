@@ -222,6 +222,11 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   sidechainDepth: 0.05,         // CASI NULO — el bombo es compañero, no dictador
   snareSidechainDepth: 0.03,    // Mínimo — el snare no debe matar la guitarra
 
+  // WAVE 2438 — GUILLOTINA 4.1 (desactivada en poprock: los graves sostienen la melodía)
+  frontKickSidechainThreshold: 0,  // 0 = off
+  auraCapBase: 0,                  // 0 = off
+  auraCapExponent: 0,
+
   // ═══════════════════════════════════════════════════════════════
   // STROBE — Conservador en rock (es concierto, no rave)
   // Solo se activa en momentos extremos (final de solo, breakdown)

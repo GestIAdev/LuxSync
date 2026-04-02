@@ -117,6 +117,25 @@ export interface ILiquidProfile {
   /** Profundidad del sidechain del snare sobre Mover R (voces) */
   readonly snareSidechainDepth: number
 
+  /**
+   * WAVE 2438 — GUILLOTINA 4.1: Sidechain Interno Exclusivo
+   * Umbral de frontRight (kick) por encima del cual frontLeft (subBass) es
+   * guillotinado a cero antes del max(). Solo aplica en routeZones() del 4.1.
+   * 0 = desactivado (comportamiento legacy).
+   */
+  readonly frontKickSidechainThreshold: number
+
+  /**
+   * WAVE 2438 — GUILLOTINA 4.1: Aura Cap Morfológico
+   * Exponente (>0) del auraCap. El techo del subBass en modo industrial:
+   *   auraCap = auraCapBase * Math.pow(morphFactor, auraCapExponent)
+   * Con morphFactor~0 (industrial puro), el cap aplasta el subBass al suelo.
+   * Con morphFactor~1 (melódico), el cap sube a auraCapBase (sin efecto real).
+   * 0 = desactivado.
+   */
+  readonly auraCapBase: number
+  readonly auraCapExponent: number
+
   // ═══════════════════════════════════════════════════════════════
   // STROBE
   // ═══════════════════════════════════════════════════════════════
@@ -200,5 +219,9 @@ export interface ILiquidProfile {
     readonly sidechainThreshold?: number
     readonly sidechainDepth?: number
     readonly snareSidechainDepth?: number
+    // WAVE 2438 — Guillotina 4.1
+    readonly frontKickSidechainThreshold?: number
+    readonly auraCapBase?: number
+    readonly auraCapExponent?: number
   }
 }

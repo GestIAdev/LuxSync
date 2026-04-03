@@ -296,28 +296,34 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2440.2 RECUPERACIÓN DEL RANGO DINÁMICO ---
-    // WAVE 2440.1: Suelo de titanio MIN_TREBLE_DELTA=0.035 (micro-hats inaudibles → 0).
-    // WAVE 2440.2: Pipeline simplificado. Eliminado bloque percGate/percExponent/percBoost
-    //   (producía estrobo binario: saltos instantáneos a 1.0 por relación Gate/Boost extrema).
-    //   baseSnare = cleanTrebleDelta * 4.0 — rango dinámico real (0.0 → ~0.70 para hi-hats).
-    //   clapBonus multiplicador 3.0→2.0 — evita rebotes en claps lentos Innerbloom.
-    //   kickDucking = min(0.15, bass*0.2) — límite absoluto: drops techno siguen activos.
-    //   Con gateOn:0.35: click del bombo (~0.25) muere. Hi-hat/clap real (~0.50-0.70) pasa.
-    //   Con boost:3.5: hi-hats tienen volumen variable en lugar de golpear siempre al 100%.
+    // --- BACK R (El Látigo): WAVE 2442 IRON WALL + MONTE CARLO COEFFICIENTS ---
+    // WAVE 2441 Monte Carlo: 596.232 combinaciones sobre 616 frames reales (technolab 135 BPM)
+    // Resultado: fitness=6260 | 0 kick leaks | 41/41 strong | 43/53 dynamic
+    // IRON WALL: El transitorio 'click' del bombo produce trbD real → sin guard, fuga garantizada.
+    // Frame 31 (isK:1, cent:3639, trbD:0.268) era el culpable histórico. MUERTO.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
-    // 1. Transient Shaper Base con suelo de ruido (Microscopio del Delta)
-    const MIN_TREBLE_DELTA = 0.035
-    const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
-    const baseSnare = cleanTrebleDelta * 4.0
-    // 2. Vitamina Orgánica multiplicativa (no suma si no hay transitorio → voces bloqueadas)
-    const clapBonus = baseSnare * harshness * 2.0
-    let hybridSnare = baseSnare + clapBonus
-    // 3. Ducking físico limitado — resta graves con techo absoluto 0.15 (no asfixia drops)
-    const kickDucking = Math.min(0.15, bands.bass * 0.2)
-    hybridSnare = Math.max(0, hybridSnare - kickDucking)
+
+    let hybridSnare: number
+    if (isKick) {
+      // IRON WALL: Si hay bombo, el Back PAR se apaga incondicionalmente.
+      // Evita que el transitorio agudo del 'click' del bombo se filtre.
+      hybridSnare = 0.0
+    } else {
+      // 1. Transient Shaper Base
+      const MIN_TREBLE_DELTA = 0.020  // Aumenta la sensibilidad a transitorios finos
+      const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
+
+      // 2. Latigazo y Textura
+      const baseSnare = cleanTrebleDelta * 2.0  // Menos amplificación inicial para evitar estrobo binario
+      const clapBonus = baseSnare * harshness * 2.0
+      hybridSnare = baseSnare + clapBonus
+
+      // 3. Ducking suave residual (por si hay subgraves sueltos sin impacto de bombo)
+      const kickDucking = Math.min(0.15, bands.bass * 0.2)
+      hybridSnare = Math.max(0, hybridSnare - kickDucking)
+    }
 
     const snareAttack = hybridSnare
     let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)

@@ -88,10 +88,8 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // gateOff 0.02: apagado inmediato tras el impacto
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.35,          // WAVE 2440.2: 0.20→0.35 — Recuperación del Rango Dinámico
-                           // Click bombo (hybridSnare~0.25) muere contra el muro.
-                           // Hi-hat real / clap (~0.50-0.70) atraviesa y brilla.
-    boost: 3.5,            // WAVE 2440.2: 6.0→3.5 — volumen variable, no estrobo binario
+    gateOn: 0.05,   // Reducido desde 0.35 para cazar ghost notes
+    boost: 3.0,     // Ajustado para compensar el gate bajo sin saturar
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.15,

@@ -40,13 +40,6 @@ export class LiquidEngine71 extends LiquidEngineBase {
       bands,
     } = frame
 
-    // WAVE 2418: TELEMETRY — HUMAN-R DIAGNOSTIC
-    const rawRight = frame.backRight  // ya procesado por envSnare
-    const vocalInput = Math.max(0, (bands.treble * 0.6 + bands.highMid * 0.4) - (bands.lowMid * 0.25))
-    if (rawRight > 0.05 || moverRight > 0.05 || bands.treble > 0.2) {
-      console.log(`[HUMAN-R] hMid: ${bands.highMid.toFixed(3)} treble: ${bands.treble.toFixed(3)} mid: ${bands.mid.toFixed(3)} | rIn(Snare): ${rawRight.toFixed(3)} vIn(Vocal): ${vocalInput.toFixed(3)} || BR(Latigo): ${backRight.toFixed(2)} MR(Voz): ${moverRight.toFixed(2)} | veto: ${frame.isVetoed ? 1 : 0}`)
-    }
-
     return {
       // 7 zonas independientes
       frontLeftIntensity: frontLeft,

@@ -332,12 +332,6 @@ export class LiquidStereoPhysics {
     //   console.log(`[HARMONY-L] bass: ${bands.bass.toFixed(3)} lMid: ${bands.lowMid.toFixed(3)} mid: ${bands.mid.toFixed(3)} hMid: ${bands.highMid.toFixed(3)} flat: ${(input.flatness ?? 0).toFixed(3)} | isTonal: ${isTonal} | midIn: ${midSynthInput.toFixed(3)} melIn: ${melodyInput.toFixed(3)} || BL(Coro): ${backLeft.toFixed(2)} ML(Melody): ${moverLeft.toFixed(2)}`)
     // }
 
-    // WAVE 2418: TELEMETRÍA QUIRÚRGICA — HUMAN-R DIAGNOSTIC (Fase 3: Right Hemisphere)
-    // Radar enfocado en vocales (highMid+treble) y percusión orgánica (congas, maderas).
-    if (rawRight > 0.05 || moverRight > 0.05 || bands.treble > 0.2) {
-      console.log(`[HUMAN-R] hMid: ${bands.highMid.toFixed(3)} treble: ${bands.treble.toFixed(3)} mid: ${bands.mid.toFixed(3)} | rIn(Snare): ${rawRight.toFixed(3)} vIn(Vocal): ${vocalInput.toFixed(3)} || BR(Latigo): ${backRight.toFixed(2)} MR(Voz): ${moverRight.toFixed(2)} | veto: ${isVetoed ? 1 : 0}`)
-    }
-
     // ═══════════════════════════════════════════════════════════════════
     // 9. OUTPUT — 7 zonas + legacy compat
     // ═══════════════════════════════════════════════════════════════════

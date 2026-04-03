@@ -74,14 +74,18 @@ export class LiquidEngine41 extends LiquidEngineBase {
       outMoverR = moverRight
     }
 
-    // ── DIAGNÓSTICO BACK PAR — cada frame, sin throttle ──────────────────
+    // ── [LAB-DATA] Telemetría unificada Sterile Lab (WAVE 2440.3) ─────────
+    // Formato parseable por Monte Carlo. Expone ingredientes crudos + salidas finales.
+    // cent=spectralCentroid(Hz) | isK=kick(0/1) | bass | trbD=snareAttack(pre-gate)
+    // harsh=harshness | oF=frontPar | oB=backPar
     if (this.profile.id === 'techno-industrial') {
       const f = (n: number) => n.toFixed(3)
-      const slap = backPar > 0.5 ? ' *SLAP*' : ''
+      const fi = (n: number) => Math.round(n).toString().padStart(4, ' ')
       console.log(
-        `[BACK DIAG] In(sn:${f(frame.snareAttack)}) | ` +
-        `Env(bR:${f(backRight)}) | ` +
-        `OUT:${f(backPar)} | morph:${f(frame.morphFactor)}${slap}`
+        `[LAB-DATA] cent:${fi(frame.bands.centroid)} | ` +
+        `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
+        `trbD:${f(frame.snareAttack)} harsh:${f(frame.harshness)} | ` +
+        `oF:${f(frontPar)} oB:${f(backPar)}`
       )
     }
 

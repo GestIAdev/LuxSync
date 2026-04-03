@@ -300,15 +300,20 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2446 TRANSIENT SHAPER FULL-SPECTRUM ---
+    // --- BACK R (El Látigo): WAVE 2447 CENTROID SHIELD UNIVERSAL ---
     // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.
     // WAVE 2443: Centroid Shield 5000Hz → demasiado alto.
-    // WAVE 2444: highMidDelta incorporado. WAVE 2445: Centroid Shield condicional.
-    // WAVE 2446: backcalib.md revela snare gordo (BOM-PAF) invisible al motor.
-    //   Los hits detectados (oB:1.000) tienen trbD:0.14-0.28 → son hi-hats/efectos agudos.
-    //   El snare real tiene energía en MID (500-2000Hz) — cuerpo, punch, impact.
-    //   midDelta * 0.8 añade esa dimensión sin solapar con el bombo (bass domina subgrave).
-    //   Pesos finales: treble=1.0 (hi-hat/crash) + highMid=1.5 (rimshot/clap) + mid=0.8 (snare gordo)
+    // WAVE 2444: highMidDelta incorporado. WAVE 2445: Centroid Shield condicional (isKick only).
+    // WAVE 2446: midDelta * 0.8 añadido (snare gordo 808-style).
+    // WAVE 2447: backsnarehithat.md (nuevo log) revela el "snare invertido":
+    //   El motor disparaba en el ATAQUE DEL BOMBO, no en el snare real.
+    //   El bombo se distribuye en 2 frames: frame isK:1 (subgrave puro, trbD≈0) + frame
+    //   isK:0 SIGUIENTE (transitorio de ataque del bombo: cent:500-800Hz, trbD+midD altos).
+    //   El Centroid Shield de WAVE 2445 solo protegía isK:1 → el frame isK:0 del ataque
+    //   se colaba sin filtro y encendía el Back PAR en el bombo, no en el snare.
+    //   Prueba definitiva: todos los oB:1.000 tienen cent:492-766Hz → territorio del bombo.
+    //   Un snare real (gordo, hihat, rimshot) tiene SIEMPRE cent > 900Hz.
+    //   → Escudo extendido: cent < 900Hz suprime también en frames isK:0.
     const currentTreble  = bands.treble
     const currentHighMid = bands.highMid
     const currentMid     = bands.mid
@@ -330,16 +335,20 @@ export abstract class LiquidEngineBase {
     const clapBonus = baseSnare * harshness * 2.0
     let hybridSnare = baseSnare + clapBonus
 
-    // 2. ESCUDO DE CENTROIDE CONDICIONAL — actúa solo sobre bombos sin señal de impacto
-    // Si hay impactDelta real → hay percusión solapada → pasa siempre (cent irrelevante).
-    // Si impactDelta ≈ 0 → bombo puro o decaimiento → centroide decide.
+    // 2. CENTROID SHIELD UNIVERSAL — doble capa de protección contra el bombo
+    // Capa A (isKick): bombo marcado sin transient → silenciar
     if (isKick && impactDelta < MIN_DELTA) {
       const KICK_CLICK_MAX_CENTROID = 2500  // Hz — calibrado sobre technolab2 + technolab3
       if ((input.spectralCentroid ?? 0) < KICK_CLICK_MAX_CENTROID) {
         hybridSnare = 0.0
       }
     }
-    // Si isKick pero impactDelta >= MIN_DELTA: percusión real sobre el bombo → pasa intacto.
+    // Capa B (universal): centroide < 900Hz es territorio exclusivo del bombo en toda música.
+    // El bombo en su frame de ataque (isK:0, cent:500-800Hz, trbD+midD altos) se suprime aquí.
+    // Ninguna percusión real (snare, hihat, rimshot, clap) tiene cent < 900Hz.
+    if ((input.spectralCentroid ?? 0) < 900) {
+      hybridSnare = 0.0
+    }
 
     const snareAttack = hybridSnare
     let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)

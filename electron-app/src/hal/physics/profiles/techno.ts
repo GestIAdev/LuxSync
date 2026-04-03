@@ -89,11 +89,11 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
     gateOn: 0.15,
-    boost: 2.0,
+    boost: 6.0,            // WAVE 2439.5: 2.0→6.0 — violencia percusiva máxima
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.15,
-    maxIntensity: 0.80,
+    maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
     squelchBase: 0.02,
     squelchSlope: 0.10,
     ghostCap: 0.00,

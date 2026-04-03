@@ -48,6 +48,8 @@ export interface ProcessedFrame {
   flatness: number
   spectralCentroid: number  // Hz — brillo tonal (0 si no disponible)
   rawTrebleDelta: number    // trebleDelta puro — pre-filtro, pre-multiplicador (oro crudo para Monte Carlo)
+  rawHighMidDelta: number   // highMidDelta puro — energía caja/rimshot (oro crudo para telemetría)
+  rawMidDelta: number       // midDelta puro — cuerpo del snare gordo, kick resonante
   now: number
 
   // Señales pre-procesadas por la base
@@ -174,9 +176,10 @@ export abstract class LiquidEngineBase {
   // Kick Veto state
   private _kickVetoFrames = 0
 
-  // Transient Shaper state (WAVE 2427 → WAVE 2444)
+  // Transient Shaper state (WAVE 2427 → WAVE 2446)
   private lastTreble: number = 0
   private lastHighMid: number = 0
+  private lastMid: number = 0
 
   constructor(profile: ILiquidProfile = TECHNO_PROFILE, layout: LiquidLayout = '7.1') {
     this.layout = layout
@@ -297,27 +300,31 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2445 CENTROID SHIELD CONDICIONAL ---
+    // --- BACK R (El Látigo): WAVE 2446 TRANSIENT SHAPER FULL-SPECTRUM ---
     // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.
-    // WAVE 2443: Centroid Shield 5000Hz → demasiado alto (4641Hz en bombo puro en decay).
-    // WAVE 2444: highMidDelta incorporado, umbral bajado a 2500Hz.
-    // WAVE 2445: 2500Hz sigue siendo demasiado alto para hardtechno caótico. backsnarehithat.md
-    //   muestra cent:1706 isK:1 trbD:0.075 — el Centroid Shield lo bloqueaba injustamente.
-    //   Insight clave: el click de bombo peligroso tiene siempre impactDelta ≈ 0.
-    //   Si hay transient real (impactDelta > MIN_DELTA), la percusión solapada está ahí,
-    //   independientemente del centroide. El escudo solo actúa sobre bombos sin señal.
-    //   → Bloquear SOLO si isKick AND impactDelta < MIN_DELTA (bombo sin capa encima).
-    const currentTreble = bands.treble
+    // WAVE 2443: Centroid Shield 5000Hz → demasiado alto.
+    // WAVE 2444: highMidDelta incorporado. WAVE 2445: Centroid Shield condicional.
+    // WAVE 2446: backcalib.md revela snare gordo (BOM-PAF) invisible al motor.
+    //   Los hits detectados (oB:1.000) tienen trbD:0.14-0.28 → son hi-hats/efectos agudos.
+    //   El snare real tiene energía en MID (500-2000Hz) — cuerpo, punch, impact.
+    //   midDelta * 0.8 añade esa dimensión sin solapar con el bombo (bass domina subgrave).
+    //   Pesos finales: treble=1.0 (hi-hat/crash) + highMid=1.5 (rimshot/clap) + mid=0.8 (snare gordo)
+    const currentTreble  = bands.treble
     const currentHighMid = bands.highMid
-    const trebleDelta  = Math.max(0, currentTreble  - this.lastTreble)
-    const highMidDelta = Math.max(0, currentHighMid - this.lastHighMid)
+    const currentMid     = bands.mid
+    const trebleDelta    = Math.max(0, currentTreble  - this.lastTreble)
+    const highMidDelta   = Math.max(0, currentHighMid - this.lastHighMid)
+    const midDelta       = Math.max(0, currentMid     - this.lastMid)
     this.lastTreble  = currentTreble
     this.lastHighMid = currentHighMid
+    this.lastMid     = currentMid
 
-    // 1. Detector de Bofetadas — Transient Shaper Expandido
-    // trebleDelta: hi-hats, crashes, platillos. highMidDelta: caja, rimshot, clap grave.
+    // 1. Detector de Bofetadas — Transient Shaper Full-Spectrum
+    // trebleDelta: hi-hats, crashes, platillos.
+    // highMidDelta: rimshot, clap grave, caja minimal.
+    // midDelta: snare gordo 808-style, caja con cuerpo, snare acústico.
     const MIN_DELTA = 0.020
-    const impactDelta = trebleDelta + (highMidDelta * 1.5)
+    const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDelta * 0.8)
     const cleanDelta = Math.max(0, impactDelta - MIN_DELTA)
     const baseSnare = cleanDelta * 2.0
     const clapBonus = baseSnare * harshness * 2.0
@@ -326,9 +333,6 @@ export abstract class LiquidEngineBase {
     // 2. ESCUDO DE CENTROIDE CONDICIONAL — actúa solo sobre bombos sin señal de impacto
     // Si hay impactDelta real → hay percusión solapada → pasa siempre (cent irrelevante).
     // Si impactDelta ≈ 0 → bombo puro o decaimiento → centroide decide.
-    //   Bombos peligrosos: cent < 2500Hz → silenciar. Bombos con brillo residual: pasan.
-    // Esto elimina el problema de géneros caóticos donde el centroide es bajo por la mezcla
-    // pero sí hay un hi-hat o efecto sonando encima del bombo.
     if (isKick && impactDelta < MIN_DELTA) {
       const KICK_CLICK_MAX_CENTROID = 2500  // Hz — calibrado sobre technolab2 + technolab3
       if ((input.spectralCentroid ?? 0) < KICK_CLICK_MAX_CENTROID) {
@@ -419,6 +423,8 @@ export abstract class LiquidEngineBase {
       flatness,
       spectralCentroid: input.spectralCentroid ?? 0,
       rawTrebleDelta: trebleDelta,
+      rawHighMidDelta: highMidDelta,
+      rawMidDelta: midDelta,
       now,
       frontLeft,
       frontRight,

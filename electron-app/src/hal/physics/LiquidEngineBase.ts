@@ -294,23 +294,33 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2439.7 FÍSICA PURA DE UMBRAL ---
-    // WAVE 2436.2: lastTreble se mantiene para el delta (hi-hats del hard techno).
-    // WAVE 2439.7: eliminado el escudo espectral (- bass * 0.4) — era una
-    // guillotina fratricida en drops de hard techno donde bass ≥ 0.7.
-    // El filtrado ahora lo hace la física: gateOn:0.45 en techno.ts.
-    // Un hi-hat real (~0.627+) supera el gate. El click del bombo y el
-    // rebote secundario del clap largo (Innerbloom) no lo superan.
+    // --- BACK R (El Látigo): WAVE 2440 TEXTURA MULTIPLICADA POR TRANSITORIO ---
+    // WAVE 2436.2: percMidSubtract aísla percusión real del autotune (hi-hat sobrevive,
+    //              voz autotuneada se cancela por midPenalty).
+    // WAVE 2440: se restaura el transient shaper como fuente base (baseSnare).
+    //   El clapBonus se MULTIPLICA por baseSnare, no se suma independientemente.
+    //   → vocales continuas: baseSnare≈0, clapBonus=0 → silencio garantizado.
+    //   → clap Innerbloom: baseSnare bajo pero harshness alto → clapBonus lo salva.
+    //   → hi-hat minimal: baseSnare masivo → brilla solo sin depender de la vitamina.
+    //   Escudo suave (-bass*0.15) limpia el click del kick sin asfixiar el hi-hat.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
+    const midPenalty = bands.mid * p.percMidSubtract
+    const rawRight = Math.max(0, trebleDelta * 4.0 - midPenalty)
 
-    // 1. Impacto transitorio puro (treble instantáneo + harshness textural)
-    const transientImpact = Math.min(1.0, (bands.treble * 1.3) + (harshness * 0.8))
-    // 2. Vitamina orgánica (amplificador de textura — claps lentos tipo Innerbloom)
-    const snareVitamin  = harshness * bands.treble * 4.5
-    // 3. Fusión final limpia — sin restar graves, sin guillotinas temporales
-    const hybridSnare   = Math.min(1.0, transientImpact + snareVitamin)
+    let trImp = 0.0
+    if (rawRight > p.percGate) {
+      const gated = (rawRight - p.percGate) / (1.0 - p.percGate)
+      trImp = Math.pow(gated, p.percExponent) * p.percBoost
+    }
+    // baseSnare = Transient Shaper puro (trebleDelta×4 — lo que la directiva llama bands.snareAttack)
+    const baseSnare  = Math.min(1.0, Math.max(0.0, trImp))
+    // clapBonus: vitamina multiplicativa — si no hay transitorio, no hay bonus (voces ignoradas)
+    const clapBonus  = baseSnare * harshness * 3.0
+    // Fusión + escudo suave anti-click del bombo (0.15 vs 0.4 anterior — no asfixia el hi-hat)
+    let hybridSnare  = baseSnare + clapBonus
+    hybridSnare      = Math.max(0, hybridSnare - (bands.bass * 0.15))
 
     const snareAttack = hybridSnare
     let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)

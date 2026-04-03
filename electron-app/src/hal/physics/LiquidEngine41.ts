@@ -62,8 +62,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
       //   envVocal    = moverRight  (Voces / aire)
       //
       frontPar  = frontRight                                          // envKick
-      // ESCUDO ANTI-KICK: Si el bombo golpea, el snare se silencia obligatoriamente.
-      backPar   = isKickEdge ? 0.0 : backRight                        // envSnare
+      backPar   = backRight                                           // envSnare
       outMoverL = Math.max(frontLeft, backLeft, moverLeft)            // sB + hMid + treble
       outMoverR = Math.max(frontLeft, backLeft, moverRight)           // sB + hMid + vocal
 

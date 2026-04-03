@@ -294,10 +294,14 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2427 TRANSIENT SHAPER ---
+    // --- BACK R (El Látigo): WAVE 2427 TRANSIENT SHAPER + WAVE 2439.6 VITAMINA ORGÁNICA ---
     // WAVE 2436.2: percMidSubtract CONECTADO — aísla percusión real del autotune.
     // Un hi-hat (trebleDelta alto, mid bajo) sobrevive.
     // Una voz autotuneada (trebleDelta + mid alto) se cancela.
+    // WAVE 2439.6: hybrid fusion — el shaper captura latigazos transitorios Y
+    // la textura orgánica de treble*harshness captura claps lentos (Innerbloom style).
+    // El escudo espectral resta la presencia del cuerpo del bombo para que un hi-hat
+    // superpuesto sobre el kick no quede sepultado — atenuación, no silencio.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
@@ -310,8 +314,17 @@ export abstract class LiquidEngineBase {
       trImp = Math.pow(gated, p.percExponent) * p.percBoost
     }
     const rawPerc = Math.min(1.0, Math.max(0.0, trImp))
-    const snareAttack = rawPerc
-    let backRight = this.envSnare.process(rawPerc, 1.0, now, false)
+
+    // Vitamina Orgánica: textura de clap lento (treble × harshness)
+    const organicClap = (bands.treble * 1.3) * (harshness * 1.5)
+    // Fusión: latigazos transitories OR textura orgánica, lo que sea mayor
+    let hybridSnare = Math.max(rawPerc, organicClap)
+    // Escudo espectral anti-bombo: atenúa la contaminación del cuerpo del kick
+    // sin silenciar hi-hats superpuestos (atenuación parcial, no guillotina)
+    hybridSnare = Math.max(0, hybridSnare - (bands.bass * 0.4))
+
+    const snareAttack = hybridSnare
+    let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)
 
     // --- MOVER R (El Alma y el Aire): WAVE 2422 → WAVE 2430 PARAMETRIZADO ---
     const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange

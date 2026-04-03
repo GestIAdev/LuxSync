@@ -92,7 +92,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     boost: 3.0,     // Ajustado para compensar el gate bajo sin saturar
     crushExponent: 1.0,
     decayBase: 0.05,
-    decayRange: 0.15,
+    decayRange: 0.40,      // WAVE 2451: 0.15→0.40 — en Anyma (morph=0.8) decay=0.37, flote melódico.
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
     squelchBase: 0.02,
     squelchSlope: 0.10,

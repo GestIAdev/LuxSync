@@ -326,8 +326,12 @@ export abstract class LiquidEngineBase {
     // trebleDelta: hi-hats, crashes, platillos.
     // highMidDelta: rimshot, clap grave, caja minimal.
     // midDelta: snare gordo 808-style, caja con cuerpo, snare acústico.
+    // WAVE 2451: midDelta peso morfológico por centroide.
+    //   En Anyma (cent > 1500Hz) los synths mid son los "percutores" — midDelta×1.5.
+    //   En techno industrial (cent < 500Hz = bombo puro) — midDelta×0.8 como antes.
     const MIN_DELTA = 0.020
-    const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDelta * 0.8)
+    const midCentWeight = Math.min(1.0, (input.spectralCentroid ?? 0) / 1500)
+    const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDelta * (0.8 + 0.7 * midCentWeight))
     const cleanDelta = Math.max(0, impactDelta - MIN_DELTA)
     const baseSnare = cleanDelta * 2.0
     const clapBonus = baseSnare * harshness * 2.0
@@ -354,7 +358,10 @@ export abstract class LiquidEngineBase {
     }
 
     const snareAttack = hybridSnare
-    let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)
+    // WAVE 2451: morphFactor real (antes 1.0 hardcodeado).
+    // En Anyma (morph≈0.8) el decay = decayBase + decayRange×0.8 → más flote, más relleno.
+    // En techno industrial (morph≈0.1) el decay = decayBase + decayRange×0.1 → percutivo.
+    let backRight = this.envSnare.process(hybridSnare, morphFactor, now, false)
 
     // --- MOVER R (El Alma y el Aire): WAVE 2422 → WAVE 2430 PARAMETRIZADO ---
     const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange

@@ -294,20 +294,22 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2440 TEXTURA MULTIPLICADA POR TRANSITORIO ---
-    // WAVE 2436.2: percMidSubtract aísla percusión real del autotune (hi-hat sobrevive,
-    //              voz autotuneada se cancela por midPenalty).
-    // WAVE 2440: se restaura el transient shaper como fuente base (baseSnare).
-    //   El clapBonus se MULTIPLICA por baseSnare, no se suma independientemente.
-    //   → vocales continuas: baseSnare≈0, clapBonus=0 → silencio garantizado.
-    //   → clap Innerbloom: baseSnare bajo pero harshness alto → clapBonus lo salva.
-    //   → hi-hat minimal: baseSnare masivo → brilla solo sin depender de la vitamina.
-    //   Escudo suave (-bass*0.15) limpia el click del kick sin asfixiar el hi-hat.
+    // --- BACK R (El Látigo): WAVE 2440.1 MICROSCOPIO DEL DELTA ---
+    // WAVE 2436.2: percMidSubtract aísla percusión real del autotune.
+    // WAVE 2440:   Textura Multiplicada por Transitorio (baseSnare × harshness).
+    // WAVE 2440.1: Suelo de titanio — micro-hats inaudibles y ruido de AGC (<3.5%)
+    //   son aniquilados ANTES de entrar al shaper. Solo golpes de intención real
+    //   (clap, snare, hi-hat seco) generan deltas ≥0.035 y superan el filtro.
+    //   Boris Brejcha buildup: delta~0.02 → cleanTrebleDelta=0 → baseSnare=0 → luz off.
+    //   Clap principal: delta~0.10+ → cleanTrebleDelta=0.065+ → baseSnare vivo.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
+    // Suelo de ruido transitorio: fluctuaciones menores al 3.5% por frame = ignoradas
+    const MIN_TREBLE_DELTA = 0.035
+    const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
     const midPenalty = bands.mid * p.percMidSubtract
-    const rawRight = Math.max(0, trebleDelta * 4.0 - midPenalty)
+    const rawRight = Math.max(0, cleanTrebleDelta * 4.0 - midPenalty)
 
     let trImp = 0.0
     if (rawRight > p.percGate) {

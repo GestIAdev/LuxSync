@@ -47,6 +47,7 @@ export interface ProcessedFrame {
   harshness: number
   flatness: number
   spectralCentroid: number  // Hz — brillo tonal (0 si no disponible)
+  rawTrebleDelta: number    // trebleDelta puro — pre-filtro, pre-multiplicador (oro crudo para Monte Carlo)
   now: number
 
   // Señales pre-procesadas por la base
@@ -399,6 +400,7 @@ export abstract class LiquidEngineBase {
       harshness,
       flatness,
       spectralCentroid: input.spectralCentroid ?? 0,
+      rawTrebleDelta: trebleDelta,
       now,
       frontLeft,
       frontRight,

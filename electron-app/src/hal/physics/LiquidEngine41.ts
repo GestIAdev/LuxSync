@@ -84,7 +84,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
       console.log(
         `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
         `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
-        `trbD:${f(frame.snareAttack)} harsh:${f(frame.harshness)} | ` +
+        `trbD:${f(frame.rawTrebleDelta)} harsh:${f(frame.harshness)} | ` +
         `oF:${f(frontPar)} oB:${f(backPar)}`
       )
     }

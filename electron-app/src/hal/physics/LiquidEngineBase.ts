@@ -174,8 +174,9 @@ export abstract class LiquidEngineBase {
   // Kick Veto state
   private _kickVetoFrames = 0
 
-  // Transient Shaper state (WAVE 2427)
+  // Transient Shaper state (WAVE 2427 → WAVE 2444)
   private lastTreble: number = 0
+  private lastHighMid: number = 0
 
   constructor(profile: ILiquidProfile = TECHNO_PROFILE, layout: LiquidLayout = '7.1') {
     this.layout = layout
@@ -296,34 +297,41 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2443 ESCUDO DE CENTROIDE DINÁMICO ---
-    // WAVE 2441 Monte Carlo: 596.232 combinaciones | fitness=6260 | 0 leaks | 41/41 strong
-    // WAVE 2442: Iron Wall incondicional — bloqueaba claps/snares en tiempos 2 y 4 (overfitting).
-    // WAVE 2443: Filtro espectral. Si isKick pero centroide alto (>5000Hz), hay un clap/hi-hat
-    //   solapado encima del bombo → lo dejamos pasar. Si centroide bajo, es el click del bombo → 0.
-    //   Verificado en technolab2.md: ningún frame isK:1 con cent>5000 tiene trbD>0.05 en este log.
-    //   El umbral 5000Hz es la frontera natural bombo-oscuro vs percusión-brillante.
+    // --- BACK R (El Látigo): WAVE 2444 TRANSIENT SHAPER EXPANDIDO + CENTROID CALIBRADO ---
+    // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.
+    // WAVE 2443: Centroid Shield 5000Hz — demasiado alto. Technolab3 demuestra que bombos
+    //   peligrosos rondan 400-800Hz y que, sin caja, incluso llegan a 4641Hz en decay.
+    //   El umbral real bombo_oscuro vs bombo+caja está alrededor de 2500Hz.
+    // WAVE 2444: Añadimos highMidDelta (la "carne" de la caja — rimshot, woodblock, clap grave).
+    //   Un hi-hat es agudo puro (treble). Una caja minimal tiene su energía en highMid.
+    //   impactDelta = trebleDelta + highMidDelta * 1.5 captura ambas texturas sin sesgo.
     const currentTreble = bands.treble
-    const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
-    this.lastTreble = currentTreble
+    const currentHighMid = bands.highMid
+    const trebleDelta  = Math.max(0, currentTreble  - this.lastTreble)
+    const highMidDelta = Math.max(0, currentHighMid - this.lastHighMid)
+    this.lastTreble  = currentTreble
+    this.lastHighMid = currentHighMid
     const spectralCentroid = input.spectralCentroid ?? 0
 
-    // 1. Transient Shaper Base (Micrófono de alta sensibilidad)
-    const MIN_TREBLE_DELTA = 0.020
-    const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
-    const baseSnare = cleanTrebleDelta * 2.0
+    // 1. Detector de Bofetadas — Transient Shaper Expandido
+    // trebleDelta: hi-hats, crashes, platillos. highMidDelta: caja, rimshot, clap grave.
+    const impactDelta = trebleDelta + (highMidDelta * 1.5)
+    const MIN_DELTA = 0.020
+    const cleanDelta = Math.max(0, impactDelta - MIN_DELTA)
+    const baseSnare = cleanDelta * 2.0
     const clapBonus = baseSnare * harshness * 2.0
     let hybridSnare = baseSnare + clapBonus
 
-    // 2. ESCUDO DE CENTROIDE DINÁMICO (reemplaza al Iron Wall)
-    // Click de bombo solo → centroide bajo → silenciar Back PAR.
-    // Bombo + clap/hi-hat simultáneo → centroide alto → dejar pasar intacto.
+    // 2. ESCUDO DE CENTROIDE DINÁMICO (umbral calibrado en technolab3)
+    // Bombos oscuros solos: centroide 400–800Hz (subgrave), hasta 4641Hz en fase decay.
+    // Bombo + caja simultáneos: centroide combinado supera 2500Hz por energía de la caja.
+    // Clicks residuales falsos: cent < 2500Hz → silenciar. Legítimos: pasan intactos.
     if (isKick) {
-      const KICK_CLICK_MAX_CENTROID = 5000  // Hz — frontera bombo oscuro vs percusión brillante
+      const KICK_CLICK_MAX_CENTROID = 2500  // Hz — calibrado sobre technolab2 + technolab3
       if (spectralCentroid < KICK_CLICK_MAX_CENTROID) {
         hybridSnare = 0.0
       }
-      // Si cent >= 5000Hz: bombo + caja real solapados. hybridSnare pasa sin modificar.
+      // Si cent >= 2500Hz: bombo + percusión brillante simultáneos → pasa intacto.
     }
 
     const snareAttack = hybridSnare

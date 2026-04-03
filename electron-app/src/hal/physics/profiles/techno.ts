@@ -88,7 +88,9 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // gateOff 0.02: apagado inmediato tras el impacto
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.15,
+    gateOn: 0.45,          // WAVE 2439.7: 0.15→0.45 — Física Pura de Umbral
+                           // Elimina rebote secundario del clap largo (Innerbloom)
+                           // y el click del bombo. Hi-hats (0.627+) siguen pasando.
     boost: 6.0,            // WAVE 2439.5: 2.0→6.0 — violencia percusiva máxima
     crushExponent: 1.0,
     decayBase: 0.05,

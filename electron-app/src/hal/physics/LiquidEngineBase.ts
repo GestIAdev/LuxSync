@@ -294,35 +294,28 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2440.1 MICROSCOPIO DEL DELTA ---
-    // WAVE 2436.2: percMidSubtract aísla percusión real del autotune.
-    // WAVE 2440:   Textura Multiplicada por Transitorio (baseSnare × harshness).
-    // WAVE 2440.1: Suelo de titanio — micro-hats inaudibles y ruido de AGC (<3.5%)
-    //   son aniquilados ANTES de entrar al shaper. Solo golpes de intención real
-    //   (clap, snare, hi-hat seco) generan deltas ≥0.035 y superan el filtro.
-    //   Boris Brejcha buildup: delta~0.02 → cleanTrebleDelta=0 → baseSnare=0 → luz off.
-    //   Clap principal: delta~0.10+ → cleanTrebleDelta=0.065+ → baseSnare vivo.
+    // --- BACK R (El Látigo): WAVE 2440.2 RECUPERACIÓN DEL RANGO DINÁMICO ---
+    // WAVE 2440.1: Suelo de titanio MIN_TREBLE_DELTA=0.035 (micro-hats inaudibles → 0).
+    // WAVE 2440.2: Pipeline simplificado. Eliminado bloque percGate/percExponent/percBoost
+    //   (producía estrobo binario: saltos instantáneos a 1.0 por relación Gate/Boost extrema).
+    //   baseSnare = cleanTrebleDelta * 4.0 — rango dinámico real (0.0 → ~0.70 para hi-hats).
+    //   clapBonus multiplicador 3.0→2.0 — evita rebotes en claps lentos Innerbloom.
+    //   kickDucking = min(0.15, bass*0.2) — límite absoluto: drops techno siguen activos.
+    //   Con gateOn:0.35: click del bombo (~0.25) muere. Hi-hat/clap real (~0.50-0.70) pasa.
+    //   Con boost:3.5: hi-hats tienen volumen variable en lugar de golpear siempre al 100%.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
-    // Suelo de ruido transitorio: fluctuaciones menores al 3.5% por frame = ignoradas
+    // 1. Transient Shaper Base con suelo de ruido (Microscopio del Delta)
     const MIN_TREBLE_DELTA = 0.035
     const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
-    const midPenalty = bands.mid * p.percMidSubtract
-    const rawRight = Math.max(0, cleanTrebleDelta * 4.0 - midPenalty)
-
-    let trImp = 0.0
-    if (rawRight > p.percGate) {
-      const gated = (rawRight - p.percGate) / (1.0 - p.percGate)
-      trImp = Math.pow(gated, p.percExponent) * p.percBoost
-    }
-    // baseSnare = Transient Shaper puro (trebleDelta×4 — lo que la directiva llama bands.snareAttack)
-    const baseSnare  = Math.min(1.0, Math.max(0.0, trImp))
-    // clapBonus: vitamina multiplicativa — si no hay transitorio, no hay bonus (voces ignoradas)
-    const clapBonus  = baseSnare * harshness * 3.0
-    // Fusión + escudo suave anti-click del bombo (0.15 vs 0.4 anterior — no asfixia el hi-hat)
-    let hybridSnare  = baseSnare + clapBonus
-    hybridSnare      = Math.max(0, hybridSnare - (bands.bass * 0.15))
+    const baseSnare = cleanTrebleDelta * 4.0
+    // 2. Vitamina Orgánica multiplicativa (no suma si no hay transitorio → voces bloqueadas)
+    const clapBonus = baseSnare * harshness * 2.0
+    let hybridSnare = baseSnare + clapBonus
+    // 3. Ducking físico limitado — resta graves con techo absoluto 0.15 (no asfixia drops)
+    const kickDucking = Math.min(0.15, bands.bass * 0.2)
+    hybridSnare = Math.max(0, hybridSnare - kickDucking)
 
     const snareAttack = hybridSnare
     let backRight = this.envSnare.process(hybridSnare, 1.0, now, false)

@@ -88,11 +88,10 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // gateOff 0.02: apagado inmediato tras el impacto
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.20,          // WAVE 2440: 0.45→0.20 — Sweet Point del Back PAR
-                           // Deja pasar claps (harshness amplificado) y hi-hats reales.
-                           // Ignora ruido residual sin transient. Voces: bloqueadas
-                           // por clapBonus multiplicativo (baseSnare≈0 → bonus=0).
-    boost: 6.0,            // WAVE 2439.5: 2.0→6.0 — violencia percusiva máxima
+    gateOn: 0.35,          // WAVE 2440.2: 0.20→0.35 — Recuperación del Rango Dinámico
+                           // Click bombo (hybridSnare~0.25) muere contra el muro.
+                           // Hi-hat real / clap (~0.50-0.70) atraviesa y brilla.
+    boost: 3.5,            // WAVE 2440.2: 6.0→3.5 — volumen variable, no estrobo binario
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.15,

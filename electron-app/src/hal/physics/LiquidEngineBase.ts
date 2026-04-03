@@ -296,33 +296,30 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2442 IRON WALL + MONTE CARLO COEFFICIENTS ---
+    // --- BACK R (El Látigo): WAVE 2442.1 IRON WALL — DUCKING ELIMINADO ---
     // WAVE 2441 Monte Carlo: 596.232 combinaciones sobre 616 frames reales (technolab 135 BPM)
-    // Resultado: fitness=6260 | 0 kick leaks | 41/41 strong | 43/53 dynamic
-    // IRON WALL: El transitorio 'click' del bombo produce trbD real → sin guard, fuga garantizada.
-    // Frame 31 (isK:1, cent:3639, trbD:0.268) era el culpable histórico. MUERTO.
+    // WAVE 2442.1: kickDucking eliminado — arquitectónicamente redundante tras Iron Wall.
+    //   El ducking asfixiaba hi-hats de rango medio (trbD < 0.12) restando hasta 0.15 al signal.
+    //   Iron Wall ya bloquea el bombo de raíz: no hay sangrado posible, no hay nada que duquear.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
 
     let hybridSnare: number
     if (isKick) {
-      // IRON WALL: Si hay bombo, el Back PAR se apaga incondicionalmente.
-      // Evita que el transitorio agudo del 'click' del bombo se filtre.
+      // IRON WALL: El metrónomo bloquea el látigo. Cero sangrado de bombo.
       hybridSnare = 0.0
     } else {
-      // 1. Transient Shaper Base
-      const MIN_TREBLE_DELTA = 0.020  // Aumenta la sensibilidad a transitorios finos
+      // 1. Transient Shaper Base (Micrófono de alta sensibilidad)
+      const MIN_TREBLE_DELTA = 0.020
       const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
 
-      // 2. Latigazo y Textura
-      const baseSnare = cleanTrebleDelta * 2.0  // Menos amplificación inicial para evitar estrobo binario
+      // 2. Latigazo y Textura (Rango dinámico recuperado, sin restas absurdas)
+      const baseSnare = cleanTrebleDelta * 2.0
       const clapBonus = baseSnare * harshness * 2.0
-      hybridSnare = baseSnare + clapBonus
 
-      // 3. Ducking suave residual (por si hay subgraves sueltos sin impacto de bombo)
-      const kickDucking = Math.min(0.15, bands.bass * 0.2)
-      hybridSnare = Math.max(0, hybridSnare - kickDucking)
+      // 3. Fusión Pura Directa
+      hybridSnare = baseSnare + clapBonus
     }
 
     const snareAttack = hybridSnare

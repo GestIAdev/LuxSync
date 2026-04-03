@@ -153,6 +153,15 @@ const PEAK_DISCRIMINATOR_RATIO = 0.65
  *  This ensures gradual amplitude changes in the music are tracked. */
 const PEAK_DECAY = 0.995
 
+/** Minimum absolute bass energy to even consider a kick.
+ *  Prevents the Silence Trap: when rollingAvg sinks to ~0.01 during
+ *  breakdowns, any residual rumble (0.05) generates a ratio of 5.0×
+ *  and fools the ratio detector. This floor ensures only real transients
+ *  with muscular energy pass. Calibrated from WAVE 2439 front logs:
+ *  all false positives during Brejcha silences had energy < 0.10.
+ *  Real kicks never dip below 0.12 even in the softest verses. */
+const MIN_KICK_ENERGY = 0.150
+
 /** Minimum kicks before peak discriminator activates.
  *  Need enough history to have a reliable peak estimate.
  *  6 kicks = ~3 seconds at 126 BPM — enough to establish amplitude. */
@@ -268,7 +277,8 @@ export class IntervalBPMTracker {
 
     if (rollingAvg > 0
         && rawBassEnergy > rollingAvg * ENERGY_RATIO_THRESHOLD
-        && delta > DELTA_THRESHOLD) {
+        && delta > DELTA_THRESHOLD
+        && rawBassEnergy > MIN_KICK_ENERGY) {
 
       // ─── 3b. Adaptive Debounce Check ───────────────────────────
       // The debounce is the MINIMUM time between kicks.

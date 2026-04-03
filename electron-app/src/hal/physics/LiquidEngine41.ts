@@ -74,15 +74,14 @@ export class LiquidEngine41 extends LiquidEngineBase {
       outMoverR = moverRight
     }
 
-    // ── DIAGNÓSTICO FRONT PAR — cada frame, sin throttle ─────────────────
+    // ── DIAGNÓSTICO BACK PAR — cada frame, sin throttle ──────────────────
     if (this.profile.id === 'techno-industrial') {
       const f = (n: number) => n.toFixed(3)
-      const kick = frame.isKick ? 'K' : '.'
-      const flash = frontPar > 0.5 ? ' *FLASH*' : ''
+      const slap = backPar > 0.5 ? ' *SLAP*' : ''
       console.log(
-        `[FRONT DIAG] In(sB:${f(frame.bands.subBass)} kE:${f(frame.bands.bass)}) isKick:${kick} | ` +
-        `Env(fL:${f(frontLeft)} fR:${f(frontRight)}) | ` +
-        `OUT:${f(frontPar)} | morph:${f(frame.morphFactor)}${flash}`
+        `[BACK DIAG] In(sn:${f(frame.snareAttack)}) | ` +
+        `Env(bR:${f(backRight)}) | ` +
+        `OUT:${f(backPar)} | morph:${f(frame.morphFactor)}${slap}`
       )
     }
 

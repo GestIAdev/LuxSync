@@ -47,6 +47,8 @@ export interface LiquidStereoInput {
   flatness?: number
   /** Kick detectado por el pipeline de audio (GodEarFFT transients) */
   isKick?: boolean
+  /** Hz - Centro de masa espectral (brillo tonal, para telemetría LAB-DATA) */
+  spectralCentroid?: number
 }
 
 export interface LiquidStereoResult {

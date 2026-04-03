@@ -80,9 +80,9 @@ export class LiquidEngine41 extends LiquidEngineBase {
     // harsh=harshness | oF=frontPar | oB=backPar
     if (this.profile.id === 'techno-industrial') {
       const f = (n: number) => n.toFixed(3)
-      const fi = (n: number) => Math.round(n).toString().padStart(4, ' ')
+      const fi = (n: number) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ')
       console.log(
-        `[LAB-DATA] cent:${fi(frame.bands.centroid)} | ` +
+        `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
         `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
         `trbD:${f(frame.snareAttack)} harsh:${f(frame.harshness)} | ` +
         `oF:${f(frontPar)} oB:${f(backPar)}`

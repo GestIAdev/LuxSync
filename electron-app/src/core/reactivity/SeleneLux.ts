@@ -590,6 +590,7 @@ export class SeleneLux {
         harshness: audioMetrics.harshness,
         flatness: audioMetrics.spectralFlatness,
         isKick: audioMetrics.kickDetected ?? false,
+        spectralCentroid: audioMetrics.spectralCentroid ?? 0,
       };
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy

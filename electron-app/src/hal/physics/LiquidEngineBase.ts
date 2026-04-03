@@ -46,6 +46,7 @@ export interface ProcessedFrame {
   noiseMode: boolean
   harshness: number
   flatness: number
+  spectralCentroid: number  // Hz — brillo tonal (0 si no disponible)
   now: number
 
   // Señales pre-procesadas por la base
@@ -397,6 +398,7 @@ export abstract class LiquidEngineBase {
       noiseMode,
       harshness,
       flatness,
+      spectralCentroid: input.spectralCentroid ?? 0,
       now,
       frontLeft,
       frontRight,

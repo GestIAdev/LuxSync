@@ -296,30 +296,34 @@ export abstract class LiquidEngineBase {
     const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // --- BACK R (El Látigo): WAVE 2442.1 IRON WALL — DUCKING ELIMINADO ---
-    // WAVE 2441 Monte Carlo: 596.232 combinaciones sobre 616 frames reales (technolab 135 BPM)
-    // WAVE 2442.1: kickDucking eliminado — arquitectónicamente redundante tras Iron Wall.
-    //   El ducking asfixiaba hi-hats de rango medio (trbD < 0.12) restando hasta 0.15 al signal.
-    //   Iron Wall ya bloquea el bombo de raíz: no hay sangrado posible, no hay nada que duquear.
+    // --- BACK R (El Látigo): WAVE 2443 ESCUDO DE CENTROIDE DINÁMICO ---
+    // WAVE 2441 Monte Carlo: 596.232 combinaciones | fitness=6260 | 0 leaks | 41/41 strong
+    // WAVE 2442: Iron Wall incondicional — bloqueaba claps/snares en tiempos 2 y 4 (overfitting).
+    // WAVE 2443: Filtro espectral. Si isKick pero centroide alto (>5000Hz), hay un clap/hi-hat
+    //   solapado encima del bombo → lo dejamos pasar. Si centroide bajo, es el click del bombo → 0.
+    //   Verificado en technolab2.md: ningún frame isK:1 con cent>5000 tiene trbD>0.05 en este log.
+    //   El umbral 5000Hz es la frontera natural bombo-oscuro vs percusión-brillante.
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
+    const spectralCentroid = input.spectralCentroid ?? 0
 
-    let hybridSnare: number
+    // 1. Transient Shaper Base (Micrófono de alta sensibilidad)
+    const MIN_TREBLE_DELTA = 0.020
+    const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
+    const baseSnare = cleanTrebleDelta * 2.0
+    const clapBonus = baseSnare * harshness * 2.0
+    let hybridSnare = baseSnare + clapBonus
+
+    // 2. ESCUDO DE CENTROIDE DINÁMICO (reemplaza al Iron Wall)
+    // Click de bombo solo → centroide bajo → silenciar Back PAR.
+    // Bombo + clap/hi-hat simultáneo → centroide alto → dejar pasar intacto.
     if (isKick) {
-      // IRON WALL: El metrónomo bloquea el látigo. Cero sangrado de bombo.
-      hybridSnare = 0.0
-    } else {
-      // 1. Transient Shaper Base (Micrófono de alta sensibilidad)
-      const MIN_TREBLE_DELTA = 0.020
-      const cleanTrebleDelta = Math.max(0, trebleDelta - MIN_TREBLE_DELTA)
-
-      // 2. Latigazo y Textura (Rango dinámico recuperado, sin restas absurdas)
-      const baseSnare = cleanTrebleDelta * 2.0
-      const clapBonus = baseSnare * harshness * 2.0
-
-      // 3. Fusión Pura Directa
-      hybridSnare = baseSnare + clapBonus
+      const KICK_CLICK_MAX_CENTROID = 5000  // Hz — frontera bombo oscuro vs percusión brillante
+      if (spectralCentroid < KICK_CLICK_MAX_CENTROID) {
+        hybridSnare = 0.0
+      }
+      // Si cent >= 5000Hz: bombo + caja real solapados. hybridSnare pasa sin modificar.
     }
 
     const snareAttack = hybridSnare

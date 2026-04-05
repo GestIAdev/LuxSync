@@ -49,6 +49,19 @@ export interface LiquidStereoInput {
   isKick?: boolean
   /** Hz - Centro de masa espectral (brillo tonal, para telemetría LAB-DATA) */
   spectralCentroid?: number
+  /**
+   * WAVE 2470 — HYDROSTATIC BRIDGE
+   * Override externo del morphFactor calculado por centroid espectral.
+   * Cuando se suministra, LiquidEngineBase lo usa en lugar del avgMidProfiler.
+   *
+   * Caso de uso: chill-lounge inyecta la profundidad oceánica de la tide machine.
+   *   morphFactor = 1.0 - (oceanDepth / MAX_DEPTH)
+   *   Superficie (depth≈0)  → morphFactor≈1.0 → envelopes tienen máximo decay range
+   *   Abismo (depth=10000m) → morphFactor≈0.0 → envelopes se aplanan (presión hidrostática)
+   *
+   * undefined = comportamiento standard (calculado desde avgMidProfiler)
+   */
+  morphFactorOverride?: number
 }
 
 export interface LiquidStereoResult {

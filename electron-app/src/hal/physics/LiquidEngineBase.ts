@@ -233,13 +233,29 @@ export abstract class LiquidEngineBase {
 
     // ═══════════════════════════════════════════════════════════════════
     // 1. MORPHFACTOR
+    // WAVE 2470 — HYDROSTATIC BRIDGE:
+    //   Si el input suministra morphFactorOverride (chill-lounge inyecta la
+    //   profundidad oceánica), lo usamos directamente y saltamos el avgMidProfiler.
+    //   Para todos los demás vibes, comportamiento estándar sin cambios.
     // ═══════════════════════════════════════════════════════════════════
-    if (bands.mid > this.avgMidProfiler) {
-      this.avgMidProfiler = this.avgMidProfiler * 0.85 + bands.mid * 0.15
+    let morphFactor: number
+    if (input.morphFactorOverride !== undefined) {
+      morphFactor = Math.min(1.0, Math.max(0.0, input.morphFactorOverride))
+      // El avgMidProfiler sigue actualizándose en background para cuando
+      // se vuelva a un vibe no-chill (sin salto brusco en la transición)
+      if (bands.mid > this.avgMidProfiler) {
+        this.avgMidProfiler = this.avgMidProfiler * 0.85 + bands.mid * 0.15
+      } else {
+        this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02
+      }
     } else {
-      this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02
+      if (bands.mid > this.avgMidProfiler) {
+        this.avgMidProfiler = this.avgMidProfiler * 0.85 + bands.mid * 0.15
+      } else {
+        this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02
+      }
+      morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40))
     }
-    const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40))
 
     // ═══════════════════════════════════════════════════════════════════
     // 2. MODES

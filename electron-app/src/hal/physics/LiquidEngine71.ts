@@ -7,6 +7,10 @@
  * WAVE 2468: Matriz Espacial Latino 7.1 — routeZones bifurcado por profile.id.
  *            Latino usa ruteo semántico asimétrico. Techno mantiene el layout
  *            simétrico original. Zero alteraciones a los overrides41 del perfil.
+ * WAVE 2470: Descenso Oceánico — routeZones bifurcado para 'chill-oceanic'.
+ *            Chill asigna vocales al Mover L y bioluminiscencia al Mover R.
+ *            Análogo al Latino en filosofía: cuerpo en front, textura en back,
+ *            expresión en movers. El morphFactor llega de la tide hidrostática.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Hereda toda la matemática de LiquidEngineBase.
@@ -30,16 +34,26 @@
  *   Mover R → envTreble    (La Dama — treble, güira, metales altos, platillos)
  *   Canal 7 → 0.0 (Blackout — reservado para cinéticos/fans en v2.0)
  *
+ * LAYOUT CHILL (WAVE 2470 — profile.id === 'chill-oceanic'):
+ *   Front L → envSubBass   (El Pulso del Abismo — bass continuo, latido de ballena)
+ *   Front R → envKick      (La Corriente — pulsaciones suaves de bajo)
+ *   Back L  → envHighMid   (Las Algas — tejido continuo de pad/synth mid)
+ *   Back R  → envSnare     (El Destello — brush/shaker, micro-transitories)
+ *   Mover L → envVocal     (La Voz del Mar — pads flotantes, voces etéreas)
+ *   Mover R → envTreble    (La Bioluminiscencia — shimmer puntual, brillo esporádico)
+ *   Canal 7 → 0.0 (Blackout — reservado para fog/hazer)
+ *
  * @module hal/physics/LiquidEngine71
- * @version WAVE 2468 — LATINO SPATIAL MATRIX
+ * @version WAVE 2470 — OCEANIC DESCENT
  */
 
 import { LiquidEngineBase, type ProcessedFrame } from './LiquidEngineBase'
 import type { LiquidStereoResult } from './LiquidStereoPhysics'
 import type { ILiquidProfile } from './profiles/ILiquidProfile'
 
-// ID del perfil latino — single source of truth para la bifurcación
+// IDs de perfiles con ruteo semántico especial
 const LATINO_PROFILE_ID = 'latino-fiesta'
+const CHILL_PROFILE_ID  = 'chill-oceanic'
 
 export class LiquidEngine71 extends LiquidEngineBase {
 
@@ -59,33 +73,38 @@ export class LiquidEngine71 extends LiquidEngineBase {
     } = frame
 
     // ─────────────────────────────────────────────────────────────────
-    // WAVE 2468: BIFURCACIÓN ESPACIAL POR PERFIL
+    // WAVE 2468 + 2470: BIFURCACIÓN ESPACIAL POR PERFIL
     //
     // La Base calcula estas señales con el ADN del perfil activo:
-    //   frontLeft  = envSubBass.process()          — El TÚN / El Océano
-    //   frontRight = envKick.process()             — El Francotirador
-    //   backLeft   = envHighMid.process()          — El Tumbao / El Coro
-    //   backRight  = envSnare.process()            — El TAcka / El Látigo
+    //   frontLeft  = envSubBass.process()          — El TÚN / El Océano / El Pulso del Abismo
+    //   frontRight = envKick.process()             — El Francotirador / La Corriente
+    //   backLeft   = envHighMid.process()          — El Tumbao / El Coro / Las Algas
+    //   backRight  = envSnare.process()            — El TAcka / El Látigo / El Destello
     //   moverLeft  = envTreble.process(moverLInput) — cross-filter tonal
     //   moverRight = envVocal.process(moverRInput)  — cleanMid vocal
     //
-    // En Techno: moverLeft=highMid+treble (El Melodista), moverRight=treble (El Alma)
-    // En Latino: moverLeft=mid×0.80 (envTreble con ADN latino = El Galán voces)
-    //            moverRight=cleanMid-treble (envVocal con ADN latino = La Dama metales)
+    // TECHNO (default):  moverL=envTreble (El Melodista), moverR=envVocal (El Alma)
+    // LATINO (WAVE 2468): swap físico — Mover L fijo recibe envVocal (El Galán = voces)
+    //                     Mover R fijo recibe envTreble (La Dama = güira/metales)
+    // CHILL (WAVE 2470):  semántica oceánica — Mover L recibe envVocal (La Voz del Mar)
+    //                     Mover R recibe envTreble (La Bioluminiscencia)
     //
-    // La directiva 2468 invierte la asignación física de los movers en Latino:
-    //   Zona física Mover L → recibe moverRight (envVocal: voces/melodía/mid)
-    //   Zona física Mover R → recibe moverLeft  (envTreble: güira/treble/metales)
+    // Latino y Chill comparten el mismo swap físico (vocal→L, treble→R) pero por
+    // razones semánticas distintas. Latino es ritmo asimétrico. Chill es profundidad.
     //
     // IMPORTANTE: 'strict-split' (techno) usa WAVE 911 en la Base —
     //   moverLeft y moverRight son el resultado del bloque WAVE 911, no de
-    //   envTreble/envVocal. El swap de Latino no afecta ese path.
+    //   envTreble/envVocal. El swap no afecta ese path.
     // ─────────────────────────────────────────────────────────────────
 
-    const isLatino = this.profile.id === LATINO_PROFILE_ID
+    const profileId = this.profile.id
+    const isLatino = profileId === LATINO_PROFILE_ID
+    const isChill  = profileId === CHILL_PROFILE_ID
 
-    const outMoverL = isLatino ? moverRight : moverLeft
-    const outMoverR = isLatino ? moverLeft  : moverRight
+    // Latino y Chill: vocal → Mover L físico (expresión), treble → Mover R físico (brillo)
+    // Techno/Rock: envTreble → Mover L (El Melodista), envVocal → Mover R (El Alma)
+    const outMoverL = (isLatino || isChill) ? moverRight : moverLeft
+    const outMoverR = (isLatino || isChill) ? moverLeft  : moverRight
 
     return {
       // 7 zonas independientes — Front/Back son idénticos en ambos perfiles

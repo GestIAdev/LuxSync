@@ -106,45 +106,55 @@ export class LiquidEngine71 extends LiquidEngineBase {
     const isChill  = profileId === CHILL_PROFILE_ID
 
     // ─────────────────────────────────────────────────────────────────
-    // WAVE 2470 HOTFIX — RESURRECCIÓN GENERATIVA
+    // WAVE 2470 — BIFURCACIÓN GENERATIVA PARA CHILL
     //
-    // El diagnóstico: los envelopes rítmicos (envKick, envSnare, envSubBass,
-    // envHighMid) están diseñados para responder a transientes. En chill no
-    // hay transientes — hay pads continuos. Resultado: los PARs flashean
-    // lentamente en los transientes del bass pad y se quedaban planos en
-    // el ghostCap entre ellos. No eran mareas, eran pulsos lentos.
-    //
-    // La solución: para chill, los 4 PARs se generan con osciladores de
-    // números primos asíncronos — respiración orgánica independiente del
-    // contenido de audio. Los Movers SÍ mantienen reactividad musical
-    // para capturar los destellos esporádicos de la Bioluminiscencia.
-    //
-    // Los períodos son números primos (ms) para garantizar que ningún
-    // par de PARs esté nunca en fase — máxima asincronía orgánica:
-    //   Front L: 3659ms  ~3.7s  — El Pulso del Abismo (más lento: sub)
-    //   Front R: 3023ms  ~3.0s  — La Corriente (ligeramente más rápido)
-    //   Back L:  4007ms  ~4.0s  — Las Algas (el período más largo: tejido)
-    //   Back R:  3511ms  ~3.5s  — El Destello (entremedio: shaker fantasma)
-    //
-    // breathDepth escala con morphFactor (tide machine):
-    //   Superficie (morphFactor=1.0) → breathDepth=0.25 (máxima respiración)
-    //   Abismo     (morphFactor=0.0) → breathDepth=0.0  (todo estático)
-    //   La presión hidrostática aplasta las olas.
+    // Los envelopes rítmicos (envKick, envSnare, etc.) son la herramienta
+    // equivocada para chill — responden a transientes. Chill es continuo.
+    // PARs: osciladores de números primos con armónicos de interferencia.
+    // Movers: reactivos a la música (destellos de vocal/treble).
+    // Detalle en el bloque isChill abajo.
     // ─────────────────────────────────────────────────────────────────
 
     if (isChill) {
-      const t = frame.now  // tiempo real en ms — determinista, no RNG
-      const breathDepth = 0.25 * frame.morphFactor  // morphFactor = 1-depth/MAX_DEPTH
-      const baseFloor   = 0.35  // Nunca a oscuras: el océano siempre tiene luz ambiental
+      // ─────────────────────────────────────────────────────────────────
+      // WAVE 2470 HOTFIX V2 — RESTAURACIÓN DE FLUIDOS
+      //
+      // Fix 1: Date.now() garantiza que t avanza en cada frame,
+      //        independientemente del caching del pipeline de audio.
+      //        frame.now puede ser el timestamp del processing — si el
+      //        engine tiene frames cacheados o silencio, t se congela.
+      //
+      // Fix 2: Ondas de interferencia restauradas.
+      //        main + 0.3×harmonic → patrón de batido no periódico.
+      //        Los dos números primos de cada PAR nunca coinciden en fase.
+      //
+      // Fix 3: breathDepth nunca llega a 0 en el abismo.
+      //        Rango [0.15, 0.35]: abismo respira mínimo, superficie al máximo.
+      //        La presión aplasta las olas pero no las elimina.
+      //
+      // Fix 4: Swap de movers preservado del hotfix v1 (semántica chill):
+      //        frame.moverRight = envVocal → Mover L físico (La Voz del Mar)
+      //        frame.moverLeft  = envTreble → Mover R físico (La Bioluminiscencia)
+      //        El blueprint v2 invertía esto — aquí se corrige.
+      // ─────────────────────────────────────────────────────────────────
 
-      const chillFrontL = baseFloor + Math.sin(t / 3659) * breathDepth
-      const chillFrontR = baseFloor + Math.cos(t / 3023) * breathDepth
-      const chillBackL  = baseFloor + Math.sin(t / 4007) * breathDepth
-      const chillBackR  = baseFloor + Math.cos(t / 3511) * breathDepth
+      const t = Date.now()  // siempre avanza, frame a frame, sin dependencia de caché
 
-      // Movers: reactivos a la música — envVocal captura pads, envTreble captura shimmer
-      // frame.moverRight = envVocal (swap: vocal → L físico = La Voz del Mar)
-      // frame.moverLeft  = envTreble (swap: treble → R físico = La Bioluminiscencia)
+      const depthFactor = frame.morphFactor  // 1.0 = superficie, 0.0 = abismo
+      // breathDepth: [0.15 en abismo, 0.35 en superficie] — nunca a 0
+      const breathDepth = 0.15 + (depthFactor * 0.20)
+      const baseFloor   = 0.30  // suelo de luz — el océano tiene siempre luz ambiental
+
+      // Ondas principales + armónico de interferencia (×0.3)
+      // Cada PAR tiene dos números primos distintos → batido no periódico perpetuo
+      const chillFrontL = baseFloor + (Math.sin(t / 3659) + Math.sin(t / 2069) * 0.3) * breathDepth
+      const chillFrontR = baseFloor + (Math.cos(t / 3023) + Math.sin(t / 2707) * 0.3) * breathDepth
+      const chillBackL  = baseFloor + (Math.sin(t / 4007) + Math.sin(t / 2411) * 0.3) * breathDepth
+      const chillBackR  = baseFloor + (Math.cos(t / 3511) + Math.sin(t / 2131) * 0.3) * breathDepth
+
+      // Movers: reactivos a la música
+      // frame.moverRight = envVocal  (swap semántico: vocal → L físico = La Voz del Mar)
+      // frame.moverLeft  = envTreble (swap semántico: treble → R físico = La Bioluminiscencia)
       const chillMoverL = moverRight  // La Voz del Mar
       const chillMoverR = moverLeft   // La Bioluminiscencia
 

@@ -8,7 +8,8 @@
  *            Latino usa ruteo semántico asimétrico. Techno mantiene el layout
  *            simétrico original. Zero alteraciones a los overrides41 del perfil.
  * WAVE 2470: Descenso Oceánico — routeZones bifurcado para 'chill-oceanic'.
- *            HOTFIX: PARs generados con osciladores de números primos (asíncronos).
+ *            HOTFIX V3: Ondas normalizadas (sin+sin*0.3+1.3)/2.6 → rango [0,1].
+ *            Períodos reducidos a ~10s para visibilidad real de movimiento.
  *            Los envelopes rítmicos son incorrectos para chill — los PARs respiran.
  *            Los Movers siguen siendo reactivos a la música (destellos esporádicos).
  * ═══════════════════════════════════════════════════════════════════════════
@@ -34,15 +35,15 @@
  *   Mover R → envTreble    (La Dama — treble, güira, metales altos, platillos)
  *   Canal 7 → 0.0 (Blackout — reservado para cinéticos/fans en v2.0)
  *
- * LAYOUT CHILL (WAVE 2470 HOTFIX — profile.id === 'chill-oceanic'):
- *   Los PARs NO usan envelopes rítmicos — respiran con osciladores de números primos.
- *   Los períodos asíncronos garantizan que ningún par de PARs esté en fase.
- *   breathDepth = 0.25 × morphFactor (tide machine: superficie=1.0, abismo=0.0)
- *   baseFloor = 0.35 (nunca a oscuras — el océano siempre tiene luz ambiental)
- *   Front L → sin(t/3659) × breathDepth + baseFloor  (El Pulso del Abismo)
- *   Front R → cos(t/3023) × breathDepth + baseFloor  (La Corriente)
- *   Back L  → sin(t/4007) × breathDepth + baseFloor  (Las Algas)
- *   Back R  → cos(t/3511) × breathDepth + baseFloor  (El Destello fantasma)
+ * LAYOUT CHILL (WAVE 2470 HOTFIX V3 — profile.id === 'chill-oceanic'):
+ *   Los PARs NO usan envelopes rítmicos — respiran con osciladores normalizados.
+ *   Normalización: (sin(t/P1) + sin(t/P2)*0.3 + 1.3) / 2.6 → rango [0, 1] estricto.
+ *   breathDepth = 0.20 + morphFactor*0.40 → [0.20, 0.60] (superficie respira al máximo)
+ *   baseFloor = 0.05 (nunca negro — la bioluminiscencia mínima siempre existe)
+ *   Front L → wave(1831, 1039)  (El Pulso del Abismo — ~10s ciclo principal)
+ *   Front R → wave(1511, 1361)  (La Corriente — ligeramente más rápido)
+ *   Back L  → wave(2003, 1201)  (Las Algas — el período más largo)
+ *   Back R  → wave(1759, 1069)  (El Destello fantasma — entremedio)
  *   Mover L → envVocal (La Voz del Mar — reactivo a la música)
  *   Mover R → envTreble (La Bioluminiscencia — destellos esporádicos)
  *   strobeActive = false (el océano no hace strobe)
@@ -140,17 +141,31 @@ export class LiquidEngine71 extends LiquidEngineBase {
 
       const t = Date.now()  // siempre avanza, frame a frame, sin dependencia de caché
 
-      const depthFactor = frame.morphFactor  // 1.0 = superficie, 0.0 = abismo
-      // breathDepth: [0.15 en abismo, 0.35 en superficie] — nunca a 0
-      const breathDepth = 0.15 + (depthFactor * 0.20)
-      const baseFloor   = 0.30  // suelo de luz — el océano tiene siempre luz ambiental
+      const depthFactor = frame.morphFactor ?? 1.0  // 1.0 = superficie, 0.0 = abismo
 
-      // Ondas principales + armónico de interferencia (×0.3)
-      // Cada PAR tiene dos números primos distintos → batido no periódico perpetuo
-      const chillFrontL = baseFloor + (Math.sin(t / 3659) + Math.sin(t / 2069) * 0.3) * breathDepth
-      const chillFrontR = baseFloor + (Math.cos(t / 3023) + Math.sin(t / 2707) * 0.3) * breathDepth
-      const chillBackL  = baseFloor + (Math.sin(t / 4007) + Math.sin(t / 2411) * 0.3) * breathDepth
-      const chillBackR  = baseFloor + (Math.cos(t / 3511) + Math.sin(t / 2131) * 0.3) * breathDepth
+      // Amplitud dramática: oscila desde 0.05 (casi apagado) hasta 0.65 (brillo elegante)
+      // Superficie: breathDepth=0.60 — máximo movimiento
+      // Abismo:     breathDepth=0.20 — quietud aplastada por la presión
+      const breathDepth = 0.20 + (depthFactor * 0.40)
+      const baseFloor   = 0.05  // suelo mínimo: el bioluminiscente siempre respira
+
+      // Normalización perfecta al rango [0, 1]:
+      // (sin(a) + sin(b)*0.3 + 1.3) / 2.6
+      // Demostración: máx = (1.0 + 0.3 + 1.3) / 2.6 = 1.0
+      //               mín = (-1.0 - 0.3 + 1.3) / 2.6 = 0.0
+      // Períodos reducidos a la mitad (~10s ciclo) para visibilidad real de olas.
+      // Primos asíncronos garantizan que ningún par de PARs esté en fase.
+      const waveFL = (Math.sin(t / 1831) + Math.sin(t / 1039) * 0.3 + 1.3) / 2.6
+      const chillFrontL = baseFloor + waveFL * breathDepth
+
+      const waveFR = (Math.cos(t / 1511) + Math.sin(t / 1361) * 0.3 + 1.3) / 2.6
+      const chillFrontR = baseFloor + waveFR * breathDepth
+
+      const waveBL = (Math.sin(t / 2003) + Math.sin(t / 1201) * 0.3 + 1.3) / 2.6
+      const chillBackL  = baseFloor + waveBL * breathDepth
+
+      const waveBR = (Math.cos(t / 1759) + Math.sin(t / 1069) * 0.3 + 1.3) / 2.6
+      const chillBackR  = baseFloor + waveBR * breathDepth
 
       // Movers: reactivos a la música
       // frame.moverRight = envVocal  (swap semántico: vocal → L físico = La Voz del Mar)

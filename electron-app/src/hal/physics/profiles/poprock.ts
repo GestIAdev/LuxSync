@@ -1,6 +1,10 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 2431: POP/ROCK PROFILE — El Rango Dinámico Humano
+ * WAVE 2470: Verificado operativo en el Omniliquid Engine (4.1 y 7.1).
+ *            Añadido layout41Strategy: 'default' y overrides41 explícito.
+ *            El perfil ya estaba conectado desde WAVE 2431 via PROFILE_REGISTRY.
+ *            TitanOrchestrator → setActiveProfile('pop-rock') → POPROCK_PROFILE.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Destilado del fracasado RockStereoPhysics2.ts — eliminamos la heurística
@@ -252,4 +256,29 @@ export const POPROCK_PROFILE: ILiquidProfile = {
 
   kickEdgeMinInterval: 50,   // MUY corto — double bass drumming (blast beats 200+ BPM)
   kickVetoFrames: 0,         // CERO — el bombo NO puede silenciar la guitarra
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2439 — ESTRATEGIA DE ENRUTAMIENTO 4.1
+  //
+  // En 4.1 el rock usa 'default': frontPar = max(subBass, kick),
+  // backPar = max(snare, highMid). Los dos graves coexisten —
+  // el bombo acústico y el bajo eléctrico forman el muro de sonido.
+  // 'strict-split' mataría el backPar (guitarra) al entregar solo
+  // el snare, perdiendo el cuerpo rítmico del riff.
+  // ═══════════════════════════════════════════════════════════════
+  layout41Strategy: 'default',
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2435 — OVERRIDES 4.1
+  //
+  // El rock no necesita overrides de compactación: el max() del
+  // default es correcto — el bombo acústico tiene decay suficiente
+  // para coexistir con el bajo sin asfixiarlo (decayBase=0.65).
+  // A diferencia del Latino (tumbao = decay 0.92 que domina el max),
+  // el rock es más estocástico — los picos no se superponen tanto.
+  // Sin overrides: herencia directa del perfil base.
+  // ═══════════════════════════════════════════════════════════════
+  overrides41: {
+    // Sin ajustes — el perfil base es correcto para 4.1
+  },
 }

@@ -8,9 +8,9 @@
  *            Latino usa ruteo semántico asimétrico. Techno mantiene el layout
  *            simétrico original. Zero alteraciones a los overrides41 del perfil.
  * WAVE 2470: Descenso Oceánico — routeZones bifurcado para 'chill-oceanic'.
- *            Chill asigna vocales al Mover L y bioluminiscencia al Mover R.
- *            Análogo al Latino en filosofía: cuerpo en front, textura en back,
- *            expresión en movers. El morphFactor llega de la tide hidrostática.
+ *            HOTFIX: PARs generados con osciladores de números primos (asíncronos).
+ *            Los envelopes rítmicos son incorrectos para chill — los PARs respiran.
+ *            Los Movers siguen siendo reactivos a la música (destellos esporádicos).
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Hereda toda la matemática de LiquidEngineBase.
@@ -34,14 +34,18 @@
  *   Mover R → envTreble    (La Dama — treble, güira, metales altos, platillos)
  *   Canal 7 → 0.0 (Blackout — reservado para cinéticos/fans en v2.0)
  *
- * LAYOUT CHILL (WAVE 2470 — profile.id === 'chill-oceanic'):
- *   Front L → envSubBass   (El Pulso del Abismo — bass continuo, latido de ballena)
- *   Front R → envKick      (La Corriente — pulsaciones suaves de bajo)
- *   Back L  → envHighMid   (Las Algas — tejido continuo de pad/synth mid)
- *   Back R  → envSnare     (El Destello — brush/shaker, micro-transitories)
- *   Mover L → envVocal     (La Voz del Mar — pads flotantes, voces etéreas)
- *   Mover R → envTreble    (La Bioluminiscencia — shimmer puntual, brillo esporádico)
- *   Canal 7 → 0.0 (Blackout — reservado para fog/hazer)
+ * LAYOUT CHILL (WAVE 2470 HOTFIX — profile.id === 'chill-oceanic'):
+ *   Los PARs NO usan envelopes rítmicos — respiran con osciladores de números primos.
+ *   Los períodos asíncronos garantizan que ningún par de PARs esté en fase.
+ *   breathDepth = 0.25 × morphFactor (tide machine: superficie=1.0, abismo=0.0)
+ *   baseFloor = 0.35 (nunca a oscuras — el océano siempre tiene luz ambiental)
+ *   Front L → sin(t/3659) × breathDepth + baseFloor  (El Pulso del Abismo)
+ *   Front R → cos(t/3023) × breathDepth + baseFloor  (La Corriente)
+ *   Back L  → sin(t/4007) × breathDepth + baseFloor  (Las Algas)
+ *   Back R  → cos(t/3511) × breathDepth + baseFloor  (El Destello fantasma)
+ *   Mover L → envVocal (La Voz del Mar — reactivo a la música)
+ *   Mover R → envTreble (La Bioluminiscencia — destellos esporádicos)
+ *   strobeActive = false (el océano no hace strobe)
  *
  * @module hal/physics/LiquidEngine71
  * @version WAVE 2470 — OCEANIC DESCENT
@@ -101,10 +105,76 @@ export class LiquidEngine71 extends LiquidEngineBase {
     const isLatino = profileId === LATINO_PROFILE_ID
     const isChill  = profileId === CHILL_PROFILE_ID
 
+    // ─────────────────────────────────────────────────────────────────
+    // WAVE 2470 HOTFIX — RESURRECCIÓN GENERATIVA
+    //
+    // El diagnóstico: los envelopes rítmicos (envKick, envSnare, envSubBass,
+    // envHighMid) están diseñados para responder a transientes. En chill no
+    // hay transientes — hay pads continuos. Resultado: los PARs flashean
+    // lentamente en los transientes del bass pad y se quedaban planos en
+    // el ghostCap entre ellos. No eran mareas, eran pulsos lentos.
+    //
+    // La solución: para chill, los 4 PARs se generan con osciladores de
+    // números primos asíncronos — respiración orgánica independiente del
+    // contenido de audio. Los Movers SÍ mantienen reactividad musical
+    // para capturar los destellos esporádicos de la Bioluminiscencia.
+    //
+    // Los períodos son números primos (ms) para garantizar que ningún
+    // par de PARs esté nunca en fase — máxima asincronía orgánica:
+    //   Front L: 3659ms  ~3.7s  — El Pulso del Abismo (más lento: sub)
+    //   Front R: 3023ms  ~3.0s  — La Corriente (ligeramente más rápido)
+    //   Back L:  4007ms  ~4.0s  — Las Algas (el período más largo: tejido)
+    //   Back R:  3511ms  ~3.5s  — El Destello (entremedio: shaker fantasma)
+    //
+    // breathDepth escala con morphFactor (tide machine):
+    //   Superficie (morphFactor=1.0) → breathDepth=0.25 (máxima respiración)
+    //   Abismo     (morphFactor=0.0) → breathDepth=0.0  (todo estático)
+    //   La presión hidrostática aplasta las olas.
+    // ─────────────────────────────────────────────────────────────────
+
+    if (isChill) {
+      const t = frame.now  // tiempo real en ms — determinista, no RNG
+      const breathDepth = 0.25 * frame.morphFactor  // morphFactor = 1-depth/MAX_DEPTH
+      const baseFloor   = 0.35  // Nunca a oscuras: el océano siempre tiene luz ambiental
+
+      const chillFrontL = baseFloor + Math.sin(t / 3659) * breathDepth
+      const chillFrontR = baseFloor + Math.cos(t / 3023) * breathDepth
+      const chillBackL  = baseFloor + Math.sin(t / 4007) * breathDepth
+      const chillBackR  = baseFloor + Math.cos(t / 3511) * breathDepth
+
+      // Movers: reactivos a la música — envVocal captura pads, envTreble captura shimmer
+      // frame.moverRight = envVocal (swap: vocal → L físico = La Voz del Mar)
+      // frame.moverLeft  = envTreble (swap: treble → R físico = La Bioluminiscencia)
+      const chillMoverL = moverRight  // La Voz del Mar
+      const chillMoverR = moverLeft   // La Bioluminiscencia
+
+      return {
+        frontLeftIntensity:  chillFrontL,
+        frontRightIntensity: chillFrontR,
+        backLeftIntensity:   chillBackL,
+        backRightIntensity:  chillBackR,
+        moverLeftIntensity:  chillMoverL,
+        moverRightIntensity: chillMoverR,
+        strobeActive: false,      // El océano no hace strobe
+        strobeIntensity: 0,
+
+        // Legacy compat
+        frontParIntensity: Math.max(chillFrontL, chillFrontR),
+        backParIntensity:  Math.max(chillBackL, chillBackR),
+        moverIntensityL:   chillMoverL,
+        moverIntensityR:   chillMoverR,
+        moverIntensity:    Math.max(chillMoverL, chillMoverR),
+        moverActive:       chillMoverL > 0.1 || chillMoverR > 0.1,
+        physicsApplied: 'liquid-stereo',
+        acidMode: false,   // El abismo no tiene distorsión
+        noiseMode: false,
+      }
+    }
+
     // Latino y Chill: vocal → Mover L físico (expresión), treble → Mover R físico (brillo)
     // Techno/Rock: envTreble → Mover L (El Melodista), envVocal → Mover R (El Alma)
-    const outMoverL = (isLatino || isChill) ? moverRight : moverLeft
-    const outMoverR = (isLatino || isChill) ? moverLeft  : moverRight
+    const outMoverL = isLatino ? moverRight : moverLeft
+    const outMoverR = isLatino ? moverLeft  : moverRight
 
     return {
       // 7 zonas independientes — Front/Back son idénticos en ambos perfiles

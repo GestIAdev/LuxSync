@@ -1,6 +1,11 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 2433: LATINO PROFILE — El ADN de la Fiesta (MONTE CARLO STRESS TEST)
+ * WAVE 2459: CALIBRACIÓN 4.1 SALA — Tres síntomas resueltos:
+ *   S1: Muro de luz → decayBase staccato en kick/snare/highMid overrides41
+ *   S2: BackPar devora voces → gateOn highMid 0.12→0.20 en overrides41
+ *   S3: Movers clones/dimmer → polarizar moverL (hM×1.0, tr×0.0),
+ *       moverR trebleSub 0.10→0.45, gates mover 0.14/0.15→0.22/0.22
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Extraído del alma de LatinoStereoPhysics.ts (WAVE 1004.1 → WAVE 2200).
@@ -32,26 +37,22 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   // Front L — SubBass Groove (El TÚN del dembow)
-  // Latino: bombo más gordo y sostenido que techno. El reggaetón vive del
-  // bajo continuo. Gate bajo para que entre todo, decay alto para que respire.
-  // WAVE 2199: clon de Techno FRONT_PAR_GATE=0.48 → aquí más permisivo en gate
-  // porque el bajo latino es más melódico y menos percusivo.
-  // WAVE 2436.2: decay 0.30→0.88 — latino GROOVE: la luz RESPIRA con el ritmo.
-  //              El bajo del reggaeton/salsa es continuo y melódico, no staccato.
-  //              boost 2.5→2.0 — menos pico, más sustain (la ola, no el flash).
-  //              maxI 0.75→0.80 — techo más alto para el groove continuo.
-  //              ghostCap 0.08→0.10 — el bajo latino NUNCA se apaga del todo.
+  // WAVE 2461: decay 0.88→0.50 — Log real muestra sB=0.20-0.30 en golpes,
+  //   fPar se queda en 0.80 during 10+ frames entre golpes.
+  //   decayBase 0.88 + 0.05×morph0.80 = 0.92/frame → half-life 8 frames = 400ms.
+  //   Con 0.50: half-life ~1.4 frames = 70ms. Golpe fuerte, caída rápida.
+  //   boost 2.0→2.5: compensar el gate más rápido para que el pico sea visible.
   envelopeSubBass: {
     name: 'Front L (TÚN del Dembow)',
     gateOn: 0.15,
-    boost: 2.0,
+    boost: 2.5,
     crushExponent: 2.0,
-    decayBase: 0.88,
-    decayRange: 0.05,
+    decayBase: 0.50,           // WAVE 2461: 0.88→0.50 — staccato latino real
+    decayRange: 0.08,
     maxIntensity: 0.80,
     squelchBase: 0.03,
     squelchSlope: 0.50,
-    ghostCap: 0.10,
+    ghostCap: 0.00,
     gateMargin: 0.01,
   },
 
@@ -136,25 +137,32 @@ export const LATINO_PROFILE: ILiquidProfile = {
     gateMargin: 0.005,
   },
 
-  // Mover L — "El Galán" (Mid/HighMid — Congas, Voces Masculinas, Tumbao)
+  // Mover L — "El Galán" (HighMid — Congas, Acordeón, Melodía, Marimba)
   // WAVE 1004.1: MOVER_L_GATE=0.28, MOVER_L_ATTACK=0.65, MOVER_L_DECAY=0.25
   // MOVER_GAIN=1.50, MOVER_TREBLE_REJECTION=0.30
-  // El Galán busca la zona media — voces, congas, piano.
-  // El cross-filter ruta highMid×0.8 + treble×0.2 (ver moverLHighMidWeight).
-  // WAVE 2436.2: decay 0.45→0.75 — El Galán baila con swing latino, no staccato.
-  //              boost 2.5→3.5 — más presencia escénica para congas y voz.
-  //              ghostCap 0.05→0.06 — El Galán nunca duerme del todo.
+  // El Galán caza la zona highMid — melodías, congas, acordeón de cumbia.
+  // Cross-filter ruta highMid×1.0 (WAVE 2459: polarizado).
+  // WAVE 2465: El síntoma era pulsos de sílabas — el mid latino (0.46-0.50 en voces)
+  //   es continuo, pero la señal sube a 0.85 con cada sílaba forte y cae a 0.00 en
+  //   las pausas de 40ms entre sílabas. Con decayBase=0.65 y ghostCap=0.04, el Galán
+  //   parpadeaba con cada sílaba: visible como "pulsación" en el mover físico.
+  //   FIX:
+  //     decayBase 0.65→0.82 — la caída dura ~30 frames en lugar de ~8 → inercial
+  //     ghostCap  0.04→0.18 — el haz nunca desaparece entre sílabas/melodías
+  //   Resultado: el mover mantiene brillo continuo, con modulación suave en las
+  //   crestas (trompetas/explosiones de melodía) que sube a 0.85 y baja a 0.18
+  //   sin negro entre pulsaciones. Continuidad con expresión, no parpadeo.
   envelopeTreble: {
-    name: 'Mover L (El Galán — Conga & Voz)',
-    gateOn: 0.30,
+    name: 'Mover L (El Galán — Melodía & Conga)',
+    gateOn: 0.14,              // base bajo — el override41 lo sube a 0.35
     boost: 3.5,
     crushExponent: 1.0,
-    decayBase: 0.75,
+    decayBase: 0.82,           // WAVE 2465: 0.65→0.82 — inercia larga, no staccato
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.04,
     squelchSlope: 0.15,
-    ghostCap: 0.06,
+    ghostCap: 0.18,            // WAVE 2465: 0.04→0.18 — suelo continuo entre sílabas
     gateMargin: 0.01,
   },
 
@@ -184,10 +192,16 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // Más lowMid que techno — el tumbao vive ahí. Menos resta de treble.
   // ═══════════════════════════════════════════════════════════════
 
-  backLLowMidWeight: 0.70,   // MÁS que techno (0.0) — tumbao
-  backLMidWeight: 0.60,      // MÁS que techno (0.6) — congas graves
-  backLTrebleSub: 0.15,      // Resta de treble (techno=0.0)
-  backLBassSub: 0.0,         // CERO — el bajo latino ES la melodía, no contamina
+  // BACK L: WAVE 2461 — Log real: percRaw=0.000 casi siempre porque treble
+  // es estático (~0.25-0.36) y el transient shaper (delta) no lo ve.
+  // Solución: backLTrebleSub negativo → la fórmula és -treble×backLTrebleSub.
+  // Con backLTrebleSub=-0.50: -(0.30×-0.50) = +0.15 → treble SUMA al backL.
+  // El gateOn del envHighMid (0.20 en override41) filtra el nivel base.
+  // Solo los picos transientes de treble (snare, hi-hat, palma) rompen el gate.
+  backLLowMidWeight: 0.00,   // WAVE 2461: 0.70→0.00 — lowMid es solo el bajo continuo
+  backLMidWeight: 0.00,      // WAVE 2461: 0.60→0.00 — mid es melodía, no percusión
+  backLTrebleSub: -0.50,     // WAVE 2461: suma treble — -(treble×-0.50)=+treble×0.50
+  backLBassSub: 0.0,         // CERO
 
   // ═══════════════════════════════════════════════════════════════
   // MOVER L ("El Galán"): Cross-filter + tonal gate
@@ -196,17 +210,21 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // Tonal threshold más alto — el latino es más "ruidoso" armónicamente.
   // ═══════════════════════════════════════════════════════════════
 
-  moverLHighMidWeight: 0.80,    // MÁS que techno (1.0) — congas/voz masculina
-  moverLTrebleWeight: 0.20,     // MÁS que techno (0.0) — un poco de brillo
-  moverLMidWeight: 0.30,        // Mid melódico — voz masculina, piano
-  moverLTonalThreshold: 0.45,   // WAVE 2434: Monte Carlo winner — 0.55 silenciaba El Galán (avgMoverL≈0); 0.45 tonalFraction=41% con presencia equilibrada
+  // MOVER L: WAVE 2461 — Log real: hMid=0.02-0.05 (MICRO), mid=0.55-0.66 (ENORME).
+  // highMid×1.0 sola da señal 0.02-0.05 → siempre por debajo del gate.
+  // mid×0.80 da señal 0.44-0.53 → supera cualquier gate y reacciona a melodías.
+  // El Galán es ahora el cazador del mid — melodías, acordeón, voces, congas.
+  moverLHighMidWeight: 0.30,    // WAVE 2461: rol secundario — el mid manda
+  moverLTrebleWeight: 0.00,     // CERO — treble es territorio de La Dama
+  moverLMidWeight: 0.80,        // WAVE 2461: 0.30→0.80 — mid es la melodía latina
+  moverLTonalThreshold: 0.45,   // WAVE 2434: Monte Carlo winner
 
   // ═══════════════════════════════════════════════════════════════
   // MOVER R ("La Dama"): Resta de treble para sibilantes
   // En latino La Dama QUIERE treble — menos resta que techno.
   // ═══════════════════════════════════════════════════════════════
 
-  moverRTrebleSub: 0.10,    // MENOS que techno (0.3) — La Dama abraza el brillo
+  moverRTrebleSub: 0.45,    // WAVE 2459 S3: 0.10→0.45 — La Dama ignora mid/voz del Galán. Solo treble puro.
 
   // ═══════════════════════════════════════════════════════════════
   // SIDECHAIN GUILLOTINE — MUCHO MÁS SUAVE
@@ -277,55 +295,77 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
   overrides41: {
     // ── ANTI-AUTOTUNE: Matar falsos latigazos en Back R ──────────
-    // percMidSubtract controla cuánto mid se resta del trebleDelta
-    // antes de calcular percRaw. A 1.5, si mid≈0.45 y trebleDelta≈0.03
-    // → percRaw ≈ (0.03 - 0.45×1.5×factor) → aplastado a 0.
-    // Un hi-hat real (mid≈0.05, trebleDelta≈0.03) sobrevive intacto.
     percMidSubtract: 1.5,  // 0.6→1.5: voz+autotune cancelada en transient shaper
 
-    // ── TUMBAO LIMPIO: Back L ignora voz, caza bajo melódico ─────
-    // backLMidWeight baja: el muro de mid del autotune ya no enciende backL
-    // backLLowMidWeight sube: solo el bajo profundo mueve el tumbao
-    backLMidWeight: 0.30,      // 0.60→0.30: la voz autotuneada no es tumbao
-    backLLowMidWeight: 0.90,   // default→0.90: el bajo melódico profundo SÍ es tumbao
+    // ── BACK L: WAVE 2461 — Treble estático como señal de percusión ─
+    // Log muestra percRaw=0.000 casi siempre porque el treble es continuo (~0.30).
+    // El transient shaper (delta) no ve el treble estable. Hay que meterlo directo.
+    // backLTrebleSub=-0.50: la fórmula es -treble×backLTrebleSub → +treble×0.50.
+    // El gateOn=0.25 del envHighMid filtra el nivel base estático del treble.
+    // Solo los picos (snare, hi-hat, palma) rompen el gate. Igual que techno.
+    backLMidWeight: 0.00,      // WAVE 2461: mid ya no va a backL (es del Galán)
+    backLLowMidWeight: 0.00,   // WAVE 2461: lowMid es solo bajo continuo, no percusión
 
-    // ── PUNCH A MOVERS: El Galán recupera presencia escénica ─────
-    // WAVE 2436.2: Con percMidSubtract conectado, el anti-autotune actúa
-    // en el Transient Shaper (Back R) donde debe. Los movers ya no necesitan
-    // compensar con gates extremos. Gate baja para capturar congas reales.
+    // ── S3: EL GALÁN — WAVE 2465: decay inercial + ghostCap continuo ───
+    // Con moverLMidWeight=0.80, señal = mid×0.80 ≈ 0.44-0.53.
+    // gateOn: 0.35 — filtra ruido sin matar melodía (sin cambios).
+    // boost 4.0: el mid ya llega fuerte (sin cambios).
+    // NUEVO: decayBase y ghostCap para que el override replique los valores base.
+    // El override solo necesita cambiar el gate y el boost — decay/ghostCap
+    // se heredan del valor base (0.82 / 0.18) que ya tienen la calibración.
     envelopeTreble: {
-      gateOn: 0.14,        // 0.30→0.14: El Galán caza congas/voces sin muro
-      boost: 4.5,          // 2.5→4.5: presencia escénica del Galán en compactación 4.1
+      gateOn: 0.35,        // WAVE 2461: calibrado para señal mid=0.44-0.53
+      boost: 4.0,
+      decayBase: 0.82,     // WAVE 2465: espejo del valor base — continuidad
+      ghostCap: 0.18,      // WAVE 2465: espejo del valor base — suelo continuo
     },
 
-    // ── TONAL GATE: Permisivo con autotune ──────────────────────
-    // flatness >0.45 (autotune) ya no debe asesinar a El Galán.
-    // Con percMidSubtract activo, el autotune no contamina Back R,
-    // así que El Galán puede bailar libre.
-    moverLTonalThreshold: 0.60,  // 0.45→0.60: el autotune (flatness≈0.50) ya no mata
+    // ── S3: LA DAMA — sin cambios, treble=0.25-0.36 funciona bien ─
+    envelopeVocal: {
+      gateOn: 0.22,
+      boost: 5.0,
+    },
 
-    // ── COMPACTACIÓN max() (WAVE 2435 + WAVE 2436.2) ───────────
-    // Back L (Tumbao) — el base tiene decay 0.92 (groove continuo en 7.1).
-    // En 4.1, max(backL, backR) haría que el tumbao asfixie al TAcka.
-    // Bajamos decay para que el tumbao pulse pero suelte entre golpes.
+    // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────
+    moverLTonalThreshold: 0.99,  // WAVE 2460/2461: desactivado para latino
+
+    // ── BACK L envHighMid — treble como señal, gate selectivo ────
+    // WAVE 2461: Con treble sumado al input, el gate debe ser alto para que
+    // solo los picos transientes de treble enciendan el Back.
+    // Señal base (treble×0.50 = 0.12-0.18) debe quedar bajo el gate.
+    // Solo un snare/hi-hat real (treble>0.35) romperá el gate de 0.20.
     envelopeHighMid: {
-      gateOn: 0.12,      // 0.04→0.12: ignora mid ambiente suave
-      decayBase: 0.70,   // 0.92→0.70: pulsa y suelta, da paso al TAcka
-      ghostCap: 0.03,    // 0.08→0.03: tumbao sutil en background del backPar
+      gateOn: 0.20,      // WAVE 2461: filtra treble base, pasa picos transientes
+      decayBase: 0.28,   // latiguazo rápido, no DC
+      ghostCap: 0.00,    // negro absoluto entre golpes
     },
 
-    // Front L (SubBass) — el base tiene decay 0.88 (groove continuo en 7.1).
-    // En 4.1 la energía RMS es más alta por compactación. Decay más corto.
+    // ── FRONT SubBass — WAVE 2462: gate anti-bajo-continuo ───────
+    // Log real: sB = 0.08-0.30. Entre golpes de bombo: sB = 0.13-0.19 (bajo
+    // melódico continuo). Con gateOn=0.15, ese bajo SIEMPRE re-triggea el
+    // envelope → front encendido todo el tiempo = "gordo/relleno" que Radwulf ve.
+    // Solo los golpes reales de bombo empujan sB > 0.22. Gate en 0.22 = solo
+    // golpes reales pasan. boost 2.5→1.8: la señal llega ya a 0.25-0.30, no
+    // necesita boost enorme para alcanzar maxIntensity=0.80.
     envelopeSubBass: {
-      decayBase: 0.75,   // 0.88→0.75: groove pero sin saturar en 4.1
+      decayBase: 0.50,   // WAVE 2461: staccato latino real
+      gateOn: 0.22,      // WAVE 2462: 0.15→0.22 — bloquea bajo melódico continuo
+      boost: 1.8,        // WAVE 2462: 2.5→1.8 — señal real ya es suficientemente fuerte
     },
 
-    // Back R (TAcka) — boost extra para ganar el max() al tumbao
+    // ── KICK STACCATO ─────────────────────────────────────────────
+    envelopeKick: {
+      decayBase: 0.10,
+    },
+
+    // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
+    // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
     envelopeSnare: {
+      decayBase: 0.22,   // 0.45→0.22 WAVE 2459 S1: disparo limpio
       boost: 4.5,        // 3.5→4.5: más presencia para ganar el max() al tumbao
     },
 
     // Sidechain más suave — frontPar compactado tiene más energía constante
-    sidechainDepth: 0.08,     // 0.12→0.08: menos ducking para compensar frontPar elevado
+    sidechainDepth: 0.08,     // 0.12→0.08: menos ducking en 4.1
   },
 }

@@ -471,10 +471,19 @@ export class MasterArbiter extends EventEmitter {
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
     
     if (existingOverride) {
-      // Merge controls: new values override existing, but keep non-conflicting ones
-      const mergedControls = {
+      // Merge controls: new values override existing, but keep non-conflicting ones.
+      // DEEP merge para phantomChannels — el spread shallow destruiría los phantom
+      // previos cuando llega un segundo canal phantom independiente.
+      const existingPhantom = (existingOverride.controls as any)?.phantomChannels ?? {}
+      const newPhantom = (override.controls as any)?.phantomChannels ?? {}
+      const mergedPhantom = { ...existingPhantom, ...newPhantom }
+      
+      const mergedControls: Record<string, any> = {
         ...existingOverride.controls,
         ...override.controls,
+      }
+      if (Object.keys(mergedPhantom).length > 0) {
+        mergedControls.phantomChannels = mergedPhantom
       }
       
       // Merge channels: union of both sets (no duplicates)
@@ -1517,17 +1526,32 @@ export class MasterArbiter extends EventEmitter {
     
     // Obtener canales del fixture registrado
     const fixtureData = this.fixtures.get(fixtureId)
-    if (fixtureData && (fixtureData as any).channelDefinitions) {
-      const channelDefs: Array<{ type: string; defaultValue: number }> = (fixtureData as any).channelDefinitions
+    const channelDefs: Array<{ type: string; name?: string; index?: number; defaultValue?: number }> =
+      (fixtureData as any)?.channelDefinitions ?? (fixtureData as any)?.channels ?? []
+    if (channelDefs.length > 0) {
       for (const ch of channelDefs) {
         if (!NATIVE_CHANNELS.has(ch.type)) {
-          // Check manual override first
-          const manualPhantomValue = manualOverride?.controls?.phantomChannels?.[ch.type]
+          // Para canales custom/unknown usamos el nombre como key (evita colisión cuando
+          // hay múltiples canales del mismo tipo). Para el resto usamos el tipo.
+          const phantomKey =
+            (ch.type === 'custom' || ch.type === 'unknown')
+              ? (ch.name || `unknown_${ch.index ?? 0}`)
+              : ch.type
+          
+          // Check manual override first:
+          // 1) controls.phantomChannels[key] — ruta que usa CalibrationView
+          // 2) controls[type] directamente — ruta directa de BeamSection (prism, gobo, strobe...)
+          const manualPhantomValue =
+            manualOverride?.controls?.phantomChannels?.[phantomKey] ??
+            manualOverride?.controls?.phantomChannels?.[ch.type] ??
+            (manualOverride?.overrideChannels?.includes(ch.type as ChannelType)
+              ? (manualOverride.controls as Record<string, number>)[ch.type]
+              : undefined)
           if (manualPhantomValue !== undefined) {
-            phantomChannels[ch.type] = clampDMX(manualPhantomValue)
+            phantomChannels[phantomKey] = clampDMX(manualPhantomValue)
             controlSources[ch.type as ChannelType] = ControlLayer.MANUAL
           } else {
-            phantomChannels[ch.type] = ch.defaultValue ?? 0
+            phantomChannels[phantomKey] = ch.defaultValue ?? 0
             controlSources[ch.type as ChannelType] = ControlLayer.TITAN_AI
           }
         }

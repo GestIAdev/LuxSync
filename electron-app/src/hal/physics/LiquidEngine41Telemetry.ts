@@ -1,11 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 2434: LATINO 4.1 TELEMETRY INJECTOR
+ * WAVE 2457: ENVELOPE-DRIVEN MOVERS — El Galán + La Dama activos
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Inyecta un logger frame-a-frame (20fps) sobre LiquidEngine41 con
  * LATINO_PROFILE activo. La telemetría se emite por consola en formato
  * parseable para el script Monte Carlo de Wave 2434.
+ *
+ * WAVE 2457: El motor ahora recibe moverLeft/moverRight calculados por el
+ * sistema de envolventes parametrizado del LATINO_PROFILE (no WAVE 911):
+ *   Mover L = El Galán: envTreble.process(highMid×0.80 + treble×0.20, morph)
+ *               gate: 0.14 (override41), boost: 4.5 (override41)
+ *               tonal gate: flatness < 0.60 (anti-autotune, override41)
+ *   Mover R = La Dama: envVocal.process(mid - bass×subtractFactor - treble×0.10, morph)
+ *               gate: 0.15, boost: 4.0
  *
  * ACTIVACIÓN: Desde SeleneLux.ts llama latinoEngine41Telemetry.setTelemetryEnabled(true).
  * El motor se autoinyecta en el switch bifurcado de WAVE 2432 cuando telemetry está activo.
@@ -17,7 +26,7 @@
  *               sc:{sidechainFired} scDepth:{duckingApplied}
  *
  * @module hal/physics/LiquidEngine41Telemetry
- * @version WAVE 2434 — LATINO CALIBRATION
+ * @version WAVE 2457 — EL GALAN + LA DAMA VIVOS
  */
 
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
@@ -58,7 +67,7 @@ export interface Latino41TelemetryRecord {
 
 export class LiquidEngine41Telemetry extends LiquidEngineBase {
 
-  private _telemetryEnabled = true
+  private _telemetryEnabled = false
   private _frameCount = 0
   private _lastTrebleForDelta = 0
 
@@ -208,7 +217,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         this._bufferHead = (this._bufferHead + 1) % LiquidEngine41Telemetry.BUFFER_SIZE
       }
 
-      // Log a consola en formato parseable por wave2434-latino-montecarlo.ts
+      // [LATINO-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
+      // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
+      // Desactivar con setTelemetryEnabled(false) antes de producción estable.
       console.log(
         `[LATINO-41]` +
         ` sB:${bands.subBass.toFixed(3)}` +
@@ -256,7 +267,10 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
 // SINGLETON — Conectado a SeleneLux.ts. Activar con setTelemetryEnabled(true).
 // Volcar datos con exportToFile() cuando hayas capturado suficiente material.
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2460: Telemetría siempre activa en desarrollo — se desactiva manualmente
+// con window.luxDebug.telemetry.stop() o IPC 'telemetry:lt41:stop' antes de producción.
 export const latinoEngine41Telemetry = new LiquidEngine41Telemetry()
+latinoEngine41Telemetry.setTelemetryEnabled(true)
 
 // ── WAVE 2434: IPC bridge expuesto en preload.ts → window.luxDebug.telemetry ──
 // Llamar desde DevTools del renderer:

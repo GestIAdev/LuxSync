@@ -113,12 +113,16 @@ export function HyperionView({
     onViewModeChange?.(viewMode)
   }, [viewMode, onViewModeChange])
 
-  // 🌊 WAVE 2436: Sync persisted liquidLayout → backend on mount
-  // controlStore persists layout in localStorage. SeleneLux always boots '4.1'.
-  // Without this, UI shows '7.1' but motor runs '4.1' after restart.
+  // 🌊 WAVE 2436 → WAVE 2458: Boot Alignment — UI siempre arranca en '4.1'
+  // SeleneLux siempre bootea en '4.1'. localStorage puede tener '7.1' de sesión anterior.
+  // En lugar de empujar el valor persistido al backend (que era el bug), reseteamos
+  // el store a '4.1' en mount para que UI y backend coincidan desde el primer frame.
+  // El usuario puede cambiar a '7.1' manualmente — ese cambio se persiste para el toggle,
+  // pero al recargar siempre vuelven a sincronizarse en '4.1'.
   useEffect(() => {
-    window.lux?.setLiquidLayout?.(liquidLayout)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- mount-only sync
+    setLiquidLayout('4.1')
+    window.lux?.setLiquidLayout?.('4.1')
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- mount-only boot alignment
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleViewModeChange = useCallback((mode: ViewMode) => {

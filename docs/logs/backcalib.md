@@ -1,660 +1,711 @@
-BACK | mid: 0.463 bass: 0.140 sf: 0.42 cMid: 0.404 morph: 0.52 | rawTr: 0.111 tGate: 0.00 flat: 0.028 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.464 bass: 0.171 sf: 0.42 cMid: 0.392 morph: 0.52 | rawTr: 0.018 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.456 bass: 0.163 sf: 0.42 cMid: 0.387 morph: 0.51 | rawTr: 0.035 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.441 bass: 0.600 sf: 0.42 cMid: 0.189 morph: 0.51 | rawTr: 0.010 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.47 BR: 0.00
-[🥁 INTERVAL BPM] KICK #242 bpm=81 conf=0.68 energy=0.1929 avg=0.0106 ratio=18.22 delta=0.1929 history=8/8 bpmBuf=[81,86,76,81,86,81,86,81]
-BACK | mid: 0.379 bass: 0.812 sf: 0.42 cMid: 0.000 morph: 0.50 | rawTr: 0.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.07 BR: 0.00
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[SimpleSectionTracker] 🔴 DROP ENTER | vibe=techno | bassRatio=2.72 | energy=0.79 | bass=0.70 | kick=true
-[SimpleSectionTracker] 📍 breakdown → drop | bassR=2.72 wE=0.79 ΔE=0.156 kick=true
-BACK | mid: 0.356 bass: 0.799 sf: 0.43 cMid: 0.000 morph: 0.50 | rawTr: 0.000 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.05 BR: 0.00
-BACK | mid: 0.366 bass: 0.799 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.000 tGate: 0.00 flat: 0.023 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.354 bass: 0.820 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.021 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.419 bass: 0.831 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.019 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.428 bass: 0.814 sf: 0.44 cMid: 0.000 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.018 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.421 bass: 0.734 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.001 tGate: 0.00 flat: 0.018 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.416 bass: 0.701 sf: 0.44 cMid: 0.108 morph: 0.47 | rawTr: 0.340 tGate: 0.00 flat: 0.017 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.00
-[🥁 INTERVAL BPM] KICK #243 bpm=81 conf=0.68 energy=0.2040 avg=0.0228 ratio=8.94 delta=0.2040 history=8/8 bpmBuf=[81,86,76,81,86,81,86,81]
-BACK | mid: 0.388 bass: 0.740 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.438 bass: 0.794 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.523 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.544 bass: 0.826 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.766 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.484 bass: 0.805 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.007 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=NEUTRAL dom=68% B/D/N=22/83/220
-[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 60° | FinalHue: 45°
-BACK | mid: 0.469 bass: 0.798 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.004 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(42%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] FL:0.72 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.13
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:60 | Pan:-143 Tilt:-96 | sBPM:122 phase:84°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:60 | Pan:143 Tilt:-96 | sBPM:122 phase:84°
-BACK | mid: 0.429 bass: 0.832 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.015 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.444 bass: 0.841 sf: 0.44 cMid: 0.000 morph: 0.48 | rawTr: 0.292 tGate: 0.00 flat: 0.014 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=122 conf=0.67 | PLL=FREEWHEEL [mem=122@-0f] phase=0.00 sync=0.37 | beat #243
-BACK | mid: 0.441 bass: 0.850 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 0.00 flat: 0.014 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.17 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:72% FR:0% BL:0% BR:0%
-BACK | mid: 0.423 bass: 0.858 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 0.00 flat: 0.014 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.16 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.334 bass: 0.845 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.013 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F3920 bpm=122 raw=81 conf=0.668 kick=false phase=0.44 needle=0.0397 bassFlux=0.0397 midFlux=0.0000 centroid=101Hz kicks=243
-BACK | mid: 0.302 bass: 0.826 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.000 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
+[LAB-DATA] cent:1376 | isK:0 bass:0.743 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1272 | isK:0 bass:0.690 | trbD:0.138 hmD:0.000 midD:0.036 harsh:0.004 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1781 | isK:0 bass:0.655 | trbD:0.072 hmD:0.008 midD:0.051 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2176 | isK:0 bass:0.614 | trbD:0.000 hmD:0.002 midD:0.025 harsh:0.011 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2539 | isK:0 bass:0.645 | trbD:0.000 hmD:0.002 midD:0.012 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2466 | isK:0 bass:0.647 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2293 | isK:0 bass:0.629 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2134 | isK:0 bass:0.804 | trbD:0.055 hmD:0.000 midD:0.228 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2066 | isK:1 bass:0.824 | trbD:0.000 hmD:0.006 midD:0.000 harsh:0.012 | oF:0.800 oB:0.200
+[🥁 INTERVAL BPM] KICK #40 bpm=161 conf=0.62 energy=0.2446 avg=0.0498 ratio=4.91 delta=0.1564 history=8/8 bpmBuf=[185,161,161,161,161,161,185,161]
+[LAB-DATA] cent:1909 | isK:1 bass:0.781 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.001 oB:0.010
+[LAB-DATA] cent:1763 | isK:0 bass:0.716 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1629 | isK:0 bass:0.694 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1506 | isK:0 bass:0.640 | trbD:0.232 hmD:0.000 midD:0.031 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2055 | isK:0 bass:0.633 | trbD:0.007 hmD:0.008 midD:0.021 harsh:0.010 | oF:0.000 oB:0.200
+[IPC ðŸ“¡] audioBuffer #756 | titan.running=true | size=8192
+[LAB-DATA] cent:2143 | isK:0 bass:0.642 | trbD:0.000 hmD:0.000 midD:0.001 harsh:0.010 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2225 | isK:0 bass:0.661 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2117 | isK:0 bass:0.647 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2073 | isK:0 bass:0.747 | trbD:0.023 hmD:0.000 midD:0.095 harsh:0.010 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2033 | isK:0 bass:0.829 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.200
+[🥁 INTERVAL BPM] KICK #41 bpm=161 conf=0.62 energy=0.2595 avg=0.0563 ratio=4.61 delta=0.2595 history=8/8 bpmBuf=[185,161,161,161,185,161,185,161]
+[SimpleSectionTracker] 📍 verse → buildup | bassR=1.12 wE=0.72 ΔE=0.035 kick=true
+[LAB-DATA] cent:1887 | isK:1 bass:0.802 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.800 oB:0.010
+[INTERVAL] F760 bpm=121 raw=161 conf=0.614 kick=false phase=0.12 needle=0.1458 bassFlux=0.1458 midFlux=0.0000 centroid=74Hz kicks=41
+[LAB-DATA] cent:1742 | isK:1 bass:0.737 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.993 (Rock target: >0.7)
+   Flatness:    0.004 (Tonal<0.3, Noise>0.7)
+   Centroid:    102Hz (Bright>2000, Dark<1200)
+   CrestFactor: 25.18 (Dynamics)
+   Rolloff:     86Hz (85% energy)
+   Latency:     1.13ms
+   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
+[LAB-DATA] cent:1611 | isK:0 bass:0.701 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2142 | isK:0 bass:0.710 | trbD:0.258 hmD:0.007 midD:0.138 harsh:0.010 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2630 | isK:0 bass:0.711 | trbD:0.000 hmD:0.005 midD:0.008 harsh:0.013 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2745 | isK:0 bass:0.668 | trbD:0.000 hmD:0.001 midD:0.007 harsh:0.014 | oF:0.000 oB:0.010
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=39% B/D/N=93/156/147
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:2802 | isK:0 bass:0.618 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.013 | oF:0.000 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.39
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:10 | Pan:-186 Tilt:-27 | sBPM:122 phase:225°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:10 | Pan:186 Tilt:-27 | sBPM:122 phase:225°
+[LAB-DATA] cent:2734 | isK:0 bass:0.578 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2672 | isK:0 bass:0.719 | trbD:0.044 hmD:0.000 midD:0.213 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2551 | isK:0 bass:0.806 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.010 | oF:0.000 oB:0.200
+[🥁 INTERVAL BPM] KICK #42 bpm=161 conf=0.62 energy=0.3249 avg=0.0585 ratio=5.55 delta=0.3249 history=8/8 bpmBuf=[185,161,161,161,185,161,185,161]
+[LAB-DATA] cent:2361 | isK:1 bass:0.771 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.010
+[LAB-DATA] cent:2182 | isK:0 bass:0.732 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2016 | isK:0 bass:0.677 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2562 | isK:0 bass:0.648 | trbD:0.220 hmD:0.005 midD:0.072 harsh:0.010 | oF:0.000 oB:1.000
+[LAB-DATA] cent:3065 | isK:0 bass:0.630 | trbD:0.018 hmD:0.004 midD:0.011 harsh:0.012 | oF:0.000 oB:0.200
+[Harmony ⚠️] Freq 9012Hz fuera de rango musical
+[LAB-DATA] cent:3442 | isK:0 bass:0.677 | trbD:0.000 hmD:0.002 midD:0.006 harsh:0.014 | oF:0.000 oB:0.010
+[LAB-DATA] cent:3221 | isK:0 bass:0.745 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2984 | isK:1 bass:0.751 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.800 oB:0.000
+[LAB-DATA] cent:2770 | isK:0 bass:0.725 | trbD:0.020 hmD:0.000 midD:0.085 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2573 | isK:0 bass:0.795 | trbD:0.030 hmD:0.000 midD:0.009 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2418 | isK:0 bass:0.757 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2948 | isK:0 bass:0.646 | trbD:0.002 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3435 | isK:0 bass:0.593 | trbD:0.010 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3969 | isK:0 bass:0.545 | trbD:0.011 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4352 | isK:0 bass:0.480 | trbD:0.076 hmD:0.007 midD:0.115 harsh:0.013 | oF:0.000 oB:1.000
+[LAB-DATA] cent:4704 | isK:0 bass:0.475 | trbD:0.000 hmD:0.005 midD:0.008 harsh:0.016 | oF:0.000 oB:0.200
+[LAB-DATA] cent:4841 | isK:0 bass:0.512 | trbD:0.000 hmD:0.003 midD:0.003 harsh:0.018 | oF:0.000 oB:0.010
+[INTERVAL] F780 bpm=121 raw=161 conf=0.602 kick=false phase=0.62 needle=0.0000 bassFlux=0.0819 midFlux=0.0000 centroid=3492Hz kicks=42
+[BETA 🎵] Key Detected: F minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 780: bpm=121, energy=0.42
+[LAB-DATA] cent:4733 | isK:1 bass:0.593 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.018 | oF:0.800 oB:0.000
+[AGC 🎚️] Gain: 0.63x | In: 0.483 → Out: 0.306 | Peak: 0.793 | ✅ ACTIVE
+[LAB-DATA] cent:4776 | isK:0 bass:0.590 | trbD:0.000 hmD:0.000 midD:0.001 harsh:0.018 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4816 | isK:0 bass:0.628 | trbD:0.000 hmD:0.000 midD:0.085 harsh:0.019 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4588 | isK:0 bass:0.690 | trbD:0.000 hmD:0.001 midD:0.010 harsh:0.020 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4378 | isK:0 bass:0.620 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.021 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4362 | isK:0 bass:0.539 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.018 | oF:0.000 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.60 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.55 | beat #42
+[LAB-DATA] cent:4636 | isK:0 bass:0.486 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.015 | oF:0.000 oB:0.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.5802
+[LAB-DATA] cent:4887 | isK:0 bass:0.436 | trbD:0.079 hmD:0.000 midD:0.030 harsh:0.012 | oF:0.000 oB:1.000
+[LAB-DATA] cent:5168 | isK:0 bass:0.437 | trbD:0.039 hmD:0.003 midD:0.038 harsh:0.014 | oF:0.000 oB:0.200
+[LAB-DATA] cent:5074 | isK:0 bass:0.555 | trbD:0.000 hmD:0.003 midD:0.008 harsh:0.017 | oF:0.000 oB:0.010
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.01 BR:0.01 | ML:1.00 MR:0.85
+[LAB-DATA] cent:4785 | isK:0 bass:0.592 | trbD:0.000 hmD:0.000 midD:0.001 harsh:0.017 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4519 | isK:0 bass:0.637 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.017 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #789 | titan.running=true | size=8192
+[LAB-DATA] cent:4274 | isK:0 bass:0.647 | trbD:0.000 hmD:0.000 midD:0.015 harsh:0.017 | oF:0.000 oB:0.000
+[LAB-DATA] cent:4113 | isK:0 bass:0.733 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.017 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3819 | isK:1 bass:0.705 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.014 | oF:0.800 oB:0.000
+[LAB-DATA] cent:3825 | isK:0 bass:0.594 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.001 oB:0.000
+[LAB-DATA] cent:3830 | isK:0 bass:0.542 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3700 | isK:0 bass:0.502 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3923 | isK:0 bass:0.617 | trbD:0.158 hmD:0.004 midD:0.108 harsh:0.010 | oF:0.000 oB:1.000
+[LAB-DATA] cent:3812 | isK:0 bass:0.626 | trbD:0.000 hmD:0.003 midD:0.028 harsh:0.013 | oF:0.000 oB:0.200
+[LAB-DATA] cent:3591 | isK:0 bass:0.602 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.013 | oF:0.000 oB:0.010
+[LAB-DATA] cent:3387 | isK:0 bass:0.568 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.013 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3207 | isK:0 bass:0.560 | trbD:0.030 hmD:0.000 midD:0.055 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent:3036 | isK:0 bass:0.687 | trbD:0.005 hmD:0.002 midD:0.022 harsh:0.014 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2879 | isK:0 bass:0.696 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.015 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2709 | isK:0 bass:0.643 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.013 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2585 | isK:0 bass:0.619 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2472 | isK:0 bass:0.548 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[INTERVAL] F800 bpm=121 raw=161 conf=0.582 kick=false phase=0.11 needle=0.0000 bassFlux=0.0000 midFlux=0.0028 centroid=1196Hz kicks=42
+[LAB-DATA] cent:2370 | isK:0 bass:0.518 | trbD:0.174 hmD:0.000 midD:0.082 harsh:0.007 | oF:0.000 oB:1.000
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.869 (Rock target: >0.7)
+   Flatness:    0.197 (Tonal<0.3, Noise>0.7)
+   Centroid:    5560Hz (Bright>2000, Dark<1200)
+   CrestFactor: 7.14 (Dynamics)
+   Rolloff:     10487Hz (85% energy)
+   Latency:     1.52ms
+   UltraAir:    0.020 (NEW: 16-22kHz sizzle)
+[LAB-DATA] cent:2625 | isK:0 bass:0.587 | trbD:0.000 hmD:0.007 midD:0.018 harsh:0.011 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2456 | isK:1 bass:0.642 | trbD:0.000 hmD:0.000 midD:0.009 harsh:0.010 | oF:0.800 oB:0.010
+[LAB-DATA] cent:2284 | isK:0 bass:0.694 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.001 oB:0.000
+[LAB-DATA] cent:2125 | isK:0 bass:0.670 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1983 | isK:0 bass:0.768 | trbD:0.060 hmD:0.000 midD:0.055 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1894 | isK:0 bass:0.778 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.010 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1812 | isK:0 bass:0.672 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.010 | oF:0.000 oB:0.010
+[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.52 wE=0.08 ΔE=-0.168 kick=false
+[LAB-DATA] cent:1743 | isK:0 bass:0.618 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1678 | isK:0 bass:0.568 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1618 | isK:0 bass:0.519 | trbD:0.225 hmD:0.000 midD:0.130 harsh:0.005 | oF:0.000 oB:1.000
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=39% B/D/N=91/152/149
+[StrategyArbiter] 🔄 Running... frame=1200 | current=analogous | commitment=601
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 600 frames (10.0s)
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:1903 | isK:0 bass:0.499 | trbD:0.003 hmD:0.006 midD:0.010 harsh:0.010 | oF:0.000 oB:0.200
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.20 BR:0.20 | ML:0.00 MR:0.52
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:10 | Pan:144 Tilt:66 | sBPM:121 phase:350°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:10 | Pan:-144 Tilt:66 | sBPM:121 phase:350°
+[LAB-DATA] cent:1838 | isK:0 bass:0.561 | trbD:0.000 hmD:0.001 midD:0.014 harsh:0.010 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1733 | isK:0 bass:0.620 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1636 | isK:0 bass:0.619 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1541 | isK:0 bass:0.698 | trbD:0.081 hmD:0.000 midD:0.120 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1490 | isK:0 bass:0.752 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1469 | isK:0 bass:0.671 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1463 | isK:0 bass:0.615 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1458 | isK:0 bass:0.559 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1454 | isK:0 bass:0.473 | trbD:0.184 hmD:0.000 midD:0.071 harsh:0.004 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1683 | isK:0 bass:0.505 | trbD:0.000 hmD:0.006 midD:0.022 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1597 | isK:0 bass:0.617 | trbD:0.000 hmD:0.000 midD:0.006 harsh:0.009 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1519 | isK:0 bass:0.649 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1422 | isK:0 bass:0.630 | trbD:0.017 hmD:0.000 midD:0.050 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1408 | isK:0 bass:0.760 | trbD:0.015 hmD:0.001 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[INTERVAL] F820 bpm=121 raw=161 conf=0.562 kick=false phase=0.60 needle=0.1609 bassFlux=0.1609 midFlux=0.0000 centroid=306Hz kicks=42
+[LAB-DATA] cent:1320 | isK:1 bass:0.723 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.800 oB:0.000
+[IPC ðŸ“¡] audioBuffer #821 | titan.running=true | size=8192
+[LAB-DATA] cent:1239 | isK:1 bass:0.640 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1260 | isK:0 bass:0.534 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1240 | isK:0 bass:0.510 | trbD:0.001 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1569 | isK:0 bass:0.568 | trbD:0.236 hmD:0.003 midD:0.131 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1599 | isK:1 bass:0.640 | trbD:0.000 hmD:0.004 midD:0.051 harsh:0.010 | oF:0.800 oB:0.200
+[LAB-DATA] cent:1626 | isK:1 bass:0.628 | trbD:0.000 hmD:0.003 midD:0.003 harsh:0.012 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1547 | isK:0 bass:0.596 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1508 | isK:0 bass:0.544 | trbD:0.026 hmD:0.000 midD:0.033 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1473 | isK:0 bass:0.742 | trbD:0.028 hmD:0.000 midD:0.020 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1415 | isK:0 bass:0.717 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1355 | isK:0 bass:0.618 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.55 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.54 | beat #42
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=5333K
+[LAB-DATA] cent:1300 | isK:0 bass:0.548 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[LAB-DATA] cent:1254 | isK:0 bass:0.492 | trbD:0.074 hmD:0.000 midD:0.026 harsh:0.004 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1737 | isK:0 bass:0.477 | trbD:0.125 hmD:0.003 midD:0.084 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1940 | isK:0 bass:0.510 | trbD:0.000 hmD:0.004 midD:0.048 harsh:0.009 | oF:0.000 oB:0.200
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.20 BR:0.20 | ML:0.85 MR:0.85
+[LAB-DATA] cent:2127 | isK:0 bass:0.661 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.011 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1990 | isK:1 bass:0.677 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1853 | isK:0 bass:0.667 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1746 | isK:0 bass:0.761 | trbD:0.056 hmD:0.000 midD:0.047 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1646 | isK:0 bass:0.716 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1546 | isK:0 bass:0.665 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1487 | isK:0 bass:0.565 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1418 | isK:0 bass:0.505 | trbD:0.033 hmD:0.000 midD:0.009 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1890 | isK:0 bass:0.500 | trbD:0.199 hmD:0.006 midD:0.127 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1922 | isK:0 bass:0.512 | trbD:0.000 hmD:0.003 midD:0.028 harsh:0.010 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1952 | isK:0 bass:0.563 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.012 | oF:0.000 oB:0.010
+[INTERVAL] F840 bpm=121 raw=161 conf=0.542 kick=false phase=0.10 needle=0.0423 bassFlux=0.0423 midFlux=0.0000 centroid=514Hz kicks=42
+[BETA 🎵] Key Detected: F minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 840: bpm=121, energy=0.31
+[LAB-DATA] cent:1837 | isK:0 bass:0.632 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.996 (Rock target: >0.7)
+   Flatness:    0.001 (Tonal<0.3, Noise>0.7)
+   Centroid:    313Hz (Bright>2000, Dark<1200)
+   CrestFactor: 20.46 (Dynamics)
+   Rolloff:     366Hz (85% energy)
+   Latency:     1.53ms
+   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.74x | In: 0.489 → Out: 0.361 | Peak: 0.663 | ✅ ACTIVE
+[LAB-DATA] cent:1715 | isK:0 bass:0.622 | trbD:0.019 hmD:0.000 midD:0.051 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1659 | isK:0 bass:0.725 | trbD:0.060 hmD:0.001 midD:0.069 harsh:0.009 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1608 | isK:0 bass:0.739 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.010 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1512 | isK:0 bass:0.681 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1425 | isK:0 bass:0.597 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1350 | isK:0 bass:0.513 | trbD:0.083 hmD:0.000 midD:0.011 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1707 | isK:0 bass:0.450 | trbD:0.105 hmD:0.000 midD:0.079 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2015 | isK:0 bass:0.496 | trbD:0.000 hmD:0.005 midD:0.006 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1925 | isK:0 bass:0.552 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1842 | isK:0 bass:0.619 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1720 | isK:0 bass:0.628 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1770 | isK:0 bass:0.731 | trbD:0.090 hmD:0.001 midD:0.112 harsh:0.009 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1666 | isK:1 bass:0.744 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.800 oB:0.200
+[LAB-DATA] cent:1705 | isK:0 bass:0.638 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1740 | isK:0 bass:0.583 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1709 | isK:0 bass:0.516 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #853 | titan.running=true | size=8192
+[LAB-DATA] cent:2176 | isK:0 bass:0.573 | trbD:0.223 hmD:0.007 midD:0.128 harsh:0.008 | oF:0.000 oB:1.000
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=40% B/D/N=81/155/152
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:2605 | isK:0 bass:0.620 | trbD:0.007 hmD:0.005 midD:0.033 harsh:0.011 | oF:0.000 oB:0.200
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.20 BR:0.20 | ML:0.00 MR:0.61
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:10 | Pan:70 Tilt:-122 | sBPM:121 phase:118°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:10 | Pan:-70 Tilt:-122 | sBPM:121 phase:118°
+[LAB-DATA] cent:2494 | isK:0 bass:0.619 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2351 | isK:0 bass:0.601 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2218 | isK:0 bass:0.553 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2102 | isK:0 bass:0.563 | trbD:0.079 hmD:0.000 midD:0.102 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2113 | isK:0 bass:0.703 | trbD:0.015 hmD:0.004 midD:0.019 harsh:0.010 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1978 | isK:1 bass:0.740 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1932 | isK:0 bass:0.668 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1888 | isK:0 bass:0.594 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[INTERVAL] F860 bpm=121 raw=161 conf=0.522 kick=false phase=0.59 needle=0.0000 bassFlux=0.0004 midFlux=0.0001 centroid=649Hz kicks=42
+[LAB-DATA] cent:1789 | isK:0 bass:0.548 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1698 | isK:0 bass:0.516 | trbD:0.140 hmD:0.000 midD:0.110 harsh:0.003 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1972 | isK:0 bass:0.569 | trbD:0.012 hmD:0.004 midD:0.022 harsh:0.006 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1892 | isK:0 bass:0.651 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.007 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1762 | isK:1 bass:0.677 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1638 | isK:0 bass:0.658 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1523 | isK:0 bass:0.752 | trbD:0.108 hmD:0.000 midD:0.105 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1502 | isK:0 bass:0.756 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1470 | isK:0 bass:0.702 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1494 | isK:0 bass:0.623 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1517 | isK:0 bass:0.543 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1470 | isK:0 bass:0.528 | trbD:0.170 hmD:0.000 midD:0.101 harsh:0.004 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1940 | isK:0 bass:0.496 | trbD:0.062 hmD:0.006 midD:0.058 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2371 | isK:0 bass:0.565 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.011 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2403 | isK:0 bass:0.595 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2234 | isK:0 bass:0.616 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2079 | isK:0 bass:0.609 | trbD:0.030 hmD:0.000 midD:0.101 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2127 | isK:0 bass:0.762 | trbD:0.037 hmD:0.003 midD:0.049 harsh:0.009 | oF:0.000 oB:0.200
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.51 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.53 | beat #42
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=5386K
+[LAB-DATA] cent:1986 | isK:1 bass:0.750 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.800 oB:0.010
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:80% FR:80% BL:1% BR:1%
+[LAB-DATA] cent:1856 | isK:1 bass:0.668 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1849 | isK:0 bass:0.612 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1853 | isK:0 bass:0.501 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.01
+[LAB-DATA] cent:2393 | isK:0 bass:0.449 | trbD:0.200 hmD:0.001 midD:0.105 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2890 | isK:0 bass:0.479 | trbD:0.019 hmD:0.001 midD:0.049 harsh:0.006 | oF:0.000 oB:0.200
+[LAB-DATA] cent:3050 | isK:0 bass:0.619 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.010 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2839 | isK:0 bass:0.634 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2645 | isK:0 bass:0.634 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2454 | isK:0 bass:0.616 | trbD:0.045 hmD:0.000 midD:0.124 harsh:0.006 | oF:0.000 oB:1.000
+[INTERVAL] F880 bpm=121 raw=161 conf=0.448 kick=false phase=0.08 needle=0.0511 bassFlux=0.0511 midFlux=0.0220 centroid=1149Hz kicks=42
+[LAB-DATA] cent:2350 | isK:0 bass:0.748 | trbD:0.003 hmD:0.004 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2254 | isK:0 bass:0.722 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.012 | oF:0.000 oB:0.010
+[GOD EAR 🩻] SHADOW MODE TELEMETRY:
+   Clarity:     0.979 (Rock target: >0.7)
+   Flatness:    0.012 (Tonal<0.3, Noise>0.7)
+   Centroid:    551Hz (Bright>2000, Dark<1200)
+   CrestFactor: 17.98 (Dynamics)
+   Rolloff:     237Hz (85% energy)
+   Latency:     1.10ms
+   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
+[LAB-DATA] cent:2117 | isK:0 bass:0.606 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2184 | isK:0 bass:0.553 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2160 | isK:0 bass:0.565 | trbD:0.189 hmD:0.000 midD:0.118 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2137 | isK:0 bass:0.601 | trbD:0.015 hmD:0.000 midD:0.013 harsh:0.005 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2352 | isK:0 bass:0.621 | trbD:0.000 hmD:0.007 midD:0.000 harsh:0.009 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2226 | isK:0 bass:0.606 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #886 | titan.running=true | size=8192
+[LAB-DATA] cent:2110 | isK:0 bass:0.570 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2011 | isK:0 bass:0.552 | trbD:0.022 hmD:0.000 midD:0.081 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2068 | isK:0 bass:0.615 | trbD:0.060 hmD:0.004 midD:0.097 harsh:0.010 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2120 | isK:0 bass:0.683 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.012 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1981 | isK:1 bass:0.599 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.010
+[LAB-DATA] cent:2060 | isK:0 bass:0.540 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2087 | isK:0 bass:0.430 | trbD:0.059 hmD:0.000 midD:0.001 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2112 | isK:0 bass:0.407 | trbD:0.071 hmD:0.000 midD:0.040 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2042 | isK:0 bass:0.380 | trbD:0.006 hmD:0.002 midD:0.010 harsh:0.007 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1926 | isK:0 bass:0.343 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1813 | isK:0 bass:0.309 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1715 | isK:0 bass:0.256 | trbD:0.014 hmD:0.000 midD:0.080 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1624 | isK:0 bass:0.761 | trbD:0.043 hmD:0.000 midD:0.057 harsh:0.005 | oF:0.000 oB:0.000
+[🥁 INTERVAL BPM] KICK #43 bpm=161 conf=0.31 energy=0.2648 avg=0.0285 ratio=9.30 delta=0.2648 history=8/8 bpmBuf=[185,161,161,161,185,161,185,161]
+[LAB-DATA] cent:1553 | isK:1 bass:0.776 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1587 | isK:0 bass:0.750 | trbD:0.000 hmD:0.006 midD:0.000 harsh:0.012 | oF:0.000 oB:0.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=NEUTRAL dom=43% B/D/N=73/144/160
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:1618 | isK:0 bass:0.724 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.016 | oF:0.000 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.53 MR:0.53
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:10 | Pan:-210 Tilt:10 | sBPM:121 phase:241°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:10 | Pan:210 Tilt:10 | sBPM:121 phase:241°
+[LAB-DATA] cent:1729 | isK:0 bass:0.718 | trbD:0.003 hmD:0.007 midD:0.000 harsh:0.022 | oF:0.000 oB:0.000
+[Harmony 🎵] Key Change (fallback): F → C
+[LAB-DATA] cent:1874 | isK:0 bass:0.746 | trbD:0.119 hmD:0.005 midD:0.048 harsh:0.026 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1957 | isK:0 bass:0.735 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.027 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2033 | isK:0 bass:0.788 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.027 | oF:0.000 oB:0.010
+[INTERVAL] F900 bpm=121 raw=161 conf=0.303 kick=false phase=0.62 needle=0.0000 bassFlux=0.0285 midFlux=0.0000 centroid=942Hz kicks=43
+[BETA 🎵] Key Detected: C minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 900: bpm=121, energy=0.70
+[LAB-DATA] cent:1946 | isK:0 bass:0.822 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.026 | oF:0.000 oB:0.000
+[BETA 📡] AUDIO_BUFFER #900 | size=2048
+[AGC 🎚️] Gain: 0.73x | In: 0.818 → Out: 0.595 | Peak: 0.818 | ✅ ACTIVE
+[SimpleSectionTracker] 📊 section=breakdown | bassR=1.71/1.4 wE=0.71/0.75 kick=true cool=true
+[LAB-DATA] cent:1808 | isK:0 bass:0.824 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.022 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1684 | isK:0 bass:0.824 | trbD:0.035 hmD:0.000 midD:0.089 harsh:0.019 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1622 | isK:0 bass:0.858 | trbD:0.002 hmD:0.001 midD:0.107 harsh:0.021 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1564 | isK:0 bass:0.808 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.022 | oF:0.000 oB:0.010
+[🥁 INTERVAL BPM] KICK #44 bpm=161 conf=0.32 energy=0.2087 avg=0.0299 ratio=6.99 delta=0.2087 history=8/8 bpmBuf=[185,161,161,161,185,161,144,161]
+[LAB-DATA] cent:1452 | isK:1 bass:0.794 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.019 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1342 | isK:0 bass:0.741 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.015 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1245 | isK:0 bass:0.686 | trbD:0.128 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1155 | isK:0 bass:0.667 | trbD:0.044 hmD:0.000 midD:0.010 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1601 | isK:0 bass:0.696 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.012 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1489 | isK:0 bass:0.805 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1387 | isK:0 bass:0.809 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1286 | isK:0 bass:0.802 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1214 | isK:0 bass:0.845 | trbD:0.046 hmD:0.000 midD:0.124 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1147 | isK:0 bass:0.847 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1065 | isK:1 bass:0.788 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.010
+[Harmony ⚠️] Freq 54Hz fuera de rango musical
+[LAB-DATA] cent: 985 | isK:0 bass:0.756 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 912 | isK:0 bass:0.728 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 845 | isK:0 bass:0.757 | trbD:0.242 hmD:0.000 midD:0.124 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 977 | isK:0 bass:0.794 | trbD:0.000 hmD:0.006 midD:0.006 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 931 | isK:0 bass:0.801 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 888 | isK:0 bass:0.816 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.30 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.45 | beat #44
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=5249K
+[LAB-DATA] cent: 828 | isK:0 bass:0.801 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[LAB-DATA] cent: 770 | isK:0 bass:0.806 | trbD:0.029 hmD:0.000 midD:0.153 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 788 | isK:0 bass:0.847 | trbD:0.023 hmD:0.006 midD:0.095 harsh:0.010 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #919 | titan.running=true | size=8192
+[LAB-DATA] cent: 804 | isK:0 bass:0.832 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.014 | oF:0.000 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.08
+[🥁 INTERVAL BPM] KICK #45 bpm=161 conf=0.30 energy=0.1692 avg=0.0356 ratio=4.75 delta=0.1692 history=8/8 bpmBuf=[185,161,161,161,185,161,144,161]
+[LAB-DATA] cent: 751 | isK:1 bass:0.798 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.800 oB:0.000
+[INTERVAL] F920 bpm=121 raw=161 conf=0.301 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=77Hz kicks=45
+[LAB-DATA] cent: 697 | isK:0 bass:0.780 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
    Clarity:     0.995 (Rock target: >0.7)
    Flatness:    0.002 (Tonal<0.3, Noise>0.7)
-   Centroid:    114Hz (Bright>2000, Dark<1200)
-   CrestFactor: 23.96 (Dynamics)
-   Rolloff:     140Hz (85% energy)
-   Latency:     0.67ms
+   Centroid:    105Hz (Bright>2000, Dark<1200)
+   CrestFactor: 15.59 (Dynamics)
+   Rolloff:     118Hz (85% energy)
+   Latency:     1.01ms
    UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-BACK | mid: 0.299 bass: 0.813 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.288 bass: 0.841 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.003 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.251 bass: 0.836 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.217 bass: 0.810 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.189 bass: 0.794 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.215 bass: 0.801 sf: 0.48 cMid: 0.000 morph: 0.39 | rawTr: 0.084 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.418 bass: 0.802 sf: 0.48 cMid: 0.035 morph: 0.38 | rawTr: 0.501 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.477 bass: 0.829 sf: 0.47 cMid: 0.084 morph: 0.39 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.432 bass: 0.842 sf: 0.47 cMid: 0.032 morph: 0.39 | rawTr: 0.007 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.398 bass: 0.857 sf: 0.48 cMid: 0.000 morph: 0.39 | rawTr: 0.002 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.365 bass: 0.867 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.503 bass: 0.873 sf: 0.47 cMid: 0.094 morph: 0.40 | rawTr: 1.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.551 bass: 0.867 sf: 0.45 cMid: 0.157 morph: 0.44 | rawTr: 0.415 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.495 bass: 0.837 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.011 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.449 bass: 0.802 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.412 bass: 0.806 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.469 bass: 0.826 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.478 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.481 bass: 0.836 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.438 bass: 0.837 sf: 0.45 cMid: 0.060 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.419 bass: 0.835 sf: 0.45 cMid: 0.040 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16444 | titan.running=true | size=8192
-BACK | mid: 0.338 bass: 0.827 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.350 bass: 0.865 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.056 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.302 bass: 0.865 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.256 bass: 0.834 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.72 FR:0.75 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
-BACK | mid: 0.319 bass: 0.801 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.254 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F3940 bpm=122 raw=81 conf=0.648 kick=false phase=0.69 needle=0.0000 bassFlux=0.0000 midFlux=0.0100 centroid=190Hz kicks=243
-[SimpleSectionTracker] 🔴 DROP EXIT | expired=false | killSwitch=true | holdActive=false | duration=1984ms | energy=0.55
-[SimpleSectionTracker] 📍 drop → verse | bassR=4.36 wE=0.55 ΔE=0.499 kick=false
-BACK | mid: 0.321 bass: 0.810 sf: 0.47 cMid: 0.000 morph: 0.39 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.239 bass: 0.825 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.195 bass: 0.782 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.000 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-BACK | mid: 0.154 bass: 0.726 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.29 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.263 bass: 0.724 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.099 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #244 bpm=81 conf=0.65 energy=0.1611 avg=0.0359 ratio=4.49 delta=0.1611 history=8/8 bpmBuf=[81,86,76,81,86,81,86,81]
-BACK | mid: 0.227 bass: 0.802 sf: 0.50 cMid: 0.000 morph: 0.33 | rawTr: 0.002 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.435 bass: 0.814 sf: 0.50 cMid: 0.000 morph: 0.33 | rawTr: 0.936 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.530 bass: 0.827 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.460 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.479 bass: 0.824 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.025 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.452 bass: 0.795 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.419 bass: 0.813 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.359 bass: 0.831 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🎬 PHANTOM] fixture-1769704934139 | dt=54ms → 4 chunks
-BACK | mid: 0.424 bass: 0.842 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.193 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.378 bass: 0.861 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.327 bass: 0.870 sf: 0.49 cMid: 0.000 morph: 0.36 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.252 bass: 0.851 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.272 bass: 0.839 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.227 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.257 bass: 0.852 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.192 bass: 0.845 sf: 0.50 cMid: 0.000 morph: 0.32 | rawTr: 0.004 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.302 bass: 0.805 sf: 0.51 cMid: 0.000 morph: 0.32 | rawTr: 0.179 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.333 bass: 0.806 sf: 0.51 cMid: 0.000 morph: 0.31 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.281 bass: 0.825 sf: 0.51 cMid: 0.000 morph: 0.31 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.344 bass: 0.813 sf: 0.51 cMid: 0.000 morph: 0.30 | rawTr: 0.231 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.293 bass: 0.799 sf: 0.52 cMid: 0.000 morph: 0.30 | rawTr: 0.002 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.246 bass: 0.803 sf: 0.52 cMid: 0.000 morph: 0.29 | rawTr: 0.002 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.200 bass: 0.798 sf: 0.53 cMid: 0.000 morph: 0.28 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F3960 bpm=122 raw=81 conf=0.629 kick=false phase=0.00 needle=0.0000 bassFlux=0.0000 midFlux=0.0034 centroid=182Hz kicks=244
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 3960: bpm=122, energy=0.71
-BACK | mid: 0.307 bass: 0.786 sf: 0.53 cMid: 0.000 morph: 0.27 | rawTr: 0.618 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
+[LAB-DATA] cent: 650 | isK:0 bass:0.778 | trbD:0.108 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 719 | isK:0 bass:0.768 | trbD:0.059 hmD:0.004 midD:0.014 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 704 | isK:0 bass:0.796 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 690 | isK:0 bass:0.845 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 648 | isK:0 bass:0.850 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 610 | isK:0 bass:0.838 | trbD:0.000 hmD:0.000 midD:0.008 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 610 | isK:0 bass:0.860 | trbD:0.051 hmD:0.001 midD:0.088 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 611 | isK:0 bass:0.833 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[🥁 INTERVAL BPM] KICK #46 bpm=161 conf=0.32 energy=0.1933 avg=0.0454 ratio=4.25 delta=0.1933 history=8/8 bpmBuf=[185,161,161,161,185,161,144,161]
+[LAB-DATA] cent: 568 | isK:1 bass:0.812 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 536 | isK:0 bass:0.772 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 502 | isK:0 bass:0.767 | trbD:0.115 hmD:0.000 midD:0.022 harsh:0.006 | oF:0.000 oB:0.000
+[Harmony 🎵] Key Change: C → F (22% dominance)
+[LAB-DATA] cent: 616 | isK:0 bass:0.760 | trbD:0.085 hmD:0.005 midD:0.076 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 721 | isK:0 bass:0.795 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 687 | isK:0 bass:0.800 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 643 | isK:0 bass:0.811 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 601 | isK:1 bass:0.800 | trbD:0.050 hmD:0.000 midD:0.175 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 563 | isK:1 bass:0.850 | trbD:0.029 hmD:0.000 midD:0.117 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 580 | isK:0 bass:0.837 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[🥁 INTERVAL BPM] KICK #47 bpm=161 conf=0.32 energy=0.1770 avg=0.0342 ratio=5.17 delta=0.1770 history=8/8 bpmBuf=[161,161,161,161,185,161,144,161]
+[LAB-DATA] cent: 544 | isK:1 bass:0.790 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 511 | isK:0 bass:0.743 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 481 | isK:0 bass:0.687 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 451 | isK:0 bass:0.672 | trbD:0.129 hmD:0.000 midD:0.028 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1033 | isK:0 bass:0.731 | trbD:0.017 hmD:0.006 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 976 | isK:0 bass:0.762 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 923 | isK:0 bass:0.807 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[INTERVAL] F940 bpm=121 raw=161 conf=0.311 kick=false phase=0.62 needle=0.0314 bassFlux=0.0314 midFlux=0.0000 centroid=146Hz kicks=47
+[LAB-DATA] cent: 861 | isK:0 bass:0.812 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 805 | isK:0 bass:0.815 | trbD:0.052 hmD:0.000 midD:0.141 harsh:0.007 | oF:0.000 oB:0.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=NEUTRAL dom=35% B/D/N=128/126/137
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent: 781 | isK:0 bass:0.840 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.03
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:11 | Pan:214 Tilt:69 | sBPM:121 phase:5°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:11 | Pan:-214 Tilt:69 | sBPM:121 phase:5°
+[🥁 INTERVAL BPM] KICK #48 bpm=161 conf=0.32 energy=0.1527 avg=0.0381 ratio=4.01 delta=0.1527 history=8/8 bpmBuf=[161,161,161,161,185,161,144,161]
+[LAB-DATA] cent: 728 | isK:1 bass:0.815 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 678 | isK:1 bass:0.784 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 630 | isK:0 bass:0.755 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 587 | isK:0 bass:0.752 | trbD:0.104 hmD:0.000 midD:0.019 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 821 | isK:0 bass:0.763 | trbD:0.089 hmD:0.007 midD:0.051 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 784 | isK:0 bass:0.787 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 733 | isK:0 bass:0.796 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 686 | isK:0 bass:0.795 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 644 | isK:0 bass:0.785 | trbD:0.015 hmD:0.000 midD:0.106 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 630 | isK:0 bass:0.827 | trbD:0.018 hmD:0.003 midD:0.106 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 618 | isK:0 bass:0.799 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 583 | isK:1 bass:0.764 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 543 | isK:0 bass:0.758 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #953 | titan.running=true | size=8192
+[LAB-DATA] cent: 513 | isK:0 bass:0.761 | trbD:0.056 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 486 | isK:0 bass:0.770 | trbD:0.151 hmD:0.000 midD:0.068 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 614 | isK:0 bass:0.793 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 589 | isK:0 bass:0.831 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.12 wE=0.66 ΔE=0.066 kick=false
+[LAB-DATA] cent: 555 | isK:0 bass:0.842 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 522 | isK:0 bass:0.827 | trbD:0.037 hmD:0.000 midD:0.108 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 492 | isK:0 bass:0.862 | trbD:0.023 hmD:0.000 midD:0.039 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 486 | isK:0 bass:0.849 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 454 | isK:1 bass:0.815 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.800 oB:0.000
+[INTERVAL] F960 bpm=121 raw=161 conf=0.299 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0061 centroid=163Hz kicks=48
+[BETA 🎵] Key Detected: F minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 960: bpm=121, energy=0.61
+[LAB-DATA] cent: 430 | isK:0 bass:0.761 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 409 | isK:0 bass:0.755 | trbD:0.156 hmD:0.000 midD:0.055 harsh:0.005 | oF:0.000 oB:0.000
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.990 (Rock target: >0.7)
-   Flatness:    0.006 (Tonal<0.3, Noise>0.7)
-   Centroid:    172Hz (Bright>2000, Dark<1200)
-   CrestFactor: 24.59 (Dynamics)
-   Rolloff:     151Hz (85% energy)
-   Latency:     0.86ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.62x | In: 0.752 → Out: 0.466 | Peak: 0.802 | ✅ ACTIVE
-BACK | mid: 0.432 bass: 0.809 sf: 0.52 cMid: 0.008 morph: 0.28 | rawTr: 0.472 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=NEUTRAL dom=51% B/D/N=126/55/185
-[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 60° | FinalHue: 45°
-BACK | mid: 0.488 bass: 0.816 sf: 0.51 cMid: 0.071 morph: 0.31 | rawTr: 0.194 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(44%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:1.00
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:61 | Pan:-70 Tilt:52 | sBPM:122 phase:341°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:61 | Pan:70 Tilt:52 | sBPM:122 phase:341°
-[🥁 INTERVAL BPM] KICK #245 bpm=81 conf=0.70 energy=0.1507 avg=0.0500 ratio=3.01 delta=0.1507 history=8/8 bpmBuf=[81,86,76,81,86,68,86,81]
-BACK | mid: 0.444 bass: 0.800 sf: 0.51 cMid: 0.000 morph: 0.32 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.429 bass: 0.751 sf: 0.51 cMid: 0.000 morph: 0.32 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=122 conf=0.70 | PLL=FREEWHEEL [mem=122@-0f] phase=0.00 sync=0.50 | beat #245
-[TitanEngine 🧠] Stabilization: Key=D Emotion=NEUTRAL Strategy=analogous Temp=4603K
-BACK | mid: 0.419 bass: 0.677 sf: 0.51 cMid: 0.000 morph: 0.32 | rawTr: 0.006 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:32% FR:0% BL:0% BR:0%
-BACK | mid: 0.495 bass: 0.672 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.125 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.531 bass: 0.786 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.515 bass: 0.810 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.006 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.496 bass: 0.815 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.488 bass: 0.806 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.008 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.428 bass: 0.849 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.004 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.17 sGate: 1.00 | BL: 0.00 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16478 | titan.running=true | size=8192
-BACK | mid: 0.376 bass: 0.856 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.16 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #246 bpm=81 conf=0.69 energy=0.1024 avg=0.0462 ratio=2.22 delta=0.0183 history=8/8 bpmBuf=[81,86,76,81,86,68,86,81]
-BACK | mid: 0.307 bass: 0.831 sf: 0.47 cMid: 0.000 morph: 0.41 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.335 bass: 0.815 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.330 bass: 0.800 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.327 bass: 0.800 sf: 0.47 cMid: 0.000 morph: 0.39 | rawTr: 0.017 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.429 bass: 0.781 sf: 0.48 cMid: 0.000 morph: 0.39 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.413 bass: 0.716 sf: 0.48 cMid: 0.000 morph: 0.39 | rawTr: 0.005 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.407 bass: 0.698 sf: 0.48 cMid: 0.074 morph: 0.38 | rawTr: 0.237 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.397 bass: 0.704 sf: 0.48 cMid: 0.060 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.348 bass: 0.784 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.539 bass: 0.827 sf: 0.47 cMid: 0.153 morph: 0.41 | rawTr: 1.000 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.57 BR: 0.00
-BACK | mid: 0.529 bass: 0.819 sf: 0.46 cMid: 0.156 morph: 0.43 | rawTr: 0.019 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.40 BR: 0.00
-BACK | mid: 0.495 bass: 0.794 sf: 0.45 cMid: 0.137 morph: 0.44 | rawTr: 0.005 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.29 BR: 0.00
-[INTERVAL] F3980 bpm=122 raw=81 conf=0.682 kick=false phase=0.56 needle=0.0000 bassFlux=0.0000 midFlux=0.0020 centroid=196Hz kicks=246
-BACK | mid: 0.463 bass: 0.794 sf: 0.45 cMid: 0.105 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.21 BR: 0.00
-BACK | mid: 0.420 bass: 0.823 sf: 0.45 cMid: 0.047 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.15 BR: 0.00
-BACK | mid: 0.460 bass: 0.836 sf: 0.45 cMid: 0.081 morph: 0.44 | rawTr: 0.015 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.11 BR: 0.00
-BACK | mid: 0.433 bass: 0.839 sf: 0.45 cMid: 0.052 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.364 bass: 0.840 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.342 bass: 0.835 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.279 bass: 0.812 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.287 bass: 0.799 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.048 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.72 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
-BACK | mid: 0.251 bass: 0.822 sf: 0.47 cMid: 0.000 morph: 0.39 | rawTr: 0.001 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.213 bass: 0.827 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.001 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #247 bpm=81 conf=0.70 energy=0.1792 avg=0.0452 ratio=3.96 delta=0.1792 history=8/8 bpmBuf=[81,86,76,81,86,68,81,81]
-BACK | mid: 0.167 bass: 0.804 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.142 bass: 0.786 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.174 bass: 0.781 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.202 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.413 bass: 0.793 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.094 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.467 bass: 0.795 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-[Harmony 🎵] Key Change: F → D (30% dominance)
-[SimpleSectionTracker] 📍 verse → buildup | bassR=1.04 wE=0.69 ΔE=0.032 kick=false
-BACK | mid: 0.465 bass: 0.796 sf: 0.49 cMid: 0.076 morph: 0.36 | rawTr: 0.007 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.403 bass: 0.807 sf: 0.49 cMid: 0.008 morph: 0.36 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.362 bass: 0.805 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.403 bass: 0.813 sf: 0.49 cMid: 0.003 morph: 0.35 | rawTr: 0.743 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.545 bass: 0.828 sf: 0.47 cMid: 0.152 morph: 0.39 | rawTr: 0.859 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #248 bpm=81 conf=0.69 energy=0.1868 avg=0.0387 ratio=4.82 delta=0.1868 history=8/8 bpmBuf=[81,86,76,81,86,68,81,81]
-BACK | mid: 0.506 bass: 0.805 sf: 0.47 cMid: 0.000 morph: 0.41 | rawTr: 0.012 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.474 bass: 0.801 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.009 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.439 bass: 0.802 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.444 bass: 0.815 sf: 0.47 cMid: 0.000 morph: 0.41 | rawTr: 0.202 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.506 bass: 0.826 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.489 bass: 0.824 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.003 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.418 bass: 0.805 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F4000 bpm=122 raw=81 conf=0.686 kick=false phase=0.31 needle=0.0399 bassFlux=0.0399 midFlux=0.0000 centroid=169Hz kicks=248
-BACK | mid: 0.377 bass: 0.797 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
+   Clarity:     0.977 (Rock target: >0.7)
+   Flatness:    0.021 (Tonal<0.3, Noise>0.7)
+   Centroid:    407Hz (Bright>2000, Dark<1200)
+   CrestFactor: 18.68 (Dynamics)
+   Rolloff:     345Hz (85% energy)
+   Latency:     0.87ms
+   UltraAir:    0.004 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.60x | In: 0.591 → Out: 0.355 | Peak: 0.831 | ✅ ACTIVE
+[LAB-DATA] cent: 409 | isK:0 bass:0.757 | trbD:0.074 hmD:0.001 midD:0.056 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 548 | isK:0 bass:0.764 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.30 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.50 | beat #48
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=4784K
+[LAB-DATA] cent: 522 | isK:0 bass:0.799 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[LAB-DATA] cent: 498 | isK:0 bass:0.816 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 467 | isK:0 bass:0.806 | trbD:0.000 hmD:0.000 midD:0.023 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 470 | isK:0 bass:0.843 | trbD:0.091 hmD:0.003 midD:0.238 harsh:0.007 | oF:0.000 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.08
+[LAB-DATA] cent: 461 | isK:0 bass:0.839 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 454 | isK:0 bass:0.788 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 427 | isK:0 bass:0.755 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 398 | isK:0 bass:0.682 | trbD:0.046 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 539 | isK:0 bass:0.655 | trbD:0.103 hmD:0.000 midD:0.016 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 855 | isK:0 bass:0.732 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 800 | isK:0 bass:0.786 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 750 | isK:0 bass:0.808 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 699 | isK:0 bass:0.809 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 690 | isK:0 bass:0.839 | trbD:0.081 hmD:0.001 midD:0.178 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 645 | isK:1 bass:0.830 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 604 | isK:1 bass:0.764 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 561 | isK:0 bass:0.730 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 528 | isK:0 bass:0.681 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 675 | isK:0 bass:0.703 | trbD:0.259 hmD:0.001 midD:0.118 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 852 | isK:0 bass:0.728 | trbD:0.000 hmD:0.005 midD:0.010 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1015 | isK:0 bass:0.750 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 948 | isK:0 bass:0.764 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[INTERVAL] F980 bpm=121 raw=161 conf=0.279 kick=false phase=0.61 needle=0.0000 bassFlux=0.0238 midFlux=0.0000 centroid=120Hz kicks=48
+[LAB-DATA] cent: 881 | isK:0 bass:0.751 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 844 | isK:0 bass:0.800 | trbD:0.114 hmD:0.001 midD:0.288 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 817 | isK:1 bass:0.823 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.011 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 793 | isK:1 bass:0.778 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.014 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 743 | isK:0 bass:0.747 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 692 | isK:0 bass:0.719 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 645 | isK:0 bass:0.744 | trbD:0.216 hmD:0.000 midD:0.045 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 720 | isK:0 bass:0.740 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 785 | isK:0 bass:0.771 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #987 | titan.running=true | size=8192
+[🥁 INTERVAL BPM] KICK #49 bpm=161 conf=0.27 energy=0.1620 avg=0.0300 ratio=5.40 delta=0.1620 history=8/8 bpmBuf=[161,161,161,161,185,161,144,161]
+[LAB-DATA] cent: 737 | isK:1 bass:0.782 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 693 | isK:1 bass:0.783 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=NEUTRAL dom=46% B/D/N=191/116/110
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent: 647 | isK:0 bass:0.779 | trbD:0.053 hmD:0.000 midD:0.096 harsh:0.006 | oF:0.000 oB:0.000
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(41%) | Safety:✅OK
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.13
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:12 | Pan:16 Tilt:-135 | sBPM:121 phase:132°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:12 | Pan:-16 Tilt:-135 | sBPM:121 phase:132°
+[LAB-DATA] cent: 641 | isK:0 bass:0.846 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 596 | isK:1 bass:0.812 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 557 | isK:0 bass:0.729 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 520 | isK:0 bass:0.664 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 491 | isK:0 bass:0.660 | trbD:0.235 hmD:0.000 midD:0.135 harsh:0.003 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1001 | isK:0 bass:0.659 | trbD:0.000 hmD:0.008 midD:0.006 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1105 | isK:0 bass:0.713 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1045 | isK:1 bass:0.739 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 991 | isK:1 bass:0.737 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 921 | isK:0 bass:0.788 | trbD:0.043 hmD:0.000 midD:0.181 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent: 967 | isK:0 bass:0.829 | trbD:0.018 hmD:0.006 midD:0.058 harsh:0.011 | oF:0.000 oB:0.200
+[🥁 INTERVAL BPM] KICK #50 bpm=161 conf=0.00 energy=0.2320 avg=0.0380 ratio=6.10 delta=0.2320 history=8/8 bpmBuf=[161,161,117,161,185,161,144,161]
+[LAB-DATA] cent: 914 | isK:1 bass:0.796 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.010
+[LAB-DATA] cent: 858 | isK:0 bass:0.700 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 806 | isK:0 bass:0.651 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[INTERVAL] F1000 bpm=121 raw=161 conf=0.000 kick=false phase=0.25 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=215Hz kicks=50
+[LAB-DATA] cent: 759 | isK:0 bass:0.612 | trbD:0.163 hmD:0.000 midD:0.005 harsh:0.006 | oF:0.000 oB:0.000
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.994 (Rock target: >0.7)
-   Flatness:    0.003 (Tonal<0.3, Noise>0.7)
-   Centroid:    170Hz (Bright>2000, Dark<1200)
-   CrestFactor: 19.01 (Dynamics)
-   Rolloff:     183Hz (85% energy)
-   Latency:     1.00ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-BACK | mid: 0.339 bass: 0.797 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.334 bass: 0.821 sf: 0.46 cMid: 0.000 morph: 0.41 | rawTr: 0.073 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.262 bass: 0.816 sf: 0.47 cMid: 0.000 morph: 0.40 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #249 bpm=81 conf=0.68 energy=0.1369 avg=0.0425 ratio=3.22 delta=0.0996 history=8/8 bpmBuf=[81,86,76,81,86,68,81,81]
-BACK | mid: 0.299 bass: 0.805 sf: 0.47 cMid: 0.000 morph: 0.39 | rawTr: 0.397 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.388 bass: 0.782 sf: 0.47 cMid: 0.000 morph: 0.39 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16512 | titan.running=true | size=8192
-BACK | mid: 0.367 bass: 0.791 sf: 0.48 cMid: 0.000 morph: 0.39 | rawTr: 0.005 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.294 bass: 0.782 sf: 0.48 cMid: 0.000 morph: 0.38 | rawTr: 0.004 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.244 bass: 0.742 sf: 0.48 cMid: 0.000 morph: 0.37 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.170 bass: 0.654 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.000 tGate: 0.00 flat: 0.004 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.36 sGate: 1.00 | BL: 0.00 BR: 0.00
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=NEUTRAL dom=52% B/D/N=211/31/160
-[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 60° | FinalHue: 45°
-BACK | mid: 0.265 bass: 0.633 sf: 0.49 cMid: 0.000 morph: 0.35 | rawTr: 0.499 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(37%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] FL:0.09 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:62 | Pan:28 Tilt:-96 | sBPM:122 phase:230°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:62 | Pan:-28 Tilt:-96 | sBPM:122 phase:230°
-BACK | mid: 0.278 bass: 0.718 sf: 0.50 cMid: 0.000 morph: 0.34 | rawTr: 0.000 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.513 bass: 0.775 sf: 0.49 cMid: 0.137 morph: 0.37 | rawTr: 0.856 tGate: 0.00 flat: 0.003 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=122 conf=0.68 | PLL=FREEWHEEL [mem=122@-0f] phase=0.00 sync=0.41 | beat #249
-[TitanEngine 🧠] Stabilization: Key=D Emotion=NEUTRAL Strategy=analogous Temp=4103K
-BACK | mid: 0.580 bass: 0.809 sf: 0.46 cMid: 0.206 morph: 0.42 | rawTr: 0.391 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.25 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:25% BR:0%
-BACK | mid: 0.552 bass: 0.810 sf: 0.45 cMid: 0.189 morph: 0.45 | rawTr: 0.033 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.18 BR: 0.00
-BACK | mid: 0.509 bass: 0.778 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.487 bass: 0.801 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.425 bass: 0.829 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.444 bass: 0.833 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.387 bass: 0.851 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.003 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.17 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.336 bass: 0.853 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.16 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.260 bass: 0.848 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.17 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.211 bass: 0.841 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.370 bass: 0.863 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.062 tGate: 0.00 flat: 0.006 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.15 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.371 bass: 0.866 sf: 0.47 cMid: 0.000 morph: 0.41 | rawTr: 0.197 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.15 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.459 bass: 0.821 sf: 0.47 cMid: 0.077 morph: 0.41 | rawTr: 0.647 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #250 bpm=81 conf=0.70 energy=0.1125 avg=0.0498 ratio=2.26 delta=0.1125 history=8/8 bpmBuf=[81,86,76,81,86,68,81,86]
-BACK | mid: 0.518 bass: 0.809 sf: 0.46 cMid: 0.000 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.529 bass: 0.805 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.057 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F4020 bpm=122 raw=81 conf=0.696 kick=false phase=0.13 needle=0.0395 bassFlux=0.0395 midFlux=0.0000 centroid=382Hz kicks=250
-[BETA 🎵] Key Detected: D minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 4020: bpm=122, energy=0.78
-BACK | mid: 0.584 bass: 0.801 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.259 tGate: 0.00 flat: 0.005 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-[AGC 🎚️] Gain: 0.63x | In: 0.785 → Out: 0.495 | Peak: 0.783 | ✅ ACTIVE
-BACK | mid: 0.594 bass: 0.786 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.041 tGate: 0.00 flat: 0.007 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.594 bass: 0.790 sf: 0.40 cMid: 0.000 morph: 0.56 | rawTr: 0.074 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.595 bass: 0.791 sf: 0.39 cMid: 0.289 morph: 0.59 | rawTr: 0.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.586 bass: 0.791 sf: 0.38 cMid: 0.287 morph: 0.60 | rawTr: 0.003 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.590 bass: 0.803 sf: 0.37 cMid: 0.293 morph: 0.62 | rawTr: 0.189 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[MoodArbiter] 🎭 EMOTION SHIFT: NEUTRAL → BRIGHT (dominance=60.2%, after 3.5s)
-BACK | mid: 0.600 bass: 0.814 sf: 0.36 cMid: 0.306 morph: 0.64 | rawTr: 0.149 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.578 bass: 0.802 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.017 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.10 BR: 0.00
-BACK | mid: 0.570 bass: 0.783 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.000 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.08 BR: 0.00
-BACK | mid: 0.567 bass: 0.785 sf: 0.35 cMid: 0.000 morph: 0.66 | rawTr: 0.000 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.552 bass: 0.809 sf: 0.36 cMid: 0.000 morph: 0.66 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.598 bass: 0.817 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.173 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.603 bass: 0.809 sf: 0.34 cMid: 0.325 morph: 0.68 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.00 | BL:0.65 BR:0.00 | ML:0.00 MR:1.00
-BACK | mid: 0.591 bass: 0.801 sf: 0.34 cMid: 0.319 morph: 0.69 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.591 bass: 0.791 sf: 0.34 cMid: 0.324 morph: 0.69 | rawTr: 0.000 tGate: 0.00 flat: 0.012 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.561 bass: 0.778 sf: 0.34 cMid: 0.298 morph: 0.69 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-BACK | mid: 0.516 bass: 0.804 sf: 0.34 cMid: 0.243 morph: 0.69 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.37 BR: 0.00
-BACK | mid: 0.439 bass: 0.815 sf: 0.34 cMid: 0.160 morph: 0.68 | rawTr: 0.000 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.28 BR: 0.00
-[🥁 INTERVAL BPM] KICK #251 bpm=83 conf=0.70 energy=0.1886 avg=0.0330 ratio=5.71 delta=0.1886 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-BACK | mid: 0.403 bass: 0.800 sf: 0.35 cMid: 0.000 morph: 0.68 | rawTr: 0.000 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.05 BR: 0.00
-BACK | mid: 0.418 bass: 0.778 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.018 tGate: 0.00 flat: 0.010 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.409 bass: 0.783 sf: 0.35 cMid: 0.000 morph: 0.66 | rawTr: 0.000 tGate: 0.00 flat: 0.009 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.472 bass: 0.778 sf: 0.36 cMid: 0.000 morph: 0.66 | rawTr: 1.000 tGate: 0.00 flat: 0.008 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.516 bass: 0.746 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.254 tGate: 0.00 flat: 0.011 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.01 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16545 | titan.running=true | size=8192
-BACK | mid: 0.516 bass: 0.728 sf: 0.36 cMid: 0.256 morph: 0.65 | rawTr: 0.022 tGate: 0.00 flat: 0.021 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.518 bass: 0.712 sf: 0.36 cMid: 0.263 morph: 0.65 | rawTr: 0.000 tGate: 0.00 flat: 0.020 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.496 bass: 0.762 sf: 0.36 cMid: 0.223 morph: 0.65 | rawTr: 0.000 tGate: 0.00 flat: 0.019 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-BACK | mid: 0.598 bass: 0.826 sf: 0.35 cMid: 0.307 morph: 0.66 | rawTr: 0.279 tGate: 0.00 flat: 0.018 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[INTERVAL] F4040 bpm=125 raw=83 conf=0.691 kick=false phase=0.45 needle=0.0750 bassFlux=0.0750 midFlux=0.0000 centroid=1306Hz kicks=251
-BACK | mid: 0.609 bass: 0.833 sf: 0.35 cMid: 0.000 morph: 0.68 | rawTr: 0.086 tGate: 0.00 flat: 0.021 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.18 sGate: 1.00 | BL: 0.09 BR: 0.00
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.974 (Rock target: >0.7)
-   Flatness:    0.014 (Tonal<0.3, Noise>0.7)
-   Centroid:    485Hz (Bright>2000, Dark<1200)
-   CrestFactor: 20.53 (Dynamics)
-   Rolloff:     129Hz (85% energy)
-   Latency:     0.89ms
-   UltraAir:    0.005 (NEW: 16-22kHz sizzle)
-BACK | mid: 0.560 bass: 0.812 sf: 0.35 cMid: 0.000 morph: 0.68 | rawTr: 0.009 tGate: 0.00 flat: 0.020 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.525 bass: 0.782 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.000 tGate: 0.00 flat: 0.019 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.23 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.488 bass: 0.811 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.000 tGate: 0.00 flat: 0.017 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.494 bass: 0.822 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 1.000 tGate: 0.00 flat: 0.016 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.19 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.499 bass: 0.810 sf: 0.35 cMid: 0.000 morph: 0.66 | rawTr: 0.314 tGate: 0.00 flat: 0.020 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.460 bass: 0.805 sf: 0.35 cMid: 0.176 morph: 0.66 | rawTr: 0.013 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.09 BR: 0.00
-BACK | mid: 0.399 bass: 0.805 sf: 0.36 cMid: 0.111 morph: 0.65 | rawTr: 0.000 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.360 bass: 0.795 sf: 0.36 cMid: 0.072 morph: 0.64 | rawTr: 0.000 tGate: 0.00 flat: 0.024 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.412 bass: 0.789 sf: 0.37 cMid: 0.124 morph: 0.63 | rawTr: 0.000 tGate: 0.00 flat: 0.022 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.371 bass: 0.832 sf: 0.37 cMid: 0.063 morph: 0.62 | rawTr: 0.000 tGate: 0.00 flat: 0.020 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.326 bass: 0.816 sf: 0.37 cMid: 0.000 morph: 0.61 | rawTr: 0.000 tGate: 0.00 flat: 0.019 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.265 bass: 0.795 sf: 0.38 cMid: 0.000 morph: 0.60 | rawTr: 0.000 tGate: 0.00 flat: 0.018 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.230 bass: 0.802 sf: 0.39 cMid: 0.000 morph: 0.58 | rawTr: 0.000 tGate: 0.00 flat: 0.017 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.293 bass: 0.811 sf: 0.39 cMid: 0.000 morph: 0.57 | rawTr: 1.000 tGate: 0.00 flat: 0.015 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.20 sGate: 1.00 | BL: 0.00 BR: 0.00
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=69% B/D/N=309/33/108
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 60° | FinalHue: 75°
-BACK | mid: 0.468 bass: 0.808 sf: 0.39 cMid: 0.000 morph: 0.57 | rawTr: 0.652 tGate: 0.00 flat: 0.024 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(49%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] FL:0.71 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.36
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:62 | Pan:33 Tilt:22 | sBPM:124 phase:124°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:62 | Pan:-33 Tilt:22 | sBPM:124 phase:124°
-BACK | mid: 0.499 bass: 0.800 sf: 0.40 cMid: 0.183 morph: 0.57 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.477 bass: 0.790 sf: 0.40 cMid: 0.164 morph: 0.56 | rawTr: 0.010 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🎬 PHANTOM] fixture-1769704937331 | dt=51ms → 4 chunks
-[TitanOrchestrator] 🎧 WORKER BPM=125 conf=0.68 | PLL=FREEWHEEL [mem=125@-0f] phase=0.00 sync=0.48 | beat #251
-[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3748K
-BACK | mid: 0.405 bass: 0.798 sf: 0.40 cMid: 0.086 morph: 0.56 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:16% FR:0% BL:0% BR:0%
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.6675
-BACK | mid: 0.439 bass: 0.803 sf: 0.40 cMid: 0.117 morph: 0.55 | rawTr: 0.086 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.540 bass: 0.831 sf: 0.40 cMid: 0.210 morph: 0.56 | rawTr: 0.359 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.37 BR: 0.00
-BACK | mid: 0.558 bass: 0.829 sf: 0.39 cMid: 0.233 morph: 0.57 | rawTr: 0.027 tGate: 0.00 flat: 0.033 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[🥁 INTERVAL BPM] KICK #252 bpm=83 conf=0.67 energy=0.1304 avg=0.0372 ratio=3.50 delta=0.1304 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-BACK | mid: 0.525 bass: 0.802 sf: 0.39 cMid: 0.000 morph: 0.57 | rawTr: 0.008 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.10 BR: 0.00
-BACK | mid: 0.482 bass: 0.773 sf: 0.39 cMid: 0.000 morph: 0.57 | rawTr: 0.000 tGate: 0.00 flat: 0.030 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.09 BR: 0.00
-BACK | mid: 0.423 bass: 0.771 sf: 0.40 cMid: 0.000 morph: 0.57 | rawTr: 0.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.507 bass: 0.758 sf: 0.40 cMid: 0.000 morph: 0.56 | rawTr: 1.000 tGate: 0.00 flat: 0.026 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.05 BR: 0.00
-[INTERVAL] F4060 bpm=125 raw=83 conf=0.672 kick=false phase=0.19 needle=0.0000 bassFlux=0.0629 midFlux=0.0000 centroid=2804Hz kicks=252
-BACK | mid: 0.519 bass: 0.750 sf: 0.40 cMid: 0.000 morph: 0.56 | rawTr: 0.083 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.501 bass: 0.753 sf: 0.40 cMid: 0.202 morph: 0.56 | rawTr: 0.004 tGate: 0.03 flat: 0.036 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.27 BR: 0.00
-BACK | mid: 0.451 bass: 0.762 sf: 0.40 cMid: 0.148 morph: 0.56 | rawTr: 0.000 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.20 BR: 0.00
-BACK | mid: 0.410 bass: 0.756 sf: 0.40 cMid: 0.107 morph: 0.55 | rawTr: 0.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.14 BR: 0.00
-BACK | mid: 0.395 bass: 0.811 sf: 0.40 cMid: 0.067 morph: 0.55 | rawTr: 0.000 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.10 BR: 0.00
-BACK | mid: 0.343 bass: 0.824 sf: 0.41 cMid: 0.007 morph: 0.54 | rawTr: 0.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.07 BR: 0.00
-[🥁 INTERVAL BPM] KICK #253 bpm=83 conf=0.67 energy=0.1834 avg=0.0301 ratio=6.10 delta=0.1532 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-BACK | mid: 0.269 bass: 0.793 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.000 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.22 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.430 bass: 0.760 sf: 0.42 cMid: 0.000 morph: 0.52 | rawTr: 0.021 tGate: 0.00 flat: 0.023 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.401 bass: 0.765 sf: 0.42 cMid: 0.000 morph: 0.52 | rawTr: 0.002 tGate: 0.00 flat: 0.022 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.438 bass: 0.770 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 1.000 tGate: 0.00 flat: 0.024 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.416 bass: 0.724 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.404 tGate: 0.00 flat: 0.026 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.29 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.372 bass: 0.666 sf: 0.42 cMid: 0.090 morph: 0.50 | rawTr: 0.013 tGate: 0.00 flat: 0.035 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.83 wE=0.05 ΔE=-0.101 kick=false
-BACK | mid: 0.381 bass: 0.602 sf: 0.43 cMid: 0.124 morph: 0.50 | rawTr: 0.000 tGate: 0.06 flat: 0.036 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16579 | titan.running=true | size=8192
-BACK | mid: 0.342 bass: 0.669 sf: 0.43 cMid: 0.054 morph: 0.49 | rawTr: 0.000 tGate: 0.11 flat: 0.038 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.497 bass: 0.712 sf: 0.43 cMid: 0.191 morph: 0.49 | rawTr: 0.005 tGate: 0.01 flat: 0.035 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.11 BR: 0.00
-BACK | mid: 0.554 bass: 0.764 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.095 tGate: 0.01 flat: 0.035 trImp: 0.001 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.514 bass: 0.752 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.007 tGate: 0.00 flat: 0.033 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.485 bass: 0.734 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.438 bass: 0.738 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.000 tGate: 0.00 flat: 0.028 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.441 bass: 0.753 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.982 tGate: 0.00 flat: 0.026 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.00 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.56 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.50
-BACK | mid: 0.472 bass: 0.734 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.715 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.431 bass: 0.738 sf: 0.42 cMid: 0.118 morph: 0.50 | rawTr: 0.019 tGate: 0.13 flat: 0.038 trImp: 0.002 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.330 bass: 0.757 sf: 0.43 cMid: 0.006 morph: 0.49 | rawTr: 0.000 tGate: 0.06 flat: 0.036 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.280 bass: 0.755 sf: 0.43 cMid: 0.000 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.035 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.351 bass: 0.747 sf: 0.44 cMid: 0.025 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[INTERVAL] F4080 bpm=125 raw=83 conf=0.653 kick=false phase=0.96 needle=0.0318 bassFlux=0.0318 midFlux=0.0006 centroid=107Hz kicks=253
-[BETA 🎵] Key Detected: D minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 4080: bpm=125, energy=0.81
-BACK | mid: 0.308 bass: 0.796 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 0.00 flat: 0.030 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.997 (Rock target: >0.7)
-   Flatness:    0.002 (Tonal<0.3, Noise>0.7)
-   Centroid:    108Hz (Bright>2000, Dark<1200)
-   CrestFactor: 23.48 (Dynamics)
-   Rolloff:     108Hz (85% energy)
+   Clarity:     0.871 (Rock target: >0.7)
+   Flatness:    0.199 (Tonal<0.3, Noise>0.7)
+   Centroid:    8089Hz (Bright>2000, Dark<1200)
+   CrestFactor: 6.61 (Dynamics)
+   Rolloff:     11391Hz (85% energy)
    Latency:     0.91ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.69x | In: 0.722 → Out: 0.499 | Peak: 0.749 | ✅ ACTIVE
-BACK | mid: 0.212 bass: 0.777 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.343 bass: 0.766 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.007 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.319 bass: 0.754 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.001 tGate: 0.00 flat: 0.023 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.397 bass: 0.761 sf: 0.45 cMid: 0.000 morph: 0.43 | rawTr: 1.000 tGate: 0.00 flat: 0.022 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.471 bass: 0.745 sf: 0.45 cMid: 0.000 morph: 0.43 | rawTr: 0.592 tGate: 0.00 flat: 0.028 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.451 bass: 0.744 sf: 0.46 cMid: 0.112 morph: 0.43 | rawTr: 0.008 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.379 bass: 0.757 sf: 0.46 cMid: 0.033 morph: 0.43 | rawTr: 0.006 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.326 bass: 0.749 sf: 0.46 cMid: 0.000 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.375 bass: 0.722 sf: 0.46 cMid: 0.041 morph: 0.42 | rawTr: 0.000 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.519 bass: 0.745 sf: 0.45 cMid: 0.180 morph: 0.44 | rawTr: 0.113 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.520 bass: 0.754 sf: 0.45 cMid: 0.183 morph: 0.45 | rawTr: 0.042 tGate: 0.00 flat: 0.030 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #254 bpm=83 conf=0.64 energy=0.1385 avg=0.0334 ratio=4.15 delta=0.1385 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-BACK | mid: 0.506 bass: 0.716 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.006 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.496 bass: 0.650 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.004 tGate: 0.00 flat: 0.028 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.36 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.474 bass: 0.611 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.009 tGate: 0.00 flat: 0.026 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.40 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.568 bass: 0.608 sf: 0.43 cMid: 0.000 morph: 0.50 | rawTr: 0.948 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.40 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.572 bass: 0.633 sf: 0.41 cMid: 0.000 morph: 0.52 | rawTr: 0.013 tGate: 0.20 flat: 0.040 trImp: 0.003 veto: KICK perc: 0.00 | kGate: 0.38 sGate: 1.00 | BL: 0.00 BR: 0.00
-[Harmony 🎵] Key Change: D → F (31% dominance)
-BACK | mid: 0.536 bass: 0.696 sf: 0.41 cMid: 0.250 morph: 0.53 | rawTr: 0.002 tGate: 0.27 flat: 0.042 trImp: 0.001 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.544 bass: 0.689 sf: 0.40 cMid: 0.265 morph: 0.55 | rawTr: 0.000 tGate: 0.26 flat: 0.042 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.536 bass: 0.681 sf: 0.40 cMid: 0.262 morph: 0.55 | rawTr: 0.000 tGate: 0.22 flat: 0.041 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.472 bass: 0.749 sf: 0.40 cMid: 0.170 morph: 0.55 | rawTr: 0.000 tGate: 0.13 flat: 0.038 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.48 BR: 0.00
-BACK | mid: 0.395 bass: 0.793 sf: 0.41 cMid: 0.073 morph: 0.54 | rawTr: 0.000 tGate: 0.05 flat: 0.036 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.00
-[🥁 INTERVAL BPM] KICK #255 bpm=83 conf=0.64 energy=0.1689 avg=0.0244 ratio=6.93 delta=0.1375 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-BACK | mid: 0.387 bass: 0.758 sf: 0.41 cMid: 0.000 morph: 0.54 | rawTr: 0.000 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.26 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.423 bass: 0.737 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.05 BR: 0.00
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=74% B/D/N=362/68/61
-[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 1314 frames (21.9s)
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 60° | FinalHue: 75°
-BACK | mid: 0.393 bass: 0.738 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.000 tGate: 0.00 flat: 0.030 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.04 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.20 FR:0.02 | BL:0.04 BR:0.00 | ML:0.00 MR:0.00
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:63 | Pan:-104 Tilt:-13 | sBPM:125 phase:28°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:63 | Pan:104 Tilt:-13 | sBPM:125 phase:28°
-BACK | mid: 0.495 bass: 0.731 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 1.000 tGate: 0.00 flat: 0.028 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.03 BR: 0.00
-[INTERVAL] F4100 bpm=125 raw=83 conf=0.635 kick=false phase=0.19 needle=0.0000 bassFlux=0.0000 midFlux=0.0148 centroid=4026Hz kicks=255
-BACK | mid: 0.514 bass: 0.694 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.099 tGate: 0.20 flat: 0.040 trImp: 0.019 veto: KICK perc: 0.02 | kGate: 0.32 sGate: 0.98 | BL: 0.02 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=125 conf=0.63 | PLL=FREEWHEEL [mem=125@-0f] phase=0.00 sync=0.49 | beat #255
-[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3806K
-BACK | mid: 0.499 bass: 0.667 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.000 tGate: 0.17 flat: 0.039 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.01 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:34% FR:0% BL:1% BR:0%
-BACK | mid: 0.488 bass: 0.667 sf: 0.41 cMid: 0.000 morph: 0.52 | rawTr: 0.000 tGate: 0.15 flat: 0.039 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.441 bass: 0.727 sf: 0.42 cMid: 0.000 morph: 0.52 | rawTr: 0.000 tGate: 0.04 flat: 0.036 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.29 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.551 bass: 0.762 sf: 0.41 cMid: 0.240 morph: 0.54 | rawTr: 0.439 tGate: 0.08 flat: 0.037 trImp: 0.035 veto: ---- perc: 0.03 | kGate: 1.00 sGate: 0.97 | BL: 0.63 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16612 | titan.running=true | size=8192
-BACK | mid: 0.567 bass: 0.794 sf: 0.40 cMid: 0.250 morph: 0.56 | rawTr: 0.031 tGate: 0.08 flat: 0.037 trImp: 0.002 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.517 bass: 0.760 sf: 0.40 cMid: 0.213 morph: 0.56 | rawTr: 0.000 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.48 BR: 0.00
-BACK | mid: 0.485 bass: 0.715 sf: 0.40 cMid: 0.198 morph: 0.55 | rawTr: 0.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.00
-BACK | mid: 0.445 bass: 0.703 sf: 0.40 cMid: 0.162 morph: 0.55 | rawTr: 0.000 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.26 BR: 0.00
-BACK | mid: 0.457 bass: 0.700 sf: 0.40 cMid: 0.174 morph: 0.55 | rawTr: 1.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.19 BR: 0.00
-BACK | mid: 0.459 bass: 0.689 sf: 0.41 cMid: 0.180 morph: 0.54 | rawTr: 0.187 tGate: 0.28 flat: 0.042 trImp: 0.053 veto: ---- perc: 0.05 | kGate: 1.00 sGate: 0.96 | BL: 0.13 BR: 0.00
-BACK | mid: 0.410 bass: 0.683 sf: 0.41 cMid: 0.131 morph: 0.54 | rawTr: 0.000 tGate: 0.31 flat: 0.043 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.10 BR: 0.00
-BACK | mid: 0.365 bass: 0.685 sf: 0.41 cMid: 0.084 morph: 0.53 | rawTr: 0.000 tGate: 0.34 flat: 0.043 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.305 bass: 0.691 sf: 0.42 cMid: 0.018 morph: 0.52 | rawTr: 0.000 tGate: 0.21 flat: 0.040 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.02 BR: 0.00
-BACK | mid: 0.333 bass: 0.725 sf: 0.42 cMid: 0.029 morph: 0.51 | rawTr: 0.000 tGate: 0.09 flat: 0.037 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.276 bass: 0.795 sf: 0.42 cMid: 0.000 morph: 0.50 | rawTr: 0.000 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[🥁 INTERVAL BPM] KICK #256 bpm=83 conf=0.70 energy=0.1323 avg=0.0363 ratio=3.64 delta=0.1323 history=8/8 bpmBuf=[86,86,76,81,86,68,81,86]
-BACK | mid: 0.238 bass: 0.769 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.000 tGate: 0.00 flat: 0.032 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.25 sGate: 1.00 | BL: 0.00 BR: 0.00
-[CHOREO] Pattern transition: botstep -> scan_x (2s LERP)
-BACK | mid: 0.198 bass: 0.737 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.181 bass: 0.744 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.000 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.273 bass: 0.747 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 1.000 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.451 bass: 0.739 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.708 tGate: 0.00 flat: 0.024 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.452 bass: 0.731 sf: 0.45 cMid: 0.123 morph: 0.44 | rawTr: 0.036 tGate: 0.14 flat: 0.039 trImp: 0.005 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.427 bass: 0.723 sf: 0.45 cMid: 0.101 morph: 0.44 | rawTr: 0.000 tGate: 0.07 flat: 0.037 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.382 bass: 0.708 sf: 0.45 cMid: 0.061 morph: 0.44 | rawTr: 0.000 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.432 bass: 0.690 sf: 0.45 cMid: 0.119 morph: 0.43 | rawTr: 0.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.569 bass: 0.747 sf: 0.44 cMid: 0.241 morph: 0.47 | rawTr: 0.443 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[INTERVAL] F4120 bpm=125 raw=83 conf=0.690 kick=false phase=0.51 needle=0.0000 bassFlux=0.0477 midFlux=0.0131 centroid=2284Hz kicks=256
-BACK | mid: 0.553 bass: 0.755 sf: 0.43 cMid: 0.230 morph: 0.49 | rawTr: 0.050 tGate: 0.00 flat: 0.034 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
+   UltraAir:    0.013 (NEW: 16-22kHz sizzle)
+[SHADOW LOGGER] 🎯 DUMP COMPLETE: 1000 frames → C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\test-data\live_audio_dump.json
+[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.63 wE=0.14 ΔE=-0.229 kick=false
+[LAB-DATA] cent:1345 | isK:0 bass:0.599 | trbD:0.039 hmD:0.004 midD:0.030 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1415 | isK:0 bass:0.706 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1480 | isK:0 bass:0.735 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1376 | isK:1 bass:0.735 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1276 | isK:0 bass:0.769 | trbD:0.087 hmD:0.000 midD:0.184 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1273 | isK:0 bass:0.831 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1182 | isK:1 bass:0.810 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1099 | isK:1 bass:0.742 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1022 | isK:0 bass:0.684 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 978 | isK:0 bass:0.672 | trbD:0.197 hmD:0.000 midD:0.033 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1257 | isK:0 bass:0.669 | trbD:0.011 hmD:0.003 midD:0.036 harsh:0.007 | oF:0.000 oB:0.200
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.26 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.30 | beat #50
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=4674K
+[LAB-DATA] cent:1203 | isK:1 bass:0.696 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.010
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:80% FR:80% BL:1% BR:1%
+[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.5597
+[LAB-DATA] cent:1125 | isK:0 bass:0.695 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1053 | isK:0 bass:0.691 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 981 | isK:0 bass:0.688 | trbD:0.056 hmD:0.000 midD:0.135 harsh:0.006 | oF:0.000 oB:1.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:1.00 BR:1.00 | ML:0.00 MR:0.13
+[LAB-DATA] cent:1038 | isK:0 bass:0.811 | trbD:0.040 hmD:0.006 midD:0.152 harsh:0.011 | oF:0.000 oB:1.000
+[🥁 INTERVAL BPM] KICK #51 bpm=161 conf=0.00 energy=0.2164 avg=0.0426 ratio=5.08 delta=0.2164 history=8/8 bpmBuf=[161,161,117,81,185,161,144,161]
+[LAB-DATA] cent: 979 | isK:1 bass:0.799 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.012 | oF:0.800 oB:0.200
+[LAB-DATA] cent: 925 | isK:1 bass:0.728 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.014 | oF:0.000 oB:0.010
+[LAB-DATA] cent: 864 | isK:0 bass:0.716 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 805 | isK:0 bass:0.711 | trbD:0.119 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1114 | isK:0 bass:0.711 | trbD:0.047 hmD:0.006 midD:0.010 harsh:0.012 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1089 | isK:0 bass:0.739 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1066 | isK:0 bass:0.753 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1006 | isK:1 bass:0.760 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.800 oB:0.000
+[INTERVAL] F1020 bpm=121 raw=161 conf=0.000 kick=false phase=0.75 needle=0.0379 bassFlux=0.0379 midFlux=0.0000 centroid=307Hz kicks=51
+[BETA 🎵] Key Detected: F minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 1020: bpm=121, energy=0.60
+[LAB-DATA] cent: 950 | isK:0 bass:0.754 | trbD:0.033 hmD:0.000 midD:0.083 harsh:0.008 | oF:0.000 oB:1.000
+[IPC ðŸ“¡] audioBuffer #1021 | titan.running=true | size=8192
+[AGC 🎚️] Gain: 0.66x | In: 0.744 → Out: 0.492 | Peak: 0.744 | ✅ ACTIVE
+[LAB-DATA] cent: 937 | isK:0 bass:0.813 | trbD:0.013 hmD:0.002 midD:0.011 harsh:0.010 | oF:0.000 oB:0.200
+[🥁 INTERVAL BPM] KICK #52 bpm=161 conf=0.00 energy=0.2225 avg=0.0401 ratio=5.55 delta=0.2225 history=8/8 bpmBuf=[161,161,117,81,161,161,144,161]
+[LAB-DATA] cent: 869 | isK:1 bass:0.824 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.800 oB:0.010
+[LAB-DATA] cent: 806 | isK:1 bass:0.738 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 750 | isK:0 bass:0.694 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 704 | isK:0 bass:0.640 | trbD:0.189 hmD:0.000 midD:0.055 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1143 | isK:0 bass:0.613 | trbD:0.000 hmD:0.006 midD:0.042 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1220 | isK:0 bass:0.621 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1290 | isK:0 bass:0.680 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1220 | isK:1 bass:0.699 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1134 | isK:0 bass:0.695 | trbD:0.079 hmD:0.000 midD:0.140 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1102 | isK:0 bass:0.790 | trbD:0.036 hmD:0.004 midD:0.134 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1072 | isK:0 bass:0.772 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.012 | oF:0.000 oB:0.010
+[🥁 INTERVAL BPM] KICK #53 bpm=161 conf=0.00 energy=0.1800 avg=0.0410 ratio=4.39 delta=0.1800 history=8/8 bpmBuf=[161,161,117,81,161,161,144,161]
+[LAB-DATA] cent:1001 | isK:1 bass:0.727 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.000
+[LAB-DATA] cent: 959 | isK:0 bass:0.625 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 918 | isK:0 bass:0.569 | trbD:0.107 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1446 | isK:0 bass:0.563 | trbD:0.070 hmD:0.003 midD:0.042 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1931 | isK:0 bass:0.606 | trbD:0.000 hmD:0.002 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1837 | isK:0 bass:0.641 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1751 | isK:0 bass:0.692 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=48% B/D/N=209/127/99
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 300 frames (5.0s)
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:1625 | isK:0 bass:0.703 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(40%) | Safety:✅OK
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.13
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:13 | Pan:-208 Tilt:51 | sBPM:121 phase:259°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:13 | Pan:208 Tilt:51 | sBPM:121 phase:259°
+[LAB-DATA] cent:1590 | isK:0 bass:0.810 | trbD:0.060 hmD:0.003 midD:0.114 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1481 | isK:0 bass:0.786 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1372 | isK:0 bass:0.738 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1271 | isK:0 bass:0.674 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1182 | isK:0 bass:0.655 | trbD:0.180 hmD:0.000 midD:0.040 harsh:0.004 | oF:0.000 oB:1.000
+[INTERVAL] F1040 bpm=121 raw=161 conf=0.000 kick=false phase=0.25 needle=0.0000 bassFlux=0.0122 midFlux=0.0037 centroid=7969Hz kicks=53
+[LAB-DATA] cent:1725 | isK:0 bass:0.659 | trbD:0.031 hmD:0.006 midD:0.066 harsh:0.008 | oF:0.000 oB:0.200
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.982 (Rock target: >0.7)
-   Flatness:    0.004 (Tonal<0.3, Noise>0.7)
-   Centroid:    275Hz (Bright>2000, Dark<1200)
-   CrestFactor: 20.58 (Dynamics)
-   Rolloff:     97Hz (85% energy)
-   Latency:     1.06ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-BACK | mid: 0.495 bass: 0.709 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.31 sGate: 1.00 | BL: 0.14 BR: 0.00
-BACK | mid: 0.455 bass: 0.678 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.000 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.11 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.18 | BL:0.11 BR:0.00 | ML:0.00 MR:0.30
-BACK | mid: 0.423 bass: 0.694 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.457 tGate: 0.00 flat: 0.027 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.32 sGate: 1.00 | BL: 0.08 BR: 0.00
-BACK | mid: 0.501 bass: 0.673 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.760 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.504 bass: 0.638 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.029 tGate: 0.33 flat: 0.043 trImp: 0.009 veto: KICK perc: 0.01 | kGate: 0.37 sGate: 0.99 | BL: 0.05 BR: 0.00
-[Harmony 🎵] Key Change: F → D (31% dominance)
-BACK | mid: 0.481 bass: 0.617 sf: 0.43 cMid: 0.216 morph: 0.49 | rawTr: 0.000 tGate: 0.29 flat: 0.042 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.43 BR: 0.00
-BACK | mid: 0.454 bass: 0.604 sf: 0.43 cMid: 0.194 morph: 0.49 | rawTr: 0.000 tGate: 0.16 flat: 0.039 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.31 BR: 0.00
-BACK | mid: 0.399 bass: 0.603 sf: 0.43 cMid: 0.139 morph: 0.49 | rawTr: 0.000 tGate: 0.04 flat: 0.036 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.22 BR: 0.00
-BACK | mid: 0.377 bass: 0.709 sf: 0.43 cMid: 0.069 morph: 0.48 | rawTr: 0.000 tGate: 0.00 flat: 0.033 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.16 BR: 0.00
-[🥁 INTERVAL BPM] KICK #257 bpm=83 conf=0.70 energy=0.1045 avg=0.0211 ratio=4.94 delta=0.1045 history=8/8 bpmBuf=[86,86,81,81,86,68,81,86]
-BACK | mid: 0.347 bass: 0.744 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.003 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.27 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.426 bass: 0.712 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.073 tGate: 0.00 flat: 0.029 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.496 bass: 0.688 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 0.00 flat: 0.026 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.33 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.491 bass: 0.672 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.014 tGate: 0.00 flat: 0.025 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.555 bass: 0.659 sf: 0.43 cMid: 0.000 morph: 0.50 | rawTr: 1.000 tGate: 0.00 flat: 0.031 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.564 bass: 0.622 sf: 0.41 cMid: 0.000 morph: 0.52 | rawTr: 0.043 tGate: 0.06 flat: 0.037 trImp: 0.003 veto: KICK perc: 0.00 | kGate: 0.39 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.559 bass: 0.614 sf: 0.41 cMid: 0.000 morph: 0.54 | rawTr: 0.019 tGate: 0.34 flat: 0.043 trImp: 0.006 veto: KICK perc: 0.01 | kGate: 0.40 sGate: 0.99 | BL: 0.00 BR: 0.00
-BACK | mid: 0.604 bass: 0.616 sf: 0.39 cMid: 0.362 morph: 0.57 | rawTr: 0.000 tGate: 0.27 flat: 0.042 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.579 bass: 0.616 sf: 0.38 cMid: 0.343 morph: 0.59 | rawTr: 0.000 tGate: 0.18 flat: 0.039 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.610 bass: 0.672 sf: 0.37 cMid: 0.360 morph: 0.62 | rawTr: 0.618 tGate: 0.19 flat: 0.040 trImp: 0.117 veto: ---- perc: 0.12 | kGate: 1.00 sGate: 0.91 | BL: 0.59 BR: 0.00
-BACK | mid: 0.610 bass: 0.728 sf: 0.36 cMid: 0.000 morph: 0.64 | rawTr: 0.127 tGate: 0.22 flat: 0.040 trImp: 0.027 veto: KICK perc: 0.03 | kGate: 0.29 sGate: 0.98 | BL: 0.14 BR: 0.00
-BACK | mid: 0.572 bass: 0.718 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.020 tGate: 0.24 flat: 0.041 trImp: 0.005 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.11 BR: 0.00
-BACK | mid: 0.573 bass: 0.687 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.000 tGate: 0.12 flat: 0.038 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.33 sGate: 1.00 | BL: 0.09 BR: 0.00
-[IPC ðŸ“¡] audioBuffer #16646 | titan.running=true | size=8192
-BACK | mid: 0.547 bass: 0.650 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.000 tGate: 0.05 flat: 0.036 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.36 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.562 bass: 0.641 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 1.000 tGate: 0.00 flat: 0.035 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.37 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.565 bass: 0.626 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.169 tGate: 0.46 flat: 0.046 trImp: 0.078 veto: KICK perc: 0.08 | kGate: 0.39 sGate: 0.94 | BL: 0.04 BR: 0.00
-[INTERVAL] F4140 bpm=125 raw=83 conf=0.686 kick=false phase=0.77 needle=0.0000 bassFlux=0.0065 midFlux=0.0000 centroid=3246Hz kicks=257
-[BETA 🎵] Key Detected: D minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 4140: bpm=125, energy=0.24
-BACK | mid: 0.544 bass: 0.628 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.000 tGate: 0.67 flat: 0.052 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.38 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.500 bass: 0.636 sf: 0.36 cMid: 0.272 morph: 0.65 | rawTr: 0.000 tGate: 0.86 flat: 0.057 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[AGC 🎚️] Gain: 0.73x | In: 0.517 → Out: 0.376 | Peak: 0.683 | ✅ ACTIVE
-BACK | mid: 0.468 bass: 0.630 sf: 0.36 cMid: 0.241 morph: 0.65 | rawTr: 0.000 tGate: 0.69 flat: 0.052 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-BACK | mid: 0.465 bass: 0.665 sf: 0.36 cMid: 0.225 morph: 0.64 | rawTr: 0.000 tGate: 0.54 flat: 0.049 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.36 BR: 0.00
-BACK | mid: 0.434 bass: 0.725 sf: 0.36 cMid: 0.170 morph: 0.64 | rawTr: 0.000 tGate: 0.42 flat: 0.045 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.27 BR: 0.00
-[🥁 INTERVAL BPM] KICK #258 bpm=83 conf=0.70 energy=0.1168 avg=0.0221 ratio=5.28 delta=0.1168 history=8/8 bpmBuf=[86,86,81,81,86,68,81,86]
-BACK | mid: 0.440 bass: 0.689 sf: 0.37 cMid: 0.000 morph: 0.63 | rawTr: 0.025 tGate: 0.29 flat: 0.042 trImp: 0.007 veto: KICK perc: 0.01 | kGate: 0.32 sGate: 0.99 | BL: 0.06 BR: 0.00
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=72% B/D/N=369/107/38
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 60° | FinalHue: 75°
-BACK | mid: 0.559 bass: 0.657 sf: 0.37 cMid: 0.000 morph: 0.63 | rawTr: 0.263 tGate: 0.29 flat: 0.042 trImp: 0.075 veto: KICK perc: 0.08 | kGate: 0.36 sGate: 0.94 | BL: 0.05 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.21 | BL:0.05 BR:0.00 | ML:0.00 MR:0.81
-[CHOREO] techno-club | scan_x [LERP] [MIRROR F0/2] | Bar:64 | Pan:-171 Tilt:-55 | sBPM:125 phase:291°
-[CHOREO] techno-club | scan_x [LERP] [MIRROR F1/2] | Bar:64 | Pan:75 Tilt:-58 | sBPM:125 phase:291°
-BACK | mid: 0.560 bass: 0.647 sf: 0.36 cMid: 0.000 morph: 0.63 | rawTr: 0.065 tGate: 0.28 flat: 0.042 trImp: 0.018 veto: KICK perc: 0.02 | kGate: 0.37 sGate: 0.99 | BL: 0.04 BR: 0.00
-[CHOREO] Transition complete -> scan_x
-BACK | mid: 0.591 bass: 0.626 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.622 tGate: 0.19 flat: 0.040 trImp: 0.117 veto: KICK perc: 0.12 | kGate: 0.39 sGate: 0.91 | BL: 0.03 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=125 conf=0.69 | PLL=FREEWHEEL [mem=125@-0f] phase=0.00 sync=0.51 | beat #258
-[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=4006K
-BACK | mid: 0.611 bass: 0.602 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.490 tGate: 0.53 flat: 0.048 trImp: 0.262 veto: KICK perc: 0.26 | kGate: 0.41 sGate: 0.79 | BL: 0.01 BR: 0.80
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:1% BR:80%
-BACK | mid: 0.599 bass: 0.594 sf: 0.34 cMid: 0.394 morph: 0.68 | rawTr: 0.014 tGate: 0.85 flat: 0.056 trImp: 0.012 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 0.99 | BL: 0.64 BR: 0.19
-BACK | mid: 0.590 bass: 0.583 sf: 0.34 cMid: 0.392 morph: 0.69 | rawTr: 0.006 tGate: 0.82 flat: 0.056 trImp: 0.005 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.01
-BACK | mid: 0.595 bass: 0.590 sf: 0.34 cMid: 0.396 morph: 0.69 | rawTr: 0.000 tGate: 0.70 flat: 0.052 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.592 bass: 0.592 sf: 0.34 cMid: 0.394 morph: 0.70 | rawTr: 0.003 tGate: 0.57 flat: 0.049 trImp: 0.002 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.624 bass: 0.584 sf: 0.33 cMid: 0.432 morph: 0.72 | rawTr: 0.153 tGate: 0.45 flat: 0.046 trImp: 0.069 veto: ---- perc: 0.07 | kGate: 1.00 sGate: 0.94 | BL: 0.61 BR: 0.00
-BACK | mid: 0.614 bass: 0.542 sf: 0.32 cMid: 0.439 morph: 0.73 | rawTr: 0.031 tGate: 0.65 flat: 0.051 trImp: 0.021 veto: ---- perc: 0.02 | kGate: 1.00 sGate: 0.98 | BL: 0.64 BR: 0.00
-BACK | mid: 0.610 bass: 0.549 sf: 0.32 cMid: 0.435 morph: 0.73 | rawTr: 0.002 tGate: 0.62 flat: 0.050 trImp: 0.001 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.600 bass: 0.571 sf: 0.32 cMid: 0.418 morph: 0.74 | rawTr: 0.000 tGate: 0.50 flat: 0.048 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-BACK | mid: 0.574 bass: 0.561 sf: 0.32 cMid: 0.395 morph: 0.74 | rawTr: 0.042 tGate: 0.40 flat: 0.045 trImp: 0.017 veto: ---- perc: 0.02 | kGate: 1.00 sGate: 0.99 | BL: 0.37 BR: 0.00
-BACK | mid: 0.602 bass: 0.566 sf: 0.32 cMid: 0.422 morph: 0.74 | rawTr: 0.453 tGate: 0.33 flat: 0.043 trImp: 0.150 veto: ---- perc: 0.15 | kGate: 1.00 sGate: 0.88 | BL: 0.57 BR: 0.00
-BACK | mid: 0.606 bass: 0.569 sf: 0.32 cMid: 0.426 morph: 0.74 | rawTr: 0.053 tGate: 0.70 flat: 0.053 trImp: 0.038 veto: ---- perc: 0.04 | kGate: 1.00 sGate: 0.97 | BL: 0.63 BR: 0.00
-BACK | mid: 0.596 bass: 0.586 sf: 0.32 cMid: 0.411 morph: 0.74 | rawTr: 0.000 tGate: 0.64 flat: 0.051 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-BACK | mid: 0.592 bass: 0.577 sf: 0.32 cMid: 0.410 morph: 0.74 | rawTr: 0.000 tGate: 0.58 flat: 0.049 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.574 bass: 0.559 sf: 0.32 cMid: 0.397 morph: 0.74 | rawTr: 0.000 tGate: 0.47 flat: 0.047 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.00
-[Harmony 🎵] Key Change: D → F (30% dominance)
-BACK | mid: 0.545 bass: 0.698 sf: 0.32 cMid: 0.323 morph: 0.74 | rawTr: 0.000 tGate: 0.38 flat: 0.045 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.38 BR: 0.00
-[🥁 INTERVAL BPM] KICK #259 bpm=83 conf=0.70 energy=0.1531 avg=0.0162 ratio=9.47 delta=0.1531 history=8/8 bpmBuf=[86,86,81,81,86,68,81,86]
-BACK | mid: 0.495 bass: 0.807 sf: 0.32 cMid: 0.000 morph: 0.73 | rawTr: 0.000 tGate: 0.24 flat: 0.041 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.21 sGate: 1.00 | BL: 0.06 BR: 0.00
-BACK | mid: 0.460 bass: 0.767 sf: 0.32 cMid: 0.000 morph: 0.73 | rawTr: 0.136 tGate: 0.11 flat: 0.038 trImp: 0.015 veto: KICK perc: 0.01 | kGate: 0.25 sGate: 0.99 | BL: 0.05 BR: 0.00
-[INTERVAL] F4160 bpm=125 raw=83 conf=0.697 kick=false phase=0.06 needle=0.0650 bassFlux=0.0650 midFlux=0.0006 centroid=182Hz kicks=259
-BACK | mid: 0.454 bass: 0.733 sf: 0.33 cMid: 0.000 morph: 0.72 | rawTr: 0.118 tGate: 0.01 flat: 0.035 trImp: 0.001 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.05 BR: 0.00
+   Clarity:     0.955 (Rock target: >0.7)
+   Flatness:    0.039 (Tonal<0.3, Noise>0.7)
+   Centroid:    1488Hz (Bright>2000, Dark<1200)
+   CrestFactor: 12.70 (Dynamics)
+   Rolloff:     1023Hz (85% energy)
+   Latency:     1.65ms
+   UltraAir:    0.007 (NEW: 16-22kHz sizzle)
+[LAB-DATA] cent:1706 | isK:0 bass:0.683 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1598 | isK:1 bass:0.690 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1498 | isK:1 bass:0.703 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1389 | isK:0 bass:0.693 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1288 | isK:0 bass:0.767 | trbD:0.091 hmD:0.000 midD:0.276 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1324 | isK:0 bass:0.803 | trbD:0.000 hmD:0.006 midD:0.011 harsh:0.010 | oF:0.000 oB:0.200
+[🥁 INTERVAL BPM] KICK #54 bpm=161 conf=0.00 energy=0.1558 avg=0.0478 ratio=3.26 delta=0.1558 history=8/8 bpmBuf=[161,161,117,81,161,161,86,161]
+[LAB-DATA] cent:1245 | isK:1 bass:0.755 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1156 | isK:0 bass:0.693 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1075 | isK:0 bass:0.683 | trbD:0.066 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1011 | isK:0 bass:0.688 | trbD:0.104 hmD:0.000 midD:0.056 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1391 | isK:0 bass:0.696 | trbD:0.000 hmD:0.006 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1326 | isK:0 bass:0.733 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1265 | isK:0 bass:0.748 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1181 | isK:1 bass:0.749 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1112 | isK:0 bass:0.734 | trbD:0.067 hmD:0.000 midD:0.153 harsh:0.007 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1048 | isK:0 bass:0.800 | trbD:0.006 hmD:0.000 midD:0.003 harsh:0.007 | oF:0.000 oB:0.200
+[LAB-DATA] cent: 992 | isK:1 bass:0.790 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.007 | oF:0.800 oB:0.010
+[LAB-DATA] cent: 939 | isK:1 bass:0.745 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 872 | isK:0 bass:0.745 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[IPC ðŸ“¡] audioBuffer #1054 | titan.running=true | size=8192
+[LAB-DATA] cent: 814 | isK:0 bass:0.662 | trbD:0.018 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.26 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.00 | beat #54
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=4580K
+[LAB-DATA] cent:1231 | isK:0 bass:0.639 | trbD:0.151 hmD:0.004 midD:0.101 harsh:0.007 | oF:0.000 oB:1.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:100% BR:100%
+[LAB-DATA] cent:1615 | isK:0 bass:0.624 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1677 | isK:0 bass:0.667 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1564 | isK:1 bass:0.673 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.80 FR:0.80 | BL:0.00 BR:0.00 | ML:0.00 MR:0.14
+[LAB-DATA] cent:1449 | isK:0 bass:0.673 | trbD:0.000 hmD:0.000 midD:0.010 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1344 | isK:0 bass:0.766 | trbD:0.116 hmD:0.000 midD:0.280 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1357 | isK:0 bass:0.776 | trbD:0.000 hmD:0.006 midD:0.000 harsh:0.010 | oF:0.000 oB:0.200
+[INTERVAL] F1060 bpm=121 raw=161 conf=0.000 kick=false phase=0.87 needle=0.1100 bassFlux=0.1100 midFlux=0.0000 centroid=273Hz kicks=54
+[LAB-DATA] cent:1270 | isK:1 bass:0.751 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.010 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1205 | isK:0 bass:0.626 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1146 | isK:0 bass:0.585 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1459 | isK:0 bass:0.542 | trbD:0.206 hmD:0.000 midD:0.034 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2000 | isK:0 bass:0.557 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1921 | isK:0 bass:0.646 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1786 | isK:0 bass:0.679 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1663 | isK:0 bass:0.666 | trbD:0.057 hmD:0.000 midD:0.183 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1555 | isK:0 bass:0.733 | trbD:0.021 hmD:0.000 midD:0.020 harsh:0.005 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1473 | isK:0 bass:0.797 | trbD:0.000 hmD:0.001 midD:0.000 harsh:0.007 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1363 | isK:1 bass:0.757 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1262 | isK:0 bass:0.689 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1169 | isK:0 bass:0.654 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.003 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1087 | isK:0 bass:0.666 | trbD:0.234 hmD:0.000 midD:0.109 harsh:0.003 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1656 | isK:0 bass:0.664 | trbD:0.000 hmD:0.006 midD:0.004 harsh:0.006 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1590 | isK:0 bass:0.669 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1529 | isK:0 bass:0.661 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1423 | isK:0 bass:0.658 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1430 | isK:0 bass:0.685 | trbD:0.070 hmD:0.002 midD:0.207 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1436 | isK:0 bass:0.767 | trbD:0.024 hmD:0.002 midD:0.081 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1386 | isK:1 bass:0.765 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.012 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1294 | isK:0 bass:0.734 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1198 | isK:0 bass:0.680 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1109 | isK:0 bass:0.665 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1607 | isK:0 bass:0.673 | trbD:0.123 hmD:0.005 midD:0.042 harsh:0.009 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1722 | isK:0 bass:0.681 | trbD:0.003 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.200
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=NEUTRAL dom=50% B/D/N=225/137/85
+[DRIFT RADAR] In: 'neutral' -> Act: 'neutral' | Drift: 0° | BaseHue: 120° | FinalHue: 105°
+[LAB-DATA] cent:1827 | isK:0 bass:0.736 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.010
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:0.01 BR:0.01 | ML:0.00 MR:0.00
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:13 | Pan:199 Tilt:23 | sBPM:121 phase:22°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:13 | Pan:-199 Tilt:23 | sBPM:121 phase:22°
+[INTERVAL] F1080 bpm=121 raw=161 conf=0.000 kick=false phase=0.36 needle=0.0522 bassFlux=0.0522 midFlux=0.0000 centroid=393Hz kicks=54
+[BETA 🎵] Key Detected: F minor (Confidence: 0.94)
+[GAMMA 🎵] Frame 1080: bpm=121, energy=0.41
+[LAB-DATA] cent:1712 | isK:0 bass:0.745 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
 [GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.942 (Rock target: >0.7)
-   Flatness:    0.036 (Tonal<0.3, Noise>0.7)
-   Centroid:    1810Hz (Bright>2000, Dark<1200)
-   CrestFactor: 10.44 (Dynamics)
-   Rolloff:     3811Hz (85% energy)
-   Latency:     0.86ms
-   UltraAir:    0.005 (NEW: 16-22kHz sizzle)
-BACK | mid: 0.423 bass: 0.715 sf: 0.33 cMid: 0.000 morph: 0.71 | rawTr: 0.000 tGate: 0.01 flat: 0.035 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.538 bass: 0.682 sf: 0.33 cMid: 0.000 morph: 0.71 | rawTr: 0.951 tGate: 0.44 flat: 0.046 trImp: 0.418 veto: KICK perc: 0.42 | kGate: 0.33 sGate: 0.67 | BL: 0.02 BR: 0.80
-BACK | mid: 0.551 bass: 0.667 sf: 0.33 cMid: 0.000 morph: 0.71 | rawTr: 0.006 tGate: 0.84 flat: 0.056 trImp: 0.005 veto: KICK perc: 0.01 | kGate: 0.35 sGate: 1.00 | BL: 0.02 BR: 0.19
-BACK | mid: 0.521 bass: 0.607 sf: 0.33 cMid: 0.319 morph: 0.70 | rawTr: 0.016 tGate: 0.86 flat: 0.057 trImp: 0.014 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 0.99 | BL: 0.64 BR: 0.02
-BACK | mid: 0.504 bass: 0.589 sf: 0.33 cMid: 0.307 morph: 0.70 | rawTr: 0.189 tGate: 0.96 flat: 0.059 trImp: 0.183 veto: ---- perc: 0.18 | kGate: 1.00 sGate: 0.85 | BL: 0.56 BR: 0.80
-BACK | mid: 0.466 bass: 0.619 sf: 0.34 cMid: 0.257 morph: 0.69 | rawTr: 0.000 tGate: 0.94 flat: 0.058 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.49 BR: 0.19
-BACK | mid: 0.480 bass: 0.629 sf: 0.34 cMid: 0.267 morph: 0.69 | rawTr: 0.000 tGate: 0.92 flat: 0.058 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.01
-BACK | mid: 0.548 bass: 0.716 sf: 0.34 cMid: 0.304 morph: 0.69 | rawTr: 0.000 tGate: 0.96 flat: 0.059 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.505 bass: 0.685 sf: 0.34 cMid: 0.000 morph: 0.68 | rawTr: 0.013 tGate: 0.87 flat: 0.057 trImp: 0.011 veto: KICK perc: 0.01 | kGate: 0.33 sGate: 0.99 | BL: 0.16 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.75 | BL:0.16 BR:0.00 | ML:0.00 MR:0.21
-BACK | mid: 0.496 bass: 0.667 sf: 0.34 cMid: 0.000 morph: 0.68 | rawTr: 0.009 tGate: 0.79 flat: 0.055 trImp: 0.007 veto: KICK perc: 0.01 | kGate: 0.35 sGate: 0.99 | BL: 0.13 BR: 0.00
-BACK | mid: 0.466 bass: 0.660 sf: 0.35 cMid: 0.000 morph: 0.68 | rawTr: 0.000 tGate: 0.73 flat: 0.053 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.10 BR: 0.00
-BACK | mid: 0.451 bass: 0.651 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.107 tGate: 0.58 flat: 0.049 trImp: 0.061 veto: KICK perc: 0.06 | kGate: 0.36 sGate: 0.95 | BL: 0.07 BR: 0.00
-BACK | mid: 0.482 bass: 0.641 sf: 0.35 cMid: 0.000 morph: 0.67 | rawTr: 0.500 tGate: 0.44 flat: 0.046 trImp: 0.218 veto: KICK perc: 0.22 | kGate: 0.37 sGate: 0.83 | BL: 0.05 BR: 0.80
-[IPC ðŸ“¡] audioBuffer #16678 | titan.running=true | size=8192
-BACK | mid: 0.456 bass: 0.656 sf: 0.35 cMid: 0.000 morph: 0.66 | rawTr: 0.178 tGate: 0.98 flat: 0.059 trImp: 0.175 veto: KICK perc: 0.17 | kGate: 0.36 sGate: 0.86 | BL: 0.04 BR: 0.19
-BACK | mid: 0.439 bass: 0.670 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.000 tGate: 0.92 flat: 0.058 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.03 BR: 0.01
-BACK | mid: 0.396 bass: 0.708 sf: 0.36 cMid: 0.000 morph: 0.65 | rawTr: 0.232 tGate: 1.00 flat: 0.062 trImp: 0.232 veto: KICK perc: 0.23 | kGate: 0.31 sGate: 0.81 | BL: 0.01 BR: 0.80
-BACK | mid: 0.362 bass: 0.715 sf: 0.36 cMid: 0.000 morph: 0.64 | rawTr: 0.000 tGate: 1.00 flat: 0.066 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.01 BR: 0.18
-BACK | mid: 0.411 bass: 0.713 sf: 0.37 cMid: 0.000 morph: 0.63 | rawTr: 0.000 tGate: 1.00 flat: 0.061 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.30 sGate: 1.00 | BL: 0.00 BR: 0.01
-BACK | mid: 0.388 bass: 0.738 sf: 0.37 cMid: 0.000 morph: 0.62 | rawTr: 0.009 tGate: 0.94 flat: 0.059 trImp: 0.009 veto: KICK perc: 0.01 | kGate: 0.28 sGate: 0.99 | BL: 0.00 BR: 0.00
-BACK | mid: 0.343 bass: 0.723 sf: 0.38 cMid: 0.072 morph: 0.61 | rawTr: 0.000 tGate: 0.76 flat: 0.054 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.310 bass: 0.705 sf: 0.38 cMid: 0.042 morph: 0.60 | rawTr: 0.049 tGate: 0.59 flat: 0.050 trImp: 0.029 veto: ---- perc: 0.03 | kGate: 1.00 sGate: 0.98 | BL: 0.00 BR: 0.00
-BACK | mid: 0.261 bass: 0.683 sf: 0.39 cMid: 0.000 morph: 0.58 | rawTr: 0.000 tGate: 0.61 flat: 0.050 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.352 bass: 0.682 sf: 0.39 cMid: 0.085 morph: 0.58 | rawTr: 0.736 tGate: 0.65 flat: 0.051 trImp: 0.479 veto: ---- perc: 0.48 | kGate: 1.00 sGate: 0.62 | BL: 0.00 BR: 0.80
-BACK | mid: 0.496 bass: 0.669 sf: 0.39 cMid: 0.233 morph: 0.57 | rawTr: 0.256 tGate: 0.69 flat: 0.052 trImp: 0.175 veto: ---- perc: 0.18 | kGate: 1.00 sGate: 0.86 | BL: 0.56 BR: 0.17
-BACK | mid: 0.495 bass: 0.656 sf: 0.39 cMid: 0.237 morph: 0.57 | rawTr: 0.034 tGate: 1.00 flat: 0.067 trImp: 0.034 veto: ---- perc: 0.03 | kGate: 1.00 sGate: 0.97 | BL: 0.63 BR: 0.01
-BACK | mid: 0.470 bass: 0.646 sf: 0.39 cMid: 0.216 morph: 0.57 | rawTr: 0.190 tGate: 1.00 flat: 0.064 trImp: 0.190 veto: ---- perc: 0.19 | kGate: 1.00 sGate: 0.85 | BL: 0.41 BR: 0.80
-[INTERVAL] F4180 bpm=125 raw=83 conf=0.677 kick=false phase=0.35 needle=0.0000 bassFlux=0.0250 midFlux=0.0000 centroid=2361Hz kicks=259
-BACK | mid: 0.432 bass: 0.644 sf: 0.40 cMid: 0.177 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.064 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.17
-BACK | mid: 0.420 bass: 0.646 sf: 0.40 cMid: 0.162 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.063 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.26 BR: 0.01
-BACK | mid: 0.485 bass: 0.703 sf: 0.40 cMid: 0.204 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.061 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.29 BR: 0.00
-BACK | mid: 0.483 bass: 0.721 sf: 0.40 cMid: 0.000 morph: 0.55 | rawTr: 0.013 tGate: 0.96 flat: 0.059 trImp: 0.012 veto: KICK perc: 0.01 | kGate: 0.29 sGate: 0.99 | BL: 0.06 BR: 0.00
-BACK | mid: 0.481 bass: 0.713 sf: 0.40 cMid: 0.000 morph: 0.55 | rawTr: 0.092 tGate: 0.87 flat: 0.057 trImp: 0.080 veto: KICK perc: 0.08 | kGate: 0.30 sGate: 0.94 | BL: 0.04 BR: 0.00
-BACK | mid: 0.448 bass: 0.672 sf: 0.40 cMid: 0.000 morph: 0.55 | rawTr: 0.000 tGate: 0.76 flat: 0.054 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.04 BR: 0.00
-BACK | mid: 0.430 bass: 0.671 sf: 0.40 cMid: 0.000 morph: 0.54 | rawTr: 0.000 tGate: 0.60 flat: 0.050 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.03 BR: 0.00
-BACK | mid: 0.498 bass: 0.668 sf: 0.41 cMid: 0.000 morph: 0.54 | rawTr: 1.000 tGate: 0.44 flat: 0.046 trImp: 0.442 veto: KICK perc: 0.44 | kGate: 0.34 sGate: 0.65 | BL: 0.01 BR: 0.80
-BACK | mid: 0.480 bass: 0.663 sf: 0.41 cMid: 0.000 morph: 0.54 | rawTr: 0.007 tGate: 0.51 flat: 0.048 trImp: 0.004 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.00 BR: 0.17
-BACK | mid: 0.439 bass: 0.650 sf: 0.41 cMid: 0.174 morph: 0.54 | rawTr: 0.000 tGate: 0.43 flat: 0.046 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.01
-BACK | mid: 0.405 bass: 0.634 sf: 0.41 cMid: 0.145 morph: 0.53 | rawTr: 0.000 tGate: 0.36 flat: 0.044 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.364 bass: 0.619 sf: 0.41 cMid: 0.108 morph: 0.53 | rawTr: 0.002 tGate: 0.38 flat: 0.045 trImp: 0.001 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=55% B/D/N=265/161/54
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 60° | FinalHue: 75°
-BACK | mid: 0.356 bass: 0.711 sf: 0.42 cMid: 0.059 morph: 0.52 | rawTr: 0.000 tGate: 0.28 flat: 0.042 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.13
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:64 | Pan:-32 Tilt:-13 | sBPM:125 phase:190°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:64 | Pan:148 Tilt:11 | sBPM:125 phase:190°
-[🥁 INTERVAL BPM] KICK #260 bpm=83 conf=0.67 energy=0.1952 avg=0.0168 ratio=11.64 delta=0.1952 history=8/8 bpmBuf=[86,86,81,81,86,68,81,86]
-BACK | mid: 0.289 bass: 0.771 sf: 0.42 cMid: 0.000 morph: 0.51 | rawTr: 0.000 tGate: 0.15 flat: 0.039 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.24 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.348 bass: 0.736 sf: 0.43 cMid: 0.000 morph: 0.50 | rawTr: 0.166 tGate: 0.03 flat: 0.036 trImp: 0.004 veto: KICK perc: 0.00 | kGate: 0.28 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanOrchestrator] 🎧 WORKER BPM=125 conf=0.67 | PLL=FREEWHEEL [mem=125@-0f] phase=0.00 sync=0.55 | beat #260
-[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=4570K
-BACK | mid: 0.437 bass: 0.686 sf: 0.43 cMid: 0.000 morph: 0.50 | rawTr: 0.000 tGate: 0.05 flat: 0.036 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.33 sGate: 1.00 | BL: 0.00 BR: 0.00
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=air
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:26% FR:1% BL:0% BR:0%
-BACK | mid: 0.390 bass: 0.664 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.000 tGate: 0.00 flat: 0.035 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.452 bass: 0.625 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.966 tGate: 0.45 flat: 0.046 trImp: 0.439 veto: KICK perc: 0.44 | kGate: 0.39 sGate: 0.65 | BL: 0.00 BR: 0.80
-BACK | mid: 0.436 bass: 0.574 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.115 tGate: 0.54 flat: 0.048 trImp: 0.061 veto: KICK perc: 0.06 | kGate: 0.44 sGate: 0.95 | BL: 0.00 BR: 0.16
-BACK | mid: 0.403 bass: 0.516 sf: 0.43 cMid: 0.179 morph: 0.48 | rawTr: 0.022 tGate: 0.61 flat: 0.050 trImp: 0.013 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 0.99 | BL: 0.00 BR: 0.00
-BACK | mid: 0.384 bass: 0.571 sf: 0.44 cMid: 0.135 morph: 0.48 | rawTr: 0.066 tGate: 0.66 flat: 0.051 trImp: 0.043 veto: ---- perc: 0.04 | kGate: 1.00 sGate: 0.97 | BL: 0.00 BR: 0.00
-BACK | mid: 0.345 bass: 0.604 sf: 0.44 cMid: 0.079 morph: 0.47 | rawTr: 0.000 tGate: 0.84 flat: 0.056 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.525 bass: 0.634 sf: 0.43 cMid: 0.250 morph: 0.48 | rawTr: 0.000 tGate: 0.77 flat: 0.054 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-[🎬 PHANTOM] fixture-1769703733347 | dt=51ms → 4 chunks
-BACK | mid: 0.561 bass: 0.716 sf: 0.42 cMid: 0.259 morph: 0.51 | rawTr: 0.026 tGate: 0.81 flat: 0.055 trImp: 0.021 veto: ---- perc: 0.02 | kGate: 1.00 sGate: 0.98 | BL: 0.64 BR: 0.00
-BACK | mid: 0.517 bass: 0.688 sf: 0.42 cMid: 0.229 morph: 0.51 | rawTr: 0.035 tGate: 0.84 flat: 0.056 trImp: 0.029 veto: ---- perc: 0.03 | kGate: 1.00 sGate: 0.98 | BL: 0.46 BR: 0.00
-BACK | mid: 0.491 bass: 0.668 sf: 0.42 cMid: 0.211 morph: 0.51 | rawTr: 0.000 tGate: 0.68 flat: 0.052 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.34 BR: 0.00
-BACK | mid: 0.452 bass: 0.684 sf: 0.42 cMid: 0.164 morph: 0.51 | rawTr: 0.000 tGate: 0.60 flat: 0.050 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.25 BR: 0.00
-BACK | mid: 0.460 bass: 0.719 sf: 0.42 cMid: 0.157 morph: 0.51 | rawTr: 0.768 tGate: 0.54 flat: 0.048 trImp: 0.412 veto: ---- perc: 0.41 | kGate: 1.00 sGate: 0.67 | BL: 0.12 BR: 0.80
-[INTERVAL] F4200 bpm=125 raw=83 conf=0.658 kick=false phase=0.71 needle=0.0000 bassFlux=0.0583 midFlux=0.0000 centroid=2332Hz kicks=260
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 4200: bpm=125, energy=0.50
-BACK | mid: 0.470 bass: 0.716 sf: 0.42 cMid: 0.167 morph: 0.51 | rawTr: 0.204 tGate: 0.64 flat: 0.051 trImp: 0.131 veto: ---- perc: 0.13 | kGate: 1.00 sGate: 0.90 | BL: 0.12 BR: 0.16
-[BETA 📡] AUDIO_BUFFER #4200 | size=2048
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.880 (Rock target: >0.7)
-   Flatness:    0.165 (Tonal<0.3, Noise>0.7)
-   Centroid:    4603Hz (Bright>2000, Dark<1200)
-   CrestFactor: 13.07 (Dynamics)
-   Rolloff:     10454Hz (85% energy)
-   Latency:     1.22ms
-   UltraAir:    0.017 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.74x | In: 0.542 → Out: 0.403 | Peak: 0.658 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=1.12/1.4 wE=0.34/0.75 kick=false cool=false
-BACK | mid: 0.427 bass: 0.714 sf: 0.42 cMid: 0.124 morph: 0.50 | rawTr: 0.011 tGate: 1.00 flat: 0.060 trImp: 0.011 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 0.99 | BL: 0.09 BR: 0.01
-[IPC ðŸ“¡] audioBuffer #16710 | titan.running=true | size=8192
-BACK | mid: 0.388 bass: 0.718 sf: 0.43 cMid: 0.082 morph: 0.50 | rawTr: 0.178 tGate: 1.00 flat: 0.069 trImp: 0.178 veto: ---- perc: 0.18 | kGate: 1.00 sGate: 0.86 | BL: 0.04 BR: 0.80
-BACK | mid: 0.345 bass: 0.716 sf: 0.43 cMid: 0.037 morph: 0.49 | rawTr: 0.000 tGate: 1.00 flat: 0.070 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.02 BR: 0.16
-BACK | mid: 0.364 bass: 0.688 sf: 0.43 cMid: 0.066 morph: 0.48 | rawTr: 0.000 tGate: 1.00 flat: 0.066 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.01 BR: 0.00
-BACK | mid: 0.376 bass: 0.715 sf: 0.44 cMid: 0.065 morph: 0.48 | rawTr: 0.000 tGate: 1.00 flat: 0.064 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.308 bass: 0.719 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.002 tGate: 1.00 flat: 0.062 trImp: 0.002 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.331 bass: 0.688 sf: 0.44 cMid: 0.000 morph: 0.46 | rawTr: 0.074 tGate: 0.87 flat: 0.057 trImp: 0.064 veto: KICK perc: 0.06 | kGate: 0.33 sGate: 0.95 | BL: 0.00 BR: 0.00
-BACK | mid: 0.385 bass: 0.666 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.000 tGate: 0.74 flat: 0.054 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.35 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.350 bass: 0.652 sf: 0.45 cMid: 0.000 morph: 0.45 | rawTr: 0.000 tGate: 0.63 flat: 0.051 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.36 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.404 bass: 0.646 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.894 tGate: 1.00 flat: 0.060 trImp: 0.894 veto: KICK perc: 0.89 | kGate: 0.37 sGate: 0.28 | BL: 0.00 BR: 0.80
-BACK | mid: 0.435 bass: 0.629 sf: 0.45 cMid: 0.000 morph: 0.44 | rawTr: 0.447 tGate: 1.00 flat: 0.071 trImp: 0.447 veto: KICK perc: 0.45 | kGate: 0.38 sGate: 0.64 | BL: 0.00 BR: 0.15
-BACK | mid: 0.428 bass: 0.645 sf: 0.45 cMid: 0.136 morph: 0.44 | rawTr: 0.012 tGate: 1.00 flat: 0.080 trImp: 0.012 veto: ---- perc: 0.01 | kGate: 1.00 sGate: 0.99 | BL: 0.00 BR: 0.00
-BACK | mid: 0.465 bass: 0.648 sf: 0.45 cMid: 0.172 morph: 0.44 | rawTr: 0.000 tGate: 1.00 flat: 0.084 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.00 BR: 0.00
-BACK | mid: 0.442 bass: 0.632 sf: 0.45 cMid: 0.155 morph: 0.44 | rawTr: 0.017 tGate: 1.00 flat: 0.079 trImp: 0.017 veto: ---- perc: 0.02 | kGate: 1.00 sGate: 0.99 | BL: 0.00 BR: 0.00
-[AGC TRUST 🌊LIQUID 7B] FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.59
-BACK | mid: 0.518 bass: 0.657 sf: 0.45 cMid: 0.225 morph: 0.45 | rawTr: 0.000 tGate: 1.00 flat: 0.082 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.54 BR: 0.00
-BACK | mid: 0.518 bass: 0.715 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.013 tGate: 1.00 flat: 0.078 trImp: 0.013 veto: KICK perc: 0.01 | kGate: 0.30 sGate: 0.99 | BL: 0.12 BR: 0.00
-BACK | mid: 0.476 bass: 0.659 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.010 tGate: 1.00 flat: 0.075 trImp: 0.010 veto: KICK perc: 0.01 | kGate: 0.35 sGate: 0.99 | BL: 0.10 BR: 0.00
-BACK | mid: 0.501 bass: 0.642 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.000 tGate: 1.00 flat: 0.070 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.37 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.487 bass: 0.553 sf: 0.44 cMid: 0.000 morph: 0.47 | rawTr: 0.006 tGate: 1.00 flat: 0.066 trImp: 0.006 veto: KICK perc: 0.01 | kGate: 0.46 sGate: 1.00 | BL: 0.07 BR: 0.00
-BACK | mid: 0.544 bass: 0.542 sf: 0.43 cMid: 0.000 morph: 0.49 | rawTr: 0.667 tGate: 1.00 flat: 0.076 trImp: 0.667 veto: KICK perc: 0.67 | kGate: 0.47 sGate: 0.47 | BL: 0.02 BR: 0.80
-BACK | mid: 0.564 bass: 0.658 sf: 0.42 cMid: 0.000 morph: 0.52 | rawTr: 0.294 tGate: 1.00 flat: 0.085 trImp: 0.294 veto: KICK perc: 0.29 | kGate: 0.35 sGate: 0.76 | BL: 0.02 BR: 0.16
-BACK | mid: 0.540 bass: 0.694 sf: 0.41 cMid: 0.254 morph: 0.53 | rawTr: 0.000 tGate: 1.00 flat: 0.085 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.01
-BACK | mid: 0.566 bass: 0.698 sf: 0.40 cMid: 0.285 morph: 0.55 | rawTr: 0.000 tGate: 1.00 flat: 0.081 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.551 bass: 0.687 sf: 0.40 cMid: 0.278 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.078 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.516 bass: 0.692 sf: 0.40 cMid: 0.241 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.073 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.48 BR: 0.00
-BACK | mid: 0.466 bass: 0.761 sf: 0.40 cMid: 0.162 morph: 0.56 | rawTr: 0.000 tGate: 1.00 flat: 0.067 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.00
-BACK | mid: 0.395 bass: 0.729 sf: 0.40 cMid: 0.102 morph: 0.55 | rawTr: 0.000 tGate: 1.00 flat: 0.062 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.26 BR: 0.00
-[🥁 INTERVAL BPM] KICK #261 bpm=83 conf=0.64 energy=0.1294 avg=0.0118 ratio=10.93 delta=0.0848 history=8/8 bpmBuf=[86,86,81,81,86,68,81,86]
-[INTERVAL] F4220 bpm=125 raw=83 conf=0.639 kick=true phase=0.00 needle=0.1294 bassFlux=0.1294 midFlux=0.0000 centroid=123Hz kicks=261
-BACK | mid: 0.393 bass: 0.699 sf: 0.40 cMid: 0.000 morph: 0.55 | rawTr: 0.403 tGate: 0.90 flat: 0.057 trImp: 0.362 veto: KICK perc: 0.36 | kGate: 0.31 sGate: 0.71 | BL: 0.04 BR: 0.80
-BACK | mid: 0.372 bass: 0.677 sf: 0.41 cMid: 0.000 morph: 0.54 | rawTr: 0.000 tGate: 0.83 flat: 0.056 trImp: 0.000 veto: KICK perc: 0.00 | kGate: 0.34 sGate: 1.00 | BL: 0.05 BR: 0.17
-BACK | mid: 0.423 bass: 0.653 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.749 tGate: 0.66 flat: 0.052 trImp: 0.498 veto: KICK perc: 0.50 | kGate: 0.36 sGate: 0.60 | BL: 0.02 BR: 0.80
-BACK | mid: 0.509 bass: 0.597 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.371 tGate: 1.00 flat: 0.062 trImp: 0.371 veto: KICK perc: 0.37 | kGate: 0.42 sGate: 0.70 | BL: 0.02 BR: 0.17
-BACK | mid: 0.494 bass: 0.573 sf: 0.41 cMid: 0.000 morph: 0.53 | rawTr: 0.025 tGate: 1.00 flat: 0.072 trImp: 0.025 veto: KICK perc: 0.03 | kGate: 0.44 sGate: 0.98 | BL: 0.01 BR: 0.01
-BACK | mid: 0.487 bass: 0.560 sf: 0.41 cMid: 0.257 morph: 0.53 | rawTr: 0.079 tGate: 1.00 flat: 0.068 trImp: 0.079 veto: ---- perc: 0.08 | kGate: 1.00 sGate: 0.94 | BL: 0.61 BR: 0.00
-BACK | mid: 0.445 bass: 0.577 sf: 0.41 cMid: 0.207 morph: 0.53 | rawTr: 0.000 tGate: 1.00 flat: 0.069 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.47 BR: 0.00
-BACK | mid: 0.427 bass: 0.607 sf: 0.41 cMid: 0.175 morph: 0.52 | rawTr: 0.000 tGate: 1.00 flat: 0.064 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.00
-BACK | mid: 0.537 bass: 0.658 sf: 0.41 cMid: 0.268 morph: 0.53 | rawTr: 0.000 tGate: 0.98 flat: 0.059 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.65 BR: 0.00
-BACK | mid: 0.520 bass: 0.699 sf: 0.41 cMid: 0.235 morph: 0.54 | rawTr: 0.042 tGate: 1.00 flat: 0.062 trImp: 0.042 veto: ---- perc: 0.04 | kGate: 1.00 sGate: 0.97 | BL: 0.46 BR: 0.00
-BACK | mid: 0.475 bass: 0.667 sf: 0.41 cMid: 0.201 morph: 0.53 | rawTr: 0.000 tGate: 0.89 flat: 0.057 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.35 BR: 0.00
-BACK | mid: 0.454 bass: 0.646 sf: 0.41 cMid: 0.188 morph: 0.53 | rawTr: 0.000 tGate: 0.82 flat: 0.055 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.25 BR: 0.00
-BACK | mid: 0.413 bass: 0.645 sf: 0.41 cMid: 0.146 morph: 0.53 | rawTr: 0.000 tGate: 0.75 flat: 0.054 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.18 BR: 0.00
-BACK | mid: 0.455 bass: 0.627 sf: 0.41 cMid: 0.195 morph: 0.52 | rawTr: 1.000 tGate: 0.60 flat: 0.050 trImp: 0.597 veto: ---- perc: 0.60 | kGate: 1.00 sGate: 0.52 | BL: 0.09 BR: 0.80
-BACK | mid: 0.437 bass: 0.632 sf: 0.42 cMid: 0.174 morph: 0.52 | rawTr: 0.023 tGate: 1.00 flat: 0.060 trImp: 0.023 veto: ---- perc: 0.02 | kGate: 1.00 sGate: 0.98 | BL: 0.12 BR: 0.16
-BACK | mid: 0.376 bass: 0.668 sf: 0.42 cMid: 0.096 morph: 0.51 | rawTr: 0.000 tGate: 0.98 flat: 0.060 trImp: 0.000 veto: ---- perc: 0.00 | kGate: 1.00 sGate: 1.00 | BL: 0.09 BR: 0.01
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=44% B/D/N=179/196/71
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 60° | FinalHue: 75°
-BACK | mid: 0.357 bass: 0.678 sf: 0.42 cMid: 0.071 morph: 0.51 | rawTr: 0.056 tGate: 0.96 flat: 0.059 t
+   Clarity:     0.991 (Rock target: >0.7)
+   Flatness:    0.005 (Tonal<0.3, Noise>0.7)
+   Centroid:    191Hz (Bright>2000, Dark<1200)
+   CrestFactor: 16.73 (Dynamics)
+   Rolloff:     172Hz (85% energy)
+   Latency:     1.03ms
+   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
+[AGC 🎚️] Gain: 0.74x | In: 0.521 → Out: 0.385 | Peak: 0.662 | ✅ ACTIVE
+[LAB-DATA] cent:1591 | isK:1 bass:0.751 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[LAB-DATA] cent:1479 | isK:1 bass:0.734 | trbD:0.093 hmD:0.000 midD:0.160 harsh:0.006 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1391 | isK:0 bass:0.821 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.200
+[LAB-DATA] cent:1289 | isK:1 bass:0.769 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.800 oB:0.010
+[LAB-DATA] cent:1194 | isK:1 bass:0.725 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1107 | isK:0 bass:0.685 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.003 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1036 | isK:0 bass:0.652 | trbD:0.061 hmD:0.000 midD:0.006 harsh:0.003 | oF:0.000 oB:0.000
+[LAB-DATA] cent: 971 | isK:0 bass:0.629 | trbD:0.151 hmD:0.000 midD:0.117 harsh:0.002 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1600 | isK:0 bass:0.604 | trbD:0.000 hmD:0.008 midD:0.000 harsh:0.007 | oF:0.000 oB:0.200
+[IPC ðŸ“¡] audioBuffer #1087 | titan.running=true | size=8192
+[LAB-DATA] cent:1581 | isK:0 bass:0.646 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1564 | isK:0 bass:0.655 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1456 | isK:0 bass:0.659 | trbD:0.033 hmD:0.000 midD:0.102 harsh:0.005 | oF:0.000 oB:1.000
+[LAB-DATA] cent:1418 | isK:0 bass:0.745 | trbD:0.068 hmD:0.000 midD:0.181 harsh:0.005 | oF:0.000 oB:1.000
+[🥁 INTERVAL BPM] KICK #55 bpm=161 conf=0.00 energy=0.1784 avg=0.0374 ratio=4.77 delta=0.1784 history=8/8 bpmBuf=[161,161,117,81,161,161,86,161]
+[LAB-DATA] cent:1374 | isK:1 bass:0.769 | trbD:0.000 hmD:0.005 midD:0.000 harsh:0.010 | oF:0.800 oB:0.200
+[LAB-DATA] cent:1334 | isK:1 bass:0.750 | trbD:0.000 hmD:0.004 midD:0.000 harsh:0.013 | oF:0.000 oB:0.010
+[LAB-DATA] cent:1253 | isK:0 bass:0.650 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.011 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1189 | isK:0 bass:0.562 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.009 | oF:0.000 oB:0.000
+[LAB-DATA] cent:1789 | isK:0 bass:0.528 | trbD:0.216 hmD:0.000 midD:0.033 harsh:0.008 | oF:0.000 oB:1.000
+[LAB-DATA] cent:2340 | isK:0 bass:0.568 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.200
+[LAB-DATA] cent:2689 | isK:0 bass:0.641 | trbD:0.000 hmD:0.003 midD:0.000 harsh:0.009 | oF:0.000 oB:0.010
+[LAB-DATA] cent:2503 | isK:0 bass:0.669 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.008 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2333 | isK:0 bass:0.680 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2165 | isK:0 bass:0.667 | trbD:0.000 hmD:0.000 midD:0.005 harsh:0.005 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2096 | isK:0 bass:0.785 | trbD:0.031 hmD:0.004 midD:0.064 harsh:0.009 | oF:0.000 oB:0.000
+[🥁 INTERVAL BPM] KICK #56 bpm=161 conf=0.00 energy=0.1591 avg=0.0389 ratio=4.09 delta=0.1030 history=8/8 bpmBuf=[161,161,117,81,161,161,86,161]
+[LAB-DATA] cent:1937 | isK:1 bass:0.741 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.007 | oF:0.800 oB:0.000
+[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.26 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.00 | beat #56
+[TitanEngine 🧠] Stabilization: Key=E Emotion=NEUTRAL Strategy=analogous Temp=4589K
+[LAB-DATA] cent:1790 | isK:1 bass:0.673 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.006 | oF:0.000 oB:0.000
+[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=fire
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[LAB-DATA] cent:1655 | isK:0 bass:0.639 | trbD:0.000 hmD:0.000 midD:0.000 harsh:0.004 | oF:0.000 oB:0.000
+[INTERVAL] F1100 bpm=121 raw=161 conf=0.000 kick=false phase=0.25 needle=0.0000 bassFlux=0.0000 midFlux=0.0002 centroid=130Hz kicks=56
+[Harmony ⚠️] Freq 43Hz fuera de rango musical
+[LAB-DATA] cent:1533 | isK:0 bass:0.626 | trbD:0.020 hmD:0.000 midD:0.001 harsh:0.004 | oF:0.000 oB:0.000
+[LAB-DATA] cent:2065 | isK:0 bass:0.638 | trbD:0.177 hmD:0.006 midD:0.144 harsh:0.007 | oF:0.000 oB:1.000
+[AGC TRUST 🌊LIQUID 7B] profile:techno-industrial | FL:0.00 FR:0.00 | BL:1.00 BR:1.00 | ML:0.00 MR:0.34

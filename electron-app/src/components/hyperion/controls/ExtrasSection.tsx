@@ -4,10 +4,13 @@
  * La sección de canales phantom: solo aparece cuando hay fixtures con canales
  * tipo custom, macro, rotation, speed o control — los "Ingenios" de WAVE 2084.
  * 
- * Arquitectura:
- * - selectedIds del selectionStore (qué fixtures están seleccionados)
- * - stageStore.fixtures contiene FixtureV2 con channels[] embebido desde Forge
- * - Si channels[] no está embebido → fallback IPC a getFixtureDefinition()
+ * Arquitectura (3 paths de resolución, en orden de prioridad):
+ * - PATH 1: INLINE — channels[] embebido en el FixtureV2 del stageStore
+ * - PATH 1.5: LIBRARY STORE — libraryStore en memoria (fixtures de usuario)
+ *             WAVE 2463: Este path cubre fans/fog/ingenios que fueron añadidos
+ *             al show sin pasar por Forge, o cuyo channels[] no fue embebido.
+ *             Cero IPC, cero latencia — los datos ya están en RAM.
+ * - PATH 2: IPC — fallback a getFixtureDefinition() para casos legacy
  * - Cache de definiciones por defId (no IPC repetitivo)
  * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
  * 
@@ -17,6 +20,7 @@
 import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { useLibraryStore } from '../../../stores/libraryStore'
 import { ControlsIcon } from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -88,6 +92,9 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     return []
   })
   
+  // 🔥 WAVE 2463: PATH 1.5 — Library store in RAM (fans, ingenios, user fixtures)
+  const getLibraryFixtureById = useLibraryStore(state => state.getFixtureById)
+  
   // Phantom channel values: Map<channelIndex, dmxValue>
   const [channelValues, setChannelValues] = useState<Map<number, number>>(new Map())
   
@@ -142,20 +149,28 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   }, [])
   
   /**
-   * 🔥 WAVE 2084.8: Check if any selected fixture has phantom channels.
-   * With stageStore providing full FixtureV2, channels[] is almost always present.
-   * Fallback to defId for edge cases where fixture was patched without Forge data.
+   * 🔥 WAVE 2084.8 + 2463: Check if any selected fixture has phantom channels.
+   * 3 paths: inline channels > libraryStore in RAM > defId for IPC fallback.
+   * WAVE 2463: fans/ingenios sin channels inline ahora detectados via libraryStore.
    */
   const mayHavePhantomChannels = useMemo(() => {
     return selectedFixtures.some((f: any) => {
-      // Primary: Check embedded channels directly
+      // PATH 1: Check embedded channels directly
       if (Array.isArray(f?.channels) && f.channels.length > 0) {
         return f.channels.some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type))
       }
-      // Fallback: Has a library definition ID we can query via IPC
-      return !!resolveDefId(f)
+      // PATH 1.5: Check libraryStore in RAM — zero IPC
+      const defId = resolveDefId(f)
+      if (defId) {
+        const libraryEntry = getLibraryFixtureById(defId)
+        if (Array.isArray(libraryEntry?.channels) && libraryEntry!.channels.length > 0) {
+          return (libraryEntry!.channels as any[]).some((ch: any) => PHANTOM_CHANNEL_TYPES.has(ch?.type))
+        }
+      }
+      // PATH 2: Has a definition ID we can query via IPC
+      return !!defId
     })
-  }, [selectedFixtures, resolveDefId])
+  }, [selectedFixtures, resolveDefId, getLibraryFixtureById])
   
   // ═══════════════════════════════════════════════════════════════════
   // CHANNEL RESOLUTION — Inline first, IPC only when needed
@@ -188,8 +203,26 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
           continue // No IPC needed for this fixture
         }
         
-        // ─── PATH 2: RESOLVE definition ID via blind cascade ───
+        // ─── PATH 1.5: LIBRARY STORE — in-memory, zero IPC ─────────────
+        // WAVE 2463: Para fans, fog, y cualquier ingenio añadido sin Forge,
+        // sus channels[] viven en libraryStore (cargado al boot). Cero latencia.
         const defId = resolveDefId(f)
+        
+        if (defId) {
+          const libraryEntry = getLibraryFixtureById(defId)
+          if (libraryEntry && Array.isArray(libraryEntry.channels) && libraryEntry.channels.length > 0) {
+            const libraryPhantoms = extractInlinePhantoms(libraryEntry.channels as any[])
+            if (libraryPhantoms.length > 0) {
+              for (const ch of libraryPhantoms) {
+                if (!allPhantomChannels.some(existing => existing.channelIndex === ch.channelIndex)) {
+                  allPhantomChannels.push(ch)
+                }
+              }
+              console.log(`[PhantomPanel] 📚 PATH 1.5: Library hit for "${f.name}" → ${libraryPhantoms.length} phantom channels`)
+              continue
+            }
+          }
+        }
         
         if (!defId) {
           console.warn(`[PhantomPanel] ⚠️ NO definition ID for fixture "${f.name}" (id: ${f.id}) — skipping`)
@@ -207,7 +240,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
           continue
         }
         
-        // IPC fetch — the real source of truth
+        // IPC fetch — fallback for legacy fixtures without library entry
         try {
           const result = await window.lux?.getFixtureDefinition?.(defId)
           

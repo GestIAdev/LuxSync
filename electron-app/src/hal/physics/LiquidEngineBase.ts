@@ -363,16 +363,82 @@ export abstract class LiquidEngineBase {
     // En techno industrial (morph≈0.1) el decay = decayBase + decayRange×0.1 → percutivo.
     let backRight = this.envSnare.process(hybridSnare, morphFactor, now, false)
 
-    // --- MOVER R (El Alma y el Aire): WAVE 2422 → WAVE 2430 PARAMETRIZADO ---
-    const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange
-    const vocalInput = Math.max(0,
-      (bands.treble * 0.6 + bands.highMid * 0.4) - (bands.lowMid * subtractFactor)
-    )
-    const cleanVocal = isVetoed ? 0 : vocalInput
-    const rawMoverR = this.envVocal.process(cleanVocal, morphFactor, now, isBreakdown)
-    const kickGate = isVetoed ? (1.0 - bands.bass * 0.98) : 1.0
-    const snareGate = 1.0 - snareAttack * p.snareSidechainDepth
-    let moverRight = rawMoverR * kickGate * snareGate
+    // ═══════════════════════════════════════════════════════════════════
+    // MOVERS: WAVE 911 (strict-split) vs ENVELOPE CROSS-FILTER (otros)
+    // ═══════════════════════════════════════════════════════════════════
+    //
+    // El motor es AGNOSTICO — cada perfil define su propio ADN de movers.
+    // 'strict-split' (techno industrial) usa WAVE 911: raw math de bandas,
+    //   hardcodeado para el espectro especifico de techno (mid-heavy, sin highMid).
+    // Cualquier otro perfil usa el sistema de envolventes parametrizado:
+    //   - Mover L: cross-filter (highMid × weight + treble × weight + mid × weight)
+    //              filtrado por gate tonal (flatness < moverLTonalThreshold)
+    //              procesado por envTreble (El Galan, decay largo latino)
+    //   - Mover R: cleanMid (mid - bass × subtractFactor) - treble × moverRTrebleSub
+    //              procesado por envVocal (La Dama, brillo + trompetas)
+    // Esto garantiza que Latino, Pop-Rock, Chill y futuros perfiles tengan su
+    // fisica propia sin tocar una sola linea del motor.
+
+    let moverLeft: number
+    let moverRight: number
+
+    if (p.layout41Strategy === 'strict-split') {
+      // --- WAVE 911 LEGACY — TechnoStereoPhysics (WAVE 2456) ---
+      // Exclusivo para techno industrial en modo strict-split.
+      // Roles espectrales calibrados contra espectro real del techno industrial.
+      //
+      // MOVER L = EL OSCURO (200Hz - 800Hz: mid tonal del synth)
+      //   GOD EAR confirma: centroid 630-680Hz, rolloff 85% en ~1.2kHz.
+      //   rawMoverL = mid - bass*0.50 (separa synth del bombo).
+      //   Gate 0.06 (calibrado al piso real ~0.040-0.065 en silencio).
+      //   Boost 12.0 (senal pequena pero real — boost agresivo para visibilidad).
+      //
+      // MOVER R = EL TERMINATOR (2kHz - 20kHz: treble puro)
+      //   Verificado correcto en movercalib logs.
+
+      const calculateMover = (signal: number, gate: number, boost: number): number => {
+        if (signal < gate) return 0.0
+        const gated = (signal - gate) / (1.0 - gate)
+        return Math.min(1.0, Math.max(0, Math.pow(gated, 1.2) * boost))
+      }
+
+      const rawMoverL = Math.max(0, bands.mid - bands.bass * 0.50)
+      const rawMoverR = bands.treble
+
+      moverLeft  = calculateMover(rawMoverL, 0.06, 12.0)
+      moverRight = calculateMover(rawMoverR, 0.18, 9.0)
+
+      // Sidechain del kick inline (strict-split: guillotina directa)
+      if (isKick) {
+        moverLeft  *= (1.0 - p.sidechainDepth)
+        moverRight *= (1.0 - p.sidechainDepth)
+      }
+
+    } else {
+      // --- ENVELOPE CROSS-FILTER — Motor Parametrizado por Perfil (WAVE 2457) ---
+      // Latino, Pop-Rock, Chill, etc. usan su ADN definido en ILiquidProfile.
+
+      // MOVER L: cross-filter tonal (El Galan / Melodista / segun perfil)
+      //   input = max(0, highMid×mH + treble×tW + mid×mW)
+      //   Gate tonal: si flatness >= moverLTonalThreshold → ruido, cortar
+      const moverLRaw = Math.max(0,
+        bands.highMid * p.moverLHighMidWeight +
+        bands.treble  * p.moverLTrebleWeight  +
+        bands.mid     * p.moverLMidWeight
+      )
+      const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0
+      const moverLInput = moverLRaw * isTonal
+      moverLeft = this.envTreble.process(moverLInput, morphFactor, now, isBreakdown)
+
+      // MOVER R: cleanMid con bass-subtractor adaptativo (La Dama / Terminator vocal)
+      //   subtractFactor = base - morphFactor × range
+      //   cleanMid = max(0, mid - bass × subtractFactor)
+      //   crossInput = max(0, cleanMid - treble × moverRTrebleSub)
+      const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange
+      const cleanMid = Math.max(0, bands.mid - bands.bass * subtractFactor)
+      const moverRInput = Math.max(0, cleanMid - bands.treble * p.moverRTrebleSub)
+      moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown)
+    }
 
     // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
     const midSynthInput = Math.max(0,
@@ -381,24 +447,23 @@ export abstract class LiquidEngineBase {
     )
     let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown)
 
-    // --- MOVER L (Melodías): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
-    const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0
-    const melodyInput = Math.max(0,
-      bands.mid * p.moverLMidWeight + bands.highMid * p.moverLHighMidWeight
-      + bands.treble * p.moverLTrebleWeight - bands.bass * 0.1
-    ) * isTonal
-    let moverLeft = this.envTreble.process(melodyInput, morphFactor, now, isBreakdown)
+    // moverLeft y moverRight ya calculados arriba (WAVE 911 legacy block)
 
     // ═══════════════════════════════════════════════════════════════════
     // 7. SIDECHAIN GUILLOTINE
     // ═══════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════
+    // 7. SIDECHAIN GUILLOTINE
+    // ═══════════════════════════════════════════════════════════════════
+    // strict-split ya aplico sidechain inline en el bloque WAVE 911 arriba.
+    // Para otros perfiles, la Guillotina general actua aqui.
     const frontMax = Math.max(frontLeft, frontRight)
 
-    if (frontMax > p.sidechainThreshold) {
+    if (p.layout41Strategy !== 'strict-split' && frontMax > p.sidechainThreshold) {
       const ducking = 1.0 - frontMax * p.sidechainDepth
       moverLeft *= ducking
       moverRight *= ducking
-    } else {
+    } else if (p.layout41Strategy !== 'strict-split') {
       const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness
       if (isApocalypse) {
         const chaosEnergy = Math.max(bands.mid, bands.treble)

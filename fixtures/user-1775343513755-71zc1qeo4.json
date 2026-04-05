@@ -1,0 +1,179 @@
+{
+  "id": "user-1775343513755-71zc1qeo4",
+  "name": "Tungsten",
+  "manufacturer": "American Pro",
+  "type": "fan",
+  "channels": [
+    {
+      "index": 0,
+      "name": "X axis",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 1,
+      "name": "X infinite",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "name": "Golden dimmer",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "name": "Golden Strobe",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "name": "Gold 1",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "name": "Gold 2",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "name": "Gold 3",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "name": "Stainning dimmer",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "name": "Stainning strobe",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "name": "Stain red",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 10,
+      "name": "Stain green",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 11,
+      "name": "Stain blue",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 12,
+      "name": "beam red",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 13,
+      "name": "beam green",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 14,
+      "name": "beam blue",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 15,
+      "name": "beam white",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 16,
+      "name": "macro gold",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 17,
+      "name": "macro stain",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 18,
+      "name": "macro beam",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 19,
+      "name": "repo",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ],
+  "physics": {
+    "motorType": "stepper-cheap",
+    "maxAcceleration": 1500,
+    "maxVelocity": 400,
+    "safetyCap": true,
+    "orientation": "ceiling",
+    "invertPan": false,
+    "invertTilt": false,
+    "swapPanTilt": false,
+    "homePosition": {
+      "pan": 127,
+      "tilt": 127
+    },
+    "tiltLimits": {
+      "min": 30,
+      "max": 180
+    }
+  },
+  "capabilities": {
+    "colorEngine": "rgbw",
+    "hasPan": false,
+    "hasTilt": false,
+    "hasColorMixing": false,
+    "hasColorWheel": false,
+    "hasGobo": false,
+    "hasPrism": false,
+    "hasStrobe": false,
+    "hasDimmer": false
+  },
+  "savedAt": "2026-04-04T22:59:07.247Z",
+  "source": "user"
+}

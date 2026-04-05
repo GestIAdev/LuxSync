@@ -352,12 +352,17 @@ const CalibrationView: React.FC = () => {
           channels: [channelType],
         })
       } else {
-        // Canal phantom (unknown, custom, frost, rotation, etc.)
-        // → controls.phantomChannels.{tipo} para que el Arbiter
-        //   lo lea en resolveFixtureTarget y lo pase al HAL
+        // Canal phantom (unknown, custom, frost, rotation, control, etc.)
+        // → controls.phantomChannels.{key} para que el Arbiter lo pase al HAL.
+        // Para custom/unknown usamos el NOMBRE del canal como key, no el tipo,
+        // evitando colisiones cuando hay múltiples canales del mismo tipo.
+        const phantomKey =
+          (channelType === 'custom' || channelType === 'unknown')
+            ? (channelInfo?.name || `unknown_${channelIndex}`)
+            : channelType
         await arbiter.setManual({
           fixtureIds: [activeFixtureId],
-          controls: { phantomChannels: { [channelType]: value } },
+          controls: { phantomChannels: { [phantomKey]: value } },
           channels: [channelType],
         })
       }

@@ -1,0 +1,402 @@
+{
+  "id": "user-1770473024494-gooaf830g",
+  "name": "EL 1140 TESTING",
+  "manufacturer": "Chino",
+  "type": "moving-head",
+  "channels": [
+    {
+      "index": 0,
+      "type": "pan",
+      "name": "Pan",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 1,
+      "type": "tilt",
+      "name": "Tilt",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "type": "speed",
+      "name": "Speed",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "type": "strobe",
+      "name": "Shutter/Strobe",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "type": "color_wheel",
+      "name": "Color Wheel",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "name": "Gobo Pattern",
+      "type": "gobo",
+      "defaultValue": 0,
+      "is16bit": false,
+      "notes": "0-121: patron estatico. 122-255: patron con vibracion/rotacion (evitar en directo)"
+    },
+    {
+      "index": 7,
+      "name": "Prism + Speed",
+      "type": "prism",
+      "defaultValue": 0,
+      "is16bit": false,
+      "notes": "0-121: off / patrones sin prisma. 122-255: prisma activo + velocidad de rotacion (122=lento, 255=rapido)"
+    },
+    {
+      "index": 8,
+      "name": "Focus",
+      "type": "focus",
+      "defaultValue": 128,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "type": "control",
+      "defaultValue": 0,
+      "is16bit": false,
+      "name": "Control"
+    }
+  ],
+  "capabilities": {
+    "hasPan": true,
+    "hasTilt": true,
+    "hasColorMixing": false,
+    "hasColorWheel": true,
+    "hasGobo": true,
+    "hasPrism": true,
+    "hasStrobe": true,
+    "hasDimmer": true,
+    "colorEngine": "wheel",
+    "colorWheel": {
+      "colors": [
+        {
+          "dmx": 0,
+          "name": "White",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+        },
+        {
+          "dmx": 10,
+          "name": "Pink",
+          "rgb": {
+            "r": 255,
+            "g": 105,
+            "b": 180
+          },
+          "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+        },
+        {
+          "dmx": 20,
+          "name": "Cyan",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+        },
+        {
+          "dmx": 30,
+          "name": "Yellow",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+        },
+        {
+          "dmx": 40,
+          "name": "Magenta",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+        },
+        {
+          "dmx": 50,
+          "name": "Green",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+        },
+        {
+          "dmx": 60,
+          "name": "Blue",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+        },
+        {
+          "dmx": 70,
+          "name": "Orange",
+          "rgb": {
+            "r": 255,
+            "g": 128,
+            "b": 0
+          },
+          "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+        },
+        {
+          "dmx": 80,
+          "name": "Magenta",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+        },
+        {
+          "dmx": 90,
+          "name": "Green",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+        },
+        {
+          "dmx": 100,
+          "name": "Blue",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+        },
+        {
+          "dmx": 110,
+          "name": "Yellow",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+        },
+        {
+          "dmx": 120,
+          "name": "Red",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          },
+          "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+        },
+        {
+          "dmx": 130,
+          "name": "White",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+        }
+      ],
+      "allowsContinuousSpin": false,
+      "minChangeTimeMs": 500
+    }
+  },
+  "physics": {
+    "motorType": "stepper-cheap",
+    "maxAcceleration": 900,
+    "maxVelocity": 400,
+    "safetyCap": true,
+    "orientation": "floor",
+    "invertPan": false,
+    "invertTilt": false,
+    "swapPanTilt": false,
+    "homePosition": {
+      "pan": 127,
+      "tilt": 127
+    },
+    "tiltLimits": {
+      "min": 30,
+      "max": 200
+    }
+  },
+  "wheels": {
+    "colors": [
+      {
+        "dmx": 0,
+        "name": "White",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+      },
+      {
+        "dmx": 10,
+        "name": "Pink",
+        "rgb": {
+          "r": 255,
+          "g": 105,
+          "b": 180
+        },
+        "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+      },
+      {
+        "dmx": 20,
+        "name": "Cyan",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+      },
+      {
+        "dmx": 30,
+        "name": "Yellow",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+      },
+      {
+        "dmx": 40,
+        "name": "Magenta",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+      },
+      {
+        "dmx": 50,
+        "name": "Green",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+      },
+      {
+        "dmx": 60,
+        "name": "Blue",
+        "rgb": {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+      },
+      {
+        "dmx": 70,
+        "name": "Orange",
+        "rgb": {
+          "r": 255,
+          "g": 128,
+          "b": 0
+        },
+        "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+      },
+      {
+        "dmx": 80,
+        "name": "Magenta",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+      },
+      {
+        "dmx": 90,
+        "name": "Green",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+      },
+      {
+        "dmx": 100,
+        "name": "Blue",
+        "rgb": {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+      },
+      {
+        "dmx": 110,
+        "name": "Yellow",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+      },
+      {
+        "dmx": 120,
+        "name": "Red",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+      },
+      {
+        "dmx": 130,
+        "name": "White",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+      }
+    ]
+  },
+  "source": "user",
+  "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+  "savedAt": "2026-04-04T14:45:09.522Z"
+}

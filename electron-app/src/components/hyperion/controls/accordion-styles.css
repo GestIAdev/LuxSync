@@ -603,7 +603,7 @@
 /* Phantom body — contained, scrollable if needed */
 .phantom-body {
   padding: 8px 10px;
-  max-height: 200px;
+  max-height: 600px;
   overflow-y: auto;
   overflow-x: hidden;
   /* 🔥 Scroll furtivo — invisible until needed */

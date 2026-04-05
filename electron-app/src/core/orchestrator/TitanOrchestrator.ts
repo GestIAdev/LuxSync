@@ -231,6 +231,14 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private onBroadcast: ((truth: any) => void) | null = null
 
+  // ⚡ WAVE 2464: PEAK HOLD — Captura el pico de intensidad del frame skipeado.
+  // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
+  // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado — el canvas
+  // nunca lo ve. Solución: guardar el dimmer máximo visto entre dos broadcasts.
+  // El siguiente broadcast manda el PICO, no el valor actual.
+  // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
+  private peakHoldMap: Map<string, number> = new Map()  // fixtureId → peak dimmer (0-255)
+
   constructor(config: TitanConfig = {}) {
     this.config = {
       debug: false,
@@ -1470,6 +1478,17 @@ export class TitanOrchestrator {
     // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
     // Only the UI visualization is throttled.
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // ⚡ WAVE 2464: PEAK HOLD — Acumula el pico entre frames skipeados
+    // Frame skipeado (frameCount % 2 === 1): solo actualiza el mapa de picos
+    // Frame de broadcast (frameCount % 2 === 0): usa el pico acumulado y resetea
+    for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+      const _f = fixtureStates[_pi]
+      const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
+      const _prev = this.peakHoldMap.get(_id) ?? 0
+      if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
+    }
+
     if (this.onBroadcast && this.frameCount % 2 === 0) {
       const currentVibe = this.engine.getCurrentVibe()
       
@@ -1618,6 +1637,13 @@ export class TitanOrchestrator {
             const originalFixture = this.fixtures[i]
             const realId = originalFixture?.id || `fix_${i}`
             
+            // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
+            // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
+            // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
+            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer
+            const broadcastDimmer = Math.max(f.dimmer, peakDimmer)
+            this.peakHoldMap.set(realId, 0)  // Reset peak tras broadcast
+
             return {
               id: realId,
               name: f.name,
@@ -1625,8 +1651,8 @@ export class TitanOrchestrator {
               zone: mappedZone,
               dmxAddress: f.dmxAddress,
               universe: f.universe,
-              dimmer: f.dimmer / 255,           // Normalize 0-255 → 0-1
-              intensity: f.dimmer / 255,        // Normalize 0-255 → 0-1
+              dimmer: broadcastDimmer / 255,    // Normalize 0-255 → 0-1 (con peak hold)
+              intensity: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
               color: { 
                 r: Math.round(f.r),             // Keep 0-255 for RGB
                 g: Math.round(f.g), 

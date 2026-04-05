@@ -112,6 +112,24 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const physicsStoreRef = useRef<Map<string, { pan: number; tilt: number; zoom: number }>>(new Map())
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ⚡ WAVE 2464: BEAT VISUAL ENVELOPE — Decay suave a 60fps real
+  //
+  // PROBLEMA ANTERIOR: onBeat era un boolean. El RAF dibujaba beatScale=1.08
+  // mientras onBeat=true (100ms), luego saltaba a 1.0 instantáneamente →
+  // flash duro, no un halo que pulsa y se apaga.
+  //
+  // SOLUCIÓN: beatVisualEnvelopeRef decae cada frame del RAF (independiente
+  // del IPC, independiente de React). Cuando llega un beat real, sube a 1.0.
+  // Cada frame: env *= DECAY. Pasa a FixtureLayer como valor continuo 0-1.
+  // FixtureLayer usa: beatScale = 1.0 + env * 0.08  (suave, no binario)
+  //
+  // DECAY = 0.88 por frame @ 60fps → dura ~8 frames (~130ms) visible
+  // DECAY = 0.92 por frame @ 60fps → dura ~12 frames (~200ms) visible
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const beatVisualEnvelopeRef = useRef<number>(0)
+  const lastOnBeatRef = useRef<boolean>(false)  // Detecta rising edge (false→true)
+
   // ── State ───────────────────────────────────────────────────────────────
   
   const [isReady, setIsReady] = useState(false)
@@ -250,10 +268,21 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       metricsRef.current.fixtureCount = currentFixtures.length
       metricsRef.current.lastRenderTime = timestamp
 
-      // 🔥 WAVE 2405: Read beat IMPERATIVELY — no reactive subscription
+      // ⚡ WAVE 2464: BEAT VISUAL ENVELOPE — Decay suave a 60fps
+      // Rising edge detection: solo sube el envelope en la transición false→true.
+      // Esto evita que el envelope se "resetee" a 1.0 en cada frame mientras
+      // onBeat siga siendo true (100ms), que causaría un plateau plano en vez de decay.
       const audioState = useAudioStore.getState()
       const currentOnBeat = audioState.onBeat
-      const currentBeatIntensity = currentOnBeat ? 1.0 : 0
+      const BEAT_VISUAL_DECAY = 0.88  // per-frame @ 60fps → ~130ms de halo visible
+      if (currentOnBeat && !lastOnBeatRef.current) {
+        // Rising edge — nuevo beat real detectado
+        beatVisualEnvelopeRef.current = 1.0
+      }
+      lastOnBeatRef.current = currentOnBeat
+      // Decay cada frame, independiente de si hay beat o no
+      beatVisualEnvelopeRef.current *= BEAT_VISUAL_DECAY
+      const beatEnvelope = beatVisualEnvelopeRef.current
 
       // Get CSS dimensions
       const rect = canvas.getBoundingClientRect()
@@ -396,8 +425,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       // ── LAYER 3: FIXTURES (with smoothed physics + transient data) ────
       renderFixtureLayer(ctx, width, height, smoothedFixtures, {
         quality,
-        onBeat: currentOnBeat,
-        beatIntensity: currentBeatIntensity,
+        onBeat: beatEnvelope > 0.05,       // true mientras el halo sea visible
+        beatIntensity: beatEnvelope,        // 0-1 continuo para beatScale suave
       })
 
       // ── LAYER 4: SELECTION ────────────────────────────────────────────

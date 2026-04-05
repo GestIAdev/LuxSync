@@ -49,8 +49,7 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   
   // Local state
   const [gobo, setGobo] = useState(0)           // 0-255
-  const [prismActive, setPrismActive] = useState(false)
-  const [prismRotation, setPrismRotation] = useState(128)  // 0-255
+  const [prismValue, setPrismValue] = useState(0)  // 0=off, 122-255=active+speed
   const [focus, setFocus] = useState(128)       // 0-255
   const [zoom, setZoom] = useState(128)         // 0-255
   const [iris, setIris] = useState(255)         // 0-255 (255 = open)
@@ -111,22 +110,13 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   }, [sendBeamValues])
   
   /**
-   * Prism toggle
+   * Prism direct control (0=off, 122-255=active+speed)
    */
-  const handlePrismToggle = useCallback(async () => {
-    const newActive = !prismActive
-    setPrismActive(newActive)
-    await sendBeamValues({ prism: newActive ? 255 : 0 }, ['prism'])
-    console.log(`[Beam] 💎 Prism → ${newActive ? 'ON' : 'OFF'}`)
-  }, [prismActive, sendBeamValues])
-  
-  /**
-   * Prism rotation change
-   */
-  const handlePrismRotationChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePrismChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setPrismRotation(value)
-    await sendBeamValues({ prismRotation: value }, ['prismRotation'])
+    setPrismValue(value)
+    await sendBeamValues({ prism: value }, ['prism'])
+    console.log(`[Beam] 💎 Prism → ${value} ${value === 0 ? '(OFF)' : value < 122 ? '(pattern)' : '(active+speed)'}`)
   }, [sendBeamValues])
   
   /**
@@ -165,7 +155,7 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
     try {
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
-        channels: ['gobo', 'prism', 'prismRotation', 'focus', 'zoom', 'iris'],
+        channels: ['gobo', 'prism', 'focus', 'zoom', 'iris'],
       })
       console.log(`[Beam] 🔓 Released for ${selectedIds.length} fixtures`)
     } catch (err) {
@@ -249,27 +239,26 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
           <div className="beam-control prism-control">
             <div className="control-header">
               <label className="control-label">PRISM</label>
-              <button
-                className={`prism-toggle ${prismActive ? 'active' : ''}`}
-                onClick={handlePrismToggle}
-              >
-                {prismActive ? 'ON' : 'OFF'}
-              </button>
+              <span className="control-value">
+                {prismValue === 0 ? 'OFF' : prismValue < 122 ? `${prismValue}` : `⟳ ${prismValue}`}
+              </span>
             </div>
             
-            {/* Rotation slider - only active when prism is on */}
-            <div className={`prism-rotation ${!prismActive ? 'disabled' : ''}`}>
-              <span className="rotation-label">ROTATION</span>
+            {/* Single slider: 0=off, 1-121=pattern select, 122-255=active+speed */}
+            <div className="prism-slider-wrap">
               <input
                 type="range"
-                className="beam-slider rotation-slider"
+                className="beam-slider prism-slider"
                 min={0}
                 max={255}
-                value={prismRotation}
-                onChange={handlePrismRotationChange}
-                disabled={!prismActive}
+                value={prismValue}
+                onChange={handlePrismChange}
               />
-              <span className="rotation-value">{Math.round((prismRotation / 255) * 100)}%</span>
+              <div className="prism-markers">
+                <span className="prism-marker" style={{ left: '0%' }}>OFF</span>
+                <span className="prism-marker" style={{ left: '47.8%' }}>122</span>
+                <span className="prism-marker" style={{ left: '100%' }}>255</span>
+              </div>
             </div>
           </div>
           

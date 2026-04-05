@@ -377,9 +377,12 @@ export function renderFixtureLayer(
     FIXTURE_CONFIG.MAX_RADIUS
   )
 
-  // Beat reactivity
-  const beatScale = onBeat ? FIXTURE_CONFIG.BEAT_GLOW_SCALE : 1.0
-  const beatBoost = onBeat ? FIXTURE_CONFIG.BEAT_CORE_BOOST * beatIntensity : 0
+  // ⚡ WAVE 2464: Beat reactivity — continuo (0-1), no binario
+  // beatIntensity es el beatVisualEnvelope que decae a 60fps en TacticalCanvas.
+  // beatScale: 1.0 (sin beat) → 1.08 (beat pleno). Suave, no flash duro.
+  // beatBoost: modulado por el envelope para que el core también respire.
+  const beatScale = 1.0 + (beatIntensity * (FIXTURE_CONFIG.BEAT_GLOW_SCALE - 1.0))
+  const beatBoost = beatIntensity * FIXTURE_CONFIG.BEAT_CORE_BOOST
 
   // ── RENDER PASS 1: BEAMS (below everything) ─────────────────────────────
   // Render beams first so halos/cores appear on top

@@ -49,22 +49,24 @@ export class LiquidEngine41 extends LiquidEngineBase {
     let outMoverR: number
 
     if (this.profile.layout41Strategy === 'strict-split') {
-      // ── METRÓNOMO / LIENZO ────────────────────────────────────────────────
+      // ── METRÓNOMO / LIENZO (WAVE 2455) ───────────────────────────────────
       //
-      // PARs: ritmo puro y militarmente separado.
+      // PARs: ritmo puro y separado.
       //   Front = solo Kick      → El Metrónomo. Parpadea con el bombo.
-      //   Back  = solo Snare     → El Látigo. Percusión aguda sin contaminar.
+      //   Back  = solo Snare     → El Látigo. Percusión aguda.
       //
-      // MOVERS: absorben TODO el muro de sonido continuo.
-      //   envSubBass  = frontLeft   (El Océano rodante)
-      //   envHighMid  = backLeft    (Sintetizadores medios)
-      //   envTreble   = moverLeft   (Melodías tonales)
-      //   envVocal    = moverRight  (Voces / aire)
+      // MOVERS: roles espectrales exclusivos para generar contraste real.
+      //   Mover L (El Melodista)  = moverLeft  de la base (WAVE 911: highMid+treble)
+      //   Mover R (El Terminator) = moverRight de la base (WAVE 911: treble puro)
       //
-      frontPar  = frontRight                                          // envKick
-      backPar   = backRight                                           // envSnare
-      outMoverL = Math.max(frontLeft, backLeft, moverLeft)            // sB + hMid + treble
-      outMoverR = Math.max(frontLeft, backLeft, moverRight)           // sB + hMid + vocal
+      // sB (envSubBass) y hMid (envHighMid) EXCLUIDOS del max() de los movers.
+      // Antes estaban incluidos y el hMid capeado a 0.850 (AGC) no dejaba bajar nunca.
+      // Ahora los PARs absorben el grave continuo. Los movers solo reaccionan a agudos.
+      //
+      frontPar  = frontRight    // envKick
+      backPar   = backRight     // envSnare
+      outMoverL = moverLeft     // highMid*0.70 + treble*0.30 → gate(0.28)+boost(7.0)
+      outMoverR = moverRight    // treble puro → gate(0.18)+boost(9.0)
 
     } else {
       // ── DEFAULT (legacy) ─────────────────────────────────────────────────
@@ -74,18 +76,45 @@ export class LiquidEngine41 extends LiquidEngineBase {
       outMoverR = moverRight
     }
 
-    // ── [LAB-DATA] Telemetría unificada Sterile Lab (WAVE 2440.3) ─────────
-    // Formato parseable por Monte Carlo. Expone ingredientes crudos + salidas finales.
-    // cent=spectralCentroid(Hz) | isK=kick(0/1) | bass | trbD=snareAttack(pre-gate)
-    // harsh=harshness | oF=frontPar | oB=backPar
+    // ── [LAB-DATA] front/back — Comentado (WAVE 2440.3). Útil para calibrar PARs.
+    // if (this.profile.id === 'techno-industrial') {
+    //   const f = (n: number) => n.toFixed(3)
+    //   const fi = (n: number) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ')
+    //   console.log(
+    //     `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
+    //     `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
+    //     `trbD:${f(frame.rawTrebleDelta)} hmD:${f(frame.rawHighMidDelta)} midD:${f(frame.rawMidDelta)} harsh:${f(frame.harshness)} | ` +
+    //     `oF:${f(frontPar)} oB:${f(backPar)}`
+    //   )
+    // }
+
+    // ── [MOVER-DATA] Diagnóstico mover L/R (WAVE 2453) ───────────────────
+    // Por qué mover L está siempre encendido:
+    //   En strict-split: outMoverL = max(sB, hMid, treble/WAVE911)
+    //   sB = frontLeft (envSubBass) — bombo rodante → siempre alto
+    //   hMid = backLeft (envHighMid) — sintetizadores medios → siempre alto
+    //   mL_wave911 = calculateMover(mid - treble*0.30) → si mid domina, siempre activo
+    // Los tres sumados con max() → casi imposible que baje de 0.
+    // En default: outMoverL = moverLeft (WAVE911 raw math directo)
     if (this.profile.id === 'techno-industrial') {
       const f = (n: number) => n.toFixed(3)
-      const fi = (n: number) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ')
+      const p = this.profile
+      // Señales del mover según la estrategia activa
+      const mL911 = frame.moverLeft
+      const mR911 = frame.moverRight
+      // raw pre-gate (refleja la formula real de la Base segun estrategia)
+      const rawL = p.layout41Strategy === 'strict-split'
+        ? Math.max(0, frame.bands.mid - frame.bands.bass * 0.50)
+        : Math.max(0, frame.bands.highMid * p.moverLHighMidWeight + frame.bands.treble * p.moverLTrebleWeight + frame.bands.mid * p.moverLMidWeight)
+      const rawR = p.layout41Strategy === 'strict-split'
+        ? frame.bands.treble
+        : Math.max(0, frame.bands.mid - frame.bands.bass * (p.bassSubtractBase - frame.morphFactor * p.bassSubtractRange))
       console.log(
-        `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
-        `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
-        `trbD:${f(frame.rawTrebleDelta)} hmD:${f(frame.rawHighMidDelta)} midD:${f(frame.rawMidDelta)} harsh:${f(frame.harshness)} | ` +
-        `oF:${f(frontPar)} oB:${f(backPar)}`
+        `[MOVER-DATA]` +
+        ` hMid:${f(frame.backLeft)} sB:${f(frame.frontLeft)}` +
+        ` | raw911L:${f(rawL)} raw911R:${f(rawR)}` +
+        ` | mL911:${f(mL911)} mR911:${f(mR911)}` +
+        ` | outL:${f(outMoverL)} outR:${f(outMoverR)}`
       )
     }
 

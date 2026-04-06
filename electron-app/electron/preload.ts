@@ -848,6 +848,12 @@ const luxApi = {
     /** Set Grand Master intensity (0-1) */
     setGrandMaster: (value: number) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', { value }),
     
+    /** 🎚️ WAVE 2472: Set Grand Master Speed (0.1-2.0) — AI phase multiplier */
+    setGrandMasterSpeed: (value: number) => ipcRenderer.invoke('lux:arbiter:setGrandMasterSpeed', { value }),
+    
+    /** 🎚️ WAVE 2472: Get Grand Master Speed */
+    getGrandMasterSpeed: () => ipcRenderer.invoke('lux:arbiter:getGrandMasterSpeed'),
+    
     /** 
      * 🎛️ WAVE 375.3: Set manual override for fixtures
      * @param fixtureIds - Array of fixture IDs to override

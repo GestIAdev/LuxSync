@@ -52,6 +52,20 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
   })
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🎚️ WAVE 2472: GRANDMASTER SPEED (AI CORE)
+  // Multiplies the AI’s generative phase flow. Does NOT touch manual patterns.
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  ipcMain.handle('lux:arbiter:setGrandMasterSpeed', (_event, { value }: { value: number }) => {
+    vibeMovementManager.setGlobalSpeedMultiplier(value)
+    return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
+  })
+  
+  ipcMain.handle('lux:arbiter:getGrandMasterSpeed', () => {
+    return { grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
+  })
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // PATTERN ENGINE
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -913,6 +927,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     return {
       status: masterArbiter.getStatus(),
       grandMaster: masterArbiter.getGrandMaster(),
+      grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier(),
       blackout: masterArbiter.isBlackoutActive(),
     }
   })

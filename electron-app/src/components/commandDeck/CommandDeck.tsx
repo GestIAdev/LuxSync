@@ -18,6 +18,7 @@ import { useEffectsStore, selectBlackout } from '../../stores/effectsStore'
 import { useControlStore, selectAIEnabled, selectOutputEnabled, selectSystemArmed } from '../../stores/controlStore'
 import { useSystemPower } from '../../hooks/useSystemPower'
 import { GrandMasterSlider } from './GrandMasterSlider'
+import { GrandMasterSpeedSlider } from './GrandMasterSpeedSlider'
 import { VibeSelectorCompact } from './VibeSelectorCompact'
 import { MoodToggle } from './MoodToggle'
 import { BlackoutButton } from './BlackoutButton'
@@ -44,9 +45,11 @@ export const CommandDeck: React.FC = () => {
   const [arbiterStatus, setArbiterStatus] = useState<{
     hasManualOverrides: boolean
     grandMaster: number
+    grandMasterSpeed: number
   }>({
     hasManualOverrides: false,
-    grandMaster: 1.0
+    grandMaster: 1.0,
+    grandMasterSpeed: 1.0
   })
   
   // Subscribe to arbiter status changes
@@ -71,7 +74,8 @@ export const CommandDeck: React.FC = () => {
           
           setArbiterStatus({
             hasManualOverrides: response.status?.hasManualOverrides ?? false,
-            grandMaster: Math.max(0, Math.min(1, safeGM))
+            grandMaster: Math.max(0, Math.min(1, safeGM)),
+            grandMasterSpeed: (response as any).grandMasterSpeed ?? 1.0
           })
           
           // 🚦 WAVE 1132: Sync outputEnabled from backend
@@ -92,7 +96,8 @@ export const CommandDeck: React.FC = () => {
       
       setArbiterStatus({
         hasManualOverrides: status.hasManualOverrides ?? false,
-        grandMaster: Math.max(0, Math.min(1, safeGM))
+        grandMaster: Math.max(0, Math.min(1, safeGM)),
+        grandMasterSpeed: status.grandMasterSpeed ?? arbiterStatus.grandMasterSpeed
       })
       
       // 🚦 WAVE 1132: Sync outputEnabled from backend events
@@ -117,6 +122,16 @@ export const CommandDeck: React.FC = () => {
       setArbiterStatus(prev => ({ ...prev, grandMaster: value }))
     } catch (err) {
       console.error('[CommandDeck] Grand Master error:', err)
+    }
+  }, [])
+  
+  // 🎚️ WAVE 2472: Grand Master Speed handler (AI only)
+  const handleGrandMasterSpeedChange = useCallback(async (value: number) => {
+    try {
+      await (window.lux?.arbiter as any)?.setGrandMasterSpeed(value)
+      setArbiterStatus(prev => ({ ...prev, grandMasterSpeed: value }))
+    } catch (err) {
+      console.error('[CommandDeck] Grand Master Speed error:', err)
     }
   }, [])
   
@@ -235,12 +250,16 @@ export const CommandDeck: React.FC = () => {
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * ZONE 3: GRAND MASTER (THE PROTAGONIST)
-       * ═══════════════════════════════════════════════════════════════════ */}
+       * ZONE 3: GRAND MASTERS (INTENSITY + SPEED)
+       * ═══════════════════════════════════════════════════════════════ */}
       <div className="deck-zone zone-grandmaster">
         <GrandMasterSlider 
           value={arbiterStatus.grandMaster}
           onChange={handleGrandMasterChange}
+        />
+        <GrandMasterSpeedSlider
+          value={arbiterStatus.grandMasterSpeed}
+          onChange={handleGrandMasterSpeedChange}
         />
       </div>
       

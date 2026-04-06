@@ -141,24 +141,14 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
-      maxAcceleration: 1200,    // 🔧 Subido: Seguir caderas rápido
-      maxVelocity: 350,         // 🔧 Subido: Más swing
-      friction: 0.15,           // 🔥 WAVE 2213: Fluido orgánico (era 0.20 snap)
+      maxAcceleration: 1200,    // 🔧 Seguir caderas rápido
+      maxVelocity: 500,         // 🔥 WAVE 2472 SANGRE LATINA: 350 → 500. Swing sin límite.
+      friction: 0.08,           // 🔥 WAVE 2472: 0.15 → 0.08. Respuesta inmediata, piel de serpiente.
       arrivalThreshold: 2.0,    // Permite overshoot elegante
-      physicsMode: 'classic',   // 🔥 WAVE 2213: Exorcismo del snap — curvas sin escalera
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
-      // SIGA la trayectoria con precisión. Con snap=0.45 + revLimit=85,
-      // un figure8 de período 16 beats se convertía en una elipse aplastada
-      // porque el mover nunca alcanzaba los extremos del Lissajous.
-      //
-      // snap=0.70 → sigue la curva con 70% de fidelidad por frame
-      // revLimit=250 → 4.17 DMX/frame → suficiente para las curvas suaves
-      // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.70,         // 🔧 WAVE 2088.8: Fiel a las curvas, con suavidad orgánica residual
-      revLimitPanPerSec: 250,   // 🔧 WAVE 2088.8: ~530°/s — headroom para figure8 a alta energía
-      revLimitTiltPerSec: 180,  // 🔧 WAVE 2088.8: ~191°/s — tilt curvo suave
+      physicsMode: 'snap',      // 🔥 WAVE 2472: classic → snap. Caderas no esperan.
+      snapFactor: 0.85,         // 🔥 WAVE 2472: 0.70 → 0.85. Fidelidad de bailarín profesional.
+      revLimitPanPerSec: 380,   // 🔥 WAVE 2472: 250 → 380. ~805°/s — cumbia a toda máquina.
+      revLimitTiltPerSec: 280,  // 🔥 WAVE 2472: 180 → 280. ~297°/s — tilt de cadera libre.
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)

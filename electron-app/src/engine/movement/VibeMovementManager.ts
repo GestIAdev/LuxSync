@@ -133,7 +133,7 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   
   // LATINO: Curvas, fluidez, caderas
   'fiesta-latina': {
-    amplitudeScale: 0.35,  // 🔧 WAVE 2213 FÉNIX: 0.85 → 0.35. Curvas elegantes sin colapso óptico.
+    amplitudeScale: 0.65,  // 🔥 WAVE 2472 SANGRE LATINA: 0.35 → 0.65. Las caderas no mienten.
     baseFrequency: 0.15,
     patterns: ['figure8', 'wave_y', 'ballyhoo'],
     homeOnSilence: false,
@@ -517,6 +517,11 @@ export class VibeMovementManager {
   private smoothedBPM: number = 120
   private readonly BPM_SMOOTH_FACTOR = 0.05  // Very slow BPM tracking (20 frames to converge)
   
+  // 🎚️ WAVE 2472: GRANDMASTER SPEED — multiplicador global de la IA
+  // Escala el flujo de fase del motor generativo (0.1 = cámara lenta, 2.0 = doble velocidad)
+  // NO afecta patrones manuales (Layer 2 del Arbiter) — solo Layer 0 (CHOREO)
+  private globalSpeedMultiplier: number = 1.0
+  
   // Manual override system (WAVE 999 compatible)
   private manualSpeedOverride: number | null = null
   private manualAmplitudeOverride: number | null = null
@@ -529,6 +534,17 @@ export class VibeMovementManager {
   private transitionStartTime: number = 0
   private isTransitioning: boolean = false
   private readonly TRANSITION_DURATION_MS = 2000  // 2 segundos
+  
+  // 🎚️ WAVE 2472: GRANDMASTER SPEED API
+  
+  setGlobalSpeedMultiplier(mult: number): void {
+    this.globalSpeedMultiplier = Math.max(0.1, Math.min(2.0, mult))
+    console.log(`[CHOREO] 🎚️ GrandMaster Speed: ×${this.globalSpeedMultiplier.toFixed(2)}`)
+  }
+  
+  getGlobalSpeedMultiplier(): number {
+    return this.globalSpeedMultiplier
+  }
   
   // MANUAL OVERRIDE API
   
@@ -687,10 +703,11 @@ export class VibeMovementManager {
     }
     
     // Accumulate phase delta using smoothed BPM and frame dt
+    // 🎚️ WAVE 2472: globalSpeedMultiplier scales the AI's time flow
     if (!isSameFrame) {
       const beatsPerSecond = this.smoothedBPM / 60
       const phasePerBeat = (2 * Math.PI) / patternPeriod  // radians per beat
-      const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat
+      const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier
       this.phaseAccumulator += phaseDelta
     }
     

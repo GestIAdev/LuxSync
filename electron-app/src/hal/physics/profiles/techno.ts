@@ -224,6 +224,11 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // KICK DETECTION
   // ═══════════════════════════════════════════════════════════════
 
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // Techno industrial: energía media-alta, rango estándar
+  morphFloor: 0.30,      // avgMid mínimo para arrancar el morph (30%)
+  morphCeiling: 0.70,    // avgMid máximo = morph pleno (70%)
+
   kickEdgeMinInterval: 80,
   kickVetoFrames: 0,    // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
 }

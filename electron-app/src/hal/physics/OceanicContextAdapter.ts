@@ -230,13 +230,19 @@ function smoothValue(
  * @param zone - Zona oceánica actual
  * @param tidePhase - Fase de marea (0-1)
  * @param godEar - Métricas estables del FFT (opcional)
+ * @param maxHueDeltaForDirectColor - WAVE 2488 DT-05: Override del límite de cambio
+ *   de hue por frame (°/frame). Por defecto: SMOOTHING_CONFIG.MAX_HUE_DELTA (2°).
+ *   Usar un valor alto (ej: 360) cuando Selene solicita un corte instantáneo de color
+ *   (cambio de zona oceánica drástico, flash de evento especial).
+ *   undefined = comportamiento estándar (máximo 2°/frame, smooth continuo).
  * @returns Contexto musical oceánico
  */
 export function translateOceanicContext(
   depth: number,
   zone: DepthZone,
   tidePhase: number,
-  godEar?: Partial<StableGodEarMetrics>
+  godEar?: Partial<StableGodEarMetrics>,
+  maxHueDeltaForDirectColor?: number
 ): OceanicMusicalContext {
   const now = Date.now()
   const config = ZONE_CONFIGS[zone]
@@ -284,10 +290,14 @@ export function translateOceanicContext(
   let rawHue = config.hue + timeVariation + bassVariation
   
   // Smoothing del hue
+  // WAVE 2488 DT-05: Si se solicita un corte directo (maxHueDeltaForDirectColor),
+  // sustituimos el límite estándar (2°/frame) por el override — permitiendo saltos
+  // instantáneos cuando Selene comanda un cambio de color drástico.
+  const hueDeltaLimit = maxHueDeltaForDirectColor ?? SMOOTHING_CONFIG.MAX_HUE_DELTA
   const smoothedHue = smoothValue(
     rawHue,
     smoothingState.hueHistory,
-    SMOOTHING_CONFIG.MAX_HUE_DELTA,
+    hueDeltaLimit,
     SMOOTHING_CONFIG.CURRENT_WEIGHT
   )
   

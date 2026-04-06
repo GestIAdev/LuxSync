@@ -101,6 +101,21 @@ export interface TechnoPhysicsResult {
 // ?? WAVE 906: TECHNO STEREO PHYSICS ENGINE
 // ===========================================================================
 
+/**
+ * @deprecated WAVE 2488 — DT-03: LEGACY PURGE
+ *
+ * Motor predecesor reemplazado completamente por LiquidEngine41 (WAVE 2435+).
+ * LiquidEngine41 cubre todos los paths de TechnoStereoPhysics con full
+ * parametrización por perfil (ILiquidProfile), dt stress-tested y 93%+ coverage.
+ *
+ * Ruta de migración:
+ *   TechnoStereoPhysics.apply()  →  new LiquidEngine41(TECHNO_PROFILE).applyBands()
+ *   technoStereoPhysics.applyZones()  →  LiquidEngine41.applyBands() (incluye zones)
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: SeleneLux.ts (pendiente de migración al Omniliquid Engine).
+ * @see LiquidEngine41
+ */
 export class TechnoStereoPhysics {
   // LEGACY CONSTANTS
   private static readonly STROBE_BASE_THRESHOLD = 0.6;

@@ -316,10 +316,25 @@ export class BeatDetector {
   /** Is the PLL currently phase-locked to real audio? */
   private pllIsLocked = false
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 2488 — DT-06: PLL SYNC RESILIENCE — ventana configurable por género
+  // ═══════════════════════════════════════════════════════════════════════════
+  /**
+   * Ventana de corrección suave del PLL (ms) — configurable por género via AudioConfig.
+   * Valores de referencia:
+   *   120ms — Techno/Electronic (estándar, WAVE 2104)
+   *   150ms — Pop/Rock (hi-hats generan micro-desvíos)
+   *   200ms — Jazz/Poliritmos (swing, 3:2 polyrhythm, off-beat accents)
+   *   100ms — Latino/Dembow (dembow preciso, tolerancia mínima)
+   */
+  private readonly pllSoftCorrectionWindowMs: number
+
   constructor(config: AudioConfig) {
     this.minBpm = config.minBpm || 60
     this.maxBpm = config.maxBpm || 200
-    
+    // WAVE 2488 DT-06: usa el valor del config o el default histórico (120ms WAVE 2104)
+    this.pllSoftCorrectionWindowMs = config.pllSoftCorrectionWindowMs ?? PLL_SOFT_CORRECTION_WINDOW_MS
+
     this.state = this.createInitialState()
   }
   
@@ -498,7 +513,7 @@ export class BeatDetector {
     // Store for telemetry
     this.state.phaseError = wrappedError
     
-    if (Math.abs(wrappedError) <= PLL_SOFT_CORRECTION_WINDOW_MS) {
+    if (Math.abs(wrappedError) <= this.pllSoftCorrectionWindowMs) {
       // ── SOFT CORRECTION: Proportional-Integral ──
       // The kick is close to where we expected it. Gently nudge the metronome.
       

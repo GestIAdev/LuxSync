@@ -254,6 +254,11 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   // KICK DETECTION — Rápido para doble pedal
   // ═══════════════════════════════════════════════════════════════
 
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // Pop/Rock: energía media, guitarras dan mid consistente
+  morphFloor: 0.20,      // El rock tiene mid desde la intro (guitarras)
+  morphCeiling: 0.60,    // Chorus rock al 60% de mid → morph pleno
+
   kickEdgeMinInterval: 50,   // MUY corto — double bass drumming (blast beats 200+ BPM)
   kickVetoFrames: 0,         // CERO — el bombo NO puede silenciar la guitarra
 

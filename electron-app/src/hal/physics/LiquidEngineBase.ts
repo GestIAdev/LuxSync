@@ -254,7 +254,7 @@ export abstract class LiquidEngineBase {
       } else {
         this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02
       }
-      morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40))
+      morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - p.morphFloor) / (p.morphCeiling - p.morphFloor)))
     }
 
     // ═══════════════════════════════════════════════════════════════════

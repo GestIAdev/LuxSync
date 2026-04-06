@@ -1463,7 +1463,7 @@ export class GodEarAnalyzer {
    * Get analyzer info
    */
   getInfo(): string {
-    return `GOD EAR v2.0.0 | ${this.fftSize} Split-Radix FFT | ${this.sampleRate}Hz | ${BIN_RESOLUTION.toFixed(2)}Hz/bin | Blackman-Harris | LR4 Filters`;
+    return `GOD EAR v2.0.0 | ${this.fftSize} Radix-2 DIT FFT | ${this.sampleRate}Hz | ${BIN_RESOLUTION.toFixed(2)}Hz/bin | Blackman-Harris | LR4 Filters`;
   }
   
   /**

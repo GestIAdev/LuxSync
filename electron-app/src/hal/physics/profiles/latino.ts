@@ -263,6 +263,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // KICK DETECTION — Permisivo para el 3-3-2
   // ═══════════════════════════════════════════════════════════════
 
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // Latino/Reggaetón: energía alta, mucho mid melódico desde el inicio
+  morphFloor: 0.25,      // Umbral bajo — el dembow ya trae mid desde el primer beat
+  morphCeiling: 0.65,    // Techo medio — no necesita mid extremo para morph pleno
+
   kickEdgeMinInterval: 60,   // MÁS corto que techno (80) — el dembow es rápido
   kickVetoFrames: 0,         // CERO — la síncopa 3-3-2 no puede aguantar vetos
 

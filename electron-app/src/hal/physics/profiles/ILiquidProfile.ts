@@ -174,6 +174,32 @@ export interface ILiquidProfile {
   readonly apocalypseFlatness: number
 
   // ═══════════════════════════════════════════════════════════════
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // El morphFactor normaliza avgMidProfiler a [0,1] usando:
+  //   morphFactor = clamp((avgMid - morphFloor) / (morphCeiling - morphFloor), 0, 1)
+  //
+  // Géneros de alta energía (Techno, Latino):
+  //   morphFloor=0.30, morphCeiling=0.70  → rango estándar
+  // Géneros de baja energía (Chill, Ambient):
+  //   morphFloor=0.05, morphCeiling=0.35  → el motor percibe todo el espectro
+  //   aunque el mid nunca supere 0.35. Sin esto, morphFactor≈0 siempre.
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Umbral inferior de avgMidProfiler para morphFactor=0.
+   * Por debajo de este valor, el engine está en modo "puro percussion"
+   * (sin componente melódico). Géneros chill: usar valor bajo (~0.05).
+   */
+  readonly morphFloor: number
+
+  /**
+   * Umbral superior de avgMidProfiler para morphFactor=1.
+   * Por encima de este valor, el engine está en modo "puro melody".
+   * Géneros chill: usar valor bajo (~0.35) para que alcancen richness completa.
+   */
+  readonly morphCeiling: number
+
+  // ═══════════════════════════════════════════════════════════════
   // KICK DETECTION
   // ═══════════════════════════════════════════════════════════════
 

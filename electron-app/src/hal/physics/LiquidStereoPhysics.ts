@@ -104,6 +104,31 @@ const RECOVERY_DURATION = 2000
 // ENGINE CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * @deprecated WAVE 2488 — DT-04: LIQUIDSTEREO PURGE
+ *
+ * LiquidStereoPhysics fue el primer motor monolítico del Omniliquid Engine (WAVE 2411).
+ * Ha sido reemplazado por la triada de motores especializados:
+ *   - LiquidEngineBase  — Capa abstracta (morphFactor, envelopes, modes, kick)
+ *   - LiquidEngine41    — Routing optimizado para layout 4.1 (strict-split + WAVE 911)
+ *   - LiquidEngine71    — Routing para layout 7.1 (chill oscillators + latino swap)
+ *
+ * Los nuevos motores tienen:
+ *   • 93.25% test coverage (176 tests) vs 0% de este archivo
+ *   • morphFloor/morphCeiling por perfil (DT-02 WAVE 2488)
+ *   • dt-stress tested de 15fps a 144fps
+ *   • Zero console.logs en hot-path
+ *
+ * Ruta de migración:
+ *   new LiquidStereoPhysics(profile)  →  new LiquidEngine71(profile)  (layout 7.1)
+ *   new LiquidStereoPhysics(profile)  →  new LiquidEngine41(profile)  (layout 4.1)
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: LiquidStereoPhysics.test.ts
+ * @see LiquidEngine41
+ * @see LiquidEngine71
+ * @see LiquidEngineBase
+ */
 export class LiquidStereoPhysics {
 
   /** Perfil activo — define TODA la parametría del motor */

@@ -253,6 +253,21 @@ export interface AudioConfig {
   smoothingTimeConstant: number // 0.8 default
   minBpm: number            // 60
   maxBpm: number            // 180
+  /**
+   * WAVE 2488 — DT-06: PLL SYNC RESILIENCE
+   * Ventana de corrección suave del PLL (ms).
+   * Si el error de fase es menor que este valor → soft correction (PI).
+   * Si excede → hard reset (snap to grid).
+   *
+   * Por género:
+   *   - Techno/Electronic: 120ms (estándar — pulso de metrónomo regular)
+   *   - Pop/Rock: 150ms (hi-hats y redobles generan micro-desvíos)
+   *   - Jazz/Poliritmos: 200ms (acentos off-beat, swing, polirritmos 3:2)
+   *   - Latino/Dembow: 100ms (dembow preciso, tolerancia mínima)
+   *
+   * undefined → usa el default de WAVE 2104: 120ms
+   */
+  pllSoftCorrectionWindowMs?: number
 }
 
 export interface VisualConfig {

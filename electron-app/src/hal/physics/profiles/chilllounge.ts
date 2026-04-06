@@ -270,6 +270,12 @@ export const CHILL_PROFILE: ILiquidProfile = {
   // kickVetoFrames=0 — el sub NO silencia las voces.
   // ═══════════════════════════════════════════════════════════════
 
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // Chill/Lounge: energía baja pero rica. Sin esto, morphFactor≈0 siempre.
+  // El mid ambiente raramente supera 0.25 → ajustamos el rango completo a eso.
+  morphFloor: 0.05,      // Umbral bajo — cualquier pad ambient dispara el morph
+  morphCeiling: 0.35,    // Techo bajo — el chill COMPLETO con apenas mid=35%
+
   kickEdgeMinInterval: 500,  // Muy largo — solo pulsaciones lentas son "kick"
   kickVetoFrames: 0,         // CERO — el pulso no silencia la Voz del Mar
 

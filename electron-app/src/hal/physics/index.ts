@@ -19,6 +19,7 @@ export {
   calculateChillStereo, 
   resetDeepFieldState,
   getDeepFieldState,
+  getOceanicMorphFactor,    // WAVE 2470: Hydrostatic Bridge
   type DeepFieldOutput 
 } from './ChillStereoPhysics'
 

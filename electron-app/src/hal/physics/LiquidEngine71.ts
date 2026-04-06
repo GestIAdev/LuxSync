@@ -143,18 +143,22 @@ export class LiquidEngine71 extends LiquidEngineBase {
 
       const depthFactor = frame.morphFactor ?? 1.0  // 1.0 = superficie, 0.0 = abismo
 
-      // Amplitud dramática: oscila desde 0.05 (casi apagado) hasta 0.65 (brillo elegante)
-      // Superficie: breathDepth=0.60 — máximo movimiento
-      // Abismo:     breathDepth=0.20 — quietud aplastada por la presión
-      const breathDepth = 0.20 + (depthFactor * 0.40)
-      const baseFloor   = 0.05  // suelo mínimo: el bioluminiscente siempre respira
+      // Amplitud oceánica expandida: rango completo del DMX disponible.
+      // Superficie: breathDepth=0.92 — olas que tocan el techo (cerca de 1.0)
+      // Abismo:     breathDepth=0.25 — quietud profunda pero perceptible
+      // El hardware real comprime ~0.79x, así que necesitamos generar hasta ~1.0
+      // para que el PAR llegue a su brillo máximo en superficie.
+      const breathDepth = 0.25 + (depthFactor * 0.67)
+      const baseFloor   = 0.08  // suelo mínimo visible: siempre hay algo de bioluminiscencia
 
       // Normalización perfecta al rango [0, 1]:
       // (sin(a) + sin(b)*0.3 + 1.3) / 2.6
       // Demostración: máx = (1.0 + 0.3 + 1.3) / 2.6 = 1.0
       //               mín = (-1.0 - 0.3 + 1.3) / 2.6 = 0.0
-      // Períodos reducidos a la mitad (~10s ciclo) para visibilidad real de olas.
-      // Primos asíncronos garantizan que ningún par de PARs esté en fase.
+      // Con baseFloor=0.08 y breathDepth∈[0.25,0.92]:
+      //   Superficie: chillFrontX ∈ [0.08, 1.00] — techo completo del DMX
+      //   Abismo:     chillFrontX ∈ [0.08, 0.33] — calma bioluminiscente
+      // Períodos primos asíncronos garantizan que ningún par de PARs esté en fase.
       const waveFL = (Math.sin(t / 1831) + Math.sin(t / 1039) * 0.3 + 1.3) / 2.6
       const chillFrontL = baseFloor + waveFL * breathDepth
 

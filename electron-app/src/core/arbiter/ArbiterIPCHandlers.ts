@@ -18,6 +18,7 @@ import type { MasterArbiter } from './MasterArbiter'
 import type { Layer2_Manual } from './types'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
+import { VibeManager } from '../../engine/vibe/VibeManager'
 import { ColorTranslator } from '../../hal/translation/ColorTranslator'
 import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles'
 
@@ -481,18 +482,20 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
 
     // Convert UI values (0-100) to engine values
-    // � WAVE 2185: BETA SAFETY LIMITER
-    // Speed capped at 0.5 Hz (was 1.5 Hz). At 0.5 Hz with size=100%,
-    // the pattern requests ±64 DMX in 1 second = 128 DMX total per cycle.
-    // For a 540° mover: 128 * (540/256) ≈ 270°/s max angular velocity.
-    // That's within safe operating range for any commercial stepper motor.
+    // 🔥 WAVE 2471: VIBE-AWARE SPEED NORMALIZATION
+    // The slider maps into the active vibe's speedRange instead of a fixed 0.05-0.5 Hz.
+    // This means chill-lounge (max=0.3 Hz) will ALWAYS be slower than techno (max=0.5 Hz)
+    // even with the slider at 100% — the vibe governs the ceiling.
     //
-    // Size capped at 50% (64 DMX max offset). Combined with 0.5 Hz:
-    // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head.
-    // Glacial but safe. Motors won't even break a sweat.
+    // Hard cap: 0.5 Hz (BETA_MAX_SPEED in calculatePatternOffset) is still enforced
+    // at the engine level as motor-safety defense-in-depth.
     //
-    // Speed: 0-100 → 0.05-0.5 Hz | Size: 0-100 → 0-0.5 (capped at 50% range)
-    const speedNormalized = 0.05 + (speed / 100) * 0.45
+    // Size capped at 50% (64 DMX max offset). At 0.5 Hz:
+    // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head. Safe.
+    const activeVibe = VibeManager.getInstance().getActiveVibe()
+    const vibeSpeedMin = activeVibe?.movement?.speedRange?.min ?? 0.05
+    const vibeSpeedMax = activeVibe?.movement?.speedRange?.max ?? 0.5
+    const speedNormalized = vibeSpeedMin + (speed / 100) * (vibeSpeedMax - vibeSpeedMin)
     const sizeNormalized = (amplitude / 100) * 0.5
 
     // If pattern already exists with same type → hot-update (no phase reset)

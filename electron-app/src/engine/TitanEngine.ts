@@ -1072,13 +1072,24 @@ export class TitanEngine extends EventEmitter {
         return baseIntensity * (1 - globalComp) + overrideIntensity * globalComp
       }
       
-      zones = {
+      // 🌊 WAVE 2470 HOTFIX V4: Preservar frontL/R/backL/R en el blend.
+      // Antes: el bloque reconstruía zones sin claves stereo → hasStereoSignal=false en Arbiter
+      // → todos los PARs chill caían a modo mono. Ahora aplicamos blendZoneIntensity
+      // a las zonas stereo si existen, manteniéndolas vivas a través del globalComp blend.
+      const blendedZones: typeof zones = {
         front: { intensity: blendZoneIntensity(zones.front?.intensity ?? 0.5), paletteRole: 'primary' },
         back: { intensity: blendZoneIntensity(zones.back?.intensity ?? 0.5), paletteRole: 'primary' },
         left: { intensity: blendZoneIntensity(zones.left?.intensity ?? 0.5), paletteRole: 'primary' },
         right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
         ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
       }
+      if ((zones as any).frontL !== undefined) {
+        (blendedZones as any).frontL = { intensity: blendZoneIntensity((zones as any).frontL.intensity), paletteRole: 'primary' }
+        ;(blendedZones as any).frontR = { intensity: blendZoneIntensity((zones as any).frontR.intensity), paletteRole: 'primary' }
+        ;(blendedZones as any).backL  = { intensity: blendZoneIntensity((zones as any).backL.intensity),  paletteRole: 'accent'  }
+        ;(blendedZones as any).backR  = { intensity: blendZoneIntensity((zones as any).backR.intensity),  paletteRole: 'accent'  }
+      }
+      zones = blendedZones
       
       // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario
       // const compDelta = Math.abs(globalComp - this.state.lastGlobalComposition)

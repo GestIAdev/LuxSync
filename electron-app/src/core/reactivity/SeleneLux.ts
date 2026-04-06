@@ -658,7 +658,14 @@ export class SeleneLux {
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
       // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa latinoEngine41Telemetry
-      const liquidEngine = this.liquidLayout === '7.1'
+      // 🌊 WAVE 2470 HOTFIX V4: Chill SIEMPRE usa liquidEngine71, sin importar liquidLayout.
+      // LiquidEngine41 no tiene oscilladores primos (isChill branch) — usa envelopes de
+      // transientes que en chill silencioso quedan en 0 → PARs apagados, sin pulso.
+      // liquidEngine71 tiene Date.now() oscillators [0.05,0.65] que pulsean siempre.
+      // El liquidLayout ('4.1'/'7.1') solo es relevante para los otros vibes.
+      const isChill = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
+                      vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')
+      const liquidEngine = (this.liquidLayout === '7.1' || isChill)
         ? liquidEngine71
         : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
       const liquidResult = liquidEngine.applyBands(liquidInput);

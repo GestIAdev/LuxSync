@@ -222,15 +222,14 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   'chill-lounge': {
     physics: {
-      maxAcceleration: 100,     // Ultra lento
-      maxVelocity: 50,          // Velocidad glacial
-      friction: 0.80,           // Máxima fricción (slew rate limit)
-      arrivalThreshold: 3.0,    // Permite mucho overshoot
-      physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
-      snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 80,    // 🔧 WAVE 2088.8: ~170°/s — Chill pero con movimiento VISIBLE
-                                //    Antes=30 → drift/sway eran imperceptibles
-      revLimitTiltPerSec: 55,   // 🔧 WAVE 2088.8: ~58°/s — tilt orgánico visible
+      maxAcceleration: 4,       // 🌊 WAVE 2470 MODO DERIVA: arranque de 8→4. Inercia de continente deriva.
+      maxVelocity: 8,           // 🌊 WAVE 2470 MODO DERIVA: 50→8. Velocidad de medusa.
+      friction: 0.97,           // 🌊 WAVE 2470 MODO DERIVA: 0.80→0.97. Agua espesa, casi gelatina.
+      arrivalThreshold: 8.0,    // 🌊 WAVE 2470 MODO DERIVA: 3.0→8.0. No importa llegar, importa flotar.
+      physicsMode: 'classic',   // Inercia oceánica, siempre classic.
+      snapFactor: 0.0,          // No aplica en classic mode.
+      revLimitPanPerSec: 12,    // 🌊 WAVE 2470 MODO DERIVA: 80→12. ~25°/s. Panorámica de amanecer.
+      revLimitTiltPerSec: 8,    // 🌊 WAVE 2470 MODO DERIVA: 55→8. ~17°/s. Tilt de anémona.
     },
     optics: {
       zoomDefault: 255,         // Zoom máximo (wash total)

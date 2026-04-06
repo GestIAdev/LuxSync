@@ -147,12 +147,14 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
     homeOnSilence: true,
   },
   
-  // CHILL: Organico, invisible, respiracion
+  // CHILL: Oceánico, casi estático, deriva de medusa
+  // 🌊 WAVE 2470 MODO DERIVA: amplitudeScale 0.50→0.12. Recorrido mínimo.
+  // Los patrones existen, pero apenas son perceptibles. Es poesía en movimiento.
   'chill-lounge': {
-    amplitudeScale: 0.50,
-    baseFrequency: 0.10,
+    amplitudeScale: 0.12,
+    baseFrequency: 0.04,
     patterns: ['drift', 'sway', 'breath'],
-    homeOnSilence: true,
+    homeOnSilence: false,  // Flotar eternamente. Nunca volver a casa.
   },
   
   // IDLE: Minimo
@@ -194,10 +196,11 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   cancan: 8,        // 2 compases: subida/bajada con drama
   dual_sweep: 16,   // 4 compases: barrido en U con peso cinematográfico
   
-  // CHILL — orgánico, invisible, respiración
-  drift: 32,        // 8 compases: browniano con tiempo geológico
-  sway: 16,         // 4 compases: péndulo meditativo
-  breath: 16,       // 4 compases: la luz inhala... exhala...
+  // CHILL — oceánico, casi estático, tiempo geológico profundo
+  // 🌊 WAVE 2470 MODO DERIVA: períodos x8. Una medusa no tiene prisa.
+  drift: 256,       // 64 compases: deriva continental. Un ciclo = ~2 minutos a 120BPM.
+  sway: 128,        // 32 compases: la corriente profunda. Apenas perceptible.
+  breath: 96,       // 24 compases: la luz respira. Una inspiración = 96 beats.
   
   // 🎭 WAVE 2086.5: THE FOUR NOBLES
   slow_pan: 32,         // 8 compases: el faro del fondo del escenario

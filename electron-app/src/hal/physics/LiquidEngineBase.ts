@@ -585,30 +585,19 @@ export abstract class LiquidEngineBase {
   // ─────────────────────────────────────────────────────────────────────
 
   private applyAmbientGenerative(morphFactor: number, now: number): LiquidStereoResult {
-    // Oscillator helper: mapea sin(t) de [-1,1] a [lo, hi]
-    const osc = (period: number, phase: number, lo: number, hi: number): number => {
-      const raw = Math.sin((now / period) + phase)
-      return lo + (raw + 1.0) * 0.5 * (hi - lo)
-    }
+    // WAVE 2516 — THE ABSOLUTE SWELL: valores absolutos hardcodeados.
+    // Sin dependencias de morphVariance ni variables dinámicas que puedan ser 0
+    // cuando el audio está desconectado. Cada oscilador es completamente autónomo.
 
-    // Períodos en ms — todos primos entre sí para evitar aliasing periódico.
-    // Modulados levemente por morphFactor para que la "profundidad oceánica"
-    // afecte el rango dinámico (superficie = más variación, abismo = más flat)
-    const morphVariance = 0.8 + morphFactor * 0.4   // [0.8 .. 1.2] scaling del rango
+    // PARES — mínimo 0.10, rango 0.50 → [0.10 .. 0.60]
+    const frontLeft  = 0.10 + ((Math.sin(now / 4003 + 0.000) + 1) / 2) * 0.50 // El Pulso del Abismo
+    const frontRight = 0.10 + ((Math.sin(now / 3109 + 1.047) + 1) / 2) * 0.50 // La Corriente
+    const backLeft   = 0.10 + ((Math.sin(now / 5303 + 0.628) + 1) / 2) * 0.50 // Las Algas
+    const backRight  = 0.10 + ((Math.sin(now / 1901 + 1.571) + 1) / 2) * 0.20 // El Destello (rango estrecho)
 
-    const loBase = 0.38
-    const hiBase = 0.68
-    const lo = loBase
-    const hi = loBase + (hiBase - loBase) * morphVariance
-
-    const frontLeft  = osc(4003,  0.000, lo + 0.04, hi + 0.04) // El Pulso del Abismo
-    const frontRight = osc(3109,  1.047, lo,         hi - 0.06) // La Corriente
-    const backLeft   = osc(5303,  0.628, lo + 0.02, hi)         // Las Algas
-    const backRight  = osc(1901,  1.571, lo - 0.08, lo + 0.12)  // El Destello (rango estrecho)
-
-    // WAVE 2515 — PAR-SYNCED MOVERS: misma fórmula que los pares, períodos más largos
-    const moverLeft  = osc(9109,  2.094, lo,         hi - 0.04) // La Voz del Mar
-    const moverRight = osc(10303, 3.926, lo - 0.06, hi - 0.10)  // La Bioluminiscencia
+    // MOVERS — mínimo 0.05, rango 0.55 → [0.05 .. 0.60]
+    const moverLeft  = 0.05 + ((Math.sin(now / 9109  + 2.094) + 1) / 2) * 0.55 // La Voz del Mar
+    const moverRight = 0.05 + ((Math.sin(now / 10303 + 3.926) + 1) / 2) * 0.55 // La Bioluminiscencia
 
     // Construimos el ProcessedFrame con GodEar vacío y osciladores como señales
     const frame: ProcessedFrame = {

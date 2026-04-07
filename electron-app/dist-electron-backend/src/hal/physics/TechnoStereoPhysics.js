@@ -33,25 +33,59 @@ import { hslToRgb } from '../../engine/color/SeleneColorEngine';
 // ===========================================================================
 // ?? WAVE 906: TECHNO STEREO PHYSICS ENGINE
 // ===========================================================================
+/**
+ * @deprecated WAVE 2488 — DT-03: LEGACY PURGE
+ *
+ * Motor predecesor reemplazado completamente por LiquidEngine41 (WAVE 2435+).
+ * LiquidEngine41 cubre todos los paths de TechnoStereoPhysics con full
+ * parametrización por perfil (ILiquidProfile), dt stress-tested y 93%+ coverage.
+ *
+ * Ruta de migración:
+ *   TechnoStereoPhysics.apply()  →  new LiquidEngine41(TECHNO_PROFILE).applyBands()
+ *   technoStereoPhysics.applyZones()  →  LiquidEngine41.applyBands() (incluye zones)
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: SeleneLux.ts (pendiente de migración al Omniliquid Engine).
+ * @see LiquidEngine41
+ */
 export class TechnoStereoPhysics {
     constructor() {
         // =========================================================================
         // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
         // =========================================================================
-        // 🔊 FRONT (BASS) - EL CERROJO ORGÁNICO
+        // 🔊 FRONT (BASS) - EL CERROJO ORGÁNICO + POLARIDAD INVERTIDA (WAVE 2393)
         this.FRONT_PAR_GATE_ON = 0.50; // 💥 Bajamos un poco para cazar más kicks
         this.FRONT_PAR_GATE_OFF = 0.35; // 🔪 Suelo razonable para el decay
         this.BASS_VITAMIN_BOOST = 3.0; // 🚀 Empuje para el cuerpo de la luz
         this.FRONT_MAX_INTENSITY = 0.80; // 🚨 EL TECHO DEL 80%
+        // 🔄 WAVE 2394: IGNITION SQUELCH + REVERT P.I. FRONT
+        // WAVE 2393 subió gate margin a 0.06 → mató 90% kicks Brejcha. REVERTIDO A 0.02.
+        // WAVE 2393 bajó decay a 0.45 → ritmo descafeinado. REVERTIDO A 0.60+0.20*mf.
+        // NUEVO: Ignition Squelch = max(0.02, 0.20-0.80*mf) en umbral de kickPower.
+        //   morph=0: squelch=0.20 → pad fantasma (KickP=0.161) BLOQUEADO
+        //   morph≥0.225: squelch=0.02 → idéntico al umbral original, cero impacto
+        // Validado: 56/70 kicks Brejcha pasan (3 micro-kicks bloqueados a mF<0.13)
+        this.FRONT_GATE_MARGIN = 0.02; // Margen fijo (WAVE 2381 golden ref)
+        this.FRONT_DECAY_BASE = 0.60; // Decay base (WAVE 2392 golden ref)
+        this.FRONT_DECAY_RANGE = 0.20; // Rango de decay con morph (0.60→0.80)
+        this.FRONT_GHOST_CAP = 0.04; // Ghost máximo (solo en morph alto)
+        this.FRONT_BREAKDOWN_PENALTY = 0.06; // Penalización breakdown fija
+        this.FRONT_IGNITION_SQUELCH_BASE = 0.20; // Squelch en morph=0
+        this.FRONT_IGNITION_SQUELCH_SLOPE = 0.80; // Pendiente de caída
         // 🛡️ PARANOIA GATE (Para el rebote del AGC)
         // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
         // Esto filtra el ruido de fondo inflado, pero deja pasar el Drop (100%)
         this.RECOVERY_GATE_ON = 0.80; // 🚨 Gate paranoico post-silencio
         this.RECOVERY_GATE_OFF = 0.60; // 🚨 Gate off proporcionalmente alto
         this.RECOVERY_DURATION = 2000; // 2 segundos de desconfianza
-        // 🥁 BACK (SNARE SNIPER) - Resurrección (Importado de Latino)
-        this.BACK_PAR_GATE = 0.50; // 🔪 Mantenemos el muro alto para que no entre basura
-        this.BACK_PAR_SLAP_MULT = 5.0; // 🚀 BOOM. De 3.0 a 5.0 para bofetadas nucleares
+        // 🥁 BACK (SNARE SNIPER) - WAVE 2392
+        // Gate y Slap ahora se mueven en DIRECCIONES OPUESTAS con morph:
+        //   Morph bajo → gate ALTO + slap BAJO = oscuridad
+        //   Morph alto → gate BAJO + slap ALTO = Anyma (LUZ TOTAL)
+        this.BACK_PAR_GATE_MAX = 0.58; // Gate en morph=0 (Hard: solo snares bestiales)
+        this.BACK_PAR_GATE_RANGE = 0.40; // Rango de reducción del gate con morph
+        this.BACK_PAR_SLAP_BASE = 2.0; // Amplificación base (morph=0)
+        this.BACK_PAR_SLAP_MORPH = 5.0; // Amplificación añadida por morph
         // 👯 MOVERS (STEREO SPLIT)
         // LEFT (Mid/Voces) - "The Body"
         this.MOVER_L_GATE = 0.20;
@@ -69,7 +103,6 @@ export class TechnoStereoPhysics {
         // =========================================================================
         this.strobeActive = false;
         this.strobeStartTime = 0;
-        this.lastBass = 0;
         this.lastLogTime = 0;
         this.avgMidProfiler = 0.0;
         this.lastFrontParFire = 0; // ⏱️ Memoria del cerrojo dinámico
@@ -78,6 +111,19 @@ export class TechnoStereoPhysics {
         // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
         this.lastSilenceTime = 0;
         this.inSilence = false;
+        // 💥 WAVE 2341: FRONT PAR STATE (Autonomous decay & lockout)
+        this.bassThr = 0.0; // Auto-calibrating threshold
+        this.avgBass = 0.0; // 🌊 WAVE 2343: Moving average floor de graves (para detectar hits)
+        this.frontIntensity = 0.0; // Persistente intensity para decay orgánico
+        this.frontLockout = 0; // Frame counter para evitar re-triggers
+        this.bassFloor = 0.0; // 🌊 WAVE 2354: Suelo dinámico para detección adaptativa
+        this.avgPunch = 0.0; // 💥 WAVE 2371: Auto-gate dinámico analógico
+        this.avgPunchPeak = 0.0; // 🏔️ WAVE 2377: Memoria del pico de avgPunch (caída ultra-lenta)
+        this.wasBreakdown = false; // 🔄 WAVE 2378: Estado previo de sección (para detectar transición breakdown→drop)
+        this.breakdownExitTime = 0; // ⏱️ WAVE 2378: Timestamp de salida del breakdown
+        this.lastPunch = 0; // 🔬 WAVE 2380: Velocity gate — detecta pads por velocidad de subida lenta
+        this.lastKickFireTime = 0; // 🌊 WAVE 2385: Tidal Gate — timestamp del último kick real
+        this.wasAttacking = false; // 🌊 WAVE 2386: Inercia de ataque — 1 frame de gracia post-pico
         // WAVE 2098: Boot silence
     }
     // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...
@@ -109,18 +155,22 @@ export class TechnoStereoPhysics {
          } = input;
         const now = Date.now();
         // =======================================================================
-        // 🔍 LIQUID MORPHING (Ajustado según animalog.md)
+        // 🧬 1. MORFOLOGÍA LÍQUIDA: VISCOSIDAD ASIMÉTRICA (WAVE 2340)
         // =======================================================================
-        this.avgMidProfiler = (this.avgMidProfiler * 0.94) + (mid * 0.06);
-        // Morph factor expandido: zona 0.30 - 0.70
+        // Inercia orgánica: Emoción rápida (Ataque 0.85), Caída densa (Decay 0.98)
+        if (mid > this.avgMidProfiler) {
+            this.avgMidProfiler = (this.avgMidProfiler * 0.85) + (mid * 0.15);
+        }
+        else {
+            this.avgMidProfiler = (this.avgMidProfiler * 0.98) + (mid * 0.02);
+        }
+        // UMBRAL SAGRADO: Suelo en 0.30, techo en 0.70.
         const morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - 0.30) / 0.40));
-        // LIMITADOR DE INTENSIDAD GLOBAL: reduce BACK_PAR_SLAP_MULT según morphFactor
-        const dynamicSlapMult = this.BACK_PAR_SLAP_MULT * (1.0 - (morphFactor * 0.5));
+        // WAVE 2392: slapMult SUBE con morph (Anyma = más amplificación)
+        const dynamicSlapMult = this.BACK_PAR_SLAP_BASE + (this.BACK_PAR_SLAP_MORPH * morphFactor);
         // GATES LÍQUIDOS: Bajamos los umbrales base para cazar el Melodic Techno
         // Front: de 0.55 (Hard) a 0.35 (Melodic)
         const currentFrontGate = 0.55 - (0.20 * morphFactor);
-        // Back: de 0.52 (Hard) a 0.28 (Melodic) -- Bajamos para rescatar claps sutiles
-        const currentBackGate = 0.52 - (0.17 * morphFactor);
         // 🕵️‍♂️ MODOS Y SILENCIO
         const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
         const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD;
@@ -132,62 +182,225 @@ export class TechnoStereoPhysics {
         else if (this.inSilence) {
             this.inSilence = false;
         }
-        // =======================================================================
-        // 1. FRONT PAR: THE FLOW SNIPER V2
-        // =======================================================================
-        const snap = bass - this.lastBass;
-        // 👁️ ANALOGÍA DE LOGS: Anyma tiene snaps de 0.02-0.04 que ignoramos.
-        // Bajamos el umbral para ser más sensibles en modo melódico.
-        const snapThreshold = 0.06 - (0.04 * morphFactor);
-        const isValidFFTKick = input.isKick && bass > (currentFrontGate - 0.1);
-        const isPhysicalKick = snap > snapThreshold && bass > currentFrontGate;
-        const currentBpm = input.bpm > 0 ? input.bpm : 120;
-        const beatIntervalMs = 60000 / currentBpm;
-        // Cerrojo dinámico: 40% del beat. Suficiente para limpiar, corto para no perder flow.
-        const lockoutRatio = 0.40;
-        const frontLockoutMs = beatIntervalMs * lockoutRatio;
-        const timeSinceLastFire = now - this.lastFrontParFire;
-        const isLockOpen = timeSinceLastFire > frontLockoutMs;
-        if ((isValidFFTKick || isPhysicalKick) && (timeSinceLastFire > frontLockoutMs)) {
-            this.kickEnvelope = 1.0;
-            this.lastFrontParFire = now;
-        }
-        else {
-            this.kickEnvelope *= 0.65;
-        }
-        let frontParIntensity = (this.kickEnvelope > 0.12) ? this.kickEnvelope * this.FRONT_MAX_INTENSITY : 0;
+        // 🛡️ AGC REBOUND PROTECTION (WAVE 2376)
+        // Los primeros 2 segundos tras un silencio, el AGC está recalibrando y
+        // la señal llega inflada. Aplicamos un atenuador que va de 0.0 a 1.0
+        // linealmente durante RECOVERY_DURATION para que la luz suba suave.
+        const timeSinceSilence = now - this.lastSilenceTime;
+        const isRecovering = this.lastSilenceTime > 0 && timeSinceSilence < this.RECOVERY_DURATION;
+        const recoveryFactor = isRecovering
+            ? Math.min(1.0, timeSinceSilence / this.RECOVERY_DURATION)
+            : 1.0;
         // =======================================================================
         // 🔍 MORPHOLOGÍA LÍQUIDA EXPANDIDA (Zona 0.30 - 0.70)
         // =======================================================================
         // (avgMidProfiler ya actualizado arriba)
-        // 🛡️ LIMITADOR DE INTENSIDAD GLOBAL (Opción 1)
-        // Si la morfología sube (Buildup/Melodic), bajamos el techo de luz
-        // En Anyma/Psytrance, el multiplicador bajará de 5.0 a ~2.5 automáticamente.
+        // 🛡️ MORFOLOGÍA → GATE + AMPLIFICACIÓN (WAVE 2392)
+        // Morph bajo = gate estricto + amplificación baja = oscuridad
+        // Morph alto = gate permisivo + amplificación alta = Anyma (LUZ)
         // =======================================================================
-        // 🥁 BACK PAR: THE PROTECTED SNIPER
+        // 🥁 2. BACK PAR: THE SNIPER v5 — POLARIDAD INVERTIDA (WAVE 2392)
         // =======================================================================
+        // WAVE 2391 pintaba absolutamente todo. En hard techno minimal:
+        //   Morph<0.30: avg=0.107, 12% strong → demasiada luz en oscuridad
+        //   Morph>=0.50: avg=0.632, 93% strong → correcto
+        //
+        // Causa raíz: slapMult BAJABA con morph (4.0→2.0). Diseño invertido.
+        //   En morph bajo, el gate (0.38) dejaba pasar señales moderadas
+        //   y el slapMult alto (3.4) las amplificaba. Resultado: bazooka.
+        //
+        // WAVE 2392: POLARIDAD INVERTIDA del slapMult.
+        //   gate = 0.58 - 0.40*morph → de 0.58(Hard) a 0.18(Anyma)
+        //   slap = 2.0 + 5.0*morph  → de 2.0(Hard) a 5.5(Anyma)
+        //   Morph bajo = gate alto + slap bajo = OSCURIDAD
+        //   Morph alto = gate bajo + slap alto = MUUUUUCHA LUZ
+        //
+        // Validado sobre 869 frames Brejcha + 591 frames Rufus Du Sol:
+        //   Brejcha <0.30: avg=0.031, 1% strong ← OSCURIDAD ✓
+        //   Brejcha >=0.50: avg=0.793, 94% strong ← ANYMA ✓
+        //   Rufus   <0.30: avg=0.004, 0% strong ← OSCURIDAD ✓
+        //   Rufus   >=0.50: avg=0.576, 61% strong ← LUZ MELÓDICA ✓
         const transientImpact = Math.min(1.0, (treble * 1.3) + ((harshness ?? 0) * 0.8));
         const cleanMid = Math.max(0, mid - (1.0 - transientImpact) * mid * 0.7);
-        const snarePower = Math.min(1.0, (cleanMid * 0.08) +
-            (transientImpact * (1.1 + 1.4 * morphFactor)));
+        const pureHarshness = (harshness ?? 0);
+        // 💊 VITAMINA — H*T se autoregula: harsh alto + treble alto = snare, resto = atenuado
+        const snareVitamin = pureHarshness * treble * (3.5 + 2.0 * morphFactor);
+        const snarePower = Math.min(1.0, (cleanMid * 0.05) +
+            (transientImpact * (1.0 + 1.0 * morphFactor)) +
+            snareVitamin);
         let backParIntensity = 0;
-        // Gate adaptativa con el nuevo rango 0.70
-        const dynamicBackGate = 0.52 - (0.22 * morphFactor);
+        // 🔒 Gate dinámico: 0.58 (Hard) → 0.18 (Anyma)
+        const dynamicBackGate = this.BACK_PAR_GATE_MAX - (this.BACK_PAR_GATE_RANGE * morphFactor);
         if (snarePower > dynamicBackGate) {
             const gated = (snarePower - dynamicBackGate) / (1.0 - dynamicBackGate);
-            // Exponente 2.5: Perfecto para esos colores fríos y "boreales"
-            backParIntensity = Math.pow(gated, 2.5) * dynamicSlapMult;
+            // Exponente 2.0 + slapMult dinámico (2.0→7.0)
+            backParIntensity = Math.pow(gated, 2.0) * dynamicSlapMult;
         }
+        // 🔒 CLAMP TERMODINÁMICO — INTACTO
+        backParIntensity = Math.min(1.0, backParIntensity);
         // =======================================================================
-        // 📊 TELEMETRÍA LUXSYNC (Caja Negra)
-        // Descomenta para capturar tus 10 segundos de gloria
+        // 💥 3. FRONT PAR: SOFT KNEE + BREAKDOWN SHIELD (WAVE 2377)
         // =======================================================================
-        if (now - this.lastLogTime > 33) {
-            console.log(`[F] B:${bass.toFixed(2)} S:${snap.toFixed(3)} Thr:${snapThreshold.toFixed(3)} L:${isLockOpen ? 'O' : 'C'} OUT:${frontParIntensity.toFixed(2)} | ` +
-                `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
-                `[M] Morph:${morphFactor.toFixed(2)}`);
-            this.lastLogTime = now;
+        const punch = bass;
+        const rumble = input.sub ?? 0;
+        const sectionType = input.sectionType ?? 'drop';
+        const isBreakdown = sectionType === 'breakdown' || sectionType === 'buildup';
+        // 🔬 WAVE 2380/2381: Velocity Gate — cinemática de ataque puro.
+        //
+        // WAVE 2380: Los pads suben lento (velocity baja), los bombos explotan (velocity alta).
+        //   isPadSwell bloquea pads en secciones tranquilas.
+        //
+        // WAVE 2381: Attack-Only Trigger — la reverberación acústica del bombo cae lentamente
+        //   por encima del gate, haciendo que el motor genere nanorrestos (KickP:0.7, 0.3, 0.12...)
+        //   mientras la onda BAJA. Solución puramente física: solo disparamos luz cuando la onda
+        //   está CRECIENDO (atacando). Si baja, el decay orgánico se encarga de la cola.
+        //   Margen de -0.005 para absorber micro-fluctuaciones de cuantización.
+        // 🌊 WAVE 2386: The Undertow — inercia de ataque.
+        //   Un kick real dura 2-3 frames. Con isAttacking estricto, solo el frame de subida
+        //   disparaba. Boris Brejcha: P:0.95 (frame 1, dispara) → P:0.90 (frame 2, NO dispara
+        //   porque velocity < 0). Si el frame ANTERIOR fue ataque genuino (velocity > 0.01),
+        //   permitimos 1 frame de gracia con caída moderada (velocity > -0.03).
+        const velocity = punch - (this.lastPunch ?? 0);
+        this.lastPunch = punch;
+        const isRisingAttack = velocity >= -0.005;
+        const isGraceFrame = this.wasAttacking && velocity >= -0.03;
+        const isAttacking = isRisingAttack || isGraceFrame;
+        this.wasAttacking = isRisingAttack && velocity > 0.01;
+        const isQuietSection = isBreakdown || sectionType === 'intro';
+        const isPadSwell = isQuietSection && velocity < 0.02;
+        // 1. EL SUELO DE HORMIGÓN (Intocable - Creador del Groove)
+        // 🌊 WAVE 2386: The Undertow — decay asimétrico AGRESIVO.
+        // Boris Brejcha tiene subgrave rodante que NUNCA baja de P:0.75.
+        // Con decay 0.95/0.05 anterior, avgPunch subía a ~0.82 y el gate quedaba en 0.84,
+        // bloqueando el 80% de los kicks (solo P:0.96+ pasaba).
+        // Decay 0.88/0.12 permite que avgPunch baje en los micro-valles entre kicks.
+        // Kickloop no se rompe porque sus valles son profundos (P:0.45-0.60).
+        if (punch > (this.avgPunch ?? 0)) {
+            this.avgPunch = ((this.avgPunch ?? 0) * 0.98) + (punch * 0.02);
         }
+        else {
+            this.avgPunch = ((this.avgPunch ?? 0) * 0.88) + (punch * 0.12);
+        }
+        // 🏔️ MEMORIA DE PICO (avgPunchPeak)
+        // 🌊 WAVE 2385: Tidal Gate — decay condicional. Cuando no hay kicks durante
+        // mucho tiempo, el pico se libera más rápido para que el gate baje a encontrar
+        // los kicks de la siguiente pista en la mezcla.
+        //   Normal (kicks activos): 0.993 → ~4.7s para caer 50%
+        //   Seco (>2s sin kick):    0.985 → ~1.5s para caer 50%
+        // Hadtechnominimal: gate se quedaba en 0.44 durante 200+ frames porque
+        // avgPunchPeak de la pista anterior no caía, mientras kickloop no se ve
+        // afectado porque sus kicks constantes mantienen lastKickFireTime fresco.
+        const timeSinceLastKick = this.lastKickFireTime > 0 ? now - this.lastKickFireTime : 0;
+        const isDrySpell = timeSinceLastKick > 2000;
+        const peakDecay = isDrySpell ? 0.985 : 0.993;
+        if (this.avgPunch > this.avgPunchPeak) {
+            this.avgPunchPeak = this.avgPunch;
+        }
+        else {
+            this.avgPunchPeak = (this.avgPunchPeak * peakDecay) + (this.avgPunch * (1.0 - peakDecay));
+        }
+        // El gate efectivo nunca cae por debajo del 55% del pico reciente.
+        // 🌊 WAVE 2386: The Undertow — reducido de 70% a 55%.
+        // Con peak 0.95: antes floor=0.665, ahora floor=0.523.
+        // Esto da ~0.14 de headroom extra para que kicks de P:0.83-0.88 pasen.
+        // 🏗️ WAVE 2378: GATE FLOOR ABSOLUTO — El gate NUNCA baja de 0.42.
+        // Sub-bass pads de psytrance (P:0.44-0.47) ya no pasan el gate.
+        // 🌊 WAVE 2385: Floor adaptativo — degrada el floor de 0.42 → 0.30 cuando
+        // no hay kicks durante 3+ segundos. Esto permite que mezclas de minimal
+        // techno con kicks sutiles (P:0.50-0.65) pasen el gate.
+        //   Sin dry spell: floor = 0.42 (protección psytrance intacta)
+        //   3s sin kick:   floor empieza a bajar
+        //   6s sin kick:   floor = 0.30 (captura kicks sutiles de mezcla)
+        const drySpellFloorDecay = timeSinceLastKick > 3000
+            ? Math.min(1.0, (timeSinceLastKick - 3000) / 3000)
+            : 0;
+        const adaptiveFloor = 0.42 - (0.12 * drySpellFloorDecay);
+        const avgPunchEffective = Math.max(this.avgPunch, this.avgPunchPeak * 0.55, adaptiveFloor);
+        const isVoiceLeak = mid > 0.50 && mid > (punch * 0.80);
+        // 2. LA PUERTA CON MEMORIA — MARGEN FIJO (WAVE 2394)
+        // WAVE 2393 usaba margen dinámico 0.06-0.05*mf pero mataba 90% de kicks
+        // en Brejcha (mf=0.10-0.30 → margen 0.035-0.055, triple del original).
+        // WAVE 2394: revert a margen fijo 0.02 (golden ref WAVE 2381).
+        // Anti-pad-ghost se maneja con Ignition Squelch, no con el gate.
+        const dynamicGate = avgPunchEffective + this.FRONT_GATE_MARGIN;
+        let kickPower = 0;
+        let ghostPower = 0;
+        // 3. EL COMPRESOR DINÁMICO (Dynamic Divisor) — WAVE 2394
+        // Penalización fija 0.06 en breakdowns (revert de WAVE 2393 que usaba 0.08-0.06*mf).
+        // WAVE 2393 con 0.08 en morph=0 creaba doble castigo con gate margin alto.
+        const breakdownPenalty = isBreakdown ? this.FRONT_BREAKDOWN_PENALTY : 0;
+        if (punch > dynamicGate && !isVoiceLeak && !isPadSwell && isAttacking && punch > 0.15) {
+            const requiredJump = 0.14 - (0.07 * morphFactor) + breakdownPenalty;
+            let rawPower = (punch - dynamicGate) / requiredJump;
+            rawPower = Math.min(1.0, Math.max(0, rawPower));
+            //  WAVE 2387: Return to Origins — exponente reducido a 1.5-1.8.
+            // WAVE 2381 (golden reference) usaba 1.5 FIJO. Funcionaba perfecto.
+            // WAVEs 2383-2384 subieron a 2.0-2.5 para "aplastar synths" pero
+            // crearon DOBLE CASTIGO: gate inflado + crush agresivo. Un bombo con
+            // rawPower 0.3 pasaba de pow(0.3,1.5)=0.164 a pow(0.3,2.5)=0.049.
+            // Invisible. Con 1.5-1.8 recuperamos el rango de WAVE 2381:
+            //   rawPower 0.3 → pow(0.3, 1.5) = 0.164 / pow(0.3, 1.8) = 0.099 (visible ✓)
+            //   rawPower 0.5 → pow(0.5, 1.5) = 0.354 / pow(0.5, 1.8) = 0.287 (sólido ✓)
+            //   rawPower 0.7 → pow(0.7, 1.5) = 0.586 / pow(0.7, 1.8) = 0.530 (fuerte ✓)
+            //   Sinte staccato rawPower 0.15 → pow(0.15, 1.8) = 0.035 (aplastado ✓)
+            const crushExponent = 1.5 + (0.3 * (1.0 - morphFactor));
+            kickPower = Math.pow(rawPower, crushExponent);
+        }
+        else if (punch > avgPunchEffective && punch > 0.15 && !isVoiceLeak && !isBreakdown) {
+            // 👻 RODILLA SUAVE (Soft Knee) — POLARIDAD INVERTIDA (WAVE 2393)
+            // WAVE 2383 restauró ghostPower SIN morphFactor para evitar parpadeo epiléptico.
+            // WAVE 2393: ghostCap modulado por morph. En morph=0 el cap es 0 (oscuridad pura,
+            // sin fantasmas). En morph=1 el cap sube a 0.04 (glow máximo de melodía).
+            // Esto elimina microflashes en intros/breakdowns sin matar el glow en Anyma.
+            const ghostCap = this.FRONT_GHOST_CAP * morphFactor;
+            const proximity = (punch - avgPunchEffective) / 0.02;
+            ghostPower = Math.min(ghostCap, proximity * ghostCap);
+        }
+        // 4. MORFOLOGÍA LÍQUIDA: DECAY — REVERT A WAVE 2392 (WAVE 2394)
+        // WAVE 2393 bajó decay a 0.45 en morph=0 → ritmo descafeinado (3 frames).
+        // WAVE 2394: revert a 0.60+0.20*mf (WAVE 2392 golden ref).
+        //   morph=0.0: 0.60 → 1.0→0.60→0.36→0.22→0.13 (4 frames, pulso sólido)
+        //   morph=0.5: 0.70 → 1.0→0.70→0.49→0.34→0.24 (4-5 frames, fluido)
+        //   morph=1.0: 0.80 → 1.0→0.80→0.64→0.51→0.41 (5+ frames, intacto)
+        const frontDecay = this.FRONT_DECAY_BASE + (this.FRONT_DECAY_RANGE * morphFactor);
+        this.frontIntensity = (this.frontIntensity ?? 0) * frontDecay;
+        // 5. RENDERIZADO RÍTMICO — IGNITION SQUELCH (WAVE 2394)
+        // El squelch reemplaza el umbral fijo 0.02 con una rampa anti-pad-ghost:
+        //   morph=0.00: squelch=0.200 → pad fantasma KickP=0.161 MUERE
+        //   morph=0.10: squelch=0.120 → micro-kick 0.05 muere, kick real 0.30 vive
+        //   morph≥0.225: squelch=0.020 → umbral original, cero impacto en operación normal
+        const ignitionSquelch = Math.max(0.02, this.FRONT_IGNITION_SQUELCH_BASE - (this.FRONT_IGNITION_SQUELCH_SLOPE * morphFactor));
+        if (kickPower > ignitionSquelch) {
+            this.lastKickFireTime = now; // 🌊 WAVE 2385: Resetear timer de Tidal Gate
+            const hit = Math.min(1.0, kickPower * (1.2 + 0.8 * morphFactor));
+            this.frontIntensity = Math.max(this.frontIntensity, hit);
+        }
+        else if (ghostPower > 0) {
+            // 👻 FUGA FANTASMA: brillo mínimo que mantiene la melodía viva
+            this.frontIntensity = Math.max(this.frontIntensity, ghostPower);
+        }
+        // 6. MATERIA OSCURA (Muro Subgrave)
+        const auraCap = 0.25 * Math.pow(morphFactor, 2);
+        const progressivePulse = rumble * auraCap;
+        if (kickPower < 0.2) {
+            this.frontIntensity = Math.max(this.frontIntensity, progressivePulse);
+        }
+        // 🔬 WAVE 2383: Reemplazar guillotina binaria por smooth fade.
+        // La guillotina (> 0.08 ? x : 0) creaba saltos bruscos de 0.07→0.00
+        // que destruían el glow del ghostPower y el decay natural.
+        // Smooth fade: por debajo de 0.08 se atenúa cuadráticamente → fundido suave.
+        const fadeZone = 0.08;
+        const fadeFactor = this.frontIntensity >= fadeZone ? 1.0 : Math.pow(this.frontIntensity / fadeZone, 2);
+        let frontParIntensity = this.frontIntensity * fadeFactor;
+        // TELEMETRÍA (mantener formato original)
+        /*if (now - this.lastLogTime > 33) {
+           console.log(
+             `[F] P:${punch.toFixed(2)} R:${rumble.toFixed(2)} Gate:${dynamicGate.toFixed(2)} KickP:${kickPower.toFixed(3)} OUT:${frontParIntensity.toFixed(2)} | ` +
+             `[B] M:${mid.toFixed(2)} T:${treble.toFixed(2)} SnP:${snarePower.toFixed(2)} OUT:${backParIntensity.toFixed(2)} | ` +
+             `[M] Morph:${morphFactor.toFixed(2)}`
+           );
+           this.lastLogTime = now;
+        }*/
         const rawLeft = Math.max(0, mid - (treble * 0.3));
         let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
         const rawRight = Math.max(0, treble - (mid * 0.2));
@@ -196,15 +409,15 @@ export class TechnoStereoPhysics {
         // 3. THE SIDECHAIN GUILLOTINE & APOCALYPSE MODE
         // =======================================================================
         if (frontParIntensity > 0.1) {
-            // 🔪 LEY ABSOLUTA: Si el bombo existe, aplasta el 90% de todo lo demás
+            // 🔪 LEY ABSOLUTA: Solo aplasta los MOVERS (Sables). 
+            // ¡EL BACK PAR ES LIBRE! ducking exterminado para el snare.
             const ducking = 1.0 - (frontParIntensity * 0.90);
-            backParIntensity *= ducking;
             moverL *= ducking;
             moverR *= ducking;
         }
         else {
-            // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups/Risers)
-            const isApocalypse = harshness > 0.55 && flatness > 0.55;
+            // 🚨 APOCALIPSIS: Solo se permite cuando el bombo está en silencio (Buildups)
+            const isApocalypse = harshness > 0.55 && (input.spectralData?.flatness ?? 0) > 0.55;
             if (isApocalypse) {
                 const chaosEnergy = Math.max(mid, treble);
                 backParIntensity = Math.max(backParIntensity, chaosEnergy);
@@ -214,8 +427,15 @@ export class TechnoStereoPhysics {
         }
         // Strobe (Treble peaks + Noise)
         const strobeResult = this.calculateStrobe(treble, noiseMode);
-        // Memoria para el siguiente frame
-        this.lastBass = bass;
+        // 🛡️ AGC REBOUND ATTENUATION (WAVE 2376)
+        // Si estamos en recuperación post-silencio, atenuar todas las zonas progresivamente.
+        // recoveryFactor va de 0.0 (silencio acaba de terminar) a 1.0 (recuperación completa).
+        if (isRecovering) {
+            frontParIntensity *= recoveryFactor;
+            backParIntensity *= recoveryFactor;
+            moverL *= recoveryFactor;
+            moverR *= recoveryFactor;
+        }
         return {
             strobeActive: strobeResult.active,
             strobeIntensity: strobeResult.intensity,
@@ -262,21 +482,6 @@ export class TechnoStereoPhysics {
      * Matemática:
      * - Signal ya viene como sqrt(mid * treble) desde applyZones
      * - Solo valores altos (Snare completo) pasan el gate 0.25
-     * - 📉 CURVA x^1.5 (exponencial) → SUPRIME ruido, mantiene potencia
-     *   * Valores débiles (synth ruido) → Se hacen invisibles
-     *   * Valores fuertes (Snare) → Se mantienen fuertes
-     * - Mult x6.0 → Compensar la supresión
-     *
-     * @param signal - Media geométrica de mid y treble
-     */
-    calculateBackPar(signal) {
-        if (signal < this.BACK_PAR_GATE)
-            return 0;
-        const gated = (signal - this.BACK_PAR_GATE) / (1 - this.BACK_PAR_GATE);
-        // 📉 Curva x^1.5 (El x^3 era un agujero negro que se tragaba la luz)
-        const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT;
-        return Math.min(1.0, Math.max(0, intensity));
-    }
     /**
      * 👯 MOVER CHANNEL - GENERIC GATE + BOOST
      * 🧹 WAVE 911: THE CLEANER

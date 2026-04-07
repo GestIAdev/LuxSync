@@ -14,6 +14,7 @@
 
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react'
 import { useNavigationStore, selectActiveTab } from '../../stores/navigationStore'
+import { useLicenseStore } from '../../stores/licenseStore' // 🔒 WAVE 2490
 import './ContentArea.css'
 
 // Lazy load views for better performance
@@ -35,6 +36,29 @@ const ViewLoader: React.FC = () => (
   </div>
 )
 
+// 🔒 WAVE 2490: Tier-locked view placeholder
+const UpgradeGate: React.FC<{ featureName: string }> = ({ featureName }) => (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    gap: '16px',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontFamily: 'monospace',
+  }}>
+    <span style={{ fontSize: '48px' }}>🔒</span>
+    <h2 style={{ color: '#00fff0', letterSpacing: '3px', margin: 0 }}>{featureName}</h2>
+    <p style={{ maxWidth: '400px', textAlign: 'center', lineHeight: 1.6 }}>
+      Este módulo requiere la licencia <strong style={{ color: '#f97316' }}>Full Suite</strong>.
+    </p>
+    <span style={{ fontSize: '0.7rem', letterSpacing: '2px', color: 'rgba(255,255,255,0.25)' }}>
+      WAVE 2490 — TIER SEPARATION PROTOCOL
+    </span>
+  </div>
+)
+
 // WAVE 379.4: Transition loader (brief flash during GPU handoff)
 const TransitionLoader: React.FC = () => (
   <div className="view-loader transition-loader">
@@ -52,6 +76,8 @@ const GPU_HANDOFF_DELAY = 150
 const ContentArea: React.FC = () => {
   // 🛡️ WAVE 2042.13.5: Selector directo (string - estable)
   const activeTab = useNavigationStore(selectActiveTab)
+  // 🔒 WAVE 2490: License tier check
+  const isTabAllowed = useLicenseStore(s => s.isTabAllowed)
   
   // WAVE 379.4: ATOMIC HANDOFF STATE
   const [renderedTab, setRenderedTab] = useState<string | null>(activeTab)
@@ -110,9 +136,9 @@ const ContentArea: React.FC = () => {
       case 'forge':
         return <ForgeView />  // 🔨 WAVE 1110
       case 'chronos':
-        return <ChronosStudio />  // ⏱️ WAVE 2004
+        return isTabAllowed('chronos') ? <ChronosStudio /> : <UpgradeGate featureName="CHRONOS STUDIO" />
       case 'hephaestus':
-        return <HephaestusView />  // ⚒️ WAVE 2030.3
+        return isTabAllowed('hephaestus') ? <HephaestusView /> : <UpgradeGate featureName="HEPHAESTUS STUDIO" />
       case 'nexus':
         return <VisualPatcher />
       case 'core':

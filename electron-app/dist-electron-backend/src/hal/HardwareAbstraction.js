@@ -39,6 +39,8 @@ import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer';
 // �🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver';
 import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
+// 🚧 WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
+import { masterArbiter, ControlLayer } from '../core/arbiter';
 // ═══════════════════════════════════════════════════════════════════════════
 // HARDWARE ABSTRACTION CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -54,11 +56,11 @@ export class HardwareAbstraction {
         // Cleared on vibe change (setVibe()) to re-inject with new vibe config.
         // ═══════════════════════════════════════════════════════════════════════
         this.injectedPhysicsProfiles = new Set();
-        // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
+        //  WAVE 2042.20: BABEL FISH - Color Translation Singletons
         this.colorTranslator = getColorTranslator();
         this.safetyLayer = getHardwareSafetyLayer();
         this.profileCache = new Map();
-        // �🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
+        // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
         this.smoothedZoomMod = 0;
         this.smoothedFocusMod = 0;
         // State
@@ -709,12 +711,16 @@ export class HardwareAbstraction {
                     // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
                     channels,
                     // 🎨 WAVE 687: Default values for additional controls
-                    shutter: 0,
+                    // 🔥 WAVE 2190: shutter UNDEFINED — Let FixtureMapper fall through to
+                    // channel.defaultValue ?? 255 (Open). Hardcoding 0 = CLOSED = blackout
+                    // on any fixture with a mechanical shutter channel.
                     gobo: 0,
                     prism: 0,
                     strobe: 0,
                     // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
                     phantomChannels: fixtureTarget.phantomChannels,
+                    // 🚧 WAVE 2228: DMX ADUANA — Propagate control sources for HAL gate
+                    _controlSources: fixtureTarget._controlSources,
                 };
                 // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
                 // This is the KEY integration point: if fixture has color wheel profile,
@@ -942,6 +948,30 @@ export class HardwareAbstraction {
         // Guardar en caché para no volver a calcularlo ni printearlo en el próximo frame
         this.profileCache.set(cacheKey, profile);
         return profile;
+    }
+    /**
+     * 🔥 WAVE 2183: GHOST EXORCISM — Invalidate profile caches across HAL + Mapper
+     * Called when a library profile is renamed, updated, or deleted.
+     * Purges stale cached profiles so the next render frame fetches fresh data.
+     * @param profileId - Specific profile ID to invalidate, or omit to clear all
+     */
+    invalidateProfileCache(profileId) {
+        if (profileId) {
+            this.profileCache.delete(profileId);
+        }
+        else {
+            this.profileCache.clear();
+        }
+        // Also clear injected physics profiles so they re-inject on next frame
+        if (profileId) {
+            this.injectedPhysicsProfiles.delete(profileId);
+        }
+        else {
+            this.injectedPhysicsProfiles.clear();
+        }
+        // Cascade to FixtureMapper's own cache
+        this.mapper.invalidateProfileCache(profileId);
+        console.log(`[HAL] 🔥 WAVE 2183: Profile cache invalidated${profileId ? ` for "${profileId}"` : ' (ALL)'}`);
     }
     /**
      * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor
@@ -1249,21 +1279,62 @@ export class HardwareAbstraction {
         this.sendToDriver(safeStates);
     }
     sendToDriver(states) {
-        // 🔍 TRACE: Driver status check (disabled to reduce noise)
-        // Uncomment below to debug driver connectivity
-        // if (this.framesRendered % 100 === 0) {
-        //   console.log(`[TRACE HAL] Driver: ${this.driver?.constructor?.name} | Connected: ${this.driver?.isConnected}`)
-        //
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
         // If driver is not connected, silently drop packets.
-        // User MUST manually start ArtNet/USB from Dashboard.
-        // This respects "Manual First" doctrine: hardware = explicit human action.
         if (!this.driver.isConnected) {
-            // 🔥 WAVE 1219: Debug - driver not connected
             if (this.framesRendered % 100 === 0) {
                 console.warn(`[HAL] ⚠️ Driver not connected, dropping frames`);
             }
             return;
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🚧 WAVE 2228: DMX ADUANA — Last-mile output gate
+        // 🔒 WAVE 2229: + physicalPan/physicalTilt also gated
+        // 🔥 WAVE 2231: Physics runs 100% always. The Aduana is the ONLY gate.
+        //   No more pausePhysics/resumePhysics. HyperionView 3D stays alive.
+        //   The physics engine feeds both the 3D preview and the DMX output.
+        //   The Aduana filters at the DMX boundary, microseconds before hardware.
+        //
+        // When outputEnabled=false (ARMED, not LIVE):
+        //   - Channels controlled by MANUAL (Layer 2) → pass through (calibration)
+        //   - ALL other channels → safe values (dimmer=0, color=black, pos=center)
+        //   - physicalPan/physicalTilt also gated (WAVE 2229)
+        //
+        // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
+        // Physics always runs. The Aduana is the sole gate.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const outputEnabled = masterArbiter.isOutputEnabled();
+        if (!outputEnabled) {
+            states = states.map(state => {
+                const sources = state._controlSources;
+                if (!sources) {
+                    // No source metadata → full blackout for safety
+                    return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 };
+                }
+                // Check if ANY channel is manual — if none, full blackout shortcut
+                const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL);
+                if (!hasAnyManual) {
+                    return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 };
+                }
+                // Per-channel gate: manual channels pass, rest → safe values
+                // 🚧 WAVE 2229: physicalPan/physicalTilt MUST also be gated.
+                // The FixtureMapper reads physicalPan/physicalTilt with priority over pan/tilt.
+                // If we only gate pan/tilt but leave physicalPan/physicalTilt untouched,
+                // physics-interpolated values leak to DMX hardware.
+                const panSafe = sources['pan'] === ControlLayer.MANUAL;
+                const tiltSafe = sources['tilt'] === ControlLayer.MANUAL;
+                return {
+                    ...state,
+                    dimmer: sources['dimmer'] === ControlLayer.MANUAL ? state.dimmer : 0,
+                    r: sources['red'] === ControlLayer.MANUAL ? state.r : 0,
+                    g: sources['green'] === ControlLayer.MANUAL ? state.g : 0,
+                    b: sources['blue'] === ControlLayer.MANUAL ? state.b : 0,
+                    pan: panSafe ? state.pan : 128,
+                    tilt: tiltSafe ? state.tilt : 128,
+                    physicalPan: panSafe ? state.physicalPan : 128,
+                    physicalTilt: tiltSafe ? state.physicalTilt : 128,
+                };
+            });
         }
         // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
         const withWhite = states.filter(s => s.white !== undefined && s.white > 0);

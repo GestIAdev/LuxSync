@@ -19,6 +19,7 @@ import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
+import { useLicenseStore } from './stores/licenseStore' // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL
 import './styles/globals.css'
 
 function AppContent() {
@@ -35,7 +36,10 @@ function AppContent() {
   useEffect(() => {
     // 📜 WAVE 1198: Initialize War Log IPC listener
     const cleanupLogs = initializeLogIPC()
-    
+
+    // 🔒 WAVE 2490: Hydrate license tier from main process
+    useLicenseStore.getState().hydrate()
+
     // Start Selene session
     startSession()
     addLogEntry({ type: 'INIT', message: 'LuxSync Commander started' })

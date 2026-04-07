@@ -5,6 +5,7 @@
  * WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 replaces legacy
  * WAVE 1031: THE PHOTON WEAVER - Laser & Washer physics
  * WAVE 1044: THE DEEP FIELD - Chill ecosystem rewrite
+ * WAVE 2401: THE LIQUID STEREO - 7-band engine + LiquidEnvelope
  */
 export * from './PhysicsEngine';
 export { TechnoStereoPhysics, technoStereoPhysics } from './TechnoStereoPhysics';
@@ -12,7 +13,7 @@ export { TechnoStereoPhysics, technoStereoPhysics } from './TechnoStereoPhysics'
 // export { RockStereoPhysics } from './RockStereoPhysics'
 export { LatinoStereoPhysics } from './LatinoStereoPhysics';
 // 🌌 WAVE 1044: THE DEEP FIELD - Chill Lounge Generative Ecosystem
-export { calculateChillStereo, resetDeepFieldState, getDeepFieldState } from './ChillStereoPhysics';
+export { calculateChillStereo, resetDeepFieldState, getDeepFieldState, getOceanicMorphFactor } from './ChillStereoPhysics';
 // 🎸 WAVE 1011.5: UNIFIED ROCK PHYSICS (Lobotomized - No Subgenres)
 export { RockStereoPhysics2, rockPhysics2, } from './RockStereoPhysics2';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,3 +33,20 @@ export { LaserPhysics, laserPhysics, } from './LaserPhysics';
 // Input: subBass (20-60Hz) + texture
 // Comportamientos: BREATHING_WALL (warm) | REACTIVE_STROBE (harsh)
 export { WasherPhysics, washerPhysics, } from './WasherPhysics';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 2411: THE LIQUID STEREO - 7-Band Omni-Liquid Engine + Profiles
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// LiquidEnvelope: Abstracción universal de banda (1 clase, N instancias)
+// LiquidStereoPhysics: Motor de 7 zonas, parametrizado por ILiquidProfile
+// Profiles: TECHNO_PROFILE (default), futuro: ROCK, LATINO, CHILL...
+// ═══════════════════════════════════════════════════════════════════════════
+export { LiquidEnvelope, } from './LiquidEnvelope';
+export { LiquidStereoPhysics, liquidStereoPhysics, } from './LiquidStereoPhysics';
+// 🌊 WAVE 2429: THE A/B FOUNDATION — Omni-Liquid Engine (Base + 4.1 + 7.1)
+export { LiquidEngineBase } from './LiquidEngineBase';
+export { LiquidEngine71, liquidEngine71 } from './LiquidEngine71';
+export { LiquidEngine41, liquidEngine41 } from './LiquidEngine41';
+// 🌊 WAVE 2434: TELEMETRY ENGINE — Drop-in replacement de liquidEngine41 para captura de datos
+export { LiquidEngine41Telemetry, latinoEngine41Telemetry } from './LiquidEngine41Telemetry';
+export { TECHNO_PROFILE, LATINO_PROFILE, POPROCK_PROFILE, PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE } from './profiles';

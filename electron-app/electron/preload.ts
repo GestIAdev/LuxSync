@@ -471,6 +471,10 @@ const api = {
 // 🌙 LUX API - Selene Lux Core Bridge (WAVE 2)
 // ============================================================================
 const luxApi = {
+  // === 🔒 WAVE 2490: LICENSE TIER ===
+  /** Get the current license tier ('DJ_FOUNDER' | 'FULL_SUITE') */
+  getLicenseTier: () => ipcRenderer.invoke('license:getTier'),
+
   // === CONTROL ===
   /** Iniciar el motor Selene */
   start: () => ipcRenderer.invoke('lux:start'),

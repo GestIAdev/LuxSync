@@ -18,6 +18,7 @@ import { useDMXStore, FixtureValues, selectUpdateFixtureValues } from '../stores
 import { useLuxSyncStore, EffectId, selectTrinityEffectsSync } from '../stores/luxsyncStore'  // 🔥 WAVE 10.7: Effects sync
 import { usePowerStore } from '../hooks/useSystemPower'  // 🔌 WAVE 63.8: Power control
 import { useControlStore, GlobalMode } from '../stores/controlStore'  // 🔥 WAVE 74: Mode sync
+import { useSetupStore } from '../stores/setupStore'  // 🔥 WAVE 2501: Audio persistence on ARM
 import { useShallow } from 'zustand/shallow'
 
 // ============================================================================
@@ -533,6 +534,8 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   // Power-controlled startup — inicia workers/subscriptions al ONLINE.
   // KILL AUTO-AUDIO: el audio NO se inicia aquí, solo los workers de Selene.
   // El audio es control MANUAL exclusivo del usuario.
+  // 🔥 WAVE 2501: AUDIO PERSISTENCE ON ARM — si el usuario ya configuró una fuente
+  // de audio antes de pulsar ARM, el sistema la recupera silenciosamente.
   const powerState = usePowerStore((s) => s.powerState)
   const hasStartedRef = useRef(false)
   
@@ -541,7 +544,31 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     if (powerState === 'ONLINE' && !hasStartedRef.current) {
       console.log('[Trinity] 🔌 POWER ON - Starting workers (audio MANUAL)')
       hasStartedRef.current = true
-      startTrinity()  // Inicia workers y subscriptions, NO el audio
+      startTrinity().then(() => {
+        // 🔥 WAVE 2501: Re-engage audio source if user had one configured before ARM
+        // Read directly from store (not hook) — we're inside a callback, not render
+        const savedSource = useSetupStore.getState().audioSource
+        if (savedSource && savedSource !== 'off') {
+          console.log(`[Trinity] 🎵 WAVE 2501: Re-engaging audio source '${savedSource}' after ARM`)
+          setState(prev => ({ ...prev, isAudioActive: false }))  // reset before reattach
+          if (savedSource === 'simulation') {
+            setSimulationMode(true)
+            setState(prev => ({ ...prev, isAudioActive: true }))
+          } else if (savedSource === 'system') {
+            startSystemAudio().then(() => {
+              setState(prev => ({ ...prev, isAudioActive: true }))
+            }).catch((err) => {
+              console.warn('[Trinity] WAVE 2501: System audio re-engage failed:', err)
+            })
+          } else if (savedSource === 'microphone') {
+            startMicrophone().then(() => {
+              setState(prev => ({ ...prev, isAudioActive: true }))
+            }).catch((err) => {
+              console.warn('[Trinity] WAVE 2501: Microphone re-engage failed:', err)
+            })
+          }
+        }
+      })
     }
     
     // KILL SWITCH: Stop todo (incluyendo audio) cuando → OFFLINE

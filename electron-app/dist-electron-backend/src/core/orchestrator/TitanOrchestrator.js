@@ -27,6 +27,8 @@ import { MoodController } from '../mood/MoodController';
 import { getHephaestusRuntime } from './IPCHandlers';
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver';
+// 🧹 WAVE 2227: VMM singleton para cleanup en stop()
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -77,6 +79,8 @@ export class TitanOrchestrator {
         // Vibe rotation for demo
         this.vibeSequence = ['fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge'];
         this.currentVibeIndex = 0;
+        // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus gate
+        this._licenseTier = 'FULL_SUITE';
         // WAVE 254: Control state
         this.mode = 'auto';
         this.useBrain = true;
@@ -105,6 +109,7 @@ export class TitanOrchestrator {
             subBass: 0,
             lowMid: 0,
             highMid: 0,
+            crestFactor: 0, // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
         };
         // ═══════════════════════════════════════════════════════════════════════════
         // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
@@ -130,6 +135,13 @@ export class TitanOrchestrator {
         // WAVE 255.5: Callback to broadcast fixture states to frontend
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.onBroadcast = null;
+        // ⚡ WAVE 2464: PEAK HOLD — Captura el pico de intensidad del frame skipeado.
+        // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
+        // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado — el canvas
+        // nunca lo ve. Solución: guardar el dimmer máximo visto entre dos broadcasts.
+        // El siguiente broadcast manda el PICO, no el valor actual.
+        // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
+        this.peakHoldMap = new Map(); // fixtureId → peak dimmer (0-255)
         /**
          * WAVE 257: Set callback for sending logs to frontend (Tactical Log)
          */
@@ -148,6 +160,12 @@ export class TitanOrchestrator {
         };
         this.eventRouter = getEventRouter();
         // WAVE 2098: Boot silence
+    }
+    /**
+     * 🔒 WAVE 2490: Set license tier — DJ_FOUNDER silences Hephaestus output
+     */
+    setLicenseTier(tier) {
+        this._licenseTier = tier;
     }
     /**
      * Initialize all TITAN modules
@@ -191,6 +209,8 @@ export class TitanOrchestrator {
                     harshness: levels.harshness ?? this.lastAudioData.harshness,
                     spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
                     spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+                    // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor llega al lastAudioData
+                    crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
                     // Transient detection - WORKER AUTHORITATIVE (detección precisa)
                     kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
                     snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
@@ -294,7 +314,20 @@ export class TitanOrchestrator {
             this.mainLoopInterval = null;
         }
         this.isRunning = false;
-        // WAVE 2098: Boot silence
+        // ═══════════════════════════════════════════════════════════════════
+        // 🧹 WAVE 2227: REACTOR CLEANUP — Purgar estado residual
+        // Sin esto, al re-armar el engine retoma desde la fase congelada:
+        // VMM con acumuladores viejos, Arbiter con ghost positions, BeatDetector
+        // con BPM acumulado. El resultado: saltos de posición al rearmar.
+        // ═══════════════════════════════════════════════════════════════════
+        // Purgar acumuladores de fase del movement engine
+        vibeMovementManager.resetTime();
+        // Purgar caches AI del Arbiter (preserva manual overrides + outputEnabled)
+        masterArbiter.clearTitanState();
+        // Purgar estado acumulado del beat detector
+        if (this.beatDetector) {
+            this.beatDetector.reset();
+        }
     }
     /**
      * Process a single frame of the Brain -> Engine -> HAL pipeline
@@ -512,6 +545,9 @@ export class TitanOrchestrator {
                 harshness: this.smoothedMetrics.harshness,
                 spectralFlatness: this.smoothedMetrics.spectralFlatness,
                 spectralCentroid: this.smoothedMetrics.spectralCentroid,
+                // 💥 WAVE 2352: crestFactor RAW para physics engines - los transitorios de kick NO se suavizan
+                // El EMA destruye el pico que diferencia un bombo de un rolling bass
+                crestFactor: this.lastAudioData.crestFactor ?? this.smoothedMetrics.crestFactor,
                 // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
                 subBass: this.smoothedMetrics.subBass,
                 lowMid: this.smoothedMetrics.lowMid,
@@ -1061,7 +1097,10 @@ export class TitanOrchestrator {
             // ═══════════════════════════════════════════════════════════════════════════
             const hephRuntime = getHephaestusRuntime();
             const hephOutputs = hephRuntime.tick(Date.now());
-            if (hephOutputs.length > 0) {
+            // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
+            // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
+            // The engine runs but its output never reaches fixtures.
+            if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
                 // Group outputs by parameter for efficient processing
                 const hephByZone = new Map();
                 for (const output of hephOutputs) {
@@ -1198,26 +1237,13 @@ export class TitanOrchestrator {
                 this.hal.sendStatesWithPhysics(fixtureStates);
             }
             // ═══════════════════════════════════════════════════════════════════════════
-            // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
-            // The effects processing above can OVERRIDE the arbiter's gate decision.
-            // This is the FINAL FILTER: if output is disabled (ARMED state), 
-            // force ALL fixtures to safe/blackout state for UI visualization too.
-            // This ensures the StageSimulator respects the Gate, not just DMX output.
+            // 🧹 WAVE 2227: VISUAL GATE REMOVED
+            // Previously (WAVE 1133), this block zerified ALL fixtureStates when
+            // outputEnabled=false, killing the HyperionView preview. The DMX gate
+            // already lives in MasterArbiter.arbitrateFixture() — that's the real
+            // enforcement. The UI now receives live engine data for private preview
+            // regardless of the DMX gate state.
             // ═══════════════════════════════════════════════════════════════════════════
-            if (!masterArbiter.isOutputEnabled()) {
-                // ARMED state: Force blackout for UI visualization
-                fixtureStates = fixtureStates.map(f => ({
-                    ...f,
-                    dimmer: 0, // 🚫 No light
-                    r: 0, g: 0, b: 0, // 🖤 Black
-                    pan: 128, // 🎯 Center
-                    tilt: 128, // 🎯 Center
-                }));
-                // Throttled log (every ~5s a 25fps)
-                if (this.frameCount % 125 === 0) {
-                    console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`);
-                }
-            }
             // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
             // ═══════════════════════════════════════════════════════════════════════
             // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 30fps, not 60fps
@@ -1233,6 +1259,16 @@ export class TitanOrchestrator {
             // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
             // Only the UI visualization is throttled.
             // ═══════════════════════════════════════════════════════════════════════
+            // ⚡ WAVE 2464: PEAK HOLD — Acumula el pico entre frames skipeados
+            // Frame skipeado (frameCount % 2 === 1): solo actualiza el mapa de picos
+            // Frame de broadcast (frameCount % 2 === 0): usa el pico acumulado y resetea
+            for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+                const _f = fixtureStates[_pi];
+                const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
+                const _prev = this.peakHoldMap.get(_id) ?? 0;
+                if (_f.dimmer > _prev)
+                    this.peakHoldMap.set(_id, _f.dimmer);
+            }
             if (this.onBroadcast && this.frameCount % 2 === 0) {
                 const currentVibe = this.engine.getCurrentVibe();
                 // Build a valid SeleneTruth structure
@@ -1378,6 +1414,12 @@ export class TitanOrchestrator {
                             // This is critical for runtimeStateMap matching in StageSimulator2
                             const originalFixture = this.fixtures[i];
                             const realId = originalFixture?.id || `fix_${i}`;
+                            // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
+                            // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
+                            // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
+                            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
+                            const broadcastDimmer = Math.max(f.dimmer, peakDimmer);
+                            this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
                             return {
                                 id: realId,
                                 name: f.name,
@@ -1385,8 +1427,8 @@ export class TitanOrchestrator {
                                 zone: mappedZone,
                                 dmxAddress: f.dmxAddress,
                                 universe: f.universe,
-                                dimmer: f.dimmer / 255, // Normalize 0-255 → 0-1
-                                intensity: f.dimmer / 255, // Normalize 0-255 → 0-1
+                                dimmer: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
+                                intensity: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
                                 color: {
                                     r: Math.round(f.r), // Keep 0-255 for RGB
                                     g: Math.round(f.g),
@@ -1475,6 +1517,8 @@ export class TitanOrchestrator {
                 this.trinity.resetPacemaker();
                 console.log(`[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → ${normalizedVibeId}`);
             }
+            // 🌊 WAVE 2432: THE GREAT WIRING — Hot-swap profile on vibe change
+            this.engine.setActiveProfile(normalizedVibeId);
         }
     }
     /**
@@ -1547,6 +1591,26 @@ export class TitanOrchestrator {
         }
         console.log(`[TitanOrchestrator] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`);
         this.log('Brain', `🧬 Consciousness: ${enabled ? 'ACTIVE' : 'STANDBY'}`);
+    }
+    /**
+     * 🌊 WAVE 2401: Set Liquid Stereo mode (7-band per-zone envelopes)
+     */
+    setLiquidStereo(enabled) {
+        if (this.engine) {
+            this.engine.setLiquidStereo(enabled);
+        }
+        console.log(`[TitanOrchestrator] 🌊 Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF'}`);
+        this.log('Physics', `🌊 Liquid Stereo: ${enabled ? '7-BAND' : 'GOD MODE'}`);
+    }
+    /**
+     * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+     */
+    setLiquidLayout(mode) {
+        if (this.engine) {
+            this.engine.setLiquidLayout(mode);
+        }
+        console.log(`[TitanOrchestrator] 🌊 Layout: ${mode}`);
+        this.log('Physics', `🌊 Layout switched to ${mode}`);
     }
     /**
      * 🧬 WAVE 560: Get consciousness state
@@ -1766,7 +1830,12 @@ export class TitanOrchestrator {
             ...f,
             dmxAddress: f.dmxAddress || f.address // Ensure dmxAddress exists regardless of format
         }));
-        // WAVE 380: Fixture ingestion (WAVE 2098: silenced)
+        // 🔥 WAVE 2183: GHOST EXORCISM — Invalidate HAL profile caches on fixture sync
+        // When the Forge renames/edits a profile, reconcileFixturesWithProfile updates the
+        // stageStore, TitanSyncBridge re-sends fixtures here, and HAL must drop its stale cache.
+        if (this.hal) {
+            this.hal.invalidateProfileCache();
+        }
         // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
         // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
         // 🎨 WAVE 1001: Include HAL color flags
@@ -1992,6 +2061,12 @@ export class TitanOrchestrator {
             this.smoothedMetrics.highMid =
                 (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid +
                     this.EMA_ALPHA_FAST * raw.highMid;
+        }
+        // 💥 WAVE 2347: CrestFactor: FAST - los transients de kick son eventos, deben sentirse
+        if (typeof raw.crestFactor === 'number') {
+            this.smoothedMetrics.crestFactor =
+                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.crestFactor +
+                    this.EMA_ALPHA_FAST * raw.crestFactor;
         }
     }
     // ═══════════════════════════════════════════════════════════════════════════

@@ -96,11 +96,12 @@ export function setupPlaybackIPCHandlers(window) {
         }
     });
     // ─── ARBITER OUTPUT FEEDBACK (Backend → Frontend) ───
-    masterArbiter.on('output', (data) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('lux:arbiter:output', data);
-        }
-    });
+    // � WAVE 2236: KILLED — This broadcast was 60fps of pure waste.
+    // Audit (WAVE 2235) confirmed: window.lux.arbiter.onOutput is exposed in
+    // preload.ts but ZERO frontend components ever subscribe to it.
+    // 60 serializations/sec crossing IPC bridge for nothing = ~900KB/s garbage.
+    // Frontend reads fixture physics from selene:truth (via transientStore).
+    // If a future feature needs arbiter output, reactivate with a subscriber check.
     // WAVE 2098: Boot silence
 }
 // ═══════════════════════════════════════════════════════════════════════════

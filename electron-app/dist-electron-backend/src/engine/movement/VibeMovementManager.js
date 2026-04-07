@@ -42,14 +42,14 @@
 const VIBE_CONFIG = {
     // TECHNO: Geometria dura, cortes precisos
     'techno-club': {
-        amplitudeScale: 0.40, // 🔧 WAVE 2213 FÉNIX: 1.0 → 0.40. En 540° Pan, 1.0 = peonza. 0.40 = barrido contenido profesional.
+        amplitudeScale: 0.70, // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.55 → 0.70. ~350° Pan en 540° movers. 7 capas de seguridad + Gearbox protegen.
         baseFrequency: 0.25,
         patterns: ['scan_x', 'square', 'diamond', 'botstep'],
         homeOnSilence: false,
     },
     // LATINO: Curvas, fluidez, caderas
     'fiesta-latina': {
-        amplitudeScale: 0.35, // 🔧 WAVE 2213 FÉNIX: 0.85 → 0.35. Curvas elegantes sin colapso óptico.
+        amplitudeScale: 0.65, // 🔥 WAVE 2472 SANGRE LATINA: 0.35 → 0.65. Las caderas no mienten.
         baseFrequency: 0.15,
         patterns: ['figure8', 'wave_y', 'ballyhoo'],
         homeOnSilence: false,
@@ -61,12 +61,14 @@ const VIBE_CONFIG = {
         patterns: ['circle_big', 'cancan', 'dual_sweep'],
         homeOnSilence: true,
     },
-    // CHILL: Organico, invisible, respiracion
+    // CHILL: Oceánico, casi estático, deriva de medusa
+    // 🌊 WAVE 2470 MODO DERIVA: amplitudeScale 0.50→0.12. Recorrido mínimo.
+    // Los patrones existen, pero apenas son perceptibles. Es poesía en movimiento.
     'chill-lounge': {
-        amplitudeScale: 0.50,
-        baseFrequency: 0.10,
+        amplitudeScale: 0.12,
+        baseFrequency: 0.04,
         patterns: ['drift', 'sway', 'breath'],
-        homeOnSilence: true,
+        homeOnSilence: false, // Flotar eternamente. Nunca volver a casa.
     },
     // IDLE: Minimo
     'idle': {
@@ -90,7 +92,7 @@ const VIBE_CONFIG = {
 // ═══════════════════════════════════════════════════════════════════════════
 const PATTERN_PERIOD = {
     // TECHNO — geometría industrial, pero DELIBERADA
-    scan_x: 16, // 4 compases: barrido majestuoso, no epiléptico
+    scan_x: 8, // 🔧 WAVE 2221: 16→8. 2 compases: barrido rápido, no letárgico
     square: 16, // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
     diamond: 8, // 2 compases: rombo contenido pero fluido
     botstep: 8, // 2 compases: posiciones robóticas con gravitas
@@ -102,10 +104,11 @@ const PATTERN_PERIOD = {
     circle_big: 16, // 4 compases: el rey necesita su corte completa
     cancan: 8, // 2 compases: subida/bajada con drama
     dual_sweep: 16, // 4 compases: barrido en U con peso cinematográfico
-    // CHILL — orgánico, invisible, respiración
-    drift: 32, // 8 compases: browniano con tiempo geológico
-    sway: 16, // 4 compases: péndulo meditativo
-    breath: 16, // 4 compases: la luz inhala... exhala...
+    // CHILL — oceánico, casi estático, tiempo geológico profundo
+    // 🌊 WAVE 2470 MODO DERIVA: períodos x8. Una medusa no tiene prisa.
+    drift: 256, // 64 compases: deriva continental. Un ciclo = ~2 minutos a 120BPM.
+    sway: 128, // 32 compases: la corriente profunda. Apenas perceptible.
+    breath: 96, // 24 compases: la luz respira. Una inspiración = 96 beats.
     // 🎭 WAVE 2086.5: THE FOUR NOBLES
     slow_pan: 32, // 8 compases: el faro del fondo del escenario
     tilt_nod: 16, // 4 compases: cabeceo meditativo
@@ -121,12 +124,15 @@ const STEREO_CONFIG = {
 };
 const PATTERNS = {
     // TECHNO PATTERNS - Industrial / Sharp / Geometria Dura
-    // SCAN_X: Barrido horizontal puro (Coche Fantastico / policia)
+    // SCAN_X: Barrido horizontal con ondulación vertical (Lissajous 1:2 suave)
+    // 🔧 WAVE 2221 MENDOZA: Añadido Y sinusoidal. Sin offset hardcodeado.
+    // La orientación floor/ceiling la gestiona el PhysicsDriver con su preset.
+    // Centro en y=0.0 — el FPD aplica tiltOffset según instalación.
     scan_x: (phase, audio, index = 0, total = 1) => {
         const fixtureOffset = (index / Math.max(total, 1)) * Math.PI * 0.5;
         return {
             x: Math.sin(phase + fixtureOffset),
-            y: 0,
+            y: Math.sin((phase + fixtureOffset) * 2) * 0.45, // WAVE 2224: 0.3→0.45, oscilación vertical más dramática
         };
     },
     // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
@@ -187,9 +193,9 @@ const PATTERNS = {
         const nextStep = (currentStep + 1) % totalSteps;
         const t = normalizedPhase - Math.floor(normalizedPhase);
         const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9;
-        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.6;
+        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.9; // 🔧 WAVE 2221: 0.6→0.9. Tilt agresivo para saltos verticales obvios
         const toX = Math.sin(nextStep * phi * Math.PI) * 0.9;
-        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.6;
+        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.9; // 🔧 WAVE 2221: 0.6→0.9
         return {
             x: fromX + (toX - fromX) * t,
             y: fromY + (toY - fromY) * t,
@@ -359,6 +365,10 @@ export class VibeMovementManager {
         this.phaseAccumulator = 0;
         this.smoothedBPM = 120;
         this.BPM_SMOOTH_FACTOR = 0.05; // Very slow BPM tracking (20 frames to converge)
+        // 🎚️ WAVE 2472: GRANDMASTER SPEED — multiplicador global de la IA
+        // Escala el flujo de fase del motor generativo (0.1 = cámara lenta, 2.0 = doble velocidad)
+        // NO afecta patrones manuales (Layer 2 del Arbiter) — solo Layer 0 (CHOREO)
+        this.globalSpeedMultiplier = 1.0;
         // Manual override system (WAVE 999 compatible)
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
@@ -370,6 +380,14 @@ export class VibeMovementManager {
         this.transitionStartTime = 0;
         this.isTransitioning = false;
         this.TRANSITION_DURATION_MS = 2000; // 2 segundos
+    }
+    // 🎚️ WAVE 2472: GRANDMASTER SPEED API
+    setGlobalSpeedMultiplier(mult) {
+        this.globalSpeedMultiplier = Math.max(0.1, Math.min(2.0, mult));
+        console.log(`[CHOREO] 🎚️ GrandMaster Speed: ×${this.globalSpeedMultiplier.toFixed(2)}`);
+    }
+    getGlobalSpeedMultiplier() {
+        return this.globalSpeedMultiplier;
     }
     // MANUAL OVERRIDE API
     setManualSpeed(speed) {
@@ -488,10 +506,11 @@ export class VibeMovementManager {
             this.smoothedBPM += (safeBPM - this.smoothedBPM) * this.BPM_SMOOTH_FACTOR;
         }
         // Accumulate phase delta using smoothed BPM and frame dt
+        // 🎚️ WAVE 2472: globalSpeedMultiplier scales the AI's time flow
         if (!isSameFrame) {
             const beatsPerSecond = this.smoothedBPM / 60;
             const phasePerBeat = (2 * Math.PI) / patternPeriod; // radians per beat
-            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat;
+            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier;
             this.phaseAccumulator += phaseDelta;
         }
         const phase = this.phaseAccumulator;
@@ -527,9 +546,12 @@ export class VibeMovementManager {
         const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope));
         const finalAmplitude = effectiveAmplitude * clampedEnvelope;
         // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
+        // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
+        // 🔧 WAVE 2233: -0.35 → -0.20. Con amplitudeScale 0.70, -0.35 empujaba tilt contra límite inferior.
+        const tiltOffset = vibeId === 'techno-club' ? -0.20 : 0;
         const position = {
             x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
-            y: Math.max(-1, Math.min(1, rawPosition.y * finalAmplitude)),
+            y: Math.max(-1, Math.min(1, (rawPosition.y * finalAmplitude) + tiltOffset)),
         };
         // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
         // Detectar cambio de patron e iniciar transicion LERP de 2 segundos
@@ -683,11 +705,12 @@ export class VibeMovementManager {
         const requestedTravel = 255 * requestedAmplitude;
         // Factor de reduccion si excede el presupuesto
         const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel);
-        // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Hard floor 0.85
-        // El Gearbox NUNCA debe aplastar la amplitud por debajo del 85%.
-        // Los movers deben INTENTAR el recorrido completo; el PhysicsDriver
-        // ya se encarga de limitar la velocidad real del hardware.
-        const GEARBOX_MIN_AMPLITUDE = 0.85;
+        // 🔧 WAVE 2192: GEARBOX LIBERATION — Floor 0.85 → 0.10
+        // WAVE 2088.7 puso floor en 0.85 para "intentar recorrido completo",
+        // pero eso ANULA cualquier amplitudeScale < 0.85 del preset.
+        // Techno con amplitudeScale=0.40 se forzaba a 0.85 = movimiento gigante.
+        // Floor 0.10 permite que los presets controlen la amplitud real.
+        const GEARBOX_MIN_AMPLITUDE = 0.10;
         const gearboxResult = requestedAmplitude * gearboxFactor;
         return Math.min(1.0, Math.max(GEARBOX_MIN_AMPLITUDE, gearboxResult));
     }

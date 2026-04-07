@@ -143,6 +143,9 @@ export class TitanOrchestrator {
   private vibeSequence: VibeId[] = ['fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge']
   private currentVibeIndex = 0
 
+  // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus gate
+  private _licenseTier: 'DJ_FOUNDER' | 'FULL_SUITE' = 'FULL_SUITE'
+
   // WAVE 254: Control state
   private mode: 'auto' | 'manual' = 'auto'
   private useBrain = true
@@ -249,6 +252,13 @@ export class TitanOrchestrator {
     
     this.eventRouter = getEventRouter()
     // WAVE 2098: Boot silence
+  }
+
+  /**
+   * 🔒 WAVE 2490: Set license tier — DJ_FOUNDER silences Hephaestus output
+   */
+  setLicenseTier(tier: 'DJ_FOUNDER' | 'FULL_SUITE'): void {
+    this._licenseTier = tier
   }
 
   /**
@@ -1297,7 +1307,10 @@ export class TitanOrchestrator {
     const hephRuntime = getHephaestusRuntime()
     const hephOutputs = hephRuntime.tick(Date.now())
     
-    if (hephOutputs.length > 0) {
+    // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
+    // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
+    // The engine runs but its output never reaches fixtures.
+    if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
       // Group outputs by parameter for efficient processing
       const hephByZone = new Map<string, HephFixtureOutput[]>()
       for (const output of hephOutputs) {

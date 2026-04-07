@@ -15,8 +15,13 @@
  *
  * LuxSync V2 - NO HAY VUELTA ATRAS
  */
-import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron';
+import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard } from 'electron';
 import path from 'path';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2489: THE OBSIDIAN VAULT — V8 Bytecode License Validator
+// bytenode registra el handler para .jsc ANTES de cualquier require()
+// ═══════════════════════════════════════════════════════════════════════════
+const bytenode = require('bytenode');
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '../src/core/orchestrator';
 // Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
@@ -37,6 +42,7 @@ import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter';
 import { CompositeDMXDriver } from '../src/hal/drivers/CompositeDMXDriver';
 import { USBDMXDriverAdapter } from '../src/hal/drivers/USBDMXDriverAdapter';
 import { EffectsEngine } from '../src/engine/color/EffectsEngine';
+import { latinoEngine41Telemetry } from '../src/hal/physics';
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { fxtParser } from '../src/core/library/FXTParser';
 // 👻 WAVE 2005.3: Phantom Worker for audio analysis
@@ -52,6 +58,11 @@ let effectsEngine = null;
 let titanOrchestrator = null;
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier state
+// Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
+// ═══════════════════════════════════════════════════════════════════════════
+let currentLicenseTier = 'FULL_SUITE';
 let fixtureLibrary = [];
 let patchedFixtures = [];
 let manualOverrides = new Map();
@@ -195,6 +206,12 @@ function createWindow() {
         if (isDev) {
             mainWindow?.webContents.openDevTools();
         }
+        // F12 abre DevTools en cualquier entorno (sin exponer nada al renderer)
+        mainWindow?.webContents.on('before-input-event', (_, input) => {
+            if (input.type === 'keyDown' && input.key === 'F12') {
+                mainWindow?.webContents.toggleDevTools();
+            }
+        });
         // Broadcast fixtures if loaded
         if (patchedFixtures.length > 0 && mainWindow) {
             mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
@@ -256,6 +273,8 @@ async function initTitan() {
         debug: isDev,
         dmxDriver: compositeDriver
     });
+    // 🔒 WAVE 2490: Inject license tier into TitanOrchestrator
+    titanOrchestrator.setLicenseTier(currentLicenseTier);
     // WAVE 380: Register as singleton so IPC handlers can access the same instance
     registerTitanOrchestrator(titanOrchestrator);
     await titanOrchestrator.init();
@@ -319,6 +338,10 @@ async function initTitan() {
     // Note: Using registerArbiterHandlers from arbiter module (more complete)
     // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
     registerArbiterHandlers(masterArbiter);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier IPC
+    // ═══════════════════════════════════════════════════════════════════════════
+    ipcMain.handle('license:getTier', () => currentLicenseTier);
     // ArtNet event forwarding
     artNetDriver.on('ready', () => {
         mainWindow?.webContents.send('artnet:ready', artNetDriver.getStatus());
@@ -350,7 +373,181 @@ async function initTitan() {
 // APP LIFECYCLE
 // =============================================================================
 app.whenReady().then(async () => {
-    // WAVE 2098: Boot silence — startup banners removed
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 2489 + 2491: THE OBSIDIAN VAULT — Two-Gate License Validation
+    // Si falla, abre la pantalla de activación en lugar de un diálogo nativo.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (!isDev) {
+        const fs = await import('fs');
+        let licenseValidator;
+        let validatorLoadError = false;
+        let fallbackHwId = 'UNKNOWN';
+        // En producción el .jsc está en app.asar.unpacked — bytenode necesita el path real del filesystem
+        const jscPath = app.isPackaged
+            ? path.join(process.resourcesPath, 'app.asar.unpacked', 'dist-electron', 'license', 'LicenseValidator.jsc')
+            : path.join(__dirname, 'license', 'LicenseValidator.jsc');
+        try {
+            licenseValidator = require(jscPath);
+            console.log('[LICENSE] Validator loaded OK');
+        }
+        catch (jscErr) {
+            console.error('[LICENSE] JSC load failed:', jscErr?.message || jscErr, 'Path:', jscPath);
+            try {
+                licenseValidator = require('./license/LicenseValidator.js');
+                console.warn('[LICENSE] Using JS fallback');
+            }
+            catch (jsErr) {
+                console.error('[LICENSE] JS fallback also failed:', jsErr?.message || jsErr);
+                validatorLoadError = true;
+                licenseValidator = null;
+                try {
+                    const os = require('os');
+                    const ifaces = os.networkInterfaces();
+                    for (const name of Object.keys(ifaces)) {
+                        for (const addr of (ifaces[name] || [])) {
+                            if (addr.family === 'IPv4' && !addr.internal && addr.mac !== '00:00:00:00:00:00') {
+                                fallbackHwId = addr.mac.toLowerCase();
+                                break;
+                            }
+                        }
+                        if (fallbackHwId !== 'UNKNOWN')
+                            break;
+                    }
+                }
+                catch { }
+            }
+        }
+        const licensePath = path.join(app.getPath('userData'), 'license', 'license.luxlicense');
+        const licenseDir = path.dirname(licensePath);
+        let result = null;
+        if (validatorLoadError) {
+            result = { valid: false, detectedHwId: fallbackHwId, error: 'VALIDATOR_LOAD_ERROR' };
+        }
+        else {
+            result = licenseValidator.validateLicense(licensePath);
+        }
+        if (!result.valid) {
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🖥️ WAVE 2491: ACTIVATION SCREEN — Beautiful license UI
+            // ═══════════════════════════════════════════════════════════════════════
+            let errorTitle;
+            let errorDetail;
+            if (validatorLoadError) {
+                errorTitle = 'Error crítico de licencia';
+                errorDetail = 'No se pudo cargar el sistema de validación. Reinstala la aplicación o contacta con soporte.';
+            }
+            else if (result.gate1 === false && result.gate2 === true) {
+                errorTitle = 'Hardware no autorizado';
+                errorDetail = 'La licencia no corresponde a este equipo. Copia tu Hardware ID y envíalo a soporte para obtener una licencia actualizada.';
+            }
+            else if (result.gate2 === false && result.error?.includes('GATE2')) {
+                errorTitle = 'Licencia inválida';
+                errorDetail = 'El archivo de licencia no tiene una firma válida. Contacta con soporte para obtener una licencia legítima.';
+            }
+            else if (result.error?.includes('TAMPER')) {
+                errorTitle = 'Integridad comprometida';
+                errorDetail = 'Se detectó una modificación no autorizada. Reinstala la aplicación o contacta con soporte.';
+            }
+            else {
+                errorTitle = 'Licencia no encontrada';
+                errorDetail = 'Carga un archivo .luxlicense válido para activar LuxSync.';
+            }
+            const detectedHwId = result.detectedHwId || fallbackHwId;
+            // ── IPC handlers para la pantalla de activación ──
+            ipcMain.handle('activation:getData', () => ({
+                hwid: detectedHwId,
+                errorTitle,
+                errorDetail,
+            }));
+            ipcMain.handle('activation:copyHwid', () => {
+                clipboard.writeText(detectedHwId);
+            });
+            ipcMain.handle('activation:loadLicense', async () => {
+                const { canceled, filePaths } = await dialog.showOpenDialog({
+                    title: 'Seleccionar archivo de licencia',
+                    filters: [{ name: 'LuxSync License', extensions: ['luxlicense'] }],
+                    properties: ['openFile'],
+                });
+                if (canceled || filePaths.length === 0) {
+                    return { cancelled: true };
+                }
+                const selectedPath = filePaths[0];
+                // Validar el archivo seleccionado
+                if (validatorLoadError) {
+                    return { valid: false, reason: 'El sistema de validación no está disponible.' };
+                }
+                const checkResult = licenseValidator.validateLicense(selectedPath);
+                if (!checkResult.valid) {
+                    let reason = 'Archivo de licencia inválido.';
+                    if (checkResult.gate1 === false)
+                        reason = 'La licencia no corresponde a este hardware.';
+                    else if (checkResult.gate2 === false)
+                        reason = 'La firma de la licencia no es válida.';
+                    return { valid: false, reason };
+                }
+                // Licencia válida — copiar a la ubicación canónica
+                try {
+                    if (!fs.existsSync(licenseDir)) {
+                        fs.mkdirSync(licenseDir, { recursive: true });
+                    }
+                    fs.copyFileSync(selectedPath, licensePath);
+                }
+                catch {
+                    return { valid: false, reason: 'No se pudo copiar la licencia a la carpeta de la aplicación.' };
+                }
+                return {
+                    valid: true,
+                    client: checkResult.client,
+                    tier: checkResult.tier,
+                };
+            });
+            ipcMain.on('activation:restart', () => {
+                app.relaunch();
+                app.exit(0);
+            });
+            ipcMain.on('activation:quit', () => {
+                app.quit();
+            });
+            // ── Crear ventana de activación ──
+            const activationWindow = new BrowserWindow({
+                width: 600,
+                height: 520,
+                frame: false,
+                resizable: false,
+                title: 'LuxSync — Activación',
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    preload: path.join(__dirname, 'license', 'preload-activation.js'),
+                },
+            });
+            activationWindow.loadFile(path.join(__dirname, 'license', 'activation.html'));
+            activationWindow.on('closed', () => {
+                app.quit();
+            });
+            return; // No continuar con el boot normal
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2490: Capture license tier from validation result
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (result.tier === 'DJ_FOUNDER' || result.tier === 'FULL_SUITE') {
+            currentLicenseTier = result.tier;
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔑 OBSIDIAN VAULT: Activation banner — so you know it's real
+        // ═══════════════════════════════════════════════════════════════════════════
+        const tierLabel = currentLicenseTier === 'FULL_SUITE' ? 'FULL SUITE ★' : 'DJ FOUNDER';
+        const tierColor = currentLicenseTier === 'FULL_SUITE' ? '\x1b[36m' : '\x1b[33m';
+        console.log('\x1b[32m');
+        console.log('  ╔══════════════════════════════════════════════╗');
+        console.log('  ║        🔑  OBSIDIAN VAULT — UNLOCKED         ║');
+        console.log('  ╠══════════════════════════════════════════════╣');
+        console.log(`  ║  Cliente : \x1b[97m${String(result.client ?? 'Unknown').padEnd(36)}\x1b[32m║`);
+        console.log(`  ║  Tier    : ${tierColor}${tierLabel.padEnd(36)}\x1b[32m║`);
+        console.log(`  ║  HWID    : \x1b[90m${String(result.hwid ?? '—').padEnd(36)}\x1b[32m║`);
+        console.log('  ╚══════════════════════════════════════════════╝');
+        console.log('\x1b[0m');
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 367: Load preferences (ConfigManagerV2 - NO FIXTURES)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -445,21 +642,55 @@ app.whenReady().then(async () => {
         }
     });
 });
-// Save config before quit
-app.on('before-quit', async () => {
-    configManager.forceSave();
-    if (titanOrchestrator) {
-        titanOrchestrator.stop();
-    }
-    // 👻 WAVE 2005.3: Cleanup Phantom Worker
-    destroyPhantomWorker();
-    await cleanupChronosIPC();
-    cleanupPlaybackIPC();
+// ============================================================================
+// 🧟 WAVE 2493: BRUTE FORCE SHUTDOWN — Dead Man's Switch Protocol
+// process.exit(0) waits for the Node event loop to drain — which NEVER happens
+// when FTDI serial ports or audio streams are still open. app.exit(0) is a
+// synchronous C++ kill that bypasses the event loop entirely.
+//
+// Dead Man's Switch: a 2s failsafe timer fires app.exit(0) unconditionally if
+// the graceful async sequence hangs on any stuck resource.
+// ============================================================================
+let isShuttingDown = false;
+app.on('before-quit', (e) => {
+    if (isShuttingDown)
+        return; // Re-entry guard — second app.quit() call goes through
+    e.preventDefault();
+    isShuttingDown = true;
+    // 💀 DEAD MAN'S SWITCH: if cleanup hangs beyond 2s, Electron kills everything
+    const deadManSwitch = setTimeout(() => {
+        app.exit(0);
+    }, 2000);
+    deadManSwitch.unref(); // Don't let this timer itself keep the event loop alive
+    const shutdown = async () => {
+        // 1. Stop Titan DMX loop: blackout + 30ms FTDI drain (async, must await)
+        if (titanOrchestrator) {
+            try {
+                await titanOrchestrator.stop();
+            }
+            catch { /* non-fatal */ }
+        }
+        // 2. Close ArtNet UDP socket — keeps the Node event loop alive if unclosed
+        try {
+            await artNetDriver.stop();
+        }
+        catch { /* non-fatal */ }
+        // 3. Kill Phantom Worker thread
+        destroyPhantomWorker();
+        // 4. Clean up IPC channels
+        try {
+            await cleanupChronosIPC();
+        }
+        catch { /* non-fatal */ }
+        cleanupPlaybackIPC();
+        // 5. Flush config to disk
+        configManager.forceSave();
+    };
+    // app.exit(0) = synchronous C++ process termination — bypasses Node event loop
+    shutdown().finally(() => app.exit(0));
 });
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    app.quit();
 });
 // Basic IPC handlers that need to stay in main
 ipcMain.handle('app:getVersion', () => app.getVersion());
@@ -504,4 +735,33 @@ ipcMain.handle('audio:getDesktopSources', async () => {
         return [];
     }
 });
+// ── WAVE 2434: TELEMETRY LATINO 4.1 — IPC handlers ──────────────────────────
+// Uso desde DevTools renderer: await window.luxDebug.telemetry.export()
+ipcMain.handle('telemetry:lt41:export', (_event, outputPath) => {
+    try {
+        // Si no se pasa outputPath, calcula la ruta absoluta desde app.getAppPath()
+        // app.getAppPath() en dev = .../electron-app  → sube un nivel al repo raíz
+        const resolvedPath = outputPath ?? path.join(app.getAppPath(), '..', 'docs', 'logs', 'latinocalib41.md');
+        const count = latinoEngine41Telemetry.exportToFile(resolvedPath);
+        return { success: true, framesExported: count, path: resolvedPath };
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[TELEMETRY] exportToFile failed:', msg);
+        return { success: false, error: msg };
+    }
+});
+ipcMain.handle('telemetry:lt41:stop', () => {
+    latinoEngine41Telemetry.setTelemetryEnabled(false);
+    return { success: true };
+});
+ipcMain.handle('telemetry:lt41:start', () => {
+    latinoEngine41Telemetry.setTelemetryEnabled(true);
+    return { success: true };
+});
+ipcMain.handle('telemetry:lt41:flush', () => {
+    latinoEngine41Telemetry.flushBuffer();
+    return { success: true };
+});
+// ─────────────────────────────────────────────────────────────────────────────
 // WAVE 2098: Boot silence — module load log removed

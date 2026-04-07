@@ -1,17 +1,18 @@
 {
   "name": "luxsync-electron",
-  "version": "1.0.0",
+  "version": "0.8.0-beta.1",
   "description": "LuxSync - Tu Nave Espacial de Iluminación",
   "main": "dist-electron/main.js",
   "author": "GestIAdev (Raúl + La Triada)",
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.node.json && vite build && npm run copy:phantom && electron-builder",
+    "build": "tsc -p tsconfig.node.json && vite build && npm run copy:phantom && npm run forge:jsc && electron-builder",
+    "forge:jsc": "node ../scripts/forge-jsc.cjs",
     "copy:phantom": "node -e \"require('fs').copyFileSync('electron/workers/phantomWorker.html', 'dist-electron/phantomWorker.html')\"",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && npm run copy:phantom && electron-builder",
+    "electron:build": "vite build && npm run copy:phantom && npm run forge:jsc && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
@@ -21,6 +22,7 @@
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
     "better-sqlite3": "^12.5.0",
+    "bytenode": "^1.5.6",
     "clsx": "^2.1.0",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.564.0",
@@ -59,7 +61,19 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "node_modules/@serialport/**/*",
+      "node_modules/serialport/**/*",
+      "node_modules/bytenode/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/@serialport/bindings-cpp/**/*",
+      "node_modules/bytenode/**/*",
+      "dist-electron/license/**/*"
     ],
     "extraResources": [
       {
@@ -69,15 +83,15 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.ico"
+      "icon": "build/icon.ico"
     },
     "mac": {
       "target": "dmg",
-      "icon": "public/icon.icns"
+      "icon": "build/icon.icns"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "public/icon.png"
+      "icon": "build/icon.png"
     }
   }
 }

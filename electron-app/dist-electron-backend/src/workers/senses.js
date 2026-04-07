@@ -200,6 +200,8 @@ class SpectrumAnalyzer {
             // 🤖 Texture metrics - GOD EAR native
             harshness: godEarResult.bands.highMid, // Proxy para harshness
             spectralFlatness: godEarResult.spectral.flatness,
+            // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor entra al flujo de datos
+            crestFactor: godEarResult.spectral.crestFactor,
             // 🎭 WAVE 1018: Clarity para PROG ROCK detection
             clarity: godEarResult.spectral.clarity,
             // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER

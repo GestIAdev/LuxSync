@@ -101,6 +101,21 @@ const ROCK_UNIFIED_CONFIG = {
 // ===========================================================================
 // 🎸 ROCK STEREO PHYSICS 2.0 - LOBOTOMIZED
 // ===========================================================================
+/**
+ * @deprecated WAVE 2488 — DT-03: LEGACY PURGE
+ *
+ * Motor predecesor reemplazado por LiquidEngine41/LiquidEngine71 con POPROCK_PROFILE.
+ * El Omniliquid Engine cubre transient detection, subgéneros (metal/acoustic/indie)
+ * y double bass drumming con kickEdgeMinInterval=50ms, todo en 93%+ coverage.
+ *
+ * Ruta de migración:
+ *   new RockStereoPhysics2()  →  new LiquidEngine41(POPROCK_PROFILE).applyBands()
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: SeleneLux.ts (pendiente de migración al Omniliquid Engine).
+ * @see LiquidEngine41
+ * @see POPROCK_PROFILE
+ */
 export class RockStereoPhysics2 {
     constructor() {
         // Estado interno de intensidades (con smoothing propio)

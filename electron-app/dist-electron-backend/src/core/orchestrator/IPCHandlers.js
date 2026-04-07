@@ -4,19 +4,19 @@
  * Centraliza todos los handlers IPC.
  * Recibe dependencias directamente desde main.ts V2.
  *
- * ⚒️ WAVE 2030.4: Hephaestus integration for curve automation
+ * âš’ï¸ WAVE 2030.4: Hephaestus integration for curve automation
  *
  * @module IPCHandlers
  */
 import { ipcMain } from 'electron';
 import { deserializeHephClip } from '../hephaestus/types';
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
-// 📡 WAVE 2048: Art-Net Network Discovery
+// ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
-// ⚒️ WAVE 2030.18: Singleton runtime for .lfx execution
+// âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime = null;
 /**
- * ⚒️ WAVE 2030.18: Get or create the HephaestusRuntime singleton
+ * âš’ï¸ WAVE 2030.18: Get or create the HephaestusRuntime singleton
  * Exported for use by TitanOrchestrator in processFrame()
  */
 export function getHephaestusRuntime() {
@@ -24,6 +24,21 @@ export function getHephaestusRuntime() {
         hephaestusRuntime = new HephaestusRuntime();
     }
     return hephaestusRuntime;
+}
+/**
+ * ðŸ›¡ï¸ WAVE 2234: Guard against "Render frame was disposed" crashes.
+ * webContents.send() can throw if the renderer is destroyed between
+ * the isDestroyed() check and the actual send (race condition at 60fps).
+ */
+function safeWebSend(win, channel, ...args) {
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed())
+        return;
+    try {
+        win.webContents.send(channel, ...args);
+    }
+    catch {
+        // Renderer disposed mid-flight during reload â€” not a critical error
+    }
 }
 /**
  * Registra todos los handlers IPC
@@ -78,7 +93,7 @@ function setupSeleneLuxHandlers(deps) {
         }
         return { success: true };
     });
-    // 🧬 WAVE 560: Separated consciousness toggle (Layer 1 only - NO BLACKOUT!)
+    // ðŸ§¬ WAVE 560: Separated consciousness toggle (Layer 1 only - NO BLACKOUT!)
     ipcMain.handle('lux:setConsciousness', (_event, enabled) => {
         console.log('[IPC] lux:setConsciousness:', enabled);
         if (titanOrchestrator) {
@@ -86,9 +101,25 @@ function setupSeleneLuxHandlers(deps) {
         }
         return { success: true };
     });
+    // 🌊 WAVE 2401: Liquid Stereo toggle (7-band per-zone envelopes)
+    ipcMain.handle('lux:setLiquidStereo', (_event, enabled) => {
+        console.log('[IPC] lux:setLiquidStereo:', enabled);
+        if (titanOrchestrator) {
+            titanOrchestrator.setLiquidStereo(enabled);
+        }
+        return { success: true };
+    });
+    // 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+    ipcMain.handle('lux:setLiquidLayout', (_event, mode) => {
+        console.log('[IPC] lux:setLiquidLayout:', mode);
+        if (titanOrchestrator && (mode === '4.1' || mode === '7.1')) {
+            titanOrchestrator.setLiquidLayout(mode);
+        }
+        return { success: true };
+    });
     // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
     ipcMain.handle('lux:forceStrike', (_event, config) => {
-        console.log('[IPC] 🧨 lux:forceStrike:', config);
+        console.log('[IPC] ðŸ§¨ lux:forceStrike:', config);
         if (titanOrchestrator) {
             titanOrchestrator.forceStrikeNextFrame(config);
         }
@@ -109,52 +140,52 @@ function setupSeleneLuxHandlers(deps) {
         }
         return { success: true };
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2019: THE PULSE - Chronos Timeline → Stage Commands
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸŽ¯ WAVE 2019: THE PULSE - Chronos Timeline â†’ Stage Commands
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     /**
-     * 🎭 chronos:setVibe
+     * ðŸŽ­ chronos:setVibe
      * Called from ChronosIPCBridge when a vibe-change clip is reached.
      * Same as lux:setVibe but with Chronos-specific logging.
      *
-     * 🎨 WAVE 2019.6: Also forces palette sync to match new Vibe color
+     * ðŸŽ¨ WAVE 2019.6: Also forces palette sync to match new Vibe color
      */
     ipcMain.handle('chronos:setVibe', (_event, vibeId) => {
-        console.log('[Chronos→Stage] 🎭 VIBE CHANGE:', vibeId);
+        console.log('[Chronosâ†’Stage] ðŸŽ­ VIBE CHANGE:', vibeId);
         if (titanOrchestrator) {
-            // 🔍 WAVE 2019.8: Log engine state before
+            // ðŸ” WAVE 2019.8: Log engine state before
             const engine = titanOrchestrator.engine;
             const beforeVibe = engine?.getCurrentVibe?.() || 'unknown';
-            console.log(`[Chronos→Stage] 🔍 Before: engine.vibeManager=${beforeVibe}`);
-            // 1. Cambiar la Vibe lógica (Movimiento/Comportamiento)
+            console.log(`[Chronosâ†’Stage] ðŸ” Before: engine.vibeManager=${beforeVibe}`);
+            // 1. Cambiar la Vibe lÃ³gica (Movimiento/Comportamiento)
             titanOrchestrator.setVibe(vibeId);
-            // 🔍 WAVE 2019.8: Confirm change
+            // ðŸ” WAVE 2019.8: Confirm change
             const afterVibe = engine?.getCurrentVibe?.() || 'unknown';
-            console.log(`[Chronos→Stage] 🔍 After: engine.vibeManager=${afterVibe}`);
-            // 2. 🎨 WAVE 2019.6: Forzar sincronización de paleta
+            console.log(`[Chronosâ†’Stage] ðŸ” After: engine.vibeManager=${afterVibe}`);
+            // 2. ðŸŽ¨ WAVE 2019.6: Forzar sincronizaciÃ³n de paleta
             titanOrchestrator.forcePaletteSync();
-            console.log('[Chronos→Stage] 🎨 Palette synced to new vibe');
+            console.log('[Chronosâ†’Stage] ðŸŽ¨ Palette synced to new vibe');
         }
         else {
-            console.error('[Chronos→Stage] ❌ titanOrchestrator is NULL!');
+            console.error('[Chronosâ†’Stage] âŒ titanOrchestrator is NULL!');
         }
         return { success: true };
     });
     /**
-     * 🧨 chronos:triggerFX
+     * ðŸ§¨ chronos:triggerFX
      * Called from ChronosIPCBridge when an FX clip starts.
      * Maps to forceStrikeNextFrame with the effect from FXMapper.
-     * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
-     * ⚒️ WAVE 2030.4: Forwards hephCurves to EffectManager for curve automation
-     * ⚒️ WAVE 2040.22: Heph Diamond clips bypass EffectManager → go to Runtime
+     * ðŸ§  WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
+     * âš’ï¸ WAVE 2030.4: Forwards hephCurves to EffectManager for curve automation
+     * âš’ï¸ WAVE 2040.22: Heph Diamond clips bypass EffectManager â†’ go to Runtime
      */
     ipcMain.handle('chronos:triggerFX', (_event, config) => {
-        // ⚒️ WAVE 2030.4: Deserialize hephCurves if present (Record → Map)
+        // âš’ï¸ WAVE 2030.4: Deserialize hephCurves if present (Record â†’ Map)
         const hephClip = config.hephCurves ? deserializeHephClip(config.hephCurves) : undefined;
-        const hephTag = hephClip ? ` ⚒️[HEPH: ${hephClip.curves.size} curves]` : '';
-        console.log(`[Chronos→Stage] 🧨 FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`);
-        // ⚒️ WAVE 2040.22: DIAMOND PATH — Heph custom clips bypass EffectManager entirely.
-        // EffectManager has no factory for 'heph-custom' (and shouldn't — it's not a Core FX).
+        const hephTag = hephClip ? ` âš’ï¸[HEPH: ${hephClip.curves.size} curves]` : '';
+        console.log(`[Chronosâ†’Stage] ðŸ§¨ FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`);
+        // âš’ï¸ WAVE 2040.22: DIAMOND PATH â€” Heph custom clips bypass EffectManager entirely.
+        // EffectManager has no factory for 'heph-custom' (and shouldn't â€” it's not a Core FX).
         // Instead, we feed the deserialized curves directly to HephaestusRuntime.
         if (config.effectId === 'heph-custom' && hephClip) {
             const runtime = getHephaestusRuntime();
@@ -163,47 +194,47 @@ function setupSeleneLuxHandlers(deps) {
                 durationOverrideMs: config.durationMs,
                 loop: false,
             });
-            console.log(`[Chronos→Stage] ⚒️💎 DIAMOND RUNTIME: ${instanceId} (${hephClip.curves.size} curves)`);
+            console.log(`[Chronosâ†’Stage] âš’ï¸ðŸ’Ž DIAMOND RUNTIME: ${instanceId} (${hephClip.curves.size} curves)`);
             return { success: true, instanceId };
         }
         if (titanOrchestrator) {
             titanOrchestrator.forceStrikeNextFrame({
                 effect: config.effectId,
                 intensity: config.intensity,
-                source: 'chronos', // 🧠 WAVE 2019.3: Bypass Shield for timeline-triggered effects
-                hephCurves: hephClip, // ⚒️ WAVE 2030.4: Pass deserialized curves
+                source: 'chronos', // ðŸ§  WAVE 2019.3: Bypass Shield for timeline-triggered effects
+                hephCurves: hephClip, // âš’ï¸ WAVE 2030.4: Pass deserialized curves
             });
         }
         return { success: true };
     });
     /**
-     * ⚒️ chronos:triggerHeph (WAVE 2030.18)
+     * âš’ï¸ chronos:triggerHeph (WAVE 2030.18)
      * Called from ChronosIPCBridge when a CUSTOM Hephaestus .lfx clip starts.
      * Bypasses FXMapper entirely - uses HephaestusRuntime for dynamic execution.
      *
      * This is THE RUNTIME - evaluates Bezier curves at 60fps for user-created effects.
      */
     ipcMain.handle('chronos:triggerHeph', (_event, config) => {
-        console.log(`[Chronos→Stage] ⚒️ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`);
-        // 🔍 DEBUG: Check file before loading
+        console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`);
+        // ðŸ” DEBUG: Check file before loading
         const fs = require('fs');
         if (!fs.existsSync(config.filePath)) {
-            console.error(`[Chronos→Stage] ⚒️ HEPH FILE NOT FOUND: ${config.filePath}`);
+            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE NOT FOUND: ${config.filePath}`);
             return { success: false, error: 'File not found' };
         }
         const stats = fs.statSync(config.filePath);
-        console.log(`[Chronos→Stage] ⚒️ HEPH FILE SIZE: ${stats.size} bytes`);
+        console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE SIZE: ${stats.size} bytes`);
         if (stats.size === 0) {
-            console.error(`[Chronos→Stage] ⚒️ HEPH FILE EMPTY: ${config.filePath}`);
+            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE EMPTY: ${config.filePath}`);
             return { success: false, error: 'Empty file' };
         }
         // Try to read raw content
         try {
             const content = fs.readFileSync(config.filePath, 'utf-8');
-            console.log(`[Chronos→Stage] ⚒️ HEPH FILE PREVIEW: ${content.substring(0, 200)}...`);
+            console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE PREVIEW: ${content.substring(0, 200)}...`);
         }
         catch (readErr) {
-            console.error(`[Chronos→Stage] ⚒️ HEPH READ ERROR:`, readErr);
+            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH READ ERROR:`, readErr);
         }
         const runtime = getHephaestusRuntime();
         const instanceId = runtime.play(config.filePath, {
@@ -212,33 +243,33 @@ function setupSeleneLuxHandlers(deps) {
             loop: config.loop ?? false,
         });
         if (instanceId) {
-            console.log(`[Chronos→Stage] ⚒️ HEPH PLAYING: ${instanceId}`);
+            console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH PLAYING: ${instanceId}`);
             return { success: true, instanceId };
         }
         else {
-            console.error(`[Chronos→Stage] ⚒️ HEPH FAILED: Could not load ${config.filePath}`);
+            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FAILED: Could not load ${config.filePath}`);
             return { success: false, error: 'Failed to load .lfx file' };
         }
     });
     /**
-     * ⚒️ chronos:stopHeph (WAVE 2030.18)
+     * âš’ï¸ chronos:stopHeph (WAVE 2030.18)
      * Stop a specific Hephaestus runtime instance or all instances.
      */
     ipcMain.handle('chronos:stopHeph', (_event, instanceId) => {
         const runtime = getHephaestusRuntime();
         if (instanceId) {
             const stopped = runtime.stop(instanceId);
-            console.log(`[Chronos→Stage] ⚒️ HEPH STOP: ${instanceId} (${stopped ? 'OK' : 'not found'})`);
+            console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH STOP: ${instanceId} (${stopped ? 'OK' : 'not found'})`);
             return { success: stopped };
         }
         else {
             runtime.stopAll();
-            console.log('[Chronos→Stage] ⚒️ HEPH STOP ALL');
+            console.log('[Chronosâ†’Stage] âš’ï¸ HEPH STOP ALL');
             return { success: true };
         }
     });
     /**
-     * ⚒️ chronos:tickHeph (WAVE 2030.18)
+     * âš’ï¸ chronos:tickHeph (WAVE 2030.18)
      * Called from render loop to evaluate all active Hephaestus clips.
      * Returns output values to be merged with main DMX output.
      */
@@ -248,36 +279,31 @@ function setupSeleneLuxHandlers(deps) {
         return { success: true, outputs };
     });
     /**
-     * 🛑 chronos:stopFX
+     * ðŸ›‘ chronos:stopFX
      * Called from ChronosIPCBridge when an FX clip ends.
-     * ⚒️ WAVE 2040.22: Heph Diamond clips → stop all Runtime instances
+     * âš’ï¸ WAVE 2040.22: Heph Diamond clips â†’ stop all Runtime instances
      * Standard FX: Currently auto-expire (placeholder for future cancel)
      */
     ipcMain.handle('chronos:stopFX', (_event, effectId) => {
-        console.log('[Chronos→Stage] 🛑 FX STOP:', effectId);
-        // ⚒️ WAVE 2040.22: Heph clips need explicit Runtime stop
+        console.log('[Chronosâ†’Stage] ðŸ›‘ FX STOP:', effectId);
+        // âš’ï¸ WAVE 2040.22: Heph clips need explicit Runtime stop
         if (effectId === 'heph-custom') {
             const runtime = getHephaestusRuntime();
             runtime.stopAll();
-            console.log('[Chronos→Stage] ⚒️💎 HEPH DIAMOND: all instances stopped');
+            console.log('[Chronosâ†’Stage] âš’ï¸ðŸ’Ž HEPH DIAMOND: all instances stopped');
             return { success: true };
         }
         // Future implementation: titanOrchestrator.cancelEffect(effectId)
         return { success: true };
     });
-    // 🎭 WAVE 700.5.4: MOOD CONTROL
+    // ðŸŽ­ WAVE 700.5.4: MOOD CONTROL
     ipcMain.handle('lux:setMood', (_event, moodId) => {
-        console.log('[IPC] 🎭 lux:setMood:', moodId);
+        console.log('[IPC] ðŸŽ­ lux:setMood:', moodId);
         if (titanOrchestrator) {
             titanOrchestrator.setMood(moodId);
             // Notify all frontends
             const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('lux:mood-changed', {
-                    moodId,
-                    timestamp: Date.now()
-                });
-            }
+            safeWebSend(mainWindow, 'lux:mood-changed', { moodId, timestamp: Date.now() });
         }
         return { success: true, moodId };
     });
@@ -326,30 +352,30 @@ function setupSeleneLuxHandlers(deps) {
         return true;
     });
     // =========================================================================
-    // WAVE 250: NERVE SPLICING - Canales kebab-case estándar
+    // WAVE 250: NERVE SPLICING - Canales kebab-case estÃ¡ndar
     // WAVE 252: SILENCE - Logs eliminados para reducir spam
     // WAVE 254: Migrado a TitanOrchestrator
     // =========================================================================
-    // Audio frame (kebab-case - lo que envía preload.ts)
+    // Audio frame (kebab-case - lo que envÃ­a preload.ts)
     ipcMain.handle('lux:audio-frame', (_event, data) => {
         if (titanOrchestrator) {
             titanOrchestrator.processAudioFrame(data);
         }
         return { success: true };
     });
-    // 🩸 WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT
-    // 🔥 WAVE 264.8: Cambiado de handle() a on() para FIRE-AND-FORGET
+    // ðŸ©¸ WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT
+    // ðŸ”¥ WAVE 264.8: Cambiado de handle() a on() para FIRE-AND-FORGET
     // handle() requiere devolver una Promise y crea backpressure a 60fps
     // on() es unidireccional - procesa sin esperar respuesta
     let audioBufferCallCount = 0;
     let lastLogTime = Date.now();
     ipcMain.on('lux:audio-buffer', (_event, buffer) => {
         audioBufferCallCount++;
-        // 🔍 WAVE 264.7: Log AGRESIVO cada 2 segundos (basado en tiempo, no frames)
+        // ðŸ” WAVE 264.7: Log AGRESIVO cada 2 segundos (basado en tiempo, no frames)
         const now = Date.now();
         if (now - lastLogTime >= 2000) {
             const titanState = titanOrchestrator?.getState();
-            console.log(`[IPC 📡] audioBuffer #${audioBufferCallCount} | ` +
+            console.log(`[IPC ðŸ“¡] audioBuffer #${audioBufferCallCount} | ` +
                 `titan.running=${titanState?.isRunning ?? 'null'} | ` +
                 `size=${buffer?.byteLength || 0}`);
             lastLogTime = now;
@@ -359,12 +385,12 @@ function setupSeleneLuxHandlers(deps) {
             titanOrchestrator.processAudioBuffer(float32);
         }
         else if (!titanOrchestrator) {
-            console.warn('[IPC ⚠️] audioBuffer: titanOrchestrator is null!');
+            console.warn('[IPC âš ï¸] audioBuffer: titanOrchestrator is null!');
         }
         else if (!buffer) {
-            console.warn('[IPC ⚠️] audioBuffer: buffer is null!');
+            console.warn('[IPC âš ï¸] audioBuffer: buffer is null!');
         }
-        // 🔥 WAVE 264.8: NO return - fire-and-forget
+        // ðŸ”¥ WAVE 264.8: NO return - fire-and-forget
     });
     // Get current vibe
     ipcMain.handle('lux:get-vibe', async () => {
@@ -525,10 +551,7 @@ function setupFixtureHandlers(deps) {
         };
         patchedFixtures.push(patched);
         configManager.updateConfig({ patchedFixtures });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-        }
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', patchedFixtures);
         return { success: true, fixture: patched };
     });
     ipcMain.handle('fixtures:removeFromPatch', (_event, fixtureId) => {
@@ -538,10 +561,7 @@ function setupFixtureHandlers(deps) {
             patchedFixtures.splice(index, 1);
             recalculateZoneCounters();
             configManager.updateConfig({ patchedFixtures });
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-            }
+            safeWebSend(getMainWindow(), 'lux:fixtures-loaded', patchedFixtures);
             return { success: true };
         }
         return { success: false, error: 'Fixture not found' };
@@ -550,10 +570,7 @@ function setupFixtureHandlers(deps) {
         setPatchedFixtures([]);
         resetZoneCounters();
         configManager.updateConfig({ patchedFixtures: [] });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', []);
-        }
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', []);
         return { success: true };
     });
     ipcMain.handle('fixtures:updateAddress', (_event, fixtureId, dmxAddress, universe) => {
@@ -567,12 +584,12 @@ function setupFixtureHandlers(deps) {
         }
         return { success: false, error: 'Fixture not found' };
     });
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // WAVE 256: LUX ALIASES - Handlers con prefijo lux: para compatibilidad
     // El preload.ts usa lux:* pero los handlers originales son fixtures:*
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔍 WAVE 255.5: Scan fixtures - alias para fixtures:scanLibrary
-    // Si no se pasa path, retorna la librería ya cargada (desde main.ts WAVE 255)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ” WAVE 255.5: Scan fixtures - alias para fixtures:scanLibrary
+    // Si no se pasa path, retorna la librerÃ­a ya cargada (desde main.ts WAVE 255)
     ipcMain.handle('lux:scan-fixtures', async (_event, customPath) => {
         try {
             // If no custom path, just return the already-loaded library
@@ -599,10 +616,10 @@ function setupFixtureHandlers(deps) {
     ipcMain.handle('lux:get-fixture-library', () => {
         return { success: true, fixtures: getFixtureLibrary() };
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 384: GET FIXTURE DEFINITION - Returns FULL fixture data with channels
-    // This is the missing link that caused "fixtures nacen genéricos"
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ”¥ WAVE 384: GET FIXTURE DEFINITION - Returns FULL fixture data with channels
+    // This is the missing link that caused "fixtures nacen genÃ©ricos"
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     ipcMain.handle('lux:getFixtureDefinition', (_event, profileId) => {
         try {
             const library = getFixtureLibrary();
@@ -613,7 +630,7 @@ function setupFixtureHandlers(deps) {
             }
             // Return the COMPLETE fixture definition from library
             // This includes channels[], capabilities, hasMovementChannels, etc.
-            console.log(`[IPC] 🔥 lux:getFixtureDefinition: Returning "${definition.name}" (${definition.channelCount}ch, type: ${definition.type}, motor: ${definition.physics?.motorType || 'none'})`);
+            console.log(`[IPC] ðŸ”¥ lux:getFixtureDefinition: Returning "${definition.name}" (${definition.channelCount}ch, type: ${definition.type}, motor: ${definition.physics?.motorType || 'none'})`);
             return {
                 success: true,
                 definition: {
@@ -624,9 +641,9 @@ function setupFixtureHandlers(deps) {
                     channelCount: definition.channelCount,
                     channels: definition.channels || [],
                     filePath: definition.filePath,
-                    // 🔥 WAVE 1042.1: INCLUDE PHYSICS!
+                    // ðŸ”¥ WAVE 1042.1: INCLUDE PHYSICS!
                     physics: definition.physics || null,
-                    // 🔥 WAVE 1042.1: FULL CAPABILITIES including colorEngine and colorWheel
+                    // ðŸ”¥ WAVE 1042.1: FULL CAPABILITIES including colorEngine and colorWheel
                     capabilities: definition.capabilities || null,
                     // Legacy flat capabilities flags (for backward compat)
                     hasMovementChannels: definition.hasMovementChannels || false,
@@ -659,10 +676,7 @@ function setupFixtureHandlers(deps) {
         };
         patchedFixtures.push(patched);
         configManager.updateConfig({ patchedFixtures });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-        }
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', patchedFixtures);
         return { success: true, fixture: patched };
     });
     ipcMain.handle('lux:unpatch-fixture', (_event, dmxAddress) => {
@@ -672,15 +686,12 @@ function setupFixtureHandlers(deps) {
             patchedFixtures.splice(index, 1);
             recalculateZoneCounters();
             configManager.updateConfig({ patchedFixtures });
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-            }
+            safeWebSend(getMainWindow(), 'lux:fixtures-loaded', patchedFixtures);
             return { success: true };
         }
         return { success: false, error: 'Fixture not found at that address' };
     });
-    // ✏️ WAVE 256: Editar fixture patcheado - ALL fields
+    // âœï¸ WAVE 256: Editar fixture patcheado - ALL fields
     ipcMain.handle('lux:edit-fixture', (_event, data) => {
         const patchedFixtures = getPatchedFixtures();
         const fixture = patchedFixtures.find((f) => f.dmxAddress === data.originalDmxAddress);
@@ -715,21 +726,15 @@ function setupFixtureHandlers(deps) {
         // Recalculate and save
         recalculateZoneCounters();
         configManager.updateConfig({ patchedFixtures });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-        }
-        console.log(`✏️ [IPCHandlers] Fixture edited: ${fixture.name} @ DMX ${data.newDmxAddress}`);
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', patchedFixtures);
+        console.log(`âœï¸ [IPCHandlers] Fixture edited: ${fixture.name} @ DMX ${data.newDmxAddress}`);
         return { success: true, fixture };
     });
     ipcMain.handle('lux:clear-patch', () => {
         setPatchedFixtures([]);
         resetZoneCounters();
         configManager.updateConfig({ patchedFixtures: [] });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', []);
-        }
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', []);
         return { success: true };
     });
     ipcMain.handle('lux:force-fixture-type', (_event, dmxAddress, newType) => {
@@ -752,10 +757,7 @@ function setupFixtureHandlers(deps) {
         setPatchedFixtures([]);
         resetZoneCounters();
         configManager.updateConfig({ patchedFixtures: [] });
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', []);
-        }
+        safeWebSend(getMainWindow(), 'lux:fixtures-loaded', []);
         console.log('[IPC] New show created - patch cleared');
         return { success: true };
     });
@@ -770,46 +772,54 @@ function setupFixtureHandlers(deps) {
             }
             // WAVE 388 EXT: Sanitize filename
             const safeName = (definition.name || 'custom')
-                .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
+                .replace(/[^a-z0-9Ã¡Ã©Ã­Ã³ÃºÃ±Ã¼\s-]/gi, '')
                 .replace(/\s+/g, '_')
                 .substring(0, 50);
             const fileName = `${safeName}.json`;
             const filePath = path.join(libraryPath, fileName);
             // WAVE 388 EXT: Pretty print with 2 spaces
             fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8');
-            console.log(`[IPC] ✅ Saved fixture definition: ${filePath}`);
+            console.log(`[IPC] âœ… Saved fixture definition: ${filePath}`);
             // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
             try {
                 const updatedLibrary = await rescanAllLibraries();
-                console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures (factory + custom merged)`);
+                console.log(`[IPC] ðŸ”„ WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures (factory + custom merged)`);
             }
             catch (rescanErr) {
-                console.warn('[IPC] ⚠️ Failed to rescan libraries after save:', rescanErr);
+                console.warn('[IPC] âš ï¸ Failed to rescan libraries after save:', rescanErr);
             }
             // WAVE 388 EXT: Return BOTH path and filePath for compatibility
             return { success: true, path: filePath, filePath };
         }
         catch (err) {
-            console.error('[IPC] ❌ Failed to save fixture definition:', err);
+            console.error('[IPC] âŒ Failed to save fixture definition:', err);
             return { success: false, error: String(err) };
         }
     });
     // WAVE 388 EXT: Delete fixture definition from library
     // WAVE 389: Rescan library after delete to invalidate cache
+    // WAVE 2185: Accept paths from BOTH factory and custom library folders
     // Accepts either full filePath or fixture name to search
     ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier) => {
         try {
             const fs = await import('fs');
             const path = await import('path');
-            const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : '';
-            if (!libraryPath) {
-                return { success: false, error: 'Library path not configured' };
+            const customPath = getCustomLibPath();
+            const factoryPath = getFactoryLibPath();
+            if (!customPath && !factoryPath) {
+                return { success: false, error: 'Library paths not configured' };
             }
             let fileToDelete = null;
             // WAVE 388.7: Check if identifier is already a full path
             if (identifier.includes(path.sep) && fs.existsSync(identifier)) {
-                // It's a full path - verify it's inside library folder
-                if (identifier.startsWith(libraryPath)) {
+                // It's a full path â€” verify it's inside EITHER library folder
+                // ðŸ”¥ WAVE 2185: The old code only checked customPath (via fxtParser.getLibraryPath()),
+                // so factory fixtures with paths like "C:\...\librerias\user-xxx.json" were rejected
+                // with "File path outside library folder" â€” even though they ARE library files.
+                const normalizedId = path.normalize(identifier);
+                const isInCustom = customPath && normalizedId.startsWith(path.normalize(customPath));
+                const isInFactory = factoryPath && normalizedId.startsWith(path.normalize(factoryPath));
+                if (isInCustom || isInFactory) {
                     fileToDelete = identifier;
                 }
                 else {
@@ -817,28 +827,35 @@ function setupFixtureHandlers(deps) {
                 }
             }
             else {
-                // Search by scanning the library
-                const files = fs.readdirSync(libraryPath);
-                for (const file of files) {
-                    if (!file.endsWith('.json'))
+                // Search by scanning BOTH library folders
+                const searchFolders = [customPath, factoryPath].filter(Boolean);
+                for (const folder of searchFolders) {
+                    if (!fs.existsSync(folder))
                         continue;
-                    const filePath = path.join(libraryPath, file);
-                    try {
-                        const content = fs.readFileSync(filePath, 'utf-8');
-                        const fixture = JSON.parse(content);
-                        // Match by id OR by name OR by filename
-                        if (fixture.id === identifier ||
-                            fixture.name === identifier ||
-                            file === identifier ||
-                            file === `${identifier}.json`) {
-                            fileToDelete = filePath;
-                            break;
+                    const files = fs.readdirSync(folder);
+                    for (const file of files) {
+                        if (!file.endsWith('.json'))
+                            continue;
+                        const filePath = path.join(folder, file);
+                        try {
+                            const content = fs.readFileSync(filePath, 'utf-8');
+                            const fixture = JSON.parse(content);
+                            // Match by id OR by name OR by filename
+                            if (fixture.id === identifier ||
+                                fixture.name === identifier ||
+                                file === identifier ||
+                                file === `${identifier}.json`) {
+                                fileToDelete = filePath;
+                                break;
+                            }
+                        }
+                        catch (parseErr) {
+                            // Skip files that can't be parsed
+                            continue;
                         }
                     }
-                    catch (parseErr) {
-                        // Skip files that can't be parsed
-                        continue;
-                    }
+                    if (fileToDelete)
+                        break;
                 }
             }
             if (!fileToDelete) {
@@ -846,26 +863,26 @@ function setupFixtureHandlers(deps) {
             }
             // Delete the file
             fs.unlinkSync(fileToDelete);
-            console.log(`[IPC] 🗑️ Deleted fixture: ${fileToDelete}`);
+            console.log(`[IPC] ðŸ—‘ï¸ Deleted fixture: ${fileToDelete}`);
             // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
             try {
                 const updatedLibrary = await rescanAllLibraries();
-                console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures remain (factory + custom merged)`);
+                console.log(`[IPC] ðŸ”„ WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures remain (factory + custom merged)`);
             }
             catch (rescanErr) {
-                console.warn('[IPC] ⚠️ Failed to rescan libraries after delete:', rescanErr);
+                console.warn('[IPC] âš ï¸ Failed to rescan libraries after delete:', rescanErr);
             }
             return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
-            console.error('[IPC] ❌ Failed to delete fixture:', err);
+            console.error('[IPC] âŒ Failed to delete fixture:', err);
             return { success: false, error: String(err) };
         }
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔌 WAVE 1113: LIBRARY UNIFIED API - Real FileSystem, No localStorage
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ”Œ WAVE 1113: LIBRARY UNIFIED API - Real FileSystem, No localStorage
     // Single Source of Truth for Forge + StageConstructor
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     /**
      * List ALL fixtures from both sources:
      * - System (factory): Read-only, from /librerias (resolved by PATHFINDER in main.ts)
@@ -880,8 +897,8 @@ function setupFixtureHandlers(deps) {
             // WAVE 1115 FIX: Get paths from main.ts (resolved by PATHFINDER)
             const factoryPath = getFactoryLibPath();
             const userPath = getCustomLibPath();
-            console.log(`[Library IPC] 📂 Factory path: ${factoryPath}`);
-            console.log(`[Library IPC] 📂 User path: ${userPath}`);
+            console.log(`[Library IPC] ðŸ“‚ Factory path: ${factoryPath}`);
+            console.log(`[Library IPC] ðŸ“‚ User path: ${userPath}`);
             // Ensure user path exists
             if (!fs.existsSync(userPath)) {
                 fs.mkdirSync(userPath, { recursive: true });
@@ -903,7 +920,7 @@ function setupFixtureHandlers(deps) {
                             });
                         }
                         catch (e) {
-                            console.warn(`[Library] ⚠️ Failed to parse factory fixture: ${file}`);
+                            console.warn(`[Library] âš ï¸ Failed to parse factory fixture: ${file}`);
                         }
                     }
                     else if (file.endsWith('.fxt')) {
@@ -920,7 +937,7 @@ function setupFixtureHandlers(deps) {
                 }
             }
             else {
-                console.warn(`[Library IPC] ⚠️ Factory path does not exist: ${factoryPath}`);
+                console.warn(`[Library IPC] âš ï¸ Factory path does not exist: ${factoryPath}`);
             }
             // Scan user library
             if (fs.existsSync(userPath)) {
@@ -937,12 +954,12 @@ function setupFixtureHandlers(deps) {
                             });
                         }
                         catch (e) {
-                            console.warn(`[Library] ⚠️ Failed to parse user fixture: ${file}`);
+                            console.warn(`[Library] âš ï¸ Failed to parse user fixture: ${file}`);
                         }
                     }
                 }
             }
-            console.log(`[Library IPC] ✅ Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`);
+            console.log(`[Library IPC] âœ… Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`);
             return {
                 success: true,
                 systemFixtures,
@@ -954,7 +971,7 @@ function setupFixtureHandlers(deps) {
             };
         }
         catch (err) {
-            console.error('[Library] ❌ Failed to list fixtures:', err);
+            console.error('[Library] âŒ Failed to list fixtures:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -969,7 +986,7 @@ function setupFixtureHandlers(deps) {
             const path = await import('path');
             // WAVE 1116.2: Use PATHFINDER-resolved path
             const userPath = getCustomLibPath();
-            console.log(`[Library Save] 📂 User path: ${userPath}`);
+            console.log(`[Library Save] ðŸ“‚ User path: ${userPath}`);
             // Ensure directory exists
             if (!fs.existsSync(userPath)) {
                 fs.mkdirSync(userPath, { recursive: true });
@@ -990,7 +1007,7 @@ function setupFixtureHandlers(deps) {
                     const existingFixture = JSON.parse(content);
                     if (existingFixture.id === fixture.id) {
                         existingFilePath = path.join(userPath, file);
-                        console.log(`[Library] 🔄 Updating existing fixture file: ${file}`);
+                        console.log(`[Library] ðŸ”„ Updating existing fixture file: ${file}`);
                         break;
                     }
                 }
@@ -1007,7 +1024,7 @@ function setupFixtureHandlers(deps) {
             else {
                 // Create new file with safe name from fixture id
                 const safeId = fixture.id
-                    .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
+                    .replace(/[^a-z0-9Ã¡Ã©Ã­Ã³ÃºÃ±Ã¼\s-]/gi, '')
                     .replace(/\s+/g, '_')
                     .substring(0, 50);
                 const fileName = `${safeId}.json`;
@@ -1018,9 +1035,13 @@ function setupFixtureHandlers(deps) {
             fixture.source = 'user';
             // Write file
             fs.writeFileSync(filePath, JSON.stringify(fixture, null, 2), 'utf-8');
-            console.log(`[Library] 💾 WAVE 1114: Saved user fixture: ${filePath}`);
+            console.log(`[Library] ðŸ’¾ WAVE 1114: Saved user fixture: ${filePath}`);
             // Rescan to update cache
             await rescanAllLibraries();
+            // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
+            // Push the updated profile to the renderer so TitanSyncBridge can
+            // force a backend resync without waiting for a full show reload.
+            safeWebSend(getMainWindow(), 'lux:profile:updated', fixture);
             return {
                 success: true,
                 filePath,
@@ -1028,7 +1049,7 @@ function setupFixtureHandlers(deps) {
             };
         }
         catch (err) {
-            console.error('[Library] ❌ Failed to save user fixture:', err);
+            console.error('[Library] âŒ Failed to save user fixture:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -1069,13 +1090,13 @@ function setupFixtureHandlers(deps) {
             }
             // Delete the file
             fs.unlinkSync(fileToDelete);
-            console.log(`[Library] 🗑️ WAVE 1113: Deleted user fixture: ${fileToDelete}`);
+            console.log(`[Library] ðŸ—‘ï¸ WAVE 1113: Deleted user fixture: ${fileToDelete}`);
             // Rescan to update cache
             await rescanAllLibraries();
             return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
-            console.error('[Library] ❌ Failed to delete user fixture:', err);
+            console.error('[Library] âŒ Failed to delete user fixture:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -1094,7 +1115,7 @@ function setupFixtureHandlers(deps) {
         // Return combined status (connected if EITHER is connected)
         const connected = usbConnected || artNetConnected;
         const device = usbDevice || (artNetConnected ? 'ArtNet' : null);
-        console.log(`[Library DMX Status] USB:${usbConnected} ArtNet:${artNetConnected} → ${connected}`);
+        console.log(`[Library DMX Status] USB:${usbConnected} ArtNet:${artNetConnected} â†’ ${connected}`);
         return {
             connected,
             device,
@@ -1129,27 +1150,27 @@ function setupDMXHandlers(deps) {
     });
     ipcMain.handle('dmx:connect', async (_event, devicePath) => {
         try {
+            // 🔒 WAVE 2240: Notificar al frontend ANTES de iniciar — UI se bloquea inmediatamente
+            safeWebSend(getMainWindow(), 'dmx:connecting');
             await universalDMX.connect(devicePath);
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('dmx:connected', universalDMX.currentDevice);
-            }
+            safeWebSend(getMainWindow(), 'dmx:connected', universalDMX.currentDevice);
             return { success: true };
         }
         catch (err) {
+            // En caso de fallo, notificar estado real
+            safeWebSend(getMainWindow(), 'dmx:disconnected');
             return { success: false, error: String(err) };
         }
     });
     ipcMain.handle('dmx:disconnect', async () => {
         try {
             await universalDMX.disconnect();
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('dmx:disconnected');
-            }
+            safeWebSend(getMainWindow(), 'dmx:disconnected');
             return { success: true };
         }
         catch (err) {
+            // Limpiar estado incluso en error — el hardware podría haber muerto
+            safeWebSend(getMainWindow(), 'dmx:disconnected');
             return { success: false, error: String(err) };
         }
     });
@@ -1161,23 +1182,28 @@ function setupDMXHandlers(deps) {
         universalDMX.sendFrame(frame);
         return { success: true };
     });
-    // 🌪️ WAVE 688: Auto-connect to best available device
+    // WAVE 688 + WAVE 2240: Auto-connect to best available device
     ipcMain.handle('dmx:autoConnect', async () => {
         try {
+            // 🔒 WAVE 2240: Notificar al frontend ANTES de iniciar — UI se bloquea inmediatamente
+            safeWebSend(getMainWindow(), 'dmx:connecting');
             const success = await universalDMX.autoConnect();
             if (success) {
                 const mainWindow = getMainWindow();
-                if (mainWindow) {
-                    mainWindow.webContents.send('dmx:connected', universalDMX.currentDevice);
-                }
+                safeWebSend(mainWindow, 'dmx:connected', universalDMX.currentDevice);
+            }
+            else {
+                // autoConnect falló o fue rechazado por mutex — notificar estado real
+                safeWebSend(getMainWindow(), 'dmx:disconnected');
             }
             return { success, device: universalDMX.currentDevice };
         }
         catch (err) {
+            safeWebSend(getMainWindow(), 'dmx:disconnected');
             return { success: false, error: String(err) };
         }
     });
-    // 🌪️ WAVE 688: Blackout - all channels to 0
+    // ðŸŒªï¸ WAVE 688: Blackout - all channels to 0
     ipcMain.handle('dmx:blackout', () => {
         try {
             universalDMX.blackout();
@@ -1187,7 +1213,7 @@ function setupDMXHandlers(deps) {
             return { success: false, error: String(err) };
         }
     });
-    // 🌪️ WAVE 688: Highlight fixture for testing
+    // ðŸŒªï¸ WAVE 688: Highlight fixture for testing
     ipcMain.handle('dmx:highlightFixture', (_event, startChannel, channelCount, isMovingHead) => {
         try {
             universalDMX.highlightFixture(startChannel, channelCount, isMovingHead);
@@ -1197,10 +1223,10 @@ function setupDMXHandlers(deps) {
             return { success: false, error: String(err) };
         }
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎛️ WAVE 1007: THE NERVE LINK - Direct DMX injection for calibration tools
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸŽ›ï¸ WAVE 1007: THE NERVE LINK - Direct DMX injection for calibration tools
     // GOD MODE: Bypasses HAL and TitanEngine for raw hardware access
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     ipcMain.handle('dmx:sendDirect', (_event, params) => {
         try {
             const { universe, address, value } = params;
@@ -1214,24 +1240,24 @@ function setupDMXHandlers(deps) {
                     universalDMX.setChannel(clampedAddress, clampedValue);
                 }
                 // Also send via ArtNet if configured (for ArtNet universe 0)
-                // 🔧 WAVE 1218 FIX: isConnected not isRunning
+                // ðŸ”§ WAVE 1218 FIX: isConnected not isRunning
                 if (deps.artNetDriver?.isConnected) {
                     deps.artNetDriver.setChannel(clampedAddress, clampedValue);
-                    deps.artNetDriver.send(); // 🔥 WAVE 1008.5: Force immediate send for calibration
+                    deps.artNetDriver.send(); // ðŸ”¥ WAVE 1008.5: Force immediate send for calibration
                 }
             }
             else {
                 // Higher universes - ArtNet only
-                // 🔧 WAVE 1218 FIX: isConnected not isRunning
+                // ðŸ”§ WAVE 1218 FIX: isConnected not isRunning
                 if (deps.artNetDriver?.isConnected) {
                     deps.artNetDriver.setChannel(clampedAddress, clampedValue, universe);
-                    deps.artNetDriver.send(); // 🔥 WAVE 1008.5: Force immediate send
+                    deps.artNetDriver.send(); // ðŸ”¥ WAVE 1008.5: Force immediate send
                 }
             }
             return { success: true };
         }
         catch (err) {
-            console.error('[IPC] 🔥 NERVE LINK Error:', err);
+            console.error('[IPC] ðŸ”¥ NERVE LINK Error:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -1274,9 +1300,9 @@ function setupArtNetHandlers(deps) {
             return { success: false, error: String(err) };
         }
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 📡 WAVE 2048: ART-NET DISCOVERY (ArtPoll/ArtPollReply)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ“¡ WAVE 2048: ART-NET DISCOVERY (ArtPoll/ArtPollReply)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const discovery = getArtNetDiscovery();
     ipcMain.handle('artnet:discovery:start', async () => {
         try {

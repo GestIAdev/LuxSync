@@ -14,7 +14,8 @@ export default defineConfig({
                         outDir: 'dist-electron',
                         rollupOptions: {
                             // 🧠 WAVE 10: Excluir módulos nativos del bundle
-                            external: ['better-sqlite3', 'serialport'],
+                            // bytenode también es externo — registra el handler .jsc en runtime
+                            external: ['better-sqlite3', 'serialport', 'bytenode'],
                         },
                     },
                 },

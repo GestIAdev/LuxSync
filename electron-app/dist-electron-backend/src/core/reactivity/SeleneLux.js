@@ -28,7 +28,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { TechnoStereoPhysics, technoStereoPhysics, // 🎸 WAVE 1011.5: UNIFIED ARCHITECTURE (Lobotomized)
 rockPhysics2, // 🎸 WAVE 1011.5: Singleton instance
-LatinoStereoPhysics, calculateChillStereo, laserPhysics, washerPhysics, } from '../../hal/physics';
+LatinoStereoPhysics, calculateChillStereo, getOceanicMorphFactor, laserPhysics, washerPhysics, 
+// 🌊 WAVE 2429: A/B FOUNDATION — Omni-Liquid Engines
+liquidEngine41, liquidEngine71, 
+// 🌊 WAVE 2432: THE GREAT WIRING — Profile hot-swap
+PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE, 
+// 🌊 WAVE 2434: TELEMETRY ENGINE — swap in/out de liquidEngine41
+latinoEngine41Telemetry, } from '../../hal/physics';
 import { isEnergyOverrideActive, } from '../protocol/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE LUX CLASS
@@ -81,7 +87,15 @@ export class SeleneLux {
         this.laserResult = null;
         // 🎨 WASHER: Intensidad y metadata del último frame
         this.washerResult = null;
+        // 🌊 WAVE 2429 → WAVE 2432: Layout mode for Omni-Liquid routing
+        // 'legacy' = DEPRECATED (backwards compat only), '4.1' = LiquidEngine41, '7.1' = LiquidEngine71
+        this.liquidLayout = '4.1';
+        // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
+        this.liquidStereoOverrides = null;
+        /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */
+        this._activeProfileId = 'techno-industrial';
         this.debug = config.debug ?? false;
+        this.useLiquidStereo = true; // 🌊 WAVE 2432: Omni-Liquid siempre activo — legacy jubilado
         // Inicializar físicas stateful
         this.latinoPhysics = new LatinoStereoPhysics();
         // 🟢 WAVE 1043.2: Chill is stateless functional
@@ -115,6 +129,41 @@ export class SeleneLux {
     // API PÚBLICA
     // ═══════════════════════════════════════════════════════════════════════════
     /**
+     * 🌊 WAVE 2401 → WAVE 2432: Set Liquid Stereo mode
+     * Legacy ON/OFF toggle — ahora siempre fuerza liquid activo.
+     * Mantenido por compatibilidad IPC.
+     */
+    setLiquidStereo(enabled) {
+        this.useLiquidStereo = enabled;
+        console.log(`[SeleneLux 🌊] Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF (legacy fallback)'}`);
+    }
+    /**
+     * 🌊 WAVE 2432: THE GREAT WIRING — Set layout mode (4.1 / 7.1)
+     * El switch bifurcado que conecta la UI con el motor Omni-Líquido.
+     * 'legacy' se acepta por compatibilidad pero redirige a '4.1'.
+     */
+    setLiquidLayout(mode) {
+        // Legacy ya no existe — redirigir silenciosamente a 4.1
+        const actualMode = mode === 'legacy' ? '4.1' : mode;
+        this.liquidLayout = actualMode;
+        this.useLiquidStereo = true; // Siempre liquid activo
+        console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
+    }
+    /**
+     * 🌊 WAVE 2432: HOT-SWAP PROFILE — Cambia el perfil del motor activo
+     * Llamado cuando el usuario cambia de vibe (ej. 'techno' → 'latino').
+     * Propaga el perfil a AMBOS motores para que el switch sea instantáneo.
+     */
+    setActiveProfile(vibeKey) {
+        const normalizedKey = vibeKey.toLowerCase();
+        const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
+        liquidEngine41.setProfile(profile);
+        liquidEngine71.setProfile(profile);
+        latinoEngine41Telemetry.setProfile(profile);
+        this._activeProfileId = profile.id;
+        console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);
+    }
+    /**
      * 🧠 Recibe actualización desde TitanEngine y aplica física reactiva
      *
      * @param vibeContext - Contexto del vibe activo
@@ -138,11 +187,157 @@ export class SeleneLux {
         let outputPalette = { ...inputPalette };
         let debugInfo = {};
         // ─────────────────────────────────────────────────────────────────────
-        // PHYSICS DISPATCH POR GÉNERO
+        // 🌊 WAVE 2432: THE GREAT WIRING — UNIVERSAL OMNI-LIQUID DISPATCH
         // ─────────────────────────────────────────────────────────────────────
-        if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
-            // ⚡ TECHNO: Industrial Strobe Physics
-            // 1. API Legacy para colores/strobe
+        // Cuando Liquid está activo, TODOS los vibes pasan por el Omni-Liquid Engine.
+        // El perfil correcto ya está inyectado en los motores via setActiveProfile().
+        // Los efectos de paleta per-genre (accent, strobe visual) se aplican aparte.
+        // ─────────────────────────────────────────────────────────────────────
+        if (this.useLiquidStereo) {
+            // ═══════════════════════════════════════════════════════════════════
+            // PALETTE EFFECTS PER-GENRE (visual only — no zone physics)
+            // ═══════════════════════════════════════════════════════════════════
+            if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+                const result = TechnoStereoPhysics.apply(inputPalette, {
+                    normalizedTreble: audioMetrics.normalizedTreble,
+                    normalizedBass: audioMetrics.normalizedBass,
+                }, elementalMods);
+                outputPalette.accent = result.palette.accent;
+                debugInfo = result.debugInfo;
+            }
+            else if (vibeNormalized.includes('latin') || vibeNormalized.includes('fiesta') ||
+                vibeNormalized.includes('reggae') || vibeNormalized.includes('cumbia') ||
+                vibeNormalized.includes('salsa') || vibeNormalized.includes('bachata')) {
+                const result = this.latinoPhysics.apply(inputPalette, {
+                    normalizedBass: audioMetrics.normalizedBass,
+                    normalizedMid: audioMetrics.normalizedMid,
+                    normalizedEnergy: audioMetrics.avgNormEnergy,
+                    normalizedHigh: audioMetrics.normalizedTreble,
+                    normalizedHighMid: audioMetrics.normalizedMid * 0.6 + audioMetrics.normalizedTreble * 0.4,
+                    sectionType: vibeContext.section,
+                }, vibeContext.bpm, elementalMods);
+                outputPalette.primary = result.palette.primary;
+                outputPalette.accent = result.palette.accent;
+                isSolarFlare = result.isSolarFlare;
+                forceMovement = result.forceMovement;
+                if (result.dimmerOverride !== null) {
+                    dimmerOverride = result.dimmerOverride;
+                }
+                debugInfo = { flavor: result.flavor, ...result.debugInfo };
+            }
+            // Rock/Pop y Chill no modifican paleta — la entrada se preserva
+            // ═══════════════════════════════════════════════════════════════════
+            // 🌊 OMNI-LIQUID ENGINE — ZONE PHYSICS (UNIVERSAL)
+            // ═══════════════════════════════════════════════════════════════════
+            const safe = (v) => (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
+            const bands = {
+                subBass: safe(audioMetrics.subBass),
+                bass: safe(audioMetrics.normalizedBass),
+                lowMid: safe(audioMetrics.lowMid) || safe(audioMetrics.normalizedBass) * 0.5,
+                mid: safe(audioMetrics.normalizedMid),
+                highMid: safe(audioMetrics.highMid) || safe(audioMetrics.normalizedMid) * 0.6,
+                treble: safe(audioMetrics.normalizedTreble),
+                ultraAir: safe(audioMetrics.ultraAir),
+            };
+            // ═══════════════════════════════════════════════════════════════════
+            // 🌊 WAVE 2470: HYDROSTATIC BRIDGE — Puente de la Tide Machine
+            //
+            // Cuando el vibe es chill-lounge:
+            //   1. Avanzamos el reloj oceánico llamando calculateChillStereo().
+            //      Esta función es STATEFUL — actualiza state.currentDepth internamente.
+            //   2. Leemos el morphFactor hidrostático vía getOceanicMorphFactor()
+            //      (devuelve 1 - depth/MAX_DEPTH: superficie=1.0, abismo=0.0)
+            //   3. Lo inyectamos en liquidInput.morphFactorOverride para que
+            //      LiquidEngineBase lo use en lugar del centroid espectral.
+            //   4. Guardamos los resultados oceánicos para SeleneColorEngine
+            //      (oceanicContext, oceanicTriggers, deepFieldMechanics).
+            //      El color y los triggers siguen su curso normal — no losinterrumpimos.
+            //
+            // Para todos los demás vibes: morphFactorOverride = undefined (no-op).
+            // ═══════════════════════════════════════════════════════════════════
+            let chillMorphFactor = undefined;
+            if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
+                vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
+                const godEarMetrics = {
+                    clarity: audioMetrics.clarity ?? 0.95,
+                    spectralFlatness: audioMetrics.spectralFlatness ?? 0.35,
+                    bassEnergy: audioMetrics.normalizedBass ?? 0,
+                    transientDensity: ((audioMetrics.kickDetected ? 0.4 : 0) +
+                        (audioMetrics.snareDetected ? 0.35 : 0) +
+                        (audioMetrics.hihatDetected ? 0.25 : 0)) *
+                        (0.6 + (audioMetrics.avgNormEnergy ?? 0) * 0.6),
+                    centroid: audioMetrics.spectralCentroid ?? 800,
+                    bass: audioMetrics.normalizedBass ?? 0,
+                };
+                const chillResult = calculateChillStereo(Date.now() / 1000, audioMetrics.avgNormEnergy ?? 0, audioMetrics.normalizedTreble ?? 0, audioMetrics.kickDetected ?? false, godEarMetrics, vibeContext.bpm ?? 60);
+                // Leer la profundidad hidrostática actualizada y calcular el morphFactor
+                chillMorphFactor = getOceanicMorphFactor();
+                // Preservar los contextos oceánicos para SeleneColorEngine
+                // El color y triggers siguen su curso — no los interrumpimos.
+                this.oceanicContextState = chillResult.oceanicContext;
+                this.oceanicTriggersState = chillResult.oceanicTriggers;
+                this.deepFieldMechanics = {
+                    moverL: {
+                        pan: chillResult.moverL.pan,
+                        tilt: chillResult.moverL.tilt,
+                        intensity: chillResult.moverL.intensity,
+                    },
+                    moverR: {
+                        pan: chillResult.moverR.pan,
+                        tilt: chillResult.moverR.tilt,
+                        intensity: chillResult.moverR.intensity,
+                    },
+                };
+                dimmerOverride = 0.75; // Chill ambient: siempre suave
+            }
+            const liquidInput = {
+                bands,
+                sectionType: vibeContext.section,
+                isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+                isAGCTrap: false,
+                harshness: audioMetrics.harshness,
+                flatness: audioMetrics.spectralFlatness,
+                isKick: audioMetrics.kickDetected ?? false,
+                spectralCentroid: audioMetrics.spectralCentroid ?? 0,
+                morphFactorOverride: chillMorphFactor, // undefined para todos los vibes no-chill
+            };
+            // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
+            // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa latinoEngine41Telemetry
+            // 🌊 WAVE 2470 HOTFIX V4: Chill SIEMPRE usa liquidEngine71, sin importar liquidLayout.
+            // LiquidEngine41 no tiene oscilladores primos (isChill branch) — usa envelopes de
+            // transientes que en chill silencioso quedan en 0 → PARs apagados, sin pulso.
+            // liquidEngine71 tiene Date.now() oscillators [0.05,0.65] que pulsean siempre.
+            // El liquidLayout ('4.1'/'7.1') solo es relevante para los otros vibes.
+            const isChill = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
+                vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
+            const liquidEngine = (this.liquidLayout === '7.1' || isChill)
+                ? liquidEngine71
+                : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
+            const liquidResult = liquidEngine.applyBands(liquidInput);
+            isStrobeActive = liquidResult.strobeActive;
+            physicsApplied = 'liquid-stereo';
+            // 🛡️ NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.
+            this.liquidStereoOverrides = {
+                frontL: safe(liquidResult.frontLeftIntensity),
+                frontR: safe(liquidResult.frontRightIntensity),
+                backL: safe(liquidResult.backLeftIntensity),
+                backR: safe(liquidResult.backRightIntensity),
+                moverL: safe(liquidResult.moverLeftIntensity),
+                moverR: safe(liquidResult.moverRightIntensity),
+            };
+            // Legacy compat — para que el AGC TRUST block no rompa
+            this.technoOverrides = {
+                front: liquidResult.frontParIntensity,
+                back: liquidResult.backParIntensity,
+                mover: liquidResult.moverIntensity,
+                moverL: liquidResult.moverIntensityL,
+                moverR: liquidResult.moverIntensityR,
+            };
+        }
+        else if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+            // ═══════════════════════════════════════════════════════════════════
+            // ⚡ LEGACY FALLBACK: TECHNO GOD MODE (useLiquidStereo === false)
+            // ═══════════════════════════════════════════════════════════════════
             const result = TechnoStereoPhysics.apply(inputPalette, {
                 normalizedTreble: audioMetrics.normalizedTreble,
                 normalizedBass: audioMetrics.normalizedBass,
@@ -151,10 +346,6 @@ export class SeleneLux {
             isStrobeActive = result.isStrobeActive;
             physicsApplied = 'techno';
             debugInfo = result.debugInfo;
-            // 2. WAVE 290.3: Nueva API para zonas/intensidades
-            // 🔥 WAVE 1012: TECHNO NEEDS SPECTRAL DATA!
-            // Sin harshness/flatness, Techno opera en modo degradado (acidMode=false, noiseMode=false)
-            // Esto mata el atmosphericFloor y el Apocalypse Detection
             const zonesResult = technoStereoPhysics.applyZones({
                 bass: audioMetrics.normalizedBass,
                 mid: audioMetrics.normalizedMid,
@@ -168,7 +359,15 @@ export class SeleneLux {
                 sectionType: vibeContext.section,
                 // 🎛️ WAVE 1012: Métricas espectrales para Acid/Noise modes
                 harshness: audioMetrics.harshness ?? 0.45, // Default más agresivo que Rock (Techno = duro)
-                flatness: audioMetrics.spectralFlatness ?? 0.35 // Default para pads/atmos
+                flatness: audioMetrics.spectralFlatness ?? 0.35, // Default para pads/atmos
+                // 💥 WAVE 2347: EL TUBO ARREGLADO — spectralData ahora llega a la física
+                crestFactor: audioMetrics.crestFactor, // RAW (sin EMA) - WAVE 2363
+                sub: audioMetrics.subBass, // 💥 WAVE 2363: SubBass RAW (20-60Hz) para rumble detector
+                spectralData: {
+                    crestFactor: audioMetrics.crestFactor,
+                    flatness: audioMetrics.spectralFlatness,
+                    centroid: audioMetrics.spectralCentroid,
+                }
             });
             // Guardar overrides para usar después
             // 🧪 WAVE 908: Guardar L/R separados para THE DUEL
@@ -179,7 +378,7 @@ export class SeleneLux {
                 moverL: zonesResult.moverIntensityL, // Split L (Mid-dominant)
                 moverR: zonesResult.moverIntensityR // Split R (Treble-dominant)
             };
-            // 🔥 WAVE 2212: Log de strobe eliminado — spameaba a 60fps bloqueando el logging útil
+            this.liquidStereoOverrides = null; // Clean when not active
         }
         else if (vibeNormalized.includes('rock') || vibeNormalized.includes('pop')) {
             // ═══════════════════════════════════════════════════════════════════════
@@ -287,98 +486,9 @@ export class SeleneLux {
                 //   this.lastLatinoFlavor = result.flavor;
                 // }
             }
-        }
-        else if (vibeNormalized.includes('chill') ||
-            vibeNormalized.includes('ambient') ||
-            vibeNormalized.includes('lounge') ||
-            vibeNormalized.includes('jazz') ||
-            vibeNormalized.includes('classical')) {
-            // ═══════════════════════════════════════════════════════════════════════
-            // � WAVE 1044: THE DEEP FIELD - Chill Lounge Generative Ecosystem
-            // ═══════════════════════════════════════════════════════════════════════
-            // 5 ORGANISMOS INDEPENDIENTES:
-            // 1. THE BREATHING FLOOR - Ondas Fibonacci (Front/Back L/R)
-            // 2. THE DRIFTING PLANKTON - Sparkles con números primos
-            // 3. THE CELESTIAL MOVERS - Lissajous + Zodiac modulation
-            // 4. THE TIDE SURGE - Evento raro cada 5-8 minutos
-            // 5. THE CHROMATIC MIGRATION - Colores que fluyen
-            // ═══════════════════════════════════════════════════════════════════════
-            const now = Date.now() / 1000; // Continuous time in seconds
-            // 🌊 WAVE 1070.6: Build GodEar metrics for oceanic physics
-            const godEarMetrics = {
-                clarity: audioMetrics.clarity ?? 0.5,
-                spectralFlatness: audioMetrics.spectralFlatness ?? 0.5,
-                centroid: audioMetrics.spectralCentroid ?? 800,
-                // 🐟 Transient density: kick+snare+hihat + energy boost
-                transientDensity: ((audioMetrics.kickDetected ? 0.4 : 0) +
-                    (audioMetrics.snareDetected ? 0.35 : 0) +
-                    (audioMetrics.hihatDetected ? 0.25 : 0)) *
-                    (0.6 + audioMetrics.avgNormEnergy * 0.6),
-                // 🐋 Bass energy: normalizedBass para whaleSong
-                bassEnergy: audioMetrics.normalizedBass ?? 0,
-                bass: audioMetrics.normalizedBass ?? 0,
-            };
-            const result = calculateChillStereo(now, audioMetrics.avgNormEnergy, // Nutriente (modula velocidad, no dispara)
-            audioMetrics.normalizedTreble, // Air/Plankton probability modulator
-            audioMetrics.kickDetected ?? false, // Subtle surge boost
-            godEarMetrics, // 🌊 WAVE 1070: GodEar metrics for oceanic triggers
-            vibeContext.bpm ?? 60 // 🩰 WAVE 1102: BPM para Elastic Time
-            );
-            // 🔍 LOG THE DEEP FIELD DEBUG INFO (Solo si hay cambio de profundidad >500m)
-            if (result.debug.includes('[DEPTH CHANGE]')) {
-                console.log(`[🌊 THE DEEP FIELD] ${result.debug}`);
-            }
-            // La paleta NO se modifica (respetamos TitanEngine/SeleneColorEngine)
-            outputPalette = inputPalette;
-            dimmerOverride = 0.75; // Chill ambiental (cocktail sunset)
-            forceMovement = true; // Celestial Movers activos
-            physicsApplied = 'chill'; // 🔧 CRITICAL: Must set this for AGC TRUST to apply overrides
-            // Store calculated physics in overrides
-            this.chillOverrides = {
-                front: (result.frontL + result.frontR) / 2, // Legacy fallback
-                back: (result.backL + result.backR) / 2, // Legacy fallback
-                mover: (result.moverL.intensity + result.moverR.intensity) / 2, // Legacy fallback
-                // 🫧 WAVE 1032.9: Independent Bubbles
-                moverL: result.moverL.intensity,
-                moverR: result.moverR.intensity,
-                // � WAVE 1044: Full 7-Zone Stereo Ecosystem
-                frontL: result.frontL,
-                frontR: result.frontR,
-                backL: result.backL,
-                backR: result.backR,
-                // 🔦 AIR zone (future lasers)
-                air: result.airIntensity,
-            };
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates only
-            // 🌊 WAVE 1072: colorOverride REMOVED - now uses oceanicModulation in SeleneColorEngine
-            // ═══════════════════════════════════════════════════════════════════════
-            this.deepFieldMechanics = {
-                moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt, intensity: result.moverL.intensity },
-                moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt, intensity: result.moverR.intensity },
-                // colorOverride: DEPRECATED - ocean colors now flow through SeleneColorEngine
-            };
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🌊 WAVE 1070: THE LIVING OCEAN - Store Oceanic Triggers
-            // These will be dispatched to EffectManager by TitanEngine
-            // ═══════════════════════════════════════════════════════════════════════
-            this.oceanicTriggersState = result.oceanicTriggers;
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Store Oceanic Musical Context
-            // This allows SeleneColorEngine to modulate palettes based on depth
-            // ═══════════════════════════════════════════════════════════════════════
-            this.oceanicContextState = result.oceanicContext;
-            // Pass movement data for Celestial Movers
-            debugInfo = {
-                internalDebug: result.debug,
-                panL: result.moverL.pan,
-                tiltL: result.moverL.tilt,
-                panR: result.moverR.pan,
-                tiltR: result.moverR.tilt,
-                // 🌌 Deep Field ecosystem debug
-                ecosystem: 'THE_DEEP_FIELD'
-            };
-        } // Guardar estado
+        } // WAVE 2470 HOTFIX V3 — El bloque else-if (chill) legacy fue eliminado.
+        // Chill ya corre por el path useLiquidStereo → liquidEngine71 → CHILL_PROFILE.
+        // physicsApplied = 'liquid-stereo'. LiquidEngine71 es la única fuente de verdad.
         // ═══════════════════════════════════════════════════════════════════════
         // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Routing
         // ═══════════════════════════════════════════════════════════════════════
@@ -476,6 +586,26 @@ export class SeleneLux {
             this.technoMoverSplit = { moverL: technoL, moverR: technoR };
             // 🔧 WAVE 1049: NO limpiar overrides - se sobrescriben en próximo tick
             // this.technoOverrides = null;
+        }
+        else if (this.liquidStereoOverrides && physicsApplied === 'liquid-stereo') {
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🌊 WAVE 2401: LIQUID STEREO — 7-Band Envelope Engine
+            // ═══════════════════════════════════════════════════════════════════════
+            // FrontL: SubBass (floor shaker)   | FrontR: Bass (kick body)
+            // BackL: LowMid (warmth)           | BackR: Mid (snare sniper)
+            // MoverL: HighMid (presence)       | MoverR: Treble (schwarzenegger)
+            // Strobe: UltraAir + Treble binary trigger
+            // ═══════════════════════════════════════════════════════════════════════
+            frontIntensity = Math.min(0.95, ((this.liquidStereoOverrides.frontL + this.liquidStereoOverrides.frontR) / 2) * brightMod);
+            backIntensity = Math.min(0.95, (this.liquidStereoOverrides.backL + this.liquidStereoOverrides.backR) / 2);
+            moverIntensity = Math.min(1.0, (this.liquidStereoOverrides.moverL + this.liquidStereoOverrides.moverR) / 2);
+            // No temp vars needed — liquidStereoOverrides are spread directly in zoneIntensities
+            if (this.frameCount % 30 === 0) {
+                const ls = this.liquidStereoOverrides;
+                console.log(`[AGC TRUST 🌊LIQUID 7B] profile:${this._activeProfileId} | FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
+                    `BL:${ls.backL.toFixed(2)} BR:${ls.backR.toFixed(2)} | ` +
+                    `ML:${ls.moverL.toFixed(2)} MR:${ls.moverR.toFixed(2)}`);
+            }
         }
         else if (this.rockOverrides && physicsApplied === 'rock') {
             // ═══════════════════════════════════════════════════════════════════════
@@ -597,6 +727,15 @@ export class SeleneLux {
                 frontR: this.chillStereoSplit.frontR,
                 backL: this.chillStereoSplit.backL,
                 backR: this.chillStereoSplit.backR,
+            }),
+            // 🌊 WAVE 2401: LIQUID STEREO - 7 zonas independientes
+            ...(this.liquidStereoOverrides && {
+                frontL: this.liquidStereoOverrides.frontL,
+                frontR: this.liquidStereoOverrides.frontR,
+                backL: this.liquidStereoOverrides.backL,
+                backR: this.liquidStereoOverrides.backR,
+                moverL: this.liquidStereoOverrides.moverL,
+                moverR: this.liquidStereoOverrides.moverR,
             }),
             // ═══════════════════════════════════════════════════════════════════════
             // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Zones

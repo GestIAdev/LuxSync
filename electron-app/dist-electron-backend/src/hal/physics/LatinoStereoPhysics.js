@@ -1,3 +1,18 @@
+/**
+ * @deprecated WAVE 2488 — DT-03: LEGACY PURGE
+ *
+ * Motor predecesor reemplazado por LiquidEngine41/LiquidEngine71 con LATINO_PROFILE.
+ * El Omniliquid Engine cubre dembow, Schwarzenegger Mode, bass subtractor adaptativo
+ * y mover swap L↔R con parametrización completa via ILiquidProfile.
+ *
+ * Ruta de migración:
+ *   new LatinoStereoPhysics()  →  new LiquidEngine71(LATINO_PROFILE).applyBands()
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: SeleneLux.ts (pendiente de migración al Omniliquid Engine).
+ * @see LiquidEngine71
+ * @see LATINO_PROFILE
+ */
 export class LatinoStereoPhysics {
     constructor() {
         // ESTADO INTERNO

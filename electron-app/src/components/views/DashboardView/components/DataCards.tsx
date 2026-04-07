@@ -7,11 +7,11 @@
 
 import React, { useEffect, useState } from 'react'
 import { useHardware, useAudio, useBeat } from '../../../../stores/truthStore'
+import { useLicenseStore } from '../../../../stores/licenseStore' // 🔒 WAVE 2500
 import {
   IconBpmPulse,
   IconFixture,
   IconDmxBolt,
-  IconFpsGauge,
   IconAudioLevel,
   IconUptime
 } from './HudIcons'
@@ -51,10 +51,11 @@ const DataCard: React.FC<DataCardProps> = ({
 const getDmxApi = () => (window as any).luxsync?.dmx
 
 export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) => {
-  const [fps, setFps] = useState(60)
-  const [frameCount, setFrameCount] = useState(0)
   // 🔒 WAVE 2240: Estado IPC reactivo — no espera el ciclo de SeleneTruth
   const [dmxIpcState, setDmxIpcState] = useState<'connected' | 'disconnected' | 'connecting' | null>(null)
+  
+  // 🔒 WAVE 2500: License state from Obsidian Vault
+  const { tier, hydrated } = useLicenseStore()
   
   // Store data - REAL from truthStore
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
@@ -93,28 +94,7 @@ export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) 
     }
   }, [])
 
-  // FPS counter
-  useEffect(() => {
-    let lastTime = performance.now()
-    let frames = 0
-    
-    const countFrame = () => {
-      frames++
-      const now = performance.now()
-      
-      if (now - lastTime >= 1000) {
-        setFps(frames)
-        setFrameCount(prev => prev + frames)
-        frames = 0
-        lastTime = now
-      }
-      
-      requestAnimationFrame(countFrame)
-    }
-    
-    const animId = requestAnimationFrame(countFrame)
-    return () => cancelAnimationFrame(animId)
-  }, [])
+  // FPS counter removed - WAVE 2500: Telemetry focus on production metrics
   
   return (
     <div className={`data-cards ${className}`}>
@@ -144,12 +124,15 @@ export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) 
       />
       
       <DataCard
-        icon={<IconFpsGauge />}
-        label="RENDER"
-        value={fps}
-        unit="FPS"
-        status={fps >= 55 ? 'ok' : fps >= 30 ? 'warning' : 'error'}
-        sublabel={`${(frameCount / 1000).toFixed(1)}k frames`}
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 2L9 14m0 0l-8-8m8 8v10m5-19h6v6" />
+          </svg>
+        }
+        label="LICENSE"
+        value={!hydrated ? 'VERIFYING...' : tier === 'FULL_SUITE' ? 'FULL SUITE' : 'DJ FOUNDER'}
+        status={!hydrated ? 'neutral' : tier === 'FULL_SUITE' ? 'ok' : 'warning'}
+        sublabel={!hydrated ? 'Obsidian Vault' : 'Active & Validated'}
       />
       
       <DataCard

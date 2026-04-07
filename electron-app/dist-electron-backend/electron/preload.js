@@ -72,6 +72,12 @@ const api = {
             ipcRenderer.on('dmx:disconnected', handler);
             return () => ipcRenderer.removeListener('dmx:disconnected', handler);
         },
+        // 🔒 WAVE 2240: Evento de conexión en progreso — para bloquear UI durante operación de hardware
+        onConnecting: (callback) => {
+            const handler = () => callback();
+            ipcRenderer.on('dmx:connecting', handler);
+            return () => ipcRenderer.removeListener('dmx:connecting', handler);
+        },
     },
     // ============================================
     // 🎨 WAVE 153: ART-NET (DMX sobre red UDP)
@@ -338,6 +344,9 @@ const api = {
 // 🌙 LUX API - Selene Lux Core Bridge (WAVE 2)
 // ============================================================================
 const luxApi = {
+    // === 🔒 WAVE 2490: LICENSE TIER ===
+    /** Get the current license tier ('DJ_FOUNDER' | 'FULL_SUITE') */
+    getLicenseTier: () => ipcRenderer.invoke('license:getTier'),
     // === CONTROL ===
     /** Iniciar el motor Selene */
     start: () => ipcRenderer.invoke('lux:start'),
@@ -464,6 +473,19 @@ const luxApi = {
      */
     setConsciousnessEnabled: (enabled) => ipcRenderer.invoke('lux:setConsciousness', enabled),
     /**
+     * 🌊 WAVE 2401: Liquid Stereo Toggle — 7-Band Per-Zone Envelopes
+     *
+     * Switches between God Mode (legacy 3-band) and Liquid Stereo (7-band):
+     * - When OFF: TechnoStereoPhysics.applyZones() (classic behavior)
+     * - When ON: LiquidStereoPhysics.applyBands() (per-zone envelopes)
+     */
+    setLiquidStereo: (enabled) => ipcRenderer.invoke('lux:setLiquidStereo', enabled),
+    /**
+     * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+     * Switches between compact (4-zone) and full (7-zone) Omni-Liquid Engine.
+     */
+    setLiquidLayout: (mode) => ipcRenderer.invoke('lux:setLiquidLayout', mode),
+    /**
      * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
      *
      * Dispara un efecto (Solar Flare) manualmente sin esperar decisión de HuntEngine.
@@ -553,6 +575,15 @@ const luxApi = {
         deleteUser: (fixtureId) => ipcRenderer.invoke('lux:library:delete-user', fixtureId),
         /** Get DMX connection status for Live Probe */
         dmxStatus: () => ipcRenderer.invoke('lux:library:dmx-status'),
+        // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
+        // Fired by backend after lux:library:save-user succeeds.
+        // Carries the full updated fixture profile so the frontend
+        // can rehidrate active stage fixtures without reloading the show.
+        onProfileUpdated: (callback) => {
+            const handler = (_, fixture) => callback(fixture);
+            ipcRenderer.on('lux:profile:updated', handler);
+            return () => ipcRenderer.removeListener('lux:profile:updated', handler);
+        },
     },
     // ============================================
     // ⚡ WAVE 27: FIXTURES OBJECT
@@ -585,6 +616,10 @@ const luxApi = {
         status: () => ipcRenderer.invoke('lux:arbiter:status'),
         /** Set Grand Master intensity (0-1) */
         setGrandMaster: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', { value }),
+        /** 🎚️ WAVE 2472: Set Grand Master Speed (0.1-2.0) — AI phase multiplier */
+        setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMasterSpeed', { value }),
+        /** 🎚️ WAVE 2472: Get Grand Master Speed */
+        getGrandMasterSpeed: () => ipcRenderer.invoke('lux:arbiter:getGrandMasterSpeed'),
         /**
          * 🎛️ WAVE 375.3: Set manual override for fixtures
          * @param fixtureIds - Array of fixture IDs to override
@@ -907,9 +942,25 @@ const luxDebug = {
         console.log('\n🔥 LUXDEBUG - Available Commands:');
         console.log('  window.luxDebug.testConstructor()     - Test WAVE 384 data flow');
         console.log('  window.luxDebug.inspectFixture(id)    - Inspect a fixture');
+        console.log('  window.luxDebug.telemetry.export()    - Volcar captura latino 4.1 a disco');
+        console.log('  window.luxDebug.telemetry.stop()      - Detener captura latino 4.1');
+        console.log('  window.luxDebug.telemetry.start()     - Reanudar captura latino 4.1');
+        console.log('  window.luxDebug.telemetry.flush()     - Limpiar buffer latino 4.1');
         console.log('  window.luxDebug.help()                - Show this help');
         console.log('');
-    }
+    },
+    // ── WAVE 2434: TELEMETRY LATINO 4.1 ──────────────────────────────────────
+    // Uso:
+    //   await window.luxDebug.telemetry.export()          → escribe docs/logs/latinocalib41.md
+    //   await window.luxDebug.telemetry.stop()            → detiene captura
+    //   await window.luxDebug.telemetry.flush()           → limpia el buffer
+    // ─────────────────────────────────────────────────────────────────────────
+    telemetry: {
+        export: (outputPath) => ipcRenderer.invoke('telemetry:lt41:export', outputPath),
+        stop: () => ipcRenderer.invoke('telemetry:lt41:stop'),
+        start: () => ipcRenderer.invoke('telemetry:lt41:start'),
+        flush: () => ipcRenderer.invoke('telemetry:lt41:flush'),
+    },
 };
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
 const electronAPI = {

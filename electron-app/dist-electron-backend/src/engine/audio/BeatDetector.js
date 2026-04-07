@@ -220,6 +220,8 @@ export class BeatDetector {
         this.pllIsLocked = false;
         this.minBpm = config.minBpm || 60;
         this.maxBpm = config.maxBpm || 200;
+        // WAVE 2488 DT-06: usa el valor del config o el default histórico (120ms WAVE 2104)
+        this.pllSoftCorrectionWindowMs = config.pllSoftCorrectionWindowMs ?? PLL_SOFT_CORRECTION_WINDOW_MS;
         this.state = this.createInitialState();
     }
     /**
@@ -373,7 +375,7 @@ export class BeatDetector {
             wrappedError += beatDuration;
         // Store for telemetry
         this.state.phaseError = wrappedError;
-        if (Math.abs(wrappedError) <= PLL_SOFT_CORRECTION_WINDOW_MS) {
+        if (Math.abs(wrappedError) <= this.pllSoftCorrectionWindowMs) {
             // ── SOFT CORRECTION: Proportional-Integral ──
             // The kick is close to where we expected it. Gently nudge the metronome.
             // P (Proportional): Shift predicted next beat by a fraction of the error

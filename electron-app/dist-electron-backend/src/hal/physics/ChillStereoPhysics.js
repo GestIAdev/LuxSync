@@ -457,6 +457,23 @@ export const getDeepFieldState = () => ({
     triggers: state.lastTriggerTime,
     uptime: Date.now() - state.startTime,
 });
+/**
+ * 🌊 WAVE 2470: THE HYDROSTATIC BRIDGE
+ * Calcula el morphFactor oceánico desde la tide machine.
+ *
+ * morphFactor = 1.0 - (currentDepth / MAX_DEPTH)
+ *   - Superficie (0m)    → morphFactor = 1.0 (vibe alto, envelopes máximo rango)
+ *   - Abismo (10000m)    → morphFactor = 0.0 (presión total, envelopes planos)
+ *
+ * Este valor se inyecta al LiquidEngineBase cuando el vibe es chill-lounge,
+ * sobreescribiendo el morphFactor calculado por centroid espectral.
+ * La tide machine hidrostática es temporalmente determinista — no audio-driven.
+ */
+export const getOceanicMorphFactor = () => {
+    const depth = state.currentDepth;
+    const morphFactor = 1.0 - (depth / HYDROSTATIC_CONFIG.MAX_DEPTH);
+    return Math.min(1.0, Math.max(0.0, morphFactor));
+};
 // DEPTH VALIDATION
 // 🛡️ WAVE 1074.1: DEPTH GUARD EXTENSION - Incluye micro-fauna
 export const isOceanicEffectValidForDepth = (effectType) => {

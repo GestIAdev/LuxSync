@@ -114,7 +114,8 @@ export class OpenDMXStrategy {
                 this.child.on('message', handler);
                 // 🔥 WAVE 2100: Adaptive Pacing — 30Hz conservador para cables tontos (FTDI/CH340).
                 // Tornado spec: 33fps max. 30Hz da margen de seguridad.
-                this.child.send({ type: 'CONNECT', portPath, refreshRate: 30 });
+                // breakMode 'baudrate': compatible con TODO chip USB-serial (Freestyler/QLC+ method).
+                this.child.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'baudrate' });
             });
             this.workerReady = connected;
             if (connected) {

@@ -545,7 +545,13 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
     output.debugInfo.huntState = 'striking';
     output.debugInfo.beautyScore = beauty.totalBeauty;
     // 🔪 WAVE 1010: Seleccionar arsenal según vibe
-    let arsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['fiesta-latina'];
+    // 🌊 WAVE 2470: fallback seguro por familia — chill → chill, techno → techno, etc.
+    const _arsenalFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
+        ? DIVINE_ARSENAL['chill-lounge']
+        : (vibeId.includes('latin') || vibeId.includes('fiesta'))
+            ? DIVINE_ARSENAL['fiesta-latina']
+            : DIVINE_ARSENAL['techno-club'];
+    let arsenal = DIVINE_ARSENAL[vibeId] || _arsenalFallback;
     // ═══════════════════════════════════════════════════════════════════════
     // 🎨 WAVE 1028: THE CURATOR - Texture Filter for DIVINE arsenal
     // ═══════════════════════════════════════════════════════════════════════
@@ -711,7 +717,13 @@ function generateDropPreparationDecision(inputs, output, confidence) {
         else {
             const vibeId = pattern.vibeId;
             // Usar el arsenal DIVINE como pool de efectos hard para drops
-            const dropArsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['techno-club'];
+            // 🌊 WAVE 2470: fallback seguro — chill no hereda el arsenal techno
+            const _dropFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
+                ? DIVINE_ARSENAL['chill-lounge']
+                : (vibeId.includes('latin') || vibeId.includes('fiesta'))
+                    ? DIVINE_ARSENAL['fiesta-latina']
+                    : DIVINE_ARSENAL['techno-club'];
+            const dropArsenal = DIVINE_ARSENAL[vibeId] || _dropFallback;
             // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
             // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
             // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre

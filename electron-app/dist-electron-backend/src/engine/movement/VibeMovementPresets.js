@@ -33,8 +33,8 @@ export const MOVEMENT_PRESETS = {
             maxAcceleration: 2000, // 🔧 Arranques agresivos pero seguros (era 1500)
             maxVelocity: 600, // Muy rápido
             friction: 0.08, // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado (era 0.05 snap)
-            arrivalThreshold: 0.5, // Precisión alta
-            physicsMode: 'classic', // 🔥 WAVE 2213: Exorcismo del snap — trayectorias sinusoidales continuas
+            arrivalThreshold: 0.1, // 🔧 WAVE 2233: 0.5 → 0.1. Esquinas clavadas en botstep/diamond
+            physicsMode: 'snap', // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS — classic mata geometría con S-curve/inercia
             // ═══════════════════════════════════════════════════════════════════
             // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
             // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
@@ -49,9 +49,9 @@ export const MOVEMENT_PRESETS = {
             //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
             // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
             // ═══════════════════════════════════════════════════════════════════
-            snapFactor: 0.85, // 🔧 WAVE 2088.8: Respuesta agresiva — los patrones deben DIBUJARSE
+            snapFactor: 1.0, // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.85 → 1.0. Target instantáneo, la inercia la manda el revLimit + hardware físico
             revLimitPanPerSec: 400, // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
-            revLimitTiltPerSec: 280, // 🔧 WAVE 2088.8: ~297°/s — tilt siempre más lento
+            revLimitTiltPerSec: 400, // 🔧 WAVE 2221 MENDOZA: 280→400. Igualar al pan para geometrías rectas (square, diamond)
         },
         optics: {
             zoomDefault: 30, // Beam cerrado (láser)
@@ -76,24 +76,14 @@ export const MOVEMENT_PRESETS = {
     // ───────────────────────────────────────────────────────────────
     'fiesta-latina': {
         physics: {
-            maxAcceleration: 1200, // 🔧 Subido: Seguir caderas rápido
-            maxVelocity: 350, // 🔧 Subido: Más swing
-            friction: 0.15, // 🔥 WAVE 2213: Fluido orgánico (era 0.20 snap)
+            maxAcceleration: 1200, // 🔧 Seguir caderas rápido
+            maxVelocity: 500, // 🔥 WAVE 2472 SANGRE LATINA: 350 → 500. Swing sin límite.
+            friction: 0.08, // 🔥 WAVE 2472: 0.15 → 0.08. Respuesta inmediata, piel de serpiente.
             arrivalThreshold: 2.0, // Permite overshoot elegante
-            physicsMode: 'classic', // 🔥 WAVE 2213: Exorcismo del snap — curvas sin escalera
-            // ═══════════════════════════════════════════════════════════════════
-            // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-            // Latino dibuja figure8, wave_y — curvas que necesitan que el mover
-            // SIGA la trayectoria con precisión. Con snap=0.45 + revLimit=85,
-            // un figure8 de período 16 beats se convertía en una elipse aplastada
-            // porque el mover nunca alcanzaba los extremos del Lissajous.
-            //
-            // snap=0.70 → sigue la curva con 70% de fidelidad por frame
-            // revLimit=250 → 4.17 DMX/frame → suficiente para las curvas suaves
-            // ═══════════════════════════════════════════════════════════════════
-            snapFactor: 0.70, // 🔧 WAVE 2088.8: Fiel a las curvas, con suavidad orgánica residual
-            revLimitPanPerSec: 250, // 🔧 WAVE 2088.8: ~530°/s — headroom para figure8 a alta energía
-            revLimitTiltPerSec: 180, // 🔧 WAVE 2088.8: ~191°/s — tilt curvo suave
+            physicsMode: 'snap', // 🔥 WAVE 2472: classic → snap. Caderas no esperan.
+            snapFactor: 0.85, // 🔥 WAVE 2472: 0.70 → 0.85. Fidelidad de bailarín profesional.
+            revLimitPanPerSec: 380, // 🔥 WAVE 2472: 250 → 380. ~805°/s — cumbia a toda máquina.
+            revLimitTiltPerSec: 280, // 🔥 WAVE 2472: 180 → 280. ~297°/s — tilt de cadera libre.
         },
         optics: {
             zoomDefault: 150, // Zoom medio (spot suave)
@@ -155,15 +145,14 @@ export const MOVEMENT_PRESETS = {
     // ───────────────────────────────────────────────────────────────
     'chill-lounge': {
         physics: {
-            maxAcceleration: 100, // Ultra lento
-            maxVelocity: 50, // Velocidad glacial
-            friction: 0.80, // Máxima fricción (slew rate limit)
-            arrivalThreshold: 3.0, // Permite mucho overshoot
-            physicsMode: 'classic', // 🏎️ WAVE 2074.2: Inercia glacial, navega suavemente
-            snapFactor: 0.0, // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-            revLimitPanPerSec: 80, // 🔧 WAVE 2088.8: ~170°/s — Chill pero con movimiento VISIBLE
-            //    Antes=30 → drift/sway eran imperceptibles
-            revLimitTiltPerSec: 55, // 🔧 WAVE 2088.8: ~58°/s — tilt orgánico visible
+            maxAcceleration: 4, // 🌊 WAVE 2470 MODO DERIVA: arranque de 8→4. Inercia de continente deriva.
+            maxVelocity: 8, // 🌊 WAVE 2470 MODO DERIVA: 50→8. Velocidad de medusa.
+            friction: 0.97, // 🌊 WAVE 2470 MODO DERIVA: 0.80→0.97. Agua espesa, casi gelatina.
+            arrivalThreshold: 8.0, // 🌊 WAVE 2470 MODO DERIVA: 3.0→8.0. No importa llegar, importa flotar.
+            physicsMode: 'classic', // Inercia oceánica, siempre classic.
+            snapFactor: 0.0, // No aplica en classic mode.
+            revLimitPanPerSec: 12, // 🌊 WAVE 2470 MODO DERIVA: 80→12. ~25°/s. Panorámica de amanecer.
+            revLimitTiltPerSec: 8, // 🌊 WAVE 2470 MODO DERIVA: 55→8. ~17°/s. Tilt de anémona.
         },
         optics: {
             zoomDefault: 255, // Zoom máximo (wash total)

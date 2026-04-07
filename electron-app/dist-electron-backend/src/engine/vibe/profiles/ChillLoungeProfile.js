@@ -70,13 +70,15 @@ export const VIBE_CHILL_LOUNGE = {
         breakdownCurve: 'linear',
     },
     movement: {
-        // 🔧 WAVE 340.2: Chill se MUEVE amplio pero LENTO (ola de mar)
-        // 'circle' primero = deriva orbital zen
-        // Velocidad baja pero NO cero = siempre vivo, nunca muerto
+        // 🌊 WAVE 2471: MODO DERIVA — velocidades de anémona, no de turbina
+        // Con el normalizador vibe-aware, este rango GOBIERNA el slider de la UI.
+        // min=0.025 Hz → ciclo de 40s (meditación profunda)
+        // max=0.08 Hz  → ciclo de 12.5s (respiración tranquila)
+        // slider al 50% → 0.052 Hz → ciclo de ~19s
         allowedPatterns: ['circle', 'wave', 'static'],
         speedRange: {
-            min: 0.12, // 🔧 Subido de 0.08 → 0.12 (menos saltos, más fluido)
-            max: 0.3, // 🔧 Subido de 0.25 → 0.3 (permite algo de expresión)
+            min: 0.025, // was 0.12 — 40s/ciclo, deriva de medusa
+            max: 0.08, // was 0.30 — 12.5s/ciclo, respiración costera
         },
         allowAggressive: false,
         preferredSync: 'free',

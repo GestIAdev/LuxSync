@@ -346,11 +346,19 @@ export class MasterArbiter extends EventEmitter {
         // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
         const existingOverride = this.layer2_manualOverrides.get(override.fixtureId);
         if (existingOverride) {
-            // Merge controls: new values override existing, but keep non-conflicting ones
+            // Merge controls: new values override existing, but keep non-conflicting ones.
+            // DEEP merge para phantomChannels — el spread shallow destruiría los phantom
+            // previos cuando llega un segundo canal phantom independiente.
+            const existingPhantom = existingOverride.controls?.phantomChannels ?? {};
+            const newPhantom = override.controls?.phantomChannels ?? {};
+            const mergedPhantom = { ...existingPhantom, ...newPhantom };
             const mergedControls = {
                 ...existingOverride.controls,
                 ...override.controls,
             };
+            if (Object.keys(mergedPhantom).length > 0) {
+                mergedControls.phantomChannels = mergedPhantom;
+            }
             // Merge channels: union of both sets (no duplicates)
             const mergedChannels = [...new Set([
                     ...existingOverride.overrideChannels,
@@ -412,12 +420,17 @@ export class MasterArbiter extends EventEmitter {
             // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
             // BEFORE purging the override, grab the current position for interpolation.
             // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
+            //
+            // 🔧 WAVE 2225: THE CRYSTAL BRIDGE — startTime MUST use performance.now(),
+            // NOT Date.now(). arbitrate() compares with performance.now(). Mixing clocks
+            // caused elapsed = performance.now() - Date.now() ≈ -1.7 TRILLION ms →
+            // fade NEVER expired → smoothT = infinity → pan clamped to 0 forever.
             const lastManualPan = override.controls.pan ?? 128;
             const lastManualTilt = override.controls.tilt ?? 128;
             this.positionReleaseFades.set(fixtureId, {
                 fromPan: lastManualPan,
                 fromTilt: lastManualTilt,
-                startTime: Date.now(),
+                startTime: performance.now(),
                 durationMs: this.POSITION_RELEASE_MS,
             });
             console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`);
@@ -1101,12 +1114,13 @@ export class MasterArbiter extends EventEmitter {
         // Clean up expired effects
         this.cleanupExpiredEffects();
         // ═══════════════════════════════════════════════════════════════════════
-        // 🚦 WAVE 1132: OUTPUT GATE STATUS LOGGING (Throttled)
-        // Log every ~5 seconds when in ARMED state so user knows DMX is blocked
+        // 🚦 WAVE 2228: OUTPUT GATE STATUS LOGGING (Throttled)
+        // Log every ~5 seconds when in ARMED state so user knows DMX is gated
+        // (Gate enforcement is now in HAL.sendToDriver, not here)
         // ═══════════════════════════════════════════════════════════════════════
         if (!this._outputEnabled && this.frameNumber % 150 === 0) {
             const last = this._lastOutputGateChange;
-            console.log(`[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | ${this.fixtures.size} fixtures forced to BLACKOUT | Press GO to enable DMX`, {
+            console.log(`[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | DMX gate active in HAL | Press GO to enable DMX`, {
                 outputEnabled: this._outputEnabled,
                 lastGateChange: last
                     ? {
@@ -1157,25 +1171,20 @@ export class MasterArbiter extends EventEmitter {
     arbitrateFixture(fixtureId, now) {
         const controlSources = {};
         // ═══════════════════════════════════════════════════════════════════════
-        // 🚦 WAVE 1132 + 1219: OUTPUT GATE - WITH CALIBRATION BYPASS
-        // When output is DISABLED (ARMED state), AI/effects get BLACKOUT
-        // BUT: Manual overrides (from Calibration/Commander) still work!
-        // This allows testing hardware before going LIVE.
+        // 🧠 WAVE 2228: ARBITER IS PURE BRAIN — NO OUTPUT GATE HERE
+        //
+        // Previously (WAVE 1132+1219), the Arbiter would early-return with
+        // createOutputGateBlackout() when outputEnabled=false. This had 2 problems:
+        //   1. The HyperionView 3D preview got killed (couldn't see the show)
+        //   2. Manual override on ONE channel gave "VIP pass" to ALL channels,
+        //      leaking AI dimmer/color through to real DMX hardware.
+        //
+        // The DMX gate now lives in HAL.sendToDriver() (WAVE 2228 DMX ADUANA),
+        // which filters per-channel using _controlSources metadata.
+        // The Arbiter calculates 100% of the show, always, for all layers.
         // ═══════════════════════════════════════════════════════════════════════
         const manualOverride = this.layer2_manualOverrides.get(fixtureId);
-        if (!this._outputEnabled && !manualOverride) {
-            // No manual control → full blackout
-            return this.createOutputGateBlackout(fixtureId);
-        }
-        // 🔎 TRACE DISABLED: Manual override detection (too spammy). Re-enable if investigating merged channel issues.
-        // if (manualOverride) {
-        //   const nowMs = Date.now()
-        //   if (nowMs - this._traceLastArbiterLogAtMs > 750) {
-        //     this._traceLastArbiterLogAtMs = nowMs
-        //     console.log('[TRACE ARBITER] manualOverride active', {...})
-        //   }
-        // }
-        // LAYER 4: Check blackout first (highest priority after output gate)
+        // LAYER 4: Check blackout first (highest priority)
         if (this.layer4_blackout) {
             return this.createBlackoutTarget(fixtureId, controlSources);
         }
@@ -1190,7 +1199,27 @@ export class MasterArbiter extends EventEmitter {
         // Get position (with pattern/formation applied)
         const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now);
         // ═══════════════════════════════════════════════════════════════════════
-        // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+        // � WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+        //
+        // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
+        // never get their controlSource stamped. Without this, the HAL Aduana
+        // sees no metadata for pan/tilt and gates them to center (128)
+        // even when the user has manual override active.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (manualOverride?.overrideChannels.includes('pan')) {
+            controlSources['pan'] = ControlLayer.MANUAL;
+        }
+        else {
+            controlSources['pan'] = ControlLayer.TITAN_AI;
+        }
+        if (manualOverride?.overrideChannels.includes('tilt')) {
+            controlSources['tilt'] = ControlLayer.MANUAL;
+        }
+        else {
+            controlSources['tilt'] = ControlLayer.TITAN_AI;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
         //
         // Si hay un fade activo para este fixture, interpolamos entre la última
         // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).
@@ -1246,18 +1275,29 @@ export class MasterArbiter extends EventEmitter {
         ]);
         // Obtener canales del fixture registrado
         const fixtureData = this.fixtures.get(fixtureId);
-        if (fixtureData && fixtureData.channelDefinitions) {
-            const channelDefs = fixtureData.channelDefinitions;
+        const channelDefs = fixtureData?.channelDefinitions ?? fixtureData?.channels ?? [];
+        if (channelDefs.length > 0) {
             for (const ch of channelDefs) {
                 if (!NATIVE_CHANNELS.has(ch.type)) {
-                    // Check manual override first
-                    const manualPhantomValue = manualOverride?.controls?.phantomChannels?.[ch.type];
+                    // Para canales custom/unknown usamos el nombre como key (evita colisión cuando
+                    // hay múltiples canales del mismo tipo). Para el resto usamos el tipo.
+                    const phantomKey = (ch.type === 'custom' || ch.type === 'unknown')
+                        ? (ch.name || `unknown_${ch.index ?? 0}`)
+                        : ch.type;
+                    // Check manual override first:
+                    // 1) controls.phantomChannels[key] — ruta que usa CalibrationView
+                    // 2) controls[type] directamente — ruta directa de BeamSection (prism, gobo, strobe...)
+                    const manualPhantomValue = manualOverride?.controls?.phantomChannels?.[phantomKey] ??
+                        manualOverride?.controls?.phantomChannels?.[ch.type] ??
+                        (manualOverride?.overrideChannels?.includes(ch.type)
+                            ? manualOverride.controls[ch.type]
+                            : undefined);
                     if (manualPhantomValue !== undefined) {
-                        phantomChannels[ch.type] = clampDMX(manualPhantomValue);
+                        phantomChannels[phantomKey] = clampDMX(manualPhantomValue);
                         controlSources[ch.type] = ControlLayer.MANUAL;
                     }
                     else {
-                        phantomChannels[ch.type] = ch.defaultValue ?? 0;
+                        phantomChannels[phantomKey] = ch.defaultValue ?? 0;
                         controlSources[ch.type] = ControlLayer.TITAN_AI;
                     }
                 }
@@ -1370,7 +1410,12 @@ export class MasterArbiter extends EventEmitter {
      */
     calculatePatternOffset(pattern, now) {
         const elapsedMs = now - pattern.startTime;
-        const cycleDurationMs = (1000 / Math.max(0.01, pattern.speed)); // speed = cycles per second, prevent div by 0
+        // 🔥 WAVE 2185: BETA SPEED CAP — Hard ceiling at 0.5 Hz regardless of what the IPC sent.
+        // This is defense-in-depth: even if the IPC normalizer is bypassed, the engine won't
+        // let any pattern cycle faster than 0.5 Hz (2 seconds per cycle).
+        const BETA_MAX_SPEED = 0.5; // Hz — hard limit during beta
+        const safeSpeed = Math.min(Math.max(0.01, pattern.speed), BETA_MAX_SPEED);
+        const cycleDurationMs = (1000 / safeSpeed);
         const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs;
         const t = phase * 2 * Math.PI; // 0 to 2π
         // 🔧 WAVE 2070.3: Diagnostic — log every 60 frames to see actual values
@@ -1397,6 +1442,54 @@ export class MasterArbiter extends EventEmitter {
                 panOffset = Math.sin(t);
                 tiltOffset = 0;
                 break;
+            case 'tornado': {
+                // 🌪️ Tornado: Spiral that grows and shrinks — mesmerizing vortex
+                // 🔥 WAVE 2185: Smoothed envelope — sin(t*0.25) has gentle zero-crossings,
+                // so the radius shrinks smoothly. No abrupt direction changes.
+                const envelope = Math.sin(t * 0.25);
+                panOffset = Math.cos(t) * envelope;
+                tiltOffset = Math.sin(t) * envelope;
+                break;
+            }
+            case 'gravity_bounce': {
+                // 🏓 Gravity Bounce: Smooth bouncing ball with lateral sweep
+                // 🔥 WAVE 2185: MECHANICAL SMOOTHING
+                // OLD: Math.abs(Math.cos(t * 1.5)) — V-shape at zero-crossings = infinite
+                // acceleration = stepper motor crunch. The derivative of |cos(x)| is 
+                // discontinuous at every zero-crossing (sign flip = instant reversal).
+                //
+                // NEW: Asymmetric sine wave — cos² gives a smooth parabolic bounce
+                // with zero velocity at the apex. Physically correct bounce physics
+                // without the derivative discontinuity.
+                const bounce = Math.cos(t * 1.5);
+                panOffset = Math.sin(t);
+                tiltOffset = -(bounce * bounce); // cos² = always positive, smooth at zero-crossings
+                break;
+            }
+            case 'butterfly': {
+                // 🦋 Butterfly: Lissajous figure — celtic knot / infinity flower
+                // 🔥 WAVE 2185: Reduced frequency ratio from 3:2 to 2:1 for smoother tracing.
+                // 3:2 Lissajous creates sharp cusps where the curve reverses direction.
+                // 2:1 gives a figure-eight variant that's visually distinct but mechanically gentler.
+                panOffset = Math.sin(t * 2);
+                tiltOffset = Math.sin(t);
+                break;
+            }
+            case 'heartbeat': {
+                // 💓 Heartbeat: Rhythmic tilt pulse — visible but motor-safe
+                // 🔥 WAVE 2185: MECHANICAL SMOOTHING
+                // OLD: Math.pow(Math.sin(t*2), 8) — 8th power creates near-zero flat zones
+                // with explosive spikes. The derivative at the spike tip approaches infinity.
+                // On a stepper motor: the shaft sits still then JERKS violently.
+                //
+                // NEW: sin⁴(t) — 4th power is the compromise. Still has a visible pulse
+                // shape (narrow peaks, wide valleys) but the derivative stays finite.
+                // Max angular velocity is ~4x lower than sin⁸.
+                const pulse = Math.sin(t * 2);
+                panOffset = 0;
+                tiltOffset = pulse * pulse * pulse * pulse * Math.sign(pulse); // sin⁴ preserving sign
+                break;
+            }
         }
         return { panOffset, tiltOffset };
     }
@@ -1414,9 +1507,15 @@ export class MasterArbiter extends EventEmitter {
             const offset = this.calculatePatternOffset(pattern, now);
             // 🔧 WAVE 2042.24: Scale offset to DMX range (0-255), not 16-bit
             // offset is -1 to 1, size is already normalized 0-1
-            // Max movement = 128 DMX units (half range) * size
-            const panMovement = offset.panOffset * 128 * pattern.size;
-            const tiltMovement = offset.tiltOffset * 128 * pattern.size;
+            // 🔥 WAVE 2185: BETA SAFETY CAP — Hard ceiling at 64 DMX units (25% of range).
+            // Even if someone bypasses the IPC normalizer, the Arbiter itself won't let
+            // any pattern move more than ±64 DMX from center. This is the LAW during beta.
+            // On a 540° fixture: 64/256 * 540° = 135° max sweep = safe for any stepper.
+            const BETA_MAX_MOVEMENT = 64; // DMX units — hard limit, non-negotiable
+            const rawPanMovement = offset.panOffset * 128 * pattern.size;
+            const rawTiltMovement = offset.tiltOffset * 128 * pattern.size;
+            const panMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawPanMovement));
+            const tiltMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawTiltMovement));
             // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
             // not the static pattern.center captured at creation time.
             // This way: if the user moves the XY pad while a pattern is running,
@@ -1589,7 +1688,9 @@ export class MasterArbiter extends EventEmitter {
         }
         // Acceso dinámico seguro (TypeScript-friendly)
         const zoneIntent = intent.zones?.[intentZone];
-        const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity;
+        const rawIntensity = zoneIntent?.intensity ?? intent.masterIntensity;
+        // 🛡️ WAVE 2402: NaN ANTIDOTE — última barrera antes del DMX/3D
+        const zoneIntensity = (typeof rawIntensity === 'number' && !Number.isNaN(rawIntensity)) ? rawIntensity : 0;
         // 🔥 WAVE 1135.3: Dead Zone interpolation
         // dimmerMin = valor DMX mínimo donde el hardware realmente enciende.
         // Escala: 0 → 0 (blackout estricto), >0 → mapea [0,1] al rango [dMin, 255]
@@ -2016,6 +2117,22 @@ export class MasterArbiter extends EventEmitter {
             activeEffects: this.layer3_effects.map(e => e.type),
             activeCrossfades: this.crossfadeEngine.getActiveCount(),
         };
+    }
+    /**
+     * 🧹 WAVE 2227: Selective cleanup — purge AI state only
+     * Called on disarm (stop). Clears Layer 0 titan intent, position release
+     * fades, ghost positions, fixture origins, crossfades, frame counter.
+     * PRESERVES: outputEnabled, manual overrides (L2), effects (L3),
+     * blackout (L4), grandMaster, active patterns, active formations.
+     */
+    clearTitanState() {
+        this.layer0_titan = null;
+        this.positionReleaseFades.clear();
+        this.lastKnownPositions.clear();
+        this.fixtureOrigins.clear();
+        this.crossfadeEngine.clearAll();
+        this.frameNumber = 0;
+        console.log('[MasterArbiter] 🧹 WAVE 2227: Titan state cleared (operator state preserved)');
     }
     /**
      * Reset arbiter state

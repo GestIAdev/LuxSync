@@ -210,6 +210,10 @@ export function getProfileByModel(modelName) {
 export function needsColorTranslation(profile) {
     if (!profile)
         return false;
+    // 0. 🔧 WAVE 2192: Si el fixture declara rueda de color, necesita traducción
+    //    independientemente de lo que diga colorEngine (puede ser 'rgb' por error)
+    if (profile.capabilities?.hasColorWheel === true)
+        return true;
     // 1. Formato Forja V2 (Nueva)
     const capEngine = profile.capabilities?.colorEngine;
     if (capEngine === 'wheel' || capEngine === 'hybrid' || capEngine === 'rgbw' || capEngine === 'cmy')

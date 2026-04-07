@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuxSync — Activación de Licencia</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #050505;
+      color: #e0e0e0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .container {
+      -webkit-app-region: no-drag;
+      width: 520px;
+      padding: 48px 40px;
+      background: #0a0a0a;
+      border: 1px solid #1a1a1a;
+      border-radius: 12px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 0 80px rgba(0, 255, 240, 0.03);
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00fff0, transparent);
+      border-radius: 12px 12px 0 0;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #00fff0, #00a8a0);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      margin-bottom: 20px;
+    }
+
+    .logo span { font-size: 20px; font-weight: 900; color: #000; }
+
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #00fff0;
+      text-shadow: 0 0 20px rgba(0, 255, 240, 0.3);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    /* ── Error message ── */
+    .error-block {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+
+    .error-block .error-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #ef4444;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .error-block .error-detail {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+    }
+
+    /* ── Hardware ID ── */
+    .hwid-section {
+      margin-bottom: 28px;
+    }
+
+    .hwid-label {
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.3);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .hwid-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .hwid-value {
+      flex: 1;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f97316;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+    }
+
+    .btn-copy {
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      color: #f97316;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      background: rgba(249, 115, 22, 0.2);
+      border-color: #f97316;
+    }
+
+    .btn-copy.copied {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #22c55e;
+    }
+
+    /* ── Load button ── */
+    .btn-load {
+      width: 100%;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, rgba(0, 255, 240, 0.1), rgba(0, 255, 240, 0.05));
+      border: 1px solid rgba(0, 255, 240, 0.3);
+      border-radius: 8px;
+      color: #00fff0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .btn-load:hover {
+      background: linear-gradient(135deg, rgba(0, 255, 240, 0.2), rgba(0, 255, 240, 0.1));
+      border-color: #00fff0;
+      box-shadow: 0 0 20px rgba(0, 255, 240, 0.15);
+    }
+
+    .btn-load:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-load.success {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08));
+      border-color: rgba(34, 197, 94, 0.5);
+      color: #22c55e;
+    }
+
+    .btn-load.error {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08));
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+    }
+
+    /* ── Status ── */
+    .status {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 1px;
+      min-height: 18px;
+    }
+
+    .status.ok { color: #22c55e; }
+    .status.fail { color: #ef4444; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer .ver {
+      font-size: 0.55rem;
+      color: rgba(255,255,255,0.15);
+      letter-spacing: 1.5px;
+    }
+
+    .btn-quit {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.3);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-quit:hover {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+    }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0, 255, 240, 0.2);
+      border-top-color: #00fff0;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo"><span>◈</span></div>
+    <h1>LUXSYNC</h1>
+    <div class="subtitle">Activación de Licencia</div>
+
+    <div class="error-block" id="errorBlock">
+      <div class="error-title" id="errorTitle">Licencia no encontrada</div>
+      <div class="error-detail" id="errorDetail">Carga un archivo .luxlicense válido para activar LuxSync.</div>
+    </div>
+
+    <div class="hwid-section">
+      <div class="hwid-label">Tu Hardware ID</div>
+      <div class="hwid-box">
+        <span class="hwid-value" id="hwidValue">—</span>
+        <button class="btn-copy" id="btnCopy" title="Copiar al portapapeles">COPIAR</button>
+      </div>
+    </div>
+
+    <button class="btn-load" id="btnLoad">⬆ Cargar archivo .luxlicense</button>
+    <div class="status" id="status"></div>
+
+    <div class="footer">
+      <span class="ver">WAVE 2491 — ACTIVATION UX</span>
+      <button class="btn-quit" id="btnQuit">CERRAR</button>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // ACTIVATION SCREEN — Electron IPC via contextBridge
+    //
+    // The main process exposes a minimal 'activation' API on window.
+    // See preload-activation.js for the bridge definition.
+    // ═══════════════════════════════════════════════════════════════════
+
+    const $ = (id) => document.getElementById(id)
+
+    // Hydrate from main process
+    async function init() {
+      try {
+        const data = await window.activation.getData()
+        $('hwidValue').textContent = data.hwid || 'UNKNOWN'
+
+        if (data.errorTitle) $('errorTitle').textContent = data.errorTitle
+        if (data.errorDetail) $('errorDetail').textContent = data.errorDetail
+      } catch (e) {
+        $('hwidValue').textContent = 'ERROR'
+      }
+    }
+
+    // Copy HWID
+    $('btnCopy').addEventListener('click', async () => {
+      const hwid = $('hwidValue').textContent
+      if (!hwid || hwid === '—' || hwid === 'ERROR') return
+
+      await window.activation.copyHwid()
+      const btn = $('btnCopy')
+      btn.textContent = '✓ COPIADO'
+      btn.classList.add('copied')
+      setTimeout(() => {
+        btn.textContent = 'COPIAR'
+        btn.classList.remove('copied')
+      }, 2000)
+    })
+
+    // Load license file
+    $('btnLoad').addEventListener('click', async () => {
+      const btn = $('btnLoad')
+      const status = $('status')
+
+      btn.disabled = true
+      btn.innerHTML = '<span class="spinner"></span> VALIDANDO...'
+      status.textContent = ''
+      status.className = 'status'
+
+      try {
+        const result = await window.activation.loadLicense()
+
+        if (result.cancelled) {
+          btn.disabled = false
+          btn.textContent = '⬆ Cargar archivo .luxlicense'
+          return
+        }
+
+        if (result.valid) {
+          btn.classList.add('success')
+          btn.textContent = '✓ LICENCIA VÁLIDA — REINICIANDO...'
+          status.textContent = `Bienvenido, ${result.client || 'usuario'} (${result.tier})`
+          status.className = 'status ok'
+
+          // Main process will restart the app
+          setTimeout(() => {
+            window.activation.restart()
+          }, 1500)
+        } else {
+          btn.classList.remove('success')
+          btn.classList.add('error')
+          btn.textContent = '✗ LICENCIA RECHAZADA'
+          status.textContent = result.reason || 'Archivo inválido o hardware incompatible'
+          status.className = 'status fail'
+
+          setTimeout(() => {
+            btn.classList.remove('error')
+            btn.disabled = false
+            btn.textContent = '⬆ Cargar archivo .luxlicense'
+          }, 3000)
+        }
+      } catch (e) {
+        btn.classList.add('error')
+        btn.textContent = '✗ ERROR'
+        status.textContent = 'Error inesperado al validar'
+        status.className = 'status fail'
+
+        setTimeout(() => {
+          btn.classList.remove('error')
+          btn.disabled = false
+          btn.textContent = '⬆ Cargar archivo .luxlicense'
+        }, 3000)
+      }
+    })
+
+    // Quit
+    $('btnQuit').addEventListener('click', () => {
+      window.activation.quit()
+    })
+
+    init()
+  </script>
+</body>
+</html>

@@ -215,6 +215,19 @@ export class FixtureMapper {
         return profile ?? null;
     }
     /**
+     * 🔥 WAVE 2183: GHOST EXORCISM — Invalidate profile cache entries
+     * Called when a profile is renamed, updated, or deleted in the library.
+     * @param profileId - Specific profile ID to invalidate, or omit to clear all
+     */
+    invalidateProfileCache(profileId) {
+        if (profileId) {
+            this.profileCache.delete(profileId);
+        }
+        else {
+            this.profileCache.clear();
+        }
+    }
+    /**
      * 🎨 WAVE 687: Build DMX channel array from fixture definition
      *
      * Maps logical control values (dimmer, pan, tilt, etc.) to physical DMX channels
@@ -273,7 +286,8 @@ export class FixtureMapper {
                 return state.shutter ?? (channel.defaultValue ?? 255);
             case 'strobe':
                 // Strobe speed: 0 = no strobe, higher = faster
-                return state.strobe ?? (channel.defaultValue ?? 0);
+                // phantomChannels tiene prioridad (viene del Arbiter/manual override)
+                return state.phantomChannels?.['strobe'] ?? state.strobe ?? (channel.defaultValue ?? 0);
             // ═══════════════════════════════════════════════════════════════════
             // COLOR CHANNELS
             // ═══════════════════════════════════════════════════════════════════
@@ -300,10 +314,12 @@ export class FixtureMapper {
             // ═══════════════════════════════════════════════════════════════════
             case 'gobo':
                 // Gobo wheel: 0 = open (no gobo)
-                return state.gobo ?? (channel.defaultValue ?? 0);
+                // phantomChannels tiene prioridad (viene del Arbiter/manual override)
+                return state.phantomChannels?.['gobo'] ?? state.gobo ?? (channel.defaultValue ?? 0);
             case 'prism':
                 // Prism: 0 = out/off
-                return state.prism ?? (channel.defaultValue ?? 0);
+                // phantomChannels tiene prioridad (viene del Arbiter/manual override)
+                return state.phantomChannels?.['prism'] ?? state.prism ?? (channel.defaultValue ?? 0);
             case 'focus':
                 return Math.round(state.focus);
             case 'zoom':
@@ -314,9 +330,6 @@ export class FixtureMapper {
                 return state.speed ?? (channel.defaultValue ?? 128);
             case 'macro':
                 // Macro/program channel
-                return channel.defaultValue ?? 0;
-            case 'control':
-                // Control/reset channel - use default (usually 0 or specific value for normal operation)
                 return channel.defaultValue ?? 0;
             // ═══════════════════════════════════════════════════════════════════
             // 🔥 WAVE 2084: INGENIOS — Canales expandidos
@@ -337,17 +350,24 @@ export class FixtureMapper {
                 return state.phantomChannels?.['gobo_rotation'] ?? channel.defaultValue ?? 0;
             case 'prism_rotation':
                 return state.phantomChannels?.['prism_rotation'] ?? channel.defaultValue ?? 0;
-            case 'custom':
-                // 🔥 WAVE 2084: Canal libre definido por el usuario
-                // El valor viene del Phantom Panel (manual override) o defaultValue
-                return state.phantomChannels?.['custom'] ?? channel.defaultValue ?? 0;
+            case 'custom': {
+                // Canal custom: la key en phantomChannels es el NOMBRE del canal (no el type),
+                // para que múltiples canales custom coexistan sin colisión de key.
+                const customKey = channel.name || 'custom';
+                return state.phantomChannels?.[customKey] ?? state.phantomChannels?.['custom'] ?? channel.defaultValue ?? 0;
+            }
+            case 'control':
+                // Canal de control/reset: controlable manualmente
+                return state.phantomChannels?.['control'] ?? channel.defaultValue ?? 0;
             // ═══════════════════════════════════════════════════════════════════
             // UNKNOWN/FALLBACK CHANNELS
             // ═══════════════════════════════════════════════════════════════════
             case 'unknown':
-            default:
-                // For unknown channels, use the default value from fixture definition
-                return channel.defaultValue ?? 0;
+            default: {
+                // Unknown channels: también usamos el nombre como key para que sean controlables
+                const unknownKey = channel.name || `unknown_${channel.index ?? 0}`;
+                return state.phantomChannels?.[unknownKey] ?? channel.defaultValue ?? 0;
+            }
         }
     }
     /**

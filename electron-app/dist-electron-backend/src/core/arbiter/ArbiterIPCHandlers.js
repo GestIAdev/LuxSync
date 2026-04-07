@@ -15,6 +15,7 @@
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
+import { VibeManager } from '../../engine/vibe/VibeManager';
 import { ColorTranslator } from '../../hal/translation/ColorTranslator';
 import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles';
 // 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
@@ -40,6 +41,17 @@ export function registerArbiterHandlers(masterArbiter) {
      */
     ipcMain.handle('lux:arbiter:getGrandMaster', () => {
         return { grandMaster: masterArbiter.getGrandMaster() };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎚️ WAVE 2472: GRANDMASTER SPEED (AI CORE)
+    // Multiplies the AI’s generative phase flow. Does NOT touch manual patterns.
+    // ═══════════════════════════════════════════════════════════════════════
+    ipcMain.handle('lux:arbiter:setGrandMasterSpeed', (_event, { value }) => {
+        vibeMovementManager.setGlobalSpeedMultiplier(value);
+        return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
+    });
+    ipcMain.handle('lux:arbiter:getGrandMasterSpeed', () => {
+        return { grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
     });
     // ═══════════════════════════════════════════════════════════════════════
     // PATTERN ENGINE
@@ -280,28 +292,47 @@ export function registerArbiterHandlers(masterArbiter) {
             return { success: true, cleared: true };
         }
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔧 WAVE 2071: THE ANCHOR — Snapshot current position and create override
-        // This is the CRITICAL fix. Without this, the pattern center is Titan's
-        // position which moves every frame with the music = parasitic chaos.
+        // 🔧 WAVE 2071 + WAVE 2185: THE ANCHOR
+        // Snapshot current position and create override.
+        // Without this, the pattern center is Titan's position which moves
+        // every frame with the music = parasitic chaos.
+        //
+        // 🔥 WAVE 2185: ANCHOR PRESERVATION ON PATTERN SWITCH
+        // When switching patterns (e.g. circle → tornado), we must:
+        //   1. KEEP the existing anchor position (don't re-snapshot mid-orbit)
+        //   2. NOT override the speed channel (speed=0 kills motor interpolation
+        //      → stepper motors vibrate because they receive raw positions at 60fps
+        //      with no acceleration curve from the fixture's internal MCU)
+        //   3. Only create a NEW anchor if none exists yet
         // ═══════════════════════════════════════════════════════════════════════
         for (const fixtureId of fixtureIds) {
-            const currentPos = masterArbiter.getCurrentPosition(fixtureId);
-            const anchorOverride = {
-                fixtureId,
-                controls: {
-                    pan: currentPos.pan,
-                    tilt: currentPos.tilt,
-                    speed: 0, // Fast movement for moving heads
-                },
-                overrideChannels: ['pan', 'tilt', 'speed'],
-                mode: 'absolute',
-                source: 'ui_programmer',
-                priority: 100,
-                autoReleaseMs: 0,
-                releaseTransitionMs: 500,
-                timestamp: performance.now(),
-            };
-            masterArbiter.setManualOverride(anchorOverride);
+            const existingOverride = masterArbiter.getManualOverride(fixtureId);
+            const hasAnchor = existingOverride?.controls?.pan !== undefined
+                && existingOverride?.controls?.tilt !== undefined;
+            if (!hasAnchor) {
+                // First time anchoring — snapshot current position
+                const currentPos = masterArbiter.getCurrentPosition(fixtureId);
+                const anchorOverride = {
+                    fixtureId,
+                    controls: {
+                        pan: currentPos.pan,
+                        tilt: currentPos.tilt,
+                        // 🔥 WAVE 2185: Do NOT include speed in the override.
+                        // Let the fixture use its profile defaultValue (typically 127-128)
+                        // which enables the internal motor interpolation = smooth movement.
+                    },
+                    overrideChannels: ['pan', 'tilt'],
+                    mode: 'absolute',
+                    source: 'ui_programmer',
+                    priority: 100,
+                    autoReleaseMs: 0,
+                    releaseTransitionMs: 500,
+                    timestamp: performance.now(),
+                };
+                masterArbiter.setManualOverride(anchorOverride);
+            }
+            // If anchor already exists → reuse it. The pattern switch only changes
+            // the PatternConfig type, not the anchor point.
         }
         // ═══════════════════════════════════════════════════════════════════════
         // HOLD = FREEZE — Override anchored, no pattern. Fixture stays put.
@@ -317,15 +348,27 @@ export function registerArbiterHandlers(masterArbiter) {
         // PATTERN = ORBIT — Override anchored + pattern running around it
         // ═══════════════════════════════════════════════════════════════════════
         // Validate pattern type
-        const validPatterns = ['circle', 'eight', 'sweep'];
+        const validPatterns = ['circle', 'eight', 'sweep', 'tornado', 'gravity_bounce', 'butterfly', 'heartbeat'];
         if (!validPatterns.includes(pattern)) {
             console.warn(`[Arbiter IPC] Invalid pattern: ${pattern}, using 'circle'`);
             pattern = 'circle';
         }
         // Convert UI values (0-100) to engine values
-        // Speed: 0-100 → 0-3 Hz | Size: 0-100 → 0-1
-        const speedNormalized = (speed / 100) * 3;
-        const sizeNormalized = amplitude / 100;
+        // 🔥 WAVE 2471: VIBE-AWARE SPEED NORMALIZATION
+        // The slider maps into the active vibe's speedRange instead of a fixed 0.05-0.5 Hz.
+        // This means chill-lounge (max=0.3 Hz) will ALWAYS be slower than techno (max=0.5 Hz)
+        // even with the slider at 100% — the vibe governs the ceiling.
+        //
+        // Hard cap: 0.5 Hz (BETA_MAX_SPEED in calculatePatternOffset) is still enforced
+        // at the engine level as motor-safety defense-in-depth.
+        //
+        // Size capped at 50% (64 DMX max offset). At 0.5 Hz:
+        // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head. Safe.
+        const activeVibe = VibeManager.getInstance().getActiveVibe();
+        const vibeSpeedMin = activeVibe?.movement?.speedRange?.min ?? 0.05;
+        const vibeSpeedMax = activeVibe?.movement?.speedRange?.max ?? 0.5;
+        const speedNormalized = vibeSpeedMin + (speed / 100) * (vibeSpeedMax - vibeSpeedMin);
+        const sizeNormalized = (amplitude / 100) * 0.5;
         // If pattern already exists with same type → hot-update (no phase reset)
         const existingPattern = masterArbiter.getPattern(fixtureIds[0]);
         if (existingPattern && existingPattern.type === pattern) {
@@ -333,15 +376,20 @@ export function registerArbiterHandlers(masterArbiter) {
             console.log(`[Arbiter IPC] 🔧 Pattern ${pattern} UPDATED (speed=${speed}%, amp=${amplitude}%) — NO phase reset`);
             return { success: true, pattern, updated: true };
         }
-        // New pattern → full creation with anchored center
-        const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0]);
+        // 🔥 WAVE 2185: PATTERN SWITCH — If switching types (e.g. circle → tornado),
+        // use the EXISTING anchor position, not a re-snapshot.
+        // Re-snapshotting mid-orbit would capture an intermediate position = jump.
+        const anchorPos = existingPattern
+            ? existingPattern.center // Reuse the original anchor from the previous pattern
+            : masterArbiter.getCurrentPosition(fixtureIds[0]); // First pattern → snapshot now
         masterArbiter.setPattern(fixtureIds, {
             type: pattern,
             speed: speedNormalized,
             size: sizeNormalized,
             center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
         });
-        console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} ANCHORED at P${anchorPos.pan.toFixed(0)}/T${anchorPos.tilt.toFixed(0)} (speed=${speed}%, amp=${amplitude}%) for ${fixtureIds.length} fixtures`);
+        const switchNote = existingPattern ? ` (switched from ${existingPattern.type})` : '';
+        console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} ANCHORED at P${anchorPos.pan.toFixed(0)}/T${anchorPos.tilt.toFixed(0)} (speed=${speed}%, amp=${amplitude}%) for ${fixtureIds.length} fixtures${switchNote}`);
         return { success: true, pattern, fixtureIds: fixtureIds.length };
     });
     // ═══════════════════════════════════════════════════════════════════════
@@ -357,11 +405,39 @@ export function registerArbiterHandlers(masterArbiter) {
         if (fixtureIds.length === 0) {
             return { success: false, error: 'No fixture IDs provided' };
         }
-        // Get movement overrides (global - applies to all fixtures)
-        const movementOverrides = vibeMovementManager.getManualOverrides();
         // Get fixture-specific override for FIRST fixture (Leader strategy)
         const leaderId = fixtureIds[0];
         const fixtureOverride = masterArbiter.getManualOverride(leaderId);
+        // 🔧 WAVE 2182: Read pattern from Layer 2 (MasterArbiter.activePatterns)
+        // NOT from Layer 0 (VibeMovementManager/CHOREO) — the Programmer stores
+        // patterns in Layer 2 via setManualFixturePattern, not in CHOREO.
+        // Reading from CHOREO always returned null → UI lost pattern state on fixture switch.
+        const layer2Pattern = masterArbiter.getPattern(leaderId);
+        // If fixture has a manual override for pan/tilt but NO active pattern,
+        // it's in HOLD mode (frozen position). If it has an active pattern,
+        // return the pattern type.
+        const hasManualPosition = fixtureOverride?.overrideChannels?.includes('pan') ||
+            fixtureOverride?.overrideChannels?.includes('tilt');
+        // Determine effective pattern state for UI:
+        // - Layer 2 pattern active → return pattern type (circle/eight/sweep)
+        // - Manual position override but no pattern → 'hold' (frozen)
+        // - Neither → null (AI control)
+        let effectivePattern = null;
+        let effectiveSpeed = null;
+        let effectiveAmplitude = null;
+        if (layer2Pattern) {
+            effectivePattern = layer2Pattern.type;
+            // Convert engine values back to UI scale:
+            // speed 0.05-1.5 Hz → 0-100 (inverse of: 0.05 + (ui/100) * 1.45)
+            // size 0-1 → 0-100
+            effectiveSpeed = Math.round(Math.max(0, Math.min(100, ((layer2Pattern.speed - 0.05) / 1.45) * 100)));
+            effectiveAmplitude = Math.round(layer2Pattern.size * 100);
+        }
+        else if (hasManualPosition) {
+            effectivePattern = 'hold';
+            effectiveSpeed = null;
+            effectiveAmplitude = null;
+        }
         // Build unified state snapshot
         const state = {
             // === INTENSITY ===
@@ -383,10 +459,10 @@ export function registerArbiterHandlers(masterArbiter) {
             tilt: fixtureOverride?.controls?.tilt !== undefined
                 ? Math.round((fixtureOverride.controls.tilt / 255) * 270) // 0-255 → 0-270
                 : null,
-            // === MOVEMENT (global overrides) ===
-            pattern: movementOverrides.pattern, // 'circle', 'hold', etc. or null
-            speed: movementOverrides.speed, // 0-100 or null
-            amplitude: movementOverrides.amplitude, // 0-100 or null
+            // === MOVEMENT (Layer 2 — MasterArbiter patterns) ===
+            pattern: effectivePattern, // 'circle', 'eight', 'sweep', 'hold', or null
+            speed: effectiveSpeed, // 0-100 or null
+            amplitude: effectiveAmplitude, // 0-100 or null
             // === BEAM (from fixture override) ===
             zoom: fixtureOverride?.controls?.zoom !== undefined
                 ? Math.round(fixtureOverride.controls.zoom / 2.55)
@@ -615,6 +691,7 @@ export function registerArbiterHandlers(masterArbiter) {
         return {
             status: masterArbiter.getStatus(),
             grandMaster: masterArbiter.getGrandMaster(),
+            grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier(),
             blackout: masterArbiter.isBlackoutActive(),
         };
     });

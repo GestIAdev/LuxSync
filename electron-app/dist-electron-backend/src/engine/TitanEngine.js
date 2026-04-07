@@ -458,6 +458,7 @@ export class TitanEngine extends EventEmitter {
             snareDetected: audio.snareDetected,
             hihatDetected: audio.hihatDetected,
             isPLLBeat: audio.isPLLBeat, // ⏱️ WAVE 2305
+            crestFactor: audio.crestFactor, // 💥 WAVE 2347
         }, elementalMods);
         // Log del sistema nervioso (cada 60 frames si hay energía)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
@@ -479,10 +480,12 @@ export class TitanEngine extends EventEmitter {
         // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
         // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
         // 🌊 WAVE 1035: CHILL 7-ZONE - Si Chill tiene Front/Back L/R, usarlos
+        // 🌊 WAVE 2401: LIQUID STEREO - 7-Band per-zone envelopes
         if (nervousOutput.physicsApplied === 'latino' ||
             nervousOutput.physicsApplied === 'techno' ||
             nervousOutput.physicsApplied === 'rock' ||
-            nervousOutput.physicsApplied === 'chill') {
+            nervousOutput.physicsApplied === 'chill' ||
+            nervousOutput.physicsApplied === 'liquid-stereo') {
             const ni = nervousOutput.zoneIntensities;
             // 🧪 WAVE 908 + 🎺 WAVE 1004.1: Si tenemos L/R separados (Techno/Latino), usarlos
             const moverL = ni.moverL ?? ni.mover; // Si no hay L, fallback a mono
@@ -493,11 +496,12 @@ export class TitanEngine extends EventEmitter {
             const frontR = ni.frontR ?? (ni.front ?? 0); // Fallback a mono front
             const backL = ni.backL ?? (ni.back ?? 0); // Fallback a mono back
             const backR = ni.backR ?? (ni.back ?? 0); // Fallback a mono back
-            // 🌊 WAVE 1035: Si tenemos valores stereo, construir zonas expandidas
-            const hasChillStereo = nervousOutput.physicsApplied === 'chill' &&
+            // 🌊 WAVE 1035 + WAVE 2401: Si tenemos valores stereo, construir zonas expandidas
+            const has7ZoneStereo = (nervousOutput.physicsApplied === 'chill' ||
+                nervousOutput.physicsApplied === 'liquid-stereo') &&
                 (ni.frontL !== undefined || ni.frontR !== undefined);
-            if (hasChillStereo) {
-                // CHILL 7-ZONE MODE: Todas las zonas stereo
+            if (has7ZoneStereo) {
+                // 7-ZONE STEREO MODE: Todas las zonas stereo (Chill / Liquid Stereo)
                 zones = {
                     // Stereo Front (new)
                     frontL: { intensity: frontL, paletteRole: 'primary' },
@@ -515,7 +519,8 @@ export class TitanEngine extends EventEmitter {
                 };
                 // Log de debug para ver 7-zone en acción
                 if (this.state.frameCount % 60 === 0) {
-                    console.log(`[TitanEngine �] CHILL 7-ZONE: FL:${(frontL * 100).toFixed(0)}% FR:${(frontR * 100).toFixed(0)}% BL:${(backL * 100).toFixed(0)}% BR:${(backR * 100).toFixed(0)}%`);
+                    const tag = nervousOutput.physicsApplied === 'liquid-stereo' ? '🌊 LIQUID' : '🌊 CHILL';
+                    console.log(`[TitanEngine ${tag} 7-ZONE] FL:${(frontL * 100).toFixed(0)}% FR:${(frontR * 100).toFixed(0)}% BL:${(backL * 100).toFixed(0)}% BR:${(backR * 100).toFixed(0)}%`);
                 }
             }
             else {
@@ -792,13 +797,24 @@ export class TitanEngine extends EventEmitter {
             const blendZoneIntensity = (baseIntensity) => {
                 return baseIntensity * (1 - globalComp) + overrideIntensity * globalComp;
             };
-            zones = {
+            // 🌊 WAVE 2470 HOTFIX V4: Preservar frontL/R/backL/R en el blend.
+            // Antes: el bloque reconstruía zones sin claves stereo → hasStereoSignal=false en Arbiter
+            // → todos los PARs chill caían a modo mono. Ahora aplicamos blendZoneIntensity
+            // a las zonas stereo si existen, manteniéndolas vivas a través del globalComp blend.
+            const blendedZones = {
                 front: { intensity: blendZoneIntensity(zones.front?.intensity ?? 0.5), paletteRole: 'primary' },
                 back: { intensity: blendZoneIntensity(zones.back?.intensity ?? 0.5), paletteRole: 'primary' },
                 left: { intensity: blendZoneIntensity(zones.left?.intensity ?? 0.5), paletteRole: 'primary' },
                 right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
                 ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
             };
+            if (zones.frontL !== undefined) {
+                blendedZones.frontL = { intensity: blendZoneIntensity(zones.frontL.intensity), paletteRole: 'primary' };
+                blendedZones.frontR = { intensity: blendZoneIntensity(zones.frontR.intensity), paletteRole: 'primary' };
+                blendedZones.backL = { intensity: blendZoneIntensity(zones.backL.intensity), paletteRole: 'accent' };
+                blendedZones.backR = { intensity: blendZoneIntensity(zones.backR.intensity), paletteRole: 'accent' };
+            }
+            zones = blendedZones;
             // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario
             // const compDelta = Math.abs(globalComp - this.state.lastGlobalComposition)
             // if (compDelta > 0.1) {
@@ -920,6 +936,27 @@ export class TitanEngine extends EventEmitter {
         this.selene.setEnabled(enabled);
         console.log(`[TitanEngine] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`);
         this.emit('consciousness-toggled', enabled);
+    }
+    /**
+     * 🌊 WAVE 2401: Toggle Liquid Stereo mode (7-band per-zone envelopes)
+     */
+    setLiquidStereo(enabled) {
+        this.nervousSystem.setLiquidStereo(enabled);
+        console.log(`[TitanEngine] 🌊 Liquid Stereo ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
+    }
+    /**
+     * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
+     */
+    setLiquidLayout(mode) {
+        this.nervousSystem.setLiquidLayout(mode);
+        console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
+    }
+    /**
+     * 🌊 WAVE 2432: HOT-SWAP — Profile change on vibe switch
+     */
+    setActiveProfile(vibeKey) {
+        this.nervousSystem.setActiveProfile(vibeKey);
+        console.log(`[TitanEngine] 🌊 Profile: ${vibeKey}`);
     }
     /**
      * 🧬 WAVE 500: Obtiene estado de la consciencia

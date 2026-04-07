@@ -88,17 +88,31 @@ let outputLoop = null;
 // Interfaces Pro (EnttecPro con microcontrolador) no usan este Worker.
 let minFrameNs = BigInt(33333333); // 30Hz default (33.3ms)
 let lastFrameStart = BigInt(0);
+// BREAK mode: 'set' usa port.set({brk}) — funciona con FTDI auténtico.
+// 'baudrate' cambia baud a 76923 → envía 0x00 (~130µs LOW) → vuelve a 250000.
+// Los chips genéricos (no-FTDI, clones baratos) a veces ignoran port.set({brk})
+// porque su driver Windows no implementa SetCommBreak. El baudrate-switch es
+// el método que usa Freestyler/QLC+ como fallback universal.
+// DEFAULT: 'baudrate' — funciona con cualquier chip USB-serial sin excepción.
+let breakMode = 'baudrate';
+// Buffer de break para baudrate-switch: un byte 0x00 a 76923 baud = ~130µs
+const BREAK_BYTE = Buffer.from([0x00]);
 function log(message) {
     process.send?.({ type: 'LOG', message: `[DMX-Worker] ${message}` });
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // Conexión serial — import DINÁMICO y LOCAL, nunca heredado del main process
 // ─────────────────────────────────────────────────────────────────────────────
-function handleConnect(portPath, refreshRate) {
+function handleConnect(portPath, refreshRate, requestedBreakMode) {
     // 🔥 WAVE 2100: Adaptive Pacing — calcular intervalo desde refreshRate
     if (refreshRate && refreshRate > 0 && refreshRate <= 44) {
         minFrameNs = BigInt(Math.floor((1000 / refreshRate) * 1000000));
         log(`⏱️ Adaptive Pacing: ${refreshRate}Hz → ${Number(minFrameNs / BigInt(1000000))}ms/frame`);
+    }
+    // BREAK mode: default 'set' para FTDI puro, 'baudrate' para chips genéricos
+    if (requestedBreakMode === 'baudrate' || requestedBreakMode === 'set') {
+        breakMode = requestedBreakMode;
+        log(`🔧 BREAK mode: ${breakMode}`);
     }
     import('serialport').then((serialportModule) => {
         const SerialPort = serialportModule.SerialPort ??
@@ -232,57 +246,121 @@ function spinWaitNs(ns) {
     // eslint-disable-next-line no-empty
     while (process.hrtime.bigint() < end) { }
 }
-// BREAK: 100µs (spec mínimo 88µs, damos margen)
-const BREAK_NS = BigInt(100000);
+// BREAK: 1ms (spec mínimo 88µs, máximo no definido en práctica ≤1s)
+// Usado solo en modo 'set'. En modo 'baudrate' el break lo genera el propio byte 0x00.
+const BREAK_NS = BigInt(1000000);
+// MAB mínimo en modo baudrate-switch: 8µs. El cambio de baud + drain del UART
+// ya tarda >8µs, pero añadimos un spin explícito de 20µs por seguridad.
+const MAB_NS = BigInt(20000);
 /**
- * Envía un frame DMX completo con BREAK manual y timing preciso.
+ * Envía un frame DMX completo.
  *
- * Secuencia:
- *   1. port.set({brk:true}, cb)   → BREAK activado en hardware
- *   2. spinWaitNs(100µs)          → mantener BREAK ≥88µs (spec DMX512)
- *   3. port.set({brk:false}, cb)  → MAB activado en hardware
- *      (el callback round-trip del set() ya dura >8µs = MAB cumplido)
- *   4. port.write(buffer, cb)     → 513 bytes @ 250kbaud ≈ 22.7ms
- *   5. scheduleNextFrame()        → encadenar siguiente
+ * MODO 'set' (FTDI/Tornado):
+ *   port.set({brk:true}) → spin 1ms → port.set({brk:false}) → port.write(513b)
  *
- * Zero setTimeout en el path crítico. Solo I/O nativo + spin-wait.
+ * MODO 'baudrate' (chips genéricos, QLC+/Freestyler compatible):
+ *   port.update({baudRate: 76923}) → port.write(0x00) → drain
+ *   → port.update({baudRate: 250000}) → spin MAB → port.write(513b)
+ *
+ *   A 76923 baud, un byte 0x00 (start bit + 8 bits + stop) dura ~130µs → BREAK válido.
+ *   Este es el método universal: funciona con CUALQUIER chip USB-serial en Windows
+ *   porque solo usa operaciones de write, sin depender de SetCommBreak.
  */
 function sendFrame() {
     if (!port || !isOpen) {
         scheduleNextFrame();
         return;
     }
+    if (breakMode === 'baudrate') {
+        sendFrameBaudrateBreak();
+    }
+    else {
+        sendFrameSetBreak();
+    }
+}
+/**
+ * BREAK via port.set({brk}) — para FTDI puro (Tornado, Enttec Open DMX).
+ */
+function sendFrameSetBreak() {
     const portAny = port;
-    // Si el puerto no expone port.set (driver muy básico), raw write directo
+    // Si el driver no expone port.set, degradar a baudrate-switch automáticamente
     if (typeof portAny.set !== 'function') {
-        port.write(dmxBuffer, () => {
-            scheduleNextFrame();
-        });
+        log('⚠️ port.set no disponible — degradando a baudrate-switch');
+        breakMode = 'baudrate';
+        sendFrameBaudrateBreak();
         return;
     }
-    // PASO 1: BREAK — activar línea LOW
     portAny.set({ brk: true }, (err) => {
         if (err || !port || !isOpen) {
             scheduleNextFrame();
             return;
         }
-        // PASO 2: Mantener BREAK por ≥88µs (spec DMX512)
-        // spin-wait preciso en vez de setTimeout(1) que tarda 15ms en Windows
         spinWaitNs(BREAK_NS);
-        // PASO 3: MAB — desactivar BREAK (línea HIGH)
         portAny.set({ brk: false }, (err2) => {
             if (err2 || !port || !isOpen) {
                 scheduleNextFrame();
                 return;
             }
-            // El MAB ya cumplió: el round-trip del set() callback toma >8µs.
-            // PASO 4: DATA — escribir los 513 bytes DMX
             port.write(dmxBuffer, (err3) => {
-                if (err3) {
+                if (err3)
                     log(`Write error: ${err3.message}`);
-                }
-                // PASO 5: Encadenar siguiente frame
                 scheduleNextFrame();
+            });
+        });
+    });
+}
+/**
+ * BREAK via baudrate-switch — compatible con chips genéricos (CH340, PL2303, CP210x, etc.).
+ *
+ * Técnica estándar usada por Freestyler, QLC+, DMXControl:
+ *   1. Bajar baud a 76923 (1/250000 × 250000/76923 ≈ 3.25 bit-times por bit DMX)
+ *      → un byte 0x00 dura ~130µs en la línea = BREAK válido (≥88µs)
+ *   2. Emitir 0x00
+ *   3. Subir baud a 250000 (velocidad DMX estándar)
+ *   4. Spin 20µs = MAB
+ *   5. Emitir los 513 bytes del frame DMX
+ */
+function sendFrameBaudrateBreak() {
+    const portAny = port;
+    if (typeof portAny.update !== 'function') {
+        // Último recurso: sin BREAK, enviar directo (mejor que nada)
+        port.write(dmxBuffer, () => { scheduleNextFrame(); });
+        return;
+    }
+    // PASO 1: Bajar baud para generar BREAK
+    portAny.update({ baudRate: 76923 }, (err) => {
+        if (err || !port || !isOpen) {
+            scheduleNextFrame();
+            return;
+        }
+        // PASO 2: Emitir 0x00 → genera señal LOW ~130µs = BREAK DMX512
+        port.write(BREAK_BYTE, (err2) => {
+            if (err2 || !port || !isOpen) {
+                scheduleNextFrame();
+                return;
+            }
+            // Drain: esperar que el UART vacíe el byte antes de cambiar baud
+            // port.drain() garantiza que el byte se emitió por el RS-485 antes de continuar
+            port.drain((err3) => {
+                if (err3 || !port || !isOpen) {
+                    scheduleNextFrame();
+                    return;
+                }
+                // PASO 3: Volver a 250000 baud para el frame DMX
+                portAny.update({ baudRate: 250000 }, (err4) => {
+                    if (err4 || !port || !isOpen) {
+                        scheduleNextFrame();
+                        return;
+                    }
+                    // PASO 4: MAB — 20µs mínimo
+                    spinWaitNs(MAB_NS);
+                    // PASO 5: Emitir los 513 bytes del universo DMX
+                    port.write(dmxBuffer, (err5) => {
+                        if (err5)
+                            log(`Write error: ${err5.message}`);
+                        scheduleNextFrame();
+                    });
+                });
             });
         });
     });
@@ -317,7 +395,7 @@ process.on('message', (msg) => {
     switch (msg.type) {
         case 'CONNECT':
             if (typeof msg.portPath === 'string') {
-                handleConnect(msg.portPath, msg.refreshRate);
+                handleConnect(msg.portPath, msg.refreshRate, msg.breakMode);
             }
             break;
         case 'UPDATE_BUFFER':

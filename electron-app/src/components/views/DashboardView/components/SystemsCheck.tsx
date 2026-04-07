@@ -682,7 +682,12 @@ export const SystemsCheck: React.FC = () => {
           OFF es el estado por defecto — sin auto-start.
           ════════════════════════════════════════════════════════════════════ */}
       <div className={`system-section ${isAudioOn ? 'audio-on' : 'audio-off'}`}>
-        <div className="section-header audio-header">
+        {/* WAVE 2501: Header completo es clickable para desplegar acordeón */}
+        <div
+          className={`section-header audio-header clickable ${isAudioOn && activeSection === 'audio' ? 'active' : 'inactive'}`}
+          onClick={() => isAudioOn && toggleSection('audio')}
+          style={{ cursor: isAudioOn ? 'pointer' : 'default' }}
+        >
           <div className="section-icon-badge audio">
             <AudioWaveIcon size={16} />
           </div>
@@ -693,21 +698,18 @@ export const SystemsCheck: React.FC = () => {
               <MiniVisualizer />
             </div>
           )}
-          {/* TOGGLE MASTER ON/OFF — toda la lógica pasa por aquí */}
+          {/* TOGGLE MASTER ON/OFF — stopPropagation evita colapso accidental del acordeón */}
           <button
             className={`audio-power-toggle ${isAudioOn ? 'on' : 'off'} ${isAudioConnecting ? 'connecting' : ''}`}
-            onClick={handleAudioToggle}
+            onClick={(e) => { e.stopPropagation(); handleAudioToggle() }}
             disabled={isAudioConnecting}
             title={isAudioOn ? 'Apagar audio' : 'Activar audio'}
           >
             <span className="toggle-label">{isAudioConnecting ? '...' : isAudioOn ? 'ON' : 'OFF'}</span>
           </button>
-          {/* Acordeón de fuente: solo cuando está ON */}
+          {/* Acordeón de fuente: solo cuando está ON — la flecha es indicador visual */}
           {isAudioOn && (
-            <span
-              className={`accordion-arrow ${activeSection === 'audio' ? 'active' : ''}`}
-              onClick={() => toggleSection('audio')}
-            >
+            <span className={`accordion-arrow ${activeSection === 'audio' ? 'active' : ''}`}>
               {activeSection === 'audio' ? '▼' : '▶'}
             </span>
           )}

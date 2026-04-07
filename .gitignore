@@ -1,1 +1,6 @@
 node_modules
+
+# 🛡️ WAVE 2489: THE OBSIDIAN VAULT — Private keys & licenses
+scripts/keys/luxsync-private.pem
+*.luxlicense
+licenses/

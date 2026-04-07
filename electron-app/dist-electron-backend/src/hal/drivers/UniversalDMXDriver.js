@@ -59,6 +59,11 @@ export class UniversalDMXDriver extends EventEmitter {
         this.lastError = null;
         this.isScanning = false;
         this.isTransmitting = false;
+        // 🔒 WAVE 2240: THE HYDRA MUTEX — Semáforos de operación de hardware
+        // Solo una operación de connect/disconnect puede ejecutarse al mismo tiempo.
+        // Previene Race Conditions donde dos autoConnect() superpuestos bloquean el COM.
+        this.isConnecting = false;
+        this.isDisconnecting = false;
         // 🏛️ WAVE 3000: Strategy Pattern — estrategia de envío por universo
         this.strategies = new Map();
         // 🔎 FORENSIC TRACE (CP4): serial write counters (per universe)
@@ -200,50 +205,63 @@ export class UniversalDMXDriver extends EventEmitter {
      * Asigna universos incrementalmente (0, 1, 2...)
      */
     async autoConnect() {
+        // 🔒 WAVE 2240: HYDRA MUTEX — rechazar si ya hay una operación en curso
+        if (this.isConnecting) {
+            this.log('⚠️ [Mutex] autoConnect() rejected — connection already in progress');
+            return false;
+        }
+        if (this.isDisconnecting) {
+            this.log('⚠️ [Mutex] autoConnect() rejected — disconnect in progress, wait for it to finish');
+            return false;
+        }
         if (this.isScanning) {
             this.log('⚠️ Already scanning...');
             return false;
         }
+        this.isConnecting = true;
         this.isScanning = true;
+        this.emit('connecting');
         this.log('🔍 Hydra: Scanning for ALL compatible devices...');
-        const devices = await this.listDevices();
-        if (devices.length === 0) {
-            this.log('⚠️ No serial devices found');
-            this.emit('no-devices');
-            this.isScanning = false;
-            return false;
-        }
-        // Filtrar dispositivos que ya están conectados
-        const connectedPaths = Array.from(this.connectedDevices.values()).map(d => d.path);
-        const newDevices = devices.filter(d => !connectedPaths.includes(d.path));
-        if (newDevices.length === 0 && this.ports.size > 0) {
-            this.log('✅ All available devices already connected');
-            this.isScanning = false;
-            return true;
-        }
-        // Buscar el siguiente universo libre
-        let nextUniverse = 0;
-        while (this.ports.has(nextUniverse)) {
-            nextUniverse++;
-        }
-        let connectedCount = 0;
-        // Intentar conectar cada dispositivo nuevo
-        for (const device of newDevices) {
-            this.log(`🔌 Hydra: Found ${device.friendlyName} (${device.confidence}%), assigning Universe ${nextUniverse}...`);
-            const success = await this.connect(device.path, nextUniverse);
-            if (success) {
-                connectedCount++;
+        try {
+            const devices = await this.listDevices();
+            if (devices.length === 0) {
+                this.log('⚠️ No serial devices found');
+                this.emit('no-devices');
+                return false;
+            }
+            // Filtrar dispositivos que ya están conectados
+            const connectedPaths = Array.from(this.connectedDevices.values()).map(d => d.path);
+            const newDevices = devices.filter(d => !connectedPaths.includes(d.path));
+            if (newDevices.length === 0 && this.ports.size > 0) {
+                this.log('✅ All available devices already connected');
+                return true;
+            }
+            // Buscar el siguiente universo libre
+            let nextUniverse = 0;
+            while (this.ports.has(nextUniverse)) {
                 nextUniverse++;
             }
+            // Intentar conectar cada dispositivo nuevo
+            for (const device of newDevices) {
+                this.log(`🔌 Hydra: Found ${device.friendlyName} (${device.confidence}%), assigning Universe ${nextUniverse}...`);
+                const success = await this.connect(device.path, nextUniverse);
+                if (success) {
+                    nextUniverse++;
+                }
+            }
+            if (this.ports.size > 0 || this.connectedDevices.size > 0) {
+                this.log(`✅ 🐙 Hydra Active: ${this.connectedDevices.size} universe(s) online`);
+                this.emit('hydra-ready', { universes: this.connectedDevices.size });
+                return true;
+            }
+            this.log('❌ Could not connect to any device');
+            return false;
         }
-        this.isScanning = false;
-        if (this.ports.size > 0) {
-            this.log(`✅ 🐙 Hydra Active: ${this.ports.size} universe(s) online`);
-            this.emit('hydra-ready', { universes: this.ports.size });
-            return true;
+        finally {
+            // 🔓 WAVE 2240: Liberar mutex SIEMPRE, tanto si triunfa como si falla
+            this.isConnecting = false;
+            this.isScanning = false;
         }
-        this.log('❌ Could not connect to any device');
-        return false;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // CONEXIÓN MULTI-CABEZA
@@ -267,9 +285,26 @@ export class UniversalDMXDriver extends EventEmitter {
      *   isolate. Self-managed → solo en worker. Driver-managed → solo en main.
      */
     async connect(portPath, universe = 0) {
+        // 🔒 WAVE 2240: HYDRA MUTEX — si ya hay un connect() en curso (desde autoConnect),
+        // NO rechazamos aquí porque autoConnect() setea isConnecting y luego llama a connect().
+        // El guard de isDisconnecting SÍ aplica: no conectar mientras se destruye el worker.
+        if (this.isDisconnecting) {
+            this.log(`⚠️ [Mutex] connect() rejected — disconnect in progress for Universe ${universe}`);
+            return false;
+        }
         if (this.ports.has(universe) || this.connectedDevices.has(universe)) {
             this.log(`⚠️ Universe ${universe} already occupied, skipping ${portPath}`);
             return false;
+        }
+        // Si llega aquí directamente (no desde autoConnect), gestionar su propio mutex
+        const ownsMutex = !this.isConnecting;
+        if (ownsMutex) {
+            if (this.isConnecting) {
+                this.log(`⚠️ [Mutex] connect() rejected — another connection already in progress`);
+                return false;
+            }
+            this.isConnecting = true;
+            this.emit('connecting');
         }
         this.log(`🔌 [Univ ${universe}] Connecting to ${portPath}...`);
         try {
@@ -370,6 +405,12 @@ export class UniversalDMXDriver extends EventEmitter {
             }
             return false;
         }
+        finally {
+            // 🔓 WAVE 2240: Liberar mutex solo si esta llamada lo adquirió (llamada directa)
+            if (ownsMutex) {
+                this.isConnecting = false;
+            }
+        }
     }
     /**
      * Maneja errores de puerto para un universo específico
@@ -427,6 +468,15 @@ export class UniversalDMXDriver extends EventEmitter {
      * 🔌 Desconecta TODOS los universos
      */
     async disconnect() {
+        // 🔒 WAVE 2240: HYDRA MUTEX — evitar desconexiones paralelas y
+        // forzar que cualquier connect en curso no inicie tras nosotros
+        if (this.isDisconnecting) {
+            this.log('⚠️ [Mutex] disconnect() already in progress, skipping duplicate call');
+            return;
+        }
+        this.isDisconnecting = true;
+        // Si había una conexión en proceso, la marcamos como abortada
+        this.isConnecting = false;
         this.log('🔌 Disconnecting all universes...');
         this.stopOutputLoop();
         this.stopWatchdog();
@@ -463,6 +513,9 @@ export class UniversalDMXDriver extends EventEmitter {
         this.strategies.clear();
         this.log('🔌 All universes disconnected');
         this.emit('all-disconnected');
+        // 🔓 WAVE 2240: Liberar mutex — el hardware quedó libre
+        this.isDisconnecting = false;
+        this.isConnecting = false;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // 🛡️ WAVE 2020.2c: WATCHDOG USB (Multi-Universe)
@@ -701,9 +754,12 @@ export class UniversalDMXDriver extends EventEmitter {
         this.clearReconnectTimer();
         this.log(`⏰ Reconnecting in ${this.config.reconnectDelay}ms...`);
         this.reconnectTimer = setTimeout(async () => {
-            // Intentar reconectar todos los dispositivos disponibles
-            this.log('� Attempting hydra reconnect...');
-            await this.autoConnect();
+            try {
+                await this.autoConnect();
+            }
+            catch (err) {
+                this.log(`Reconnect failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
         }, this.config.reconnectDelay);
     }
     clearReconnectTimer() {

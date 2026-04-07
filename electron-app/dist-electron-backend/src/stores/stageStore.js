@@ -75,8 +75,15 @@ function debouncedSave(save) {
         clearTimeout(saveTimeout);
     }
     saveTimeout = setTimeout(async () => {
-        await save();
-        saveTimeout = null;
+        try {
+            await save();
+        }
+        catch (err) {
+            console.error('[stageStore] debouncedSave failed:', err);
+        }
+        finally {
+            saveTimeout = null;
+        }
     }, SAVE_DEBOUNCE);
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -409,17 +416,32 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         get()._syncDerivedState();
         get()._setDirty();
     },
-    reconcileFixturesWithProfile: (updatedProfile) => {
+    reconcileFixturesWithProfile: (updatedProfile, previousProfileId) => {
         const { showFile } = get();
         if (!showFile)
             return;
         let updatedCount = 0;
         const newFixtures = showFile.fixtures.map(fixture => {
-            // Si el foco en el escenario usa el perfil que acabamos de guardar...
-            if (fixture.profileId === updatedProfile.id) {
+            // 🔥 WAVE 2183.5: MULTI-MATCH RECONCILIATION
+            // Match by CURRENT profileId OR by the PREVIOUS profileId (system→user clone migration).
+            // This handles the case where a system fixture was cloned in the Forge:
+            //   - Fixture in showFile has profileId: "EL_1140" (original system ID)
+            //   - Updated profile has id: "user-1770473024494-..." (new cloned ID)
+            //   - Without previousProfileId, the match NEVER connects and names stay fossilized.
+            const matchesCurrent = fixture.profileId === updatedProfile.id;
+            const matchesPrevious = previousProfileId && fixture.profileId === previousProfileId;
+            if (matchesCurrent || matchesPrevious) {
                 updatedCount++;
                 return {
                     ...fixture,
+                    // 🔥 WAVE 2183.5: MIGRATE profileId to new profile identity
+                    // When a system fixture is cloned to user, ALL stage fixtures using the
+                    // old system profileId must now point to the new user profileId.
+                    profileId: updatedProfile.id,
+                    // 🔥 WAVE 2183: GHOST EXORCISM — Sync name/model/manufacturer
+                    name: updatedProfile.name || fixture.name,
+                    model: updatedProfile.name || fixture.model,
+                    manufacturer: updatedProfile.manufacturer || fixture.manufacturer,
                     channelCount: updatedProfile.channels.length,
                     // 🔄 HOT-RELOAD: Actualizamos la caché inline de la WAVE 384
                     channels: updatedProfile.channels.map((ch) => ({
@@ -438,14 +460,25 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
                         has16bitMovement: updatedProfile.channels.some((ch) => ch.type === 'pan_fine' || ch.type === 'tilt_fine'),
                         hasColorMixing: updatedProfile.capabilities?.hasColorMixing,
                         hasColorWheel: updatedProfile.capabilities?.hasColorWheel
-                    }
+                    },
+                    // 🔥 WAVE 2183: Sync physics if profile provides them
+                    ...(updatedProfile.physics ? {
+                        physics: {
+                            ...fixture.physics,
+                            motorType: updatedProfile.physics.motorType || fixture.physics.motorType,
+                            maxAcceleration: updatedProfile.physics.maxAcceleration ?? fixture.physics.maxAcceleration,
+                            maxVelocity: updatedProfile.physics.maxVelocity ?? fixture.physics.maxVelocity,
+                            safetyCap: updatedProfile.physics.safetyCap ?? fixture.physics.safetyCap,
+                        }
+                    } : {})
                 };
             }
             return fixture;
         });
         if (updatedCount > 0) {
             showFile.fixtures = newFixtures;
-            console.log(`[StageStore] 🔄 Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}`);
+            const migrationNote = previousProfileId ? ` (migrated from profileId: ${previousProfileId})` : '';
+            console.log(`[StageStore] 🔄 WAVE 2183.5: Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}${migrationNote} (name+model+profileId+channels+capabilities synced)`);
             get()._syncDerivedState();
             get()._setDirty();
         }

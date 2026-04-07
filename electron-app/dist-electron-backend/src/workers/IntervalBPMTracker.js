@@ -125,6 +125,14 @@ const PEAK_DISCRIMINATOR_RATIO = 0.65;
  *  0.995 means the peak decays slowly — survives ~200 frames (~9s).
  *  This ensures gradual amplitude changes in the music are tracked. */
 const PEAK_DECAY = 0.995;
+/** Minimum absolute bass energy to even consider a kick.
+ *  Prevents the Silence Trap: when rollingAvg sinks to ~0.01 during
+ *  breakdowns, any residual rumble (0.05) generates a ratio of 5.0×
+ *  and fools the ratio detector. This floor ensures only real transients
+ *  with muscular energy pass. Calibrated from WAVE 2439 front logs:
+ *  all false positives during Brejcha silences had energy < 0.10.
+ *  Real kicks never dip below 0.12 even in the softest verses. */
+const MIN_KICK_ENERGY = 0.150;
 /** Minimum kicks before peak discriminator activates.
  *  Need enough history to have a reliable peak estimate.
  *  6 kicks = ~3 seconds at 126 BPM — enough to establish amplitude. */
@@ -211,7 +219,8 @@ export class IntervalBPMTracker {
         let kickDetected = false;
         if (rollingAvg > 0
             && rawBassEnergy > rollingAvg * ENERGY_RATIO_THRESHOLD
-            && delta > DELTA_THRESHOLD) {
+            && delta > DELTA_THRESHOLD
+            && rawBassEnergy > MIN_KICK_ENERGY) {
             // ─── 3b. Adaptive Debounce Check ───────────────────────────
             // The debounce is the MINIMUM time between kicks.
             // It adapts to the current BPM to prevent the vicious cycle.
@@ -451,7 +460,7 @@ export class IntervalBPMTracker {
     }
     /**
      * ═══════════════════════════════════════════════════════════════════════
-     * 🎯 WAVE 2174 + WAVE 2180: DANCE POCKET FOLDER — getMusicalBpm()
+     * 🎯 WAVE 2174 + WAVE 2180 + WAVE 2181: DANCE POCKET FOLDER — getMusicalBpm()
      * ═══════════════════════════════════════════════════════════════════════
      *
      * The tracker measures RAW rhythmic events per minute. That's mathematically
@@ -474,18 +483,38 @@ export class IntervalBPMTracker {
      *   ÷2.0   (Double-time → half-note pulse):
      *     250 BPM ÷ 2.0 = 125 BPM ✅ (DnB, hardcore → half-time groove)
      *
+     * 🛡️ WAVE 2181: THE EXTREME FOLDER & SAFETY NET
+     *
+     *   ÷3.0   (Triple-time → extreme DnB/Speedcore):
+     *     275 BPM ÷ 3.0 = 92 BPM ✅ (DnB at 260-300 BPM range)
+     *     360 BPM ÷ 3.0 = 120 BPM ✅ (Speedcore → techno groove)
+     *   ÷4.0   (Quadruple-time → gabber/extratone):
+     *     440 BPM ÷ 4.0 = 110 BPM ✅ (Gabber → dancefloor)
+     *     520 BPM ÷ 4.0 = 130 BPM ✅ (Extratone → groove)
+     *
+     *   SAFETY CLAMP: If ALL fold ratios fail (mathematically near-impossible
+     *   with ÷4.0 covering up to 540 BPM), clamp to pocket boundary instead
+     *   of returning raw BPM. A 275 BPM signal hitting the physics engine
+     *   would cause movers to oscillate at 4.6 Hz — mechanical suicide for
+     *   budget gear. The clamp is the last line of defense.
+     *
      * FOLDING UP (raw < targetMin):
      *   ×1.5   (Tresillo inverso):
      *     86 BPM × 1.5 = 129 BPM ✅ (Medio-tempo Techno dotted groove)
      *   ×2.0   (Half-time → double-time):
      *     65 BPM × 2.0 = 130 BPM ✅ (Trap half-time → groove)
+     *   ×3.0   (WAVE 2181 — ultra-slow ambient recovery):
+     *     35 BPM × 3.0 = 105 BPM ✅ (Ambient/drone → gentle pulse)
+     *   ×4.0   (WAVE 2181 — sub-bass crawl recovery):
+     *     25 BPM × 4.0 = 100 BPM ✅ (SubBass → dancefloor)
      *
-     * PRIORITY ORDER (fold down): ×0.75 → ÷1.5 → ÷2.0
+     * PRIORITY ORDER (fold down): ×0.75 → ÷1.5 → ÷2.0 → ÷3.0 → ÷4.0
      *   0.75 first: covers the most common Hard Techno dotted-bass illusion.
      *   Tresillo second: fast tresillo patterns.
-     *   Double-time last: most aggressive reduction, last resort.
+     *   Double-time third: DnB/hardcore standard fold.
+     *   Triple/Quadruple last: extreme genres, maximum reduction.
      *
-     * PRIORITY ORDER (fold up): ×1.5 → ×2.0
+     * PRIORITY ORDER (fold up): ×1.5 → ×2.0 → ×3.0 → ×4.0
      *   Tresillo inverse first: more musically natural in club contexts.
      *
      * Context-aware: pass genre-specific boundaries for strict pocket locking.
@@ -495,8 +524,8 @@ export class IntervalBPMTracker {
      *
      * @param targetMin - Lower bound of the dance pocket (default 90 BPM)
      * @param targetMax - Upper bound of the dance pocket (default 135 BPM)
-     * @returns Musical BPM folded into the dance pocket, or raw BPM if
-     *          no folding ratio produces a valid result, or 0 if no signal.
+     * @returns Musical BPM folded into the dance pocket, or clamped to boundary.
+     *          Returns 0 if no signal.
      */
     getMusicalBpm(targetMin = 90, targetMax = 135) {
         const raw = this.stableBpm;
@@ -511,6 +540,8 @@ export class IntervalBPMTracker {
                 raw * 0.75, // ×0.75 — Dotted 4:3 (semicorchea con puntillo). 161→121
                 raw / 1.5, // ÷1.5  — Tresillo 3:2. 185→123
                 raw / 2.0, // ÷2.0  — Double-time. 250→125
+                raw / 3.0, // ÷3.0  — Triple-time. 275→92 (WAVE 2181: DnB/Speedcore)
+                raw / 4.0, // ÷4.0  — Quadruple-time. 440→110 (WAVE 2181: Gabber)
             ];
             for (const f of folds) {
                 const folded = Math.round(f);
@@ -523,6 +554,8 @@ export class IntervalBPMTracker {
             const folds = [
                 raw * 1.5, // ×1.5 — Tresillo inverso. 86→129
                 raw * 2.0, // ×2.0 — Half-time inversion. 65→130
+                raw * 3.0, // ×3.0 — Ultra-slow recovery. 35→105 (WAVE 2181)
+                raw * 4.0, // ×4.0 — Sub-bass crawl recovery. 25→100 (WAVE 2181)
             ];
             for (const f of folds) {
                 const folded = Math.round(f);
@@ -530,8 +563,12 @@ export class IntervalBPMTracker {
                     return folded;
             }
         }
-        // No ratio lands in the strict pocket — return raw, unfolded
-        return raw;
+        // ── WAVE 2181: SAFETY CLAMP — The Last Line of Defense ───────────────
+        // If no fold ratio lands in the pocket (near-impossible with ÷4.0),
+        // clamp to the nearest pocket boundary. NEVER return raw BPM to physics.
+        // A raw 275 BPM would drive movers at 4.6 Hz oscillation — mechanical death.
+        const pocketCenter = (targetMin + targetMax) / 2;
+        return raw > pocketCenter ? targetMax : targetMin;
     }
     /** Reset tracker state — AMNESIA PROTOCOL */
     reset() {

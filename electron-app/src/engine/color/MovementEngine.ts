@@ -250,7 +250,11 @@ export class MovementEngine {
     pan = 0.5 + (pan - 0.5) * (energyRange / this.state.range)
     tilt = 0.5 + (tilt - 0.5) * (energyRange / this.state.range)
     
-    if (beatState.onBeat && metrics.bass > 0.6) {
+    // 🛡️ WAVE 2512 FIX 4: Beat-Boost Lock Guard
+    // Beat-reactive tilt/pan boost only fires when PLL is locked (credible beat source).
+    // Without this guard, phantom Pacemaker beats (60 BPM = 1000ms) cause
+    // visible nanosaltos on the Mover in Chill and any sparse-kick context.
+    if (beatState.pllLocked && beatState.onBeat && metrics.bass > 0.6) {
       const entropy = this.getSystemEntropy(Date.now())
       const beatBoost = 0.1 * metrics.bass
       pan = Math.max(0, Math.min(1, pan + (entropy - 0.5) * beatBoost))

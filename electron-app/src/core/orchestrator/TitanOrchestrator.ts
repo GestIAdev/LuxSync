@@ -682,7 +682,11 @@ export class TitanOrchestrator {
       energy, // Ya normalizado por AGC - INTOCABLE
       // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
       beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
-      isBeat: workerOnBeat || beatState.onBeat,
+      // 🛡️ WAVE 2512 FIX 3: IBeat Silence Guard
+      // PLL onBeat only propagates as isBeat if the PLL is locked (has real evidence).
+      // Redundancy layer: FIX 1 already silences beatState.onBeat in freewheel,
+      // but this guard ensures the merge logic itself is architecturally correct.
+      isBeat: workerOnBeat || (beatState.pllLocked && beatState.onBeat),
       // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
       // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
       // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
@@ -701,7 +705,10 @@ export class TitanOrchestrator {
       lowMid: this.smoothedMetrics.lowMid,
       highMid: this.smoothedMetrics.highMid,
       // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
-      kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
+      // 🛡️ WAVE 2512 FIX 2: Kick Signal Veto in Freewheel
+      // kickDetected only fires if Worker directly detected OR PLL has a real lock.
+      // Prevents phantom Pacemaker kicks from polluting physics engines (LiquidEngineBase isKick).
+      kickDetected: workerOnBeat || (beatState.pllLocked && this.lastAudioData.kickDetected),
       snareDetected: this.lastAudioData.snareDetected,
       hihatDetected: this.lastAudioData.hihatDetected,
       // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction

@@ -605,8 +605,15 @@ export abstract class LiquidEngineBase {
     const frontRight = osc(3109,  1.047, lo,         hi - 0.06) // La Corriente
     const backLeft   = osc(5303,  0.628, lo + 0.02, hi)         // Las Algas
     const backRight  = osc(1901,  1.571, lo - 0.08, lo + 0.12)  // El Destello (rango estrecho)
-    const moverLeft  = osc(6701,  2.094, lo,         hi - 0.04) // La Voz del Mar
-    const moverRight = osc(2311,  3.141, lo - 0.06, hi - 0.10)  // La Bioluminiscencia
+
+    // WAVE 2514 — THE MAJESTIC SWELL: movers a escala de marea
+    // Períodos primos largos (7-9 segundos) → la corriente oceánica nunca tiene prisa.
+    // Rango [0.20 .. 0.45] — pulso suave sin picos abruptos. La fórmula garantiza
+    // que el seno mapeado a [0,1] se multiplica por swellRange sin discontinuidades.
+    const SWELL_BASE  = 0.20                            // Dimmer mínimo de marea
+    const swellRange  = 0.25 * morphVariance            // Rango modulado por profundidad
+    const moverLeft  = SWELL_BASE + ((Math.sin(now / 7901 + 2.094) + 1) / 2) * swellRange  // La Voz del Mar
+    const moverRight = SWELL_BASE + ((Math.sin(now / 8803 + 3.926) + 1) / 2) * swellRange  // La Bioluminiscencia
 
     // Construimos el ProcessedFrame con GodEar vacío y osciladores como señales
     const frame: ProcessedFrame = {

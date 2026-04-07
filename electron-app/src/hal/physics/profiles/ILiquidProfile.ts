@@ -223,6 +223,26 @@ export interface ILiquidProfile {
   // del perfil base sin modificación.
   // ═══════════════════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2513 — AMBIENT ISOLATION
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Modo Ambient Puro: ignora TODA señal de audio para calcular intensidades.
+   * Los valores de salida son generados por osciladores basados en Date.now().
+   * Esto garantiza que con volumen 0 o volumen 100 el comportamiento es idéntico.
+   *
+   * Efectos:
+   *   - isKick / isKickEdge / kickSignal = 0 (bloqueado)
+   *   - Sidechain Guillotine = desactivada (ducking = 1.0 siempre)
+   *   - strobeActive = false (permanente)
+   *   - frontRight, backRight driven by time oscillators [0.35–0.65]
+   *   - frontLeft, backLeft driven by time oscillators [0.40–0.75]
+   * Los envelopes (envKick, envSnare, etc.) SIGUEN procesando — para mantener
+   * ghostCap activo y la luminosidad residual oceánica correcta.
+   */
+  readonly isPureAmbient?: boolean
+
   readonly overrides41?: {
     // Envelopes — Partial permite overridear campos individuales
     // sin repetir los 12 campos del envelope completo

@@ -258,6 +258,20 @@ export abstract class LiquidEngineBase {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // WAVE 2513 — AMBIENT ISOLATION: BYPASS TOTAL DE GodEarFFT
+    // Si el perfil es isPureAmbient, el motor ignora TODA señal de audio
+    // y genera intensidades puramente desde osciladores trigonométricos.
+    // El resultado es idéntico con volumen=0 o volumen=100.
+    //
+    // Arquitectura: early-return completo. El hot-path de GodEar (kicks,
+    // strobe, sidechain, transient shaper) NUNCA se ejecuta para este vibe.
+    // Los envelopes SÍ se ejecutan para mantener ghostCap oceánico activo.
+    // ═══════════════════════════════════════════════════════════════════
+    if (p.isPureAmbient) {
+      return this.applyAmbientGenerative(morphFactor, now)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 2. MODES
     // ═══════════════════════════════════════════════════════════════════
     const acidMode = harshness > p.harshnessAcidThreshold
@@ -561,6 +575,70 @@ export abstract class LiquidEngineBase {
   // ─────────────────────────────────────────────────────────────────────
 
   protected abstract routeZones(frame: ProcessedFrame): LiquidStereoResult
+
+  // ─────────────────────────────────────────────────────────────────────
+  // WAVE 2513 — AMBIENT GENERATIVE ENGINE
+  // Motor trigonométrico puro: sin GodEar, sin kicks, sin strobe.
+  // Los seis osciladores tienen períodos primos entre sí (ms) para que
+  // NUNCA coincidan en fase → nunca producen periodicidad perceptible.
+  // El resultado es idéntico con música, en silencio o a 0 de volumen.
+  // ─────────────────────────────────────────────────────────────────────
+
+  private applyAmbientGenerative(morphFactor: number, now: number): LiquidStereoResult {
+    // Oscillator helper: mapea sin(t) de [-1,1] a [lo, hi]
+    const osc = (period: number, phase: number, lo: number, hi: number): number => {
+      const raw = Math.sin((now / period) + phase)
+      return lo + (raw + 1.0) * 0.5 * (hi - lo)
+    }
+
+    // Períodos en ms — todos primos entre sí para evitar aliasing periódico.
+    // Modulados levemente por morphFactor para que la "profundidad oceánica"
+    // afecte el rango dinámico (superficie = más variación, abismo = más flat)
+    const morphVariance = 0.8 + morphFactor * 0.4   // [0.8 .. 1.2] scaling del rango
+
+    const loBase = 0.38
+    const hiBase = 0.68
+    const lo = loBase
+    const hi = loBase + (hiBase - loBase) * morphVariance
+
+    const frontLeft  = osc(4003,  0.000, lo + 0.04, hi + 0.04) // El Pulso del Abismo
+    const frontRight = osc(3109,  1.047, lo,         hi - 0.06) // La Corriente
+    const backLeft   = osc(5303,  0.628, lo + 0.02, hi)         // Las Algas
+    const backRight  = osc(1901,  1.571, lo - 0.08, lo + 0.12)  // El Destello (rango estrecho)
+    const moverLeft  = osc(6701,  2.094, lo,         hi - 0.04) // La Voz del Mar
+    const moverRight = osc(2311,  3.141, lo - 0.06, hi - 0.10)  // La Bioluminiscencia
+
+    // Construimos el ProcessedFrame con GodEar vacío y osciladores como señales
+    const frame: ProcessedFrame = {
+      bands: { subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0 },
+      morphFactor,
+      recoveryFactor: 1.0,
+      isBreakdown: false,
+      isVetoed: false,
+      isKick: false,
+      isKickEdge: false,
+      acidMode: false,
+      noiseMode: false,
+      harshness: 0,
+      flatness: 0,
+      spectralCentroid: 0,
+      rawTrebleDelta: 0,
+      rawHighMidDelta: 0,
+      rawMidDelta: 0,
+      now,
+      frontLeft,
+      frontRight,
+      backRight,
+      snareAttack: 0,
+      backLeft,
+      moverLeft,
+      moverRight,
+      strobeActive: false,
+      strobeIntensity: 0,
+    }
+
+    return this.routeZones(frame)
+  }
 
   // ─────────────────────────────────────────────────────────────────────
   // PRIVATE

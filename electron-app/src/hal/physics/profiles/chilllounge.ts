@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 2470 FASE 2: CHILL LOUNGE PROFILE — El Descenso Oceánico
  * ═══════════════════════════════════════════════════════════════════════════
@@ -230,12 +230,21 @@ export const CHILL_PROFILE: ILiquidProfile = {
   moverRTrebleSub: 0.05,    // MÍNIMO — la bioluminiscencia necesita el treble
 
   // ═══════════════════════════════════════════════════════════════
-  // SIDECHAIN GUILLOTINE — DESACTIVADO EN CHILL
+  // WAVE 2513 — AMBIENT ISOLATION: AISLAMIENTO TOTAL DEL GodEarFFT
+  // El océano no escucha. El océano simplemente ES.
+  // Con volumen 0 o volumen 100, las luces hacen exactamente lo mismo.
+  // Los drops emocionales son responsabilidad del catálogo dinámico de Selene,
+  // no de la física base. La física base es tiempo puro.
+  // ═══════════════════════════════════════════════════════════════
+  isPureAmbient: true,
+
+  // ═══════════════════════════════════════════════════════════════
+  // SIDECHAIN GUILLOTINE — ANULADA PERMANENTEMENTE (WAVE 2513)
   // El chill no tiene sidechain. El bajo y las voces coexisten.
   // La marea no pone en duck al kelp.
   // ═══════════════════════════════════════════════════════════════
 
-  sidechainThreshold: 0.99,     // INACTIVO — nunca se activa en chill normal
+  sidechainThreshold: 999.0,    // IMPOSIBLE — WAVE 2513 — nunca se activa en chill normal
   sidechainDepth: 0.0,          // CERO — el chill no es un rave
   snareSidechainDepth: 0.0,     // CERO — El Destello no mata La Voz del Mar
 
@@ -250,7 +259,7 @@ export const CHILL_PROFILE: ILiquidProfile = {
   // umbral imposible: solo existe para satisfacer la interfaz.
   // ═══════════════════════════════════════════════════════════════
 
-  strobeThreshold: 0.999,       // IMPOSIBLE — nunca se activa
+  strobeThreshold: 999.0,       // IMPOSIBLE — WAVE 2513 — nunca se activa
   strobeDuration: 10,           // Mínimo si por alguna razón ocurre
   strobeNoiseDiscount: 1.0,     // Sin descuento
 
@@ -276,8 +285,8 @@ export const CHILL_PROFILE: ILiquidProfile = {
   morphFloor: 0.05,      // Umbral bajo — cualquier pad ambient dispara el morph
   morphCeiling: 0.35,    // Techo bajo — el chill COMPLETO con apenas mid=35%
 
-  kickEdgeMinInterval: 500,  // Muy largo — solo pulsaciones lentas son "kick"
-  kickVetoFrames: 0,         // CERO — el pulso no silencia la Voz del Mar
+  kickEdgeMinInterval: 999999,  // INFINITO — jamás detecta un kick edge
+  kickVetoFrames: 0,             // CERO — el pulso no silencia la Voz del Mar
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2439 — ESTRATEGIA DE ENRUTAMIENTO 4.1

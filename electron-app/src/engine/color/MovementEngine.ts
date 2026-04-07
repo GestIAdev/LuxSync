@@ -247,8 +247,13 @@ export class MovementEngine {
     }
     
     const energyRange = this.state.range * (0.7 + metrics.energy * 0.3)
-    pan = 0.5 + (pan - 0.5) * (energyRange / this.state.range)
-    tilt = 0.5 + (tilt - 0.5) * (energyRange / this.state.range)
+    // WAVE 2513: en modo ambient (PLL no locked = sin fuente de beat creíble),
+    // el range no varía con el audio — el mover mantiene rango constante.
+    // Con PLL desbloqueado, metrics.energy puede ser 0 (silencio) o alto (música),
+    // pero en chill ese número no tiene significado rítmico.
+    const effectiveEnergyRange = beatState.pllLocked ? energyRange : this.state.range
+    pan = 0.5 + (pan - 0.5) * (effectiveEnergyRange / this.state.range)
+    tilt = 0.5 + (tilt - 0.5) * (effectiveEnergyRange / this.state.range)
     
     // 🛡️ WAVE 2512 FIX 4: Beat-Boost Lock Guard
     // Beat-reactive tilt/pan boost only fires when PLL is locked (credible beat source).

@@ -723,3 +723,287 @@ export function getChronosStore(): ChronosStore {
 }
 
 export default ChronosStore
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 2547: CHRONOS STORE V2 — INFINITE EXPLICIT TRACKS
+// ═══════════════════════════════════════════════════════════════════════════
+
+import type { CanonicalZone } from '../../core/stage/ShowFileV2'
+import {
+  type ChronosProjectV2,
+  type TimelineTrackV2,
+  type TrackUpdateV2,
+  createDefaultProjectV2,
+  createTrackV2,
+  generateChronosId,
+} from './types'
+
+/**
+ * 🔥 WAVE 2547: Store V2
+ *
+ * Gestiona un ChronosProjectV2 con tracks explícitas, infinitas y sin
+ * derivación desde fixtures. Clase singleton independiente de ChronosStore V1.
+ *
+ * CRUD completo: addTrack, removeTrack, reorderTrack, renameTrack, clip ops.
+ * Emite eventos igual que ChronosStore V1 para integración futura con UI.
+ */
+export class ChronosStoreV2 {
+  private project: ChronosProjectV2 = createDefaultProjectV2()
+  private listeners: Map<string, Set<(data: unknown) => void>> = new Map()
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVENTS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  on(event: string, callback: (data: unknown) => void): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set())
+    }
+    this.listeners.get(event)!.add(callback)
+  }
+
+  off(event: string, callback: (data: unknown) => void): void {
+    this.listeners.get(event)?.delete(callback)
+  }
+
+  private emit(event: string, data?: unknown): void {
+    this.listeners.get(event)?.forEach(cb => {
+      try { cb(data) } catch (err) {
+        console.error(`[ChronosStoreV2] Event handler error (${event}):`, err)
+      }
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // GETTERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  get currentProject(): ChronosProjectV2 {
+    return this.project
+  }
+
+  get tracks(): readonly TimelineTrackV2[] {
+    return this.project.tracks
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROJECT
+  // ─────────────────────────────────────────────────────────────────────────
+
+  loadProject(project: ChronosProjectV2): void {
+    this.project = project
+    this.emit('project-loaded', { project })
+    console.log(`[ChronosStoreV2] 📂 Project loaded: "${project.meta.name}"`)
+  }
+
+  newProject(name: string = 'Untitled'): void {
+    this.project = createDefaultProjectV2(name)
+    this.emit('project-new', { project: this.project })
+    console.log(`[ChronosStoreV2] 🆕 New project: "${name}"`)
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TRACK CRUD
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Crear nueva track apuntando a `targetZone`.
+   * Acepta la misma zona infinitas veces — sin límites, sin filtros.
+   * Retorna la track recién creada.
+   */
+  addTrack(targetZone: CanonicalZone | 'global'): TimelineTrackV2 {
+    const track = createTrackV2(targetZone, this.project.tracks)
+    this.project.tracks = [...this.project.tracks, track]
+    this._touchModified()
+    this.emit('track-added', { track })
+    console.log(`[ChronosStoreV2] ➕ Track added: "${track.visualLabel}" → ${targetZone}`)
+    return track
+  }
+
+  /**
+   * Eliminar track por id. Elimina todos sus clips con ella.
+   */
+  removeTrack(trackId: string): void {
+    const before = this.project.tracks.length
+    this.project.tracks = this.project.tracks
+      .filter(t => t.id !== trackId)
+      .map((t, i) => ({ ...t, order: i })) // renumerar sin huecos
+    if (this.project.tracks.length === before) {
+      console.warn(`[ChronosStoreV2] removeTrack: id "${trackId}" not found`)
+      return
+    }
+    this._touchModified()
+    this.emit('track-removed', { trackId })
+  }
+
+  /**
+   * Mover track a un nuevo orden en la lista.
+   * El resto de tracks se reordena de forma determinista.
+   */
+  reorderTrack(trackId: string, newOrder: number): void {
+    const tracks = [...this.project.tracks].sort((a, b) => a.order - b.order)
+    const idx = tracks.findIndex(t => t.id === trackId)
+    if (idx === -1) {
+      console.warn(`[ChronosStoreV2] reorderTrack: id "${trackId}" not found`)
+      return
+    }
+    const [moved] = tracks.splice(idx, 1)
+    const clampedOrder = Math.max(0, Math.min(newOrder, tracks.length))
+    tracks.splice(clampedOrder, 0, moved)
+    this.project.tracks = tracks.map((t, i) => ({ ...t, order: i }))
+    this._touchModified()
+    this.emit('track-reordered', { trackId, newOrder: clampedOrder })
+  }
+
+  /** Renombrar el label visual de una track */
+  renameTrack(trackId: string, newLabel: string): void {
+    this._patchTrack(trackId, { visualLabel: newLabel.trim() || trackId })
+    this.emit('track-renamed', { trackId, newLabel })
+  }
+
+  /** Toggle mute */
+  setTrackEnabled(trackId: string, enabled: boolean): void {
+    this._patchTrack(trackId, { enabled })
+    this.emit('track-enabled-changed', { trackId, enabled })
+  }
+
+  /** Toggle solo */
+  setTrackSolo(trackId: string, solo: boolean): void {
+    this._patchTrack(trackId, { solo })
+    this.emit('track-solo-changed', { trackId, solo })
+  }
+
+  /** Toggle lock */
+  setTrackLocked(trackId: string, locked: boolean): void {
+    this._patchTrack(trackId, { locked })
+    this.emit('track-locked-changed', { trackId, locked })
+  }
+
+  /** Actualizar múltiples campos de una track en una sola operación */
+  updateTrack(trackId: string, patch: TrackUpdateV2): void {
+    this._patchTrack(trackId, patch)
+    this.emit('track-updated', { trackId, patch })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CLIP CRUD
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Añadir un clip a una track.
+   * El clip recibe un id fresco; trackId se fuerza al track destino.
+   */
+  addClip(
+    trackId: string,
+    clipData: Omit<import('./types').TimelineClip, 'id' | 'trackId'>
+  ): import('./types').TimelineClip {
+    const track = this._findTrack(trackId)
+    if (!track) throw new Error(`[ChronosStoreV2] addClip: track "${trackId}" not found`)
+    const clip: import('./types').TimelineClip = {
+      ...clipData,
+      id: generateChronosId(),
+      trackId,
+    }
+    this.project.tracks = this.project.tracks.map(t =>
+      t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t
+    )
+    this._touchModified()
+    this.emit('clip-added', { trackId, clip })
+    return clip
+  }
+
+  /**
+   * Mover un clip a otra track.
+   * Busca el clip en cualquier track, lo mueve actualizando trackId.
+   */
+  moveClipToTrack(clipId: string, targetTrackId: string): void {
+    let movedClip: import('./types').TimelineClip | null = null
+
+    const tracks = this.project.tracks.map(t => {
+      const idx = t.clips.findIndex(c => c.id === clipId)
+      if (idx === -1) return t
+      movedClip = { ...t.clips[idx], trackId: targetTrackId }
+      return { ...t, clips: t.clips.filter(c => c.id !== clipId) }
+    })
+
+    if (!movedClip) {
+      console.warn(`[ChronosStoreV2] moveClipToTrack: clip "${clipId}" not found`)
+      return
+    }
+
+    const targetExists = tracks.some(t => t.id === targetTrackId)
+    if (!targetExists) {
+      console.warn(`[ChronosStoreV2] moveClipToTrack: target track "${targetTrackId}" not found`)
+      return
+    }
+
+    this.project.tracks = tracks.map(t =>
+      t.id === targetTrackId ? { ...t, clips: [...t.clips, movedClip!] } : t
+    )
+    this._touchModified()
+    this.emit('clip-moved', { clipId, targetTrackId })
+  }
+
+  /** Eliminar un clip por id (busca en todas las tracks) */
+  removeClip(clipId: string): void {
+    let found = false
+    this.project.tracks = this.project.tracks.map(t => {
+      const before = t.clips.length
+      const clips = t.clips.filter(c => c.id !== clipId)
+      if (clips.length < before) found = true
+      return { ...t, clips }
+    })
+    if (!found) {
+      console.warn(`[ChronosStoreV2] removeClip: clip "${clipId}" not found`)
+      return
+    }
+    this._touchModified()
+    this.emit('clip-removed', { clipId })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTERNALS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private _findTrack(trackId: string): TimelineTrackV2 | undefined {
+    return this.project.tracks.find(t => t.id === trackId)
+  }
+
+  private _patchTrack(trackId: string, patch: Partial<TimelineTrackV2>): void {
+    let found = false
+    this.project.tracks = this.project.tracks.map(t => {
+      if (t.id !== trackId) return t
+      found = true
+      return { ...t, ...patch }
+    })
+    if (!found) {
+      console.warn(`[ChronosStoreV2] _patchTrack: id "${trackId}" not found`)
+      return
+    }
+    this._touchModified()
+  }
+
+  private _touchModified(): void {
+    this.project = {
+      ...this.project,
+      meta: {
+        ...this.project.meta,
+        modifiedAt: new Date().toISOString(),
+      },
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SINGLETON V2
+// ─────────────────────────────────────────────────────────────────────────
+
+let instanceV2: ChronosStoreV2 | null = null
+
+export function getChronosStoreV2(): ChronosStoreV2 {
+  if (!instanceV2) {
+    instanceV2 = new ChronosStoreV2()
+    console.log('[ChronosStoreV2] 🔥 Store V2 initialized')
+  }
+  return instanceV2
+}

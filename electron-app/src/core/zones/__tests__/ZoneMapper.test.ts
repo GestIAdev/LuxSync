@@ -531,4 +531,29 @@ describe('WAVE 2544.1: Ghost Exorcism — typo sanitization', () => {
   test("normalizeTagsToCanonical: 'all_left' (underscore) → 'all-left'", () => {
     expect(normalizeTagsToCanonical(['all_left'])).toBe('all-left')
   })
+
+  test("'right' (short) sanitized → 'all-right' modifier", () => {
+    const result = resolveZoneTags(['right'], RIG)
+    const byFull = resolveZoneTags(['all-right'], RIG)
+    expect(result.sort()).toEqual(byFull.sort())
+  })
+
+  test("'left' (short) sanitized → 'all-left' modifier", () => {
+    const result = resolveZoneTags(['left'], RIG)
+    const byFull = resolveZoneTags(['all-left'], RIG)
+    expect(result.sort()).toEqual(byFull.sort())
+  })
+
+  test("['back', 'right'] → same AND-intersection as ['back', 'all-right']", () => {
+    const shortForm = resolveZoneTags(['back', 'right'], RIG)
+    const fullForm  = resolveZoneTags(['back', 'all-right'], RIG)
+    expect(shortForm.sort()).toEqual(fullForm.sort())
+    // must contain only back-right fixtures (br1) and NOT front-right or back-left
+    expect(shortForm).not.toContain('fr1')
+    expect(shortForm).not.toContain('bl1')
+  })
+
+  test("normalizeTagsToCanonical: ['back', 'right'] → 'back-right'", () => {
+    expect(normalizeTagsToCanonical(['back', 'right'])).toBe('back-right')
+  })
 })

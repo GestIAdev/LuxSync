@@ -90,6 +90,9 @@ const ZONE_TYPO_MAP: Readonly<Record<string, string>> = {
   'all_left':  'all-left',
   'all_pars':  'all-pars',
   'all_movers':'all-movers',
+  // Short aliases from SmartZoneSelector (MOD row emits 'left'/'right', not 'all-left'/'all-right')
+  'right':     'all-right',
+  'left':      'all-left',
   'movers':    'all-movers',
   'pars':      'all-pars',
 }

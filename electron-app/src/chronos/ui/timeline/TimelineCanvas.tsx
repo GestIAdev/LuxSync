@@ -22,6 +22,7 @@
  */
 
 import React, { useRef, useState, useCallback, useEffect, useLayoutEffect, memo, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { WaveformLayer } from './WaveformLayer'
 import { ClipRenderer } from './ClipRenderer'
 import { LiveRecordingIndicator } from './LiveRecordingIndicator'
@@ -685,7 +686,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // 🎯 WAVE 2545: INFINITE TRACKS — Custom zone tracks added by user
   // ═══════════════════════════════════════════════════════════════════════
   const [customZoneTracks, setCustomZoneTracks] = useState<CanonicalZone[]>([])
-  const [showZoneDropdown, setShowZoneDropdown] = useState(false)
   
   // WAVE 2545: State for magnetic drag zone-incompatibility visual feedback
   const [dragZoneBlocked, setDragZoneBlocked] = useState(false)
@@ -704,7 +704,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const container = containerRef.current
     if (!container) return
     
-    // � NUCLEAR: Native ResizeObserver — fires before paint
+    //  NUCLEAR: Native ResizeObserver — fires before paint
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const newWidth = Math.round(entry.contentRect.width)
@@ -713,13 +713,18 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         // Skip invalid or unchanged dimensions
         if (newWidth === 0 || newHeight === 0) return
         
-        // � SYNCHRONOUS state update — React batches this with current render
+        //  SYNCHRONOUS state update — React batches this with current render
         setDimensions({ width: newWidth, height: newHeight })
       }
     })
     
+    // WAVE 2545.2: Observar el PADRE del outer-wrapper (= chronos-timeline-wrapper,
+    // el scroll viewport) para medir la altura disponible correctamente.
+    // El outer-wrapper crece con el SVG; necesitamos la altura del viewport.
+    const viewportParent = container.parentElement ?? container
+
     // Observe starts immediately — catches mount + any resize
-    resizeObserver.observe(container)
+    resizeObserver.observe(viewportParent)
     
     return () => {
       resizeObserver.disconnect()
@@ -727,7 +732,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   }, [])  // Mount once, never re-run
   
   // ═══════════════════════════════════════════════════════════════════════
-  // � WAVE 2543.3: DYNAMIC ZONE TRACKS — Reactivos al StageStore
+  // WAVE 2543.3: DYNAMIC ZONE TRACKS — Reactivos al StageStore
   //
   // Las tracks FX se generan según las zonas con fixtures en el show.
   // Sin fixtures → fallback a track global genérica.
@@ -1171,9 +1176,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const waveformTrack = waveformTrackIndex >= 0 ? elasticTracks[waveformTrackIndex] : null
   
   return (
-    <div className="timeline-outer-wrapper">
-    <div 
+    <div
       ref={containerRef}
+      className="timeline-outer-wrapper"
+    >
+    <div 
       className={`timeline-canvas-container ${isDragOver ? 'drag-over' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1576,60 +1583,116 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          🎯 WAVE 2545: [+ ADD ZONE TRACK] — Footer, fuera del overflow:hidden
-          Siempre visible debajo del último track
+          🎯 WAVE 2545 + 2545.2: [+ ADD ZONE TRACK] — Footer en flujo normal.
+          Dropdown vía React Portal adjunto al body para escapar cualquier
+          overflow:hidden de los contenedores padre.
       ═══════════════════════════════════════════════════════════════════ */}
       {CANONICAL_ZONES.filter(z => z !== 'unassigned').some(z =>
         !elasticTracks.filter(t => t.type === 'fx' && t.targetZone).map(t => t.targetZone).includes(z)
       ) && (
-        <div className="add-zone-track-footer">
-          <button
-            className="add-zone-track-btn"
-            onClick={() => setShowZoneDropdown(prev => !prev)}
-            title="Add a new zone track to the timeline"
-          >
-            + ADD ZONE TRACK
-          </button>
-
-          {showZoneDropdown && (() => {
-            const existingZones = new Set(
-              elasticTracks
-                .filter(t => t.type === 'fx' && t.targetZone)
-                .map(t => t.targetZone!)
-            )
-            const availableZones = CANONICAL_ZONES.filter(
-              z => z !== 'unassigned' && !existingZones.has(z)
-            )
-            return (
-              <div className="zone-dropdown">
-                {availableZones.length === 0 ? (
-                  <div className="zone-dropdown-empty">ALL ZONES ACTIVE</div>
-                ) : (
-                  availableZones.map(zone => (
-                    <button
-                      key={zone}
-                      className="zone-dropdown-item"
-                      style={{ borderLeftColor: ZONE_COLORS[zone] }}
-                      onClick={() => {
-                        setCustomZoneTracks(prev => [...prev, zone])
-                        setShowZoneDropdown(false)
-                      }}
-                    >
-                      <span
-                        className="zone-dropdown-dot"
-                        style={{ backgroundColor: ZONE_COLORS[zone] }}
-                      />
-                      {ZONE_LABELS[zone]}
-                    </button>
-                  ))
-                )}
-              </div>
-            )
-          })()}
-        </div>
+        <ZoneTrackFooter
+          elasticTracks={elasticTracks}
+          onAddZone={(zone) => setCustomZoneTracks(prev => [...prev, zone])}
+        />
       )}
     </div>
   )
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 2545.2: ZoneTrackFooter — Botón ciberpunk con Portal dropdown
+// Separado como componente para encapsular el estado del dropdown y la ref
+// del botón que necesita getBoundingClientRect() para posicionar el Portal.
+// ─────────────────────────────────────────────────────────────────────────────
+interface ZoneTrackFooterProps {
+  elasticTracks: Track[]
+  onAddZone: (zone: CanonicalZone) => void
+}
+
+const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps) => {
+  const [open, setOpen] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  // Calcular posición absoluta del dropdown relativa al body cuando se abre
+  useEffect(() => {
+    if (!open || !btnRef.current) {
+      setDropdownPos(null)
+      return
+    }
+    const rect = btnRef.current.getBoundingClientRect()
+    // getBoundingClientRect() devuelve coordenadas del viewport → usar position:fixed
+    setDropdownPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+    })
+  }, [open])
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    if (!open) return
+    const handleOutside = (e: MouseEvent) => {
+      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [open])
+
+  const existingZones = new Set(
+    elasticTracks
+      .filter(t => t.type === 'fx' && t.targetZone)
+      .map(t => t.targetZone!)
+  )
+  const availableZones = CANONICAL_ZONES.filter(
+    z => z !== 'unassigned' && !existingZones.has(z)
+  )
+
+  return (
+    <div className="add-zone-track-footer">
+      <button
+        ref={btnRef}
+        className="add-zone-track-btn"
+        onClick={() => setOpen(prev => !prev)}
+        title="Add a new zone track to the timeline"
+      >
+        + ADD ZONE TRACK
+      </button>
+
+      {open && dropdownPos && createPortal(
+        <div
+          className="zone-dropdown zone-dropdown--portal"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+        >
+          {availableZones.length === 0 ? (
+            <div className="zone-dropdown-empty">ALL ZONES ACTIVE</div>
+          ) : (
+            availableZones.map(zone => (
+              <button
+                key={zone}
+                className="zone-dropdown-item"
+                style={{ borderLeftColor: ZONE_COLORS[zone] }}
+                onClick={() => {
+                  onAddZone(zone)
+                  setOpen(false)
+                }}
+              >
+                <span
+                  className="zone-dropdown-dot"
+                  style={{ backgroundColor: ZONE_COLORS[zone] }}
+                />
+                {ZONE_LABELS[zone]}
+              </button>
+            ))
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+})
+
+ZoneTrackFooter.displayName = 'ZoneTrackFooter'
 
 TimelineCanvas.displayName = 'TimelineCanvas'

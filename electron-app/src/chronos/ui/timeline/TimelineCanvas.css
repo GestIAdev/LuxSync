@@ -11,10 +11,12 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-canvas-container {
-  flex: 1 1 0%;
-  min-height: 0;
+  /* WAVE 2545.2: position:relative para overlays absolutos internos.
+   * NO overflow:hidden — el SVG puede ser más alto que el container
+   * y el chronos-timeline-wrapper padre hace el scroll. */
   position: relative;
-  overflow: hidden;
+  flex-shrink: 0;
+  width: 100%;
   background: var(--bg-deepest);
   border-radius: 4px 4px 0 0;
   margin: 0;
@@ -28,12 +30,15 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-outer-wrapper {
+  /* WAVE 2545.2: Crece con el contenido (el SVG inerno determina la altura).
+   * min-height:100% asegura que ocupa al menos el viewport del scroll container.
+   * El chronos-timeline-wrapper padre scrollea cuando el contenido supera 100%.
+   * El containerRef (ResizeObserver) apunta aquí y observa el parentElement
+   * (chronos-timeline-wrapper) para medir la altura del viewport correctamente. */
   display: flex;
   flex-direction: column;
-  flex: 1 1 0%;
-  min-height: 0;
-  height: 100%;
-  overflow: visible;
+  width: 100%;
+  min-height: 100%;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -44,11 +49,10 @@
   display: block;
   cursor: crosshair;
   user-select: none;
-  
-  /* 🔥 WAVE 2040.39: NUCLEAR OPTION — Force SVG to fill container
-   * No matter what React says, CSS has final word */
+
+  /* WAVE 2545.2: Solo forzamos el width. La altura la controla
+   * el atributo height={visibleCanvasHeight} que React inyecta. */
   width: 100% !important;
-  height: 100% !important;
 }
 
 /* During drag - show copy cursor, never forbidden */
@@ -427,6 +431,15 @@
   z-index: 200;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(52, 211, 153, 0.08);
   overflow: visible;
+}
+
+/* WAVE 2545.2: Portal mode — posición absoluta relativa al body
+ * El top/left se inyectan por inline style desde ZoneTrackFooter */
+.zone-dropdown--portal {
+  position: fixed;
+  top: unset;
+  left: unset;
+  z-index: 9999;
 }
 
 .zone-dropdown-item {

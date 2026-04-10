@@ -33,7 +33,9 @@ import { CANONICAL_ZONES, ZONE_LABELS } from '../../../core/stage/ShowFileV2'
 import type { CanonicalZone } from '../../../core/stage/ShowFileV2'
 import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngine'
 import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
-import { useStageStore } from '../../../stores/stageStore'
+// 🔥 WAVE 2548: Store V2 — tracks explícitas, sin derivación desde fixtures
+import { getChronosStoreV2 } from '../../core/ChronosStore'
+import type { TimelineTrackV2 } from '../../core/types'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -108,46 +110,18 @@ const STRUCTURAL_TRACKS: Track[] = [
 ]
 
 /**
- * 🌍 WAVE 2543.3: TRACKS INFINITOS POR DESTINO
- * 
- * Genera tracks FX dinámicamente según las zonas activas del show.
- * Cada zona con fixtures asignados obtiene su propia track.
- * Si no hay fixtures cargados, genera un track global de fallback.
- * 
- * Los colores vienen de ZONE_COLORS (Hyperion) para coherencia visual total.
- * Labels vienen de ZONE_LABELS con el emoji de zona.
+ * 🔥 WAVE 2548: Convierte TimelineTrackV2 del store al tipo local Track del canvas.
+ * El canvas es "dumb": sólo renderiza lo que el store tiene. Sin derivación.
  */
-function generateZoneTracks(activeZones: CanonicalZone[]): Track[] {
-  if (activeZones.length === 0) {
-    // Fallback: sin fixtures cargados → un track global genérico
-    return [
-      { id: 'zone-all', type: 'fx', label: '◆ ALL', height: 40, color: '#ef4444', targetZone: undefined },
-    ]
+function storeTrackToCanvasTrack(t: TimelineTrackV2): Track {
+  return {
+    id: t.id,
+    type: 'fx',
+    label: t.visualLabel,
+    height: t.height,
+    color: t.color,
+    targetZone: t.targetZone === 'global' ? undefined : t.targetZone,
   }
-  
-  return activeZones.map(zone => ({
-    id: `zone-${zone}`,
-    type: 'fx' as const,
-    label: ZONE_LABELS[zone].replace(/^.+?\s/, ''), // Strip emoji prefix → "FRONT (Main)"
-    height: 36,
-    color: ZONE_COLORS[zone],
-    targetZone: zone,
-  }))
-}
-
-/**
- * 🔍 WAVE 2543.3: Extrae las zonas activas (con fixtures) del StageStore.
- * Excluye 'unassigned' porque no es un destino útil para clips.
- */
-function getActiveZonesFromFixtures(fixtures: { zone: string }[]): CanonicalZone[] {
-  const zonesWithFixtures = new Set<CanonicalZone>()
-  for (const f of fixtures) {
-    if (f.zone !== 'unassigned' && CANONICAL_ZONES.includes(f.zone as CanonicalZone)) {
-      zonesWithFixtures.add(f.zone as CanonicalZone)
-    }
-  }
-  // Mantener orden canónico (front → back → floor → ... → ambient)
-  return CANONICAL_ZONES.filter(z => zonesWithFixtures.has(z))
 }
 
 const MIN_PIXELS_PER_SECOND = 10
@@ -682,11 +656,29 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // ⚡ WAVE 2045.1.1: HOTFIX "SEPARATION ANXIETY" — Store calculated position during drag
   const cloneTargetTimeRef = useRef<number>(0)
   
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 2545: INFINITE TRACKS — Custom zone tracks added by user
-  // ═══════════════════════════════════════════════════════════════════════
-  const [customZoneTracks, setCustomZoneTracks] = useState<CanonicalZone[]>([])
-  
+  // 🔥 WAVE 2548: Subscribe al ChronosStoreV2 para re-render cuando cambian las tracks
+  const [storeVersion, setStoreVersion] = useState(0)
+  useEffect(() => {
+    const store = getChronosStoreV2()
+    const onTrackChange = () => setStoreVersion(v => v + 1)
+    store.on('track-added', onTrackChange)
+    store.on('track-removed', onTrackChange)
+    store.on('track-reordered', onTrackChange)
+    store.on('track-renamed', onTrackChange)
+    store.on('track-updated', onTrackChange)
+    store.on('project-loaded', onTrackChange)
+    store.on('project-new', onTrackChange)
+    return () => {
+      store.off('track-added', onTrackChange)
+      store.off('track-removed', onTrackChange)
+      store.off('track-reordered', onTrackChange)
+      store.off('track-renamed', onTrackChange)
+      store.off('track-updated', onTrackChange)
+      store.off('project-loaded', onTrackChange)
+      store.off('project-new', onTrackChange)
+    }
+  }, [])
+
   // WAVE 2545: State for magnetic drag zone-incompatibility visual feedback
   const [dragZoneBlocked, setDragZoneBlocked] = useState(false)
   
@@ -731,33 +723,17 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
   }, [])  // Mount once, never re-run
   
-  // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 2543.3: DYNAMIC ZONE TRACKS — Reactivos al StageStore
-  //
-  // Las tracks FX se generan según las zonas con fixtures en el show.
-  // Sin fixtures → fallback a track global genérica.
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  const fixtures = useStageStore(state => state.fixtures)
-  
+  // 🔥 WAVE 2548: DUMB CANVAS — puro .map() del store V2
+  // Sin getActiveZonesFromFixtures. Sin generateZoneTracks. Sin fixtures.
+  // El store ES la única fuente de verdad para las tracks FX.
   const allTracks = useMemo(() => {
-    const activeZones = getActiveZonesFromFixtures(fixtures)
-    // WAVE 2545: Merge auto-detected zones with user-added custom zones
-    const mergedZones = [...activeZones]
-    for (const cz of customZoneTracks) {
-      if (!mergedZones.includes(cz)) mergedZones.push(cz)
-    }
-    // Maintain canonical order
-    const orderedZones = CANONICAL_ZONES.filter(z => mergedZones.includes(z))
-    // WAVE 2545.5: Si hay customZoneTracks, IGNORAR el fallback zone-all.
-    // El usuario añadió una pista manualmente → se renderiza incondicionalmente,
-    // sin importar si el rig tiene fixtures en esa zona o no.
-    if (orderedZones.length > 0) {
-      return [...STRUCTURAL_TRACKS, ...generateZoneTracks(orderedZones)]
-    }
-    // Sin fixtures y sin custom tracks → fallback zone-all genérico
-    return [...STRUCTURAL_TRACKS, ...generateZoneTracks([])]
-  }, [fixtures, customZoneTracks])
+    const store = getChronosStoreV2()
+    const fxTracks = [...store.tracks]
+      .sort((a, b) => a.order - b.order)
+      .map(storeTrackToCanvasTrack)
+    return [...STRUCTURAL_TRACKS, ...fxTracks]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeVersion])  // storeVersion cambia cuando el store emite eventos de track
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution
@@ -1589,30 +1565,26 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       </div>
     </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          🎯 WAVE 2545 + 2545.2: [+ ADD ZONE TRACK] — Footer en flujo normal.
-          Dropdown vía React Portal adjunto al body para escapar cualquier
-          overflow:hidden de los contenedores padre.
-      ═══════════════════════════════════════════════════════════════════ */}
-      {CANONICAL_ZONES.filter(z => z !== 'unassigned').some(z =>
-        !elasticTracks.filter(t => t.type === 'fx' && t.targetZone).map(t => t.targetZone).includes(z)
-      ) && (
-        <ZoneTrackFooter
-          elasticTracks={elasticTracks}
-          onAddZone={(zone) => setCustomZoneTracks(prev => [...prev, zone])}
-        />
-      )}
+      {/* 🔥 WAVE 2548: Footer siempre visible — catálogo infinito, sin filtros de zona */}
+      <ZoneTrackFooter />
     </div>
   )
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WAVE 2545.5: ZoneTrackFooter — Botón ciberpunk con Portal dropdown categorizado
-// Grupos: CORE (front/back/floor/center/air/ambient) y MOVERS (movers-left/right)
+// 🔥 WAVE 2548/2549: ZoneTrackFooter — Catálogo infinito sin filtros
+// Sin "zonas ya añadidas". La misma zona se puede añadir N veces.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Definición de categorías del dropdown — orden canónico visual
-const ZONE_DROPDOWN_GROUPS: Array<{ label: string; zones: CanonicalZone[] }> = [
+/**
+ * 🔥 WAVE 2549: ZONE_CATALOG — catálogo estático completo.
+ * Sin filtros. El mismo slot se puede añadir N veces.
+ */
+const ZONE_CATALOG: Array<{ label: string; zones: Array<CanonicalZone | 'global'> }> = [
+  {
+    label: 'GLOBAL',
+    zones: ['global'],
+  },
   {
     label: 'CORE ZONES',
     zones: ['front', 'back', 'floor', 'center', 'air', 'ambient'],
@@ -1623,17 +1595,11 @@ const ZONE_DROPDOWN_GROUPS: Array<{ label: string; zones: CanonicalZone[] }> = [
   },
 ]
 
-interface ZoneTrackFooterProps {
-  elasticTracks: Track[]
-  onAddZone: (zone: CanonicalZone) => void
-}
-
-const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps) => {
+const ZoneTrackFooter = memo(() => {
   const [open, setOpen] = useState(false)
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
-  // Calcular posición viewport-relativa del dropdown cuando se abre
   useEffect(() => {
     if (!open || !btnRef.current) {
       setDropdownPos(null)
@@ -1643,7 +1609,6 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
     setDropdownPos({ top: rect.bottom + 4, left: rect.left })
   }, [open])
 
-  // Cerrar al hacer click fuera
   useEffect(() => {
     if (!open) return
     const handleOutside = (e: MouseEvent) => {
@@ -1655,17 +1620,10 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
-  const existingZones = new Set(
-    elasticTracks
-      .filter(t => t.type === 'fx' && t.targetZone)
-      .map(t => t.targetZone!)
-  )
-
-  // Calcular si algún grupo tiene zonas disponibles
-  const groupsWithContent = ZONE_DROPDOWN_GROUPS.map(group => ({
-    ...group,
-    available: group.zones.filter(z => !existingZones.has(z)),
-  })).filter(g => g.available.length > 0)
+  const handleAddZone = useCallback((zone: CanonicalZone | 'global') => {
+    getChronosStoreV2().addTrack(zone)
+    setOpen(false)
+  }, [])
 
   return (
     <div className="add-zone-track-footer">
@@ -1683,31 +1641,33 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
           className="zone-dropdown zone-dropdown--portal"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
-          {groupsWithContent.length === 0 ? (
-            <div className="zone-dropdown-empty">ALL ZONES ACTIVE</div>
-          ) : (
-            groupsWithContent.map((group, gi) => (
-              <div key={group.label} className="zone-dropdown-group">
-                {/* Separador entre grupos (no antes del primero) */}
-                {gi > 0 && <div className="zone-dropdown-separator" />}
-                <div className="zone-dropdown-group-label">{group.label}</div>
-                {group.available.map(zone => (
+          {ZONE_CATALOG.map((group, gi) => (
+            <div key={group.label} className="zone-dropdown-group">
+              {gi > 0 && <div className="zone-dropdown-separator" />}
+              <div className="zone-dropdown-group-label">{group.label}</div>
+              {group.zones.map(zone => {
+                const isGlobal = zone === 'global'
+                const color = isGlobal ? '#e2e8f0' : ZONE_COLORS[zone as CanonicalZone]
+                const label = isGlobal
+                  ? 'GLOBAL (All Fixtures)'
+                  : ZONE_LABELS[zone as CanonicalZone].replace(/^.+?\s/, '')
+                return (
                   <button
                     key={zone}
                     className="zone-dropdown-item"
-                    style={{ borderLeftColor: ZONE_COLORS[zone] }}
-                    onClick={() => { onAddZone(zone); setOpen(false) }}
+                    style={{ borderLeftColor: color }}
+                    onClick={() => handleAddZone(zone)}
                   >
                     <span
                       className="zone-dropdown-dot"
-                      style={{ backgroundColor: ZONE_COLORS[zone] }}
+                      style={{ backgroundColor: color }}
                     />
-                    {ZONE_LABELS[zone].replace(/^.+?\s/, '')} {/* strip emoji */}
+                    {label}
                   </button>
-                ))}
-              </div>
-            ))
-          )}
+                )
+              })}
+            </div>
+          ))}
         </div>,
         document.body
       )}

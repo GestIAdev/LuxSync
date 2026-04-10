@@ -798,7 +798,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const totalTracksHeight = elasticTracks.reduce((sum, t) => sum + t.height, 0)
   
   // WAVE 2040.7: Visible canvas height — fill the container, not just the tracks
-  const visibleCanvasHeight = Math.max(dimensions.height, totalTracksHeight)
+  // WAVE 2545.3: +60px de padding inferior para que el HUD sticky no tape el último track
+  const visibleCanvasHeight = Math.max(dimensions.height, totalTracksHeight + 60)
   
   // Zoom handler - Using native event listener to allow preventDefault on wheel
   // React synthetic wheel events are passive by default, which causes the console warning

@@ -384,16 +384,22 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .add-zone-track-footer {
-  position: relative;
-  flex-shrink: 0;
+  /* WAVE 2545.3: HUD Flotante — sticky al fondo del scroll viewport.
+   * sticky no depende del tamaño del SVG ni del flujo flex del wrapper.
+   * bottom:16px lo mantiene visible al final del scroll sin tapar tracks.
+   * align-self:flex-start impide que se estire al ancho completo. */
+  position: sticky;
+  bottom: 16px;
+  left: 16px;
+  align-self: flex-start;
+  z-index: 100;
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background: var(--bg-deepest);
-  border: 1px solid var(--border-subtle);
-  border-top: 1px dashed rgba(52, 211, 153, 0.15);
-  border-radius: 0 0 4px 4px;
-  z-index: 20;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+  border: 1px dashed rgba(0, 229, 255, 0.45);
+  border-radius: 4px;
   overflow: visible;
 }
 

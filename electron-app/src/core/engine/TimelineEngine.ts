@@ -1091,7 +1091,9 @@ export class TimelineEngine {
       if (cached) return cached
 
       const fixtures = masterArbiter.getFixturesForZoneMapping()
+
       const resolved = resolveZoneTags(zones, fixtures)
+
       if (resolved.length > 0) {
         this._zoneCache.set(cacheKey, resolved)
         return resolved

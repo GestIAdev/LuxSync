@@ -42,6 +42,8 @@ import { deserializeHephClip, type HephAutomationClipSerialized } from '../types
 import { CurveEvaluator } from '../CurveEvaluator'
 import { PhaseDistributor } from './PhaseDistributor'
 import { resolveFixtureSelector } from '../../stage/ShowFileV2'
+import { resolveZoneTags } from '../../zones/ZoneMapper'
+import { masterArbiter } from '../../arbiter'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -648,26 +650,44 @@ export class HephaestusRuntime {
    * Legacy path: sin phase distribution.
    * Mantiene backward compatibility 1:1 con el tick() pre-WAVE 2400.
    * Used when clip has no PhaseConfig / no FixtureSelector.
+   *
+   * 🎯 WAVE 2544.3: AND-GATE FIX
+   * Previously emitted one output per zone tag (OR semantics in TitanOrchestrator).
+   * Now resolves the AND-intersection of all zone tags to concrete fixture IDs
+   * using resolveZoneTags, then emits per-fixture outputs (same as tickWithPhase).
+   * This ensures ['back', 'all-right'] → only back-right fixtures, not all-right ∪ back.
    */
   private tickLegacy(active: ActiveHephClip, clipTimeMs: number): void {
-    // Resolve output zones once per clip
-    const zones: Array<EffectZone | 'all'> = active.clip.zones.length > 0 
-      ? active.clip.zones 
-      : ['all']
-    
-    // Evaluate each curve → scale → output
+    const clipZones = active.clip.zones
+
+    // ── Resolve target fixture IDs (AND-intersection via ZoneMapper) ──────
+    // Single 'all' or empty → all fixtures. Multiple tags → AND-intersection.
+    let targetFixtureIds: string[]
+    if (clipZones.length === 0 || (clipZones.length === 1 && clipZones[0] === 'all')) {
+      targetFixtureIds = masterArbiter.getFixtureIds()
+    } else {
+      const fixtures = masterArbiter.getFixturesForZoneMapping()
+      targetFixtureIds = resolveZoneTags(clipZones as string[], fixtures)
+      // Fallback: if zone combo resolves to nothing, treat as global
+      if (targetFixtureIds.length === 0) {
+        targetFixtureIds = masterArbiter.getFixtureIds()
+      }
+    }
+
+    if (targetFixtureIds.length === 0) return
+
+    // ── Evaluate each curve → scale → emit per-fixture ────────────────────
     for (const [paramName, curve] of active.clip.curves) {
 
       // ─── COLOR CURVE PATH ───────────────────────────────────
       if (curve.valueType === 'color') {
         const hsl = active.evaluator.getColorValue(paramName, clipTimeMs)
-        // Intensity modulates lightness (dim the color, don't destroy hue/sat)
         // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
         const modulatedL = (hsl.l / 100) * active.intensity
         const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
 
-        for (const zone of zones) {
-          this.writeOutput(`zone:${zone}`, zone, paramName, 0, rgb)
+        for (const fixtureId of targetFixtureIds) {
+          this.writeOutput(fixtureId, 'all', paramName, 0, rgb)
         }
         continue
       }
@@ -676,13 +696,12 @@ export class HephaestusRuntime {
       const rawValue = active.evaluator.getValue(paramName, clipTimeMs)
       const withIntensity = rawValue * active.intensity
       const scaledValue = scaleToDMX(paramName, withIntensity)
+      const fine = (paramName === 'pan' || paramName === 'tilt')
+        ? scaleToDMX16(withIntensity).fine
+        : undefined
 
-      for (const zone of zones) {
-        const fine = (paramName === 'pan' || paramName === 'tilt')
-          ? scaleToDMX16(withIntensity).fine
-          : undefined
-
-        this.writeOutput(`zone:${zone}`, zone, paramName, scaledValue, undefined, fine)
+      for (const fixtureId of targetFixtureIds) {
+        this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine)
       }
     }
   }
@@ -774,9 +793,10 @@ export class HephaestusRuntime {
    */
   private estimateTotalOutputs(): number {
     let total = 0
+    const allFixtureCount = masterArbiter.getFixtureIds().length || 32
     for (const [, active] of this.activeClips) {
-      const fixtureCount = active.fixturePhases?.length
-        ?? (active.clip.zones.length > 0 ? active.clip.zones.length : 1)
+      // Legacy clips now emit per-fixture (not per-zone), use full fixture count as upper bound
+      const fixtureCount = active.fixturePhases?.length ?? allFixtureCount
       total += fixtureCount * active.clip.curves.size
     }
     return total

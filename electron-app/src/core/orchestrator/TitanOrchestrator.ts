@@ -1311,13 +1311,25 @@ export class TitanOrchestrator {
     // The engine runs but its output never reaches fixtures.
     if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
       // Group outputs by parameter for efficient processing
+      // 🎯 WAVE 2544.3: Separate outputs into two buckets:
+      //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
+      //   - zone bucket: output targets a zone string (tickWithPhase legacy path)
+      const hephByFixtureId = new Map<string, HephFixtureOutput[]>()
       const hephByZone = new Map<string, HephFixtureOutput[]>()
       for (const output of hephOutputs) {
-        const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString()
-        if (!hephByZone.has(zoneKey)) {
-          hephByZone.set(zoneKey, [])
+        // If fixtureId looks like a real fixture ID (not 'zone:xxx'), use fixture bucket
+        if (output.fixtureId && !output.fixtureId.startsWith('zone:')) {
+          if (!hephByFixtureId.has(output.fixtureId)) {
+            hephByFixtureId.set(output.fixtureId, [])
+          }
+          hephByFixtureId.get(output.fixtureId)!.push(output)
+        } else {
+          const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString()
+          if (!hephByZone.has(zoneKey)) {
+            hephByZone.set(zoneKey, [])
+          }
+          hephByZone.get(zoneKey)!.push(output)
         }
-        hephByZone.get(zoneKey)!.push(output)
       }
       
       // Apply Hephaestus outputs to fixtures
@@ -1326,16 +1338,21 @@ export class TitanOrchestrator {
         const fixtureId = this.fixtures[index]?.id
         if (fixtureId && chronosFixtureIds.has(fixtureId)) return f
         
-        // Find matching outputs for this fixture's zone
-        const fixtureZone = (f.zone || '').toLowerCase()
         const applicableOutputs: HephFixtureOutput[] = []
-        
-        // Check 'all' zone outputs
+
+        // 🎯 WAVE 2544.3: Check fixture-ID-specific outputs first (AND-gated path)
+        if (fixtureId) {
+          const directOutputs = hephByFixtureId.get(fixtureId)
+          if (directOutputs) applicableOutputs.push(...directOutputs)
+        }
+
+        // Check 'all' zone outputs (legacy / global clips)
         const allZoneOutputs = hephByZone.get('all')
         if (allZoneOutputs) applicableOutputs.push(...allZoneOutputs)
         
-        // Check zone-specific outputs
+        // Check zone-specific outputs (old zone-string path)
         // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support in Hephaestus outputs
+        const fixtureZone = (f.zone || '').toLowerCase()
         const positionX = this.fixtures[index]?.position?.x ?? 0
         for (const [zoneKey, outputs] of hephByZone) {
           if (zoneKey === 'all') continue

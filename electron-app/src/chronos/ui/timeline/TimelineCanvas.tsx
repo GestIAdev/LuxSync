@@ -31,6 +31,7 @@ import { deserializeDragPayload } from '../../core/TimelineClip'
 import { CANONICAL_ZONES, ZONE_LABELS } from '../../../core/stage/ShowFileV2'
 import type { CanonicalZone } from '../../../core/stage/ShowFileV2'
 import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngine'
+import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
 import { useStageStore } from '../../../stores/stageStore'
 import './TimelineCanvas.css'
 
@@ -680,6 +681,15 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // ⚡ WAVE 2045.1.1: HOTFIX "SEPARATION ANXIETY" — Store calculated position during drag
   const cloneTargetTimeRef = useRef<number>(0)
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2545: INFINITE TRACKS — Custom zone tracks added by user
+  // ═══════════════════════════════════════════════════════════════════════
+  const [customZoneTracks, setCustomZoneTracks] = useState<CanonicalZone[]>([])
+  const [showZoneDropdown, setShowZoneDropdown] = useState(false)
+  
+  // WAVE 2545: State for magnetic drag zone-incompatibility visual feedback
+  const [dragZoneBlocked, setDragZoneBlocked] = useState(false)
+  
   // Track the container size
   // 🔥 WAVE 2040.39: NUCLEAR OPTION — ResizeObserver at browser level
   // This executes AFTER layout but BEFORE paint (perfect timing window)
@@ -727,9 +737,16 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   
   const allTracks = useMemo(() => {
     const activeZones = getActiveZonesFromFixtures(fixtures)
-    const zoneTracks = generateZoneTracks(activeZones)
+    // WAVE 2545: Merge auto-detected zones with user-added custom zones
+    const mergedZones = [...activeZones]
+    for (const cz of customZoneTracks) {
+      if (!mergedZones.includes(cz)) mergedZones.push(cz)
+    }
+    // Maintain canonical order
+    const orderedZones = CANONICAL_ZONES.filter(z => mergedZones.includes(z))
+    const zoneTracks = generateZoneTracks(orderedZones)
     return [...STRUCTURAL_TRACKS, ...zoneTracks]
-  }, [fixtures])
+  }, [fixtures, customZoneTracks])
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution
@@ -884,11 +901,33 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     // Determine if drop is valid (vibe→vibe, fx→fx zone tracks)
     const isVibeTrack = trackId === 'vibe'
     // WAVE 2543.3: Dynamic zone track check — any track with type 'fx'
-    const isFxTrack = elasticTracks.some(t => t.id === trackId && t.type === 'fx')
+    const targetTrack = elasticTracks.find(t => t.id === trackId && t.type === 'fx')
+    const isFxTrack = !!targetTrack
     const isValidDrop = (isVibeDrag && isVibeTrack) || (isFxDrag && isFxTrack)
     const isTrackArea = isVibeTrack || isFxTrack
     
-    if (isValidDrop) {
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧲 WAVE 2545: MAGNETIC DROP — Zone compatibility check
+    // Peek at DragPayload.zones from the serialized data to determine
+    // if this clip is compatible with the target track's zone.
+    // DataTransfer.getData() is BLOCKED during dragover in most browsers
+    // for security, but we can read the MIME types (set during dragstart).
+    // Strategy: Use a custom MIME type header that encodes the zones.
+    // ═══════════════════════════════════════════════════════════════════
+    let isZoneCompatible = true
+    if (isValidDrop && targetTrack?.targetZone) {
+      // Try to read zone info from the encoded MIME type
+      // Format: 'application/luxsync-zones:front,back,...'
+      const zonesMimeType = types.find(t => t.startsWith('application/luxsync-zones:'))
+      if (zonesMimeType) {
+        const zonesStr = zonesMimeType.slice('application/luxsync-zones:'.length)
+        const clipZones = zonesStr ? zonesStr.split(',') : []
+        isZoneCompatible = isClipZoneCompatible(clipZones, targetTrack.targetZone)
+      }
+      // If no zones MIME type → clip has no zones → compatible (CORE auto-routing)
+    }
+    
+    if (isValidDrop && isZoneCompatible) {
       // Valid drop - allow and show highlight
       e.preventDefault()
       e.stopPropagation()
@@ -896,12 +935,21 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       setIsDragOver(true)
       setDragTrackId(trackId)
       setDragTimeMs(timeMs)
+      setDragZoneBlocked(false)
+    } else if (isValidDrop && !isZoneCompatible) {
+      // 🧲 WAVE 2545: Zone mismatch — MAGNETIC REJECTION
+      // Show forbidden cursor, no highlight, no drop allowed
+      setIsDragOver(false)
+      setDragTrackId(trackId)
+      setDragTimeMs(null)
+      setDragZoneBlocked(true)
     } else if (isTrackArea) {
       // Invalid drop (cross-type) - show forbidden cursor
       // Don't preventDefault - browser will show forbidden cursor naturally
       setIsDragOver(false)
       setDragTrackId(null)
       setDragTimeMs(null)
+      setDragZoneBlocked(false)
     } else {
       // Over ruler/waveform - allow cursor but no highlight
       e.preventDefault()
@@ -910,6 +958,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       setIsDragOver(false)
       setDragTrackId(null)
       setDragTimeMs(null)
+      setDragZoneBlocked(false)
     }
   }, [getTrackAtY, getTimeAtX, elasticTracks])
   
@@ -917,6 +966,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     setIsDragOver(false)
     setDragTrackId(null)
     setDragTimeMs(null)
+    setDragZoneBlocked(false)
   }, [])
   
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -925,6 +975,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     setIsDragOver(false)
     setDragTrackId(null)
     setDragTimeMs(null)
+    setDragZoneBlocked(false)
     
     // WAVE 2040.18: Read the FULL JSON payload, not the ID-only HEPH mime
     // Priority: luxsync-fx (full JSON with Diamond Data) → luxsync-clip (generic)
@@ -949,10 +1000,27 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     // Validate drop target matches clip type
     const isVibeTrack = trackId === 'vibe'
     // WAVE 2543.3: Dynamic zone track check
-    const isFxTrack = elasticTracks.some(t => t.id === trackId && t.type === 'fx')
+    const targetTrack = elasticTracks.find(t => t.id === trackId && t.type === 'fx')
+    const isFxTrack = !!targetTrack
     
-    if ((payload.clipType === 'vibe' && isVibeTrack) || 
-        (payload.clipType === 'fx' && isFxTrack)) {
+    if (payload.clipType === 'vibe' && isVibeTrack) {
+      onClipDrop?.(payload, timeMs, trackId)
+      console.log(`[TimelineCanvas] 🎬 🎹 Dropped vibe at ${(timeMs/1000).toFixed(2)}s on track ${trackId}`)
+    } else if (payload.clipType === 'fx' && isFxTrack) {
+      // ═══════════════════════════════════════════════════════════════
+      // 🧲 WAVE 2545: MAGNETIC DROP — Double-check zone compatibility
+      // ═══════════════════════════════════════════════════════════════
+      if (targetTrack.targetZone && !isClipZoneCompatible(payload.zones, targetTrack.targetZone)) {
+        console.warn(`[TimelineCanvas] 🧲🚫 MAGNETIC REJECTION: clip zones [${payload.zones}] incompatible with track zone '${targetTrack.targetZone}'`)
+        return
+      }
+      
+      // 🧲 WAVE 2545: AUTO-ROUTING — CORE effects (no zones) inherit track zone
+      if (targetTrack.targetZone && (!payload.zones || payload.zones.length === 0)) {
+        payload.zones = [targetTrack.targetZone]
+        console.log(`[TimelineCanvas] 🧲✨ AUTO-ROUTE: CORE effect inherits zone '${targetTrack.targetZone}'`)
+      }
+      
       onClipDrop?.(payload, timeMs, trackId)
       // WAVE 2030.17: Enhanced logging for Hephaestus
       const sourceLabel = payload.source === 'hephaestus' ? '⚒️ HEPH' : '🎹'
@@ -1103,6 +1171,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const waveformTrack = waveformTrackIndex >= 0 ? elasticTracks[waveformTrackIndex] : null
   
   return (
+    <div className="timeline-outer-wrapper">
     <div 
       ref={containerRef}
       className={`timeline-canvas-container ${isDragOver ? 'drag-over' : ''}`}
@@ -1395,6 +1464,22 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           </>
         )}
         
+        {/* 🧲 WAVE 2545: MAGNETIC REJECTION — Red forbidden overlay on incompatible zone track */}
+        {dragZoneBlocked && dragTrackId && (
+          <rect
+            x={TRACK_LABEL_WIDTH}
+            y={getTrackYOffset(dragTrackId)}
+            width={dimensions.width - TRACK_LABEL_WIDTH}
+            height={getTrackHeight(dragTrackId)}
+            fill="rgba(239, 68, 68, 0.08)"
+            stroke="rgba(239, 68, 68, 0.4)"
+            strokeWidth={2}
+            strokeDasharray="6 6"
+            pointerEvents="none"
+            className="magnetic-rejection-overlay"
+          />
+        )}
+        
         {/* Playhead */}
         <Playhead
           currentTime={currentTime}
@@ -1488,6 +1573,61 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         <span className="zoom-value">{Math.round(viewport.pixelsPerSecond)}px/s</span>
         <span className="zoom-hint">Ctrl+Scroll to zoom</span>
       </div>
+    </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          🎯 WAVE 2545: [+ ADD ZONE TRACK] — Footer, fuera del overflow:hidden
+          Siempre visible debajo del último track
+      ═══════════════════════════════════════════════════════════════════ */}
+      {CANONICAL_ZONES.filter(z => z !== 'unassigned').some(z =>
+        !elasticTracks.filter(t => t.type === 'fx' && t.targetZone).map(t => t.targetZone).includes(z)
+      ) && (
+        <div className="add-zone-track-footer">
+          <button
+            className="add-zone-track-btn"
+            onClick={() => setShowZoneDropdown(prev => !prev)}
+            title="Add a new zone track to the timeline"
+          >
+            + ADD ZONE TRACK
+          </button>
+
+          {showZoneDropdown && (() => {
+            const existingZones = new Set(
+              elasticTracks
+                .filter(t => t.type === 'fx' && t.targetZone)
+                .map(t => t.targetZone!)
+            )
+            const availableZones = CANONICAL_ZONES.filter(
+              z => z !== 'unassigned' && !existingZones.has(z)
+            )
+            return (
+              <div className="zone-dropdown">
+                {availableZones.length === 0 ? (
+                  <div className="zone-dropdown-empty">ALL ZONES ACTIVE</div>
+                ) : (
+                  availableZones.map(zone => (
+                    <button
+                      key={zone}
+                      className="zone-dropdown-item"
+                      style={{ borderLeftColor: ZONE_COLORS[zone] }}
+                      onClick={() => {
+                        setCustomZoneTracks(prev => [...prev, zone])
+                        setShowZoneDropdown(false)
+                      }}
+                    >
+                      <span
+                        className="zone-dropdown-dot"
+                        style={{ backgroundColor: ZONE_COLORS[zone] }}
+                      />
+                      {ZONE_LABELS[zone]}
+                    </button>
+                  ))
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      )}
     </div>
   )
 })

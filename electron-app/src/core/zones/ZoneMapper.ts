@@ -398,6 +398,88 @@ export function getActiveZones(fixtures: readonly ZoneMappableFixture[]): Canoni
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2545: ZONE COMPATIBILITY — For Magnetic Drop Validation
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolve an array of zone tags to the canonical zones they target,
+ * WITHOUT requiring a fixture list. Used by the UI drag validation layer
+ * where we only need to know "does this clip MENTION this canonical zone?"
+ *
+ * Returns the set of CanonicalZone values that the tags cover.
+ * - Canonical zones map 1:1 ('front' → ['front'])
+ * - Composite zones expand ('all-pars' → ['front','back','floor'])
+ * - Modifier zones (all-left/all-right) are position filters — they
+ *   don't restrict to specific canonical zones, so we return ALL_CANONICAL
+ *   to indicate they're compatible with any zone track.
+ * - Wildcards ('all', '*') return ALL_CANONICAL.
+ * - Empty array → ALL_CANONICAL (no zone restriction = global).
+ */
+export function getTargetCanonicalZones(tags: string[]): CanonicalZone[] {
+  if (tags.length === 0) return [...CANONICAL_ZONES]
+
+  const result = new Set<CanonicalZone>()
+  let hasOnlyModifiers = true
+
+  for (const raw of tags) {
+    const t = (ZONE_TYPO_MAP[raw.toLowerCase().trim()] ?? raw.toLowerCase().trim())
+
+    // Wildcard
+    if (t === 'all' || t === '*') return [...CANONICAL_ZONES]
+
+    // Modifier (all-left / all-right) — doesn't restrict canonical zone
+    if (MODIFIER_ZONES.has(t)) continue
+
+    // Composite
+    const compositeTargets = COMPOSITE_ZONES[t]
+    if (compositeTargets) {
+      hasOnlyModifiers = false
+      for (const cz of compositeTargets) result.add(cz)
+      continue
+    }
+
+    // Stereo sub-zone (e.g. 'frontL', 'backR')
+    const stereo = STEREO_ZONES[t]
+    if (stereo) {
+      hasOnlyModifiers = false
+      result.add(stereo.canonical)
+      continue
+    }
+
+    // Direct canonical
+    if (CANONICAL_ZONES.includes(t as CanonicalZone)) {
+      hasOnlyModifiers = false
+      result.add(t as CanonicalZone)
+    }
+  }
+
+  // If only modifiers were present (e.g. ['all-right']), they apply to ALL zones
+  if (hasOnlyModifiers) return [...CANONICAL_ZONES]
+
+  return CANONICAL_ZONES.filter(z => result.has(z))
+}
+
+/**
+ * Check if a clip with the given zone tags is compatible with a track
+ * that targets a specific canonical zone. Pure function, no side effects.
+ *
+ * - Clip without zones (undefined/empty) → compatible with ANY track
+ * - Track without targetZone → compatible with ANY clip (global fallback track)
+ * - Otherwise: clip's canonical zone set must include the track's targetZone
+ */
+export function isClipZoneCompatible(
+  clipZones: string[] | undefined,
+  trackTargetZone: CanonicalZone | undefined
+): boolean {
+  // Global track (no specific zone) accepts everything
+  if (!trackTargetZone) return true
+  // Clip without zone restriction → compatible with any track
+  if (!clipZones || clipZones.length === 0) return true
+  // Check if the clip's resolved canonical zones include this track's zone
+  return getTargetCanonicalZones(clipZones).includes(trackTargetZone)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS for convenience
 // ═══════════════════════════════════════════════════════════════════════════
 

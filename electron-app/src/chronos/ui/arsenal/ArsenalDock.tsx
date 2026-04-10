@@ -278,6 +278,8 @@ const EffectPad: React.FC<EffectPadProps> = memo(({
     
     e.dataTransfer.setData('application/luxsync-fx', serializeDragPayload(payload))
     e.dataTransfer.setData('application/luxsync-clip', serializeDragPayload(payload))
+    // 🧲 WAVE 2545: MAGNETIC DROP — CORE effects have no zones (empty = compatible with all)
+    e.dataTransfer.setData('application/luxsync-zones:', '')
     e.dataTransfer.effectAllowed = 'copyMove'
     
     // Drag ghost (text-only, no emoji)

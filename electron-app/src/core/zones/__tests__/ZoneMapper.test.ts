@@ -18,6 +18,8 @@ import {
   resolveZone,
   fixtureMatchesZone,
   getActiveZones,
+  getTargetCanonicalZones,
+  isClipZoneCompatible,
   type ZoneMappableFixture,
 } from '../ZoneMapper'
 
@@ -471,6 +473,127 @@ describe('WAVE 2544.1: Ghost Exorcism — AND-intersection correctness', () => {
   test("modifier-only ['all-right'] → all right-side fixtures across all zones", () => {
     const result = resolveZoneTags(['all-right'], RIG)
     expect(result.sort()).toEqual(['br1', 'br2', 'fr1', 'fr2'].sort())
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2545: MAGNETIC DROP — getTargetCanonicalZones & isClipZoneCompatible
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('WAVE 2545: getTargetCanonicalZones — UI zone resolution (no fixtures needed)', () => {
+  test('empty tags → all canonical zones (universal)', () => {
+    const result = getTargetCanonicalZones([])
+    expect(result).toEqual(expect.arrayContaining(['front', 'back', 'floor', 'movers-left', 'movers-right']))
+    expect(result.length).toBeGreaterThanOrEqual(8)
+  })
+
+  test("['front'] → only ['front']", () => {
+    const result = getTargetCanonicalZones(['front'])
+    expect(result).toEqual(['front'])
+  })
+
+  test("['back'] → only ['back']", () => {
+    const result = getTargetCanonicalZones(['back'])
+    expect(result).toEqual(['back'])
+  })
+
+  test("['all-pars'] → ['front', 'back', 'floor']", () => {
+    const result = getTargetCanonicalZones(['all-pars'])
+    expect(result).toEqual(['front', 'back', 'floor'])
+  })
+
+  test("['all-movers'] → ['movers-left', 'movers-right']", () => {
+    const result = getTargetCanonicalZones(['all-movers'])
+    expect(result).toEqual(['movers-left', 'movers-right'])
+  })
+
+  test("['all-right'] (modifier only) → all canonical zones", () => {
+    const result = getTargetCanonicalZones(['all-right'])
+    expect(result.length).toBeGreaterThanOrEqual(8)
+  })
+
+  test("['back', 'all-right'] (target + modifier) → only ['back']", () => {
+    const result = getTargetCanonicalZones(['back', 'all-right'])
+    expect(result).toEqual(['back'])
+  })
+
+  test("['all'] → all canonical zones", () => {
+    const result = getTargetCanonicalZones(['all'])
+    expect(result.length).toBeGreaterThanOrEqual(8)
+  })
+
+  test("['*'] → all canonical zones", () => {
+    const result = getTargetCanonicalZones(['*'])
+    expect(result.length).toBeGreaterThanOrEqual(8)
+  })
+
+  test("['front', 'back'] → ['front', 'back'] (canonical order)", () => {
+    const result = getTargetCanonicalZones(['front', 'back'])
+    expect(result).toEqual(['front', 'back'])
+  })
+
+  test("typo 'allpars' normalized → ['front', 'back', 'floor']", () => {
+    const result = getTargetCanonicalZones(['allpars'])
+    expect(result).toEqual(['front', 'back', 'floor'])
+  })
+
+  test("typo 'right' normalized → modifier → all canonical zones", () => {
+    const result = getTargetCanonicalZones(['right'])
+    expect(result.length).toBeGreaterThanOrEqual(8)
+  })
+
+  test("['front', 'all-movers'] → ['front', 'movers-left', 'movers-right']", () => {
+    const result = getTargetCanonicalZones(['front', 'all-movers'])
+    expect(result).toEqual(['front', 'movers-left', 'movers-right'])
+  })
+})
+
+describe('WAVE 2545: isClipZoneCompatible — Magnetic Drop validation', () => {
+  test('clip without zones → compatible with ANY track', () => {
+    expect(isClipZoneCompatible(undefined, 'front')).toBe(true)
+    expect(isClipZoneCompatible([], 'front')).toBe(true)
+    expect(isClipZoneCompatible(undefined, 'back')).toBe(true)
+  })
+
+  test('track without targetZone (global) → compatible with ANY clip', () => {
+    expect(isClipZoneCompatible(['front'], undefined)).toBe(true)
+    expect(isClipZoneCompatible(['back', 'all-right'], undefined)).toBe(true)
+  })
+
+  test("clip ['front'] + track 'front' → compatible", () => {
+    expect(isClipZoneCompatible(['front'], 'front')).toBe(true)
+  })
+
+  test("clip ['front'] + track 'back' → INCOMPATIBLE", () => {
+    expect(isClipZoneCompatible(['front'], 'back')).toBe(false)
+  })
+
+  test("clip ['all-pars'] + track 'front' → compatible (front is a par)", () => {
+    expect(isClipZoneCompatible(['all-pars'], 'front')).toBe(true)
+  })
+
+  test("clip ['all-pars'] + track 'movers-left' → INCOMPATIBLE", () => {
+    expect(isClipZoneCompatible(['all-pars'], 'movers-left')).toBe(false)
+  })
+
+  test("clip ['all-movers'] + track 'movers-right' → compatible", () => {
+    expect(isClipZoneCompatible(['all-movers'], 'movers-right')).toBe(true)
+  })
+
+  test("clip ['back', 'all-right'] + track 'back' → compatible", () => {
+    expect(isClipZoneCompatible(['back', 'all-right'], 'back')).toBe(true)
+  })
+
+  test("clip ['back', 'all-right'] + track 'front' → INCOMPATIBLE", () => {
+    expect(isClipZoneCompatible(['back', 'all-right'], 'front')).toBe(false)
+  })
+
+  test("clip ['all-right'] (modifier only) + track 'back' → compatible (no zone restriction)", () => {
+    expect(isClipZoneCompatible(['all-right'], 'back')).toBe(true)
+  })
+
+  test("clip ['all'] + track 'floor' → compatible", () => {
+    expect(isClipZoneCompatible(['all'], 'floor')).toBe(true)
   })
 })
 

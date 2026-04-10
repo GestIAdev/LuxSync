@@ -129,6 +129,10 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     e.dataTransfer.setData('application/luxsync-fx', serialized)     // FX type (timeline recognition) — PRIMARY
     e.dataTransfer.setData('application/luxsync-clip', serialized)   // Generic clip fallback
     e.dataTransfer.setData('application/luxsync-heph', serialized)   // Hephaestus marker
+    // 🧲 WAVE 2545: MAGNETIC DROP — Encode zones in MIME type key for dragover validation
+    // DataTransfer.getData() is blocked during dragover, but types[] is readable
+    const zonesStr = payload.zones?.join(',') ?? ''
+    e.dataTransfer.setData(`application/luxsync-zones:${zonesStr}`, '')
     e.dataTransfer.effectAllowed = 'copyMove'
     
     // Drag ghost — WAVE 2040.14: Use neon color instead of emoji

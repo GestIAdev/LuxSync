@@ -749,8 +749,14 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
     // Maintain canonical order
     const orderedZones = CANONICAL_ZONES.filter(z => mergedZones.includes(z))
-    const zoneTracks = generateZoneTracks(orderedZones)
-    return [...STRUCTURAL_TRACKS, ...zoneTracks]
+    // WAVE 2545.5: Si hay customZoneTracks, IGNORAR el fallback zone-all.
+    // El usuario añadió una pista manualmente → se renderiza incondicionalmente,
+    // sin importar si el rig tiene fixtures en esa zona o no.
+    if (orderedZones.length > 0) {
+      return [...STRUCTURAL_TRACKS, ...generateZoneTracks(orderedZones)]
+    }
+    // Sin fixtures y sin custom tracks → fallback zone-all genérico
+    return [...STRUCTURAL_TRACKS, ...generateZoneTracks([])]
   }, [fixtures, customZoneTracks])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -1601,10 +1607,22 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WAVE 2545.2: ZoneTrackFooter — Botón ciberpunk con Portal dropdown
-// Separado como componente para encapsular el estado del dropdown y la ref
-// del botón que necesita getBoundingClientRect() para posicionar el Portal.
+// WAVE 2545.5: ZoneTrackFooter — Botón ciberpunk con Portal dropdown categorizado
+// Grupos: CORE (front/back/floor/center/air/ambient) y MOVERS (movers-left/right)
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Definición de categorías del dropdown — orden canónico visual
+const ZONE_DROPDOWN_GROUPS: Array<{ label: string; zones: CanonicalZone[] }> = [
+  {
+    label: 'CORE ZONES',
+    zones: ['front', 'back', 'floor', 'center', 'air', 'ambient'],
+  },
+  {
+    label: 'MOVERS',
+    zones: ['movers-left', 'movers-right'],
+  },
+]
+
 interface ZoneTrackFooterProps {
   elasticTracks: Track[]
   onAddZone: (zone: CanonicalZone) => void
@@ -1615,18 +1633,14 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
-  // Calcular posición absoluta del dropdown relativa al body cuando se abre
+  // Calcular posición viewport-relativa del dropdown cuando se abre
   useEffect(() => {
     if (!open || !btnRef.current) {
       setDropdownPos(null)
       return
     }
     const rect = btnRef.current.getBoundingClientRect()
-    // getBoundingClientRect() devuelve coordenadas del viewport → usar position:fixed
-    setDropdownPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-    })
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left })
   }, [open])
 
   // Cerrar al hacer click fuera
@@ -1646,9 +1660,12 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
       .filter(t => t.type === 'fx' && t.targetZone)
       .map(t => t.targetZone!)
   )
-  const availableZones = CANONICAL_ZONES.filter(
-    z => z !== 'unassigned' && !existingZones.has(z)
-  )
+
+  // Calcular si algún grupo tiene zonas disponibles
+  const groupsWithContent = ZONE_DROPDOWN_GROUPS.map(group => ({
+    ...group,
+    available: group.zones.filter(z => !existingZones.has(z)),
+  })).filter(g => g.available.length > 0)
 
   return (
     <div className="add-zone-track-footer">
@@ -1666,25 +1683,29 @@ const ZoneTrackFooter = memo(({ elasticTracks, onAddZone }: ZoneTrackFooterProps
           className="zone-dropdown zone-dropdown--portal"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
-          {availableZones.length === 0 ? (
+          {groupsWithContent.length === 0 ? (
             <div className="zone-dropdown-empty">ALL ZONES ACTIVE</div>
           ) : (
-            availableZones.map(zone => (
-              <button
-                key={zone}
-                className="zone-dropdown-item"
-                style={{ borderLeftColor: ZONE_COLORS[zone] }}
-                onClick={() => {
-                  onAddZone(zone)
-                  setOpen(false)
-                }}
-              >
-                <span
-                  className="zone-dropdown-dot"
-                  style={{ backgroundColor: ZONE_COLORS[zone] }}
-                />
-                {ZONE_LABELS[zone]}
-              </button>
+            groupsWithContent.map((group, gi) => (
+              <div key={group.label} className="zone-dropdown-group">
+                {/* Separador entre grupos (no antes del primero) */}
+                {gi > 0 && <div className="zone-dropdown-separator" />}
+                <div className="zone-dropdown-group-label">{group.label}</div>
+                {group.available.map(zone => (
+                  <button
+                    key={zone}
+                    className="zone-dropdown-item"
+                    style={{ borderLeftColor: ZONE_COLORS[zone] }}
+                    onClick={() => { onAddZone(zone); setOpen(false) }}
+                  >
+                    <span
+                      className="zone-dropdown-dot"
+                      style={{ backgroundColor: ZONE_COLORS[zone] }}
+                    />
+                    {ZONE_LABELS[zone].replace(/^.+?\s/, '')} {/* strip emoji */}
+                  </button>
+                ))}
+              </div>
             ))
           )}
         </div>,

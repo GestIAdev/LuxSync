@@ -77,6 +77,30 @@ const COMPOSITE_ZONES: Readonly<Record<string, readonly CanonicalZone[]>> = {
 const MODIFIER_ZONES: ReadonlySet<string> = new Set(['all-left', 'all-right'])
 
 /**
+ * Typo normalization table for zone strings from saved shows.
+ * Handles common omission-of-hyphen mistakes from old serializations.
+ * Applied before any zone classification logic.
+ */
+const ZONE_TYPO_MAP: Readonly<Record<string, string>> = {
+  'allright':  'all-right',
+  'allleft':   'all-left',
+  'allpars':   'all-pars',
+  'allmovers': 'all-movers',
+  'all_right': 'all-right',
+  'all_left':  'all-left',
+  'all_pars':  'all-pars',
+  'all_movers':'all-movers',
+  'movers':    'all-movers',
+  'pars':      'all-pars',
+}
+
+/** Sanitize a single raw zone tag, correcting known typos. */
+function sanitizeZoneTag(raw: string): string {
+  const t = raw.toLowerCase().trim()
+  return ZONE_TYPO_MAP[t] ?? t
+}
+
+/**
  * Stereo sub-zones: combine a canonical zone with a lateral position.
  * e.g. 'frontL' → fixtures in 'front' zone with position.x < 0
  */
@@ -123,7 +147,7 @@ export function normalizeTagsToCanonical(tags: string[]): string {
   let modifier: 'left' | 'right' | null = null
 
   for (const tag of tags) {
-    const t = tag.toLowerCase().trim()
+    const t = sanitizeZoneTag(tag)
 
     if (t === 'all-left' || t === 'left') {
       modifier = 'left'
@@ -247,12 +271,12 @@ export function resolveZoneTags(tags: string[], fixtures: readonly ZoneMappableF
     return fixtures.filter(f => f.enabled !== false).map(f => f.id)
   }
 
-  // ── Step 1: Classify into targets and modifiers ──
+  // ── Step 1: Classify into targets and modifiers (with typo sanitization) ──
   const targetTags: string[] = []
   const modifiers: string[] = []
 
   for (const tag of tags) {
-    const t = tag.toLowerCase().trim()
+    const t = sanitizeZoneTag(tag)
     if (MODIFIER_ZONES.has(t)) {
       modifiers.push(t)
     } else {

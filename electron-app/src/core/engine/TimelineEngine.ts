@@ -695,10 +695,27 @@ export class TimelineEngine {
   private dispatchZoneOverrides(
     output: EffectFrameOutput,
     envelope: number,
-    _allFixtureIds: string[],
+    allowedFixtureIds: string[],
     blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
   ): void {
     if (!output.zoneOverrides) return
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2544.1: THE CHRONOS GHOST EXORCISM
+    //
+    // allowedFixtureIds is the AND-intersection result from resolveFixtureIds(clip).
+    // It already applied ZoneMapper.resolveZoneTags(clip.zones, fixtures) which
+    // enforces Target+Modifier AND-semantics (e.g. ['back','all-right'] → back∩right).
+    //
+    // Effects ignore clip.zones — they emit their own hardcoded zoneOverrides.
+    // Without this gate, a clip restricted to ['back','all-right'] would let
+    // an effect illuminate front, movers, and left-side back fixtures.
+    //
+    // FIX: Intersect each zone's resolved fixtures with allowedFixtureIds.
+    // Only fixtures that pass BOTH the zone key AND the clip permission reach the Arbiter.
+    // If allowedFixtureIds is empty (legacy clip, no zones defined) → no restriction.
+    // ═══════════════════════════════════════════════════════════════════
+    const allowedSet = allowedFixtureIds.length > 0 ? new Set(allowedFixtureIds) : null
 
     // For each zone override, build controls and dispatch to THAT ZONE's fixtures only
     for (const [zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
@@ -752,7 +769,16 @@ export class TimelineEngine {
 
       // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
       // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
-      const zoneFixtureIds = masterArbiter.getFixtureIdsByZone(zoneId)
+      const zoneResolved = masterArbiter.getFixtureIdsByZone(zoneId)
+
+      // 🎯 WAVE 2544.1: AND-gate — clip permission mask
+      // If the clip has zone restrictions, only pass fixtures that are in BOTH
+      // the zone's fixture list AND the clip's allowed set.
+      const zoneFixtureIds = allowedSet
+        ? zoneResolved.filter(id => allowedSet.has(id))
+        : zoneResolved
+
+      if (zoneFixtureIds.length === 0) continue
       this.dispatchToArbiter(zoneFixtureIds, controls, { blendMode })
     }
   }

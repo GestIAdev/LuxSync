@@ -424,3 +424,111 @@ describe('STRESS TEST: 200 fixtures performance', () => {
     expect(msPerFrame).toBeLessThan(2)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2544.1: GHOST EXORCISM — AND-gate certification & typo sanitization
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('WAVE 2544.1: Ghost Exorcism — AND-intersection correctness', () => {
+  // Rig: 2 back-right, 2 back-left, 2 front-right, 2 front-left
+  const RIG: ZoneMappableFixture[] = [
+    { id: 'br1', zone: 'back',  position: { x:  1 } },
+    { id: 'br2', zone: 'back',  position: { x:  3 } },
+    { id: 'bl1', zone: 'back',  position: { x: -1 } },
+    { id: 'bl2', zone: 'back',  position: { x: -3 } },
+    { id: 'fr1', zone: 'front', position: { x:  1 } },
+    { id: 'fr2', zone: 'front', position: { x:  3 } },
+    { id: 'fl1', zone: 'front', position: { x: -1 } },
+    { id: 'fl2', zone: 'front', position: { x: -3 } },
+  ]
+
+  test("['back', 'all-right'] → ONLY back-right fixtures (AND, not OR)", () => {
+    const result = resolveZoneTags(['back', 'all-right'], RIG)
+    expect(result.sort()).toEqual(['br1', 'br2'].sort())
+    // Must NOT include front-right or back-left
+    expect(result).not.toContain('fr1')
+    expect(result).not.toContain('fr2')
+    expect(result).not.toContain('bl1')
+    expect(result).not.toContain('bl2')
+  })
+
+  test("['back', 'all-left'] → ONLY back-left fixtures", () => {
+    const result = resolveZoneTags(['back', 'all-left'], RIG)
+    expect(result.sort()).toEqual(['bl1', 'bl2'].sort())
+  })
+
+  test("['front', 'all-right'] → ONLY front-right fixtures", () => {
+    const result = resolveZoneTags(['front', 'all-right'], RIG)
+    expect(result.sort()).toEqual(['fr1', 'fr2'].sort())
+  })
+
+  test("OR-semantics ABSENT: ['back', 'front'] without modifier → union (both)", () => {
+    // Targets without modifier → union (correct)
+    const result = resolveZoneTags(['back', 'front'], RIG)
+    expect(result).toHaveLength(8)
+  })
+
+  test("modifier-only ['all-right'] → all right-side fixtures across all zones", () => {
+    const result = resolveZoneTags(['all-right'], RIG)
+    expect(result.sort()).toEqual(['br1', 'br2', 'fr1', 'fr2'].sort())
+  })
+})
+
+describe('WAVE 2544.1: Ghost Exorcism — typo sanitization', () => {
+  const RIG: ZoneMappableFixture[] = [
+    { id: 'br1', zone: 'back',  position: { x:  2 } },
+    { id: 'bl1', zone: 'back',  position: { x: -2 } },
+    { id: 'fr1', zone: 'front', position: { x:  2 } },
+    { id: 'm1',  zone: 'movers-left',  position: { x: -4 } },
+    { id: 'm2',  zone: 'movers-right', position: { x:  4 } },
+    { id: 'p1',  zone: 'front', position: { x:  1 } },
+    { id: 'p2',  zone: 'back',  position: { x:  1 } },
+    { id: 'p3',  zone: 'floor', position: { x:  0 } },
+  ]
+
+  test("'allright' (no hyphen) sanitized → 'all-right' modifier", () => {
+    // Should behave as ['allright'] → treats as all-right modifier → all x>=0
+    const result = resolveZoneTags(['allright'], RIG)
+    const byHyphen = resolveZoneTags(['all-right'], RIG)
+    expect(result.sort()).toEqual(byHyphen.sort())
+  })
+
+  test("'allleft' sanitized → 'all-left' modifier", () => {
+    const result = resolveZoneTags(['allleft'], RIG)
+    const byHyphen = resolveZoneTags(['all-left'], RIG)
+    expect(result.sort()).toEqual(byHyphen.sort())
+  })
+
+  test("'allpars' sanitized → 'all-pars' composite", () => {
+    const result = resolveZoneTags(['allpars'], RIG)
+    const byHyphen = resolveZoneTags(['all-pars'], RIG)
+    expect(result.sort()).toEqual(byHyphen.sort())
+  })
+
+  test("'allmovers' sanitized → 'all-movers' composite", () => {
+    const result = resolveZoneTags(['allmovers'], RIG)
+    const byHyphen = resolveZoneTags(['all-movers'], RIG)
+    expect(result.sort()).toEqual(byHyphen.sort())
+  })
+
+  test("'back' + 'allright' typo → still AND-intersection back∩right", () => {
+    const typo   = resolveZoneTags(['back', 'allright'], RIG)
+    const correct = resolveZoneTags(['back', 'all-right'], RIG)
+    expect(typo.sort()).toEqual(correct.sort())
+    // Strictly only back-right (br1, p2)
+    expect(typo).not.toContain('fr1')
+    expect(typo).not.toContain('bl1')
+  })
+
+  test("normalizeTagsToCanonical: 'allright' → 'all-right'", () => {
+    expect(normalizeTagsToCanonical(['allright'])).toBe('all-right')
+  })
+
+  test("normalizeTagsToCanonical: ['back', 'allright'] → 'back-right'", () => {
+    expect(normalizeTagsToCanonical(['back', 'allright'])).toBe('back-right')
+  })
+
+  test("normalizeTagsToCanonical: 'all_left' (underscore) → 'all-left'", () => {
+    expect(normalizeTagsToCanonical(['all_left'])).toBe('all-left')
+  })
+})

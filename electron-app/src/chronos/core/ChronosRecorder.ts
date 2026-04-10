@@ -4,12 +4,12 @@
  * 
  * Motor de grabación en tiempo real para el Timeline.
  * Cuando el modo REC está activo, cada click en un efecto del Arsenal
- * lo graba directamente en el FX track en la posición actual del playhead.
+ * lo graba directamente en el zone track en la posición actual del playhead.
  * 
  * WAVE 2010: Añadido Vibe recording y Quantize to grid
  * WAVE 2011: Fixed trackIds to match TimelineCanvas
  * WAVE 2012: MixBus Routing + Vibe Latch Mode
- *   - FX: Auto-asigna track según MixBus (global→fx1, htp→fx2, ambient→fx3, accent→fx4)
+ * WAVE 2543.3: Zone-based routing (live → zone-all, user refines later)
  *   - Vibes: Latch mode (un vibe cierra el anterior automáticamente)
  * WAVE 2013: THE LIVING CLIP
  *   - Dynamic growth: Active clips visually extend in real-time during recording
@@ -19,11 +19,10 @@
  *   - VIBE-ONLY GROWTH: Only vibe clips grow, FX clips have fixed duration
  *   - FX clips appear with defaultDurationMs and stay fixed
  * 
- * MIXBUS ROUTING:
- * - GLOBAL (strobes, meltdowns) → FX1
- * - HTP (sweeps, chases) → FX2  
- * - AMBIENT (mists, breaths) → FX3
- * - ACCENT (sparks, hits) → FX4
+ * ZONE ROUTING (WAVE 2543.3):
+ * - Live recording → zone-all (global fallback)
+ * - Drop from Arsenal → user picks zone track visually
+ * - Edit/move → user reassigns to specific zone
  * 
  * AXIOMA ANTI-SIMULACIÓN:
  * Los efectos que se graban son los efectos REALES del sistema.
@@ -33,15 +32,16 @@
  * @version WAVE 2013.5
  */
 
-import { getEffectById, getEffectTrackId, type EffectMeta } from './EffectRegistry'
-
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Available FX track IDs (MixBus routing uses these) */
-export const FX_TRACK_IDS = ['fx1', 'fx2', 'fx3', 'fx4'] as const
-export type FXTrackId = typeof FX_TRACK_IDS[number]
+/** 
+ * 🌍 WAVE 2543.3: Default fallback track ID for live recording.
+ * During live recording, effects go to 'zone-all' because
+ * the specific zone is decided by the user via drag & drop or editing.
+ */
+export const DEFAULT_ZONE_TRACK = 'zone-all'
 
 export type RecordedClipType = 'fx' | 'vibe'
 
@@ -334,29 +334,22 @@ export class ChronosRecorder {
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
-   * 🎹 Get track ID for an effect using MixBus routing
-   * Falls back to collision detection if MixBus track is busy
+   * � WAVE 2543.3: Get zone track ID for an effect
+   * During live recording, routes to zone-all (global fallback).
+   * The specific zone gets refined when the user edits/moves the clip.
    */
-  private getTrackForEffect(effectId: string, timeMs: number, durationMs: number): FXTrackId {
-    // Try to get effect metadata for MixBus routing
-    const effectMeta = getEffectById(effectId)
+  private getTrackForEffect(effectId: string, timeMs: number, durationMs: number): string {
+    const trackId = DEFAULT_ZONE_TRACK
     
-    if (effectMeta) {
-      // Use MixBus-based routing
-      const preferredTrack = getEffectTrackId(effectMeta)
-      
-      // Check if preferred track is available
-      if (!this.isTrackBusy(preferredTrack, timeMs, durationMs)) {
-        console.log(`🎹 [ChronosRecorder] MixBus → ${preferredTrack} for "${effectMeta.displayName}"`)
-        return preferredTrack
-      }
-      
-      // Preferred track busy, find alternative
-      console.log(`🎹 [ChronosRecorder] MixBus ${preferredTrack} busy, finding alternative...`)
+    // Check if the default track is available
+    if (!this.isTrackBusy(trackId, timeMs, durationMs)) {
+      console.log(`🌍 [ChronosRecorder] Zone → ${trackId} for "${effectId}"`)
+      return trackId
     }
     
-    // Fallback: find any available track
-    return this.findAvailableFXTrack(timeMs, durationMs)
+    // Track busy — stack on same track (zone-all can handle multiple clips)
+    console.log(`🌍 [ChronosRecorder] ${trackId} busy, stacking (zone track supports overlap)`)
+    return trackId
   }
   
   /**
@@ -374,20 +367,6 @@ export class ChronosRecorder {
       // Check for overlap
       return !(clipEnd <= existingStart || clipStart >= existingEnd)
     })
-  }
-  
-  /**
-   * 🎯 Find first available FX track (fallback when MixBus track is busy)
-   */
-  private findAvailableFXTrack(timeMs: number, durationMs: number): FXTrackId {
-    for (const trackId of FX_TRACK_IDS) {
-      if (!this.isTrackBusy(trackId, timeMs, durationMs)) {
-        return trackId
-      }
-    }
-    // All tracks busy - use fx1 (stack/overlap is acceptable)
-    console.warn('[ChronosRecorder] All FX tracks busy, stacking on fx1')
-    return 'fx1'
   }
   
   // ─────────────────────────────────────────────────────────────────────────

@@ -28,6 +28,10 @@ import { LiveRecordingIndicator } from './LiveRecordingIndicator'
 import type { AnalysisData } from '../../core/types'
 import type { TimelineClip, DragPayload } from '../../core/TimelineClip'
 import { deserializeDragPayload } from '../../core/TimelineClip'
+import { CANONICAL_ZONES, ZONE_LABELS } from '../../../core/stage/ShowFileV2'
+import type { CanonicalZone } from '../../../core/stage/ShowFileV2'
+import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngine'
+import { useStageStore } from '../../../stores/stageStore'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,6 +88,8 @@ interface Track {
   label: string
   height: number              // pixels
   color: string
+  /** WAVE 2543.3: Physical zone this track targets (fx tracks only) */
+  targetZone?: CanonicalZone
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -91,31 +97,56 @@ interface Track {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🎹 WAVE 2040.9b: SEMANTIC TIMELINE — Track labels match MixBus reality
- * 
- * VISUAL MAPPING:
- *   fx1 → GLOBAL  🔴  Takeovers, blinders, strobes masivos
- *   fx2 → MOVEMENT 🟡  Pan/tilt, scans, sweeps, chases
- *   fx3 → AMBIENT  🟢  Niebla, lluvia, auroras, breaths
- *   fx4 → ACCENT   🔵  Destellos cortos, zoom hits, solos
- * 
- * Heights graduales: alta prioridad visual (40) → detalles finos (32)
- * Colors: coherentes con NewClipModal MixBus selector
- * 
- * NOTA: Los trackId internos ('fx1'-'fx4') NO cambian.
- *       Solo cambian label, height y color. Zero riesgo de rotura.
+ * 🏗️ STRUCTURAL TRACKS — Always present, non-zone tracks
  */
-const DEFAULT_TRACKS: Track[] = [
+const STRUCTURAL_TRACKS: Track[] = [
   { id: 'ruler', type: 'ruler', label: 'TIME', height: 32, color: '#3b82f6' },
-  // 🔧 WAVE 2040.31: Audio track diet — reduced from 80px to 64px for vertical space
   { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 64, color: '#22d3ee' },
-  // 🔧 WAVE 2040.30: DIETA DE VIBES — reducimos height de 48 a 32px para liberar espacio vertical
   { id: 'vibe', type: 'vibe', label: 'VIBE', height: 32, color: '#a855f7' },
-  { id: 'fx1', type: 'fx', label: 'GLOBAL', height: 40, color: '#ef4444' },
-  { id: 'fx2', type: 'fx', label: 'MOVEMENT', height: 40, color: '#f59e0b' },
-  { id: 'fx3', type: 'fx', label: 'AMBIENT', height: 36, color: '#10b981' },
-  { id: 'fx4', type: 'fx', label: 'ACCENT', height: 32, color: '#3b82f6' },
 ]
+
+/**
+ * 🌍 WAVE 2543.3: TRACKS INFINITOS POR DESTINO
+ * 
+ * Genera tracks FX dinámicamente según las zonas activas del show.
+ * Cada zona con fixtures asignados obtiene su propia track.
+ * Si no hay fixtures cargados, genera un track global de fallback.
+ * 
+ * Los colores vienen de ZONE_COLORS (Hyperion) para coherencia visual total.
+ * Labels vienen de ZONE_LABELS con el emoji de zona.
+ */
+function generateZoneTracks(activeZones: CanonicalZone[]): Track[] {
+  if (activeZones.length === 0) {
+    // Fallback: sin fixtures cargados → un track global genérico
+    return [
+      { id: 'zone-all', type: 'fx', label: '◆ ALL', height: 40, color: '#ef4444', targetZone: undefined },
+    ]
+  }
+  
+  return activeZones.map(zone => ({
+    id: `zone-${zone}`,
+    type: 'fx' as const,
+    label: ZONE_LABELS[zone].replace(/^.+?\s/, ''), // Strip emoji prefix → "FRONT (Main)"
+    height: 36,
+    color: ZONE_COLORS[zone],
+    targetZone: zone,
+  }))
+}
+
+/**
+ * 🔍 WAVE 2543.3: Extrae las zonas activas (con fixtures) del StageStore.
+ * Excluye 'unassigned' porque no es un destino útil para clips.
+ */
+function getActiveZonesFromFixtures(fixtures: { zone: string }[]): CanonicalZone[] {
+  const zonesWithFixtures = new Set<CanonicalZone>()
+  for (const f of fixtures) {
+    if (f.zone !== 'unassigned' && CANONICAL_ZONES.includes(f.zone as CanonicalZone)) {
+      zonesWithFixtures.add(f.zone as CanonicalZone)
+    }
+  }
+  // Mantener orden canónico (front → back → floor → ... → ambient)
+  return CANONICAL_ZONES.filter(z => zonesWithFixtures.has(z))
+}
 
 const MIN_PIXELS_PER_SECOND = 10
 const MAX_PIXELS_PER_SECOND = 500
@@ -469,7 +500,7 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
       >
         {track.type === 'waveform' ? '〰️ DROP AUDIO FILE' : 
          track.type === 'vibe' ? '⬛ DRAG VIBES HERE' : 
-         '◆ ADD KEYFRAMES'}
+         `◆ ${track.label}`}
       </text>
       
       {/* Track label */}
@@ -686,20 +717,35 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   }, [])  // Mount once, never re-run
   
   // ═══════════════════════════════════════════════════════════════════════
+  // � WAVE 2543.3: DYNAMIC ZONE TRACKS — Reactivos al StageStore
+  //
+  // Las tracks FX se generan según las zonas con fixtures en el show.
+  // Sin fixtures → fallback a track global genérica.
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const fixtures = useStageStore(state => state.fixtures)
+  
+  const allTracks = useMemo(() => {
+    const activeZones = getActiveZonesFromFixtures(fixtures)
+    const zoneTracks = generateZoneTracks(activeZones)
+    return [...STRUCTURAL_TRACKS, ...zoneTracks]
+  }, [fixtures])
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution
   // 
   // PROBLEM: Canvas taller than track sum → void space at bottom with orphan grid
   // SOLUTION: Weighted elastic distribution prioritizing AUDIO track
   // 
   // ALGORITHM:
-  // 1. Calculate total fixed height from DEFAULT_TRACKS
+  // 1. Calculate total fixed height from allTracks
   // 2. If container height > fixed → distribute surplus proportionally
   // 3. AUDIO track gets 50% weight, others share 50% equally
-  // 4. Result: ACCENT track always touches bottom edge, no void space
+  // 4. Result: Last zone track always touches bottom edge, no void space
   // ═══════════════════════════════════════════════════════════════════════
   
   const elasticTracks = useMemo(() => {
-    const totalFixedHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)
+    const totalFixedHeight = allTracks.reduce((sum, t) => sum + t.height, 0)
     const availableHeight = dimensions.height
     
     // If we have surplus space, distribute it elastically
@@ -708,10 +754,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       
       // AUDIO gets 50% of surplus, rest shared equally among other tracks
       const audioWeight = 0.5
-      const otherTracksCount = DEFAULT_TRACKS.length - 1 // Exclude audio
+      const otherTracksCount = allTracks.length - 1 // Exclude audio
       const otherWeight = (1 - audioWeight) / otherTracksCount
       
-      return DEFAULT_TRACKS.map(track => {
+      return allTracks.map(track => {
         if (track.type === 'waveform') {
           // AUDIO track absorbs most of the surplus
           return { ...track, height: track.height + (surplus * audioWeight) }
@@ -723,8 +769,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
     
     // No surplus → use default heights
-    return DEFAULT_TRACKS
-  }, [dimensions.height])
+    return allTracks
+  }, [dimensions.height, allTracks])
   
   // Calculate total tracks height (now using elastic heights)
   const totalTracksHeight = elasticTracks.reduce((sum, t) => sum + t.height, 0)
@@ -835,10 +881,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const trackId = getTrackAtY(y)
     const timeMs = getTimeAtX(x)
     
-    // Determine if drop is valid (vibe→vibe, fx→fx tracks 1-4)
+    // Determine if drop is valid (vibe→vibe, fx→fx zone tracks)
     const isVibeTrack = trackId === 'vibe'
-    // WAVE 2030.17: Expanded to all 4 FX tracks
-    const isFxTrack = trackId === 'fx1' || trackId === 'fx2' || trackId === 'fx3' || trackId === 'fx4'
+    // WAVE 2543.3: Dynamic zone track check — any track with type 'fx'
+    const isFxTrack = elasticTracks.some(t => t.id === trackId && t.type === 'fx')
     const isValidDrop = (isVibeDrag && isVibeTrack) || (isFxDrag && isFxTrack)
     const isTrackArea = isVibeTrack || isFxTrack
     
@@ -865,7 +911,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       setDragTrackId(null)
       setDragTimeMs(null)
     }
-  }, [getTrackAtY, getTimeAtX])
+  }, [getTrackAtY, getTimeAtX, elasticTracks])
   
   const handleDragLeave = useCallback(() => {
     setIsDragOver(false)
@@ -902,8 +948,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     
     // Validate drop target matches clip type
     const isVibeTrack = trackId === 'vibe'
-    // WAVE 2030.17: Expanded to all 4 FX tracks
-    const isFxTrack = trackId === 'fx1' || trackId === 'fx2' || trackId === 'fx3' || trackId === 'fx4'
+    // WAVE 2543.3: Dynamic zone track check
+    const isFxTrack = elasticTracks.some(t => t.id === trackId && t.type === 'fx')
     
     if ((payload.clipType === 'vibe' && isVibeTrack) || 
         (payload.clipType === 'fx' && isFxTrack)) {
@@ -912,7 +958,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       const sourceLabel = payload.source === 'hephaestus' ? '⚒️ HEPH' : '🎹'
       console.log(`[TimelineCanvas] 🎬 ${sourceLabel} Dropped ${payload.clipType} at ${(timeMs/1000).toFixed(2)}s on track ${trackId}`)
     }
-  }, [getTrackAtY, getTimeAtX, onClipDrop])
+  }, [getTrackAtY, getTimeAtX, onClipDrop, elasticTracks])
   
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2006: CLIP INTERACTION

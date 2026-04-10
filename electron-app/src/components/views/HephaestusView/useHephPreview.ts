@@ -24,6 +24,7 @@ import type { HephAutomationClip, HephParamId, PhaseConfig, FixturePhase } from 
 import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
+import { resolveZoneTags } from '../../../core/zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -295,40 +296,44 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
         return [f]
       }
 
-      // ── WAVE 2403.2: Expand zones → real fixture IDs from show patch ──
+      // ── WAVE 2543.4: Zone resolution delegated to ZoneMapper (Single Source of Truth) ──
       const currentStageFixtures = stageFixturesRef.current
 
-      // Resolve which real fixtures belong to each selected zone
-      // Helper zone groups like 'all-movers' map to multiple canonical zones
-      const ZONE_GROUP_MAP: Record<string, string[]> = {
-        'all-movers':  ['movers-left', 'movers-right'],
-        'all-pars':    ['front', 'back', 'floor'],
-        'all-left':    ['movers-left'],   // simplified
-        'all-right':   ['movers-right'],  // simplified
-      }
+      // Build ZoneMappable projections from stage fixtures
+      const zoneMappable = currentStageFixtures.map(sf => ({
+        id: sf.id,
+        zone: sf.zone,
+        enabled: sf.enabled,
+        position: sf.position ? { x: sf.position.x } : undefined,
+      }))
 
-      const resolvedFixtures: Array<{ id: string; name: string; zone: EffectZone }> = []
+      // Resolve real fixture IDs via centralized ZoneMapper
+      const resolvedIds = resolveZoneTags(c.zones.map(String), zoneMappable)
+      const resolvedIdSet = new Set(resolvedIds)
 
-      for (const zoneId of c.zones) {
-        const zoneStr = String(zoneId)
-        // Expand group zones to canonical zones
-        const canonicalZones = ZONE_GROUP_MAP[zoneStr] ?? [zoneStr]
-
-        // Find all stage fixtures in these zones
-        const matchingFixtures = currentStageFixtures.filter(
-          (sf) => canonicalZones.includes(sf.zone) && sf.enabled !== false
-        )
-
-        if (matchingFixtures.length > 0) {
-          // Real fixtures found → add them all
-          for (const sf of matchingFixtures) {
-            resolvedFixtures.push({ id: sf.id, name: sf.name, zone: zoneId })
-          }
-        } else {
-          // No real fixtures in this zone → fallback to zone-based virtual fixture
-          resolvedFixtures.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId })
+      // Build targetPool from resolved IDs, preserving zone info for radar display
+      let targetPool: Array<{ id: string; name: string; zone: EffectZone }> = []
+      for (const sf of currentStageFixtures) {
+        if (resolvedIdSet.has(sf.id)) {
+          targetPool.push({ id: sf.id, name: sf.name, zone: sf.zone as EffectZone })
         }
       }
+
+      // If no real fixtures matched, create virtual fallback dots per zone
+      if (targetPool.length === 0) {
+        for (const zoneId of c.zones) {
+          const zoneStr = String(zoneId)
+          targetPool.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId })
+        }
+      }
+
+      // ── Step 4: If pool is empty, fall back to virtual dots per zone ──
+      if (targetPool.length === 0) {
+        const f = evaluateClipFrame(c, ev, timeMs)
+        return [f]
+      }
+
+      const resolvedFixtures = targetPool
 
       // ── CASE 3: Still only 1 fixture? Skip phase distribution ──
       if (resolvedFixtures.length <= 1) {

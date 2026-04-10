@@ -52,6 +52,7 @@ import {
 import { mergeChannel, clampDMX } from './merge/MergeStrategies'
 import { CrossfadeEngine } from './CrossfadeEngine'
 import { normalizeZone } from '../stage/ShowFileV2'
+import { resolveZone } from '../zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -301,86 +302,38 @@ export class MasterArbiter extends EventEmitter {
   }
 
   /**
-   * 🎯 WAVE 2067: ZONE-AWARE FIXTURE RESOLUTION
+   * 🗺️ WAVE 2543.4: Get fixtures in ZoneMappableFixture format for ZoneMapper.
+   * Lightweight projection — only the fields ZoneMapper needs.
+   */
+  getFixturesForZoneMapping(): Array<{ id: string; zone: string; position?: { x: number }; enabled?: boolean }> {
+    const result: Array<{ id: string; zone: string; position?: { x: number }; enabled?: boolean }> = []
+    for (const [id, fixture] of this.fixtures) {
+      result.push({
+        id,
+        zone: fixture.zone ?? 'unassigned',
+        position: fixture.position ? { x: fixture.position.x } : undefined,
+      })
+    }
+    return result
+  }
+
+  /**
+   * 🎯 WAVE 2067 → WAVE 2543.4: ZONE-AWARE FIXTURE RESOLUTION
    * 
-   * Maps effect zone IDs (from EffectFrameOutput.zoneOverrides) to real fixture IDs.
-   * Effects use abstract zones like 'front', 'back', 'all-pars', 'all-movers'.
-   * This resolves them to the actual fixtures registered in the Arbiter.
-   * 
-   * ZONE VOCABULARY:
-   * ┌─────────────────────┬──────────────────────────────────────────────────┐
-   * │ Effect Zone         │ Maps To (CanonicalZones)                        │
-   * ├─────────────────────┼──────────────────────────────────────────────────┤
-   * │ 'front'             │ front                                           │
-   * │ 'back'              │ back                                            │
-   * │ 'floor'             │ floor                                           │
-   * │ 'all-pars' / 'pars' │ front + back + floor                            │
-   * │ 'all-movers'/'movers│ movers-left + movers-right                     │
-   * │ 'center'            │ center                                          │
-   * │ 'air'               │ air                                             │
-   * │ 'all' / '*'         │ ALL fixtures                                    │
-   * │ 'front_left' etc.   │ front (positional subset - future)             │
-   * └─────────────────────┴──────────────────────────────────────────────────┘
+   * Now delegates to ZoneMapper (Single Source of Truth).
+   * Handles canonical zones, composites, stereo sub-zones, and legacy formats.
    * 
    * @param effectZone Zone ID from the effect's zoneOverrides
    * @returns Array of fixture IDs belonging to that zone
    */
   getFixtureIdsByZone(effectZone: string): string[] {
-    const zone = effectZone.toLowerCase().trim()
-
-    // Wildcard → everything
-    if (zone === 'all' || zone === '*') {
-      return this.getFixtureIds()
-    }
-
-    // Composite zones → union of canonical zones
-    const COMPOSITE_ZONES: Record<string, string[]> = {
-      'all-pars':   ['front', 'back', 'floor'],
-      'pars':       ['front', 'back', 'floor'],
-      'all-movers': ['movers-left', 'movers-right'],
-      'movers':     ['movers-left', 'movers-right'],
-    }
-
-    const canonicalTargets = COMPOSITE_ZONES[zone]
-      ? COMPOSITE_ZONES[zone]
-      : [zone] // Single zone — use as-is
-
-    // 🎯 WAVE 2067.1: Resolve via normalizeZone() — handles ALL legacy formats
-    // BEFORE: fixture.zone.toLowerCase() → 'front_pars' ≠ 'front' → MISS
-    // NOW:    normalizeZone('FRONT_PARS') → 'front' → MATCH
-    const result: string[] = []
-    for (const [id, fixture] of this.fixtures) {
-      const fixtureZone = normalizeZone(fixture.zone)
-      if (canonicalTargets.includes(fixtureZone)) {
-        result.push(id)
-      }
-    }
-
-    // Positional sub-zones (GatlingRaid style): front_left, back_center, etc.
-    // These need stereo/position resolution — match by zone prefix + position
-    if (result.length === 0 && zone.includes('_')) {
-      const [zoneBase, side] = zone.split('_')
-      for (const [id, fixture] of this.fixtures) {
-        const fixtureZone = normalizeZone(fixture.zone)
-        if (!fixtureZone.startsWith(zoneBase)) continue
-
-        // Match by name/position hints
-        const name = (fixture.name || '').toLowerCase()
-        if (side === 'left' && (name.includes('left') || name.includes(' l ') || fixtureZone.includes('left'))) {
-          result.push(id)
-        } else if (side === 'right' && (name.includes('right') || name.includes(' r ') || fixtureZone.includes('right'))) {
-          result.push(id)
-        } else if (side === 'center' && (name.includes('center') || name.includes('centre') || fixtureZone === zoneBase)) {
-          result.push(id)
-        }
-      }
-    }
+    const fixtures = this.getFixturesForZoneMapping()
+    const result = resolveZone(effectZone, fixtures)
 
     // FALLBACK: If zone resolved to NOTHING, return ALL fixtures rather than silence.
-    // Better to light everything than light nothing.
     if (result.length === 0) {
       console.warn(
-        `[MasterArbiter] ⚠️ WAVE 2067: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`
+        `[MasterArbiter] ⚠️ WAVE 2543.4: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`
       )
       return this.getFixtureIds()
     }

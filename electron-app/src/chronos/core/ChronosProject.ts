@@ -24,6 +24,7 @@
 import type { TimelineClip, FXClip } from './TimelineClip'
 import type { ChronosProject as RuntimeProject } from './types'
 import { generateChronosId } from './types'
+import { normalizeTagsToCanonical } from '../../core/zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROJECT FILE FORMAT (.lux)
@@ -399,19 +400,102 @@ export default LuxProject
 
 /**
  * Convert a LuxProject (file) into a runtime ChronosProject.
- * Clips are collected into a single default track.
+ * 
+ * 🌍 WAVE 2543.3: Zone-aware track creation.
+ * - Clips with zones data → routed to zone-{zone} tracks
+ * - Legacy clips (fx1-fx4 trackIds) → routed to zone-all fallback
+ * - Non-FX clips (audio, vibe) → dedicated structural tracks
  */
 export function luxToChronos(lux: LuxProject): RuntimeProject {
   const nowIso = new Date(lux.meta.modified || Date.now()).toISOString()
-  const defaultTrackId = generateChronosId()
-
-  // Map LuxProject clips into the runtime track shape.
-  // The clip shapes are structurally compatible at runtime even though
-  // the TS types diverge — both have id, type, startMs, trackId.
-  const clips = (lux.timeline?.clips || []).map((c: any) => ({
-    ...c,
-    trackId: defaultTrackId,
-  }))
+  const rawClips = lux.timeline?.clips || []
+  
+  // Group clips by their zone destination
+  const zoneTrackMap = new Map<string, { id: string; clips: any[] }>()
+  const audioTrackId = generateChronosId()
+  const audioClips: any[] = []
+  
+  for (const c of rawClips) {
+    const clip = c as any
+    
+    // Non-FX clips go to a generic audio track
+    if (clip.type !== 'fx') {
+      audioClips.push({ ...clip, trackId: audioTrackId })
+      continue
+    }
+    
+    // Determine zone target from clip data
+    // WAVE 2543.4: normalizeTagsToCanonical handles multi-zone arrays
+    // e.g. ['back', 'all-right'] → 'back-right'
+    let zoneKey = 'all' // fallback for legacy fx1-fx4 clips
+    if (clip.zones && clip.zones.length > 0) {
+      zoneKey = normalizeTagsToCanonical(clip.zones)
+    }
+    
+    const trackKey = `zone-${zoneKey}`
+    if (!zoneTrackMap.has(trackKey)) {
+      zoneTrackMap.set(trackKey, { id: generateChronosId(), clips: [] })
+    }
+    const entry = zoneTrackMap.get(trackKey)!
+    entry.clips.push({ ...clip, trackId: entry.id })
+  }
+  
+  // Build tracks array
+  const tracks: any[] = []
+  
+  // Audio/structural track (if there are non-FX clips)
+  if (audioClips.length > 0) {
+    tracks.push({
+      id: audioTrackId,
+      name: 'Timeline',
+      type: 'audio' as const,
+      enabled: true,
+      solo: false,
+      locked: false,
+      height: 120,
+      color: '#6b7280',
+      clips: audioClips,
+      automation: [],
+      order: 0,
+    })
+  }
+  
+  // Zone tracks (one per zone destination found in clips)
+  let order = tracks.length
+  for (const [trackKey, { id, clips }] of zoneTrackMap) {
+    const zoneName = trackKey.replace('zone-', '')
+    tracks.push({
+      id,
+      name: zoneName === 'all' ? 'ALL' : zoneName.toUpperCase(),
+      type: 'effect' as const,
+      targetZone: zoneName === 'all' ? undefined : zoneName,
+      enabled: true,
+      solo: false,
+      locked: false,
+      height: 60,
+      color: '#22d3ee',
+      clips,
+      automation: [],
+      order: order++,
+    })
+  }
+  
+  // If no clips at all, create one empty zone-all track
+  if (tracks.length === 0) {
+    tracks.push({
+      id: generateChronosId(),
+      name: 'ALL',
+      type: 'effect' as const,
+      enabled: true,
+      solo: false,
+      locked: false,
+      height: 60,
+      color: '#22d3ee',
+      clips: [],
+      automation: [],
+      order: 0,
+    })
+  }
 
   return {
     version: '1.0.0',
@@ -437,21 +521,7 @@ export function luxToChronos(lux: LuxProject): RuntimeProject {
       latencyCompensationMs: 10,
     },
     analysis: null,
-    tracks: [
-      {
-        id: defaultTrackId,
-        name: 'Timeline',
-        type: 'audio' as const,
-        enabled: true,
-        solo: false,
-        locked: false,
-        height: 120,
-        color: '#6b7280',
-        clips: clips as any[],
-        automation: [],
-        order: 0,
-      },
-    ],
+    tracks,
     globalAutomation: [],
     markers: [],
   }

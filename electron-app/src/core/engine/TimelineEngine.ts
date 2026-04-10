@@ -33,6 +33,7 @@ import type { FXClip, FXKeyframe, VibeClip } from '../../chronos/core/TimelineCl
 import type { Layer2_Manual } from '../arbiter/types'
 import { masterArbiter } from '../arbiter'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
+import { resolveZoneTags } from '../zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY IMPORTS — The Full Arsenal
@@ -1043,26 +1044,21 @@ export class TimelineEngine {
   // PRIVATE: Fixture resolution
   // ═══════════════════════════════════════════════════════════════════════
 
+  // WAVE 2543.4: Zone resolution delegated to ZoneMapper (centralized).
+  // Handles Target+Modifier AND-intersection, composites, stereo sub-zones.
   private resolveFixtureIds(clip: FXClip): string[] {
     const zones = clip.zones
-    
-    // If clip specifies zones, use them (with fallback logic)
+    const fixtures = masterArbiter.getFixturesForZoneMapping()
+
     if (zones && zones.length > 0) {
-      // Check for wildcard
-      if (zones.includes('all') || zones.includes('*')) {
-        return masterArbiter.getFixtureIds()
-      }
-      
-      // 🚑 FALLBACK DE EMERGENCIA:
-      // Si el efecto pide una zona específica pero no tenemos un mapa zone→fixture,
-      // mejor iluminar TODO que iluminar NADA.
-      // Esto arregla el "CoreMeltdown invisible" si falló el mapping.
+      const resolved = resolveZoneTags(zones, fixtures)
+      if (resolved.length > 0) return resolved
+
       console.warn(
-        `[TimelineEngine] ⚠️ Zone mapping not implemented for zones: ${zones.join(', ')} — falling back to wildcard '*'`
+        `[TimelineEngine] ⚠️ Zones [${zones.join(', ')}] resolved to 0 fixtures — fallback to all`
       )
     }
-    
-    // Default: all fixtures
+
     return masterArbiter.getFixtureIds()
   }
 

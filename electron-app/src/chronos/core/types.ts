@@ -180,34 +180,45 @@ export type TrackType =
 export interface TimelineTrack {
   /** ID único */
   readonly id: ChronosId
-  
+
   /** Nombre visible */
   name: string
-  
+
   /** Tipo de track */
   readonly type: TrackType
-  
+
+  /**
+   * WAVE 2543.2: Diamond Data V2 — Physical routing destination.
+   * Decouples visual identity from DMX target.
+   * - 'all-pars'     → front + back + floor fixtures
+   * - 'all-movers'   → movers-left + movers-right
+   * - 'movers-left'  → left movers only
+   * - '*'            → all fixtures (global/wildcard)
+   * - undefined      → legacy track, engine resolves from clip.zones
+   */
+  targetZone?: string
+
   /** ¿Track activa? (false = muted) */
   enabled: boolean
-  
+
   /** ¿Track en solo? (solo esta track se reproduce) */
   solo: boolean
-  
+
   /** ¿Track bloqueada? (no editable) */
   locked: boolean
-  
+
   /** Altura de la track en UI (pixels) */
   height: number
-  
+
   /** Color de la track (para UI) */
   color: HexColor
-  
+
   /** Clips en esta track */
   clips: TimelineClip[]
-  
+
   /** Automation lanes asociadas a esta track */
   automation: AutomationLane[]
-  
+
   /** Orden de la track (para UI) */
   order: number
 }

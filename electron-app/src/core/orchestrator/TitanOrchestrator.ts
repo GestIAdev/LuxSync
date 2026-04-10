@@ -59,6 +59,9 @@ import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 // 🧹 WAVE 2227: VMM singleton para cleanup en stop()
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
+// 🗺️ WAVE 2543.4: Centralized zone resolution
+import { fixtureMatchesZone as zoneMapperMatch } from '../zones/ZoneMapper'
+
 /**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
@@ -2295,73 +2298,14 @@ export class TitanOrchestrator {
    * @returns true si la fixture pertenece a la zona
    */
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2040.25 FASE 2: SIMPLIFIED ZONE MATCHING — Canonical Zones
-  // Reescrito con CanonicalZone. De 60 líneas a 20 líneas.
+  // �️ WAVE 2543.4: Zone matching delegated to ZoneMapper (Single Source of Truth)
   // ═══════════════════════════════════════════════════════════════════════════
   private fixtureMatchesZone(fixtureZone: string, targetZone: string): boolean {
-    const fz = fixtureZone.toLowerCase()
-    const tz = targetZone.toLowerCase()
-    
-    // Special group targets
-    if (tz === 'all') return true
-    if (tz === 'all-movers') return fz === 'movers-left' || fz === 'movers-right'
-    if (tz === 'all-pars') return fz === 'front' || fz === 'back' || fz === 'floor'
-    
-    // Direct canonical zone match (front→front, movers-left→movers-left, etc.)
-    if (fz === tz) return true
-    
-    // No match
-    return false
+    return zoneMapperMatch(fixtureZone, targetZone)
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🔊 WAVE 2040.25 FASE 2: STEREO ROUTING — Canonical + Position-based
-  // Usa position.x del StageBuilder para determinar L/R
-  // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
-  //             position.x >= 0 = RIGHT (lado derecho del escenario)
-  // 🔊 WAVE 2040.27: Added support for frontL/R, backL/R (Chill effects)
-  // ═══════════════════════════════════════════════════════════════════════════
   private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
-    const fz = fixtureZone.toLowerCase()
-    const tz = targetZone.toLowerCase()
-    const isLeft = positionX < 0
-    
-    // Position-based stereo filtering (all-left / all-right)
-    if (tz === 'all-left') return isLeft
-    if (tz === 'all-right') return !isLeft
-    
-    // 🌊 WAVE 2040.27: Stereo PARs (frontL/R, backL/R, floorL/R)
-    // Used by Chill effects for position-based L/R routing
-    if (tz === 'frontl') return fz === 'front' && isLeft
-    if (tz === 'frontr') return fz === 'front' && !isLeft
-    if (tz === 'backl') return fz === 'back' && isLeft
-    if (tz === 'backr') return fz === 'back' && !isLeft
-    if (tz === 'floorl') return fz === 'floor' && isLeft
-    if (tz === 'floorr') return fz === 'floor' && !isLeft
-    
-    // Zone match + stereo side check (for PARs with stereo)
-    // Example: targetZone='front' + positionX < 0 → front left PARs
-    // Example: targetZone='movers-left' → zone-based, ignore positionX
-    
-    // If targetZone is already stereo-specific (movers-left, movers-right),
-    // delegate to non-stereo matcher (zone match is enough)
-    if (tz === 'movers-left' || tz === 'movers-right') {
-      return this.fixtureMatchesZone(fz, tz)
-    }
-    
-    // For generic zones (front, back, floor), apply position-based stereo filter
-    // This allows stereo routing of PARs without explicit zone split
-    if (tz === 'front' || tz === 'back' || tz === 'floor') {
-      // Check zone match first
-      if (!this.fixtureMatchesZone(fz, tz)) return false
-      // Zone matches, now apply stereo filter (if needed by caller)
-      // NOTE: Caller MUST specify if they want L/R filtering via all-left/all-right
-      // If they just pass 'front', we match ALL front fixtures
-      return true
-    }
-    
-    // Default: delegate to non-stereo matcher
-    return this.fixtureMatchesZone(fz, tz)
+    return zoneMapperMatch(fixtureZone, targetZone, positionX)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -944,19 +944,21 @@ export function inferMixBus(effect: EffectMeta): MixBus {
 }
 
 /**
- * 🎹 Get track ID for an effect based on MixBus
+ * � WAVE 2543.3: Get track ID for an effect — zone-aware routing
+ * 
+ * When zones are specified (from Hephaestus clip data), routes to zone-{zone}.
+ * When no zones available (live recording), returns 'zone-all' as fallback.
  * 
  * @param effect Effect metadata
- * @returns Track ID ('fx1' | 'fx2' | 'fx3' | 'fx4')
+ * @param zones Optional zones from clip data (CanonicalZone strings)
+ * @returns Track ID (e.g., 'zone-front', 'zone-all')
  */
-export function getEffectTrackId(effect: EffectMeta): 'fx1' | 'fx2' | 'fx3' | 'fx4' {
-  const mixBus = inferMixBus(effect)
-  
-  switch (mixBus) {
-    case 'global':  return 'fx1'  // Full takeover
-    case 'htp':     return 'fx2'  // High priority transitional
-    case 'ambient': return 'fx3'  // Atmospheric background
-    case 'accent':  return 'fx4'  // Short accents
-    default:        return 'fx2'  // Fallback
+export function getEffectTrackId(effect: EffectMeta, zones?: string[]): string {
+  // If explicit zones provided, route to first zone's track
+  if (zones && zones.length > 0) {
+    return `zone-${zones[0]}`
   }
+  
+  // No zones info (live recording fallback) → global track
+  return 'zone-all'
 }

@@ -161,15 +161,24 @@ describe('🎯 EffectRegistry — 45 Real Effects', () => {
     }
   })
 
-  test('getEffectTrackId maps MixBus to track correctly', () => {
+  test('getEffectTrackId returns zone-based track ID', () => {
     const effects = getAllEffects()
-    const validTracks = ['fx1', 'fx2', 'fx3', 'fx4']
     
     for (const effect of effects) {
       const trackId = getEffectTrackId(effect)
-      expect(validTracks, `${effect.id} mapped to invalid track: ${trackId}`)
-        .toContain(trackId)
+      // Without zones, should return 'zone-all' fallback
+      expect(trackId, `${effect.id} should map to zone-all without zones`)
+        .toBe('zone-all')
     }
+  })
+
+  test('getEffectTrackId routes to specific zone when zones provided', () => {
+    const effects = getAllEffects()
+    if (effects.length === 0) return
+    
+    const effect = effects[0]
+    const trackId = getEffectTrackId(effect, ['front', 'back'])
+    expect(trackId).toBe('zone-front')
   })
 
   test('Strobe effects should NOT be on ambient bus', () => {

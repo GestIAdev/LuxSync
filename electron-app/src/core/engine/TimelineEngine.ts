@@ -257,6 +257,13 @@ export class TimelineEngine {
   // Cleared when the clip ends (releaseClip) or playback stops (stop).
   // ═══════════════════════════════════════════════════════════════════════
   private colorLatch = new Map<string, { r: number; g: number; b: number }>()
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🗺️ WAVE 2543.5: Zone resolution cache — avoids per-frame allocations.
+  // Key: zones.join(','), Value: resolved fixture IDs.
+  // Invalidated on stop() and loadProject() (stage change).
+  // ═══════════════════════════════════════════════════════════════════════
+  private _zoneCache = new Map<string, string[]>()
   // ═══════════════════════════════════════════════════════════════════════
   // LOAD PROJECT
   // ═══════════════════════════════════════════════════════════════════════
@@ -419,6 +426,9 @@ export class TimelineEngine {
 
     // 🎬 WAVE 2063: Clear tracked vibe
     this.currentPlaybackVibeId = null
+
+    // 🗺️ WAVE 2543.5: Clear zone resolution cache
+    this._zoneCache.clear()
 
     this.playing = false
     this.lastTickMs = 0
@@ -1044,15 +1054,22 @@ export class TimelineEngine {
   // PRIVATE: Fixture resolution
   // ═══════════════════════════════════════════════════════════════════════
 
-  // WAVE 2543.4: Zone resolution delegated to ZoneMapper (centralized).
-  // Handles Target+Modifier AND-intersection, composites, stereo sub-zones.
+  // WAVE 2543.5: Zone resolution with per-clip cache.
+  // Clip zones are static during playback — cache eliminates per-frame allocations.
   private resolveFixtureIds(clip: FXClip): string[] {
     const zones = clip.zones
-    const fixtures = masterArbiter.getFixturesForZoneMapping()
 
     if (zones && zones.length > 0) {
+      const cacheKey = zones.join(',')
+      const cached = this._zoneCache.get(cacheKey)
+      if (cached) return cached
+
+      const fixtures = masterArbiter.getFixturesForZoneMapping()
       const resolved = resolveZoneTags(zones, fixtures)
-      if (resolved.length > 0) return resolved
+      if (resolved.length > 0) {
+        this._zoneCache.set(cacheKey, resolved)
+        return resolved
+      }
 
       console.warn(
         `[TimelineEngine] ⚠️ Zones [${zones.join(', ')}] resolved to 0 fixtures — fallback to all`

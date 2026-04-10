@@ -286,3 +286,141 @@ describe('getActiveZones', () => {
     expect(zones).toEqual([])
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2543.5: STRESS TEST — 200 fixtures × 60fps budget
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('STRESS TEST: 200 fixtures performance', () => {
+  // Deterministic 200-fixture rig across 9 zones
+  const ZONE_DEFS: Array<{ zone: string; count: number; xRange: [number, number] }> = [
+    { zone: 'front',        count: 40,  xRange: [-5, 5]  },
+    { zone: 'back',         count: 30,  xRange: [-4, 4]  },
+    { zone: 'floor',        count: 30,  xRange: [-3, 3]  },
+    { zone: 'movers-left',  count: 20,  xRange: [-6, -1] },
+    { zone: 'movers-right', count: 20,  xRange: [1, 6]   },
+    { zone: 'center',       count: 15,  xRange: [-1, 1]  },
+    { zone: 'air',          count: 20,  xRange: [-4, 4]  },
+    { zone: 'ambient',      count: 20,  xRange: [-5, 5]  },
+    { zone: 'unassigned',   count: 5,   xRange: [0, 0]   },
+  ]
+
+  const STRESS_FIXTURES: ZoneMappableFixture[] = []
+  let fixtureIdx = 0
+  for (const def of ZONE_DEFS) {
+    for (let i = 0; i < def.count; i++) {
+      const t = def.count > 1 ? i / (def.count - 1) : 0.5
+      const x = def.xRange[0] + t * (def.xRange[1] - def.xRange[0])
+      STRESS_FIXTURES.push({
+        id: `s${fixtureIdx++}`,
+        zone: def.zone,
+        position: { x: Math.round(x * 100) / 100 },
+      })
+    }
+  }
+
+  // 15 zone tag combinations simulating simultaneous tracks
+  const ZONE_TAG_SETS: string[][] = [
+    ['all'],
+    ['front'],
+    ['back'],
+    ['floor'],
+    ['all-pars'],
+    ['all-movers'],
+    ['movers-left'],
+    ['movers-right'],
+    ['front', 'all-left'],
+    ['back', 'all-right'],
+    ['front', 'back'],
+    ['all-pars', 'all-left'],
+    ['all-pars', 'all-right'],
+    ['center'],
+    ['air'],
+  ]
+
+  test(`200 fixtures × 15 tracks × 60fps stays under 2ms per frame`, () => {
+    // Warm-up (JIT)
+    for (let i = 0; i < 100; i++) {
+      for (const tags of ZONE_TAG_SETS) {
+        resolveZoneTags(tags, STRESS_FIXTURES)
+      }
+    }
+
+    // Measurement: simulate 600 frames (10 seconds at 60fps)
+    const FRAME_COUNT = 600
+    const start = performance.now()
+
+    for (let frame = 0; frame < FRAME_COUNT; frame++) {
+      for (const tags of ZONE_TAG_SETS) {
+        resolveZoneTags(tags, STRESS_FIXTURES)
+      }
+    }
+
+    const elapsed = performance.now() - start
+    const msPerFrame = elapsed / FRAME_COUNT
+
+    // Budget: 2ms per frame for ALL 15 zone resolutions combined
+    expect(msPerFrame).toBeLessThan(2)
+  })
+
+  test('resolveZone handles each of 200 fixtures correctly', () => {
+    // Verify correctness at scale — front zone should return exactly 40 fixtures
+    const frontIds = resolveZone('front', STRESS_FIXTURES)
+    expect(frontIds).toHaveLength(40)
+
+    // all-pars = front(40) + back(30) + floor(30) = 100
+    const allParsIds = resolveZone('all-pars', STRESS_FIXTURES)
+    expect(allParsIds).toHaveLength(100)
+
+    // all-movers = movers-left(20) + movers-right(20) = 40
+    const allMoversIds = resolveZone('all-movers', STRESS_FIXTURES)
+    expect(allMoversIds).toHaveLength(40)
+
+    // all = everything enabled (200 - 0 disabled) = 200
+    const allIds = resolveZone('all', STRESS_FIXTURES)
+    expect(allIds).toHaveLength(200)
+  })
+
+  test('resolveZoneTags Target+Modifier at scale', () => {
+    // front(40) + all-left: front fixtures with x < 0
+    // Front has xRange [-5, 5], 40 fixtures, deterministic distribution
+    // x < 0 means indices 0..19 (first 20 of 40)
+    const frontLeft = resolveZoneTags(['front', 'all-left'], STRESS_FIXTURES)
+    expect(frontLeft.length).toBeGreaterThan(0)
+    expect(frontLeft.length).toBeLessThan(40) // Should be subset
+
+    // all-pars + all-right: pars with x >= 0
+    const parsRight = resolveZoneTags(['all-pars', 'all-right'], STRESS_FIXTURES)
+    expect(parsRight.length).toBeGreaterThan(0)
+    expect(parsRight.length).toBeLessThan(100) // Strict subset of 100 pars
+  })
+
+  test('fixtureMatchesZone throughput: 200 fixtures × 9 zones × 600 frames', () => {
+    const ZONES_TO_CHECK = ['front', 'back', 'all-pars', 'all-movers', 'frontL', 'backR', 'all-left', 'all-right', 'all']
+    const FRAME_COUNT = 600
+
+    // Warm-up
+    for (let i = 0; i < 100; i++) {
+      for (const f of STRESS_FIXTURES) {
+        for (const z of ZONES_TO_CHECK) {
+          fixtureMatchesZone(f.zone, z, f.position?.x)
+        }
+      }
+    }
+
+    // Measurement
+    const start = performance.now()
+    for (let frame = 0; frame < FRAME_COUNT; frame++) {
+      for (const f of STRESS_FIXTURES) {
+        for (const z of ZONES_TO_CHECK) {
+          fixtureMatchesZone(f.zone, z, f.position?.x)
+        }
+      }
+    }
+    const elapsed = performance.now() - start
+    const msPerFrame = elapsed / FRAME_COUNT
+
+    // Budget: 200 fixtures × 9 zones = 1800 checks per frame, must be < 2ms
+    expect(msPerFrame).toBeLessThan(2)
+  })
+})

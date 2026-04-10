@@ -51,7 +51,6 @@ import {
 } from './types'
 import { mergeChannel, clampDMX } from './merge/MergeStrategies'
 import { CrossfadeEngine } from './CrossfadeEngine'
-import { normalizeZone } from '../stage/ShowFileV2'
 import { resolveZone } from '../zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════

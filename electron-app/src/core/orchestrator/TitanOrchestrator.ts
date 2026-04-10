@@ -1,4 +1,4 @@
-﻿/**
+/**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
  * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
@@ -1050,21 +1050,10 @@ export class TitanOrchestrator {
         const fixtureZone = f.zone || ''
         const positionX = this.fixtures[index]?.position?.x ?? 0
         
-        // Check if any target zone matches this fixture
-        // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
+        // 🗺️ WAVE 2543.5: Unified zone matching via ZoneMapper — stereo detection is internal
         for (const zone of zones) {
-          const tz = zone.toLowerCase()
-          // Stereo zones need position-based matching
-          if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' || 
-              tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
-            if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-              return true
-            }
-          } else {
-            // Non-stereo zones
-            if (this.fixtureMatchesZone(fixtureZone, zone)) {
-              return true
-            }
+          if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
+            return true
           }
         }
         return false
@@ -1346,9 +1335,11 @@ export class TitanOrchestrator {
         if (allZoneOutputs) applicableOutputs.push(...allZoneOutputs)
         
         // Check zone-specific outputs
+        // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support in Hephaestus outputs
+        const positionX = this.fixtures[index]?.position?.x ?? 0
         for (const [zoneKey, outputs] of hephByZone) {
           if (zoneKey === 'all') continue
-          if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
+          if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
             applicableOutputs.push(...outputs)
           }
         }
@@ -2284,26 +2275,9 @@ export class TitanOrchestrator {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 WAVE 725: ZONE MATCHING HELPER - Pinceles Finos
+  // 🗺️ WAVE 2543.5: Single zone matcher — ZoneMapper handles stereo detection internally
+  // fixtureMatchesZone (no-position) eliminated — always pass positionX for correctness
   // ═══════════════════════════════════════════════════════════════════════════
-  
-  /**
-   * Determina si una fixture pertenece a una zona específica
-   * Soporta AMBOS sistemas de zonas:
-   *   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-   *   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
-   * 
-   * @param fixtureZone Zona de la fixture (lowercase)
-   * @param targetZone Zona objetivo del efecto
-   * @returns true si la fixture pertenece a la zona
-   */
-  // ═══════════════════════════════════════════════════════════════════════════
-  // �️ WAVE 2543.4: Zone matching delegated to ZoneMapper (Single Source of Truth)
-  // ═══════════════════════════════════════════════════════════════════════════
-  private fixtureMatchesZone(fixtureZone: string, targetZone: string): boolean {
-    return zoneMapperMatch(fixtureZone, targetZone)
-  }
-
   private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
     return zoneMapperMatch(fixtureZone, targetZone, positionX)
   }

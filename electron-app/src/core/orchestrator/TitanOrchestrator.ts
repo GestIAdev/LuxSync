@@ -1485,31 +1485,43 @@ export class TitanOrchestrator {
     
     // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 30fps, not 60fps
+    // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 12.5fps, not 25fps
     //
-    // processFrame() runs at ~60fps (setInterval 16ms). Broadcasting the
-    // entire SeleneTruth object 60×/sec through Electron IPC causes:
+    // processFrame() runs at 25fps (setInterval 40ms). Broadcasting the
+    // entire SeleneTruth object 25×/sec through Electron IPC causes:
     //   1. JSON serialization overhead (~3-5KB per truth object)
-    //   2. 60 Zustand state updates/sec → 60 React re-render triggers
-    //   3. GC pressure from 60 new truth objects + fixture arrays per second
+    //   2. 25 Zustand state updates/sec → 25 React re-render triggers
+    //   3. GC pressure from 25 new truth objects + fixture arrays per second
     //   4. The StageSimulatorCinema canvas only renders at 30fps anyway
     //
-    // FIX: Broadcast every other frame (frameCount % 2 === 0) → 30fps.
-    // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
+    // FIX: Broadcast every other frame (frameCount % 2 === 0) → 12.5fps.
+    // DMX output to real hardware is UNAFFECTED — HAL still renders at 25fps.
     // Only the UI visualization is throttled.
+    //
+    // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
+    // EVERY frame (25fps) to feed the Cinema simulator at full rate.
+    // The transientStore bypass already exists (WAVE 2211), so the extra
+    // IPC traffic only costs serialization — no React re-renders.
+    // Peak hold is skipped when not throttling (no skipped frames to hold).
     // ═══════════════════════════════════════════════════════════════════════
     
+    // 👻 WAVE 2540.7: Chronos playback bypasses the % 2 throttle
+    const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false
+    const shouldBroadcast = chronosPlaying || (this.frameCount % 2 === 0)
+    
     // ⚡ WAVE 2464: PEAK HOLD — Acumula el pico entre frames skipeados
-    // Frame skipeado (frameCount % 2 === 1): solo actualiza el mapa de picos
-    // Frame de broadcast (frameCount % 2 === 0): usa el pico acumulado y resetea
-    for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
-      const _f = fixtureStates[_pi]
-      const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
-      const _prev = this.peakHoldMap.get(_id) ?? 0
-      if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
+    // Solo necesario cuando hay throttle (modo normal). En Chronos playback
+    // cada frame se broadcastea → no hay frames skipeados → no hay pico que guardar.
+    if (!chronosPlaying) {
+      for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+        const _f = fixtureStates[_pi]
+        const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
+        const _prev = this.peakHoldMap.get(_id) ?? 0
+        if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
+      }
     }
 
-    if (this.onBroadcast && this.frameCount % 2 === 0) {
+    if (this.onBroadcast && shouldBroadcast) {
       const currentVibe = this.engine.getCurrentVibe()
       
       // Build a valid SeleneTruth structure
@@ -1660,9 +1672,16 @@ export class TitanOrchestrator {
             // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
             // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
             // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
-            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer
-            const broadcastDimmer = Math.max(f.dimmer, peakDimmer)
-            this.peakHoldMap.set(realId, 0)  // Reset peak tras broadcast
+            // 👻 WAVE 2540.7: Skip peak hold during Chronos — every frame is broadcast,
+            // no skipped frames means no peaks to accumulate.
+            let broadcastDimmer: number
+            if (chronosPlaying) {
+              broadcastDimmer = f.dimmer
+            } else {
+              const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer
+              broadcastDimmer = Math.max(f.dimmer, peakDimmer)
+              this.peakHoldMap.set(realId, 0)  // Reset peak tras broadcast
+            }
 
             return {
               id: realId,
@@ -1813,6 +1832,26 @@ export class TitanOrchestrator {
    */
   getMood(): 'calm' | 'balanced' | 'punk' {
     return MoodController.getInstance().getCurrentMood()
+  }
+
+  /**
+   * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Cache pre-calculated GodEar heatmap
+   * in TitanEngine for offline band lookup during timeline playback.
+   */
+  setChronosHeatmap(heatmap: unknown): void {
+    if (this.engine) {
+      this.engine.setChronosHeatmap(heatmap as any)
+    }
+  }
+
+  /**
+   * 👻 WAVE 2540.5: PLAYHEAD SYNC — Forward Chronos playhead to TitanEngine.
+   * Called every frame from the frontend during Chronos playback.
+   */
+  setChronosPlayhead(timeMs: number, isPlaying: boolean): void {
+    if (this.engine) {
+      this.engine.setChronosPlayhead(timeMs, isPlaying)
+    }
   }
 
   /**

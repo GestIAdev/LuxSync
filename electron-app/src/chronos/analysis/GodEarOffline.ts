@@ -97,7 +97,7 @@ export type ProgressCallback = (progress: AnalysisProgress) => void
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * � WAVE 2080: Worker-backed analysis with automatic fallback
+ *  WAVE 2080: Worker-backed analysis with automatic fallback
  * 
  * Tries to run the full pipeline in a dedicated Web Worker.
  * If Worker fails (CSP restrictions, build issues, etc.), falls back
@@ -457,6 +457,56 @@ function extractEnergyHeatmap(
       flux[i] /= maxFlux
     }
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩻 WAVE 2541.1: PEAK NORMALIZATION — Scale all bands to 0-1 range
+  //
+  // The GodEarAnalyzer with useAGC=false produces raw RMS values that are
+  // typically in the 0.01-0.05 range. The TitanEngine (and EngineAudioMetrics
+  // interface) expects ALL bands in 0-1 normalized range, matching what the
+  // live AGC produces. Without this, phantom buffer injection feeds near-zero
+  // values → Bass=0, Mids=0 in the heatmap → dead fixtures.
+  //
+  // Strategy: Per-band peak normalization across the entire track.
+  // Each band's maximum becomes 1.0, preserving relative dynamics within
+  // each band. This is deterministic (unlike live AGC) and produces
+  // consistent results regardless of input level.
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 🩻 WAVE 2541.3: RAW PEAK DIAGNOSTIC — Before normalization
+  const rawP = (arr: number[]): number => { let p = 0; for (let i = 0; i < arr.length; i++) if (arr[i] > p) p = arr[i]; return p }
+  console.log(
+    `[GodEarOffline] 🩻 RAW PEAKS: subBass=${rawP(subBassArr).toFixed(6)} bass=${rawP(bassRealArr).toFixed(6)} ` +
+    `lowMid=${rawP(lowMidArr).toFixed(6)} MID=${rawP(midArr).toFixed(6)} ` +
+    `highMid=${rawP(highMidArr).toFixed(6)} treble=${rawP(trebleArr).toFixed(6)} ultraAir=${rawP(ultraAirArr).toFixed(6)}`
+  )
+  
+  const normalizeBand = (arr: number[]): void => {
+    let peak = 0
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > peak) peak = arr[i]
+    }
+    if (peak > 0) {
+      const inv = 1 / peak
+      for (let i = 0; i < arr.length; i++) {
+        arr[i] *= inv
+      }
+    }
+  }
+  
+  // Normalize legacy combined fields
+  normalizeBand(energy)
+  normalizeBand(bass)
+  normalizeBand(high)
+  
+  // Normalize 7 tactical bands
+  normalizeBand(subBassArr)
+  normalizeBand(bassRealArr)
+  normalizeBand(lowMidArr)
+  normalizeBand(midArr)
+  normalizeBand(highMidArr)
+  normalizeBand(trebleArr)
+  normalizeBand(ultraAirArr)
   
   // Reset analyzer (free pre-computed tables)
   analyzer.reset()

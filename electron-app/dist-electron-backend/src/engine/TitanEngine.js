@@ -94,6 +94,16 @@ export class TitanEngine extends EventEmitter {
         this.lastEthicsFlags = [];
         this.chronosOverrides = null;
         this.chronosEnabled = false;
+        // 👻 WAVE 2540.4: THE PHANTOM BUFFER — Cached GodEar offline heatmap
+        // Pre-calculated FFT bands for the entire audio track at 50ms resolution.
+        // When Chronos plays back without live audio, TitanEngine looks up the
+        // real spectral bands from this buffer instead of getting zeros.
+        this.chronosHeatmap = null;
+        // 👻 WAVE 2540.5: PLAYHEAD SYNC — Current Chronos playback position
+        // Updated every frame from the frontend via IPC chronos:sync-playhead.
+        // -1 means no playback active.
+        this.chronosPlayheadMs = -1;
+        this.chronosPlaybackActive = false;
         // ═══════════════════════════════════════════════════════════════════════
         // 📜 WAVE 560: TACTICAL LOG EMISSION
         // ═══════════════════════════════════════════════════════════════════════
@@ -179,6 +189,14 @@ export class TitanEngine extends EventEmitter {
         return this.chronosEnabled && this.chronosOverrides !== null;
     }
     /**
+     * 👻 WAVE 2540.7: PHANTOM PLAYBACK STATUS
+     * True when Chronos is actively streaming playhead updates.
+     * Used by TitanOrchestrator to bypass broadcast throttle.
+     */
+    isChronosPlaybackActive() {
+        return this.chronosPlaybackActive;
+    }
+    /**
      * 🕰️ CHRONOS RESET: Limpia los overrides de Chronos.
      *
      * Llamar cuando el timeline termina o se detiene.
@@ -190,6 +208,43 @@ export class TitanEngine extends EventEmitter {
         this.chronosInjector.reset();
         // Restaurar control normal de efectos activos
         this.effectManager.clearAllForcedProgress();
+    }
+    /**
+     * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Load pre-calculated GodEar heatmap.
+     *
+     * Called once when Chronos finishes analyzing an audio track.
+     * The heatmap contains the real 7-band FFT data at 50ms resolution
+     * for the entire track. During timeline playback, TitanEngine uses
+     * this to feed REAL spectral bands to the LiquidEngine instead of
+     * the silence that comes from having no live audio input.
+     */
+    setChronosHeatmap(heatmap) {
+        this.chronosHeatmap = heatmap;
+        if (heatmap) {
+            const frames = heatmap.energy.length;
+            const durationSec = (frames * heatmap.resolutionMs) / 1000;
+            console.log(`[TitanEngine 👻] PHANTOM BUFFER loaded: ${frames} frames, ${durationSec.toFixed(1)}s @ ${heatmap.resolutionMs}ms resolution`);
+        }
+        else {
+            console.log('[TitanEngine 👻] PHANTOM BUFFER cleared');
+        }
+    }
+    /**
+     * 👻 WAVE 2540.5: PLAYHEAD SYNC — Update Chronos playhead position.
+     * Called every frame from the frontend during Chronos playback.
+     * When isPlaying=false, the phantom buffer is deactivated.
+     */
+    setChronosPlayhead(timeMs, isPlaying) {
+        const wasActive = this.chronosPlaybackActive;
+        this.chronosPlayheadMs = timeMs;
+        this.chronosPlaybackActive = isPlaying;
+        // Log state transitions
+        if (isPlaying && !wasActive) {
+            console.log(`[TitanEngine 👻] PHANTOM PLAYBACK STARTED @ ${timeMs.toFixed(0)}ms`);
+        }
+        else if (!isPlaying && wasActive) {
+            console.log(`[TitanEngine 👻] PHANTOM PLAYBACK STOPPED @ ${timeMs.toFixed(0)}ms`);
+        }
     }
     /**
      * 🎯 MÉTODO PRINCIPAL: Actualiza el motor con el contexto musical actual.
@@ -208,6 +263,46 @@ export class TitanEngine extends EventEmitter {
         const deltaTime = now - this.state.lastFrameTime;
         this.state.lastFrameTime = now;
         this.state.frameCount++;
+        // ═══════════════════════════════════════════════════════════════════
+        // 👻 WAVE 2540.5: PHANTOM BUFFER — EARLY INJECTION
+        //
+        // When Chronos is playing and we have a pre-calculated heatmap,
+        // override the incoming audio metrics with the REAL pre-analyzed data.
+        // This happens BEFORE anything else processes the audio, so the
+        // EnergyStabilizer, MasterIntensity, ZoneIntents, NervousSystem,
+        // and everything downstream sees the REAL energy from the file.
+        //
+        // SOVEREIGNTY: The phantom buffer has absolute authority.
+        // The microphone is irrelevant when Chronos drives the show.
+        // ═══════════════════════════════════════════════════════════════════
+        if (this.chronosPlaybackActive && this.chronosHeatmap && this.chronosPlayheadMs >= 0) {
+            const hm = this.chronosHeatmap;
+            const frameIndex = Math.min(Math.floor(this.chronosPlayheadMs / hm.resolutionMs), hm.energy.length - 1);
+            if (frameIndex >= 0) {
+                audio = {
+                    ...audio,
+                    bass: (hm.bassReal?.[frameIndex] ?? hm.bass[frameIndex]) ?? 0,
+                    mid: hm.mid?.[frameIndex] ?? 0,
+                    high: hm.high[frameIndex] ?? 0,
+                    energy: hm.energy[frameIndex] ?? 0,
+                    subBass: hm.subBass?.[frameIndex] ?? 0,
+                    lowMid: hm.lowMid?.[frameIndex] ?? 0,
+                    highMid: hm.highMid?.[frameIndex] ?? 0,
+                    ultraAir: hm.ultraAir?.[frameIndex] ?? 0,
+                    spectralCentroid: hm.spectralCentroid?.[frameIndex] ?? audio.spectralCentroid,
+                    spectralFlatness: hm.spectralFlatness?.[frameIndex] ?? audio.spectralFlatness,
+                };
+                // 👻 Also inject into the MusicalContext so EnergyStabilizer sees real energy
+                context = { ...context, energy: hm.energy[frameIndex] ?? 0 };
+                // 👻 Throttled verification log (~1/second at 25fps)
+                if (this.state.frameCount % 25 === 0) {
+                    console.log(`[TitanEngine 👻] PHANTOM @${this.chronosPlayheadMs.toFixed(0)}ms ` +
+                        `frame#${frameIndex}/${hm.energy.length}: ` +
+                        `E=${audio.energy.toFixed(3)} B=${audio.bass.toFixed(3)} ` +
+                        `M=${audio.mid.toFixed(3)} H=${audio.high.toFixed(3)}`);
+                }
+            }
+        }
         // Obtener perfil del vibe actual
         const vibeProfile = this.vibeManager.getActiveVibe();
         // ─────────────────────────────────────────────────────────────────────
@@ -431,6 +526,24 @@ export class TitanEngine extends EventEmitter {
         // Actualizar sistema nervioso con datos de la trinidad + paleta + mods zodiacales
         // 🎸 WAVE 1011: Extended audio metrics con FFT para RockStereoPhysics2
         // 🔮 WAVE 1026: ROSETTA STONE - clarity + ultraAir for full spectral awareness
+        // ═══════════════════════════════════════════════════════════════════
+        // 👻 WAVE 2540.5: PHANTOM ALIASES
+        //
+        // The EARLY INJECTION at the top of update() already overwrote `audio`
+        // with heatmap values when Chronos is playing. These aliases exist
+        // only because the NervousSystem call expects smoothedEnergy from
+        // the EnergyStabilizer rather than raw heatmap energy.
+        // ═══════════════════════════════════════════════════════════════════
+        const phantomBass = audio.bass;
+        const phantomMid = audio.mid;
+        const phantomHigh = audio.high;
+        const phantomEnergy = energyOutput.smoothedEnergy;
+        const phantomSubBass = audio.subBass;
+        const phantomLowMid = audio.lowMid;
+        const phantomHighMid = audio.highMid;
+        const phantomUltraAir = audio.ultraAir;
+        const phantomSpectralCentroid = audio.spectralCentroid;
+        const phantomSpectralFlatness = audio.spectralFlatness;
         const nervousOutput = this.nervousSystem.updateFromTitan({
             activeVibe: vibeProfile.id,
             primaryHue: primaryHue,
@@ -438,21 +551,21 @@ export class TitanEngine extends EventEmitter {
             bpm: processedContext.bpm,
             section: processedContext.section.type, // 🆕 WAVE 290: Sección para White Puncture
         }, palette, {
-            normalizedBass: audio.bass,
-            normalizedMid: audio.mid,
-            normalizedTreble: audio.high,
-            avgNormEnergy: energyOutput.smoothedEnergy,
+            normalizedBass: phantomBass,
+            normalizedMid: phantomMid,
+            normalizedTreble: phantomHigh,
+            avgNormEnergy: phantomEnergy,
             // 🎸 WAVE 1011: Métricas espectrales FFT para Rock (harshness, flatness, centroid)
             harshness: audio.harshness,
-            spectralFlatness: audio.spectralFlatness,
-            spectralCentroid: audio.spectralCentroid,
+            spectralFlatness: phantomSpectralFlatness,
+            spectralCentroid: phantomSpectralCentroid,
             // 🔮 WAVE 1026: ROSETTA STONE - Clarity & UltraAir for full spectral integration
             clarity: audio.clarity, // Production quality for Hunt ethics
-            ultraAir: audio.ultraAir, // 16-22kHz shimmer for lasers/scanners
+            ultraAir: phantomUltraAir, // 16-22kHz shimmer for lasers/scanners
             // 🎸 WAVE 1011: Bandas extendidas para 4-band physics
-            subBass: audio.subBass,
-            lowMid: audio.lowMid,
-            highMid: audio.highMid,
+            subBass: phantomSubBass,
+            lowMid: phantomLowMid,
+            highMid: phantomHighMid,
             // 🎸 WAVE 1011: Transientes para rock dynamics
             kickDetected: audio.kickDetected,
             snareDetected: audio.snareDetected,

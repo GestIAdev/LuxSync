@@ -470,7 +470,12 @@ export class BeatDetector {
         // ── Also update the legacy phase/onBeat to use PLL ──
         // This way ALL consumers get the PLL-driven values automatically
         this.state.phase = this.pllCurrentPhase;
-        this.state.onBeat = pllOnBeat;
+        // 🛡️ WAVE 2512 FIX 1: PLL SILENCE VEIL
+        // When PLL is NOT locked (pure Pacemaker freewheel), silence the public onBeat output.
+        // Without this guard, Pacemaker converges to minBpm=60 (1000ms/beat) and emits
+        // phantom beats every 1 second — causing red flashes + tilt nanosaltos in Chill.
+        // The internal pllOnBeat continues circulating for rapid re-lock when Worker recovers.
+        this.state.onBeat = this.pllIsLocked ? pllOnBeat : false;
         return { ...this.state };
     }
     /**

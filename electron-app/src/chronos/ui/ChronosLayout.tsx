@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ══════════════════════════import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
 // 🎬 WAVE 2040.1: THE CINEMA SIMULATOR (legacy StagePreview.tsx purged)
@@ -153,6 +153,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   
   // 🎭 WAVE 2015.5: Stage visibility toggle
   const [stageVisible, setStageVisible] = useState(true)
+
+  // 🎬 WAVE 2542: Top panel (Stage + Inspector) collapsible accordion
+  const [isTopPanelOpen, setIsTopPanelOpen] = useState(true)
+  const handleTopPanelToggle = useCallback(() => {
+    setIsTopPanelOpen(prev => !prev)
+  }, [])
   
   // 🧲 WAVE 2006: Clips state management (needs bpm/duration from above)
   const durationMs = audioLoader.result?.durationMs ?? 60000
@@ -225,6 +231,30 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       console.log('[SessionKeeper] 🎵 Audio synced to session:', audioLoader.result.fileName)
     }
   }, [audioLoader.result])
+  
+  // 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send heatmap to backend
+  // When the GodEar Offline analysis completes, send the energyHeatmap
+  // to TitanEngine so it can inject real pre-calculated bands during
+  // timeline playback (instead of silence zeros from lack of live audio).
+  useEffect(() => {
+    const heatmap = audioLoader.result?.analysisData?.energyHeatmap
+    if (heatmap) {
+      const lux = (window as any).lux
+      lux?.chronos?.loadHeatmap?.(heatmap)
+        .then((r: any) => {
+          if (r?.success) {
+            console.log('[ChronosLayout 👻] PHANTOM BUFFER sent to backend')
+          }
+        })
+        .catch((err: unknown) => {
+          console.error('[ChronosLayout 👻] Failed to send heatmap:', err)
+        })
+    } else {
+      // No analysis data — clear the heatmap in backend
+      const lux = (window as any).lux
+      lux?.chronos?.loadHeatmap?.(null)?.catch(() => {})
+    }
+  }, [audioLoader.result?.analysisData])
   
   // 🎵 WAVE 2005.4 + WAVE 2045.2: Transport controls
   // - FILE mode: use streaming.togglePlay()
@@ -360,6 +390,37 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       injector.tick(clipState.clips, streaming.currentTimeMs)
     }
   }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, injector, clipState.clips])
+  
+  // ⚡ WAVE 2540.6: 60FPS PLAYHEAD PIPELINE
+  // The old useEffect depended on streaming.currentTimeMs (React state) which
+  // only fires ~1fps due to React setState batching under render pressure.
+  // This rAF loop reads the HTMLAudioElement.currentTime DIRECTLY from the DOM,
+  // completely bypassing React's render cycle. Result: true 60fps IPC to backend.
+  useEffect(() => {
+    const lux = (window as any).lux
+    if (!lux?.chronos?.syncPlayhead) return
+
+    let rafId = 0
+
+    const tick = () => {
+      const audio = streaming.audioRef?.current
+      if (audio && !audio.paused) {
+        lux.chronos.syncPlayhead(audio.currentTime * 1000, true)
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+
+    if (streaming.isPlaying) {
+      rafId = requestAnimationFrame(tick)
+    } else {
+      // One final sync when paused to deactivate phantom
+      lux.chronos.syncPlayhead(streaming.currentTimeMs, false)
+    }
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [streaming.isPlaying]) // Only re-run when play/pause state changes
   
   // 🚀 WAVE 2013: Reset injector when playback stops or seeks
   useEffect(() => {
@@ -1117,17 +1178,34 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="chronos-main" onClick={handleBackgroundClick}>
         {/* Left: Stage + Timeline Stack */}
-        <div 
-          className="chronos-workspace"
+        <div
+          className={[
+            'chronos-workspace',
+            isTopPanelOpen ? 'chronos-workspace--panel-open' : 'chronos-workspace--panel-closed',
+          ].join(' ')}
           onFocus={() => setIsTimelineFocused(true)}
           onBlur={() => setIsTimelineFocused(false)}
           tabIndex={0}
         >
-          {/* Stage Preview — WAVE 2040.32: Grid Row 1 (50%) */}
+          {/* Stage Preview — WAVE 2040.32: Grid Row 1 / WAVE 2542: colapsable */}
           <StagePreview visible={stageVisible} />
-          
+
+          {/* ── WAVE 2542: Barra divisoria colapsable ────────────────── */}
+          <button
+            className="chronos-panel-toggle"
+            onClick={handleTopPanelToggle}
+            title={isTopPanelOpen ? 'Colapsar Stage' : 'Expandir Stage'}
+            aria-label={isTopPanelOpen ? 'Colapsar panel superior' : 'Expandir panel superior'}
+          >
+            <span className="chronos-panel-toggle__line" />
+            <span className="chronos-panel-toggle__arrow">
+              {isTopPanelOpen ? '▲' : '▼'}
+            </span>
+            <span className="chronos-panel-toggle__line" />
+          </button>
+
           {/* Timeline Canvas — WAVE 2040.32: Grid Row 2 (50%) */}
-          <div className="chronos-timeline-wrapper">
+          <div className="chronos-timeline-wrapper chronos-timeline-wrapper--scrollable">
             <TimelineCanvas
               currentTime={audioSourceMode === 'live' ? freeRunClock.currentTimeMs : streaming.currentTimeMs}
               bpm={bpm}

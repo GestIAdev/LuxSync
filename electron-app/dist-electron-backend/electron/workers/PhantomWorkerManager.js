@@ -51,7 +51,7 @@ export class PhantomWorkerManager {
         // WAVE 2098: Boot silence
         // Create hidden BrowserWindow
         this.phantomWindow = new BrowserWindow({
-            show: false, // 👻 INVISIBLE - this is the magic
+            show: true, // 👻 INVISIBLE - this is the magic
             width: 400,
             height: 300,
             webPreferences: {

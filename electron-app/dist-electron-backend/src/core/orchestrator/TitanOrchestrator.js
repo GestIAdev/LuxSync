@@ -534,7 +534,11 @@ export class TitanOrchestrator {
                 energy, // Ya normalizado por AGC - INTOCABLE
                 // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
                 beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
-                isBeat: workerOnBeat || beatState.onBeat,
+                // 🛡️ WAVE 2512 FIX 3: IBeat Silence Guard
+                // PLL onBeat only propagates as isBeat if the PLL is locked (has real evidence).
+                // Redundancy layer: FIX 1 already silences beatState.onBeat in freewheel,
+                // but this guard ensures the merge logic itself is architecturally correct.
+                isBeat: workerOnBeat || (beatState.pllLocked && beatState.onBeat),
                 // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
                 // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
                 // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
@@ -553,7 +557,10 @@ export class TitanOrchestrator {
                 lowMid: this.smoothedMetrics.lowMid,
                 highMid: this.smoothedMetrics.highMid,
                 // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
-                kickDetected: workerOnBeat || this.lastAudioData.kickDetected,
+                // 🛡️ WAVE 2512 FIX 2: Kick Signal Veto in Freewheel
+                // kickDetected only fires if Worker directly detected OR PLL has a real lock.
+                // Prevents phantom Pacemaker kicks from polluting physics engines (LiquidEngineBase isKick).
+                kickDetected: workerOnBeat || (beatState.pllLocked && this.lastAudioData.kickDetected),
                 snareDetected: this.lastAudioData.snareDetected,
                 hihatDetected: this.lastAudioData.hihatDetected,
                 // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction
@@ -1246,30 +1253,41 @@ export class TitanOrchestrator {
             // ═══════════════════════════════════════════════════════════════════════════
             // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
             // ═══════════════════════════════════════════════════════════════════════
-            // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 30fps, not 60fps
+            // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 12.5fps, not 25fps
             //
-            // processFrame() runs at ~60fps (setInterval 16ms). Broadcasting the
-            // entire SeleneTruth object 60×/sec through Electron IPC causes:
+            // processFrame() runs at 25fps (setInterval 40ms). Broadcasting the
+            // entire SeleneTruth object 25×/sec through Electron IPC causes:
             //   1. JSON serialization overhead (~3-5KB per truth object)
-            //   2. 60 Zustand state updates/sec → 60 React re-render triggers
-            //   3. GC pressure from 60 new truth objects + fixture arrays per second
+            //   2. 25 Zustand state updates/sec → 25 React re-render triggers
+            //   3. GC pressure from 25 new truth objects + fixture arrays per second
             //   4. The StageSimulatorCinema canvas only renders at 30fps anyway
             //
-            // FIX: Broadcast every other frame (frameCount % 2 === 0) → 30fps.
-            // DMX output to real hardware is UNAFFECTED — HAL still renders at 60fps.
+            // FIX: Broadcast every other frame (frameCount % 2 === 0) → 12.5fps.
+            // DMX output to real hardware is UNAFFECTED — HAL still renders at 25fps.
             // Only the UI visualization is throttled.
+            //
+            // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
+            // EVERY frame (25fps) to feed the Cinema simulator at full rate.
+            // The transientStore bypass already exists (WAVE 2211), so the extra
+            // IPC traffic only costs serialization — no React re-renders.
+            // Peak hold is skipped when not throttling (no skipped frames to hold).
             // ═══════════════════════════════════════════════════════════════════════
+            // 👻 WAVE 2540.7: Chronos playback bypasses the % 2 throttle
+            const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false;
+            const shouldBroadcast = chronosPlaying || (this.frameCount % 2 === 0);
             // ⚡ WAVE 2464: PEAK HOLD — Acumula el pico entre frames skipeados
-            // Frame skipeado (frameCount % 2 === 1): solo actualiza el mapa de picos
-            // Frame de broadcast (frameCount % 2 === 0): usa el pico acumulado y resetea
-            for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
-                const _f = fixtureStates[_pi];
-                const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
-                const _prev = this.peakHoldMap.get(_id) ?? 0;
-                if (_f.dimmer > _prev)
-                    this.peakHoldMap.set(_id, _f.dimmer);
+            // Solo necesario cuando hay throttle (modo normal). En Chronos playback
+            // cada frame se broadcastea → no hay frames skipeados → no hay pico que guardar.
+            if (!chronosPlaying) {
+                for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+                    const _f = fixtureStates[_pi];
+                    const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
+                    const _prev = this.peakHoldMap.get(_id) ?? 0;
+                    if (_f.dimmer > _prev)
+                        this.peakHoldMap.set(_id, _f.dimmer);
+                }
             }
-            if (this.onBroadcast && this.frameCount % 2 === 0) {
+            if (this.onBroadcast && shouldBroadcast) {
                 const currentVibe = this.engine.getCurrentVibe();
                 // Build a valid SeleneTruth structure
                 const truth = {
@@ -1417,9 +1435,17 @@ export class TitanOrchestrator {
                             // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
                             // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
                             // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
-                            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
-                            const broadcastDimmer = Math.max(f.dimmer, peakDimmer);
-                            this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
+                            // 👻 WAVE 2540.7: Skip peak hold during Chronos — every frame is broadcast,
+                            // no skipped frames means no peaks to accumulate.
+                            let broadcastDimmer;
+                            if (chronosPlaying) {
+                                broadcastDimmer = f.dimmer;
+                            }
+                            else {
+                                const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
+                                broadcastDimmer = Math.max(f.dimmer, peakDimmer);
+                                this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
+                            }
                             return {
                                 id: realId,
                                 name: f.name,
@@ -1554,6 +1580,24 @@ export class TitanOrchestrator {
      */
     getMood() {
         return MoodController.getInstance().getCurrentMood();
+    }
+    /**
+     * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Cache pre-calculated GodEar heatmap
+     * in TitanEngine for offline band lookup during timeline playback.
+     */
+    setChronosHeatmap(heatmap) {
+        if (this.engine) {
+            this.engine.setChronosHeatmap(heatmap);
+        }
+    }
+    /**
+     * 👻 WAVE 2540.5: PLAYHEAD SYNC — Forward Chronos playhead to TitanEngine.
+     * Called every frame from the frontend during Chronos playback.
+     */
+    setChronosPlayhead(timeMs, isPlaying) {
+        if (this.engine) {
+            this.engine.setChronosPlayhead(timeMs, isPlaying);
+        }
     }
     /**
      * WAVE 254: Set mode (auto/manual)

@@ -582,7 +582,7 @@ export class SeleneLux {
         treble: safe(audioMetrics.normalizedTreble),
         ultraAir: safe(audioMetrics.ultraAir),
       };
-      
+
       // ═══════════════════════════════════════════════════════════════════
       // 🌊 WAVE 2470: HYDROSTATIC BRIDGE — Puente de la Tide Machine
       //

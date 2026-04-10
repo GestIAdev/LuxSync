@@ -405,6 +405,24 @@ const api = {
      */
     tickHeph: (currentTimeMs: number): Promise<{ success: boolean; outputs: unknown[] }> =>
       ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
+    
+    /**
+     * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send pre-calculated GodEar heatmap
+     * Called once after audio analysis completes. The heatmap data is cached
+     * in TitanEngine for band lookup during timeline playback.
+     * @param heatmap - Full HeatmapData object (or null to clear)
+     */
+    loadHeatmap: (heatmap: unknown): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:load-heatmap', heatmap),
+    
+    /**
+     * 👻 WAVE 2540.5: PLAYHEAD SYNC — Send current playhead position to backend
+     * Called every frame during Chronos playback.
+     * @param timeMs - Current playhead position in milliseconds
+     * @param isPlaying - Whether Chronos is currently playing
+     */
+    syncPlayhead: (timeMs: number, isPlaying: boolean): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:sync-playhead', timeMs, isPlaying),
   },
 
   // ============================================
@@ -1170,6 +1188,24 @@ const luxApi = {
      */
     tickHeph: (currentTimeMs: number): Promise<{ success: boolean; outputs: unknown[] }> =>
       ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
+    
+    /**
+     * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send pre-calculated GodEar heatmap
+     * Called once after audio analysis completes. The heatmap data is cached
+     * in TitanEngine for band lookup during timeline playback.
+     * @param heatmap - Full HeatmapData object (or null to clear)
+     */
+    loadHeatmap: (heatmap: unknown): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:load-heatmap', heatmap),
+    
+    /**
+     * 👻 WAVE 2540.5: PLAYHEAD SYNC — Send current playhead position to backend
+     * Called every frame during Chronos playback.
+     * @param timeMs - Current playhead position in milliseconds
+     * @param isPlaying - Whether Chronos is currently playing
+     */
+    syncPlayhead: (timeMs: number, isPlaying: boolean): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:sync-playhead', timeMs, isPlaying),
   },
 
   // ============================================

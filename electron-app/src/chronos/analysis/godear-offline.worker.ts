@@ -260,6 +260,63 @@ function extractEnergyHeatmap(
     }
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩻 WAVE 2541.1: PEAK NORMALIZATION — Scale all bands to 0-1 range
+  //
+  // The GodEarAnalyzer with useAGC=false produces raw RMS values that are
+  // typically in the 0.01-0.05 range. The TitanEngine (and EngineAudioMetrics
+  // interface) expects ALL bands in 0-1 normalized range, matching what the
+  // live AGC produces. Without this, phantom buffer injection feeds near-zero
+  // values → Bass=0, Mids=0 in the heatmap → dead fixtures.
+  //
+  // Strategy: Per-band peak normalization across the entire track.
+  // Each band's maximum becomes 1.0, preserving relative dynamics within
+  // each band. This is deterministic (unlike live AGC) and produces
+  // consistent results regardless of input level.
+  
+  // 🩻 WAVE 2541.3: RAW PEAK DIAGNOSTIC — Log raw peaks BEFORE normalization
+  // This identifies any band that is genuinely zero in the raw FFT output.
+  const rawPeak = (arr: number[]): number => {
+    let peak = 0
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > peak) peak = arr[i]
+    }
+    return peak
+  }
+  reportProgress('energy', 95, 
+    `🩻 RAW PEAKS: subBass=${rawPeak(subBass).toFixed(6)} bass=${rawPeak(bassReal).toFixed(6)} ` +
+    `lowMid=${rawPeak(lowMid).toFixed(6)} MID=${rawPeak(mid).toFixed(6)} ` +
+    `highMid=${rawPeak(highMid).toFixed(6)} treble=${rawPeak(treble).toFixed(6)} ` +
+    `ultraAir=${rawPeak(ultraAir).toFixed(6)}`
+  )
+  // ═══════════════════════════════════════════════════════════════════════
+  const normalizeBand = (arr: number[]): void => {
+    let peak = 0
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > peak) peak = arr[i]
+    }
+    if (peak > 0) {
+      const inv = 1 / peak
+      for (let i = 0; i < arr.length; i++) {
+        arr[i] *= inv
+      }
+    }
+  }
+  
+  // Normalize legacy combined fields
+  normalizeBand(energy)
+  normalizeBand(bass)
+  normalizeBand(high)
+  
+  // Normalize 7 tactical bands
+  normalizeBand(subBass)
+  normalizeBand(bassReal)
+  normalizeBand(lowMid)
+  normalizeBand(mid)
+  normalizeBand(highMid)
+  normalizeBand(treble)
+  normalizeBand(ultraAir)
+  
   analyzer.reset()
   
   return {

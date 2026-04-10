@@ -54,12 +54,24 @@
     
     let GodEarAnalyzer = null
     try {
-      // Try loading from dist-electron-backend (production build)
       const path = require('path')
+      
+      // Vamos a chivarle al log dónde estamos parados exactamente
+      console.log(`🔍 Buscando GodEarFFT desde: ${__dirname}`)
+      
       const possiblePaths = [
+        // WAVE 2541.3: Ruta primaria — dist-electron/GodEarFFT.js (nuevo entry en vite.config.ts)
+        // phantomWorker.html está en dist-electron/workers/ en runtime, así que:
+        //   __dirname = .../dist-electron/workers (o similar)
+        path.join(__dirname, '..', 'GodEarFFT.js'),         // dist-electron/GodEarFFT.js
+        path.join(__dirname, 'GodEarFFT.js'),               // mismo directorio
+        path.join(__dirname, '..', 'workers', 'GodEarFFT.js'),
+        path.join(__dirname, '..', 'dist-electron', 'GodEarFFT.js'),
+        path.join(__dirname, '..', '..', 'dist-electron', 'GodEarFFT.js'),
+        
+        // Rutas legacy por si acaso
         path.join(__dirname, '..', '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js'),
-        path.join(__dirname, '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js'),
-        // Fallback: source via ts-node or similar
+        path.join(__dirname, '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js')
       ]
       
       for (const p of possiblePaths) {
@@ -67,12 +79,18 @@
           const fs = require('fs')
           if (fs.existsSync(p)) {
             const godEarModule = require(p)
-            GodEarAnalyzer = godEarModule.GodEarAnalyzer || godEarModule.default
-            console.log('[PhantomAnalyzer] 🩻 GodEarFFT loaded from:', p)
+            // El bundle CJS mezcla named + default exports — cubrir ambos casos
+            GodEarAnalyzer = godEarModule.GodEarAnalyzer 
+              || (godEarModule.default && godEarModule.default.GodEarAnalyzer)
+              || godEarModule.default
+            console.log(`🩻 ¡GodEarFFT ENCONTRADO y cargado desde!: ${p}`)
+            console.log(`🔬 GodEarAnalyzer resuelto:`, typeof GodEarAnalyzer)
             break
+          } else {
+            console.log(`❌ No existe en: ${p}`) // Activado para diagnosticar rutas
           }
         } catch (e) {
-          // Try next path
+          console.log(`⚠️ Error intentando requerir ${p}: ${e.message}`)
         }
       }
       
@@ -310,6 +328,51 @@
         for (let i = 0; i < flux.length; i++) {
           flux[i] /= maxFlux
         }
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🩻 WAVE 2541.3: PEAK NORMALIZATION — Synced from godear-offline.worker.ts
+      //
+      // Without this, phantom buffer feeds raw RMS values (0.001-0.05)
+      // instead of the 0-1 range that TitanEngine expects.
+      // ═══════════════════════════════════════════════════════════════════
+      const normalizeBand = (arr) => {
+        if (!arr) return
+        let peak = 0
+        for (let i = 0; i < arr.length; i++) {
+          if (arr[i] > peak) peak = arr[i]
+        }
+        if (peak > 0) {
+          const inv = 1 / peak
+          for (let i = 0; i < arr.length; i++) {
+            arr[i] *= inv
+          }
+        }
+      }
+      
+      // Normalize legacy combined fields
+      normalizeBand(energy)
+      normalizeBand(bass)
+      normalizeBand(high)
+      
+      // Normalize 7 tactical bands (if available)
+      if (subBass) {
+        normalizeBand(subBass)
+        normalizeBand(bassReal)
+        normalizeBand(lowMid)
+        normalizeBand(mid)
+        normalizeBand(highMid)
+        normalizeBand(treble)
+        normalizeBand(ultraAir)
+        
+        // 🩻 WAVE 2541.3: Diagnostic log — raw peaks before normalization already applied
+        // This log helps verify that all bands have real energy content
+        log('🩻 Band peaks after normalization: ' + 
+          'subBass=' + (subBass ? Math.max(...subBass).toFixed(3) : 'N/A') + 
+          ' bass=' + (bassReal ? Math.max(...bassReal).toFixed(3) : 'N/A') + 
+          ' mid=' + (mid ? Math.max(...mid).toFixed(3) : 'N/A') + 
+          ' highMid=' + (highMid ? Math.max(...highMid).toFixed(3) : 'N/A') + 
+          ' treble=' + (treble ? Math.max(...treble).toFixed(3) : 'N/A'))
       }
       
       const result = {

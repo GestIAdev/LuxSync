@@ -165,11 +165,15 @@ function autoAssignZone(fixtureType, fixtureName) {
 // WINDOW CREATION
 // =============================================================================
 function createWindow() {
+    // 🌟 WAVE 2497: icon multiplataforma — .ico en Windows, .icns en macOS
+    const iconExt = process.platform === 'darwin' ? 'icns' : process.platform === 'linux' ? 'png' : 'ico';
+    const appIcon = path.join(__dirname, `../build/icon.${iconExt}`);
     mainWindow = new BrowserWindow({
         width: 1920,
         height: 1080,
         frame: false, // Custom title bar
         title: 'LuxSync',
+        icon: appIcon,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -224,7 +228,12 @@ function createWindow() {
         mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
     mainWindow.on('closed', () => {
+        // ⚡ WAVE 2495: THE SILVER BULLET — Shutdown atado a la puerta principal.
+        // window-all-closed NO es fiable cuando hay ventanas ocultas (phantomWorker,
+        // background renderers). Este hook dispara SIN EXCUSAS cuando el usuario
+        // cierra la ventana visible. No hay ventana secundaria que lo bloquee.
         mainWindow = null;
+        doShutdown();
     });
     // Notify renderer of maximize state changes (for custom title bar button icon)
     mainWindow.on('maximize', () => {
@@ -643,25 +652,21 @@ app.whenReady().then(async () => {
     });
 });
 // ============================================================================
-// 🧟 WAVE 2493: BRUTE FORCE SHUTDOWN — Dead Man's Switch Protocol
-// process.exit(0) waits for the Node event loop to drain — which NEVER happens
-// when FTDI serial ports or audio streams are still open. app.exit(0) is a
-// synchronous C++ kill that bypasses the event loop entirely.
-//
-// Dead Man's Switch: a 2s failsafe timer fires app.exit(0) unconditionally if
-// the graceful async sequence hangs on any stuck resource.
+// ============================================================================
+// ⚡ WAVE 2495: THE SILVER BULLET — Shutdown function
+// Extraída como función standalone para ser llamada desde mainWindow.on('closed').
+// window-all-closed NO es fiable cuando existen ventanas ocultas (phantomWorker,
+// background BrowserWindows). doShutdown() ataca directamente desde la puerta
+// principal: si mainWindow cae, todo el proceso cae con ella.
 // ============================================================================
 let isShuttingDown = false;
-app.on('before-quit', (e) => {
+function doShutdown() {
     if (isShuttingDown)
-        return; // Re-entry guard — second app.quit() call goes through
-    e.preventDefault();
+        return; // Re-entry guard — solo un shutdown simultáneo
     isShuttingDown = true;
-    // 💀 DEAD MAN'S SWITCH: if cleanup hangs beyond 2s, Electron kills everything
-    const deadManSwitch = setTimeout(() => {
-        app.exit(0);
-    }, 2000);
-    deadManSwitch.unref(); // Don't let this timer itself keep the event loop alive
+    // 💀 DEAD MAN'S SWITCH: 1 segundo máximo —si el cleanup se atasca, kill total
+    const deadManSwitch = setTimeout(() => { app.exit(0); }, 1000);
+    deadManSwitch.unref(); // El timer no mantiene vivo el event loop
     const shutdown = async () => {
         // 1. Stop Titan DMX loop: blackout + 30ms FTDI drain (async, must await)
         if (titanOrchestrator) {
@@ -686,11 +691,18 @@ app.on('before-quit', (e) => {
         // 5. Flush config to disk
         configManager.forceSave();
     };
-    // app.exit(0) = synchronous C++ process termination — bypasses Node event loop
+    // app.exit(0) = C++ synchronous kill — bypasses Node event loop entirely
     shutdown().finally(() => app.exit(0));
-});
-app.on('window-all-closed', () => {
-    app.quit();
+}
+// Guard secundario: si por algún motivo window-all-closed llega antes
+// (e.g. ventana oculta se cierra primero), que también ejecute el shutdown.
+app.on('window-all-closed', () => { doShutdown(); });
+// Guard terciario: before-quit como última red de seguridad
+app.on('before-quit', (e) => {
+    if (!isShuttingDown) {
+        e.preventDefault();
+        doShutdown();
+    }
 });
 // Basic IPC handlers that need to stay in main
 ipcMain.handle('app:getVersion', () => app.getVersion());

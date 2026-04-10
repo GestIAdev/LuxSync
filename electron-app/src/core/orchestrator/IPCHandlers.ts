@@ -401,7 +401,33 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
 
-  // ðŸŽ­ WAVE 700.5.4: MOOD CONTROL
+  /**
+   * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Load pre-calculated GodEar heatmap
+   * Called from renderer when audio analysis completes.
+   * Sends the full heatmap to TitanEngine for offline band lookup during playback.
+   */
+  ipcMain.handle('chronos:load-heatmap', (_event, heatmap: any) => {
+    if (titanOrchestrator) {
+      titanOrchestrator.setChronosHeatmap(heatmap ?? null)
+      return { success: true }
+    }
+    console.error('[Chronos→Stage] 👻 PHANTOM BUFFER: titanOrchestrator not available')
+    return { success: false }
+  })
+
+  /**
+   * 👻 WAVE 2540.5: PLAYHEAD SYNC — Receive playhead time from Chronos frontend.
+   * Called every frame during Chronos playback (~25fps from useEffect).
+   * This is the clock that drives the phantom buffer frame lookup.
+   */
+  ipcMain.handle('chronos:sync-playhead', (_event, timeMs: number, isPlaying: boolean) => {
+    if (titanOrchestrator) {
+      titanOrchestrator.setChronosPlayhead(timeMs, isPlaying)
+    }
+    return { success: true }
+  })
+
+  // 🎭 WAVE 700.5.4: MOOD CONTROL
   ipcMain.handle('lux:setMood', (_event, moodId: 'calm' | 'balanced' | 'punk') => {
     console.log('[IPC] ðŸŽ­ lux:setMood:', moodId)
     if (titanOrchestrator) {

@@ -59,26 +59,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 🔧 WAVE 2040.32: CSS GRID ENFORCER — 50/50 STRICT EQUILIBRIUM
- * 
- * Flex was "suggesting" — Grid ENFORCES. 1fr 1fr = exactly 50/50.
- * Inspector demolished — Workspace takes 100% width.
- * 
- * Layout:
- * ┌──────────────────────────────────────────────────────────────────────┐
- * │                    TRANSPORT BAR (fixed top)                         │
- * ├──────────────────────────────────────────────────────────────────────┤
- * │                 STAGE PREVIEW (1fr = 50%)                           │
- * ├──────────────────────────────────────────────────────────────────────┤
- * │                 TIMELINE CANVAS (1fr = 50%)                         │
- * ├──────────────────────────────────────────────────────────────────────┤
- * │                 ARSENAL DOCK (fixed height)                         │
- * └──────────────────────────────────────────────────────────────────────┘
+ * 🔧 WAVE 2040.32 / WAVE 2542: CSS GRID ENFORCER — COLAPSABLE ACCORDION
+ *
+ * 3 Filas: Stage (1fr) | Divider toggle (auto) | Timeline (1fr)
+ * Cuando isTopPanelOpen=false → .chronos-workspace--panel-closed:
+ *   Stage colapsa a 0px y se oculta; timeline toma todo el espacio.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-workspace {
   display: grid;
-  grid-template-rows: 1fr 1fr;  /* 🔧 WAVE 2040.32: STRICT 50/50 SPLIT */
+  grid-template-rows: 1fr auto 1fr;  /* 🎚️ WAVE 2542: Stage | Divider | Timeline */
   flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
@@ -86,6 +76,75 @@
   overflow: hidden;
   gap: 0;
 }
+
+/* Panel abierto (default): Stage toma su 1fr completo */
+.chronos-workspace--panel-open {
+  grid-template-rows: 1fr auto 1fr;
+}
+
+/* Panel cerrado: Stage colapsa a 0, timeline lo absorbe todo */
+.chronos-workspace--panel-closed {
+  grid-template-rows: 0px auto 1fr;
+}
+
+.chronos-workspace--panel-closed .chronos-stage-preview {
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 🔧 WAVE 2542: PANEL TOGGLE — Barra divisoria interactiva
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 20px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(168, 85, 247, 0.25);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+  cursor: row-resize;
+  color: rgba(168, 85, 247, 0.55);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.chronos-panel-toggle:hover {
+  background: rgba(168, 85, 247, 0.08);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.6);
+}
+
+.chronos-panel-toggle:focus-visible {
+  outline: 1px solid #a855f7;
+  outline-offset: -1px;
+}
+
+.chronos-panel-toggle__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(168, 85, 247, 0.40) 50%, transparent 100%);
+}
+
+.chronos-panel-toggle__arrow {
+  font-size: 9px;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+
+.chronos-panel-toggle:hover .chronos-panel-toggle__arrow {
+  opacity: 1;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * DIVIDERS
@@ -191,14 +250,39 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * TIMELINE WRAPPER — WAVE 2040.32: position context for DataSheet
- * Wraps TimelineCanvas + ContextualDataSheet. The DataSheet uses
- * absolute positioning relative to this wrapper.
+ * WAVE 2542: scroll punk + modifier class --scrollable
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-timeline-wrapper {
   position: relative;
   min-height: 0;
   overflow: hidden;
+}
+
+/* WAVE 2542: Scroll punk — estética cyberpunk para la timeline */
+.chronos-timeline-wrapper--scrollable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #a855f7 #0a0a12;
+}
+
+.chronos-timeline-wrapper--scrollable::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chronos-timeline-wrapper--scrollable::-webkit-scrollbar-track {
+  background: #0a0a12;
+  border-left: 1px solid rgba(168, 85, 247, 0.08);
+}
+
+.chronos-timeline-wrapper--scrollable::-webkit-scrollbar-thumb {
+  background: #a855f7;
+  border-radius: 3px;
+}
+
+.chronos-timeline-wrapper--scrollable::-webkit-scrollbar-thumb:hover {
+  background: #c084fc;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

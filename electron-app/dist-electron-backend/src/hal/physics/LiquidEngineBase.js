@@ -171,6 +171,19 @@ export class LiquidEngineBase {
             morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - p.morphFloor) / (p.morphCeiling - p.morphFloor)));
         }
         // ═══════════════════════════════════════════════════════════════════
+        // WAVE 2513 — AMBIENT ISOLATION: BYPASS TOTAL DE GodEarFFT
+        // Si el perfil es isPureAmbient, el motor ignora TODA señal de audio
+        // y genera intensidades puramente desde osciladores trigonométricos.
+        // El resultado es idéntico con volumen=0 o volumen=100.
+        //
+        // Arquitectura: early-return completo. El hot-path de GodEar (kicks,
+        // strobe, sidechain, transient shaper) NUNCA se ejecuta para este vibe.
+        // Los envelopes SÍ se ejecutan para mantener ghostCap oceánico activo.
+        // ═══════════════════════════════════════════════════════════════════
+        if (p.isPureAmbient) {
+            return this.applyAmbientGenerative(morphFactor, now);
+        }
+        // ═══════════════════════════════════════════════════════════════════
         // 2. MODES
         // ═══════════════════════════════════════════════════════════════════
         const acidMode = harshness > p.harshnessAcidThreshold;
@@ -300,28 +313,42 @@ export class LiquidEngineBase {
         let moverLeft;
         let moverRight;
         if (p.layout41Strategy === 'strict-split') {
-            // --- WAVE 911 LEGACY — TechnoStereoPhysics (WAVE 2456) ---
+            // --- WAVE 911 LEGACY → WAVE 2541.3 RECALIBRATION ---
             // Exclusivo para techno industrial en modo strict-split.
-            // Roles espectrales calibrados contra espectro real del techno industrial.
             //
-            // MOVER L = EL OSCURO (200Hz - 800Hz: mid tonal del synth)
-            //   GOD EAR confirma: centroid 630-680Hz, rolloff 85% en ~1.2kHz.
-            //   rawMoverL = mid - bass*0.50 (separa synth del bombo).
-            //   Gate 0.06 (calibrado al piso real ~0.040-0.065 en silencio).
-            //   Boost 12.0 (senal pequena pero real — boost agresivo para visibilidad).
+            // WAVE 2541.3: RATIO-BASED SEPARATOR
+            // The old formula `mid - bass*0.50` was calibrated for raw RMS values
+            // (0.01-0.05 range). With WAVE 2541.1 peak normalization (0-1 range),
+            // bass=1.0 → bass*0.50=0.50 annihilates mid in most frames.
+            //
+            // New approach: ratio-based attenuation.
+            // When bass dominates (bass > mid), attenuate mid proportionally
+            // but NEVER kill it below a floor. The synth mid component is real —
+            // it just coexists with kick energy in the 500-2000Hz range.
+            //
+            // MOVER L = EL OSCURO (500-2000Hz: mid tonal del synth)
+            //   bassRatio: how much bass dominates over mid (0=no bass, 1=equal, >1=bass dominant)
+            //   attenuation: 1.0 when bass is low, decays to FLOOR when bass is very high
+            //   rawMoverL retains mid presence even during kick hits
             //
             // MOVER R = EL TERMINATOR (2kHz - 20kHz: treble puro)
-            //   Verificado correcto en movercalib logs.
+            //   No change needed — treble is independently normalized.
             const calculateMover = (signal, gate, boost) => {
                 if (signal < gate)
                     return 0.0;
                 const gated = (signal - gate) / (1.0 - gate);
                 return Math.min(1.0, Math.max(0, Math.pow(gated, 1.2) * boost));
             };
-            const rawMoverL = Math.max(0, bands.mid - bands.bass * 0.50);
+            // Ratio-based bass separator: mid keeps a floor even when bass dominates
+            const BASS_ATTENUATION_FACTOR = 0.60; // How much bass can reduce mid (0=none, 1=full kill)
+            const MID_FLOOR = 0.08; // Minimum mid that always survives
+            const bassRatio = bands.bass > 0.001 ? Math.min(2.0, bands.bass / Math.max(0.001, bands.mid)) : 0;
+            const bassAttenuation = 1.0 - Math.min(BASS_ATTENUATION_FACTOR, bassRatio * 0.30);
+            const rawMoverL = Math.max(MID_FLOOR, bands.mid * bassAttenuation);
             const rawMoverR = bands.treble;
-            moverLeft = calculateMover(rawMoverL, 0.06, 12.0);
-            moverRight = calculateMover(rawMoverR, 0.18, 9.0);
+            // Gates/boosts recalibrated for 0-1 normalized range (WAVE 2541.3)
+            moverLeft = calculateMover(rawMoverL, 0.10, 3.0);
+            moverRight = calculateMover(rawMoverR, 0.10, 3.0);
             // Sidechain del kick inline (strict-split: guillotina directa)
             if (isKick) {
                 moverLeft *= (1.0 - p.sidechainDepth);
@@ -438,6 +465,55 @@ export class LiquidEngineBase {
         this._strobeActive = false;
         this.strobeStartTime = 0;
         this.lastTreble = 0;
+    }
+    // ─────────────────────────────────────────────────────────────────────
+    // WAVE 2513 — AMBIENT GENERATIVE ENGINE
+    // Motor trigonométrico puro: sin GodEar, sin kicks, sin strobe.
+    // Los seis osciladores tienen períodos primos entre sí (ms) para que
+    // NUNCA coincidan en fase → nunca producen periodicidad perceptible.
+    // El resultado es idéntico con música, en silencio o a 0 de volumen.
+    // ─────────────────────────────────────────────────────────────────────
+    applyAmbientGenerative(morphFactor, now) {
+        // WAVE 2516 — THE ABSOLUTE SWELL: valores absolutos hardcodeados.
+        // Sin dependencias de morphVariance ni variables dinámicas que puedan ser 0
+        // cuando el audio está desconectado. Cada oscilador es completamente autónomo.
+        // PARES — mínimo 0.10, rango 0.50 → [0.10 .. 0.60]
+        const frontLeft = 0.10 + ((Math.sin(now / 4003 + 0.000) + 1) / 2) * 0.50; // El Pulso del Abismo
+        const frontRight = 0.10 + ((Math.sin(now / 3109 + 1.047) + 1) / 2) * 0.50; // La Corriente
+        const backLeft = 0.10 + ((Math.sin(now / 5303 + 0.628) + 1) / 2) * 0.50; // Las Algas
+        const backRight = 0.10 + ((Math.sin(now / 1901 + 1.571) + 1) / 2) * 0.20; // El Destello (rango estrecho)
+        // MOVERS — mínimo 0.05, rango 0.55 → [0.05 .. 0.60]
+        const moverLeft = 0.05 + ((Math.sin(now / 9109 + 2.094) + 1) / 2) * 0.55; // La Voz del Mar
+        const moverRight = 0.05 + ((Math.sin(now / 10303 + 3.926) + 1) / 2) * 0.55; // La Bioluminiscencia
+        // Construimos el ProcessedFrame con GodEar vacío y osciladores como señales
+        const frame = {
+            bands: { subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0 },
+            morphFactor,
+            recoveryFactor: 1.0,
+            isBreakdown: false,
+            isVetoed: false,
+            isKick: false,
+            isKickEdge: false,
+            acidMode: false,
+            noiseMode: false,
+            harshness: 0,
+            flatness: 0,
+            spectralCentroid: 0,
+            rawTrebleDelta: 0,
+            rawHighMidDelta: 0,
+            rawMidDelta: 0,
+            now,
+            frontLeft,
+            frontRight,
+            backRight,
+            snareAttack: 0,
+            backLeft,
+            moverLeft,
+            moverRight,
+            strobeActive: false,
+            strobeIntensity: 0,
+        };
+        return this.routeZones(frame);
     }
     // ─────────────────────────────────────────────────────────────────────
     // PRIVATE

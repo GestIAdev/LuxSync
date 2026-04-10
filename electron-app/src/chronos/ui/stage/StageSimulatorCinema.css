@@ -1,23 +1,20 @@
 /**
- * 🎬 STAGE SIMULATOR CINEMA - WAVE 2040.33: FILL THE VOID
- * Double-buffer canvas with beam vectors, motion trails, and gobo indicators
- * 
- * 🔧 WAVE 2040.33: Removed max-height cap. Canvas fills 100% of container.
- *                  Grid parent (50% via 1fr) controls actual height.
+ * 🎬 STAGE SIMULATOR CINEMA - WAVE 2542: WRAPPER STYLES
+ * Sustituye el doble-buffer manual por un wrapper de TacticalCanvas.
+ * Se preservan .stage-cinema y .stage-cinema--hidden (contrato con ChronosLayout).
  */
 
 .stage-cinema {
   position: relative;
   width: 100%;
-  height: 100%;       /* 🔧 WAVE 2040.33: Fill parent (grid 1fr) */
-  min-height: 0;      /* 🔧 WAVE 2040.33: Grid child MUST have min-height: 0 */
+  height: 100%;
+  min-height: 0;   /* Grid child MUST have min-height: 0 */
   background: #08080d;
-  border-radius: 0;   /* 🔧 WAVE 2040.33: No rounded corners (edge-to-edge) */
   overflow: hidden;
   transition: opacity 0.3s ease;
 }
 
-/* Hidden state (same contract as old StagePreview) */
+/* Hidden state — mismo contrato de siempre */
 .stage-cinema--hidden {
   max-height: 0;
   min-height: 0;
@@ -26,48 +23,21 @@
   overflow: hidden;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   DOUBLE BUFFER CANVASES
-   Trails (z:0) → rendered BEHIND fixtures canvas
-   Fixtures (z:1) → cleared and redrawn every frame
-   The fixtures canvas background is opaque, so trails show
-   through the transparent beams/glows painted on it.
-   Actually: trails canvas is BEHIND (lower z), fixtures ON TOP.
-   BUT we paint the fixtures canvas background as opaque, which
-   would hide trails. To solve: we paint the background on
-   fixtures canvas, then composite trails via mix-blend-mode.
-   
-   CORRECTED APPROACH:
-   - Trails canvas on top with mix-blend-mode: screen
-   - Fixtures canvas on bottom with opaque background
-   This way trails ADD light to the scene (screen blending).
-   ═══════════════════════════════════════════════════════════════════ */
+/* Double-buffer canvases eliminados — TacticalCanvas gestiona su propio canvas */
 
-.stage-cinema__fixtures {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
-.stage-cinema__trails {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  mix-blend-mode: screen;
-  pointer-events: none;
-}
-
-/* Badge */
-.stage-cinema__badge {
+/* ── Controls bar: badge + layout toggle ─────────────────────────────── */
+.stage-cinema__controls {
   position: absolute;
   top: 8px;
   left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.stage-cinema__badge {
   padding: 3px 8px;
   font-size: 9px;
   font-weight: 700;
@@ -79,25 +49,46 @@
   pointer-events: none;
   user-select: none;
   letter-spacing: 0.15em;
-  z-index: 3;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   🧠 WAVE 2046: INTERACTION OVERLAY
-   Transparent div on top of everything that captures mouse events.
-   Cursor changes to pointer when hovering over a fixture.
-   ═══════════════════════════════════════════════════════════════════ */
-
-.stage-cinema__interaction {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-  background: transparent;
-  /* Allow badge to stay above but clicks go through to this layer */
+/* 4.1 / 7.1 toggle */
+.stage-cinema__layout-toggle {
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.12em;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.10);
+  border: 1px solid rgba(168, 85, 247, 0.30);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
+
+.stage-cinema__layout-toggle:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.60);
+  color: #c084fc;
+}
+
+.stage-cinema__layout-toggle:active {
+  background: rgba(168, 85, 247, 0.35);
+}
+
+/* TacticalCanvas fill total */
+.stage-cinema__tactical {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Interaction overlay eliminado — TacticalCanvas tiene hit-testing nativo */
+
+/* 🔧 WAVE 2040.33: Removed responsive max-height constraints.
+   Grid parent controls size via 1fr. Cinema fills what it gets. */
 
 /* 🔧 WAVE 2040.33: Removed responsive max-height constraints.
    Grid parent controls size via 1fr. Cinema fills what it gets. */

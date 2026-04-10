@@ -293,6 +293,20 @@ const api = {
          * @returns { success, outputs: HephFixtureOutput[] }
          */
         tickHeph: (currentTimeMs) => ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
+        /**
+         * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send pre-calculated GodEar heatmap
+         * Called once after audio analysis completes. The heatmap data is cached
+         * in TitanEngine for band lookup during timeline playback.
+         * @param heatmap - Full HeatmapData object (or null to clear)
+         */
+        loadHeatmap: (heatmap) => ipcRenderer.invoke('chronos:load-heatmap', heatmap),
+        /**
+         * 👻 WAVE 2540.5: PLAYHEAD SYNC — Send current playhead position to backend
+         * Called every frame during Chronos playback.
+         * @param timeMs - Current playhead position in milliseconds
+         * @param isPlaying - Whether Chronos is currently playing
+         */
+        syncPlayhead: (timeMs, isPlaying) => ipcRenderer.invoke('chronos:sync-playhead', timeMs, isPlaying),
     },
     // ============================================
     // ⚒️ HEPHAESTUS - WAVE 2030.5: THE FORGE FILE I/O
@@ -837,6 +851,20 @@ const luxApi = {
          * @returns { success, outputs: HephFixtureOutput[] }
          */
         tickHeph: (currentTimeMs) => ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
+        /**
+         * 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send pre-calculated GodEar heatmap
+         * Called once after audio analysis completes. The heatmap data is cached
+         * in TitanEngine for band lookup during timeline playback.
+         * @param heatmap - Full HeatmapData object (or null to clear)
+         */
+        loadHeatmap: (heatmap) => ipcRenderer.invoke('chronos:load-heatmap', heatmap),
+        /**
+         * 👻 WAVE 2540.5: PLAYHEAD SYNC — Send current playhead position to backend
+         * Called every frame during Chronos playback.
+         * @param timeMs - Current playhead position in milliseconds
+         * @param isPlaying - Whether Chronos is currently playing
+         */
+        syncPlayhead: (timeMs, isPlaying) => ipcRenderer.invoke('chronos:sync-playhead', timeMs, isPlaying),
     },
     // ============================================
     // 🎬 PLAYBACK - WAVE 2053.1: TIMELINE ENGINE

@@ -82,6 +82,28 @@ export default defineConfig({
           },
         },
       },
+      // 👻 WAVE 2541.3: GodEarFFT standalone CJS — requerido por phantomWorker.html
+      // El phantom tiene nodeIntegration:true y usa require(), pero Vite bundlea
+      // GodEarFFT dentro del renderer. Este entry lo saca como módulo CJS independiente.
+      {
+        entry: 'src/workers/GodEarFFT.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            lib: {
+              entry: 'src/workers/GodEarFFT.ts',
+              formats: ['cjs'],
+              fileName: () => 'GodEarFFT.js',
+            },
+            rollupOptions: {
+              external: ['worker_threads'],
+              output: {
+                exports: 'named',
+              },
+            },
+          },
+        },
+      },
     ]),
   ],
   resolve: {

@@ -413,18 +413,26 @@ export abstract class LiquidEngineBase {
     let moverRight: number
 
     if (p.layout41Strategy === 'strict-split') {
-      // --- WAVE 911 LEGACY — TechnoStereoPhysics (WAVE 2456) ---
+      // --- WAVE 911 LEGACY → WAVE 2541.3 RECALIBRATION ---
       // Exclusivo para techno industrial en modo strict-split.
-      // Roles espectrales calibrados contra espectro real del techno industrial.
       //
-      // MOVER L = EL OSCURO (200Hz - 800Hz: mid tonal del synth)
-      //   GOD EAR confirma: centroid 630-680Hz, rolloff 85% en ~1.2kHz.
-      //   rawMoverL = mid - bass*0.50 (separa synth del bombo).
-      //   Gate 0.06 (calibrado al piso real ~0.040-0.065 en silencio).
-      //   Boost 12.0 (senal pequena pero real — boost agresivo para visibilidad).
+      // WAVE 2541.3: RATIO-BASED SEPARATOR
+      // The old formula `mid - bass*0.50` was calibrated for raw RMS values
+      // (0.01-0.05 range). With WAVE 2541.1 peak normalization (0-1 range),
+      // bass=1.0 → bass*0.50=0.50 annihilates mid in most frames.
+      //
+      // New approach: ratio-based attenuation.
+      // When bass dominates (bass > mid), attenuate mid proportionally
+      // but NEVER kill it below a floor. The synth mid component is real —
+      // it just coexists with kick energy in the 500-2000Hz range.
+      //
+      // MOVER L = EL OSCURO (500-2000Hz: mid tonal del synth)
+      //   bassRatio: how much bass dominates over mid (0=no bass, 1=equal, >1=bass dominant)
+      //   attenuation: 1.0 when bass is low, decays to FLOOR when bass is very high
+      //   rawMoverL retains mid presence even during kick hits
       //
       // MOVER R = EL TERMINATOR (2kHz - 20kHz: treble puro)
-      //   Verificado correcto en movercalib logs.
+      //   No change needed — treble is independently normalized.
 
       const calculateMover = (signal: number, gate: number, boost: number): number => {
         if (signal < gate) return 0.0
@@ -432,11 +440,17 @@ export abstract class LiquidEngineBase {
         return Math.min(1.0, Math.max(0, Math.pow(gated, 1.2) * boost))
       }
 
-      const rawMoverL = Math.max(0, bands.mid - bands.bass * 0.50)
+      // Ratio-based bass separator: mid keeps a floor even when bass dominates
+      const BASS_ATTENUATION_FACTOR = 0.60  // How much bass can reduce mid (0=none, 1=full kill)
+      const MID_FLOOR = 0.08                // Minimum mid that always survives
+      const bassRatio = bands.bass > 0.001 ? Math.min(2.0, bands.bass / Math.max(0.001, bands.mid)) : 0
+      const bassAttenuation = 1.0 - Math.min(BASS_ATTENUATION_FACTOR, bassRatio * 0.30)
+      const rawMoverL = Math.max(MID_FLOOR, bands.mid * bassAttenuation)
       const rawMoverR = bands.treble
 
-      moverLeft  = calculateMover(rawMoverL, 0.06, 12.0)
-      moverRight = calculateMover(rawMoverR, 0.18, 9.0)
+      // Gates/boosts recalibrated for 0-1 normalized range (WAVE 2541.3)
+      moverLeft  = calculateMover(rawMoverL, 0.10, 3.0)
+      moverRight = calculateMover(rawMoverR, 0.10, 3.0)
 
       // Sidechain del kick inline (strict-split: guillotina directa)
       if (isKick) {

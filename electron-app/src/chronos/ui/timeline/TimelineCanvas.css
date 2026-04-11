@@ -31,15 +31,12 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-outer-wrapper {
-  /* WAVE 2545.2: Crece con el contenido (el SVG interno determina la altura).
-   * min-height:100% asegura que ocupa al menos el viewport del scroll container.
-   * WAVE 2552.3: flex-shrink:0 prohíbe que el flex padre aplaste este contenedor.
-   * El SVG hijo marca la altura real — el wrapper nunca puede ser menor. */
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
+  /* Crece con el contenido — el SVG React fija la altura explícita.
+   * display:block es suficiente. min-height:100% causaba que nunca hubiera
+   * overflow (100% del scroll container = exactamente el viewport → sin scroll).
+   * El SVG con height={visibleCanvasHeight} ya fuerza el scroll cuando es necesario. */
+  display: block;
   width: 100%;
-  min-height: 100%;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

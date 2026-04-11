@@ -393,11 +393,9 @@
   z-index: 100;
   display: flex;
   align-items: center;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(4px);
-  border: 1px dashed rgba(0, 229, 255, 0.45);
-  border-radius: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
   overflow: visible;
 }
 

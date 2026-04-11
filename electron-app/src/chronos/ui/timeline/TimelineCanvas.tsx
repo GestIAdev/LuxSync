@@ -758,35 +758,38 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // 4. Result: Last zone track always touches bottom edge, no void space
   // ═══════════════════════════════════════════════════════════════════════
   
+  // Altura mínima real de todos los tracks (sin elastic, sin padding)
+  const totalFixedHeight = useMemo(
+    () => allTracks.reduce((sum, t) => sum + t.height, 0),
+    [allTracks]
+  )
+
   const elasticTracks = useMemo(() => {
-    const totalFixedHeight = allTracks.reduce((sum, t) => sum + t.height, 0)
     const availableHeight = dimensions.height
     
-    // If we have surplus space, distribute it elastically
+    // Elastic solo crece tracks cuando hay surplus real de viewport.
+    // NUNCA encoge — las alturas fijas de allTracks son el mínimo sagrado.
     if (availableHeight > totalFixedHeight) {
       const surplus = availableHeight - totalFixedHeight
       
-      // AUDIO gets 50% of surplus, rest shared equally among other tracks
       const audioWeight = 0.5
-      const otherTracksCount = allTracks.length - 1 // Exclude audio
+      const otherTracksCount = allTracks.length - 1
       const otherWeight = (1 - audioWeight) / otherTracksCount
       
       return allTracks.map(track => {
         if (track.type === 'waveform') {
-          // AUDIO track absorbs most of the surplus
           return { ...track, height: track.height + (surplus * audioWeight) }
         } else {
-          // Other tracks get equal share of remaining surplus
           return { ...track, height: track.height + (surplus * otherWeight) }
         }
       })
     }
     
-    // No surplus → use default heights
+    // Sin surplus → alturas fijas originales
     return allTracks
-  }, [dimensions.height, allTracks])
+  }, [dimensions.height, allTracks, totalFixedHeight])
   
-  // Calculate total tracks height (now using elastic heights)
+  // totalTracksHeight SOLO para uso en el renderizado SVG (puede ser elastic o fijo)
   const totalTracksHeight = elasticTracks.reduce((sum, t) => sum + t.height, 0)
 
   // WAVE 2552: Pre-compute Y offsets and heights for FX tracks (for the HTML overlay)
@@ -807,9 +810,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeVersion, elasticTracks])
   
-  // WAVE 2040.7: Visible canvas height — fill the container, not just the tracks
-  // WAVE 2545.3: +60px de padding inferior para que el HUD sticky no tape el último track
-  const visibleCanvasHeight = Math.max(dimensions.height, totalTracksHeight + 60)
+  // El SVG siempre tiene al menos totalFixedHeight + 60px de padding inferior.
+  // Cuando el viewport (dimensions.height) es MAYOR → el elastic llena el espacio → sin scroll.
+  // Cuando el viewport es MENOR que las alturas fijas → el SVG mantiene su tamaño → scroll activo.
+  const visibleCanvasHeight = Math.max(dimensions.height, totalFixedHeight + 60)
   
   // Zoom handler - Using native event listener to allow preventDefault on wheel
   // React synthetic wheel events are passive by default, which causes the console warning

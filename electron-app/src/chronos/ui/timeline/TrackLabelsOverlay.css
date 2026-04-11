@@ -23,16 +23,17 @@
   left: 0;
   width: 80px;               /* igual a TRACK_LABEL_WIDTH */
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 2px 2px 2px 6px;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 2px 0 4px;
   box-sizing: border-box;
   border-left: 3px solid transparent;
-  pointer-events: all;       /* re-habilita para esta fila */
+  pointer-events: all;
   background: var(--bg-surface, #1a1a2e);
   border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
   overflow: hidden;
   transition: opacity 0.15s ease;
+  gap: 2px;
 }
 
 .track-label-row:hover {
@@ -47,7 +48,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 2px 0;
+  flex-shrink: 0;
+  padding: 0;
   cursor: ns-resize;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -60,8 +62,8 @@
 
 .track-drag-handle span {
   display: block;
-  width: 14px;
-  height: 1.5px;
+  width: 8px;
+  height: 1px;
   background: var(--text-muted, rgba(255,255,255,0.4));
   border-radius: 1px;
 }
@@ -77,6 +79,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
+  /* Oculta controles hasta hover — se revelan en la misma fila */
 }
 
 .track-label-text {
@@ -113,9 +116,10 @@
   display: flex;
   flex-direction: row;
   gap: 1px;
-  padding-bottom: 2px;
+  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s ease;
+  /* En hover reemplaza visualmente el label (label se achica, controles aparecen) */
 }
 
 .track-label-row:hover .track-controls {
@@ -123,13 +127,13 @@
 }
 
 .track-btn {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   padding: 0;
   border: none;
   border-radius: 2px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
@@ -140,6 +144,7 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .track-btn:hover {

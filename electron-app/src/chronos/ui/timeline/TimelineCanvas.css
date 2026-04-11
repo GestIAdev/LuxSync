@@ -13,7 +13,8 @@
 .timeline-canvas-container {
   /* WAVE 2545.2: position:relative para overlays absolutos internos.
    * NO overflow:hidden — el SVG puede ser más alto que el container
-   * y el chronos-timeline-wrapper padre hace el scroll. */
+   * y el chronos-timeline-wrapper padre hace el scroll.
+   * WAVE 2552.3: flex-shrink:0 ya existía — confirmado aquí. */
   position: relative;
   flex-shrink: 0;
   width: 100%;
@@ -30,13 +31,13 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-outer-wrapper {
-  /* WAVE 2545.2: Crece con el contenido (el SVG inerno determina la altura).
+  /* WAVE 2545.2: Crece con el contenido (el SVG interno determina la altura).
    * min-height:100% asegura que ocupa al menos el viewport del scroll container.
-   * El chronos-timeline-wrapper padre scrollea cuando el contenido supera 100%.
-   * El containerRef (ResizeObserver) apunta aquí y observa el parentElement
-   * (chronos-timeline-wrapper) para medir la altura del viewport correctamente. */
+   * WAVE 2552.3: flex-shrink:0 prohíbe que el flex padre aplaste este contenedor.
+   * El SVG hijo marca la altura real — el wrapper nunca puede ser menor. */
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   width: 100%;
   min-height: 100%;
 }

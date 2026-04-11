@@ -255,17 +255,19 @@
 
 .chronos-timeline-wrapper {
   position: relative;
-  /* WAVE 2552.1: Contención estricta — el wrapper es hijo del grid row (1fr).
-   * flex:1 + min-height:0 impiden que el contenido empuje fuera del área asignada.
-   * overflow:hidden corta cualquier desbordamiento hacia el Arsenal. */
+  /* WAVE 2552.3: El wrapper es hijo del grid row (1fr).
+   * overflow se delega al hijo --scrollable para que el scroll funcione.
+   * min-height:0 permite que el grid lo contenga dentro del 1fr asignado. */
   flex: 1 1 0%;
   min-height: 0;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* WAVE 2542: Scroll punk — estética cyberpunk para la timeline */
 .chronos-timeline-wrapper--scrollable {
-  height: 100%;    /* WAVE 2552.1: ocupa el flex-space asignado, no más */
+  flex: 1 1 0%;     /* WAVE 2552.3: ocupa el espacio del wrapper, scrollea */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;

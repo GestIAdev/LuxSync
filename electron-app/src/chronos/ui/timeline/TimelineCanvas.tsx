@@ -36,6 +36,8 @@ import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
 // 🔥 WAVE 2548: Store V2 — tracks explícitas, sin derivación desde fixtures
 import { getChronosStoreV2 } from '../../core/ChronosStore'
 import type { TimelineTrackV2 } from '../../core/types'
+// WAVE 2552: Track Management UI overlay
+import { TrackLabelsOverlay } from './TrackLabelsOverlay'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -668,6 +670,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     store.on('track-updated', onTrackChange)
     store.on('project-loaded', onTrackChange)
     store.on('project-new', onTrackChange)
+    // WAVE 2552: toggle events
+    store.on('track-enabled-changed', onTrackChange)
+    store.on('track-solo-changed', onTrackChange)
+    store.on('track-locked-changed', onTrackChange)
     return () => {
       store.off('track-added', onTrackChange)
       store.off('track-removed', onTrackChange)
@@ -676,6 +682,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       store.off('track-updated', onTrackChange)
       store.off('project-loaded', onTrackChange)
       store.off('project-new', onTrackChange)
+      // WAVE 2552: toggle events
+      store.off('track-enabled-changed', onTrackChange)
+      store.off('track-solo-changed', onTrackChange)
+      store.off('track-locked-changed', onTrackChange)
     }
   }, [])
 
@@ -778,6 +788,24 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   
   // Calculate total tracks height (now using elastic heights)
   const totalTracksHeight = elasticTracks.reduce((sum, t) => sum + t.height, 0)
+
+  // WAVE 2552: Pre-compute Y offsets and heights for FX tracks (for the HTML overlay)
+  const fxTrackOverlayData = useMemo(() => {
+    const storeV2 = getChronosStoreV2()
+    const sortedStoreTracks = [...storeV2.tracks].sort((a, b) => a.order - b.order)
+    const yOffsets: number[] = []
+    const heights: number[] = []
+    for (const storeTk of sortedStoreTracks) {
+      const elasticTk = elasticTracks.find(et => et.id === storeTk.id)
+      if (!elasticTk) continue
+      const idx = elasticTracks.indexOf(elasticTk)
+      const yOff = elasticTracks.slice(0, idx).reduce((s, t) => s + t.height, 0)
+      yOffsets.push(yOff)
+      heights.push(elasticTk.height)
+    }
+    return { sortedStoreTracks, yOffsets, heights }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeVersion, elasticTracks])
   
   // WAVE 2040.7: Visible canvas height — fill the container, not just the tracks
   // WAVE 2545.3: +60px de padding inferior para que el HUD sticky no tape el último track
@@ -1499,6 +1527,14 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         })}
       </svg>
       
+      {/* WAVE 2552: Track Management UI — label controls overlay (rename, mute, solo, lock, delete, reorder) */}
+      <TrackLabelsOverlay
+        tracks={fxTrackOverlayData.sortedStoreTracks}
+        trackYOffsets={fxTrackOverlayData.yOffsets}
+        trackHeights={fxTrackOverlayData.heights}
+        width={TRACK_LABEL_WIDTH}
+      />
+
       {/* Waveform Canvas Overlay - Positioned over waveform track */}
       {analysisData?.waveform && waveformTrack && (
         <div

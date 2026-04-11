@@ -1,0 +1,172 @@
+/* TrackLabelsOverlay.css — WAVE 2552: Track Management UI */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   OVERLAY CONTAINER
+   Cubre exactamente la columna de labels del timeline (TRACK_LABEL_WIDTH).
+   position:absolute, left:0, top:0 — se superpone sobre el SVG.
+───────────────────────────────────────────────────────────────────────── */
+
+.track-labels-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;      /* pass-through por defecto */
+  z-index: 20;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   TRACK LABEL ROW
+───────────────────────────────────────────────────────────────────────── */
+
+.track-label-row {
+  position: absolute;
+  left: 0;
+  width: 80px;               /* igual a TRACK_LABEL_WIDTH */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 2px 2px 2px 6px;
+  box-sizing: border-box;
+  border-left: 3px solid transparent;
+  pointer-events: all;       /* re-habilita para esta fila */
+  background: var(--bg-surface, #1a1a2e);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+}
+
+.track-label-row:hover {
+  background: var(--bg-elevated, #1e2040);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DRAG HANDLE
+───────────────────────────────────────────────────────────────────────── */
+
+.track-drag-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+  cursor: ns-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  align-self: center;
+}
+
+.track-label-row:hover .track-drag-handle {
+  opacity: 0.4;
+}
+
+.track-drag-handle span {
+  display: block;
+  width: 14px;
+  height: 1.5px;
+  background: var(--text-muted, rgba(255,255,255,0.4));
+  border-radius: 1px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LABEL AREA
+───────────────────────────────────────────────────────────────────────── */
+
+.track-label-area {
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.track-label-text {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+  line-height: 1.2;
+}
+
+.track-rename-input {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--bg-deepest, #0d0d1a);
+  color: var(--text-primary, #e2e8f0);
+  border: 1px solid var(--accent, #3b82f6);
+  border-radius: 2px;
+  padding: 1px 3px;
+  width: 100%;
+  min-width: 0;
+  outline: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CONTROLS ROW
+───────────────────────────────────────────────────────────────────────── */
+
+.track-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 1px;
+  padding-bottom: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.track-label-row:hover .track-controls {
+  opacity: 1;
+}
+
+.track-btn {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+  background: var(--bg-deepest, #0d0d1a);
+  color: var(--text-muted, rgba(255,255,255,0.35));
+  transition: background 0.1s ease, color 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.track-btn:hover {
+  color: var(--text-primary, #e2e8f0);
+  background: var(--bg-elevated, #1e2040);
+}
+
+/* Mute activo = track silenciada */
+.track-btn--mute.active {
+  background: #f59e0b;
+  color: #000;
+}
+
+/* Solo activo */
+.track-btn--solo.active {
+  background: #22c55e;
+  color: #000;
+}
+
+/* Lock activo */
+.track-btn--lock.active {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* Delete — siempre rojo en hover */
+.track-btn--delete:hover {
+  background: #ef4444;
+  color: #fff;
+}

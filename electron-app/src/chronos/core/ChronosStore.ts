@@ -23,6 +23,7 @@ import {
   deserializeProject,
   validateProject,
   PROJECT_EXTENSION,
+  luxToChronos,
 } from './ChronosProject'
 import type { TimelineClip } from './TimelineClip'
 
@@ -737,6 +738,7 @@ import {
   createTrackV2,
   generateChronosId,
 } from './types'
+import { migrateProjectV1toV2, detectProjectVersion } from './migration'
 
 /**
  * 🔥 WAVE 2547: Store V2
@@ -799,12 +801,143 @@ export class ChronosStoreV2 {
   newProject(name: string = 'Untitled'): void {
     this.project = createDefaultProjectV2(name)
     this.emit('project-new', { project: this.project })
-    console.log(`[ChronosStoreV2] 🆕 New project: "${name}"`)
+    console.log(`[ChronosStoreV2] New project: "${name}"`)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TRACK CRUD
+  // LOAD / SAVE (IPC or browser fallback)
   // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Load a project from disk.
+   * Accepts both V1 (1.0.0) and V2 (2.0.0) formats.
+   * V1 files are transparently migrated via migrateProjectV1toV2().
+   *
+   * Falls back to a browser <input> picker in development (no Electron).
+   */
+  async load(filePath?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const chronosAPI = (window as any).luxsync?.chronos
+
+      if (!chronosAPI?.loadProject) {
+        return this._loadFromBrowserInput()
+      }
+
+      const result = await chronosAPI.loadProject({ path: filePath })
+
+      if (result.cancelled) {
+        return { success: false, error: 'Cancelled' }
+      }
+
+      if (!result.success || !result.json) {
+        return { success: false, error: result.error ?? 'Unknown error' }
+      }
+
+      return this._applyLoadedJson(result.json)
+    } catch (err) {
+      console.error('[ChronosStoreV2] Load failed:', err)
+      return { success: false, error: String(err) }
+    }
+  }
+
+  /**
+   * Parse and apply a JSON string to this store.
+   * Handles both V1 and V2 formats transparently.
+   * Exported so tests and drag-drop can reuse it.
+   */
+  applyJson(json: string): { success: boolean; error?: string } {
+    return this._applyLoadedJson(json)
+  }
+
+  private _applyLoadedJson(json: string): { success: boolean; error?: string } {
+    let raw: unknown
+    try {
+      raw = JSON.parse(json)
+    } catch {
+      return { success: false, error: 'Invalid JSON' }
+    }
+
+    const version = detectProjectVersion(raw)
+
+    if (version === '2.0.0') {
+      // Direct load — TODO: add schema validation for V2 once settled
+      this.project = raw as ChronosProjectV2
+      this.emit('project-loaded', { project: this.project })
+      console.log(`[ChronosStoreV2] Loaded V2: "${this.project.meta.name}"`)
+      return { success: true }
+    }
+
+    if (version === '1.0.0') {
+      const lux = deserializeProject(json)
+      if (!lux) {
+        return { success: false, error: 'Failed to deserialize V1 project' }
+      }
+      const v1 = luxToChronos(lux)
+      const migrated = migrateProjectV1toV2(v1)
+      this.project = migrated
+      this.emit('project-loaded', { project: this.project })
+      console.log(`[ChronosStoreV2] Migrated V1 => V2: "${this.project.meta.name}"`)
+      return { success: true }
+    }
+
+    return { success: false, error: `Unknown project version: ${(raw as any)?.version}` }
+  }
+
+  private async _loadFromBrowserInput(): Promise<{ success: boolean; error?: string }> {
+    return new Promise(resolve => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = PROJECT_EXTENSION
+      input.onchange = async () => {
+        const file = input.files?.[0]
+        if (!file) { resolve({ success: false, error: 'No file selected' }); return }
+        const text = await file.text()
+        resolve(this._applyLoadedJson(text))
+      }
+      input.click()
+    })
+  }
+
+  /**
+   * Save current project to disk via Electron IPC.
+   * Serializes as V2 format (version: '2.0.0').
+   */
+  async save(filePath?: string): Promise<{ success: boolean; path?: string; error?: string }> {
+    try {
+      const json = JSON.stringify(this.project, null, 2)
+      const chronosAPI = (window as any).luxsync?.chronos
+
+      if (!chronosAPI?.saveProject) {
+        return this._saveToBrowserDownload(json)
+      }
+
+      const result = await chronosAPI.saveProject({ path: filePath, json })
+      if (result.success) {
+        console.log(`[ChronosStoreV2] Saved: ${result.path}`)
+      }
+      return result
+    } catch (err) {
+      console.error('[ChronosStoreV2] Save failed:', err)
+      return { success: false, error: String(err) }
+    }
+  }
+
+  private _saveToBrowserDownload(json: string): { success: boolean; path?: string; error?: string } {
+    try {
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = this.project.meta.name + '.luxv2'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return { success: true, path: a.download }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  }
 
   /**
    * Crear nueva track apuntando a `targetZone`.

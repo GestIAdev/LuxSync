@@ -21,7 +21,7 @@
 .track-label-row {
   position: absolute;
   left: 0;
-  width: 80px;               /* igual a TRACK_LABEL_WIDTH */
+  width: 80px;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -31,7 +31,7 @@
   pointer-events: all;
   background: var(--bg-surface, #1a1a2e);
   border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-  overflow: hidden;
+  overflow: visible;         /* el HUD puede salir del bounding box */
   transition: opacity 0.15s ease;
   gap: 2px;
 }
@@ -113,17 +113,7 @@
 ───────────────────────────────────────────────────────────────────────── */
 
 .track-controls {
-  display: flex;
-  flex-direction: row;
-  gap: 1px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  /* En hover reemplaza visualmente el label (label se achica, controles aparecen) */
-}
-
-.track-label-row:hover .track-controls {
-  opacity: 1;
+  display: none; /* reemplazado por .track-hover-hud */
 }
 
 .track-btn {
@@ -152,26 +142,86 @@
   background: var(--bg-elevated, #1e2040);
 }
 
-/* Mute activo = track silenciada */
-.track-btn--mute.active {
+/* ─────────────────────────────────────────────────────────────────────────
+   HOVER HUD — WAVE 2552.5
+   Flotante absoluto. No participa en el flujo flex del track-label-row.
+   Tamaño fijo independiente de la altura del track.
+───────────────────────────────────────────────────────────────────────── */
+
+.track-hover-hud {
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  padding: 3px 4px;
+  background: rgba(8, 8, 18, 0.92);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.track-label-row:hover .track-hover-hud {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.track-hud-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(20, 20, 35, 0.9);
+  color: rgba(255, 255, 255, 0.45);
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.track-hud-btn:hover {
+  color: #fff;
+  background: rgba(40, 40, 60, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Mute activo */
+.track-hud-btn--mute.active {
   background: #f59e0b;
   color: #000;
+  border-color: #f59e0b;
 }
 
 /* Solo activo */
-.track-btn--solo.active {
+.track-hud-btn--solo.active {
   background: #22c55e;
   color: #000;
+  border-color: #22c55e;
 }
 
 /* Lock activo */
-.track-btn--lock.active {
+.track-hud-btn--lock.active {
   background: #6366f1;
   color: #fff;
+  border-color: #6366f1;
 }
 
-/* Delete — siempre rojo en hover */
-.track-btn--delete:hover {
+/* Delete — rojo en hover */
+.track-hud-btn--delete:hover {
   background: #ef4444;
   color: #fff;
+  border-color: #ef4444;
 }

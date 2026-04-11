@@ -170,31 +170,31 @@ const TrackLabelRow: React.FC<TrackLabelRowProps> = memo(({ track, yOffset, heig
         )}
       </div>
 
-      {/* Controls */}
-      <div className="track-controls">
+      {/* Controls — HUD flotante, position:absolute, no interfiere con el label */}
+      <div className="track-hover-hud">
         <button
-          className={`track-btn track-btn--mute ${isMuted ? 'active' : ''}`}
+          className={`track-hud-btn track-hud-btn--mute ${isMuted ? 'active' : ''}`}
           title={isMuted ? 'Unmute track' : 'Mute track'}
           onClick={handleToggleEnabled}
         >
           M
         </button>
         <button
-          className={`track-btn track-btn--solo ${track.solo ? 'active' : ''}`}
+          className={`track-hud-btn track-hud-btn--solo ${track.solo ? 'active' : ''}`}
           title={track.solo ? 'Unsolo' : 'Solo'}
           onClick={handleToggleSolo}
         >
           S
         </button>
         <button
-          className={`track-btn track-btn--lock ${track.locked ? 'active' : ''}`}
+          className={`track-hud-btn track-hud-btn--lock ${track.locked ? 'active' : ''}`}
           title={track.locked ? 'Unlock track' : 'Lock track'}
           onClick={handleToggleLocked}
         >
           L
         </button>
         <button
-          className="track-btn track-btn--delete"
+          className="track-hud-btn track-hud-btn--delete"
           title="Delete track"
           onClick={handleDelete}
         >

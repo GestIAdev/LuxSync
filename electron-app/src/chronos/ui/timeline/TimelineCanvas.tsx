@@ -822,10 +822,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     if (!container) return
     
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      
       if (e.ctrlKey || e.metaKey) {
-        // Zoom
+        // Zoom — preventDefault para evitar zoom del navegador
+        e.preventDefault()
         const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
         setViewport(prev => {
           const newPPS = Math.max(
@@ -839,13 +838,12 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
             endTime: prev.startTime + visibleDuration,
           }
         })
-      } else {
-        // Pan - user is manually scrolling
-        lastUserScrollRef.current = Date.now()  // Mark user scroll time
-        const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
+      } else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        // Pan horizontal — Shift+wheel o scroll horizontal nativo
+        e.preventDefault()
+        lastUserScrollRef.current = Date.now()
+        const panAmount = (e.shiftKey ? e.deltaY : e.deltaX) * 10
         setViewport(prev => {
-          // 🔧 WAVE 2040.14: VIEWPORT RECALIBRATION — Clamp to t=0, no negative scroll
-          // User should zoom out to see t=0 clips fully, not scroll into negative time
           const minStartTime = 0
           const newStart = Math.max(minStartTime, prev.startTime + panAmount)
           const duration = prev.endTime - prev.startTime
@@ -856,6 +854,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           }
         })
       }
+      // Sin modificador + deltaY dominante → scroll vertical NATIVO del padre.
+      // No llamamos preventDefault — el overflow-y:auto del wrapper hace su trabajo.
     }
     
     // Register with { passive: false } to allow preventDefault

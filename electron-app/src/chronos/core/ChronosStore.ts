@@ -1129,14 +1129,17 @@ export class ChronosStoreV2 {
 
 // ─────────────────────────────────────────────────────────────────────────
 // SINGLETON V2
+// Anclado en globalThis para sobrevivir recargas HMR de Vite en desarrollo.
+// En producción el módulo se evalúa una vez — comportamiento idéntico.
 // ─────────────────────────────────────────────────────────────────────────
 
-let instanceV2: ChronosStoreV2 | null = null
+const STORE_V2_KEY = '__luxsync_chronos_store_v2__'
 
 export function getChronosStoreV2(): ChronosStoreV2 {
-  if (!instanceV2) {
-    instanceV2 = new ChronosStoreV2()
+  const g = globalThis as Record<string, unknown>
+  if (!(g[STORE_V2_KEY] instanceof ChronosStoreV2)) {
+    g[STORE_V2_KEY] = new ChronosStoreV2()
     console.log('[ChronosStoreV2] 🔥 Store V2 initialized')
   }
-  return instanceV2
+  return g[STORE_V2_KEY] as ChronosStoreV2
 }

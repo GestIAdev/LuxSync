@@ -1637,6 +1637,8 @@ const ZoneTrackFooter = memo(() => {
   // Usamos bottom (distancia desde el borde inferior del viewport) + left.
   const [dropdownPos, setDropdownPos] = useState<{ bottom: number; left: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
+  // WAVE 2552.2: ref al portal para el outside-click check
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open || !btnRef.current) {
@@ -1652,7 +1654,14 @@ const ZoneTrackFooter = memo(() => {
   useEffect(() => {
     if (!open) return
     const handleOutside = (e: MouseEvent) => {
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
+      // WAVE 2552.2: ignorar clicks dentro del portal del dropdown.
+      // El portal vive en document.body fuera del árbol del botón,
+      // así que btnRef.current.contains() devuelve false para sus items.
+      // Si cerramos en mousedown, el click del item nunca llega al handler.
+      const target = e.target as Node
+      const insideBtn = btnRef.current?.contains(target) ?? false
+      const insideDropdown = dropdownRef.current?.contains(target) ?? false
+      if (!insideBtn && !insideDropdown) {
         setOpen(false)
       }
     }
@@ -1678,6 +1687,7 @@ const ZoneTrackFooter = memo(() => {
 
       {open && dropdownPos && createPortal(
         <div
+          ref={dropdownRef}
           className="zone-dropdown zone-dropdown--portal"
           style={{ bottom: dropdownPos.bottom, left: dropdownPos.left }}
         >

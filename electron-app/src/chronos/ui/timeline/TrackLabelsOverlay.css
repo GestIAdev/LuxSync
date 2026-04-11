@@ -40,6 +40,17 @@
   background: var(--bg-elevated, #1e2040);
 }
 
+/* Extiende el área de hover hacia la derecha para cubrir el HUD sin gap muerto */
+.track-label-row::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 80px;
+  width: 120px;   /* cubre el HUD completo */
+  height: 100%;
+  pointer-events: all;  /* captura el hover y lo propaga al padre — mantiene :hover activo */
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    DRAG HANDLE
 ───────────────────────────────────────────────────────────────────────── */
@@ -150,7 +161,7 @@
 
 .track-hover-hud {
   position: absolute;
-  left: 84px;          /* justo a la derecha del label (80px ancho + 4px gap) */
+  left: 80px;          /* pegado al borde derecho del label, sin gap */
   top: 50%;
   transform: translateY(-50%);
   z-index: 50;

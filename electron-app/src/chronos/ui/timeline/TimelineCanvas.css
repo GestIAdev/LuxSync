@@ -439,12 +439,14 @@
   overflow: visible;
 }
 
-/* WAVE 2545.2: Portal mode — posición absoluta relativa al body
- * El top/left se inyectan por inline style desde ZoneTrackFooter */
+/* WAVE 2545.2: Portal mode — posición fija relativa al viewport.
+ * WAVE 2552.1: el top/left O el bottom/left se inyectan por inline style.
+ * El sentido de apertura (arriba/abajo) lo decide ZoneTrackFooter en runtime. */
 .zone-dropdown--portal {
   position: fixed;
   top: unset;
   left: unset;
+  bottom: unset;
   z-index: 9999;
 }
 

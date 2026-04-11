@@ -1633,7 +1633,9 @@ const ZONE_CATALOG: Array<{ label: string; zones: Array<CanonicalZone | 'global'
 
 const ZoneTrackFooter = memo(() => {
   const [open, setOpen] = useState(false)
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
+  // WAVE 2552.1: Gravedad invertida — el dropdown crece hacia arriba.
+  // Usamos bottom (distancia desde el borde inferior del viewport) + left.
+  const [dropdownPos, setDropdownPos] = useState<{ bottom: number; left: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -1642,7 +1644,9 @@ const ZoneTrackFooter = memo(() => {
       return
     }
     const rect = btnRef.current.getBoundingClientRect()
-    setDropdownPos({ top: rect.bottom + 4, left: rect.left })
+    // bottom = distancia del borde superior del botón al borde inferior del viewport + margen.
+    // Así el menú "crece" desde el botón hacia arriba sin salir del viewport.
+    setDropdownPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left })
   }, [open])
 
   useEffect(() => {
@@ -1675,7 +1679,7 @@ const ZoneTrackFooter = memo(() => {
       {open && dropdownPos && createPortal(
         <div
           className="zone-dropdown zone-dropdown--portal"
-          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+          style={{ bottom: dropdownPos.bottom, left: dropdownPos.left }}
         >
           {ZONE_CATALOG.map((group, gi) => (
             <div key={group.label} className="zone-dropdown-group">

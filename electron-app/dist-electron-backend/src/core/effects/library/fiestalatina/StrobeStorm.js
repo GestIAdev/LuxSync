@@ -62,8 +62,9 @@ export class StrobeStorm extends BaseEffect {
         this.phaseStartTime = 0;
         this.currentFrequency = 0;
         this.maxAllowedFrequency = 15; // Default, overridden by vibe
-        this.strobePhase = 0; // 0-1, ciclo interno del strobe
+        this.strobePhase = 0; // ms acumulados dentro del half-cycle actual
         this.isFlashOn = false;
+        this.flashDirty = false; // 🔧 WAVE 2493: garantiza 1 frame de visibilidad
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ export class StrobeStorm extends BaseEffect {
         this.currentFrequency = 0;
         this.strobePhase = 0;
         this.isFlashOn = false;
+        this.flashDirty = false;
         const mode = this.config.degradedMode ? '(DEGRADED)' : '';
         console.log(`[StrobeStorm ⚡] TRIGGERED! MaxHz=${this.maxAllowedFrequency} ${mode}`);
     }
@@ -158,21 +160,31 @@ export class StrobeStorm extends BaseEffect {
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Strobe cycle logic
+    //
+    // 🔧 WAVE 2493: FRAME-GUARANTEED STROBE
+    // At 14Hz the ON half-cycle is 35ms — shorter than a single frame at
+    // 25fps (40ms) or under STAMPEDE lag (55ms). The old code advanced
+    // strobePhase and derived isFlashOn from < 0.5, which meant the
+    // ON→OFF transition could happen BETWEEN two getOutput() calls and
+    // the simulator would NEVER see the flash.
+    //
+    // FIX: Track elapsed time within each half-cycle. When the half-cycle
+    // toggles, set a "flash dirty" flag so the NEXT getOutput() always
+    // sees at least 1 frame of the new state.
     // ─────────────────────────────────────────────────────────────────────────
     updateStrobeCycle(deltaMs) {
         if (this.currentFrequency <= 0) {
             this.isFlashOn = false;
             return;
         }
-        // Avanzar fase del strobe
-        const msPerCycle = 1000 / this.currentFrequency;
-        this.strobePhase += deltaMs / msPerCycle;
-        // Ciclo completo
-        if (this.strobePhase >= 1) {
-            this.strobePhase = this.strobePhase % 1;
+        const halfCycleMs = 500 / this.currentFrequency; // half-period in ms
+        this.strobePhase += deltaMs;
+        // Toggle flash state each half-cycle, guarantee at least 1 frame visible
+        while (this.strobePhase >= halfCycleMs) {
+            this.strobePhase -= halfCycleMs;
+            this.isFlashOn = !this.isFlashOn;
+            this.flashDirty = true; // output MUST read this state at least once
         }
-        // Flash ON en primera mitad del ciclo
-        this.isFlashOn = this.strobePhase < 0.5;
     }
     calculateTargetFrequency() {
         // Base frequency modulada por Z-Score
@@ -185,24 +197,35 @@ export class StrobeStorm extends BaseEffect {
     // Output generators
     // ─────────────────────────────────────────────────────────────────────────
     getStrobeOutput() {
-        const intensity = this.isFlashOn ? this.triggerIntensity : 0;
+        // 🔧 WAVE 2493: Dual-path output
+        //
+        // DMX HARDWARE: dimmerOverride = triggerIntensity (ALWAYS on),
+        //   strobeRate = currentFrequency → the fixture's strobe channel does
+        //   the real flashing at 14Hz. No software toggle needed.
+        //
+        // SIMULATOR VISUAL: intensity toggles ON/OFF for the canvas/3D viz.
+        //   flashDirty guarantees at least 1 frame of the ON state is emitted.
+        const visualIntensity = this.isFlashOn ? this.triggerIntensity : 0;
+        // Consume the dirty flag — the simulator got its frame
+        this.flashDirty = false;
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.calculateProgress(),
             zones: this.zones,
-            intensity: intensity,
-            // ⚡ STROBE RATE - El DMX se encarga del flash real
+            intensity: visualIntensity,
+            // ⚡ STROBE RATE — the DMX fixture handles the real flash
             strobeRate: this.currentFrequency,
-            // Dimmer al 100% cuando flash ON, 0% cuando OFF
-            dimmerOverride: intensity,
+            // 🔧 WAVE 2493: Dimmer ALWAYS at full during storm.
+            // The strobe channel handles the flashing. Keeping dimmer at 0
+            // during flash-OFF killed the effect on real hardware too.
+            dimmerOverride: this.triggerIntensity,
             // Blanco puro para máximo impacto
-            whiteOverride: intensity,
+            whiteOverride: this.triggerIntensity,
             // Color del flash
             colorOverride: this.config.flashColor,
-            // ⚡ WAVE 2214: globalComposition SIEMPRE 1.0 — el efecto era invisible en attack/decay
-            // Antes: (sustain && freq > 5) ? 1.0 : 0 → eso mataba el efecto 230ms de cada activación
+            // ⚡ WAVE 2214: globalComposition SIEMPRE 1.0
             globalComposition: 1.0,
         };
     }

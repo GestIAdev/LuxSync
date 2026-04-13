@@ -11,15 +11,19 @@
  */
 
 import React, { useCallback } from 'react'
-import { IntensityIcon } from '../../icons/LuxIcons'
+import { IntensityIcon, StrobeIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
   value: number          // 0-100
   hasOverride: boolean   // Is dimmer under manual control?
+  strobeValue: number    // 0-100 strobe speed
+  hasStrobeOverride: boolean // Is strobe under manual control?
   isExpanded: boolean    // Is section expanded?
   onToggle: () => void   // Toggle expansion
   onChange: (value: number) => void
   onRelease: () => void
+  onStrobeChange: (value: number) => void
+  onStrobeRelease: () => void
 }
 
 // Quick presets
@@ -31,13 +35,26 @@ const PRESETS = [
   { label: '100%', value: 100 },
 ]
 
+// Strobe presets (Hz-equivalent labels)
+const STROBE_PRESETS = [
+  { label: 'OFF', value: 0 },
+  { label: 'SLOW', value: 25 },
+  { label: 'MED', value: 50 },
+  { label: 'FAST', value: 75 },
+  { label: 'MAX', value: 100 },
+]
+
 export const IntensitySection: React.FC<IntensitySectionProps> = ({
   value,
   hasOverride,
+  strobeValue,
+  hasStrobeOverride,
   isExpanded,
   onToggle,
   onChange,
   onRelease,
+  onStrobeChange,
+  onStrobeRelease,
 }) => {
   
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,8 +65,18 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
     onChange(presetValue)
   }, [onChange])
   
+  const handleStrobeSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onStrobeChange(Number(e.target.value))
+  }, [onStrobeChange])
+  
+  const handleStrobePresetClick = useCallback((presetValue: number) => {
+    onStrobeChange(presetValue)
+  }, [onStrobeChange])
+  
+  const hasAnyOverride = hasOverride || hasStrobeOverride
+  
   return (
-    <div className={`programmer-section intensity-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+    <div className={`programmer-section intensity-section ${hasAnyOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
@@ -57,12 +84,13 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
           INTENSITY
         </h4>
         <div className="header-right">
-          {hasOverride && (
+          {hasAnyOverride && (
             <button 
               className="release-btn"
               onClick={(e) => {
                 e.stopPropagation()
                 onRelease()
+                onStrobeRelease()
               }}
               title="Release to AI control"
             >
@@ -74,7 +102,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
       
       {isExpanded && (
         <>
-          {/* Main Slider */}
+          {/* Main Dimmer Slider */}
           <div className="intensity-slider-container">
             <input
               type="range"
@@ -112,6 +140,51 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
           {hasOverride && (
             <div className="override-badge">MANUAL</div>
           )}
+          
+          {/* ⚡ WAVE 2494: STROBE CONTROL */}
+          <div className="strobe-control-section">
+            <div className="strobe-header">
+              <StrobeIcon size={14} className="strobe-icon" />
+              <span className="strobe-label">STROBE</span>
+              {hasStrobeOverride && (
+                <button
+                  className="release-btn release-btn-mini"
+                  onClick={onStrobeRelease}
+                  title="Release strobe to AI"
+                >
+                  ↺
+                </button>
+              )}
+            </div>
+            
+            <div className="intensity-slider-container">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={strobeValue}
+                onChange={handleStrobeSliderChange}
+                className="intensity-slider strobe-slider"
+              />
+              <div className="intensity-value">{strobeValue === 0 ? 'OFF' : `${Math.round(strobeValue)}%`}</div>
+            </div>
+            
+            <div className="intensity-presets strobe-presets">
+              {STROBE_PRESETS.map(preset => (
+                <button
+                  key={preset.label}
+                  className={`preset-btn ${strobeValue === preset.value ? 'active' : ''}`}
+                  onClick={() => handleStrobePresetClick(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            
+            {hasStrobeOverride && (
+              <div className="override-badge strobe-override">STROBE MANUAL</div>
+            )}
+          </div>
         </>
       )}
     </div>

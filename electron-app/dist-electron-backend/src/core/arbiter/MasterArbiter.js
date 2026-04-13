@@ -34,7 +34,7 @@ import { EventEmitter } from 'events';
 import { ControlLayer, DEFAULT_ARBITER_CONFIG, } from './types';
 import { mergeChannel, clampDMX } from './merge/MergeStrategies';
 import { CrossfadeEngine } from './CrossfadeEngine';
-import { normalizeZone } from '../stage/ShowFileV2';
+import { resolveZone } from '../zones/ZoneMapper';
 export class MasterArbiter extends EventEmitter {
     constructor(config = {}) {
         super();
@@ -84,6 +84,10 @@ export class MasterArbiter extends EventEmitter {
         this._playbackMeta = { hasActiveVibe: false, vibeId: null };
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
+        // 🔥 WAVE 2495: Grand Master Speed — scales Layer 2 pattern speed too
+        // Mirrors vibeMovementManager.globalSpeedMultiplier but for manual patterns.
+        // Set via setGrandMasterSpeed() called from ArbiterIPCHandlers.
+        this.grandMasterSpeed = 1.0; // 0.1-2.0 multiplier
         // Pattern Engine (WAVE 376)
         this.activePatterns = new Map();
         // Group Formations (WAVE 376)
@@ -197,81 +201,35 @@ export class MasterArbiter extends EventEmitter {
         return Array.from(this.fixtures.keys());
     }
     /**
-     * 🎯 WAVE 2067: ZONE-AWARE FIXTURE RESOLUTION
+     * 🗺️ WAVE 2543.4: Get fixtures in ZoneMappableFixture format for ZoneMapper.
+     * Lightweight projection — only the fields ZoneMapper needs.
+     */
+    getFixturesForZoneMapping() {
+        const result = [];
+        for (const [id, fixture] of this.fixtures) {
+            result.push({
+                id,
+                zone: fixture.zone ?? 'unassigned',
+                position: fixture.position ? { x: fixture.position.x } : undefined,
+            });
+        }
+        return result;
+    }
+    /**
+     * 🎯 WAVE 2067 → WAVE 2543.4: ZONE-AWARE FIXTURE RESOLUTION
      *
-     * Maps effect zone IDs (from EffectFrameOutput.zoneOverrides) to real fixture IDs.
-     * Effects use abstract zones like 'front', 'back', 'all-pars', 'all-movers'.
-     * This resolves them to the actual fixtures registered in the Arbiter.
-     *
-     * ZONE VOCABULARY:
-     * ┌─────────────────────┬──────────────────────────────────────────────────┐
-     * │ Effect Zone         │ Maps To (CanonicalZones)                        │
-     * ├─────────────────────┼──────────────────────────────────────────────────┤
-     * │ 'front'             │ front                                           │
-     * │ 'back'              │ back                                            │
-     * │ 'floor'             │ floor                                           │
-     * │ 'all-pars' / 'pars' │ front + back + floor                            │
-     * │ 'all-movers'/'movers│ movers-left + movers-right                     │
-     * │ 'center'            │ center                                          │
-     * │ 'air'               │ air                                             │
-     * │ 'all' / '*'         │ ALL fixtures                                    │
-     * │ 'front_left' etc.   │ front (positional subset - future)             │
-     * └─────────────────────┴──────────────────────────────────────────────────┘
+     * Now delegates to ZoneMapper (Single Source of Truth).
+     * Handles canonical zones, composites, stereo sub-zones, and legacy formats.
      *
      * @param effectZone Zone ID from the effect's zoneOverrides
      * @returns Array of fixture IDs belonging to that zone
      */
     getFixtureIdsByZone(effectZone) {
-        const zone = effectZone.toLowerCase().trim();
-        // Wildcard → everything
-        if (zone === 'all' || zone === '*') {
-            return this.getFixtureIds();
-        }
-        // Composite zones → union of canonical zones
-        const COMPOSITE_ZONES = {
-            'all-pars': ['front', 'back', 'floor'],
-            'pars': ['front', 'back', 'floor'],
-            'all-movers': ['movers-left', 'movers-right'],
-            'movers': ['movers-left', 'movers-right'],
-        };
-        const canonicalTargets = COMPOSITE_ZONES[zone]
-            ? COMPOSITE_ZONES[zone]
-            : [zone]; // Single zone — use as-is
-        // 🎯 WAVE 2067.1: Resolve via normalizeZone() — handles ALL legacy formats
-        // BEFORE: fixture.zone.toLowerCase() → 'front_pars' ≠ 'front' → MISS
-        // NOW:    normalizeZone('FRONT_PARS') → 'front' → MATCH
-        const result = [];
-        for (const [id, fixture] of this.fixtures) {
-            const fixtureZone = normalizeZone(fixture.zone);
-            if (canonicalTargets.includes(fixtureZone)) {
-                result.push(id);
-            }
-        }
-        // Positional sub-zones (GatlingRaid style): front_left, back_center, etc.
-        // These need stereo/position resolution — match by zone prefix + position
-        if (result.length === 0 && zone.includes('_')) {
-            const [zoneBase, side] = zone.split('_');
-            for (const [id, fixture] of this.fixtures) {
-                const fixtureZone = normalizeZone(fixture.zone);
-                if (!fixtureZone.startsWith(zoneBase))
-                    continue;
-                // Match by name/position hints
-                const name = (fixture.name || '').toLowerCase();
-                if (side === 'left' && (name.includes('left') || name.includes(' l ') || fixtureZone.includes('left'))) {
-                    result.push(id);
-                }
-                else if (side === 'right' && (name.includes('right') || name.includes(' r ') || fixtureZone.includes('right'))) {
-                    result.push(id);
-                }
-                else if (side === 'center' && (name.includes('center') || name.includes('centre') || fixtureZone === zoneBase)) {
-                    result.push(id);
-                }
-            }
-        }
+        const fixtures = this.getFixturesForZoneMapping();
+        const result = resolveZone(effectZone, fixtures);
         // FALLBACK: If zone resolved to NOTHING, return ALL fixtures rather than silence.
-        // Better to light everything than light nothing.
         if (result.length === 0) {
-            console.warn(`[MasterArbiter] ⚠️ WAVE 2067: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`);
+            console.warn(`[MasterArbiter] ⚠️ WAVE 2543.4: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`);
             return this.getFixtureIds();
         }
         return result;
@@ -387,6 +345,31 @@ export class MasterArbiter extends EventEmitter {
             });
             if (this.config.debug) {
                 console.log(`[MasterArbiter] ➕ New override: ${override.fixtureId}`, override.overrideChannels);
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2497: DIMMER AUTO-TAKE — "Add Dimmer on Take"
+        //
+        // Inspired by professional consoles (GrandMA, Chamsys, ETC):
+        // When the user grabs manual control of ANY channel (pan, tilt, color...)
+        // but Layer 0 has dimmer=0 (idle vibe = blackout), the fixture is invisible.
+        // The user moves the XY pad and nothing happens — frustrating.
+        //
+        // FIX: If the merged override does NOT include 'dimmer' AND Layer 0's
+        // dimmer is 0 (blackout), auto-inject dimmer=255 (full intensity).
+        // This makes manual control work immediately without selecting a vibe.
+        //
+        // The user can still manually adjust dimmer later via IntensitySection.
+        // When override is released (clearManual), dimmer auto-take is also released,
+        // restoring Layer 0 control (which will be 0 = lights off = correct).
+        // ═══════════════════════════════════════════════════════════════════════
+        const finalOverride = this.layer2_manualOverrides.get(override.fixtureId);
+        if (finalOverride && !finalOverride.overrideChannels.includes('dimmer')) {
+            const titanValues = this.getTitanValuesForFixture(override.fixtureId);
+            if (titanValues.dimmer === 0) {
+                finalOverride.controls = { ...finalOverride.controls, dimmer: 255 };
+                finalOverride.overrideChannels = [...finalOverride.overrideChannels, 'dimmer'];
+                console.log(`[MasterArbiter] 💡 DIMMER AUTO-TAKE: ${override.fixtureId} — Layer 0 dimmer=0, auto-injecting dimmer=255`);
             }
         }
         // Emit event
@@ -620,6 +603,17 @@ export class MasterArbiter extends EventEmitter {
      */
     getGrandMaster() {
         return this.grandMaster;
+    }
+    /**
+     * 🔥 WAVE 2495: Set Grand Master Speed — scales Layer 2 manual pattern speed.
+     * This is called from ArbiterIPCHandlers alongside vibeMovementManager.setGlobalSpeedMultiplier()
+     * so BOTH Layer 0 (AI CHOREO) and Layer 2 (manual patterns) respond to the Master Speed slider.
+     */
+    setGrandMasterSpeed(value) {
+        this.grandMasterSpeed = Math.max(0.1, Math.min(2.0, value));
+    }
+    getGrandMasterSpeed() {
+        return this.grandMasterSpeed;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
@@ -1414,7 +1408,10 @@ export class MasterArbiter extends EventEmitter {
         // This is defense-in-depth: even if the IPC normalizer is bypassed, the engine won't
         // let any pattern cycle faster than 0.5 Hz (2 seconds per cycle).
         const BETA_MAX_SPEED = 0.5; // Hz — hard limit during beta
-        const safeSpeed = Math.min(Math.max(0.01, pattern.speed), BETA_MAX_SPEED);
+        // 🔥 WAVE 2495: Apply grandMasterSpeed multiplier to manual patterns.
+        // This makes the Master Speed slider in CommandDeck affect BOTH AI and manual patterns.
+        const scaledSpeed = pattern.speed * this.grandMasterSpeed;
+        const safeSpeed = Math.min(Math.max(0.01, scaledSpeed), BETA_MAX_SPEED);
         const cycleDurationMs = (1000 / safeSpeed);
         const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs;
         const t = phase * 2 * Math.PI; // 0 to 2π
@@ -1552,11 +1549,13 @@ export class MasterArbiter extends EventEmitter {
      */
     getTitanValuesForFixture(fixtureId) {
         const fixture = this.fixtures.get(fixtureId);
-        // 🏎️ WAVE 2062: EL FRENO DE MANO DE HARDWARE
+        // 🏎️ WAVE 2062 + WAVE 2495: EL FRENO DE MANO DE HARDWARE
         // Buscamos el canal de velocidad en tu JSON para no enviar 0 (violencia máxima)
         // channels es Array<{ index, name, type, is16bit, defaultValue }>
+        // 🔥 WAVE 2495: Fallback changed from 0 → 128. speed=0 means "no interpolation"
+        // on most moving heads (stepper jumps). 128 = moderate speed with acceleration curves.
         const speedChannel = fixture?.channels?.find((c) => c.type === 'speed');
-        const defaultSpeed = speedChannel?.defaultValue ?? 0;
+        const defaultSpeed = speedChannel?.defaultValue ?? 128;
         // 🔥 WAVE 1135.3: Leer defaultValue real de pan/tilt desde el JSON del fixture
         // El Forge permite configurar el centro mecánico del equipo — aquí lo honramos
         const panChannel = fixture?.channels?.find((c) => c.type === 'pan');

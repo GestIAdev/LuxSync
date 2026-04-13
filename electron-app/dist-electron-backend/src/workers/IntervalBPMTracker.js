@@ -301,13 +301,21 @@ export class IntervalBPMTracker {
                             // Safety: only fires when conf EXACTLY ==0.00 (spread ≥ 60 BPM).
                             // conf=0.07 (spread=56 BPM, e.g. sub-beat contamination) does NOT
                             // trigger the purge — those are handled by the normal rotation.
+                            //
+                            // 🩸 WAVE 2492: PURGE RATIO TIGHTENED — 0.50/2.00 → 0.65/1.55
+                            // LOG EVIDENCE (Hadtechnominimal.md): bpmBuf=[161,92,161,161,161,161,86,81]
+                            // medianRef=161. Values 81 (ratio=0.503), 86 (0.534), 92 (0.571), 108 (0.671)
+                            // ALL passed the old 0.50 threshold → never purged → spread=104 → conf=0.000 FOREVER.
+                            // These are sub-harmonic ghosts (missed-kick intervals measured as 2x-3x real interval).
+                            // The outlier REJECTION (line ~390) already uses 0.65-1.55 ratio band.
+                            // The purge should match: anything outside ±35% of median is garbage when conf=0.00.
                             if (this.bpmHistoryCount >= BPM_HISTORY_SIZE && this.currentConfidence < 0.001) {
                                 const medianRef = this.stableBpm;
                                 if (medianRef > 0) {
                                     for (let j = 0; j < BPM_HISTORY_SIZE; j++) {
                                         const ratio = this.bpmHistory[j] / medianRef;
-                                        if (ratio < 0.50 || ratio > 2.00) {
-                                            // Replace extreme outlier with the median — neutral contribution
+                                        if (ratio < 0.65 || ratio > 1.55) {
+                                            // Replace outlier with the median — neutral contribution
                                             this.bpmHistory[j] = medianRef;
                                         }
                                     }

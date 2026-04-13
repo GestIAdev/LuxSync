@@ -1241,6 +1241,64 @@
    Moved to top-right corner of XY Pad to save vertical space
     */
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⚡ WAVE 2494: STROBE CONTROL — Inside Intensity Section
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.strobe-control-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.strobe-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+
+.strobe-icon {
+  color: #ff3366;
+  opacity: 0.9;
+}
+
+.strobe-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff3366;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.strobe-slider {
+  background: linear-gradient(90deg, #1a1a2e 0%, #ff3366 100%) !important;
+}
+
+.strobe-slider::-webkit-slider-thumb {
+  background: #ff3366 !important;
+  box-shadow: 0 0 6px rgba(255, 51, 102, 0.5) !important;
+}
+
+.strobe-presets .preset-btn.active {
+  background: rgba(255, 51, 102, 0.3) !important;
+  border-color: #ff3366 !important;
+  color: #ff3366 !important;
+}
+
+.strobe-override {
+  background: rgba(255, 51, 102, 0.2) !important;
+  border-color: rgba(255, 51, 102, 0.4) !important;
+  color: #ff3366 !important;
+}
+
+.release-btn-mini {
+  font-size: 11px !important;
+  padding: 1px 5px !important;
+  margin-left: auto;
+}
+
 .center-btn-overlay {
   position: absolute;
   top: 8px;

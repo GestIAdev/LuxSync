@@ -15,7 +15,6 @@
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
-import { VibeManager } from '../../engine/vibe/VibeManager';
 import { ColorTranslator } from '../../hal/translation/ColorTranslator';
 import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles';
 // 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
@@ -43,11 +42,14 @@ export function registerArbiterHandlers(masterArbiter) {
         return { grandMaster: masterArbiter.getGrandMaster() };
     });
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎚️ WAVE 2472: GRANDMASTER SPEED (AI CORE)
-    // Multiplies the AI’s generative phase flow. Does NOT touch manual patterns.
+    // 🎚️ WAVE 2495: GRANDMASTER SPEED (UNIVERSAL)
+    // Multiplies BOTH the AI's generative phase flow (Layer 0 via VibeMovementManager)
+    // AND manual pattern speed (Layer 2 via MasterArbiter.calculatePatternOffset).
+    // This makes the Master Speed slider in CommandDeck a TRUE global control.
     // ═══════════════════════════════════════════════════════════════════════
     ipcMain.handle('lux:arbiter:setGrandMasterSpeed', (_event, { value }) => {
         vibeMovementManager.setGlobalSpeedMultiplier(value);
+        masterArbiter.setGrandMasterSpeed(value);
         return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
     });
     ipcMain.handle('lux:arbiter:getGrandMasterSpeed', () => {
@@ -137,20 +139,22 @@ export function registerArbiterHandlers(masterArbiter) {
             return { success: false, error: 'No fixtures registered for wildcard' };
         }
         // ═══════════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 1219: AUTO-INJECT SPEED FOR MOVEMENT COMMANDS
-        // Moving heads require speed channel to be set for pan/tilt to work.
-        // If pan or tilt is being controlled but speed is not specified, inject speed=0 (fast)
+        // 🔥 WAVE 2495: SPEED AUTO-INJECT REMOVED (was WAVE 1219)
+        // 
+        // OLD: Injected speed=0 (DMX fastest, NO interpolation) into every pan/tilt
+        //      override. This killed motor interpolation — steppers jumped brutally
+        //      between positions because speed=0 = "move instantly, no acceleration".
+        //
+        // NEW: Do NOT inject speed. mergeChannelForFixture falls through to
+        //      getTitanValuesForFixture which reads the fixture's defaultValue
+        //      (typically 128 = smooth interpolation with acceleration curves).
+        //      The fixture's internal MCU handles motor ramping when speed > 0.
+        //
+        // The UI (PositionSection) already stopped sending speed:0 in WAVE 2190,
+        // but this handler was re-injecting it — making the UI fix useless.
         // ═══════════════════════════════════════════════════════════════════════════
-        const hasMovement = channels.includes('pan') || channels.includes('tilt');
-        const hasSpeed = channels.includes('speed');
         let finalControls = { ...controls };
         let finalChannels = [...channels];
-        if (hasMovement && !hasSpeed) {
-            finalControls.speed = controls.speed ?? 0; // 0 = fastest movement
-            finalChannels.push('speed');
-            // Disabled: WAVE 2052 - Too spammy (60 FPS)
-            // console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
-        }
         // ═══════════════════════════════════════════════════════════════════════════
         // 🎨 WAVE 2042.32: COLOR TRANSLATION - RGB → Color Wheel
         // Commander sends RGB, but fixtures might have color wheels.
@@ -354,20 +358,21 @@ export function registerArbiterHandlers(masterArbiter) {
             pattern = 'circle';
         }
         // Convert UI values (0-100) to engine values
-        // 🔥 WAVE 2471: VIBE-AWARE SPEED NORMALIZATION
-        // The slider maps into the active vibe's speedRange instead of a fixed 0.05-0.5 Hz.
-        // This means chill-lounge (max=0.3 Hz) will ALWAYS be slower than techno (max=0.5 Hz)
-        // even with the slider at 100% — the vibe governs the ceiling.
+        // 🔥 WAVE 2498: FIXED RANGE FOR MANUAL PATTERNS (Layer 2)
+        // OLD (WAVE 2471): Used vibe's speedRange → BROKEN in idle because
+        // idle has speedRange {min:0, max:0}. The ?? fallbacks never triggered
+        // because 0 is a real value (not null/undefined). Result: speed=0 Hz always.
         //
-        // Hard cap: 0.5 Hz (BETA_MAX_SPEED in calculatePatternOffset) is still enforced
-        // at the engine level as motor-safety defense-in-depth.
+        // Manual patterns are PROGRAMMER controls (Layer 2), not AI (Layer 0).
+        // They must work identically regardless of which vibe is active.
+        // Fixed range: 0.05-0.5 Hz. Hard cap at 0.5 Hz (BETA_MAX_SPEED) enforced
+        // in calculatePatternOffset as motor-safety defense-in-depth.
         //
         // Size capped at 50% (64 DMX max offset). At 0.5 Hz:
         // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head. Safe.
-        const activeVibe = VibeManager.getInstance().getActiveVibe();
-        const vibeSpeedMin = activeVibe?.movement?.speedRange?.min ?? 0.05;
-        const vibeSpeedMax = activeVibe?.movement?.speedRange?.max ?? 0.5;
-        const speedNormalized = vibeSpeedMin + (speed / 100) * (vibeSpeedMax - vibeSpeedMin);
+        const MANUAL_SPEED_MIN = 0.05; // Hz — minimum perceptible movement
+        const MANUAL_SPEED_MAX = 0.5; // Hz — motor-safe ceiling (2s per cycle)
+        const speedNormalized = MANUAL_SPEED_MIN + (speed / 100) * (MANUAL_SPEED_MAX - MANUAL_SPEED_MIN);
         const sizeNormalized = (amplitude / 100) * 0.5;
         // If pattern already exists with same type → hot-update (no phase reset)
         const existingPattern = masterArbiter.getPattern(fixtureIds[0]);
@@ -427,11 +432,14 @@ export function registerArbiterHandlers(masterArbiter) {
         let effectiveAmplitude = null;
         if (layer2Pattern) {
             effectivePattern = layer2Pattern.type;
-            // Convert engine values back to UI scale:
-            // speed 0.05-1.5 Hz → 0-100 (inverse of: 0.05 + (ui/100) * 1.45)
-            // size 0-1 → 0-100
-            effectiveSpeed = Math.round(Math.max(0, Math.min(100, ((layer2Pattern.speed - 0.05) / 1.45) * 100)));
-            effectiveAmplitude = Math.round(layer2Pattern.size * 100);
+            // 🔥 WAVE 2498: Convert engine Hz back to UI 0-100 using FIXED range.
+            // Must use the SAME constants as setManualFixturePattern normalization.
+            const HYDRATE_SPEED_MIN = 0.05;
+            const HYDRATE_SPEED_MAX = 0.5;
+            const hydrateRange = HYDRATE_SPEED_MAX - HYDRATE_SPEED_MIN;
+            effectiveSpeed = Math.round(Math.max(0, Math.min(100, ((layer2Pattern.speed - HYDRATE_SPEED_MIN) / hydrateRange) * 100)));
+            // size 0-0.5 → 0-100 (inverse of: amplitude / 100 * 0.5)
+            effectiveAmplitude = Math.round(Math.min(100, (layer2Pattern.size / 0.5) * 100));
         }
         else if (hasManualPosition) {
             effectivePattern = 'hold';

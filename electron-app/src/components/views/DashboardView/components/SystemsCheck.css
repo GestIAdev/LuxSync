@@ -1431,3 +1431,92 @@
   animation: spin 1s linear infinite;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎚️ WAVE 2502: INPUT GAIN CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gain-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 4px;
+}
+
+.gain-control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gain-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.gain-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00ffcc;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  text-shadow: 0 0 6px rgba(0, 255, 204, 0.6);
+  min-width: 36px;
+  text-align: right;
+}
+
+.gain-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #00ffcc 0%,
+    #00ffcc calc((var(--gain-pct, 0)) * 1%),
+    rgba(255, 255, 255, 0.12) calc((var(--gain-pct, 0)) * 1%)
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.gain-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00ffcc;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.8);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.gain-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 14px rgba(0, 255, 204, 1);
+}
+
+.gain-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00ffcc;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.8);
+  border: none;
+  cursor: pointer;
+}
+
+.gain-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  margin-top: -2px;
+}
+

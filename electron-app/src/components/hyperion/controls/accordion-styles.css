@@ -85,6 +85,11 @@
 /* Smooth expansion animation */
 .programmer-section.expanded {
   animation: expandSection 0.2s ease;
+  /* WAVE 2497: Allow content to flow naturally when expanded.
+     overflow:hidden on the base class clips the 2nd row of pattern buttons.
+     The border-radius is preserved because expanded sections are tall enough
+     that children never actually reach the corners. */
+  overflow: visible;
 }
 
 @keyframes expandSection {

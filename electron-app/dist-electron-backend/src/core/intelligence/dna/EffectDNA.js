@@ -209,7 +209,7 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 0.88, // 🎯 Quirúrgico: letal. Se mantiene por encima de neon_blinder
         chaos: 0.25, // Semi-ordenado: mover targeting determinista
         organicity: 0.02, // Máquina absoluta — precisión de bisturí
-        textureAffinity: 'dirty', // El bisturí corta en el ruido, no en la calma
+        textureAffinity: 'universal', // 🩸 WAVE 2490: dirty→universal. El bisturí corta en cualquier textura (igual que gatling_raid, glitch_matrix, earthquake_flash en WAVE 2104.2)
     },
     'ghost_chase': {
         aggression: 0.25, // 👻 Fantasmal: cero violencia — solo presencia

@@ -18,7 +18,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
-import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephaestusRuntime'
+import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephUtils'
 import { PhaseDistributor } from '../../../core/hephaestus/runtime/PhaseDistributor'
 import type { HephAutomationClip, HephParamId, PhaseConfig, FixturePhase } from '../../../core/hephaestus/types'
 import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'

@@ -30,6 +30,7 @@ type ProgrammerTab = 'controls' | 'groups'
 // Track which channels have manual overrides
 interface OverrideState {
   dimmer: boolean
+  strobe: boolean
   color: boolean
   position: boolean
   beam: boolean
@@ -50,6 +51,7 @@ export const TheProgrammer: React.FC = () => {
   // Track which channels have manual overrides
   const [overrideState, setOverrideState] = useState<OverrideState>({
     dimmer: false,
+    strobe: false,
     color: false,
     position: false,
     beam: false,
@@ -71,6 +73,7 @@ export const TheProgrammer: React.FC = () => {
   
   // Current values (for display)
   const [currentDimmer, setCurrentDimmer] = useState(100)
+  const [currentStrobe, setCurrentStrobe] = useState(0)
   const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
   
   // Get fixture info
@@ -143,6 +146,48 @@ export const TheProgrammer: React.FC = () => {
   }, [selectedIds])
   
   /**
+   * ⚡ WAVE 2494: Set strobe value for selected fixtures
+   */
+  const handleStrobeChange = useCallback(async (value: number) => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentStrobe(value)
+    setOverrideState(prev => ({ ...prev, strobe: true }))
+    
+    try {
+      await window.lux?.arbiter?.setManual({
+        fixtureIds: selectedIds,
+        controls: { strobe: Math.round(value * 2.55) }, // 0-100 -> 0-255
+        channels: ['strobe'],
+        source: 'ui_programmer',
+      })
+      console.log(`[Programmer] ⚡ Strobe → ${value}% for ${selectedIds.length} fixtures`)
+    } catch (err) {
+      console.error('[Programmer] Strobe error:', err)
+    }
+  }, [selectedIds])
+  
+  /**
+   * ⚡ WAVE 2494: Release strobe back to AI
+   */
+  const handleStrobeRelease = useCallback(async () => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentStrobe(0)
+    setOverrideState(prev => ({ ...prev, strobe: false }))
+    
+    try {
+      await window.lux?.arbiter?.clearManual({
+        fixtureIds: selectedIds,
+        channels: ['strobe'],
+      })
+      console.log(`[Programmer] 🔓 Strobe released for ${selectedIds.length} fixtures`)
+    } catch (err) {
+      console.error('[Programmer] Strobe release error:', err)
+    }
+  }, [selectedIds])
+  
+  /**
    * Set color for selected fixtures
    */
   const handleColorChange = useCallback(async (r: number, g: number, b: number) => {
@@ -189,7 +234,7 @@ export const TheProgrammer: React.FC = () => {
   const handleUnlockAll = useCallback(async () => {
     if (selectedIds.length === 0) return
     
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
+    setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -203,7 +248,7 @@ export const TheProgrammer: React.FC = () => {
   
   // Reset override state when selection changes
   useEffect(() => {
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
+    setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
   }, [selectedIds.length])
   
   /**
@@ -303,10 +348,14 @@ export const TheProgrammer: React.FC = () => {
           <IntensitySection
             value={currentDimmer}
             hasOverride={overrideState.dimmer}
+            strobeValue={currentStrobe}
+            hasStrobeOverride={overrideState.strobe}
             isExpanded={activeSection === 'intensity'}
             onToggle={() => toggleSection('intensity')}
             onChange={handleDimmerChange}
             onRelease={handleDimmerRelease}
+            onStrobeChange={handleStrobeChange}
+            onStrobeRelease={handleStrobeRelease}
           />
           
           {/* COLOR SECTION (solo si hay fixtures con color) */}
@@ -346,7 +395,7 @@ export const TheProgrammer: React.FC = () => {
           />
           
           {/* OVERRIDE INDICATOR */}
-          {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
+          {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
             <div className="override-indicator">
               <span className="override-dot" />
               MANUAL CONTROL ACTIVE

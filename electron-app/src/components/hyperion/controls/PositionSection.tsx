@@ -236,37 +236,63 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     onOverrideChange(true)
     
     try {
-      // Convert to DMX with safety cap
-      const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
-      const tiltDmx = Math.min(241, Math.round((safeTilt / 270) * 255))
-      
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: {
-          pan: panDmx,
-          tilt: tiltDmx,
-          // 🔥 WAVE 2190: PURGA SPEED:0 — Eliminado speed:0 que mataba la interpolación
-          // del motor. Sin speed en el override, mergeChannelForFixture cae al
-          // defaultValue del fixture (~128 = velocidad moderada con interpolación).
-          // speed:0 = velocidad máxima sin interpolar = stepper motor en espasmo.
-        },
-        channels: ['pan', 'tilt'],
-      })
-      
-      // 🔧 WAVE 2071: If a pattern is running, DON'T kill it.
-      // The XY pad updates the manualOverride, and getAdjustedPosition
-      // uses that as basePan/baseTilt — so the pattern re-anchors
-      // around the new position automatically. Beautiful.
-      // Only log, don't touch activePattern state.
-      if (activePattern !== 'static') {
-        console.log(`[Position] 🕹️ RE-ANCHOR: Pattern ${activePattern} now orbits P${panDmx}/T${tiltDmx}`)
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 2496: FORMATION MODE — Individual overrides per fixture
+      // Before: ALL fixtures got the same center position → 2 froze, 1 responded
+      // Now: Each fixture gets its individual ghost-point position (center + fan spread)
+      // Mirrors handleFanChange pattern which already worked correctly.
+      // ═══════════════════════════════════════════════════════════════════
+      if (selectedIds.length > 1) {
+        const basePanNorm = safePan / 540
+        const baseTiltNorm = safeTilt / 270
+        const spread = (fanValue / 100) * 0.3
+        
+        for (let i = 0; i < selectedIds.length; i++) {
+          const fixtureId = selectedIds[i]
+          const offsetIndex = i - (selectedIds.length - 1) / 2
+          const offsetX = selectedIds.length > 1
+            ? offsetIndex * spread / (selectedIds.length - 1)
+            : 0
+          
+          const fixturePanNorm = Math.max(0, Math.min(1, basePanNorm + offsetX))
+          const fixturePanDmx = Math.min(242, Math.round(fixturePanNorm * 255))
+          const fixtureTiltDmx = Math.min(241, Math.round(baseTiltNorm * 255))
+          
+          await window.lux?.arbiter?.setManual({
+            fixtureIds: [fixtureId],
+            controls: {
+              pan: fixturePanDmx,
+              tilt: fixtureTiltDmx,
+            },
+            channels: ['pan', 'tilt'],
+          })
+        }
+        
+        console.log(`[Position] 🎯 FORMATION: ${selectedIds.length} fixtures, fan=${fanValue}%, center P${safePan}/T${safeTilt}`)
       } else {
-        console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
+        // Single fixture: direct position
+        const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
+        const tiltDmx = Math.min(241, Math.round((safeTilt / 270) * 255))
+        
+        await window.lux?.arbiter?.setManual({
+          fixtureIds: selectedIds,
+          controls: {
+            pan: panDmx,
+            tilt: tiltDmx,
+          },
+          channels: ['pan', 'tilt'],
+        })
+        
+        if (activePattern !== 'static') {
+          console.log(`[Position] 🕹️ RE-ANCHOR: Pattern ${activePattern} now orbits P${panDmx}/T${tiltDmx}`)
+        } else {
+          console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
+        }
       }
     } catch (err) {
       console.error('[Position] Error:', err)
     }
-  }, [selectedIds, activePattern, onOverrideChange])
+  }, [selectedIds, activePattern, onOverrideChange, fanValue])
   
   /**
    * Pattern change - Procedural movement

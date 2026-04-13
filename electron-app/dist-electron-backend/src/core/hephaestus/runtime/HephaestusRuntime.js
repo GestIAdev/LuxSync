@@ -37,118 +37,16 @@ import * as path from 'path';
 import { deserializeHephClip } from '../types';
 import { CurveEvaluator } from '../CurveEvaluator';
 import { PhaseDistributor } from './PhaseDistributor';
+import { resolveZoneTags } from '../../zones/ZoneMapper';
+import { masterArbiter } from '../../arbiter';
 // ═══════════════════════════════════════════════════════════════════════════
-// HSL → RGB CONVERSION (Pure math, no dependencies)
+// 🔥 WAVE 2495: Pure utilities re-exported from HephUtils.ts
+// Extracted so renderer code can import them without dragging in the
+// full Runtime (which depends on MasterArbiter → EventEmitter → Node.js).
+// Backend code can still import from here — these are re-exports.
 // ═══════════════════════════════════════════════════════════════════════════
-/**
- * ⚒️ WAVE 2030.21: Convert HSL to RGB
- * Self-contained helper - no external dependency needed.
- *
- * @param h Hue 0-360
- * @param s Saturation 0-1
- * @param l Lightness 0-1
- * @returns { r, g, b } each 0-255
- */
-export function hslToRgb(h, s, l) {
-    // Normalize hue to 0-360
-    const hue = ((h % 360) + 360) % 360;
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
-    const m = l - c / 2;
-    let r1, g1, b1;
-    if (hue < 60) {
-        r1 = c;
-        g1 = x;
-        b1 = 0;
-    }
-    else if (hue < 120) {
-        r1 = x;
-        g1 = c;
-        b1 = 0;
-    }
-    else if (hue < 180) {
-        r1 = 0;
-        g1 = c;
-        b1 = x;
-    }
-    else if (hue < 240) {
-        r1 = 0;
-        g1 = x;
-        b1 = c;
-    }
-    else if (hue < 300) {
-        r1 = x;
-        g1 = 0;
-        b1 = c;
-    }
-    else {
-        r1 = c;
-        g1 = 0;
-        b1 = x;
-    }
-    return {
-        r: Math.round((r1 + m) * 255),
-        g: Math.round((g1 + m) * 255),
-        b: Math.round((b1 + m) * 255),
-    };
-}
-// ═══════════════════════════════════════════════════════════════════════════
-// DMX SCALING FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════
-/** Parameters that scale 0-1 → 0-255 (DMX channels, 8-bit standard) */
-const DMX_SCALED_PARAMS = new Set([
-    'intensity', 'strobe', 'white', 'amber',
-    'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism',
-]);
-/**
- * ⚒️ WAVE 2030.24: 16-bit movement params.
- * These scale 0-1 → 0-65535 and emit BOTH coarse (MSB) and fine (LSB).
- */
-const DMX_16BIT_PARAMS = new Set(['pan', 'tilt']);
-/** Parameters that pass through as 0-1 floats (engine-internal) */
-const FLOAT_PASSTHROUGH_PARAMS = new Set([
-    'speed', 'width', 'direction', 'globalComp',
-]);
-/**
- * ⚒️ WAVE 2030.24: Scale a raw 0-1 curve value to DMX format
- *
- * 16-bit params (pan/tilt): returns coarse byte (0-255).
- * Use scaleToDMX16 for the full { coarse, fine } pair.
- *
- * 8-bit DMX params: 0-1 → 0-255 (clamped).
- * Engine params: 0-1 passthrough (clamped).
- */
-export function scaleToDMX(paramId, rawValue) {
-    const clamped = Math.max(0, Math.min(1, rawValue));
-    if (DMX_16BIT_PARAMS.has(paramId)) {
-        // 16-bit: return coarse byte (MSB) for backward compatibility
-        const val16 = Math.round(clamped * 65535);
-        return (val16 >> 8) & 0xFF;
-    }
-    if (DMX_SCALED_PARAMS.has(paramId)) {
-        return Math.round(clamped * 255);
-    }
-    // Engine-internal params: clamp 0-1, no scaling
-    return clamped;
-}
-/**
- * ⚒️ WAVE 2030.24: 16-bit scaling — returns { coarse, fine } pair.
- *
- * coarse = MSB = (val16 >> 8) & 0xFF
- * fine   = LSB = val16 & 0xFF
- *
- * Example:
- *   0.5000 → val16=32768 → coarse=128, fine=0
- *   0.5019 → val16=32893 → coarse=128, fine=125
- */
-export function scaleToDMX16(rawValue) {
-    const clamped = Math.max(0, Math.min(1, rawValue));
-    const val16 = Math.round(clamped * 65535);
-    return {
-        coarse: (val16 >> 8) & 0xFF,
-        fine: val16 & 0xFF,
-    };
-}
+import { hslToRgb, scaleToDMX, scaleToDMX16 } from './HephUtils';
+export { hslToRgb, scaleToDMX, scaleToDMX16 };
 // ═══════════════════════════════════════════════════════════════════════════
 // HEPHAESTUS RUNTIME
 // ═══════════════════════════════════════════════════════════════════════════
@@ -508,23 +406,41 @@ export class HephaestusRuntime {
      * Legacy path: sin phase distribution.
      * Mantiene backward compatibility 1:1 con el tick() pre-WAVE 2400.
      * Used when clip has no PhaseConfig / no FixtureSelector.
+     *
+     * 🎯 WAVE 2544.3: AND-GATE FIX
+     * Previously emitted one output per zone tag (OR semantics in TitanOrchestrator).
+     * Now resolves the AND-intersection of all zone tags to concrete fixture IDs
+     * using resolveZoneTags, then emits per-fixture outputs (same as tickWithPhase).
+     * This ensures ['back', 'all-right'] → only back-right fixtures, not all-right ∪ back.
      */
     tickLegacy(active, clipTimeMs) {
-        // Resolve output zones once per clip
-        const zones = active.clip.zones.length > 0
-            ? active.clip.zones
-            : ['all'];
-        // Evaluate each curve → scale → output
+        const clipZones = active.clip.zones;
+        // ── Resolve target fixture IDs (AND-intersection via ZoneMapper) ──────
+        // Single 'all' or empty → all fixtures. Multiple tags → AND-intersection.
+        let targetFixtureIds;
+        if (clipZones.length === 0 || (clipZones.length === 1 && clipZones[0] === 'all')) {
+            targetFixtureIds = masterArbiter.getFixtureIds();
+        }
+        else {
+            const fixtures = masterArbiter.getFixturesForZoneMapping();
+            targetFixtureIds = resolveZoneTags(clipZones, fixtures);
+            // Fallback: if zone combo resolves to nothing, treat as global
+            if (targetFixtureIds.length === 0) {
+                targetFixtureIds = masterArbiter.getFixtureIds();
+            }
+        }
+        if (targetFixtureIds.length === 0)
+            return;
+        // ── Evaluate each curve → scale → emit per-fixture ────────────────────
         for (const [paramName, curve] of active.clip.curves) {
             // ─── COLOR CURVE PATH ───────────────────────────────────
             if (curve.valueType === 'color') {
                 const hsl = active.evaluator.getColorValue(paramName, clipTimeMs);
-                // Intensity modulates lightness (dim the color, don't destroy hue/sat)
                 // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
                 const modulatedL = (hsl.l / 100) * active.intensity;
                 const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
-                for (const zone of zones) {
-                    this.writeOutput(`zone:${zone}`, zone, paramName, 0, rgb);
+                for (const fixtureId of targetFixtureIds) {
+                    this.writeOutput(fixtureId, 'all', paramName, 0, rgb);
                 }
                 continue;
             }
@@ -532,11 +448,11 @@ export class HephaestusRuntime {
             const rawValue = active.evaluator.getValue(paramName, clipTimeMs);
             const withIntensity = rawValue * active.intensity;
             const scaledValue = scaleToDMX(paramName, withIntensity);
-            for (const zone of zones) {
-                const fine = (paramName === 'pan' || paramName === 'tilt')
-                    ? scaleToDMX16(withIntensity).fine
-                    : undefined;
-                this.writeOutput(`zone:${zone}`, zone, paramName, scaledValue, undefined, fine);
+            const fine = (paramName === 'pan' || paramName === 'tilt')
+                ? scaleToDMX16(withIntensity).fine
+                : undefined;
+            for (const fixtureId of targetFixtureIds) {
+                this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine);
             }
         }
     }
@@ -602,9 +518,10 @@ export class HephaestusRuntime {
      */
     estimateTotalOutputs() {
         let total = 0;
+        const allFixtureCount = masterArbiter.getFixtureIds().length || 32;
         for (const [, active] of this.activeClips) {
-            const fixtureCount = active.fixturePhases?.length
-                ?? (active.clip.zones.length > 0 ? active.clip.zones.length : 1);
+            // Legacy clips now emit per-fixture (not per-zone), use full fixture count as upper bound
+            const fixtureCount = active.fixturePhases?.length ?? allFixtureCount;
             total += fixtureCount * active.clip.curves.size;
         }
         return total;

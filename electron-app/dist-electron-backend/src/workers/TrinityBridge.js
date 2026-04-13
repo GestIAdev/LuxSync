@@ -803,17 +803,26 @@ export class SimpleSectionTracker {
         const dropExpired = dropDuration > p.maxDropDuration;
         const energyKillSwitch = weightedEnergy < p.dropEnergyKillThreshold;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔒 WAVE 2185: DROP HOLD TIME — 1500ms debounce obligatorio
+        // 🔒 WAVE 2185: DROP HOLD TIME — debounce obligatorio
         // ═══════════════════════════════════════════════════════════════════════
         // PROBLEMA: En minimal techno, la energía decae entre kicks (58ms gaps).
         // El killSwitch se activa en esos micro-valleys y aborta el DROP
         // apenas 58ms después de entrar. El drop REAL dura 16-32 compases.
         //
         // SOLUCIÓN: Una vez que el tracker hace DROP ENTER, el killSwitch
-        // tiene PROHIBIDO activarse durante al menos 1500ms (~3 beats @120BPM).
+        // tiene PROHIBIDO activarse durante al menos este hold time.
         // Solo dropExpired (duración máxima) puede forzar la salida antes.
+        //
+        // 🩸 WAVE 2492: 1500ms → 4000ms
+        // LOG EVIDENCE (Hadtechnominimal.md): ALL drops lasted exactly ~1522ms.
+        //   DROP EXIT | killSwitch=true | duration=1522ms — killSwitch fires
+        //   22ms after the 1500ms hold expires. In hard techno, drops are 16-32
+        //   bars (29-58 seconds at 130 BPM). 1500ms is ~3 beats — the drop
+        //   barely starts when it's killed. 4000ms (~8 beats @120BPM) gives
+        //   the section tracker time to re-evaluate with accumulated energy.
+        //   maxDropDuration (profile.maxDropDuration) is the safety ceiling.
         // ═══════════════════════════════════════════════════════════════════════
-        const DROP_HOLD_TIME_MS = 1500;
+        const DROP_HOLD_TIME_MS = 4000;
         const dropHoldActive = dropDuration < DROP_HOLD_TIME_MS;
         const killSwitchAllowed = energyKillSwitch && !dropHoldActive;
         if (this.currentSection === 'drop') {

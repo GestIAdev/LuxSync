@@ -49,7 +49,7 @@ interface SurgicalStrikeConfig {
 }
 
 const DEFAULT_CONFIG: SurgicalStrikeConfig = {
-  durationMs: 350,   // ⚰️ WAVE 2214: Corto y seco — sale rápido, deja espacio a IndustrialStrobe
+  durationMs: 600,   // 🔧 WAVE 2493: 350→600ms — da tiempo al color wheel a cambiar
   strobeHz: 14,      // ⚰️ WAVE 2214: 16→14Hz — más controlado, mismo impacto
 }
 
@@ -85,6 +85,9 @@ export class SurgicalStrike extends BaseEffect {
   private targetZone: 'movers-left' | 'movers-right' | 'all-movers' = 'all-movers'
   /** beatPhase almacenado para determinar zona (sin movimiento) */
   private beatPhaseForZone: number = 0.5
+  /** 🔧 WAVE 2493: Accumulator for frame-guaranteed strobe toggle */
+  private strobeAccumulator: number = 0
+  private strobeOn: boolean = false
 
   constructor(config?: Partial<SurgicalStrikeConfig>) {
     super('surgical_strike')
@@ -94,6 +97,8 @@ export class SurgicalStrike extends BaseEffect {
   trigger(triggerConfig: EffectTriggerConfig): void {
     super.trigger(triggerConfig)
     this.setDuration(this.config.durationMs)
+    this.strobeAccumulator = 0  // 🔧 WAVE 2493: reset strobe state
+    this.strobeOn = true         // Start with flash ON
 
     const beatPhase = triggerConfig.musicalContext?.beatPhase ?? 0.5
     this.beatPhaseForZone = beatPhase
@@ -135,6 +140,16 @@ export class SurgicalStrike extends BaseEffect {
     } else {
       this.phase = 'sustain'
     }
+    
+    // 🔧 WAVE 2493: FRAME-GUARANTEED STROBE TOGGLE
+    // At 14Hz half-cycle = 35ms < frame time (40-55ms).
+    // Accumulator-based toggle ensures every ON/OFF is visible.
+    const halfCycleMs = 500 / this.config.strobeHz
+    this.strobeAccumulator += deltaMs
+    while (this.strobeAccumulator >= halfCycleMs) {
+      this.strobeAccumulator -= halfCycleMs
+      this.strobeOn = !this.strobeOn
+    }
   }
 
   getOutput(): EffectFrameOutput | null {
@@ -143,14 +158,10 @@ export class SurgicalStrike extends BaseEffect {
     const progress = this.getProgress()
 
     // ═════════════════════════════════════════════════════════════════════
-    // STROBE TOGGLE: Dimmer alterna entre 0 y 1 a strobeHz
-    // ⚰️ WAVE 2214: SOLO DIMMER — sin color wheel, sin movimiento
+    // 🔧 WAVE 2493: STROBE via strobeRate + accumulator toggle
+    // Dimmer stays at full for hardware, strobeOn toggles for simulator.
     // ═════════════════════════════════════════════════════════════════════
-    const cycleMs = 1000 / this.config.strobeHz
-    const positionInCycle = this.elapsedMs % cycleMs
-    const isFlashOn = positionInCycle < (cycleMs * 0.4)  // 40% duty cycle
-
-    const moverDimmer = isFlashOn ? this.triggerIntensity : 0
+    const moverVisualDimmer = this.strobeOn ? this.triggerIntensity : 0
 
     // ═════════════════════════════════════════════════════════════════════
     // PARS: BLACKOUT TOTAL — la sala a oscuras
@@ -162,7 +173,8 @@ export class SurgicalStrike extends BaseEffect {
       progress,
       dimmerOverride: 0,
       colorOverride: { h: 0, s: 0, l: 0 },
-      intensity: moverDimmer,
+      intensity: moverVisualDimmer,
+      strobeRate: this.config.strobeHz,  // 🔧 WAVE 2493: let hardware handle strobe
       zones: ['front', 'all-pars', 'back', 'all-movers'],
       globalComposition: 1.0,
       zoneOverrides: {},
@@ -184,11 +196,11 @@ export class SurgicalStrike extends BaseEffect {
     // ⚰️ WAVE 2214: El bisturí no necesita bailar para matar
     // ═════════════════════════════════════════════════════════════════════
     const whiteColor = { h: 0, s: 0, l: 100 }
-    const moverOverride = this.getMoverColorOverride(whiteColor, moverDimmer)
+    const moverOverride = this.getMoverColorOverride(whiteColor, moverVisualDimmer)
 
     if (this.targetZone === 'all-movers' || this.activeHeadCount >= 4) {
-      output.zoneOverrides!['movers-left']  = this.getMoverColorOverride(whiteColor, moverDimmer)
-      output.zoneOverrides!['movers-right'] = this.getMoverColorOverride(whiteColor, moverDimmer)
+      output.zoneOverrides!['movers-left']  = this.getMoverColorOverride(whiteColor, moverVisualDimmer)
+      output.zoneOverrides!['movers-right'] = this.getMoverColorOverride(whiteColor, moverVisualDimmer)
     } else if (this.targetZone === 'movers-left') {
       output.zoneOverrides!['movers-left']  = moverOverride
       output.zoneOverrides!['movers-right'] = this.getMoverColorOverride(whiteColor, 0)

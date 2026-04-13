@@ -79,7 +79,7 @@ export class CoreMeltdown extends BaseEffect {
         // ─────────────────────────────────────────────────────────────────────────
         this.config = DEFAULT_CONFIG;
         this.strobeState = false;
-        this.lastStrobeToggle = 0;
+        this.strobeAccumulator = 0; // 🔧 WAVE 2493: replaces lastStrobeToggle
         this.useWhiteFlash = false;
         if (config) {
             this.config = { ...DEFAULT_CONFIG, ...config };
@@ -91,7 +91,7 @@ export class CoreMeltdown extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         this.strobeState = true; // Empezar encendido
-        this.lastStrobeToggle = 0;
+        this.strobeAccumulator = 0; // 🔧 WAVE 2493: reset accumulator
         // 🔥 WAVE 2202: Restaurar devastación visual. 
         // WAVE 998.1 había castrado esto a siempre-magenta. 
         // La Bestia alterna: primera ON = magenta (impacto), luego blanco, luego magenta...
@@ -110,13 +110,17 @@ export class CoreMeltdown extends BaseEffect {
             console.log(`[☢️ CORE_MELTDOWN] La Bestia duerme...`);
             return;
         }
-        // Strobe timing: alternar estado según frecuencia
-        const strobePeriodMs = 1000 / this.config.strobeRateHz;
-        const halfPeriod = strobePeriodMs / 2;
-        if (this.elapsedMs - this.lastStrobeToggle >= halfPeriod) {
+        // 🔧 WAVE 2493: FRAME-GUARANTEED STROBE TOGGLE
+        // At 14Hz the half-period is 35ms — shorter than a frame (40-55ms).
+        // The old code compared elapsed vs lastStrobeToggle, missing toggles
+        // that fit entirely inside one frame interval.
+        // FIX: Accumulate delta in strobeAccumulator, consume full half-cycles.
+        const halfPeriod = 500 / this.config.strobeRateHz;
+        this.strobeAccumulator += deltaMs;
+        while (this.strobeAccumulator >= halfPeriod) {
+            this.strobeAccumulator -= halfPeriod;
             this.strobeState = !this.strobeState;
-            this.lastStrobeToggle = this.elapsedMs;
-            // Alternar color cada 2 flashes
+            // Alternar color cada 2 flashes (only on ON transitions)
             if (this.strobeState) {
                 this.useWhiteFlash = !this.useWhiteFlash;
             }

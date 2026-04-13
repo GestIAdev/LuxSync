@@ -310,24 +310,28 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     setError(null)
     setAudioSource('microphone')
     try {
-      // 🎤 WAVE 2049.2: Prefer JACK/line-in — exclude webcam/integrated mics
+      // 🎤 WAVE 2049.2 / WAVE 2498: Prefer JACK/line-in, fallback to any available mic
+      // Priority: 1) Physical JACK/line-in, 2) Any other non-webcam mic, 3) Webcam mic
+      // (WAVE 2498: fallback added — if only webcam mic is present, use it instead of failing)
       const WEBCAM_KEYWORDS = ['webcam', 'camera', 'usb camera', 'integrated', 'built-in', 'array', 'microsoft lifecam', 'logitech']
       const devices = await navigator.mediaDevices.enumerateDevices()
       const audioInputs = devices.filter(d => d.kind === 'audioinput')
       const jackDevice = audioInputs.find(d =>
         !WEBCAM_KEYWORDS.some(kw => d.label.toLowerCase().includes(kw))
       )
+      // If no JACK/line-in found, fall back to first available audio input (e.g. webcam mic)
+      const selectedDevice = jackDevice ?? audioInputs[0] ?? null
       console.log('[PHOENIX] 🎤 Audio inputs:', audioInputs.map(d => d.label))
-      console.log('[PHOENIX] 🎤 Selected device:', jackDevice?.label ?? 'default fallback')
+      console.log('[PHOENIX] 🎤 Selected device:', selectedDevice?.label ?? 'browser default')
 
       const audioConstraints: MediaTrackConstraints = {
         echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
-        ...(jackDevice ? { deviceId: { exact: jackDevice.deviceId } } : {})
+        ...(selectedDevice ? { deviceId: { exact: selectedDevice.deviceId } } : {})
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
-      await setupAudioFromStream(stream, jackDevice?.label ?? 'Microphone')
+      await setupAudioFromStream(stream, selectedDevice?.label ?? 'Microphone')
     } catch (err) {
       console.error('[PHOENIX] Microphone failed:', err)
       setError(err instanceof Error ? err.message : 'Failed')

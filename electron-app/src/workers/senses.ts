@@ -215,6 +215,53 @@ let prevBassOnlyEnergy = 0;
 let prevMidEnergy = 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎚️ WAVE 2491: ADAPTIVE BASS FLOOR — Percentile-Based Threshold
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2170 set a hardcoded floor of 0.030 calibrated for Boris Brejcha
+// on a professional sound card. With different audio sources (system loopback,
+// different hardware, different genres), rawBassFlux can be chronically lower
+// (0.005-0.025), causing needle=0 permanently → no kicks → BPM dies.
+//
+// The adaptive floor uses a rolling window of recent rawBassFlux peaks to
+// auto-calibrate the kick threshold. The floor is set at 40% of the
+// recent median peak — low enough to catch kicks, high enough to reject
+// inter-beat bass decay tails.
+//
+// SAFETY: absolute minimum floor of 0.005 prevents noise triggering.
+//         absolute maximum floor of 0.060 prevents runaway in loud transients.
+// ═══════════════════════════════════════════════════════════════════════════
+const ADAPTIVE_FLOOR_WINDOW = 64; // ~3 seconds of FFT frames at 20fps
+const ADAPTIVE_FLOOR_MIN = 0.005;
+const ADAPTIVE_FLOOR_MAX = 0.060;
+const ADAPTIVE_FLOOR_RATIO = 0.40; // 40% of median peak
+const adaptiveFloorBuffer: number[] = [];
+let adaptiveFloor = 0.015; // Bootstrap value (lower than WAVE 2170's 0.030)
+
+function updateAdaptiveFloor(rawBassFlux: number): number {
+  // Only track non-trivial flux values (above noise floor)
+  if (rawBassFlux > ADAPTIVE_FLOOR_MIN) {
+    adaptiveFloorBuffer.push(rawBassFlux);
+    if (adaptiveFloorBuffer.length > ADAPTIVE_FLOOR_WINDOW) {
+      adaptiveFloorBuffer.shift();
+    }
+  }
+
+  if (adaptiveFloorBuffer.length < 8) {
+    // Not enough data yet — use bootstrap
+    return adaptiveFloor;
+  }
+
+  // Compute median of the buffer (sorted copy to avoid mutating)
+  const sorted = adaptiveFloorBuffer.slice().sort((a, b) => a - b);
+  const medianIdx = Math.floor(sorted.length / 2);
+  const median = sorted[medianIdx];
+
+  // Floor = 40% of median peak
+  adaptiveFloor = Math.max(ADAPTIVE_FLOOR_MIN, Math.min(ADAPTIVE_FLOOR_MAX, median * ADAPTIVE_FLOOR_RATIO));
+  return adaptiveFloor;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 👻 WAVE 2172: SHADOW LOGGER — Data-Driven MIR Testing
 // ═══════════════════════════════════════════════════════════════════════════
 // Captures ~46 seconds of real audio telemetry from the GodEar pipeline
@@ -747,19 +794,29 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   // This is deterministic: centroid is a physical measurement of where
   // the energy is concentrated. No guessing.
   let needle = 0;
-  // WAVE 2170: Floor raised from 0.005 → 0.030.
-  // At 0.005, the gradual decay of bass energy after a kick produces
-  // frame-to-frame flux of 0.006-0.020 that falsely triggered the tracker.
-  // Real Brejcha kick onsets measured in production: 0.07-0.28.
-  // Bass decay residue: 0.006-0.022. Hard separation at ~0.03.
-  if (rawBassFlux > 0.030) { // floor: eliminates inter-beat bass decay tails
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎚️ WAVE 2170 → WAVE 2491: ADAPTIVE BASS FLOOR
+  //
+  // WAVE 2170: Hardcoded floor 0.030 calibrated for Boris Brejcha.
+  // PRODUCTION FAILURE: With different hardware/loopback/genres,
+  // rawBassFlux stays chronically below 0.030 → needle=0 → BPM death.
+  //
+  // WAVE 2491: Adaptive floor auto-calibrates from recent flux history.
+  // The floor tracks 40% of the median recent flux peak, clamped to
+  // [0.005, 0.060]. This catches kicks regardless of signal level
+  // while still rejecting inter-beat bass decay.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const currentFloor = updateAdaptiveFloor(rawBassFlux);
+  // Grey zone threshold scales proportionally with the floor
+  const greyZoneThreshold = currentFloor * 1.33; // ~0.020 at floor=0.015, ~0.040 at floor=0.030
+  if (rawBassFlux > currentFloor) { // adaptive floor replaces hardcoded 0.030
     if (centroidHz < 800) {
       // Pure bass/sub-bass transient — kick drum territory
       needle = rawBassFlux;
     } else if (centroidHz < 1500) {
       // Grey zone: could be kick+snare overlap or bass guitar
       // Pass only if there's a meaningful bass flux
-      if (rawBassFlux > 0.040) {
+      if (rawBassFlux > greyZoneThreshold) {
         needle = rawBassFlux;
       }
     }
@@ -825,6 +882,7 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       ` phase=${bpmResult.beatPhase.toFixed(2)}` +
       ` needle=${needle.toFixed(4)}` +
       ` bassFlux=${rawBassFlux.toFixed(4)}` +
+      ` floor=${currentFloor.toFixed(4)}` +
       ` midFlux=${rawMidFlux.toFixed(4)}` +
       ` centroid=${Math.round(centroidHz)}Hz` +
       ` kicks=${bpmResult.kickCount}`

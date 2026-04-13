@@ -28,6 +28,7 @@
  */
 import { masterArbiter } from '../arbiter';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
+import { resolveZoneTags } from '../zones/ZoneMapper';
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY IMPORTS — The Full Arsenal
 // ═══════════════════════════════════════════════════════════════════════════
@@ -214,6 +215,12 @@ export class TimelineEngine {
         // Cleared when the clip ends (releaseClip) or playback stops (stop).
         // ═══════════════════════════════════════════════════════════════════════
         this.colorLatch = new Map();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🗺️ WAVE 2543.5: Zone resolution cache — avoids per-frame allocations.
+        // Key: zones.join(','), Value: resolved fixture IDs.
+        // Invalidated on stop() and loadProject() (stage change).
+        // ═══════════════════════════════════════════════════════════════════════
+        this._zoneCache = new Map();
     }
     // ═══════════════════════════════════════════════════════════════════════
     // LOAD PROJECT
@@ -346,6 +353,8 @@ export class TimelineEngine {
         masterArbiter.stopPlayback();
         // 🎬 WAVE 2063: Clear tracked vibe
         this.currentPlaybackVibeId = null;
+        // 🗺️ WAVE 2543.5: Clear zone resolution cache
+        this._zoneCache.clear();
         this.playing = false;
         this.lastTickMs = 0;
         this.project = null;
@@ -573,9 +582,25 @@ export class TimelineEngine {
     //      'front' → only front fixtures, 'all-movers' → only movers, etc.
     //      Each zone paints ONLY its own fixtures. No more friendly fire.
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchZoneOverrides(output, envelope, _allFixtureIds, blendMode = 'HTP') {
+    dispatchZoneOverrides(output, envelope, allowedFixtureIds, blendMode = 'HTP') {
         if (!output.zoneOverrides)
             return;
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 2544.1: THE CHRONOS GHOST EXORCISM
+        //
+        // allowedFixtureIds is the AND-intersection result from resolveFixtureIds(clip).
+        // It already applied ZoneMapper.resolveZoneTags(clip.zones, fixtures) which
+        // enforces Target+Modifier AND-semantics (e.g. ['back','all-right'] → back∩right).
+        //
+        // Effects ignore clip.zones — they emit their own hardcoded zoneOverrides.
+        // Without this gate, a clip restricted to ['back','all-right'] would let
+        // an effect illuminate front, movers, and left-side back fixtures.
+        //
+        // FIX: Intersect each zone's resolved fixtures with allowedFixtureIds.
+        // Only fixtures that pass BOTH the zone key AND the clip permission reach the Arbiter.
+        // If allowedFixtureIds is empty (legacy clip, no zones defined) → no restriction.
+        // ═══════════════════════════════════════════════════════════════════
+        const allowedSet = allowedFixtureIds.length > 0 ? new Set(allowedFixtureIds) : null;
         // For each zone override, build controls and dispatch to THAT ZONE's fixtures only
         for (const [zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
             const controls = {};
@@ -625,7 +650,15 @@ export class TimelineEngine {
                 continue;
             // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
             // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
-            const zoneFixtureIds = masterArbiter.getFixtureIdsByZone(zoneId);
+            const zoneResolved = masterArbiter.getFixtureIdsByZone(zoneId);
+            // 🎯 WAVE 2544.1: AND-gate — clip permission mask
+            // If the clip has zone restrictions, only pass fixtures that are in BOTH
+            // the zone's fixture list AND the clip's allowed set.
+            const zoneFixtureIds = allowedSet
+                ? zoneResolved.filter(id => allowedSet.has(id))
+                : zoneResolved;
+            if (zoneFixtureIds.length === 0)
+                continue;
             this.dispatchToArbiter(zoneFixtureIds, controls, { blendMode });
         }
     }
@@ -907,21 +940,23 @@ export class TimelineEngine {
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: Fixture resolution
     // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 2543.5: Zone resolution with per-clip cache.
+    // Clip zones are static during playback — cache eliminates per-frame allocations.
     resolveFixtureIds(clip) {
         const zones = clip.zones;
-        // If clip specifies zones, use them (with fallback logic)
         if (zones && zones.length > 0) {
-            // Check for wildcard
-            if (zones.includes('all') || zones.includes('*')) {
-                return masterArbiter.getFixtureIds();
+            const cacheKey = zones.join(',');
+            const cached = this._zoneCache.get(cacheKey);
+            if (cached)
+                return cached;
+            const fixtures = masterArbiter.getFixturesForZoneMapping();
+            const resolved = resolveZoneTags(zones, fixtures);
+            if (resolved.length > 0) {
+                this._zoneCache.set(cacheKey, resolved);
+                return resolved;
             }
-            // 🚑 FALLBACK DE EMERGENCIA:
-            // Si el efecto pide una zona específica pero no tenemos un mapa zone→fixture,
-            // mejor iluminar TODO que iluminar NADA.
-            // Esto arregla el "CoreMeltdown invisible" si falló el mapping.
-            console.warn(`[TimelineEngine] ⚠️ Zone mapping not implemented for zones: ${zones.join(', ')} — falling back to wildcard '*'`);
+            console.warn(`[TimelineEngine] ⚠️ Zones [${zones.join(', ')}] resolved to 0 fixtures — fallback to all`);
         }
-        // Default: all fixtures
         return masterArbiter.getFixtureIds();
     }
     // ═══════════════════════════════════════════════════════════════════════

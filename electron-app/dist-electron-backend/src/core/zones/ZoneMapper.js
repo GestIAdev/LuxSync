@@ -1,0 +1,427 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🗺️ ZONE MAPPER — WAVE 2543.4: THE CENTRALIZED BRAIN
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Single Source of Truth para resolución de zonas en LuxSync.
+ *
+ * PROBLEMA RESUELTO:
+ *   Antes existían 4+ implementaciones desperdigadas de zone-matching:
+ *   - MasterArbiter.getFixtureIdsByZone() (COMPOSITE_ZONES local)
+ *   - TitanOrchestrator.fixtureMatchesZone() (if-chain ad hoc)
+ *   - TitanOrchestrator.fixtureMatchesZoneStereo() (if-chain + position.x)
+ *   - useHephPreview.resolveFixtures() (ZONE_GROUP_MAP + MODIFIER_ZONES)
+ *   - TimelineEngine.resolveFixtureIds() (delegaba al Arbiter)
+ *
+ *   Todas resolvían lo mismo con lógica duplicada e inconsistente.
+ *   El resultado: un clip con zones=['back', 'all-right'] encendía 10 de 12.
+ *
+ * SOLUCIÓN:
+ *   Un módulo puro (sin estado, sin side effects) que exporta funciones
+ *   deterministas para traducir dialectos de UI a CanonicalZones y
+ *   resolver fixture IDs con intersección AND para modifiers.
+ *
+ * CONSUMIDO POR:
+ *   - TimelineEngine.resolveFixtureIds()  (Hyperion playback)
+ *   - MasterArbiter.getFixtureIdsByZone() (DMX routing)
+ *   - TitanOrchestrator.fixtureMatchesZone[Stereo]() (Selene live)
+ *   - useHephPreview.resolveFixtures()    (Hephaestus radar)
+ *   - ChronosProject.luxToChronos()       (track assignment)
+ *   - TimelineCanvas.generateZoneTracks() (Chronos UI)
+ *
+ * @module core/zones/ZoneMapper
+ * @version WAVE 2543.4
+ */
+import { CANONICAL_ZONES, normalizeZone, } from '../stage/ShowFileV2';
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPOSITE ZONE DICTIONARY
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Groups that expand to multiple canonical zones.
+ * These are "type" selectors (WHAT fixtures), not spatial modifiers.
+ */
+const COMPOSITE_ZONES = {
+    'all-pars': ['front', 'back', 'floor'],
+    'pars': ['front', 'back', 'floor'],
+    'all-movers': ['movers-left', 'movers-right'],
+    'movers': ['movers-left', 'movers-right'],
+};
+/**
+ * Modifier zones that filter by physical position (position.x).
+ * These are spatial modifiers (WHERE on stage), applied as AND-intersection.
+ *
+ * Convention:
+ *   position.x < 0  → LEFT  (stage left, audience perspective right)
+ *   position.x >= 0  → RIGHT (stage right, audience perspective left)
+ */
+const MODIFIER_ZONES = new Set(['all-left', 'all-right']);
+/**
+ * Typo normalization table for zone strings from saved shows.
+ * Handles common omission-of-hyphen mistakes from old serializations.
+ * Applied before any zone classification logic.
+ */
+const ZONE_TYPO_MAP = {
+    'allright': 'all-right',
+    'allleft': 'all-left',
+    'allpars': 'all-pars',
+    'allmovers': 'all-movers',
+    'all_right': 'all-right',
+    'all_left': 'all-left',
+    'all_pars': 'all-pars',
+    'all_movers': 'all-movers',
+    // Short aliases from SmartZoneSelector (MOD row emits 'left'/'right', not 'all-left'/'all-right')
+    'right': 'all-right',
+    'left': 'all-left',
+    'movers': 'all-movers',
+    'pars': 'all-pars',
+};
+/** Sanitize a single raw zone tag, correcting known typos. */
+function sanitizeZoneTag(raw) {
+    const t = raw.toLowerCase().trim();
+    return ZONE_TYPO_MAP[t] ?? t;
+}
+/**
+ * Stereo sub-zones: combine a canonical zone with a lateral position.
+ * e.g. 'frontL' → fixtures in 'front' zone with position.x < 0
+ */
+const STEREO_ZONES = {
+    'frontl': { canonical: 'front', side: 'left' },
+    'frontr': { canonical: 'front', side: 'right' },
+    'backl': { canonical: 'back', side: 'left' },
+    'backr': { canonical: 'back', side: 'right' },
+    'floorl': { canonical: 'floor', side: 'left' },
+    'floorr': { canonical: 'floor', side: 'right' },
+};
+// ═══════════════════════════════════════════════════════════════════════════
+// CORE FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Translate an array of UI-emitted zone tags into a single canonical zone string.
+ *
+ * The SmartZoneSelector emits arrays like ['back', 'all-right'].
+ * This function decomposes that into:
+ *   - TARGET zones: 'back' (what fixtures)
+ *   - MODIFIER zones: 'all-right' (which side)
+ * And produces the canonical compound string: 'back-right'
+ *
+ * Rules:
+ *   - Single canonical zone → pass through ('front' → 'front')
+ *   - Single composite → pass through ('all-pars' → 'all-pars')
+ *   - Target + modifier → compound ('back' + 'all-right' → 'back-right')
+ *   - Multiple targets + modifier → hyphenated ('front-back-right')
+ *   - 'all' anywhere → 'all'
+ *   - Empty → 'all'
+ *
+ * @param tags — Array of EffectZone strings from SmartZoneSelector / clip.zones
+ * @returns Canonical compound zone string for track assignment and display
+ */
+export function normalizeTagsToCanonical(tags) {
+    if (tags.length === 0)
+        return 'all';
+    // 'all' is exclusive — if present, nothing else matters
+    if (tags.some(t => t.toLowerCase() === 'all' || t === '*'))
+        return 'all';
+    const targets = [];
+    let modifier = null;
+    for (const tag of tags) {
+        const t = sanitizeZoneTag(tag);
+        if (t === 'all-left' || t === 'left') {
+            modifier = 'left';
+        }
+        else if (t === 'all-right' || t === 'right') {
+            modifier = 'right';
+        }
+        else {
+            targets.push(t);
+        }
+    }
+    // No targets but modifier only → e.g. ['all-left'] → 'all-left'
+    if (targets.length === 0 && modifier) {
+        return `all-${modifier}`;
+    }
+    // No modifier → join targets or return single
+    if (!modifier) {
+        if (targets.length === 1)
+            return targets[0];
+        // Sort for determinism (canonical order)
+        targets.sort((a, b) => {
+            const ai = CANONICAL_ZONES.indexOf(a);
+            const bi = CANONICAL_ZONES.indexOf(b);
+            // Non-canonical zones sort after canonical ones
+            if (ai === -1 && bi === -1)
+                return a.localeCompare(b);
+            if (ai === -1)
+                return 1;
+            if (bi === -1)
+                return -1;
+            return ai - bi;
+        });
+        return targets.join('-');
+    }
+    // Targets + modifier → compound (e.g. 'back-right', 'front-back-left')
+    if (targets.length === 1) {
+        return `${targets[0]}-${modifier}`;
+    }
+    // Multiple targets + modifier
+    targets.sort((a, b) => {
+        const ai = CANONICAL_ZONES.indexOf(a);
+        const bi = CANONICAL_ZONES.indexOf(b);
+        if (ai === -1 && bi === -1)
+            return a.localeCompare(b);
+        if (ai === -1)
+            return 1;
+        if (bi === -1)
+            return -1;
+        return ai - bi;
+    });
+    return `${targets.join('-')}-${modifier}`;
+}
+/**
+ * Resolve a single EffectZone tag to fixture IDs.
+ * Handles canonical zones, composites, stereo sub-zones, and wildcards.
+ *
+ * Does NOT handle modifiers (all-left/all-right) — those require the
+ * multi-tag version resolveZoneTags() which applies AND-intersection.
+ */
+export function resolveZone(zone, fixtures) {
+    const z = zone.toLowerCase().trim();
+    // Wildcard
+    if (z === 'all' || z === '*') {
+        return fixtures.filter(f => f.enabled !== false).map(f => f.id);
+    }
+    // Stereo sub-zones (frontL, backR, etc.)
+    const stereo = STEREO_ZONES[z];
+    if (stereo) {
+        return fixtures.filter(f => f.enabled !== false &&
+            normalizeZone(f.zone) === stereo.canonical &&
+            (stereo.side === 'left' ? (f.position?.x ?? 0) < 0 : (f.position?.x ?? 0) >= 0)).map(f => f.id);
+    }
+    // Modifier zones standalone (all-left / all-right)
+    if (MODIFIER_ZONES.has(z)) {
+        const isLeft = z === 'all-left';
+        return fixtures.filter(f => f.enabled !== false &&
+            (isLeft ? (f.position?.x ?? 0) < 0 : (f.position?.x ?? 0) >= 0)).map(f => f.id);
+    }
+    // Composite zones
+    const compositeTargets = COMPOSITE_ZONES[z];
+    if (compositeTargets) {
+        return fixtures.filter(f => f.enabled !== false &&
+            compositeTargets.includes(normalizeZone(f.zone))).map(f => f.id);
+    }
+    // Direct canonical match
+    return fixtures.filter(f => f.enabled !== false &&
+        normalizeZone(f.zone) === z).map(f => f.id);
+}
+/**
+ * Resolve an array of zone tags to fixture IDs using the two-tier
+ * Target + Modifier AND-intersection system.
+ *
+ * This is the primary entry point for multi-zone resolution.
+ * Replaces all the scattered implementations in Arbiter, Titan, Preview, etc.
+ *
+ * Architecture:
+ *   1. Classify tags into TARGET zones and MODIFIER zones
+ *   2. Resolve target pool: UNION of all target zones' fixtures
+ *   3. Apply modifiers: AND-intersection (filter pool by position.x)
+ *   4. Deduplicate by fixture ID
+ *
+ * @param tags — Array of EffectZone strings (from clip.zones, SmartZoneSelector, etc.)
+ * @param fixtures — Full fixture inventory from the show file
+ * @returns Deduplicated array of fixture IDs
+ */
+export function resolveZoneTags(tags, fixtures) {
+    if (tags.length === 0)
+        return fixtures.filter(f => f.enabled !== false).map(f => f.id);
+    // Wildcard shortcut
+    if (tags.some(t => t.toLowerCase() === 'all' || t === '*')) {
+        return fixtures.filter(f => f.enabled !== false).map(f => f.id);
+    }
+    // ── Step 1: Classify into targets and modifiers (with typo sanitization) ──
+    const targetTags = [];
+    const modifiers = [];
+    for (const tag of tags) {
+        const t = sanitizeZoneTag(tag);
+        if (MODIFIER_ZONES.has(t)) {
+            modifiers.push(t);
+        }
+        else {
+            targetTags.push(t);
+        }
+    }
+    // ── Step 2: Build target pool (UNION of all target zones) ──
+    const enabledFixtures = fixtures.filter(f => f.enabled !== false);
+    let pool;
+    if (targetTags.length === 0) {
+        // Only modifiers, no targets → pool = all enabled fixtures
+        pool = [...enabledFixtures];
+    }
+    else {
+        // Resolve each target tag and union the results
+        const poolIds = new Set();
+        pool = [];
+        for (const tag of targetTags) {
+            const t = tag.toLowerCase().trim();
+            // Composite expansion
+            const canonicalTargets = COMPOSITE_ZONES[t];
+            if (canonicalTargets) {
+                for (const f of enabledFixtures) {
+                    if (!poolIds.has(f.id) && canonicalTargets.includes(normalizeZone(f.zone))) {
+                        poolIds.add(f.id);
+                        pool.push(f);
+                    }
+                }
+                continue;
+            }
+            // Direct canonical match
+            for (const f of enabledFixtures) {
+                if (!poolIds.has(f.id) && normalizeZone(f.zone) === t) {
+                    poolIds.add(f.id);
+                    pool.push(f);
+                }
+            }
+        }
+    }
+    // ── Step 3: Apply modifier filters (AND-intersection) ──
+    for (const mod of modifiers) {
+        if (mod === 'all-left') {
+            pool = pool.filter(f => (f.position?.x ?? 0) < 0);
+        }
+        else if (mod === 'all-right') {
+            pool = pool.filter(f => (f.position?.x ?? 0) >= 0);
+        }
+    }
+    return pool.map(f => f.id);
+}
+/**
+ * Check if a single fixture matches a zone target.
+ * Replacement for TitanOrchestrator.fixtureMatchesZone() and
+ * fixtureMatchesZoneStereo().
+ *
+ * @param fixtureZone — The fixture's canonical zone (from fixture.zone)
+ * @param targetZone — The zone target to check (from effect)
+ * @param positionX — Optional fixture position.x for stereo resolution
+ */
+export function fixtureMatchesZone(fixtureZone, targetZone, positionX) {
+    const fz = normalizeZone(fixtureZone);
+    const tz = targetZone.toLowerCase().trim();
+    // Wildcards
+    if (tz === 'all' || tz === '*')
+        return true;
+    // Stereo sub-zones (frontL, backR, etc.)
+    const stereo = STEREO_ZONES[tz];
+    if (stereo) {
+        if (fz !== stereo.canonical)
+            return false;
+        if (positionX === undefined)
+            return true; // no position data → assume match
+        return stereo.side === 'left' ? positionX < 0 : positionX >= 0;
+    }
+    // Modifier zones (all-left, all-right) — position-only
+    if (MODIFIER_ZONES.has(tz)) {
+        if (positionX === undefined)
+            return true;
+        return tz === 'all-left' ? positionX < 0 : positionX >= 0;
+    }
+    // Composite zones
+    const compositeTargets = COMPOSITE_ZONES[tz];
+    if (compositeTargets) {
+        return compositeTargets.includes(fz);
+    }
+    // Direct canonical match
+    return fz === tz;
+}
+/**
+ * Get all active (non-unassigned) canonical zones from a fixture inventory.
+ * Used by TimelineCanvas to generate zone tracks.
+ */
+export function getActiveZones(fixtures) {
+    const zones = new Set();
+    for (const f of fixtures) {
+        if (f.enabled === false)
+            continue;
+        const canonical = normalizeZone(f.zone);
+        if (canonical !== 'unassigned') {
+            zones.add(canonical);
+        }
+    }
+    // Maintain canonical order
+    return CANONICAL_ZONES.filter(z => zones.has(z));
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2545: ZONE COMPATIBILITY — For Magnetic Drop Validation
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Resolve an array of zone tags to the canonical zones they target,
+ * WITHOUT requiring a fixture list. Used by the UI drag validation layer
+ * where we only need to know "does this clip MENTION this canonical zone?"
+ *
+ * Returns the set of CanonicalZone values that the tags cover.
+ * - Canonical zones map 1:1 ('front' → ['front'])
+ * - Composite zones expand ('all-pars' → ['front','back','floor'])
+ * - Modifier zones (all-left/all-right) are position filters — they
+ *   don't restrict to specific canonical zones, so we return ALL_CANONICAL
+ *   to indicate they're compatible with any zone track.
+ * - Wildcards ('all', '*') return ALL_CANONICAL.
+ * - Empty array → ALL_CANONICAL (no zone restriction = global).
+ */
+export function getTargetCanonicalZones(tags) {
+    if (tags.length === 0)
+        return [...CANONICAL_ZONES];
+    const result = new Set();
+    let hasOnlyModifiers = true;
+    for (const raw of tags) {
+        const t = (ZONE_TYPO_MAP[raw.toLowerCase().trim()] ?? raw.toLowerCase().trim());
+        // Wildcard
+        if (t === 'all' || t === '*')
+            return [...CANONICAL_ZONES];
+        // Modifier (all-left / all-right) — doesn't restrict canonical zone
+        if (MODIFIER_ZONES.has(t))
+            continue;
+        // Composite
+        const compositeTargets = COMPOSITE_ZONES[t];
+        if (compositeTargets) {
+            hasOnlyModifiers = false;
+            for (const cz of compositeTargets)
+                result.add(cz);
+            continue;
+        }
+        // Stereo sub-zone (e.g. 'frontL', 'backR')
+        const stereo = STEREO_ZONES[t];
+        if (stereo) {
+            hasOnlyModifiers = false;
+            result.add(stereo.canonical);
+            continue;
+        }
+        // Direct canonical
+        if (CANONICAL_ZONES.includes(t)) {
+            hasOnlyModifiers = false;
+            result.add(t);
+        }
+    }
+    // If only modifiers were present (e.g. ['all-right']), they apply to ALL zones
+    if (hasOnlyModifiers)
+        return [...CANONICAL_ZONES];
+    return CANONICAL_ZONES.filter(z => result.has(z));
+}
+/**
+ * Check if a clip with the given zone tags is compatible with a track
+ * that targets a specific canonical zone. Pure function, no side effects.
+ *
+ * - Clip without zones (undefined/empty) → compatible with ANY track
+ * - Track without targetZone → compatible with ANY clip (global fallback track)
+ * - Otherwise: clip's canonical zone set must include the track's targetZone
+ */
+export function isClipZoneCompatible(clipZones, trackTargetZone) {
+    // Global track (no specific zone) accepts everything
+    if (!trackTargetZone)
+        return true;
+    // Clip without zone restriction → compatible with any track
+    if (!clipZones || clipZones.length === 0)
+        return true;
+    // Check if the clip's resolved canonical zones include this track's zone
+    return getTargetCanonicalZones(clipZones).includes(trackTargetZone);
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// RE-EXPORTS for convenience
+// ═══════════════════════════════════════════════════════════════════════════
+export { normalizeZone, CANONICAL_ZONES };

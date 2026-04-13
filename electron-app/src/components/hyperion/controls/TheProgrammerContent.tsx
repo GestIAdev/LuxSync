@@ -26,6 +26,7 @@ import './accordion-styles.css'
 // Track which channels have manual overrides
 interface OverrideState {
   dimmer: boolean
+  strobe: boolean
   color: boolean
   position: boolean
   beam: boolean
@@ -42,6 +43,7 @@ export const TheProgrammerContent: React.FC = () => {
   // Track which channels have manual overrides
   const [overrideState, setOverrideState] = useState<OverrideState>({
     dimmer: false,
+    strobe: false,
     color: false,
     position: false,
     beam: false,
@@ -60,6 +62,7 @@ export const TheProgrammerContent: React.FC = () => {
   // WAVE 440.5: Initial state is null/undefined = no preset button active
   // until user touches a control
   const [currentDimmer, setCurrentDimmer] = useState<number | null>(null)
+  const [currentStrobe, setCurrentStrobe] = useState(0)
   const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
   
   // Get fixture info
@@ -126,6 +129,46 @@ export const TheProgrammerContent: React.FC = () => {
     }
   }, [selectedIds])
   
+  /**
+   * ⚡ WAVE 2494: Set strobe value for selected fixtures
+   */
+  const handleStrobeChange = useCallback(async (value: number) => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentStrobe(value)
+    setOverrideState(prev => ({ ...prev, strobe: true }))
+    
+    try {
+      await window.lux?.arbiter?.setManual({
+        fixtureIds: selectedIds,
+        controls: { strobe: Math.round(value * 2.55) },
+        channels: ['strobe'],
+        source: 'ui_programmer',
+      })
+    } catch (err) {
+      console.error('[Programmer] Strobe error:', err)
+    }
+  }, [selectedIds])
+  
+  /**
+   * ⚡ WAVE 2494: Release strobe back to AI
+   */
+  const handleStrobeRelease = useCallback(async () => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentStrobe(0)
+    setOverrideState(prev => ({ ...prev, strobe: false }))
+    
+    try {
+      await window.lux?.arbiter?.clearManual({
+        fixtureIds: selectedIds,
+        channels: ['strobe'],
+      })
+    } catch (err) {
+      console.error('[Programmer] Strobe release error:', err)
+    }
+  }, [selectedIds])
+  
   const handleColorChange = useCallback(async (r: number, g: number, b: number) => {
     if (selectedIds.length === 0) return
     
@@ -169,9 +212,10 @@ export const TheProgrammerContent: React.FC = () => {
     setUnlockFlash(true)
     setTimeout(() => setUnlockFlash(false), 400)
     
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
+    setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
     // WAVE 440.5: Reset UI values to neutral state
     setCurrentDimmer(null)
+    setCurrentStrobe(0)
     setCurrentColor({ r: 128, g: 128, b: 128 })
     
     try {
@@ -201,8 +245,9 @@ export const TheProgrammerContent: React.FC = () => {
       // ═══════════════════════════════════════════════════════════════════
       // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
       // ═══════════════════════════════════════════════════════════════════
-      setOverrideState({ dimmer: false, color: false, position: false, beam: false, extras: false })
+      setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
       setCurrentDimmer(null)
+      setCurrentStrobe(0)
       setCurrentColor({ r: 128, g: 128, b: 128 })
       
       if (selectedIds.length === 0) {
@@ -338,10 +383,14 @@ export const TheProgrammerContent: React.FC = () => {
       <IntensitySection
         value={currentDimmer ?? -1}
         hasOverride={overrideState.dimmer}
+        strobeValue={currentStrobe}
+        hasStrobeOverride={overrideState.strobe}
         isExpanded={activeSection === 'intensity'}
         onToggle={() => toggleSection('intensity')}
         onChange={handleDimmerChange}
         onRelease={handleDimmerRelease}
+        onStrobeChange={handleStrobeChange}
+        onStrobeRelease={handleStrobeRelease}
       />
       
       {/* 🎨 COLOR SECTION */}
@@ -373,7 +422,7 @@ export const TheProgrammerContent: React.FC = () => {
       />
       
       {/* OVERRIDE INDICATOR */}
-      {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
+      {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
         <div className="override-indicator">
           <span className="override-dot" />
           MANUAL CONTROL ACTIVE

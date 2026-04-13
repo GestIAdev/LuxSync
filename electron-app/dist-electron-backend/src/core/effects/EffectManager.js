@@ -259,7 +259,7 @@ const EFFECT_ZONE_MAP = {
     // 💣 PEAK (90-100%): Artillería pesada - territorio de drops
     'gatling_raid': 'peak',
     'core_meltdown': 'peak',
-    'industrial_strobe': 'peak',
+    'industrial_strobe': 'intense', // 🔧 WAVE 2493: peak→intense — El Martillo necesita caer más a menudo
     'neon_blinder': 'peak', // ⚡ WAVE 2182: APEX flash wall
     'surgical_strike': 'intense', // ⚰️ WAVE 2214: DEMOTED peak→intense — deja espacio a IndustrialStrobe
     // ═══════════════════════════════════════════════════════════════════════════

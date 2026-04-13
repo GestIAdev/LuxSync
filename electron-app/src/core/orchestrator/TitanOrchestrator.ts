@@ -928,24 +928,34 @@ export class TitanOrchestrator {
             if (zoneData.dimmer !== undefined) {
               const effectDimmer = Math.round(zoneData.dimmer * 255)
               
-              // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
-              const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max')
-              
-              const physicsDimmer = fixtureStates[index].dimmer
-              
-              let finalDimmer: number
-              if (blendMode === 'replace') {
-                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
-                // 🔗 WAVE 991: También forzado cuando mixBus='global'
-                finalDimmer = effectDimmer
+              // ═══════════════════════════════════════════════════════════════════
+              // 🔗 WAVE 991 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
+              //
+              // WAVE 2490 hizo HTP universal para dimmer — rompió los tiranos.
+              // Los efectos con mixBus='global' (cyberdualism, GatlingRaid flash)
+              // necesitan REPLACE total: si dictan dimmer=0, eso es NEGRO INTENCIONAL.
+              //
+              // Los gaps de GatlingRaid ya NO llegan aquí: durante gaps devuelve
+              // intensity=0 sin zoneOverrides → cae al branch legacy, no al zonal.
+              // Solo los FLASHES con zoneOverrides llegan aquí → REPLACE es seguro.
+              //
+              // REGLA:
+              //  - isGlobalBus → REPLACE (el tirano manda, incluido el cero)
+              //  - !isGlobalBus → HTP (colaborativo, nunca baja)
+              // ═══════════════════════════════════════════════════════════════════
+              if (isGlobalBus) {
+                // TIRANO: Replace directo — el efecto es la ley
+                fixtureStates[index] = {
+                  ...fixtureStates[index],
+                  dimmer: effectDimmer,
+                }
               } else {
-                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
-                finalDimmer = Math.max(physicsDimmer, effectDimmer)
-              }
-              
-              fixtureStates[index] = {
-                ...fixtureStates[index],
-                dimmer: finalDimmer,
+                // COLABORATIVO: HTP — el más brillante gana
+                const physicsDimmer = fixtureStates[index].dimmer
+                fixtureStates[index] = {
+                  ...fixtureStates[index],
+                  dimmer: Math.max(physicsDimmer, effectDimmer),
+                }
               }
             }
             
@@ -1076,30 +1086,41 @@ export class TitanOrchestrator {
         
         if (isGlobalMode) {
           // ═══════════════════════════════════════════════════════════════════════
-          // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
-          // FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
-          // 
-          // Esto elimina los "blackouts" bruscos cuando termina un efecto global.
-          // El océano "sangra" a través de los rayos de sol mientras desaparecen.
+          // 🌊 WAVE 1080 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
+          //
+          // WAVE 2490 aplicó LERP para color + HTP para dimmer aquí.
+          // PROBLEMA: HTP impide que el tirano cree darkness. Y LERP con
+          // alpha=1.0 ya era REPLACE para color (invAlpha=0), pero con alpha<1.0
+          // mezclaba — eso es correcto para fades de entrada/salida.
+          //
+          // WAVE 2491: REPLACE para dimmer cuando el efecto MANDA (flareIntensity > 0).
+          // Los gaps de GatlingRaid llegan aquí con dimmerOverride=0 →
+          // HTP protege (Math.max(physics, 0) = physics). Los efectos activos
+          // con intensity>0 llegan con dimmerOverride>0 → REPLACE dicta.
+          //
+          // Color: LERP se mantiene — es correcto porque con alpha=1.0 ya es REPLACE,
+          // y con alpha<1.0 da transiciones suaves (fade in/out).
           // ═══════════════════════════════════════════════════════════════════════
           const alpha = globalComp  // 0.0 = física pura, 1.0 = efecto puro
           const invAlpha = 1 - alpha
           
-          // LERP para cada componente RGB
+          // LERP para cada componente RGB (mantiene smooth color transitions)
           const lerpedR = Math.round(f.r * invAlpha + flareR * alpha)
           const lerpedG = Math.round(f.g * invAlpha + flareG * alpha)
           const lerpedB = Math.round(f.b * invAlpha + flareB * alpha)
           
-          // LERP para dimmer también
-          const baseDimmer = f.dimmer / 255  // Normalizar a 0-1
-          const lerpedDimmer = baseDimmer * invAlpha + flareIntensity * alpha
+          // Dimmer: REPLACE cuando el efecto manda, HTP cuando hay gap
+          const effectDimmer = Math.round(flareIntensity * 255)
+          const finalDimmer = effectDimmer > 0
+            ? effectDimmer       // TIRANO: Replace directo
+            : Math.max(f.dimmer, effectDimmer)  // GAP: HTP protege
           
           return {
             ...f,
             r: lerpedR,
             g: lerpedG,
             b: lerpedB,
-            dimmer: Math.round(lerpedDimmer * 255),
+            dimmer: finalDimmer,
           }
         } else {
           // ═══════════════════════════════════════════════════════════════════════

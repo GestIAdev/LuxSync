@@ -75,11 +75,18 @@ export const MOOD_PROFILES = {
     //   Solo raw>0.75 pasaba. Resultado: 1 efecto en 400+ frames (casi nada).
     //   1.20x: 0.65/1.20=0.542(borderline) | 0.70/1.20=0.583✅ | 0.75/1.20=0.625✅
     //   Objetivo: 4-6 EPM. Francotirador, no estatua.
+    // 🩸 WAVE 2492: 1.20→1.10 — HARD TECHNO GENOCIDE FIX
+    //   LOG EVIDENCE (Hadtechnominimal.md): 900+ frames con raw 0.50-0.66.
+    //   Con 1.20: raw=0.66/1.20=0.55 → BLOCKED por < 0.55 (strict less-than).
+    //   Solo 3 efectos en todo el log. El DREAM_RANKING mostraba 14 candidatos
+    //   brillantes (surgical_strike, neon_blinder, seismic_snap...) NUNCA ejecutados.
+    //   Con 1.10: raw=0.61/1.10=0.555 → PASA ✅. raw=0.55/1.10=0.50 → BLOCKED (correcto).
+    //   El ethicsThreshold (1.20) sigue como control de calidad real en DreamSimulator.
     balanced: {
         name: 'balanced',
         description: 'El profesional. El DJ está sobrio. 🎧',
         emoji: '⚖️',
-        thresholdMultiplier: 1.20, // 🩸 WAVE 2095.2: 1.35→1.20 (Brejcha raw 0.65-0.85 necesita más aire)
+        thresholdMultiplier: 1.10, // 🩸 WAVE 2492: 1.20→1.10 (hard techno raw 0.50-0.66 needs to breathe)
         cooldownMultiplier: 1.8, // 🎯 WAVE 1176: Cooldowns x1.8
         ethicsThreshold: 1.20, // 🩸 WAVE 2104.2: 1.12→1.20. Con 1.12, ethics=1.134 pasaba con margen de 0.014 = GRATIS. El override debe ser ÉPICO, no rutinario.
         maxIntensity: 1.0, // Sin límite

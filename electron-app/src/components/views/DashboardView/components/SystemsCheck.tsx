@@ -19,6 +19,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useHardware, useAudio } from '../../../../stores/truthStore'
 import { useSetupStore, selectUsbDmxPanel, selectSystemsCheckConfig } from '../../../../stores/setupStore'
+import { useAudioStore, selectSetInputGain } from '../../../../stores/audioStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
 import { useShallow } from 'zustand/shallow'
@@ -421,6 +422,9 @@ export const SystemsCheck: React.FC = () => {
   const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore(useShallow(selectSystemsCheckConfig))
   // 🛡️ WAVE 2042.12: React 19 fix - Use stable hook to prevent infinite loops
   const hardware = useHardware()
+  // 🎚️ WAVE 2502: Input gain control — read from audioStore
+  const inputGain = useAudioStore(state => state.inputGain)
+  const setInputGain = useAudioStore(selectSetInputGain)
   
   // 🪗 WAVE 1203: ACCORDION STATE (Mutex behavior - null = todas cerradas)
   const [activeSection, setActiveSection] = useState<AccordionSection | null>('dmx')
@@ -729,6 +733,29 @@ export const SystemsCheck: React.FC = () => {
                 <span className="btn-label">{opt.label}</span>
               </button>
             ))}
+          </div>
+
+          {/* 🎚️ WAVE 2502: INPUT GAIN CONTROL */}
+          <div className="gain-control">
+            <div className="gain-control-header">
+              <span className="gain-label">GAIN</span>
+              <span className="gain-value">{Math.round(inputGain * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              className="gain-slider"
+              min={0.1}
+              max={4.0}
+              step={0.05}
+              value={inputGain}
+              style={{ '--gain-pct': ((inputGain - 0.1) / (4.0 - 0.1)) * 100 } as React.CSSProperties}
+              onChange={(e) => setInputGain(parseFloat(e.target.value))}
+            />
+            <div className="gain-ticks">
+              <span>10%</span>
+              <span>100%</span>
+              <span>400%</span>
+            </div>
           </div>
 
           {audioError && (

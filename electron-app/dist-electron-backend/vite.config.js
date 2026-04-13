@@ -2,6 +2,16 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import path from 'path';
+import { builtinModules } from 'module';
+// 🔥 WAVE 2495: Node.js builtins must be external for ALL electron entries.
+// Without this, Rollup tries to resolve 'events', 'fs', 'path', etc. as browser
+// modules and fails with "__vite-browser-external" errors.
+// Includes both 'events' and 'node:events' variants.
+const nodeBuiltins = [
+    ...builtinModules,
+    ...builtinModules.map(m => `node:${m}`),
+    'electron',
+];
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
@@ -13,9 +23,8 @@ export default defineConfig({
                     build: {
                         outDir: 'dist-electron',
                         rollupOptions: {
-                            // 🧠 WAVE 10: Excluir módulos nativos del bundle
-                            // bytenode también es externo — registra el handler .jsc en runtime
-                            external: ['better-sqlite3', 'serialport', 'bytenode'],
+                            // 🧠 WAVE 10 + WAVE 2495: Excluir módulos nativos + builtins de Node.js
+                            external: [...nodeBuiltins, 'better-sqlite3', 'serialport', 'bytenode'],
                         },
                     },
                 },
@@ -43,7 +52,7 @@ export default defineConfig({
                             fileName: () => 'senses.js',
                         },
                         rollupOptions: {
-                            external: ['worker_threads', 'better-sqlite3'],
+                            external: [...nodeBuiltins, 'better-sqlite3'],
                         },
                     },
                 },
@@ -59,7 +68,7 @@ export default defineConfig({
                             fileName: () => 'mind.js',
                         },
                         rollupOptions: {
-                            external: ['worker_threads', 'better-sqlite3'],
+                            external: [...nodeBuiltins, 'better-sqlite3'],
                         },
                     },
                 },
@@ -76,7 +85,7 @@ export default defineConfig({
                             fileName: () => 'openDmxWorker.js',
                         },
                         rollupOptions: {
-                            external: ['worker_threads', 'serialport'],
+                            external: [...nodeBuiltins, 'serialport'],
                         },
                     },
                 },
@@ -95,7 +104,7 @@ export default defineConfig({
                             fileName: () => 'GodEarFFT.js',
                         },
                         rollupOptions: {
-                            external: ['worker_threads'],
+                            external: [...nodeBuiltins],
                             output: {
                                 exports: 'named',
                             },

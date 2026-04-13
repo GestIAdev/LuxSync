@@ -29,6 +29,8 @@ import { getHephaestusRuntime } from './IPCHandlers';
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver';
 // 🧹 WAVE 2227: VMM singleton para cleanup en stop()
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
+// 🗺️ WAVE 2543.4: Centralized zone resolution
+import { fixtureMatchesZone as zoneMapperMatch } from '../zones/ZoneMapper';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -743,23 +745,36 @@ export class TitanOrchestrator {
                             // ═══════════════════════════════════════════════════════════════════════
                             if (zoneData.dimmer !== undefined) {
                                 const effectDimmer = Math.round(zoneData.dimmer * 255);
-                                // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
-                                const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max');
-                                const physicsDimmer = fixtureStates[index].dimmer;
-                                let finalDimmer;
-                                if (blendMode === 'replace') {
-                                    // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
-                                    // 🔗 WAVE 991: También forzado cuando mixBus='global'
-                                    finalDimmer = effectDimmer;
+                                // ═══════════════════════════════════════════════════════════════════
+                                // 🔗 WAVE 991 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
+                                //
+                                // WAVE 2490 hizo HTP universal para dimmer — rompió los tiranos.
+                                // Los efectos con mixBus='global' (cyberdualism, GatlingRaid flash)
+                                // necesitan REPLACE total: si dictan dimmer=0, eso es NEGRO INTENCIONAL.
+                                //
+                                // Los gaps de GatlingRaid ya NO llegan aquí: durante gaps devuelve
+                                // intensity=0 sin zoneOverrides → cae al branch legacy, no al zonal.
+                                // Solo los FLASHES con zoneOverrides llegan aquí → REPLACE es seguro.
+                                //
+                                // REGLA:
+                                //  - isGlobalBus → REPLACE (el tirano manda, incluido el cero)
+                                //  - !isGlobalBus → HTP (colaborativo, nunca baja)
+                                // ═══════════════════════════════════════════════════════════════════
+                                if (isGlobalBus) {
+                                    // TIRANO: Replace directo — el efecto es la ley
+                                    fixtureStates[index] = {
+                                        ...fixtureStates[index],
+                                        dimmer: effectDimmer,
+                                    };
                                 }
                                 else {
-                                    // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
-                                    finalDimmer = Math.max(physicsDimmer, effectDimmer);
+                                    // COLABORATIVO: HTP — el más brillante gana
+                                    const physicsDimmer = fixtureStates[index].dimmer;
+                                    fixtureStates[index] = {
+                                        ...fixtureStates[index],
+                                        dimmer: Math.max(physicsDimmer, effectDimmer),
+                                    };
                                 }
-                                fixtureStates[index] = {
-                                    ...fixtureStates[index],
-                                    dimmer: finalDimmer,
-                                };
                             }
                             // ═══════════════════════════════════════════════════════════════════════
                             // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
@@ -855,22 +870,10 @@ export class TitanOrchestrator {
                         return false;
                     const fixtureZone = f.zone || '';
                     const positionX = this.fixtures[index]?.position?.x ?? 0;
-                    // Check if any target zone matches this fixture
-                    // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
+                    // 🗺️ WAVE 2543.5: Unified zone matching via ZoneMapper — stereo detection is internal
                     for (const zone of zones) {
-                        const tz = zone.toLowerCase();
-                        // Stereo zones need position-based matching
-                        if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' ||
-                            tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
-                            if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-                                return true;
-                            }
-                        }
-                        else {
-                            // Non-stereo zones
-                            if (this.fixtureMatchesZone(fixtureZone, zone)) {
-                                return true;
-                            }
+                        if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
+                            return true;
                         }
                     }
                     return false;
@@ -891,27 +894,38 @@ export class TitanOrchestrator {
                         return f;
                     if (isGlobalMode) {
                         // ═══════════════════════════════════════════════════════════════════════
-                        // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
-                        // FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
-                        // 
-                        // Esto elimina los "blackouts" bruscos cuando termina un efecto global.
-                        // El océano "sangra" a través de los rayos de sol mientras desaparecen.
+                        // 🌊 WAVE 1080 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
+                        //
+                        // WAVE 2490 aplicó LERP para color + HTP para dimmer aquí.
+                        // PROBLEMA: HTP impide que el tirano cree darkness. Y LERP con
+                        // alpha=1.0 ya era REPLACE para color (invAlpha=0), pero con alpha<1.0
+                        // mezclaba — eso es correcto para fades de entrada/salida.
+                        //
+                        // WAVE 2491: REPLACE para dimmer cuando el efecto MANDA (flareIntensity > 0).
+                        // Los gaps de GatlingRaid llegan aquí con dimmerOverride=0 →
+                        // HTP protege (Math.max(physics, 0) = physics). Los efectos activos
+                        // con intensity>0 llegan con dimmerOverride>0 → REPLACE dicta.
+                        //
+                        // Color: LERP se mantiene — es correcto porque con alpha=1.0 ya es REPLACE,
+                        // y con alpha<1.0 da transiciones suaves (fade in/out).
                         // ═══════════════════════════════════════════════════════════════════════
                         const alpha = globalComp; // 0.0 = física pura, 1.0 = efecto puro
                         const invAlpha = 1 - alpha;
-                        // LERP para cada componente RGB
+                        // LERP para cada componente RGB (mantiene smooth color transitions)
                         const lerpedR = Math.round(f.r * invAlpha + flareR * alpha);
                         const lerpedG = Math.round(f.g * invAlpha + flareG * alpha);
                         const lerpedB = Math.round(f.b * invAlpha + flareB * alpha);
-                        // LERP para dimmer también
-                        const baseDimmer = f.dimmer / 255; // Normalizar a 0-1
-                        const lerpedDimmer = baseDimmer * invAlpha + flareIntensity * alpha;
+                        // Dimmer: REPLACE cuando el efecto manda, HTP cuando hay gap
+                        const effectDimmer = Math.round(flareIntensity * 255);
+                        const finalDimmer = effectDimmer > 0
+                            ? effectDimmer // TIRANO: Replace directo
+                            : Math.max(f.dimmer, effectDimmer); // GAP: HTP protege
                         return {
                             ...f,
                             r: lerpedR,
                             g: lerpedG,
                             b: lerpedB,
-                            dimmer: Math.round(lerpedDimmer * 255),
+                            dimmer: finalDimmer,
                         };
                     }
                     else {
@@ -1109,13 +1123,26 @@ export class TitanOrchestrator {
             // The engine runs but its output never reaches fixtures.
             if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
                 // Group outputs by parameter for efficient processing
+                // 🎯 WAVE 2544.3: Separate outputs into two buckets:
+                //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
+                //   - zone bucket: output targets a zone string (tickWithPhase legacy path)
+                const hephByFixtureId = new Map();
                 const hephByZone = new Map();
                 for (const output of hephOutputs) {
-                    const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
-                    if (!hephByZone.has(zoneKey)) {
-                        hephByZone.set(zoneKey, []);
+                    // If fixtureId looks like a real fixture ID (not 'zone:xxx'), use fixture bucket
+                    if (output.fixtureId && !output.fixtureId.startsWith('zone:')) {
+                        if (!hephByFixtureId.has(output.fixtureId)) {
+                            hephByFixtureId.set(output.fixtureId, []);
+                        }
+                        hephByFixtureId.get(output.fixtureId).push(output);
                     }
-                    hephByZone.get(zoneKey).push(output);
+                    else {
+                        const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
+                        if (!hephByZone.has(zoneKey)) {
+                            hephByZone.set(zoneKey, []);
+                        }
+                        hephByZone.get(zoneKey).push(output);
+                    }
                 }
                 // Apply Hephaestus outputs to fixtures
                 fixtureStates = fixtureStates.map((f, index) => {
@@ -1123,18 +1150,25 @@ export class TitanOrchestrator {
                     const fixtureId = this.fixtures[index]?.id;
                     if (fixtureId && chronosFixtureIds.has(fixtureId))
                         return f;
-                    // Find matching outputs for this fixture's zone
-                    const fixtureZone = (f.zone || '').toLowerCase();
                     const applicableOutputs = [];
-                    // Check 'all' zone outputs
+                    // 🎯 WAVE 2544.3: Check fixture-ID-specific outputs first (AND-gated path)
+                    if (fixtureId) {
+                        const directOutputs = hephByFixtureId.get(fixtureId);
+                        if (directOutputs)
+                            applicableOutputs.push(...directOutputs);
+                    }
+                    // Check 'all' zone outputs (legacy / global clips)
                     const allZoneOutputs = hephByZone.get('all');
                     if (allZoneOutputs)
                         applicableOutputs.push(...allZoneOutputs);
-                    // Check zone-specific outputs
+                    // Check zone-specific outputs (old zone-string path)
+                    // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support in Hephaestus outputs
+                    const fixtureZone = (f.zone || '').toLowerCase();
+                    const positionX = this.fixtures[index]?.position?.x ?? 0;
                     for (const [zoneKey, outputs] of hephByZone) {
                         if (zoneKey === 'all')
                             continue;
-                        if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
+                        if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
                             applicableOutputs.push(...outputs);
                         }
                     }
@@ -1976,89 +2010,11 @@ export class TitanOrchestrator {
         };
     }
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🎨 WAVE 725: ZONE MATCHING HELPER - Pinceles Finos
-    // ═══════════════════════════════════════════════════════════════════════════
-    /**
-     * Determina si una fixture pertenece a una zona específica
-     * Soporta AMBOS sistemas de zonas:
-     *   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-     *   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
-     *
-     * @param fixtureZone Zona de la fixture (lowercase)
-     * @param targetZone Zona objetivo del efecto
-     * @returns true si la fixture pertenece a la zona
-     */
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2040.25 FASE 2: SIMPLIFIED ZONE MATCHING — Canonical Zones
-    // Reescrito con CanonicalZone. De 60 líneas a 20 líneas.
-    // ═══════════════════════════════════════════════════════════════════════════
-    fixtureMatchesZone(fixtureZone, targetZone) {
-        const fz = fixtureZone.toLowerCase();
-        const tz = targetZone.toLowerCase();
-        // Special group targets
-        if (tz === 'all')
-            return true;
-        if (tz === 'all-movers')
-            return fz === 'movers-left' || fz === 'movers-right';
-        if (tz === 'all-pars')
-            return fz === 'front' || fz === 'back' || fz === 'floor';
-        // Direct canonical zone match (front→front, movers-left→movers-left, etc.)
-        if (fz === tz)
-            return true;
-        // No match
-        return false;
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔊 WAVE 2040.25 FASE 2: STEREO ROUTING — Canonical + Position-based
-    // Usa position.x del StageBuilder para determinar L/R
-    // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
-    //             position.x >= 0 = RIGHT (lado derecho del escenario)
-    // 🔊 WAVE 2040.27: Added support for frontL/R, backL/R (Chill effects)
+    // 🗺️ WAVE 2543.5: Single zone matcher — ZoneMapper handles stereo detection internally
+    // fixtureMatchesZone (no-position) eliminated — always pass positionX for correctness
     // ═══════════════════════════════════════════════════════════════════════════
     fixtureMatchesZoneStereo(fixtureZone, targetZone, positionX) {
-        const fz = fixtureZone.toLowerCase();
-        const tz = targetZone.toLowerCase();
-        const isLeft = positionX < 0;
-        // Position-based stereo filtering (all-left / all-right)
-        if (tz === 'all-left')
-            return isLeft;
-        if (tz === 'all-right')
-            return !isLeft;
-        // 🌊 WAVE 2040.27: Stereo PARs (frontL/R, backL/R, floorL/R)
-        // Used by Chill effects for position-based L/R routing
-        if (tz === 'frontl')
-            return fz === 'front' && isLeft;
-        if (tz === 'frontr')
-            return fz === 'front' && !isLeft;
-        if (tz === 'backl')
-            return fz === 'back' && isLeft;
-        if (tz === 'backr')
-            return fz === 'back' && !isLeft;
-        if (tz === 'floorl')
-            return fz === 'floor' && isLeft;
-        if (tz === 'floorr')
-            return fz === 'floor' && !isLeft;
-        // Zone match + stereo side check (for PARs with stereo)
-        // Example: targetZone='front' + positionX < 0 → front left PARs
-        // Example: targetZone='movers-left' → zone-based, ignore positionX
-        // If targetZone is already stereo-specific (movers-left, movers-right),
-        // delegate to non-stereo matcher (zone match is enough)
-        if (tz === 'movers-left' || tz === 'movers-right') {
-            return this.fixtureMatchesZone(fz, tz);
-        }
-        // For generic zones (front, back, floor), apply position-based stereo filter
-        // This allows stereo routing of PARs without explicit zone split
-        if (tz === 'front' || tz === 'back' || tz === 'floor') {
-            // Check zone match first
-            if (!this.fixtureMatchesZone(fz, tz))
-                return false;
-            // Zone matches, now apply stereo filter (if needed by caller)
-            // NOTE: Caller MUST specify if they want L/R filtering via all-left/all-right
-            // If they just pass 'front', we match ALL front fixtures
-            return true;
-        }
-        // Default: delegate to non-stereo matcher
-        return this.fixtureMatchesZone(fz, tz);
+        return zoneMapperMatch(fixtureZone, targetZone, positionX);
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing

@@ -255,7 +255,7 @@ function determineDecisionType(inputs) {
     //   El tramo 0.65–0.84 ya NO fuerza ningún strike — deja al resto de prioridades
     //   evaluar si corresponde o no. Más musical, menos mecánico.
     // ═══════════════════════════════════════════════════════════════════════
-    const DIVINE_ENERGY_GATE = 0.85; // 🔬 WAVE 2201: zona Intense/Peak threshold
+    const DIVINE_ENERGY_GATE = 0.72; // 🔬 WAVE 2494: 0.85→0.72 — rawEnergy necesita gate más bajo para sincronizar con Z-score
     // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
     // (El efecto activo tiene "la palabra", no le interrumpimos)
     if (activeDictator) {
@@ -264,7 +264,9 @@ function determineDecisionType(inputs) {
     }
     else if (currentZ >= DIVINE_THRESHOLD) {
         const zone = energyContext?.zone ?? 'gentle';
-        const effectiveEnergy = energyContext?.smoothed ?? 0;
+        // 🔬 WAVE 2494: Usar absolute (rawEnergy) para eliminar desync temporal con Z-score
+        // Z se computa sobre rawEnergy → absolute y Z pican en el MISMO frame
+        const effectiveEnergy = energyContext?.absolute ?? 0;
         // Consciencia energética: NO divine en zonas de silencio
         // (No dispares artillería pesada en un funeral)
         if (zone === 'silence' || zone === 'valley') {
@@ -275,8 +277,8 @@ function determineDecisionType(inputs) {
             // 🔬 WAVE 2201: Z estadísticamente masivo pero energía real insuficiente
             // (bombo seco tras silencio, minimal techno transición, verso de baja energía)
             // → NO forzar ningún strike, dejar que el pipeline musical decida
-            console.log(`[DecisionMaker 🌩️] DIVINE SUPPRESSED: Z=${currentZ.toFixed(2)}σ but energy=${effectiveEnergy.toFixed(2)} < ${DIVINE_ENERGY_GATE} ` +
-                `(gate Intense/Peak) → falling through to musical context priorities`);
+            console.log(`[DecisionMaker 🌩️] DIVINE SUPPRESSED: Z=${currentZ.toFixed(2)}σ but rawEnergy=${effectiveEnergy.toFixed(2)} < ${DIVINE_ENERGY_GATE} ` +
+                `(WAVE 2494 raw gate) → falling through to musical context priorities`);
             // Fall through — NO return aquí. Hunt/drop/buildup evaluarán el frame.
         }
         else {
@@ -494,32 +496,33 @@ function calculateCombinedConfidence(inputs, cfg) {
 function selectFromArsenalWithDiversity(arsenal) {
     if (arsenal.length === 0)
         return '';
+    const ranked = rankArsenalByDiversity(arsenal);
+    return ranked[0] || arsenal[0];
+}
+/**
+ * 🎲 WAVE 2494: Ordena arsenal completo por diversity score (mayor primero)
+ * Devuelve el array completo rankeado, no solo el ganador.
+ * Esto permite que el Repository itere candidatos si el #1 está en cooldown.
+ */
+function rankArsenalByDiversity(arsenal) {
+    if (arsenal.length === 0)
+        return [];
     const analyzer = getDNAAnalyzer();
-    // Target DNA neutral para el cálculo (drops = máxima agresión)
-    // No importa la distancia aquí — todos los del arsenal ya son "adecuados".
-    // Solo nos importa el diversityFactor.
-    const DIVERSITY_FACTORS = [1.0, 0.70, 0.35, 0.15];
-    let bestEffect = arsenal[0];
-    let bestScore = -1;
-    for (let i = 0; i < arsenal.length; i++) {
-        const effectId = arsenal[i];
-        // Calculamos el relevance del efecto vs un target neutro de drops (A=0.90, C=0.30, O=0.05)
-        // Esto aplica el diversity factor sin necesitar el target real del frame
+    const scored = arsenal.map(effectId => {
         const relevance = analyzer.calculateRelevance(effectId, {
             aggression: 0.90,
             chaos: 0.30,
             organicity: 0.05,
             confidence: 1.0,
         });
-        // Tiebreak: si hay empate perfecto, el orden original del array gana
-        if (relevance > bestScore + 0.001) {
-            bestScore = relevance;
-            bestEffect = effectId;
-        }
-    }
-    console.log(`[DecisionMaker 🎲] DIVERSITY SELECT: winner=${bestEffect} score=${bestScore.toFixed(3)} ` +
+        return { id: effectId, score: relevance };
+    });
+    // Ordenar por score descendente (mayor diversidad+relevancia primero)
+    scored.sort((a, b) => b.score - a.score);
+    const winner = scored[0];
+    console.log(`[DecisionMaker 🎲] DIVERSITY SELECT: winner=${winner.id} score=${winner.score.toFixed(3)} ` +
         `from [${arsenal.join(', ')}]`);
-    return bestEffect;
+    return scored.map(s => s.id);
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE STRIKE - MANDATORY MAXIMUM IMPACT
@@ -582,23 +585,25 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
             console.warn(`[DecisionMaker 🎨] DIVINE TEXTURE FILTER: All effects filtered out! Using original arsenal.`);
         }
     }
-    // 🎲 WAVE 2183: DIVERSITY FIX — selección respeta penalización de uso reciente
-    // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
-    // Antes: divineArsenal = arsenal completo → Repository cogía índice 0 → monopolio
-    // Ahora: divineArsenal = [winner] → Repository solo valida HARD_COOLDOWN del ganador
-    const suggestedEffect = selectFromArsenalWithDiversity(arsenal);
+    // 🎲 WAVE 2494: DIVERSITY FIX v3 — pasar arsenal completo RANKEADO por diversity score
+    // WAVE 2183.1 "LOBOTOMY" fue un ERROR: pasar [winner] mataba la diversidad.
+    // Si el ganador está en cooldown → silencio. No hay plan B.
+    // FIX: Pasar todo el arsenal ordenado por diversity score.
+    // Repository itera en orden de preferencia, el PRIMERO sin cooldown dispara.
+    const rankedArsenal = rankArsenalByDiversity(arsenal);
+    const suggestedEffect = rankedArsenal[0] || arsenal[0];
     output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`;
-    // 🔪 WAVE 1010 / WAVE 2183.1: El General ya eligió. Repository solo verifica HARD_COOLDOWN.
+    // 🎲 WAVE 2494: Arsenal completo rankeado → Repository elige el primero disponible
     output.effectDecision = {
         effectType: suggestedEffect,
         intensity: 1.0, // DIVINE = máxima intensidad
         zones: ['all'], // DIVINE afecta todo
-        reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Winner: ${suggestedEffect} | Full arsenal: ${arsenal.join(', ')}`,
+        reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Ranked: ${rankedArsenal.join(' > ')} | Full arsenal: ${arsenal.join(', ')}`,
         confidence: 0.99,
-        // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
-        // Repository itera este array de 1 elemento: si está en HARD_COOLDOWN → silencio.
-        // No hay plan B aleatorio. El General ya habló.
-        divineArsenal: [suggestedEffect],
+        // 🎲 WAVE 2494: Arsenal COMPLETO rankeado por diversity score
+        // Repository itera en orden: primer candidato sin cooldown dispara.
+        // Si TODOS están en cooldown → silencio (exhaustion legítimo).
+        divineArsenal: rankedArsenal,
     };
     // Color decision: Máximo impacto
     output.colorDecision = {

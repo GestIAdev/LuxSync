@@ -198,28 +198,60 @@ export class GatlingRaid extends BaseEffect {
     this.elapsedMs += deltaMs
     this.bulletTimer += deltaMs
     
-    // Alternar entre flash y gap
-    if (this.isFlashOn) {
-      if (this.bulletTimer >= this.config.bulletDurationMs) {
-        this.isFlashOn = false
-        this.bulletTimer = 0
-      }
-    } else {
-      if (this.bulletTimer >= this.config.bulletGapMs) {
-        this.isFlashOn = true
-        this.bulletTimer = 0
-        this.currentBullet++
-        
-        // Check sweep completion
-        if (this.currentBullet >= this.config.bulletCount) {
-          this.currentBullet = 0
-          this.currentSweep++
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔫 WAVE 2490: CARRY-OVER TEMPORAL — Acumulador con excedente
+    //
+    // ANTES: bulletTimer = 0 descartaba los ms sobrantes de cada transición.
+    //   Con deltaMs=40ms y bulletDurationMs=30ms, se perdían 10ms por ciclo.
+    //   18 balas × ~15ms perdidos/ciclo = 270ms extra → efecto 23% más lento.
+    //   Con frame-skip (Stampede Guard), deltaMs=80ms+ perdía balas enteras.
+    //
+    // AHORA: while-loop procesa TODAS las transiciones que caben en el delta.
+    //   bulletTimer -= threshold preserva el excedente para la siguiente.
+    //   Resultado: timing preciso independiente del framerate.
+    //
+    // 🩸 WAVE 2492: MINIMUM-1-FRAME VISIBILITY — Balas fantasma eliminadas
+    //   PROBLEMA: El while-loop podía consumir un gap Y un flash completo
+    //   en la misma iteración. isFlashOn pasaba a true→false sin que
+    //   getOutput() la viera → bala INVISIBLE. ~25% de balas se perdían.
+    //   FIX: Cuando una transición gap→flash ocurre, el loop ROMPE
+    //   inmediatamente. getOutput() SIEMPRE ve isFlashOn=true al menos
+    //   1 frame. Los gaps se procesan libremente (no son visuales).
+    // ═══════════════════════════════════════════════════════════════════════
+    while (this.bulletTimer > 0 && (this.phase as string) !== 'finished') {
+      if (this.isFlashOn) {
+        if (this.bulletTimer >= this.config.bulletDurationMs) {
+          this.bulletTimer -= this.config.bulletDurationMs
+          this.isFlashOn = false
+        } else {
+          break
+        }
+      } else {
+        if (this.bulletTimer >= this.config.bulletGapMs) {
+          this.bulletTimer -= this.config.bulletGapMs
+          this.isFlashOn = true
+          this.currentBullet++
           
-          if (this.currentSweep >= this.config.sweepCount) {
-            this.phase = 'finished'
-            console.log(`[GatlingRaid 🔫] FINISHED (${this.elapsedMs}ms)`)
-            return
+          // Check sweep completion
+          if (this.currentBullet >= this.config.bulletCount) {
+            this.currentBullet = 0
+            this.currentSweep++
+            
+            if (this.currentSweep >= this.config.sweepCount) {
+              this.phase = 'finished'
+              console.log(`[GatlingRaid 🔫] FINISHED (${this.elapsedMs}ms)`)
+              return
+            }
           }
+          
+          // 🩸 WAVE 2492: STOP HERE — let getOutput() see this flash
+          // The remaining bulletTimer will be processed next frame.
+          // Without this break, the loop continues and may consume the
+          // entire flash duration → isFlashOn goes back to false →
+          // invisible bullet. One frame of visibility is non-negotiable.
+          break
+        } else {
+          break
         }
       }
     }

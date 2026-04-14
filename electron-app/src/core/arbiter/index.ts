@@ -47,6 +47,10 @@ export {
   type FixtureLightingTarget,
   type GlobalEffectsState,
   type RGBOutput,
+
+  // 🎯 WAVE 2662: Effect Intent types
+  type EffectIntent,
+  type EffectIntentMap,
   
   // Config
   type MasterArbiterConfig,

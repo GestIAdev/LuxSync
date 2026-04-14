@@ -28,6 +28,8 @@ import {
   masterArbiter, 
   type Layer0_Titan,
   type FinalLightingTarget,
+  type EffectIntentMap,
+  type EffectIntent,
   ControlLayer 
 } from '../arbiter'
 
@@ -770,6 +772,190 @@ export class TitanOrchestrator {
     }
     masterArbiter.setTitanIntent(titanLayer)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectIntents injection
+    //
+    // BEFORE: Effects mutated fixtureStates AFTER HAL.renderFromTarget().
+    //   → Dual pipeline bug: UI saw effects, DMX didn't (ghost effect).
+    //
+    // NOW: EffectManager produces CombinedEffectOutput (pure function).
+    //   → Orchestrator resolves zones → fixture IDs → EffectIntentMap.
+    //   → Arbiter consumes intents as Layer 3 during arbitrate().
+    //   → HAL.renderFromTarget() sends the COMPLETE target to DMX.
+    //   → Single Source of Truth. No post-HAL mutation. Zero ghosts.
+    // ═══════════════════════════════════════════════════════════════════════
+    const effectManager = getEffectManager()
+    const effectOutput = effectManager.getCombinedOutput()
+    
+    // Chronos protection: fixtures being painted by Chronos are off-limits
+    const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds()
+    
+    if (effectOutput.hasActiveEffects) {
+      const intentMap: EffectIntentMap = new Map()
+      
+      // ── ZONE OVERRIDES (pinceles finos) ──────────────────────────────
+      if (effectOutput.zoneOverrides) {
+        const activeZones = Object.keys(effectOutput.zoneOverrides)
+        
+        for (const zoneId of activeZones) {
+          const zoneData = effectOutput.zoneOverrides[zoneId]
+          const fixtureIds = masterArbiter.getFixtureIdsByZone(zoneId)
+          
+          for (const fixtureId of fixtureIds) {
+            // Skip Chronos-protected fixtures
+            if (chronosFixtureIds.has(fixtureId)) continue
+            
+            // Build the effect intent for this fixture
+            const fixtureIntent: EffectIntent = {
+              mixBus: effectOutput.mixBus || 'htp',
+              globalComposition: effectOutput.globalComposition ?? 1,
+            }
+            
+            // Color: HSL → RGB conversion
+            if (zoneData.color) {
+              const rgb = this.hslToRgb(
+                zoneData.color.h,
+                zoneData.color.s,
+                zoneData.color.l
+              )
+              fixtureIntent.color = rgb
+            }
+            
+            // Dimmer: convert 0-1 → 0-255
+            if (zoneData.dimmer !== undefined) {
+              fixtureIntent.dimmer = Math.round(zoneData.dimmer * 255)
+            }
+            
+            // White/Amber: convert 0-1 → 0-255
+            if (zoneData.white !== undefined) {
+              fixtureIntent.white = Math.round(zoneData.white * 255)
+            } else if (effectOutput.mixBus === 'global') {
+              // 🛡️ WAVE 993: THE IRON CURTAIN — unspecified channels die under global bus
+              fixtureIntent.white = 0
+            }
+            
+            if (zoneData.amber !== undefined) {
+              fixtureIntent.amber = Math.round(zoneData.amber * 255)
+            } else if (effectOutput.mixBus === 'global') {
+              fixtureIntent.amber = 0
+            }
+            
+            // Movement: preserve original format for MasterArbiter
+            if (zoneData.movement) {
+              fixtureIntent.movement = {
+                pan: zoneData.movement.pan !== undefined
+                  ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.pan * 255) : Math.round((zoneData.movement.pan - 0.5) * 255))
+                  : undefined,
+                tilt: zoneData.movement.tilt !== undefined
+                  ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.tilt * 255) : Math.round((zoneData.movement.tilt - 0.5) * 255))
+                  : undefined,
+                isAbsolute: zoneData.movement.isAbsolute,
+              }
+            }
+            
+            // Merge: if fixture already has an intent (from another zone), keep highest priority
+            const existing = intentMap.get(fixtureId)
+            if (existing) {
+              // HTP merge for dimmer, LTP for color (last zone wins)
+              if (fixtureIntent.dimmer !== undefined && existing.dimmer !== undefined) {
+                fixtureIntent.dimmer = Math.max(fixtureIntent.dimmer, existing.dimmer)
+              }
+            }
+            
+            intentMap.set(fixtureId, fixtureIntent)
+          }
+        }
+      }
+      
+      // ── GLOBAL BROCHA GORDA (legacy: one color for all affected fixtures) ──
+      if (!effectOutput.zoneOverrides && effectOutput.dimmerOverride !== undefined) {
+        // Determine affected fixture IDs
+        const zones = effectOutput.zones || []
+        const globalComp = effectOutput.globalComposition ?? 0
+        
+        // Color: use colorOverride or default dorado
+        let color = { r: 255, g: 200, b: 80 } // Default dorado (SolarFlare legacy)
+        if (effectOutput.colorOverride) {
+          color = this.hslToRgb(
+            effectOutput.colorOverride.h,
+            effectOutput.colorOverride.s,
+            effectOutput.colorOverride.l
+          )
+        }
+        
+        for (let i = 0; i < this.fixtures.length; i++) {
+          const fixture = this.fixtures[i]
+          if (!fixture?.id) continue
+          if (chronosFixtureIds.has(fixture.id)) continue
+          
+          // Check if this fixture should be affected
+          let shouldApply = false
+          if (globalComp > 0) {
+            shouldApply = true // globalComposition affects ALL fixtures
+          } else if (zones.length > 0) {
+            const fixtureZone = (fixture.zone || '').toLowerCase()
+            const positionX = fixture.position?.x ?? 0
+            for (const zone of zones) {
+              if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
+                shouldApply = true
+                break
+              }
+            }
+          }
+          
+          if (!shouldApply) continue
+          
+          intentMap.set(fixture.id, {
+            dimmer: Math.round(effectOutput.dimmerOverride * 255),
+            color,
+            mixBus: effectOutput.mixBus || 'htp',
+            globalComposition: globalComp,
+          })
+        }
+      }
+      
+      // ── MOVEMENT OVERRIDE (global fallback for all movers) ──
+      if (effectOutput.movementOverride) {
+        const mov = effectOutput.movementOverride
+        // Only apply to fixtures that are movers and NOT already covered by zone movement
+        for (const fixture of this.fixtures) {
+          if (!fixture?.id) continue
+          if (chronosFixtureIds.has(fixture.id)) continue
+          
+          const isMover = fixture.zone?.includes('MOVING') || fixture.type === 'beam' || fixture.type === 'spot'
+          if (!isMover) continue
+          
+          const existing = intentMap.get(fixture.id)
+          // Don't override zone-specific movement
+          if (existing?.movement) continue
+          
+          const movement = {
+            pan: mov.pan !== undefined ? Math.round(((mov.pan + 1) / 2) * 255) : undefined,
+            tilt: mov.tilt !== undefined ? Math.round(((mov.tilt + 1) / 2) * 255) : undefined,
+            isAbsolute: mov.isAbsolute,
+          }
+          
+          if (existing) {
+            existing.movement = movement
+          } else {
+            intentMap.set(fixture.id, {
+              mixBus: effectOutput.mixBus || 'htp',
+              globalComposition: effectOutput.globalComposition ?? 0,
+              movement,
+            })
+          }
+        }
+      }
+      
+      // Inject intents into the Arbiter BEFORE arbitration
+      masterArbiter.setEffectIntents(intentMap)
+      
+      // Throttled telemetry
+      if (this.frameCount % 60 === 0 && intentMap.size > 0) {
+        console.log(`[TitanOrchestrator 🎯] WAVE 2662: ${intentMap.size} effect intents injected | mixBus=${effectOutput.mixBus} | globalComp=${(effectOutput.globalComposition ?? 0).toFixed(2)}`)
+      }
+    }
+    
     // Arbitrate all layers (this merges manual overrides, effects, blackout)
     const arbitratedTarget = masterArbiter.arbitrate()
 
@@ -830,475 +1016,30 @@ export class TitanOrchestrator {
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
+    // � WAVE 2662: POST-HAL MUTATION ELIMINATED
     //
-    // OLD (WAVE 2063): Binary gate — Chronos playing? Block ALL effects everywhere.
-    //   → This killed Selene's reactive colors for the ENTIRE stage during gaps.
+    // BEFORE (WAVE 635 → 993 → 2065): ~500 lines of zone overrides, brocha gorda,
+    // stereo movement, movement override — all mutating fixtureStates post-HAL.
+    // This was the root cause of ghost effects (WAVE 2660): UI got the mutation,
+    // DMX didn't (conditional re-send gated behind Hephaestus).
     //
-    // NEW: Chronos only protects the SPECIFIC fixtures it's painting right now.
-    //   Fixtures NOT in the Chronos frame are FREE for EffectManager/Hephaestus.
-    //   This means Selene's music-reactive physics keep working on untouched fixtures.
+    // NOW: Effects are injected as EffectIntents BEFORE arbitrate().
+    // The Arbiter produces a FinalLightingTarget that ALREADY includes effects.
+    // HAL.renderFromTarget() sends the COMPLETE truth to DMX.
+    // Single Source of Truth. Zero ghosts. Clean cascade.
     //
-    // The Set<string> contains ONLY the fixture IDs that Chronos is controlling
-    // in THIS exact frame. An empty set = Chronos has nothing to say = full freedom.
+    // The only post-HAL mutation that remains is Hephaestus (.lfx clips),
+    // which has its own legitimate re-send path.
     // ═══════════════════════════════════════════════════════════════════════
-    const isChronosPlaying = masterArbiter.isPlaybackActive()
-    const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds()
     
-    // 🔬 WAVE 2065: Telemetry (1 sample every 5s)
+    // Chronos telemetry (post-HAL, for diagnostics only)
+    const isChronosPlaying = masterArbiter.isPlaybackActive()
     if (isChronosPlaying && this.frameCount % 300 === 1) {
       const f0 = fixtureStates[0]
       console.log(
         `[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
         `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`
       )
-    }
-    
-    // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
-    // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
-    // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
-    const effectManager = getEffectManager()
-    const effectOutput = effectManager.getCombinedOutput()
-    
-    // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
-    // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
-    // Si no, usar la lógica legacy con colorOverride global
-    
-    // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — now per-fixture inside loop
-    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
-      // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
-      // Los logs de zoneOverrides están en el EffectManager, no aquí
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🎨 WAVE 740: STRICT ZONAL ISOLATION
-      // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
-      // Las fixtures que NO están en esas zonas NO SE TOCAN - permanecen
-      // con su estado base (del HAL/Vibe) sin modificación alguna.
-      // ═══════════════════════════════════════════════════════════════════════
-      
-      // 1. Obtener las zonas activas del efecto (SOLO estas se procesan)
-      const activeZones = Object.keys(effectOutput.zoneOverrides)
-      
-      // 2. Crear un Set de índices de fixtures afectadas para tracking
-      const affectedFixtureIndices = new Set<number>()
-      
-      // 3. Para cada zona activa, encontrar y modificar SOLO sus fixtures
-      for (const zoneId of activeZones) {
-        const zoneData = effectOutput.zoneOverrides[zoneId]
-        
-        // Encontrar fixtures que pertenecen a esta zona
-        fixtureStates.forEach((f, index) => {
-          const fixtureZone = (f.zone || '').toLowerCase()
-          // 🔊 WAVE 1075.2: Use position.x from original fixtures array
-          const positionX = this.fixtures[index]?.position?.x ?? 0
-          
-          if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
-            // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-            const fixtureId = this.fixtures[index]?.id
-            if (fixtureId && chronosFixtureIds.has(fixtureId)) return
-            
-            // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
-            affectedFixtureIndices.add(index)
-            
-            // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
-            const isGlobalBus = effectOutput.mixBus === 'global'
-            
-            // Aplicar color si existe
-            if (zoneData.color) {
-              const rgb = this.hslToRgb(
-                zoneData.color.h,
-                zoneData.color.s,
-                zoneData.color.l
-              )
-              // REEMPLAZO DIRECTO - El efecto toma control total del color
-              fixtureStates[index] = {
-                ...f,
-                r: rgb.r,
-                g: rgb.g,
-                b: rgb.b,
-              }
-            }
-            
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
-            // 
-            // ANTES (WAVE 765): LTP puro - El efecto siempre manda
-            // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
-            // 
-            // AHORA: Cada efecto declara su intención via blendMode:
-            // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
-            // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
-            // 
-            // DEFAULT: 'max' - Más seguro para energía general
-            // 
-            // 🔗 WAVE 991: THE MISSING LINK
-            // Si el efecto tiene mixBus='global', forzamos 'replace' SIEMPRE
-            // El mixBus de la clase es la autoridad máxima
-            // ═══════════════════════════════════════════════════════════════════════
-            if (zoneData.dimmer !== undefined) {
-              const effectDimmer = Math.round(zoneData.dimmer * 255)
-              
-              // ═══════════════════════════════════════════════════════════════════
-              // 🔗 WAVE 991 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
-              //
-              // WAVE 2490 hizo HTP universal para dimmer — rompió los tiranos.
-              // Los efectos con mixBus='global' (cyberdualism, GatlingRaid flash)
-              // necesitan REPLACE total: si dictan dimmer=0, eso es NEGRO INTENCIONAL.
-              //
-              // Los gaps de GatlingRaid ya NO llegan aquí: durante gaps devuelve
-              // intensity=0 sin zoneOverrides → cae al branch legacy, no al zonal.
-              // Solo los FLASHES con zoneOverrides llegan aquí → REPLACE es seguro.
-              //
-              // REGLA:
-              //  - isGlobalBus → REPLACE (el tirano manda, incluido el cero)
-              //  - !isGlobalBus → HTP (colaborativo, nunca baja)
-              // ═══════════════════════════════════════════════════════════════════
-              if (isGlobalBus) {
-                // TIRANO: Replace directo — el efecto es la ley
-                fixtureStates[index] = {
-                  ...fixtureStates[index],
-                  dimmer: effectDimmer,
-                }
-              } else {
-                // COLABORATIVO: HTP — el más brillante gana
-                const physicsDimmer = fixtureStates[index].dimmer
-                fixtureStates[index] = {
-                  ...fixtureStates[index],
-                  dimmer: Math.max(physicsDimmer, effectDimmer),
-                }
-              }
-            }
-            
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
-            // 🔗 WAVE 991: Respetar mixBus='global' también para white/amber
-            // 🛡️ WAVE 993: THE IRON CURTAIN - Zero-fill para canales no especificados
-            // 
-            // PROBLEMA WAVE 991: TropicalPulse/ClaveRhythm enviaban white/amber pero el
-            // Orchestrator los ignoraba completamente.
-            // 
-            // PROBLEMA WAVE 993: Efectos con mixBus='global' no mataban los canales
-            // que NO especificaban → Physics "sangraba" a través de los huecos.
-            // 
-            // SOLUCIÓN WAVE 993 - THE IRON CURTAIN:
-            // - mixBus='global' → TELÓN DE ACERO: Todo lo no especificado MUERE (0)
-            // - mixBus='htp' → COLABORACIÓN: Solo procesa lo que trae el efecto
-            // 
-            // Ejemplo crítico: DigitalRain (verde puro techno)
-            //   - Trae: RGB verde, dimmer
-            //   - NO trae: white, amber
-            //   - ANTES: white/amber quedaban con valor de physics (dorado bleeding)
-            //   - AHORA: white=0, amber=0 → VERDE PURO ✅
-            // ═══════════════════════════════════════════════════════════════════════
-            if (isGlobalBus) {
-              // 🛡️ WAVE 993: THE IRON CURTAIN
-              // Dictador global: Los canales no mencionados MUEREN
-              // No permitimos que la física "sangre" a través de los huecos
-              const effectWhite = zoneData.white !== undefined ? Math.round(zoneData.white * 255) : 0
-              const effectAmber = zoneData.amber !== undefined ? Math.round(zoneData.amber * 255) : 0
-              
-              fixtureStates[index].white = effectWhite
-              fixtureStates[index].amber = effectAmber
-            } else {
-              // 🎉 HTP MODE (Fiesta Latina): COLABORACIÓN
-              // Solo procesa los canales que el efecto trae explícitamente
-              // Si el efecto no menciona white/amber, deja que physics brille
-              if (zoneData.white !== undefined) {
-                const effectWhite = Math.round(zoneData.white * 255)
-                const physicsWhite = fixtureStates[index].white || 0
-                fixtureStates[index].white = Math.max(physicsWhite, effectWhite)
-              }
-              
-              if (zoneData.amber !== undefined) {
-                const effectAmber = Math.round(zoneData.amber * 255)
-                const physicsAmber = fixtureStates[index].amber || 0
-                fixtureStates[index].amber = Math.max(physicsAmber, effectAmber)
-              }
-            }
-          }
-          // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
-        })
-      }
-      
-      // Log throttled para debug
-      if (this.frameCount % 60 === 0) {
-        const zoneList = activeZones.join(', ')
-        const unaffectedCount = fixtureStates.length - affectedFixtureIndices.size
-        console.log(`[TitanOrchestrator 740] � STRICT ZONAL: [${zoneList}] | Affected: ${affectedFixtureIndices.size}/${fixtureStates.length} | UNTOUCHED: ${unaffectedCount}`)
-        for (const zoneId of activeZones) {
-          const zoneData = effectOutput.zoneOverrides[zoneId]
-          if (zoneData.color) {
-            const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l)
-            console.log(`  🖌️ [${zoneId}] → RGB(${rgb.r},${rgb.g},${rgb.b}) dimmer=${(zoneData.dimmer ?? 1).toFixed(2)}`)
-          }
-        }
-      }
-      
-      // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
-      // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
-      
-    } else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
-      // ═══════════════════════════════════════════════════════════════════════
-      // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
-      // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — per-fixture check inside
-      // ═══════════════════════════════════════════════════════════════════════
-      const flareIntensity = effectOutput.dimmerOverride  // 0-1
-      
-      // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
-      let flareR = 255, flareG = 200, flareB = 80  // Default: dorado (SolarFlare legacy)
-      
-      if (effectOutput.colorOverride) {
-        // Convertir HSL a RGB
-        const { h, s, l } = effectOutput.colorOverride
-        const rgb = this.hslToRgb(h, s, l)
-        flareR = rgb.r
-        flareG = rgb.g
-        flareB = rgb.b
-      }
-      
-      // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
-      // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
-      // 🔊 WAVE 2040.27: Added stereo support for frontL/R, backL/R (Chill effects)
-      const shouldApplyToFixture = (f: typeof fixtureStates[0], index: number): boolean => {
-        // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
-        if ((effectOutput.globalComposition ?? 0) > 0) return true
-        
-        // Sin globalComposition, verificar zones
-        const zones = effectOutput.zones || []
-        if (zones.length === 0) return false
-        
-        const fixtureZone = f.zone || ''
-        const positionX = this.fixtures[index]?.position?.x ?? 0
-        
-        // 🗺️ WAVE 2543.5: Unified zone matching via ZoneMapper — stereo detection is internal
-        for (const zone of zones) {
-          if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-            return true
-          }
-        }
-        return false
-      }
-      
-      // 🚂 WAVE 800 → 1080: RAILWAY SWITCH + FLUID DYNAMICS
-      // mixBus='global' → Modo dictador (pero ahora con alpha variable)
-      // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
-      // globalComposition → Alpha de mezcla (0-1) para transiciones suaves
-      const globalComp = effectOutput.globalComposition ?? 0
-      const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0
-      
-      fixtureStates = fixtureStates.map((f, index) => {
-        const shouldApply = shouldApplyToFixture(f, index)
-        if (!shouldApply) return f  // No afectar esta fixture
-        
-        // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-        const fixtureId = this.fixtures[index]?.id
-        if (fixtureId && chronosFixtureIds.has(fixtureId)) return f
-        
-        if (isGlobalMode) {
-          // ═══════════════════════════════════════════════════════════════════════
-          // 🌊 WAVE 1080 → WAVE 2490 → WAVE 2491: TIRANO ABSOLUTE OVERRIDE
-          //
-          // WAVE 2490 aplicó LERP para color + HTP para dimmer aquí.
-          // PROBLEMA: HTP impide que el tirano cree darkness. Y LERP con
-          // alpha=1.0 ya era REPLACE para color (invAlpha=0), pero con alpha<1.0
-          // mezclaba — eso es correcto para fades de entrada/salida.
-          //
-          // WAVE 2491: REPLACE para dimmer cuando el efecto MANDA (flareIntensity > 0).
-          // Los gaps de GatlingRaid llegan aquí con dimmerOverride=0 →
-          // HTP protege (Math.max(physics, 0) = physics). Los efectos activos
-          // con intensity>0 llegan con dimmerOverride>0 → REPLACE dicta.
-          //
-          // Color: LERP se mantiene — es correcto porque con alpha=1.0 ya es REPLACE,
-          // y con alpha<1.0 da transiciones suaves (fade in/out).
-          // ═══════════════════════════════════════════════════════════════════════
-          const alpha = globalComp  // 0.0 = física pura, 1.0 = efecto puro
-          const invAlpha = 1 - alpha
-          
-          // LERP para cada componente RGB (mantiene smooth color transitions)
-          const lerpedR = Math.round(f.r * invAlpha + flareR * alpha)
-          const lerpedG = Math.round(f.g * invAlpha + flareG * alpha)
-          const lerpedB = Math.round(f.b * invAlpha + flareB * alpha)
-          
-          // Dimmer: REPLACE cuando el efecto manda, HTP cuando hay gap
-          const effectDimmer = Math.round(flareIntensity * 255)
-          const finalDimmer = effectDimmer > 0
-            ? effectDimmer       // TIRANO: Replace directo
-            : Math.max(f.dimmer, effectDimmer)  // GAP: HTP protege
-          
-          return {
-            ...f,
-            r: lerpedR,
-            g: lerpedG,
-            b: lerpedB,
-            dimmer: finalDimmer,
-          }
-        } else {
-          // ═══════════════════════════════════════════════════════════════════════
-          // 🚂 WAVE 800: VÍA HTP - El efecto suma, respeta física
-          // HTP: El más brillante gana. El efecto complementa, no reemplaza.
-          // Perfecto para: TropicalPulse, ClaveRhythm, etc.
-          // ═══════════════════════════════════════════════════════════════════════
-          const effectDimmer = Math.round(flareIntensity * 255)
-          const finalDimmer = Math.max(f.dimmer, effectDimmer)  // HTP: El más alto gana
-          
-          // Color: Winner Takes All - si el efecto brilla más, gana el color
-          if (effectDimmer >= f.dimmer * 0.8) {
-            return {
-              ...f,
-              r: flareR,
-              g: flareG,
-              b: flareB,
-              dimmer: finalDimmer,
-            }
-          } else {
-            // La física gana, mantener su color
-            return {
-              ...f,
-              dimmer: finalDimmer,
-            }
-          }
-        }
-      })
-      
-      // Log throttled
-      if (this.frameCount % 60 === 0) {
-        const affectedFixtures = fixtureStates.filter(shouldApplyToFixture)
-        const mode = isGlobalMode ? `GLOBAL(${(globalComp * 100).toFixed(0)}%)` : 'HTP'
-        // WAVE 1080 DEBUG: Show globalComposition alpha
-        console.log(`[TitanOrchestrator 🌊] EFFECT [${mode}] mixBus=${effectOutput.mixBus}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
-        console.log(`[TitanOrchestrator 🌊] Affected: ${affectedFixtures.length}/${fixtureStates.length} fixtures`)
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ✂️ WAVE 930.2: STEREO MOVEMENT - Movimiento L/R independiente
-    // Para efectos como SkySaw que necesitan scissors pan/tilt
-    // ═══════════════════════════════════════════════════════════════════════
-    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
-      const leftMovement = effectOutput.zoneOverrides['movers_left']?.movement
-      const rightMovement = effectOutput.zoneOverrides['movers_right']?.movement
-      
-      if (leftMovement || rightMovement) {
-        fixtureStates = fixtureStates.map(f => {
-          const fixtureZone = (f.zone || '').toLowerCase()
-          const isMover = f.zone?.includes('MOVING') || fixtureZone.includes('ceiling') || (f.pan !== undefined && f.tilt !== undefined)
-          if (!isMover) return f
-          
-          // Determinar si es izquierda o derecha
-          const isLeft = fixtureZone.includes('left') || f.zone?.includes('LEFT')
-          const isRight = fixtureZone.includes('right') || f.zone?.includes('RIGHT')
-          
-          // Seleccionar el movement correcto según lado
-          let mov: typeof leftMovement | undefined
-          if (isLeft && leftMovement) {
-            mov = leftMovement
-          } else if (isRight && rightMovement) {
-            mov = rightMovement
-          } else {
-            // Si no es claramente L/R, usar el promedio o el que exista
-            mov = leftMovement || rightMovement
-          }
-          
-          if (!mov) return f
-          
-          // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
-          // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
-          // The physics engine will interpolate toward these new targets.
-          let newPan = f.pan
-          let newTilt = f.tilt
-          
-          if (mov.isAbsolute) {
-            // ABSOLUTE MODE: Reemplaza completamente
-            if (mov.pan !== undefined) {
-              // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
-              newPan = Math.round(mov.pan * 255)
-            }
-            if (mov.tilt !== undefined) {
-              newTilt = Math.round(mov.tilt * 255)
-            }
-          } else {
-            // OFFSET MODE: Suma al target
-            if (mov.pan !== undefined) {
-              const panOffset = Math.round((mov.pan - 0.5) * 255)
-              newPan = Math.max(0, Math.min(255, f.pan + panOffset))
-            }
-            if (mov.tilt !== undefined) {
-              const tiltOffset = Math.round((mov.tilt - 0.5) * 255)
-              newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset))
-            }
-          }
-          
-          return {
-            ...f,
-            pan: newPan,
-            tilt: newTilt,
-            // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
-            // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
-          }
-        })
-        
-        // Log throttled
-        if (this.frameCount % 30 === 0) {
-          console.log(`[TitanOrchestrator ✂️] STEREO MOVEMENT: L=${leftMovement ? `P${leftMovement.pan?.toFixed(2)}/T${leftMovement.tilt?.toFixed(2)}` : 'N/A'} R=${rightMovement ? `P${rightMovement.pan?.toFixed(2)}/T${rightMovement.tilt?.toFixed(2)}` : 'N/A'}`)
-        }
-      }
-    }
-    
-    // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
-    // Solo se aplica si NO hay zoneOverrides con movement (fallback global)
-    const hasZoneMovement = effectOutput.zoneOverrides && 
-      (effectOutput.zoneOverrides['movers_left']?.movement || effectOutput.zoneOverrides['movers_right']?.movement)
-    
-    if (effectOutput.hasActiveEffects && effectOutput.movementOverride && !hasZoneMovement) {
-      const mov = effectOutput.movementOverride
-      
-      // Solo aplicar a fixtures que son movers (tienen pan/tilt)
-      fixtureStates = fixtureStates.map(f => {
-        // Detectar si es un mover (zone contiene MOVING o tiene pan/tilt definido)
-        const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined)
-        if (!isMover) return f
-        
-        // 🛡️ WAVE 2085: ONLY set TARGETS (pan/tilt). physicalPan/physicalTilt
-        // are SACRED — owned exclusively by FixturePhysicsDriver via HAL.
-        let newPan = f.pan
-        let newTilt = f.tilt
-        
-        if (mov.isAbsolute) {
-          // ABSOLUTE MODE: Reemplaza completamente las posiciones target
-          // Convertir -1.0..1.0 → 0..255
-          if (mov.pan !== undefined) {
-            newPan = Math.round(((mov.pan + 1) / 2) * 255)
-          }
-          if (mov.tilt !== undefined) {
-            newTilt = Math.round(((mov.tilt + 1) / 2) * 255)
-          }
-        } else {
-          // OFFSET MODE: Suma a los targets existentes
-          // Convertir offset -1.0..1.0 → -127..127 y sumar
-          if (mov.pan !== undefined) {
-            const panOffset = Math.round(mov.pan * 127)
-            newPan = Math.max(0, Math.min(255, f.pan + panOffset))
-          }
-          if (mov.tilt !== undefined) {
-            const tiltOffset = Math.round(mov.tilt * 127)
-            newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset))
-          }
-        }
-        
-        return {
-          ...f,
-          pan: newPan,
-          tilt: newTilt,
-          // 🛡️ WAVE 2085: physicalPan/physicalTilt NOT set here.
-          // HAL.renderFromTarget() → FixturePhysicsDriver owns these.
-        }
-      })
-      
-      // Log throttled
-      if (this.frameCount % 15 === 0) {
-        const mode = mov.isAbsolute ? 'ABSOLUTE' : 'OFFSET'
-        console.log(`[TitanOrchestrator 🥁] MOVEMENT OVERRIDE [${mode}]: Pan=${mov.pan?.toFixed(2) ?? 'N/A'} Tilt=${mov.tilt?.toFixed(2) ?? 'N/A'}`)
-      }
     }
     
     // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)

@@ -45,6 +45,8 @@ import {
   type MasterArbiterConfig,
   type ArbiterFixture,
   type RGBOutput,
+  type EffectIntent,
+  type EffectIntentMap,
   ControlLayer,
   DEFAULT_ARBITER_CONFIG,
   DEFAULT_MERGE_STRATEGIES,
@@ -114,6 +116,13 @@ export class MasterArbiter extends EventEmitter {
   private layer1_consciousness: Layer1_Consciousness | null = null
   private layer2_manualOverrides: Map<string, Layer2_Manual> = new Map()
   private layer3_effects: Layer3_Effect[] = []
+  /**
+   * 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectManager intents pre-resueltos
+   * Inyectados por TitanOrchestrator ANTES de arbitrate().
+   * Mapa: fixtureId → EffectIntent (ya resuelto de zonas a fixtures concretos).
+   * Se limpia al final de cada arbitrate() para garantizar frescura por frame.
+   */
+  private layer3_effectIntents: EffectIntentMap = new Map()
   private layer4_blackout: boolean = false
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -858,6 +867,23 @@ export class MasterArbiter extends EventEmitter {
       return true
     })
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2662: EFFECT INTENTS — EffectManager as Layer 3 input
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — Inject effect intents BEFORE arbitrate()
+   *
+   * TitanOrchestrator resolves zones → fixture IDs and builds this map.
+   * The Arbiter consumes intents in arbitrateFixture() as Layer 3 input.
+   * Intents are cleared at the end of each arbitrate() cycle for frame freshness.
+   *
+   * This replaces the old post-HAL mutation pattern. Single Source of Truth.
+   */
+  setEffectIntents(intents: EffectIntentMap): void {
+    this.layer3_effectIntents = intents
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // LAYER 4: BLACKOUT
@@ -1543,8 +1569,15 @@ export class MasterArbiter extends EventEmitter {
         manualOverrideCount: this.layer2_manualOverrides.size,
         manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
         activeEffects: this.layer3_effects.map(e => e.type),
+        // 🎯 WAVE 2662: Track intent-based effects in layer activity
+        effectIntentCount: this.layer3_effectIntents.size,
       }
     }
+    
+    // 🎯 WAVE 2662: Clear intents after arbitration — frame freshness guarantee
+    // Intents are injected fresh each tick by TitanOrchestrator.
+    // If no intents arrive next frame, effects simply don't apply.
+    this.layer3_effectIntents.clear()
     
     this.lastOutputTimestamp = now
     this.emit('output', output)
@@ -1592,7 +1625,33 @@ export class MasterArbiter extends EventEmitter {
     const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // � WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+    // 🎯 WAVE 2662: EFFECT INTENT — Movement overlay
+    //
+    // If the EffectIntent has movement data, apply it as Layer 3 contribution.
+    //   isAbsolute=true  → Intent value is the final position
+    //   isAbsolute=false → Intent value is a delta offset from Titan position
+    //
+    // Movement intents lose to Manual Override (Layer 2), checked below.
+    // ═══════════════════════════════════════════════════════════════════════
+    const movementIntent = this.layer3_effectIntents.get(fixtureId)?.movement
+    let effectAdjustedPan = rawPan
+    let effectAdjustedTilt = rawTilt
+    let movementFromEffect = false
+    
+    if (movementIntent) {
+      if (movementIntent.isAbsolute) {
+        if (movementIntent.pan !== undefined) effectAdjustedPan = movementIntent.pan
+        if (movementIntent.tilt !== undefined) effectAdjustedTilt = movementIntent.tilt
+      } else {
+        if (movementIntent.pan !== undefined) effectAdjustedPan = rawPan + movementIntent.pan
+        if (movementIntent.tilt !== undefined) effectAdjustedTilt = rawTilt + movementIntent.tilt
+      }
+      movementFromEffect = true
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+    // 🎯 WAVE 2662: Effect movement also stamps controlSources
     //
     // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
     // never get their controlSource stamped. Without this, the HAL Aduana
@@ -1601,28 +1660,33 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     if (manualOverride?.overrideChannels.includes('pan')) {
       controlSources['pan'] = ControlLayer.MANUAL
+    } else if (movementFromEffect) {
+      controlSources['pan'] = ControlLayer.EFFECTS
     } else {
       controlSources['pan'] = ControlLayer.TITAN_AI
     }
     if (manualOverride?.overrideChannels.includes('tilt')) {
       controlSources['tilt'] = ControlLayer.MANUAL
+    } else if (movementFromEffect) {
+      controlSources['tilt'] = ControlLayer.EFFECTS
     } else {
       controlSources['tilt'] = ControlLayer.TITAN_AI
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+    // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+    // 🎯 WAVE 2662: Now uses effectAdjustedPan/Tilt as base (includes intent overlay)
     //
     // Si hay un fade activo para este fixture, interpolamos entre la última
-    // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).
+    // posición manual (fromPan/fromTilt) y la posición actual (con intent si aplica).
     //
-    // Esto es un POST-PROCESS: getAdjustedPosition ya devolvió el valor
-    // correcto de Titan. Nosotros solo lo suavizamos temporalmente.
+    // Esto es un POST-PROCESS: getAdjustedPosition + effectIntent ya dieron el valor
+    // correcto. Nosotros solo lo suavizamos temporalmente.
     // NO contaminamos Titan values. NO creamos zombies.
     // Después de durationMs, el fade se auto-purga.
     // ═══════════════════════════════════════════════════════════════════════
-    let pan = rawPan
-    let tilt = rawTilt
+    let pan = effectAdjustedPan
+    let tilt = effectAdjustedTilt
     
     const releaseFade = this.positionReleaseFades.get(fixtureId)
     if (releaseFade) {
@@ -1631,12 +1695,12 @@ export class MasterArbiter extends EventEmitter {
         // Fade completado — purgar
         this.positionReleaseFades.delete(fixtureId)
       } else {
-        // Interpolación lineal: from → to (rawPan/rawTilt = posición Titan actual)
+        // Interpolación lineal: from → to (effectAdjustedPan/Tilt = posición actual con intent)
         const t = elapsed / releaseFade.durationMs
         // Curva ease-out: t² × (3 - 2t) — suave al final, no al principio
         const smoothT = t * t * (3 - 2 * t)
-        pan = releaseFade.fromPan + (rawPan - releaseFade.fromPan) * smoothT
-        tilt = releaseFade.fromTilt + (rawTilt - releaseFade.fromTilt) * smoothT
+        pan = releaseFade.fromPan + (effectAdjustedPan - releaseFade.fromPan) * smoothT
+        tilt = releaseFade.fromTilt + (effectAdjustedTilt - releaseFade.fromTilt) * smoothT
       }
     }
     
@@ -1800,7 +1864,41 @@ export class MasterArbiter extends EventEmitter {
       return manualValue
     }
     
-    // Layer 3: Effects
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2662: EFFECT INTENTS — Layer 3 via EffectIntentMap
+    //
+    // EffectManager intents are the PRIMARY Layer 3 source.
+    // If an intent exists for this fixture+channel combo, it takes precedence
+    // over legacy getEffectValueForChannel() (strobe/blinder/flash/freeze).
+    //
+    // mixBus='htp'    → Collaborative: dimmer=HTP(max), color=LTP(intent wins)
+    // mixBus='global' → Dictator: LERP(titan, intent, globalComposition)
+    // ═══════════════════════════════════════════════════════════════════════
+    const effectIntent = this.layer3_effectIntents.get(fixtureId)
+    if (effectIntent) {
+      const intentValue = this.getIntentValueForChannel(effectIntent, channel)
+      if (intentValue !== null) {
+        if (effectIntent.mixBus === 'global') {
+          // GLOBAL mode: LERP between Titan base and intent
+          const alpha = effectIntent.globalComposition
+          const blended = titanValue + (intentValue - titanValue) * alpha
+          controlSources[channel] = ControlLayer.EFFECTS
+          return blended
+        } else {
+          // HTP mode: dimmer = max(titan, intent), color channels = intent wins (LTP)
+          if (channel === 'dimmer') {
+            controlSources[channel] = ControlLayer.EFFECTS
+            return Math.max(titanValue, intentValue)
+          } else {
+            // Color channels (red, green, blue) and white/amber → LTP, intent wins
+            controlSources[channel] = ControlLayer.EFFECTS
+            return intentValue
+          }
+        }
+      }
+    }
+
+    // Layer 3 legacy: strobe/blinder/flash/freeze effects (pre-WAVE 2662)
     const effectValue = this.getEffectValueForChannel(fixtureId, channel, now)
     if (effectValue !== null) {
       values.push({
@@ -2439,6 +2537,27 @@ export class MasterArbiter extends EventEmitter {
     }
     
     return null
+  }
+  
+  /**
+   * 🎯 WAVE 2662: Extract the DMX value from an EffectIntent for a specific channel.
+   * Returns null if the intent has no value for this channel.
+   */
+  private getIntentValueForChannel(intent: EffectIntent, channel: ChannelType): number | null {
+    switch (channel) {
+      case 'dimmer':
+        return intent.dimmer ?? null
+      case 'red':
+        return intent.color?.r ?? null
+      case 'green':
+        return intent.color?.g ?? null
+      case 'blue':
+        return intent.color?.b ?? null
+      case 'white':
+        return intent.white ?? null
+      default:
+        return null
+    }
   }
   
   /**

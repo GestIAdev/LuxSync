@@ -367,6 +367,57 @@ export interface Layer3_Effect {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// LAYER 3+: EFFECT INTENTS (WAVE 2662 — EL ÁRBITRO ABSOLUTO)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎯 WAVE 2662: EFFECT INTENT — Per-fixture intent from EffectManager
+ *
+ * Produced by TitanOrchestrator from CombinedEffectOutput (zone-resolved
+ * to concrete fixture IDs) and injected into MasterArbiter BEFORE arbitrate().
+ *
+ * The Arbiter consumes these as Layer 3 input during mergeChannelForFixture().
+ * No more post-HAL mutation. Single Source of Truth.
+ *
+ * MERGE RULES:
+ * - dimmer: HTP (Math.max with Layer 0)
+ * - color (r/g/b): LTP/REPLACE depending on mixBus
+ * - white/amber: Same as color
+ * - movement (pan/tilt): LTP overlay
+ *
+ * mixBus semantics:
+ * - 'htp'    → Collaborative: HTP for dimmer, color only wins if brighter
+ * - 'global' → Dictator: REPLACE all channels, Iron Curtain for unspecified
+ */
+export interface EffectIntent {
+  /** Final dimmer value 0-255 (already scaled from 0-1) */
+  dimmer?: number
+  /** Final color RGB 0-255 (already converted from HSL) */
+  color?: RGBOutput
+  /** White channel 0-255 */
+  white?: number
+  /** Amber channel 0-255 */
+  amber?: number
+  /** Movement target */
+  movement?: {
+    pan?: number   // 0-255
+    tilt?: number  // 0-255
+    isAbsolute?: boolean
+  }
+  /** Mix bus mode inherited from the dominant effect */
+  mixBus: 'htp' | 'global'
+  /** Global composition alpha (0=invisible, 1=dictator) for LERP blending */
+  globalComposition: number
+}
+
+/**
+ * 🎯 WAVE 2662: Map of fixture ID → EffectIntent
+ * Pre-resolved from zone overrides to concrete fixture IDs.
+ * Injected into MasterArbiter via setEffectIntents() before each arbitrate().
+ */
+export type EffectIntentMap = Map<string, EffectIntent>
+
+// ═══════════════════════════════════════════════════════════════════════════
 // OUTPUT TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -461,6 +512,8 @@ export interface FinalLightingTarget {
     manualOverrideCount: number
     manualFixtureIds: string[]
     activeEffects: EffectType[]
+    /** 🎯 WAVE 2662: Number of fixtures with active effect intents */
+    effectIntentCount?: number
   }
 }
 

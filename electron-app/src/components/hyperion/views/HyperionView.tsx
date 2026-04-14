@@ -319,24 +319,44 @@ export function HyperionView({
             </div>
           )}
 
-          {/* Canvas Container — TacticalCanvas (2D) or VisualizerCanvas (3D) */}
+          {/* Canvas Container — Both canvases ALWAYS mounted, CSS-switched
+           * ═══════════════════════════════════════════════════════════════════
+           * WAVE 2515: CANVAS LIFECYCLE PERSISTENCE
+           * 
+           * transferControlToOffscreen() is IRREVERSIBLE. If React unmounts
+           * the <canvas> node, the OffscreenCanvas context in the worker dies
+           * permanently (Context Lost). Same with R3F's WebGLRenderer.
+           * 
+           * FIX: Both canvases live forever. visibility:hidden + position:absolute
+           * hides the inactive one without destroying the DOM node. Each canvas
+           * receives an isVisible prop to pause its render loop (Hibernation Protocol).
+           * ═══════════════════════════════════════════════════════════════════ */}
           {!isEmpty && (
-            <div className="hyperion-canvas-container">
-              {viewMode === '2D' ? (
+            <>
+              <div
+                className="hyperion-canvas-container"
+                style={viewMode !== '2D' ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+              >
                 <TacticalCanvas 
                   quality={qualityMode}
                   showGrid={true}
                   showZoneLabels={true}
+                  isVisible={viewMode === '2D'}
                 />
-              ) : (
+              </div>
+              <div
+                className="hyperion-canvas-container"
+                style={viewMode !== '3D' ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+              >
                 <VisualizerCanvas
                   quality={qualityMode}
                   showFloorGrid={true}
                   showTruss={true}
                   showBeams={true}
+                  isVisible={viewMode === '3D'}
                 />
-              )}
-            </div>
+              </div>
+            </>
           )}
 
           {/* Mode Badge */}

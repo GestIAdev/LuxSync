@@ -407,6 +407,19 @@ async function initTitan(): Promise<void> {
     }
   })
 
+  // ⚡ WAVE 2510: Hot Frame callback — high-frequency fixture data at 44Hz
+  // Separate channel from selene:truth (which stays at ~7Hz for full SeleneTruth)
+  // Hot frames carry ONLY fixture dynamic data (color, intensity, pan/tilt, beat)
+  titanOrchestrator.setHotFrameCallback((hotFrame) => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send('selene:hot-frame', hotFrame)
+      }
+    } catch {
+      // Silently ignore - renderer being destroyed
+    }
+  })
+
   // WAVE 257: Connect log callback for Tactical Log
   // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
   titanOrchestrator.setLogCallback((entry) => {

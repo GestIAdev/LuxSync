@@ -731,11 +731,13 @@ export class HardwareAbstraction {
         // Get interpolated state
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
         
-        // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+        // 🔧 WAVE 2093.1 + 2603: Apply calibration offsets + tilt limits
+        // 🎯 WAVE 2603: Pass ikProcessed flag to skip double-calibration
         const calibrated = this.applyCalibrationOffsets(
           physicsState.physicalPan,
           physicsState.physicalTilt,
-          fixture
+          fixture,
+          state._ikProcessed ?? false
         )
         
         return {
@@ -933,6 +935,8 @@ export class HardwareAbstraction {
           phantomChannels: fixtureTarget.phantomChannels,
           // 🚧 WAVE 2228: DMX ADUANA — Propagate control sources for HAL gate
           _controlSources: fixtureTarget._controlSources as Record<string, number>,
+          // 🎯 WAVE 2603: Propagate IK processed flag to FixtureState
+          _ikProcessed: fixtureTarget._ikProcessed ?? false,
         }
         
         // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
@@ -1037,11 +1041,13 @@ export class HardwareAbstraction {
 
 
 
-        // 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits
+        // 🔧 WAVE 2093.1 + 2603: Apply calibration offsets + tilt limits
+        // 🎯 WAVE 2603: Pass ikProcessed flag to skip double-calibration
         const calibrated = this.applyCalibrationOffsets(
           physicsState.physicalPan,
           physicsState.physicalTilt,
-          fixture
+          fixture,
+          state._ikProcessed ?? false
         )
         
         return {
@@ -1095,16 +1101,20 @@ export class HardwareAbstraction {
 
   /**
    * 🔧 WAVE 2093.1: Apply calibration offsets + tilt limits to physics-interpolated positions
+   * 🎯 WAVE 2603: ikProcessed flag — skip invert/offset when IK already calibrated
    * 
    * @param physicalPan  - Raw interpolated pan from FixturePhysicsDriver (0-255)
    * @param physicalTilt - Raw interpolated tilt from FixturePhysicsDriver (0-255)
    * @param fixture      - The PatchedFixture (carries calibration + physics from ShowFileV2)
+   * @param ikProcessed  - If true, skip INVERT and OFFSET (IK already applied them).
+   *                        TiltLimits and final clamp are ALWAYS applied for safety.
    * @returns Calibrated { pan, tilt } clamped to 0-255
    */
   private applyCalibrationOffsets(
     physicalPan: number,
     physicalTilt: number,
-    fixture: PatchedFixture
+    fixture: PatchedFixture,
+    ikProcessed: boolean = false
   ): { pan: number; tilt: number } {
     // --- Read calibration data (from ShowFileV2.FixtureV2.calibration) ---
     // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now properly typed in PatchedFixture — no more `as any`
@@ -1118,29 +1128,34 @@ export class HardwareAbstraction {
     let tilt = physicalTilt
 
     if (cal) {
-      // ── STEP 1: INVERT ──
-      // If the fixture is mounted backwards/upside-down, flip the axis
-      if (cal.panInvert) {
-        pan = 255 - pan
-      }
-      if (cal.tiltInvert) {
-        tilt = 255 - tilt
-      }
+      // 🎯 WAVE 2603: When IK has already processed calibration (invert + offset),
+      // skip steps 1-2 to prevent double-calibration.
+      // TiltLimits (step 3) and final clamp (step 4) are ALWAYS applied for safety.
+      if (!ikProcessed) {
+        // ── STEP 1: INVERT ──
+        // If the fixture is mounted backwards/upside-down, flip the axis
+        if (cal.panInvert) {
+          pan = 255 - pan
+        }
+        if (cal.tiltInvert) {
+          tilt = 255 - tilt
+        }
 
-      // ── STEP 2: OFFSET (degrees → DMX) ──
-      // Pan range: typically 540° mapped to 0-255 DMX
-      // Tilt range: typically 270° mapped to 0-255 DMX
-      // Conversion: offsetDMX = (offsetDegrees / totalDegrees) × 255
-      // 🔧 WAVE 2093.3 (CW-AUDIT-9): Industry-standard defaults, no `as any` casts
-      if (cal.panOffset && cal.panOffset !== 0) {
-        const PAN_RANGE_DEG = 540   // Standard moving head pan range
-        const panOffsetDMX = (cal.panOffset / PAN_RANGE_DEG) * 255
-        pan += panOffsetDMX
-      }
-      if (cal.tiltOffset && cal.tiltOffset !== 0) {
-        const TILT_RANGE_DEG = 270  // Standard moving head tilt range
-        const tiltOffsetDMX = (cal.tiltOffset / TILT_RANGE_DEG) * 255
-        tilt += tiltOffsetDMX
+        // ── STEP 2: OFFSET (degrees → DMX) ──
+        // Pan range: typically 540° mapped to 0-255 DMX
+        // Tilt range: typically 270° mapped to 0-255 DMX
+        // Conversion: offsetDMX = (offsetDegrees / totalDegrees) × 255
+        // 🔧 WAVE 2093.3 (CW-AUDIT-9): Industry-standard defaults, no `as any` casts
+        if (cal.panOffset && cal.panOffset !== 0) {
+          const PAN_RANGE_DEG = 540   // Standard moving head pan range
+          const panOffsetDMX = (cal.panOffset / PAN_RANGE_DEG) * 255
+          pan += panOffsetDMX
+        }
+        if (cal.tiltOffset && cal.tiltOffset !== 0) {
+          const TILT_RANGE_DEG = 270  // Standard moving head tilt range
+          const tiltOffsetDMX = (cal.tiltOffset / TILT_RANGE_DEG) * 255
+          tilt += tiltOffsetDMX
+        }
       }
     }
 

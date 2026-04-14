@@ -37,3 +37,24 @@ export type {
   OpticsConfig,
   MovementBehavior,
 } from './VibeMovementPresets'
+
+// WAVE 2601: Inverse Kinematics Engine - Spatial 3D → Pan/Tilt DMX
+// WAVE 2621-2622: Spatial Fan (Line + Circle) offset math
+export {
+  solve as ikSolve,
+  solveGroup as ikSolveGroup,
+  buildProfile as ikBuildProfile,
+  computeLineFanOffsets,
+  computeCircleFanOffsets,
+  solveGroupWithFan,
+} from './InverseKinematicsEngine'
+export type {
+  Target3D,
+  FixtureOrientation,
+  MechanicalLimits,
+  FixtureCalibration,
+  IKFixtureProfile,
+  IKResult,
+  SpatialFanMode,
+  IKFanResult,
+} from './InverseKinematicsEngine'

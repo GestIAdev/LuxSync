@@ -618,6 +618,17 @@ const luxApi = {
     return () => ipcRenderer.removeListener('selene:truth', handler)
   },
   
+  /** ⚡ WAVE 2510: HOT FRAME — High-frequency fixture data at 44Hz
+   * Canal dedicado para datos dinámicos de fixtures (color, intensidad, pan/tilt).
+   * Separado de selene:truth (que sigue a ~7Hz con el SeleneTruth completo).
+   * El RenderWorker en Hyperion consume esto para interpolación a 60fps.
+   */
+  onHotFrame: (callback: (data: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: any) => callback(data)
+    ipcRenderer.on('selene:hot-frame', handler)
+    return () => ipcRenderer.removeListener('selene:hot-frame', handler)
+  },
+  
   /** � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
    * Logs llegan por canal separado para no interferir con el broadcast de 30fps
    * Standard channel: 'lux:log' (legacy 'selene:log' is supported for compatibility)
@@ -1063,6 +1074,29 @@ const luxApi = {
      */
     setFixtures: (fixtures: any[]) =>
       ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures }),
+
+    // ============================================
+    // 🎯 WAVE 2613: SPATIAL IK TARGET
+    // ============================================
+
+    /**
+     * Apply a spatial target to a group of fixtures via IK engine.
+     * Each fixture calculates its own pan/tilt to point at the target.
+     * @returns Per-fixture IKResult with reachability flag for UI feedback.
+     */
+    applySpatialTarget: (args: {
+      target: { x: number; y: number; z: number }
+      fixtureIds: string[]
+      fanMode?: 'converge' | 'line' | 'circle'
+      fanAmplitude?: number
+    }) => ipcRenderer.invoke('lux:arbiter:applySpatialTarget', args),
+
+    /**
+     * Release spatial target control — return fixtures to AI/mechanical control.
+     */
+    releaseSpatialTarget: (args: {
+      fixtureIds: string[]
+    }) => ipcRenderer.invoke('lux:arbiter:releaseSpatialTarget', args),
   },
 
   // ============================================

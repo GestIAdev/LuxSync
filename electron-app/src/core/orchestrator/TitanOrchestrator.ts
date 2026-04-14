@@ -237,6 +237,16 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private onBroadcast: ((truth: any) => void) | null = null
 
+  // ⚡ WAVE 2510: Hot Frame callback — high-frequency fixture data at 44Hz
+  // Carries ONLY dynamic fixture data (fixtures array + beat flag + frame number)
+  // Separate from full SeleneTruth which broadcasts at ~7Hz
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private onHotFrame: ((hotFrame: any) => void) | null = null
+
+  // ⚡ WAVE 2510: Full truth broadcast divider
+  // At 44Hz tick, send full SeleneTruth every TRUTH_BROADCAST_DIVIDER ticks (~7Hz)
+  private static readonly TRUTH_BROADCAST_DIVIDER = 6
+
   // ⚡ WAVE 2464: PEAK HOLD — Captura el pico de intensidad del frame skipeado.
   // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
   // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado — el canvas
@@ -399,13 +409,13 @@ export class TitanOrchestrator {
     this.isRunning = true
     this.mainLoopInterval = setInterval(() => {
       this.processFrame()
-    }, 40) // 25fps — da ~13ms de margen sobre el frame DMX512 físico (~27ms)
-           // DMX512: Break(88µs) + MAB(8µs) + 512ch×44µs ≈ 22.6ms/frame mín.
-           // a 40ms el chip FTDI drena el buffer antes del siguiente frame.
+    }, 23) // ⚡ WAVE 2510: 44fps — feeds RenderWorker hot-frames at Nyquist-safe rate
+           // Strobes up to 22Hz resolvable. DMX dispatch is hardware-adaptive:
+           // Enttec Pro/Art-Net @ 44Hz, generic USB @ 30Hz (separate from tick rate)
     
     // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
     setTimeout(() => {
-      this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 25fps (DMX-safe)')
+      this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 44fps (WAVE 2510 hot-frame)')
       this.log('Info', `📊 Fixtures loaded: ${this.fixtures.length}`)
     }, 100)
   }
@@ -1515,35 +1525,26 @@ export class TitanOrchestrator {
     // regardless of the DMX gate state.
     // ═══════════════════════════════════════════════════════════════════════════
     
-    // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚿 WAVE 2211: IPC FLOOD THROTTLE — Broadcast at 12.5fps, not 25fps
+    // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (44Hz) + Full Truth (~7Hz)
     //
-    // processFrame() runs at 25fps (setInterval 40ms). Broadcasting the
-    // entire SeleneTruth object 25×/sec through Electron IPC causes:
-    //   1. JSON serialization overhead (~3-5KB per truth object)
-    //   2. 25 Zustand state updates/sec → 25 React re-render triggers
-    //   3. GC pressure from 25 new truth objects + fixture arrays per second
-    //   4. The StageSimulatorCinema canvas only renders at 30fps anyway
+    // Hot Frame: EVERY tick (44Hz). Carries ONLY fixture dynamic data + beat flag.
+    //   → Frontend forwards to RenderWorker for 60fps interpolation.
+    //   → Lightweight: just fixtures array + beat + frame number.
     //
-    // FIX: Broadcast every other frame (frameCount % 2 === 0) → 12.5fps.
-    // DMX output to real hardware is UNAFFECTED — HAL still renders at 25fps.
-    // Only the UI visualization is throttled.
+    // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz).
+    //   → Full SeleneTruth (sensory, consciousness, context, hardware).
+    //   → Feeds React stores, HUD, audio meters, etc.
     //
     // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
-    // EVERY frame (25fps) to feed the Cinema simulator at full rate.
-    // The transientStore bypass already exists (WAVE 2211), so the extra
-    // IPC traffic only costs serialization — no React re-renders.
-    // Peak hold is skipped when not throttling (no skipped frames to hold).
+    // full truth at full rate (44fps) since Cinema needs complete data.
     // ═══════════════════════════════════════════════════════════════════════
     
-    // 👻 WAVE 2540.7: Chronos playback bypasses the % 2 throttle
+    // 👻 Chronos bypass check
     const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false
-    const shouldBroadcast = chronosPlaying || (this.frameCount % 2 === 0)
+    const shouldBroadcastFullTruth = chronosPlaying || (this.frameCount % TitanOrchestrator.TRUTH_BROADCAST_DIVIDER === 0)
     
-    // ⚡ WAVE 2464: PEAK HOLD — Acumula el pico entre frames skipeados
-    // Solo necesario cuando hay throttle (modo normal). En Chronos playback
-    // cada frame se broadcastea → no hay frames skipeados → no hay pico que guardar.
+    // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
     if (!chronosPlaying) {
       for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
         const _f = fixtureStates[_pi]
@@ -1553,7 +1554,39 @@ export class TitanOrchestrator {
       }
     }
 
-    if (this.onBroadcast && shouldBroadcast) {
+    // ── HOT FRAME — Every tick (44Hz) ──────────────────────────────────
+    if (this.onHotFrame) {
+      const hotFrame = {
+        frameNumber: this.frameCount,
+        timestamp: Date.now(),
+        onBeat: engineAudioMetrics.isBeat,
+        beatConfidence: engineAudioMetrics.beatConfidence,
+        bpm: engineAudioMetrics.bpm,
+        fixtures: fixtureStates.map((f, i) => {
+          const originalFixture = this.fixtures[i]
+          const realId = originalFixture?.id || `fix_${i}`
+          return {
+            id: realId,
+            dimmer: f.dimmer / 255,
+            r: Math.round(f.r),
+            g: Math.round(f.g),
+            b: Math.round(f.b),
+            pan: f.pan / 255,
+            tilt: f.tilt / 255,
+            zoom: f.zoom,
+            focus: f.focus,
+            physicalPan: (f.physicalPan ?? f.pan) / 255,
+            physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
+            panVelocity: f.panVelocity ?? 0,
+            tiltVelocity: f.tiltVelocity ?? 0,
+          }
+        })
+      }
+      this.onHotFrame(hotFrame)
+    }
+
+    // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) ────────
+    if (this.onBroadcast && shouldBroadcastFullTruth) {
       const currentVibe = this.engine.getCurrentVibe()
       
       // Build a valid SeleneTruth structure
@@ -1561,13 +1594,13 @@ export class TitanOrchestrator {
         system: {
           frameNumber: this.frameCount,
           timestamp: Date.now(),
-          deltaTime: 40,
-          targetFPS: 25,
-          actualFPS: 25,
+          deltaTime: 23,
+          targetFPS: 44,
+          actualFPS: 44,
           mode: this.mode === 'auto' ? 'selene' : 'manual',
           vibe: currentVibe,
           brainStatus: 'peaceful',
-          uptime: this.frameCount * 40,
+          uptime: this.frameCount * 23,
           titanEnabled: true,
           sessionId: 'titan-2.0',
           version: '2.0.0',
@@ -2003,6 +2036,16 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setBroadcastCallback(callback: (truth: any) => void): void {
     this.onBroadcast = callback
+  }
+
+  /**
+   * ⚡ WAVE 2510: Set callback for hot-frame broadcast (44Hz fixture data)
+   * Carries only dynamic fixture data for the RenderWorker.
+   * Separate from full SeleneTruth which continues at ~7Hz.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setHotFrameCallback(callback: (hotFrame: any) => void): void {
+    this.onHotFrame = callback
   }
 
   /**

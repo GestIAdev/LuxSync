@@ -508,13 +508,17 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // They must work identically regardless of which vibe is active.
     // Fixed range: 0.05-0.5 Hz. Hard cap at 0.5 Hz (BETA_MAX_SPEED) enforced
     // in calculatePatternOffset as motor-safety defense-in-depth.
+    // Speed ceiling matches the AI layer maximum (techno-club baseFrequency 0.25 Hz,
+    // manualSpeedOverride ceiling 0.5 Hz). GrandMasterSpeed handles show-time scaling.
     //
-    // Size capped at 50% (64 DMX max offset). At 0.5 Hz:
-    // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head. Safe.
+    // 🔥 WAVE 2652: AMPLITUDE UNLOCK — size now maps 0-100% UI → 0-1.0 engine;
+    // MANUAL_MAX_MOVEMENT in MasterArbiter enforces the real DMX ceiling (128 units).
+    // At 0.5 Hz + 128 DMX: max velocity ≈ 128 * π * 0.5 ≈ 201 DMX/s ≈ 425°/s peak
+    // (instantaneous peak of cosine derivative, RMS ~300°/s — within stepper tolerance).
     const MANUAL_SPEED_MIN = 0.05  // Hz — minimum perceptible movement
-    const MANUAL_SPEED_MAX = 0.5   // Hz — motor-safe ceiling (2s per cycle)
+    const MANUAL_SPEED_MAX = 0.5   // Hz — mirrors AI layer ceiling (WAVE 2652 confirmed)
     const speedNormalized = MANUAL_SPEED_MIN + (speed / 100) * (MANUAL_SPEED_MAX - MANUAL_SPEED_MIN)
-    const sizeNormalized = (amplitude / 100) * 0.5
+    const sizeNormalized = (amplitude / 100) * 1.0  // 🔥 WAVE 2652: full range (128 DMX ceiling in Arbiter)
 
     // If pattern already exists with same type → hot-update (no phase reset)
     const existingPattern = masterArbiter.getPattern(fixtureIds[0])
@@ -923,6 +927,64 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
   })
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2613: SPATIAL IK TARGET — IPC BRIDGE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Apply a spatial target (3D point) to a group of fixtures via IK engine.
+   * Each fixture independently calculates its pan/tilt to point at the target.
+   * Returns per-fixture IKResult (for reachability feedback in UI).
+   */
+  ipcMain.handle('lux:arbiter:applySpatialTarget', (
+    _event,
+    { target, fixtureIds, fanMode, fanAmplitude }: {
+      target: { x: number; y: number; z: number }
+      fixtureIds: string[]
+      fanMode?: 'converge' | 'line' | 'circle'
+      fanAmplitude?: number
+    }
+  ) => {
+    try {
+      const results = masterArbiter.applySpatialTarget(
+        target,
+        fixtureIds,
+        fanMode ?? 'converge',
+        fanAmplitude ?? 0
+      )
+      
+      // Serialize Map to plain object for IPC transport
+      const serialized: Record<string, {
+        pan: number; tilt: number; reachable: boolean; antiFlipApplied: boolean
+        subTarget: { x: number; y: number; z: number }
+      }> = {}
+      results.forEach((result, id) => {
+        serialized[id] = result
+      })
+      
+      return { success: true, results: serialized }
+    } catch (err) {
+      console.error('[ArbiterIPC] 🎯 applySpatialTarget error:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
+  /**
+   * Release spatial target control — return fixtures to AI/mechanical control.
+   */
+  ipcMain.handle('lux:arbiter:releaseSpatialTarget', (
+    _event,
+    { fixtureIds }: { fixtureIds: string[] }
+  ) => {
+    try {
+      masterArbiter.releaseSpatialTarget(fixtureIds)
+      return { success: true }
+    } catch (err) {
+      console.error('[ArbiterIPC] 🎯 releaseSpatialTarget error:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
   // ═══════════════════════════════════════════════════════════════════════
   // STATUS & DEBUG
   // ═══════════════════════════════════════════════════════════════════════

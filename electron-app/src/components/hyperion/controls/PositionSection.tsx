@@ -21,12 +21,14 @@
  * Connected to MasterArbiter via window.lux.arbiter.setManual()
  */
 
-import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
-import { XYPad, RadarXY, type GhostPoint } from './controls'
+import { useStageStore } from '../../../stores/stageStore'
+import { XYPad, RadarXY, type GhostPoint, SpatialTargetPad, type SpatialFixtureGhost, VSlider } from './controls'
 import { PatternSelector, type PatternType } from './controls'
 import { PositionIcon } from '../../icons/LuxIcons'
+import type { Target3D, IKResult } from '../../../engine/movement/InverseKinematicsEngine'
 
 export interface PositionSectionProps {
   hasOverride: boolean
@@ -57,6 +59,26 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   // WAVE 430.5: Fan control for group mode
   const [fanValue, setFanValue] = useState(0)  // -100 to 100
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2613: SPATIAL MODE — "Dile dónde mirar, no cuántos grados"
+  // Toggle: GRADOS (classic RadarXY) ↔ SPATIAL (SpatialTargetPad + IK)
+  // ═══════════════════════════════════════════════════════════════════════
+  const [isSpatialMode, setIsSpatialMode] = useState(false)
+  const [spatialTarget, setSpatialTarget] = useState<Target3D>({ x: 0, y: 2, z: 0 })
+  const [spatialReachability, setSpatialReachability] = useState<Record<string, IKResult>>({})
+  const spatialTargetRef = useRef<Target3D>({ x: 0, y: 2, z: 0 })
+
+  // WAVE 2624: Spatial Fan state
+  const [spatialFanMode, setSpatialFanMode] = useState<'converge' | 'line' | 'circle'>('converge')
+  const [spatialFanAmplitude, setSpatialFanAmplitude] = useState(0)
+  const [spatialSubTargets, setSpatialSubTargets] = useState<Record<string, Target3D>>({})
+  const spatialFanModeRef = useRef<'converge' | 'line' | 'circle'>('converge')
+  const spatialFanAmplitudeRef = useRef(0)
+
+  // Stage dimensions from stageStore (for SpatialTargetPad)
+  const stageFromStore = useStageStore((s) => s.stage)
+  const stageFixtures = useStageStore((s) => s.fixtures)
 
   // 🔧 WAVE 2223: POLTERGEIST FIX — Reset local state when parent clears override
   // Without this, handleUnlockAll purges the backend but PositionSection's
@@ -415,6 +437,85 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     console.log(`[Position] 🌀 Fan spread: ${newFanValue}% for ${selectedIds.length} fixtures`)
   }, [pan, tilt, selectedIds, onOverrideChange])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2613: SPATIAL TARGET HANDLER
+  // Sends Target3D to MasterArbiter via IPC.
+  // Returns per-fixture IKResult for reachability feedback (WAVE 2615).
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const handleSpatialTargetChange = useCallback(async (newTarget: Target3D) => {
+    setSpatialTarget(newTarget)
+    spatialTargetRef.current = newTarget
+    onOverrideChange(true)
+
+    try {
+      const result = await window.lux?.arbiter?.applySpatialTarget({
+        target: newTarget,
+        fixtureIds: selectedIds,
+        fanMode: spatialFanModeRef.current,
+        fanAmplitude: spatialFanAmplitudeRef.current,
+      })
+      if (result?.success && result.results) {
+        setSpatialReachability(result.results)
+        // WAVE 2624: Extract sub-targets for SVG beam rays
+        const subs: Record<string, Target3D> = {}
+        for (const [id, r] of Object.entries(result.results)) {
+          const res = r as any
+          if (res.subTarget) {
+            subs[id] = res.subTarget
+          }
+        }
+        setSpatialSubTargets(subs)
+      }
+    } catch (err) {
+      console.error('[Position] 🎯 Spatial target error:', err)
+    }
+  }, [selectedIds, onOverrideChange])
+
+  const handleSpatialCenter = useCallback(() => {
+    handleSpatialTargetChange({ x: 0, y: 2, z: 0 })
+  }, [handleSpatialTargetChange])
+
+  // WAVE 2624: Fan mode/amplitude change handlers
+  const handleFanModeChange = useCallback((mode: 'converge' | 'line' | 'circle') => {
+    setSpatialFanMode(mode)
+    spatialFanModeRef.current = mode
+    // Re-solve with current target and new mode
+    handleSpatialTargetChange(spatialTargetRef.current)
+  }, [handleSpatialTargetChange])
+
+  const handleFanAmplitudeChange = useCallback((amplitude: number) => {
+    setSpatialFanAmplitude(amplitude)
+    spatialFanAmplitudeRef.current = amplitude
+    // Re-solve with current target and new amplitude
+    handleSpatialTargetChange(spatialTargetRef.current)
+  }, [handleSpatialTargetChange])
+
+  // Build SpatialFixtureGhost[] from stageStore fixtures that match current selection
+  const spatialFixtureGhosts = useMemo((): SpatialFixtureGhost[] => {
+    if (!isSpatialMode || !stageFixtures) return []
+    const ghosts: SpatialFixtureGhost[] = []
+    for (const id of selectedIds) {
+      const sf = stageFixtures.find((f) => f.id === id)
+      if (sf) {
+        ghosts.push({
+          id: sf.id,
+          name: sf.name,
+          position: sf.position,
+        })
+      }
+    }
+    return ghosts
+  }, [selectedIds, stageFixtures, isSpatialMode])
+
+  // Stage dimensions with fallback
+  const spatialStage = useMemo(() => stageFromStore ?? {
+    width: 12,
+    depth: 10,
+    height: 6,
+    gridSize: 1,
+  }, [stageFromStore])
+  
   /**
    * Release position back to AI
    * 
@@ -432,6 +533,16 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     // 🔧 WAVE 2071.2: Reset radar to physical center so it has full range next time
     setPan(270)   // Center of 0-540° range
     setTilt(135)  // Center of 0-270° range
+    
+    // 🎯 WAVE 2613: Release spatial target if active
+    if (isSpatialMode) {
+      setSpatialReachability({})
+      try {
+        await window.lux?.arbiter?.releaseSpatialTarget({ fixtureIds: selectedIds })
+      } catch (err) {
+        console.error('[Position] 🎯 Spatial release error:', err)
+      }
+    }
     
     try {
       // Step 1: Destroy pattern in backend
@@ -451,7 +562,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     } catch (err) {
       console.error('[Position] Release error:', err)
     }
-  }, [selectedIds, onOverrideChange])
+  }, [selectedIds, onOverrideChange, isSpatialMode])
   
   /**
    * WAVE 377: Toggle calibration mode
@@ -536,119 +647,95 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       {isExpanded && (
         <>
           {/* ═══════════════════════════════════════════════════════════════════════
-              SWITCH INTELIGENTE: Radar (Multi) vs XYPad (Single)
+              WAVE 2616: LAYOUT DESACOPLADO
+              Los controles Speed/Amp rodean SIEMPRE al pad activo.
+              PatternSelector + Fan viven DEBAJO, independientes del modo.
+              
+              Estructura:
+              [MODE TOGGLE] (solo multi)
+              [SPD] [──PAD ACTIVO──] [AMP]
+              [FAN] (solo multi/grados)
+              [PATTERNS]
+              [PAN/TILT sliders] (solo single)
               ═══════════════════════════════════════════════════════════════════════ */}
           
-          {isMultiSelection ? (
-            /* 📡 FORMATION MODE - Multiple fixtures selected */
-            <div className="position-mode formation-mode">
-              {/* ═══════════════════════════════════════════════════════════════════════
-                  WAVE 999.3: COMPACT TACTICAL LAYOUT - No overflow
-                  [SPD] [────RADAR────] [AMP]
-                  ═══════════════════════════════════════════════════════════════════════ */}
-              <div className="tactical-compact-layout">
-                {/* 🚀 SPEED SLIDER - TRUE VERTICAL */}
-                <div className="v-slider-track speed-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
-                    <path fill="currentColor" d="M13 2v8h4l-5 6-5-6h4V2h2zm-2 16v4h2v-4h-2zm-6-4l1.41-1.41L12 18.17l5.59-5.58L19 14l-7 7-7-7z"/>
-                  </svg>
-                  <div className="v-slider-wrapper">
-                    <input
-                      type="range"
-                      className="v-slider-input"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={patternSpeed}
-                      onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                      disabled={selectedIds.length === 0}
-                    />
-                  </div>
-                  <span className="v-slider-value">{patternSpeed}</span>
-                </div>
-                
-                {/* 🎯 RADAR CENTER - Flexible width */}
-                <div className="radar-flex-container">
-                  <RadarXY
-                    pan={pan}
-                    tilt={tilt}
-                    onChange={handlePositionChange}
-                    onCenter={handleCenter}
-                    isCalibrating={isCalibrating}
-                    isGroupMode={true}
-                    ghostPoints={ghostPoints}
-                    fixtureCount={selectedIds.length}
-                  />
-                </div>
-                
-                {/* 📏 SIZE/AMP SLIDER - TRUE VERTICAL */}
-                <div className="v-slider-track amp-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
-                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-                  </svg>
-                  <div className="v-slider-wrapper">
-                    <input
-                      type="range"
-                      className="v-slider-input"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={patternSize}
-                      onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                      disabled={selectedIds.length === 0}
-                    />
-                  </div>
-                  <span className="v-slider-value">{patternSize}</span>
-                </div>
-              </div>
-              
-              {/* FAN CONTROL - Inline compact */}
-              {!isCalibrating && (
-                <div className="fan-control-compact">
-                  <span className="fan-label-mini">FAN</span>
-                  <input
-                    type="range"
-                    className="fan-slider-mini"
-                    min="-100"
-                    max="100"
-                    step="1"
-                    value={fanValue}
-                    onChange={(e) => handleFanChange(Number(e.target.value))}
-                  />
-                  <span className="fan-value-mini">{fanValue}%</span>
-                </div>
-              )}
+          {/* WAVE 2613: MODE TOGGLE — GRADOS / SPATIAL (only shows in multi-selection) */}
+          {isMultiSelection && (
+            <div className="spatial-mode-toggle">
+              <button
+                className={`spatial-mode-btn${!isSpatialMode ? ' active-degrees' : ''}`}
+                onClick={() => {
+                  if (isSpatialMode) {
+                    setIsSpatialMode(false)
+                    setSpatialReachability({})
+                    window.lux?.arbiter?.releaseSpatialTarget({ fixtureIds: selectedIds })
+                      ?.catch(() => {})
+                  }
+                }}
+              >
+                GRADOS
+              </button>
+              <button
+                className={`spatial-mode-btn${isSpatialMode ? ' active-spatial' : ''}`}
+                onClick={() => {
+                  if (!isSpatialMode) {
+                    setIsSpatialMode(true)
+                    handleSpatialTargetChange(spatialTargetRef.current)
+                  }
+                }}
+              >
+                ⊕ SPATIAL
+              </button>
             </div>
-          ) : (
-            /* 🎯 SNIPER MODE - Single fixture selected */
-            <div className="position-mode sniper-mode">
-              {/* ═══════════════════════════════════════════════════════════════════════
-                  WAVE 999.6: SNIPER TACTICAL LAYOUT (Single) - More pad, less sliders
-                  [SPD] [────────PAD────────] [AMP]
-                  ═══════════════════════════════════════════════════════════════════════ */}
-              <div className="tactical-compact-layout sniper-layout">
-                {/* 🚀 SPEED SLIDER - Compact vertical */}
-                <div className="v-slider-track speed-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="14" height="14">
-                    <path fill="currentColor" d="M13 2v8h4l-5 6-5-6h4V2h2zm-2 16v4h2v-4h-2zm-6-4l1.41-1.41L12 18.17l5.59-5.58L19 14l-7 7-7-7z"/>
-                  </svg>
-                  <div className="v-slider-wrapper">
-                    <input
-                      type="range"
-                      className="v-slider-input"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={patternSpeed}
-                      onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                      disabled={selectedIds.length === 0}
+          )}
+          
+          {/* ═══════════════════════════════════════════════════════════════════════
+              WAVE 2616: TACTICAL LAYOUT UNIFICADO
+              [SPD] [──PAD ACTIVO──] [AMP]
+              Speed/Amp SIEMPRE visibles, pad cambia según modo.
+              ═══════════════════════════════════════════════════════════════════════ */}
+          <div className={`position-mode ${isMultiSelection ? 'formation-mode' : 'sniper-mode'}`}>
+            <div className={`tactical-compact-layout${!isMultiSelection ? ' sniper-layout' : ''}${isSpatialMode && isMultiSelection ? ' spatial-active' : ''}`}>
+              {/* 🚀 SPEED SLIDER — Siempre presente */}
+              <VSlider
+                track="speed"
+                value={patternSpeed}
+                onChange={(v) => handlePatternParamsChange(v, patternSize)}
+                disabled={selectedIds.length === 0}
+                variant={isMultiSelection ? 'formation' : 'sniper'}
+              />
+              
+              {/* 🎯 PAD CENTRAL — Cambia según modo */}
+              <div className={`radar-flex-container${!isMultiSelection ? ' sniper-pad' : ''}`}>
+                {isMultiSelection ? (
+                  isSpatialMode ? (
+                    <SpatialTargetPad
+                      target={spatialTarget}
+                      onChange={handleSpatialTargetChange}
+                      fixtures={spatialFixtureGhosts}
+                      stage={spatialStage}
+                      disabled={isCalibrating}
+                      onCenter={handleSpatialCenter}
+                      reachabilityMap={spatialReachability}
+                      fanMode={spatialFanMode}
+                      onFanModeChange={handleFanModeChange}
+                      fanAmplitude={spatialFanAmplitude}
+                      onFanAmplitudeChange={handleFanAmplitudeChange}
+                      subTargets={spatialSubTargets}
                     />
-                  </div>
-                  <span className="v-slider-value">{patternSpeed}</span>
-                </div>
-                
-                {/* 🎯 XY PAD CENTER - EXPANDED for single target */}
-                <div className="radar-flex-container sniper-pad">
+                  ) : (
+                    <RadarXY
+                      pan={pan}
+                      tilt={tilt}
+                      onChange={handlePositionChange}
+                      onCenter={handleCenter}
+                      isCalibrating={isCalibrating}
+                      isGroupMode={true}
+                      ghostPoints={ghostPoints}
+                      fixtureCount={selectedIds.length}
+                    />
+                  )
+                ) : (
                   <XYPad
                     pan={pan}
                     tilt={tilt}
@@ -656,32 +743,38 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                     onCenter={handleCenter}
                     disabled={isCalibrating}
                   />
-                </div>
-                
-                {/* 📏 SIZE/AMP SLIDER - Compact vertical */}
-                <div className="v-slider-track amp-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="14" height="14">
-                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-                  </svg>
-                  <div className="v-slider-wrapper">
-                    <input
-                      type="range"
-                      className="v-slider-input"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={patternSize}
-                      onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                      disabled={selectedIds.length === 0}
-                    />
-                  </div>
-                  <span className="v-slider-value">{patternSize}</span>
-                </div>
+                )}
               </div>
+              
+              {/* 📏 AMP SLIDER — Siempre presente */}
+              <VSlider
+                track="amp"
+                value={patternSize}
+                onChange={(v) => handlePatternParamsChange(patternSpeed, v)}
+                disabled={selectedIds.length === 0}
+                variant={isMultiSelection ? 'formation' : 'sniper'}
+              />
             </div>
-          )}
+            
+            {/* FAN CONTROL — Solo formation mode + grados */}
+            {isMultiSelection && !isSpatialMode && !isCalibrating && (
+              <div className="fan-control-compact">
+                <span className="fan-label-mini">FAN</span>
+                <input
+                  type="range"
+                  className="fan-slider-mini"
+                  min="-100"
+                  max="100"
+                  step="1"
+                  value={fanValue}
+                  onChange={(e) => handleFanChange(Number(e.target.value))}
+                />
+                <span className="fan-value-mini">{fanValue}%</span>
+              </div>
+            )}
+          </div>
           
-          {/* PATTERNS - Procedural Movement (disabled in calibration mode) */}
+          {/* PATTERNS — Siempre visible (disabled in calibration) */}
           {!isCalibrating && (
             <PatternSelector
               activePattern={activePattern}
@@ -692,7 +785,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             />
           )}
           
-          {/* POSITION SLIDERS - Solo para modo single - COMPACT */}
+          {/* POSITION SLIDERS — Solo single mode */}
           {!isMultiSelection && (
             <div className="position-sliders-compact">
               <div className="pos-slider-row">

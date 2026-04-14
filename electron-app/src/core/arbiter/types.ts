@@ -417,6 +417,13 @@ export interface FixtureLightingTarget {
   _crossfadeActive: boolean
   /** Debug: crossfade progress (0-1) */
   _crossfadeProgress: number
+  /**
+   * 🎯 WAVE 2603: IK PROCESSED FLAG
+   * When true, pan/tilt values have been pre-calibrated by InverseKinematicsEngine.
+   * HAL.applyCalibrationOffsets() will skip invert + offset steps (but ALWAYS
+   * applies tiltLimits and final clamp) to prevent double-calibration.
+   */
+  _ikProcessed?: boolean
 }
 
 /**

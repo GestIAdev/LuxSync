@@ -155,6 +155,10 @@ export interface FixtureState {
   // Propagated from MasterArbiter. Used by HAL.sendToDriver() to enforce
   // the DMX gate: when outputEnabled=false, only MANUAL channels pass.
   _controlSources?: Record<string, number>  // ChannelType -> ControlLayer enum value
+  // 🎯 WAVE 2603: IK PROCESSED FLAG
+  // When true, pan/tilt values have been pre-calibrated by InverseKinematicsEngine.
+  // HAL.applyCalibrationOffsets() skips invert + offset (avoids double-calibration).
+  _ikProcessed?: boolean
 }
 
 /** Color palette in RGB format */

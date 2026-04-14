@@ -68,6 +68,8 @@ interface VisualizerCanvasProps {
   onFixtureSelect?: (id: string) => void
   /** Callback cuando cambian las métricas */
   onMetricsUpdate?: (metrics: Visualizer3DMetrics) => void
+  /** WAVE 2515: Hibernation — when false, pauses R3F render loop */
+  isVisible?: boolean
   /** Clase CSS adicional */
   className?: string
 }
@@ -349,6 +351,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   showBeams = true,
   onFixtureSelect,
   onMetricsUpdate,
+  isVisible = true,
   className = '',
 }) => {
   // ── Selection Handling ────────────────────────────────────────────────────
@@ -386,6 +389,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
       <Canvas
         shadows={qualitySettings.shadows}
         dpr={[1, qualitySettings.maxDPR]}
+        frameloop={isVisible ? 'always' : 'never'}
         gl={{
           antialias: quality === 'HQ',
           alpha: false,

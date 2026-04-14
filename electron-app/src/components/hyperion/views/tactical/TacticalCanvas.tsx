@@ -1,17 +1,24 @@
 /**
- * ☀️ HYPERION — Tactical Canvas
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ☀️ HYPERION — Tactical Canvas (OffscreenCanvas + Web Worker)
+ * "The 4th Worker — El Corazón Late en Otro Hilo"
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * EL CORAZÓN DE HYPERION: Vista 2D top-down del escenario.
- * Renderizado por capas, hit testing para selección, beat-reactive.
+ * WAVE 2510: Operación Hyperion — Canvas moved to dedicated Web Worker.
+ * Main thread ONLY handles: DOM events, React state, tooltip overlay.
+ * ALL rendering (5 layers, physics, hit testing) runs in the worker.
  * 
- * Arquitectura:
- * - Canvas único con composición de capas (Grid → Zone → Fixture → Selection → HUD)
- * - requestAnimationFrame loop con frame budget
- * - Hit testing para hover/click/lasso
- * - Integración con FixtureTooltip (del Phase 2)
+ * ARCHITECTURE:
+ * - Mount: transferControlToOffscreen → worker.postMessage('INIT')
+ * - Resize: ResizeObserver → worker.postMessage('RESIZE')
+ * - Mouse: DOM events → worker.postMessage('MOUSE')
+ * - Data: useSeleneTruth hot-frame → worker.postMessage('FRAME')
+ * - Selection: selectionStore changes → worker.postMessage('SELECTION')
+ * - Worker sends back: HIT_TEST, LASSO_COMPLETE, METRICS
  * 
  * @module components/hyperion/views/tactical/TacticalCanvas
  * @since WAVE 2042.5 (Project Hyperion — Phase 3)
+ * @rewrite WAVE 2510 (The 4th Worker — OffscreenCanvas architecture)
  */
 
 import React, { 
@@ -29,29 +36,22 @@ import { getTransientTruth } from '../../../../stores/transientStore'
 import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
 import { useControlStore, selectCinemaControl } from '../../../../stores/controlStore'
 import { useOverrideStore } from '../../../../stores/overrideStore'
-import { 
-  renderGridLayer, 
-  renderZoneLayer, 
-  renderFixtureLayer,
-  renderSelectionLayer,
-  renderHUDLayer,
-  FIXTURE_CONFIG
-} from './layers'
-import { 
-  hitTestFixtures, 
-  hitTestLasso,
+import {
   getCanvasMousePosition,
-  canvasToNormalized
 } from './HitTestEngine'
 import { FixtureTooltip, useFixtureTooltip } from '../../widgets'
 import type { 
-  TacticalCanvasOptions, 
   RenderMetrics,
-  TacticalSelection,
   QualityMode
 } from './types'
 import { DEFAULT_TACTICAL_OPTIONS } from './types'
-import { ZONE_LAYOUT_2D, type CanonicalZone } from '../../shared/ZoneLayoutEngine'
+import { type CanonicalZone } from '../../shared/ZoneLayoutEngine'
+import { FLOATS_PER_FIXTURE, FIXTURE_FIELD } from '../../../../workers/hyperion-render.types'
+import type {
+  WorkerInboundMessage,
+  WorkerOutboundMessage,
+  WorkerFixtureScaffold,
+} from '../../../../workers/hyperion-render.types'
 import './TacticalCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,15 +69,87 @@ export interface TacticalCanvasProps {
   onFixtureSelect?: (fixtureId: string, additive: boolean) => void
   /** Callback when selection changes via lasso */
   onSelectionChange?: (fixtureIds: string[]) => void
+  /** WAVE 2515: Hibernation — when false, pauses data pump + worker RAF */
+  isVisible?: boolean
   /** Additional CSS class */
   className?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTS
+// WORKER INSTANTIATION — Vite ?worker suffix (OPERACIÓN LÁZARO, WAVE 2520)
+// Using the ?worker import syntax instead of new URL() — Vite bundles the
+// worker correctly for Electron's renderer process with this pattern.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const FRAME_BUDGET_MS = 16.67  // Target 60fps
+import RenderWorkerConstructor from '../../../../workers/hyperion-render.worker?worker'
+
+function createRenderWorker(): Worker {
+  return new RenderWorkerConstructor()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FRAME DATA PACKING — Main thread → Worker (Transferrable)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Pack fixture frame data into Float32Array for zero-copy transfer.
+ * Called every frame in the data pump (~44Hz from hot-frame or ~12.5Hz fallback).
+ */
+function packFrameData(
+  fixtureCount: number,
+  fixtureIds: string[],
+  transientMap: Map<string, any> | null,
+  controlState: ReturnType<typeof useControlStore.getState>,
+  overrides: Map<string, any>,
+): Float32Array {
+  const buffer = new Float32Array(fixtureCount * FLOATS_PER_FIXTURE)
+  const cinema = selectCinemaControl(controlState)
+
+  for (let i = 0; i < fixtureCount; i++) {
+    const id = fixtureIds[i]
+    const transientState = transientMap?.get(id)
+    const offset = i * FLOATS_PER_FIXTURE
+
+    if (transientState) {
+      const fixtureOverride = overrides.get(id)
+      const renderData = calculateFixtureRenderValues(
+        transientState,
+        cinema.globalMode,
+        cinema.flowParams,
+        cinema.activePaletteId,
+        cinema.globalIntensity,
+        cinema.globalSaturation,
+        i,
+        fixtureOverride?.values,
+        fixtureOverride?.mask,
+        cinema.targetPalette,
+        cinema.transitionProgress
+      )
+
+      const rawInt = renderData.intensity ?? 0
+      const normInt = !Number.isFinite(rawInt) ? 0 : rawInt > 1.0 ? rawInt / 255 : rawInt
+
+      buffer[offset + FIXTURE_FIELD.R] = Number.isFinite(renderData.color.r) ? renderData.color.r : 0
+      buffer[offset + FIXTURE_FIELD.G] = Number.isFinite(renderData.color.g) ? renderData.color.g : 0
+      buffer[offset + FIXTURE_FIELD.B] = Number.isFinite(renderData.color.b) ? renderData.color.b : 0
+      buffer[offset + FIXTURE_FIELD.INTENSITY] = Math.max(0, Math.min(1, normInt))
+      buffer[offset + FIXTURE_FIELD.PHYSICAL_PAN] = Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5
+      buffer[offset + FIXTURE_FIELD.PHYSICAL_TILT] = Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5
+      buffer[offset + FIXTURE_FIELD.ZOOM] = Number.isFinite(renderData.zoom) ? renderData.zoom : 127
+      buffer[offset + FIXTURE_FIELD.FOCUS] = Number.isFinite(renderData.focus) ? renderData.focus : 127
+      buffer[offset + FIXTURE_FIELD.PAN_VELOCITY] = Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0
+      buffer[offset + FIXTURE_FIELD.TILT_VELOCITY] = Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0
+    } else {
+      // No transient data — zero fill (fixture appears dark)
+      buffer[offset + FIXTURE_FIELD.PHYSICAL_PAN] = 0.5
+      buffer[offset + FIXTURE_FIELD.PHYSICAL_TILT] = 0.5
+      buffer[offset + FIXTURE_FIELD.ZOOM] = 127
+      buffer[offset + FIXTURE_FIELD.FOCUS] = 127
+    }
+  }
+
+  return buffer
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -89,58 +161,43 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   showZoneLabels = true,
   onFixtureSelect,
   onSelectionChange,
+  isVisible = true,
   className = '',
 }: TacticalCanvasProps) {
   // ── Refs ────────────────────────────────────────────────────────────────
   
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>(0)
+  const workerRef = useRef<Worker | null>(null)
+  // ⚠️ WAVE 2520 — THE IMMORTAL WORKER (Strict Mode solution):
+  // transferControlToOffscreen() is a one-shot, irreversible operation per DOM node.
+  // React Strict Mode runs Setup→Cleanup→Setup in rapid succession on the SAME node.
+  // The canvasKey workaround fails because setState is async — the second Setup fires
+  // before React repaints with the new key.
+  //
+  // Solution: check workerRef.current at the top of the init useEffect.
+  // If the worker already exists (Strict Mode second run), bail out immediately.
+  // No transfer, no re-instantiation, no crash.
+  //
+  // This is safe because TacticalCanvas is CSS-persisted (visibility:hidden, never
+  // unmounted in production). The worker lives for the entire session lifetime.
+  const observerRef = useRef<ResizeObserver | null>(null)
+  const isTransferredRef = useRef(false)
   const metricsRef = useRef<RenderMetrics>({
     fps: 60,
     frameTime: 0,
     fixtureCount: 0,
     lastRenderTime: 0,
   })
-  const fpsHistoryRef = useRef<number[]>([])
-  const lastFrameTimeRef = useRef<number>(0)
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHYSICS MEMORY — Inercia táctica para pan/tilt suaves
-  // Sin esto: saltos de 180° en 1 frame → triple-haz ghosting
-  // Con esto: interpolación suave (mantequilla) → cinematografía real
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const physicsStoreRef = useRef<Map<string, { pan: number; tilt: number; zoom: number }>>(new Map())
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ⚡ WAVE 2464: BEAT VISUAL ENVELOPE — Decay suave a 60fps real
-  //
-  // PROBLEMA ANTERIOR: onBeat era un boolean. El RAF dibujaba beatScale=1.08
-  // mientras onBeat=true (100ms), luego saltaba a 1.0 instantáneamente →
-  // flash duro, no un halo que pulsa y se apaga.
-  //
-  // SOLUCIÓN: beatVisualEnvelopeRef decae cada frame del RAF (independiente
-  // del IPC, independiente de React). Cuando llega un beat real, sube a 1.0.
-  // Cada frame: env *= DECAY. Pasa a FixtureLayer como valor continuo 0-1.
-  // FixtureLayer usa: beatScale = 1.0 + env * 0.08  (suave, no binario)
-  //
-  // DECAY = 0.88 por frame @ 60fps → dura ~8 frames (~130ms) visible
-  // DECAY = 0.92 por frame @ 60fps → dura ~12 frames (~200ms) visible
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const beatVisualEnvelopeRef = useRef<number>(0)
-  const lastOnBeatRef = useRef<boolean>(false)  // Detecta rising edge (false→true)
+  // ── Beat envelope detection (main thread → worker via FRAME msg) ──────
+  const lastOnBeatRef = useRef(false)
 
   // ── State ───────────────────────────────────────────────────────────────
   
   const [isReady, setIsReady] = useState(false)
   const [hoveredFixtureId, setHoveredFixtureId] = useState<string | null>(null)
   const [isLassoActive, setIsLassoActive] = useState(false)
-  const [lassoBounds, setLassoBounds] = useState<{
-    startX: number
-    startY: number
-    endX: number
-    endY: number
-  } | null>(null)
 
   // ── Store Subscriptions ─────────────────────────────────────────────────
   
@@ -149,13 +206,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
   const toggleSelection = useSelectionStore(state => state.toggleSelection)
   const deselectAll = useSelectionStore(state => state.deselectAll)
-  
-  // 🔥 WAVE 2405: Beat data read IMPERATIVELY in RAF loop via useAudioStore.getState()
-  // No longer a reactive subscription — prevents RAF restart on every beat
 
-  // ── Fixture Data ────────────────────────────────────────────────────────
-  // Structural scaffold (~2fps from truthStore — positions, zones, types)
-  // Dynamic data (intensity, color, pan/tilt) hydrated from transientStore in RAF
+  // ── Fixture Data (structural scaffold) ──────────────────────────────────
   
   const fixtures = useFixtureData()
   const fixturesRef = useRef(fixtures)
@@ -168,60 +220,6 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     enabled: true,
   })
 
-  // ── Canvas Setup ────────────────────────────────────────────────────────
-  
-  useEffect(() => {
-    const container = containerRef.current
-    const canvas = canvasRef.current
-    if (!container || !canvas) return
-
-    const updateSize = () => {
-      const rect = container.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio, DEFAULT_TACTICAL_OPTIONS.maxDPR)
-      
-      canvas.width = rect.width * dpr
-      canvas.height = rect.height * dpr
-      canvas.style.width = `${rect.width}px`
-      canvas.style.height = `${rect.height}px`
-
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        // CRITICAL: Reset transform to identity BEFORE scaling
-        // Otherwise scale accumulates on each resize → ghosting/triple-haz
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.scale(dpr, dpr)
-      }
-    }
-
-    updateSize()
-    setIsReady(true)
-
-    const observer = new ResizeObserver(updateSize)
-    observer.observe(container)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  // ── Calculate Base Radius ───────────────────────────────────────────────
-  
-  const baseRadius = useMemo(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return FIXTURE_CONFIG.MIN_RADIUS
-
-    const rect = canvas.getBoundingClientRect()
-    const minDim = Math.min(rect.width, rect.height)
-    
-    return Math.max(
-      FIXTURE_CONFIG.MIN_RADIUS,
-      Math.min(
-        FIXTURE_CONFIG.MAX_RADIUS,
-        minDim * FIXTURE_CONFIG.BASE_RADIUS_RATIO
-      )
-    )
-  }, [isReady])
-
   // ── Zone Counts ─────────────────────────────────────────────────────────
   
   const zoneCounts = useMemo(() => {
@@ -232,101 +230,256 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     }
     return counts
   }, [fixtures])
-  const zoneCountsRef = useRef(zoneCounts)
-  zoneCountsRef.current = zoneCounts
 
-  // ── Render Loop ─────────────────────────────────────────────────────────
-  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WORKER LIFECYCLE — Init, communication, crash recovery
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Helper to post message to worker (safe — checks worker exists)
+  const postToWorker = useCallback((msg: WorkerInboundMessage, transfer?: Transferable[]) => {
+    const w = workerRef.current
+    if (!w) return
+    if (transfer && transfer.length > 0) {
+      w.postMessage(msg, transfer)
+    } else {
+      w.postMessage(msg)
+    }
+  }, [])
+
+  // ── Worker Init & Canvas Transfer ─────────────────────────────────────
+  useEffect(() => {
+    const container = containerRef.current
+    const canvas = canvasRef.current
+    if (!container || !canvas) return
+
+    // ── THE IMMORTAL GUARD ─────────────────────────────────────────────
+    // Strict Mode fires Setup→Cleanup→Setup on the same DOM node.
+    // If the worker already exists, we survived the fake unmount — bail out.
+    // transferControlToOffscreen() must NEVER be called twice on the same node.
+    if (workerRef.current) return
+
+    const rect = container.getBoundingClientRect()
+    const dpr = Math.min(window.devicePixelRatio, DEFAULT_TACTICAL_OPTIONS.maxDPR)
+
+    // Set CSS display size (worker controls physical pixels)
+    canvas.style.width = `${rect.width}px`
+    canvas.style.height = `${rect.height}px`
+
+    // Transfer canvas ownership to worker (irreversible, one-shot per node)
+    let offscreen: OffscreenCanvas
+    try {
+      offscreen = canvas.transferControlToOffscreen()
+    } catch (e) {
+      const detail = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+      console.error('[Hyperion] OffscreenCanvas transfer failed —', detail)
+      return
+    }
+    isTransferredRef.current = true
+
+    // Create worker
+    const worker = createRenderWorker()
+    workerRef.current = worker
+
+    // Handle messages from worker
+    worker.onmessage = (e: MessageEvent<WorkerOutboundMessage>) => {
+      const msg = e.data
+      switch (msg.type) {
+        case 'READY':
+          setIsReady(true)
+          break
+
+        case 'HIT_TEST': {
+          if (msg.action === 'move') {
+            if (msg.fixtureId !== hoveredFixtureIdRef.current) {
+              setHoveredFixtureId(msg.fixtureId)
+              if (msg.fixtureId) {
+                const fixture = fixturesRef.current.find(f => f.id === msg.fixtureId)
+                if (fixture) {
+                  tooltipRef.current.onFixtureEnter(fixture.id, {
+                    id: fixture.id,
+                    name: fixture.id,
+                    type: fixture.type === 'moving' ? 'moving-head' as const : fixture.type as any,
+                    zone: fixture.zone,
+                    dmxAddress: 1,
+                    intensity: fixture.intensity,
+                    color: { r: fixture.r, g: fixture.g, b: fixture.b },
+                    pan: fixture.physicalPan,
+                    tilt: fixture.physicalTilt,
+                    zoom: fixture.zoom / 255,
+                    focus: fixture.focus / 255,
+                    selected: useSelectionStore.getState().selectedIds.has(fixture.id),
+                    hasOverride: false,
+                  }, { x: msg.mouseX, y: msg.mouseY })
+                }
+              } else {
+                tooltipRef.current.onFixtureLeave()
+              }
+            } else if (msg.fixtureId) {
+              tooltipRef.current.onFixtureMove({ x: msg.mouseX, y: msg.mouseY })
+            }
+          } else if (msg.action === 'down' && msg.fixtureId) {
+            const isToggle = msg.ctrlKey || msg.metaKey
+            const isAdditive = msg.shiftKey
+            if (isToggle) {
+              toggleSelection(msg.fixtureId)
+            } else if (isAdditive) {
+              select(msg.fixtureId, 'add')
+            } else {
+              select(msg.fixtureId, 'replace')
+            }
+            onFixtureSelect?.(msg.fixtureId, isToggle || isAdditive)
+          } else if (msg.action === 'down' && !msg.fixtureId) {
+            if (!msg.shiftKey && !msg.ctrlKey && !msg.metaKey) {
+              deselectAll()
+            }
+            setIsLassoActive(true)
+          }
+          break
+        }
+
+        case 'LASSO_COMPLETE': {
+          setIsLassoActive(false)
+          if (msg.fixtureIds.length > 0) {
+            selectMultiple(msg.fixtureIds, msg.additive ? 'add' : 'replace')
+            onSelectionChange?.(msg.fixtureIds)
+          }
+          break
+        }
+
+        case 'METRICS':
+          metricsRef.current = {
+            fps: msg.fps,
+            frameTime: msg.frameTime,
+            fixtureCount: msg.fixtureCount,
+            lastRenderTime: performance.now(),
+          }
+          break
+
+        case 'ERROR':
+          console.error('[Hyperion Worker]', msg.message)
+          break
+      }
+    }
+
+    worker.onerror = (err) => {
+      console.error('[Hyperion Worker CRASH]', err.message)
+    }
+
+    // Send INIT with transferred OffscreenCanvas
+    const initMsg: WorkerInboundMessage = {
+      type: 'INIT',
+      canvas: offscreen,
+      width: rect.width,
+      height: rect.height,
+      dpr,
+      quality,
+      showGrid,
+      showZoneLabels,
+    }
+    worker.postMessage(initMsg, [offscreen])
+
+    // ResizeObserver — forward to worker
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        const currentDpr = Math.min(window.devicePixelRatio, DEFAULT_TACTICAL_OPTIONS.maxDPR)
+        if (canvas) {
+          canvas.style.width = `${width}px`
+          canvas.style.height = `${height}px`
+        }
+        postToWorker({ type: 'RESIZE', width, height, dpr: currentDpr })
+      }
+    })
+    observer.observe(container)
+    observerRef.current = observer
+
+    // ── IMMORTAL CLEANUP ───────────────────────────────────────────────
+    // This function is intentionally a no-op for Strict Mode survival.
+    // The worker and canvas transfer must persist across the fake unmount.
+    // In a true production unmount (hot reload, route change), the browser
+    // will GC the worker anyway. If we ever need explicit teardown, use the
+    // observerRef and workerRef directly from outside this effect.
+    return () => {
+      // Intentionally empty — The Immortal Worker survives Strict Mode.
+      // See architecture note above (CSS persistence, session lifetime).
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Stable refs for worker message handler closures ────────────────────
+  const hoveredFixtureIdRef = useRef(hoveredFixtureId)
+  hoveredFixtureIdRef.current = hoveredFixtureId
+  const tooltipRef = useRef(tooltip)
+  tooltipRef.current = tooltip
+
+  // ── Send scaffold to worker when fixtures change ──────────────────────
   useEffect(() => {
     if (!isReady) return
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const scaffold: WorkerFixtureScaffold[] = fixtures.map(f => ({
+      id: f.id,
+      x: f.x,
+      y: f.y,
+      type: f.type,
+      zone: f.zone,
+      gobo: f.gobo,
+      prism: f.prism,
+    }))
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const zoneCountsArray = Array.from(zoneCounts.entries())
+    postToWorker({ type: 'SCAFFOLD', fixtures: scaffold, zoneCounts: zoneCountsArray })
+  }, [fixtures, zoneCounts, isReady, postToWorker])
 
-    const render = (timestamp: number) => {
-      // Calculate FPS
-      const delta = timestamp - lastFrameTimeRef.current
-      lastFrameTimeRef.current = timestamp
+  // ── Send selection state to worker ────────────────────────────────────
+  useEffect(() => {
+    if (!isReady) return
+    postToWorker({
+      type: 'SELECTION',
+      selectedIds: Array.from(selectedIds),
+      hoveredId: hoveredFixtureId,
+      lassoBounds: null,
+    })
+  }, [selectedIds, hoveredFixtureId, isReady, postToWorker])
 
-      if (delta > 0) {
-        const instantFps = 1000 / delta
-        fpsHistoryRef.current.push(instantFps)
-        if (fpsHistoryRef.current.length > 30) {
-          fpsHistoryRef.current.shift()
-        }
-        const avgFps = fpsHistoryRef.current.reduce((a, b) => a + b, 0) / fpsHistoryRef.current.length
-        metricsRef.current.fps = avgFps
-      }
+  // ── Send options changes to worker ────────────────────────────────────
+  useEffect(() => {
+    if (!isReady) return
+    postToWorker({ type: 'OPTIONS', quality, showGrid, showZoneLabels })
+  }, [quality, showGrid, showZoneLabels, isReady, postToWorker])
 
-      // 🔥 WAVE 2405: Read structural scaffold from ref (updated by React at ~2fps)
+  // ── WAVE 2515: Hibernation Protocol ───────────────────────────────────
+  // When the 2D view is CSS-hidden, pause the worker RAF and stop the
+  // main-thread data pump. Zero GPU/CPU burn in background.
+  useEffect(() => {
+    if (!isReady) return
+    postToWorker({ type: 'HIBERNATE', sleep: !isVisible })
+  }, [isVisible, isReady, postToWorker])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DATA PUMP — Feed fixture frame data to worker at IPC rate
+  // ═══════════════════════════════════════════════════════════════════════
+  // This runs on a RAF loop on main thread but does NO rendering.
+  // It reads transientStore + controlStore + overrideStore,
+  // packs into Float32Array, and transfers to worker.
+  // When Phase 2 hot-frame is active, this will be replaced by
+  // direct hot-frame → worker forwarding in useSeleneTruth.
+
+  useEffect(() => {
+    if (!isReady || !isVisible) return
+
+    let frameNumber = 0
+    let rafId = 0
+
+    const pump = () => {
       const currentFixtures = fixturesRef.current
-
-      metricsRef.current.frameTime = delta
-      metricsRef.current.fixtureCount = currentFixtures.length
-      metricsRef.current.lastRenderTime = timestamp
-
-      // ⚡ WAVE 2464: BEAT VISUAL ENVELOPE — Decay suave a 60fps
-      // Rising edge detection: solo sube el envelope en la transición false→true.
-      // Esto evita que el envelope se "resetee" a 1.0 en cada frame mientras
-      // onBeat siga siendo true (100ms), que causaría un plateau plano en vez de decay.
-      const audioState = useAudioStore.getState()
-      const currentOnBeat = audioState.onBeat
-      const BEAT_VISUAL_DECAY = 0.88  // per-frame @ 60fps → ~130ms de halo visible
-      if (currentOnBeat && !lastOnBeatRef.current) {
-        // Rising edge — nuevo beat real detectado
-        beatVisualEnvelopeRef.current = 1.0
-      }
-      lastOnBeatRef.current = currentOnBeat
-      // Decay cada frame, independiente de si hay beat o no
-      beatVisualEnvelopeRef.current *= BEAT_VISUAL_DECAY
-      const beatEnvelope = beatVisualEnvelopeRef.current
-
-      // Get CSS dimensions
-      const rect = canvas.getBoundingClientRect()
-      const width = rect.width
-      const height = rect.height
-
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // CRITICAL: Save context state BEFORE rendering
-      // This prevents transform accumulation (ghosting/triple-haz bug)
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      ctx.save()
-
-      // Clear canvas (must happen AFTER save, uses current transform)
-      ctx.clearRect(0, 0, width, height)
-
-      // ── LAYER 1: GRID ─────────────────────────────────────────────────
-      if (showGrid) {
-        renderGridLayer(ctx, width, height, {
-          showReferenceLines: true,
-          showStereoDivision: true,
-        })
+      if (currentFixtures.length === 0) {
+        rafId = requestAnimationFrame(pump)
+        return
       }
 
-      // ── LAYER 2: ZONE LABELS ──────────────────────────────────────────
-      if (showZoneLabels) {
-        renderZoneLayer(ctx, width, height, {
-          showCounts: true,
-          zoneCounts: zoneCountsRef.current,
-        })
-      }
-
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 🔥 WAVE 2405: TRANSIENT HYDRATION — Fresh dynamic data every frame
-      //
-      // The scaffold (x, y, zone, type, id) comes from useFixtureData (~2fps).
-      // Dynamic fields (intensity, color, pan/tilt/zoom) are OVERWRITTEN here
-      // with fresh data from getTransientTruth() (~12.5fps IPC, zero React cost).
-      //
-      // This is the same pattern used by 3D components (HyperionPar3D, etc.)
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Read transient truth
       const transientTruth = getTransientTruth()
       const transientFixtures = transientTruth?.hardware?.fixtures
-      
-      // Build a lookup map for O(1) access by fixture ID
       let transientMap: Map<string, any> | null = null
       if (transientFixtures && Array.isArray(transientFixtures)) {
         transientMap = new Map()
@@ -335,277 +488,107 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         }
       }
 
-      // Read control params imperatively for calculateFixtureRenderValues
+      // Beat detection (rising edge)
+      const audioState = useAudioStore.getState()
+      const currentOnBeat = audioState.onBeat
+      const isNewBeat = currentOnBeat && !lastOnBeatRef.current
+      lastOnBeatRef.current = currentOnBeat
+
+      // Pack frame data
+      const fixtureIds = currentFixtures.map(f => f.id)
       const controlState = useControlStore.getState()
-      const cinema = selectCinemaControl(controlState)
       const overrides = useOverrideStore.getState().overrides
+      const frameData = packFrameData(
+        currentFixtures.length,
+        fixtureIds,
+        transientMap,
+        controlState,
+        overrides,
+      )
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // PHYSICS INTERPOLATION — Smooth pan/tilt/zoom (Inercia Táctica)
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // PROBLEMA: DMX values jump instantly (0° → 180° in 1 frame)
-      // SOLUCIÓN: Remember previous values, interpolate smoothly
-      // RESULTADO: Beams move like butter (cinematographic), no ghosting
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      
-      const SMOOTHING_FACTOR = 0.10  // 0.1 = slow/heavy, 0.3 = fast/snappy
-      
-      const smoothedFixtures = currentFixtures.map((fixture, index) => {
-        // 🔥 WAVE 2405: Hydrate with FRESH transient data
-        let hydrated = fixture
-        const transientState = transientMap?.get(fixture.id)
-        if (transientState) {
-          const fixtureOverride = overrides.get(fixture.id)
-          const renderData = calculateFixtureRenderValues(
-            transientState,
-            cinema.globalMode,
-            cinema.flowParams,
-            cinema.activePaletteId,
-            cinema.globalIntensity,
-            cinema.globalSaturation,
-            index,
-            fixtureOverride?.values,
-            fixtureOverride?.mask,
-            cinema.targetPalette,
-            cinema.transitionProgress
-          )
-          
-          const rawIntensity = renderData.intensity ?? 0
-          const normalizedIntensity = !Number.isFinite(rawIntensity)
-            ? 0
-            : rawIntensity > 1.0 ? rawIntensity / 255 : rawIntensity
-          
-          hydrated = {
-            ...fixture,
-            // Dynamic fields — FRESH from transient
-            r: Number.isFinite(renderData.color.r) ? renderData.color.r : 0,
-            g: Number.isFinite(renderData.color.g) ? renderData.color.g : 0,
-            b: Number.isFinite(renderData.color.b) ? renderData.color.b : 0,
-            intensity: Math.max(0, Math.min(1, normalizedIntensity)),
-            physicalPan: Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5,
-            physicalTilt: Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5,
-            zoom: Number.isFinite(renderData.zoom) ? renderData.zoom : 127,
-            focus: Number.isFinite(renderData.focus) ? renderData.focus : 127,
-            panVelocity: Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0,
-            tiltVelocity: Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0,
-          }
-        }
-        
-        // Get or initialize physics state for this fixture
-        let state = physicsStoreRef.current.get(hydrated.id)
-        
-        if (!state) {
-          // First frame: initialize with current values (no interpolation)
-          state = {
-            pan: hydrated.physicalPan,
-            tilt: hydrated.physicalTilt,
-            zoom: hydrated.zoom,
-          }
-          physicsStoreRef.current.set(hydrated.id, state)
-        }
+      frameNumber++
 
-        // Interpolate towards target (exponential smoothing)
-        // This creates the "inercia" effect — fixture remembers momentum
-        state.pan += (hydrated.physicalPan - state.pan) * SMOOTHING_FACTOR
-        state.tilt += (hydrated.physicalTilt - state.tilt) * SMOOTHING_FACTOR
-        state.zoom += (hydrated.zoom - state.zoom) * SMOOTHING_FACTOR
+      // Send to worker with Transferrable (zero-copy)
+      const msg: WorkerInboundMessage = {
+        type: 'FRAME',
+        frameNumber,
+        timestamp: performance.now(),
+        onBeat: isNewBeat,
+        beatIntensity: isNewBeat ? 1.0 : 0,
+        fixtureCount: currentFixtures.length,
+        frameData,
+      }
+      postToWorker(msg, [frameData.buffer])
 
-        // Update physics memory for next frame
-        physicsStoreRef.current.set(hydrated.id, state)
-
-        // Return fixture with SMOOTHED values (not raw DMX)
-        return {
-          ...hydrated,
-          physicalPan: state.pan,
-          physicalTilt: state.tilt,
-          zoom: state.zoom,
-        }
-      })
-
-      // ── LAYER 3: FIXTURES (with smoothed physics + transient data) ────
-      renderFixtureLayer(ctx, width, height, smoothedFixtures, {
-        quality,
-        onBeat: beatEnvelope > 0.05,       // true mientras el halo sea visible
-        beatIntensity: beatEnvelope,        // 0-1 continuo para beatScale suave
-      })
-
-      // ── LAYER 4: SELECTION ────────────────────────────────────────────
-      renderSelectionLayer(ctx, width, height, smoothedFixtures, baseRadius, {
-        selectedIds,
-        hoveredId: hoveredFixtureId,
-        lassoBounds,
-        animationPhase: (timestamp % 1000) / 1000,
-      })
-
-      // ── LAYER 5: HUD ──────────────────────────────────────────────────
-      renderHUDLayer(ctx, width, height, metricsRef.current, quality)
-
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // CRITICAL: Restore context state AFTER rendering
-      // Paired with ctx.save() at frame start
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      ctx.restore()
-
-      // Schedule next frame
-      animationRef.current = requestAnimationFrame(render)
+      rafId = requestAnimationFrame(pump)
     }
 
-    animationRef.current = requestAnimationFrame(render)
+    rafId = requestAnimationFrame(pump)
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
+      if (rafId) cancelAnimationFrame(rafId)
     }
-  // 🔥 WAVE 2405: STABLE RAF DEPS
-  // Removed: fixtures, onBeat, beatIntensity, zoneCounts
-  // These are now read IMPERATIVELY via refs and getState() inside the RAF loop.
-  // The RAF loop is mount-once, run-forever — no more destroy/recreate on data changes.
-  }, [
-    isReady,
-    quality,
-    showGrid,
-    showZoneLabels,
-    selectedIds,
-    hoveredFixtureId,
-    lassoBounds,
-    baseRadius,
-  ])
+  }, [isReady, isVisible, postToWorker])
 
-  // ── Mouse Handlers ──────────────────────────────────────────────────────
+  // ── Mouse Handlers (DOM → Worker) ─────────────────────────────────────
   
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
-
-    const rect = canvas.getBoundingClientRect()
     const pos = getCanvasMousePosition(e.nativeEvent, canvas)
-
-    // Update lasso if active
-    if (isLassoActive && lassoBounds) {
-      const normalized = canvasToNormalized(pos.x, pos.y, rect.width, rect.height)
-      setLassoBounds({
-        ...lassoBounds,
-        endX: normalized.x,
-        endY: normalized.y,
-      })
-      return
-    }
-
-    // Hit test for hover
-    const hit = hitTestFixtures(
-      pos.x,
-      pos.y,
-      fixtures,
-      rect.width,
-      rect.height,
-      baseRadius
-    )
-
-    if (hit.fixtureId !== hoveredFixtureId) {
-      setHoveredFixtureId(hit.fixtureId)
-      
-      if (hit.fixtureId) {
-        // Find fixture and build tooltip data
-        const fixture = fixtures.find(f => f.id === hit.fixtureId)
-        if (fixture) {
-          const tooltipData = {
-            id: fixture.id,
-            name: fixture.id,
-            type: fixture.type === 'moving' ? 'moving-head' as const : fixture.type as any,
-            zone: fixture.zone,
-            dmxAddress: 1, // Would need to be fetched from stageStore
-            intensity: fixture.intensity,
-            color: { r: fixture.r, g: fixture.g, b: fixture.b },
-            pan: fixture.physicalPan,
-            tilt: fixture.physicalTilt,
-            zoom: fixture.zoom / 255,
-            focus: fixture.focus / 255,
-            selected: selectedIds.has(fixture.id),
-            hasOverride: false,
-          }
-          tooltip.onFixtureEnter(fixture.id, tooltipData, { x: e.clientX, y: e.clientY })
-        }
-      } else {
-        tooltip.onFixtureLeave()
-      }
-    } else if (hit.fixtureId) {
-      tooltip.onFixtureMove({ x: e.clientX, y: e.clientY })
-    }
-  }, [fixtures, baseRadius, isLassoActive, lassoBounds, hoveredFixtureId, tooltip, selectedIds])
+    postToWorker({
+      type: 'MOUSE',
+      action: 'move',
+      x: pos.x,
+      y: pos.y,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+    })
+  }, [postToWorker])
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
-
-    const rect = canvas.getBoundingClientRect()
     const pos = getCanvasMousePosition(e.nativeEvent, canvas)
-
-    // Hit test for click
-    const hit = hitTestFixtures(
-      pos.x,
-      pos.y,
-      fixtures,
-      rect.width,
-      rect.height,
-      baseRadius
-    )
-
-    if (hit.fixtureId) {
-      // Click on fixture
-      const isToggle = e.ctrlKey || e.metaKey
-      const isAdditive = e.shiftKey
-      
-      if (isToggle) {
-        toggleSelection(hit.fixtureId)
-      } else if (isAdditive) {
-        select(hit.fixtureId, 'add')
-      } else {
-        select(hit.fixtureId, 'replace')
-      }
-      onFixtureSelect?.(hit.fixtureId, isToggle || isAdditive)
-    } else {
-      // Start lasso selection
-      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        deselectAll()
-      }
-      
-      const normalized = canvasToNormalized(pos.x, pos.y, rect.width, rect.height)
-      setIsLassoActive(true)
-      setLassoBounds({
-        startX: normalized.x,
-        startY: normalized.y,
-        endX: normalized.x,
-        endY: normalized.y,
-      })
-    }
-  }, [fixtures, baseRadius, toggleSelection, select, deselectAll, onFixtureSelect])
+    postToWorker({
+      type: 'MOUSE',
+      action: 'down',
+      x: pos.x,
+      y: pos.y,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+    })
+  }, [postToWorker])
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isLassoActive && lassoBounds) {
-      // Complete lasso selection
-      const lassoedIds = hitTestLasso(lassoBounds, fixtures)
-      
-      if (lassoedIds.length > 0) {
-        const additive = e.shiftKey || e.ctrlKey || e.metaKey
-        selectMultiple(lassoedIds, additive ? 'add' : 'replace')
-        onSelectionChange?.(lassoedIds)
-      }
-    }
-
+    postToWorker({
+      type: 'MOUSE',
+      action: 'up',
+      x: 0,
+      y: 0,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+    })
     setIsLassoActive(false)
-    setLassoBounds(null)
-  }, [isLassoActive, lassoBounds, fixtures, selectMultiple, onSelectionChange])
+  }, [postToWorker])
 
   const handleMouseLeave = useCallback(() => {
+    postToWorker({
+      type: 'MOUSE',
+      action: 'leave',
+      x: 0,
+      y: 0,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+    })
     setHoveredFixtureId(null)
     tooltip.onFixtureLeave()
-    
-    if (isLassoActive) {
-      setIsLassoActive(false)
-      setLassoBounds(null)
-    }
-  }, [tooltip, isLassoActive])
+    setIsLassoActive(false)
+  }, [postToWorker, tooltip])
 
   // ── Cursor Class ────────────────────────────────────────────────────────
   

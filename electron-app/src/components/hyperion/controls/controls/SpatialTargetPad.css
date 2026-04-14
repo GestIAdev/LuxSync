@@ -1,0 +1,620 @@
+/**
+ * 🎯 SPATIAL TARGET PAD — WAVE 2611/2612
+ * "No le dices al fixture a cuántos grados girar. Le dices dónde mirar."
+ *
+ * Estética: HUD táctico militar sobre planta de escenario.
+ * Layout: Grid top-down (X/Z) + slider vertical de altura (Y).
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER PRINCIPAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-pad-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.spatial-pad-container.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-pad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+  background: rgba(0, 255, 136, 0.06);
+  border-radius: 4px;
+}
+
+.spatial-pad-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #00ff88;
+}
+
+.spatial-pad-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY — GRID + SLIDER SIDE BY SIDE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-pad-body {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STAGE GRID (Top-Down View)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-pad-grid {
+  position: relative;
+  flex: 1;
+  aspect-ratio: 1;
+  max-height: 220px;
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(0, 255, 136, 0.02) 0%,
+      rgba(0, 0, 0, 0.4) 80%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  border: 2px solid rgba(0, 255, 136, 0.25);
+  border-radius: 6px;
+  cursor: crosshair;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+
+.spatial-pad-grid.dragging {
+  border-color: rgba(0, 255, 136, 0.7);
+  box-shadow: 0 0 24px rgba(0, 255, 136, 0.15);
+}
+
+/* ── GRID LINES (metro-based) ── */
+
+.spatial-grid-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spatial-grid-line-h,
+.spatial-grid-line-v {
+  position: absolute;
+  background: rgba(0, 255, 136, 0.07);
+}
+
+.spatial-grid-line-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.spatial-grid-line-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+/* Center axis lines — brighter */
+.spatial-grid-line-h.center-axis,
+.spatial-grid-line-v.center-axis {
+  background: rgba(0, 255, 136, 0.18);
+}
+
+/* ── AXIS LABELS ── */
+
+.spatial-axis-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spatial-axis-label {
+  position: absolute;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(0, 255, 136, 0.35);
+}
+
+.spatial-axis-label.label-x-neg {
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.spatial-axis-label.label-x-pos {
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.spatial-axis-label.label-z-back {
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.spatial-axis-label.label-z-front {
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ── FIXTURE GHOSTS ── */
+
+.spatial-fixture-ghost {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.spatial-fixture-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  border: 1.5px solid rgba(168, 85, 247, 0.7);
+  background: rgba(168, 85, 247, 0.2);
+  transform: rotate(45deg);
+}
+
+.spatial-fixture-label {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  color: rgba(168, 85, 247, 0.6);
+  white-space: nowrap;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── TARGET CURSOR ── */
+
+.spatial-target {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.spatial-target-core {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #00ff88 30%, rgba(0, 255, 136, 0.4) 100%);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
+.spatial-target-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 255, 136, 0.5);
+  animation: spatial-pulse 2s ease-in-out infinite;
+}
+
+.spatial-target-crosshair-h,
+.spatial-target-crosshair-v {
+  position: absolute;
+  background: rgba(0, 255, 136, 0.3);
+}
+
+.spatial-target-crosshair-h {
+  width: 100%;
+  height: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.spatial-target-crosshair-v {
+  height: 100%;
+  width: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@keyframes spatial-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.3; }
+}
+
+/* Dragging state — disable animation, solid ring */
+.spatial-pad-grid.dragging .spatial-target-ring {
+  animation: none;
+  border-color: rgba(0, 255, 136, 0.9);
+}
+
+.spatial-pad-grid.dragging .spatial-target-core {
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.9);
+}
+
+/* ── CENTER BUTTON ── */
+
+.spatial-center-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 255, 136, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 0;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.spatial-center-btn:hover {
+  border-color: rgba(0, 255, 136, 0.7);
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEIGHT SLIDER (Y Axis) — WAVE 2612
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-height-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 36px;
+  min-width: 36px;
+  padding: 4px 0;
+}
+
+.spatial-height-label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(0, 255, 136, 0.4);
+}
+
+.spatial-height-track-wrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.spatial-height-track {
+  position: relative;
+  width: 6px;
+  height: 100%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+/* Fill from bottom */
+.spatial-height-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 255, 136, 0.4) 0%,
+    rgba(0, 255, 136, 0.15) 100%
+  );
+  border-radius: 0 0 2px 2px;
+  pointer-events: none;
+}
+
+/* Thumb */
+.spatial-height-thumb {
+  position: absolute;
+  left: 50%;
+  width: 16px;
+  height: 8px;
+  transform: translate(-50%, 50%);
+  background: #00ff88;
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+  pointer-events: none;
+  transition: box-shadow 0.15s;
+}
+
+.spatial-height-track-wrapper:active .spatial-height-thumb {
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.8);
+}
+
+.spatial-height-value {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(0, 255, 136, 0.7);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COORDINATE READOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-coords {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.2rem 0;
+}
+
+.spatial-coord-group {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.spatial-coord-axis {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0, 255, 136, 0.5);
+}
+
+.spatial-coord-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.spatial-coord-unit {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 2614: BEAM RAYS SVG OVERLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-beam-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+
+/* Reachable beam — tactical green/cyan glow */
+.spatial-beam-ray {
+  stroke: rgba(0, 255, 170, 0.35);
+  stroke-width: 0.6;
+  fill: none;
+  transition: stroke 0.15s;
+}
+
+/* Dragging: beams glow brighter */
+.spatial-pad-grid.dragging .spatial-beam-ray {
+  stroke: rgba(0, 255, 170, 0.55);
+  stroke-width: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 2615: UNREACHABLE — RED DASHED
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-beam-ray.unreachable {
+  stroke: rgba(255, 60, 60, 0.6);
+  stroke-width: 0.7;
+  /* dasharray set inline via SVG attr, but add animation marching ants */
+  animation: spatial-march 0.8s linear infinite;
+}
+
+@keyframes spatial-march {
+  to { stroke-dashoffset: -14; }
+}
+
+.spatial-pad-grid.dragging .spatial-beam-ray.unreachable {
+  stroke: rgba(255, 60, 60, 0.85);
+  stroke-width: 0.9;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 2613: MODE TOGGLE (GRADOS / SPATIAL)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.3);
+  font-family: 'JetBrains Mono', monospace;
+  user-select: none;
+}
+
+.spatial-mode-btn {
+  padding: 0 8px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.spatial-mode-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.spatial-mode-btn.active-degrees {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+}
+
+.spatial-mode-btn.active-spatial {
+  background: rgba(0, 255, 136, 0.12);
+  color: #00ff88;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 2624: FAN CONTROLS — MODE SELECTOR + AMPLITUDE SLIDER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spatial-fan-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.spatial-fan-mode-selector {
+  display: flex;
+  gap: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.spatial-fan-mode-btn {
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.spatial-fan-mode-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.spatial-fan-mode-btn.active {
+  background: rgba(0, 255, 136, 0.14);
+  color: #00ff88;
+}
+
+.spatial-fan-mode-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.spatial-fan-amplitude {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.spatial-fan-amplitude-label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(0, 255, 136, 0.5);
+  flex-shrink: 0;
+}
+
+.spatial-fan-amplitude-slider {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.spatial-fan-amplitude-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00ff88;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  cursor: grab;
+}
+
+.spatial-fan-amplitude-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.2);
+}
+
+.spatial-fan-amplitude-value {
+  font-size: 9px;
+  color: rgba(0, 255, 136, 0.7);
+  min-width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── SUB-TARGET DOTS (per-fixture aim points in fan mode) ── */
+
+.spatial-sub-target-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.6);
+  border: 1px solid rgba(0, 255, 136, 0.9);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 8;
+  box-shadow: 0 0 4px rgba(0, 255, 136, 0.3);
+}

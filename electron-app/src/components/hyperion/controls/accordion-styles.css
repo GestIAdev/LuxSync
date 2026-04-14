@@ -375,6 +375,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   WAVE 2616: SPATIAL MODE — Sliders flanquean SpatialTargetPad
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tactical-compact-layout.spatial-active {
+  height: 380px;
+  min-height: 220px;
+}
+
+.tactical-compact-layout.spatial-active .radar-flex-container > * {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    FAN CONTROL - Slim Bar Below Radar
    ═══════════════════════════════════════════════════════════════════════ */
 

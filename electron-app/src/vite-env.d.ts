@@ -296,6 +296,10 @@ declare global {
     // 🌙 WAVE 248: TITAN 2.0 TRUTH PROTOCOL - La Verdad Única
     onTruthUpdate: (callback: (data: import('./core/protocol/SeleneProtocol').SeleneTruth) => void) => () => void
     
+    // ⚡ WAVE 2510: HOT-FRAME CHANNEL - 44Hz lightweight fixture data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onHotFrame: (callback: (data: any) => void) => () => void
+    
     // � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
     onLog: (callback: (logEntry: { id: string; timestamp: number; category: string; message: string; data?: any }) => void) => () => void
     

@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTruthStore } from '../stores/truthStore'
 import { useAudioStore } from '../stores/audioStore'
-import { injectTransientTruth } from '../stores/transientStore'
+import { injectTransientTruth, injectHotFrame } from '../stores/transientStore'
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -174,11 +174,25 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     setConnected(true)
     // 🧹 WAVE 63.7: Log silenciado - conexión automática
     
+    // ⚡ WAVE 2510: HOT-FRAME LISTENER (44Hz lightweight fixture data)
+    // Goes straight to transientStore — no Zustand, no React re-renders.
+    // TacticalCanvas data pump reads from transientStore at 60fps.
+    let removeHotFrameListener: (() => void) | undefined
+    if (window.lux?.onHotFrame) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      removeHotFrameListener = window.lux.onHotFrame((hotFrame: any) => {
+        injectHotFrame(hotFrame)
+      })
+    }
+    
     // Cleanup al desmontar
     return () => {
       // 🧹 WAVE 63.7: Log silenciado
       if (removeListener) {
         removeListener()
+      }
+      if (removeHotFrameListener) {
+        removeHotFrameListener()
       }
       setConnected(false)
     }

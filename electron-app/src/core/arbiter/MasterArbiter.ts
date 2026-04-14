@@ -52,6 +52,17 @@ import {
 import { mergeChannel, clampDMX } from './merge/MergeStrategies'
 import { CrossfadeEngine } from './CrossfadeEngine'
 import { resolveZone } from '../zones/ZoneMapper'
+import {
+  solve as ikSolve,
+  solveGroup as ikSolveGroup,
+  solveGroupWithFan as ikSolveGroupWithFan,
+  buildProfile as ikBuildProfile,
+  type Target3D,
+  type IKFixtureProfile,
+  type IKResult,
+  type IKFanResult,
+  type SpatialFanMode,
+} from '../../engine/movement/InverseKinematicsEngine'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -153,6 +164,15 @@ export class MasterArbiter extends EventEmitter {
   private playbackActive: boolean = false
   private currentPlaybackFrame: Map<string, FixtureLightingTarget> = new Map()
   private _playbackMeta: { hasActiveVibe: boolean; vibeId: string | null } = { hasActiveVibe: false, vibeId: null }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2604: IK PROCESSED FIXTURES
+  // Tracks which fixtures had their pan/tilt computed by InverseKinematicsEngine.
+  // When a fixture is in this set, arbitrateFixture() stamps _ikProcessed=true
+  // on the FixtureLightingTarget, so HAL skips double-calibration.
+  // Cleaned on releaseManualOverride().
+  // ═══════════════════════════════════════════════════════════════════════
+  private _ikProcessedFixtures: Set<string> = new Set()
   
   // Grand Master (WAVE 376)
   private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
@@ -506,6 +526,130 @@ export class MasterArbiter extends EventEmitter {
     this.emit('manualOverride', override.fixtureId, override.overrideChannels)
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2604: SPATIAL TARGET — IK → ARBITER WIRING
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Apunta un grupo de fixtures a un punto 3D en el espacio del escenario.
+   * 
+   * PIPELINE:
+   *   1. Construye IKFixtureProfile para cada fixture desde ArbiterFixture
+   *   2. Llama a ikSolveGroup() / ikSolveGroupWithFan() para calcular pan/tilt DMX
+   *   3. Inyecta los resultados como Layer2_Manual override
+   *   4. Marca los fixtures como ikProcessed para que HAL no doble-calibre
+   * 
+   * @param target       - Punto 3D en coordenadas de escenario (metros)
+   * @param fixtureIds   - IDs de los fixtures a apuntar
+   * @param fanMode      - Modo de dispersión espacial (default: 'converge')
+   * @param fanAmplitude - Amplitud del fan en metros (default: 0)
+   * @returns Map de fixtureId → IKFanResult (incluye subTarget para UI)
+   */
+  applySpatialTarget(
+    target: Target3D,
+    fixtureIds: string[],
+    fanMode: SpatialFanMode = 'converge',
+    fanAmplitude: number = 0
+  ): Map<string, IKFanResult> {
+    // ── BUILD IK PROFILES ──
+    const profiles: IKFixtureProfile[] = []
+    const validIds: string[] = []
+    
+    for (const id of fixtureIds) {
+      const fixture = this.fixtures.get(id)
+      if (!fixture) {
+        console.warn(`[MasterArbiter] 🎯 IK: Unknown fixture: ${id}`)
+        continue
+      }
+      if (!fixture.position) {
+        console.warn(`[MasterArbiter] 🎯 IK: Fixture ${id} has no position — skipping`)
+        continue
+      }
+      
+      // Extraer calibración y physics del fixture (pueden estar en ShowFileV2 metadata)
+      const cal = (fixture as any).calibration
+      const physics = (fixture as any).physics
+      
+      const profile = ikBuildProfile(
+        id,
+        fixture.position,
+        (fixture as any).rotation,
+        (fixture as any).installationOrientation ?? 'ceiling',
+        cal ? {
+          panOffset:  cal.panOffset  ?? 0,
+          tiltOffset: cal.tiltOffset ?? 0,
+          panInvert:  cal.panInvert  ?? false,
+          tiltInvert: cal.tiltInvert ?? false,
+        } : undefined,
+        (fixture as any).panRangeDeg,
+        (fixture as any).tiltRangeDeg,
+        physics?.tiltLimits
+      )
+      
+      profiles.push(profile)
+      validIds.push(id)
+    }
+    
+    if (profiles.length === 0) {
+      return new Map()
+    }
+    
+    // ── GATHER CURRENT PAN FOR ANTI-FLIP ──
+    const currentPanMap = new Map<string, number>()
+    for (const id of validIds) {
+      const lastPos = this.lastKnownPositions.get(id)
+      if (lastPos) {
+        currentPanMap.set(id, lastPos.pan)
+      }
+    }
+    
+    // ── SOLVE IK (with fan when applicable) ──
+    const results = ikSolveGroupWithFan(
+      profiles,
+      target,
+      fanMode,
+      fanAmplitude,
+      currentPanMap.size > 0 ? currentPanMap : null
+    )
+    
+    // ── INJECT AS MANUAL OVERRIDES ──
+    for (const id of validIds) {
+      const ikResult = results.get(id)
+      if (!ikResult) continue
+      
+      this.setManualOverride({
+        fixtureId: id,
+        controls: {
+          pan: ikResult.pan,
+          tilt: ikResult.tilt,
+        },
+        overrideChannels: ['pan', 'tilt'],
+        mode: 'absolute',
+        source: 'ui_joystick',  // SpatialTargetPad acts like a joystick
+        priority: 1,
+        autoReleaseMs: 0,
+        releaseTransitionMs: this.config.defaultCrossfadeMs,
+        timestamp: performance.now(),
+      })
+      
+      // Mark as IK-processed so HAL skips double-calibration
+      this._ikProcessedFixtures.add(id)
+    }
+    
+    return results
+  }
+  
+  /**
+   * Releases spatial target control for specified fixtures.
+   * Clears the ikProcessed flag and releases the manual override.
+   */
+  releaseSpatialTarget(fixtureIds: string[]): void {
+    for (const id of fixtureIds) {
+      this._ikProcessedFixtures.delete(id)
+      this.releaseManualOverride(id, ['pan', 'tilt'])
+    }
+  }
+  
   /**
    * Release manual override for a fixture
    * Starts crossfade transition back to AI control.
@@ -541,7 +685,10 @@ export class MasterArbiter extends EventEmitter {
     const releasingMovement = channelsToRelease.includes('pan' as ChannelType) || 
                                channelsToRelease.includes('tilt' as ChannelType)
     if (!channels || releasingMovement) {
-      // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
+      // � WAVE 2604: Clear IK processed flag when movement is released
+      this._ikProcessedFixtures.delete(fixtureId)
+      
+      // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
       // BEFORE purging the override, grab the current position for interpolation.
       // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
       //
@@ -1281,6 +1428,8 @@ export class MasterArbiter extends EventEmitter {
             },
             _crossfadeActive: titanTarget._crossfadeActive,
             _crossfadeProgress: titanTarget._crossfadeProgress,
+            // 🎯 WAVE 2604: Propagate IK flag from titanTarget
+            _ikProcessed: titanTarget._ikProcessed,
           }
           
           hybridTargets.push(hybridTarget)
@@ -1579,6 +1728,8 @@ export class MasterArbiter extends EventEmitter {
       _controlSources: controlSources,
       _crossfadeActive: crossfadeActive,
       _crossfadeProgress: crossfadeProgress,
+      // 🎯 WAVE 2604: IK processed flag — prevents HAL double-calibration
+      _ikProcessed: this._ikProcessedFixtures.has(fixtureId),
     }
     
     // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
@@ -1808,15 +1959,15 @@ export class MasterArbiter extends EventEmitter {
       const offset = this.calculatePatternOffset(pattern, now)
       // 🔧 WAVE 2042.24: Scale offset to DMX range (0-255), not 16-bit
       // offset is -1 to 1, size is already normalized 0-1
-      // 🔥 WAVE 2185: BETA SAFETY CAP — Hard ceiling at 64 DMX units (25% of range).
-      // Even if someone bypasses the IPC normalizer, the Arbiter itself won't let
-      // any pattern move more than ±64 DMX from center. This is the LAW during beta.
-      // On a 540° fixture: 64/256 * 540° = 135° max sweep = safe for any stepper.
-      const BETA_MAX_MOVEMENT = 64  // DMX units — hard limit, non-negotiable
+      // 🔥 WAVE 2652: AMPLITUDE UNLOCK — ceiling raised from 64 → 128 DMX (50% of range).
+      // IPC normalizer sends size 0-1.0 (was 0-0.5). Defense-in-depth clamp still active.
+      // On a 540° fixture: 128/256 * 540° = 270° max sweep = operator-grade range.
+      // Speed stays at 0.5 Hz max; velocity budget: 128 * π * 0.5 ≈ 201 DMX/s — safe.
+      const MANUAL_MAX_MOVEMENT = 128  // DMX units — 50% of 0-255 range (WAVE 2652)
       const rawPanMovement = offset.panOffset * 128 * pattern.size
       const rawTiltMovement = offset.tiltOffset * 128 * pattern.size
-      const panMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawPanMovement))
-      const tiltMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawTiltMovement))
+      const panMovement = Math.max(-MANUAL_MAX_MOVEMENT, Math.min(MANUAL_MAX_MOVEMENT, rawPanMovement))
+      const tiltMovement = Math.max(-MANUAL_MAX_MOVEMENT, Math.min(MANUAL_MAX_MOVEMENT, rawTiltMovement))
       
       // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
       // not the static pattern.center captured at creation time.

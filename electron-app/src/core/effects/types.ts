@@ -199,7 +199,20 @@ export interface EffectFrameOutput {
    */
   zoneOverrides?: {
     [zoneId: string]: {
-      /** Color específico para esta zona (HSL) */
+      /**
+       * Color específico para esta zona (HSL).
+       *
+       * 🌑 WAVE 2700: COLOR PASS-THROUGH
+       * Si `color` es `undefined` (o se omite), el dispatcher NO envía
+       * canales RGB al Arbiter para esta zona — el hardware hereda el color
+       * base de Layer 0 (TitanEngine/Vibe).  El efecto aporta solo dimmer/
+       * strobe sin reemplazar la cromática base.
+       *
+       * USO:
+       *   `color: undefined`  → Pass-through (hereda Layer 0)
+       *   `color: { h, s, l }` → Override (el efecto manda)
+       *   `color: { h:0, s:0, l:0 }` → Blackout cromático forzado
+       */
       color?: { h: number; s: number; l: number }
       /** Dimmer específico para esta zona (0-1) */
       dimmer?: number

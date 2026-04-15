@@ -23,6 +23,8 @@ import { getProfile, needsColorTranslation } from '../../hal/translation/Fixture
 
 // 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
 const colorTranslator = new ColorTranslator()
+// 🔧 WAVE 2775: Throttle BabelFish logs to prevent colorpicker drag spam
+let _babelFishLogThrottle = 0
 
 /**
  * Register all Arbiter IPC handlers
@@ -233,49 +235,68 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // 🎨 WAVE 2042.32: COLOR TRANSLATION - RGB → Color Wheel
     // Commander sends RGB, but fixtures might have color wheels.
     // Detect and translate automatically using ColorTranslator.
+    //
+    // 🔧 WAVE 2770: FIX — Multi-profile translation.
+    // Old code checked only the FIRST fixture's profile and applied the same
+    // translation to ALL fixtures. If the selection mixes color-wheel fixtures
+    // with RGB fixtures, half of them got wrong controls. Now translation
+    // happens per-fixture inside the loop.
     // ═══════════════════════════════════════════════════════════════════════════
     const hasRGB = channels.includes('red') && channels.includes('green') && channels.includes('blue')
-    
-    if (hasRGB) {
-      // Get first fixture to check profile
-      const firstFixture = masterArbiter.getFixture(resolvedFixtureIds[0])
-      
-      if (firstFixture) {
-        const profile = getProfile(firstFixture.profileId || '')
-        
-        // Check if fixture needs color translation (has color wheel, not RGB)
-        if (profile && needsColorTranslation(profile)) {
-          const targetRGB = {
-            r: controls.red || 0,
-            g: controls.green || 0,
-            b: controls.blue || 0
-          }
-          
-          const translation = colorTranslator.translate(targetRGB, profile)
-          
-          console.log(`[Arbiter] 🎨 COLOR TRANSLATION: RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`)
-          
-          // Replace RGB controls with color_wheel
-          finalControls = { ...finalControls }
-          delete finalControls.red
-          delete finalControls.green
-          delete finalControls.blue
-          finalControls.color_wheel = translation.colorWheelDmx || 0
-          
-          // Replace RGB channels with color_wheel
-          finalChannels = finalChannels.filter(ch => !['red', 'green', 'blue'].includes(ch))
-          finalChannels.push('color_wheel')
-        }
-      }
-    }
     
     const overrideCount = resolvedFixtureIds.length
     
     for (const fixtureId of resolvedFixtureIds) {
+      let perFixtureControls = { ...finalControls }
+      let perFixtureChannels = [...finalChannels]
+      
+      if (hasRGB) {
+        const fixtureData = masterArbiter.getFixture(fixtureId)
+        if (fixtureData) {
+          const profile = getProfile(fixtureData.profileId || '')
+          if (profile && needsColorTranslation(profile)) {
+            const targetRGB = {
+              r: controls.red || 0,
+              g: controls.green || 0,
+              b: controls.blue || 0
+            }
+            const translation = colorTranslator.translate(targetRGB, profile)
+            
+            // 🔧 WAVE 2772: BABELFISH RESTORATION — Defensive guard.
+            // Only replace RGB with color_wheel if translation actually produced
+            // a valid wheel DMX value. If colorWheelDmx is undefined (e.g. RGB
+            // fixture with hybrid profile, or translation fallback), keep RGB
+            // intact to avoid destroying the operator's color intent.
+            if (translation.wasTranslated && translation.colorWheelDmx !== undefined) {
+              // 🔧 WAVE 2775: Log gated to 1 per fixture per 2s to prevent colorpicker drag spam
+              if (!_babelFishLogThrottle || Date.now() - _babelFishLogThrottle > 2000) {
+                console.log(`[Arbiter] 🎨 COLOR TRANSLATION (${fixtureId}): RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`)
+                _babelFishLogThrottle = Date.now()
+              }
+              
+              perFixtureControls = { ...perFixtureControls }
+              delete perFixtureControls.red
+              delete perFixtureControls.green
+              delete perFixtureControls.blue
+              perFixtureControls.color_wheel = translation.colorWheelDmx
+              
+              perFixtureChannels = perFixtureChannels.filter(ch => !['red', 'green', 'blue'].includes(ch))
+              perFixtureChannels.push('color_wheel')
+            } else {
+              // Translation returned no wheel DMX — fixture keeps RGB as-is
+              if (!_babelFishLogThrottle || Date.now() - _babelFishLogThrottle > 2000) {
+                console.log(`[Arbiter] 🎨 BABELFISH SKIP (${fixtureId}): needsColorTranslation=true but translate() returned no colorWheelDmx. Keeping RGB.`)
+                _babelFishLogThrottle = Date.now()
+              }
+            }
+          }
+        }
+      }
+      
       const override: Layer2_Manual = {
         fixtureId,
-        controls: finalControls as any,
-        overrideChannels: finalChannels as any,
+        controls: perFixtureControls as any,
+        overrideChannels: perFixtureChannels as any,
         mode: 'absolute',
         source: 'ui_programmer',
         priority: 100,

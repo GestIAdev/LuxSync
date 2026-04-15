@@ -180,28 +180,18 @@ export class ArenaSweep extends BaseEffect {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = this.elapsedMs / this.actualDurationMs;
-        // 🌊 MOVER LEFT - Barrido con inercia
+        // 🌊 MOVER LEFT - Solo color/dimmer (WAVE 2690: movement PURGED)
         const moverLeftOverride = {
             color: this.currentColor,
             dimmer: this.sweepIntensity,
-            movement: {
-                pan: this.currentPanLeft,
-                tilt: -0.15, // Ligeramente hacia arriba (épico)
-                isAbsolute: false,
-                speed: 0.5, // Velocidad media (los haces pesan)
-            },
+            // 🚨 WAVE 2690: movement PURGED — Selene no conduce posiciones
             blendMode: 'max',
         };
-        // 🌊 MOVER RIGHT - Barrido opuesto (vShape)
+        // 🌊 MOVER RIGHT - Solo color/dimmer (WAVE 2690: movement PURGED)
         const moverRightOverride = {
             color: this.currentColor,
             dimmer: this.sweepIntensity,
-            movement: {
-                pan: this.currentPanRight,
-                tilt: -0.15,
-                isAbsolute: false,
-                speed: 0.5,
-            },
+            // 🚨 WAVE 2690: movement PURGED
             blendMode: 'max',
         };
         // 💡 PARs - Acompañan el movimiento sutilmente

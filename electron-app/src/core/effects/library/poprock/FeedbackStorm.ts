@@ -313,28 +313,18 @@ export class FeedbackStorm extends BaseEffect {
       blendMode: 'max' as const,
     }
     
-    // 😵 MOVERS - Movimiento errático
+    // 😵 MOVERS - Solo color/dimmer (WAVE 2690: movement PURGED)
     const moverLeftOverride = {
       color: this.config.intenseRed,  // Siempre rojo (más dramático)
       dimmer: this.stormIntensity * 0.6,
-      movement: {
-        pan: this.chaoticPanLeft,
-        tilt: this.chaoticTiltLeft,
-        isAbsolute: false,
-        speed: 1.0,                    // RÁPIDO - es caos
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene no conduce posiciones
       blendMode: 'max' as const,
     }
     
     const moverRightOverride = {
       color: this.config.intenseRed,
       dimmer: this.stormIntensity * 0.6,
-      movement: {
-        pan: this.chaoticPanRight,
-        tilt: this.chaoticTiltRight,
-        isAbsolute: false,
-        speed: 1.0,
-      },
+      // 🚨 WAVE 2690: movement PURGED
       blendMode: 'max' as const,
     }
     

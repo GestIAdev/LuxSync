@@ -143,6 +143,77 @@ export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 2711: CHANNEL CATEGORIES — Segmented override domains
+//
+// Each UI section operates on a CATEGORY of channels, not individual channels.
+// When a new override arrives with channels from a category, it REPLACES all
+// channels of that category from the existing override — never accumulates.
+// This prevents the "color kidnapping" bug where PositionSection's override
+// would inherit stale color channels via blind union merge.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type ChannelCategory = 'color' | 'position' | 'intensity' | 'beam' | 'control' | 'ingenios'
+
+const CHANNEL_CATEGORY_MAP: Record<ChannelType, ChannelCategory> = {
+  // COLOR
+  red: 'color',
+  green: 'color',
+  blue: 'color',
+  white: 'color',
+  amber: 'color',
+  uv: 'color',
+  cyan: 'color',
+  magenta: 'color',
+  yellow: 'color',
+  color_wheel: 'color',
+  // POSITION
+  pan: 'position',
+  pan_fine: 'position',
+  tilt: 'position',
+  tilt_fine: 'position',
+  // INTENSITY
+  dimmer: 'intensity',
+  strobe: 'intensity',
+  shutter: 'intensity',
+  // BEAM
+  gobo: 'beam',
+  gobo_rotation: 'beam',
+  prism: 'beam',
+  prism_rotation: 'beam',
+  focus: 'beam',
+  zoom: 'beam',
+  frost: 'beam',
+  // CONTROL
+  speed: 'control',
+  macro: 'control',
+  control: 'control',
+  // INGENIOS
+  rotation: 'ingenios',
+  custom: 'ingenios',
+  // FALLBACK
+  unknown: 'control',
+}
+
+/**
+ * Get the category for a channel type.
+ * Used by setManualOverride to determine which channels to replace vs preserve.
+ */
+export function getChannelCategory(channel: ChannelType): ChannelCategory {
+  return CHANNEL_CATEGORY_MAP[channel] ?? 'control'
+}
+
+/**
+ * Get all unique categories present in a list of channels.
+ */
+export function getChannelCategories(channels: ChannelType[]): Set<ChannelCategory> {
+  const categories = new Set<ChannelCategory>()
+  for (const ch of channels) {
+    categories.add(getChannelCategory(ch))
+  }
+  return categories
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // LAYER 0: TITAN AI
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -545,7 +616,7 @@ export const DEFAULT_ARBITER_CONFIG: MasterArbiterConfig = {
   maxManualOverrides: 64,
   maxActiveEffects: 8,
   consciousnessEnabled: false,  // Will be true in CORE 3
-  debug: false,
+  debug: true,  // ⛺ WAVE 2790: Activado para diagnóstico de cambios de zona oceánica
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════

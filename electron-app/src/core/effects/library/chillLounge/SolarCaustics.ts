@@ -335,10 +335,7 @@ export class SolarCaustics extends BaseEffect {
     const colorBack = this.getColorForDepth(ZONE_DEPTHS.back)
     const colorFront = this.getColorForDepth(ZONE_DEPTHS.front)
     
-    // Movimiento lento de movers
-    const rayPanL = Math.sin(progress * Math.PI * 0.6) * 15 - 10
-    const rayPanR = Math.sin(progress * Math.PI * 0.6 + Math.PI * 0.3) * 15 + 10
-    const rayTilt = 0.35 + Math.cos(progress * Math.PI * 0.4) * 0.08
+    // 🚨 WAVE 2690: rayPan/rayTilt movement PURGED — Selene no conduce posiciones
     
     // ═══════════════════════════════════════════════════════════════════════
     // ☀️ WAVE 1081: VOLUMETRIC SUN - Intensity Floor + Atmospheric Fill
@@ -372,28 +369,18 @@ export class SolarCaustics extends BaseEffect {
     // ☀️ WAVE 1081: Aplicar volumetric fill (MAX entre rayo y ambiente)
     // Cada zona brilla por el rayo O por el ambiente dorado base
     
-    // MOVERS: Rayos de sol desde ARRIBA - ULTRA LENTO
+    // MOVERS: Rayos de sol — solo color/dimmer (WAVE 2690: movement PURGED)
     output.zoneOverrides!['movers-left'] = {
       dimmer: Math.max(intensities.movers_left * shimmerL * finalIntensity, volumetricAmbient),
       color: colorMovers,
       blendMode: 'replace' as const,  // 🌊 WAVE 1073: REPLACE = El rayo manda
-      movement: { 
-        pan: rayPanL, 
-        tilt: rayTilt * 100,  // Convertir a grados
-        isAbsolute: false,
-        speed: 0.15,  // 🌊 WAVE 1073: ULTRA LENTO (protección movers chinos)
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
     }
     output.zoneOverrides!['movers-right'] = {
       dimmer: Math.max(intensities.movers_right * shimmerR * finalIntensity, volumetricAmbient),
       color: colorMovers,
       blendMode: 'replace' as const,
-      movement: { 
-        pan: rayPanR, 
-        tilt: rayTilt * 100,
-        isAbsolute: false,
-        speed: 0.15,
-      },
+      // 🚨 WAVE 2690: movement PURGED
     }
     
     // BACK: Zona media

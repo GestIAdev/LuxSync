@@ -41,9 +41,7 @@ const DEFAULT_CONFIG = {
     cutCount: 2, // 2 cortes por efecto
     ceilingHoldMs: 250, // 250ms mirando al techo (tensión)
     floorHoldMs: 150, // 150ms mirando al suelo (release)
-    scissorMode: true, // Cruce en X activo
-    ceilingTilt: 0.9, // 90% hacia arriba
-    floorTilt: 0.1, // 10% hacia abajo
+    // 🚨 WAVE 2690: scissorMode, ceilingTilt, floorTilt PURGED — Selene no conduce posiciones
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // ✂️ SKY SAW CLASS
@@ -59,7 +57,7 @@ export class SkySaw extends BaseEffect {
         // ─────────────────────────────────────────────────────────────────────────
         this.effectType = 'sky_saw';
         this.name = 'Sky Saw';
-        this.category = 'movement'; // Es un efecto de movimiento
+        this.category = 'color'; // 🚨 WAVE 2690: Was 'movement', purged to color-only
         this.priority = 88; // Alta - los cortes no esperan
         this.mixBus = 'htp'; // 🚂 ADITIVO - suma con física
         this.currentCut = 0; // Corte actual (0 to cutCount-1)
@@ -68,9 +66,6 @@ export class SkySaw extends BaseEffect {
         this.cutDurationMs = 0; // Duración de cada corte
         // Colores
         this.sawColor = { h: 180, s: 100, l: 70 };
-        // Pan positions para scissor mode
-        this.leftPan = 0.3; // Mover izquierdo empieza en 30%
-        this.rightPan = 0.7; // Mover derecho empieza en 70%
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.calculateCutDuration();
     }
@@ -101,11 +96,8 @@ export class SkySaw extends BaseEffect {
             // Cyan tóxico default
             this.sawColor = { h: 180, s: 100, l: 70 };
         }
-        // Scissor positions reset
-        this.leftPan = 0.3;
-        this.rightPan = 0.7;
+        // Scissor positions reset — WAVE 2690: PURGED
         console.log(`[SkySaw ✂️] TRIGGERED: ${this.config.cutCount} cuts | ` +
-            `Scissor: ${this.config.scissorMode ? 'ON' : 'OFF'} | ` +
             `Color: ${this.sawColor.h === 120 ? 'ACID 💚' : 'CYAN 🔵'}`);
     }
     update(deltaMs) {
@@ -149,12 +141,7 @@ export class SkySaw extends BaseEffect {
                     // Reset para siguiente corte
                     this.cutPhase = 'rising';
                     this.phaseTimer = 0;
-                    // En scissor mode, invertir pan para el cruce
-                    if (this.config.scissorMode) {
-                        const temp = this.leftPan;
-                        this.leftPan = this.rightPan;
-                        this.rightPan = temp;
-                    }
+                    // 🚨 WAVE 2690: scissor pan swap PURGED
                 }
                 break;
         }
@@ -163,59 +150,20 @@ export class SkySaw extends BaseEffect {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = Math.min(1, this.elapsedMs / this.config.durationMs);
-        // Calcular tilt basado en fase
-        let currentTilt;
-        switch (this.cutPhase) {
-            case 'rising':
-                // Transición rápida hacia techo
-                currentTilt = this.config.floorTilt +
-                    (this.config.ceilingTilt - this.config.floorTilt) * (this.phaseTimer / 50);
-                break;
-            case 'ceiling_hold':
-                currentTilt = this.config.ceilingTilt;
-                break;
-            case 'falling':
-                // Transición rápida hacia suelo
-                currentTilt = this.config.ceilingTilt -
-                    (this.config.ceilingTilt - this.config.floorTilt) * (this.phaseTimer / 50);
-                break;
-            case 'floor_hold':
-                currentTilt = this.config.floorTilt;
-                break;
-        }
-        // Clamp tilt
-        currentTilt = Math.max(0, Math.min(1, currentTilt));
-        // Calcular pan para scissor effect
-        // Durante ceiling_hold, los movers se cruzan
-        let leftPanValue = this.leftPan;
-        let rightPanValue = this.rightPan;
-        if (this.config.scissorMode && this.cutPhase === 'ceiling_hold') {
-            // Cruce gradual durante el hold
-            const crossProgress = this.phaseTimer / this.config.ceilingHoldMs;
-            leftPanValue = this.leftPan + (this.rightPan - this.leftPan) * crossProgress * 0.5;
-            rightPanValue = this.rightPan - (this.rightPan - this.leftPan) * crossProgress * 0.5;
-        }
-        // Construir zone overrides para movers L y R
+        // 🚨 WAVE 2690: Tilt/pan state machine PURGED — Selene solo pinta fotones
+        // El timing de cuts ahora solo controla flashes de dimmer/color
+        // Dimmer basado en cut phase: ON durante ceiling_hold, OFF durante floor_hold
+        const isActive = this.cutPhase === 'rising' || this.cutPhase === 'ceiling_hold';
+        const cutDimmer = isActive ? this.triggerIntensity : 0;
+        // Construir zone overrides para movers L y R (solo color/dimmer)
         const zoneOverrides = {
             'movers-left': {
                 color: this.sawColor,
-                dimmer: this.triggerIntensity,
-                movement: {
-                    pan: leftPanValue,
-                    tilt: currentTilt,
-                    isAbsolute: true,
-                    speed: 1.0 // Máxima velocidad (snap)
-                }
+                dimmer: cutDimmer,
             },
             'movers-right': {
                 color: this.sawColor,
-                dimmer: this.triggerIntensity,
-                movement: {
-                    pan: rightPanValue,
-                    tilt: currentTilt,
-                    isAbsolute: true,
-                    speed: 1.0 // Máxima velocidad (snap)
-                }
+                dimmer: cutDimmer,
             }
         };
         return {
@@ -224,16 +172,10 @@ export class SkySaw extends BaseEffect {
             phase: this.phase,
             progress,
             colorOverride: this.sawColor,
-            dimmerOverride: this.triggerIntensity,
+            dimmerOverride: cutDimmer,
             intensity: this.triggerIntensity,
             zones: this.zones,
-            // Movement override global (fallback si zoneOverrides no soportado)
-            movement: {
-                pan: (leftPanValue + rightPanValue) / 2, // Promedio
-                tilt: currentTilt,
-                isAbsolute: true,
-                speed: 1.0
-            },
+            // 🚨 WAVE 2690: movement PURGED
             zoneOverrides
         };
     }

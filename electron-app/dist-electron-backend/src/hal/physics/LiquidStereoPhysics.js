@@ -251,7 +251,17 @@ export class LiquidStereoPhysics {
         // }
         // ═══════════════════════════════════════════════════════════════════
         // 9. OUTPUT — 7 zonas + legacy compat
+        // 🔧 WAVE 2775: FINAL CLAMP — Garantiza [0, 1] estricto.
+        //    Apocalipsis mode o AGC rebound pueden generar >1.0.
+        //    Downstream (MasterArbiter) convierte intensity * 255 → DMX;
+        //    sin este clamp, un 1.3 produce dimmer=331 → latigazo visual.
         // ═══════════════════════════════════════════════════════════════════
+        frontLeft = Math.min(1.0, Math.max(0.0, frontLeft));
+        frontRight = Math.min(1.0, Math.max(0.0, frontRight));
+        backLeft = Math.min(1.0, Math.max(0.0, backLeft));
+        backRight = Math.min(1.0, Math.max(0.0, backRight));
+        moverLeft = Math.min(1.0, Math.max(0.0, moverLeft));
+        moverRight = Math.min(1.0, Math.max(0.0, moverRight));
         return {
             // 7 zonas independientes
             frontLeftIntensity: frontLeft,

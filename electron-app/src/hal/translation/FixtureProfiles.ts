@@ -174,7 +174,7 @@ export const BEAM_2R_PROFILE: FixtureProfile = {
   },
   
   safety: {
-    blackoutOnColorChange: false, // El beam 2R cambia limpio
+    blackoutOnColorChange: true, // 🌑 WAVE 2690: Dark-Spin — Blackout durante tránsito de rueda
     maxContinuousOnTime: 0, // Sin límite real
     isDischarge: true, // ¡LÁMPARA DE DESCARGA!
     cooldownTime: 300, // 5 minutos de enfriamiento mínimo

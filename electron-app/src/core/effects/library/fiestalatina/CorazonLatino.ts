@@ -356,12 +356,7 @@ export class CorazonLatino extends BaseEffect {
     const moverOverride = {
       color: this.config.heatColor,  // 🔓 ¡LIBERTAD! Ámbar/Oro para movers
       dimmer: this.heartIntensity * 0.8,  // Un poco menos que el corazón
-      movement: {
-        pan: this.moverPanOffset,   // Abre hacia afuera en cada DUM
-        tilt: -0.2,                  // Tilt ligeramente hacia arriba
-        isAbsolute: false,           // Offset sobre el movimiento base
-        speed: 0.6,                  // Velocidad media (orgánico, no mecánico)
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
     }
     
     // ✨ FRONT - EL DESTELLO (Tenue→Blinder al final)

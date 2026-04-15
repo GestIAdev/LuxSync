@@ -349,8 +349,13 @@ export class FixturePhysicsDriver {
   // Evita la doble conversión abstract→DMX→abstract→DMX
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Interpola hacia una posición DMX objetivo (sin conversión de coordenadas) */
-  translateDMX(fixtureId: string, targetPanDMX: number, targetTiltDMX: number, deltaTime = 16): DMXPosition {
+  /** Interpola hacia una posición DMX objetivo (sin conversión de coordenadas)
+   *  🔥 WAVE 2785: isManualPosition flag — cuando el operador tiene control
+   *  manual de pan/tilt, el physics driver usa SNAP rápido independientemente
+   *  del vibe activo. Evita que la inercia glacial de Chill bloquee la
+   *  respuesta del radar.
+   */
+  translateDMX(fixtureId: string, targetPanDMX: number, targetTiltDMX: number, deltaTime = 16, isManualPosition = false): DMXPosition {
     const config = this.configs.get(fixtureId)
     if (!config) {
       console.warn(`[PhysicsDriver] Fixture "${fixtureId}" no configurado`)
@@ -362,6 +367,50 @@ export class FixturePhysicsDriver {
     const safeTilt = Math.max(config.limits.tiltMin, Math.min(config.limits.tiltMax, targetTiltDMX))
     
     const targetDMX: Position2D = { pan: safePan, tilt: safeTilt }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2785: MANUAL OVERRIDE FAST-TRACK
+    // Cuando el operador tiene control manual de posición, la física del
+    // vibe NO puede bloquear la respuesta. Chill tiene maxVelocity=8 DMX/s
+    // y maxAccel=4 — eso convierte un drag de radar en un viaje de 12 segundos.
+    // En modo manual: snap directo con revLimit de operador (400 DMX/s).
+    // El fixture responde en <100ms a cualquier movimiento del radar.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (isManualPosition) {
+      const current = this.currentPositions.get(fixtureId)
+      if (!current) {
+        this.currentPositions.set(fixtureId, targetDMX)
+        this.velocities.set(fixtureId, { pan: 0, tilt: 0 })
+      } else {
+        const dt = deltaTime / 1000
+        const MANUAL_REV_LIMIT = 400 // DMX/s — mismo que Techno, respuesta profesional
+        const maxThisFrame = MANUAL_REV_LIMIT * dt
+
+        let deltaPan = targetDMX.pan - current.pan
+        let deltaTilt = targetDMX.tilt - current.tilt
+
+        deltaPan = Math.max(-maxThisFrame, Math.min(maxThisFrame, deltaPan))
+        deltaTilt = Math.max(-maxThisFrame, Math.min(maxThisFrame, deltaTilt))
+
+        const newPos = { pan: current.pan + deltaPan, tilt: current.tilt + deltaTilt }
+        this.currentPositions.set(fixtureId, newPos)
+        this.velocities.set(fixtureId, {
+          pan: dt > 0 ? deltaPan / dt : 0,
+          tilt: dt > 0 ? deltaTilt / dt : 0,
+        })
+      }
+
+      const pos = this.currentPositions.get(fixtureId)!
+      const panDMX = Math.round(Math.max(0, Math.min(255, pos.pan)))
+      const tiltDMX = Math.round(Math.max(0, Math.min(255, pos.tilt)))
+      return {
+        fixtureId,
+        panDMX,
+        tiltDMX,
+        panFine: Math.round(Math.max(0, Math.min(255, (pos.pan - panDMX) * 255))),
+        tiltFine: Math.round(Math.max(0, Math.min(255, (pos.tilt - tiltDMX) * 255))),
+      }
+    }
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔧 WAVE 2040.2: PHANTOM MODE PROTECTION - THE MATH EXPLOSION FIX

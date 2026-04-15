@@ -51,11 +51,15 @@ import {
   getProfileByModel,
   needsColorTranslation,
   generateProfileFromDefinition,
+  isMechanicalFixture,
   type FixtureProfile 
 } from './translation'
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
+import { getDarkSpinFilter } from './translation/DarkSpinFilter'
+// 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal en HAL
+import { getHarmonicQuantizer } from './translation/HarmonicQuantizer'
 
-// �🔧 WAVE 338: Movement Physics Driver
+// 🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver, type PhysicsProfile as DriverPhysicsProfile } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
 
@@ -81,6 +85,12 @@ export interface AudioMetrics {
   // ═══════════════════════════════════════════════════════════════════════
   beatPhase?: number   // 0-1, from PLL or Worker (defaults to 0 if absent)
   bpm?: number         // Real BPM for any future beat-duration calculations
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — BPM confidence for HAL
+  // Propagated from Worker → TitanOrchestrator → HAL for HarmonicQuantizer
+  // universal gating in translateColorToWheel().
+  // ═══════════════════════════════════════════════════════════════════════
+  bpmConfidence?: number  // 0-1, from IntervalBPMTracker via Worker
 }
 
 /** HAL configuration */
@@ -131,6 +141,10 @@ export class HardwareAbstraction {
   //  WAVE 2042.20: BABEL FISH - Color Translation Singletons
   private colorTranslator = getColorTranslator()
   private safetyLayer = getHardwareSafetyLayer()
+  // 🌑 WAVE 2690: DARK-SPIN — Blackout transitorio durante cambios de rueda de color
+  private darkSpinFilter = getDarkSpinFilter()
+  // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal
+  private harmonicQuantizer = getHarmonicQuantizer()
   private profileCache = new Map<string, FixtureProfile | null>()
   
   // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
@@ -149,6 +163,10 @@ export class HardwareAbstraction {
   private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
   // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
   private lastPhysicsFrameTime = 0
+  // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — BPM state for translateColorToWheel()
+  // Stored per frame in renderFromTarget(), consumed by HarmonicQuantizer in the HAL pipeline.
+  private currentFrameBpm = 120
+  private currentFrameBpmConfidence = 0
 
   
   // Current vibe preset (for physics)
@@ -419,13 +437,14 @@ export class HardwareAbstraction {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🏎️ WAVE 2074.2: REAL DELTATIME — NO MORE HARDCODED 16ms
+  // ⚡ WAVE 2750: WOODSTOCK PURGE — monotonic performance.now()
   //
   // Mide el tiempo real entre frames para que la física sea frame-rate
   // independent. Cap de 200ms para evitar explosiones numéricas en pausa.
   // Primer frame usa 16ms como semilla segura.
   // ═══════════════════════════════════════════════════════════════════════
   private measurePhysicsDeltaTime(): number {
-    const now = Date.now()
+    const now = performance.now()
     if (this.lastPhysicsFrameTime === 0) {
       this.lastPhysicsFrameTime = now
       return 16  // Primer frame: semilla segura
@@ -620,7 +639,8 @@ export class HardwareAbstraction {
       const pattern = intent.movement?.pattern || 'static'
       
       // Get time for phase offset calculation
-      const timeSeconds = Date.now() / 1000
+      // ⚡ WAVE 2750: WOODSTOCK PURGE — performance.now() monotónico, no epoch-based
+      const timeSeconds = performance.now() / 1000
       // Use movement speed as BPM proxy (speed 0.5 = ~120 BPM)
       // TitanEngine calculates speed from actual BPM, so we reverse-engineer it
       const speedToBpm = (intent.movement?.speed || 0.5) * 240  // 0.5 → 120 BPM
@@ -657,7 +677,7 @@ export class HardwareAbstraction {
     })
     
     // 4. EFFECTS: Apply global effects and manual overrides
-    const finalStates = this.mapper.applyEffectsAndOverrides(fixtureStates, Date.now())
+    const finalStates = this.mapper.applyEffectsAndOverrides(fixtureStates, performance.now())
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎛️ WAVE 339.6: INJECT PHYSICS STATE INTO FIXTURE STATES
@@ -668,7 +688,7 @@ export class HardwareAbstraction {
     // ═══════════════════════════════════════════════════════════════════════
     
     // Get timing info for dynamic optics
-    const opticsTimeSeconds = Date.now() / 1000
+    const opticsTimeSeconds = performance.now() / 1000
     // 🎵 WAVE 2211: USE REAL BEAT PHASE from AudioMetrics (injected by orchestrator)
     // BEFORE: Calculated fake beatPhase from movement speed → erratic optics
     // AFTER: Real PLL/Worker beatPhase or 0 if no audio
@@ -726,7 +746,12 @@ export class HardwareAbstraction {
         // ═══════════════════════════════════════════════════════════════════════
         
         // Run physics simulation with DMX target directly (no abstract conversion!)
-        this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
+        // 🔥 WAVE 2785: Detect manual position control → fast-track physics
+        const sources = state._controlSources as Record<string, number> | undefined
+        const isManualPosition = sources !== undefined && (
+          sources['pan'] === ControlLayer.MANUAL || sources['tilt'] === ControlLayer.MANUAL
+        )
+        this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt, isManualPosition)
         
         // Get interpolated state
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
@@ -859,6 +884,11 @@ export class HardwareAbstraction {
   ): FixtureState[] {
     const startTime = performance.now()
     
+    // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — Cache BPM per frame
+    // for HarmonicQuantizer in translateColorToWheel()
+    this.currentFrameBpm = audio.bpm ?? 120
+    this.currentFrameBpmConfidence = audio.bpmConfidence ?? 0
+    
     // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
     if (target.globalEffects.blackoutActive) {
       const blackoutStates: FixtureState[] = fixtures.map(fixture => ({
@@ -981,7 +1011,7 @@ export class HardwareAbstraction {
     })
     
     // Apply physics and dynamic optics (same as render())
-    const opticsTimeSeconds = Date.now() / 1000
+    const opticsTimeSeconds = performance.now() / 1000
     // ═══════════════════════════════════════════════════════════════════════
     // 🎵 WAVE 2211: USE REAL BEAT PHASE — KILL THE FAKE 120 BPM
     //
@@ -1036,7 +1066,15 @@ export class HardwareAbstraction {
         }
 
         // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
-        this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
+        // 🔥 WAVE 2785.3: Detect manual position control → fast-track physics
+        // BUGFIX: This was missing in renderFromTarget() — only existed in render()
+        // Without this, manual overrides (Layer 2 pan/tilt) were interpolated through
+        // vibe physics (Chill = maxVelocity 8 DMX/s = glacial), ignoring the operator.
+        const sources = state._controlSources as Record<string, number> | undefined
+        const isManualPosition = sources !== undefined && (
+          sources['pan'] === ControlLayer.MANUAL || sources['tilt'] === ControlLayer.MANUAL
+        )
+        this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt, isManualPosition)
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
 
 
@@ -1193,9 +1231,19 @@ export class HardwareAbstraction {
     let profile: FixtureProfile | null = null;
     
     // 1. JSON inyectado en vivo desde la Forja
-    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Now typed in PatchedFixture — no more `as any`
+    // 🔧 WAVE 2093.3 (CW-AUDIT-9): Usa generateProfileFromDefinition para obtener un
+    // FixtureProfile completo (con .safety, .shutter, etc.) en lugar del cast directo
+    // que producía TypeError: Cannot read properties of undefined (reading 'blackoutOnColorChange')
     if (fixture.capabilities || fixture.wheels || fixture.physics) {
-      profile = fixture as unknown as FixtureProfile;
+      profile = generateProfileFromDefinition({
+        id: fixture.profileId || fixture.id || cacheKey,
+        name: fixture.name || 'Unknown Fixture',
+        type: fixture.type,
+        channels: fixture.channels,
+        capabilities: fixture.capabilities,
+        wheels: fixture.wheels,
+        physics: fixture.physics,
+      }) ?? null;
     } 
     // 2. Búsqueda por ID formal
     else if (fixture.profileId) {
@@ -1350,8 +1398,12 @@ export class HardwareAbstraction {
     fixture: PatchedFixture,
     existingColorWheel: number
   ): FixtureState {
-    // If already has a manual color_wheel override, don't translate
-    if (existingColorWheel > 0) {
+    // 🔧 WAVE 2770: FIX — Zero guard was treating color_wheel=0 (OPEN/WHITE)
+    // as "no override", causing Babel Fish to re-translate and destroy
+    // the operator's explicit choice. The correct test: check _controlSources.
+    // If color_wheel came from a MANUAL override, respect it regardless of value.
+    const colorWheelSource = (state as any)._controlSources?.color_wheel
+    if (colorWheelSource === ControlLayer.MANUAL || existingColorWheel > 0) {
       return state
     }
     
@@ -1408,21 +1460,73 @@ export class HardwareAbstraction {
     // 🐟 COLOR WHEEL fixtures — full SafetyLayer pipeline
     // ─────────────────────────────────────────────────────────────────
     
-    // Apply safety filter (debounce, latch, strobe delegation)
     const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`
+    
+    // ─────────────────────────────────────────────────────────────────
+    // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer
+    // Gate color changes to BPM-harmonic intervals BEFORE SafetyLayer.
+    // This is THE universal gate: every color command to a mechanical
+    // fixture passes through here, regardless of source layer
+    // (Titan, Chronos, Manual, Timeline — ALL are gated here).
+    //
+    // Pipeline: ColorTranslator → [QUANTIZER] → SafetyLayer → DarkSpin
+    //
+    // If the quantizer blocks the change, we feed the SafetyLayer
+    // the PREVIOUS color → it sees no change → DarkSpin sees no change
+    // → no blackout, no motor movement. Elegant and invisible.
+    // ─────────────────────────────────────────────────────────────────
+    let quantizedColorDmx = translation.colorWheelDmx ?? 0
+    
+    if (isMechanicalFixture(profile)) {
+      const minChangeTimeMs = profile.colorEngine.colorWheel?.minChangeTimeMs ?? 500
+      const targetRGB = { r: state.r, g: state.g, b: state.b }
+      const quantizerResult = this.harmonicQuantizer.quantize(
+        fixtureId,
+        targetRGB,
+        this.currentFrameBpm,
+        this.currentFrameBpmConfidence,
+        minChangeTimeMs
+      )
+      
+      if (!quantizerResult.colorAllowed) {
+        // Gate cerrado: usar el último color permitido por el SafetyLayer
+        // (feeding the same DMX value makes SafetyLayer + DarkSpin see "no change")
+        const lastState = this.safetyLayer.getLastColor(fixtureId)
+        if (lastState !== undefined) {
+          quantizedColorDmx = lastState
+        }
+        // If no lastState yet, pass through (first frame)
+      }
+    }
+    
+    // Apply safety filter (debounce)
     const safetyResult = this.safetyLayer.filter(
       fixtureId,
-      translation.colorWheelDmx ?? 0,
+      quantizedColorDmx,
       profile,
       state.dimmer
     )
     
     // Debug logging (throttled - every ~2 seconds per fixture)
-    const now = Date.now()
+    const now = performance.now()
     if (now - this.lastDebugTime > 2000) {
       this.lastDebugTime = now
       console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}`)
     }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // 🌑 WAVE 2690: DARK-SPIN — Blackout transitorio durante tránsito de rueda
+    // Si el color cambió, el fixture se apaga durante minChangeTimeMs.
+    // Bajo ninguna circunstancia el público debe ver el cristal intermedio.
+    // ─────────────────────────────────────────────────────────────────
+    const darkSpin = profile.safety?.blackoutOnColorChange
+      ? this.darkSpinFilter.filter(
+          fixtureId,
+          safetyResult.finalColorDmx,
+          profile,
+          state.dimmer
+        )
+      : { dimmer: state.dimmer, inTransit: false, transitRemainingMs: 0 }
     
     // Return translated state
     return {
@@ -1433,8 +1537,10 @@ export class HardwareAbstraction {
       b: translation.outputRGB.b,
       // 🎨 Set color wheel DMX value (THE KEY!)
       colorWheel: safetyResult.finalColorDmx,
-      // 🛡️ Handle strobe delegation (if color is changing too fast)
-      strobe: safetyResult.delegateToStrobe ? safetyResult.suggestedShutter : state.strobe,
+      // 🌑 WAVE 2690: Dimmer forzado a 0 durante tránsito de rueda
+      dimmer: darkSpin.dimmer,
+      // � WAVE 2711: Strobe delegation ELIMINADA — strobe es siempre el del estado
+      strobe: state.strobe,
     }
   }
   
@@ -1469,9 +1575,9 @@ export class HardwareAbstraction {
         })
         
         // WAVE 256.7: Debug log for movers - every 2 seconds
-        if (Date.now() - this.lastDebugTime > 2000 && zone === 'MOVING_LEFT') {
+        if (performance.now() - this.lastDebugTime > 2000 && zone === 'MOVING_LEFT') {
           console.log(`[HAL MOVER] ${zone}: mid=${audio.rawMid.toFixed(2)}, treble=${audio.rawTreble.toFixed(2)}, bass=${audio.rawBass.toFixed(2)} → intensity=${result.intensity.toFixed(2)}, state=${result.newState}`)
-          this.lastDebugTime = Date.now()
+          this.lastDebugTime = performance.now()
         }
         
         this.physics.setMoverHysteresisState(hystKey, result.newState)

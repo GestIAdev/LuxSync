@@ -49,6 +49,10 @@ import type { HephAutomationClip } from '../hephaestus/types'
 import { getHephaestusRuntime } from './IPCHandlers'
 import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
 
+// 🎵 WAVE 2672→2720: Harmonic Quantizer MIGRADO AL HAL
+// La cuantización armónica vive ahora en HAL.translateColorToWheel()
+// (LA LEY UNIVERSAL DEL PÉNDULO — WAVE 2720)
+
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
@@ -750,6 +754,9 @@ export class TitanOrchestrator {
       isAGCTrap: false,
       beatPhase: halBeatPhase,
       bpm: halBpm,
+      // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — Propagar bpmConfidence al HAL
+      // para que HarmonicQuantizer funcione universalmente en translateColorToWheel()
+      bpmConfidence: this.lastAudioData?.workerBpmConfidence ?? 0,
     }
     
     // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
@@ -947,6 +954,15 @@ export class TitanOrchestrator {
         }
       }
       
+      // ═══════════════════════════════════════════════════════════════════
+      // 🎵 WAVE 2672→2720: HARMONIC QUANTIZER — MIGRADO AL HAL
+      // La cuantización armónica ahora vive en HAL.translateColorToWheel()
+      // (LA LEY UNIVERSAL DEL PÉNDULO). Toda orden de color dirigida a un
+      // fixture mecánico es cuantizada en HAL, sin importar la fuente:
+      // Titan, Chronos, Timeline, UI Manual — TODOS son gateados.
+      // El bloque de cuantización por efecto en Titan ya no es necesario.
+      // ═══════════════════════════════════════════════════════════════════
+
       // Inject intents into the Arbiter BEFORE arbitration
       masterArbiter.setEffectIntents(intentMap)
       

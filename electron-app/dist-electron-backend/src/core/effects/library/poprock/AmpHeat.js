@@ -37,7 +37,6 @@ const DEFAULT_CONFIG = {
     // 🧡 Naranja Ámbar (válvulas calientes)
     amberOrange: { h: 25, s: 90, l: 45 },
     breathFrequency: 0.25, // Una respiración cada 4 segundos
-    driftAmplitude: 0.05, // Drift casi imperceptible
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 AMP_HEAT CLASS
@@ -54,7 +53,6 @@ export class AmpHeat extends BaseEffect {
         // 🔥 State
         this.heatIntensity = 0;
         this.breathPhase = 0;
-        this.driftPhase = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.currentColor = { ...this.config.bloodRed };
     }
@@ -66,7 +64,6 @@ export class AmpHeat extends BaseEffect {
         // Reset state
         this.heatIntensity = 0;
         this.breathPhase = 0;
-        this.driftPhase = 0;
         // Calcular duración basada en BPM
         this.calculateDuration();
         console.log(`[AmpHeat 🔥] TRIGGERED! Duration=${this.actualDurationMs}ms`);
@@ -100,7 +97,7 @@ export class AmpHeat extends BaseEffect {
         }
         // Actualizar fases
         this.breathPhase += (deltaMs / 1000) * this.config.breathFrequency * 2 * Math.PI;
-        this.driftPhase += (deltaMs / 1000) * 0.1 * 2 * Math.PI; // Drift muy lento
+        // 🚨 WAVE 2690: driftPhase PURGED — Selene no conduce posiciones
         // Calcular intensidad con envelope
         this.updateIntensity(progress);
         // Actualizar color (respiración Rojo → Ámbar)
@@ -145,9 +142,7 @@ export class AmpHeat extends BaseEffect {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = this.elapsedMs / this.actualDurationMs;
-        // Drift sutil para los movers
-        const driftPan = Math.sin(this.driftPhase) * this.config.driftAmplitude;
-        const driftTilt = Math.cos(this.driftPhase * 0.7) * this.config.driftAmplitude * 0.5;
+        // 🚨 WAVE 2690: drift movement PURGED — Selene solo pinta fotones
         // 🔥 BACK PARS - El glow principal (válvulas)
         const backOverride = {
             color: this.currentColor,
@@ -160,16 +155,11 @@ export class AmpHeat extends BaseEffect {
             dimmer: this.heatIntensity * 0.5,
             blendMode: 'max',
         };
-        // 🔥 MOVERS - Drift imperceptible, como calor subiendo
+        // 🔥 MOVERS - Solo dimmer, sin drift (WAVE 2690: Selene no conduce)
         const moverOverride = {
             color: this.config.amberOrange, // Siempre ámbar (válvulas)
             dimmer: this.heatIntensity * 0.4,
-            movement: {
-                pan: driftPan,
-                tilt: driftTilt,
-                isAbsolute: false, // Offset sobre la física
-                speed: 0.2, // MUY lento
-            },
+            // 🚨 WAVE 2690: movement PURGED
             blendMode: 'max',
         };
         const zoneOverrides = {

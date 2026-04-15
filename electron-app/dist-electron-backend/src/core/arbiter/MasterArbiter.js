@@ -31,10 +31,11 @@
  * @version WAVE 373
  */
 import { EventEmitter } from 'events';
-import { ControlLayer, DEFAULT_ARBITER_CONFIG, } from './types';
+import { ControlLayer, DEFAULT_ARBITER_CONFIG, getChannelCategory, getChannelCategories, } from './types';
 import { mergeChannel, clampDMX } from './merge/MergeStrategies';
 import { CrossfadeEngine } from './CrossfadeEngine';
 import { resolveZone } from '../zones/ZoneMapper';
+import { solveGroupWithFan as ikSolveGroupWithFan, buildProfile as ikBuildProfile, } from '../../engine/movement/InverseKinematicsEngine';
 export class MasterArbiter extends EventEmitter {
     constructor(config = {}) {
         super();
@@ -43,6 +44,13 @@ export class MasterArbiter extends EventEmitter {
         this.layer1_consciousness = null;
         this.layer2_manualOverrides = new Map();
         this.layer3_effects = [];
+        /**
+         * 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectManager intents pre-resueltos
+         * Inyectados por TitanOrchestrator ANTES de arbitrate().
+         * Mapa: fixtureId → EffectIntent (ya resuelto de zonas a fixtures concretos).
+         * Se limpia al final de cada arbitrate() para garantizar frescura por frame.
+         */
+        this.layer3_effectIntents = new Map();
         this.layer4_blackout = false;
         // ═══════════════════════════════════════════════════════════════════════════
         // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
@@ -56,6 +64,11 @@ export class MasterArbiter extends EventEmitter {
         // 🥶 WAVE 1165: GHOST PROTOCOL - Last known position cache
         // Used to freeze fixtures in place during blackout/silence instead of whipping to center
         this.lastKnownPositions = new Map();
+        // ⛺ WAVE 2790: COLOR BUNKER - Last known color cache per fixture
+        // When a fixture has ANY Layer 2 manual override active, the oceanic vibe
+        // color modulation (tide zone changes) must NOT alter its color.
+        // We freeze the last stable RGB here and serve it instead of the new palette.
+        this.lastKnownColors = new Map();
         // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
         // When operator releases manual control, we store the position here so AI adopts it as "home"
         this.fixtureOrigins = new Map();
@@ -82,6 +95,14 @@ export class MasterArbiter extends EventEmitter {
         this.playbackActive = false;
         this.currentPlaybackFrame = new Map();
         this._playbackMeta = { hasActiveVibe: false, vibeId: null };
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 2604: IK PROCESSED FIXTURES
+        // Tracks which fixtures had their pan/tilt computed by InverseKinematicsEngine.
+        // When a fixture is in this set, arbitrateFixture() stamps _ikProcessed=true
+        // on the FixtureLightingTarget, so HAL skips double-calibration.
+        // Cleaned on releaseManualOverride().
+        // ═══════════════════════════════════════════════════════════════════════
+        this._ikProcessedFixtures = new Set();
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
         // 🔥 WAVE 2495: Grand Master Speed — scales Layer 2 pattern speed too
@@ -95,6 +116,16 @@ export class MasterArbiter extends EventEmitter {
         // State tracking
         this.frameNumber = 0;
         this.lastOutputTimestamp = 0;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 📡 WAVE 2770: THE BLACK BOX — Heavy Telemetry
+        // Tracks Layer 2 override presence per frame to detect spontaneous drops.
+        // Also tracks last modification stacktrace per fixture for forensics.
+        // ═══════════════════════════════════════════════════════════════════════
+        this._prevFrameOverrideIds = new Set();
+        this._layer2LastModStack = new Map();
+        this._blackBoxThrottleMs = 0;
+        this._layerLossThrottleMs = 0;
+        this._layerLossPending = [];
         // 🔎 WAVE 1219.4: Trace throttles (avoid console storms)
         this._traceLastArbiterLogAtMs = 0;
         // 🔎 WAVE 2122.2: Output Gate assassination tracking
@@ -280,10 +311,26 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     /**
      * Set manual override for a fixture
-     * WAVE 440: Now MERGES with existing override instead of replacing.
+     * 🔧 WAVE 2711: SEGMENTED MERGE — Category-aware channel management.
+     *
+     * BEFORE (WAVE 440): Blind union merge accumulated ALL channels across
+     * successive UI calls. PositionSection sending {pan, tilt} after ColorSection
+     * sent {red, green, blue} produced overrideChannels=['red','green','blue','pan','tilt'].
+     * But controls only had the LATEST values → getManualChannelValue returned
+     * red=0, green=0, blue=0 (defaults) → color KILLED.
+     *
+     * NOW: Each UI section's channels belong to a CATEGORY (color, position, intensity,
+     * beam, control). When a new override arrives:
+     *   1. Identify categories of the NEW channels
+     *   2. PURGE existing channels+controls of those SAME categories
+     *   3. MERGE channels+controls of DIFFERENT categories (preserve them)
+     * Result: PositionSection replaces position, leaves color untouched.
      */
     setManualOverride(override) {
-        console.log(`[RADAR 1 - ENTRADA] UI mandó control a ${override.fixtureId}:`, override.controls);
+        // 🔧 WAVE 2772: Throttled entry log (was unconditional RADAR 1, saturated buffer in Chillout)
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] UI mandó control a ${override.fixtureId}:`, override.controls);
+        }
         // Check limit
         if (this.layer2_manualOverrides.size >= this.config.maxManualOverrides &&
             !this.layer2_manualOverrides.has(override.fixtureId)) {
@@ -296,33 +343,57 @@ export class MasterArbiter extends EventEmitter {
             console.warn(`[MasterArbiter] 📋 Known fixtures: ${Array.from(this.fixtures.keys()).join(', ')}`);
             return;
         }
-        // 🔥 WAVE 1219: Debug log for successful override (only with controls for movement)
-        // Disabled: WAVE 2052 - Too spammy (60 FPS, every fixture with pan/tilt override)
-        // if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
-        //   console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
-        // }
-        // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
+        // 🔧 WAVE 2772: UNDEFINED SANITIZER — Purge undefined control values.
+        // If BabelFish translation fails or IPC sends partial data, a control
+        // like { color_wheel: undefined } would shadow the lower layer's real
+        // value when getManualChannelValue reads `controls.color_wheel ?? 0`.
+        // Fix: strip undefined entries so they never enter the override Map.
+        const sanitizedControls = {};
+        for (const [key, val] of Object.entries(override.controls)) {
+            if (val !== undefined) {
+                sanitizedControls[key] = val;
+            }
+        }
+        override = { ...override, controls: sanitizedControls };
+        // Also strip overrideChannels that have no corresponding control value
+        override = {
+            ...override,
+            overrideChannels: override.overrideChannels.filter(ch => sanitizedControls[ch] !== undefined || ch === 'dimmer'),
+        };
+        // 🔧 WAVE 2711: SEGMENTED MERGE — Replace by category, preserve by category
         const existingOverride = this.layer2_manualOverrides.get(override.fixtureId);
         if (existingOverride) {
-            // Merge controls: new values override existing, but keep non-conflicting ones.
-            // DEEP merge para phantomChannels — el spread shallow destruiría los phantom
-            // previos cuando llega un segundo canal phantom independiente.
+            // Determine which categories the NEW override touches
+            const incomingCategories = getChannelCategories(override.overrideChannels);
+            // PRESERVE: existing channels whose category is NOT in the incoming set
+            const preservedChannels = existingOverride.overrideChannels.filter(ch => !incomingCategories.has(getChannelCategory(ch)));
+            // Build preserved controls — only keep control values for preserved channels
+            const preservedControls = {};
+            for (const ch of preservedChannels) {
+                const value = existingOverride.controls[ch];
+                if (value !== undefined) {
+                    preservedControls[ch] = value;
+                }
+            }
+            // Phantom channels: deep merge — preserve phantoms from non-incoming categories,
+            // overlay with new phantoms
             const existingPhantom = existingOverride.controls?.phantomChannels ?? {};
             const newPhantom = override.controls?.phantomChannels ?? {};
             const mergedPhantom = { ...existingPhantom, ...newPhantom };
+            // FINAL CONTROLS: preserved (old categories) + incoming (new categories)
             const mergedControls = {
-                ...existingOverride.controls,
+                ...preservedControls,
                 ...override.controls,
             };
             if (Object.keys(mergedPhantom).length > 0) {
                 mergedControls.phantomChannels = mergedPhantom;
             }
-            // Merge channels: union of both sets (no duplicates)
+            // FINAL CHANNELS: preserved + incoming (no duplicates, category-clean)
             const mergedChannels = [...new Set([
-                    ...existingOverride.overrideChannels,
+                    ...preservedChannels,
                     ...override.overrideChannels,
                 ])];
-            // Store merged override
+            // Store category-segmented override
             this.layer2_manualOverrides.set(override.fixtureId, {
                 ...existingOverride,
                 ...override,
@@ -330,10 +401,16 @@ export class MasterArbiter extends EventEmitter {
                 overrideChannels: mergedChannels,
                 timestamp: performance.now()
             });
+            // 📡 WAVE 2770+2772: Record modification source for forensics.
+            // MERGE path: skip costly Error().stack capture (fader drags = 100s per sec).
+            // The NEW stack already recorded when the override was first created.
+            this._layer2LastModStack.set(override.fixtureId, `MERGE @ frame ${this.frameNumber} | src=${override.source}`);
             if (this.config.debug) {
-                console.log(`[MasterArbiter] 🔀 Merged override: ${override.fixtureId}`, {
-                    newChannels: override.overrideChannels,
-                    totalChannels: mergedChannels
+                console.log(`[MasterArbiter] 🔧 WAVE 2711 Segmented merge: ${override.fixtureId}`, {
+                    incomingCategories: [...incomingCategories],
+                    incomingChannels: override.overrideChannels,
+                    preservedChannels,
+                    finalChannels: mergedChannels
                 });
             }
         }
@@ -343,6 +420,8 @@ export class MasterArbiter extends EventEmitter {
                 ...override,
                 timestamp: performance.now()
             });
+            // 📡 WAVE 2770: Record creation stack for forensics (only on NEW, not merge)
+            this._layer2LastModStack.set(override.fixtureId, `NEW\n${new Error().stack ?? 'no stack'}`);
             if (this.config.debug) {
                 console.log(`[MasterArbiter] ➕ New override: ${override.fixtureId}`, override.overrideChannels);
             }
@@ -369,11 +448,105 @@ export class MasterArbiter extends EventEmitter {
             if (titanValues.dimmer === 0) {
                 finalOverride.controls = { ...finalOverride.controls, dimmer: 255 };
                 finalOverride.overrideChannels = [...finalOverride.overrideChannels, 'dimmer'];
-                console.log(`[MasterArbiter] 💡 DIMMER AUTO-TAKE: ${override.fixtureId} — Layer 0 dimmer=0, auto-injecting dimmer=255`);
+                // 🔧 WAVE 2775: Gated behind debug to prevent fader-drag spam
+                if (this.config.debug) {
+                    console.log(`[MasterArbiter] 💡 DIMMER AUTO-TAKE: ${override.fixtureId} — Layer 0 dimmer=0, auto-injecting dimmer=255`);
+                }
             }
         }
         // Emit event
         this.emit('manualOverride', override.fixtureId, override.overrideChannels);
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2604: SPATIAL TARGET — IK → ARBITER WIRING
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Apunta un grupo de fixtures a un punto 3D en el espacio del escenario.
+     *
+     * PIPELINE:
+     *   1. Construye IKFixtureProfile para cada fixture desde ArbiterFixture
+     *   2. Llama a ikSolveGroup() / ikSolveGroupWithFan() para calcular pan/tilt DMX
+     *   3. Inyecta los resultados como Layer2_Manual override
+     *   4. Marca los fixtures como ikProcessed para que HAL no doble-calibre
+     *
+     * @param target       - Punto 3D en coordenadas de escenario (metros)
+     * @param fixtureIds   - IDs de los fixtures a apuntar
+     * @param fanMode      - Modo de dispersión espacial (default: 'converge')
+     * @param fanAmplitude - Amplitud del fan en metros (default: 0)
+     * @returns Map de fixtureId → IKFanResult (incluye subTarget para UI)
+     */
+    applySpatialTarget(target, fixtureIds, fanMode = 'converge', fanAmplitude = 0) {
+        // ── BUILD IK PROFILES ──
+        const profiles = [];
+        const validIds = [];
+        for (const id of fixtureIds) {
+            const fixture = this.fixtures.get(id);
+            if (!fixture) {
+                console.warn(`[MasterArbiter] 🎯 IK: Unknown fixture: ${id}`);
+                continue;
+            }
+            if (!fixture.position) {
+                console.warn(`[MasterArbiter] 🎯 IK: Fixture ${id} has no position — skipping`);
+                continue;
+            }
+            // Extraer calibración y physics del fixture (pueden estar en ShowFileV2 metadata)
+            const cal = fixture.calibration;
+            const physics = fixture.physics;
+            const profile = ikBuildProfile(id, fixture.position, fixture.rotation, fixture.installationOrientation ?? 'ceiling', cal ? {
+                panOffset: cal.panOffset ?? 0,
+                tiltOffset: cal.tiltOffset ?? 0,
+                panInvert: cal.panInvert ?? false,
+                tiltInvert: cal.tiltInvert ?? false,
+            } : undefined, fixture.panRangeDeg, fixture.tiltRangeDeg, physics?.tiltLimits);
+            profiles.push(profile);
+            validIds.push(id);
+        }
+        if (profiles.length === 0) {
+            return new Map();
+        }
+        // ── GATHER CURRENT PAN FOR ANTI-FLIP ──
+        const currentPanMap = new Map();
+        for (const id of validIds) {
+            const lastPos = this.lastKnownPositions.get(id);
+            if (lastPos) {
+                currentPanMap.set(id, lastPos.pan);
+            }
+        }
+        // ── SOLVE IK (with fan when applicable) ──
+        const results = ikSolveGroupWithFan(profiles, target, fanMode, fanAmplitude, currentPanMap.size > 0 ? currentPanMap : null);
+        // ── INJECT AS MANUAL OVERRIDES ──
+        for (const id of validIds) {
+            const ikResult = results.get(id);
+            if (!ikResult)
+                continue;
+            this.setManualOverride({
+                fixtureId: id,
+                controls: {
+                    pan: ikResult.pan,
+                    tilt: ikResult.tilt,
+                },
+                overrideChannels: ['pan', 'tilt'],
+                mode: 'absolute',
+                source: 'ui_joystick', // SpatialTargetPad acts like a joystick
+                priority: 1,
+                autoReleaseMs: 0,
+                releaseTransitionMs: this.config.defaultCrossfadeMs,
+                timestamp: performance.now(),
+            });
+            // Mark as IK-processed so HAL skips double-calibration
+            this._ikProcessedFixtures.add(id);
+        }
+        return results;
+    }
+    /**
+     * Releases spatial target control for specified fixtures.
+     * Clears the ikProcessed flag and releases the manual override.
+     */
+    releaseSpatialTarget(fixtureIds) {
+        for (const id of fixtureIds) {
+            this._ikProcessedFixtures.delete(id);
+            this.releaseManualOverride(id, ['pan', 'tilt']);
+        }
     }
     /**
      * Release manual override for a fixture
@@ -400,7 +573,9 @@ export class MasterArbiter extends EventEmitter {
         const releasingMovement = channelsToRelease.includes('pan') ||
             channelsToRelease.includes('tilt');
         if (!channels || releasingMovement) {
-            // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
+            // � WAVE 2604: Clear IK processed flag when movement is released
+            this._ikProcessedFixtures.delete(fixtureId);
+            // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
             // BEFORE purging the override, grab the current position for interpolation.
             // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
             //
@@ -416,11 +591,16 @@ export class MasterArbiter extends EventEmitter {
                 startTime: performance.now(),
                 durationMs: this.POSITION_RELEASE_MS,
             });
-            console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`);
+            // 🔧 WAVE 2775: Gated behind debug — these fire on every release
+            if (this.config.debug) {
+                console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`);
+            }
             // OBLIGATORY: Annihilate active pattern for this fixture
             if (this.activePatterns.has(fixtureId)) {
                 this.activePatterns.delete(fixtureId);
-                console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`);
+                if (this.config.debug) {
+                    console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`);
+                }
             }
             // Purge ghost origin
             if (this.fixtureOrigins.has(fixtureId)) {
@@ -442,6 +622,8 @@ export class MasterArbiter extends EventEmitter {
             // Full release
             this.layer2_manualOverrides.delete(fixtureId);
         }
+        // 📡 WAVE 2770 + WAVE 2775: Record release source (lightweight, no stack capture)
+        this._layer2LastModStack.set(fixtureId, `EXPLICIT RELEASE @ frame ${this.frameNumber}`);
         // Emit event
         this.emit('manualRelease', fixtureId, channelsToRelease);
         if (this.config.debug) {
@@ -553,6 +735,21 @@ export class MasterArbiter extends EventEmitter {
             }
             return true;
         });
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2662: EFFECT INTENTS — EffectManager as Layer 3 input
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — Inject effect intents BEFORE arbitrate()
+     *
+     * TitanOrchestrator resolves zones → fixture IDs and builds this map.
+     * The Arbiter consumes intents in arbitrateFixture() as Layer 3 input.
+     * Intents are cleared at the end of each arbitrate() cycle for frame freshness.
+     *
+     * This replaces the old post-HAL mutation pattern. Single Source of Truth.
+     */
+    setEffectIntents(intents) {
+        this.layer3_effectIntents = intents;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // LAYER 4: BLACKOUT
@@ -1057,6 +1254,8 @@ export class MasterArbiter extends EventEmitter {
                         },
                         _crossfadeActive: titanTarget._crossfadeActive,
                         _crossfadeProgress: titanTarget._crossfadeProgress,
+                        // 🎯 WAVE 2604: Propagate IK flag from titanTarget
+                        _ikProcessed: titanTarget._ikProcessed,
                     };
                     hybridTargets.push(hybridTarget);
                     // 🔬 WAVE 2066: Smart MixBus telemetry (1 sample every 5s)
@@ -1131,11 +1330,59 @@ export class MasterArbiter extends EventEmitter {
         //   console.log(`[MasterArbiter] 🩸 Processing ${this.fixtures.size} fixtures:`, 
         //     Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...')
         // }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 📡 WAVE 2770 + WAVE 2775: LAYER_LOSS DETECTOR — THE BLACK BOX
+        // Compare current override IDs with previous frame. If a fixture had
+        // an override last frame but doesn't now, AND no explicit release was
+        // logged, something silently killed it.
+        // 🔧 WAVE 2775: Throttled to max 1 log per 2s. Collects lost IDs and
+        // flushes as a single-line summary to prevent IPC/console saturation.
+        // ═══════════════════════════════════════════════════════════════════════
+        const currentOverrideIds = new Set(this.layer2_manualOverrides.keys());
+        for (const prevId of this._prevFrameOverrideIds) {
+            if (!currentOverrideIds.has(prevId)) {
+                this._layerLossPending.push(prevId);
+            }
+        }
+        if (this._layerLossPending.length > 0 && now - this._layerLossThrottleMs > 2000) {
+            console.warn(`[📡 LAYER_LOSS] 🚨 ${this._layerLossPending.length} fixture(s) lost Layer 2 override: [${this._layerLossPending.join(', ')}] | frame ${this.frameNumber}`);
+            this._layerLossPending = [];
+            this._layerLossThrottleMs = now;
+        }
+        this._prevFrameOverrideIds = currentOverrideIds;
         // Arbitrate each fixture
         const fixtureTargets = [];
         for (const [fixtureId] of this.fixtures) {
             const target = this.arbitrateFixture(fixtureId, now);
             fixtureTargets.push(target);
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 📡 WAVE 2770 + WAVE 2775: GHOST_WHITE DETECTOR
+        // If a fixture outputs near-white (R≥250, G≥250, B≥250) but the active
+        // palette does NOT contain white (s > 0.05 for all 4 palette slots),
+        // log the phantom white and its control source.
+        // Throttled: max once per 2 seconds to avoid console storms.
+        // 🔧 WAVE 2775: Condensed to single-line log.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (now - this._blackBoxThrottleMs > 2000) {
+            const palette = this.layer0_titan?.intent?.palette;
+            const paletteHasWhite = palette
+                ? [palette.primary, palette.secondary, palette.accent, palette.ambient].some(c => c && c.s < 0.05 && c.l > 0.9)
+                : false;
+            for (const target of fixtureTargets) {
+                const { r, g, b } = target.color;
+                if (r >= 250 && g >= 250 && b >= 250 && !paletteHasWhite) {
+                    const src = target._controlSources?.red ?? target._controlSources?.green ?? -1;
+                    const srcLabel = src === ControlLayer.MANUAL ? 'MANUAL'
+                        : src === ControlLayer.EFFECTS ? 'EFFECTS'
+                            : src === ControlLayer.TITAN_AI ? 'TITAN_AI'
+                                : src === ControlLayer.CONSCIOUSNESS ? 'CONSCIOUSNESS'
+                                    : `UNKNOWN(${src})`;
+                    console.warn(`[📡 GHOST_WHITE] 👻 ${target.fixtureId} RGB(${r},${g},${b}) src=${srcLabel} vibe=${this.layer0_titan?.vibeId ?? 'NONE'} frame=${this.frameNumber}`);
+                    this._blackBoxThrottleMs = now;
+                    break; // One ghost per throttle window is enough
+                }
+            }
         }
         // Build global effects state
         const globalEffects = this.buildGlobalEffectsState();
@@ -1153,8 +1400,14 @@ export class MasterArbiter extends EventEmitter {
                 manualOverrideCount: this.layer2_manualOverrides.size,
                 manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
                 activeEffects: this.layer3_effects.map(e => e.type),
+                // 🎯 WAVE 2662: Track intent-based effects in layer activity
+                effectIntentCount: this.layer3_effectIntents.size,
             }
         };
+        // 🎯 WAVE 2662: Clear intents after arbitration — frame freshness guarantee
+        // Intents are injected fresh each tick by TitanOrchestrator.
+        // If no intents arrive next frame, effects simply don't apply.
+        this.layer3_effectIntents.clear();
         this.lastOutputTimestamp = now;
         this.emit('output', output);
         return output;
@@ -1193,7 +1446,36 @@ export class MasterArbiter extends EventEmitter {
         // Get position (with pattern/formation applied)
         const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now);
         // ═══════════════════════════════════════════════════════════════════════
-        // � WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+        // 🎯 WAVE 2662: EFFECT INTENT — Movement overlay
+        //
+        // If the EffectIntent has movement data, apply it as Layer 3 contribution.
+        //   isAbsolute=true  → Intent value is the final position
+        //   isAbsolute=false → Intent value is a delta offset from Titan position
+        //
+        // Movement intents lose to Manual Override (Layer 2), checked below.
+        // ═══════════════════════════════════════════════════════════════════════
+        const movementIntent = this.layer3_effectIntents.get(fixtureId)?.movement;
+        let effectAdjustedPan = rawPan;
+        let effectAdjustedTilt = rawTilt;
+        let movementFromEffect = false;
+        if (movementIntent) {
+            if (movementIntent.isAbsolute) {
+                if (movementIntent.pan !== undefined)
+                    effectAdjustedPan = movementIntent.pan;
+                if (movementIntent.tilt !== undefined)
+                    effectAdjustedTilt = movementIntent.tilt;
+            }
+            else {
+                if (movementIntent.pan !== undefined)
+                    effectAdjustedPan = rawPan + movementIntent.pan;
+                if (movementIntent.tilt !== undefined)
+                    effectAdjustedTilt = rawTilt + movementIntent.tilt;
+            }
+            movementFromEffect = true;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔧 WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
+        // 🎯 WAVE 2662: Effect movement also stamps controlSources
         //
         // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
         // never get their controlSource stamped. Without this, the HAL Aduana
@@ -1203,28 +1485,35 @@ export class MasterArbiter extends EventEmitter {
         if (manualOverride?.overrideChannels.includes('pan')) {
             controlSources['pan'] = ControlLayer.MANUAL;
         }
+        else if (movementFromEffect) {
+            controlSources['pan'] = ControlLayer.EFFECTS;
+        }
         else {
             controlSources['pan'] = ControlLayer.TITAN_AI;
         }
         if (manualOverride?.overrideChannels.includes('tilt')) {
             controlSources['tilt'] = ControlLayer.MANUAL;
         }
+        else if (movementFromEffect) {
+            controlSources['tilt'] = ControlLayer.EFFECTS;
+        }
         else {
             controlSources['tilt'] = ControlLayer.TITAN_AI;
         }
         // ═══════════════════════════════════════════════════════════════════════
-        // �🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+        // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+        // 🎯 WAVE 2662: Now uses effectAdjustedPan/Tilt as base (includes intent overlay)
         //
         // Si hay un fade activo para este fixture, interpolamos entre la última
-        // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).
+        // posición manual (fromPan/fromTilt) y la posición actual (con intent si aplica).
         //
-        // Esto es un POST-PROCESS: getAdjustedPosition ya devolvió el valor
-        // correcto de Titan. Nosotros solo lo suavizamos temporalmente.
+        // Esto es un POST-PROCESS: getAdjustedPosition + effectIntent ya dieron el valor
+        // correcto. Nosotros solo lo suavizamos temporalmente.
         // NO contaminamos Titan values. NO creamos zombies.
         // Después de durationMs, el fade se auto-purga.
         // ═══════════════════════════════════════════════════════════════════════
-        let pan = rawPan;
-        let tilt = rawTilt;
+        let pan = effectAdjustedPan;
+        let tilt = effectAdjustedTilt;
         const releaseFade = this.positionReleaseFades.get(fixtureId);
         if (releaseFade) {
             const elapsed = now - releaseFade.startTime;
@@ -1233,12 +1522,12 @@ export class MasterArbiter extends EventEmitter {
                 this.positionReleaseFades.delete(fixtureId);
             }
             else {
-                // Interpolación lineal: from → to (rawPan/rawTilt = posición Titan actual)
+                // Interpolación lineal: from → to (effectAdjustedPan/Tilt = posición actual con intent)
                 const t = elapsed / releaseFade.durationMs;
                 // Curva ease-out: t² × (3 - 2t) — suave al final, no al principio
                 const smoothT = t * t * (3 - 2 * t);
-                pan = releaseFade.fromPan + (rawPan - releaseFade.fromPan) * smoothT;
-                tilt = releaseFade.fromTilt + (rawTilt - releaseFade.fromTilt) * smoothT;
+                pan = releaseFade.fromPan + (effectAdjustedPan - releaseFade.fromPan) * smoothT;
+                tilt = releaseFade.fromTilt + (effectAdjustedTilt - releaseFade.fromTilt) * smoothT;
             }
         }
         const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources);
@@ -1302,6 +1591,13 @@ export class MasterArbiter extends EventEmitter {
         const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0;
         // Apply Grand Master to dimmer (final step before clamping)
         const dimmerfinal = clampDMX(dimmer * this.grandMaster);
+        // ⚡ WAVE 2750: NaN BOMB UPSTREAM GUARD — pan/tilt fallback to last known position
+        // Si la aritmética upstream (IK, interpolation, effectIntent) generó NaN,
+        // preservamos la última posición válida en vez de snap a 0 (HOME).
+        // clampDMX ya filtra NaN→0, pero para pan/tilt 0=HOME position = destructivo.
+        const lastPos = this.lastKnownPositions.get(fixtureId);
+        const safePan = Number.isFinite(pan) ? pan : (lastPos?.pan ?? 128);
+        const safeTilt = Number.isFinite(tilt) ? tilt : (lastPos?.tilt ?? 128);
         const target = {
             fixtureId,
             dimmer: dimmerfinal,
@@ -1310,8 +1606,8 @@ export class MasterArbiter extends EventEmitter {
                 g: clampDMX(green),
                 b: clampDMX(blue),
             },
-            pan: clampDMX(pan),
-            tilt: clampDMX(tilt),
+            pan: clampDMX(safePan),
+            tilt: clampDMX(safeTilt),
             zoom: clampDMX(zoom),
             focus: clampDMX(focus),
             speed: clampDMX(speed), // 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow)
@@ -1320,6 +1616,8 @@ export class MasterArbiter extends EventEmitter {
             _controlSources: controlSources,
             _crossfadeActive: crossfadeActive,
             _crossfadeProgress: crossfadeProgress,
+            // 🎯 WAVE 2604: IK processed flag — prevents HAL double-calibration
+            _ikProcessed: this._ikProcessedFixtures.has(fixtureId),
         };
         // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
         this.lastKnownPositions.set(fixtureId, { pan: target.pan, tilt: target.tilt });
@@ -1372,7 +1670,42 @@ export class MasterArbiter extends EventEmitter {
             // DIRECT RETURN - Manual wins, skip merge entirely
             return manualValue;
         }
-        // Layer 3: Effects
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 2662: EFFECT INTENTS — Layer 3 via EffectIntentMap
+        //
+        // EffectManager intents are the PRIMARY Layer 3 source.
+        // If an intent exists for this fixture+channel combo, it takes precedence
+        // over legacy getEffectValueForChannel() (strobe/blinder/flash/freeze).
+        //
+        // mixBus='htp'    → Collaborative: dimmer=HTP(max), color=LTP(intent wins)
+        // mixBus='global' → Dictator: LERP(titan, intent, globalComposition)
+        // ═══════════════════════════════════════════════════════════════════════
+        const effectIntent = this.layer3_effectIntents.get(fixtureId);
+        if (effectIntent) {
+            const intentValue = this.getIntentValueForChannel(effectIntent, channel);
+            if (intentValue !== null) {
+                if (effectIntent.mixBus === 'global') {
+                    // GLOBAL mode: LERP between Titan base and intent
+                    const alpha = effectIntent.globalComposition;
+                    const blended = titanValue + (intentValue - titanValue) * alpha;
+                    controlSources[channel] = ControlLayer.EFFECTS;
+                    return blended;
+                }
+                else {
+                    // HTP mode: dimmer = max(titan, intent), color channels = intent wins (LTP)
+                    if (channel === 'dimmer') {
+                        controlSources[channel] = ControlLayer.EFFECTS;
+                        return Math.max(titanValue, intentValue);
+                    }
+                    else {
+                        // Color channels (red, green, blue) and white/amber → LTP, intent wins
+                        controlSources[channel] = ControlLayer.EFFECTS;
+                        return intentValue;
+                    }
+                }
+            }
+        }
+        // Layer 3 legacy: strobe/blinder/flash/freeze effects (pre-WAVE 2662)
         const effectValue = this.getEffectValueForChannel(fixtureId, channel, now);
         if (effectValue !== null) {
             values.push({
@@ -1504,15 +1837,15 @@ export class MasterArbiter extends EventEmitter {
             const offset = this.calculatePatternOffset(pattern, now);
             // 🔧 WAVE 2042.24: Scale offset to DMX range (0-255), not 16-bit
             // offset is -1 to 1, size is already normalized 0-1
-            // 🔥 WAVE 2185: BETA SAFETY CAP — Hard ceiling at 64 DMX units (25% of range).
-            // Even if someone bypasses the IPC normalizer, the Arbiter itself won't let
-            // any pattern move more than ±64 DMX from center. This is the LAW during beta.
-            // On a 540° fixture: 64/256 * 540° = 135° max sweep = safe for any stepper.
-            const BETA_MAX_MOVEMENT = 64; // DMX units — hard limit, non-negotiable
+            // 🔥 WAVE 2652: AMPLITUDE UNLOCK — ceiling raised from 64 → 128 DMX (50% of range).
+            // IPC normalizer sends size 0-1.0 (was 0-0.5). Defense-in-depth clamp still active.
+            // On a 540° fixture: 128/256 * 540° = 270° max sweep = operator-grade range.
+            // Speed stays at 0.5 Hz max; velocity budget: 128 * π * 0.5 ≈ 201 DMX/s — safe.
+            const MANUAL_MAX_MOVEMENT = 128; // DMX units — 50% of 0-255 range (WAVE 2652)
             const rawPanMovement = offset.panOffset * 128 * pattern.size;
             const rawTiltMovement = offset.tiltOffset * 128 * pattern.size;
-            const panMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawPanMovement));
-            const tiltMovement = Math.max(-BETA_MAX_MOVEMENT, Math.min(BETA_MAX_MOVEMENT, rawTiltMovement));
+            const panMovement = Math.max(-MANUAL_MAX_MOVEMENT, Math.min(MANUAL_MAX_MOVEMENT, rawPanMovement));
+            const tiltMovement = Math.max(-MANUAL_MAX_MOVEMENT, Math.min(MANUAL_MAX_MOVEMENT, rawTiltMovement));
             // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
             // not the static pattern.center captured at creation time.
             // This way: if the user moves the XY pad while a pattern is running,
@@ -1745,11 +2078,29 @@ export class MasterArbiter extends EventEmitter {
             }
         }
         // Convert selected HSL to RGB
-        if (selectedColor) {
+        // ⛺ WAVE 2790: COLOR BUNKER — Oceanic Mute Guard
+        // If this fixture has ANY Layer 2 manual override active, the tide zone transition
+        // must NOT alter its color. The operator has taken control — the ocean goes silent
+        // for this fixture. We serve the last known stable color instead of the new palette.
+        const hasAnyManualOverride = this.layer2_manualOverrides.has(fixtureId);
+        if (hasAnyManualOverride) {
+            // Fixture is a bunker: serve last known color (frozen before manual takeover)
+            const frozen = this.lastKnownColors.get(fixtureId);
+            if (frozen) {
+                defaults.red = frozen.r;
+                defaults.green = frozen.g;
+                defaults.blue = frozen.b;
+            }
+            // If no frozen color yet (first frame of override), defaults stay 0 — harmless,
+            // mergeChannelForFixture will apply the manual color channels on top.
+        }
+        else if (selectedColor) {
             const rgb = this.hslToRgb(selectedColor);
             defaults.red = rgb.r;
             defaults.green = rgb.g;
             defaults.blue = rgb.b;
+            // Update frozen color cache while fixture is under vibe control
+            this.lastKnownColors.set(fixtureId, { r: rgb.r, g: rgb.g, b: rgb.b });
         }
         // ═══════════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════════
@@ -1940,6 +2291,26 @@ export class MasterArbiter extends EventEmitter {
             }
         }
         return null;
+    }
+    /**
+     * 🎯 WAVE 2662: Extract the DMX value from an EffectIntent for a specific channel.
+     * Returns null if the intent has no value for this channel.
+     */
+    getIntentValueForChannel(intent, channel) {
+        switch (channel) {
+            case 'dimmer':
+                return intent.dimmer ?? null;
+            case 'red':
+                return intent.color?.r ?? null;
+            case 'green':
+                return intent.color?.g ?? null;
+            case 'blue':
+                return intent.color?.b ?? null;
+            case 'white':
+                return intent.white ?? null;
+            default:
+                return null;
+        }
     }
     /**
      * 🥶 WAVE 1165: GHOST PROTOCOL - Create blackout target with FREEZE
@@ -2140,6 +2511,10 @@ export class MasterArbiter extends EventEmitter {
     reset() {
         this.layer0_titan = null;
         this.layer1_consciousness = null;
+        // 📡 WAVE 2770 + WAVE 2775: Log nuclear clear (single-line, no stack — reset is intentional)
+        if (this.layer2_manualOverrides.size > 0) {
+            console.warn(`[📡 LAYER_LOSS] 🔥 reset() clearing ${this.layer2_manualOverrides.size} Layer 2 overrides`);
+        }
         this.layer2_manualOverrides.clear();
         this.layer3_effects = [];
         this.layer4_blackout = false;

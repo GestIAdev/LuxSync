@@ -116,20 +116,12 @@ export class DeepBreath extends BaseEffect {
         // MOVERS: Movimiento orgánico (abrir/cerrar)
         // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
         // ═════════════════════════════════════════════════════════════════════
-        // Tilt: -30° (down) → +30° (up) → -30° (down)
-        const tilt = -30 + breathIntensity * 60;
-        // Pan: spread out durante inhale (±60°)
-        // TODO: Para hacer pan left/right necesitamos conocer el índice del fixture
-        // Por ahora usamos 0° (centro)
-        const pan = 0;
+        // 🚨 WAVE 2690: pan/tilt movement PURGED — Selene no conduce posiciones
         output.zoneOverrides['all-movers'] = {
             dimmer,
-            // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+            // 🚭 NO COLOR - Transparente a rueda mecánica (física decide)
             blendMode: 'max',
-            movement: {
-                pan,
-                tilt,
-            },
+            // 🚨 WAVE 2690: movement PURGED
         };
         return output;
     }

@@ -179,8 +179,10 @@ const state: OceanState = {
     deepCurrentPulse: -999999,
     bioluminescentSpore: -999999,
   },
-  startTime: Date.now(),
-  zoneEntryTime: Date.now(),
+  // ⚡ WAVE 2750: WOODSTOCK CHRONO-PURGE — performance.now() monotónico
+  // Date.now() puede retroceder con ajustes NTP → delta negativo → physics explota
+  startTime: performance.now(),
+  zoneEntryTime: performance.now(),
   previousZone: null,
   // ═══════════════════════════════════════════════════════════════════════════
   // 🩰 WAVE 1102: ELASTIC TIME - oceanTime acumula tiempo escalado por BPM
@@ -188,7 +190,7 @@ const state: OceanState = {
   // Base: 60 BPM = 1.0x, 120 BPM = 2.0x, 80 BPM = 1.33x
   // ═══════════════════════════════════════════════════════════════════════════
   oceanTime: 0,
-  lastOceanUpdate: Date.now(),
+  lastOceanUpdate: performance.now(),
 }
 
 // UTILIDADES
@@ -304,8 +306,12 @@ function calculateFluidPhysics(
   const lifeActivity = (clarity > 0.7 || energy > 0.65) ? 0.3 : 0
   const lifePulse = Math.sin(now / 800) > 0.7 ? lifeActivity : 0
   
-  const moverIntL = clamp(baseIntensity + Math.sin(now / 2500) * 0.15 + lifePulse + energy * 0.2, 0, 1)
-  const moverIntR = clamp(baseIntensity + Math.sin(now / 3100 + 2) * 0.15 + lifePulse + energy * 0.2, 0, 1)
+  // ⚡ WAVE 2750: BREATHING GHOST EXORCISM — Movers son fixtures mecánicos.
+  // Un dimmer pulsante en un cabezal móvil es ruido visual, no arte.
+  // El sinusoidal de ±15% y lifePulse se eliminan del cálculo de movers.
+  // PARs/air mantienen lifePulse porque son LED y el efecto es sutil.
+  const moverIntL = clamp(baseIntensity + energy * 0.2, 0, 1)
+  const moverIntR = clamp(baseIntensity + energy * 0.2, 0, 1)
   
   const airBase = zone === 'SHALLOWS' ? 0.4 : zone === 'OCEAN' ? 0.25 : 0.1
   const airIntensity = clamp(airBase + energy * 0.2 + lifePulse * 0.5, 0, 0.7)
@@ -457,7 +463,8 @@ export const calculateChillStereo = (
   godEar: any = {},
   bpm: number = 60  // 🩰 WAVE 1102: BPM del Pacemaker (default 60 = 1.0x time)
 ): DeepFieldOutput => {
-  const now = Date.now()
+  // ⚡ WAVE 2750: WOODSTOCK PURGE — monotonic clock
+  const now = performance.now()
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🩰 WAVE 1102: ELASTIC TIME - El océano respira con la música
@@ -582,8 +589,8 @@ export const resetDeepFieldState = () => {
     // 🦠 WAVE 1074: Micro-Fauna
     surfaceShimmer: 0, planktonDrift: 0, deepCurrentPulse: 0, bioluminescentSpore: 0,
   }
-  state.startTime = Date.now()
-  state.zoneEntryTime = Date.now()  // WAVE 1072
+  state.startTime = performance.now()
+  state.zoneEntryTime = performance.now()  // WAVE 1072
   state.previousZone = null         // WAVE 1072
   
   // Reset también el smoothing del adapter oceánico
@@ -596,7 +603,7 @@ export const getDeepFieldState = () => ({
   depth: state.currentDepth,
   zone: state.currentZone,
   triggers: state.lastTriggerTime,
-  uptime: Date.now() - state.startTime,
+  uptime: performance.now() - state.startTime,
 })
 
 /**

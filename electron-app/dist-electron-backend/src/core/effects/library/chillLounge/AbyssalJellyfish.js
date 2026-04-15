@@ -165,28 +165,8 @@ export class AbyssalJellyfish extends BaseEffect {
                 blendMode: 'max',
             };
         }
-        // 🪼 Movers: siguen a la medusa más cercana con EASING
-        const moverLeftPan = (magentaPos - 0.5) * 18;
-        const moverRightPan = (cyanPos - 0.5) * 18;
-        const moverTilt = Math.sin(easedProgress * Math.PI * 1.2) * 6;
-        output.zoneOverrides['movers-left'] = {
-            ...output.zoneOverrides['movers-left'],
-            movement: {
-                pan: moverLeftPan,
-                tilt: moverTilt + 5,
-                isAbsolute: false,
-                speed: 0.06,
-            },
-        };
-        output.zoneOverrides['movers-right'] = {
-            ...output.zoneOverrides['movers-right'],
-            movement: {
-                pan: moverRightPan,
-                tilt: moverTilt - 3,
-                isAbsolute: false,
-                speed: 0.06,
-            },
-        };
+        // 🪼 WAVE 2690: mover movement PURGED — Selene no conduce posiciones
+        // El VibeMovementManager (Layer 0) se encarga del pan/tilt
         return output;
     }
     isFinished() { return this.phase === 'finished'; }

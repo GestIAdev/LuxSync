@@ -436,6 +436,11 @@ export class TechnoStereoPhysics {
             moverL *= recoveryFactor;
             moverR *= recoveryFactor;
         }
+        // 🔧 WAVE 2775: FINAL CLAMP — Garantiza [0, 1] estricto antes de DMX conversion
+        frontParIntensity = Math.min(1.0, Math.max(0.0, frontParIntensity));
+        backParIntensity = Math.min(1.0, Math.max(0.0, backParIntensity));
+        moverL = Math.min(1.0, Math.max(0.0, moverL));
+        moverR = Math.min(1.0, Math.max(0.0, moverR));
         return {
             strobeActive: strobeResult.active,
             strobeIntensity: strobeResult.intensity,

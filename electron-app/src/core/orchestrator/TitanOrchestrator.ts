@@ -2011,10 +2011,9 @@ export class TitanOrchestrator {
       return;
     }
     
-    // 🔍 WAVE 262 DEBUG: Verificar que el buffer llega
-    if (this.frameCount % 300 === 0) {
-      console.log(`[TitanOrchestrator] 📡 audioBuffer received: ${buffer.length} samples, rms=${Math.sqrt(buffer.reduce((sum, v) => sum + v*v, 0) / buffer.length).toFixed(4)}`)
-    }
+    // � WAVE 3040: Loop RMS eliminado — buffer.reduce sobre 8192 floats
+    // aunque sea cada 300 frames es trabajo innecesario en el hilo principal.
+    // El buffer llega correctamente — log eliminado.
     
     // 🗡️ WAVE 265: Update timestamp - el buffer llegando ES la señal de que el frontend vive
     this.lastAudioTimestamp = Date.now()

@@ -666,7 +666,17 @@ export class TrinityOrchestrator extends EventEmitter {
     }
     
     const message = createMessage(type, 'alpha', nodeId, payload, priority);
-    node.worker.postMessage(message);
+    // 🚀 WAVE 3040: ZERO-COPY AUDIO — Transferable Objects
+    // Si el payload es un Float32Array (audio buffer a 60Hz), transferir el
+    // ArrayBuffer subyacente en lugar de copiarlo via structured clone.
+    // structured clone de 32KB × 60Hz = 1.9MB/seg de serialización en hilo principal.
+    // Con transferable: 0 bytes copiados. El worker recibe propiedad del buffer.
+    // El Float32Array original queda "neutered" (length=0) — pero ya no lo usamos.
+    if (payload instanceof Float32Array) {
+      node.worker.postMessage(message, [payload.buffer as ArrayBuffer]);
+    } else {
+      node.worker.postMessage(message);
+    }
   }
   
   /**

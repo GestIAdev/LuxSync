@@ -89,10 +89,10 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
   console.info  = _noop
   console.debug = _noop
 
-  // warn y error: solo pasan si el primer argumento contiene [CARDIOGRAMA
+  // warn y error: solo pasan si el primer argumento contiene [CARDIOGRAMA o [IPC PROBE]
   const _cardiFilter = (orig: (...a: unknown[]) => void) =>
     (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('[CARDIOGRAMA')) {
+      if (typeof args[0] === 'string' && (args[0].includes('[CARDIOGRAMA') || args[0].includes('[IPC PROBE]'))) {
         orig(...args)
       }
     }
@@ -426,7 +426,12 @@ async function initTitan(): Promise<void> {
   titanOrchestrator.setBroadcastCallback((truth) => {
     try {
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        const _t0 = performance.now()
         mainWindow.webContents.send('selene:truth', truth)
+        const _dt = performance.now() - _t0
+        if (_dt > 5) {
+          console.warn(`[IPC PROBE] 🐢 selene:truth BLOCK ${_dt.toFixed(1)}ms`)
+        }
       }
     } catch (err) {
       // Silently ignore - the renderer is being destroyed (e.g., during heavy audio loading)
@@ -440,7 +445,12 @@ async function initTitan(): Promise<void> {
   titanOrchestrator.setHotFrameCallback((hotFrame) => {
     try {
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        const _t0 = performance.now()
         mainWindow.webContents.send('selene:hot-frame', hotFrame)
+        const _dt = performance.now() - _t0
+        if (_dt > 5) {
+          console.warn(`[IPC PROBE] 🐢 selene:hot-frame BLOCK ${_dt.toFixed(1)}ms`)
+        }
       }
     } catch {
       // Silently ignore - renderer being destroyed

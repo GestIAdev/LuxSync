@@ -184,7 +184,12 @@ export class OpenDMXStrategy implements DMXSendStrategy {
       channels[i] = buffer[i]
     }
 
+    const _t0 = performance.now()
     this.child.send({ type: 'UPDATE_BUFFER', channels })
+    const _dt = performance.now() - _t0
+    if (_dt > 5) {
+      console.warn(`[IPC PROBE] 🐢 USB child.send BLOCK ${_dt.toFixed(1)}ms | ${len}ch`)
+    }
   }
 
   /**

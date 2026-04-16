@@ -214,7 +214,7 @@ let _workerCardiogramaLastTick = process.hrtime.bigint()
 const _workerCardiograma = setInterval(() => {
   const _now = process.hrtime.bigint()
   const _deltaMs = Number((_now - _workerCardiogramaLastTick) / BigInt(1_000_000))
-  if (_deltaMs > 25) {
+  if (_deltaMs > 15) {
     log(`🫀 CARDIOGRAMA WORKER ⚠️ LAG SPIKE / INANICION DETECTADA: ${_deltaMs.toFixed(2)}ms`)
   }
   _workerCardiogramaLastTick = _now

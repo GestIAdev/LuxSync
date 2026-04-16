@@ -431,7 +431,7 @@ export class TitanOrchestrator {
     this.cardiogramaInterval = setInterval(() => {
       const _now = performance.now()
       const _delta = _now - _cardiogramaLastTick
-      if (_delta > 25) {
+      if (_delta > 15) {
         const _msg = `🫀 LAG SPIKE ${_delta.toFixed(2)}ms — GC pause suspected`
         console.warn(`[CARDIOGRAMA MAIN] ⚠️ ${_msg}`)
         this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)

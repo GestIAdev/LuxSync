@@ -117,6 +117,7 @@ export class TitanOrchestrator {
   private isInitialized = false
   private isRunning = false
   private mainLoopInterval: NodeJS.Timeout | null = null
+  private cardiogramaInterval: NodeJS.Timeout | null = null
   private frameCount = 0
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -418,6 +419,23 @@ export class TitanOrchestrator {
     }, 23) // ⚡ WAVE 2510: 44fps — feeds RenderWorker hot-frames at Nyquist-safe rate
            // Strobes up to 22Hz resolvable. DMX dispatch is hardware-adaptive:
            // Enttec Pro/Art-Net @ 44Hz, generic USB @ 30Hz (separate from tick rate)
+
+    // ─────────────────────────────────────────────────────────────────
+    // 🫀 OPERACIÓN CARDIOGRAMA — Event Loop Lag Monitor (Main Thread)
+    // Detecta GC Stop-The-World pauses y saturación del event loop.
+    // Un delta > 25ms indica que el event loop estuvo bloqueado más de
+    // lo esperado — GC mayor, IPC backpressure, spin-lock, etc.
+    // 5ms interval = detecta spikes con 5ms de resolución.
+    // ─────────────────────────────────────────────────────────────────
+    let _cardiogramaLastTick = performance.now()
+    this.cardiogramaInterval = setInterval(() => {
+      const _now = performance.now()
+      const _delta = _now - _cardiogramaLastTick
+      if (_delta > 25) {
+        console.warn(`[CARDIOGRAMA MAIN] ⚠️ LAG SPIKE / GC PAUSE DETECTADO: ${_delta.toFixed(2)}ms`)
+      }
+      _cardiogramaLastTick = _now
+    }, 5)
     
     // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
     setTimeout(() => {
@@ -457,6 +475,10 @@ export class TitanOrchestrator {
     if (this.mainLoopInterval) {
       clearInterval(this.mainLoopInterval)
       this.mainLoopInterval = null
+    }
+    if (this.cardiogramaInterval) {
+      clearInterval(this.cardiogramaInterval)
+      this.cardiogramaInterval = null
     }
     this.isRunning = false
 
@@ -1240,12 +1262,12 @@ export class TitanOrchestrator {
       }
     }
 
-    // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
-    // but THROUGH the physics engine so movement is interpolated safely.
-    // The old sendStates() was a physics-bypass backdoor — now sealed.
-    if (hephOutputs.length > 0) {
-      this.hal.sendStatesWithPhysics(fixtureStates)
-    }
+    // ⚒️ WAVE 3010: SINGLE SEND PER FRAME
+    // renderFromTarget() no longer sends to hardware — it's pure calculation now.
+    // We send ONCE here, AFTER all processing (including Hephaestus overlays).
+    // This eliminates the double-send race condition where two sendAll() calls
+    // competed for the isTransmitting semaphore (the second was always dropped).
+    this.hal.sendStatesWithPhysics(fixtureStates)
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🧹 WAVE 2227: VISUAL GATE REMOVED

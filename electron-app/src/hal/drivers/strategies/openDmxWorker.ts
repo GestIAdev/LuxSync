@@ -203,6 +203,23 @@ function handleConnect(portPath: string, refreshRate?: number, requestedBreakMod
 // ─────────────────────────────────────────────────────────────────────────────
 // Output loop — el corazón del bit-banging aislado
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 🫀 OPERACIÓN CARDIOGRAMA — Event Loop Lag Monitor (USB Worker)
+// Detecta inanición del worker: si el event loop del child process está
+// bloqueado (spin-wait excesivo, IPC backpressure, GC del propio child),
+// el timer disparará tarde y lo veremos como LAG SPIKE aquí.
+// hrtime.bigint() usado en vez de performance.now() — ya confirmado en este proceso.
+// ─────────────────────────────────────────────────────────────────────────────
+let _workerCardiogramaLastTick = process.hrtime.bigint()
+const _workerCardiograma = setInterval(() => {
+  const _now = process.hrtime.bigint()
+  const _deltaMs = Number((_now - _workerCardiogramaLastTick) / BigInt(1_000_000))
+  if (_deltaMs > 25) {
+    log(`🫀 CARDIOGRAMA WORKER ⚠️ LAG SPIKE / INANICION DETECTADA: ${_deltaMs.toFixed(2)}ms`)
+  }
+  _workerCardiogramaLastTick = _now
+}, 5)
+
 function startOutputLoop(): void {
   if (outputLoop) return
 

@@ -63,8 +63,10 @@ import { getHarmonicQuantizer } from './translation/HarmonicQuantizer'
 import { FixturePhysicsDriver, type PhysicsProfile as DriverPhysicsProfile } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
 
-// 🚧 WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
+// � WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
 import { masterArbiter, ControlLayer } from '../core/arbiter'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -155,6 +157,25 @@ export class HardwareAbstraction {
   private smoothedZoomMod: number = 0
   private smoothedFocusMod: number = 0
   
+  // 🔬 WAVE 2960: ONE-SHOT file logger — sin spam en consola
+  private static readonly _w2960LogPath = path.join(process.cwd(), 'logs', 'w2960-last-mile.log')
+  // 🔬 WAVE 2960 v2: rate-limit por tiempo en lugar de one-shot por clave
+  private readonly _w2960LastLogTime = new Map<string, number>()
+  private static readonly _W2960_HAL_COOLDOWN_MS = 1000  // 1s de cooldown por clave
+  private _w2960DirReady = false
+  private _w2960Log(key: string, msg: string): void {
+    const now = Date.now()
+    const last = this._w2960LastLogTime.get(key) ?? 0
+    if (now - last < HardwareAbstraction._W2960_HAL_COOLDOWN_MS) return
+    this._w2960LastLogTime.set(key, now)
+    if (!this._w2960DirReady) {
+      try { fs.mkdirSync(path.dirname(HardwareAbstraction._w2960LogPath), { recursive: true }) } catch { /* ok */ }
+      this._w2960DirReady = true
+    }
+    const line = `[${new Date().toISOString()}] ${msg}\n`
+    try { fs.appendFileSync(HardwareAbstraction._w2960LogPath, line, 'utf-8') } catch { /* nunca bloquear */ }
+  }
+
   // Configuration
   private config: HALConfig
   
@@ -1748,6 +1769,24 @@ export class HardwareAbstraction {
     // ═══════════════════════════════════════════════════════════════════════════
     const outputEnabled = masterArbiter.isOutputEnabled()
 
+    // 🔬 WAVE 2960 v3: PRE-ADUANA SNAPSHOT — captura dimmer ANTES de que la Aduana lo modifique.
+    // Así sabemos si el dimmer=0 viene del Arbiter o lo impone la Aduana.
+    // Solo frame 181 y cada 5 segundos (rate-limit por clave 'pre-aduana:fid').
+    if (this.framesRendered > 180) {
+      try {
+        for (const state of states) {
+          const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+          this._w2960Log(`pre-aduana:${fid}`,
+            `[HAL TRAP W2960 v3] PRE-ADUANA STATE\n` +
+            `  fixture=${fid}  addr=${state.dmxAddress}\n` +
+            `  frame=${this.framesRendered}  outputEnabled=${outputEnabled}\n` +
+            `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+            `  _controlSources=${JSON.stringify(state._controlSources ?? null)}`
+          )
+        }
+      } catch { /* nunca bloquear */ }
+    }
+
     if (!outputEnabled) {
       states = states.map(state => {
         const sources = state._controlSources
@@ -1767,14 +1806,30 @@ export class HardwareAbstraction {
         // The FixtureMapper reads physicalPan/physicalTilt with priority over pan/tilt.
         // If we only gate pan/tilt but leave physicalPan/physicalTilt untouched,
         // physics-interpolated values leak to DMX hardware.
+        //
+        // 🔥 WAVE 2961: COLOR COHERENCE — when the operator has manual control of
+        // the dimmer, the fixture's computed color (r/g/b/white/color_wheel) MUST
+        // also pass through, even if those channels are tagged as TITAN_AI.
+        // Reason: wheel-based movers (EL1140, etc.) have color driven by Titan's
+        // RGB→wheel translation. The operator set dimmer+pan+tilt manually to
+        // calibrate a position with light. If we zero r/g/b, BabelFish receives
+        // {r:0,g:0,b:0} → wheel snaps to white/open → the mover flashes on
+        // GO-off. The intended behavior: if you own the dimmer, you own the color.
+        const dimmerIsManual = sources['dimmer'] === ControlLayer.MANUAL
         const panSafe = sources['pan'] === ControlLayer.MANUAL
         const tiltSafe = sources['tilt'] === ControlLayer.MANUAL
         return {
           ...state,
-          dimmer: sources['dimmer'] === ControlLayer.MANUAL ? state.dimmer : 0,
-          r: sources['red'] === ControlLayer.MANUAL ? state.r : 0,
-          g: sources['green'] === ControlLayer.MANUAL ? state.g : 0,
-          b: sources['blue'] === ControlLayer.MANUAL ? state.b : 0,
+          dimmer: dimmerIsManual ? state.dimmer : 0,
+          // Color: pass through if manually controlled OR if dimmer is manual
+          // (dimmer=manual implies the operator wants to see the fixture with
+          // whatever color Titan/Timeline computed for it — zeroing color would
+          // produce a meaningless white flash on wheel fixtures).
+          r: (sources['red'] === ControlLayer.MANUAL || dimmerIsManual) ? state.r : 0,
+          g: (sources['green'] === ControlLayer.MANUAL || dimmerIsManual) ? state.g : 0,
+          b: (sources['blue'] === ControlLayer.MANUAL || dimmerIsManual) ? state.b : 0,
+          white: (sources['white'] === ControlLayer.MANUAL || dimmerIsManual) ? state.white : 0,
+          colorWheel: (sources['color_wheel'] === ControlLayer.MANUAL || dimmerIsManual) ? state.colorWheel : undefined,
           pan: panSafe ? state.pan : 128,
           tilt: tiltSafe ? state.tilt : 128,
           physicalPan: panSafe ? state.physicalPan : 128,
@@ -1787,7 +1842,98 @@ export class HardwareAbstraction {
     const withWhite = states.filter(s => s.white !== undefined && s.white > 0)
     // Removed noisy retina-killing log: [HAL] 🔆 WHITE PRE-DMX
     // If you need this debug info, enable it temporarily or use a debug flag.
-    
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔬 WAVE 2960: HARDWARE BUFFER TRAP — Last Mile Interceptor
+    //
+    // Guard post-boot: solo activo después de 180 frames (~3s a 60fps).
+    // El sistema arranca con dimmer=0 legítimamente — ignorar esos frames.
+    // Dispara ÚNICAMENTE cuando outputEnabled=true (LIVE) y hay manual override
+    // activo pero el valor final es 0. Eso sí es un espasmo ilegítimo.
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔬 WAVE 2960: ONE-SHOT logger — solo escribe a fichero la primera vez
+    // que cada fixture llega con un valor sospechoso. Cero spam en consola.
+    if (this.framesRendered > 180) {
+      try {
+        const outputIsEnabled = masterArbiter.isOutputEnabled()
+        const globalBlackout   = masterArbiter.isBlackoutActive()
+
+        // 🔬 WAVE 2960 v3: ADUANA TRAP — loguear SIEMPRE (con o sin outputEnabled)
+        // cuando un fixture tiene dimmer=0 post-Aduana. Así capturamos si el problema
+        // es la Aduana (ARMED) o algo más profundo (LIVE pero con ceros).
+        // Rate-limit 5000ms por fixture para no llenar el log.
+        for (const state of states) {
+          if (state.dimmer === 0) {
+            const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+            const src = state._controlSources
+            this._w2960Log(`aduana:${fid}`,
+              `[HAL TRAP W2960 v3] POST-ADUANA DIMMER=0\n` +
+              `  fixture=${fid}  addr=${state.dmxAddress}\n` +
+              `  frame=${this.framesRendered}  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
+              `  pre-aduana-dimmer=??? (ya aplicada)  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+              `  _controlSources=${JSON.stringify(src ?? null)}\n` +
+              `  hasSources=${src != null}  hasManual=${src ? Object.values(src).some(v => v === 2) : false}`
+            )
+          }
+        }
+
+        if (outputIsEnabled && !globalBlackout) {
+          // ═══════════════════════════════════════════════════════════════
+          // 🔬 WAVE 2960 v2: MASS BLACKOUT DETECTOR
+          //
+          // El error anterior: requerir ControlLayer.MANUAL excluía todos
+          // los fixtures bajo control Titan AI — que son los afectados por
+          // la Transition Anomaly. La sonda era ciega al bug real.
+          //
+          // Estrategia correcta: detectar colapso global de dimmer sin
+          // importar la fuente de control. Si >60% de los fixtures activos
+          // tienen dimmer=0 simultáneamente sin blackout → eso ES el espasmo.
+          // Loggear TODOS los estados en ese frame con sus controlSources.
+          // ═══════════════════════════════════════════════════════════════
+          const activeStates = states.filter(s => {
+            // Un fixture "activo" es uno que en frames anteriores tenía dimmer>0
+            // No podemos saber eso aquí, así que usamos: addr asignada y fixtureId presente
+            return s.fixtureId != null
+          })
+          const darkCount = activeStates.filter(s => s.dimmer === 0).length
+          const totalActive = activeStates.length
+
+          if (totalActive > 0 && darkCount > 0 && darkCount >= Math.ceil(totalActive * 0.6)) {
+            // Mass blackout detectado — loggear una snapshot completa del frame
+            const frameKey = `mass-blackout:${this.framesRendered}`
+            const snapshotLines = activeStates.map(s =>
+              `    fid=${s.fixtureId}  dimmer=${s.dimmer}  r=${s.r ?? 0}  g=${s.g ?? 0}  b=${s.b ?? 0}` +
+              `  pan=${s.pan ?? 0}  tilt=${s.tilt ?? 0}` +
+              `  src_dim=${s._controlSources?.['dimmer'] ?? '?'}  src_r=${s._controlSources?.['red'] ?? '?'}`
+            ).join('\n')
+            this._w2960Log(frameKey,
+              `[HAL TRAP W2960 v2] *** MASS BLACKOUT *** frame=${this.framesRendered}\n` +
+              `  darkCount=${darkCount}/${totalActive} fixtures con dimmer=0  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
+              `  snapshot fixtures:\n${snapshotLines}\n` +
+              `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
+            )
+          }
+
+          // ── Sonda individual: cualquier fixture oscuro sin blackout (sin filtro de manual)
+          for (const state of states) {
+            const src = state._controlSources
+            const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+            if (state.dimmer === 0) {
+              this._w2960Log(`dim:${fid}`,
+                `[HAL TRAP W2960 v2] DIMMER=0 fixture=${fid}\n` +
+                `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+                `  frame=${this.framesRendered}\n` +
+                `  controlSources: dimmer=${src?.['dimmer'] ?? '?'}  r=${src?.['red'] ?? '?'}  g=${src?.['green'] ?? '?'}\n` +
+                `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
+              )
+            }
+          }
+        }
+      } catch {
+        // nunca bloquear el output — la trampa es observadora, no tiene poder de veto
+      }
+    }
+
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
 

@@ -271,7 +271,7 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
         
         window.lux.audioFrame({ bass, mid, treble, energy, bpm: 0, fftBins })
       }
-    }, BUFFER_SEND_INTERVAL)
+    }, BUFFER_SEND_INTERVAL) // WAVE 3043: audioFrame → send (fire & forget)
     
     // Metrics loop (60fps → UI level meter)
     metricsLoopRef.current = setInterval(() => {

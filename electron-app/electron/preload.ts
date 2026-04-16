@@ -542,10 +542,10 @@ const luxApi = {
     ipcRenderer.send('lux:audio-buffer', buffer.buffer)
   },
   
-  /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */
+  /** WAVE 3043: Fire & Forget — sin round-trip Promise a 60Hz */
   // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
   audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number; fftBins?: number[] }) =>
-    ipcRenderer.invoke('lux:audio-frame', metrics),
+    ipcRenderer.send('lux:audio-frame', metrics),
   
   /** Obtener estado actual */
   getState: () => ipcRenderer.invoke('lux:get-state'),

@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿/**
  * WAVE 243.5: IPC HANDLERS - SIMPLIFIED V2
  * 
  * Centraliza todos los handlers IPC.
@@ -500,11 +500,11 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   // =========================================================================
   
   // Audio frame (kebab-case - lo que envÃ­a preload.ts)
-  ipcMain.handle('lux:audio-frame', (_event, data: Record<string, unknown>) => {
+  // WAVE 3043: Fire & Forget - eliminado ipcMain.handle a 60Hz (120 Promises/seg -> event loop bloat)
+  ipcMain.on('lux:audio-frame', (_event, data: Record<string, unknown>) => {
     if (titanOrchestrator) {
       titanOrchestrator.processAudioFrame(data)
     }
-    return { success: true }
   })
   
   // ðŸ©¸ WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT

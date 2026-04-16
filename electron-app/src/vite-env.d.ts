@@ -254,7 +254,7 @@ declare global {
     
     // Legacy: NO alimenta Trinity Workers
     // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
-    audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number; fftBins?: number[] }) => Promise<{ success: boolean }>
+    audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number; fftBins?: number[] }) => void
     getState: () => Promise<SeleneStateUpdate | null>
     
     // 🎯 WAVE 13.6: Full state sync for initial handshake

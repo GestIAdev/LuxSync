@@ -935,28 +935,41 @@ ipcMain.handle('telemetry:lt41:flush', () => {
 // ── CPU PROFILER — WAVE X-RAY TOTAL ──────────────────────────────────────────
 // Captura un perfil V8 de 15 segundos y lo guarda en userData/lux-asesino.cpuprofile
 // Triggerable desde la UI para cazar spikes de 20-27ms con precisión matemática.
+//
+// Usa la API clásica `inspector` con callbacks (Node 18 / Electron 28 compatible).
+// node:inspector/promises requiere Node ≥19 — no disponible en Electron 28.
 // ─────────────────────────────────────────────────────────────────────────────
 ipcMain.handle('lux:start-profiler', async () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const inspector = require('node:inspector/promises') as typeof import('node:inspector/promises')
+  const inspector = require('inspector') as typeof import('inspector')
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const fs = require('fs') as typeof import('fs')
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const path = require('path') as typeof import('path')
+  const nodePath = require('path') as typeof import('path')
+
+  // Promisify the callback-based inspector API (Node 18 / Electron 28 compatible)
+  function postAsync<T = unknown>(session: import('inspector').Session, method: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      session.post(method, (err: Error | null, result: any) => {
+        if (err) reject(err)
+        else resolve(result as T)
+      })
+    })
+  }
 
   const session = new inspector.Session()
   try {
     session.connect()
-    await session.post('Profiler.enable')
-    await session.post('Profiler.start')
+    await postAsync(session, 'Profiler.enable')
+    await postAsync(session, 'Profiler.start')
     console.log('[PROFILER] 🔴 CPU profiling started — capturing 15 seconds...')
 
     await new Promise<void>(resolve => setTimeout(resolve, 15_000))
 
-    const { profile } = await session.post('Profiler.stop') as { profile: object }
+    const { profile } = await postAsync<{ profile: object }>(session, 'Profiler.stop')
     session.disconnect()
 
-    const outputPath = path.join(app.getPath('userData'), 'lux-asesino.cpuprofile')
+    const outputPath = nodePath.join(app.getPath('userData'), 'lux-asesino.cpuprofile')
     fs.writeFileSync(outputPath, JSON.stringify(profile))
     console.log(`[PROFILER] ✅ Profile saved → ${outputPath}`)
 

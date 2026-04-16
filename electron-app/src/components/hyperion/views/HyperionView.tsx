@@ -161,6 +161,25 @@ export function HyperionView({
     await window.lux?.setLiquidLayout?.(newMode)
   }, [liquidLayout, setLiquidLayout])
 
+  // ⚡ WAVE X-RAY: CPU Profiler — 15s V8 capture → lux-asesino.cpuprofile
+  const [isProfilerRunning, setIsProfilerRunning] = useState(false)
+  const handleStartProfiler = useCallback(async () => {
+    if (isProfilerRunning) return
+    setIsProfilerRunning(true)
+    try {
+      const result = await window.luxDebug?.startProfiler?.()
+      if (result?.success) {
+        console.log(`[PROFILER] ✅ Saved: ${result.path}`)
+      } else {
+        console.error('[PROFILER] ❌', result?.error)
+      }
+    } catch (err) {
+      console.error('[PROFILER] ❌ IPC error:', err)
+    } finally {
+      setIsProfilerRunning(false)
+    }
+  }, [isProfilerRunning])
+
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
     if (bpm === 0) return '---'
@@ -291,6 +310,18 @@ export function HyperionView({
               }
             >
               {qualityMode === 'HQ' ? '✨ HQ' : '⚡ LQ'}
+            </button>
+            {/* ⚡ WAVE X-RAY: CPU Profiler — 15s V8 capture */}
+            <button
+              className={`hyperion-quality-toggle ${isProfilerRunning ? 'hq' : 'lq'}`}
+              onClick={handleStartProfiler}
+              disabled={isProfilerRunning}
+              title={isProfilerRunning
+                ? 'Profiling 15s… no hagas click'
+                : 'CPU Profiler — 15s V8 capture → lux-asesino.cpuprofile'}
+              style={{ opacity: isProfilerRunning ? 0.7 : 1, minWidth: 52 }}
+            >
+              {isProfilerRunning ? '🔴 …' : '🎯 PROF'}
             </button>
           </div>
         </div>

@@ -533,6 +533,9 @@ export class TitanOrchestrator {
     if (this.isProcessingFrame) return
     this.isProcessingFrame = true
     
+    // 🔬 WAVE 3030: SONDA FRAME — Timestamp inicio absoluto del frame
+    const _sondaFrameStart = performance.now()
+    
     try {
     
     if (!this.brain || !this.engine || !this.hal) return
@@ -791,7 +794,10 @@ export class TitanOrchestrator {
     }
     
     // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
+    // 🔬 WAVE 3030: SONDA ENGINE
+    const _sondaEngineStart = performance.now()
     const intent = await this.engine.update(context, engineAudioMetrics)
+    const _sondaEngineMs = performance.now() - _sondaEngineStart
     
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
@@ -978,7 +984,10 @@ export class TitanOrchestrator {
     }
     
     // Arbitrate all layers (this merges manual overrides, effects, blackout)
+    // 🔬 WAVE 3030: SONDA ARBITER
+    const _sondaArbiterStart = performance.now()
     const arbitratedTarget = masterArbiter.arbitrate()
+    const _sondaArbiterMs = performance.now() - _sondaArbiterStart
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
@@ -1034,7 +1043,10 @@ export class TitanOrchestrator {
     // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
     // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
     // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
+    // 🔬 WAVE 3030: SONDA HAL RENDER
+    const _sondaHalStart = performance.now()
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
+    const _sondaHalMs = performance.now() - _sondaHalStart
     
     // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 2662: POST-HAL MUTATION ELIMINATED
@@ -1097,6 +1109,8 @@ export class TitanOrchestrator {
     // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
     // ═══════════════════════════════════════════════════════════════════════════
     const hephRuntime = getHephaestusRuntime()
+    // 🔬 WAVE 3030: SONDA HEPHAESTUS
+    const _sondaHephStart = performance.now()
     const hephOutputs = hephRuntime.tick(Date.now())
     
     // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
@@ -1271,12 +1285,25 @@ export class TitanOrchestrator {
       }
     }
 
+    // 🔬 WAVE 3030: Cerrar sonda Hephaestus (abarca tick + merge loop)
+    const _sondaHephMs = performance.now() - _sondaHephStart
+
     // ⚒️ WAVE 3010: SINGLE SEND PER FRAME
     // renderFromTarget() no longer sends to hardware — it's pure calculation now.
     // We send ONCE here, AFTER all processing (including Hephaestus overlays).
     // This eliminates the double-send race condition where two sendAll() calls
     // competed for the isTransmitting semaphore (the second was always dropped).
+    // 🔬 WAVE 3030: SONDA SEND
+    const _sondaSendStart = performance.now()
     this.hal.sendStatesWithPhysics(fixtureStates)
+    const _sondaSendMs = performance.now() - _sondaSendStart
+
+    // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log si algún segmento supera umbral
+    const _sondaFrameTotalMs = performance.now() - _sondaFrameStart
+    if (_sondaFrameTotalMs > 10) {
+      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
+      console.warn(`[SONDA FRAME] 🔬 total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`)
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🧹 WAVE 2227: VISUAL GATE REMOVED

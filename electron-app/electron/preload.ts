@@ -536,9 +536,15 @@ const luxApi = {
    * Esto causa memory pressure y eventualmente bloquea el loop de requestAnimationFrame.
    * 
    * send() es unidireccional - no espera respuesta, no acumula Promises.
+   * 
+   * 🚀 WAVE 3042: ZERO-COPY renderer→main — slice() crea una copia nueva del
+   * ArrayBuffer, el original queda intacto para el próximo getTimeDomainData().
+   * postMessage con [copy] transfiere la copia sin serialización V8.
+   * Elimina los ~20ms de structured-clone en el IPC pipe.
    */
   audioBuffer: (buffer: Float32Array) => {
-    ipcRenderer.send('lux:audio-buffer', buffer.buffer)
+    const copy = buffer.buffer.slice(0)
+    ipcRenderer.postMessage('lux:audio-buffer', null, [copy])
   },
   
   /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */

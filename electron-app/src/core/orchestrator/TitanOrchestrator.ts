@@ -428,15 +428,26 @@ export class TitanOrchestrator {
     // 5ms interval = detecta spikes con 5ms de resolución.
     // ─────────────────────────────────────────────────────────────────
     let _cardiogramaLastTick = performance.now()
+    let _cardiogramaPeak = 0
+    let _cardiogramaCount = 0
     this.cardiogramaInterval = setInterval(() => {
       const _now = performance.now()
       const _delta = _now - _cardiogramaLastTick
-      if (_delta > 15) {
-        const _msg = `🫀 LAG SPIKE ${_delta.toFixed(2)}ms — GC pause suspected`
+      _cardiogramaLastTick = _now
+      if (_delta > _cardiogramaPeak) _cardiogramaPeak = _delta
+      _cardiogramaCount++
+      // Solo loguear si supera 40ms (bloqueo GRAVE, no baseline de 15ms)
+      // o cada 600 ticks (~5s) como heartbeat de diagnóstico
+      if (_delta > 40) {
+        const _msg = `🫀 HARD BLOCK ${_delta.toFixed(1)}ms — event loop frozen`
         console.warn(`[CARDIOGRAMA MAIN] ⚠️ ${_msg}`)
         this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
+      } else if (_cardiogramaCount % 600 === 0) {
+        const _msg = `🫀 heartbeat — peak:${_cardiogramaPeak.toFixed(1)}ms (last 5s)`
+        console.warn(`[CARDIOGRAMA MAIN] ${_msg}`)
+        this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
+        _cardiogramaPeak = 0
       }
-      _cardiogramaLastTick = _now
     }, 5)
 
     // Relay CARDIOGRAMA del USB Worker → Tactical Log del frontend

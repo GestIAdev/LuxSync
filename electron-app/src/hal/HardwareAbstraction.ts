@@ -158,23 +158,24 @@ export class HardwareAbstraction {
   private smoothedFocusMod: number = 0
   
   // 🔬 WAVE 2960: ONE-SHOT file logger — sin spam en consola
-  private static readonly _w2960LogPath = path.join(process.cwd(), 'logs', 'w2960-last-mile.log')
+  // DISABLED: Sonda desactivada post-WAVE 2961 (color coherence fix confirmed)
+  // private static readonly _w2960LogPath = path.join(process.cwd(), 'logs', 'w2960-last-mile.log')
   // 🔬 WAVE 2960 v2: rate-limit por tiempo en lugar de one-shot por clave
-  private readonly _w2960LastLogTime = new Map<string, number>()
-  private static readonly _W2960_HAL_COOLDOWN_MS = 1000  // 1s de cooldown por clave
-  private _w2960DirReady = false
-  private _w2960Log(key: string, msg: string): void {
-    const now = Date.now()
-    const last = this._w2960LastLogTime.get(key) ?? 0
-    if (now - last < HardwareAbstraction._W2960_HAL_COOLDOWN_MS) return
-    this._w2960LastLogTime.set(key, now)
-    if (!this._w2960DirReady) {
-      try { fs.mkdirSync(path.dirname(HardwareAbstraction._w2960LogPath), { recursive: true }) } catch { /* ok */ }
-      this._w2960DirReady = true
-    }
-    const line = `[${new Date().toISOString()}] ${msg}\n`
-    try { fs.appendFileSync(HardwareAbstraction._w2960LogPath, line, 'utf-8') } catch { /* nunca bloquear */ }
-  }
+  // private readonly _w2960LastLogTime = new Map<string, number>()
+  // private static readonly _W2960_HAL_COOLDOWN_MS = 1000  // 1s de cooldown por clave
+  // private _w2960DirReady = false
+  // private _w2960Log(key: string, msg: string): void {
+  //   const now = Date.now()
+  //   const last = this._w2960LastLogTime.get(key) ?? 0
+  //   if (now - last < HardwareAbstraction._W2960_HAL_COOLDOWN_MS) return
+  //   this._w2960LastLogTime.set(key, now)
+  //   if (!this._w2960DirReady) {
+  //     try { fs.mkdirSync(path.dirname(HardwareAbstraction._w2960LogPath), { recursive: true }) } catch { /* ok */ }
+  //     this._w2960DirReady = true
+  //   }
+  //   const line = `[${new Date().toISOString()}] ${msg}\n`
+  //   try { fs.appendFileSync(HardwareAbstraction._w2960LogPath, line, 'utf-8') } catch { /* nunca bloquear */ }
+  // }
 
   // Configuration
   private config: HALConfig
@@ -1772,20 +1773,21 @@ export class HardwareAbstraction {
     // 🔬 WAVE 2960 v3: PRE-ADUANA SNAPSHOT — captura dimmer ANTES de que la Aduana lo modifique.
     // Así sabemos si el dimmer=0 viene del Arbiter o lo impone la Aduana.
     // Solo frame 181 y cada 5 segundos (rate-limit por clave 'pre-aduana:fid').
-    if (this.framesRendered > 180) {
-      try {
-        for (const state of states) {
-          const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
-          this._w2960Log(`pre-aduana:${fid}`,
-            `[HAL TRAP W2960 v3] PRE-ADUANA STATE\n` +
-            `  fixture=${fid}  addr=${state.dmxAddress}\n` +
-            `  frame=${this.framesRendered}  outputEnabled=${outputEnabled}\n` +
-            `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
-            `  _controlSources=${JSON.stringify(state._controlSources ?? null)}`
-          )
-        }
-      } catch { /* nunca bloquear */ }
-    }
+    // DISABLED: Sonda desactivada post-WAVE 2961 diagnosis
+    // if (this.framesRendered > 180) {
+    //   try {
+    //     for (const state of states) {
+    //       const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+    //       this._w2960Log(`pre-aduana:${fid}`,
+    //         `[HAL TRAP W2960 v3] PRE-ADUANA STATE\n` +
+    //         `  fixture=${fid}  addr=${state.dmxAddress}\n` +
+    //         `  frame=${this.framesRendered}  outputEnabled=${outputEnabled}\n` +
+    //         `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+    //         `  _controlSources=${JSON.stringify(state._controlSources ?? null)}`
+    //       )
+    //     }
+    //   } catch { /* nunca bloquear */ }
+    // }
 
     if (!outputEnabled) {
       states = states.map(state => {
@@ -1862,20 +1864,21 @@ export class HardwareAbstraction {
         // cuando un fixture tiene dimmer=0 post-Aduana. Así capturamos si el problema
         // es la Aduana (ARMED) o algo más profundo (LIVE pero con ceros).
         // Rate-limit 5000ms por fixture para no llenar el log.
-        for (const state of states) {
-          if (state.dimmer === 0) {
-            const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
-            const src = state._controlSources
-            this._w2960Log(`aduana:${fid}`,
-              `[HAL TRAP W2960 v3] POST-ADUANA DIMMER=0\n` +
-              `  fixture=${fid}  addr=${state.dmxAddress}\n` +
-              `  frame=${this.framesRendered}  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
-              `  pre-aduana-dimmer=??? (ya aplicada)  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
-              `  _controlSources=${JSON.stringify(src ?? null)}\n` +
-              `  hasSources=${src != null}  hasManual=${src ? Object.values(src).some(v => v === 2) : false}`
-            )
-          }
-        }
+        // DISABLED: Sonda desactivada post-WAVE 2961 diagnosis
+        // for (const state of states) {
+        //   if (state.dimmer === 0) {
+        //     const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+        //     const src = state._controlSources
+        //     this._w2960Log(`aduana:${fid}`,
+        //       `[HAL TRAP W2960 v3] POST-ADUANA DIMMER=0\n` +
+        //       `  fixture=${fid}  addr=${state.dmxAddress}\n` +
+        //       `  frame=${this.framesRendered}  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
+        //       `  pre-aduana-dimmer=??? (ya aplicada)  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+        //       `  _controlSources=${JSON.stringify(src ?? null)}\n` +
+        //       `  hasSources=${src != null}  hasManual=${src ? Object.values(src).some(v => v === 2) : false}`
+        //     )
+        //   }
+        // }
 
         if (outputIsEnabled && !globalBlackout) {
           // ═══════════════════════════════════════════════════════════════
@@ -1900,18 +1903,19 @@ export class HardwareAbstraction {
 
           if (totalActive > 0 && darkCount > 0 && darkCount >= Math.ceil(totalActive * 0.6)) {
             // Mass blackout detectado — loggear una snapshot completa del frame
-            const frameKey = `mass-blackout:${this.framesRendered}`
-            const snapshotLines = activeStates.map(s =>
-              `    fid=${s.fixtureId}  dimmer=${s.dimmer}  r=${s.r ?? 0}  g=${s.g ?? 0}  b=${s.b ?? 0}` +
-              `  pan=${s.pan ?? 0}  tilt=${s.tilt ?? 0}` +
-              `  src_dim=${s._controlSources?.['dimmer'] ?? '?'}  src_r=${s._controlSources?.['red'] ?? '?'}`
-            ).join('\n')
-            this._w2960Log(frameKey,
-              `[HAL TRAP W2960 v2] *** MASS BLACKOUT *** frame=${this.framesRendered}\n` +
-              `  darkCount=${darkCount}/${totalActive} fixtures con dimmer=0  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
-              `  snapshot fixtures:\n${snapshotLines}\n` +
-              `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
-            )
+            // DISABLED: Sonda desactivada post-WAVE 2961 diagnosis
+            // const frameKey = `mass-blackout:${this.framesRendered}`
+            // const snapshotLines = activeStates.map(s =>
+            //   `    fid=${s.fixtureId}  dimmer=${s.dimmer}  r=${s.r ?? 0}  g=${s.g ?? 0}  b=${s.b ?? 0}` +
+            //   `  pan=${s.pan ?? 0}  tilt=${s.tilt ?? 0}` +
+            //   `  src_dim=${s._controlSources?.['dimmer'] ?? '?'}  src_r=${s._controlSources?.['red'] ?? '?'}`
+            // ).join('\n')
+            // this._w2960Log(frameKey,
+            //   `[HAL TRAP W2960 v2] *** MASS BLACKOUT *** frame=${this.framesRendered}\n` +
+            //   `  darkCount=${darkCount}/${totalActive} fixtures con dimmer=0  outputEnabled=${outputIsEnabled}  globalBlackout=${globalBlackout}\n` +
+            //   `  snapshot fixtures:\n${snapshotLines}\n` +
+            //   `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
+            // )
           }
 
           // ── Sonda individual: cualquier fixture oscuro sin blackout (sin filtro de manual)

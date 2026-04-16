@@ -211,17 +211,12 @@ export class ThunderStruck extends BaseEffect {
             white: this.flashIntensity > 0.8 ? this.frontIntensity * 0.5 : undefined,
             blendMode: 'max',
         };
-        // ⚡ MOVERS - ESTÁTICOS, APUNTANDO AL PÚBLICO
-        // No queremos que se muevan, queremos IMPACTO
+        // ⚡ MOVERS - ESTÁTICOS (WAVE 2690: movement PURGED)
+        // Selene no conduce posiciones, solo pinta fotones
         const moverOverride = {
             color: this.config.amberColor, // Ámbar cálido
             dimmer: this.flashIntensity * 0.6, // Un poco menos que los PARs
-            movement: {
-                pan: 0, // Centro
-                tilt: this.config.moverTiltDown, // Hacia abajo (al público)
-                isAbsolute: true, // OVERRIDE TOTAL - no se mueven
-                speed: 0.2, // Lento (no importa, están fijos)
-            },
+            // 🚨 WAVE 2690: movement PURGED — posición la decide VibeMovementManager
             blendMode: 'max',
         };
         const zoneOverrides = {

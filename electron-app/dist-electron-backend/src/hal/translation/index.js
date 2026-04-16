@@ -34,6 +34,12 @@ export {
 // Class & singleton
 HardwareSafetyLayer, getHardwareSafetyLayer, } from './HardwareSafetyLayer';
 // ═══════════════════════════════════════════════════════════════════════════
+// DARK-SPIN FILTER - LA LEY FÍSICA (WAVE 2690)
+// ═══════════════════════════════════════════════════════════════════════════
+export { 
+// Class & singleton
+DarkSpinFilter, getDarkSpinFilter, } from './DarkSpinFilter';
+// ═══════════════════════════════════════════════════════════════════════════
 // CONVENIENCE FUNCTION - ONE-LINER TRANSLATION
 // ═══════════════════════════════════════════════════════════════════════════
 import { getProfile, getProfileByModel } from './FixtureProfiles';

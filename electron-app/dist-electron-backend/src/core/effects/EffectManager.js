@@ -243,25 +243,40 @@ const EFFECT_ZONE_MAP = {
     // 🌫️ VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
     'void_mist': 'valley',
     'fiber_optics': 'valley',
+    'ghost_breath': 'valley', // 👻 WAVE 2680: Registrado — respiración suave
+    'amazon_mist': 'valley', // 🌿 WAVE 2680: Registrado — neblina, zona baja
     'ghost_chase': 'ambient', // 👻 WAVE 2186: valley→ambient — liberado del silo. Aggression=0.25 pide ambient (30-45%), no valley
     // 🌧️ AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
     'digital_rain': 'ambient',
     'acid_sweep': 'ambient',
+    'cumbia_moon': 'ambient', // 🌙 WAVE 2680: Registrado — glow suave de breakdown
     // ⚡ GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
     'ambient_strobe': 'gentle',
     'binary_glitch': 'gentle',
+    'tropical_pulse': 'gentle', // 🌴 WAVE 2680: Registrado — crescendo conga
+    'salsa_fire': 'gentle', // 🔥 WAVE 2680: Registrado — fuego orgánico
+    'clave_rhythm': 'gentle', // 🥁 WAVE 2680: Registrado — patrón 3-2
     // 👯 ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
     'cyber_dualism': 'active',
     'seismic_snap': 'active',
+    'machete_spark': 'active', // ⚔️ WAVE 2680: Registrado — chispa de machete
+    'glitch_guaguanco': 'active', // 🪘 WAVE 2680: Registrado — glitch cubano
+    'corazon_latino': 'active', // ❤️ WAVE 2680: Registrado — heartbeat passion
     // ☢️ INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
     'sky_saw': 'intense',
     'abyssal_rise': 'intense',
+    'tidal_wave': 'intense', // 🌊 WAVE 2680: Registrado — ola de energía
+    'strobe_burst': 'intense', // 🔥 WAVE 2680: Registrado — ráfaga rítmica
     // 💣 PEAK (90-100%): Artillería pesada - territorio de drops
     'gatling_raid': 'peak',
     'core_meltdown': 'peak',
     'industrial_strobe': 'intense', // 🔧 WAVE 2493: peak→intense — El Martillo necesita caer más a menudo
     'neon_blinder': 'peak', // ⚡ WAVE 2182: APEX flash wall
     'surgical_strike': 'intense', // ⚰️ WAVE 2214: DEMOTED peak→intense — deja espacio a IndustrialStrobe
+    'strobe_storm': 'peak', // ⚡ WAVE 2680: Registrado — strobe pesado de drop
+    'solar_flare': 'peak', // ☀️ WAVE 2680: Registrado — takeover total
+    'latina_meltdown': 'peak', // 💥 WAVE 2680: Registrado — la bestia latina
+    'oro_solido': 'peak', // 🥇 WAVE 2680: Registrado — muro de oro
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎸 WAVE 1020: POP-ROCK LEGENDS - Zone Mapping
     // ═══════════════════════════════════════════════════════════════════════════
@@ -391,6 +406,35 @@ export class EffectManager extends EventEmitter {
                 reason: shieldResult.message,
             });
             return null;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⏱️ WAVE 2730: THE GATEKEEPER — Per-effect cooldown check BEFORE trigger
+        // ═══════════════════════════════════════════════════════════════════════
+        // ROOT CAUSE FIX: Antes de WAVE 2730, EffectManager disparaba primero y
+        // registraba cooldown después (línea ~599). Esto permitía que el cache
+        // stale de SeleneTitanConscious alimentara la misma decisión frame a frame,
+        // y como el cooldown se reseteaba en cada disparo, el efecto se disparaba
+        // en ráfaga (12 veces en 60s). Chronos y manual bypasean porque YA tienen
+        // su propia temporalidad (timeline scrubbing / usuario explícito).
+        // ═══════════════════════════════════════════════════════════════════════
+        const bypassCooldownGate = config.source === 'chronos' || config.source === 'manual';
+        if (!bypassCooldownGate) {
+            try {
+                const selector = getContextualEffectSelector();
+                const cooldownCheck = selector.checkAvailability(config.effectType, vibeId);
+                if (!cooldownCheck.available) {
+                    console.log(`[EffectManager ⏱️ GATEKEEPER] ${config.effectType} BLOCKED: ${cooldownCheck.reason}`);
+                    this.emit('effectBlocked', {
+                        effectType: config.effectType,
+                        vibeId,
+                        reason: `COOLDOWN_GATE: ${cooldownCheck.reason}`,
+                    });
+                    return null;
+                }
+            }
+            catch (_) {
+                // Selector no inicializado aún — permitir paso (arranque del sistema)
+            }
         }
         // Crear nueva instancia
         const effect = factory();
@@ -976,6 +1020,38 @@ export class EffectManager extends EventEmitter {
                 return {
                     allowed: false,
                     reason: `🔒 MUTEX: Zone ${incomingZone} occupied by ${zoneConflict.effectType}`,
+                };
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔒 WAVE 2680: Rule 5 - THE DIVINE MUTEX (GLOBAL HARD EFFECT LOCK)
+        // ═══════════════════════════════════════════════════════════════════════
+        // ONE GOD AT A TIME: Si hay un efecto peak o intense activo,
+        // NINGÚN otro efecto peak/intense puede dispararse.
+        // Los Divinos hacen cola. El hardware exige que los clímax sean únicos.
+        //
+        // ROOT CAUSE (pre-2680): strobe_storm no estaba en EFFECT_ZONE_MAP,
+        // así que el Zone Mutex (Rule 4) nunca lo evaluaba. Pero incluso
+        // con el zone map completo, peak tiene múltiples slots (gatling_raid,
+        // core_meltdown, strobe_storm, neon_blinder...) y la Rule 4 solo
+        // bloquea MISMA zona. Esto permite intense+peak simultáneos.
+        //
+        // THE DIVINE MUTEX va más allá: peak e intense son MUTUAMENTE
+        // exclusivos. Si cualquiera está activo, el otro espera.
+        // ═══════════════════════════════════════════════════════════════════════
+        const HARD_ZONES = new Set(['peak', 'intense']);
+        if (incomingZone && HARD_ZONES.has(incomingZone)) {
+            const hardConflict = Array.from(this.activeEffects.values())
+                .find(e => {
+                const activeZone = EFFECT_ZONE_MAP[e.effectType];
+                return activeZone !== undefined && HARD_ZONES.has(activeZone);
+            });
+            if (hardConflict) {
+                const conflictZone = EFFECT_ZONE_MAP[hardConflict.effectType];
+                console.log(`[EffectManager 🔒] DIVINE MUTEX: ${effectType} (${incomingZone}) blocked by ${hardConflict.effectType} (${conflictZone}) — One God at a Time`);
+                return {
+                    allowed: false,
+                    reason: `🔒 DIVINE_MUTEX: ${hardConflict.effectType} (${conflictZone}) is speaking — One God at a Time`,
                 };
             }
         }

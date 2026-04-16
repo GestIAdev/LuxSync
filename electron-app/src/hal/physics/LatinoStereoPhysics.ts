@@ -320,7 +320,7 @@ export class LatinoStereoPhysics {
       if (this.currentFrontParIntensity < 0.05) this.currentFrontParIntensity = 0;
     }
 
-    const frontParIntensity = this.currentFrontParIntensity;
+    let frontParIntensity = this.currentFrontParIntensity;
     
     // WHITE PUNCTURE STATE MACHINE
     let isWhitePuncture = false;
@@ -350,6 +350,12 @@ export class LatinoStereoPhysics {
     this.lastEnergy = currentEnergy;
     this.lastBass = bass;
     
+    // 🔧 WAVE 2775: FINAL CLAMP — Garantiza [0, 1] estricto antes de DMX conversion
+    frontParIntensity = Math.min(1.0, Math.max(0.0, frontParIntensity))
+    const clampedBackPar = Math.min(1.0, Math.max(0.0, this.currentBackParIntensity))
+    const clampedMoverL  = Math.min(1.0, Math.max(0.0, this.currentMoverIntensityL))
+    const clampedMoverR  = Math.min(1.0, Math.max(0.0, this.currentMoverIntensityR))
+
     return {
       palette: resultPalette,
       isSolarFlare,
@@ -357,14 +363,14 @@ export class LatinoStereoPhysics {
       dimmerOverride,
       forceMovement,
       flavor,
-      backParIntensity: this.currentBackParIntensity,
-      moverIntensity: Math.max(this.currentMoverIntensityL, this.currentMoverIntensityR), // Fallback para efectos legacy
+      backParIntensity: clampedBackPar,
+      moverIntensity: Math.max(clampedMoverL, clampedMoverR), // Fallback para efectos legacy
       frontParIntensity,
       isWhitePuncture,
       whitePunctureColor,
       // ?? WAVE 1004.1: STEREO SPLIT OUTPUT
-      moverIntensityL: this.currentMoverIntensityL,  // El Gal�n (Mid/Voz)
-      moverIntensityR: this.currentMoverIntensityR,  // La Dama (Treble/Trompetas)
+      moverIntensityL: clampedMoverL,  // El Gal�n (Mid/Voz)
+      moverIntensityR: clampedMoverR,  // La Dama (Treble/Trompetas)
       debugInfo: { 
         bass, mid, treble, bassDelta, 
         flareIntensity: this.currentFlareIntensity, 

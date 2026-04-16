@@ -61,9 +61,6 @@ interface FiberOpticsConfig {
   
   /** Intensidad de movers en modo fantasma (0-1) */
   moverIntensity: number
-  
-  /** Velocidad de movimiento de movers (grados/segundo) */
-  moverSpeedDegPerSec: number
 }
 
 const DEFAULT_CONFIG: FiberOpticsConfig = {
@@ -71,7 +68,7 @@ const DEFAULT_CONFIG: FiberOpticsConfig = {
   waveSpeedHz: 1.0,          // 🔥 WAVE 997.5: 1.0 Hz = 1 ciclo por segundo (4x más rápido que antes)
   parIntensity: 0.85,        // 🔥 WAVE 997.5: 85% - VISIBLE y BRILLANTE (era 0.45)
   moverIntensity: 0.50,      // 🔥 WAVE 997.5: 50% - Más presencia (era 0.20)
-  moverSpeedDegPerSec: 15,   // 🔥 WAVE 997.5: 15°/s - Movimiento más rápido (era 8°/s)
+  // 🚨 WAVE 2690: moverSpeedDegPerSec PURGED — Selene no conduce posiciones
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,7 +106,6 @@ export class FiberOptics extends BaseEffect {
   
   private config: FiberOpticsConfig = DEFAULT_CONFIG
   private baseColorIndex: number = 0
-  private moverPanOffset: number = 0
   
   // ─────────────────────────────────────────────────────────────────────────
   // Constructor
@@ -131,7 +127,6 @@ export class FiberOptics extends BaseEffect {
     
     // Selección determinista del color base (por timestamp)
     this.baseColorIndex = Date.now() % FIBER_COLORS.length
-    this.moverPanOffset = 0
   }
   
   update(deltaMs: number): void {
@@ -139,9 +134,7 @@ export class FiberOptics extends BaseEffect {
     
     this.elapsedMs += deltaMs
     
-    // Actualizar pan offset de movers (movimiento lento)
-    this.moverPanOffset += (this.config.moverSpeedDegPerSec * deltaMs) / 1000
-    if (this.moverPanOffset > 360) this.moverPanOffset -= 360
+    // 🚨 WAVE 2690: moverPanOffset update PURGED — Selene no conduce posiciones
     
     // ¿Terminó?
     if (this.elapsedMs >= this.config.durationMs) {
@@ -246,12 +239,7 @@ export class FiberOptics extends BaseEffect {
       zones: [...PAR_ZONES, 'all-movers'],
       intensity: this.config.parIntensity * envelope,
       zoneOverrides,
-      // Movement override para movers: pan lento
-      movement: {
-        pan: this.moverPanOffset / 360,  // Normalizado 0-1
-        tilt: 0.3,  // Ligeramente hacia arriba
-        isAbsolute: false,  // Offset mode, suma a física
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
     }
   }
   
@@ -266,7 +254,6 @@ export class FiberOptics extends BaseEffect {
       elapsedMs: this.elapsedMs,
       durationMs: this.config.durationMs,
       baseColorIndex: this.baseColorIndex,
-      moverPanOffset: this.moverPanOffset.toFixed(1),
     }
   }
 }

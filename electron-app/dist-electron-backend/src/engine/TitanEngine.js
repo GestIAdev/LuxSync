@@ -428,8 +428,16 @@ export class TitanEngine extends EventEmitter {
             // 🎭 WAVE 2204: Mood estabilizado directo del MoodArbiter (ventana 2s, lock 1s)
             // BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
             // Inyección directa en raíz del objeto — SeleneColorEngine lo consume sin pasar por wave8
-            mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
-                moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',
+            //
+            // ⛔ WAVE 2791: MOOD COLOR INJECTION DISABLED
+            // El moodDrift (±30° de hueShift) interactúa mal con la rueda de color física
+            // del EL 1140 (BabelFish) y genera parpadeos a Open/Blanco cuando el color resultante
+            // cae fuera de los "favoritos" de la tabla de traducción.
+            // El MoodArbiter sigue corriendo para telemetría y logs — solo desconectamos su
+            // output del pipeline de color hasta que la rueda de color y el layout 2 estén estables.
+            mood: 'neutral', // ⛔ WAVE 2791: Forzado NEUTRAL (moodDrift = 0, sin hueShift)
+            // mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
+            //       moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',  // Re-enable when stable
             // Key ESTABILIZADA (no la cruda que cambia cada frame)
             key: keyOutput.stableKey ?? undefined,
             // Energy SUAVIZADA (no la cruda que parpadea)

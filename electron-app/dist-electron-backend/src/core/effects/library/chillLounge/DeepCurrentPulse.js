@@ -132,30 +132,18 @@ export class DeepCurrentPulse extends BaseEffect {
             color: currentColor,
             blendMode: 'max',
         };
-        // Movers: Lento movimiento horizontal siguiendo la corriente
-        const moverPan = (wavePosition - 0.5) * 40; // ±40° de pan
-        const moverTilt = Math.sin(progress * Math.PI) * 10 + 20; // Ligera ondulación
+        // 🚨 WAVE 2690: Mover movement PURGED — Selene no conduce posiciones
         output.zoneOverrides['movers-left'] = {
             dimmer: baseIntensity * getFlowIntensity(zoneFlowPositions.movers_left),
             color: currentColor,
             blendMode: 'max',
-            movement: {
-                pan: moverPan,
-                tilt: moverTilt,
-                isAbsolute: false,
-                speed: 0.3, // Muy lento
-            }
+            // 🚨 WAVE 2690: movement PURGED
         };
         output.zoneOverrides['movers-right'] = {
             dimmer: baseIntensity * getFlowIntensity(zoneFlowPositions.movers_right),
             color: currentColor,
             blendMode: 'max',
-            movement: {
-                pan: -moverPan, // Opuesto para efecto de flujo
-                tilt: moverTilt,
-                isAbsolute: false,
-                speed: 0.3,
-            }
+            // 🚨 WAVE 2690: movement PURGED
         };
         return output;
     }

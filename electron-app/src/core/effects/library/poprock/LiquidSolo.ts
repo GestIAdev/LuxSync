@@ -192,16 +192,11 @@ export class LiquidSolo extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🎸 MOVERS - Sweep horizontal suave
+    // 🎸 MOVERS - Solo color/dimmer (WAVE 2690: movement PURGED)
     const moverOverride = {
       color: this.currentColor,
       dimmer: this.sweepIntensity * 0.95,
-      movement: {
-        pan: this.currentPan,
-        tilt: -0.05,         // Ligeramente hacia abajo (público/escenario)
-        isAbsolute: false,
-        speed: 0.7,          // Smooth sweep
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
       blendMode: 'max' as const,
     }
     

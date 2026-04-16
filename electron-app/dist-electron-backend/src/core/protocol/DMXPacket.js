@@ -55,7 +55,10 @@ export function applyPacketToUniverse(universe, packet) {
 }
 /**
  * Clamp de valor DMX
+ * ⚡ WAVE 2750: NaN BOMB SHIELD — NaN/Infinity ya no pasan.
  */
 export function clampDMX(value) {
+    if (!Number.isFinite(value))
+        return DMX_MIN_VALUE;
     return Math.max(DMX_MIN_VALUE, Math.min(DMX_MAX_VALUE, Math.round(value)));
 }

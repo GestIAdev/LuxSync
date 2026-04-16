@@ -54,8 +54,6 @@ const DEFAULT_CONFIG = {
     // 🔥 WAVE 770: INTENSIDADES A TOPE - El clave tiene que DESLUMBRAR
     // Patrón: FUERTE-medio-FUERTE / medio-FUERTE
     hitIntensities: [1.0, 0.85, 0.90, 0.85, 1.0],
-    panSnapAmplitude: 35, // ±35° de movimiento
-    tiltSnapAmplitude: 20, // ±20° de movimiento
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // CLAVE RHYTHM CLASS
@@ -75,12 +73,6 @@ export class ClaveRhythm extends BaseEffect {
         this.totalDurationMs = 0;
         this.hitTimingsMs = [];
         this.nextHitTimeMs = 0;
-        // 🥁 WAVE 700.7: Movement state - The Hips are back!
-        this.currentPanOffset = 0; // -1.0 to 1.0
-        this.currentTiltOffset = 0; // -1.0 to 1.0
-        this.targetPanOffset = 0;
-        this.targetTiltOffset = 0;
-        this.movementProgress = 0; // 0 to 1 for smooth interpolation
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.currentColor = this.config.hitColors[0];
     }
@@ -90,12 +82,6 @@ export class ClaveRhythm extends BaseEffect {
         this.hitPhase = 'wait';
         this.phaseTimer = 0;
         this.currentIntensity = 0;
-        // 🥁 WAVE 700.7: Reset movement state
-        this.currentPanOffset = 0;
-        this.currentTiltOffset = 0;
-        this.targetPanOffset = 0;
-        this.targetTiltOffset = 0;
-        this.movementProgress = 1; // Start stable
         // Calcular timings basados en BPM
         this.calculateHitTimings();
         this.nextHitTimeMs = this.hitTimingsMs[0];
@@ -141,26 +127,14 @@ export class ClaveRhythm extends BaseEffect {
                 break;
         }
         // 🥁 WAVE 700.7: Update movement interpolation
-        this.updateMovement(deltaMs);
+        // 🚨 WAVE 2690: PURGED — Selene no conduce posiciones, solo pinta fotones
         // Check si terminamos
         if (this.elapsedMs >= this.totalDurationMs) {
             this.phase = 'finished';
             console.log(`[ClaveRhythm 🥁] Completed (${this.config.clavePattern.length} hits, ${this.elapsedMs}ms)`);
         }
     }
-    // 🥁 WAVE 700.7: Smooth movement interpolation
-    updateMovement(deltaMs) {
-        if (this.movementProgress >= 1)
-            return;
-        // Velocidad de snap: llega al target en ~80ms (latina snappy)
-        const snapSpeed = deltaMs / 80;
-        this.movementProgress = Math.min(1, this.movementProgress + snapSpeed);
-        // Ease-out cúbico para el snap (rápido al inicio, suave al final)
-        const eased = 1 - Math.pow(1 - this.movementProgress, 3);
-        // Interpolar hacia el target
-        this.currentPanOffset = this.currentPanOffset + (this.targetPanOffset - this.currentPanOffset) * eased;
-        this.currentTiltOffset = this.currentTiltOffset + (this.targetTiltOffset - this.currentTiltOffset) * eased;
-    }
+    // 🥁 WAVE 700.7: updateMovement() — PURGED by WAVE 2690 (Selene = photons only)
     startHit() {
         // 🌪️ WAVE 805: Empezar con pre-ducking para crear silencio
         this.hitPhase = 'preDucking';
@@ -168,24 +142,8 @@ export class ClaveRhythm extends BaseEffect {
         // Color del hit actual
         const colorIndex = this.currentHit % this.config.hitColors.length;
         this.currentColor = this.config.hitColors[colorIndex];
-        // 🥁 WAVE 700.7: Calculate movement snap for this hit
-        // El patrón 3-2 genera movimientos alternados como caderas latinas
-        // Hits 0,1,2 (grupo 3): Alternan izquierda-derecha-centro
-        // Hits 3,4 (grupo 2): Alternan derecha-izquierda
-        const panAmplitude = this.config.panSnapAmplitude / 180; // Convert degrees to -1..1 range
-        const tiltAmplitude = this.config.tiltSnapAmplitude / 90;
-        // Patrón de movimiento según hit (simulando cadera latina)
-        const movementPatterns = [
-            { pan: -panAmplitude, tilt: tiltAmplitude * 0.5 }, // Hit 0: Izquierda-arriba
-            { pan: panAmplitude, tilt: -tiltAmplitude * 0.3 }, // Hit 1: Derecha-abajo
-            { pan: 0, tilt: tiltAmplitude * 0.8 }, // Hit 2: Centro-arriba (climax grupo 3)
-            { pan: panAmplitude * 0.7, tilt: 0 }, // Hit 3: Derecha-centro
-            { pan: -panAmplitude * 0.5, tilt: tiltAmplitude }, // Hit 4: Izquierda-arriba (climax final)
-        ];
-        const pattern = movementPatterns[this.currentHit % movementPatterns.length];
-        this.targetPanOffset = pattern.pan;
-        this.targetTiltOffset = pattern.tilt;
-        this.movementProgress = 0; // Start interpolation
+        // 🥁 WAVE 700.7: Movement snap PURGED by WAVE 2690
+        // El movimiento ahora es responsabilidad exclusiva del VibeMovementManager (Layer 0)
     }
     updateAttack() {
         const progress = Math.min(1, this.phaseTimer / this.config.hitAttackMs);
@@ -239,12 +197,7 @@ export class ClaveRhythm extends BaseEffect {
                     'all-movers': {
                         color: { h: 0, s: 0, l: 0 },
                         dimmer: 0, // Movers apagados durante silencio
-                        movement: {
-                            pan: this.targetPanOffset, // Pre-posicionar para el snap
-                            tilt: this.targetTiltOffset,
-                            isAbsolute: true,
-                            speed: 1.0,
-                        },
+                        // 🚨 WAVE 2690: movement PURGED — Selene no conduce posiciones
                     }
                 },
             };
@@ -269,12 +222,7 @@ export class ClaveRhythm extends BaseEffect {
                 dimmer: this.currentIntensity,
                 ...goldenFlash, // 🥁 WAVE 755: Flash dorado en cada golpe (white/amber SÍ permitido)
                 blendMode: 'max', // 🎚️ WAVE 780: HTP - El ritmo suma, nunca resta
-                movement: {
-                    pan: this.currentPanOffset,
-                    tilt: this.currentTiltOffset,
-                    isAbsolute: true, // 🥁 WAVE 750: ABSOLUTO - snap SECO
-                    speed: 1.0, // Velocidad MÁXIMA
-                },
+                // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
             }
         };
         return {
@@ -288,13 +236,7 @@ export class ClaveRhythm extends BaseEffect {
             // 🔥 WAVE 740: Legacy fallback ELIMINADO
             dimmerOverride: undefined,
             colorOverride: undefined,
-            // 🥁 WAVE 755: Movement override - ABSOLUTO para snaps secos
-            movement: {
-                pan: this.currentPanOffset,
-                tilt: this.currentTiltOffset,
-                isAbsolute: true, // 🥁 WAVE 750: ABSOLUTO - el mover VA A ESTA POSICIÓN, no suavemente
-                speed: 1.0, // Velocidad máxima
-            },
+            // 🚨 WAVE 2690: movement PURGED — Selene no conduce posiciones
             // 🎨 WAVE 740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD
             zoneOverrides,
         };

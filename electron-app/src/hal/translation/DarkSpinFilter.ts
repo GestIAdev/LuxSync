@@ -152,7 +152,7 @@ export class DarkSpinFilter {
       // CRITICAL: Solo se activa UNA VEZ — guardamos pendingColorDmx para que
       // los frames subsiguientes (con el mismo currentColorDmx) no re-disparen
       // el tránsito. El flag inTransit se evalúa en CHECK 1 arriba.
-      const minChangeTime = profile.colorEngine?.colorWheel?.minChangeTimeMs ?? 500
+      const minChangeTime = profile.colorEngine.colorWheel?.minChangeTimeMs ?? 500
       const transitDuration = Math.round(minChangeTime * this.safetyMargin)
 
       state.inTransit = true

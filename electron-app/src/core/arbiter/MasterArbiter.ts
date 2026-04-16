@@ -141,6 +141,12 @@ export class MasterArbiter extends EventEmitter {
   // 🥶 WAVE 1165: GHOST PROTOCOL - Last known position cache
   // Used to freeze fixtures in place during blackout/silence instead of whipping to center
   private lastKnownPositions: Map<string, { pan: number; tilt: number }> = new Map()
+
+  // ⛺ WAVE 2790: COLOR BUNKER - Last known color cache per fixture
+  // When a fixture has ANY Layer 2 manual override active, the oceanic vibe
+  // color modulation (tide zone changes) must NOT alter its color.
+  // We freeze the last stable RGB here and serve it instead of the new palette.
+  private lastKnownColors: Map<string, { r: number; g: number; b: number }> = new Map()
   
   // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
   // When operator releases manual control, we store the position here so AI adopts it as "home"
@@ -205,6 +211,17 @@ export class MasterArbiter extends EventEmitter {
   // State tracking
   private frameNumber: number = 0
   private lastOutputTimestamp: number = 0
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📡 WAVE 2770: THE BLACK BOX — Heavy Telemetry
+  // Tracks Layer 2 override presence per frame to detect spontaneous drops.
+  // Also tracks last modification stacktrace per fixture for forensics.
+  // ═══════════════════════════════════════════════════════════════════════
+  private _prevFrameOverrideIds: Set<string> = new Set()
+  private _layer2LastModStack: Map<string, string> = new Map()
+  private _blackBoxThrottleMs: number = 0
+  private _layerLossThrottleMs: number = 0
+  private _layerLossPending: string[] = []
 
   // 🔎 WAVE 1219.4: Trace throttles (avoid console storms)
   private _traceLastArbiterLogAtMs = 0
@@ -433,11 +450,25 @@ export class MasterArbiter extends EventEmitter {
   
   /**
    * Set manual override for a fixture
-   * WAVE 440: Now MERGES with existing override instead of replacing.
+   * 🔧 WAVE 2711: SEGMENTED MERGE — Category-aware channel management.
+   *
+   * BEFORE (WAVE 440): Blind union merge accumulated ALL channels across
+   * successive UI calls. PositionSection sending {pan, tilt} after ColorSection
+   * sent {red, green, blue} produced overrideChannels=['red','green','blue','pan','tilt'].
+   * But controls only had the LATEST values → getManualChannelValue returned
+   * red=0, green=0, blue=0 (defaults) → color KILLED.
+   *
+   * NOW: Each UI section's channels belong to a CATEGORY (color, position, intensity,
+   * beam, control). When a new override arrives:
+   *   1. Identify categories of the NEW channels
+   *   2. PURGE existing channels+controls of those SAME categories
+   *   3. MERGE channels+controls of DIFFERENT categories (preserve them)
+   * Result: PositionSection replaces position, leaves color untouched.
    */
   setManualOverride(override: Layer2_Manual): void {
+    // 🔧 WAVE 2772: Throttled entry log (was unconditional RADAR 1, saturated buffer in Chillout)
     if (this.config.debug) {
-      console.log(`[RADAR 1 - ENTRADA] UI mandó control a ${override.fixtureId}:`, override.controls);
+      console.log(`[MasterArbiter] UI mandó control a ${override.fixtureId}:`, override.controls)
     }
     
     // Check limit
@@ -454,57 +485,71 @@ export class MasterArbiter extends EventEmitter {
       return
     }
     
-    // 🔥 WAVE 1219: Debug log for successful override (only with controls for movement)
-    // Disabled: WAVE 2052 - Too spammy (60 FPS, every fixture with pan/tilt override)
-    // if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
-    //   console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
-    // }
+    // 🔧 WAVE 2772: UNDEFINED SANITIZER — Purge undefined control values.
+    // If BabelFish translation fails or IPC sends partial data, a control
+    // like { color_wheel: undefined } would shadow the lower layer's real
+    // value when getManualChannelValue reads `controls.color_wheel ?? 0`.
+    // Fix: strip undefined entries so they never enter the override Map.
+    const sanitizedControls: Record<string, any> = {}
+    for (const [key, val] of Object.entries(override.controls as Record<string, any>)) {
+      if (val !== undefined) {
+        sanitizedControls[key] = val
+      }
+    }
+    override = { ...override, controls: sanitizedControls as any }
     
-    // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
+    // Also strip overrideChannels that have no corresponding control value
+    override = {
+      ...override,
+      overrideChannels: override.overrideChannels.filter(
+        ch => (sanitizedControls as any)[ch] !== undefined || ch === 'dimmer'
+      ) as any,
+    }
+    
+    // 🔧 WAVE 2711: SEGMENTED MERGE — Replace by category, preserve by category
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
     
     if (existingOverride) {
-      // 🔧 WAVE 2711: SEGMENTED MERGE — anti color-kidnap
-      // Solo mergeamos canales de la MISMA CATEGORÍA que llegan en el nuevo override.
-      // Canales de categorías NO tocadas por el nuevo override se conservan intactos.
+      // Determine which categories the NEW override touches
       const incomingCategories = getChannelCategories(override.overrideChannels)
       
-      // DEEP merge para phantomChannels
+      // PRESERVE: existing channels whose category is NOT in the incoming set
+      const preservedChannels = existingOverride.overrideChannels.filter(
+        ch => !incomingCategories.has(getChannelCategory(ch))
+      )
+      
+      // Build preserved controls — only keep control values for preserved channels
+      const preservedControls: Record<string, any> = {}
+      for (const ch of preservedChannels) {
+        const value = (existingOverride.controls as any)[ch]
+        if (value !== undefined) {
+          preservedControls[ch] = value
+        }
+      }
+      
+      // Phantom channels: deep merge — preserve phantoms from non-incoming categories,
+      // overlay with new phantoms
       const existingPhantom = (existingOverride.controls as any)?.phantomChannels ?? {}
       const newPhantom = (override.controls as any)?.phantomChannels ?? {}
       const mergedPhantom = { ...existingPhantom, ...newPhantom }
       
-      // Empezar con los controles existentes
-      const mergedControls: Record<string, any> = { ...existingOverride.controls }
-      
-      // Solo sobrescribir canales cuya CATEGORÍA está en el nuevo override
-      for (const [key, value] of Object.entries(override.controls as Record<string, any>)) {
-        if (key === 'phantomChannels') continue
-        const category = getChannelCategory(key as ChannelType)
-        if (incomingCategories.has(category)) {
-          mergedControls[key] = value
-        }
+      // FINAL CONTROLS: preserved (old categories) + incoming (new categories)
+      const mergedControls: Record<string, any> = {
+        ...preservedControls,
+        ...override.controls,
       }
       
       if (Object.keys(mergedPhantom).length > 0) {
         mergedControls.phantomChannels = mergedPhantom
       }
       
-      // 🔬 WAVE 2910 WIRETAP: Detectar pérdida de posición durante merge
-      const hadPosition = existingOverride.overrideChannels.includes('pan' as ChannelType) ||
-                          existingOverride.overrideChannels.includes('tilt' as ChannelType)
-      const incomingHasPosition = override.overrideChannels.includes('pan' as ChannelType) ||
-                                   override.overrideChannels.includes('tilt' as ChannelType)
-      // Un merge solo elimina posición si la categoría entrante es posición pero los canales
-      // no están en mergedControls — esto no debería pasar, pero lo vigilamos
-
-      // Merge channels: union of both sets (no duplicates)
+      // FINAL CHANNELS: preserved + incoming (no duplicates, category-clean)
       const mergedChannels = [...new Set([
-        ...existingOverride.overrideChannels,
+        ...preservedChannels,
         ...override.overrideChannels,
       ])]
       
-      // Store merged override
+      // Store category-segmented override
       this.layer2_manualOverrides.set(override.fixtureId, {
         ...existingOverride,
         ...override,
@@ -512,6 +557,10 @@ export class MasterArbiter extends EventEmitter {
         overrideChannels: mergedChannels as ChannelType[],
         timestamp: performance.now()
       })
+      // 📡 WAVE 2770+2772: Record modification source for forensics.
+      // MERGE path: skip costly Error().stack capture (fader drags = 100s per sec).
+      // The NEW stack already recorded when the override was first created.
+      this._layer2LastModStack.set(override.fixtureId, `MERGE @ frame ${this.frameNumber} | src=${override.source}`)
       
       // 🔬 WAVE 2910 WIRETAP: Verificar si el merge eliminó la posición del resultado final
       const resultHasPosition = mergedChannels.includes('pan' as ChannelType) ||
@@ -529,9 +578,11 @@ export class MasterArbiter extends EventEmitter {
       }
 
       if (this.config.debug) {
-        console.log(`[MasterArbiter] 🔀 Merged override: ${override.fixtureId}`, {
-          newChannels: override.overrideChannels,
-          totalChannels: mergedChannels
+        console.log(`[MasterArbiter] 🔧 WAVE 2711 Segmented merge: ${override.fixtureId}`, {
+          incomingCategories: [...incomingCategories],
+          incomingChannels: override.overrideChannels,
+          preservedChannels,
+          finalChannels: mergedChannels
         })
       }
     } else {
@@ -540,6 +591,8 @@ export class MasterArbiter extends EventEmitter {
         ...override,
         timestamp: performance.now()
       })
+      // 📡 WAVE 2770: Record creation stack for forensics (only on NEW, not merge)
+      this._layer2LastModStack.set(override.fixtureId, `NEW\n${new Error().stack ?? 'no stack'}`)
       
       if (this.config.debug) {
         console.log(`[MasterArbiter] ➕ New override: ${override.fixtureId}`, override.overrideChannels)
@@ -568,7 +621,10 @@ export class MasterArbiter extends EventEmitter {
       if (titanValues.dimmer === 0) {
         finalOverride.controls = { ...finalOverride.controls, dimmer: 255 } as any
         finalOverride.overrideChannels = [...finalOverride.overrideChannels, 'dimmer' as ChannelType]
-        console.log(`[MasterArbiter] 💡 DIMMER AUTO-TAKE: ${override.fixtureId} — Layer 0 dimmer=0, auto-injecting dimmer=255`)
+        // 🔧 WAVE 2775: Gated behind debug to prevent fader-drag spam
+        if (this.config.debug) {
+          console.log(`[MasterArbiter] 💡 DIMMER AUTO-TAKE: ${override.fixtureId} — Layer 0 dimmer=0, auto-injecting dimmer=255`)
+        }
       }
     }
 
@@ -754,12 +810,17 @@ export class MasterArbiter extends EventEmitter {
         startTime: performance.now(),
         durationMs: this.POSITION_RELEASE_MS,
       })
-      console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`)
+      // 🔧 WAVE 2775: Gated behind debug — these fire on every release
+      if (this.config.debug) {
+        console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`)
+      }
       
       // OBLIGATORY: Annihilate active pattern for this fixture
       if (this.activePatterns.has(fixtureId)) {
         this.activePatterns.delete(fixtureId)
-        console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`)
+        if (this.config.debug) {
+          console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`)
+        }
       }
       // Purge ghost origin
       if (this.fixtureOrigins.has(fixtureId)) {
@@ -804,6 +865,9 @@ export class MasterArbiter extends EventEmitter {
       this.layer2_manualOverrides.delete(fixtureId)
     }
     
+    // 📡 WAVE 2770 + WAVE 2775: Record release source (lightweight, no stack capture)
+    this._layer2LastModStack.set(fixtureId, `EXPLICIT RELEASE @ frame ${this.frameNumber}`)
+
     // Emit event
     this.emit('manualRelease', fixtureId, channelsToRelease)
     
@@ -1621,6 +1685,27 @@ export class MasterArbiter extends EventEmitter {
     //     Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...')
     // }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📡 WAVE 2770 + WAVE 2775: LAYER_LOSS DETECTOR — THE BLACK BOX
+    // Compare current override IDs with previous frame. If a fixture had
+    // an override last frame but doesn't now, AND no explicit release was
+    // logged, something silently killed it.
+    // 🔧 WAVE 2775: Throttled to max 1 log per 2s. Collects lost IDs and
+    // flushes as a single-line summary to prevent IPC/console saturation.
+    // ═══════════════════════════════════════════════════════════════════════
+    const currentOverrideIds = new Set(this.layer2_manualOverrides.keys())
+    for (const prevId of this._prevFrameOverrideIds) {
+      if (!currentOverrideIds.has(prevId)) {
+        this._layerLossPending.push(prevId)
+      }
+    }
+    if (this._layerLossPending.length > 0 && now - this._layerLossThrottleMs > 2000) {
+      console.warn(`[📡 LAYER_LOSS] 🚨 ${this._layerLossPending.length} fixture(s) lost Layer 2 override: [${this._layerLossPending.join(', ')}] | frame ${this.frameNumber}`)
+      this._layerLossPending = []
+      this._layerLossThrottleMs = now
+    }
+    this._prevFrameOverrideIds = currentOverrideIds
+
     // Arbitrate each fixture
     const fixtureTargets: FixtureLightingTarget[] = []
     
@@ -1628,7 +1713,39 @@ export class MasterArbiter extends EventEmitter {
       const target = this.arbitrateFixture(fixtureId, now)
       fixtureTargets.push(target)
     }
-    
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📡 WAVE 2770 + WAVE 2775: GHOST_WHITE DETECTOR
+    // If a fixture outputs near-white (R≥250, G≥250, B≥250) but the active
+    // palette does NOT contain white (s > 0.05 for all 4 palette slots),
+    // log the phantom white and its control source.
+    // Throttled: max once per 2 seconds to avoid console storms.
+    // 🔧 WAVE 2775: Condensed to single-line log.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (now - this._blackBoxThrottleMs > 2000) {
+      const palette = this.layer0_titan?.intent?.palette
+      const paletteHasWhite = palette
+        ? [palette.primary, palette.secondary, palette.accent, palette.ambient].some(
+            c => c && c.s < 0.05 && c.l > 0.9
+          )
+        : false
+
+      for (const target of fixtureTargets) {
+        const { r, g, b } = target.color
+        if (r >= 250 && g >= 250 && b >= 250 && !paletteHasWhite) {
+          const src = target._controlSources?.red ?? target._controlSources?.green ?? -1
+          const srcLabel = src === ControlLayer.MANUAL ? 'MANUAL'
+            : src === ControlLayer.EFFECTS ? 'EFFECTS'
+            : src === ControlLayer.TITAN_AI ? 'TITAN_AI'
+            : src === ControlLayer.CONSCIOUSNESS ? 'CONSCIOUSNESS'
+            : `UNKNOWN(${src})`
+          console.warn(`[📡 GHOST_WHITE] 👻 ${target.fixtureId} RGB(${r},${g},${b}) src=${srcLabel} vibe=${this.layer0_titan?.vibeId ?? 'NONE'} frame=${this.frameNumber}`)
+          this._blackBoxThrottleMs = now
+          break  // One ghost per throttle window is enough
+        }
+      }
+    }
+
     // Build global effects state
     const globalEffects = this.buildGlobalEffectsState()
     
@@ -1871,6 +1988,14 @@ export class MasterArbiter extends EventEmitter {
     // Apply Grand Master to dimmer (final step before clamping)
     const dimmerfinal = clampDMX(dimmer * this.grandMaster)
     
+    // ⚡ WAVE 2750: NaN BOMB UPSTREAM GUARD — pan/tilt fallback to last known position
+    // Si la aritmética upstream (IK, interpolation, effectIntent) generó NaN,
+    // preservamos la última posición válida en vez de snap a 0 (HOME).
+    // clampDMX ya filtra NaN→0, pero para pan/tilt 0=HOME position = destructivo.
+    const lastPos = this.lastKnownPositions.get(fixtureId)
+    const safePan = Number.isFinite(pan) ? pan : (lastPos?.pan ?? 128)
+    const safeTilt = Number.isFinite(tilt) ? tilt : (lastPos?.tilt ?? 128)
+    
     const target = {
       fixtureId,
       dimmer: dimmerfinal,
@@ -1879,8 +2004,8 @@ export class MasterArbiter extends EventEmitter {
         g: clampDMX(green),
         b: clampDMX(blue),
       },
-      pan: clampDMX(pan),
-      tilt: clampDMX(tilt),
+      pan: clampDMX(safePan),
+      tilt: clampDMX(safeTilt),
       zoom: clampDMX(zoom),
       focus: clampDMX(focus),
       speed: clampDMX(speed),  // 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow)
@@ -2418,11 +2543,28 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // Convert selected HSL to RGB
-    if (selectedColor) {
+    // ⛺ WAVE 2790: COLOR BUNKER — Oceanic Mute Guard
+    // If this fixture has ANY Layer 2 manual override active, the tide zone transition
+    // must NOT alter its color. The operator has taken control — the ocean goes silent
+    // for this fixture. We serve the last known stable color instead of the new palette.
+    const hasAnyManualOverride = this.layer2_manualOverrides.has(fixtureId)
+    if (hasAnyManualOverride) {
+      // Fixture is a bunker: serve last known color (frozen before manual takeover)
+      const frozen = this.lastKnownColors.get(fixtureId)
+      if (frozen) {
+        defaults.red = frozen.r
+        defaults.green = frozen.g
+        defaults.blue = frozen.b
+      }
+      // If no frozen color yet (first frame of override), defaults stay 0 — harmless,
+      // mergeChannelForFixture will apply the manual color channels on top.
+    } else if (selectedColor) {
       const rgb = this.hslToRgb(selectedColor)
       defaults.red = rgb.r
       defaults.green = rgb.g
       defaults.blue = rgb.b
+      // Update frozen color cache while fixture is under vibe control
+      this.lastKnownColors.set(fixtureId, { r: rgb.r, g: rgb.g, b: rgb.b })
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2876,6 +3018,10 @@ export class MasterArbiter extends EventEmitter {
   reset(): void {
     this.layer0_titan = null
     this.layer1_consciousness = null
+    // 📡 WAVE 2770 + WAVE 2775: Log nuclear clear (single-line, no stack — reset is intentional)
+    if (this.layer2_manualOverrides.size > 0) {
+      console.warn(`[📡 LAYER_LOSS] 🔥 reset() clearing ${this.layer2_manualOverrides.size} Layer 2 overrides`)
+    }
     this.layer2_manualOverrides.clear()
     this.layer3_effects = []
     this.layer4_blackout = false

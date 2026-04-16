@@ -159,7 +159,24 @@ export class LiquidEnvelope {
         const fadeFactor = s.intensity >= fadeZone
             ? 1.0
             : Math.pow(s.intensity / fadeZone, 2);
-        return Math.min(c.maxIntensity, s.intensity * fadeFactor);
+        const faded = Math.min(c.maxIntensity, s.intensity * fadeFactor);
+        // ═══════════════════════════════════════════════════════════════════
+        // 10. GHOST CAP FLOOR — Dimmer floor garantizado
+        //    Herencia: WAVE 2470 (ghostCap = "nunca oscuro" para chill)
+        //
+        //    El ghostCap del perfil (ej: 0.22 para chill moverVocal) es el
+        //    FLOOR INTENCIONAL del envelope. El SMOOTH FADE cuadrático puede
+        //    llevarlo a 0 incluso con ghostCap alto (porque el ghost path solo
+        //    se activa con signal>0.15 && !isBreakdown). En breakdowns o
+        //    silencios vocales, el faded llega a ~0 → mover parpadea a oscuro.
+        //
+        //    Fix: si ghostCap > 0, garantizar que el output nunca baje de
+        //    ghostCap * max(morphFactor, 0.1). El mínimo 0.1 garantiza que incluso
+        //    en el abismo (morphFactor≈0) el floor sea ghostCap*0.1 — bioluminiscencia
+        //    mínima. Sin señal = siempre hay algo de luz residual.
+        // ═══════════════════════════════════════════════════════════════════
+        const dimmerFloor = c.ghostCap > 0 ? c.ghostCap * Math.max(morphFactor, 0.1) : 0;
+        return Math.max(dimmerFloor, faded);
     }
     /** Resetea todo el estado interno a valores iniciales */
     reset() {

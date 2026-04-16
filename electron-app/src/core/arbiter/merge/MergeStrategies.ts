@@ -216,6 +216,8 @@ export function isLTPChannel(channelType: ChannelType): boolean {
 /**
  * Clamp a value to DMX range (0-255)
  * ⚡ WAVE 2750: NaN BOMB SHIELD — NaN/Infinity ya no pasan.
+ * Math.round(NaN)=NaN, Math.min(255,NaN)=NaN, Math.max(0,NaN)=NaN → Uint8Array coerce a 0x00.
+ * Ahora se detecta y se retorna 0 explícitamente (blackout seguro, no zero-snap silencioso).
  */
 export function clampDMX(value: number): number {
   if (!Number.isFinite(value)) return 0

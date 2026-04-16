@@ -127,6 +127,16 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'strobe_storm': 20000,     // WAVE 2186: 40s→20s — cerrojo 2 abierto
   'oro_solido': 28000,       // 🥇 WAVE 2189: 28s base → CALM:84s, BALANCED:42s, PUNK:19s
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚔️ WAVE 2730: LOS HUÉRFANOS ADOPTADOS — Cooldowns explícitos para efectos
+  // que no los tenían. Sin cooldown explícito caen al fallback de 800ms,
+  // lo que permite ráfagas de 12+ disparos en 60 segundos.
+  // ═══════════════════════════════════════════════════════════════════════════
+  'glitch_guaguanco': 15000,  // 15s base → BALANCED:22s — efecto impacto, NO es relleno
+  'machete_spark': 12000,     // 12s base → BALANCED:18s — chispa de impacto, rotación sana
+  'amazon_mist': 20000,       // 20s base → BALANCED:30s — atmosférico denso, necesita respiro
+  'corazon_latino': 30000,    // 30s base → BALANCED:45s — el alma del arquitecto, momento sagrado
+  
   // === EFECTOS AMBIENTE (Relleno sutil) ===
   'ghost_breath': 35000,     // 35s base - fantasma raro
   'tidal_wave': 20000,       // 20s base - ola ocasional

@@ -70,6 +70,18 @@ export {
 } from './HardwareSafetyLayer'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DARK-SPIN FILTER - LA LEY FÍSICA (WAVE 2690)
+// ═══════════════════════════════════════════════════════════════════════════
+export {
+  // Types
+  type DarkSpinResult,
+  
+  // Class & singleton
+  DarkSpinFilter,
+  getDarkSpinFilter,
+} from './DarkSpinFilter'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONVENIENCE FUNCTION - ONE-LINER TRANSLATION
 // ═══════════════════════════════════════════════════════════════════════════
 

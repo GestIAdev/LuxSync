@@ -1,32 +1,40 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🛡️ WAVE 1000: HARDWARE SAFETY LAYER - EL BÚNKER
+ * 🛡️ WAVE 1000 → WAVE 2711: HARDWARE SAFETY LAYER — PASSIVE DEBOUNCE
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Protege la maquinaria de las demandas imposibles de la IA.
+ * Protege la rueda mecánica de color de cambios más rápidos que su motor.
  *
- * PROBLEMA QUE RESUELVE:
- * Selene sueña un efecto estroboscópico multicolor a 20Hz.
- * El Beam 2R tiene rueda mecánica que tarda 500ms en cambiar.
- * Si intentamos seguir a Selene, el motor se quema.
+ * 🔧 WAVE 2711: DESMANTELAMIENTO DEL BÚNKER
  *
- * SOLUCIÓN:
- * 1. DEBOUNCE: Ignorar cambios más rápidos que el límite del hardware
- * 2. LATCH: En efectos caóticos, elegir un color y mantenerlo
- * 3. SHUTTER DELEGATION: Si no puedes cambiar de color, strobeaen blanco
+ * ANTES (WAVE 1000):
+ *   - CHECK 1: Chaos Latch → congelaba el color en lastColorDmx durante 2s
+ *   - CHECK 2: Chaos detection → >3 cambios/sec disparaba latch
+ *   - CHECK 3: Debounce → bloqueaba cambios más rápidos que minChangeTimeMs
+ *   - Strobe delegation → inyectaba strobe shutter en el fixture
  *
- * FILOSOFÍA:
- * "Es mejor un show imperfecto que un fixture roto"
+ * PROBLEMA:
+ *   - Chaos latch congelaba en DMX 0 = White/Open en Beam 2R
+ *   - Strobe delegation hacía flash blanco involuntario
+ *   - DarkSpinFilter (WAVE 2690) ya maneja blackout durante tránsito de rueda
+ *   - HarmonicQuantizer (WAVE 2672) ya gate colores al BPM
+ *   → El búnker era REDUNDANTE y DAÑINO
+ *
+ * AHORA:
+ *   - SOLO debounce pasivo (minChangeTimeMs del perfil)
+ *   - SIN chaos latch, SIN strobe delegation
+ *   - delegateToStrobe = SIEMPRE false
+ *   - suggestedShutter = SIEMPRE 255 (shutter open)
  *
  * @module hal/translation/HardwareSafetyLayer
- * @version WAVE 1000
+ * @version WAVE 2711
  */
 import { isMechanicalFixture, } from './FixtureProfiles';
 const DEFAULT_CONFIG = {
     debug: false,
     safetyMargin: 1.2, // 20% margen de seguridad extra
-    chaosThreshold: 3, // 3 cambios/segundo = caos
-    latchDurationMs: 2000, // 2 segundos de latch
+    chaosThreshold: 3, // WAVE 2711: legacy, unused
+    latchDurationMs: 2000, // WAVE 2711: legacy, unused
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // HARDWARE SAFETY LAYER CLASS
@@ -37,24 +45,25 @@ export class HardwareSafetyLayer {
         this.fixtureStates = new Map();
         // Métricas globales
         this.totalBlockedChanges = 0;
-        this.totalLatchActivations = 0;
-        this.totalStrobeDelegations = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
-        // WAVE 2098: Boot silence
     }
     /**
-     * 🎯 MÉTODO PRINCIPAL: Filtra un cambio de color a través del búnker de seguridad
+     * 🎯 MÉTODO PRINCIPAL: Filtra un cambio de color — solo debounce pasivo
+     *
+     * WAVE 2711: Chaos latch y strobe delegation ELIMINADOS.
+     * DarkSpinFilter (WAVE 2690) y HarmonicQuantizer (WAVE 2672) manejan
+     * la protección inteligente. Este layer solo protege el motor físico.
      *
      * @param fixtureId - ID único del fixture
      * @param requestedColorDmx - Color DMX que quiere Selene
      * @param profile - Perfil del fixture
-     * @param currentDimmer - Dimmer actual (para detectar strobe patterns)
+     * @param currentDimmer - Dimmer actual (preserved for API compat)
      * @returns Resultado filtrado
      */
     filter(fixtureId, requestedColorDmx, profile, currentDimmer = 255) {
         const now = Date.now();
         // ═══════════════════════════════════════════════════════════════════
-        // CASO 1: Sin perfil o es fixture digital → Pass-through (sin restricciones)
+        // CASO 1: Sin perfil o es fixture digital → Pass-through
         // ═══════════════════════════════════════════════════════════════════
         if (!profile || !isMechanicalFixture(profile)) {
             return {
@@ -66,105 +75,43 @@ export class HardwareSafetyLayer {
             };
         }
         // ═══════════════════════════════════════════════════════════════════
-        // CASO 2: Fixture mecánico → Aplicar protección
+        // CASO 2: Fixture mecánico → Debounce pasivo solamente
         // ═══════════════════════════════════════════════════════════════════
-        // Obtener o crear estado del fixture
         let state = this.fixtureStates.get(fixtureId);
         if (!state) {
             state = this.createInitialState(fixtureId, requestedColorDmx);
             this.fixtureStates.set(fixtureId, state);
         }
-        // Actualizar historial de cambios
-        this.updateChangeHistory(state, requestedColorDmx, now);
         // ═══════════════════════════════════════════════════════════════════
-        // CHECK 1: ¿Estamos en modo LATCH?
-        // ═══════════════════════════════════════════════════════════════════
-        if (state.isLatched) {
-            const latchElapsed = now - state.latchStartTime;
-            if (latchElapsed < this.config.latchDurationMs) {
-                // Aún en latch → mantener color bloqueado
-                state.blockedChanges++;
-                this.totalBlockedChanges++;
-                if (this.config.debug && state.blockedChanges % 10 === 0) {
-                    console.log(`[SafetyLayer] 🔒 LATCH: ${fixtureId} blocked (${Math.round(latchElapsed)}ms/${this.config.latchDurationMs}ms)`);
-                }
-                return {
-                    finalColorDmx: state.latchedColorDmx,
-                    wasBlocked: true,
-                    isInLatch: true,
-                    blockReason: `LATCH active (${Math.round(latchElapsed)}ms remaining)`,
-                    suggestedShutter: this.calculateStrobeShutter(state, currentDimmer),
-                    delegateToStrobe: this.shouldDelegateToStrobe(state),
-                };
-            }
-            else {
-                // Latch expirado → liberar
-                state.isLatched = false;
-                // 🔧 KEA-006 (WAVE 2095.1): BUNKER RESET
-                // blockedChanges nunca se decrementaba → shouldDelegateToStrobe()
-                // retornaba true PERMANENTEMENTE tras 10 bloqueos acumulados en la sesión.
-                // Reset aquí garantiza que el contador refleja solo el caos ACTUAL.
-                state.blockedChanges = 0;
-                if (this.config.debug) {
-                    console.log(`[SafetyLayer] 🔓 LATCH released: ${fixtureId}`);
-                }
-            }
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // CHECK 2: ¿Detectamos patrón de CAOS?
-        // ═══════════════════════════════════════════════════════════════════
-        const changesPerSecond = this.calculateChangesPerSecond(state, now);
-        if (changesPerSecond > this.config.chaosThreshold) {
-            // ¡CAOS DETECTADO! Activar LATCH
-            state.isLatched = true;
-            state.latchedColorDmx = state.lastColorDmx; // Mantener el último color bueno
-            state.latchStartTime = now;
-            this.totalLatchActivations++;
-            if (this.config.debug) {
-                console.log(`[SafetyLayer] ⚠️ CHAOS DETECTED: ${fixtureId} (${changesPerSecond.toFixed(1)} changes/sec)`);
-                console.log(`[SafetyLayer] 🔒 LATCH activated: holding color DMX ${state.latchedColorDmx}`);
-            }
-            return {
-                finalColorDmx: state.latchedColorDmx,
-                wasBlocked: true,
-                isInLatch: true,
-                blockReason: `CHAOS (${changesPerSecond.toFixed(1)} changes/sec > ${this.config.chaosThreshold})`,
-                suggestedShutter: this.calculateStrobeShutter(state, currentDimmer),
-                delegateToStrobe: true, // En caos, delegamos a strobe
-            };
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // CHECK 3: ¿Ha pasado suficiente tiempo desde el último cambio?
-        // ═══════════════════════════════════════════════════════════════════
-        const minChangeTime = this.getMinChangeTime(profile);
-        const timeSinceLastChange = now - state.lastColorChangeTime;
-        if (requestedColorDmx !== state.lastColorDmx && timeSinceLastChange < minChangeTime) {
-            // Cambio demasiado rápido → BLOQUEAR
-            state.blockedChanges++;
-            this.totalBlockedChanges++;
-            if (this.config.debug && state.blockedChanges % 30 === 0) {
-                console.log(`[SafetyLayer] 🚫 DEBOUNCE: ${fixtureId} (${timeSinceLastChange}ms < ${minChangeTime}ms)`);
-            }
-            return {
-                finalColorDmx: state.lastColorDmx, // Mantener color anterior
-                wasBlocked: true,
-                isInLatch: false,
-                blockReason: `DEBOUNCE (${timeSinceLastChange}ms < ${minChangeTime}ms)`,
-                suggestedShutter: 255,
-                delegateToStrobe: false,
-            };
-        }
-        // ═══════════════════════════════════════════════════════════════════
-        // CASO SEGURO: Permitir el cambio
+        // DEBOUNCE: ¿Ha pasado suficiente tiempo desde el último cambio?
+        // Si el color no cambió, pass-through inmediato.
         // ═══════════════════════════════════════════════════════════════════
         if (requestedColorDmx !== state.lastColorDmx) {
+            const minChangeTime = this.getMinChangeTime(profile);
+            const timeSinceLastChange = now - state.lastColorChangeTime;
+            if (timeSinceLastChange < minChangeTime) {
+                // Cambio demasiado rápido para el motor → BLOQUEAR
+                state.blockedChanges++;
+                this.totalBlockedChanges++;
+                if (this.config.debug && state.blockedChanges % 30 === 0) {
+                    console.log(`[SafetyLayer] 🚫 DEBOUNCE: ${fixtureId} (${timeSinceLastChange}ms < ${minChangeTime}ms)`);
+                }
+                return {
+                    finalColorDmx: state.lastColorDmx,
+                    wasBlocked: true,
+                    isInLatch: false,
+                    blockReason: `DEBOUNCE (${timeSinceLastChange}ms < ${minChangeTime}ms)`,
+                    suggestedShutter: 255,
+                    delegateToStrobe: false,
+                };
+            }
+            // Cambio permitido — actualizar estado
             state.lastColorDmx = requestedColorDmx;
             state.lastColorChangeTime = now;
             if (this.config.debug) {
                 console.log(`[SafetyLayer] ✅ ALLOWED: ${fixtureId} → color DMX ${requestedColorDmx}`);
             }
         }
-        state.lastDimmer = currentDimmer;
         return {
             finalColorDmx: requestedColorDmx,
             wasBlocked: false,
@@ -181,52 +128,24 @@ export class HardwareSafetyLayer {
             fixtureId,
             lastColorDmx: initialColor,
             lastColorChangeTime: Date.now(),
-            isLatched: false,
-            latchedColorDmx: 0,
-            latchStartTime: 0,
             blockedChanges: 0,
-            lastDimmer: 255,
-            recentChanges: [],
         };
     }
     getMinChangeTime(profile) {
         const baseTime = profile.colorEngine.colorWheel?.minChangeTimeMs ?? 500;
         return Math.round(baseTime * this.config.safetyMargin);
     }
-    updateChangeHistory(state, newColor, now) {
-        // Si el color cambió, registrar el timestamp
-        if (newColor !== state.lastColorDmx) {
-            state.recentChanges.push(now);
-        }
-        // Limpiar cambios viejos (más de 2 segundos)
-        const cutoff = now - 2000;
-        state.recentChanges = state.recentChanges.filter(t => t > cutoff);
-    }
-    calculateChangesPerSecond(state, now) {
-        // Contar cambios en el último segundo
-        const oneSecondAgo = now - 1000;
-        const recentCount = state.recentChanges.filter(t => t > oneSecondAgo).length;
-        return recentCount;
-    }
-    shouldDelegateToStrobe(state) {
-        // Delegar a strobe si hay muchos cambios bloqueados
-        return state.blockedChanges > 10;
-    }
-    calculateStrobeShutter(state, currentDimmer) {
-        // Si estamos en modo strobe delegation, calcular velocidad de strobe
-        // basado en la intensidad de la demanda
-        if (!this.shouldDelegateToStrobe(state)) {
-            return 255; // Shutter abierto
-        }
-        // Mapear cambios bloqueados a velocidad de strobe
-        // Más cambios = strobe más rápido
-        const intensity = Math.min(state.blockedChanges / 30, 1); // 0-1
-        // Strobe típico: 128 = medio, 200 = rápido, 255 = muy rápido
-        return Math.round(128 + intensity * 127);
-    }
     // ═══════════════════════════════════════════════════════════════════════
     // API PÚBLICA
     // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎵 WAVE 2720: Obtiene el último color DMX conocido de un fixture.
+     * Usado por HarmonicQuantizer en HAL para alimentar el SafetyLayer
+     * con el color anterior cuando el gate armónico bloquea un cambio.
+     */
+    getLastColor(fixtureId) {
+        return this.fixtureStates.get(fixtureId)?.lastColorDmx;
+    }
     /**
      * Resetea el estado de un fixture específico
      */
@@ -241,23 +160,18 @@ export class HardwareSafetyLayer {
      */
     resetAll() {
         this.fixtureStates.clear();
-        console.log('[SafetyLayer] 🔄 All fixtures reset');
     }
     /**
      * Obtiene métricas de seguridad
+     * WAVE 2711: latch and strobe fields preserved for dashboard compat, always 0
      */
     getMetrics() {
-        let fixturesInLatch = 0;
-        this.fixtureStates.forEach(state => {
-            if (state.isLatched)
-                fixturesInLatch++;
-        });
         return {
             totalBlockedChanges: this.totalBlockedChanges,
-            totalLatchActivations: this.totalLatchActivations,
-            totalStrobeDelegations: this.totalStrobeDelegations,
+            totalLatchActivations: 0,
+            totalStrobeDelegations: 0,
             activeFixtures: this.fixtureStates.size,
-            fixturesInLatch,
+            fixturesInLatch: 0,
         };
     }
     /**
@@ -266,11 +180,8 @@ export class HardwareSafetyLayer {
     printMetrics() {
         const m = this.getMetrics();
         console.log('[SafetyLayer] 📊 METRICS:');
-        console.log(`  Blocked changes: ${m.totalBlockedChanges}`);
-        console.log(`  Latch activations: ${m.totalLatchActivations}`);
-        console.log(`  Strobe delegations: ${m.totalStrobeDelegations}`);
+        console.log(`  Blocked changes (debounce): ${m.totalBlockedChanges}`);
         console.log(`  Active fixtures: ${m.activeFixtures}`);
-        console.log(`  Fixtures in latch: ${m.fixturesInLatch}`);
     }
     /**
      * Actualiza la configuración

@@ -185,13 +185,8 @@ export class WhaleSong extends BaseEffect {
       return Math.exp(-normalized * normalized * 1.5) * breathCycle
     }
     
-    // 🐋 Movimiento de movers siguiendo la CABEZA de la ballena
-    // Muy lento, muy suave, con EASING
-    const headPosition = this.direction === 'LtoR' 
-      ? whaleCenter + this.config.whaleWidth * 0.4
-      : whaleCenter - this.config.whaleWidth * 0.4
-    const moverPan = (headPosition - 0.5) * 40  // Rango reducido
-    const moverTilt = Math.sin(easedProgress * Math.PI * 0.6) * 5 - 5  // Mirando ligeramente abajo
+    // 🐋 WAVE 2690: mover movement PURGED — Selene no conduce posiciones
+    // El VibeMovementManager (Layer 0) se encarga del pan/tilt
     
     // 🌊 WAVE 1085: Intensidad final con floor aplicado
     const finalPeakIntensity = this.config.peakIntensity * effectiveIntensity
@@ -244,24 +239,14 @@ export class WhaleSong extends BaseEffect {
       }
     }
     
-    // 🐋 Movers con movimiento ULTRA LENTO + EASING
+    // 🐋 Movers sin movimiento (WAVE 2690: PURGED)
     output.zoneOverrides!['movers-left'] = {
       ...output.zoneOverrides!['movers-left'],
-      movement: { 
-        pan: moverPan - 12, 
-        tilt: moverTilt,
-        isAbsolute: false,
-        speed: 0.12,
-      },
+      // 🚨 WAVE 2690: movement PURGED
     }
     output.zoneOverrides!['movers-right'] = {
       ...output.zoneOverrides!['movers-right'],
-      movement: { 
-        pan: moverPan + 12, 
-        tilt: moverTilt,
-        isAbsolute: false,
-        speed: 0.12,
-      },
+      // 🚨 WAVE 2690: movement PURGED
     }
     
     return output

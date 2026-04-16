@@ -202,28 +202,18 @@ export class OroSolido extends BaseEffect {
                     amber: (color.a / 255) * scaledIntensity,
                     blendMode: 'replace',
                 },
-                // Movers izquierda: abren hacia la izquierda
+                // Movers izquierda: solo color/dimmer (WAVE 2690: movement PURGED)
                 'movers-left': {
                     color: hsl,
                     dimmer: scaledIntensity,
-                    movement: {
-                        pan: panLeftNow / 255, // Normalizado 0-1
-                        tilt: tiltNow / 255,
-                        isAbsolute: true,
-                        speed: inLatch ? 0 : 0.6, // Instantáneo en latch, suave en barrido
-                    },
+                    // 🚨 WAVE 2690: movement PURGED — Selene no conduce posiciones
                     blendMode: 'replace',
                 },
-                // Movers derecha: abren hacia la derecha
+                // Movers derecha: solo color/dimmer (WAVE 2690: movement PURGED)
                 'movers-right': {
                     color: hsl,
                     dimmer: scaledIntensity,
-                    movement: {
-                        pan: panRightNow / 255,
-                        tilt: tiltNow / 255,
-                        isAbsolute: true,
-                        speed: inLatch ? 0 : 0.6,
-                    },
+                    // 🚨 WAVE 2690: movement PURGED
                     blendMode: 'replace',
                 },
             },

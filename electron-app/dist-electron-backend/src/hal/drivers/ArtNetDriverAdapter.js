@@ -60,7 +60,8 @@ export class ArtNetDriverAdapter extends EventEmitter {
         }
         // DMXPacket tiene: { universe, address, channels }
         // 🌊 WAVE 2020.2b: Ahora pasamos el universe al driver
-        this.artnet.setChannels(packet.address, packet.channels, packet.universe ?? 0);
+        const packetUniverse = packet.universe ?? 0;
+        this.artnet.setChannels(packet.address, packet.channels, packetUniverse);
         // Schedule flush en el próximo tick si no está ya programado
         if (!this.sendTimer) {
             this.sendTimer = setImmediate(() => {

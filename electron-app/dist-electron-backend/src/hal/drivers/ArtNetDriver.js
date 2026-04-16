@@ -30,11 +30,16 @@ import { EventEmitter } from 'events';
 // ─────────────────────────────────────────────────────────────────────────────
 const ARTNET_PORT = 6454;
 const ARTNET_HEADER = Buffer.from('Art-Net\0');
-const ARTNET_OPCODE_DMX = 0x5000; // OpDmx
+const ARTNET_OPCODE_DMX = 0x5000; // ArtDmx
+const ARTNET_OPCODE_POLL = 0x2000; // ArtPoll  — handshake con nodos Pro
 const ARTNET_PROTOCOL_VERSION = 14;
 const DMX_CHANNELS = 512;
 // Header Art-DMX packet (18 bytes antes de data)
 const ARTDMX_HEADER_SIZE = 18;
+// ArtPoll packet size (14 bytes exactos según spec Art-Net 4)
+const ARTPOLL_PACKET_SIZE = 14;
+// Intervalo de ArtPoll — spec Art-Net 4 §4: entre 1s y 3s
+const ARTPOLL_INTERVAL_MS = 2500;
 // ─────────────────────────────────────────────────────────────────────────────
 // DRIVER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,12 +55,15 @@ export class ArtNetDriver extends EventEmitter {
         this.lastSendTime = 0;
         this.sendLatencies = [];
         this.lastFrameTime = 0;
+        this.artPollTimer = null; // WAVE 2525: ArtPoll
         this.config = {
             // 🎯 WAVE 153.7: Default a IP del nodo IMC Pro H1 (no broadcast!)
             ip: config.ip ?? '10.0.0.10',
             port: config.port ?? ARTNET_PORT,
-            universe: config.universe ?? 0,
-            refreshRate: config.refreshRate ?? 30, // ✅ WAVE 1101: SAFETY THROTTLE (33ms)
+            // WAVE 2525: Universe 1 — interfaces Pro ignoran universo 0 por convención
+            universe: config.universe ?? 1,
+            // WAVE 2525: 44Hz para salida sincronizada con TitanOrchestrator
+            refreshRate: config.refreshRate ?? 44,
             nodeName: config.nodeName ?? 'LuxSync',
             debug: config.debug ?? false,
         };
@@ -80,19 +88,20 @@ export class ArtNetDriver extends EventEmitter {
         }
         try {
             this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-            // Bind a puerto efímero PRIMERO (necesario antes de setBroadcast en Windows)
+            // ── WAVE 2542: Binding Estricto ──────────────────────────────────
+            // Bind explícito a 0.0.0.0:6454 (puerto estándar Art-Net).
+            // Los ArtPollReply del nodo llegan directamente a este puerto —
+            // con puerto efímero el reply se perdía porque nadie escuchaba.
+            // reuseAddr:true (arriba) evita conflictos si hay otra app Art-Net.
             await new Promise((resolve, reject) => {
-                this.socket.bind(undefined, () => {
+                this.socket.bind(ARTNET_PORT, '0.0.0.0', () => {
                     this.log(`✅ Socket bound to port ${this.socket.address().port}`);
                     resolve();
                 });
                 this.socket.once('error', reject);
             });
-            // Habilitar broadcast si es IP broadcast (DESPUÉS del bind)
-            if (this.config.ip === '255.255.255.255' || this.config.ip.endsWith('.255')) {
-                this.socket.setBroadcast(true);
-                this.log('📡 Broadcast mode enabled');
-            }
+            // Habilitar broadcast (siempre — necesario para ArtPoll de subred)
+            this.socket.setBroadcast(true);
             // Event handlers
             this.socket.on('error', (err) => {
                 this.log(`❌ Socket error: ${err.message}`);
@@ -104,9 +113,29 @@ export class ArtNetDriver extends EventEmitter {
                 this.state = 'disconnected';
                 this.emit('disconnected');
             });
+            // ── WAVE 2525: ArtPollReply listener ──────────────────────────────
+            // Escuchar respuestas de nodos Art-Net (ArtPollReply OpCode 0x2100).
+            // Cuando la IMC responde, confirmamos que está viva y emitimos evento.
+            this.socket.on('message', (msg, rinfo) => {
+                if (msg.length < 10)
+                    return;
+                // Verificar ID Art-Net
+                if (msg.toString('ascii', 0, 7) !== 'Art-Net')
+                    return;
+                const opcode = msg.readUInt16LE(8);
+                if (opcode === 0x2100) { // ArtPollReply
+                    this.log(`🟢 ArtPollReply from ${rinfo.address} — node alive`);
+                    this.emit('node-discovered', { ip: rinfo.address });
+                }
+            });
             this.state = 'ready';
             this.emit('ready');
             this.log('✅ ArtNet ready');
+            // ── WAVE 2525: ArtPoll inicial + timer periódico ──────────────────
+            // Art-Net 4 §4: Los controladores DEBEN enviar ArtPoll al arrancar y
+            // cada 2.5s para mantener el forwarding activo en interfaces Pro.
+            this.sendArtPoll();
+            this.artPollTimer = setInterval(() => this.sendArtPoll(), ARTPOLL_INTERVAL_MS);
             return true;
         }
         catch (error) {
@@ -119,6 +148,11 @@ export class ArtNetDriver extends EventEmitter {
      * Cerrar socket
      */
     async stop() {
+        // Detener ArtPoll timer
+        if (this.artPollTimer) {
+            clearInterval(this.artPollTimer);
+            this.artPollTimer = null;
+        }
         if (this.socket) {
             return new Promise((resolve) => {
                 this.socket.close(() => {
@@ -279,9 +313,18 @@ export class ArtNetDriver extends EventEmitter {
         }
         // Increment sequence
         this.sequence = this.sequence >= 255 ? 1 : this.sequence + 1;
-        // Log periodically for debugging
-        if (this.framesSent % 100 === 0 && this.universeBuffers.size > 1) {
-            this.log(`📡 Batch sent ${successCount}/${this.universeBuffers.size} universes in ${latency.toFixed(2)}ms`);
+        // ── WAVE 2543: DMX PAYLOAD TRACE (solo cuando debug=true) ───────────
+        if (this.config.debug && this.framesSent % 88 === 0) {
+            for (const [uni, buf] of this.universeBuffers) {
+                const nonZero = buf.filter(b => b > 0).length;
+                if (nonZero === 0) {
+                    this.log(`🔬 U${uni} | BUFFER VACÍO`);
+                }
+                else {
+                    let firstActive = buf.findIndex(b => b > 0);
+                    this.log(`🔬 U${uni} | nonZero:${nonZero}/512 | first active ch${firstActive + 1}`);
+                }
+            }
         }
         return {
             success: errorCount === 0,
@@ -302,6 +345,57 @@ export class ArtNetDriver extends EventEmitter {
     // ─────────────────────────────────────────────────────────────────────────
     // PACKET BUILDING
     // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * WAVE 2525: Enviar ArtPoll (OpCode 0x2000) en broadcast.
+     *
+     * Art-Net 4 §4.1: El controlador DEBE enviar ArtPoll periódicamente para:
+     *   1. Anunciar su presencia en la red
+     *   2. Solicitar ArtPollReply de todos los nodos visibles
+     *   3. Mantener activo el forwarding DMX en interfaces Pro (IMC, etc.)
+     *
+     * Estructura ArtPoll (14 bytes):
+     * [0-7]  ID: "Art-Net\0"
+     * [8-9]  OpCode: 0x2000 (little-endian)
+     * [10-11] ProtVer: 14 (big-endian)
+     * [12]   TalkToMe: 0x02 (send reply on change)
+     * [13]   Priority: 0x00 (DP_Low)
+     */
+    sendArtPoll() {
+        if (!this.socket || this.state !== 'ready')
+            return;
+        const packet = Buffer.alloc(ARTPOLL_PACKET_SIZE, 0);
+        ARTNET_HEADER.copy(packet, 0);
+        packet.writeUInt16LE(ARTNET_OPCODE_POLL, 8);
+        packet.writeUInt16BE(ARTNET_PROTOCOL_VERSION, 10);
+        packet.writeUInt8(0x02, 12); // TalkToMe: reply on change
+        packet.writeUInt8(0x00, 13); // Priority: DP_Low
+        // ── WAVE 2542: Unicast Polling ───────────────────────────────────
+        // Art-Net 4 §4.2: El unicast a la IP exacta del nodo es válido y
+        // evita la lotería del routing cuando hay múltiples NICs.
+        // Enviamos dos paquetes:
+        //   1. Unicast directo → config.ip (10.0.0.10) — garantizado llega
+        //   2. Subnet broadcast → x.x.x.255 — descubre otros nodos en la red
+        const sendPoll = (target) => {
+            this.socket.send(packet, ARTNET_PORT, target, (err) => {
+                if (err) {
+                    this.log(`⚠️ ArtPoll send error → ${target}: ${err.message}`);
+                }
+                else {
+                    this.log(`📡 ArtPoll → ${target}`);
+                }
+            });
+        };
+        // 1. Unicast: directo a la interfaz (obligatorio, route explícita)
+        sendPoll(this.config.ip);
+        // 2. Subnet broadcast: x.x.x.255 calculado desde config.ip
+        const parts = this.config.ip.split('.');
+        if (parts.length === 4) {
+            const subnetBroadcast = `${parts[0]}.${parts[1]}.${parts[2]}.255`;
+            if (subnetBroadcast !== this.config.ip) {
+                sendPoll(subnetBroadcast);
+            }
+        }
+    }
     /**
      * Construir paquete Art-DMX (OpDmx 0x5000) - Legacy para universe config
      */

@@ -91,7 +91,7 @@ import { FuzzyDecisionMaker, DropBridge, } from './think';
 // 🎯 WAVE 685: CONTEXTUAL EFFECT SELECTOR
 // 🔪 WAVE 1010.5: THE PURGE - Interfaces deprecated removidas
 // ═══════════════════════════════════════════════════════════════════════════
-import { ContextualEffectSelector, } from '../effects/ContextualEffectSelector';
+import { ContextualEffectSelector, getContextualEffectSelector, } from '../effects/ContextualEffectSelector';
 // 🔋 WAVE 931: Motor de Consciencia Energética
 import { createEnergyConsciousnessEngine } from './EnergyConsciousnessEngine';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -580,6 +580,26 @@ export class SeleneTitanConscious extends EventEmitter {
                 this.lastDreamIntegrationResult = null;
             }
             this._lastSectionForCacheInvalidation = normalizedSection;
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⏱️ WAVE 2730: CACHE STALENESS CHECK — Si el efecto cacheado ya se disparó,
+        // el cache es stale. Sin esto, el mismo efecto puede ser aprobado frame a frame
+        // porque el cache sigue diciendo "approved: X" pero X ya está en cooldown.
+        // El Gatekeeper del EffectManager (WAVE 2730) lo bloqueará, pero mejor
+        // no contaminar al DecisionMaker con decisiones que ya se ejecutaron.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this.lastDreamIntegrationResult?.approved && this.lastDreamIntegrationResult.effect?.effect) {
+            const cachedEffect = this.lastDreamIntegrationResult.effect.effect;
+            try {
+                const selector = getContextualEffectSelector();
+                const cachedAvailability = selector.checkAvailability(cachedEffect, pattern.vibeId);
+                if (!cachedAvailability.available) {
+                    this.lastDreamIntegrationResult = null;
+                }
+            }
+            catch (_) {
+                // Selector no inicializado — mantener cache
+            }
         }
         // ═══════════════════════════════════════════════════════════════════════
         // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula

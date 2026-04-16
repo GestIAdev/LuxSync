@@ -1139,11 +1139,11 @@ export class SeleneColorEngine {
     let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
 
     // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
-    // Dispara 1 vez por segundo (~60fps). Busca "[DRIFT RADAR]" en consola de Hyperion.
-    // Cuando veas In: 'BRIGHT' -> Act: 'bright' | Drift: 30°, el Desestancador está vivo.
-    if (this.generateCallCount % 60 === 0) {
-      console.log(`[DRIFT RADAR] In: '${data.mood}' -> Act: '${activeMood}' | Drift: ${moodDrift > 0 ? '+' : ''}${moodDrift}° | BaseHue: ${baseHue}° | FinalHue: ${finalHue.toFixed(0)}°`);
-    }
+    // ⛔ WAVE 2791: Comentado — mood forzado a 'neutral', siempre muestra Drift: 0° (spam inútil)
+    // Re-enable cuando se reactive la inyección de mood en TitanEngine.
+    // if (this.generateCallCount % 60 === 0) {
+    //   console.log(`[DRIFT RADAR] In: '${data.mood}' -> Act: '${activeMood}' | Drift: ${moodDrift > 0 ? '+' : ''}${moodDrift}° | BaseHue: ${baseHue}° | FinalHue: ${finalHue.toFixed(0)}°`);
+    // }
 
     // 🌡️ WAVE 149.6: THERMAL GRAVITY - Aplicar Gravedad Térmica
     // Antes de restricciones constitucionales, el hue se aclimata al clima del Vibe.

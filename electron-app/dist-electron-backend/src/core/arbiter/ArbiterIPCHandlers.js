@@ -19,6 +19,8 @@ import { ColorTranslator } from '../../hal/translation/ColorTranslator';
 import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles';
 // 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
 const colorTranslator = new ColorTranslator();
+// 🔧 WAVE 2775: Throttle BabelFish logs to prevent colorpicker drag spam
+let _babelFishLogThrottle = 0;
 /**
  * Register all Arbiter IPC handlers
  * Call this from main.ts during initialization
@@ -159,40 +161,62 @@ export function registerArbiterHandlers(masterArbiter) {
         // 🎨 WAVE 2042.32: COLOR TRANSLATION - RGB → Color Wheel
         // Commander sends RGB, but fixtures might have color wheels.
         // Detect and translate automatically using ColorTranslator.
+        //
+        // 🔧 WAVE 2770: FIX — Multi-profile translation.
+        // Old code checked only the FIRST fixture's profile and applied the same
+        // translation to ALL fixtures. If the selection mixes color-wheel fixtures
+        // with RGB fixtures, half of them got wrong controls. Now translation
+        // happens per-fixture inside the loop.
         // ═══════════════════════════════════════════════════════════════════════════
         const hasRGB = channels.includes('red') && channels.includes('green') && channels.includes('blue');
-        if (hasRGB) {
-            // Get first fixture to check profile
-            const firstFixture = masterArbiter.getFixture(resolvedFixtureIds[0]);
-            if (firstFixture) {
-                const profile = getProfile(firstFixture.profileId || '');
-                // Check if fixture needs color translation (has color wheel, not RGB)
-                if (profile && needsColorTranslation(profile)) {
-                    const targetRGB = {
-                        r: controls.red || 0,
-                        g: controls.green || 0,
-                        b: controls.blue || 0
-                    };
-                    const translation = colorTranslator.translate(targetRGB, profile);
-                    console.log(`[Arbiter] 🎨 COLOR TRANSLATION: RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`);
-                    // Replace RGB controls with color_wheel
-                    finalControls = { ...finalControls };
-                    delete finalControls.red;
-                    delete finalControls.green;
-                    delete finalControls.blue;
-                    finalControls.color_wheel = translation.colorWheelDmx || 0;
-                    // Replace RGB channels with color_wheel
-                    finalChannels = finalChannels.filter(ch => !['red', 'green', 'blue'].includes(ch));
-                    finalChannels.push('color_wheel');
-                }
-            }
-        }
         const overrideCount = resolvedFixtureIds.length;
         for (const fixtureId of resolvedFixtureIds) {
+            let perFixtureControls = { ...finalControls };
+            let perFixtureChannels = [...finalChannels];
+            if (hasRGB) {
+                const fixtureData = masterArbiter.getFixture(fixtureId);
+                if (fixtureData) {
+                    const profile = getProfile(fixtureData.profileId || '');
+                    if (profile && needsColorTranslation(profile)) {
+                        const targetRGB = {
+                            r: controls.red || 0,
+                            g: controls.green || 0,
+                            b: controls.blue || 0
+                        };
+                        const translation = colorTranslator.translate(targetRGB, profile);
+                        // 🔧 WAVE 2772: BABELFISH RESTORATION — Defensive guard.
+                        // Only replace RGB with color_wheel if translation actually produced
+                        // a valid wheel DMX value. If colorWheelDmx is undefined (e.g. RGB
+                        // fixture with hybrid profile, or translation fallback), keep RGB
+                        // intact to avoid destroying the operator's color intent.
+                        if (translation.wasTranslated && translation.colorWheelDmx !== undefined) {
+                            // 🔧 WAVE 2775: Log gated to 1 per fixture per 2s to prevent colorpicker drag spam
+                            if (!_babelFishLogThrottle || Date.now() - _babelFishLogThrottle > 2000) {
+                                console.log(`[Arbiter] 🎨 COLOR TRANSLATION (${fixtureId}): RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`);
+                                _babelFishLogThrottle = Date.now();
+                            }
+                            perFixtureControls = { ...perFixtureControls };
+                            delete perFixtureControls.red;
+                            delete perFixtureControls.green;
+                            delete perFixtureControls.blue;
+                            perFixtureControls.color_wheel = translation.colorWheelDmx;
+                            perFixtureChannels = perFixtureChannels.filter(ch => !['red', 'green', 'blue'].includes(ch));
+                            perFixtureChannels.push('color_wheel');
+                        }
+                        else {
+                            // Translation returned no wheel DMX — fixture keeps RGB as-is
+                            if (!_babelFishLogThrottle || Date.now() - _babelFishLogThrottle > 2000) {
+                                console.log(`[Arbiter] 🎨 BABELFISH SKIP (${fixtureId}): needsColorTranslation=true but translate() returned no colorWheelDmx. Keeping RGB.`);
+                                _babelFishLogThrottle = Date.now();
+                            }
+                        }
+                    }
+                }
+            }
             const override = {
                 fixtureId,
-                controls: finalControls,
-                overrideChannels: finalChannels,
+                controls: perFixtureControls,
+                overrideChannels: perFixtureChannels,
                 mode: 'absolute',
                 source: 'ui_programmer',
                 priority: 100,
@@ -367,13 +391,17 @@ export function registerArbiterHandlers(masterArbiter) {
         // They must work identically regardless of which vibe is active.
         // Fixed range: 0.05-0.5 Hz. Hard cap at 0.5 Hz (BETA_MAX_SPEED) enforced
         // in calculatePatternOffset as motor-safety defense-in-depth.
+        // Speed ceiling matches the AI layer maximum (techno-club baseFrequency 0.25 Hz,
+        // manualSpeedOverride ceiling 0.5 Hz). GrandMasterSpeed handles show-time scaling.
         //
-        // Size capped at 50% (64 DMX max offset). At 0.5 Hz:
-        // max velocity ≈ 64 * π * 0.5 ≈ 100 DMX/s ≈ 210°/s on a 540° head. Safe.
+        // 🔥 WAVE 2652: AMPLITUDE UNLOCK — size now maps 0-100% UI → 0-1.0 engine;
+        // MANUAL_MAX_MOVEMENT in MasterArbiter enforces the real DMX ceiling (128 units).
+        // At 0.5 Hz + 128 DMX: max velocity ≈ 128 * π * 0.5 ≈ 201 DMX/s ≈ 425°/s peak
+        // (instantaneous peak of cosine derivative, RMS ~300°/s — within stepper tolerance).
         const MANUAL_SPEED_MIN = 0.05; // Hz — minimum perceptible movement
-        const MANUAL_SPEED_MAX = 0.5; // Hz — motor-safe ceiling (2s per cycle)
+        const MANUAL_SPEED_MAX = 0.5; // Hz — mirrors AI layer ceiling (WAVE 2652 confirmed)
         const speedNormalized = MANUAL_SPEED_MIN + (speed / 100) * (MANUAL_SPEED_MAX - MANUAL_SPEED_MIN);
-        const sizeNormalized = (amplitude / 100) * 0.5;
+        const sizeNormalized = (amplitude / 100) * 1.0; // 🔥 WAVE 2652: full range (128 DMX ceiling in Arbiter)
         // If pattern already exists with same type → hot-update (no phase reset)
         const existingPattern = masterArbiter.getPattern(fixtureIds[0]);
         if (existingPattern && existingPattern.type === pattern) {
@@ -688,6 +716,42 @@ export function registerArbiterHandlers(masterArbiter) {
             fixtureCount: fixtures.length,
             message: `Arbiter + Orchestrator synced with ${fixtures.length} fixtures`
         };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2613: SPATIAL IK TARGET — IPC BRIDGE
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Apply a spatial target (3D point) to a group of fixtures via IK engine.
+     * Each fixture independently calculates its pan/tilt to point at the target.
+     * Returns per-fixture IKResult (for reachability feedback in UI).
+     */
+    ipcMain.handle('lux:arbiter:applySpatialTarget', (_event, { target, fixtureIds, fanMode, fanAmplitude }) => {
+        try {
+            const results = masterArbiter.applySpatialTarget(target, fixtureIds, fanMode ?? 'converge', fanAmplitude ?? 0);
+            // Serialize Map to plain object for IPC transport
+            const serialized = {};
+            results.forEach((result, id) => {
+                serialized[id] = result;
+            });
+            return { success: true, results: serialized };
+        }
+        catch (err) {
+            console.error('[ArbiterIPC] 🎯 applySpatialTarget error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * Release spatial target control — return fixtures to AI/mechanical control.
+     */
+    ipcMain.handle('lux:arbiter:releaseSpatialTarget', (_event, { fixtureIds }) => {
+        try {
+            masterArbiter.releaseSpatialTarget(fixtureIds);
+            return { success: true };
+        }
+        catch (err) {
+            console.error('[ArbiterIPC] 🎯 releaseSpatialTarget error:', err);
+            return { success: false, error: String(err) };
+        }
     });
     // ═══════════════════════════════════════════════════════════════════════
     // STATUS & DEBUG

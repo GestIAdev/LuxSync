@@ -113,6 +113,14 @@ const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.Mutabl
   })
   
   try {
+    // 📡 WAVE 2770: THE BLACK BOX — Store Sync Monitor
+    // Log every setFixtures invocation with fixture count, hash, and timestamp.
+    // This reveals if TitanSyncBridge re-fires and wipes state unexpectedly.
+    const syncHash = generateFixturesHash(arbiterFixtures)
+    console.log(
+      `[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${syncHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`
+    )
+
     const result = await lux.arbiter.setFixtures(arbiterFixtures)
     // 🔧 WAVE 406: Log de éxito visual
     console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`)

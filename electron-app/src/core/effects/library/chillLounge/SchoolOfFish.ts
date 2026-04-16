@@ -141,9 +141,7 @@ export class SchoolOfFish extends BaseEffect {
     // 🌊 WAVE 1085: Color atmosférico base (cyan profundo)
     const atmosphericColor = { h: 188, s: 75, l: 45 }
     
-    // 🌊 WAVE 1085: Movimiento de movers con EASING aplicado
-    const basePan = (wavePosition - 0.5) * 50
-    const tiltWobble = Math.sin(easedProgress * Math.PI * 2) * 3  // Easing en wobble
+    // 🚨 WAVE 2690: basePan/tiltWobble PURGED — Selene no conduce posiciones
     
     // 🌊 WAVE 1085: Intensidad final con floor aplicado
     const finalPeakIntensity = this.config.peakIntensity * effectiveIntensity
@@ -179,28 +177,18 @@ export class SchoolOfFish extends BaseEffect {
       color: getZoneIntensity(zonePositions.backR) > atmosphericAmbient ? getZoneColor(zonePositions.backR) : atmosphericColor,
       blendMode: 'max' as const,
     }
-    // 🌊 WAVE 1085: Movers con atmospheric bed + easing en movimiento
+    // 🌊 WAVE 1085: Movers con atmospheric bed (WAVE 2690: movement PURGED)
     output.zoneOverrides!['movers-left'] = {
       dimmer: Math.max(getZoneIntensity(zonePositions.movers_left) * envelope * finalPeakIntensity * 0.90, atmosphericAmbient),
       color: getZoneIntensity(zonePositions.movers_left) > atmosphericAmbient ? getZoneColor(zonePositions.movers_left) : atmosphericColor,
       blendMode: 'max' as const,
-      movement: { 
-        pan: basePan - 10, 
-        tilt: tiltWobble - 5,
-        isAbsolute: false,
-        speed: 0.2,
-      },
+      // 🚨 WAVE 2690: movement PURGED — Selene solo pinta fotones
     }
     output.zoneOverrides!['movers-right'] = {
       dimmer: Math.max(getZoneIntensity(zonePositions.movers_right) * envelope * finalPeakIntensity * 0.90, atmosphericAmbient),
       color: getZoneIntensity(zonePositions.movers_right) > atmosphericAmbient ? getZoneColor(zonePositions.movers_right) : atmosphericColor,
       blendMode: 'max' as const,
-      movement: { 
-        pan: basePan + 10, 
-        tilt: tiltWobble + 3,
-        isAbsolute: false,
-        speed: 0.2,
-      },
+      // 🚨 WAVE 2690: movement PURGED
     }
     return output
   }

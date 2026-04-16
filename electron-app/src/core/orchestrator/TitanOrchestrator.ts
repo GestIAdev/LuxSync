@@ -68,6 +68,28 @@ import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 // 🗺️ WAVE 2543.4: Centralized zone resolution
 import { fixtureMatchesZone as zoneMapperMatch } from '../zones/ZoneMapper'
 
+// ⚡ WAVE 3050: MODULE-LEVEL CONSTANTS — allocated once, reused per frame
+// Zone mapping for StageSimulator2 compatibility (was recreated per fixture * per truth broadcast)
+const ZONE_MAP: Readonly<Record<string, string>> = {
+  // Legacy canvas zones
+  'FRONT_PARS': 'front',
+  'BACK_PARS': 'back',
+  'MOVING_LEFT': 'left',
+  'MOVING_RIGHT': 'right',
+  'STROBES': 'center',
+  'AMBIENT': 'center',
+  'FLOOR': 'front',
+  'UNASSIGNED': 'center',
+  // Constructor 3D zones
+  'ceiling-left': 'left',
+  'ceiling-right': 'right',
+  'floor-front': 'front',
+  'floor-back': 'back'
+}
+
+// Static DMX output placeholder (512 zeros) — no new Array(512).fill(0) per truth frame
+const DMX_OUTPUT_ZEROS: readonly number[] = Object.freeze(new Array(512).fill(0))
+
 /**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
@@ -254,6 +276,12 @@ export class TitanOrchestrator {
   // At 44Hz tick, send full SeleneTruth every TRUTH_BROADCAST_DIVIDER ticks (~7Hz)
   private static readonly TRUTH_BROADCAST_DIVIDER = 6
 
+  // ⚡ WAVE 3050: HOT FRAME BROADCAST DIVIDER
+  // Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 22Hz.
+  // Halves Structured Clone overhead (~132 KB/seg saved) without visible UI degradation.
+  // transientStore + RenderWorker interpolates between frames anyway.
+  private static readonly HOT_FRAME_DIVIDER = 2
+
   // ⚡ WAVE 2464: PEAK HOLD — Captura el pico de intensidad del frame skipeado.
   // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
   // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado — el canvas
@@ -308,62 +336,74 @@ export class TitanOrchestrator {
       // el Frontend tiene mayor frecuencia (30fps vs 10fps) y da fluidez visual.
       // El Worker es autoritativo SOLO para métricas FFT extendidas.
       // ═══════════════════════════════════════════════════════════════════════════
+      // ⚡ WAVE 3060: Worker = FUENTE ÚNICA AUTORITATIVA para TODAS las métricas de audio
+      // Antes: Frontend enviaba bass/mid/energy a 60Hz via IPC (60 Structured Clone/sec)
+      //        Worker enviaba métricas extendidas a 10fps via postMessage
+      //        Frontend tenía "prioridad temporal" pero generaba basura masiva
+      // Ahora: Worker BETA es la ÚNICA fuente. 10fps es suficiente para envolvente visual.
+      //        El motor DMX retiene lastAudioData entre frames (44fps lee, 10fps escribe).
+      //        Eliminados: 60 IPC/sec + 60 object allocations/sec + 30KB/sec serialización
       this.brain.on('audio-levels', (levels: {
         bass: number; mid: number; treble: number; energy: number;
         subBass?: number; lowMid?: number; highMid?: number;
         harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
-        crestFactor?: number;  // 💥 WAVE 2347: EL TUBO ARREGLADO
+        crestFactor?: number;
         kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
-        rawBassEnergy?: number;  // 🔥 WAVE 1162: THE BYPASS
-        // 🔥 WAVE 2112: BPM from GodEarBPMTracker in Worker
+        rawBassEnergy?: number;
         bpm?: number; bpmConfidence?: number; onBeat?: boolean;
         beatPhase?: number; beatStrength?: number;
-        // 🥁 WAVE 2213: Cumulative kick counter (phrase detection)
         kickCount?: number;
       }) => {
-        // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
-        // NO sobrescribir bass/mid/high/energy - Frontend tiene prioridad temporal (30fps)
-        // SÍ actualizar métricas FFT extendidas - Worker tiene precisión espectral
-        this.lastAudioData = {
-          ...this.lastAudioData,
-          // Core bands - IGNORADOS (Frontend es más rápido a 30fps)
-          // bass: levels.bass,     // ❌ Frontend tiene prioridad
-          // mid: levels.mid,       // ❌ Frontend tiene prioridad  
-          // high: levels.treble,   // ❌ Frontend tiene prioridad
-          // energy: levels.energy, // ❌ Frontend tiene prioridad
-          
-          // Extended FFT metrics - WORKER AUTHORITATIVE (precisión espectral)
-          subBass: levels.subBass ?? this.lastAudioData.subBass,
-          lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
-          highMid: levels.highMid ?? this.lastAudioData.highMid,
-          harshness: levels.harshness ?? this.lastAudioData.harshness,
-          spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
-          spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
-          // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor llega al lastAudioData
-          crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
-          
-          // Transient detection - WORKER AUTHORITATIVE (detección precisa)
-          kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
-          snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
-          hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
-          
-          // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
-          // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
-          rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
-          
-          // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM is the authority
-          // GodEarBPMTracker runs IN the Worker where FFT data is fresh every ~21ms
-          // WAVE 2130.3: ?? no bloquea 0 — usar guard explícito para preservar BPM bloqueado
-          workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
-          workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
-          workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
-          workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
-          workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
-          // 🥁 WAVE 2213: Reconectar el cable roto — kickCount es monotónico, siempre avanza
-          workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
-            ? levels.kickCount
-            : this.lastAudioData.workerKickCount,
-        };
+        // ⚡ WAVE 3060: IN-PLACE MUTATION — zero object allocations
+        // Antes: this.lastAudioData = { ...this.lastAudioData, ... } → nuevo objeto cada 100ms
+        // Ahora: mutación directa sobre el objeto existente → 0 GC pressure
+        const d = this.lastAudioData
+
+        // Core bands — WORKER AUTORITATIVO (WAVE 3060: ya no vienen del Frontend)
+        d.bass = levels.bass
+        d.mid = levels.mid
+        d.high = levels.treble
+        d.energy = levels.energy
+
+        // Extended FFT metrics — WORKER AUTORITATIVO
+        if (levels.subBass != null) d.subBass = levels.subBass
+        if (levels.lowMid != null) d.lowMid = levels.lowMid
+        if (levels.highMid != null) d.highMid = levels.highMid
+        if (levels.harshness != null) d.harshness = levels.harshness
+        if (levels.spectralFlatness != null) d.spectralFlatness = levels.spectralFlatness
+        if (levels.spectralCentroid != null) d.spectralCentroid = levels.spectralCentroid
+        if (levels.crestFactor != null) d.crestFactor = levels.crestFactor
+
+        // Transient detection
+        if (levels.kickDetected != null) d.kickDetected = levels.kickDetected
+        if (levels.snareDetected != null) d.snareDetected = levels.snareDetected
+        if (levels.hihatDetected != null) d.hihatDetected = levels.hihatDetected
+
+        // Raw bass energy (no AGC)
+        if (levels.rawBassEnergy != null) d.rawBassEnergy = levels.rawBassEnergy
+
+        // BPM — guard explícito para preservar valor bloqueado
+        if (levels.bpm != null && levels.bpm > 0) d.workerBpm = levels.bpm
+        if (levels.bpmConfidence != null && levels.bpmConfidence > 0) d.workerBpmConfidence = levels.bpmConfidence
+        if (levels.onBeat != null) d.workerOnBeat = levels.onBeat
+        if (levels.beatPhase != null) d.workerBeatPhase = levels.beatPhase
+        if (levels.beatStrength != null) d.workerBeatStrength = levels.beatStrength
+
+        // Kick counter — monotónico
+        if (levels.kickCount != null && levels.kickCount > 0) d.workerKickCount = levels.kickCount
+
+        // ⚡ WAVE 3060: hasRealAudio detection (migrado de processAudioFrame)
+        const wasAudioActive = this.hasRealAudio
+        this.hasRealAudio = levels.energy > 0.01
+        if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+          this.hasLoggedFirstAudio = true
+          this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!')
+        } else if (!this.hasRealAudio && wasAudioActive) {
+          this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
+        }
+
+        // ⚡ WAVE 3060: Update staleness timestamp (Worker llegando = audio vivo)
+        this.lastAudioTimestamp = Date.now()
       });
       
       await trinity.start()
@@ -571,6 +611,7 @@ export class TitanOrchestrator {
     
     // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
     // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
+    // ⚡ WAVE 3050: UNIFIED FRAME TIMESTAMP — one syscall per frame, not 9
     const now = Date.now()
     if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
       if (shouldLog) {
@@ -674,7 +715,7 @@ export class TitanOrchestrator {
       }
       
       // PLL Flywheel: advances phase continuously for smooth beat prediction
-      beatState = this.beatDetector.tick(Date.now())
+      beatState = this.beatDetector.tick(now) // ⚡ WAVE 3050: unified timestamp
       
       // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
       if (workerOnBeat) {
@@ -694,7 +735,7 @@ export class TitanOrchestrator {
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
       // The metronome keeps spinning on inertia (freewheel mode)
-      beatState = this.beatDetector.tick(Date.now())
+      beatState = this.beatDetector.tick(now) // ⚡ WAVE 3050: unified timestamp
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -821,7 +862,7 @@ export class TitanOrchestrator {
     // Feed Layer 0: AI Intent
     const titanLayer: Layer0_Titan = {
       intent,
-      timestamp: Date.now(),
+      timestamp: now, // ⚡ WAVE 3050: unified timestamp
       vibeId: this.engine.getCurrentVibe(),
       frameNumber: this.frameCount,
     }
@@ -1122,7 +1163,7 @@ export class TitanOrchestrator {
     const hephRuntime = getHephaestusRuntime()
     // 🔬 WAVE 3030: SONDA HEPHAESTUS
     const _sondaHephStart = performance.now()
-    const hephOutputs = hephRuntime.tick(Date.now())
+    const hephOutputs = hephRuntime.tick(now) // ⚡ WAVE 3050: unified timestamp
     
     // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
     // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
@@ -1364,11 +1405,12 @@ export class TitanOrchestrator {
       }
     }
 
-    // ── HOT FRAME — Every tick (44Hz) ──────────────────────────────────
-    if (this.onHotFrame) {
+    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
+    // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+    if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
       const hotFrame = {
         frameNumber: this.frameCount,
-        timestamp: Date.now(),
+        timestamp: now, // ⚡ WAVE 3050: unified timestamp
         onBeat: engineAudioMetrics.isBeat,
         beatConfidence: engineAudioMetrics.beatConfidence,
         bpm: engineAudioMetrics.bpm,
@@ -1403,7 +1445,7 @@ export class TitanOrchestrator {
       const truth: SeleneTruth = {
         system: {
           frameNumber: this.frameCount,
-          timestamp: Date.now(),
+          timestamp: now, // ⚡ WAVE 3050: unified timestamp
           deltaTime: 23,
           targetFPS: 44,
           actualFPS: 44,
@@ -1500,7 +1542,7 @@ export class TitanOrchestrator {
           movement: intent.movement,
           effects: intent.effects,
           source: 'procedural',
-          timestamp: Date.now()
+          timestamp: now // ⚡ WAVE 3050: unified timestamp
         },
         hardware: {
           dmx: {
@@ -1510,34 +1552,16 @@ export class TitanOrchestrator {
             frameRate: 30,
             port: null
           },
-          dmxOutput: new Array(512).fill(0),
-          fixturesActive: fixtureStates.filter(f => f.dimmer > 0).length,
+          dmxOutput: DMX_OUTPUT_ZEROS as number[],
+          fixturesActive: fixtureStates.reduce((count, f) => count + (f.dimmer > 0 ? 1 : 0), 0),
           fixturesTotal: fixtureStates.length,
           // Map HAL FixtureState to Protocol FixtureState
           // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
           // WAVE 256.7: Map zone names for StageSimulator2 compatibility
           fixtures: fixtureStates.map((f, i) => {
-            // 🔧 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
-            // Soporta AMBOS sistemas de zonas:
-            //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-            //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
-            const zoneMap: Record<string, string> = {
-              // Legacy canvas zones
-              'FRONT_PARS': 'front',
-              'BACK_PARS': 'back', 
-              'MOVING_LEFT': 'left',
-              'MOVING_RIGHT': 'right',
-              'STROBES': 'center',
-              'AMBIENT': 'center',
-              'FLOOR': 'front',
-              'UNASSIGNED': 'center',
-              // Constructor 3D zones
-              'ceiling-left': 'left',
-              'ceiling-right': 'right',
-              'floor-front': 'front',
-              'floor-back': 'back'
-            }
-            const mappedZone = zoneMap[f.zone] || f.zone || 'center'
+            // \ud83d\udd27 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
+            // \u26a1 WAVE 3050: ZONE_MAP is now a module-level constant (was per-fixture per-frame)
+            const mappedZone = ZONE_MAP[f.zone] || f.zone || 'center'
             
             // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
             // This is critical for runtimeStateMap matching in StageSimulator2
@@ -1594,7 +1618,7 @@ export class TitanOrchestrator {
             }
           })
         },
-        timestamp: Date.now()
+        timestamp: now // ⚡ WAVE 3050: unified timestamp
       }
       
       
@@ -1888,122 +1912,21 @@ export class TitanOrchestrator {
   }
 
   /**
-   * WAVE 255: Process incoming audio frame from frontend
-   * This method receives audio data and stores it for the main loop
-   * 🎛️ WAVE 661: Ahora incluye textura espectral (harshness, spectralFlatness, spectralCentroid)
-   * 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
-   * 
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 🔥 WAVE 1011.9: THE SINGLE SOURCE OF TRUTH
-   * ═══════════════════════════════════════════════════════════════════════════
-   * ANTES: Este método sobrescribía bass/mid/high con datos del Frontend,
-   *        mientras brain.on('audio-levels') los sobrescribía con datos del Worker.
-   *        Esto creaba una RACE CONDITION que causaba PARPADEO en todas las vibes.
-  /**
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 
-   * PROBLEMA DETECTADO:
-   * - WAVE 1011.9 hizo al Worker "single source of truth" para bass/mid/high/energy
-   * - PERO el Worker solo recibe buffers cada 100ms (10fps)
-   * - El Frontend envía métricas cada 33ms (30fps)
-   * - Resultado: Sistema corriendo a 10fps visual, no 30fps
-   * 
-   * SOLUCIÓN HÍBRIDA:
-   * - Frontend (30fps) → bass/mid/high/energy básicos (para fluidez visual)
-   * - Worker (10fps) → harshness/flatness/centroid (para precisión espectral)
-   * - AMBOS coexisten sin sobrescribirse
-   * 
-   * El Worker TAMBIÉN envía bass/mid/high, pero el Frontend tiene prioridad
-   * temporal porque es más frecuente. Cuando llega data del Worker, las métricas
-   * FFT extendidas se actualizan pero bass/mid/high se mantienen del Frontend.
-   * ═══════════════════════════════════════════════════════════════════════════
+   * ⚡ WAVE 3060: COLD-PATH ONLY — usado solo por simulateAudio() en useSelene
+   * Ya NO se llama desde el hot-path de audio (useAudioCapture/useLiveAudioInput).
+   * El Worker BETA vía brain.on('audio-levels') es ahora la fuente única autoritativa.
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 1012.5: FRONTEND = HIGH FREQUENCY SOURCE (30fps)
-    // El Frontend provee bass/mid/high/energy a 30fps para fluidez visual
-    // El Worker provee métricas FFT a 10fps para precisión espectral
-    // ═══════════════════════════════════════════════════════════════════════════
+    const d = this.lastAudioData
+    if (typeof data.bass === 'number') d.bass = data.bass
+    if (typeof data.mid === 'number') d.mid = data.mid
+    if (typeof data.treble === 'number') d.high = data.treble
+    else if (typeof data.high === 'number') d.high = data.high
+    if (typeof data.energy === 'number') d.energy = data.energy
     
-    // Core bands - FRONTEND SOURCE (30fps)
-    const bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
-    const mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
-    const high = typeof data.treble === 'number' ? data.treble : 
-                 typeof data.high === 'number' ? data.high : this.lastAudioData.high
-    const energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
-    
-    // 🎛️ WAVE 661: Extraer textura espectral (si viene del frontend, raro pero posible)
-    const harshness = typeof data.harshness === 'number' ? data.harshness : undefined
-    const spectralFlatness = typeof data.spectralFlatness === 'number' ? data.spectralFlatness : undefined
-    const spectralCentroid = typeof data.spectralCentroid === 'number' ? data.spectralCentroid : undefined
-    
-    // 🎸 WAVE 1011: Extraer bandas extendidas
-    const subBass = typeof data.subBass === 'number' ? data.subBass : undefined
-    const lowMid = typeof data.lowMid === 'number' ? data.lowMid : undefined
-    const highMid = typeof data.highMid === 'number' ? data.highMid : undefined
-    
-    // 🎸 WAVE 1011: Extraer detección de transientes
-    const kickDetected = typeof data.kickDetected === 'boolean' ? data.kickDetected : undefined
-    const snareDetected = typeof data.snareDetected === 'boolean' ? data.snareDetected : undefined
-    const hihatDetected = typeof data.hihatDetected === 'boolean' ? data.hihatDetected : undefined
-    
-    // 🔥 WAVE 1012.5: HYBRID MERGE
-    // - bass/mid/high/energy: FRONTEND (30fps, prioridad visual)
-    // - métricas FFT: WORKER vía brain.on('audio-levels') (10fps, prioridad espectral)
-    this.lastAudioData = { 
-      // Core bands - FRONTEND SOURCE (30fps para fluidez)
-      bass,
-      mid,
-      high,
-      energy,
-      // Métricas FFT extendidas - PRESERVAR del Worker si frontend no las tiene
-      harshness: harshness ?? this.lastAudioData.harshness,
-      spectralFlatness: spectralFlatness ?? this.lastAudioData.spectralFlatness,
-      spectralCentroid: spectralCentroid ?? this.lastAudioData.spectralCentroid,
-      subBass: subBass ?? this.lastAudioData.subBass,
-      lowMid: lowMid ?? this.lastAudioData.lowMid,
-      highMid: highMid ?? this.lastAudioData.highMid,
-      kickDetected: kickDetected ?? this.lastAudioData.kickDetected,
-      snareDetected: snareDetected ?? this.lastAudioData.snareDetected,
-      hihatDetected: hihatDetected ?? this.lastAudioData.hihatDetected,
-      // 🔥 WAVE 1162.2: CRITICAL FIX - Preservar rawBassEnergy del Worker!
-      // El Frontend NO tiene esta métrica, viene solo del BETA Worker vía GOD EAR
-      // Sin esta línea, el Frontend (30fps) BORRABA el valor que el Worker (10fps) enviaba
-      rawBassEnergy: this.lastAudioData.rawBassEnergy,
-
-      // 🔥 WAVE 2130.5: CRITICAL FIX - Preservar Worker BPM del Frontend overwrite!
-      // Frontend (30fps) NO tiene BPM — viene solo del Worker vía brain.on('audio-levels')
-      // Sin estas líneas, el Frontend BORRABA workerBpm=185 → undefined → ?? 0 → BPM=0
-      // Resultado: 2 de cada 3 render cycles mostraban BPM=0 (30fps sobrescribe 10fps)
-      workerBpm: this.lastAudioData.workerBpm,
-      workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
-      workerOnBeat: this.lastAudioData.workerOnBeat,
-      workerBeatPhase: this.lastAudioData.workerBeatPhase,
-      workerBeatStrength: this.lastAudioData.workerBeatStrength,
-      // 🥁 WAVE 2213: NO BORRAR EL CONTADOR DEL WORKER 30 VECES POR SEGUNDO
-      // processAudioFrame() corre a 30fps — sin esta línea, workerKickCount → undefined
-      // → beatCount=0 → VMM atascado en Bar:0 para siempre, patrones nunca cambian
-      workerKickCount: this.lastAudioData.workerKickCount,
-    }
-    
-    // 🔥 WAVE 1012.5: Frontend también detecta audio real
-    const wasAudioActive = this.hasRealAudio
-    this.hasRealAudio = energy > 0.01
-    
-    // 📜 WAVE 1198: Log first audio detection (only once per session)
-    if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
-      this.hasLoggedFirstAudio = true
-      this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!')
-    } else if (!this.hasRealAudio && wasAudioActive) {
-      // Audio lost - log it
-      this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
-    }
-    
-    // 🗡️ WAVE 265: Update timestamp para staleness detection
+    this.hasRealAudio = d.energy > 0.01
     this.lastAudioTimestamp = Date.now()
   }
 

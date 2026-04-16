@@ -134,9 +134,10 @@ export class LiquidEnvelope {
         else if (signal > avgEffective && signal > 0.15 && !isBreakdown) {
             // Below gate but above average → Soft Knee ghost path
             // Herencia: WAVE 2383/2393 (ghostCap × morphFactor)
+            // WAVE 2990: Removed Math.max(morphFactor, 0.1) floor — ghostCap scales to 0 at morph=0.
             const ghostCapDynamic = c.ghostCap * morphFactor;
             const proximity = (signal - avgEffective) / 0.02;
-            ghostPower = Math.min(ghostCapDynamic, proximity * ghostCapDynamic);
+            ghostPower = Math.max(ghostCapDynamic, Math.min(ghostCapDynamic, proximity * ghostCapDynamic));
         }
         // ═══════════════════════════════════════════════════════════════════
         // 8. IGNITION SQUELCH — Anti-pad-ghost rampa
@@ -160,23 +161,10 @@ export class LiquidEnvelope {
             ? 1.0
             : Math.pow(s.intensity / fadeZone, 2);
         const faded = Math.min(c.maxIntensity, s.intensity * fadeFactor);
-        // ═══════════════════════════════════════════════════════════════════
-        // 10. GHOST CAP FLOOR — Dimmer floor garantizado
-        //    Herencia: WAVE 2470 (ghostCap = "nunca oscuro" para chill)
-        //
-        //    El ghostCap del perfil (ej: 0.22 para chill moverVocal) es el
-        //    FLOOR INTENCIONAL del envelope. El SMOOTH FADE cuadrático puede
-        //    llevarlo a 0 incluso con ghostCap alto (porque el ghost path solo
-        //    se activa con signal>0.15 && !isBreakdown). En breakdowns o
-        //    silencios vocales, el faded llega a ~0 → mover parpadea a oscuro.
-        //
-        //    Fix: si ghostCap > 0, garantizar que el output nunca baje de
-        //    ghostCap * max(morphFactor, 0.1). El mínimo 0.1 garantiza que incluso
-        //    en el abismo (morphFactor≈0) el floor sea ghostCap*0.1 — bioluminiscencia
-        //    mínima. Sin señal = siempre hay algo de luz residual.
-        // ═══════════════════════════════════════════════════════════════════
-        const dimmerFloor = c.ghostCap > 0 ? c.ghostCap * Math.max(morphFactor, 0.1) : 0;
-        return Math.max(dimmerFloor, faded);
+        // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
+        // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.
+        // If audio energy is zero, output must be zero. No residual glow.
+        return faded;
     }
     /** Resetea todo el estado interno a valores iniciales */
     reset() {

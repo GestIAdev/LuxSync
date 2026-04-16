@@ -735,38 +735,11 @@ export class TitanOrchestrator {
                     }
                 }
                 // ── MOVEMENT OVERRIDE (global fallback for all movers) ──
-                if (effectOutput.movementOverride) {
-                    const mov = effectOutput.movementOverride;
-                    // Only apply to fixtures that are movers and NOT already covered by zone movement
-                    for (const fixture of this.fixtures) {
-                        if (!fixture?.id)
-                            continue;
-                        if (chronosFixtureIds.has(fixture.id))
-                            continue;
-                        const isMover = fixture.zone?.includes('MOVING') || fixture.type === 'beam' || fixture.type === 'spot';
-                        if (!isMover)
-                            continue;
-                        const existing = intentMap.get(fixture.id);
-                        // Don't override zone-specific movement
-                        if (existing?.movement)
-                            continue;
-                        const movement = {
-                            pan: mov.pan !== undefined ? Math.round(((mov.pan + 1) / 2) * 255) : undefined,
-                            tilt: mov.tilt !== undefined ? Math.round(((mov.tilt + 1) / 2) * 255) : undefined,
-                            isAbsolute: mov.isAbsolute,
-                        };
-                        if (existing) {
-                            existing.movement = movement;
-                        }
-                        else {
-                            intentMap.set(fixture.id, {
-                                mixBus: effectOutput.mixBus || 'htp',
-                                globalComposition: effectOutput.globalComposition ?? 0,
-                                movement,
-                            });
-                        }
-                    }
-                }
+                // 🚫 WAVE 2900: CHRONOS SELECTIVE SEAL — La IA tiene prohibido emitir movimiento.
+                // movementOverride proviene de Core Effects procedurales (IA/Selene).
+                // El movimiento de movers es exclusivo del usuario (Hephaestus/XY pad/manual override).
+                // Este bloque queda desactivado permanentemente.
+                // if (effectOutput.movementOverride) { ... }
                 // ═══════════════════════════════════════════════════════════════════
                 // 🎵 WAVE 2672→2720: HARMONIC QUANTIZER — MIGRADO AL HAL
                 // La cuantización armónica ahora vive en HAL.translateColorToWheel()
@@ -1041,12 +1014,12 @@ export class TitanOrchestrator {
                     console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
                 }
             }
-            // ⚒️ WAVE 2030.22g → 🛡️ WAVE 2085: Re-send with Hephaestus overlays applied,
-            // but THROUGH the physics engine so movement is interpolated safely.
-            // The old sendStates() was a physics-bypass backdoor — now sealed.
-            if (hephOutputs.length > 0) {
-                this.hal.sendStatesWithPhysics(fixtureStates);
-            }
+            // ⚒️ WAVE 3010: SINGLE SEND PER FRAME
+            // renderFromTarget() no longer sends to hardware — it's pure calculation now.
+            // We send ONCE here, AFTER all processing (including Hephaestus overlays).
+            // This eliminates the double-send race condition where two sendAll() calls
+            // competed for the isTransmitting semaphore (the second was always dropped).
+            this.hal.sendStatesWithPhysics(fixtureStates);
             // ═══════════════════════════════════════════════════════════════════════════
             // 🧹 WAVE 2227: VISUAL GATE REMOVED
             // Previously (WAVE 1133), this block zerified ALL fixtureStates when

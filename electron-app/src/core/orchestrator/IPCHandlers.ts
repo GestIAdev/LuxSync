@@ -1,4 +1,4 @@
-﻿﻿/**
+﻿/**
  * WAVE 243.5: IPC HANDLERS - SIMPLIFIED V2
  * 
  * Centraliza todos los handlers IPC.
@@ -499,9 +499,13 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   // WAVE 254: Migrado a TitanOrchestrator
   // =========================================================================
   
-  // Audio frame (kebab-case - lo que envÃ­a preload.ts)
-  // WAVE 3043: Fire & Forget - eliminado ipcMain.handle a 60Hz (120 Promises/seg -> event loop bloat)
+  // ⚡ WAVE 3060: lux:audio-frame ELIMINADO del hot-path
+  // Antes: 60 IPC calls/sec con JSON {bass,mid,treble,energy,bpm,fftBins[64]}
+  // Ahora: Worker BETA envía bass/mid/energy via brain.on('audio-levels') a ~10fps
+  //        sin cruzar IPC Renderer→Main. Canal preservado solo para simulateAudio().
   ipcMain.on('lux:audio-frame', (_event, data: Record<string, unknown>) => {
+    // Solo procesar si tiene marca de simulación manual (useSelene.simulateAudio)
+    // El hot-path de useAudioCapture/useLiveAudioInput ya NO envía por este canal
     if (titanOrchestrator) {
       titanOrchestrator.processAudioFrame(data)
     }

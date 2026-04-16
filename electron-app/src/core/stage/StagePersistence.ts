@@ -22,6 +22,7 @@
 
 import { app } from 'electron'
 import * as fs from 'fs'
+import * as fsp from 'fs/promises'
 import * as path from 'path'
 import {
   ShowFileV2,
@@ -191,16 +192,19 @@ export class StagePersistence {
 
       // ══════════════════════════════════════════════════════════════════
       // STEP 1: CREATE BACKUP — Rename existing file to .bak
+      // ⚡ WAVE 3050: ALL I/O ASYNC — zero Main Thread blocking
       // ══════════════════════════════════════════════════════════════════
       let backupCreated = false
       
-      if (fs.existsSync(targetPath)) {
+      const targetExists = await fsp.access(targetPath).then(() => true, () => false)
+      if (targetExists) {
         try {
           // Remove stale .bak if it exists from a previous interrupted save
-          if (fs.existsSync(backupPath)) {
-            fs.unlinkSync(backupPath)
+          const bakExists = await fsp.access(backupPath).then(() => true, () => false)
+          if (bakExists) {
+            await fsp.unlink(backupPath)
           }
-          fs.renameSync(targetPath, backupPath)
+          await fsp.rename(targetPath, backupPath)
           backupCreated = true
           console.log(`[StagePersistence] 🛡️ Backup created: ${backupPath}`)
         } catch (backupErr) {
@@ -210,43 +214,50 @@ export class StagePersistence {
       }
 
       // ══════════════════════════════════════════════════════════════════
-      // STEP 2: WRITE TO TEMP FILE
+      // STEP 2: WRITE TO TEMP FILE (async — non-blocking)
       // ══════════════════════════════════════════════════════════════════
       const content = JSON.stringify(showFile, null, 2)
       
       try {
-        fs.writeFileSync(tempPath, content, 'utf-8')
+        await fsp.writeFile(tempPath, content, 'utf-8')
       } catch (writeErr) {
         // Write failed — restore backup if we made one
-        if (backupCreated && fs.existsSync(backupPath)) {
-          try {
-            fs.renameSync(backupPath, targetPath)
-            console.log(`[StagePersistence] 🔄 Backup restored after write failure`)
-          } catch (restoreErr) {
-            console.error(`[StagePersistence] 💀 CRITICAL: Write failed AND backup restore failed: ${restoreErr}`)
+        if (backupCreated) {
+          const bakStillExists = await fsp.access(backupPath).then(() => true, () => false)
+          if (bakStillExists) {
+            try {
+              await fsp.rename(backupPath, targetPath)
+              console.log(`[StagePersistence] 🔄 Backup restored after write failure`)
+            } catch (restoreErr) {
+              console.error(`[StagePersistence] 💀 CRITICAL: Write failed AND backup restore failed: ${restoreErr}`)
+            }
           }
         }
         throw writeErr
       }
 
       // ══════════════════════════════════════════════════════════════════
-      // STEP 3: ATOMIC RENAME — .tmp → target
+      // STEP 3: ATOMIC RENAME — .tmp → target (async)
       // ══════════════════════════════════════════════════════════════════
       try {
-        fs.renameSync(tempPath, targetPath)
+        await fsp.rename(tempPath, targetPath)
       } catch (renameErr) {
         // Rename failed — restore backup, clean up temp
-        if (backupCreated && fs.existsSync(backupPath)) {
-          try {
-            fs.renameSync(backupPath, targetPath)
-            console.log(`[StagePersistence] 🔄 Backup restored after rename failure`)
-          } catch (restoreErr) {
-            console.error(`[StagePersistence] 💀 CRITICAL: Rename failed AND backup restore failed: ${restoreErr}`)
+        if (backupCreated) {
+          const bakStillExists = await fsp.access(backupPath).then(() => true, () => false)
+          if (bakStillExists) {
+            try {
+              await fsp.rename(backupPath, targetPath)
+              console.log(`[StagePersistence] 🔄 Backup restored after rename failure`)
+            } catch (restoreErr) {
+              console.error(`[StagePersistence] 💀 CRITICAL: Rename failed AND backup restore failed: ${restoreErr}`)
+            }
           }
         }
         // Clean orphan temp file
-        if (fs.existsSync(tempPath)) {
-          try { fs.unlinkSync(tempPath) } catch { /* best effort */ }
+        const tmpStillExists = await fsp.access(tempPath).then(() => true, () => false)
+        if (tmpStillExists) {
+          try { await fsp.unlink(tempPath) } catch { /* best effort */ }
         }
         throw renameErr
       }
@@ -254,12 +265,15 @@ export class StagePersistence {
       // ══════════════════════════════════════════════════════════════════
       // STEP 4: CLEAN UP BACKUP — Only after successful write+rename
       // ══════════════════════════════════════════════════════════════════
-      if (backupCreated && fs.existsSync(backupPath)) {
-        try {
-          fs.unlinkSync(backupPath)
-        } catch {
-          // Non-fatal — backup file lingering is better than crashing
-          console.warn(`[StagePersistence] ⚠️ Could not clean up backup: ${backupPath}`)
+      if (backupCreated) {
+        const bakStillExists = await fsp.access(backupPath).then(() => true, () => false)
+        if (bakStillExists) {
+          try {
+            await fsp.unlink(backupPath)
+          } catch {
+            // Non-fatal — backup file lingering is better than crashing
+            console.warn(`[StagePersistence] ⚠️ Could not clean up backup: ${backupPath}`)
+          }
         }
       }
 
@@ -308,8 +322,9 @@ export class StagePersistence {
     try {
       const targetPath = filePath || this.getActiveShowPath()
 
-      // Check if file exists
-      if (!fs.existsSync(targetPath)) {
+      // Check if file exists (async — non-blocking)
+      const fileExists = await fsp.access(targetPath).then(() => true, () => false)
+      if (!fileExists) {
         // If loading active show and it doesn't exist, try legacy migration
         if (!filePath || targetPath === this.getActiveShowPath()) {
           return this.tryLegacyMigration()
@@ -317,8 +332,8 @@ export class StagePersistence {
         return { success: false, error: `File not found: ${targetPath}` }
       }
 
-      // Read file
-      const content = fs.readFileSync(targetPath, 'utf-8')
+      // Read file (async — non-blocking)
+      const content = await fsp.readFile(targetPath, 'utf-8')
       const data = JSON.parse(content)
 
       // Check schema version
@@ -349,10 +364,10 @@ export class StagePersistence {
           }
           if (zonesNormalized > 0 || appliedPatches.length > 0) {
             console.log(`[StagePersistence] ✅ Normalized ${zonesNormalized} fixture zones to canonical`)
-            // Auto-save con zonas normalizadas y/o patches aplicados
+            // Auto-save con zonas normalizadas y/o patches aplicados (async)
             patchedShow.modifiedAt = new Date().toISOString()
             const targetSavePath = filePath || this.getActiveShowPath()
-            fs.writeFileSync(targetSavePath, JSON.stringify(patchedShow, null, 2), 'utf-8')
+            await fsp.writeFile(targetSavePath, JSON.stringify(patchedShow, null, 2), 'utf-8')
             console.log(`[StagePersistence] 💾 Auto-saved with normalized zones`)
           }
           
@@ -383,7 +398,8 @@ export class StagePersistence {
   private async tryLegacyMigration(): Promise<LoadResult> {
     const legacyPath = this.getLegacyConfigPath()
 
-    if (!fs.existsSync(legacyPath)) {
+    const legacyExists = await fsp.access(legacyPath).then(() => true, () => false)
+    if (!legacyExists) {
       // No legacy config, create new empty show
       console.log('[StagePersistence] 🆕 No existing show found, creating new')
       const newShow = createEmptyShowFile('New Show')
@@ -398,7 +414,7 @@ export class StagePersistence {
     console.log('[StagePersistence] 🔄 Found legacy config, migrating...')
     
     try {
-      const content = fs.readFileSync(legacyPath, 'utf-8')
+      const content = await fsp.readFile(legacyPath, 'utf-8')
       const data = JSON.parse(content)
       return this.migrateAndLoad(data, legacyPath)
     } catch (error) {
@@ -458,17 +474,17 @@ export class StagePersistence {
    */
   async listShows(): Promise<ListResult> {
     try {
-      const files = fs.readdirSync(this.showsPath)
+      const files = await fsp.readdir(this.showsPath)
       const shows: ShowMetadataV2[] = []
 
       for (const file of files) {
         if (!file.endsWith(SHOW_EXTENSION)) continue
 
         const fullPath = path.join(this.showsPath, file)
-        const stats = fs.statSync(fullPath)
+        const stats = await fsp.stat(fullPath)
 
         try {
-          const content = fs.readFileSync(fullPath, 'utf-8')
+          const content = await fsp.readFile(fullPath, 'utf-8')
           const data = JSON.parse(content) as Partial<ShowFileV2>
 
           shows.push({
@@ -509,7 +525,8 @@ export class StagePersistence {
    */
   async deleteShow(filePath: string): Promise<SaveResult> {
     try {
-      if (!fs.existsSync(filePath)) {
+      const exists = await fsp.access(filePath).then(() => true, () => false)
+      if (!exists) {
         return { success: false, error: 'File not found' }
       }
 
@@ -518,7 +535,7 @@ export class StagePersistence {
         return { success: false, error: 'Cannot delete active show' }
       }
 
-      fs.unlinkSync(filePath)
+      await fsp.unlink(filePath)
       this.removeFromRecentShows(filePath)
 
       console.log(`[StagePersistence] 🗑️ Deleted: ${filePath}`)
@@ -537,15 +554,16 @@ export class StagePersistence {
   /**
    * Get list of recent shows
    */
-  getRecentShows(): ShowMetadataV2[] {
+  async getRecentShows(): Promise<ShowMetadataV2[]> {
     const result: ShowMetadataV2[] = []
 
     for (const showPath of this.recentShows) {
-      if (!fs.existsSync(showPath)) continue
+      const exists = await fsp.access(showPath).then(() => true, () => false)
+      if (!exists) continue
 
       try {
-        const stats = fs.statSync(showPath)
-        const content = fs.readFileSync(showPath, 'utf-8')
+        const stats = await fsp.stat(showPath)
+        const content = await fsp.readFile(showPath, 'utf-8')
         const data = JSON.parse(content) as Partial<ShowFileV2>
 
         result.push({
@@ -573,6 +591,7 @@ export class StagePersistence {
     const recentPath = path.join(this.userDataPath, RECENT_SHOWS_FILE)
     
     try {
+      // Sync read at startup only — init() is called once during app boot
       if (fs.existsSync(recentPath)) {
         const content = fs.readFileSync(recentPath, 'utf-8')
         this.recentShows = JSON.parse(content) || []
@@ -585,11 +604,9 @@ export class StagePersistence {
   private saveRecentShowsList(): void {
     const recentPath = path.join(this.userDataPath, RECENT_SHOWS_FILE)
     
-    try {
-      fs.writeFileSync(recentPath, JSON.stringify(this.recentShows, null, 2), 'utf-8')
-    } catch (error) {
-      console.warn('[StagePersistence] ⚠️ Could not save recent shows list')
-    }
+    // ⚡ WAVE 3050: Fire & forget async write — non-blocking
+    fsp.writeFile(recentPath, JSON.stringify(this.recentShows, null, 2), 'utf-8')
+      .catch(() => console.warn('[StagePersistence] ⚠️ Could not save recent shows list'))
   }
 
   private addToRecentShows(showPath: string): void {
@@ -626,9 +643,9 @@ export class StagePersistence {
   /**
    * Check if a show exists
    */
-  showExists(name: string): boolean {
+  async showExists(name: string): Promise<boolean> {
     const filename = name.replace(/\s+/g, '-').toLowerCase() + SHOW_EXTENSION
-    return fs.existsSync(path.join(this.showsPath, filename))
+    return fsp.access(path.join(this.showsPath, filename)).then(() => true, () => false)
   }
 }
 

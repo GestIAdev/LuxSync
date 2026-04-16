@@ -1577,13 +1577,10 @@ export class TitanEngine extends EventEmitter {
             return newEffect;
         });
     }
-    /**
-     * Calcula la intensidad global basada en audio y restricciones del vibe.
-     */
     calculateMasterIntensity(audio, vibeProfile) {
         const { floor, ceiling } = vibeProfile.dimmer;
-        // Mapear energía al rango permitido
-        const rawIntensity = audio.energy;
+        // WAVE 2990: NOISE GATE — sub-threshold energy = absolute silence
+        const rawIntensity = audio.energy < TitanEngine.NOISE_GATE ? 0 : audio.energy;
         const mappedIntensity = floor + (rawIntensity * (ceiling - floor));
         return Math.max(0, Math.min(1, mappedIntensity));
     }
@@ -1591,26 +1588,33 @@ export class TitanEngine extends EventEmitter {
      * Calcula las intenciones de color/intensidad por zona.
      */
     calculateZoneIntents(audio, _context, _vibeProfile) {
-        // Distribución básica por zona basada en frecuencias
+        // WAVE 2990: NOISE GATE applied per-band before zone math.
+        // Sub-threshold band energy = 0. Prevents noise floor from generating
+        // residual intensity in any zone.
+        const NG = TitanEngine.NOISE_GATE;
+        const bass = audio.bass < NG ? 0 : audio.bass;
+        const mid = audio.mid < NG ? 0 : audio.mid;
+        const high = audio.high < NG ? 0 : audio.high;
+        const energy = audio.energy < NG ? 0 : audio.energy;
         const zones = {
             front: {
-                intensity: audio.mid * 0.8 + audio.bass * 0.2,
+                intensity: mid * 0.8 + bass * 0.2,
                 paletteRole: 'primary',
             },
             back: {
-                intensity: audio.bass * 0.6 + audio.energy * 0.4,
+                intensity: bass * 0.6 + energy * 0.4,
                 paletteRole: 'accent',
             },
             left: {
-                intensity: audio.high * 0.5 + audio.energy * 0.5,
-                paletteRole: 'secondary', // 🎨 Mov L → Secondary (Blue)
+                intensity: high * 0.5 + energy * 0.5,
+                paletteRole: 'secondary',
             },
             right: {
-                intensity: audio.high * 0.5 + audio.energy * 0.5,
-                paletteRole: 'ambient', // 🎨 WAVE 412: Mov R → Ambient (Cyan)
+                intensity: high * 0.5 + energy * 0.5,
+                paletteRole: 'ambient',
             },
             ambient: {
-                intensity: audio.energy * 0.3,
+                intensity: energy * 0.3,
                 paletteRole: 'ambient',
             },
         };
@@ -1799,3 +1803,10 @@ export class TitanEngine extends EventEmitter {
         console.log(`[TitanEngine 🧠] Stabilizers RESET`);
     }
 }
+/**
+ * Calcula la intensidad global basada en audio y restricciones del vibe.
+ */
+// WAVE 2990: NOISE GATE threshold. Energy below this is treated as silence.
+// Background hum, room noise, codec artifacts all register as ~2-4% energy.
+// Hard gate to zero prevents residual light when the room is actually silent.
+TitanEngine.NOISE_GATE = 0.05;

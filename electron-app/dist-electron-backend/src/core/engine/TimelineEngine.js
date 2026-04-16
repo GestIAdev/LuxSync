@@ -481,7 +481,8 @@ export class TimelineEngine {
                 // 🔥 WAVE 2068: Core FX own their intensity — no keyframe envelope on retrigger either
                 const envelope = 1.0;
                 const fixtureIds = this.resolveFixtureIds(clip);
-                this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode);
+                // 🚫 WAVE 2900: re-trigger también es IA
+                this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode, true);
                 return;
             }
         }
@@ -515,7 +516,8 @@ export class TimelineEngine {
         const envelope = 1.0; // Core FX own their intensity. Chronos doesn't touch it.
         // ── Process output → Arbiter ──
         const fixtureIds = this.resolveFixtureIds(clip);
-        this.dispatchEffectOutput(output, envelope, fixtureIds, blendMode);
+        // 🚫 WAVE 2900: Core Effects são IA (SELENE_HUNT/IA_AUTO) — movimento vetado
+        this.dispatchEffectOutput(output, envelope, fixtureIds, blendMode, true);
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 2063.5: UNIFIED EFFECT DISPATCH
@@ -530,7 +532,8 @@ export class TimelineEngine {
     // NEW: If zoneOverrides have color → use those exclusively (no global fallback).
     //      If no zoneOverrides → use global colorOverride/dimmerOverride/auto-white.
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchEffectOutput(output, envelope, fixtureIds, blendMode = 'HTP') {
+    dispatchEffectOutput(output, envelope, fixtureIds, blendMode = 'HTP', isAI = false // 🚫 WAVE 2900: true = Core Effect (IA), movimiento vetado
+    ) {
         // ═══════════════════════════════════════════════════════════════════
         // 🎯 WAVE 2067.1: COLOR CABLE CUT
         //
@@ -553,18 +556,18 @@ export class TimelineEngine {
         if (hasZoneOverrides) {
             // ZONE PATH: Effect has spatial authority — zones are the law.
             // Even dimmer-only zones must dispatch (DigitalRain blackout zones).
-            this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode);
+            this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode, isAI);
             // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
         }
         else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
             // GLOBAL PATH: Effects with direct color/dimmer overrides
-            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode);
+            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode, isAI);
         }
         else {
             // FALLBACK: Pure intensity modulators → global output with auto-white
             // Only reaches here if: no zoneOverrides, no colorOverride, no whiteOverride, no dimmerOverride
             // These are truly "colorless" effects that just modulate brightness → white is correct
-            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode);
+            this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode, isAI);
         }
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -582,7 +585,8 @@ export class TimelineEngine {
     //      'front' → only front fixtures, 'all-movers' → only movers, etc.
     //      Each zone paints ONLY its own fixtures. No more friendly fire.
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchZoneOverrides(output, envelope, allowedFixtureIds, blendMode = 'HTP') {
+    dispatchZoneOverrides(output, envelope, allowedFixtureIds, blendMode = 'HTP', isAI = false // 🚫 WAVE 2900: si true, pan/tilt del efecto se ignoran
+    ) {
         if (!output.zoneOverrides)
             return;
         // ═══════════════════════════════════════════════════════════════════
@@ -626,8 +630,10 @@ export class TimelineEngine {
                 channels.push('red', 'green', 'blue');
             }
             // Zone movement
+            // 🚫 WAVE 2900: La IA (Core Effects procedurales) tiene prohibido emitir pan/tilt.
+            // Solo clips de usuario (Hephaestus/Legacy) pueden mover fixtures.
             const zoneMv = zoneData.movement;
-            if (zoneMv) {
+            if (zoneMv && !isAI) {
                 if (zoneMv.pan !== undefined) {
                     controls.pan = zoneMv.pan * 255;
                     channels.push('pan');
@@ -665,7 +671,8 @@ export class TimelineEngine {
     // ═══════════════════════════════════════════════════════════════════════
     // 📤 GLOBAL OUTPUT → ARBITER (colorOverride, dimmerOverride)
     // ═══════════════════════════════════════════════════════════════════════
-    dispatchGlobalOutput(output, envelope, fixtureIds, blendMode = 'HTP') {
+    dispatchGlobalOutput(output, envelope, fixtureIds, blendMode = 'HTP', isAI = false // 🚫 WAVE 2900: si true, pan/tilt del efecto se ignoran
+    ) {
         const controls = {};
         const channels = [];
         // Color: HSL → RGB
@@ -693,7 +700,8 @@ export class TimelineEngine {
             channels.push('strobe');
         }
         // Movement
-        if (output.movement) {
+        // 🚫 WAVE 2900: La IA (Core Effects procedurales) tiene prohibido emitir pan/tilt.
+        if (output.movement && !isAI) {
             const mv = output.movement;
             if (mv.pan !== undefined) {
                 controls.pan = mv.pan * 255;

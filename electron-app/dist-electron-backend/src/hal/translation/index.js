@@ -77,9 +77,7 @@ export function translateColor(fixtureId, targetRGB, fixtureName, profileId, cur
         colorName: translation.colorName,
         wasTranslated: translation.wasTranslated,
         wasBlocked: safetyResult.wasBlocked,
-        isInLatch: safetyResult.isInLatch,
-        suggestedShutter: safetyResult.suggestedShutter,
-        delegateToStrobe: safetyResult.delegateToStrobe,
+        isDebounced: safetyResult.isDebounced,
     };
 }
 // WAVE 2098: Boot silence

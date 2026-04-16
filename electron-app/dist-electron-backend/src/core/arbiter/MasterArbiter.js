@@ -105,6 +105,8 @@ export class MasterArbiter extends EventEmitter {
         this._ikProcessedFixtures = new Set();
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
+        // 🔬 WAVE 2910 WIRETAP: rastreador de si cada fixture tenía posición manual en el frame anterior
+        this._wiretap_prevHadPosition = new Map();
         // 🔥 WAVE 2495: Grand Master Speed — scales Layer 2 pattern speed too
         // Mirrors vibeMovementManager.globalSpeedMultiplier but for manual patterns.
         // Set via setGrandMasterSpeed() called from ArbiterIPCHandlers.
@@ -362,6 +364,11 @@ export class MasterArbiter extends EventEmitter {
         };
         // 🔧 WAVE 2711: SEGMENTED MERGE — Replace by category, preserve by category
         const existingOverride = this.layer2_manualOverrides.get(override.fixtureId);
+        // 🔬 WAVE 2910 WIRETAP: pre-merge position tracking
+        const hadPosition = !!(existingOverride?.overrideChannels.includes('pan') ||
+            existingOverride?.overrideChannels.includes('tilt'));
+        const incomingHasPosition = override.overrideChannels.includes('pan') ||
+            override.overrideChannels.includes('tilt');
         if (existingOverride) {
             // Determine which categories the NEW override touches
             const incomingCategories = getChannelCategories(override.overrideChannels);
@@ -405,6 +412,12 @@ export class MasterArbiter extends EventEmitter {
             // MERGE path: skip costly Error().stack capture (fader drags = 100s per sec).
             // The NEW stack already recorded when the override was first created.
             this._layer2LastModStack.set(override.fixtureId, `MERGE @ frame ${this.frameNumber} | src=${override.source}`);
+            // 🔬 WAVE 2910 WIRETAP: Verificar si el merge eliminó la posición del resultado final
+            const resultHasPosition = mergedChannels.includes('pan') ||
+                mergedChannels.includes('tilt');
+            if (hadPosition && !resultHasPosition) {
+                console.trace(`🚨 [WIRETAP WAVE 2910] FIXTURE ${override.fixtureId} PERDÍÓ POSICIÓN DURANTE MERGE!`, '\n  teniaPos=true, incomingHasPos=' + incomingHasPosition, '\n  existingChannels:', existingOverride.overrideChannels, '\n  incomingChannels:', override.overrideChannels, '\n  mergedChannels:', mergedChannels, '\n  incomingCategories:', [...incomingCategories], '\n  mergedControls:', mergedControls);
+            }
             if (this.config.debug) {
                 console.log(`[MasterArbiter] 🔧 WAVE 2711 Segmented merge: ${override.fixtureId}`, {
                     incomingCategories: [...incomingCategories],
@@ -612,14 +625,25 @@ export class MasterArbiter extends EventEmitter {
             // Partial release - remove only specified channels
             const remainingChannels = override.overrideChannels.filter(c => !channels.includes(c));
             if (remainingChannels.length === 0) {
+                // 🔬 WAVE 2910 WIRETAP: Eliminación via release parcial que vació todos los canales
+                console.trace(`🚨 [WIRETAP WAVE 2910] LAYER 2 ELIMINADO (partial→empty): ${fixtureId}`, '\n  channels liberados:', channels, '\n  channels que quedaban:', override.overrideChannels);
                 this.layer2_manualOverrides.delete(fixtureId);
             }
             else {
+                // Si tenía posición y el release la elimina, alertar
+                const hadPos = override.overrideChannels.some(c => c === 'pan' || c === 'tilt');
+                const remainsPos = remainingChannels.some(c => c === 'pan' || c === 'tilt');
+                if (hadPos && !remainsPos) {
+                    console.trace(`🚨 [WIRETAP WAVE 2910] POSICIÓN ELIMINADA via release parcial: ${fixtureId}`, '\n  channels liberados:', channels, '\n  channels restantes:', remainingChannels);
+                }
                 override.overrideChannels = remainingChannels;
             }
         }
         else {
             // Full release
+            // 🔬 WAVE 2910 WIRETAP: Eliminación completa del override
+            const hadPos = override.overrideChannels.some(c => c === 'pan' || c === 'tilt');
+            console.trace(`🚨 [WIRETAP WAVE 2910] LAYER 2 ELIMINADO COMPLETAMENTE: ${fixtureId}`, hadPos ? '⚠️ TENÍA POSICIÓN' : '(sin posición)', '\n  channels:', override.overrideChannels);
             this.layer2_manualOverrides.delete(fixtureId);
         }
         // 📡 WAVE 2770 + WAVE 2775: Record release source (lightweight, no stack capture)
@@ -634,6 +658,13 @@ export class MasterArbiter extends EventEmitter {
      * Release all manual overrides
      */
     releaseAllManualOverrides() {
+        // 🔬 WAVE 2910 WIRETAP: Nuke total — cualquier cosa que llame esto mata TODO Layer 2
+        const fixturesWithPos = Array.from(this.layer2_manualOverrides.entries())
+            .filter(([, ov]) => ov.overrideChannels.some(c => c === 'pan' || c === 'tilt'))
+            .map(([id]) => id);
+        if (fixturesWithPos.length > 0) {
+            console.trace(`🚨 [WIRETAP WAVE 2910] releaseAllManualOverrides() EJECUTADO — BORRANDO POSICIÓN DE: ${fixturesWithPos.join(', ')}`, '\n  Total overrides:', this.layer2_manualOverrides.size);
+        }
         for (const fixtureId of this.layer2_manualOverrides.keys()) {
             this.releaseManualOverride(fixtureId);
         }
@@ -1267,7 +1298,10 @@ export class MasterArbiter extends EventEmitter {
                             `overlay=${this.currentPlaybackFrame.size}/${allFixtureIds.length} fixtures`);
                     }
                     // Cache position for Ghost Protocol
-                    this.lastKnownPositions.set(fixtureId, { pan: hybridTarget.pan, tilt: hybridTarget.tilt });
+                    // ⚡ WAVE 2750: NaN BOMB SHIELD — protege lastKnownPositions de NaN
+                    const safePan = Number.isFinite(hybridTarget.pan) ? hybridTarget.pan : 128;
+                    const safeTilt = Number.isFinite(hybridTarget.tilt) ? hybridTarget.tilt : 128;
+                    this.lastKnownPositions.set(fixtureId, { pan: safePan, tilt: safeTilt });
                 }
                 else {
                     // 🎬 WAVE 2065: Fixture NOT in Chronos frame → 100% Titan/Selene
@@ -1458,7 +1492,12 @@ export class MasterArbiter extends EventEmitter {
         let effectAdjustedPan = rawPan;
         let effectAdjustedTilt = rawTilt;
         let movementFromEffect = false;
-        if (movementIntent) {
+        // ⚔️ WAVE 2910 FIX: Layer 2 (Manual) always beats Layer 3 (Effects).
+        // If the user has manual position override active, effectIntents CANNOT overwrite it.
+        // Without this guard, isAbsolute=true intents silently hijack the mover mid-session.
+        const manualHoldsPosition = !!(manualOverride?.overrideChannels.includes('pan') ||
+            manualOverride?.overrideChannels.includes('tilt'));
+        if (movementIntent && !manualHoldsPosition) {
             if (movementIntent.isAbsolute) {
                 if (movementIntent.pan !== undefined)
                     effectAdjustedPan = movementIntent.pan;
@@ -1500,6 +1539,14 @@ export class MasterArbiter extends EventEmitter {
         else {
             controlSources['tilt'] = ControlLayer.TITAN_AI;
         }
+        // 🔬 WAVE 2910 WIRETAP: Chivato de estado — detectar transición manual→no-manual en posición
+        const nowHasPosition = !!(manualOverride?.overrideChannels.includes('pan') ||
+            manualOverride?.overrideChannels.includes('tilt'));
+        const prevHadPosition = this._wiretap_prevHadPosition.get(fixtureId) ?? false;
+        if (prevHadPosition && !nowHasPosition) {
+            console.trace(`🚨 [WIRETAP WAVE 2910] TRANSICIÓN DETECTADA: ${fixtureId} pasó de MANUAL a ${manualOverride ? 'override-sin-pos' : 'SIN-OVERRIDE'} en arbitrateFixture`, '\n  manualOverride existente:', manualOverride ? JSON.stringify({ channels: manualOverride.overrideChannels, source: manualOverride.source }) : 'null', '\n  movementFromEffect:', movementFromEffect, '\n  frame:', this.frameNumber);
+        }
+        this._wiretap_prevHadPosition.set(fixtureId, nowHasPosition);
         // ═══════════════════════════════════════════════════════════════════════
         // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
         // 🎯 WAVE 2662: Now uses effectAdjustedPan/Tilt as base (includes intent overlay)
@@ -1620,7 +1667,10 @@ export class MasterArbiter extends EventEmitter {
             _ikProcessed: this._ikProcessedFixtures.has(fixtureId),
         };
         // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
-        this.lastKnownPositions.set(fixtureId, { pan: target.pan, tilt: target.tilt });
+        // ⚡ WAVE 2750: NaN BOMB SHIELD
+        const safePanT = Number.isFinite(target.pan) ? target.pan : 128;
+        const safeTiltT = Number.isFinite(target.tilt) ? target.tilt : 128;
+        this.lastKnownPositions.set(fixtureId, { pan: safePanT, tilt: safeTiltT });
         return target;
     }
     /**

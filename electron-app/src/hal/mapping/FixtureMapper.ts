@@ -122,13 +122,14 @@ export interface FixtureState {
   zoom: number      // 0-255 (0=beam, 255=wash)
   focus: number     // 0-255 (0=sharp, 255=soft)
   // 🎛️ WAVE 339: Physics (interpolated positions)
-  // 🛡️ WAVE 2085: READONLY — These are owned EXCLUSIVELY by FixturePhysicsDriver.
+  // 🛡️ WAVE 2085: Owned EXCLUSIVELY by FixturePhysicsDriver.
   // Only HAL.renderFromTarget() and HAL.sendStatesWithPhysics() may populate these.
   // TitanOrchestrator, effects, and overrides must NEVER write to these fields.
-  readonly physicalPan?: number   // 0-255 (ACTUAL position after physics)
-  readonly physicalTilt?: number  // 0-255 (ACTUAL position after physics)
-  readonly panVelocity?: number   // DMX/s (current velocity)
-  readonly tiltVelocity?: number  // DMX/s (current velocity)
+  // ⚡ WAVE 3050: Removed readonly to enable zero-allocation in-place mutation inside HAL.
+  physicalPan?: number   // 0-255 (ACTUAL position after physics)
+  physicalTilt?: number  // 0-255 (ACTUAL position after physics)
+  panVelocity?: number   // DMX/s (current velocity)
+  tiltVelocity?: number  // DMX/s (current velocity)
   // 🎨 WAVE 687: Dynamic channel mapping
   channels?: FixtureChannel[]    // Channel definitions for DMX packet construction
   // 🎨 WAVE 687: Additional control values

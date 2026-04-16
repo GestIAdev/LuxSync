@@ -41,9 +41,7 @@ const DEFAULT_CONFIG = {
 // ═══════════════════════════════════════════════════════════════════════════
 export class HardwareSafetyLayer {
     constructor(config = {}) {
-        // Estado por fixture
         this.fixtureStates = new Map();
-        // Métricas globales
         this.totalBlockedChanges = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
@@ -69,9 +67,7 @@ export class HardwareSafetyLayer {
             return {
                 finalColorDmx: requestedColorDmx,
                 wasBlocked: false,
-                isInLatch: false,
-                suggestedShutter: 255,
-                delegateToStrobe: false,
+                isDebounced: false,
             };
         }
         // ═══════════════════════════════════════════════════════════════════
@@ -79,7 +75,12 @@ export class HardwareSafetyLayer {
         // ═══════════════════════════════════════════════════════════════════
         let state = this.fixtureStates.get(fixtureId);
         if (!state) {
-            state = this.createInitialState(fixtureId, requestedColorDmx);
+            state = {
+                fixtureId,
+                lastColorDmx: requestedColorDmx,
+                lastColorChangeTime: now,
+                blockedChanges: 0,
+            };
             this.fixtureStates.set(fixtureId, state);
         }
         // ═══════════════════════════════════════════════════════════════════
@@ -99,15 +100,14 @@ export class HardwareSafetyLayer {
                 return {
                     finalColorDmx: state.lastColorDmx,
                     wasBlocked: true,
-                    isInLatch: false,
+                    isDebounced: true,
                     blockReason: `DEBOUNCE (${timeSinceLastChange}ms < ${minChangeTime}ms)`,
-                    suggestedShutter: 255,
-                    delegateToStrobe: false,
                 };
             }
             // Cambio permitido — actualizar estado
             state.lastColorDmx = requestedColorDmx;
             state.lastColorChangeTime = now;
+            state.blockedChanges = 0;
             if (this.config.debug) {
                 console.log(`[SafetyLayer] ✅ ALLOWED: ${fixtureId} → color DMX ${requestedColorDmx}`);
             }
@@ -115,33 +115,12 @@ export class HardwareSafetyLayer {
         return {
             finalColorDmx: requestedColorDmx,
             wasBlocked: false,
-            isInLatch: false,
-            suggestedShutter: 255,
-            delegateToStrobe: false,
+            isDebounced: false,
         };
     }
-    // ═══════════════════════════════════════════════════════════════════════
-    // MÉTODOS PRIVADOS
-    // ═══════════════════════════════════════════════════════════════════════
-    createInitialState(fixtureId, initialColor) {
-        return {
-            fixtureId,
-            lastColorDmx: initialColor,
-            lastColorChangeTime: Date.now(),
-            blockedChanges: 0,
-        };
-    }
-    getMinChangeTime(profile) {
-        const baseTime = profile.colorEngine.colorWheel?.minChangeTimeMs ?? 500;
-        return Math.round(baseTime * this.config.safetyMargin);
-    }
-    // ═══════════════════════════════════════════════════════════════════════
-    // API PÚBLICA
-    // ═══════════════════════════════════════════════════════════════════════
     /**
-     * 🎵 WAVE 2720: Obtiene el último color DMX conocido de un fixture.
-     * Usado por HarmonicQuantizer en HAL para alimentar el SafetyLayer
-     * con el color anterior cuando el gate armónico bloquea un cambio.
+     * 🔧 WAVE 2711: getLastColor — devuelve el último color aplicado
+     * para que HarmonicQuantizer sepa qué valor holdear cuando el gate está cerrado.
      */
     getLastColor(fixtureId) {
         return this.fixtureStates.get(fixtureId)?.lastColorDmx;
@@ -151,27 +130,18 @@ export class HardwareSafetyLayer {
      */
     resetFixture(fixtureId) {
         this.fixtureStates.delete(fixtureId);
-        if (this.config.debug) {
-            console.log(`[SafetyLayer] 🔄 Reset: ${fixtureId}`);
-        }
     }
-    /**
-     * Resetea todos los estados
-     */
     resetAll() {
         this.fixtureStates.clear();
     }
     /**
      * Obtiene métricas de seguridad
-     * WAVE 2711: latch and strobe fields preserved for dashboard compat, always 0
+     * WAVE 2711: solo debounce, sin latch/strobe
      */
     getMetrics() {
         return {
             totalBlockedChanges: this.totalBlockedChanges,
-            totalLatchActivations: 0,
-            totalStrobeDelegations: 0,
             activeFixtures: this.fixtureStates.size,
-            fixturesInLatch: 0,
         };
     }
     /**
@@ -188,7 +158,10 @@ export class HardwareSafetyLayer {
      */
     setConfig(config) {
         this.config = { ...this.config, ...config };
-        console.log('[SafetyLayer] ⚙️ Config updated');
+    }
+    getMinChangeTime(profile) {
+        const baseTime = profile.colorEngine?.colorWheel?.minChangeTimeMs ?? 500;
+        return Math.round(baseTime * this.config.safetyMargin);
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════

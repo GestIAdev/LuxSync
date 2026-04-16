@@ -2001,7 +2001,11 @@ export class TitanOrchestrator {
    * This sends the Float32Array directly to BETA Worker for real FFT analysis
    */
   private audioBufferRejectCount = 0;
+  private _audioSondaCount = 0;
+  private _audioSondaTotal = 0;
+  private _audioSondaStart = 0;
   processAudioBuffer(buffer: Float32Array): void {
+    const _audioStart = performance.now() // 🔬 WAVE 3041: SONDA AUDIO
     // 🔍 WAVE 264.7: LOG CUANDO SE RECHAZA
     if (!this.isRunning || !this.useBrain) {
       this.audioBufferRejectCount++;
@@ -2023,6 +2027,19 @@ export class TitanOrchestrator {
       this.trinity.feedAudioBuffer(buffer)
     } else {
       console.warn(`[TitanOrchestrator] ⚠️ trinity is null! Buffer discarded.`);
+    }
+    
+    // 🔬 WAVE 3041: acumular telemetría de coste del handler de audio
+    const _audioCostMs = performance.now() - _audioStart
+    if (!this._audioSondaCount) this._audioSondaCount = 0
+    if (!this._audioSondaTotal) this._audioSondaTotal = 0
+    this._audioSondaCount++
+    this._audioSondaTotal += _audioCostMs
+    if (this._audioSondaCount % 40 === 0) { // ~2s a 20fps
+      const _avg = (this._audioSondaTotal / 40).toFixed(3)
+      console.warn(`[SONDA AUDIO] 🔬 avg:${_avg}ms last:${_audioCostMs.toFixed(3)}ms`)
+      this.log('Error', `[SONDA AUDIO] 🔬 avg:${_avg}ms last:${_audioCostMs.toFixed(3)}ms`)
+      this._audioSondaCount = 0; this._audioSondaTotal = 0
     }
   }
 

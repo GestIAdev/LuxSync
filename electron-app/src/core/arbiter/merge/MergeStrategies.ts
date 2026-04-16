@@ -215,8 +215,10 @@ export function isLTPChannel(channelType: ChannelType): boolean {
 
 /**
  * Clamp a value to DMX range (0-255)
+ * ⚡ WAVE 2750: NaN BOMB SHIELD — NaN/Infinity ya no pasan.
  */
 export function clampDMX(value: number): number {
+  if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(255, Math.round(value)))
 }
 

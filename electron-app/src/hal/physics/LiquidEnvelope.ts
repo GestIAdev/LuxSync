@@ -206,9 +206,10 @@ export class LiquidEnvelope {
     } else if (signal > avgEffective && signal > 0.15 && !isBreakdown) {
       // Below gate but above average → Soft Knee ghost path
       // Herencia: WAVE 2383/2393 (ghostCap × morphFactor)
-      const ghostCapDynamic = c.ghostCap * morphFactor
+      // 🔧 WAVE 2792: ghostCap floor — Math.max garantiza dimmer mínimo
+      const ghostCapDynamic = c.ghostCap * Math.max(morphFactor, 0.1)
       const proximity = (signal - avgEffective) / 0.02
-      ghostPower = Math.min(ghostCapDynamic, proximity * ghostCapDynamic)
+      ghostPower = Math.max(ghostCapDynamic, Math.min(ghostCapDynamic, proximity * ghostCapDynamic))
     }
 
     // ═══════════════════════════════════════════════════════════════════

@@ -109,12 +109,8 @@ export function translateColor(
   wasTranslated: boolean
   /** Was the change blocked by safety layer? */
   wasBlocked: boolean
-  /** Is the fixture in latch mode? */
-  isInLatch: boolean
-  /** Suggested shutter value (255 = open) */
-  suggestedShutter: number
-  /** Should we delegate aggression to strobe instead of color? */
-  delegateToStrobe: boolean
+  /** Is the fixture debounced? */
+  isDebounced: boolean
 } {
   // 1. Get profile
   const profile = profileId 
@@ -140,9 +136,7 @@ export function translateColor(
     colorName: translation.colorName,
     wasTranslated: translation.wasTranslated,
     wasBlocked: safetyResult.wasBlocked,
-    isInLatch: safetyResult.isInLatch,
-    suggestedShutter: safetyResult.suggestedShutter,
-    delegateToStrobe: safetyResult.delegateToStrobe,
+    isDebounced: safetyResult.isDebounced,
   }
 }
 

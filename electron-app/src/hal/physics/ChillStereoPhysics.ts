@@ -304,8 +304,10 @@ function calculateFluidPhysics(
   const lifeActivity = (clarity > 0.7 || energy > 0.65) ? 0.3 : 0
   const lifePulse = Math.sin(now / 800) > 0.7 ? lifeActivity : 0
   
-  const moverIntL = clamp(baseIntensity + Math.sin(now / 2500) * 0.15 + lifePulse + energy * 0.2, 0, 1)
-  const moverIntR = clamp(baseIntensity + Math.sin(now / 3100 + 2) * 0.15 + lifePulse + energy * 0.2, 0, 1)
+  // ⚡ WAVE 2750: BREATHING GHOST EXORCISM — Movers son fixtures mecánicos.
+  // Sinusoidal de ±15% y lifePulse eliminados. PARs/air mantienen lifePulse.
+  const moverIntL = clamp(baseIntensity + energy * 0.2, 0, 1)
+  const moverIntR = clamp(baseIntensity + energy * 0.2, 0, 1)
   
   const airBase = zone === 'SHALLOWS' ? 0.4 : zone === 'OCEAN' ? 0.25 : 0.1
   const airIntensity = clamp(airBase + energy * 0.2 + lifePulse * 0.5, 0, 0.7)

@@ -750,6 +750,7 @@ export class TitanOrchestrator {
       isAGCTrap: false,
       beatPhase: halBeatPhase,
       bpm: halBpm,
+      bpmConfidence: workerConfidence, // 🎵 WAVE 2720: Pendulum — confianza BPM para HarmonicQuantizer
     }
     
     // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
@@ -915,37 +916,11 @@ export class TitanOrchestrator {
       }
       
       // ── MOVEMENT OVERRIDE (global fallback for all movers) ──
-      if (effectOutput.movementOverride) {
-        const mov = effectOutput.movementOverride
-        // Only apply to fixtures that are movers and NOT already covered by zone movement
-        for (const fixture of this.fixtures) {
-          if (!fixture?.id) continue
-          if (chronosFixtureIds.has(fixture.id)) continue
-          
-          const isMover = fixture.zone?.includes('MOVING') || fixture.type === 'beam' || fixture.type === 'spot'
-          if (!isMover) continue
-          
-          const existing = intentMap.get(fixture.id)
-          // Don't override zone-specific movement
-          if (existing?.movement) continue
-          
-          const movement = {
-            pan: mov.pan !== undefined ? Math.round(((mov.pan + 1) / 2) * 255) : undefined,
-            tilt: mov.tilt !== undefined ? Math.round(((mov.tilt + 1) / 2) * 255) : undefined,
-            isAbsolute: mov.isAbsolute,
-          }
-          
-          if (existing) {
-            existing.movement = movement
-          } else {
-            intentMap.set(fixture.id, {
-              mixBus: effectOutput.mixBus || 'htp',
-              globalComposition: effectOutput.globalComposition ?? 0,
-              movement,
-            })
-          }
-        }
-      }
+      // 🚫 WAVE 2900: CHRONOS SELECTIVE SEAL — La IA tiene prohibido emitir movimiento.
+      // movementOverride proviene de Core Effects procedurales (IA/Selene).
+      // El movimiento de movers es exclusivo del usuario (Hephaestus/XY pad/manual override).
+      // Este bloque queda desactivado permanentemente.
+      // if (effectOutput.movementOverride) { ... }
       
       // Inject intents into the Arbiter BEFORE arbitration
       masterArbiter.setEffectIntents(intentMap)

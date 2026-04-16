@@ -55,6 +55,10 @@ import {
 } from './translation'
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
 
+// 🎵 WAVE 2672: HARMONIC QUANTIZER + DARK-SPIN FILTER
+import { getHarmonicQuantizer } from './translation/HarmonicQuantizer'
+import { getDarkSpinFilter } from './translation/DarkSpinFilter'
+
 // �🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver, type PhysicsProfile as DriverPhysicsProfile } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
@@ -81,6 +85,7 @@ export interface AudioMetrics {
   // ═══════════════════════════════════════════════════════════════════════
   beatPhase?: number   // 0-1, from PLL or Worker (defaults to 0 if absent)
   bpm?: number         // Real BPM for any future beat-duration calculations
+  bpmConfidence?: number // 0-1, confianza del BPM tracker (WAVE 2672: para HarmonicQuantizer)
 }
 
 /** HAL configuration */
@@ -132,6 +137,14 @@ export class HardwareAbstraction {
   private colorTranslator = getColorTranslator()
   private safetyLayer = getHardwareSafetyLayer()
   private profileCache = new Map<string, FixtureProfile | null>()
+  
+  // 🎵 WAVE 2672: Harmonic Quantizer + DarkSpin Filter singletons
+  private harmonicQuantizer = getHarmonicQuantizer()
+  private darkSpinFilter = getDarkSpinFilter()
+  
+  // 🎵 WAVE 2672: BPM cache per frame (set in renderFromTarget, read in translateColorToWheel)
+  private currentFrameBpm = 0
+  private currentFrameBpmConfidence = 0
   
   // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
   private smoothedZoomMod: number = 0
@@ -888,6 +901,10 @@ export class HardwareAbstraction {
     }
     
     // Map arbitrated targets to fixture states
+    // 🎵 WAVE 2672: Cache BPM for HarmonicQuantizer (used in translateColorToWheel)
+    this.currentFrameBpm = audio.bpm ?? 0
+    this.currentFrameBpmConfidence = audio.bpmConfidence ?? 0
+    
     const fixtureStates: FixtureState[] = fixtures.map((fixture, index) => {
       const fixtureId = fixture.id || fixture.name
       const zone = (fixture.zone || 'UNASSIGNED') as PhysicalZone
@@ -1405,14 +1422,39 @@ export class HardwareAbstraction {
     }
     
     // ─────────────────────────────────────────────────────────────────
-    // 🐟 COLOR WHEEL fixtures — full SafetyLayer pipeline
+    // 🐟 COLOR WHEEL fixtures — full WAVE 2672 pipeline:
+    //   ColorTranslator → HarmonicQuantizer → SafetyLayer → DarkSpinFilter
     // ─────────────────────────────────────────────────────────────────
     
-    // Apply safety filter (debounce, latch, strobe delegation)
     const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`
+    const minChangeTimeMs = profile.colorEngine?.colorWheel?.minChangeTimeMs ?? 500
+    
+    // 🎵 STEP 1: HarmonicQuantizer — ¿el beat permite cambiar color ahora?
+    const quantizerResult = this.harmonicQuantizer.quantize(
+      fixtureId,
+      { r: state.r, g: state.g, b: state.b },
+      this.currentFrameBpm,
+      this.currentFrameBpmConfidence,
+      minChangeTimeMs
+    )
+    
+    // Si el quantizer dice NO → mantener el último color aprobado por safety
+    const colorDmxToRequest = quantizerResult.colorAllowed
+      ? (translation.colorWheelDmx ?? 0)
+      : this.safetyLayer.getLastColor(fixtureId)
+    
+    // 🛡️ STEP 2: SafetyLayer — debounce de última instancia
     const safetyResult = this.safetyLayer.filter(
       fixtureId,
-      translation.colorWheelDmx ?? 0,
+      colorDmxToRequest,
+      profile,
+      state.dimmer
+    )
+    
+    // 🌑 STEP 3: DarkSpinFilter — blackout durante tránsito mecánico
+    const darkSpinResult = this.darkSpinFilter.filter(
+      fixtureId,
+      safetyResult.finalColorDmx,
       profile,
       state.dimmer
     )
@@ -1421,20 +1463,20 @@ export class HardwareAbstraction {
     const now = Date.now()
     if (now - this.lastDebugTime > 2000) {
       this.lastDebugTime = now
-      console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}`)
+      const qTag = quantizerResult.colorAllowed ? '' : ' [Q-HOLD]'
+      const sTag = safetyResult.wasBlocked ? ' [S-BLOCK]' : ''
+      const dTag = darkSpinResult.inTransit ? ' [DARKSPIN]' : ''
+      console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${qTag}${sTag}${dTag}`)
     }
     
-    // Return translated state
     return {
       ...state,
-      // 🎨 Replace RGB with translated color's actual RGB (for UI consistency)
       r: translation.outputRGB.r,
       g: translation.outputRGB.g,
       b: translation.outputRGB.b,
-      // 🎨 Set color wheel DMX value (THE KEY!)
       colorWheel: safetyResult.finalColorDmx,
-      // 🛡️ Handle strobe delegation (if color is changing too fast)
-      strobe: safetyResult.delegateToStrobe ? safetyResult.suggestedShutter : state.strobe,
+      // 🌑 DarkSpinFilter controla el dimmer durante tránsito
+      dimmer: darkSpinResult.inTransit ? darkSpinResult.dimmer : state.dimmer,
     }
   }
   

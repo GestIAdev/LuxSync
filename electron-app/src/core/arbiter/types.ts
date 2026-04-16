@@ -143,6 +143,64 @@ export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 2711: CHANNEL CATEGORIES — Segmented merge anti-color-kidnap
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type ChannelCategory = 'color' | 'position' | 'intensity' | 'beam' | 'control' | 'ingenios'
+
+const CHANNEL_CATEGORY_MAP: Record<ChannelType, ChannelCategory> = {
+  // COLOR
+  red: 'color',
+  green: 'color',
+  blue: 'color',
+  white: 'color',
+  amber: 'color',
+  uv: 'color',
+  cyan: 'color',
+  magenta: 'color',
+  yellow: 'color',
+  color_wheel: 'color',
+  // POSITION
+  pan: 'position',
+  pan_fine: 'position',
+  tilt: 'position',
+  tilt_fine: 'position',
+  // INTENSITY
+  dimmer: 'intensity',
+  strobe: 'intensity',
+  shutter: 'intensity',
+  // BEAM
+  gobo: 'beam',
+  gobo_rotation: 'beam',
+  prism: 'beam',
+  prism_rotation: 'beam',
+  focus: 'beam',
+  zoom: 'beam',
+  frost: 'beam',
+  // CONTROL
+  speed: 'control',
+  macro: 'control',
+  control: 'control',
+  // INGENIOS
+  rotation: 'ingenios',
+  custom: 'ingenios',
+  // FALLBACK
+  unknown: 'control',
+}
+
+export function getChannelCategory(channel: ChannelType): ChannelCategory {
+  return CHANNEL_CATEGORY_MAP[channel] ?? 'control'
+}
+
+export function getChannelCategories(channels: ChannelType[]): Set<ChannelCategory> {
+  const categories = new Set<ChannelCategory>()
+  for (const ch of channels) {
+    categories.add(getChannelCategory(ch))
+  }
+  return categories
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // LAYER 0: TITAN AI
 // ═══════════════════════════════════════════════════════════════════════════
 

@@ -2030,62 +2030,6 @@ export class MasterArbiter extends EventEmitter {
     const safeTiltT = Number.isFinite(target.tilt) ? target.tilt : 128
     this.lastKnownPositions.set(fixtureId, { pan: safePanT, tilt: safeTiltT })
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔬 WAVE 2950: VOID TRAP — Intercepta espasmos in fraganti
-    //
-    // Si este fixture tiene un manual override de posición activo, comparamos
-    // el valor FINAL que el Arbiter va a enviar al HAL contra lo que el Layer 2
-    // tiene guardado. Si hay divergencia, alguien violó la jerarquía en el
-    // último milisegundo y lo capturamos con stack trace completo.
-    //
-    // También detectamos apagones masivos: si dimmer cae a 0 con override activo,
-    // el fantasma del Transition Anomaly ha vuelto a actuar.
-    // ═══════════════════════════════════════════════════════════════════════
-    if (manualOverride) {
-      const hasManualPos = manualOverride.overrideChannels.includes('pan') ||
-                           manualOverride.overrideChannels.includes('tilt')
-      const hasManualDimmer = manualOverride.overrideChannels.includes('dimmer')
-
-      if (hasManualPos) {
-        const expectedPan  = this.getManualChannelValue(manualOverride, 'pan')
-        const expectedTilt = this.getManualChannelValue(manualOverride, 'tilt')
-
-        const panDrift  = Math.abs(target.pan  - expectedPan)
-        const tiltDrift = Math.abs(target.tilt - expectedTilt)
-
-        if (panDrift > 1 || tiltDrift > 1) {
-          const l3movement = this.layer3_effectIntents.get(fixtureId)?.movement
-          console.error(
-            `🚨 [VOID TRAP WAVE 2950] ESPASMO DE POSICIÓN en fixture ${fixtureId}\n` +
-            `   Layer 2 pedía  → Pan:${expectedPan} Tilt:${expectedTilt}\n` +
-            `   Arbiter envía  → Pan:${target.pan}  Tilt:${target.tilt}\n` +
-            `   Divergencia    → ΔPan:${panDrift.toFixed(1)}  ΔTilt:${tiltDrift.toFixed(1)}\n` +
-            `   Layer 4 blackout      : ${this.layer4_blackout}\n` +
-            `   CrossfadeActive       : ${crossfadeActive} (prog:${crossfadeProgress.toFixed(3)})\n` +
-            `   Layer 3 movementIntent: ${JSON.stringify(l3movement ?? null)}\n` +
-            `   manualHoldsPosition   : ${manualHoldsPosition}\n` +
-            `   positionReleaseFade   : ${this.positionReleaseFades.has(fixtureId)}\n` +
-            `   Frame                 : ${this.frameNumber}`
-          )
-          console.trace('🚨 [VOID TRAP] Stack del causante:')
-        }
-      }
-
-      if (hasManualDimmer && target.dimmer < 5) {
-        const expectedDimmer = this.getManualChannelValue(manualOverride, 'dimmer')
-        console.error(
-          `🚨 [VOID TRAP WAVE 2950] APAGÓN con override manual activo en fixture ${fixtureId}\n` +
-          `   Layer 2 pedía  → Dimmer:${expectedDimmer}\n` +
-          `   Arbiter envía  → Dimmer:${target.dimmer}\n` +
-          `   Layer 4 blackout      : ${this.layer4_blackout}\n` +
-          `   CrossfadeActive       : ${crossfadeActive} (prog:${crossfadeProgress.toFixed(3)})\n` +
-          `   GrandMaster           : ${this.grandMaster}\n` +
-          `   Frame                 : ${this.frameNumber}`
-        )
-        console.trace('🚨 [VOID TRAP] Stack del causante (dimmer):')
-      }
-    }
-
     return target
   }
   

@@ -329,3 +329,44 @@ MANUAL = 2        (Human operator input via console)
 **Report Generated:** 2026-04-16  
 **For:** Project Architect  
 **Status:** Ready for Deployment Verification
+
+-----------------------------
+-----------------------------
+
+Pues mande desactivar 2 de las 3 sondas que habia para que no genere un log automatico de decenas de miles de lineas mientras testeo .... peeeeeeeeeeeeeeero, ocurre algo ahora que me tiene intrigado :
+
+
+
+- Back par se ha quedado con dimmer en rojo/verde/azul, dependiendo del color base de la paleta de SeleneColorengine . Mezcla los colores de titan siempre con esa base. Incluso reseteando los canales DMX con calibration view.... persiste el dimmer minimo del 2% (segun mi hintbuster) despues de darle a GO (output enabled) .
+
+
+
+- Desconecto la app , desconecto el enchufe de la corriente por si es alguna caché rara del par pero nada...., persiste el min dimmer .
+
+
+
+- Al forzar un apagado total con el show en marcha poniendole el dimmer a 0 , aparece este mensaje de la sonda que se nos olvidó desactivar .
+
+
+
+Trace: 🚨 [VOID TRAP] Stack del causante (dimmer):
+
+    at MasterArbiter.arbitrateFixture (C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\dist-electron\main.js:2954:17)
+
+    at MasterArbiter.arbitrate (C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\dist-electron\main.js:2736:27)
+
+    at _TitanOrchestrator.processFrame (C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\dist-electron\main.js:42948:46)
+
+🚨 [VOID TRAP WAVE 2950] APAGÓN con override manual activo en fixture fixture-1775313952009
+
+   Layer 2 pedía  → Dimmer:0
+
+   Arbiter envía  → Dimmer:0
+
+   Layer 4 blackout      : false
+
+   CrossfadeActive       : true (prog:0.000)
+
+   GrandMaster           : 1
+
+   Frame                 : 5025

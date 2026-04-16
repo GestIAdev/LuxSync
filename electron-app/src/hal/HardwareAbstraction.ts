@@ -1809,29 +1809,36 @@ export class HardwareAbstraction {
         // If we only gate pan/tilt but leave physicalPan/physicalTilt untouched,
         // physics-interpolated values leak to DMX hardware.
         //
-        // 🔥 WAVE 2961: COLOR COHERENCE — when the operator has manual control of
+        // WAVE 2961: COLOR COHERENCE — when the operator has manual control of
         // the dimmer, the fixture's computed color (r/g/b/white/color_wheel) MUST
         // also pass through, even if those channels are tagged as TITAN_AI.
         // Reason: wheel-based movers (EL1140, etc.) have color driven by Titan's
-        // RGB→wheel translation. The operator set dimmer+pan+tilt manually to
+        // RGB->wheel translation. The operator set dimmer+pan+tilt manually to
         // calibrate a position with light. If we zero r/g/b, BabelFish receives
-        // {r:0,g:0,b:0} → wheel snaps to white/open → the mover flashes on
+        // {r:0,g:0,b:0} -> wheel snaps to white/open -> the mover flashes on
         // GO-off. The intended behavior: if you own the dimmer, you own the color.
+        //
+        // WAVE 2980: BABELFISH SELLO — Color coherence ONLY for mechanical fixtures
+        // (those with a physical color wheel). LED PARs and RGB panels have no wheel
+        // mechanics, so they MUST be allowed to receive absolute zero on all channels.
+        // Allowing Titan color to leak through for LED fixtures produces a residual
+        // color base (e.g. 2% red) even when the fixture should be completely dark.
+        // Guard: dimmerIsManual color pass-through is gated behind hasColorWheel.
         const dimmerIsManual = sources['dimmer'] === ControlLayer.MANUAL
+        const hasMechanicalWheel = state.hasColorWheel === true
         const panSafe = sources['pan'] === ControlLayer.MANUAL
         const tiltSafe = sources['tilt'] === ControlLayer.MANUAL
+        // For mechanical fixtures: dimmer ownership implies color ownership (anti-wheel-snap).
+        // For LED fixtures: color channels must zero independently — no wheel to protect.
+        const colorPassFromDimmer = dimmerIsManual && hasMechanicalWheel
         return {
           ...state,
           dimmer: dimmerIsManual ? state.dimmer : 0,
-          // Color: pass through if manually controlled OR if dimmer is manual
-          // (dimmer=manual implies the operator wants to see the fixture with
-          // whatever color Titan/Timeline computed for it — zeroing color would
-          // produce a meaningless white flash on wheel fixtures).
-          r: (sources['red'] === ControlLayer.MANUAL || dimmerIsManual) ? state.r : 0,
-          g: (sources['green'] === ControlLayer.MANUAL || dimmerIsManual) ? state.g : 0,
-          b: (sources['blue'] === ControlLayer.MANUAL || dimmerIsManual) ? state.b : 0,
-          white: (sources['white'] === ControlLayer.MANUAL || dimmerIsManual) ? state.white : 0,
-          colorWheel: (sources['color_wheel'] === ControlLayer.MANUAL || dimmerIsManual) ? state.colorWheel : undefined,
+          r: (sources['red'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.r : 0,
+          g: (sources['green'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.g : 0,
+          b: (sources['blue'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.b : 0,
+          white: (sources['white'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.white : 0,
+          colorWheel: (sources['color_wheel'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.colorWheel : undefined,
           pan: panSafe ? state.pan : 128,
           tilt: tiltSafe ? state.tilt : 128,
           physicalPan: panSafe ? state.physicalPan : 128,

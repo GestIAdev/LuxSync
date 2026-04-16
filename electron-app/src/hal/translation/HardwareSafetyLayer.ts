@@ -59,14 +59,10 @@ interface FixtureSafetyState {
 export interface SafetyFilterResult {
   finalColorDmx: number
   wasBlocked: boolean
-  /** ¿Se activó modo latch? — WAVE 2711: siempre false */
-  isInLatch: boolean
+  /** ¿Estaba en debounce? — WAVE 2711 */
+  isDebounced: boolean
   /** Razón del bloqueo (si aplica) */
   blockReason?: string
-  /** Valor de shutter sugerido — WAVE 2711: siempre 255 (open) */
-  suggestedShutter: number
-  /** ¿Se recomienda delegar a strobe? — WAVE 2711: siempre false */
-  delegateToStrobe: boolean
 }
 
 /**
@@ -144,7 +140,6 @@ export class HardwareSafetyLayer {
         lastColorDmx: requestedColorDmx,
         lastColorChangeTime: now,
         blockedChanges: 0,
-        lastDimmer: currentDimmer,
       }
       this.fixtureStates.set(fixtureId, state)
     }
@@ -169,10 +164,8 @@ export class HardwareSafetyLayer {
         return {
           finalColorDmx: state.lastColorDmx,
           wasBlocked: true,
-          isInLatch: false,
+          isDebounced: true,
           blockReason: `DEBOUNCE (${timeSinceLastChange}ms < ${minChangeTime}ms)`,
-          suggestedShutter: 255,
-          delegateToStrobe: false,
         }
       }
       
@@ -195,38 +188,7 @@ export class HardwareSafetyLayer {
   
   /**
    * 🔧 WAVE 2711: getLastColor — devuelve el último color aplicado
-   * para que DarkSpinFilter sepa qué valor holdear durante tránsito.
-   */
-  public getLastColor(fixtureId: string): number {
-    return this.fixtureStates.get(fixtureId)?.lastColorDmx ?? 0
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // MÉTODOS PRIVADOS
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  private createInitialState(fixtureId: string, initialColor: number): FixtureSafetyState {
-    return {
-      fixtureId,
-      lastColorDmx: initialColor,
-      lastColorChangeTime: Date.now(),
-      blockedChanges: 0,
-    }
-  }
-  
-  private getMinChangeTime(profile: FixtureProfile): number {
-    const baseTime = profile.colorEngine?.colorWheel?.minChangeTimeMs ?? 500
-    return Math.round(baseTime * this.config.safetyMargin)
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // API PÚBLICA
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  /**
-   * 🎵 WAVE 2720: Obtiene el último color DMX conocido de un fixture.
-   * Usado por HarmonicQuantizer en HAL para alimentar el SafetyLayer
-   * con el color anterior cuando el gate armónico bloquea un cambio.
+   * para que HarmonicQuantizer sepa qué valor holdear cuando el gate está cerrado.
    */
   public getLastColor(fixtureId: string): number | undefined {
     return this.fixtureStates.get(fixtureId)?.lastColorDmx
@@ -245,7 +207,7 @@ export class HardwareSafetyLayer {
   
   /**
    * Obtiene métricas de seguridad
-   * WAVE 2711: latch and strobe fields preserved for dashboard compat, always 0
+   * WAVE 2711: solo debounce, sin latch/strobe
    */
   public getMetrics(): { 
     totalBlockedChanges: number
@@ -253,10 +215,7 @@ export class HardwareSafetyLayer {
   } {
     return {
       totalBlockedChanges: this.totalBlockedChanges,
-      totalLatchActivations: 0,
-      totalStrobeDelegations: 0,
       activeFixtures: this.fixtureStates.size,
-      fixturesInLatch: 0,
     }
   }
   
@@ -275,6 +234,11 @@ export class HardwareSafetyLayer {
    */
   public setConfig(config: Partial<SafetyConfig>): void {
     this.config = { ...this.config, ...config }
+  }
+
+  private getMinChangeTime(profile: FixtureProfile): number {
+    const baseTime = profile.colorEngine?.colorWheel?.minChangeTimeMs ?? 500
+    return Math.round(baseTime * this.config.safetyMargin)
   }
 }
 

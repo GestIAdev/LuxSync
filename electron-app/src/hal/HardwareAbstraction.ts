@@ -147,10 +147,6 @@ export class HardwareAbstraction {
   private harmonicQuantizer = getHarmonicQuantizer()
   private profileCache = new Map<string, FixtureProfile | null>()
   
-  // 🎵 WAVE 2672: Harmonic Quantizer + DarkSpin Filter singletons
-  private harmonicQuantizer = getHarmonicQuantizer()
-  private darkSpinFilter = getDarkSpinFilter()
-  
   // 🎵 WAVE 2672: BPM cache per frame (set in renderFromTarget, read in translateColorToWheel)
   private currentFrameBpm = 0
   private currentFrameBpmConfidence = 0
@@ -171,10 +167,7 @@ export class HardwareAbstraction {
   private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
   // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
   private lastPhysicsFrameTime = 0
-  // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — BPM state for translateColorToWheel()
-  // Stored per frame in renderFromTarget(), consumed by HarmonicQuantizer in the HAL pipeline.
-  private currentFrameBpm = 120
-  private currentFrameBpmConfidence = 0
+  // (BPM fields declared above — WAVE 2720)
 
   
   // Current vibe preset (for physics)
@@ -1524,10 +1517,9 @@ export class HardwareAbstraction {
     const now = performance.now()
     if (now - this.lastDebugTime > 2000) {
       this.lastDebugTime = now
-      const qTag = quantizerResult.colorAllowed ? '' : ' [Q-HOLD]'
+      const qTag = (isMechanicalFixture(profile) && quantizedColorDmx === (this.safetyLayer.getLastColor(fixtureId) ?? quantizedColorDmx)) ? ' [Q-HOLD]' : ''
       const sTag = safetyResult.wasBlocked ? ' [S-BLOCK]' : ''
-      const dTag = darkSpinResult.inTransit ? ' [DARKSPIN]' : ''
-      console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${qTag}${sTag}${dTag}`)
+      console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${qTag}${sTag}`)
     }
     
     // ─────────────────────────────────────────────────────────────────

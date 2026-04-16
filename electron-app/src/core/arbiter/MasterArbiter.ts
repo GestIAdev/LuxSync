@@ -509,6 +509,12 @@ export class MasterArbiter extends EventEmitter {
     // 🔧 WAVE 2711: SEGMENTED MERGE — Replace by category, preserve by category
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
     
+    // 🔬 WAVE 2910 WIRETAP: pre-merge position tracking
+    const hadPosition = !!(existingOverride?.overrideChannels.includes('pan' as ChannelType) ||
+                            existingOverride?.overrideChannels.includes('tilt' as ChannelType))
+    const incomingHasPosition = override.overrideChannels.includes('pan' as ChannelType) ||
+                                 override.overrideChannels.includes('tilt' as ChannelType)
+
     if (existingOverride) {
       // Determine which categories the NEW override touches
       const incomingCategories = getChannelCategories(override.overrideChannels)

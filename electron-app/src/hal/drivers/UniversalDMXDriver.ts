@@ -118,6 +118,9 @@ export class UniversalDMXDriver extends EventEmitter {
   // 🔎 FORENSIC TRACE (CP4): serial write counters (per universe)
   private traceWriteCountByUniverse: Map<number, number> = new Map()
 
+  // 🫀 CARDIOGRAMA: callback para escalar warning spikes al capa superior (Orchestrator)
+  public onWarning: ((msg: string) => void) | null = null
+
   constructor(config: Partial<UniversalDMXConfig> = {}) {
     super()
     
@@ -915,6 +918,9 @@ export class UniversalDMXDriver extends EventEmitter {
   }
 
   private log(message: string): void {
+    if (message.includes('CARDIOGRAMA') && this.onWarning) {
+      this.onWarning(message)
+    }
     if (this.config.debug) {
       console.log(`[UniversalDMX] ${message}`)
     }

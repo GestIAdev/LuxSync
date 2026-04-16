@@ -432,10 +432,18 @@ export class TitanOrchestrator {
       const _now = performance.now()
       const _delta = _now - _cardiogramaLastTick
       if (_delta > 25) {
-        console.warn(`[CARDIOGRAMA MAIN] ⚠️ LAG SPIKE / GC PAUSE DETECTADO: ${_delta.toFixed(2)}ms`)
+        const _msg = `🫀 LAG SPIKE ${_delta.toFixed(2)}ms — GC pause suspected`
+        console.warn(`[CARDIOGRAMA MAIN] ⚠️ ${_msg}`)
+        this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
       }
       _cardiogramaLastTick = _now
     }, 5)
+
+    // Relay CARDIOGRAMA del USB Worker → Tactical Log del frontend
+    universalDMX.onWarning = (msg: string) => {
+      console.warn(msg)
+      this.log('Error', msg)
+    }
     
     // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
     setTimeout(() => {
@@ -480,6 +488,7 @@ export class TitanOrchestrator {
       clearInterval(this.cardiogramaInterval)
       this.cardiogramaInterval = null
     }
+    universalDMX.onWarning = null
     this.isRunning = false
 
     // ═══════════════════════════════════════════════════════════════════

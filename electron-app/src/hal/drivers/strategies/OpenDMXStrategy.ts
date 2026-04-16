@@ -65,7 +65,14 @@ export class OpenDMXStrategy implements DMXSendStrategy {
       this.child.on('message', (msg: { type: string; message?: string; success?: boolean; error?: string }) => {
         switch (msg.type) {
           case 'LOG':
-            if (msg.message) log(msg.message)
+            if (msg.message) {
+              // CARDIOGRAMA messages bypass the debug gate — always visible
+              if (msg.message.includes('CARDIOGRAMA')) {
+                console.warn(msg.message)
+              } else {
+                log(msg.message)
+              }
+            }
             break
           case 'CONNECTED':
             if (!msg.success) {

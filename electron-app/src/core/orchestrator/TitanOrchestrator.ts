@@ -336,13 +336,16 @@ export class TitanOrchestrator {
       // el Frontend tiene mayor frecuencia (30fps vs 10fps) y da fluidez visual.
       // El Worker es autoritativo SOLO para métricas FFT extendidas.
       // ═══════════════════════════════════════════════════════════════════════════
-      // ⚡ WAVE 3060: Worker = FUENTE ÚNICA AUTORITATIVA para TODAS las métricas de audio
-      // Antes: Frontend enviaba bass/mid/energy a 60Hz via IPC (60 Structured Clone/sec)
-      //        Worker enviaba métricas extendidas a 10fps via postMessage
-      //        Frontend tenía "prioridad temporal" pero generaba basura masiva
-      // Ahora: Worker BETA es la ÚNICA fuente. 10fps es suficiente para envolvente visual.
-      //        El motor DMX retiene lastAudioData entre frames (44fps lee, 10fps escribe).
-      //        Eliminados: 60 IPC/sec + 60 object allocations/sec + 30KB/sec serialización
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
+      // 
+      // Frontend (60fps) → bass/mid/high/energy → processAudioFrame()
+      // Worker (10fps) → harshness/flatness/centroid/transients → brain.on('audio-levels')
+      // 
+      // Frontend tiene PRIORIDAD TEMPORAL para core bands (60fps > 10fps)
+      // Worker es autoritativo SOLO para métricas FFT extendidas.
+      // ═══════════════════════════════════════════════════════════════════════════
+      // ⚡ WAVE 3060b PHOENIX: RESTAURADO — Frontend = core bands, Worker = extended FFT only
       this.brain.on('audio-levels', (levels: {
         bass: number; mid: number; treble: number; energy: number;
         subBass?: number; lowMid?: number; highMid?: number;
@@ -354,56 +357,44 @@ export class TitanOrchestrator {
         beatPhase?: number; beatStrength?: number;
         kickCount?: number;
       }) => {
-        // ⚡ WAVE 3060: IN-PLACE MUTATION — zero object allocations
-        // Antes: this.lastAudioData = { ...this.lastAudioData, ... } → nuevo objeto cada 100ms
-        // Ahora: mutación directa sobre el objeto existente → 0 GC pressure
-        const d = this.lastAudioData
-
-        // Core bands — WORKER AUTORITATIVO (WAVE 3060: ya no vienen del Frontend)
-        d.bass = levels.bass
-        d.mid = levels.mid
-        d.high = levels.treble
-        d.energy = levels.energy
-
-        // Extended FFT metrics — WORKER AUTORITATIVO
-        if (levels.subBass != null) d.subBass = levels.subBass
-        if (levels.lowMid != null) d.lowMid = levels.lowMid
-        if (levels.highMid != null) d.highMid = levels.highMid
-        if (levels.harshness != null) d.harshness = levels.harshness
-        if (levels.spectralFlatness != null) d.spectralFlatness = levels.spectralFlatness
-        if (levels.spectralCentroid != null) d.spectralCentroid = levels.spectralCentroid
-        if (levels.crestFactor != null) d.crestFactor = levels.crestFactor
-
-        // Transient detection
-        if (levels.kickDetected != null) d.kickDetected = levels.kickDetected
-        if (levels.snareDetected != null) d.snareDetected = levels.snareDetected
-        if (levels.hihatDetected != null) d.hihatDetected = levels.hihatDetected
-
-        // Raw bass energy (no AGC)
-        if (levels.rawBassEnergy != null) d.rawBassEnergy = levels.rawBassEnergy
-
-        // BPM — guard explícito para preservar valor bloqueado
-        if (levels.bpm != null && levels.bpm > 0) d.workerBpm = levels.bpm
-        if (levels.bpmConfidence != null && levels.bpmConfidence > 0) d.workerBpmConfidence = levels.bpmConfidence
-        if (levels.onBeat != null) d.workerOnBeat = levels.onBeat
-        if (levels.beatPhase != null) d.workerBeatPhase = levels.beatPhase
-        if (levels.beatStrength != null) d.workerBeatStrength = levels.beatStrength
-
-        // Kick counter — monotónico
-        if (levels.kickCount != null && levels.kickCount > 0) d.workerKickCount = levels.kickCount
-
-        // ⚡ WAVE 3060: hasRealAudio detection (migrado de processAudioFrame)
-        const wasAudioActive = this.hasRealAudio
-        this.hasRealAudio = levels.energy > 0.01
-        if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
-          this.hasLoggedFirstAudio = true
-          this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!')
-        } else if (!this.hasRealAudio && wasAudioActive) {
-          this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
-        }
-
-        // ⚡ WAVE 3060: Update staleness timestamp (Worker llegando = audio vivo)
-        this.lastAudioTimestamp = Date.now()
+        // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
+        // NO sobrescribir bass/mid/high/energy — Frontend tiene prioridad temporal (60fps)
+        // SÍ actualizar métricas FFT extendidas — Worker tiene precisión espectral
+        this.lastAudioData = {
+          ...this.lastAudioData,
+          // Core bands — IGNORADOS (Frontend es más rápido a 60fps)
+          // bass: levels.bass,     // ❌ Frontend tiene prioridad
+          // mid: levels.mid,       // ❌ Frontend tiene prioridad  
+          // high: levels.treble,   // ❌ Frontend tiene prioridad
+          // energy: levels.energy, // ❌ Frontend tiene prioridad
+          
+          // Extended FFT metrics — WORKER AUTHORITATIVE (precisión espectral)
+          subBass: levels.subBass ?? this.lastAudioData.subBass,
+          lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
+          highMid: levels.highMid ?? this.lastAudioData.highMid,
+          harshness: levels.harshness ?? this.lastAudioData.harshness,
+          spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
+          spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+          crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
+          
+          // Transient detection — WORKER AUTHORITATIVE
+          kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
+          snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
+          hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+          
+          // Raw bass energy — WORKER ONLY
+          rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+          
+          // BPM — WORKER AUTHORITATIVE (GodEarBPMTracker)
+          workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+          workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+          workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+          workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+          workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+          workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
+            ? levels.kickCount
+            : this.lastAudioData.workerKickCount,
+        };
       });
       
       await trinity.start()
@@ -1912,21 +1903,57 @@ export class TitanOrchestrator {
   }
 
   /**
-   * ⚡ WAVE 3060: COLD-PATH ONLY — usado solo por simulateAudio() en useSelene
-   * Ya NO se llama desde el hot-path de audio (useAudioCapture/useLiveAudioInput).
-   * El Worker BETA vía brain.on('audio-levels') es ahora la fuente única autoritativa.
+   * WAVE 255: Process incoming audio frame from frontend
+   * 🔥 WAVE 1012.5: HYBRID SOURCE — Frontend = 30fps bass/mid/high/energy, Worker = extended FFT
+   * ⚡ WAVE 3060b PHOENIX: RESTAURADO como hot-path. Frontend tiene prioridad visual.
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return
     
-    const d = this.lastAudioData
-    if (typeof data.bass === 'number') d.bass = data.bass
-    if (typeof data.mid === 'number') d.mid = data.mid
-    if (typeof data.treble === 'number') d.high = data.treble
-    else if (typeof data.high === 'number') d.high = data.high
-    if (typeof data.energy === 'number') d.energy = data.energy
+    // Core bands - FRONTEND SOURCE (30fps)
+    const bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
+    const mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
+    const high = typeof data.treble === 'number' ? data.treble : 
+                 typeof data.high === 'number' ? data.high : this.lastAudioData.high
+    const energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
     
-    this.hasRealAudio = d.energy > 0.01
+    // 🔥 WAVE 1012.5: HYBRID MERGE — Frontend core + preserve Worker extended
+    this.lastAudioData = { 
+      bass,
+      mid,
+      high,
+      energy,
+      // Preserve Worker FFT metrics
+      harshness: this.lastAudioData.harshness,
+      spectralFlatness: this.lastAudioData.spectralFlatness,
+      spectralCentroid: this.lastAudioData.spectralCentroid,
+      subBass: this.lastAudioData.subBass,
+      lowMid: this.lastAudioData.lowMid,
+      highMid: this.lastAudioData.highMid,
+      kickDetected: this.lastAudioData.kickDetected,
+      snareDetected: this.lastAudioData.snareDetected,
+      hihatDetected: this.lastAudioData.hihatDetected,
+      rawBassEnergy: this.lastAudioData.rawBassEnergy,
+      crestFactor: this.lastAudioData.crestFactor,
+      workerBpm: this.lastAudioData.workerBpm,
+      workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+      workerOnBeat: this.lastAudioData.workerOnBeat,
+      workerBeatPhase: this.lastAudioData.workerBeatPhase,
+      workerBeatStrength: this.lastAudioData.workerBeatStrength,
+      workerKickCount: this.lastAudioData.workerKickCount,
+    }
+    
+    // Detect audio presence
+    const wasAudioActive = this.hasRealAudio
+    this.hasRealAudio = energy > 0.01
+    
+    if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+      this.hasLoggedFirstAudio = true
+      this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!')
+    } else if (!this.hasRealAudio && wasAudioActive) {
+      this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
+    }
+    
     this.lastAudioTimestamp = Date.now()
   }
 

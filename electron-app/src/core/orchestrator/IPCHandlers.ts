@@ -499,13 +499,9 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   // WAVE 254: Migrado a TitanOrchestrator
   // =========================================================================
   
-  // ⚡ WAVE 3060: lux:audio-frame ELIMINADO del hot-path
-  // Antes: 60 IPC calls/sec con JSON {bass,mid,treble,energy,bpm,fftBins[64]}
-  // Ahora: Worker BETA envía bass/mid/energy via brain.on('audio-levels') a ~10fps
-  //        sin cruzar IPC Renderer→Main. Canal preservado solo para simulateAudio().
+  // ⚡ WAVE 3060b PHOENIX: lux:audio-frame RESTAURADO como hot-path
+  // Frontend envía bass/mid/treble/energy/bpm a 60fps para fluidez visual + LiquidEngine
   ipcMain.on('lux:audio-frame', (_event, data: Record<string, unknown>) => {
-    // Solo procesar si tiene marca de simulación manual (useSelene.simulateAudio)
-    // El hot-path de useAudioCapture/useLiveAudioInput ya NO envía por este canal
     if (titanOrchestrator) {
       titanOrchestrator.processAudioFrame(data)
     }
@@ -517,7 +513,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   // on() es unidireccional - procesa sin esperar respuesta
   let audioBufferCallCount = 0;
   let lastLogTime = Date.now();
-  ipcMain.on('lux:audio-buffer', (_event, buffer: ArrayBuffer) => {
+  ipcMain.on('lux:audio-buffer', (_event, buffer: Buffer) => {
     audioBufferCallCount++;
     
     // ðŸ” WAVE 264.7: Log AGRESIVO cada 2 segundos (basado en tiempo, no frames)
@@ -531,7 +527,10 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     }
     
     if (titanOrchestrator && buffer) {
-      const float32 = new Float32Array(buffer)
+      // ⚡ WAVE 3060b PHOENIX: HACK BINARIO — reconstruct Float32Array from Buffer
+      // Frontend envía Uint8Array (mapea a Node Buffer via C++ binding, quasi zero-copy)
+      // Aquí reconstruimos Float32Array usando byteOffset para alinear correctamente
+      const float32 = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
       titanOrchestrator.processAudioBuffer(float32)
     } else if (!titanOrchestrator) {
       console.warn('[IPC âš ï¸] audioBuffer: titanOrchestrator is null!');

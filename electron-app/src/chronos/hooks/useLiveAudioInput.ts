@@ -234,9 +234,34 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
         setTimeout(() => { isBufferBusyRef.current = false }, 0)
       }
       
-      // ⚡ WAVE 3060: audioFrame IPC ELIMINADO del hot-path (Chronos)
-      // Worker BETA provee bass/mid/energy vía brain.on('audio-levels').
-      // Elimina: getByteFrequencyData + 64-bin FFT loop + IPC send por frame.
+      // ⚡ WAVE 3060b PHOENIX: audioFrame IPC RESTAURADO (sin fftBins)
+      // Frontend provee bass/mid/energy/treble para LiquidEngine + telemetría UI
+      if (window.lux?.audioFrame && frequencyBufferRef.current) {
+        analyser.getByteFrequencyData(frequencyBufferRef.current)
+        
+        const binCount = analyser.frequencyBinCount
+        const sampleRate = audioContextRef.current?.sampleRate ?? 44100
+        const binWidth = sampleRate / analyser.fftSize
+        const bassMaxBin = Math.floor(250 / binWidth)
+        const midMaxBin = Math.floor(4000 / binWidth)
+        
+        let bassSum = 0, midSum = 0, trebleSum = 0
+        const freqData = frequencyBufferRef.current
+        
+        for (let i = 0; i < binCount; i++) {
+          const val = freqData[i] / 255
+          if (i <= bassMaxBin) bassSum += val
+          else if (i <= midMaxBin) midSum += val
+          else trebleSum += val
+        }
+        
+        const bass = bassMaxBin > 0 ? Math.min(1, bassSum / bassMaxBin) : 0
+        const mid = (midMaxBin - bassMaxBin) > 0 ? Math.min(1, midSum / (midMaxBin - bassMaxBin)) : 0
+        const treble = (binCount - midMaxBin) > 0 ? Math.min(1, trebleSum / (binCount - midMaxBin)) : 0
+        const energy = (bass * 0.5 + mid * 0.3 + treble * 0.2)
+        
+        window.lux.audioFrame({ bass, mid, treble, energy, bpm: 0 })
+      }
     }, BUFFER_SEND_INTERVAL) // WAVE 3043: audioFrame → send (fire & forget)
     
     // Metrics loop (60fps → UI level meter)

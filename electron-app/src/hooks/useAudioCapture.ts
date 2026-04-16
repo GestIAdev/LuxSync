@@ -45,7 +45,7 @@ const BPM_MIN = 60
 const BPM_MAX = 180
 const BEAT_THRESHOLD = 0.5
 // 🏎️ WAVE 1013: NITRO BOOST - Frontend Overclock to 60fps
-// ⚡ WAVE 3060: METRICS_INTERVAL_MS eliminado — audioFrame IPC ya no se envía desde hot-path
+const METRICS_INTERVAL_MS = 16    // 60fps (was 33ms/30fps)
 const BUFFER_INTERVAL_MS = 50     // 20fps (was 100ms/10fps) - Overlap Strategy
 const UI_UPDATE_INTERVAL_MS = 16  // 60fps UI updates
 
@@ -84,7 +84,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     bass: 0, mid: 0, treble: 0, energy: 0, bpm: 120, beatPhase: 0, onBeat: false
   })
   
-  // ⚡ WAVE 3060: lastMetricsSendRef y fftBinsRef eliminados (audioFrame IPC removido del hot-path)
+  const lastMetricsSendRef = useRef<number>(0)
   const lastBufferSendRef = useRef<number>(0)
   const isBufferBusyRef = useRef<boolean>(false)
   
@@ -197,14 +197,14 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     m.beatPhase = beatPhase
     m.onBeat = onBeat
     
-    // ⚡ WAVE 3060: audioFrame IPC ELIMINADO del hot-path
-    // El Worker BETA ya envía bass/mid/energy/treble vía brain.on('audio-levels') a ~10fps.
-    // Enviar métricas duplicadas a 60Hz via IPC era:
-    //   - 60 Structured Clone/sec de objetos JSON con fftBins[64]
-    //   - 60 object allocations/sec en processAudioFrame() (spread + assign)
-    //   - ~30KB/sec de serialización innecesaria
-    // El motor DMX lee lastAudioData a 44fps — 10fps de actualización es suficiente.
-    // simulateAudio() en useSelene sigue disponible para testing manual.
+    // ⚡ WAVE 3060b PHOENIX: audioFrame IPC RESTAURADO (sin fftBins)
+    // Frontend provee bass/mid/energy/treble a 60fps para fluidez visual + LiquidEngine
+    if (now - lastMetricsSendRef.current >= METRICS_INTERVAL_MS) {
+      lastMetricsSendRef.current = now
+      if (window.lux?.audioFrame) {
+        window.lux.audioFrame({ bass, mid, treble, energy, bpm })
+      }
+    }
     
     if (now - lastBufferSendRef.current >= BUFFER_INTERVAL_MS && !isBufferBusyRef.current) {
       lastBufferSendRef.current = now

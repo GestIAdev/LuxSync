@@ -539,12 +539,16 @@ const luxApi = {
    * 
    */
   audioBuffer: (buffer: Float32Array) => {
-    ipcRenderer.send('lux:audio-buffer', buffer.buffer)
+    // ⚡ WAVE 3060b PHOENIX: Cast Float32Array → Uint8Array antes de enviar
+    // Electron Structured Clone de ArrayBuffer es lento (~8ms para 8KB)
+    // Uint8Array se mapea a Node.js Buffer via C++ binding — quasi zero-copy
+    ipcRenderer.send('lux:audio-buffer', new Uint8Array(buffer.buffer))
   },
   
   /** WAVE 3043: Fire & Forget — sin round-trip Promise a 60Hz */
   // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
-  audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number; fftBins?: number[] }) =>
+  // ⚡ WAVE 3060b PHOENIX: fftBins eliminado del payload (nadie lo consume en backend)
+  audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) =>
     ipcRenderer.send('lux:audio-frame', metrics),
   
   /** Obtener estado actual */

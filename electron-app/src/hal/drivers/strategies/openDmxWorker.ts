@@ -47,6 +47,10 @@
 // PRIORITY_HIGHEST (o PRIORITY_ABOVE_NORMAL como fallback) hace que el scheduler
 // del OS ejecute nuestro loop DMX ANTES que el renderizado del cursor.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// 🔇 OPERACIÓN BLACKOUT — child_process console hijack (RESTAURAR: comentar bloque)
+;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+
 import * as os from 'os'
 
 try {

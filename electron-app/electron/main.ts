@@ -72,7 +72,34 @@ const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier state
+// � OPERACIÓN BLACKOUT — I/O SILENCE (WAVE DIAGNOSTICS)
+// ═══════════════════════════════════════════════════════════════════════════
+// Silencia TODOS los console.* del proceso main (y workers del mismo hilo)
+// EXCEPCIÓN: mensajes que contengan '[CARDIOGRAMA' pasan siempre.
+//
+// RESTAURAR: comentar el bloque completo hasta el cierre de la función noop.
+// ─────────────────────────────────────────────────────────────────────────────
+;(function installBlackout() {
+  const _noop = () => { /* BLACKOUT */ }
+  const _originalWarn  = console.warn.bind(console)
+  const _originalError = console.error.bind(console)
+
+  // Silenciar completamente
+  console.log   = _noop
+  console.info  = _noop
+  console.debug = _noop
+
+  // warn y error: solo pasan si el primer argumento contiene [CARDIOGRAMA
+  const _cardiFilter = (orig: (...a: unknown[]) => void) =>
+    (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && args[0].includes('[CARDIOGRAMA')) {
+        orig(...args)
+      }
+    }
+  console.warn  = _cardiFilter(_originalWarn)
+  console.error = _cardiFilter(_originalError)
+})()
+// ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
 // ═══════════════════════════════════════════════════════════════════════════
 let currentLicenseTier: 'DJ_FOUNDER' | 'FULL_SUITE' = 'FULL_SUITE'

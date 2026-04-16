@@ -1,5 +1,7 @@
 // 🧠 WORKER THREAD ALIVE — OPERACIÓN LÁZARO (WAVE 2520)
-console.log('🧠 WORKER THREAD ALIVE')
+// 🔇 OPERACIÓN BLACKOUT — Web Worker console hijack (RESTAURAR: comentar bloque)
+;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+// [BLACKOUT] console.log('🧠 WORKER THREAD ALIVE')
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════

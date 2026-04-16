@@ -274,6 +274,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   // ─────────────────────────────────────────────────────────────────────────
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [showSaveIndicator, setShowSaveIndicator] = useState(false)
+  const [isProfilerRunning, setIsProfilerRunning] = useState(false)
 
   const powerState = usePowerStore(s => s.powerState)
   const setPowerState = usePowerStore(s => s.setPowerState)
@@ -419,6 +420,24 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
       setIsLoadingShow(false)
     }
   }, [])
+
+  // ⚡ WAVE X-RAY: CPU Profiler — 15s V8 capture → lux-asesino.cpuprofile
+  const handleStartProfiler = useCallback(async () => {
+    if (isProfilerRunning) return
+    setIsProfilerRunning(true)
+    try {
+      const result = await window.luxDebug?.startProfiler?.()
+      if (result?.success) {
+        console.log(`[PROFILER] ✅ Saved: ${result.path}`)
+      } else {
+        console.error('[PROFILER] ❌', result?.error)
+      }
+    } catch (err) {
+      console.error('[PROFILER] ❌ IPC error:', err)
+    } finally {
+      setIsProfilerRunning(false)
+    }
+  }, [isProfilerRunning])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — THE MASTER TOOLBAR
@@ -695,6 +714,21 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
             </button>
           )}
         </div>
+
+        <span className="ct-divider" />
+
+        {/* ⚡ WAVE X-RAY: CPU Profiler button */}
+        <button
+          className={`ct-mode-btn ${isProfilerRunning ? 'active ct-profiler-running' : ''}`}
+          onClick={handleStartProfiler}
+          disabled={isProfilerRunning}
+          title={isProfilerRunning ? 'Profiling… 15s (do not click)' : 'Start V8 CPU Profiler — 15s capture → lux-asesino.cpuprofile'}
+          style={{ minWidth: 52 }}
+        >
+          <span style={{ fontSize: '13px' }}>{isProfilerRunning ? '🔴' : '🎯'}</span>
+          <span className="ct-mode-label">{isProfilerRunning ? 'PROF…' : 'PROF'}</span>
+        </button>
+
       </div>
     </div>
   )

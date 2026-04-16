@@ -1331,61 +1331,47 @@ export class TitanOrchestrator {
     // 🔬 WAVE 3030: Cerrar sonda Hephaestus (abarca tick + merge loop)
     const _sondaHephMs = performance.now() - _sondaHephStart
 
-    // ⚒️ WAVE 3010: SINGLE SEND PER FRAME
-    // renderFromTarget() no longer sends to hardware — it's pure calculation now.
-    // We send ONCE here, AFTER all processing (including Hephaestus overlays).
-    // This eliminates the double-send race condition where two sendAll() calls
-    // competed for the isTransmitting semaphore (the second was always dropped).
-    // 🔬 WAVE 3030: SONDA SEND
-    const _sondaSendStart = performance.now()
-    this.hal.sendStatesWithPhysics(fixtureStates)
-    const _sondaSendMs = performance.now() - _sondaSendStart
-
-    // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log SIEMPRE cada 30 frames (1/segundo)
-    // + Log urgente si algún frame supera 10ms
-    const _sondaFrameTotalMs = performance.now() - _sondaFrameStart
-    if (this.frameCount % 30 === 0) {
-      // Telemetría periódica: muestra el coste real de un frame normal
-      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
-      const _msg = `🔬 FRAME ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
-      console.warn(`[SONDA FRAME] ${_msg}`)
-      this.log('Error', `[SONDA FRAME] ${_msg}`)
-    } else if (_sondaFrameTotalMs > 10) {
-      // Urgente: frame individual supera umbral
-      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
-      const _msg = `🔬 FRAME LENTO ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
-      console.warn(`[SONDA FRAME] ${_msg}`)
-      this.log('Error', `[SONDA FRAME] ${_msg}`)
-    }
-
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🧹 WAVE 2227: VISUAL GATE REMOVED
-    // Previously (WAVE 1133), this block zerified ALL fixtureStates when
-    // outputEnabled=false, killing the HyperionView preview. The DMX gate
-    // already lives in MasterArbiter.arbitrateFixture() — that's the real
-    // enforcement. The UI now receives live engine data for private preview
-    // regardless of the DMX gate state.
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (44Hz) + Full Truth (~7Hz)
+    // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
     //
-    // Hot Frame: EVERY tick (44Hz). Carries ONLY fixture dynamic data + beat flag.
-    //   → Frontend forwards to RenderWorker for 60fps interpolation.
-    //   → Lightweight: just fixtures array + beat + frame number.
+    // WAVE 3050 introdujo un regression: sendStatesWithPhysics() mutaba los
+    // objetos fixtureStates IN-PLACE con la Aduana (zerificando dimmer/r/g/b
+    // cuando outputEnabled=false) ANTES de que el hot-frame los leyera.
+    // Resultado: HyperionView siempre negro con output OFF.
+    //
+    // Fix arquitectónico correcto:
+    //   1. applyPhysicsOnly()  → physicalPan/Tilt actualizados, SIN Aduana
+    //   2. Hot-frame + Truth   → UI lee valores reales del engine
+    //   3. flushToDriver()     → Aduana + DMX (puede zerificar, pero ya no importa)
+    //
+    // De esta forma el preview siempre refleja la realidad del engine,
+    // y la Aduana sigue siendo el único gate para el hardware físico.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ⚡ STEP 1: Physics — actualiza physicalPan/Tilt, sin tocar la Aduana
+    this.hal.applyPhysicsOnly(fixtureStates)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (22Hz) + Full Truth (~7Hz)
+    //
+    // Hot Frame: Every HOT_FRAME_DIVIDER ticks (22Hz). Carries fixture dynamic data.
+    //   → Frontend → RenderWorker → HyperionView preview.
+    //   → Lightweight: fixtures array + beat + frame number.
     //
     // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz).
-    //   → Full SeleneTruth (sensory, consciousness, context, hardware).
-    //   → Feeds React stores, HUD, audio meters, etc.
+    //   → Full SeleneTruth. Feeds React stores, HUD, audio meters, etc.
     //
     // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
     // full truth at full rate (44fps) since Cinema needs complete data.
+    //
+    // ⚡ WAVE 3065: Broadcast happens BEFORE flushToDriver() so the Aduana
+    // never pollutes the UI data with DMX gate zeros.
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     // 👻 Chronos bypass check
     const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false
     const shouldBroadcastFullTruth = chronosPlaying || (this.frameCount % TitanOrchestrator.TRUTH_BROADCAST_DIVIDER === 0)
-    
+
     // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
     if (!chronosPlaying) {
       for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
@@ -1398,6 +1384,7 @@ export class TitanOrchestrator {
 
     // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
     // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+    // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
     if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
       const hotFrame = {
         frameNumber: this.frameCount,
@@ -1427,6 +1414,33 @@ export class TitanOrchestrator {
       }
       this.onHotFrame(hotFrame)
     }
+
+    // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
+    // 🔬 WAVE 3030: SONDA SEND
+    const _sondaSendStart = performance.now()
+    this.hal.flushToDriver(fixtureStates)
+    const _sondaSendMs = performance.now() - _sondaSendStart
+
+    // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log SIEMPRE cada 30 frames (1/segundo)
+    // + Log urgente si algún frame supera 10ms
+    const _sondaFrameTotalMs = performance.now() - _sondaFrameStart
+    if (this.frameCount % 30 === 0) {
+      // Telemetría periódica: muestra el coste real de un frame normal
+      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
+      const _msg = `🔬 FRAME ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
+      console.warn(`[SONDA FRAME] ${_msg}`)
+      this.log('Error', `[SONDA FRAME] ${_msg}`)
+    } else if (_sondaFrameTotalMs > 10) {
+      // Urgente: frame individual supera umbral
+      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
+      const _msg = `🔬 FRAME LENTO ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
+      console.warn(`[SONDA FRAME] ${_msg}`)
+      this.log('Error', `[SONDA FRAME] ${_msg}`)
+    }
+
+    // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
+    // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.
+    // El broadcast UI siempre recibe los valores reales del engine.
 
     // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) ────────
     if (this.onBroadcast && shouldBroadcastFullTruth) {

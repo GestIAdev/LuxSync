@@ -1697,8 +1697,19 @@ export class HardwareAbstraction {
    * 
    * REPLACES the old sendStates() which was a physics-bypass backdoor.
    */
-  public sendStatesWithPhysics(states: FixtureState[]): void {
-    // \u26a1 WAVE 3050: Zero-allocation — mutate in-place, no .map() + spread
+  /**
+   * ⚡ WAVE 3065: applyPhysicsOnly — corre la física de movimiento (physicalPan/Tilt)
+   * sin enviar al driver ni aplicar la Aduana DMX.
+   * Permite al Orchestrator leer los valores físicos reales para el hot-frame UI
+   * ANTES de que la Aduana los zerife cuando outputEnabled=false.
+   *
+   * Sequence en TitanOrchestrator:
+   *   1. hal.applyPhysicsOnly(states)  → physicalPan/Tilt actualizados
+   *   2. onHotFrame(states)            → UI recibe valores reales del engine
+   *   3. hal.flushToDriver(states)     → Aduana + DMX (puede zerificar)
+   */
+  public applyPhysicsOnly(states: FixtureState[]): void {
+    // ⚡ WAVE 3050: Zero-allocation — mutate in-place, no .map() + spread
     const physicsDt = this.measurePhysicsDeltaTime()
     
     for (let i = 0; i < states.length; i++) {
@@ -1711,7 +1722,7 @@ export class HardwareAbstraction {
       
       if (!isMovingFixture) continue
       
-      // \ud83d\udee1\ufe0f Run physics: interpolate pan/tilt targets \u2192 smooth physicalPan/physicalTilt
+      // 🛡️ Run physics: interpolate pan/tilt targets → smooth physicalPan/physicalTilt
       const fixtureId = state.fixtureId || `fixture-${state.dmxAddress}`
       this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt)
       const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
@@ -1722,7 +1733,20 @@ export class HardwareAbstraction {
       state.panVelocity = physicsState.panVelocity
       state.tiltVelocity = physicsState.tiltVelocity
     }
-    
+  }
+
+  /**
+   * ⚡ WAVE 3065: flushToDriver — aplica la Aduana DMX y envía al hardware.
+   * Llamar DESPUÉS de applyPhysicsOnly() y DESPUÉS de emitir el hot-frame UI.
+   */
+  public flushToDriver(states: FixtureState[]): void {
+    this.sendToDriver(states)
+  }
+
+  /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
+   * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
+  public sendStatesWithPhysics(states: FixtureState[]): void {
+    this.applyPhysicsOnly(states)
     this.sendToDriver(states)
   }
   

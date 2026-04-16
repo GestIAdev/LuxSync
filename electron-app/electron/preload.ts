@@ -1392,6 +1392,10 @@ const luxDebug = {
     start: () => ipcRenderer.invoke('telemetry:lt41:start'),
     flush: () => ipcRenderer.invoke('telemetry:lt41:flush'),
   },
+  // ── CPU PROFILER — WAVE X-RAY TOTAL ───────────────────────────────────────
+  // Lanza 15s de V8 CPU profiling. Guarda lux-asesino.cpuprofile en userData.
+  startProfiler: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('lux:start-profiler'),
 }
 
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos

@@ -931,6 +931,43 @@ ipcMain.handle('telemetry:lt41:flush', () => {
   latinoEngine41Telemetry.flushBuffer()
   return { success: true }
 })
+
+// ── CPU PROFILER — WAVE X-RAY TOTAL ──────────────────────────────────────────
+// Captura un perfil V8 de 15 segundos y lo guarda en userData/lux-asesino.cpuprofile
+// Triggerable desde la UI para cazar spikes de 20-27ms con precisión matemática.
+// ─────────────────────────────────────────────────────────────────────────────
+ipcMain.handle('lux:start-profiler', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const inspector = require('node:inspector/promises') as typeof import('node:inspector/promises')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require('path') as typeof import('path')
+
+  const session = new inspector.Session()
+  try {
+    session.connect()
+    await session.post('Profiler.enable')
+    await session.post('Profiler.start')
+    console.log('[PROFILER] 🔴 CPU profiling started — capturing 15 seconds...')
+
+    await new Promise<void>(resolve => setTimeout(resolve, 15_000))
+
+    const { profile } = await session.post('Profiler.stop') as { profile: object }
+    session.disconnect()
+
+    const outputPath = path.join(app.getPath('userData'), 'lux-asesino.cpuprofile')
+    fs.writeFileSync(outputPath, JSON.stringify(profile))
+    console.log(`[PROFILER] ✅ Profile saved → ${outputPath}`)
+
+    return { success: true, path: outputPath }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[PROFILER] ❌ Failed:', msg)
+    try { session.disconnect() } catch { /* ignore */ }
+    return { success: false, error: msg }
+  }
+})
 // ─────────────────────────────────────────────────────────────────────────────
 
 // WAVE 2098: Boot silence — module load log removed

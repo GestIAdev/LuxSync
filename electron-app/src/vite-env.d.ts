@@ -875,6 +875,14 @@ interface LuxDebugAPI {
   }>
   inspectFixture: (fixtureId: string) => { fixtureId: string; note: string }
   help: () => void
+  /** ⚡ WAVE X-RAY TOTAL: Lanza 15s de V8 CPU profiling → lux-asesino.cpuprofile */
+  startProfiler: () => Promise<{ success: boolean; path?: string; error?: string }>
+  telemetry: {
+    export: (outputPath?: string) => Promise<unknown>
+    stop: () => Promise<unknown>
+    start: () => Promise<unknown>
+    flush: () => Promise<unknown>
+  }
 }
 
 declare global {

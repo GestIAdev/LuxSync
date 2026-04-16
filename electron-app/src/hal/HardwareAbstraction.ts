@@ -1925,20 +1925,20 @@ export class HardwareAbstraction {
             // )
           }
 
-          // ── Sonda individual: cualquier fixture oscuro sin blackout (sin filtro de manual)
-          for (const state of states) {
-            const src = state._controlSources
-            const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
-            if (state.dimmer === 0) {
-              this._w2960Log(`dim:${fid}`,
-                `[HAL TRAP W2960 v2] DIMMER=0 fixture=${fid}\n` +
-                `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
-                `  frame=${this.framesRendered}\n` +
-                `  controlSources: dimmer=${src?.['dimmer'] ?? '?'}  r=${src?.['red'] ?? '?'}  g=${src?.['green'] ?? '?'}\n` +
-                `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
-              )
-            }
-          }
+          // WAVE 2960: Individual dimmer=0 trap (DISABLED — _w2960Log is commented out)
+          // for (const state of states) {
+          //   const src = state._controlSources
+          //   const fid = state.fixtureId ?? `addr:${state.dmxAddress}`
+          //   if (state.dimmer === 0) {
+          //     this._w2960Log(`dim:${fid}`,
+          //       `[HAL TRAP W2960 v2] DIMMER=0 fixture=${fid}\n` +
+          //       `  dimmer=${state.dimmer}  r=${state.r ?? 0}  g=${state.g ?? 0}  b=${state.b ?? 0}\n` +
+          //       `  frame=${this.framesRendered}\n` +
+          //       `  controlSources: dimmer=${src?.['dimmer'] ?? '?'}  r=${src?.['red'] ?? '?'}  g=${src?.['green'] ?? '?'}\n` +
+          //       `  stack=${new Error().stack?.split('\n').slice(1, 6).join(' | ')}`
+          //     )
+          //   }
+          // }
         }
       } catch {
         // nunca bloquear el output — la trampa es observadora, no tiene poder de veto

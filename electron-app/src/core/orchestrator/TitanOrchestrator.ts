@@ -1298,11 +1298,21 @@ export class TitanOrchestrator {
     this.hal.sendStatesWithPhysics(fixtureStates)
     const _sondaSendMs = performance.now() - _sondaSendStart
 
-    // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log si algún segmento supera umbral
+    // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log SIEMPRE cada 30 frames (1/segundo)
+    // + Log urgente si algún frame supera 10ms
     const _sondaFrameTotalMs = performance.now() - _sondaFrameStart
-    if (_sondaFrameTotalMs > 10) {
+    if (this.frameCount % 30 === 0) {
+      // Telemetría periódica: muestra el coste real de un frame normal
       const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
-      console.warn(`[SONDA FRAME] 🔬 total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`)
+      const _msg = `🔬 FRAME ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
+      console.warn(`[SONDA FRAME] ${_msg}`)
+      this.log('Error', `[SONDA FRAME] ${_msg}`)
+    } else if (_sondaFrameTotalMs > 10) {
+      // Urgente: frame individual supera umbral
+      const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`
+      const _msg = `🔬 FRAME LENTO ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`
+      console.warn(`[SONDA FRAME] ${_msg}`)
+      this.log('Error', `[SONDA FRAME] ${_msg}`)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

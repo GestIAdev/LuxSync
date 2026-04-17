@@ -211,11 +211,14 @@ function render(timestamp: number): void {
     physState.zoom += (unpackBuffer.zoom - physState.zoom) * SMOOTHING_FACTOR
     physicsStore.set(scaffold.id, physState)
 
-    // Intensity: snap detection for hard effects (strobes)
+    // Intensity: snap detection — when delta > threshold it's a strobe/hard cut.
+    // Color and intensity always pass through raw (no smoothing needed — only pan/tilt/zoom are mechanical).
     const prevInt = prevIntensity.get(scaffold.id) ?? unpackBuffer.intensity
     const intDelta = Math.abs(unpackBuffer.intensity - prevInt)
-    const useSnap = intDelta > INTENSITY_SNAP_THRESHOLD
     prevIntensity.set(scaffold.id, unpackBuffer.intensity)
+    // useSnap preserved for future strobe-specific rendering (e.g., flash frames)
+    const useSnap = intDelta > INTENSITY_SNAP_THRESHOLD
+    void useSnap
 
     // Build the final TacticalFixture
     smoothedFixtures[i] = {
@@ -226,11 +229,11 @@ function render(timestamp: number): void {
       zone: scaffold.zone,
       gobo: scaffold.gobo,
       prism: scaffold.prism,
-      // Dynamic data — smoothed or snapped
-      r: useSnap ? unpackBuffer.r : unpackBuffer.r,           // Color passes through (no smoothing)
-      g: useSnap ? unpackBuffer.g : unpackBuffer.g,
-      b: useSnap ? unpackBuffer.b : unpackBuffer.b,
-      intensity: useSnap ? unpackBuffer.intensity : unpackBuffer.intensity, // Intensity always immediate
+      // Dynamic data — color and intensity always pass through raw
+      r: unpackBuffer.r,
+      g: unpackBuffer.g,
+      b: unpackBuffer.b,
+      intensity: unpackBuffer.intensity,
       physicalPan: physState.pan,
       physicalTilt: physState.tilt,
       zoom: physState.zoom,

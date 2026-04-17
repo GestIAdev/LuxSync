@@ -1302,6 +1302,9 @@ export class HardwareAbstraction {
       this.profileCache.delete(profileId)
     } else {
       this.profileCache.clear()
+      // Clear per-fixture color history so the COLOR JUMP detector doesn't fire
+      // false alarms when the next show loads different colors on the same fixtures.
+      this._colorSnapshot.clear()
     }
     // Also clear injected physics profiles so they re-inject on next frame
     if (profileId) {

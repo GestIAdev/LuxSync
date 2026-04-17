@@ -1405,6 +1405,8 @@ export class TitanOrchestrator {
             r: Math.round(f.r),
             g: Math.round(f.g),
             b: Math.round(f.b),
+            white: Math.round(f.white ?? 0),
+            amber: Math.round(f.amber ?? 0),
             pan: f.pan / 255,
             tilt: f.tilt / 255,
             zoom: f.zoom,

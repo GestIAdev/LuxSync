@@ -112,6 +112,10 @@ export function injectHotFrame(hotFrame: any): void {
         mutable.tiltVelocity = hot.tiltVelocity
         mutable.active = hot.dimmer > 0
 
+        // ── White/Amber: propagate at 22Hz (not just 7Hz from SeleneTruth) ──
+        mutable.white = hot.white ?? 0
+        mutable.amber = hot.amber ?? 0
+
         // ── Color: deep merge into existing color object ──
         if (existing.color) {
           existing.color.r = hot.r

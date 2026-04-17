@@ -319,14 +319,17 @@ export class ColorTranslator {
     if (!hasWheelData) {
       if (!ColorTranslator.warnedProfiles.has(profile.id)) {
         ColorTranslator.warnedProfiles.add(profile.id)
-        console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped`)
+        console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped — preserving original RGB intent`)
       }
+      // Pass-through: no wheel data means we can't translate.
+      // Returning (255,255,255) would corrupt the color intent for the UI.
+      // poorMatch=true signals the caller that physical output is unreliable.
       return {
-        outputRGB: { r: 255, g: 255, b: 255 },
+        outputRGB: targetRGB,
         colorWheelDmx: 0,
-        colorName: 'Open (Fallback)',
+        colorName: 'Open (No Data)',
         colorDistance: 100,
-        wasTranslated: true,
+        wasTranslated: false,
         poorMatch: true,
       }
     }

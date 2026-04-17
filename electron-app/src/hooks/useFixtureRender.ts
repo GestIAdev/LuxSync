@@ -99,11 +99,6 @@ export function calculateFixtureRenderValues(
   let pan = truthData?.pan ?? 0.5  // Already normalized 0-1
   let tilt = truthData?.tilt ?? 0.5  // Already normalized 0-1
   
-  // 🔍 DEBUG: Log values every ~1 second
-  if (fixtureIndex === 0 && Math.random() < 0.016) {
-    console.log(`[🔬 useFixtureRender] pan=${pan.toFixed(3)} | tilt=${tilt.toFixed(3)}`)
-  }
-  
   // 🔍 WAVE 339: Optics from backend (set by HAL based on vibe)
   const zoom = truthData?.zoom ?? 127        // Default to middle
   const focus = truthData?.focus ?? 127      // Default to middle

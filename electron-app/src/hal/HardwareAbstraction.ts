@@ -1943,6 +1943,23 @@ export class HardwareAbstraction {
       }
     }
 
+    // 🛑 WAVE 3035: RED FLASH DETECTOR — caza estados con r>200, g<50, b<50 + dimmer>0
+    // Registrado ANTES de driver.send() para capturar la fuente exacta.
+    // Opera sobre FixtureState (campos nombrados) — fiable independientemente del perfil.
+    for (const _fs of states) {
+      if ((_fs.r ?? 0) > 200 && (_fs.g ?? 0) < 50 && (_fs.b ?? 0) < 50 && (_fs.dimmer ?? 0) > 0) {
+        console.warn(
+          `[RED FLASH] 🛑 fid:${_fs.fixtureId ?? '?'} addr:${_fs.dmxAddress} ` +
+          `r:${_fs.r} g:${_fs.g} b:${_fs.b} dimmer:${_fs.dimmer} ` +
+          `outputEnabled:${outputEnabled} ` +
+          `src_red:${_fs._controlSources?.['red'] ?? '?'} ` +
+          `src_dim:${_fs._controlSources?.['dimmer'] ?? '?'} ` +
+          `hasColorWheel:${_fs.hasColorWheel ?? false} ` +
+          `frame:${this.framesRendered}`
+        )
+      }
+    }
+
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
 

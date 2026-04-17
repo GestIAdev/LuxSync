@@ -891,6 +891,13 @@ export const VisualPatcher: React.FC = () => {
         strokeColor = COLORS.fixture.unpatched;
       }
 
+      // 🛡️ WAVE 3120: Virtual fixture overlay — orange/dimmed regardless of other state
+      if (f.isVirtual && !isSel) {
+        fillColor = 'rgba(245, 158, 11, 0.08)';
+        strokeColor = 'rgba(245, 158, 11, 0.4)';
+        glowColor = null;
+      }
+
       // Apply glow
       if (glowColor) {
         ctx.shadowColor = glowColor;
@@ -1432,7 +1439,79 @@ export const VisualPatcher: React.FC = () => {
                 </div>
               </div>
 
-              {/* 🔮 DMX ADDRESSING - Glass + VFD Style (WAVE 1215) */}
+              {/* �️ WAVE 3120: VIRTUAL FIXTURE TOGGLE — SAFETY SWITCH */}
+              <div style={{
+                ...s.cardGlass,
+                borderColor: selectedFixture.isVirtual ? 'rgba(245, 158, 11, 0.5)' : 'rgba(34, 211, 238, 0.1)',
+                background: selectedFixture.isVirtual
+                  ? 'rgba(245, 158, 11, 0.08)'
+                  : 'rgba(255, 255, 255, 0.02)',
+              }}>
+                <button
+                  onClick={() => updateFixture(selectedFixture.id, { isVirtual: !selectedFixture.isVirtual })}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    background: selectedFixture.isVirtual
+                      ? 'rgba(245, 158, 11, 0.12)'
+                      : 'rgba(34, 211, 238, 0.06)',
+                    border: `1px solid ${selectedFixture.isVirtual ? 'rgba(245, 158, 11, 0.4)' : 'rgba(34, 211, 238, 0.2)'}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ fontSize: '20px' }}>
+                    {selectedFixture.isVirtual ? '👻' : '🔌'}
+                  </span>
+                  <div style={{ textAlign: 'left', flex: 1 }}>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      letterSpacing: '1px',
+                      fontFamily: '"Orbitron", monospace',
+                      color: selectedFixture.isVirtual ? '#fbbf24' : '#22d3ee',
+                    }}>
+                      {selectedFixture.isVirtual ? 'VIRTUAL FIXTURE' : 'PHYSICAL FIXTURE'}
+                    </div>
+                    <div style={{
+                      fontSize: '9px',
+                      color: selectedFixture.isVirtual ? 'rgba(251, 191, 36, 0.7)' : 'rgba(255, 255, 255, 0.4)',
+                      fontFamily: '"JetBrains Mono", monospace',
+                      marginTop: '2px',
+                    }}>
+                      {selectedFixture.isVirtual ? 'No hardware output — click to reconnect' : 'Connected to DMX — click to disconnect'}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
+                    background: selectedFixture.isVirtual
+                      ? 'rgba(245, 158, 11, 0.4)'
+                      : 'rgba(34, 211, 238, 0.2)',
+                    position: 'relative',
+                    transition: 'all 0.15s ease',
+                  }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: selectedFixture.isVirtual ? '#fbbf24' : '#22d3ee',
+                      position: 'absolute',
+                      top: '2px',
+                      left: selectedFixture.isVirtual ? '18px' : '2px',
+                      transition: 'all 0.15s ease',
+                      boxShadow: `0 0 6px ${selectedFixture.isVirtual ? 'rgba(251, 191, 36, 0.5)' : 'rgba(34, 211, 238, 0.5)'}`,
+                    }} />
+                  </div>
+                </button>
+              </div>
+
+              {/* �🔮 DMX ADDRESSING - Glass + VFD Style (WAVE 1215) */}
               <div style={s.cardGlass}>
                 <div style={s.cardTitle}>⚙️ DMX ADDRESSING</div>
                 
@@ -1559,7 +1638,87 @@ export const VisualPatcher: React.FC = () => {
                 </div>
               </div>
 
-              {/* 🔮 BATCH ADDRESSING - VFD STYLE (WAVE 1215 + 1218 ICON) */}
+              {/* �️ WAVE 3120: BATCH VIRTUAL TOGGLE — SWARM SAFETY SWITCH */}
+              {(() => {
+                const allVirtual = selectedFixtures.every(f => f.isVirtual);
+                const someVirtual = selectedFixtures.some(f => f.isVirtual);
+                return (
+                  <div style={{
+                    ...s.cardGlass,
+                    borderColor: someVirtual ? 'rgba(245, 158, 11, 0.4)' : 'rgba(34, 211, 238, 0.1)',
+                    background: someVirtual ? 'rgba(245, 158, 11, 0.06)' : 'rgba(255, 255, 255, 0.02)',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      gap: '6px',
+                    }}>
+                      <button
+                        onClick={() => {
+                          selectedFixtures.forEach(f => updateFixture(f.id, { isVirtual: true }));
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          background: allVirtual ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.06)',
+                          border: `1px solid ${allVirtual ? 'rgba(245, 158, 11, 0.5)' : 'rgba(245, 158, 11, 0.2)'}`,
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div style={{ fontSize: '16px', marginBottom: '4px' }}>👻</div>
+                        <div style={{
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          letterSpacing: '0.5px',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          color: '#fbbf24',
+                        }}>
+                          ALL VIRTUAL
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          selectedFixtures.forEach(f => updateFixture(f.id, { isVirtual: false }));
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          background: !someVirtual ? 'rgba(34, 211, 238, 0.15)' : 'rgba(34, 211, 238, 0.06)',
+                          border: `1px solid ${!someVirtual ? 'rgba(34, 211, 238, 0.4)' : 'rgba(34, 211, 238, 0.2)'}`,
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div style={{ fontSize: '16px', marginBottom: '4px' }}>🔌</div>
+                        <div style={{
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          letterSpacing: '0.5px',
+                          fontFamily: '"JetBrains Mono", monospace',
+                          color: '#22d3ee',
+                        }}>
+                          ALL PHYSICAL
+                        </div>
+                      </button>
+                    </div>
+                    {someVirtual && (
+                      <div style={{
+                        fontSize: '9px',
+                        color: 'rgba(245, 158, 11, 0.7)',
+                        fontFamily: '"JetBrains Mono", monospace',
+                        textAlign: 'center',
+                        marginTop: '6px',
+                      }}>
+                        ⚠️ {selectedFixtures.filter(f => f.isVirtual).length}/{selectedFixtures.length} virtual — no DMX output
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* �🔮 BATCH ADDRESSING - VFD STYLE (WAVE 1215 + 1218 ICON) */}
               <div style={s.cardGlass}>
                 <div style={s.cardTitle}><IconMagicWand /> BATCH PATCHING</div>
                 

@@ -63,6 +63,12 @@ export const TacticalPatchBay: React.FC = () => {
     setIsDirty(true)
   }, [updateFixture])
   
+  // 🛡️ WAVE 3120: Virtual fixture toggle — disconnects fixture from physical DMX output
+  const handleVirtualToggle = useCallback((fixtureId: string, currentVirtual: boolean) => {
+    updateFixture(fixtureId, { isVirtual: !currentVirtual })
+    setIsDirty(true)
+  }, [updateFixture])
+  
   const handleSavePatch = useCallback(async () => {
     if (!showFile) return
     
@@ -122,6 +128,7 @@ export const TacticalPatchBay: React.FC = () => {
             <span className="col-addr">ADDR</span>
             <span className="col-ch">CH</span>
             <span className="col-uni">UNI</span>
+            <span className="col-virtual" title="Virtual = No Hardware Output">🔌</span>
           </div>
           
           {/* Fixture List - Scrollable */}
@@ -129,10 +136,13 @@ export const TacticalPatchBay: React.FC = () => {
             {fixtures.map(fixture => (
               <div 
                 key={fixture.id}
-                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''}`}
+                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''} ${fixture.isVirtual ? 'virtual' : ''}`}
               >
                 <div className="col-fixture">
-                  <div className="patch-fixture-name">{fixture.name}</div>
+                  <div className="patch-fixture-name">
+                    {fixture.isVirtual && <span className="virtual-ghost-icon">👻</span>}
+                    {fixture.name}
+                  </div>
                   <div className="patch-fixture-model">{fixture.model}</div>
                 </div>
                 
@@ -155,6 +165,14 @@ export const TacticalPatchBay: React.FC = () => {
                   min={0}
                   max={63}
                 />
+                
+                <button
+                  className={`patch-virtual-toggle ${fixture.isVirtual ? 'active' : ''}`}
+                  onClick={() => handleVirtualToggle(fixture.id, !!fixture.isVirtual)}
+                  title={fixture.isVirtual ? 'VIRTUAL — No DMX output. Click to reconnect' : 'PHYSICAL — Connected to hardware. Click to disconnect'}
+                >
+                  {fixture.isVirtual ? '👻' : '🔌'}
+                </button>
               </div>
             ))}
           </div>

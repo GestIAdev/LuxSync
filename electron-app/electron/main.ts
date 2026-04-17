@@ -89,10 +89,15 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
   console.info  = _noop
   console.debug = _noop
 
-  // warn y error: solo pasan si el primer argumento contiene [CARDIOGRAMA o [IPC PROBE]
+  // warn y error: solo pasan mensajes de diagnóstico crítico
   const _cardiFilter = (orig: (...a: unknown[]) => void) =>
     (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && (args[0].includes('[CARDIOGRAMA') || args[0].includes('[IPC PROBE]'))) {
+      if (typeof args[0] === 'string' && (
+        args[0].includes('[CARDIOGRAMA') ||
+        args[0].includes('[IPC PROBE]') ||
+        args[0].includes('[SEMAPHORE TRAP]') ||
+        args[0].includes('[DOUBLE-SEND TRAP]')
+      )) {
         orig(...args)
       }
     }

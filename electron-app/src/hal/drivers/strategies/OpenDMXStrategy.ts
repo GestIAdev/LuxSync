@@ -44,6 +44,9 @@ export class OpenDMXStrategy implements DMXSendStrategy {
   // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
   private lastSentHash: number = 0
 
+  // 🔬 WAVE 3020: DOUBLE-SEND TRAP
+  private _lastSendTime: number = 0
+
   /**
    * Lanza el child process y le ordena conectar al puerto serial.
    * WAVE 2021.5: fork() en vez de new Worker() — V8 isolate separado por proceso.
@@ -183,6 +186,14 @@ export class OpenDMXStrategy implements DMXSendStrategy {
     for (let i = 0; i < len; i++) {
       channels[i] = buffer[i]
     }
+
+    // 🔬 WAVE 3020: DOUBLE-SEND TRAP al child process
+    const _now = performance.now()
+    const _gap = _now - this._lastSendTime
+    if (this._lastSendTime > 0 && _gap < 2) {
+      console.error(`[DOUBLE-SEND TRAP] 🚨 Dos child.send() en ${_gap.toFixed(2)}ms! Fuego cruzado en IPC USB.`)
+    }
+    this._lastSendTime = _now
 
     const _t0 = performance.now()
     this.child.send({ type: 'UPDATE_BUFFER', channels })

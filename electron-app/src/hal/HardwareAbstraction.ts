@@ -834,20 +834,23 @@ export class HardwareAbstraction {
       }
     }
     
-    // 5. DRIVER: Send to hardware
-    this.sendToDriver(statesWithPhysics)
-    
+    // ⚡ WAVE 3070: sendToDriver() eliminado de aquí.
+    // WAVE 3065 ya separó el pipeline: renderFromTarget() solo calcula y retorna.
+    // El Orchestrator llama flushToDriver() DESPUÉS del broadcast UI.
+    // Tener sendToDriver() aquí causaba:
+    //   1. Double-send por frame (este + flushToDriver del Orchestrator)
+    //   2. Aduana zerificando los objetos ANTES del broadcast → UI ciega con outputEnabled=false
+
     // Update stats
     this.framesRendered++
     this.lastRenderTime = performance.now() - startTime
     this.renderTimes.push(this.lastRenderTime)
     if (this.renderTimes.length > 100) this.renderTimes.shift()
-    
+
     // Store for UI broadcast
     this.lastFixtureStates = statesWithPhysics
-    
-    // Debug logging (1% sample rate)
-    if (this.config.debug && Math.random() < 0.01) {
+
+    if (this.config.debug && this.framesRendered % 100 === 0) {
       const activeCount = statesWithPhysics.filter(f => f.dimmer > 0).length
       console.log(
         `[HAL] 🔧 Render #${this.framesRendered} | ` +
@@ -855,7 +858,7 @@ export class HardwareAbstraction {
         `Time: ${this.lastRenderTime.toFixed(2)}ms`
       )
     }
-    
+
     return statesWithPhysics
   }
   

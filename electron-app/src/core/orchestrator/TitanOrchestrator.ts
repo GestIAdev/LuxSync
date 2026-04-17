@@ -1348,8 +1348,12 @@ export class TitanOrchestrator {
     // y la Aduana sigue siendo el único gate para el hardware físico.
     // ═══════════════════════════════════════════════════════════════════════════
 
-    // ⚡ STEP 1: Physics — actualiza physicalPan/Tilt, sin tocar la Aduana
-    this.hal.applyPhysicsOnly(fixtureStates)
+    // ⚡ WAVE 3070: applyPhysicsOnly() eliminado — renderFromTarget() ya corrió
+    // la física (translateDMX + calibrationOffsets) internamente. Llamarlo aquí
+    // era doble-física: el mover se simulaba dos veces por frame, duplicando la
+    // velocidad aparente y produciendo jitter esquizofrénico en la UI.
+    // El pipeline correcto es: renderFromTarget (física+cálculo) → broadcast UI
+    // → flushToDriver (Aduana+send). Sin pasos intermedios redundantes.
 
     // ═══════════════════════════════════════════════════════════════════════
     // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (22Hz) + Full Truth (~7Hz)

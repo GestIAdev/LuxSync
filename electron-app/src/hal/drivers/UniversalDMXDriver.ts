@@ -1018,6 +1018,23 @@ export class UniversalDMXDriver extends EventEmitter {
   }
 
   /**
+   * 🧹 WAVE 3080: PURGA DE SHOW — limpiar buffers en todos los workers self-managed.
+   * Llamado en lux:stage:sync (cambio de show) para evitar que focos no parcheados
+   * en el nuevo show reciban valores residuales del show anterior.
+   * Solo afecta a estrategias que implementan resetBuffer() (OpenDMXStrategy).
+   */
+  resetAllWorkerBuffers(): void {
+    for (const strategy of this.strategies.values()) {
+      strategy.resetBuffer?.(msg => this.log(msg))
+    }
+    // También limpiar el buffer principal self-managed si existe
+    if (this.defaultStrategy?.resetBuffer) {
+      this.defaultStrategy.resetBuffer(msg => this.log(msg))
+    }
+    this.log('🧹 WAVE 3080: worker buffers purgados (cambio de show)')
+  }
+
+  /**
    * ☀️ Full on: todos los canales a 255 en TODOS los universos
    */
   fullOn(): void {

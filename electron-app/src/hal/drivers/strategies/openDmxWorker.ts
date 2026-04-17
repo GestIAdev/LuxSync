@@ -184,6 +184,14 @@ function handleConnect(portPath: string, refreshRate?: number, requestedBreakMod
         process.send?.({ type: 'DISCONNECTED' })
       })
 
+      // 🔇 WAVE 3080: SILENCIAR DATOS ENTRANTES — El puerto OpenDMX es SOLO escritura.
+      // Sin este handler, Node.js acumula datos RS-485 reflejados (el chip FTDI/CH340
+      // puede ecos los propios bytes escritos) en el buffer de lectura del puerto.
+      // Cuando ese buffer se llena, el kernel emite 'data' events que interrumpen
+      // el event loop del child process en cada frame → jitter en el timing DMX.
+      // El sink vacío drena el buffer sin procesamiento — cero allocations, cero IPC.
+      port.on('data', () => { /* sink: descarte silencioso de ecos RS-485 */ })
+
       // TWO-PHASE STARTUP PROTOCOL
       // FASE 1 — CONNECTED: puerto abierto
       // FASE 2 — 100ms delay → READY: output loop activo
@@ -478,6 +486,17 @@ process.on('message', (msg: { type: string; portPath?: string; channels?: number
         dmxBuffer[0] = 0  // start code siempre 0
         lastBufferUpdateNs = process.hrtime.bigint()
       }
+      break
+
+    case 'RESET_BUFFER':
+      // 🧹 WAVE 3080: PURGA DE ESTADO RESIDUAL — limpiar buffer al cambio de show.
+      // Un buffer con valores del show anterior puede encender fixtures no
+      // parcheados en el nuevo show si comparten dirección DMX.
+      // fill(0) lleva TODOS los canales a reposo en el próximo frame.
+      dmxBuffer.fill(0)
+      dmxBuffer[0] = 0  // start code siempre 0
+      lastBufferUpdateNs = BigInt(0)  // reset JITTER GUARD
+      log('🧹 Buffer purgado — todos los canales a 0 (cambio de show)')
       break
 
     case 'DISCONNECT':

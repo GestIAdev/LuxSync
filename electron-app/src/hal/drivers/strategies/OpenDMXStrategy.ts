@@ -48,6 +48,18 @@ export class OpenDMXStrategy implements DMXSendStrategy {
   private _lastSendTime: number = 0
 
   /**
+   * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
+   * Llamado por HAL en setFixtures() / show-load para limpiar estado residual.
+   * Garantiza que ningún canal del show anterior quede activo en el nuevo show.
+   */
+  resetBuffer(log: (msg: string) => void): void {
+    if (!this.child || !this.workerReady) return
+    this.lastSentHash = 0  // forzar re-envío completo en el siguiente frame
+    this.child.send({ type: 'RESET_BUFFER' })
+    log('[OpenDMX] 🧹 RESET_BUFFER enviado — buffer DMX purgado a cero')
+  }
+
+  /**
    * Lanza el child process y le ordena conectar al puerto serial.
    * WAVE 2021.5: fork() en vez de new Worker() — V8 isolate separado por proceso.
    */
@@ -245,6 +257,9 @@ export class OpenDMXStrategy implements DMXSendStrategy {
 
     this.child = null
     this.workerReady = false
+    // 🧹 WAVE 3080: Reset hash — forzar re-envío del primer frame en la próxima conexión.
+    // Sin esto, si el nuevo show tiene el mismo checksum que el show anterior
+    // (e.g., todos los canales en 0), el dirty-check saltaría el primer UPDATE_BUFFER.
     this.lastSentHash = 0
     log('DMX Phantom Process terminated')
   }

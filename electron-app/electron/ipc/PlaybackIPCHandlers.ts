@@ -21,6 +21,7 @@
 import { ipcMain } from 'electron'
 import { timelineEngine } from '../../src/core/engine/TimelineEngine'
 import { masterArbiter } from '../../src/core/arbiter'
+import { universalDMX } from '../../src/hal/drivers/UniversalDMXDriver'
 import type { LuxProject } from '../../src/chronos/core/ChronosProject'
 import type { BrowserWindow } from 'electron'
 
@@ -121,7 +122,11 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
       })
       
       masterArbiter.setFixtures(arbiterFixtures as any)
-      
+
+      // 🧹 WAVE 3080: PURGA DE SHOW — limpiar buffer del worker DMX.
+      // Focos no parcheados en el nuevo show no deben recibir valores del show anterior.
+      universalDMX.resetAllWorkerBuffers()
+
       const totalChannels = arbiterFixtures.reduce((sum, f) => sum + (f.channels?.length || 0), 0)
       console.log(`[PlaybackIPC] ✅ ${fixtures.length} fixtures synced (${totalChannels} total channels)`)
     } catch (err) {

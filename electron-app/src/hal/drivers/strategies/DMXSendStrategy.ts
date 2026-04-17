@@ -54,4 +54,12 @@ export interface DMXSendStrategy {
    * El driver llama esto en disconnectUniverse.
    */
   destroy?(log: (msg: string) => void): Promise<void>
+
+  /**
+   * 🧹 WAVE 3080: Purga el buffer DMX interno a cero (cambio de show).
+   * Solo implementado por estrategias self-managed (OpenDMX) que mantienen
+   * buffer propio en un proceso/worker separado.
+   * Nadie sobrevive al cambio de show.
+   */
+  resetBuffer?(log: (msg: string) => void): void
 }

@@ -228,6 +228,59 @@ let _phantomPeakReportTime = process.hrtime.bigint()
 const _PHANTOM_REPORT_NS = BigInt(5_000_000_000) // reporte cada 5s
 const _PHANTOM_STARVATION_MS = 40               // umbral de inanicion segura
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔬 WAVE 3100: SONDAS DE OBSERVACIÓN — solo lectura, cero interferencia con lógica
+// ─────────────────────────────────────────────────────────────────────────────
+let _probeFrameCount = 0
+const _PROBE_SNAPSHOT_INTERVAL = 30     // volcado cada 30 frames (~1s a 30Hz)
+const _PROBE_WRITE_WARN_MS = 4          // umbral de alerta para port.write latencia
+let _probeWritePeakMs = 0
+let _probeWritePeakReportTime = process.hrtime.bigint()
+let _probePostResetFrames = 0           // frames desde último RESET_BUFFER
+const _PROBE_POST_RESET_WATCH = 10      // observar los 10 primeros frames post-reset
+
+/**
+ * 🔬 SONDA 1: Volcado de buffer pre-write.
+ * Emite snapshot de los primeros 30 canales EXACTOS que van al puerto serial.
+ * Si el buffer es limpio [0,0,0...] pero el foco convulsiona → framing error en hardware.
+ * Si el buffer tiene basura fluctuante → bug en el renderizado del backend.
+ */
+function _probeBufferSnapshot(context: string): void {
+  // Primeros 30 canales (índices 1-30, el 0 es start code)
+  const ch: number[] = []
+  for (let i = 1; i <= 30; i++) ch.push(dmxBuffer[i])
+
+  // Detectar si el buffer está "limpio" (all-zero) o tiene valores
+  const nonZero = ch.filter(v => v !== 0).length
+  const tag = nonZero === 0 ? '🟢 ALL-ZERO' : `🔴 ${nonZero}/30 non-zero`
+
+  log(`[SONDA-BUFFER] ${context} ${tag} ch[1..30]=[${ch.join(',')}]`)
+}
+
+/**
+ * 🔬 SONDA 2: Profiling de latencia de port.write().
+ * Si la escritura al UART tarda >4ms, el event loop del worker se bloquea
+ * y el frame siguiente sufre starvation.
+ */
+function _probeWriteComplete(startNs: bigint, context: string): void {
+  const elapsedNs = process.hrtime.bigint() - startNs
+  const elapsedMs = Number(elapsedNs) / 1_000_000
+
+  if (elapsedMs > _probeWritePeakMs) _probeWritePeakMs = elapsedMs
+
+  if (elapsedMs > _PROBE_WRITE_WARN_MS) {
+    log(`[SONDA-WRITE] ⚠️ ${context} port.write() tardó ${elapsedMs.toFixed(2)}ms (umbral: ${_PROBE_WRITE_WARN_MS}ms)`)
+  }
+
+  // Reporte de pico cada 5s
+  const now = process.hrtime.bigint()
+  if (now - _probeWritePeakReportTime >= _PHANTOM_REPORT_NS) {
+    log(`[SONDA-WRITE] 📊 peak write latency: ${_probeWritePeakMs.toFixed(2)}ms (last 5s)`)
+    _probeWritePeakMs = 0
+    _probeWritePeakReportTime = now
+  }
+}
+
 function startOutputLoop(): void {
   if (outputLoop) return
 
@@ -378,7 +431,16 @@ function sendFrameSetBreak(): void {
         return
       }
 
+      // 🔬 WAVE 3100: SONDAS pre-write (modo set-break)
+      _probeFrameCount++
+      if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+        _probeBufferSnapshot(`SET-BREAK frame#${_probeFrameCount}`)
+        if (_probePostResetFrames > 0) _probePostResetFrames--
+      }
+      const _writeStartSet = process.hrtime.bigint()
+
       port.write(dmxBuffer, (err3: Error | null) => {
+        _probeWriteComplete(_writeStartSet, 'SET-BREAK')
         if (err3) log(`Write error: ${err3.message}`)
         scheduleNextFrame()
       })
@@ -402,7 +464,18 @@ function sendFrameBaudrateBreak(): void {
 
   if (typeof portAny.update !== 'function') {
     // Último recurso: sin BREAK, enviar directo (mejor que nada)
-    port.write(dmxBuffer, () => { scheduleNextFrame() })
+    // 🔬 WAVE 3100: SONDA pre-write (fallback sin BREAK)
+    _probeFrameCount++
+    if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+      _probeBufferSnapshot(`NO-BREAK frame#${_probeFrameCount}`)
+      if (_probePostResetFrames > 0) _probePostResetFrames--
+    }
+    const _writeStartFallback = process.hrtime.bigint()
+
+    port.write(dmxBuffer, () => {
+      _probeWriteComplete(_writeStartFallback, 'NO-BREAK')
+      scheduleNextFrame()
+    })
     return
   }
 
@@ -427,7 +500,16 @@ function sendFrameBaudrateBreak(): void {
           spinWaitNs(MAB_NS)
 
           // PASO 5: Emitir los 513 bytes del universo DMX
+          // 🔬 WAVE 3100: SONDAS pre-write (modo baudrate-break)
+          _probeFrameCount++
+          if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+            _probeBufferSnapshot(`BAUD-BREAK frame#${_probeFrameCount}`)
+            if (_probePostResetFrames > 0) _probePostResetFrames--
+          }
+          const _writeStartBaud = process.hrtime.bigint()
+
           port.write(dmxBuffer, (err5: Error | null) => {
+            _probeWriteComplete(_writeStartBaud, 'BAUD-BREAK')
             if (err5) log(`Write error: ${err5.message}`)
             scheduleNextFrame()
           })
@@ -496,6 +578,7 @@ process.on('message', (msg: { type: string; portPath?: string; channels?: number
       dmxBuffer.fill(0)
       dmxBuffer[0] = 0  // start code siempre 0
       lastBufferUpdateNs = BigInt(0)  // reset JITTER GUARD
+      _probePostResetFrames = _PROBE_POST_RESET_WATCH  // 🔬 WAVE 3100: observar los 10 frames post-reset
       log('🧹 Buffer purgado — todos los canales a 0 (cambio de show)')
       break
 

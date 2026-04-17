@@ -168,12 +168,13 @@ export class SeleneMemoryManager {
   // Prepared statements (cache para rendimiento)
   private statements: {
     insertPalette?: Database.Statement;
-    insertPattern?: Database.Statement;
-    updatePattern?: Database.Statement;
+    insertPattern?: Database.Statement;  // 🔥 WAVE 3045: pre-preparado
+    updatePattern?: Database.Statement;  // 🔥 WAVE 3045: pre-preparado  // 🔥 WAVE 3045: pre-preparado
     getPattern?: Database.Statement;
     getBestPattern?: Database.Statement;
     insertSession?: Database.Statement;
     updateSession?: Database.Statement;
+    getSessionStartedAt?: Database.Statement;  // 🔥 WAVE 3045: evitar prepare inline en endSession
     insertDream?: Database.Statement;
     getPreference?: Database.Statement;
     setPreference?: Database.Statement;
@@ -223,6 +224,14 @@ export class SeleneMemoryManager {
       // Configurar para rendimiento
       if (this.config.enableWAL) {
         this.db.pragma('journal_mode = WAL');
+        // 🔥 WAVE 3045: Deshabilitar WAL auto-checkpoint.
+        // El checkpoint automático (cada ~1000 páginas) bloquea el renderer
+        // 100-800ms de forma síncrona. Lo disparamos manualmente en endSession().
+        this.db.pragma('wal_autocheckpoint = 0');
+        // 🔥 WAVE 3045: Deshabilitar WAL auto-checkpoint.
+        // El checkpoint automático (cada ~1000 páginas) bloquea el renderer
+        // 100-800ms de forma síncrona. Lo disparamos manualmente en endSession().
+        this.db.pragma('wal_autocheckpoint = 0');
       }
       this.db.pragma('synchronous = NORMAL');
       this.db.pragma('cache_size = -64000'); // 64MB cache
@@ -444,6 +453,11 @@ export class SeleneMemoryManager {
       VALUES (@id, @startedAt, @appVersion, @osPlatform)
     `);
 
+    // 🔥 WAVE 3045: pre-preparado para endSession (evitar prepare inline en loop de sesión)
+    this.statements.getSessionStartedAt = this.db.prepare(`
+      SELECT started_at FROM sessions WHERE id = ?
+    `);
+
     this.statements.updateSession = this.db.prepare(`
       UPDATE sessions SET
         ended_at = @endedAt,
@@ -481,6 +495,33 @@ export class SeleneMemoryManager {
       ON CONFLICT(key) DO UPDATE SET
         value = @value,
         updated_at = @updatedAt
+    `);
+
+    // 🔥 WAVE 3045: Pre-preparar UPDATE/INSERT de patterns.
+    // learnPattern() se llama en cada frame bueno (44Hz * fracción) —
+    // recrear los statements inline cada llamada era prohibitivo.
+    this.statements.insertPattern = this.db.prepare(`
+      INSERT INTO patterns (
+        created_at, updated_at, pattern_hash, genre, key, mode, section,
+        preferred_strategy, preferred_hue_base, preferred_saturation,
+        preferred_intensity, preferred_movement, strobe_on_beat, strobe_intensity,
+        times_used, total_beauty_score, last_10_scores, beauty_trend
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'stable')
+    `);
+
+    this.statements.updatePattern = this.db.prepare(`
+      UPDATE patterns SET
+        updated_at = ?,
+        times_used = ?,
+        total_beauty_score = ?,
+        last_10_scores = ?,
+        beauty_trend = ?,
+        preferred_strategy = COALESCE(?, preferred_strategy),
+        preferred_hue_base = COALESCE(?, preferred_hue_base),
+        preferred_saturation = COALESCE(?, preferred_saturation),
+        preferred_intensity = COALESCE(?, preferred_intensity),
+        preferred_movement = COALESCE(?, preferred_movement)
+      WHERE pattern_hash = ?
     `);
   }
 
@@ -655,21 +696,16 @@ export class SeleneMemoryManager {
     const existing = this.statements.getPattern?.get(hash) as Record<string, unknown> | undefined;
 
     if (existing) {
-      // Actualizar patrón existente
       const timesUsed = (existing.times_used as number) + 1;
       const totalBeauty = (existing.total_beauty_score as number) + beautyScore;
-      
-      // Actualizar últimos 10 scores
+
       let last10: number[] = [];
       if (existing.last_10_scores) {
-        try {
-          last10 = JSON.parse(existing.last_10_scores as string);
-        } catch { /* ignore */ }
+        try { last10 = JSON.parse(existing.last_10_scores as string); } catch { /* ignore */ }
       }
       last10.push(beautyScore);
       if (last10.length > 10) last10.shift();
 
-      // Calcular tendencia
       let trend: 'rising' | 'falling' | 'stable' = 'stable';
       if (last10.length >= 5) {
         const firstHalf = last10.slice(0, Math.floor(last10.length / 2));
@@ -680,20 +716,8 @@ export class SeleneMemoryManager {
         else if (secondAvg < firstAvg - 0.05) trend = 'falling';
       }
 
-      this.db.prepare(`
-        UPDATE patterns SET
-          updated_at = ?,
-          times_used = ?,
-          total_beauty_score = ?,
-          last_10_scores = ?,
-          beauty_trend = ?,
-          preferred_strategy = COALESCE(?, preferred_strategy),
-          preferred_hue_base = COALESCE(?, preferred_hue_base),
-          preferred_saturation = COALESCE(?, preferred_saturation),
-          preferred_intensity = COALESCE(?, preferred_intensity),
-          preferred_movement = COALESCE(?, preferred_movement)
-        WHERE pattern_hash = ?
-      `).run(
+      // 🔥 WAVE 3045: Usar statement pre-preparado (no recrear en cada frame)
+      this.statements.updatePattern!.run(
         now,
         timesUsed,
         totalBeauty,
@@ -707,15 +731,8 @@ export class SeleneMemoryManager {
         hash
       );
     } else {
-      // Crear nuevo patrón
-      this.db.prepare(`
-        INSERT INTO patterns (
-          created_at, updated_at, pattern_hash, genre, key, mode, section,
-          preferred_strategy, preferred_hue_base, preferred_saturation,
-          preferred_intensity, preferred_movement, strobe_on_beat, strobe_intensity,
-          times_used, total_beauty_score, last_10_scores, beauty_trend
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'stable')
-      `).run(
+      // 🔥 WAVE 3045: Usar statement pre-preparado (no recrear en cada frame)
+      this.statements.insertPattern!.run(
         now, now, hash, genre, key ?? null, mode ?? null, section ?? null,
         settings.strategy ?? null,
         settings.hueBase ?? null,
@@ -847,9 +864,7 @@ export class SeleneMemoryManager {
   endSession(stats?: Partial<SessionRecord>): void {
     if (!this.db || !this.currentSessionId) return;
 
-    const startedAt = this.db.prepare(`
-      SELECT started_at FROM sessions WHERE id = ?
-    `).get(this.currentSessionId) as { started_at: number } | undefined;
+    const startedAt = this.statements.getSessionStartedAt?.get(this.currentSessionId) as { started_at: number } | undefined;
 
     if (!startedAt) return;
 
@@ -871,6 +886,17 @@ export class SeleneMemoryManager {
     });
 
     this.currentSessionId = null;
+
+    // 🔥 WAVE 3045: WAL checkpoint manual al terminar sesión musical.
+    // wal_autocheckpoint=0 lo desactiva durante la sesión (evita congelar el renderer).
+    // Aquí el frame loop está parado — el momento perfecto para drenar el WAL.
+    if (this.config.enableWAL && this.db) {
+      try {
+        this.db.pragma('wal_checkpoint(PASSIVE)');
+      } catch (error) {
+        console.warn('[SeleneMemory] WAL checkpoint on session end failed:', error);
+      }
+    }
   }
 
   /**
@@ -1276,12 +1302,22 @@ export class SeleneMemoryManager {
         this.endSession();
       }
 
-      // Backup opcional
+      // 🔥 WAVE 3045: Checkpoint manual del WAL antes de cerrar.
+      // wal_autocheckpoint=0 lo desactiva durante la sesión para no congelar
+      // el renderer. Al cerrar sí lo hacemos — ya no hay loop crítico.
+      if (this.config.enableWAL) {
+        try {
+          this.db.pragma('wal_checkpoint(TRUNCATE)');
+        } catch (error) {
+          console.warn('[SeleneMemory] WAL checkpoint on close failed:', error);
+        }
+      }
+
+      // Backup opcional (solo VACUUM INTO si el usuario lo habilitó)
       if (this.config.backupOnClose) {
-        // Backup síncrono al cerrar
         try {
           const backupPath = this.config.dbPath.replace('.db', '-autosave.db');
-          this.db.exec(`VACUUM INTO '${backupPath}'`);
+          this.db.backup(backupPath);
         } catch (error) {
           console.warn('[SeleneMemory] Backup on close failed:', error);
         }

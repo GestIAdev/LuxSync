@@ -208,21 +208,17 @@ function handleConnect(portPath: string, refreshRate?: number, requestedBreakMod
 // Output loop — el corazón del bit-banging aislado
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-// 🫀 OPERACIÓN CARDIOGRAMA — Event Loop Lag Monitor (USB Worker)
-// Detecta inanición del worker: si el event loop del child process está
-// bloqueado (spin-wait excesivo, IPC backpressure, GC del propio child),
-// el timer disparará tarde y lo veremos como LAG SPIKE aquí.
-// hrtime.bigint() usado en vez de performance.now() — ya confirmado en este proceso.
+// 🫠 WAVE 3030: PHANTOM HEARTBEAT — monitor de inanicion del frame loop real
+// Mide el intervalo real entre frames: desde el final de sendFrame() hasta
+// el inicio del siguiente setImmediate callback. Si el event loop del
+// child process se bloquea (IPC backpressure, GC, drain del serialport),
+// este delta sube por encima de minFrameNs y el hardware sufre starvation.
 // ─────────────────────────────────────────────────────────────────────────────
-let _workerCardiogramaLastTick = process.hrtime.bigint()
-const _workerCardiograma = setInterval(() => {
-  const _now = process.hrtime.bigint()
-  const _deltaMs = Number((_now - _workerCardiogramaLastTick) / BigInt(1_000_000))
-  if (_deltaMs > 15) {
-    log(`🫀 CARDIOGRAMA WORKER ⚠️ LAG SPIKE / INANICION DETECTADA: ${_deltaMs.toFixed(2)}ms`)
-  }
-  _workerCardiogramaLastTick = _now
-}, 5)
+let _phantomLastFrame = process.hrtime.bigint()
+let _phantomPeakMs = 0
+let _phantomPeakReportTime = process.hrtime.bigint()
+const _PHANTOM_REPORT_NS = BigInt(5_000_000_000) // reporte cada 5s
+const _PHANTOM_STARVATION_MS = 40               // umbral de inanicion segura
 
 function startOutputLoop(): void {
   if (outputLoop) return
@@ -246,6 +242,21 @@ function scheduleNextFrame(): void {
   // (port.set, port.write, IPC UPDATE_BUFFER) antes del siguiente frame.
   outputLoop = setImmediate(() => {
     if (!isOpen || !port) return
+
+    // 🫠 WAVE 3030: PHANTOM HEARTBEAT — medir delta real entre frames
+    const _pNow = process.hrtime.bigint()
+    const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1_000_000))
+    _phantomLastFrame = _pNow
+    if (_pDeltaMs > _phantomPeakMs) _phantomPeakMs = _pDeltaMs
+    if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
+      log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`)
+    }
+    // Reporte de pico cada 5s
+    if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
+      log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`)
+      _phantomPeakMs = 0
+      _phantomPeakReportTime = _pNow
+    }
 
     const now = process.hrtime.bigint()
     const remaining = (lastFrameStart + minFrameNs) - now

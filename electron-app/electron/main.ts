@@ -98,7 +98,7 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
         args[0].includes('[SEMAPHORE TRAP]') ||
         args[0].includes('[DOUBLE-SEND TRAP]') ||
         args[0].includes('[SONDA FRAME]') ||
-        args[0].includes('[RED FLASH]')
+        args[0].includes('[COLOR JUMP]')
       )) {
         orig(...args)
       }

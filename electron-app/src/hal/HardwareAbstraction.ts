@@ -187,6 +187,8 @@ export class HardwareAbstraction {
   private universeBuffers = new Map<number, Uint8Array>()
   private lastFixtureStates: FixtureState[] = []
   private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
+  // 🔬 WAVE 3040: COLOR CHANGE DETECTOR — color anterior por fixture
+  private _colorSnapshot = new Map<string, { r: number; g: number; b: number }>() // fixtureId → último RGB enviado
   // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
   private lastPhysicsFrameTime = 0
   // (BPM fields declared above — WAVE 2720)
@@ -1943,21 +1945,33 @@ export class HardwareAbstraction {
       }
     }
 
-    // 🛑 WAVE 3035: RED FLASH DETECTOR — caza estados con r>200, g<50, b<50 + dimmer>0
-    // Registrado ANTES de driver.send() para capturar la fuente exacta.
-    // Opera sobre FixtureState (campos nombrados) — fiable independientemente del perfil.
+    // � WAVE 3040: COLOR CHANGE DETECTOR — detecta saltos bruscos de color entre frames.
+    // Umbral: distancia Euclidiana en RGB > 120 (ej: verde→rojo = ~360).
+    // Se dispara UNA VEZ por fixture cuando el color salta — no spam por frame.
+    // Ignora fixtures donde el color nuevo es el mismo que el anterior (estado estable).
     for (const _fs of states) {
-      if ((_fs.r ?? 0) > 200 && (_fs.g ?? 0) < 50 && (_fs.b ?? 0) < 50 && (_fs.dimmer ?? 0) > 0) {
-        console.warn(
-          `[RED FLASH] 🛑 fid:${_fs.fixtureId ?? '?'} addr:${_fs.dmxAddress} ` +
-          `r:${_fs.r} g:${_fs.g} b:${_fs.b} dimmer:${_fs.dimmer} ` +
-          `outputEnabled:${outputEnabled} ` +
-          `src_red:${_fs._controlSources?.['red'] ?? '?'} ` +
-          `src_dim:${_fs._controlSources?.['dimmer'] ?? '?'} ` +
-          `hasColorWheel:${_fs.hasColorWheel ?? false} ` +
-          `frame:${this.framesRendered}`
-        )
+      const fid = _fs.fixtureId ?? `addr:${_fs.dmxAddress}`
+      const r = _fs.r ?? 0
+      const g = _fs.g ?? 0
+      const b = _fs.b ?? 0
+      const prev = this._colorSnapshot.get(fid)
+      if (prev !== undefined) {
+        const dr = r - prev.r
+        const dg = g - prev.g
+        const db = b - prev.b
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db)
+        if (dist > 120) {
+          console.warn(
+            `[COLOR JUMP] 🎨 fid:${fid} addr:${_fs.dmxAddress} ` +
+            `(${prev.r},${prev.g},${prev.b})→(${r},${g},${b}) Δ=${dist.toFixed(0)} ` +
+            `dimmer:${_fs.dimmer ?? 0} ` +
+            `src_red:${_fs._controlSources?.['red'] ?? '?'} ` +
+            `src_dim:${_fs._controlSources?.['dimmer'] ?? '?'} ` +
+            `frame:${this.framesRendered}`
+          )
+        }
       }
+      this._colorSnapshot.set(fid, { r, g, b })
     }
 
     // Convert states to DMX packets

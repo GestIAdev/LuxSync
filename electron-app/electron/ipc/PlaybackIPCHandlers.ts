@@ -45,6 +45,8 @@ interface FixtureInstance {
   zone?: string
   position?: any
   capabilities?: any
+  // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG
+  isVirtual?: boolean
   [key: string]: any
 }
 

@@ -109,6 +109,8 @@ const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.Mutabl
       installationType: f.physics?.orientation || 'ceiling',
       position: f.position,
       rotation: f.rotation,
+      // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagate to backend
+      isVirtual: f.isVirtual ?? false,
     }
   })
   

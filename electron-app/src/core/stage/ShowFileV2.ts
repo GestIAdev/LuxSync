@@ -609,6 +609,14 @@ export interface FixtureV2 {
   /** Is this fixture enabled? */
   enabled: boolean
   
+  /** 
+   * 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG
+   * When true, the fixture participates in rendering (UI preview, Arbiter, physics)
+   * but is EXCLUDED from physical DMX output. Its values never reach the USB driver.
+   * Default: false (physical fixture — writes to hardware).
+   */
+  isVirtual?: boolean
+  
   /** Color for visualization (hex) */
   displayColor?: string
   

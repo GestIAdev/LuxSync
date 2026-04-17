@@ -42,6 +42,9 @@ export interface PatchedFixture {
   dmxAddress: number
   universe: number
   name: string
+  // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — when true, fixture renders for UI/physics
+  // but is excluded from physical DMX output (never reaches USB driver)
+  isVirtual?: boolean
   zone?: string
   type?: string
   channelCount?: number
@@ -108,6 +111,8 @@ export interface PatchedFixture {
 /** Calculated fixture state (output of mapper) */
 export interface FixtureState {
   dmxAddress: number
+  // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagated from PatchedFixture
+  isVirtual?: boolean
   universe: number
   name: string
   zone: string

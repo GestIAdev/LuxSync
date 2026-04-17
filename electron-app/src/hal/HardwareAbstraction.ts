@@ -921,6 +921,7 @@ export class HardwareAbstraction {
     if (target.globalEffects.blackoutActive) {
       const blackoutStates: FixtureState[] = fixtures.map(fixture => ({
         fixtureId: fixture.id || fixture.name,  // 🔧 WAVE 2049.1: Propagate fixtureId
+        isVirtual: fixture.isVirtual ?? false,  // 🛡️ WAVE 3110
         name: fixture.name,
         type: fixture.type || 'generic',
         zone: (fixture.zone || 'UNASSIGNED') as PhysicalZone,
@@ -967,6 +968,9 @@ export class HardwareAbstraction {
         // Use arbitrated values directly
         const baseState: FixtureState = {
           fixtureId,  // 🔧 WAVE 2049.1: Propagate fixtureId to state (was undefined!)
+          // 🛡️ WAVE 3110: Propagate virtual flag — virtual fixtures render for UI
+          // but are excluded from physical DMX output in sendToDriver()
+          isVirtual: fixture.isVirtual ?? false,
           name: fixture.name,
           type: fixture.type || 'generic',
           zone,
@@ -1016,6 +1020,7 @@ export class HardwareAbstraction {
       // Fallback: fixture not in arbiter output (shouldn't happen)
       return {
         fixtureId,  // 🔧 WAVE 2049.1: Propagate fixtureId to state
+        isVirtual: fixture.isVirtual ?? false,  // 🛡️ WAVE 3110
         name: fixture.name,
         type: fixture.type || 'generic',
         zone,
@@ -1981,7 +1986,24 @@ export class HardwareAbstraction {
     }
 
     // Convert states to DMX packets
-    const packets = this.mapper.statesToDMXPackets(states)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 3110: VIRTUAL FIXTURE GATE — The Last Frontier
+    //
+    // Virtual fixtures participate in everything ABOVE this line:
+    //   ✅ Arbiter routing (so they count for zone balance)
+    //   ✅ Physics engine (so HyperionView draws them moving)
+    //   ✅ Color jump detection (diagnostics)
+    //   ✅ Hot-frame broadcast (UI preview sees them)
+    //
+    // But they NEVER cross into DMX territory:
+    //   ❌ No DMX packets generated
+    //   ❌ No buffer writes in UniversalDMXDriver
+    //   ❌ No data to USB/ArtNet hardware
+    //
+    // This is the SOLE gate. One filter, one place, zero leaks.
+    // ═══════════════════════════════════════════════════════════════════════
+    const physicalStates = states.filter(s => !s.isVirtual)
+    const packets = this.mapper.statesToDMXPackets(physicalStates)
 
     // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER

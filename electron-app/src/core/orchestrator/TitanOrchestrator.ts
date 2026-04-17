@@ -2036,7 +2036,8 @@ export class TitanOrchestrator {
     // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
     this.fixtures = fixtures.map(f => ({
       ...f,
-      dmxAddress: f.dmxAddress || f.address  // Ensure dmxAddress exists regardless of format
+      dmxAddress: f.dmxAddress || f.address,  // Ensure dmxAddress exists regardless of format
+      isVirtual: f.isVirtual ?? false,  // 🛡️ WAVE 3110: Normalize virtual flag
     }))
     
     // 🔥 WAVE 2183: GHOST EXORCISM — Invalidate HAL profile caches on fixture sync

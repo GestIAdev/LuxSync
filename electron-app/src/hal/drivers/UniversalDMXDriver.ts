@@ -905,6 +905,13 @@ export class UniversalDMXDriver extends EventEmitter {
     if (message.includes('CARDIOGRAMA') && this.onWarning) {
       this.onWarning(message)
     }
+    // 🔬 WAVE 3100: Las sondas de diagnóstico siempre salen, sin importar debug flag.
+    // Usan console.warn para pasar el filtro BLACKOUT del main.ts.
+    // Los logs normales solo salen con debug:true para no saturar la consola.
+    if (message.includes('[SONDA-') || message.includes('[CARDIOGRAMA')) {
+      console.warn(`[UniversalDMX] ${message}`)
+      return
+    }
     if (this.config.debug) {
       console.log(`[UniversalDMX] ${message}`)
     }

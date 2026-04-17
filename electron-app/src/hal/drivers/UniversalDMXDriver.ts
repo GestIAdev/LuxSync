@@ -593,11 +593,7 @@ export class UniversalDMXDriver extends EventEmitter {
     this.stopWatchdog()
     this.clearReconnectTimer()
 
-    // Cancelar flush pendiente
-    if (this.flushPending) {
-      clearTimeout(this.flushPending)
-      this.flushPending = null
-    }
+    // WAVE 3025: flushPending eliminado — no hay auto-flush reactivo
 
     // 👻 WAVE 2021.1: Destruir strategies self-managed primero
     for (const [universe, strategy] of this.strategies) {
@@ -680,34 +676,31 @@ export class UniversalDMXDriver extends EventEmitter {
       const clamped = Math.max(0, Math.min(255, Math.round(value)))
       if (buf[channel] === clamped) return  // No cambio real — skip
       buf[channel] = clamped
-      this.flushToStrategies()
+      // WAVE 3025: NO auto-flush — el HAL llama sendAll() externamente
     }
   }
 
   /**
    * 🎚️ Establece múltiples canales desde un offset en un universo.
-   * Flush inmediato al child process.
+   * Solo escribe en buffer — el flush lo hace el caller via sendAll().
    */
   setChannels(startChannel: number, values: number[], universe: number = 0): void {
     const buf = this.universeBuffers.get(universe)
     if (!buf) return
     
-    let changed = false
     for (let i = 0; i < values.length; i++) {
       const channel = startChannel + i
       if (channel <= DMX_CHANNELS) {
         const clamped = Math.max(0, Math.min(255, Math.round(values[i])))
-        if (buf[channel] !== clamped) {
-          buf[channel] = clamped
-          changed = true
-        }
+        buf[channel] = clamped
       }
     }
-    if (changed) this.flushToStrategies()
+    // WAVE 3025: NO auto-flush — el HAL llama sendAll() externamente
   }
 
   /**
-   * 🎚️ Establece todo el buffer DMX de un universo de una vez
+   * 🎚️ Establece todo el buffer DMX de un universo de una vez.
+   * Solo escribe en buffer — el flush lo hace el caller via sendAll().
    */
   setUniverse(values: Buffer | Uint8Array | number[] | Record<number, number>, universe: number = 0): void {
     this.initBuffer(universe)
@@ -720,7 +713,7 @@ export class UniversalDMXDriver extends EventEmitter {
         // buf[0] es START CODE, los canales empiezan en buf[1]
         buf[i + 1] = (values as any)[i]
       }
-      this.flushToStrategies()
+      // WAVE 3025: NO auto-flush
       return
     }
 
@@ -737,40 +730,17 @@ export class UniversalDMXDriver extends EventEmitter {
         buf[dmxChan] = Math.max(0, Math.min(255, Math.round(v)))
       }
     }
-
-    this.flushToStrategies()
-  }
-
-  // Throttle del flush IPC: máximo 1 envio cada 20ms (50Hz).
-  // El ojo humano no distingue más de 30Hz. DMX512 procesa ~40Hz.
-  // Sin throttle, un slider a 120Hz de mouse genera 120 IPCs/sec → satura
-  // el event loop del Main con serialización JSON + pipe writes.
-  // El child process sigue enviando el ULTIMO buffer recibido a ~40Hz
-  // al hardware — no pierde datos, solo reduce la frecuencia de IPC.
-  private flushPending: ReturnType<typeof setTimeout> | null = null
-  private readonly FLUSH_THROTTLE_MS = 33 // 🔥 WAVE 2100: 30Hz max IPC — matches Worker Adaptive Pacing (30Hz output)
-
-  /**
-   * Flush throttleado: coalesce cambios rápidos en un solo IPC.
-   * Si hay un flush pendiente, los cambios se acumulan en el buffer
-   * y se envían todos juntos en el siguiente tick.
-   */
-  private flushToStrategies(): void {
-    if (this.flushPending) return  // Ya hay un flush programado
-    this.flushPending = setTimeout(() => {
-      this.flushPending = null
-      void this.sendAll()
-    }, this.FLUSH_THROTTLE_MS)
+    // WAVE 3025: NO auto-flush
   }
 
   /**
    * 🔄 Inicia el loop de salida DMX (legacy — solo para driver-managed strategies)
-   * Para selfManaged (OpenDMX): no-op, el flush es reactivo via flushToStrategies().
+   * Para selfManaged (OpenDMX): no-op. El flush lo hace el HAL via sendAll() externo.
    */
   private startOutputLoop(): void {
     // selfManaged strategies no necesitan un output loop en el Main.
     // El child process tiene su propio loop continuo.
-    // Los cambios se envian reactivamente via setChannel → flushToStrategies → sendAll.
+    // WAVE 3025: Los cambios se escriben en buffer y el HAL llama sendAll() al final.
     // Solo mantener el loop para driver-managed (EnttecPro) si existiera.
     const hasDriverManaged = this.ports.size > 0
     if (!hasDriverManaged) {

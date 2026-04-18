@@ -19,10 +19,15 @@ import { useCallback, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
   useMidiMapStore,
-  MAPPABLE_CONTROLS,
   type MappableControlId,
   type MidiBinding,
 } from '../stores/midiMapStore'
+import {
+  getSystemActions,
+  getEffectsByZone,
+  getVibeActions,
+  getArbiterActions,
+} from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -161,12 +166,12 @@ export default function MidiLearnOverlay() {
               </div>
             </div>
 
-            {/* Controls Grid */}
+            {/* Controls Grid — Categorized by MidiActionRegistry */}
             <div className="ml-grid">
-              {/* Faders Section */}
+              {/* System: Faders */}
               <div className="ml-section">
-                <div className="ml-section-title">FADERS / KNOBS</div>
-                {MAPPABLE_CONTROLS.filter(c => c.category === 'fader').map(control => (
+                <div className="ml-section-title">🎚️ FADERS / KNOBS</div>
+                {getSystemActions().filter(c => c.category === 'fader').map(control => (
                   <div
                     key={control.id}
                     className={getControlStateClass(control.id)}
@@ -191,10 +196,10 @@ export default function MidiLearnOverlay() {
                 ))}
               </div>
 
-              {/* Buttons Section */}
+              {/* System: Buttons */}
               <div className="ml-section">
-                <div className="ml-section-title">BUTTONS / PADS</div>
-                {MAPPABLE_CONTROLS.filter(c => c.category === 'button').map(control => (
+                <div className="ml-section-title">🔘 SYSTEM BUTTONS</div>
+                {getSystemActions().filter(c => c.category === 'button').map(control => (
                   <div
                     key={control.id}
                     className={getControlStateClass(control.id)}
@@ -217,6 +222,98 @@ export default function MidiLearnOverlay() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Effects by Energy Zone */}
+              {getEffectsByZone().map(({ zone, label, emoji, effects }) => (
+                <div className="ml-section ml-section--full" key={zone}>
+                  <div className="ml-section-title">{emoji} {label}</div>
+                  <div className="ml-zone-grid">
+                    {effects.map(control => (
+                      <div
+                        key={control.id}
+                        className={getControlStateClass(control.id)}
+                        onClick={() => handleControlClick(control.id)}
+                        onContextMenu={(e) => handleControlRightClick(e, control.id)}
+                      >
+                        <div className="ml-control-header">
+                          <span className="ml-control-name">{control.label}</span>
+                          <span className="ml-control-type">PAD</span>
+                        </div>
+                        <div className="ml-control-status">
+                          {listeningControl === control.id
+                            ? '👂 Listening...'
+                            : lastMapped === control.id
+                              ? '✅ Mapped!'
+                              : mappings[control.id]
+                                ? formatBinding(mappings[control.id])
+                                : '—'
+                          }
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Vibes */}
+              <div className="ml-section ml-section--full">
+                <div className="ml-section-title">🎭 VIBES</div>
+                <div className="ml-zone-grid">
+                  {getVibeActions().map(control => (
+                    <div
+                      key={control.id}
+                      className={getControlStateClass(control.id)}
+                      onClick={() => handleControlClick(control.id)}
+                      onContextMenu={(e) => handleControlRightClick(e, control.id)}
+                    >
+                      <div className="ml-control-header">
+                        <span className="ml-control-name">{control.label}</span>
+                        <span className="ml-control-type">NOTE</span>
+                      </div>
+                      <div className="ml-control-status">
+                        {listeningControl === control.id
+                          ? '👂 Listening...'
+                          : lastMapped === control.id
+                            ? '✅ Mapped!'
+                            : mappings[control.id]
+                              ? formatBinding(mappings[control.id])
+                              : '—'
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Arbiter */}
+              <div className="ml-section ml-section--full">
+                <div className="ml-section-title">🎛️ ARBITER OVERRIDES</div>
+                <div className="ml-zone-grid">
+                  {getArbiterActions().map(control => (
+                    <div
+                      key={control.id}
+                      className={getControlStateClass(control.id)}
+                      onClick={() => handleControlClick(control.id)}
+                      onContextMenu={(e) => handleControlRightClick(e, control.id)}
+                    >
+                      <div className="ml-control-header">
+                        <span className="ml-control-name">{control.label}</span>
+                        <span className="ml-control-type">{control.category === 'fader' ? 'CC' : 'NOTE'}</span>
+                      </div>
+                      <div className="ml-control-status">
+                        {listeningControl === control.id
+                          ? '👂 Listening...'
+                          : lastMapped === control.id
+                            ? '✅ Mapped!'
+                            : mappings[control.id]
+                              ? formatBinding(mappings[control.id])
+                              : '—'
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -306,7 +403,7 @@ export default function MidiLearnOverlay() {
         }
 
         .ml-panel {
-          width: 720px;
+          width: 860px;
           max-width: 90vw;
           max-height: 85vh;
           background: rgba(10, 10, 15, 0.97);
@@ -413,6 +510,18 @@ export default function MidiLearnOverlay() {
           margin-bottom: 8px;
           padding-bottom: 4px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Full-width sections (effects, vibes, arbiter) span both columns */
+        .ml-section--full {
+          grid-column: 1 / -1;
+        }
+
+        /* Inner grid for zone groups — responsive columns */
+        .ml-zone-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 6px;
         }
 
         /* Control Cards */

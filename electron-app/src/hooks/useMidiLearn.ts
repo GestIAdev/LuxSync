@@ -52,7 +52,6 @@ import {
 } from '../stores/midiMapStore'
 import { useControlStore } from '../stores/controlStore'
 import { useLuxSyncStore } from '../stores/luxsyncStore'
-import { useEffectsStore } from '../stores/effectsStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -127,7 +126,6 @@ export function useMidiLearn() {
   const midiMapStoreRef = useRef(useMidiMapStore.getState)
   const controlStoreRef = useRef(useControlStore.getState)
   const luxSyncStoreRef = useRef(useLuxSyncStore.getState)
-  const effectsStoreRef = useRef(useEffectsStore.getState)
 
   // ═══════════════════════════════════════════════════════════════════════
   // SOFT TAKEOVER CHECK
@@ -185,13 +183,66 @@ export function useMidiLearn() {
   /**
    * Execute a MIDI message on the mapped control.
    * CC → set value (0-127 → 0.0-1.0)
-   * Note On → toggle
+   * Note On → toggle / fire effect
+   * 
+   * WAVE 3300: PREFIX ROUTING — The Bridge
+   * - ctrl-*  → ControlStore (UI + internal)
+   * - flow-*  → ControlStore flowParams
+   * - lux-*   → LuxSyncStore
+   * - fx-*    → window.lux.forceStrike() — REAL DMX via TitanEngine
+   * - vibe-*  → window.lux.setVibe() — VibeProfile change
+   * - arb-*   → window.lux.arbiter.* — MasterArbiter overrides
    */
   const dispatchToStore = useCallback((controlId: MappableControlId, msg: MidiMessage) => {
     const controlStore = controlStoreRef.current()
     const luxSyncStore = luxSyncStoreRef.current()
-    const effectsStore = effectsStoreRef.current()
 
+    // ── PREFIX ROUTING ──
+
+    // ── fx-* → REAL EFFECT via forceStrike IPC ──
+    if (controlId.startsWith('fx-')) {
+      if (msg.type !== 'note_on') return
+      const effectId = controlId.slice(3) // 'fx-strobe_storm' → 'strobe_storm'
+      const intensity = msg.value / 127    // velocity → intensity (0.0-1.0)
+      window.lux.forceStrike({ effect: effectId, intensity })
+      console.log(`[MidiLearn] ⚡ FORCE STRIKE: ${effectId} @ ${(intensity * 100).toFixed(0)}%`)
+      return
+    }
+
+    // ── vibe-* → Vibe change via setVibe IPC ──
+    if (controlId.startsWith('vibe-')) {
+      if (msg.type !== 'note_on') return
+      const vibeId = controlId.slice(5) // 'vibe-fiesta-latina' → 'fiesta-latina'
+      window.lux.setVibe(vibeId)
+      console.log(`[MidiLearn] 🎭 VIBE CHANGE: ${vibeId}`)
+      return
+    }
+
+    // ── arb-* → Arbiter overrides ──
+    if (controlId.startsWith('arb-')) {
+      const arbAction = controlId.slice(4) // 'arb-blackout' → 'blackout'
+      switch (arbAction) {
+        case 'blackout':
+          if (msg.type !== 'note_on') return
+          window.lux.arbiter.toggleBlackout()
+          console.log('[MidiLearn] 🎛️ ARBITER: Toggle Blackout')
+          return
+        case 'grand-master':
+          if (msg.type !== 'cc') return
+          window.lux.arbiter.setGrandMaster(msg.value / 127)
+          console.log(`[MidiLearn] 🎛️ ARBITER: Grand Master → ${(msg.value / 127 * 100).toFixed(0)}%`)
+          return
+        case 'kill-effects':
+          if (msg.type !== 'note_on') return
+          window.lux.cancelAllEffects()
+          console.log('[MidiLearn] 🎛️ ARBITER: Kill All Effects')
+          return
+        default:
+          return
+      }
+    }
+
+    // ── SYSTEM CONTROLS (original exact-match routing) ──
     switch (controlId) {
       // ── Continuous Controls (CC → 0.0-1.0) ──
       case 'ctrl-intensity': {
@@ -246,21 +297,6 @@ export function useMidiLearn() {
       case 'lux-blackout': {
         if (msg.type !== 'note_on') return
         luxSyncStore.toggleBlackout()
-        break
-      }
-
-      // ── Effects (Note On → toggle effect) ──
-      case 'fx-strobe':
-      case 'fx-blinder':
-      case 'fx-smoke':
-      case 'fx-laser':
-      case 'fx-rainbow':
-      case 'fx-police':
-      case 'fx-beam':
-      case 'fx-prism': {
-        if (msg.type !== 'note_on') return
-        const effectId = controlId.replace('fx-', '') as any
-        effectsStore.toggleEffect(effectId)
         break
       }
     }

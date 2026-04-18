@@ -38,6 +38,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { getAllActions, type MidiActionMeta } from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -77,63 +78,35 @@ export interface MidiMessage {
 /**
  * Mappable control IDs — every control in LuxSync that can be MIDI-mapped.
  * 
- * Naming convention: category-name
+ * WAVE 3300: Widened from strict union to string.
+ * Prefix routing in useMidiLearn.ts handles dispatch:
  * - ctrl-*: ControlStore (intensity, saturation, output, etc.)
- * - fx-*: EffectsStore (strobe, blinder, smoke, etc.)
+ * - fx-*: Effects via forceStrike IPC (~50 real effects)
  * - lux-*: LuxSyncStore (blackout)
  * - flow-*: FlowParams (speed, spread)
+ * - vibe-*: Vibe profiles via setVibe IPC
+ * - arb-*: Arbiter overrides via arbiter IPC
  */
-export type MappableControlId =
-  // ControlStore — continuous (faders/knobs)
-  | 'ctrl-intensity'
-  | 'ctrl-saturation'
-  // ControlStore — toggle (buttons/pads)
-  | 'ctrl-output-toggle'
-  | 'ctrl-ai-toggle'
-  // LuxSyncStore
-  | 'lux-blackout'
-  // EffectsStore — toggle (pads)
-  | 'fx-strobe'
-  | 'fx-blinder'
-  | 'fx-smoke'
-  | 'fx-laser'
-  | 'fx-rainbow'
-  | 'fx-police'
-  | 'fx-beam'
-  | 'fx-prism'
-  // FlowParams — continuous
-  | 'flow-speed'
-  | 'flow-spread'
+export type MappableControlId = string
 
 /** Control metadata for UI display */
 export interface MappableControlMeta {
   id: MappableControlId
   label: string
   category: 'fader' | 'button'
-  /** Which store this maps to */
-  store: 'control' | 'luxsync' | 'effects' | 'flow'
 }
 
-/** Registry of all mappable controls */
-export const MAPPABLE_CONTROLS: MappableControlMeta[] = [
-  // Faders (CC → 0-127 → 0.0-1.0)
-  { id: 'ctrl-intensity',      label: 'Grand Master',      category: 'fader',  store: 'control' },
-  { id: 'ctrl-saturation',     label: 'Saturation',        category: 'fader',  store: 'control' },
-  { id: 'flow-speed',          label: 'Flow Speed',        category: 'fader',  store: 'flow' },
-  { id: 'flow-spread',         label: 'Flow Spread',       category: 'fader',  store: 'flow' },
-  // Buttons (Note → On/Off toggle)
-  { id: 'ctrl-output-toggle',  label: 'Output ON/OFF',     category: 'button', store: 'control' },
-  { id: 'ctrl-ai-toggle',      label: 'AI ON/OFF',         category: 'button', store: 'control' },
-  { id: 'lux-blackout',        label: 'BLACKOUT',          category: 'button', store: 'luxsync' },
-  { id: 'fx-strobe',           label: 'FX: Strobe',        category: 'button', store: 'effects' },
-  { id: 'fx-blinder',          label: 'FX: Blinder',       category: 'button', store: 'effects' },
-  { id: 'fx-smoke',            label: 'FX: Smoke',         category: 'button', store: 'effects' },
-  { id: 'fx-laser',            label: 'FX: Laser',         category: 'button', store: 'effects' },
-  { id: 'fx-rainbow',          label: 'FX: Rainbow',       category: 'button', store: 'effects' },
-  { id: 'fx-police',           label: 'FX: Police',        category: 'button', store: 'effects' },
-  { id: 'fx-beam',             label: 'FX: Beam',          category: 'button', store: 'effects' },
-  { id: 'fx-prism',            label: 'FX: Prism',         category: 'button', store: 'effects' },
-]
+/**
+ * Registry of all mappable controls.
+ * WAVE 3300: Now sourced from MidiActionRegistry — ~60+ actions.
+ * Re-exported as MappableControlMeta[] for backward compat.
+ */
+export const MAPPABLE_CONTROLS: MappableControlMeta[] = getAllActions().map(
+  (a: MidiActionMeta) => ({ id: a.id, label: a.label, category: a.category })
+)
+
+/** @deprecated Use MidiActionRegistry directly for grouped/filtered access */
+export { getAllActions, getEffectsByZone, getVibeActions, getArbiterActions, getSystemActions } from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STORE STATE

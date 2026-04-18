@@ -97,24 +97,21 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
   // Prefijos autorizados — cualquier log que empiece con uno de estos PASA
   const WHITELIST: string[] = [
-    // Selene IA
+    // Selene IA — narrativa de consciencia
     '[SeleneTitanConscious',
     '[DecisionMaker',
     '[EffectRepository',
     '[EffectManager',
     '[GatlingRaid',
-    '[DNA_ANALYZER',
     '[GLOBAL_COOLDOWN',
-    // Coreógrafo / Movimiento
-    '[CHOREO',
-    '[SimpleSectionTracker',
-    '[HuntEngine',
-    // Lifecycle — drivers y arranque
+    // Lifecycle — arranque del sistema y vibes
     '[TitanOrchestrator',
     '[UniversalDMX',
-    '[DMX-Worker',
     '[VIBE',
     '[LuxSync',
+    // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
+    // hibernados — son ruido de ticker, no eventos de conciencia.
+    // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.
   ]
 
   function _allowed(args: unknown[]): boolean {

@@ -404,19 +404,20 @@ function scheduleNextFrame(): void {
     if (!isOpen || !port) return
 
     // 🫠 WAVE 3030: PHANTOM HEARTBEAT — medir delta real entre frames
-    const _pNow = process.hrtime.bigint()
-    const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1_000_000))
-    _phantomLastFrame = _pNow
-    if (_pDeltaMs > _phantomPeakMs) _phantomPeakMs = _pDeltaMs
-    if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
-      log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`)
-    }
-    // Reporte de pico cada 5s
-    if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
-      log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`)
-      _phantomPeakMs = 0
-      _phantomPeakReportTime = _pNow
-    }
+    // DEBUG PROBE — Reactivar para auditoría (WAVE 3290 OJO DEL HURACÁN)
+    // const _pNow = process.hrtime.bigint()
+    // const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1_000_000))
+    // _phantomLastFrame = _pNow
+    // if (_pDeltaMs > _phantomPeakMs) _phantomPeakMs = _pDeltaMs
+    // if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
+    //   log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`)
+    // }
+    // // Reporte de pico cada 5s
+    // if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
+    //   log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`)
+    //   _phantomPeakMs = 0
+    //   _phantomPeakReportTime = _pNow
+    // }
 
     const now = process.hrtime.bigint()
     const remaining = (lastFrameStart + minFrameNs) - now

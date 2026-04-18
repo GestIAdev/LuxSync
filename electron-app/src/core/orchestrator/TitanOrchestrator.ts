@@ -1618,6 +1618,15 @@ export class TitanOrchestrator {
 
       // 🌊 WAVE 2432: THE GREAT WIRING — Hot-swap profile on vibe change
       this.engine.setActiveProfile(normalizedVibeId)
+
+      // 🧹 WAVE 3230: THE VIBE RESET — Clean Slate al cambiar de motor de físicas
+      // Un cambio de Vibe es un cambio de universo. Los overrides manuales del
+      // Layer 2 pertenecen al universo anterior. Limpiarlos garantiza que el
+      // nuevo estado se hidrate desde cero desde la AI (Layer 0).
+      // Usamos releaseAllManualOverrides() en lugar de un clear() brutalista
+      // para respetar las transiciones crossfade ya configuradas.
+      masterArbiter.releaseAllManualOverrides()
+      console.log(`[TitanOrchestrator] 🧹 WAVE 3230: Layer 2 purged — Clean Slate for vibe ${normalizedVibeId}`)
     }
   }
   

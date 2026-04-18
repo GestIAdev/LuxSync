@@ -1842,11 +1842,6 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     const manualOverride = this.layer2_manualOverrides.get(fixtureId)
     
-    // LAYER 4: Check blackout first (highest priority)
-    if (this.layer4_blackout) {
-      return this.createBlackoutTarget(fixtureId, controlSources)
-    }
-    
     // Get values from each layer
     const titanValues = this.getTitanValuesForFixture(fixtureId)
     // manualOverride already fetched above for OUTPUT GATE check
@@ -2065,6 +2060,31 @@ export class MasterArbiter extends EventEmitter {
     const safePanT = Number.isFinite(target.pan) ? target.pan : 128
     const safeTiltT = Number.isFinite(target.tilt) ? target.tilt : 128
     this.lastKnownPositions.set(fixtureId, { pan: safePanT, tilt: safeTiltT })
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🖤 WAVE 3240: LAYER 4 — MOVE IN BLACK (Professional Blackout)
+    //
+    // El Blackout NO es un estado alternativo del fixture. Es un MUTE estricto
+    // de la intensidad lumínica. El motor sigue corriendo en oscuridad.
+    //
+    // ANTES (amateur): early-return con createBlackoutTarget() que hardcodeaba
+    //   color={r:0,g:0,b:0}, zoom=128, focus=128, phantomChannels={} — matando
+    //   gobos, primas y cualquier valor que el operador hubiera programado.
+    //
+    // AHORA (profesional): El arbitrado completo (L0→L2→L3) se ejecuta siempre.
+    //   Solo al final, si Layer 4 está activo, SOLO se fuerza dimmer=0.
+    //   Pan, tilt, color, gobo, prism y phantomChannels fluyen libremente.
+    //   Al levantar el Blackout, el show continúa exactamente donde estaba.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.layer4_blackout) {
+      target.dimmer = 0
+      target._controlSources['dimmer'] = ControlLayer.BLACKOUT
+      // shutter también si el fixture lo usa (phantomChannels['shutter'])
+      if (target.phantomChannels['shutter'] !== undefined) {
+        target.phantomChannels['shutter'] = 0
+        target._controlSources['shutter' as ChannelType] = ControlLayer.BLACKOUT
+      }
+    }
 
     return target
   }

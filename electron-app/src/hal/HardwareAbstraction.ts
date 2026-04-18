@@ -916,36 +916,13 @@ export class HardwareAbstraction {
     // for HarmonicQuantizer in translateColorToWheel()
     this.currentFrameBpm = audio.bpm ?? 120
     this.currentFrameBpmConfidence = audio.bpmConfidence ?? 0
-    
-    // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
-    if (target.globalEffects.blackoutActive) {
-      const blackoutStates: FixtureState[] = fixtures.map(fixture => ({
-        fixtureId: fixture.id || fixture.name,  // 🔧 WAVE 2049.1: Propagate fixtureId
-        isVirtual: fixture.isVirtual ?? false,  // 🛡️ WAVE 3110
-        name: fixture.name,
-        type: fixture.type || 'generic',
-        zone: (fixture.zone || 'UNASSIGNED') as PhysicalZone,
-        dmxAddress: fixture.dmxAddress,
-        universe: fixture.universe ?? 0,  // 🔥 WAVE 1219: ArtNet 0-indexed
-        dimmer: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-        pan: 128,
-        tilt: 128,
-        zoom: 128,
-        focus: 128,
-        physicalPan: 128,
-        physicalTilt: 128,
-        panVelocity: 0,
-        tiltVelocity: 0,
-      }))
-      // WAVE 3010: sendToDriver() removed — Orchestrator sends ONCE after all processing
-      this.framesRendered++
-      this.lastFixtureStates = blackoutStates
-      return blackoutStates
-    }
-    
+
+    // 🖤 WAVE 3240: MOVE IN BLACK — El blackout es responsabilidad exclusiva del Arbiter.
+    // El MasterArbiter ya aplicó dimmer=0 (y shutter=0 si aplica) en su Layer 4,
+    // preservando pan/tilt/color/gobo/prism intactos. El HAL NO interviene aquí.
+    // El early-return anterior (pan:128, tilt:128 hardcodeados) fue el origen
+    // del "latigazo mecánico" y del vaciado de phantomChannels en blackout.
+
     // Map arbitrated targets to fixture states
     // 🎵 WAVE 2672: Cache BPM for HarmonicQuantizer (used in translateColorToWheel)
     this.currentFrameBpm = audio.bpm ?? 0

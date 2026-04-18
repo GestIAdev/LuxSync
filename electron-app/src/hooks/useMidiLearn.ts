@@ -127,6 +127,12 @@ export function useMidiLearn() {
   const controlStoreRef = useRef(useControlStore.getState)
   const luxSyncStoreRef = useRef(useLuxSyncStore.getState)
 
+  // ── WAVE 3302: Stable dispatch ref to break useCallback dependency chain ──
+  // Without this, handleMidiMessage → dispatchToStore → checkSoftTakeover
+  // creates a cascade of useCallback re-creations that causes useEffect re-runs
+  // and potential double-wiring of MIDI inputs during cleanup/reinit race.
+  const dispatchRef = useRef<(controlId: MappableControlId, msg: MidiMessage) => void>(() => {})
+
   // ═══════════════════════════════════════════════════════════════════════
   // SOFT TAKEOVER CHECK
   // ═══════════════════════════════════════════════════════════════════════
@@ -296,14 +302,19 @@ export function useMidiLearn() {
 
       case 'lux-blackout': {
         if (msg.type !== 'note_on') return
-        luxSyncStore.toggleBlackout()
+        // WAVE 3302: Fire REAL arbiter blackout (DMX), not just UI state
+        window.lux.arbiter.toggleBlackout()
+        luxSyncStore.toggleBlackout() // Keep UI in sync
         break
       }
     }
   }, [checkSoftTakeover])
 
+  // ── WAVE 3302: Keep dispatchRef always pointing to latest closure ──
+  dispatchRef.current = dispatchToStore
+
   // ═══════════════════════════════════════════════════════════════════════
-  // CORE MESSAGE HANDLER
+  // CORE MESSAGE HANDLER (STABLE — no useCallback deps, uses refs)
   // ═══════════════════════════════════════════════════════════════════════
 
   const handleMidiMessage = useCallback((event: Event) => {
@@ -333,9 +344,9 @@ export function useMidiLearn() {
     // ── MODE 2: RUNTIME ──
     const controlId = state.findControlForMessage(msg)
     if (controlId) {
-      dispatchToStore(controlId, msg)
+      dispatchRef.current(controlId, msg)
     }
-  }, [dispatchToStore])
+  }, []) // STABLE — zero deps, reads via refs
 
   // ═══════════════════════════════════════════════════════════════════════
   // MIDI INITIALIZATION
@@ -376,14 +387,14 @@ export function useMidiLearn() {
   }, [handleMidiMessage])
 
   // ═══════════════════════════════════════════════════════════════════════
-  // LIFECYCLE
+  // LIFECYCLE (STABLE — initMidi and handleMidiMessage have zero deps)
   // ═══════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     initMidi()
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount — kill all listeners
       const access = midiAccessRef.current
       if (access) {
         access.inputs.forEach((input) => {
@@ -391,7 +402,10 @@ export function useMidiLearn() {
         })
         access.onstatechange = null
       }
-      isInitializedRef.current = false
+      // WAVE 3302: Do NOT reset isInitializedRef here.
+      // The old code set isInitializedRef.current = false in cleanup,
+      // allowing re-init on re-renders → double listeners during race.
+      // Since initMidi is now stable (zero deps), this effect runs ONCE.
     }
   }, [initMidi])
 }

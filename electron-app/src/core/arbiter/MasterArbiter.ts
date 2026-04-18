@@ -2205,34 +2205,41 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2662 + WAVE 3200: EFFECT INTENTS — Layer 3 SUPREME
+    // 🎯 WAVE 2662 + WAVE 3200 + WAVE 3302: EFFECT INTENTS — Layer 3 SUPREME
     //
     // Layer 3 applies ON TOP of whatever Layer 2 or Layer 0 decided.
     // If an effect intent exists for this fixture+channel, it overrides.
     //
     // mixBus='htp'    → Collaborative: dimmer=HTP(max of base, intent), color=LTP(intent wins)
     // mixBus='global' → Dictator: LERP(base, intent, globalComposition)
+    //
+    // WAVE 3302 — IRON CURTAIN FOR GLOBAL:
+    // When mixBus='global', the effect is the ABSOLUTE OWNER of this fixture.
+    // If the intent doesn't specify a channel (e.g. no color during flash-OFF),
+    // that channel must be 0, NOT fall through to base. Otherwise AI base color
+    // bleeds through during the OFF phases of strobe/gatling effects.
     // ═══════════════════════════════════════════════════════════════════════
     const effectIntent = this.layer3_effectIntents.get(fixtureId)
     if (effectIntent) {
       const intentValue = this.getIntentValueForChannel(effectIntent, channel)
-      if (intentValue !== null) {
-        if (effectIntent.mixBus === 'global') {
-          // GLOBAL mode: LERP between base and intent
-          const alpha = effectIntent.globalComposition
-          const blended = baseValue + (intentValue - baseValue) * alpha
+      
+      if (effectIntent.mixBus === 'global') {
+        // GLOBAL mode: The effect is DICTATOR for this fixture
+        const alpha = effectIntent.globalComposition
+        // WAVE 3302: Iron Curtain — unspecified channels default to 0, not base
+        const effectValue = intentValue !== null ? intentValue : 0
+        const blended = baseValue + (effectValue - baseValue) * alpha
+        controlSources[channel] = ControlLayer.EFFECTS
+        return blended
+      } else if (intentValue !== null) {
+        // HTP mode: dimmer = max(base, intent), color channels = intent wins (LTP)
+        if (channel === 'dimmer') {
           controlSources[channel] = ControlLayer.EFFECTS
-          return blended
+          return Math.max(baseValue, intentValue)
         } else {
-          // HTP mode: dimmer = max(base, intent), color channels = intent wins (LTP)
-          if (channel === 'dimmer') {
-            controlSources[channel] = ControlLayer.EFFECTS
-            return Math.max(baseValue, intentValue)
-          } else {
-            // Color channels (red, green, blue) and white/amber → LTP, intent wins
-            controlSources[channel] = ControlLayer.EFFECTS
-            return intentValue
-          }
+          // Color channels (red, green, blue) and white/amber → LTP, intent wins
+          controlSources[channel] = ControlLayer.EFFECTS
+          return intentValue
         }
       }
     }

@@ -994,8 +994,12 @@ export class HardwareAbstraction {
           // 🔥 WAVE 2190: shutter UNDEFINED — Let FixtureMapper fall through to
           // channel.defaultValue ?? 255 (Open). Hardcoding 0 = CLOSED = blackout
           // on any fixture with a mechanical shutter channel.
-          gobo: 0,
-          prism: 0,
+          // 🔧 WAVE 3200: Pull gobo/prism from phantomChannels instead of
+          // hardcoding 0. The Arbiter already resolved the correct value
+          // (manual override or fixture default). Hardcoding 0 was zeroing
+          // gobo/prism every frame, killing values set by the operator.
+          gobo: fixtureTarget.phantomChannels?.['gobo'] ?? 0,
+          prism: fixtureTarget.phantomChannels?.['prism'] ?? 0,
           strobe: 0,
           // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
           phantomChannels: fixtureTarget.phantomChannels,

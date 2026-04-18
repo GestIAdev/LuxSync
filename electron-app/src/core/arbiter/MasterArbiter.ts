@@ -2115,47 +2115,47 @@ export class MasterArbiter extends EventEmitter {
     // Will be implemented when consciousness is connected
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔧 WAVE 440.5: MANUAL OVERRIDE = ABSOLUTE PRIORITY
-    // 
-    // The previous LTP (Latest Takes Precedence) strategy was WRONG for manual.
-    // Titan updates every frame with a new timestamp, so it always won.
-    // 
-    // FIX: Manual overrides WIN unconditionally. No timestamp comparison.
-    // When user grabs control, they KEEP it until they release.
+    // 🔧 WAVE 440.5 + WAVE 3200: LAYER HIERARCHY — L0 → L2 → L3
+    //
+    // WAVE 440.5 gave Manual (L2) absolute priority over Titan (L0) — correct.
+    // But the early-return prevented Layer 3 (Effects) from ever being evaluated.
+    // WAVE 3200 FIX: Establish the base value from L0 or L2, THEN let L3 override.
+    //
+    // Hierarchy:  Layer 0 (Titan AI) → Layer 2 (Manual) → Layer 3 (Effects)
+    // Layer 3 is SUPREME: strobe blackout, blinder flash, etc. always win.
     // ═══════════════════════════════════════════════════════════════════════
+    let baseValue = titanValue
+    let baseSource = ControlLayer.TITAN_AI
+
     if (manualOverride && manualOverride.overrideChannels.includes(channel)) {
-      const manualValue = this.getManualChannelValue(manualOverride, channel)
-      controlSources[channel] = ControlLayer.MANUAL
-      
-      // DIRECT RETURN - Manual wins, skip merge entirely
-      return manualValue
+      baseValue = this.getManualChannelValue(manualOverride, channel)
+      baseSource = ControlLayer.MANUAL
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2662: EFFECT INTENTS — Layer 3 via EffectIntentMap
+    // 🎯 WAVE 2662 + WAVE 3200: EFFECT INTENTS — Layer 3 SUPREME
     //
-    // EffectManager intents are the PRIMARY Layer 3 source.
-    // If an intent exists for this fixture+channel combo, it takes precedence
-    // over legacy getEffectValueForChannel() (strobe/blinder/flash/freeze).
+    // Layer 3 applies ON TOP of whatever Layer 2 or Layer 0 decided.
+    // If an effect intent exists for this fixture+channel, it overrides.
     //
-    // mixBus='htp'    → Collaborative: dimmer=HTP(max), color=LTP(intent wins)
-    // mixBus='global' → Dictator: LERP(titan, intent, globalComposition)
+    // mixBus='htp'    → Collaborative: dimmer=HTP(max of base, intent), color=LTP(intent wins)
+    // mixBus='global' → Dictator: LERP(base, intent, globalComposition)
     // ═══════════════════════════════════════════════════════════════════════
     const effectIntent = this.layer3_effectIntents.get(fixtureId)
     if (effectIntent) {
       const intentValue = this.getIntentValueForChannel(effectIntent, channel)
       if (intentValue !== null) {
         if (effectIntent.mixBus === 'global') {
-          // GLOBAL mode: LERP between Titan base and intent
+          // GLOBAL mode: LERP between base and intent
           const alpha = effectIntent.globalComposition
-          const blended = titanValue + (intentValue - titanValue) * alpha
+          const blended = baseValue + (intentValue - baseValue) * alpha
           controlSources[channel] = ControlLayer.EFFECTS
           return blended
         } else {
-          // HTP mode: dimmer = max(titan, intent), color channels = intent wins (LTP)
+          // HTP mode: dimmer = max(base, intent), color channels = intent wins (LTP)
           if (channel === 'dimmer') {
             controlSources[channel] = ControlLayer.EFFECTS
-            return Math.max(titanValue, intentValue)
+            return Math.max(baseValue, intentValue)
           } else {
             // Color channels (red, green, blue) and white/amber → LTP, intent wins
             controlSources[channel] = ControlLayer.EFFECTS
@@ -2168,11 +2168,15 @@ export class MasterArbiter extends EventEmitter {
     // Layer 3 legacy: strobe/blinder/flash/freeze effects (pre-WAVE 2662)
     const effectValue = this.getEffectValueForChannel(fixtureId, channel, now)
     if (effectValue !== null) {
-      values.push({
-        layer: ControlLayer.EFFECTS,
-        value: effectValue,
-        timestamp: now,
-      })
+      // Legacy effect overrides base (L0 or L2)
+      controlSources[channel] = ControlLayer.EFFECTS
+      return effectValue
+    }
+    
+    // No Layer 3 active — return the base value (L2 if manual, else L0)
+    if (baseSource === ControlLayer.MANUAL) {
+      controlSources[channel] = ControlLayer.MANUAL
+      return baseValue
     }
     
     // Check if crossfade is active for this channel
@@ -2586,12 +2590,16 @@ export class MasterArbiter extends EventEmitter {
     
     // Convert selected HSL to RGB
     // ⛺ WAVE 2790: COLOR BUNKER — Oceanic Mute Guard
-    // If this fixture has ANY Layer 2 manual override active, the tide zone transition
-    // must NOT alter its color. The operator has taken control — the ocean goes silent
-    // for this fixture. We serve the last known stable color instead of the new palette.
-    const hasAnyManualOverride = this.layer2_manualOverrides.has(fixtureId)
-    if (hasAnyManualOverride) {
-      // Fixture is a bunker: serve last known color (frozen before manual takeover)
+    // 🔧 WAVE 3200: GRANULAR BUNKER — Only freeze color when the override
+    // actually holds COLOR channels (red, green, blue, white, amber, color_wheel...).
+    // Previously, ANY override (even position-only pan/tilt) triggered the bunker,
+    // blocking Selene AI color updates while the user was only adjusting position.
+    const manualOverrideForBunker = this.layer2_manualOverrides.get(fixtureId)
+    const hasColorOverride = manualOverrideForBunker
+      ? manualOverrideForBunker.overrideChannels.some(ch => getChannelCategory(ch) === 'color')
+      : false
+    if (hasColorOverride) {
+      // Fixture color is a bunker: serve last known color (frozen before manual takeover)
       const frozen = this.lastKnownColors.get(fixtureId)
       if (frozen) {
         defaults.red = frozen.r

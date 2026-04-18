@@ -333,9 +333,14 @@ function createWindow(): void {
     },
   })
 
-  // Desktop capturer permissions
+  // Permission handlers — WAVE 3301: midi + midiSysex unlocked for nanoPAD2
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'midi' || permission === 'midiSysex') return true
+    return ['media', 'mediaKeySystem', 'geolocation'].includes(permission)
+  })
+
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
-    const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation']
+    const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation', 'midi', 'midiSysex']
     callback(allowedPermissions.includes(permission))
   })
 

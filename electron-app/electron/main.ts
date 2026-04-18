@@ -72,45 +72,66 @@ const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // ═══════════════════════════════════════════════════════════════════════════
-// � OPERACIÓN BLACKOUT — I/O SILENCE (WAVE DIAGNOSTICS)
+// 👁️ WAVE 3290: OJO DEL HURACÁN — White-list Logging (CONCIENCIA SELECTIVA)
 // ═══════════════════════════════════════════════════════════════════════════
-// Silencia TODOS los console.* del proceso main (y workers del mismo hilo)
-// EXCEPCIÓN: mensajes que contengan '[CARDIOGRAMA' pasan siempre.
+// Política de visibilidad por prefijo. Solo hablan los módulos autorizados.
 //
-// RESTAURAR: comentar el bloque completo hasta el cierre de la función noop.
+// WHITELIST:
+//   Selene IA:    [SeleneTitanConscious], [DecisionMaker], [EffectRepository]
+//   Coreógrafo:  [CHOREO], [GatlingRaid], [SimpleSectionTracker]
+//   Lifecycle:   [TitanOrchestrator], [UniversalDMX], [DMX-Worker], [GLOBAL_COOLDOWN]
+//
+// SILENCIO ABSOLUTO: [SENSE], [SENSES], [GodEar], [BabelFish], [AGC],
+//                    [INTERVAL], [IPC], [AGC TRUST], [Harmony], [FUZZY]
+//
+// DEBUG PROBE — Comentar este bloque para restaurar salida cruda de consola.
 // ─────────────────────────────────────────────────────────────────────────────
-;(function installBlackout() {
-  const _noop = () => { /* BLACKOUT */ }
-  const _originalWarn  = console.warn.bind(console)
-  const _originalError = console.error.bind(console)
+;(function installConsciousnessFilter() {
+  const _orig = {
+    log:   console.log.bind(console),
+    info:  console.info.bind(console),
+    warn:  console.warn.bind(console),
+    error: console.error.bind(console),
+    debug: console.debug.bind(console),
+  }
 
-  // Silenciar completamente
-  console.log   = _noop
-  console.info  = _noop
-  console.debug = _noop
+  // Prefijos autorizados — cualquier log que empiece con uno de estos PASA
+  const WHITELIST: string[] = [
+    // Selene IA
+    '[SeleneTitanConscious',
+    '[DecisionMaker',
+    '[EffectRepository',
+    '[EffectManager',
+    '[GatlingRaid',
+    '[DNA_ANALYZER',
+    '[GLOBAL_COOLDOWN',
+    // Coreógrafo / Movimiento
+    '[CHOREO',
+    '[SimpleSectionTracker',
+    '[HuntEngine',
+    // Lifecycle — drivers y arranque
+    '[TitanOrchestrator',
+    '[UniversalDMX',
+    '[DMX-Worker',
+    '[VIBE',
+    '[LuxSync',
+  ]
 
-  // warn y error: solo pasan mensajes de diagnóstico crítico
-  // WAVE 3180: Startup window (5s) — dejar pasar logs de conexión DMX
-  const _startupDeadline = Date.now() + 5000
-  const _cardiFilter = (orig: (...a: unknown[]) => void) =>
-    (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && (
-        args[0].includes('[CARDIOGRAMA') ||
-        args[0].includes('[COLOR JUMP]') ||
-        args[0].includes('[WAVE 3170 TRAP]') ||
-        // WAVE 3180: Confirmación visual de modo BREAK — solo primeros 5s
-        (Date.now() < _startupDeadline && (
-          args[0].includes('WAVE 3180') ||
-          args[0].includes('BREAK mode') ||
-          args[0].includes('[UniversalDMX]') ||
-          args[0].includes('[DMX-Worker]')
-        ))
-      )) {
-        orig(...args)
-      }
-    }
-  console.warn  = _cardiFilter(_originalWarn)
-  console.error = _cardiFilter(_originalError)
+  function _allowed(args: unknown[]): boolean {
+    if (typeof args[0] !== 'string') return false
+    const msg = args[0]
+    return WHITELIST.some(prefix => msg.startsWith(prefix))
+  }
+
+  const _filter = (orig: (...a: unknown[]) => void) =>
+    (...args: unknown[]) => { if (_allowed(args)) orig(...args) }
+
+  console.log   = _filter(_orig.log)
+  console.info  = _filter(_orig.info)
+  console.debug = _filter(_orig.debug)
+  console.warn  = _filter(_orig.warn)
+  // error siempre pasa — son fallos reales que hay que saber
+  console.error = _orig.error
 })()
 // ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.

@@ -9,18 +9,20 @@ import AppCommander from './AppCommander'
 import './styles/globals.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔇 OPERACIÓN BLACKOUT — I/O SILENCE (RENDERER PROCESS)
-// Silencia todos los console.* del renderer (incluyendo workers inline).
-// RESTAURAR: comentar este bloque completo.
+// 🔇 WAVE 3290: RENDERER SILENCED — Consola del renderer no requerida.
+// El renderer no emite logs de conciencia — toda la narrativa de Selene
+// corre en el main process. Mantener silencio aquí para no contaminar DevTools.
+//
+// DEBUG PROBE — Reactivar para auditoría del renderer.
 // ─────────────────────────────────────────────────────────────────────────────
-;(function installRendererBlackout() {
-  const _noop = () => { /* BLACKOUT */ }
-  console.log   = _noop
-  console.info  = _noop
-  console.debug = _noop
-  console.warn  = _noop
-  console.error = _noop
-})()
+// ;(function installRendererBlackout() {
+//   const _noop = () => { /* BLACKOUT */ }
+//   console.log   = _noop
+//   console.info  = _noop
+//   console.debug = _noop
+//   console.warn  = _noop
+//   console.error = _noop
+// })()
 // ─────────────────────────────────────────────────────────────────────────────
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

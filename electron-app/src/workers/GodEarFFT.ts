@@ -142,8 +142,9 @@ export interface GodEarSpectrum {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 2: CONSTANTS & CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🔇 OPERACIÓN BLACKOUT — Web Worker console hijack (RESTAURAR: comentar bloque)
-;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+// 🔇 WAVE 3290: GOD EAR FFT WORKER — Silenciado. No pertenece al whitelist de conciencia.
+// DEBUG PROBE — Reactivar para auditoría del espectroscopio FFT.
+// ;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
 
 /** FFT Configuration */
 const FFT_SIZE = 4096;

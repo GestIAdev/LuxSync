@@ -75,6 +75,8 @@ export const TheProgrammer: React.FC = () => {
   const [currentDimmer, setCurrentDimmer] = useState(100)
   const [currentStrobe, setCurrentStrobe] = useState(0)
   const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
+  // 🔒 WAVE 3270: Inhibit limit
+  const [currentLimit, setCurrentLimit] = useState(100)
   
   // Get fixture info
   const selectedFixtures = useMemo(() => {
@@ -184,6 +186,32 @@ export const TheProgrammer: React.FC = () => {
       console.log(`[Programmer] 🔓 Strobe released for ${selectedIds.length} fixtures`)
     } catch (err) {
       console.error('[Programmer] Strobe release error:', err)
+    }
+  }, [selectedIds])
+
+  /**
+   * 🔒 WAVE 3270: Set inhibit limit for selected fixtures
+   */
+  const handleLimitChange = useCallback(async (value: number) => {
+    if (selectedIds.length === 0) return
+    setCurrentLimit(value)
+    try {
+      await window.lux?.arbiter?.setInhibitLimit(selectedIds, value / 100)
+    } catch (err) {
+      console.error('[Programmer] Limit error:', err)
+    }
+  }, [selectedIds])
+
+  /**
+   * 🔒 WAVE 3270: Release inhibit limit (restore full power)
+   */
+  const handleLimitRelease = useCallback(async () => {
+    if (selectedIds.length === 0) return
+    setCurrentLimit(100)
+    try {
+      await window.lux?.arbiter?.clearInhibitLimit(selectedIds)
+    } catch (err) {
+      console.error('[Programmer] Limit release error:', err)
     }
   }, [selectedIds])
   
@@ -350,12 +378,16 @@ export const TheProgrammer: React.FC = () => {
             hasOverride={overrideState.dimmer}
             strobeValue={currentStrobe}
             hasStrobeOverride={overrideState.strobe}
+            limitValue={currentLimit}
+            hasLimitActive={currentLimit < 100}
             isExpanded={activeSection === 'intensity'}
             onToggle={() => toggleSection('intensity')}
             onChange={handleDimmerChange}
             onRelease={handleDimmerRelease}
             onStrobeChange={handleStrobeChange}
             onStrobeRelease={handleStrobeRelease}
+            onLimitChange={handleLimitChange}
+            onLimitRelease={handleLimitRelease}
           />
           
           {/* COLOR SECTION (solo si hay fixtures con color) */}

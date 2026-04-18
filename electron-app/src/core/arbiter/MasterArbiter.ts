@@ -194,6 +194,11 @@ export class MasterArbiter extends EventEmitter {
   
   // Grand Master (WAVE 376)
   private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
+
+  // 🔒 WAVE 3270: THE RETINA SAVER — Per-fixture inhibit limit
+  // Proportional multiplier (0-1) per fixtureId. Missing = 1.0 (no limit).
+  // Applied AFTER Grand Master: dimmerfinal = dimmer * grandMaster * inhibitLimit
+  private inhibitLimits: Map<string, number> = new Map()
   
   // 🔬 WAVE 2910 WIRETAP: rastreador de si cada fixture tenía posición manual en el frame anterior
   private _wiretap_prevHadPosition: Map<string, boolean> = new Map()
@@ -1110,6 +1115,49 @@ export class MasterArbiter extends EventEmitter {
   getGrandMaster(): number {
     return this.grandMaster
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔒 WAVE 3270: INHIBIT LIMIT — Per-fixture proportional ceiling
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Set inhibit limit for specific fixtures.
+   * Proportional multiplier 0-1. AI dynamics preserved, just scaled down.
+   * If limit=0.5 and AI asks 80%, output = 40%. Curve intact.
+   */
+  setInhibitLimit(fixtureIds: string[], value: number): void {
+    const clamped = Math.max(0, Math.min(1, value))
+    for (const id of fixtureIds) {
+      if (clamped >= 1.0) {
+        this.inhibitLimits.delete(id)  // 1.0 = no limit, remove from Map
+      } else {
+        this.inhibitLimits.set(id, clamped)
+      }
+    }
+  }
+
+  /**
+   * Get inhibit limit for a fixture. Returns 1.0 if no limit set.
+   */
+  getInhibitLimit(fixtureId: string): number {
+    return this.inhibitLimits.get(fixtureId) ?? 1.0
+  }
+
+  /**
+   * Clear inhibit limits for specific fixtures (restore to full power).
+   */
+  clearInhibitLimit(fixtureIds: string[]): void {
+    for (const id of fixtureIds) {
+      this.inhibitLimits.delete(id)
+    }
+  }
+
+  /**
+   * Get all active inhibit limits.
+   */
+  getInhibitLimits(): Map<string, number> {
+    return new Map(this.inhibitLimits)
+  }
   
   /**
    * 🔥 WAVE 2495: Set Grand Master Speed — scales Layer 2 manual pattern speed.
@@ -1513,7 +1561,9 @@ export class MasterArbiter extends EventEmitter {
           // MOVEMENT: Always from Titan (the vibe owns choreography).
           // ═══════════════════════════════════════════════════════════════════
           
-          const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster)
+          // 🔒 WAVE 3270: Chronos path also applies per-fixture inhibit limit
+          const inhibitLimit = this.inhibitLimits.get(fixtureId) ?? 1.0
+          const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster * inhibitLimit)
           const titanDim = titanTarget.dimmer
           
           // 🎛️ WAVE 2066: Read blendMode from the enriched frame
@@ -2022,8 +2072,10 @@ export class MasterArbiter extends EventEmitter {
     const crossfadeActive = this.isAnyCrossfadeActive(fixtureId)
     const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0
     
-    // Apply Grand Master to dimmer (final step before clamping)
-    const dimmerfinal = clampDMX(dimmer * this.grandMaster)
+    // Apply Grand Master + Inhibit Limit to dimmer (final step before clamping)
+    // 🔒 WAVE 3270: inhibitLimit is per-fixture proportional ceiling
+    const inhibitLimit = this.inhibitLimits.get(fixtureId) ?? 1.0
+    const dimmerfinal = clampDMX(dimmer * this.grandMaster * inhibitLimit)
     
     // ⚡ WAVE 2750: NaN BOMB UPSTREAM GUARD — pan/tilt fallback to last known position
     // Si la aritmética upstream (IK, interpolation, effectIntent) generó NaN,
@@ -3052,6 +3104,8 @@ export class MasterArbiter extends EventEmitter {
       outputEnabled: this._outputEnabled,
       blackoutActive: this.layer4_blackout,
       grandMaster: this.grandMaster,
+      // 🔒 WAVE 3270: Per-fixture inhibit limits
+      inhibitLimits: Object.fromEntries(this.inhibitLimits),
       titanActive: this.layer0_titan !== null,
       titanVibeId: this.layer0_titan?.vibeId ?? null,
       consciousnessActive: this.layer1_consciousness?.active ?? false,

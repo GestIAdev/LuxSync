@@ -513,6 +513,13 @@ declare global {
       
       /** Set Grand Master intensity (0-1) */
       setGrandMaster: (value: number) => Promise<void>
+
+      /** 🔒 WAVE 3270: Set per-fixture inhibit limit (proportional ceiling) */
+      setInhibitLimit: (fixtureIds: string[], value: number) => Promise<{ success: boolean; value?: number }>
+      /** 🔒 WAVE 3270: Clear per-fixture inhibit limits */
+      clearInhibitLimit: (fixtureIds: string[]) => Promise<{ success: boolean }>
+      /** 🔒 WAVE 3270: Get all active inhibit limits */
+      getInhibitLimits: () => Promise<{ inhibitLimits: Record<string, number> }>
       
       /** 
        * 🎛️ WAVE 375.3: Set manual override for fixtures

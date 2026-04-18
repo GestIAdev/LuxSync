@@ -8,6 +8,7 @@
  * - Quick buttons: 0%, 25%, 50%, 75%, 100%
  * - Release button (↺) to return control to AI
  * - Orange glow when manual override active
+ * - 🔒 WAVE 3270: LIMIT (Inhibit) — proportional output ceiling
  */
 
 import React, { useCallback } from 'react'
@@ -18,12 +19,16 @@ export interface IntensitySectionProps {
   hasOverride: boolean   // Is dimmer under manual control?
   strobeValue: number    // 0-100 strobe speed
   hasStrobeOverride: boolean // Is strobe under manual control?
+  limitValue: number     // 0-100 inhibit limit (100 = no limit)
+  hasLimitActive: boolean // Is limit below 100%?
   isExpanded: boolean    // Is section expanded?
   onToggle: () => void   // Toggle expansion
   onChange: (value: number) => void
   onRelease: () => void
   onStrobeChange: (value: number) => void
   onStrobeRelease: () => void
+  onLimitChange: (value: number) => void
+  onLimitRelease: () => void
 }
 
 // Quick presets
@@ -44,17 +49,29 @@ const STROBE_PRESETS = [
   { label: 'MAX', value: 100 },
 ]
 
+// 🔒 WAVE 3270: Limit presets
+const LIMIT_PRESETS = [
+  { label: '25%', value: 25 },
+  { label: '50%', value: 50 },
+  { label: '75%', value: 75 },
+  { label: 'FULL', value: 100 },
+]
+
 export const IntensitySection: React.FC<IntensitySectionProps> = ({
   value,
   hasOverride,
   strobeValue,
   hasStrobeOverride,
+  limitValue,
+  hasLimitActive,
   isExpanded,
   onToggle,
   onChange,
   onRelease,
   onStrobeChange,
   onStrobeRelease,
+  onLimitChange,
+  onLimitRelease,
 }) => {
   
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,8 +89,16 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
   const handleStrobePresetClick = useCallback((presetValue: number) => {
     onStrobeChange(presetValue)
   }, [onStrobeChange])
+
+  const handleLimitSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onLimitChange(Number(e.target.value))
+  }, [onLimitChange])
+
+  const handleLimitPresetClick = useCallback((presetValue: number) => {
+    onLimitChange(presetValue)
+  }, [onLimitChange])
   
-  const hasAnyOverride = hasOverride || hasStrobeOverride
+  const hasAnyOverride = hasOverride || hasStrobeOverride || hasLimitActive
   
   return (
     <div className={`programmer-section intensity-section ${hasAnyOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
@@ -91,6 +116,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
                 e.stopPropagation()
                 onRelease()
                 onStrobeRelease()
+                onLimitRelease()
               }}
               title="Release to AI control"
             >
@@ -140,6 +166,51 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
           {hasOverride && (
             <div className="override-badge">MANUAL</div>
           )}
+
+          {/* 🔒 WAVE 3270: LIMIT (INHIBIT) CONTROL */}
+          <div className="strobe-control-section limit-control-section">
+            <div className="strobe-header">
+              <span className="limit-icon">🔒</span>
+              <span className="strobe-label">LIMIT</span>
+              {hasLimitActive && (
+                <button
+                  className="release-btn release-btn-mini"
+                  onClick={onLimitRelease}
+                  title="Release limit (restore full power)"
+                >
+                  ↺
+                </button>
+              )}
+            </div>
+            
+            <div className="intensity-slider-container">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={limitValue}
+                onChange={handleLimitSliderChange}
+                className="intensity-slider limit-slider"
+              />
+              <div className="intensity-value">{Math.round(limitValue)}%</div>
+            </div>
+            
+            <div className="intensity-presets limit-presets">
+              {LIMIT_PRESETS.map(preset => (
+                <button
+                  key={preset.label}
+                  className={`preset-btn ${limitValue === preset.value ? 'active' : ''}`}
+                  onClick={() => handleLimitPresetClick(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            
+            {hasLimitActive && (
+              <div className="override-badge limit-override">LIMIT {Math.round(limitValue)}%</div>
+            )}
+          </div>
           
           {/* ⚡ WAVE 2494: STROBE CONTROL */}
           <div className="strobe-control-section">

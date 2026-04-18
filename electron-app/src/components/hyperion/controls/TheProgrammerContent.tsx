@@ -64,6 +64,8 @@ export const TheProgrammerContent: React.FC = () => {
   const [currentDimmer, setCurrentDimmer] = useState<number | null>(null)
   const [currentStrobe, setCurrentStrobe] = useState(0)
   const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
+  // 🔒 WAVE 3270: Inhibit limit (100 = full power, no limit)
+  const [currentLimit, setCurrentLimit] = useState(100)
   
   // Get fixture info
   const selectedFixtures = useMemo(() => {
@@ -168,6 +170,37 @@ export const TheProgrammerContent: React.FC = () => {
       console.error('[Programmer] Strobe release error:', err)
     }
   }, [selectedIds])
+
+  /**
+   * 🔒 WAVE 3270: Set inhibit limit for selected fixtures
+   * Proportional ceiling: 100% = full power, 50% = half max
+   */
+  const handleLimitChange = useCallback(async (value: number) => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentLimit(value)
+    
+    try {
+      await window.lux?.arbiter?.setInhibitLimit(selectedIds, value / 100)
+    } catch (err) {
+      console.error('[Programmer] Limit error:', err)
+    }
+  }, [selectedIds])
+
+  /**
+   * 🔒 WAVE 3270: Release inhibit limit (restore full power)
+   */
+  const handleLimitRelease = useCallback(async () => {
+    if (selectedIds.length === 0) return
+    
+    setCurrentLimit(100)
+    
+    try {
+      await window.lux?.arbiter?.clearInhibitLimit(selectedIds)
+    } catch (err) {
+      console.error('[Programmer] Limit release error:', err)
+    }
+  }, [selectedIds])
   
   const handleColorChange = useCallback(async (r: number, g: number, b: number) => {
     if (selectedIds.length === 0) return
@@ -217,12 +250,17 @@ export const TheProgrammerContent: React.FC = () => {
     setCurrentDimmer(null)
     setCurrentStrobe(0)
     setCurrentColor({ r: 128, g: 128, b: 128 })
+    // 🔒 WAVE 3270: Reset limit to full power
+    setCurrentLimit(100)
     
     try {
       // Clear fixture manual overrides (dimmer, color, pan, tilt, etc.)
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
+      
+      // 🔒 WAVE 3270: Clear inhibit limits
+      await window.lux?.arbiter?.clearInhibitLimit(selectedIds)
       
       // 🔄 WAVE 2042.22: PATTERN PERSISTENCE
       // OLD: clearMovementOverrides() → Killed pattern on unlock
@@ -249,6 +287,7 @@ export const TheProgrammerContent: React.FC = () => {
       setCurrentDimmer(null)
       setCurrentStrobe(0)
       setCurrentColor({ r: 128, g: 128, b: 128 })
+      setCurrentLimit(100)
       
       if (selectedIds.length === 0) {
         console.log(`[Programmer] 🧼 FLUSH: No selection, defaults applied`)
@@ -295,6 +334,18 @@ export const TheProgrammerContent: React.FC = () => {
         
         // Position & Beam handled by their own sections
         console.log(`[Programmer] 🧠 Hydrated fixture ${selectedIds[0]} - Dimmer: ${state.dimmer ?? 'AI'} Color: ${state.color ?? 'AI'}`)
+
+        // 🔒 WAVE 3270: Hydrate inhibit limit from backend
+        try {
+          const limitsResult = await window.lux?.arbiter?.getInhibitLimits()
+          if (isMounted && limitsResult?.inhibitLimits) {
+            const firstId = selectedIds[0]
+            const limit = limitsResult.inhibitLimits[firstId]
+            if (limit !== undefined && limit < 1.0) {
+              setCurrentLimit(Math.round(limit * 100))
+            }
+          }
+        } catch (_) { /* limit hydration is non-critical */ }
       } catch (err) {
         console.error('[Programmer] Hydration error:', err)
         // En caso de error, los defaults del flush ya están aplicados
@@ -385,12 +436,16 @@ export const TheProgrammerContent: React.FC = () => {
         hasOverride={overrideState.dimmer}
         strobeValue={currentStrobe}
         hasStrobeOverride={overrideState.strobe}
+        limitValue={currentLimit}
+        hasLimitActive={currentLimit < 100}
         isExpanded={activeSection === 'intensity'}
         onToggle={() => toggleSection('intensity')}
         onChange={handleDimmerChange}
         onRelease={handleDimmerRelease}
         onStrobeChange={handleStrobeChange}
         onStrobeRelease={handleStrobeRelease}
+        onLimitChange={handleLimitChange}
+        onLimitRelease={handleLimitRelease}
       />
       
       {/* 🎨 COLOR SECTION */}

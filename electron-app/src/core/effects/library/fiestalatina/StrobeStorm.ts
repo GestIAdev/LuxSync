@@ -1,38 +1,69 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * ⚡ STROBE STORM - PEAK ZONE CHAOS
- * ═══════════════════════════════════════════════════════════════════════════
+﻿/**
+ * =============================================================================
+ * STROBE STORM - TORMENTA MULTI-ZONA
+ * =============================================================================
  *
- * WAVE 680:  THE ARSENAL — Primera arma de asalto
+ * WAVE 680:    THE ARSENAL — Primera arma de asalto
  * WAVE 1004.4: THE LATINO LADDER — Posicionado en PEAK ZONE (A=0.95)
- * WAVE 2214:  THE REAL STORM — Era un pequeño flash azul. Arreglado.
- * WAVE 2700:  LA VERDADERA TORMENTA — Rediseño total.
- *             "Pulso sinusoidal al 70%" era inaceptable. Ahora es caos puro.
+ * WAVE 2214:   THE REAL STORM — Era un pequeño flash azul. Arreglado.
+ * WAVE 2700:   LA VERDADERA TORMENTA — Rediseño total. Caos puro.
+ * WAVE 3300:   LA TORMENTA MULTI-ZONA — Reescritura total.
+ *              Inspirado en GatlingRaid pero libre y caótico.
+ *              NO usamos canal strobe nativo. DIMMER es dios.
+ *              Pulsos ultra-rápidos de dimmer simulan strobe
+ *              con más control, más musicalidad y sin artefactos
+ *              de shutter mecánico.
  *
  * DNA PROFILE (THE LATINO LADDER):
- * ┌─────────────────────────────────────────────────┐
- * │ Aggression:  0.98 → PEAK ZONE MÁXIMO           │
- * │ Complexity:  0.80 → Caos multi-fase asíncrono  │
- * │ Organicity:  0.10 → Mecánico/Brutal/Industrial │
- * │ Duration:    SHORT → COLOR PASS-THROUGH movers │
- * └─────────────────────────────────────────────────┘
+ *   Aggression:  0.98  — PEAK ZONE MÁXIMO
+ *   Complexity:  0.90  — Caos multi-zona concurrente
+ *   Organicity:  0.10  — Mecánico/Brutal/Industrial
+ *   Duration:    SHORT — COLOR PASS-THROUGH movers
  *
- * ARQUITECTURA (WAVE 2700):
- *   - PRE-BLACKOUT: 60ms de silencio total antes del caos (contraste máximo)
- *   - BURST VOLLEY: ráfagas de cortes duros a frecuencias altas (18-25 Hz)
- *     usando divisiones de BPM para mantener sincronía musical
- *   - CHAOS ENGINE: generador determinista de asimetría (sin Math.random)
- *     — el caos nace del BPM y el beatPhase, no de números aleatorios
- *   - DECAY: desaceleración en escalones (no lineal), cortes bruscos al final
- *   - movers: color: undefined → PASS-THROUGH (Layer 0 aporta el color base,
- *     StrobeStorm solo dispara dimmer al 100%)
+ * ARQUITECTURA (WAVE 3300):
  *
- * FILOSOFÍA:
- *   El strobe NO gradúa intensidades. Un strobe es ON (100%) u OFF (0%).
- *   Cualquier valor intermedio es un pulso suave disfrazado, no una tormenta.
+ *   FILOSOFÍA DE HARDWARE:
+ *   Canal "strobe" nativo de fixtures = shutter mecánico.
+ *   No todos los fixtures lo tienen, y los que lo tienen
+ *   tienen latencia y artefactos mecánicos (ruido, drift).
+ *   Solución: DIMMER es dios. Pulsos on/off de dimmer a
+ *   20-30 Hz simulan strobe con precisión de frame.
+ *   (misma técnica que GatlingRaid — cero strobeRate en output)
+ *
+ *   FASES:
+ *   1. PRE-BLACKOUT (60ms)
+ *      Silencio total. Contraste máximo. La calma antes del caos.
+ *
+ *   2. VOLLEY BURST (800ms)
+ *      7 voleas paralelas e independientes, cada una con su propio
+ *      half-cycle determinista. Las zonas no parpadean en sincronía —
+ *      la asimetría entre ellas ES la tormenta.
+ *
+ *      ZONAS (independientes):
+ *        front-left    -> volley 0
+ *        front-center  -> volley 1
+ *        front-right   -> volley 2
+ *        back-left     -> volley 3
+ *        back-right    -> volley 4
+ *        movers-left   -> volley 5 (PASS-THROUGH color)
+ *        movers-right  -> volley 6 (PASS-THROUGH color)
+ *
+ *      Cada volley tiene su propio acumulador de tiempo, su propio
+ *      half-cycle y su propia fase inicial (calculada desde BPM y
+ *      el índice de zona — determinista, sin Math.random).
+ *
+ *   3. DECAY (150ms)
+ *      Zonas se apagan en cascada (front primero, movers último).
+ *      No es una rampa lineal — es un countdown de slots.
+ *
+ *   NOTAS:
+ *   - Sin canal strobeRate en output (dimmer puro)
+ *   - Movers: color: undefined -> PASS-THROUGH (Layer 0 manda el color)
+ *   - StrobeStorm solo dispara dimmer en movers, nunca reemplaza color
+ *   - Chaos engine 100% determinista (BPM + beatPhase + zone index)
  *
  * @module core/effects/library/fiestalatina/StrobeStorm
- * @version WAVE 680, 1004.4, 2214, 2700
+ * @version WAVE 680, 1004.4, 2214, 2700, 3300
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -43,316 +74,359 @@ import {
   EffectCategory,
 } from '../../types'
 
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface StrobeStormConfig {
   /** Pre-blackout antes del primer burst (ms) */
   preBlackoutMs: number
-
-  /** Duración del burst principal (ms) */
+  /** Duración del volley burst principal (ms) */
   burstMs: number
-
-  /** Duración del decay en escalones (ms) */
+  /** Duración del decay en cascada (ms) */
   decayMs: number
-
-  /** Frecuencia base del burst (Hz) — modulada por BPM */
+  /** Frecuencia base de strobe (Hz) — modulada por BPM */
   burstFrequencyHz: number
-
-  /** Frecuencia máxima permitida (Hz) — reducida a 10 en modo degradado */
+  /** Frecuencia máxima permitida (Hz) — techo absoluto de hardware */
   maxFrequencyHz: number
-
   /** ¿Modo degradado? (forzado por vibe restrictivo) */
   degradedMode: boolean
 }
 
 const DEFAULT_CONFIG: StrobeStormConfig = {
-  preBlackoutMs: 60,       // 60ms de silencio absoluto (contraste quirúrgico)
-  burstMs: 700,            // 700ms de infierno
-  decayMs: 130,            // 130ms de salida en escalones
-  burstFrequencyHz: 18,    // 18Hz base — PEAK ZONE VIOLENTO
-  maxFrequencyHz: 25,      // Techo absoluto (hardware safety)
-  degradedMode: false,
+  preBlackoutMs:    60,   // Silencio quirúrgico antes del caos
+  burstMs:          800,  // 800ms de infierno multi-zona
+  decayMs:          150,  // Cascada de apagado por zona
+  burstFrequencyHz: 22,   // 22Hz base — agresivamente latino
+  maxFrequencyHz:   28,   // Techo (debajo del límite perceptivo ~30Hz)
+  degradedMode:     false,
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// Zonas que participan en la tormenta y su orden de decay.
+// Índice 0..6 — usado como semilla para el chaos engine (determinista).
+const STORM_ZONES = [
+  'front-left',    // 0
+  'front-center',  // 1
+  'front-right',   // 2
+  'back-left',     // 3
+  'back-right',    // 4
+  'movers-left',   // 5 — COLOR PASS-THROUGH
+  'movers-right',  // 6 — COLOR PASS-THROUGH
+] as const
+
+type StormZone = (typeof STORM_ZONES)[number]
+
+// Zonas de movers que NO reciben color (pass-through)
+const MOVER_ZONES: ReadonlySet<string> = new Set(['movers-left', 'movers-right'])
+
+// =============================================================================
+// VOLLEY STATE — un "cañón" independiente por zona
+// =============================================================================
+
+interface VolleyState {
+  accMs: number       // Acumulador de tiempo dentro del half-cycle
+  isOn: boolean       // Estado del flash en esta zona
+  halfCycleMs: number // Duración de cada mitad del ciclo (calculada en init)
+}
+
+// =============================================================================
 // STROBE STORM CLASS
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 export class StrobeStorm extends BaseEffect {
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
   // ILightEffect required properties
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
   readonly effectType = 'strobe_storm'
   readonly name = 'Strobe Storm'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 90
-  readonly mixBus = 'global' as const  // Dictador — suprime Layer 0 en burst
+  readonly priority                  = 90
+  readonly mixBus = 'global' as const  // Dictador — suprime Layer 0 durante tormenta
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
   // Internal state
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
   private config: StrobeStormConfig
-  private phaseStartMs = 0      // timestamp de when this.phase started
-  private activeFrequencyHz = 0 // frecuencia actual del strobe
-  private strobeAccMs = 0       // acumulador del half-cycle del strobe
-  private isFlashOn = false     // estado ON/OFF del flash software
-  private flashDirty = false    // garantía: al menos 1 frame visible en cada toggle
+  private phaseStartMs = 0
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // Un estado de volley independiente por zona
+  private volleys: VolleyState[] = []
+
+  // Qué zonas siguen activas en la fase decay (se apagan en cascada)
+  private activeInDecay: boolean[] = []
+
+  // ---------------------------------------------------------------------------
   // Constructor
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
   constructor(config?: Partial<StrobeStormConfig>) {
     super('strobe_storm')
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
   // PUBLIC: Vibe constraints (called by EffectManager before trigger)
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
-  /**
-   * 🛡️ SET VIBE CONSTRAINTS
-   * Establece los límites del Vibe para esta instancia.
-   * EffectManager llama esto antes de trigger().
-   */
   public setVibeConstraints(maxHz: number, degraded: boolean): void {
-    this.config.maxFrequencyHz = maxHz
-    this.config.degradedMode = degraded
+    this.config.maxFrequencyHz = maxHz > 0 ? maxHz : DEFAULT_CONFIG.maxFrequencyHz
+    this.config.degradedMode   = degraded
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
   // ILightEffect implementation
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
   trigger(config: EffectTriggerConfig): void {
     super.trigger(config)
-    this.phase = 'attack'   // 'attack' = pre-blackout
+    this.phase        = 'attack'  // attack = pre-blackout
     this.phaseStartMs = this.elapsedMs
-    this.activeFrequencyHz = 0
-    this.strobeAccMs = 0
-    this.isFlashOn = false
-    this.flashDirty = false
+
+    // Inicializar volleys — un cañón por zona, con phase offset determinista.
+    // Derivado del BPM y del índice de zona — sin Math.random.
+    //   offset = (i × beatsub32) % halfCycleMs
+    //   donde beatsub32 = período de un 32avo de beat en ms
+    const bpm         = this.getCurrentBpm(128)
+    const baseHz      = Math.min(this.config.burstFrequencyHz, this.config.maxFrequencyHz)
+    const baseHalfMs  = 500 / baseHz
+
+    this.volleys = STORM_ZONES.map((_, i) => {
+      const beatsub32Ms   = (60000 / bpm) / 32
+      const phaseOffsetMs = (i * beatsub32Ms) % baseHalfMs
+
+      return {
+        accMs:       phaseOffsetMs,  // Arrancar ya desincronizadas
+        isOn:        i % 2 === 0,    // Alternar estado inicial por índice
+        halfCycleMs: this.computeHalfCycle(i),
+      }
+    })
+
+    this.activeInDecay = STORM_ZONES.map(() => true)
 
     const mode = this.config.degradedMode ? ' [DEGRADED]' : ''
-    console.log(`[StrobeStorm ⚡] TRIGGERED! f=${this.config.burstFrequencyHz}Hz maxHz=${this.config.maxFrequencyHz}${mode}`)
+    console.log(
+      `[StrobeStorm] TRIGGERED! baseHz=${baseHz} maxHz=${this.config.maxFrequencyHz} zones=${STORM_ZONES.length}${mode}`
+    )
   }
 
   update(deltaMs: number): void {
     if (this.phase === 'idle' || this.phase === 'finished') return
 
-    this.elapsedMs += deltaMs
+    this.elapsedMs    += deltaMs
     const phaseElapsed = this.elapsedMs - this.phaseStartMs
 
     switch (this.phase) {
       case 'attack':
-        // attack = pre-blackout phase
         if (phaseElapsed >= this.config.preBlackoutMs) {
           this.transitionPhase('sustain')
-          this.activeFrequencyHz = this.computeBurstFrequency()
+          // Recalcular halfCycles con BPM actualizado al inicio del burst
+          this.volleys.forEach((v, i) => {
+            v.halfCycleMs = this.computeHalfCycle(i)
+          })
         }
         break
 
       case 'sustain':
-        // Frecuencia asíncrona modulada por divisiones de BPM
-        this.activeFrequencyHz = this.computeBurstFrequency()
-        this.advanceStrobeCycle(deltaMs)
-
+        this.advanceAllVolleys(deltaMs)
+        // Recalcular halfCycles cada frame (BPM puede cambiar en vivo)
+        this.volleys.forEach((v, i) => {
+          v.halfCycleMs = this.computeHalfCycle(i)
+        })
         if (phaseElapsed >= this.config.burstMs) {
           this.transitionPhase('decay')
         }
         break
 
-      case 'decay':
-        // Escalones: cada 35ms baja un slot de frecuencia
+      case 'decay': {
+        this.advanceAllVolleys(deltaMs)
+        // Apagar zonas en cascada: front primero (índice bajo), movers último (índice alto)
         const decayProgress = Math.min(1, phaseElapsed / this.config.decayMs)
-        // 3 escalones bruscos (no rampa lineal)
-        const step = Math.floor(decayProgress * 3)
-        const stepFreq = [0.65, 0.35, 0.0]
-        const freqFactor = stepFreq[step] ?? 0
-        this.activeFrequencyHz = this.computeBurstFrequency() * freqFactor
-        this.advanceStrobeCycle(deltaMs)
-
+        const slotSize       = 1 / STORM_ZONES.length
+        STORM_ZONES.forEach((_, i) => {
+          if (decayProgress >= slotSize * (i + 1)) {
+            this.activeInDecay[i] = false
+          }
+        })
         if (decayProgress >= 1) {
           this.transitionPhase('finished')
-          this.activeFrequencyHz = 0
-          console.log(`[StrobeStorm ⚡] Impact complete — ${this.elapsedMs}ms total`)
+          console.log(`[StrobeStorm] Impact complete — ${this.elapsedMs.toFixed(0)}ms total`)
         }
         break
+      }
     }
   }
 
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
 
-    // PRE-BLACKOUT: silencio forzado antes del burst
+    // PRE-BLACKOUT: silencio total — contraste máximo antes del primer flash
     if (this.phase === 'attack') {
-      return {
-        effectId: this.id,
-        category: this.category,
-        phase: this.phase,
-        progress: 0,
-        zones: this.zones,
-        intensity: 0,
-        dimmerOverride: 0,
-        globalComposition: 1.0,
-        zoneOverrides: {
-          front:  { dimmer: 0, blendMode: 'replace' },
-          back:   { dimmer: 0, blendMode: 'replace' },
-          'all-movers': { dimmer: 0, blendMode: 'replace' },
-        },
-      }
+      return this.buildBlackoutOutput()
     }
 
-    // DEGRADED: pulso de dimmer duro (sin sinusoide suave — la directiva es clara)
+    // DEGRADED: pulso duro de 2 beats cuando el vibe lo restringe
     if (this.config.degradedMode) {
       return this.getDegradedOutput()
     }
 
-    // BURST / DECAY: strobe real con movers en pass-through de color
-    return this.getStrobeOutput()
+    return this.buildStormOutput()
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Strobe cycle — frame-guaranteed (WAVE 2493 pattern preserved)
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Volley engine
+  // ---------------------------------------------------------------------------
 
-  private advanceStrobeCycle(deltaMs: number): void {
-    if (this.activeFrequencyHz <= 0) {
-      this.isFlashOn = false
-      return
-    }
-    const halfCycleMs = 500 / this.activeFrequencyHz
-    this.strobeAccMs += deltaMs
-    while (this.strobeAccMs >= halfCycleMs) {
-      this.strobeAccMs -= halfCycleMs
-      this.isFlashOn = !this.isFlashOn
-      this.flashDirty = true   // garantiza al menos 1 frame visible del toggle
+  private advanceAllVolleys(deltaMs: number): void {
+    for (let i = 0; i < this.volleys.length; i++) {
+      const v = this.volleys[i]
+      // En decay, no avanzar las zonas ya apagadas
+      if (this.phase === 'decay' && !this.activeInDecay[i]) continue
+
+      v.accMs += deltaMs
+      while (v.accMs >= v.halfCycleMs) {
+        v.accMs -= v.halfCycleMs
+        v.isOn   = !v.isOn
+      }
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Frequency computation — CHAOS ENGINE (determinista, no random)
+  // ---------------------------------------------------------------------------
+  // Half-cycle computation — CHAOS ENGINE (determinista, sin Math.random)
   //
-  // El caos no nace de Math.random() (prohibido por Axioma Anti-Simulación).
-  // Nace de:
-  //   - El BPM: dictamine el pulso base
-  //   - beatPhase: la posición dentro del beat crea asimetría natural
-  //   - Divisiones de subbeat (16ths, 32nds) como multiplicadores
+  // El "caos" es musical: nace del BPM (ritmo real de la pista),
+  // del beatPhase (posición exacta dentro del beat), y del índice
+  // de zona (desincronización geográfica de los fixtures).
   //
-  // Resultado: una frecuencia que PARECE caótica pero es musical y
-  // reproducible dado el mismo contexto musical.
-  // ─────────────────────────────────────────────────────────────────────────
+  // Cada zona tiene un half-cycle ligeramente diferente, creando
+  // la asimetría visual que percibimos como "tormenta".
+  // ---------------------------------------------------------------------------
 
-  private computeBurstFrequency(): number {
-    const base = this.config.burstFrequencyHz * this.triggerIntensity
-    const zAdjusted = this.getIntensityFromZScore(base, 0.35)
-
-    // Asimetría determinista basada en beatPhase
-    // beatPhase oscila 0→1 cada beat; usamos fracturas de subbeat
+  private computeHalfCycle(zoneIndex: number): number {
+    const bpm       = this.getCurrentBpm(128)
     const beatPhase = this.musicalContext?.beatPhase ?? 0
-    // Fold beatPhase en 32nds (0.03125) — crea picos en tiempos fuertes
-    const subGrid = (beatPhase * 32) % 1   // 0-1 dentro de un 32nd
-    // En la primera mitad del 32nd (+10%), en la segunda mitad (-15%)
-    const asymFactor = subGrid < 0.5 ? 1.10 : 0.85
 
-    const raw = zAdjusted * asymFactor
-    return Math.min(raw, this.config.maxFrequencyHz)
+    // Frecuencia base modulada por intensidad de trigger
+    const baseHz = Math.min(
+      this.config.burstFrequencyHz * this.triggerIntensity,
+      this.config.maxFrequencyHz
+    )
+
+    // Asimetría determinista por beatPhase (misma lógica que WAVE 2700)
+    // beatPhase oscila 0→1 cada beat; fracturamos en 32nds
+    const subGrid  = (beatPhase * 32) % 1  // posición dentro de un 32nd
+    const beatAsym = subGrid < 0.5 ? 1.10 : 0.85
+
+    // Desincronización geográfica: cada zona desvía +N% respecto a la base.
+    // Zona 0: +0%, zona 1: +6.25% (1/16 de beat), zona 2: +12.5%, etc.
+    // Períodos de subdivisión de beat — musicalmente coherente.
+    const zoneDetuneRatio = 1 + ((zoneIndex % 4) * 0.0625)
+
+    const effectiveHz = Math.min(baseHz * beatAsym * zoneDetuneRatio, this.config.maxFrequencyHz)
+    const clampedHz   = Math.max(effectiveHz, 1)  // mínimo 1 Hz (evitar div/0)
+
+    return 500 / clampedHz
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Output generators
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Output builders
+  // ---------------------------------------------------------------------------
 
-  private getStrobeOutput(): EffectFrameOutput {
-    // ⚡ WAVE 2493 dual-path:
-    //   Hardware: dimmerOverride + strobeRate → fixture strobe channel hace el trabajo real
-    //   Simulator: isFlashOn toggle → canvas ve los flashes
-    const visualIntensity = this.isFlashOn ? this.triggerIntensity : 0
-    this.flashDirty = false  // consume el flag
+  private buildBlackoutOutput(): EffectFrameOutput {
+    return {
+      effectId:          this.id,
+      category:          this.category,
+      phase:             this.phase,
+      progress:          0,
+      zones:             this.zones,
+      intensity:         0,
+      dimmerOverride:    0,
+      globalComposition: 1.0,
+      zoneOverrides: {
+        front:        { dimmer: 0, blendMode: 'replace' },
+        back:         { dimmer: 0, blendMode: 'replace' },
+        'all-movers': { dimmer: 0, blendMode: 'replace' },
+      },
+    }
+  }
 
+  private buildStormOutput(): EffectFrameOutput {
     const progress = this.calculateProgress()
 
+    // Intensidad global del frame: si alguna zona está ON, el output no es cero
+    const anyOn = this.volleys.some((v, i) =>
+      v.isOn && (this.phase !== 'decay' || this.activeInDecay[i])
+    )
+    const globalIntensity = anyOn ? this.triggerIntensity : 0
+
+    // Construir zoneOverrides para cada zona de la tormenta.
+    // CLAVE: NO enviamos strobeRate — usamos dimmer puro.
+    //   El canal shutter/strobe nativo queda en 0 (desactivado).
+    //   El HAL/HarmonicQuantizer pasa dimmer inmediatamente (no cuantizado).
+    const zoneOverrides: Record<string, {
+      color?: { h: number; s: number; l: number } | undefined
+      dimmer: number
+      blendMode: 'replace'
+    }> = {}
+
+    STORM_ZONES.forEach((zone, i) => {
+      const volley  = this.volleys[i]
+      const active  = this.phase !== 'decay' || this.activeInDecay[i]
+      const dimmer  = active && volley.isOn ? this.triggerIntensity : 0
+      const isMover = MOVER_ZONES.has(zone)
+
+      zoneOverrides[zone] = {
+        // Movers: PASS-THROUGH — Layer 0 aporta el color base del vibe.
+        // StrobeStorm solo controla el dimmer de los movers.
+        // PAR/wash front+back: blanco puro (máximo impacto fotónico).
+        color:     isMover ? undefined : { h: 0, s: 0, l: 100 },
+        dimmer,
+        blendMode: 'replace',
+      }
+    })
+
     return {
-      effectId: this.id,
-      category: this.category,
-      phase: this.phase,
+      effectId:          this.id,
+      category:          this.category,
+      phase:             this.phase,
       progress,
-      zones: this.zones,
-      intensity: visualIntensity,
-
-      // DMX hardware: full dimmer + strobe channel
-      strobeRate: this.activeFrequencyHz,
-      dimmerOverride: this.triggerIntensity,
-      whiteOverride: this.triggerIntensity,
-
-      // ⚡ WAVE 2700: ZONE-COMPLETE con movers en COLOR PASS-THROUGH
-      // front/back: Blanco puro (máximo impacto físico en PARs RGB)
-      // movers: color: undefined → hereda Layer 0 (Vibe base color)
-      //   StrobeStorm solo dispara dimmer 100% en movers, no reemplaza color
-      zoneOverrides: {
-        front: {
-          color: { h: 0, s: 0, l: 100 },  // Blanco puro
-          dimmer: this.isFlashOn ? this.triggerIntensity : 0,
-          blendMode: 'replace',
-        },
-        back: {
-          color: { h: 0, s: 0, l: 100 },  // Blanco puro
-          dimmer: this.isFlashOn ? this.triggerIntensity : 0,
-          blendMode: 'replace',
-        },
-        'movers-left': {
-          // 🌑 WAVE 2700: COLOR PASS-THROUGH — undefined = Layer 0 manda el color
-          color: undefined,
-          dimmer: this.isFlashOn ? this.triggerIntensity : 0,
-          blendMode: 'replace',
-        },
-        'movers-right': {
-          color: undefined,
-          dimmer: this.isFlashOn ? this.triggerIntensity : 0,
-          blendMode: 'replace',
-        },
-      },
-
-      // Dictador total — suprime cualquier layer inferior durante la tormenta
+      zones:             this.zones,
+      intensity:         globalIntensity,
+      // Sin strobeRate — dimmer es el canal de control exclusivo
+      dimmerOverride:    globalIntensity,
       globalComposition: 1.0,
+      zoneOverrides,
     }
   }
 
   private getDegradedOutput(): EffectFrameOutput {
-    // Modo degradado forzado por Vibe (ej. entorno donde el strobe está prohibido).
-    // WAVE 2700: Ya NO es un pulso sinusoidal. Es un corte duro ON/OFF
-    // modulado cada 2 beats. Suave NO. Degradado NO significa cariñoso.
-    const bpm = this.getCurrentBpm(120)
-    const msPerBeat = 60000 / bpm
-    const cutPeriodMs = msPerBeat * 2    // corte cada 2 beats
-    const pos = (this.elapsedMs % cutPeriodMs) / cutPeriodMs
-    // Primera mitad: encendido / Segunda mitad: apagado — corte duro
-    const dimmer = pos < 0.5 ? this.triggerIntensity : 0
+    // Modo degradado (vibe restrictivo). Corte duro ON/OFF cada 2 beats.
+    // Sin sinusoide, sin rampa. Degradado no es cariñoso.
+    const bpm         = this.getCurrentBpm(120)
+    const msPerBeat   = 60000 / bpm
+    const cutPeriodMs = msPerBeat * 2
+    const pos         = (this.elapsedMs % cutPeriodMs) / cutPeriodMs
+    const dimmer      = pos < 0.5 ? this.triggerIntensity : 0
 
     return {
-      effectId: this.id,
-      category: this.category,
-      phase: this.phase,
-      progress: this.calculateProgress(),
-      zones: this.zones,
-      intensity: dimmer,
-      dimmerOverride: dimmer,
-      // Sin color — pass-through en modo degradado también
+      effectId:          this.id,
+      category:          this.category,
+      phase:             this.phase,
+      progress:          this.calculateProgress(),
+      zones:             this.zones,
+      intensity:         dimmer,
+      dimmerOverride:    dimmer,
       globalComposition: 1.0,
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
   // Helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
 
   private transitionPhase(newPhase: EffectPhase): void {
-    this.phase = newPhase
+    this.phase        = newPhase
     this.phaseStartMs = this.elapsedMs
   }
 
@@ -362,11 +436,10 @@ export class StrobeStorm extends BaseEffect {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 export function createStrobeStorm(config?: Partial<StrobeStormConfig>): StrobeStorm {
   return new StrobeStorm(config)
 }
-

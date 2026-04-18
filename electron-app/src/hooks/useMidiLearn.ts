@@ -209,9 +209,12 @@ export function useMidiLearn() {
     if (controlId.startsWith('fx-')) {
       if (msg.type !== 'note_on') return
       const effectId = controlId.slice(3) // 'fx-strobe_storm' → 'strobe_storm'
-      const intensity = msg.value / 127    // velocity → intensity (0.0-1.0)
+      // WAVE 3303: Piano Syndrome fix — manual pad trigger = FULL POWER, always 1.0
+      // Velocity from nanoPAD2 pads is physically inconsistent (0.42–0.78 range).
+      // A manual trigger intent is binary: either fired or not. No half-measures.
+      const intensity = 1.0
       window.lux.forceStrike({ effect: effectId, intensity })
-      console.log(`[MidiLearn] ⚡ FORCE STRIKE: ${effectId} @ ${(intensity * 100).toFixed(0)}%`)
+      console.log(`[MidiLearn] ⚡ FORCE STRIKE: ${effectId} @ 100% (manual — velocity ignored)`)
       return
     }
 
@@ -302,9 +305,20 @@ export function useMidiLearn() {
 
       case 'lux-blackout': {
         if (msg.type !== 'note_on') return
-        // WAVE 3302: Fire REAL arbiter blackout (DMX), not just UI state
-        window.lux.arbiter.toggleBlackout()
-        luxSyncStore.toggleBlackout() // Keep UI in sync
+        // WAVE 3303: Blackout sync fix — don't double-toggle blindly.
+        // Backend is the source of truth. IPC toggle returns the real new state.
+        // We set the store to match the backend response, not toggle independently.
+        // This prevents desync when UI and MIDI get out of phase.
+        window.lux.arbiter.toggleBlackout().then((result: { success: boolean; active: boolean } | undefined) => {
+          if (result?.success) {
+            luxSyncStore.setBlackout(result.active)
+          } else {
+            // Fallback: fire-and-forget toggle if IPC fails (rare)
+            luxSyncStore.toggleBlackout()
+          }
+        }).catch(() => {
+          luxSyncStore.toggleBlackout()
+        })
         break
       }
     }

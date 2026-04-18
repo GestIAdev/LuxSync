@@ -2205,39 +2205,41 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2662 + WAVE 3200 + WAVE 3302: EFFECT INTENTS — Layer 3 SUPREME
+    // 🎯 WAVE 2662 + WAVE 3200 + WAVE 3303: EFFECT INTENTS — Layer 3 SUPREME
     //
-    // Layer 3 applies ON TOP of whatever Layer 2 or Layer 0 decided.
-    // If an effect intent exists for this fixture+channel, it overrides.
+    // mixBus='htp'    → Collaborative: dimmer=HTP(max), color=LTP(intent wins)
+    // mixBus='global' → Dictator Split:
     //
-    // mixBus='htp'    → Collaborative: dimmer=HTP(max of base, intent), color=LTP(intent wins)
-    // mixBus='global' → Dictator: LERP(base, intent, globalComposition)
+    //   DIMMER  → REPLACE ESTRICTO (no LERP, no HTP).
+    //     GatlingRaid dice dimmer=0 entre balas → es 0 absoluto.
+    //     La alpha/globalComposition no interviene aquí — el efecto ES el dueño.
     //
-    // WAVE 3302 — IRON CURTAIN FOR GLOBAL:
-    // When mixBus='global', the effect is the ABSOLUTE OWNER of this fixture.
-    // If the intent doesn't specify a channel (e.g. no color during flash-OFF),
-    // that channel must be 0, NOT fall through to base. Otherwise AI base color
-    // bleeds through during the OFF phases of strobe/gatling effects.
+    //   COLOR/WHITE/AMBER → FALLBACK TRANSPARENTE.
+    //     Si el intent define color → ese color gana (LTP, sin LERP).
+    //     Si el intent NO define color (null) → deja fluir la capa base.
+    //     Esto preserva la saturación de la sala durante las ráfagas.
     // ═══════════════════════════════════════════════════════════════════════
     const effectIntent = this.layer3_effectIntents.get(fixtureId)
     if (effectIntent) {
       const intentValue = this.getIntentValueForChannel(effectIntent, channel)
-      
+
       if (effectIntent.mixBus === 'global') {
-        // GLOBAL mode: The effect is DICTATOR for this fixture
-        const alpha = effectIntent.globalComposition
-        // WAVE 3302: Iron Curtain — unspecified channels default to 0, not base
-        const effectValue = intentValue !== null ? intentValue : 0
-        const blended = baseValue + (effectValue - baseValue) * alpha
         controlSources[channel] = ControlLayer.EFFECTS
-        return blended
+        if (channel === 'dimmer') {
+          // WAVE 3303: REPLACE ESTRICTO — dimmer del efecto aplasta siempre.
+          // Si Gatling dice "0", es negro absoluto (para que el strobe funcione).
+          return intentValue !== null ? intentValue : 0
+        } else {
+          // Color channels: FALLBACK TRANSPARENTE
+          // Intent define color → ese color. No define → hereda base (sala conserva vibe).
+          return intentValue !== null ? intentValue : baseValue
+        }
       } else if (intentValue !== null) {
         // HTP mode: dimmer = max(base, intent), color channels = intent wins (LTP)
         if (channel === 'dimmer') {
           controlSources[channel] = ControlLayer.EFFECTS
           return Math.max(baseValue, intentValue)
         } else {
-          // Color channels (red, green, blue) and white/amber → LTP, intent wins
           controlSources[channel] = ControlLayer.EFFECTS
           return intentValue
         }

@@ -145,22 +145,34 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
   // Track last beat state to toggle class without React
   const lastBeatRef = useRef(false)
 
+  // 🎵 WAVE 3250: TEMPORAL LERP — Suavizar transiciones entre updates IPC (22Hz→60fps)
+  // Los datos de audio llegan cada ~45ms. Sin LERP, las barras se congelan 2-3 frames.
+  // Con LERP exponencial local, cada frame RAF interpola suavemente hacia el valor target.
+  const smoothBass = useRef(0)
+  const smoothMid = useRef(0)
+  const smoothHigh = useRef(0)
+  const AUDIO_LERP = 0.35  // Converge en ~5 frames (83ms) — idéntico al 3D
+
   // ─── THE RAF ENGINE ────────────────────────────────────────────────────
   useEffect(() => {
     let frameId: number
 
     const tick = (now: number) => {
-      // 🔥 WAVE 2405: Read TRANSIENT store — updated every IPC frame (~12.5fps)
-      // Before: useTruthStore.getState() → throttled to ~2fps (WAVE 2236 sedation)
-      // After: getTransientTruth() → every IPC frame, zero React cost
+      // 🔥 WAVE 2405: Read TRANSIENT store — updated every IPC frame
+      // 🎵 WAVE 3250: Ahora actualizado a 22Hz (hot-frame incluye audio bands)
       const truth = getTransientTruth()
       if (!truth) { frameId = requestAnimationFrame(tick); return }
       const audio = truth.sensory.audio
       const beat = truth.sensory.beat
 
+      // 🎵 WAVE 3250: TEMPORAL LERP — exponential smoothing local
+      smoothBass.current += (audio.bass - smoothBass.current) * AUDIO_LERP
+      smoothMid.current += (audio.mid - smoothMid.current) * AUDIO_LERP
+      smoothHigh.current += (audio.high - smoothHigh.current) * AUDIO_LERP
+
       // ── Interpolate bands (zero allocation) ──
       interpolateTo32BandsInPlace(
-        audio.bass, audio.mid, audio.high,
+        smoothBass.current, smoothMid.current, smoothHigh.current,
         bandsBuffer.current, now
       )
 

@@ -1331,6 +1331,14 @@ export class TitanOrchestrator {
         onBeat: engineAudioMetrics.isBeat,
         beatConfidence: engineAudioMetrics.beatConfidence,
         bpm: engineAudioMetrics.bpm,
+        // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
+        // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
+        // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
+        // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
+        bass,
+        mid,
+        high,
+        energy,
         fixtures: fixtureStates.map((f, i) => {
           const originalFixture = this.fixtures[i]
           const realId = originalFixture?.id || `fix_${i}`

@@ -19,7 +19,7 @@
 import React, { useRef } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { getTransientFixture } from '../../../../../stores/transientStore'
+import { getTransientFixture, getVibeGeneration } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -164,6 +164,9 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   // Reusable THREE.Color for useFrame (no allocations per frame)
   const liveColor = useRef(new THREE.Color())
 
+  // 🪞 WAVE 3260: Track vibe generation to detect vibe changes
+  const localVibeGen = useRef(0)
+
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
 
@@ -180,10 +183,27 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     const fixtureState = getTransientFixture(fixtureId)
 
-    // If fixture not found in store, use prop values as fallback
-    const livePan = fixtureState?.physicalPan ?? fixtureState?.pan ?? fixture.physicalPan
-    const liveTilt = fixtureState?.physicalTilt ?? fixtureState?.tilt ?? fixture.physicalTilt
-    const liveIntensity = fixtureState?.dimmer ?? fixture.intensity
+    // 🪞 WAVE 3260 Fix F: VIBE SNAP — Detect vibe change → reset smooth refs
+    // Without this, a vibe change causes the 3D movers to slowly lerp (163ms)
+    // to the new position, creating visible desync with the physical output.
+    const currentVibeGen = getVibeGeneration()
+    if (currentVibeGen !== localVibeGen.current) {
+      localVibeGen.current = currentVibeGen
+      smoothPan.current = null  // Forces snap on next smoothing block
+    }
+
+    // 🪞 WAVE 3260 Fix E: ANTI-ZOMBIE — No fixture state → kill the light
+    // Before: fell back to stale React props from mount → zombie fixtures
+    // Now: no data = no light. The 3D mirror must reflect reality.
+    if (!fixtureState) {
+      if (beamMeshRef.current) beamMeshRef.current.visible = false
+      if (lensMaterialRef.current) lensMaterialRef.current.color.setScalar(0)
+      return
+    }
+
+    const livePan = fixtureState.physicalPan ?? fixtureState.pan ?? 0.5
+    const liveTilt = fixtureState.physicalTilt ?? fixtureState.tilt ?? 0.5
+    const liveIntensity = fixtureState.dimmer ?? 0
 
     // 🔦 WAVE 2088.12: Live zoom from store (0-255 DMX) → normalized 0-1
     // Zoom is sent as raw DMX 0-255 from TitanOrchestrator.
@@ -222,7 +242,7 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     // Convert smoothed 0-1 to radians
     // 🛡️ WAVE 2088.11: TILT_REST_ANGLE makes beam point ~45° forward at DMX center.
     // Without this, tilt=0.5 → beam perpendicular to floor → pan sweeps are invisible.
-    const panAngle = (smoothPan.current - 0.5) * PAN_RANGE
+    const panAngle = (smoothPan.current! - 0.5) * PAN_RANGE
     const tiltAngle = -(smoothTilt.current! - 0.5) * TILT_RANGE + TILT_REST_ANGLE
     yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
     headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)

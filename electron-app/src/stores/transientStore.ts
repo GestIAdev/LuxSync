@@ -44,6 +44,17 @@ const transientRef: {
   lastUpdateTime: 0,
 }
 
+// 🗺️ WAVE 3250: FIXTURE INDEX — O(1) lookup en vez de Array.find() por frame.
+// Con 12 fixtures y 60fps useFrame: antes = 720 .find() calls/sec → ahora = 720 Map.get()
+// Se reconstruye solo cuando llega una full SeleneTruth (7Hz), no en cada hot-frame.
+let fixtureIndex: Map<string, any> = new Map()
+
+// 🪞 WAVE 3260: VIBE GENERATION COUNTER — Monotonically incrementing.
+// 3D components read this to detect vibe changes and SNAP (reset smooth refs)
+// instead of slowly lerping to the new state (which creates desync).
+let vibeGeneration = 0
+let lastVibeId: string | null = null
+
 // ═══════════════════════════════════════════════════════════════════════════
 // API PÚBLICA
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,6 +67,23 @@ export function injectTransientTruth(truth: SeleneTruth): void {
   transientRef.current = truth
   transientRef.frameCount++
   transientRef.lastUpdateTime = Date.now()
+
+  // 🪞 WAVE 3260: Detect vibe change → increment generation counter
+  const currentVibe = truth?.consciousness?.vibe?.active ?? null
+  if (currentVibe !== lastVibeId) {
+    lastVibeId = currentVibe
+    vibeGeneration++
+  }
+
+  // 🗺️ WAVE 3250: Rebuild fixture index on full truth injection
+  const fixtures = truth?.hardware?.fixtures
+  if (fixtures) {
+    fixtureIndex.clear()
+    for (let i = 0; i < fixtures.length; i++) {
+      const f = fixtures[i]
+      if (f?.id) fixtureIndex.set(f.id, f)
+    }
+  }
 }
 
 /**
@@ -141,6 +169,16 @@ export function injectHotFrame(hotFrame: any): void {
     transientRef.current.sensory.beat.bpm = hotFrame.bpm ?? 0
   }
 
+  // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Patch audio bands from hot-frame (22Hz)
+  // Antes: bass/mid/high/energy solo llegaban en selene:truth (~7Hz).
+  // AudioSpectrumTitan leía valores idénticos 8-9 frames → escalones visibles.
+  if (transientRef.current.sensory?.audio && hotFrame.bass !== undefined) {
+    transientRef.current.sensory.audio.bass = hotFrame.bass
+    transientRef.current.sensory.audio.mid = hotFrame.mid
+    transientRef.current.sensory.audio.high = hotFrame.high
+    transientRef.current.sensory.audio.energy = hotFrame.energy
+  }
+
   // ── Patch frame number ────────────────────────────────────────────
   if (transientRef.current.system) {
     transientRef.current.system.frameNumber = hotFrame.frameNumber ?? transientRef.current.system.frameNumber
@@ -157,12 +195,19 @@ export function getTransientTruth(): SeleneTruth | null {
 
 /**
  * 🔍 Leer fixture específico por ID (optimización)
+ * 🗺️ WAVE 3250: O(1) via Map index en vez de Array.find()
  */
 export function getTransientFixture(fixtureId: string) {
-  const truth = transientRef.current
-  if (!truth?.hardware?.fixtures) return null
-  
-  return truth.hardware.fixtures.find(f => f?.id === fixtureId)
+  return fixtureIndex.get(fixtureId) ?? null
+}
+
+/**
+ * 🪞 WAVE 3260: Vibe generation counter
+ * Monotonically incrementing — 3D components compare against their local
+ * copy to detect vibe changes and SNAP smooth refs.
+ */
+export function getVibeGeneration(): number {
+  return vibeGeneration
 }
 
 /**

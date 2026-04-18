@@ -72,8 +72,20 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     // read directly from the mutable ref store inside useFrame().
     // ═══════════════════════════════════════════════════════════════════════
     const fixtureState = getTransientFixture(id)
-    
-    const liveIntensity = fixtureState?.dimmer ?? fixture.intensity
+
+    // 🪞 WAVE 3260 Fix E: ANTI-ZOMBIE — No fixture state → kill the light
+    if (!fixtureState) {
+      if (lensMaterialRef.current) {
+        lensMaterialRef.current.color.setScalar(0)
+        lensMaterialRef.current.opacity = 0.15
+      }
+      if (haloMaterialRef.current) haloMaterialRef.current.opacity = 0
+      if (haloOuterRef.current) haloOuterRef.current.opacity = 0
+      if (pointLightRef.current) pointLightRef.current.intensity = 0
+      return
+    }
+
+    const liveIntensity = fixtureState.dimmer ?? 0
     const isOn = liveIntensity > 0.01
     
     // Color from store (0-255 RGB) or fallback to prop

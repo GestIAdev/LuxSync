@@ -1067,8 +1067,18 @@ export class MasterArbiter extends EventEmitter {
    */
   setEffectIntents(intents: EffectIntentMap): void {
     // 🛡️ WAVE 3305: Strip movement from ALL effect intents
-    for (const intent of intents.values()) {
+    // 🛡️ WAVE 3307: Deep Seal — strip color/white/amber from movers on global effects
+    for (const [fixtureId, intent] of intents) {
       delete intent.movement
+
+      if (intent.mixBus === 'global') {
+        const fixtureMeta = this.fixtures.get(fixtureId)
+        if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
+          delete intent.color
+          delete intent.white
+          delete intent.amber
+        }
+      }
     }
     this.layer3_effectIntents = intents
   }

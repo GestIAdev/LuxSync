@@ -125,7 +125,7 @@ export class CorazonLatino extends BaseEffect {
   readonly name = 'Corazón Latino'
   readonly category: EffectCategory = 'physical'
   readonly priority = 85  // Alta prioridad - es épico
-  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - corazón necesita sus colores
+  readonly mixBus = 'htp' as const  // 🚂 WAVE 3307: HTP — ambient effect, color flows to movers through Deep Seal
   
   private config: CorazonLatinoConfig
   private currentHeartbeat = 0

@@ -86,10 +86,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // rawRight = trebleDelta×4: el ruido de fondo tiene delta≈0 (señal continua), los transitories arrancan.
   // gateOn 0.15: cualquier salto brusco del treble lo activa
   // gateOff 0.02: apagado inmediato tras el impacto
+  // WAVE 3311: gateOn 0.05→0.18 + boost 3.0→2.5 + percGate 0.01→0.06
+  //   Demasiado back-par con cualquier fuente (voces, fondo). Gate insuficiente.
+  //   Subimos gate+percGate para requerir un hit de percusión real.
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.05,   // Reducido desde 0.35 para cazar ghost notes
-    boost: 3.0,     // Ajustado para compensar el gate bajo sin saturar
+    gateOn: 0.18,   // WAVE 3311: 0.05→0.18 — filtra voces y ruido de fondo
+    boost: 2.5,     // WAVE 3311: 3.0→2.5 — compensamos el gate más alto
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.40,      // WAVE 2451: 0.15→0.40 — en Anyma (morph=0.8) decay=0.37, flote melódico.
@@ -141,7 +144,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   percMidSubtract: 1.0,   // WAVE 2424: Escudo Absoluto — relación 1:1, ningún sinte puede engañar al Látigo
-  percGate: 0.01,          // WAVE 2419: 0.14→0.01 (rIn maxeaba 0.155, gate era muro)
+  percGate: 0.06,          // WAVE 3311: 0.01→0.06 — transient shaper filtra variaciones de treble pequeñas (voces)
   percBoost: 5.0,          // WAVE 2419: 8.0→5.0
   percExponent: 0.5,       // WAVE 2419: 1.2→0.5 (raíz cuadrada, suaviza transitorio)
 

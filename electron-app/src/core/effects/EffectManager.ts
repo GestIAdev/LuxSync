@@ -723,6 +723,7 @@ export class EffectManager extends EventEmitter {
     }
     
     let maxDimmer = 0
+    let hasDimmerOverride = false  // 🌊 WAVE 3304: Track si ALGÚN efecto seteó dimmerOverride (incluso a 0)
     let maxWhite = 0
     let maxAmber = 0  // 🧨 WAVE 630
     let maxStrobeRate = 0
@@ -763,9 +764,12 @@ export class EffectManager extends EventEmitter {
       
       contributing.push(id)
       
-      // HTP for dimmer
-      if (output.dimmerOverride !== undefined && output.dimmerOverride > maxDimmer) {
-        maxDimmer = output.dimmerOverride
+      // HTP for dimmer — 🌊 WAVE 3304: trackear presencia incluso cuando dimmerOverride=0
+      if (output.dimmerOverride !== undefined) {
+        hasDimmerOverride = true
+        if (output.dimmerOverride > maxDimmer) {
+          maxDimmer = output.dimmerOverride
+        }
       }
       
       // HTP for white
@@ -889,7 +893,7 @@ export class EffectManager extends EventEmitter {
     return {
       hasActiveEffects: true,
       mixBus: dominantMixBus,  // 🚂 WAVE 800: Railway Switch
-      dimmerOverride: maxDimmer > 0 ? maxDimmer : undefined,
+      dimmerOverride: hasDimmerOverride ? maxDimmer : undefined,  // 🌊 WAVE 3304: dimmerOverride=0 DEBE pasar cuando hay efectos activos
       whiteOverride: maxWhite > 0 ? maxWhite : undefined,
       amberOverride: maxAmber > 0 ? maxAmber : undefined,  // 🧨 WAVE 630
       colorOverride: highestPriorityColor,  // Legacy fallback

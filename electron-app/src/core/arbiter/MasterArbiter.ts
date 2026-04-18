@@ -69,6 +69,13 @@ import {
   type SpatialFanMode,
 } from '../../engine/movement/InverseKinematicsEngine'
 
+// 🛡️ WAVE 3304: MOVER SHIELD — canales de color que los movers deben ignorar de efectos
+// Constante a nivel de módulo para evitar re-creación en cada frame/fixture
+const MOVER_SHIELD_CHANNELS: ReadonlySet<ChannelType> = new Set<ChannelType>([
+  'red', 'green', 'blue', 'white', 'amber',
+  'uv', 'cyan', 'magenta', 'yellow', 'color_wheel',
+])
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2223,7 +2230,27 @@ export class MasterArbiter extends EventEmitter {
     if (effectIntent) {
       const intentValue = this.getIntentValueForChannel(effectIntent, channel)
 
-      if (effectIntent.mixBus === 'global') {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🛡️ WAVE 3304: MOVER SHIELD — Cabezas móviles ignoran color de efectos
+      //
+      // Los movers tienen rueda de color física (mecánica). Los efectos
+      // cambian color a 30fps+ → la rueda no puede seguir → ruido mecánico
+      // y parpadeo. SOLUCIÓN: bloquear canales de color para movers.
+      // El dimmer SÍ pasa — el efecto controla intensidad, no color mecánico.
+      // ═══════════════════════════════════════════════════════════════════
+
+      // 🛡️ WAVE 3304: MOVER SHIELD — detectar si debemos bloquear color para este fixture
+      let moverShieldActive = false
+      if (MOVER_SHIELD_CHANNELS.has(channel)) {
+        const fixtureMeta = this.fixtures.get(fixtureId)
+        if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
+          moverShieldActive = true
+        }
+      }
+
+      if (moverShieldActive) {
+        // Mover + canal de color → efecto NO aplica, base fluye intacta
+      } else if (effectIntent.mixBus === 'global') {
         controlSources[channel] = ControlLayer.EFFECTS
         if (channel === 'dimmer') {
           // WAVE 3303: REPLACE ESTRICTO — dimmer del efecto aplasta siempre.

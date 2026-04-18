@@ -52,6 +52,7 @@ import {
 } from '../stores/midiMapStore'
 import { useControlStore } from '../stores/controlStore'
 import { useLuxSyncStore } from '../stores/luxsyncStore'
+import { useEffectsStore } from '../stores/effectsStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -233,8 +234,19 @@ export function useMidiLearn() {
       switch (arbAction) {
         case 'blackout':
           if (msg.type !== 'note_on') return
-          window.lux.arbiter.toggleBlackout()
-          console.log('[MidiLearn] 🎛️ ARBITER: Toggle Blackout')
+          // 🔴 WAVE 3304: Absolute setter — lee estado actual del store, envía opuesto
+          {
+            const currentBlackout = useEffectsStore.getState().blackout
+            const targetState = !currentBlackout
+            window.lux.arbiter.setBlackout(targetState)
+              .then((result: { success?: boolean; blackoutActive?: boolean }) => {
+                if (result?.success) {
+                  useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetState)
+                }
+              })
+              .catch(() => {})
+            console.log(`[MidiLearn] 🎛️ ARBITER: Blackout → ${targetState ? 'ON' : 'OFF'}`)
+          }
           return
         case 'grand-master':
           if (msg.type !== 'cc') return
@@ -305,20 +317,17 @@ export function useMidiLearn() {
 
       case 'lux-blackout': {
         if (msg.type !== 'note_on') return
-        // WAVE 3303: Blackout sync fix — don't double-toggle blindly.
-        // Backend is the source of truth. IPC toggle returns the real new state.
-        // We set the store to match the backend response, not toggle independently.
-        // This prevents desync when UI and MIDI get out of phase.
-        window.lux.arbiter.toggleBlackout().then((result: { success: boolean; active: boolean } | undefined) => {
-          if (result?.success) {
-            luxSyncStore.setBlackout(result.active)
-          } else {
-            // Fallback: fire-and-forget toggle if IPC fails (rare)
-            luxSyncStore.toggleBlackout()
-          }
-        }).catch(() => {
-          luxSyncStore.toggleBlackout()
-        })
+        // 🔴 WAVE 3304: Absolute setter — lee estado, envía opuesto, sincroniza desde backend
+        const currentBlackoutState = useEffectsStore.getState().blackout
+        const targetBlackout = !currentBlackoutState
+        window.lux.arbiter.setBlackout(targetBlackout)
+          .then((result: { success?: boolean; blackoutActive?: boolean }) => {
+            if (result?.success) {
+              useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
+              luxSyncStore.setBlackout(result.blackoutActive ?? targetBlackout)
+            }
+          })
+          .catch(() => {})
         break
       }
     }

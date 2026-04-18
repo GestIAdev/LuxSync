@@ -1,12 +1,13 @@
 /**
- * 🔴 BLACKOUT BUTTON - WAVE 2073: IPC FIX
+ * 🔴 BLACKOUT BUTTON — WAVE 3304: ABSOLUTE SETTER
  * Emergency kill switch - big, red, isolated
  * Always accessible with SPACE key
  * 
- * WAVE 2073 FIX: Was calling window.lux.setBlackout() → IPC 'lux:set-blackout' (NO HANDLER)
- * Now calls window.lux.arbiter.toggleBlackout() → IPC 'lux:arbiter:toggleBlackout' (CONNECTED)
- * 
- * WAVE 2074: Sync store with backend response + rollback on failure
+ * WAVE 3304 FIX: Replaced toggle-relative logic with absolute setBlackout(true/false).
+ * - Reads current store state → sends the opposite explicitly
+ * - No optimistic toggle → no rollback needed → no desync possible
+ * - Fire-and-forget with .then() → no UI deadlock from await
+ * - Backend returns authoritative state → store syncs from truth
  */
 
 import React, { useCallback } from 'react'
@@ -16,33 +17,25 @@ import { useEffectsStore, selectBlackoutButton } from '../../stores/effectsStore
 import './CommandDeck.css'
 
 export const BlackoutButton: React.FC = () => {
-  // 🛡️ WAVE 2042.13.8: useShallow for stable reference
-  const { blackout, toggleBlackout } = useEffectsStore(useShallow(selectBlackoutButton))
+  const { blackout, setBlackout } = useEffectsStore(useShallow(selectBlackoutButton))
   
-  const handleBlackout = useCallback(async () => {
-    // Toggle local state first (optimistic UI)
-    toggleBlackout()
+  const handleBlackout = useCallback(() => {
+    const targetState = !blackout
     
-    // 🔧 WAVE 2073 FIX: Use arbiter.toggleBlackout (correct IPC channel)
-    // 🔧 WAVE 2074: Rollback on failure — no more phantom overlays
-    try {
-      const result = await window.lux?.arbiter?.toggleBlackout()
-      if (result?.success) {
-        console.log(`[BlackoutButton] 🔴 Blackout: ${result.active ? 'ON' : 'OFF'}`)
-      } else {
-        console.error('[BlackoutButton] toggleBlackout returned no success:', result)
-        // Rollback: undo the optimistic toggle
-        toggleBlackout()
-      }
-    } catch (err) {
-      console.error('[BlackoutButton] Blackout IPC error:', err)
-      // Rollback on error
-      toggleBlackout()
-    }
-  }, [toggleBlackout])
-  
-  // ⚡ WAVE 2074: SPACE key listener REMOVED from here
-  // KeyboardProvider handles SPACE globally with proper IPC — no more duplicate listeners
+    // 🔴 WAVE 3304: Absolute setter — sin toggle, sin optimismo, sin deadlock
+    window.lux?.arbiter?.setBlackout(targetState)
+      .then((result: { success?: boolean; blackoutActive?: boolean }) => {
+        if (result?.success) {
+          setBlackout(result.blackoutActive ?? targetState)
+          console.log(`[BlackoutButton] 🔴 Blackout: ${result.blackoutActive ? 'ON' : 'OFF'}`)
+        } else {
+          console.error('[BlackoutButton] setBlackout failed:', result)
+        }
+      })
+      .catch((err: unknown) => {
+        console.error('[BlackoutButton] Blackout IPC error:', err)
+      })
+  }, [blackout, setBlackout])
   
   return (
     <button

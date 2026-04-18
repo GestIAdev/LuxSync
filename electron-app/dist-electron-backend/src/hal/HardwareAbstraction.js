@@ -80,6 +80,8 @@ export class HardwareAbstraction {
         this.universeBuffers = new Map();
         this.lastFixtureStates = [];
         this.lastDebugTime = 0; // WAVE 256.7: For throttled debug logging
+        // 🔬 WAVE 3040: COLOR CHANGE DETECTOR — color anterior por fixture
+        this._colorSnapshot = new Map(); // fixtureId → último RGB enviado
         // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
         this.lastPhysicsFrameTime = 0;
         // (BPM fields declared above — WAVE 2720)
@@ -609,8 +611,12 @@ export class HardwareAbstraction {
                 console.log(`[👁️ HAL] ${this.currentVibeId} | Target:${panDeg}°/${tiltDeg}° → Phys:${physPanDeg}°/${physTiltDeg}° | Z:${m.zoom} F:${m.focus}`);
             }
         }
-        // 5. DRIVER: Send to hardware
-        this.sendToDriver(statesWithPhysics);
+        // ⚡ WAVE 3070: sendToDriver() eliminado de aquí.
+        // WAVE 3065 ya separó el pipeline: renderFromTarget() solo calcula y retorna.
+        // El Orchestrator llama flushToDriver() DESPUÉS del broadcast UI.
+        // Tener sendToDriver() aquí causaba:
+        //   1. Double-send por frame (este + flushToDriver del Orchestrator)
+        //   2. Aduana zerificando los objetos ANTES del broadcast → UI ciega con outputEnabled=false
         // Update stats
         this.framesRendered++;
         this.lastRenderTime = performance.now() - startTime;
@@ -619,8 +625,7 @@ export class HardwareAbstraction {
             this.renderTimes.shift();
         // Store for UI broadcast
         this.lastFixtureStates = statesWithPhysics;
-        // Debug logging (1% sample rate)
-        if (this.config.debug && Math.random() < 0.01) {
+        if (this.config.debug && this.framesRendered % 100 === 0) {
             const activeCount = statesWithPhysics.filter(f => f.dimmer > 0).length;
             console.log(`[HAL] 🔧 Render #${this.framesRendered} | ` +
                 `Active: ${activeCount}/${statesWithPhysics.length} | ` +
@@ -675,6 +680,7 @@ export class HardwareAbstraction {
         if (target.globalEffects.blackoutActive) {
             const blackoutStates = fixtures.map(fixture => ({
                 fixtureId: fixture.id || fixture.name, // 🔧 WAVE 2049.1: Propagate fixtureId
+                isVirtual: fixture.isVirtual ?? false, // 🛡️ WAVE 3110
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone: (fixture.zone || 'UNASSIGNED'),
@@ -715,6 +721,9 @@ export class HardwareAbstraction {
                 // Use arbitrated values directly
                 const baseState = {
                     fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state (was undefined!)
+                    // 🛡️ WAVE 3110: Propagate virtual flag — virtual fixtures render for UI
+                    // but are excluded from physical DMX output in sendToDriver()
+                    isVirtual: fixture.isVirtual ?? false,
                     name: fixture.name,
                     type: fixture.type || 'generic',
                     zone,
@@ -757,6 +766,7 @@ export class HardwareAbstraction {
             // Fallback: fixture not in arbiter output (shouldn't happen)
             return {
                 fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state
+                isVirtual: fixture.isVirtual ?? false, // 🛡️ WAVE 3110
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone,
@@ -796,11 +806,13 @@ export class HardwareAbstraction {
         //         Optics now sync to ACTUAL music tempo, not a fake metronome.
         // ═══════════════════════════════════════════════════════════════════════
         const beatPhase = audio.beatPhase ?? 0;
-        // 🏎️ WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
+        // \ud83c\udfc\ufe0f WAVE 2074.2: Measure real deltaTime ONCE per frame (not per fixture)
         const physicsDt = this.measurePhysicsDeltaTime();
-        const statesWithPhysics = fixtureStates.map((state, index) => {
-            const fixture = fixtures[index];
-            const fixtureId = fixture?.id || `fallback_mover_${index}`;
+        // \u26a1 WAVE 3050: Zero-allocation \u2014 mutate fixtureStates in-place, no .map() + spread
+        for (let i = 0; i < fixtureStates.length; i++) {
+            const state = fixtureStates[i];
+            const fixture = fixtures[i];
+            const fixtureId = fixture?.id || `fallback_mover_${i}`;
             const isMovingFixture = state.zone.includes('MOVING') ||
                 state.type?.toLowerCase().includes('moving') ||
                 state.type?.toLowerCase().includes('spot') ||
@@ -812,13 +824,11 @@ export class HardwareAbstraction {
             const movementIntensity = Math.sqrt(Math.pow(panNorm - 0.5, 2) + Math.pow(tiltNorm - 0.5, 2)) * 2;
             // Apply dynamic optics
             const opticsMod = this.applyDynamicOptics(movementIntensity, beatPhase, opticsTimeSeconds);
-            const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
-            const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
+            state.zoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
+            state.focus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
             if (isMovingFixture) {
-                // 🧠 WAVE 2061 + 2088.6: INYECCIÓN DE PERFIL FÍSICO (CON TRADUCTOR)
-                // 🗑️ WAVE 2211: Only inject on first encounter or after vibe change.
-                // The fixture's physical profile (motor type, max velocity) doesn't change
-                // at runtime. Re-translating + re-injecting 60×/sec was pure GC waste.
+                // \ud83e\udde0 WAVE 2061 + 2088.6: INYECCI\u00d3N DE PERFIL F\u00cdSICO (CON TRADUCTOR)
+                // \ud83d\uddd1\ufe0f WAVE 2211: Only inject on first encounter or after vibe change.
                 if (!this.injectedPhysicsProfiles.has(fixtureId)) {
                     const profile = this.getFixtureProfileCached(fixture);
                     const rawPhysics = profile?.physics || profile?.physicsProfile || profile;
@@ -828,48 +838,37 @@ export class HardwareAbstraction {
                     }
                     this.injectedPhysicsProfiles.add(fixtureId);
                 }
-                // 🏎️ WAVE 2074.2: Apply physics interpolation with real deltaTime
-                // 🔥 WAVE 2785.3: Detect manual position control → fast-track physics
-                // BUGFIX: This was missing in renderFromTarget() — only existed in render()
-                // Without this, manual overrides (Layer 2 pan/tilt) were interpolated through
-                // vibe physics (Chill = maxVelocity 8 DMX/s = glacial), ignoring the operator.
+                // \ud83c\udfc\ufe0f WAVE 2074.2: Apply physics interpolation with real deltaTime
+                // \ud83d\udd25 WAVE 2785.3: Detect manual position control \u2192 fast-track physics
                 const sources = state._controlSources;
                 const isManualPosition = sources !== undefined && (sources['pan'] === ControlLayer.MANUAL || sources['tilt'] === ControlLayer.MANUAL);
                 this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt, isManualPosition);
                 const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
-                // 🔧 WAVE 2093.1 + 2603: Apply calibration offsets + tilt limits
-                // 🎯 WAVE 2603: Pass ikProcessed flag to skip double-calibration
+                // \ud83d\udd27 WAVE 2093.1 + 2603: Apply calibration offsets + tilt limits
                 const calibrated = this.applyCalibrationOffsets(physicsState.physicalPan, physicsState.physicalTilt, fixture, state._ikProcessed ?? false);
-                return {
-                    ...state,
-                    zoom: finalZoom,
-                    focus: finalFocus,
-                    physicalPan: calibrated.pan,
-                    physicalTilt: calibrated.tilt,
-                    panVelocity: physicsState.panVelocity,
-                    tiltVelocity: physicsState.tiltVelocity,
-                };
+                // Mutate in-place \u2014 no spread/clone
+                state.physicalPan = calibrated.pan;
+                state.physicalTilt = calibrated.tilt;
+                state.panVelocity = physicsState.panVelocity;
+                state.tiltVelocity = physicsState.tiltVelocity;
             }
-            return {
-                ...state,
-                zoom: finalZoom,
-                focus: finalFocus,
-                physicalPan: state.pan,
-                physicalTilt: state.tilt,
-                panVelocity: 0,
-                tiltVelocity: 0,
-            };
-        });
-        // WAVE 3010: sendToDriver() removed — Orchestrator sends ONCE after all processing
-        // (eliminates double-send race condition with Hephaestus overlays)
+            else {
+                // Static fixture \u2014 mutate in-place
+                state.physicalPan = state.pan;
+                state.physicalTilt = state.tilt;
+                state.panVelocity = 0;
+                state.tiltVelocity = 0;
+            }
+        }
+        // WAVE 3010: sendToDriver() removed \u2014 Orchestrator sends ONCE after all processing
         // Update stats
         this.framesRendered++;
         this.lastRenderTime = performance.now() - startTime;
         this.renderTimes.push(this.lastRenderTime);
         if (this.renderTimes.length > 100)
             this.renderTimes.shift();
-        this.lastFixtureStates = statesWithPhysics;
-        return statesWithPhysics;
+        this.lastFixtureStates = fixtureStates;
+        return fixtureStates;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 2093.1: CALIBRATION INJECTION LAYER
@@ -1012,6 +1011,9 @@ export class HardwareAbstraction {
         }
         else {
             this.profileCache.clear();
+            // Clear per-fixture color history so the COLOR JUMP detector doesn't fire
+            // false alarms when the next show loads different colors on the same fixtures.
+            this._colorSnapshot.clear();
         }
         // Also clear injected physics profiles so they re-inject on next frame
         if (profileId) {
@@ -1347,30 +1349,51 @@ export class HardwareAbstraction {
      *
      * REPLACES the old sendStates() which was a physics-bypass backdoor.
      */
-    sendStatesWithPhysics(states) {
-        // Apply physics interpolation to all moving fixtures
+    /**
+     * ⚡ WAVE 3065: applyPhysicsOnly — corre la física de movimiento (physicalPan/Tilt)
+     * sin enviar al driver ni aplicar la Aduana DMX.
+     * Permite al Orchestrator leer los valores físicos reales para el hot-frame UI
+     * ANTES de que la Aduana los zerife cuando outputEnabled=false.
+     *
+     * Sequence en TitanOrchestrator:
+     *   1. hal.applyPhysicsOnly(states)  → physicalPan/Tilt actualizados
+     *   2. onHotFrame(states)            → UI recibe valores reales del engine
+     *   3. hal.flushToDriver(states)     → Aduana + DMX (puede zerificar)
+     */
+    applyPhysicsOnly(states) {
+        // ⚡ WAVE 3050: Zero-allocation — mutate in-place, no .map() + spread
         const physicsDt = this.measurePhysicsDeltaTime();
-        const safeStates = states.map((state) => {
-            // Detect if this is a moving fixture
+        for (let i = 0; i < states.length; i++) {
+            const state = states[i];
             const isMovingFixture = state.zone?.includes('MOVING') ||
                 state.type?.toLowerCase().includes('moving') ||
                 state.type?.toLowerCase().includes('spot') ||
                 state.type?.toLowerCase().includes('beam');
             if (!isMovingFixture)
-                return state;
+                continue;
             // 🛡️ Run physics: interpolate pan/tilt targets → smooth physicalPan/physicalTilt
             const fixtureId = state.fixtureId || `fixture-${state.dmxAddress}`;
             this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, physicsDt);
             const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
-            return {
-                ...state,
-                physicalPan: physicsState.physicalPan,
-                physicalTilt: physicsState.physicalTilt,
-                panVelocity: physicsState.panVelocity,
-                tiltVelocity: physicsState.tiltVelocity,
-            };
-        });
-        this.sendToDriver(safeStates);
+            // Mutate in-place — no spread/clone needed
+            state.physicalPan = physicsState.physicalPan;
+            state.physicalTilt = physicsState.physicalTilt;
+            state.panVelocity = physicsState.panVelocity;
+            state.tiltVelocity = physicsState.tiltVelocity;
+        }
+    }
+    /**
+     * ⚡ WAVE 3065: flushToDriver — aplica la Aduana DMX y envía al hardware.
+     * Llamar DESPUÉS de applyPhysicsOnly() y DESPUÉS de emitir el hot-frame UI.
+     */
+    flushToDriver(states) {
+        this.sendToDriver(states);
+    }
+    /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
+     * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
+    sendStatesWithPhysics(states) {
+        this.applyPhysicsOnly(states);
+        this.sendToDriver(states);
     }
     sendToDriver(states) {
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
@@ -1417,59 +1440,67 @@ export class HardwareAbstraction {
         //   } catch { /* nunca bloquear */ }
         // }
         if (!outputEnabled) {
-            states = states.map(state => {
+            // \u26a1 WAVE 3050: Zero-allocation \u2014 mutate in-place, no .map() + spread
+            for (let i = 0; i < states.length; i++) {
+                const state = states[i];
                 const sources = state._controlSources;
                 if (!sources) {
-                    // No source metadata → full blackout for safety
-                    return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 };
+                    // No source metadata \u2192 full blackout for safety
+                    state.dimmer = 0;
+                    state.r = 0;
+                    state.g = 0;
+                    state.b = 0;
+                    state.pan = 128;
+                    state.tilt = 128;
+                    state.physicalPan = 128;
+                    state.physicalTilt = 128;
+                    continue;
                 }
-                // Check if ANY channel is manual — if none, full blackout shortcut
+                // Check if ANY channel is manual \u2014 if none, full blackout shortcut
                 const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL);
                 if (!hasAnyManual) {
-                    return { ...state, dimmer: 0, r: 0, g: 0, b: 0, pan: 128, tilt: 128, physicalPan: 128, physicalTilt: 128 };
+                    state.dimmer = 0;
+                    state.r = 0;
+                    state.g = 0;
+                    state.b = 0;
+                    state.pan = 128;
+                    state.tilt = 128;
+                    state.physicalPan = 128;
+                    state.physicalTilt = 128;
+                    continue;
                 }
-                // Per-channel gate: manual channels pass, rest → safe values
-                // 🚧 WAVE 2229: physicalPan/physicalTilt MUST also be gated.
-                // The FixtureMapper reads physicalPan/physicalTilt with priority over pan/tilt.
-                // If we only gate pan/tilt but leave physicalPan/physicalTilt untouched,
-                // physics-interpolated values leak to DMX hardware.
+                // Per-channel gate: manual channels pass, rest \u2192 safe values
+                // \ud83d\udea7 WAVE 2229: physicalPan/physicalTilt MUST also be gated.
                 //
-                // WAVE 2961: COLOR COHERENCE — when the operator has manual control of
+                // WAVE 2961: COLOR COHERENCE \u2014 when the operator has manual control of
                 // the dimmer, the fixture's computed color (r/g/b/white/color_wheel) MUST
                 // also pass through, even if those channels are tagged as TITAN_AI.
-                // Reason: wheel-based movers (EL1140, etc.) have color driven by Titan's
-                // RGB->wheel translation. The operator set dimmer+pan+tilt manually to
-                // calibrate a position with light. If we zero r/g/b, BabelFish receives
-                // {r:0,g:0,b:0} -> wheel snaps to white/open -> the mover flashes on
-                // GO-off. The intended behavior: if you own the dimmer, you own the color.
                 //
-                // WAVE 2980: BABELFISH SELLO — Color coherence ONLY for mechanical fixtures
+                // WAVE 2980: BABELFISH SELLO \u2014 Color coherence ONLY for mechanical fixtures
                 // (those with a physical color wheel). LED PARs and RGB panels have no wheel
                 // mechanics, so they MUST be allowed to receive absolute zero on all channels.
-                // Allowing Titan color to leak through for LED fixtures produces a residual
-                // color base (e.g. 2% red) even when the fixture should be completely dark.
-                // Guard: dimmerIsManual color pass-through is gated behind hasColorWheel.
                 const dimmerIsManual = sources['dimmer'] === ControlLayer.MANUAL;
                 const hasMechanicalWheel = state.hasColorWheel === true;
                 const panSafe = sources['pan'] === ControlLayer.MANUAL;
                 const tiltSafe = sources['tilt'] === ControlLayer.MANUAL;
-                // For mechanical fixtures: dimmer ownership implies color ownership (anti-wheel-snap).
-                // For LED fixtures: color channels must zero independently — no wheel to protect.
                 const colorPassFromDimmer = dimmerIsManual && hasMechanicalWheel;
-                return {
-                    ...state,
-                    dimmer: dimmerIsManual ? state.dimmer : 0,
-                    r: (sources['red'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.r : 0,
-                    g: (sources['green'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.g : 0,
-                    b: (sources['blue'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.b : 0,
-                    white: (sources['white'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.white : 0,
-                    colorWheel: (sources['color_wheel'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.colorWheel : undefined,
-                    pan: panSafe ? state.pan : 128,
-                    tilt: tiltSafe ? state.tilt : 128,
-                    physicalPan: panSafe ? state.physicalPan : 128,
-                    physicalTilt: tiltSafe ? state.physicalTilt : 128,
-                };
-            });
+                // Mutate in-place
+                if (!dimmerIsManual)
+                    state.dimmer = 0;
+                state.r = (sources['red'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.r : 0;
+                state.g = (sources['green'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.g : 0;
+                state.b = (sources['blue'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.b : 0;
+                state.white = (sources['white'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.white : 0;
+                state.colorWheel = (sources['color_wheel'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.colorWheel : undefined;
+                if (!panSafe) {
+                    state.pan = 128;
+                    state.physicalPan = 128;
+                }
+                if (!tiltSafe) {
+                    state.tilt = 128;
+                    state.physicalTilt = 128;
+                }
+            }
         }
         // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
         const withWhite = states.filter(s => s.white !== undefined && s.white > 0);
@@ -1564,8 +1595,51 @@ export class HardwareAbstraction {
                 // nunca bloquear el output — la trampa es observadora, no tiene poder de veto
             }
         }
+        // � WAVE 3040: COLOR CHANGE DETECTOR — detecta saltos bruscos de color entre frames.
+        // Umbral: distancia Euclidiana en RGB > 120 (ej: verde→rojo = ~360).
+        // Se dispara UNA VEZ por fixture cuando el color salta — no spam por frame.
+        // Ignora fixtures donde el color nuevo es el mismo que el anterior (estado estable).
+        for (const _fs of states) {
+            const fid = _fs.fixtureId ?? `addr:${_fs.dmxAddress}`;
+            const r = _fs.r ?? 0;
+            const g = _fs.g ?? 0;
+            const b = _fs.b ?? 0;
+            const prev = this._colorSnapshot.get(fid);
+            if (prev !== undefined) {
+                const dr = r - prev.r;
+                const dg = g - prev.g;
+                const db = b - prev.b;
+                const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+                if (dist > 120) {
+                    console.warn(`[COLOR JUMP] 🎨 fid:${fid} addr:${_fs.dmxAddress} ` +
+                        `(${prev.r},${prev.g},${prev.b})→(${r},${g},${b}) Δ=${dist.toFixed(0)} ` +
+                        `dimmer:${_fs.dimmer ?? 0} ` +
+                        `src_red:${_fs._controlSources?.['red'] ?? '?'} ` +
+                        `src_dim:${_fs._controlSources?.['dimmer'] ?? '?'} ` +
+                        `frame:${this.framesRendered}`);
+                }
+            }
+            this._colorSnapshot.set(fid, { r, g, b });
+        }
         // Convert states to DMX packets
-        const packets = this.mapper.statesToDMXPackets(states);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 3110: VIRTUAL FIXTURE GATE — The Last Frontier
+        //
+        // Virtual fixtures participate in everything ABOVE this line:
+        //   ✅ Arbiter routing (so they count for zone balance)
+        //   ✅ Physics engine (so HyperionView draws them moving)
+        //   ✅ Color jump detection (diagnostics)
+        //   ✅ Hot-frame broadcast (UI preview sees them)
+        //
+        // But they NEVER cross into DMX territory:
+        //   ❌ No DMX packets generated
+        //   ❌ No buffer writes in UniversalDMXDriver
+        //   ❌ No data to USB/ArtNet hardware
+        //
+        // This is the SOLE gate. One filter, one place, zero leaks.
+        // ═══════════════════════════════════════════════════════════════════════
+        const physicalStates = states.filter(s => !s.isVirtual);
+        const packets = this.mapper.statesToDMXPackets(physicalStates);
         // ═══════════════════════════════════════════════════════════════════════
         // � WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER
         // Sin esto, sendAll() envía buffers vacíos/stale.

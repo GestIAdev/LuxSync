@@ -99,6 +99,8 @@ const syncToBackend = async (fixtureList, lastSyncedHashRef) => {
             installationType: f.physics?.orientation || 'ceiling',
             position: f.position,
             rotation: f.rotation,
+            // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagate to backend
+            isVirtual: f.isVirtual ?? false,
         };
     });
     try {

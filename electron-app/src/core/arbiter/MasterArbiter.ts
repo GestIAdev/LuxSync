@@ -47,6 +47,7 @@ import {
   type RGBOutput,
   type EffectIntent,
   type EffectIntentMap,
+  type EffectType,
   ControlLayer,
   DEFAULT_ARBITER_CONFIG,
   DEFAULT_MERGE_STRATEGIES,
@@ -218,6 +219,14 @@ export class MasterArbiter extends EventEmitter {
   // Also tracks last modification stacktrace per fixture for forensics.
   // ═══════════════════════════════════════════════════════════════════════
   private _prevFrameOverrideIds: Set<string> = new Set()
+  // WAVE 3190: Pre-allocated reuse — evita new Set() cada frame en arbitrate()
+  private _currentOverrideIdsBuf: Set<string> = new Set()
+  // WAVE 3190: Pre-allocated — evita Array.from() cada frame en _layerActivity
+  private _manualFixtureIdsBuf: string[] = []
+  // WAVE 3190: Pre-allocated — evita [].map(e=>e.type) cada frame
+  private _activeEffectTypesBuf: EffectType[] = []
+  // WAVE 3190: Pre-allocated — evita new Set() en getPlaybackAffectedFixtureIds()
+  private _playbackAffectedBuf: Set<string> = new Set()
   private _layer2LastModStack: Map<string, string> = new Map()
   private _blackBoxThrottleMs: number = 0
   private _layerLossThrottleMs: number = 0
@@ -1001,15 +1010,29 @@ export class MasterArbiter extends EventEmitter {
    * Clean up expired effects
    */
   private cleanupExpiredEffects(): void {
+    // WAVE 3190: Mutation in-place en lugar de .filter() — cero alloc cuando no hay expirados
     const now = performance.now()
-    this.layer3_effects = this.layer3_effects.filter(effect => {
-      const elapsed = now - effect.startTime
-      if (elapsed >= effect.durationMs) {
+    let i = this.layer3_effects.length - 1
+    while (i >= 0) {
+      const effect = this.layer3_effects[i]
+      if (now - effect.startTime >= effect.durationMs) {
         this.emit('effectEnd', effect.type)
-        return false
+        this.layer3_effects.splice(i, 1)
       }
-      return true
-    })
+      i--
+    }
+  }
+
+  // WAVE 3190: Helpers de buffer pre-asignado — cero alloc per frame
+  private _buildManualFixtureIdsBuf(): string[] {
+    this._manualFixtureIdsBuf.length = 0
+    for (const k of this.layer2_manualOverrides.keys()) this._manualFixtureIdsBuf.push(k)
+    return this._manualFixtureIdsBuf
+  }
+  private _buildActiveEffectTypesBuf(): EffectType[] {
+    this._activeEffectTypesBuf.length = 0
+    for (const e of this.layer3_effects) this._activeEffectTypesBuf.push(e.type)
+    return this._activeEffectTypesBuf
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1404,8 +1427,14 @@ export class MasterArbiter extends EventEmitter {
    * EffectManager/HephaestusRuntime (only the ones Chronos is touching).
    */
   getPlaybackAffectedFixtureIds(): Set<string> {
-    if (!this.playbackActive) return new Set()
-    return new Set(this.currentPlaybackFrame.keys())
+    // WAVE 3190: Reutilizar buffer pre-asignado — cero allocations por frame
+    this._playbackAffectedBuf.clear()
+    if (this.playbackActive) {
+      for (const k of this.currentPlaybackFrame.keys()) {
+        this._playbackAffectedBuf.add(k)
+      }
+    }
+    return this._playbackAffectedBuf
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -1699,18 +1728,24 @@ export class MasterArbiter extends EventEmitter {
     // 🔧 WAVE 2775: Throttled to max 1 log per 2s. Collects lost IDs and
     // flushes as a single-line summary to prevent IPC/console saturation.
     // ═══════════════════════════════════════════════════════════════════════
-    const currentOverrideIds = new Set(this.layer2_manualOverrides.keys())
+    // WAVE 3190: Reutilizar buffer — cero alloc por frame en el detector LAYER_LOSS
+    this._currentOverrideIdsBuf.clear()
+    for (const k of this.layer2_manualOverrides.keys()) this._currentOverrideIdsBuf.add(k)
     for (const prevId of this._prevFrameOverrideIds) {
-      if (!currentOverrideIds.has(prevId)) {
+      if (!this._currentOverrideIdsBuf.has(prevId)) {
         this._layerLossPending.push(prevId)
       }
     }
     if (this._layerLossPending.length > 0 && now - this._layerLossThrottleMs > 2000) {
       console.warn(`[📡 LAYER_LOSS] 🚨 ${this._layerLossPending.length} fixture(s) lost Layer 2 override: [${this._layerLossPending.join(', ')}] | frame ${this.frameNumber}`)
-      this._layerLossPending = []
+      this._layerLossPending.length = 0  // clear sin alloc
       this._layerLossThrottleMs = now
     }
-    this._prevFrameOverrideIds = currentOverrideIds
+    // Swap buffers: _currentOverrideIdsBuf pasa a ser _prevFrameOverrideIds
+    // sin crear nuevos Sets — intercambiamos referencias y reutilizamos el viejo
+    const _swapBuf = this._prevFrameOverrideIds
+    this._prevFrameOverrideIds = this._currentOverrideIdsBuf
+    this._currentOverrideIdsBuf = _swapBuf
 
     // Arbitrate each fixture
     const fixtureTargets: FixtureLightingTarget[] = []
@@ -1767,8 +1802,9 @@ export class MasterArbiter extends EventEmitter {
         consciousnessActive: this.layer1_consciousness?.active ?? false,
         consciousnessStatus: this.layer1_consciousness?.status,
         manualOverrideCount: this.layer2_manualOverrides.size,
-        manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
-        activeEffects: this.layer3_effects.map(e => e.type),
+        // WAVE 3190: Reutilizar buffer pre-asignado — cero Array.from() por frame
+        manualFixtureIds: this._buildManualFixtureIdsBuf(),
+        activeEffects: this._buildActiveEffectTypesBuf(),
         // 🎯 WAVE 2662: Track intent-based effects in layer activity
         effectIntentCount: this.layer3_effectIntents.size,
       }

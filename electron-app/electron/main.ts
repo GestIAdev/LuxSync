@@ -90,16 +90,21 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
   console.debug = _noop
 
   // warn y error: solo pasan mensajes de diagnóstico crítico
+  // WAVE 3180: Startup window (5s) — dejar pasar logs de conexión DMX
+  const _startupDeadline = Date.now() + 5000
   const _cardiFilter = (orig: (...a: unknown[]) => void) =>
     (...args: unknown[]) => {
       if (typeof args[0] === 'string' && (
         args[0].includes('[CARDIOGRAMA') ||
-        args[0].includes('[IPC PROBE]') ||
-        args[0].includes('[SEMAPHORE TRAP]') ||
-        args[0].includes('[DOUBLE-SEND TRAP]') ||
-        args[0].includes('[SONDA FRAME]') ||
         args[0].includes('[COLOR JUMP]') ||
-        args[0].includes('[SONDA-')
+        args[0].includes('[WAVE 3170 TRAP]') ||
+        // WAVE 3180: Confirmación visual de modo BREAK — solo primeros 5s
+        (Date.now() < _startupDeadline && (
+          args[0].includes('WAVE 3180') ||
+          args[0].includes('BREAK mode') ||
+          args[0].includes('[UniversalDMX]') ||
+          args[0].includes('[DMX-Worker]')
+        ))
       )) {
         orig(...args)
       }

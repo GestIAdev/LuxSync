@@ -58,8 +58,30 @@ let effectsEngine = null;
 let titanOrchestrator = null;
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier state
+(function installBlackout() {
+    const _noop = () => { };
+    const _originalWarn = console.warn.bind(console);
+    const _originalError = console.error.bind(console);
+    // Silenciar completamente
+    console.log = _noop;
+    console.info = _noop;
+    console.debug = _noop;
+    // warn y error: solo pasan mensajes de diagnóstico crítico
+    const _cardiFilter = (orig) => (...args) => {
+        if (typeof args[0] === 'string' && (args[0].includes('[CARDIOGRAMA') ||
+            args[0].includes('[IPC PROBE]') ||
+            args[0].includes('[SEMAPHORE TRAP]') ||
+            args[0].includes('[DOUBLE-SEND TRAP]') ||
+            args[0].includes('[SONDA FRAME]') ||
+            args[0].includes('[COLOR JUMP]') ||
+            args[0].includes('[SONDA-'))) {
+            orig(...args);
+        }
+    };
+    console.warn = _cardiFilter(_originalWarn);
+    console.error = _cardiFilter(_originalError);
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
 // ═══════════════════════════════════════════════════════════════════════════
 let currentLicenseTier = 'FULL_SUITE';
@@ -292,7 +314,12 @@ async function initTitan() {
     titanOrchestrator.setBroadcastCallback((truth) => {
         try {
             if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                const _t0 = performance.now();
                 mainWindow.webContents.send('selene:truth', truth);
+                const _dt = performance.now() - _t0;
+                if (_dt > 5) {
+                    console.warn(`[IPC PROBE] 🐢 selene:truth BLOCK ${_dt.toFixed(1)}ms`);
+                }
             }
         }
         catch (err) {
@@ -306,7 +333,12 @@ async function initTitan() {
     titanOrchestrator.setHotFrameCallback((hotFrame) => {
         try {
             if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                const _t0 = performance.now();
                 mainWindow.webContents.send('selene:hot-frame', hotFrame);
+                const _dt = performance.now() - _t0;
+                if (_dt > 5) {
+                    console.warn(`[IPC PROBE] 🐢 selene:hot-frame BLOCK ${_dt.toFixed(1)}ms`);
+                }
             }
         }
         catch {
@@ -787,6 +819,55 @@ ipcMain.handle('telemetry:lt41:start', () => {
 ipcMain.handle('telemetry:lt41:flush', () => {
     latinoEngine41Telemetry.flushBuffer();
     return { success: true };
+});
+// ── CPU PROFILER — WAVE X-RAY TOTAL ──────────────────────────────────────────
+// Captura un perfil V8 de 15 segundos y lo guarda en userData/lux-asesino.cpuprofile
+// Triggerable desde la UI para cazar spikes de 20-27ms con precisión matemática.
+//
+// Usa la API clásica `inspector` con callbacks (Node 18 / Electron 28 compatible).
+// node:inspector/promises requiere Node ≥19 — no disponible en Electron 28.
+// ─────────────────────────────────────────────────────────────────────────────
+ipcMain.handle('lux:start-profiler', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const inspector = require('inspector');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodePath = require('path');
+    // Promisify the callback-based inspector API (Node 18 / Electron 28 compatible)
+    function postAsync(session, method) {
+        return new Promise((resolve, reject) => {
+            session.post(method, (err, result) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve(result);
+            });
+        });
+    }
+    const session = new inspector.Session();
+    try {
+        session.connect();
+        await postAsync(session, 'Profiler.enable');
+        await postAsync(session, 'Profiler.start');
+        console.log('[PROFILER] 🔴 CPU profiling started — capturing 15 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 15000));
+        const { profile } = await postAsync(session, 'Profiler.stop');
+        session.disconnect();
+        const outputPath = nodePath.join(app.getPath('userData'), 'lux-asesino.cpuprofile');
+        fs.writeFileSync(outputPath, JSON.stringify(profile));
+        console.log(`[PROFILER] ✅ Profile saved → ${outputPath}`);
+        return { success: true, path: outputPath };
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[PROFILER] ❌ Failed:', msg);
+        try {
+            session.disconnect();
+        }
+        catch { /* ignore */ }
+        return { success: false, error: msg };
+    }
 });
 // ─────────────────────────────────────────────────────────────────────────────
 // WAVE 2098: Boot silence — module load log removed

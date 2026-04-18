@@ -26,6 +26,7 @@
  */
 import { app } from 'electron';
 import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 import * as path from 'path';
 // ═══════════════════════════════════════════════════════════════════════════════
 // DEFAULT CONFIG
@@ -148,7 +149,30 @@ class ConfigManagerV2 {
     // SAVE
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Save configuration to disk (atomic write)
+     * Save configuration to disk (atomic write, async — non-blocking)
+     * ⚡ WAVE 3050: Async I/O for runtime saves
+     */
+    async saveAsync() {
+        try {
+            this.config.lastSaved = new Date().toISOString();
+            const dir = path.dirname(this.configPath);
+            const dirExists = await fsp.access(dir).then(() => true, () => false);
+            if (!dirExists) {
+                await fsp.mkdir(dir, { recursive: true });
+            }
+            const tempPath = `${this.configPath}.tmp`;
+            await fsp.writeFile(tempPath, JSON.stringify(this.config, null, 2), 'utf-8');
+            await fsp.rename(tempPath, this.configPath);
+            console.log('[ConfigManagerV2] 💾 Preferences saved');
+            return true;
+        }
+        catch (error) {
+            console.error('[ConfigManagerV2] ❌ Error saving config:', error);
+            return false;
+        }
+    }
+    /**
+     * Sync save — ONLY for app shutdown (forceSave) and migration
      */
     save() {
         try {
@@ -177,7 +201,8 @@ class ConfigManagerV2 {
             clearTimeout(this.saveTimeout);
         }
         this.saveTimeout = setTimeout(() => {
-            this.save();
+            // ⚡ WAVE 3050: Use async save for debounced path (non-blocking)
+            void this.saveAsync();
             this.saveTimeout = null;
         }, delayMs);
     }

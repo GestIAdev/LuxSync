@@ -380,12 +380,12 @@ function setupSeleneLuxHandlers(deps) {
     // WAVE 252: SILENCE - Logs eliminados para reducir spam
     // WAVE 254: Migrado a TitanOrchestrator
     // =========================================================================
-    // Audio frame (kebab-case - lo que envÃ­a preload.ts)
-    ipcMain.handle('lux:audio-frame', (_event, data) => {
+    // ⚡ WAVE 3060b PHOENIX: lux:audio-frame RESTAURADO como hot-path
+    // Frontend envía bass/mid/treble/energy/bpm a 60fps para fluidez visual + LiquidEngine
+    ipcMain.on('lux:audio-frame', (_event, data) => {
         if (titanOrchestrator) {
             titanOrchestrator.processAudioFrame(data);
         }
-        return { success: true };
     });
     // ðŸ©¸ WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT
     // ðŸ”¥ WAVE 264.8: Cambiado de handle() a on() para FIRE-AND-FORGET
@@ -405,7 +405,10 @@ function setupSeleneLuxHandlers(deps) {
             lastLogTime = now;
         }
         if (titanOrchestrator && buffer) {
-            const float32 = new Float32Array(buffer);
+            // ⚡ WAVE 3060b PHOENIX: HACK BINARIO — reconstruct Float32Array from Buffer
+            // Frontend envía Uint8Array (mapea a Node Buffer via C++ binding, quasi zero-copy)
+            // Aquí reconstruimos Float32Array usando byteOffset para alinear correctamente
+            const float32 = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
             titanOrchestrator.processAudioBuffer(float32);
         }
         else if (!titanOrchestrator) {

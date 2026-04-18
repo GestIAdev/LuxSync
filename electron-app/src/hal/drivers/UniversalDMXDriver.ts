@@ -118,9 +118,6 @@ export class UniversalDMXDriver extends EventEmitter {
   // 🔎 FORENSIC TRACE (CP4): serial write counters (per universe)
   private traceWriteCountByUniverse: Map<number, number> = new Map()
 
-  // 🔬 WAVE 3020: SEMAPHORE TRAP — mide tiempo entre llamadas a sendAll()
-  private _lastSendAllTime: number = 0
-
   // 🫀 CARDIOGRAMA: callback para escalar warning spikes al capa superior (Orchestrator)
   public onWarning: ((msg: string) => void) | null = null
 
@@ -774,17 +771,8 @@ export class UniversalDMXDriver extends EventEmitter {
    * Compatible con IDMXDriver (WAVE 2020.2b)
    */
   async sendAll(): Promise<boolean> {
-    // � WAVE 3020: DOUBLE-SEND + SEMAPHORE TRAP
-    const _now = performance.now()
-    const _gap = _now - this._lastSendAllTime
-    if (this._lastSendAllTime > 0 && _gap < 2) {
-      console.error(`[DOUBLE-SEND TRAP] 🚨 Dos sendAll() en ${_gap.toFixed(2)}ms! Fuego cruzado detectado.`)
-    }
-    this._lastSendAllTime = _now
-
     // 🚦 SEMÁFORO: Si el hardware no terminó el frame anterior, DROP silencioso.
     if (this.isTransmitting) {
-      console.error(`[SEMAPHORE TRAP] 🚨 Colisión! Frame dropeado — driver ocupado (isTransmitting=true) gap=${_gap.toFixed(1)}ms`)
       return false
     }
 
@@ -905,10 +893,10 @@ export class UniversalDMXDriver extends EventEmitter {
     if (message.includes('CARDIOGRAMA') && this.onWarning) {
       this.onWarning(message)
     }
-    // 🔬 WAVE 3100: Las sondas de diagnóstico siempre salen, sin importar debug flag.
+    // 🔬 WAVE 3170: Las trampas de diagnóstico siempre salen, sin importar debug flag.
     // Usan console.warn para pasar el filtro BLACKOUT del main.ts.
     // Los logs normales solo salen con debug:true para no saturar la consola.
-    if (message.includes('[SONDA-') || message.includes('[CARDIOGRAMA')) {
+    if (message.includes('[WAVE 3170 TRAP]') || message.includes('[CARDIOGRAMA')) {
       console.warn(`[UniversalDMX] ${message}`)
       return
     }

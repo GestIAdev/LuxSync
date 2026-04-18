@@ -391,13 +391,18 @@ const luxApi = {
      * Esto causa memory pressure y eventualmente bloquea el loop de requestAnimationFrame.
      *
      * send() es unidireccional - no espera respuesta, no acumula Promises.
+     *
      */
     audioBuffer: (buffer) => {
-        ipcRenderer.send('lux:audio-buffer', buffer.buffer);
+        // ⚡ WAVE 3060b PHOENIX: Cast Float32Array → Uint8Array antes de enviar
+        // Electron Structured Clone de ArrayBuffer es lento (~8ms para 8KB)
+        // Uint8Array se mapea a Node.js Buffer via C++ binding — quasi zero-copy
+        ipcRenderer.send('lux:audio-buffer', new Uint8Array(buffer.buffer));
     },
-    /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */
+    /** WAVE 3043: Fire & Forget — sin round-trip Promise a 60Hz */
     // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
-    audioFrame: (metrics) => ipcRenderer.invoke('lux:audio-frame', metrics),
+    // ⚡ WAVE 3060b PHOENIX: fftBins eliminado del payload (nadie lo consume en backend)
+    audioFrame: (metrics) => ipcRenderer.send('lux:audio-frame', metrics),
     /** Obtener estado actual */
     getState: () => ipcRenderer.invoke('lux:get-state'),
     /** 🎯 WAVE 13.6: Obtener estado COMPLETO del Backend (DMX, Selene, Fixtures, Audio) */
@@ -1012,6 +1017,9 @@ const luxDebug = {
         start: () => ipcRenderer.invoke('telemetry:lt41:start'),
         flush: () => ipcRenderer.invoke('telemetry:lt41:flush'),
     },
+    // ── CPU PROFILER — WAVE X-RAY TOTAL ───────────────────────────────────────
+    // Lanza 15s de V8 CPU profiling. Guarda lux-asesino.cpuprofile en userData.
+    startProfiler: () => ipcRenderer.invoke('lux:start-profiler'),
 };
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
 const electronAPI = {

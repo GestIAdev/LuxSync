@@ -16,6 +16,9 @@
  * Comunica con ALPHA vía postMessage.
  * GAMMA (mind) nunca habla directamente con BETA.
  */
+// 🔇 OPERACIÓN BLACKOUT — Node worker_threads console hijack (RESTAURAR: comentar bloque)
+;
+(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
 import { parentPort, workerData } from 'worker_threads';
 import { MessageType, MessagePriority, createMessage, DEFAULT_CONFIG } from './WorkerProtocol';
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -38,6 +38,20 @@ export class OpenDMXStrategy {
         // Dirty tracking: solo enviar IPC cuando el buffer realmente cambió.
         // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
         this.lastSentHash = 0;
+        // 🔬 WAVE 3020: DOUBLE-SEND TRAP
+        this._lastSendTime = 0;
+    }
+    /**
+     * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
+     * Llamado por HAL en setFixtures() / show-load para limpiar estado residual.
+     * Garantiza que ningún canal del show anterior quede activo en el nuevo show.
+     */
+    resetBuffer(log) {
+        if (!this.child || !this.workerReady)
+            return;
+        this.lastSentHash = 0; // forzar re-envío completo en el siguiente frame
+        this.child.send({ type: 'RESET_BUFFER' });
+        log('[OpenDMX] 🧹 RESET_BUFFER enviado — buffer DMX purgado a cero');
     }
     /**
      * Lanza el child process y le ordena conectar al puerto serial.
@@ -57,8 +71,15 @@ export class OpenDMXStrategy {
             this.child.on('message', (msg) => {
                 switch (msg.type) {
                     case 'LOG':
-                        if (msg.message)
-                            log(msg.message);
+                        if (msg.message) {
+                            // CARDIOGRAMA messages bypass the debug gate — always visible
+                            if (msg.message.includes('CARDIOGRAMA')) {
+                                console.warn(msg.message);
+                            }
+                            else {
+                                log(msg.message);
+                            }
+                        }
                         break;
                     case 'CONNECTED':
                         if (!msg.success) {
@@ -156,7 +177,19 @@ export class OpenDMXStrategy {
         for (let i = 0; i < len; i++) {
             channels[i] = buffer[i];
         }
+        // 🔬 WAVE 3020: DOUBLE-SEND TRAP al child process
+        const _now = performance.now();
+        const _gap = _now - this._lastSendTime;
+        if (this._lastSendTime > 0 && _gap < 2) {
+            console.error(`[DOUBLE-SEND TRAP] 🚨 Dos child.send() en ${_gap.toFixed(2)}ms! Fuego cruzado en IPC USB.`);
+        }
+        this._lastSendTime = _now;
+        const _t0 = performance.now();
         this.child.send({ type: 'UPDATE_BUFFER', channels });
+        const _dt = performance.now() - _t0;
+        if (_dt > 5) {
+            console.warn(`[IPC PROBE] 🐢 USB child.send BLOCK ${_dt.toFixed(1)}ms | ${len}ch`);
+        }
     }
     /**
      * Termina el child process y libera recursos.
@@ -198,6 +231,9 @@ export class OpenDMXStrategy {
         });
         this.child = null;
         this.workerReady = false;
+        // 🧹 WAVE 3080: Reset hash — forzar re-envío del primer frame en la próxima conexión.
+        // Sin esto, si el nuevo show tiene el mismo checksum que el show anterior
+        // (e.g., todos los canales en 0), el dirty-check saltaría el primer UPDATE_BUFFER.
         this.lastSentHash = 0;
         log('DMX Phantom Process terminated');
     }

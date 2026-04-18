@@ -1,5 +1,8 @@
 // 🧠 WORKER THREAD ALIVE — OPERACIÓN LÁZARO (WAVE 2520)
-console.log('🧠 WORKER THREAD ALIVE');
+// 🔇 OPERACIÓN BLACKOUT — Web Worker console hijack (RESTAURAR: comentar bloque)
+;
+(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
+// [BLACKOUT] console.log('🧠 WORKER THREAD ALIVE')
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * ☀️ HYPERION RENDER WORKER — "The 4th Worker"
@@ -159,11 +162,14 @@ function render(timestamp) {
         physState.tilt += (unpackBuffer.physicalTilt - physState.tilt) * SMOOTHING_FACTOR;
         physState.zoom += (unpackBuffer.zoom - physState.zoom) * SMOOTHING_FACTOR;
         physicsStore.set(scaffold.id, physState);
-        // Intensity: snap detection for hard effects (strobes)
+        // Intensity: snap detection — when delta > threshold it's a strobe/hard cut.
+        // Color and intensity always pass through raw (no smoothing needed — only pan/tilt/zoom are mechanical).
         const prevInt = prevIntensity.get(scaffold.id) ?? unpackBuffer.intensity;
         const intDelta = Math.abs(unpackBuffer.intensity - prevInt);
-        const useSnap = intDelta > INTENSITY_SNAP_THRESHOLD;
         prevIntensity.set(scaffold.id, unpackBuffer.intensity);
+        // useSnap preserved for future strobe-specific rendering (e.g., flash frames)
+        const useSnap = intDelta > INTENSITY_SNAP_THRESHOLD;
+        void useSnap;
         // Build the final TacticalFixture
         smoothedFixtures[i] = {
             id: scaffold.id,
@@ -173,11 +179,11 @@ function render(timestamp) {
             zone: scaffold.zone,
             gobo: scaffold.gobo,
             prism: scaffold.prism,
-            // Dynamic data — smoothed or snapped
-            r: useSnap ? unpackBuffer.r : unpackBuffer.r, // Color passes through (no smoothing)
-            g: useSnap ? unpackBuffer.g : unpackBuffer.g,
-            b: useSnap ? unpackBuffer.b : unpackBuffer.b,
-            intensity: useSnap ? unpackBuffer.intensity : unpackBuffer.intensity, // Intensity always immediate
+            // Dynamic data — color and intensity always pass through raw
+            r: unpackBuffer.r,
+            g: unpackBuffer.g,
+            b: unpackBuffer.b,
+            intensity: unpackBuffer.intensity,
             physicalPan: physState.pan,
             physicalTilt: physState.tilt,
             zoom: physState.zoom,

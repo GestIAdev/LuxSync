@@ -46,6 +46,9 @@
 // PRIORITY_HIGHEST (o PRIORITY_ABOVE_NORMAL como fallback) hace que el scheduler
 // del OS ejecute nuestro loop DMX ANTES que el renderizado del cursor.
 // ─────────────────────────────────────────────────────────────────────────────
+// 🔇 OPERACIÓN BLACKOUT — child_process console hijack (RESTAURAR: comentar bloque)
+;
+(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
 import * as os from 'os';
 try {
     // PRIORITY_HIGHEST = -20 en POSIX, REALTIME_PRIORITY_CLASS en Windows.
@@ -161,6 +164,13 @@ function handleConnect(portPath, refreshRate, requestedBreakMode) {
                 isOpen = false;
                 process.send?.({ type: 'DISCONNECTED' });
             });
+            // 🔇 WAVE 3080: SILENCIAR DATOS ENTRANTES — El puerto OpenDMX es SOLO escritura.
+            // Sin este handler, Node.js acumula datos RS-485 reflejados (el chip FTDI/CH340
+            // puede ecos los propios bytes escritos) en el buffer de lectura del puerto.
+            // Cuando ese buffer se llena, el kernel emite 'data' events que interrumpen
+            // el event loop del child process en cada frame → jitter en el timing DMX.
+            // El sink vacío drena el buffer sin procesamiento — cero allocations, cero IPC.
+            port.on('data', () => { });
             // TWO-PHASE STARTUP PROTOCOL
             // FASE 1 — CONNECTED: puerto abierto
             // FASE 2 — 100ms delay → READY: output loop activo
@@ -182,6 +192,65 @@ function handleConnect(portPath, refreshRate, requestedBreakMode) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Output loop — el corazón del bit-banging aislado
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 🫠 WAVE 3030: PHANTOM HEARTBEAT — monitor de inanicion del frame loop real
+// Mide el intervalo real entre frames: desde el final de sendFrame() hasta
+// el inicio del siguiente setImmediate callback. Si el event loop del
+// child process se bloquea (IPC backpressure, GC, drain del serialport),
+// este delta sube por encima de minFrameNs y el hardware sufre starvation.
+// ─────────────────────────────────────────────────────────────────────────────
+let _phantomLastFrame = process.hrtime.bigint();
+let _phantomPeakMs = 0;
+let _phantomPeakReportTime = process.hrtime.bigint();
+const _PHANTOM_REPORT_NS = BigInt(5000000000); // reporte cada 5s
+const _PHANTOM_STARVATION_MS = 40; // umbral de inanicion segura
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔬 WAVE 3100: SONDAS DE OBSERVACIÓN — solo lectura, cero interferencia con lógica
+// ─────────────────────────────────────────────────────────────────────────────
+let _probeFrameCount = 0;
+const _PROBE_SNAPSHOT_INTERVAL = 30; // volcado cada 30 frames (~1s a 30Hz)
+const _PROBE_WRITE_WARN_MS = 4; // umbral de alerta para port.write latencia
+let _probeWritePeakMs = 0;
+let _probeWritePeakReportTime = process.hrtime.bigint();
+let _probePostResetFrames = 0; // frames desde último RESET_BUFFER
+const _PROBE_POST_RESET_WATCH = 10; // observar los 10 primeros frames post-reset
+/**
+ * 🔬 SONDA 1: Volcado de buffer pre-write.
+ * Emite snapshot de los primeros 30 canales EXACTOS que van al puerto serial.
+ * Si el buffer es limpio [0,0,0...] pero el foco convulsiona → framing error en hardware.
+ * Si el buffer tiene basura fluctuante → bug en el renderizado del backend.
+ */
+function _probeBufferSnapshot(context) {
+    // Primeros 30 canales (índices 1-30, el 0 es start code)
+    const ch = [];
+    for (let i = 1; i <= 30; i++)
+        ch.push(dmxBuffer[i]);
+    // Detectar si el buffer está "limpio" (all-zero) o tiene valores
+    const nonZero = ch.filter(v => v !== 0).length;
+    const tag = nonZero === 0 ? '🟢 ALL-ZERO' : `🔴 ${nonZero}/30 non-zero`;
+    log(`[SONDA-BUFFER] ${context} ${tag} ch[1..30]=[${ch.join(',')}]`);
+}
+/**
+ * 🔬 SONDA 2: Profiling de latencia de port.write().
+ * Si la escritura al UART tarda >4ms, el event loop del worker se bloquea
+ * y el frame siguiente sufre starvation.
+ */
+function _probeWriteComplete(startNs, context) {
+    const elapsedNs = process.hrtime.bigint() - startNs;
+    const elapsedMs = Number(elapsedNs) / 1000000;
+    if (elapsedMs > _probeWritePeakMs)
+        _probeWritePeakMs = elapsedMs;
+    if (elapsedMs > _PROBE_WRITE_WARN_MS) {
+        log(`[SONDA-WRITE] ⚠️ ${context} port.write() tardó ${elapsedMs.toFixed(2)}ms (umbral: ${_PROBE_WRITE_WARN_MS}ms)`);
+    }
+    // Reporte de pico cada 5s
+    const now = process.hrtime.bigint();
+    if (now - _probeWritePeakReportTime >= _PHANTOM_REPORT_NS) {
+        log(`[SONDA-WRITE] 📊 peak write latency: ${_probeWritePeakMs.toFixed(2)}ms (last 5s)`);
+        _probeWritePeakMs = 0;
+        _probeWritePeakReportTime = now;
+    }
+}
 function startOutputLoop() {
     if (outputLoop)
         return;
@@ -203,6 +272,21 @@ function scheduleNextFrame() {
     outputLoop = setImmediate(() => {
         if (!isOpen || !port)
             return;
+        // 🫠 WAVE 3030: PHANTOM HEARTBEAT — medir delta real entre frames
+        const _pNow = process.hrtime.bigint();
+        const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1000000));
+        _phantomLastFrame = _pNow;
+        if (_pDeltaMs > _phantomPeakMs)
+            _phantomPeakMs = _pDeltaMs;
+        if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
+            log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`);
+        }
+        // Reporte de pico cada 5s
+        if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
+            log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`);
+            _phantomPeakMs = 0;
+            _phantomPeakReportTime = _pNow;
+        }
         const now = process.hrtime.bigint();
         const remaining = (lastFrameStart + minFrameNs) - now;
         if (remaining > MAX_PACING_SPIN_NS) {
@@ -301,7 +385,16 @@ function sendFrameSetBreak() {
                 scheduleNextFrame();
                 return;
             }
+            // 🔬 WAVE 3100: SONDAS pre-write (modo set-break)
+            _probeFrameCount++;
+            if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+                _probeBufferSnapshot(`SET-BREAK frame#${_probeFrameCount}`);
+                if (_probePostResetFrames > 0)
+                    _probePostResetFrames--;
+            }
+            const _writeStartSet = process.hrtime.bigint();
             port.write(dmxBuffer, (err3) => {
+                _probeWriteComplete(_writeStartSet, 'SET-BREAK');
                 if (err3)
                     log(`Write error: ${err3.message}`);
                 scheduleNextFrame();
@@ -324,7 +417,18 @@ function sendFrameBaudrateBreak() {
     const portAny = port;
     if (typeof portAny.update !== 'function') {
         // Último recurso: sin BREAK, enviar directo (mejor que nada)
-        port.write(dmxBuffer, () => { scheduleNextFrame(); });
+        // 🔬 WAVE 3100: SONDA pre-write (fallback sin BREAK)
+        _probeFrameCount++;
+        if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+            _probeBufferSnapshot(`NO-BREAK frame#${_probeFrameCount}`);
+            if (_probePostResetFrames > 0)
+                _probePostResetFrames--;
+        }
+        const _writeStartFallback = process.hrtime.bigint();
+        port.write(dmxBuffer, () => {
+            _probeWriteComplete(_writeStartFallback, 'NO-BREAK');
+            scheduleNextFrame();
+        });
         return;
     }
     // PASO 1: Bajar baud para generar BREAK
@@ -355,7 +459,16 @@ function sendFrameBaudrateBreak() {
                     // PASO 4: MAB — 20µs mínimo
                     spinWaitNs(MAB_NS);
                     // PASO 5: Emitir los 513 bytes del universo DMX
+                    // 🔬 WAVE 3100: SONDAS pre-write (modo baudrate-break)
+                    _probeFrameCount++;
+                    if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
+                        _probeBufferSnapshot(`BAUD-BREAK frame#${_probeFrameCount}`);
+                        if (_probePostResetFrames > 0)
+                            _probePostResetFrames--;
+                    }
+                    const _writeStartBaud = process.hrtime.bigint();
                     port.write(dmxBuffer, (err5) => {
+                        _probeWriteComplete(_writeStartBaud, 'BAUD-BREAK');
                         if (err5)
                             log(`Write error: ${err5.message}`);
                         scheduleNextFrame();
@@ -412,6 +525,17 @@ process.on('message', (msg) => {
                 dmxBuffer[0] = 0; // start code siempre 0
                 lastBufferUpdateNs = process.hrtime.bigint();
             }
+            break;
+        case 'RESET_BUFFER':
+            // 🧹 WAVE 3080: PURGA DE ESTADO RESIDUAL — limpiar buffer al cambio de show.
+            // Un buffer con valores del show anterior puede encender fixtures no
+            // parcheados en el nuevo show si comparten dirección DMX.
+            // fill(0) lleva TODOS los canales a reposo en el próximo frame.
+            dmxBuffer.fill(0);
+            dmxBuffer[0] = 0; // start code siempre 0
+            lastBufferUpdateNs = BigInt(0); // reset JITTER GUARD
+            _probePostResetFrames = _PROBE_POST_RESET_WATCH; // 🔬 WAVE 3100: observar los 10 frames post-reset
+            log('🧹 Buffer purgado — todos los canales a 0 (cambio de show)');
             break;
         case 'DISCONNECT':
             handleDisconnect();

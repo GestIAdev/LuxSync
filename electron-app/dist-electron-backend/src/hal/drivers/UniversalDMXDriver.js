@@ -68,14 +68,10 @@ export class UniversalDMXDriver extends EventEmitter {
         this.strategies = new Map();
         // 🔎 FORENSIC TRACE (CP4): serial write counters (per universe)
         this.traceWriteCountByUniverse = new Map();
-        // Throttle del flush IPC: máximo 1 envio cada 20ms (50Hz).
-        // El ojo humano no distingue más de 30Hz. DMX512 procesa ~40Hz.
-        // Sin throttle, un slider a 120Hz de mouse genera 120 IPCs/sec → satura
-        // el event loop del Main con serialización JSON + pipe writes.
-        // El child process sigue enviando el ULTIMO buffer recibido a ~40Hz
-        // al hardware — no pierde datos, solo reduce la frecuencia de IPC.
-        this.flushPending = null;
-        this.FLUSH_THROTTLE_MS = 33; // 🔥 WAVE 2100: 30Hz max IPC — matches Worker Adaptive Pacing (30Hz output)
+        // 🔬 WAVE 3020: SEMAPHORE TRAP — mide tiempo entre llamadas a sendAll()
+        this._lastSendAllTime = 0;
+        // 🫀 CARDIOGRAMA: callback para escalar warning spikes al capa superior (Orchestrator)
+        this.onWarning = null;
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1101: PARANOIA PROTOCOL - DMX THROTTLING
         // 
@@ -481,11 +477,7 @@ export class UniversalDMXDriver extends EventEmitter {
         this.stopOutputLoop();
         this.stopWatchdog();
         this.clearReconnectTimer();
-        // Cancelar flush pendiente
-        if (this.flushPending) {
-            clearTimeout(this.flushPending);
-            this.flushPending = null;
-        }
+        // WAVE 3025: flushPending eliminado — no hay auto-flush reactivo
         // 👻 WAVE 2021.1: Destruir strategies self-managed primero
         for (const [universe, strategy] of this.strategies) {
             if (strategy.selfManaged && strategy.destroy) {
@@ -557,33 +549,29 @@ export class UniversalDMXDriver extends EventEmitter {
             if (buf[channel] === clamped)
                 return; // No cambio real — skip
             buf[channel] = clamped;
-            this.flushToStrategies();
+            // WAVE 3025: NO auto-flush — el HAL llama sendAll() externamente
         }
     }
     /**
      * 🎚️ Establece múltiples canales desde un offset en un universo.
-     * Flush inmediato al child process.
+     * Solo escribe en buffer — el flush lo hace el caller via sendAll().
      */
     setChannels(startChannel, values, universe = 0) {
         const buf = this.universeBuffers.get(universe);
         if (!buf)
             return;
-        let changed = false;
         for (let i = 0; i < values.length; i++) {
             const channel = startChannel + i;
             if (channel <= DMX_CHANNELS) {
                 const clamped = Math.max(0, Math.min(255, Math.round(values[i])));
-                if (buf[channel] !== clamped) {
-                    buf[channel] = clamped;
-                    changed = true;
-                }
+                buf[channel] = clamped;
             }
         }
-        if (changed)
-            this.flushToStrategies();
+        // WAVE 3025: NO auto-flush — el HAL llama sendAll() externamente
     }
     /**
-     * 🎚️ Establece todo el buffer DMX de un universo de una vez
+     * 🎚️ Establece todo el buffer DMX de un universo de una vez.
+     * Solo escribe en buffer — el flush lo hace el caller via sendAll().
      */
     setUniverse(values, universe = 0) {
         this.initBuffer(universe);
@@ -595,7 +583,7 @@ export class UniversalDMXDriver extends EventEmitter {
                 // buf[0] es START CODE, los canales empiezan en buf[1]
                 buf[i + 1] = values[i];
             }
-            this.flushToStrategies();
+            // WAVE 3025: NO auto-flush
             return;
         }
         // Si el IPC lo mutó a un objeto diccionario { "0": 255, "1": 128 }
@@ -612,29 +600,16 @@ export class UniversalDMXDriver extends EventEmitter {
                 buf[dmxChan] = Math.max(0, Math.min(255, Math.round(v)));
             }
         }
-        this.flushToStrategies();
-    }
-    /**
-     * Flush throttleado: coalesce cambios rápidos en un solo IPC.
-     * Si hay un flush pendiente, los cambios se acumulan en el buffer
-     * y se envían todos juntos en el siguiente tick.
-     */
-    flushToStrategies() {
-        if (this.flushPending)
-            return; // Ya hay un flush programado
-        this.flushPending = setTimeout(() => {
-            this.flushPending = null;
-            void this.sendAll();
-        }, this.FLUSH_THROTTLE_MS);
+        // WAVE 3025: NO auto-flush
     }
     /**
      * 🔄 Inicia el loop de salida DMX (legacy — solo para driver-managed strategies)
-     * Para selfManaged (OpenDMX): no-op, el flush es reactivo via flushToStrategies().
+     * Para selfManaged (OpenDMX): no-op. El flush lo hace el HAL via sendAll() externo.
      */
     startOutputLoop() {
         // selfManaged strategies no necesitan un output loop en el Main.
         // El child process tiene su propio loop continuo.
-        // Los cambios se envian reactivamente via setChannel → flushToStrategies → sendAll.
+        // WAVE 3025: Los cambios se escriben en buffer y el HAL llama sendAll() al final.
         // Solo mantener el loop para driver-managed (EnttecPro) si existiera.
         const hasDriverManaged = this.ports.size > 0;
         if (!hasDriverManaged) {
@@ -666,9 +641,18 @@ export class UniversalDMXDriver extends EventEmitter {
      * Compatible con IDMXDriver (WAVE 2020.2b)
      */
     async sendAll() {
+        // � WAVE 3020: DOUBLE-SEND + SEMAPHORE TRAP
+        const _now = performance.now();
+        const _gap = _now - this._lastSendAllTime;
+        if (this._lastSendAllTime > 0 && _gap < 2) {
+            console.error(`[DOUBLE-SEND TRAP] 🚨 Dos sendAll() en ${_gap.toFixed(2)}ms! Fuego cruzado detectado.`);
+        }
+        this._lastSendAllTime = _now;
         // 🚦 SEMÁFORO: Si el hardware no terminó el frame anterior, DROP silencioso.
-        if (this.isTransmitting)
+        if (this.isTransmitting) {
+            console.error(`[SEMAPHORE TRAP] 🚨 Colisión! Frame dropeado — driver ocupado (isTransmitting=true) gap=${_gap.toFixed(1)}ms`);
             return false;
+        }
         // Verificar que hay ALGO conectado (driver-managed ports O self-managed strategies)
         const hasDriverPorts = this.ports.size > 0;
         const hasSelfManaged = Array.from(this.strategies.values()).some(s => s.selfManaged);
@@ -769,6 +753,16 @@ export class UniversalDMXDriver extends EventEmitter {
         }
     }
     log(message) {
+        if (message.includes('CARDIOGRAMA') && this.onWarning) {
+            this.onWarning(message);
+        }
+        // 🔬 WAVE 3100: Las sondas de diagnóstico siempre salen, sin importar debug flag.
+        // Usan console.warn para pasar el filtro BLACKOUT del main.ts.
+        // Los logs normales solo salen con debug:true para no saturar la consola.
+        if (message.includes('[SONDA-') || message.includes('[CARDIOGRAMA')) {
+            console.warn(`[UniversalDMX] ${message}`);
+            return;
+        }
         if (this.config.debug) {
             console.log(`[UniversalDMX] ${message}`);
         }
@@ -862,6 +856,22 @@ export class UniversalDMXDriver extends EventEmitter {
             }
         }
         this.log(`🌑 Blackout (${this.universeBuffers.size} universes)`);
+    }
+    /**
+     * 🧹 WAVE 3080: PURGA DE SHOW — limpiar buffers en todos los workers self-managed.
+     * Llamado en lux:stage:sync (cambio de show) para evitar que focos no parcheados
+     * en el nuevo show reciban valores residuales del show anterior.
+     * Solo afecta a estrategias que implementan resetBuffer() (OpenDMXStrategy).
+     */
+    resetAllWorkerBuffers() {
+        for (const strategy of this.strategies.values()) {
+            strategy.resetBuffer?.(msg => this.log(msg));
+        }
+        // También limpiar el buffer principal self-managed si existe
+        if (this.defaultStrategy?.resetBuffer) {
+            this.defaultStrategy.resetBuffer(msg => this.log(msg));
+        }
+        this.log('🧹 WAVE 3080: worker buffers purgados (cambio de show)');
     }
     /**
      * ☀️ Full on: todos los canales a 255 en TODOS los universos

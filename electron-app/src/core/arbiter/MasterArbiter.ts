@@ -1059,8 +1059,17 @@ export class MasterArbiter extends EventEmitter {
    * Intents are cleared at the end of each arbitrate() cycle for frame freshness.
    *
    * This replaces the old post-HAL mutation pattern. Single Source of Truth.
+   *
+   * 🛡️ WAVE 3305: ZERO-TOLERANCE MOVEMENT — Effects CANNOT move fixtures.
+   * Any movement data is stripped at injection time. Pan/tilt is EXCLUSIVELY
+   * controlled by Layer 0 (Titan AI) and Layer 2 (Manual Override).
+   * Effects only control dimmer, color, white, and amber.
    */
   setEffectIntents(intents: EffectIntentMap): void {
+    // 🛡️ WAVE 3305: Strip movement from ALL effect intents
+    for (const intent of intents.values()) {
+      delete intent.movement
+    }
     this.layer3_effectIntents = intents
   }
   
@@ -1913,39 +1922,18 @@ export class MasterArbiter extends EventEmitter {
     const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2662: EFFECT INTENT — Movement overlay
+    // 🛡️ WAVE 3305: ZERO-TOLERANCE MOVEMENT
     //
-    // If the EffectIntent has movement data, apply it as Layer 3 contribution.
-    //   isAbsolute=true  → Intent value is the final position
-    //   isAbsolute=false → Intent value is a delta offset from Titan position
-    //
-    // Movement intents lose to Manual Override (Layer 2), checked below.
+    // Effects CANNOT move fixtures. movement is stripped at injection time
+    // in setEffectIntents(). Pan/tilt is EXCLUSIVELY controlled by
+    // Layer 0 (Titan AI) and Layer 2 (Manual Override).
+    // effectAdjustedPan/Tilt = rawPan/rawTilt always (no effect overlay).
     // ═══════════════════════════════════════════════════════════════════════
-    const movementIntent = this.layer3_effectIntents.get(fixtureId)?.movement
-    let effectAdjustedPan = rawPan
-    let effectAdjustedTilt = rawTilt
-    let movementFromEffect = false
-    
-    // ⚔️ WAVE 2910 FIX: Layer 2 (Manual) always beats Layer 3 (Effects).
-    // If the user has manual position override active, effectIntents CANNOT overwrite it.
-    // Without this guard, isAbsolute=true intents silently hijack the mover mid-session.
-    const manualHoldsPosition = !!(manualOverride?.overrideChannels.includes('pan') ||
-                                    manualOverride?.overrideChannels.includes('tilt'))
-
-    if (movementIntent && !manualHoldsPosition) {
-      if (movementIntent.isAbsolute) {
-        if (movementIntent.pan !== undefined) effectAdjustedPan = movementIntent.pan
-        if (movementIntent.tilt !== undefined) effectAdjustedTilt = movementIntent.tilt
-      } else {
-        if (movementIntent.pan !== undefined) effectAdjustedPan = rawPan + movementIntent.pan
-        if (movementIntent.tilt !== undefined) effectAdjustedTilt = rawTilt + movementIntent.tilt
-      }
-      movementFromEffect = true
-    }
+    const effectAdjustedPan = rawPan
+    const effectAdjustedTilt = rawTilt
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔧 WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
-    // 🎯 WAVE 2662: Effect movement also stamps controlSources
     //
     // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
     // never get their controlSource stamped. Without this, the HAL Aduana
@@ -1954,15 +1942,11 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     if (manualOverride?.overrideChannels.includes('pan')) {
       controlSources['pan'] = ControlLayer.MANUAL
-    } else if (movementFromEffect) {
-      controlSources['pan'] = ControlLayer.EFFECTS
     } else {
       controlSources['pan'] = ControlLayer.TITAN_AI
     }
     if (manualOverride?.overrideChannels.includes('tilt')) {
       controlSources['tilt'] = ControlLayer.MANUAL
-    } else if (movementFromEffect) {
-      controlSources['tilt'] = ControlLayer.EFFECTS
     } else {
       controlSources['tilt'] = ControlLayer.TITAN_AI
     }
@@ -1975,7 +1959,6 @@ export class MasterArbiter extends EventEmitter {
       console.trace(
         `🚨 [WIRETAP WAVE 2910] TRANSICIÓN DETECTADA: ${fixtureId} pasó de MANUAL a ${manualOverride ? 'override-sin-pos' : 'SIN-OVERRIDE'} en arbitrateFixture`,
         '\n  manualOverride existente:', manualOverride ? JSON.stringify({ channels: manualOverride.overrideChannels, source: (manualOverride as any).source }) : 'null',
-        '\n  movementFromEffect:', movementFromEffect,
         '\n  frame:', this.frameNumber
       )
     }
@@ -1983,12 +1966,11 @@ export class MasterArbiter extends EventEmitter {
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
-    // 🎯 WAVE 2662: Now uses effectAdjustedPan/Tilt as base (includes intent overlay)
     //
     // Si hay un fade activo para este fixture, interpolamos entre la última
-    // posición manual (fromPan/fromTilt) y la posición actual (con intent si aplica).
+    // posición manual (fromPan/fromTilt) y la posición actual.
     //
-    // Esto es un POST-PROCESS: getAdjustedPosition + effectIntent ya dieron el valor
+    // Esto es un POST-PROCESS: getAdjustedPosition ya dio el valor
     // correcto. Nosotros solo lo suavizamos temporalmente.
     // NO contaminamos Titan values. NO creamos zombies.
     // Después de durationMs, el fade se auto-purga.
@@ -2231,17 +2213,24 @@ export class MasterArbiter extends EventEmitter {
       const intentValue = this.getIntentValueForChannel(effectIntent, channel)
 
       // ═══════════════════════════════════════════════════════════════════
-      // 🛡️ WAVE 3304: MOVER SHIELD — Cabezas móviles ignoran color de efectos
+      // 🛡️ WAVE 3304 + WAVE 3305: HAL EVASION SHIELD — Mover color protection
       //
-      // Los movers tienen rueda de color física (mecánica). Los efectos
-      // cambian color a 30fps+ → la rueda no puede seguir → ruido mecánico
-      // y parpadeo. SOLUCIÓN: bloquear canales de color para movers.
-      // El dimmer SÍ pasa — el efecto controla intensidad, no color mecánico.
+      // Movers have mechanical color wheels. Fast color changes (30fps+)
+      // trigger DarkSpinFilter (500ms blackout) — eating strobes/flashes.
+      //
+      // WAVE 3305 REFINEMENT:
+      //   mixBus='global' (destructive effects: Gatling, StrobeStorm)
+      //     → BLOCK color channels for movers. Dimmer passes through.
+      //     → Mover inherits Layer 0 static color — DarkSpinFilter stays asleep.
+      //
+      //   mixBus='htp' (ambient effects: CorazonLatino, vibes)
+      //     → ALLOW color through. Ambient effects change color slowly enough
+      //       that HarmonicQuantizer gates them to safe beat subdivisions.
       // ═══════════════════════════════════════════════════════════════════
 
-      // 🛡️ WAVE 3304: MOVER SHIELD — detectar si debemos bloquear color para este fixture
+      // 🛡️ WAVE 3305: Mover shield ONLY for global (destructive) effects
       let moverShieldActive = false
-      if (MOVER_SHIELD_CHANNELS.has(channel)) {
+      if (MOVER_SHIELD_CHANNELS.has(channel) && effectIntent.mixBus === 'global') {
         const fixtureMeta = this.fixtures.get(fixtureId)
         if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
           moverShieldActive = true

@@ -127,7 +127,7 @@ export class GatlingRaid extends BaseEffect {
   private isFlashOn = false
   
   // Color calculado (blanco por defecto, pero puede cambiar según intensity)
-  private bulletColor: { h: number; s: number; l: number } = { h: 0, s: 0, l: 100 }
+  private bulletColor: { h: number; s: number; l: number } = { h: 180, s: 100, l: 50 }
   
   // ─────────────────────────────────────────────────────────────────────────
   // Constructor
@@ -177,14 +177,10 @@ export class GatlingRaid extends BaseEffect {
     // Seleccionar secuencia según pattern
     this.selectSequence()
     
-    // Color basado en intensidad (más intenso = más saturado hacia rojo)
-    if (config.intensity > 0.8) {
-      this.bulletColor = { h: 0, s: 100, l: 50 }   // Rojo alarma
-    } else if (config.intensity > 0.6) {
-      this.bulletColor = { h: 55, s: 100, l: 55 }  // Amarillo tóxico
-    } else {
-      this.bulletColor = { h: 0, s: 0, l: 100 }    // Blanco puro
-    }
+    // 🔫 WAVE 3305: CYAN ABSOLUTO — El Gatling dispara en cian puro siempre.
+    // PARs flashean en cyan. Movers reciben solo dimmer (HAL Evasion Shield
+    // bloquea el color para efectos global, evitando despertar al DarkSpinFilter).
+    this.bulletColor = { h: 180, s: 100, l: 50 }  // Cyan puro
     
     console.log(
       `[GatlingRaid 🔫] TRIGGERED: ${this.config.sweepCount} sweeps x ${this.config.bulletCount} bullets | ` +

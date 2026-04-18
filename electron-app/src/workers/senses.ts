@@ -17,9 +17,10 @@
  * GAMMA (mind) nunca habla directamente con BETA.
  */
 
-// 🔇 WAVE 3290: SENSES WORKER — Silenciado. No pertenece al whitelist de conciencia.
-// DEBUG PROBE — Reactivar para auditoría de audio analysis.
-// ;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+// 🔇 WAVE 3290: SENSES WORKER — Blackout del hilo de audio. Silencia [GOD EAR], [BETA],
+// [INTERVAL], [AGC], [Harmony], [SimpleSectionTracker] y todos sus imports.
+// DEBUG PROBE — Comentar para auditoría de audio analysis.
+;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
 
 import { parentPort, workerData } from 'worker_threads';
 import {

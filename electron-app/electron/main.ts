@@ -104,6 +104,9 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
     '[EffectManager',
     '[GatlingRaid',
     '[GLOBAL_COOLDOWN',
+    // Coreógrafo / Movimiento
+    '[CHOREO',
+    '[VibeMovementManager',
     // Lifecycle — arranque del sistema y vibes
     '[TitanOrchestrator',
     '[UniversalDMX',

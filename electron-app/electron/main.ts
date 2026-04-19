@@ -584,6 +584,13 @@ async function initTitan(): Promise<void> {
 // APP LIFECYCLE
 // =============================================================================
 
+// WAVE 3401: Enable SharedArrayBuffer for Node.js Worker Threads
+// Required for OMNI-INPUT MATRIX zero-copy audio pipeline (ALPHA → BETA).
+// Node.js Workers in Electron main process do NOT need COOP/COEP headers
+// (those are only for browser Service Workers / cross-origin isolation).
+// This switch ensures SAB is available in the V8 isolate backing worker_threads.
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
+
 app.whenReady().then(async () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 2489 + 2491: THE OBSIDIAN VAULT — Two-Gate License Validation

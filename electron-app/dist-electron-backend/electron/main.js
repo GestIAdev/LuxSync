@@ -58,28 +58,49 @@ let effectsEngine = null;
 let titanOrchestrator = null;
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-(function installBlackout() {
-    const _noop = () => { };
-    const _originalWarn = console.warn.bind(console);
-    const _originalError = console.error.bind(console);
-    // Silenciar completamente
-    console.log = _noop;
-    console.info = _noop;
-    console.debug = _noop;
-    // warn y error: solo pasan mensajes de diagnóstico crítico
-    const _cardiFilter = (orig) => (...args) => {
-        if (typeof args[0] === 'string' && (args[0].includes('[CARDIOGRAMA') ||
-            args[0].includes('[IPC PROBE]') ||
-            args[0].includes('[SEMAPHORE TRAP]') ||
-            args[0].includes('[DOUBLE-SEND TRAP]') ||
-            args[0].includes('[SONDA FRAME]') ||
-            args[0].includes('[COLOR JUMP]') ||
-            args[0].includes('[SONDA-'))) {
-            orig(...args);
-        }
+(function installConsciousnessFilter() {
+    const _orig = {
+        log: console.log.bind(console),
+        info: console.info.bind(console),
+        warn: console.warn.bind(console),
+        error: console.error.bind(console),
+        debug: console.debug.bind(console),
     };
-    console.warn = _cardiFilter(_originalWarn);
-    console.error = _cardiFilter(_originalError);
+    // Prefijos autorizados — cualquier log que empiece con uno de estos PASA
+    const WHITELIST = [
+        // Selene IA — narrativa de consciencia
+        '[SeleneTitanConscious',
+        '[DecisionMaker',
+        '[EffectRepository',
+        '[EffectManager',
+        '[GatlingRaid',
+        '[GLOBAL_COOLDOWN',
+        // Coreógrafo / Movimiento
+        '[CHOREO',
+        '[VibeMovementManager',
+        // Lifecycle — arranque del sistema y vibes
+        '[TitanOrchestrator',
+        '[UniversalDMX',
+        '[VIBE',
+        '[LuxSync',
+        // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
+        // hibernados — son ruido de ticker, no eventos de conciencia.
+        // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.
+    ];
+    function _allowed(args) {
+        if (typeof args[0] !== 'string')
+            return false;
+        const msg = args[0];
+        return WHITELIST.some(prefix => msg.startsWith(prefix));
+    }
+    const _filter = (orig) => (...args) => { if (_allowed(args))
+        orig(...args); };
+    console.log = _filter(_orig.log);
+    console.info = _filter(_orig.info);
+    console.debug = _filter(_orig.debug);
+    console.warn = _filter(_orig.warn);
+    // error siempre pasa — son fallos reales que hay que saber
+    console.error = _orig.error;
 })();
 // ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
@@ -203,9 +224,14 @@ function createWindow() {
             backgroundThrottling: false,
         },
     });
-    // Desktop capturer permissions
+    // Permission handlers — WAVE 3301: midi + midiSysex unlocked for nanoPAD2
+    mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
+        if (permission === 'midi' || permission === 'midiSysex')
+            return true;
+        return ['media', 'mediaKeySystem', 'geolocation'].includes(permission);
+    });
     mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
-        const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation'];
+        const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation', 'midi', 'midiSysex'];
         callback(allowedPermissions.includes(permission));
     });
     // Display media request handler

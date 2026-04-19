@@ -676,34 +676,11 @@ export class HardwareAbstraction {
         // for HarmonicQuantizer in translateColorToWheel()
         this.currentFrameBpm = audio.bpm ?? 120;
         this.currentFrameBpmConfidence = audio.bpmConfidence ?? 0;
-        // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
-        if (target.globalEffects.blackoutActive) {
-            const blackoutStates = fixtures.map(fixture => ({
-                fixtureId: fixture.id || fixture.name, // 🔧 WAVE 2049.1: Propagate fixtureId
-                isVirtual: fixture.isVirtual ?? false, // 🛡️ WAVE 3110
-                name: fixture.name,
-                type: fixture.type || 'generic',
-                zone: (fixture.zone || 'UNASSIGNED'),
-                dmxAddress: fixture.dmxAddress,
-                universe: fixture.universe ?? 0, // 🔥 WAVE 1219: ArtNet 0-indexed
-                dimmer: 0,
-                r: 0,
-                g: 0,
-                b: 0,
-                pan: 128,
-                tilt: 128,
-                zoom: 128,
-                focus: 128,
-                physicalPan: 128,
-                physicalTilt: 128,
-                panVelocity: 0,
-                tiltVelocity: 0,
-            }));
-            // WAVE 3010: sendToDriver() removed — Orchestrator sends ONCE after all processing
-            this.framesRendered++;
-            this.lastFixtureStates = blackoutStates;
-            return blackoutStates;
-        }
+        // 🖤 WAVE 3240: MOVE IN BLACK — El blackout es responsabilidad exclusiva del Arbiter.
+        // El MasterArbiter ya aplicó dimmer=0 (y shutter=0 si aplica) en su Layer 4,
+        // preservando pan/tilt/color/gobo/prism intactos. El HAL NO interviene aquí.
+        // El early-return anterior (pan:128, tilt:128 hardcodeados) fue el origen
+        // del "latigazo mecánico" y del vaciado de phantomChannels en blackout.
         // Map arbitrated targets to fixture states
         // 🎵 WAVE 2672: Cache BPM for HarmonicQuantizer (used in translateColorToWheel)
         this.currentFrameBpm = audio.bpm ?? 0;
@@ -747,9 +724,17 @@ export class HardwareAbstraction {
                     // 🔥 WAVE 2190: shutter UNDEFINED — Let FixtureMapper fall through to
                     // channel.defaultValue ?? 255 (Open). Hardcoding 0 = CLOSED = blackout
                     // on any fixture with a mechanical shutter channel.
-                    gobo: 0,
-                    prism: 0,
-                    strobe: 0,
+                    // 🔧 WAVE 3200: Pull gobo/prism from phantomChannels instead of
+                    // hardcoding 0. The Arbiter already resolved the correct value
+                    // (manual override or fixture default). Hardcoding 0 was zeroing
+                    // gobo/prism every frame, killing values set by the operator.
+                    gobo: fixtureTarget.phantomChannels?.['gobo'] ?? 0,
+                    prism: fixtureTarget.phantomChannels?.['prism'] ?? 0,
+                    // 🔥 WAVE 3313: strobe UNDEFINED — igual que shutter (WAVE 2190).
+                    // Hardcoding 0 bloqueaba el fallback a channel.defaultValue en FixtureMapper.
+                    // Fixtures como el 250 Big Dipper tienen strobe canal dual (1-127=flash, 128-255=open)
+                    // con defaultValue:255. Con strobe:0 → canal cerrado → luz apagada aunque dimmer=255.
+                    strobe: undefined,
                     // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
                     phantomChannels: fixtureTarget.phantomChannels,
                     // 🚧 WAVE 2228: DMX ADUANA — Propagate control sources for HAL gate
@@ -1439,69 +1424,18 @@ export class HardwareAbstraction {
         //     }
         //   } catch { /* nunca bloquear */ }
         // }
-        if (!outputEnabled) {
-            // \u26a1 WAVE 3050: Zero-allocation \u2014 mutate in-place, no .map() + spread
-            for (let i = 0; i < states.length; i++) {
-                const state = states[i];
-                const sources = state._controlSources;
-                if (!sources) {
-                    // No source metadata \u2192 full blackout for safety
-                    state.dimmer = 0;
-                    state.r = 0;
-                    state.g = 0;
-                    state.b = 0;
-                    state.pan = 128;
-                    state.tilt = 128;
-                    state.physicalPan = 128;
-                    state.physicalTilt = 128;
-                    continue;
-                }
-                // Check if ANY channel is manual \u2014 if none, full blackout shortcut
-                const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL);
-                if (!hasAnyManual) {
-                    state.dimmer = 0;
-                    state.r = 0;
-                    state.g = 0;
-                    state.b = 0;
-                    state.pan = 128;
-                    state.tilt = 128;
-                    state.physicalPan = 128;
-                    state.physicalTilt = 128;
-                    continue;
-                }
-                // Per-channel gate: manual channels pass, rest \u2192 safe values
-                // \ud83d\udea7 WAVE 2229: physicalPan/physicalTilt MUST also be gated.
-                //
-                // WAVE 2961: COLOR COHERENCE \u2014 when the operator has manual control of
-                // the dimmer, the fixture's computed color (r/g/b/white/color_wheel) MUST
-                // also pass through, even if those channels are tagged as TITAN_AI.
-                //
-                // WAVE 2980: BABELFISH SELLO \u2014 Color coherence ONLY for mechanical fixtures
-                // (those with a physical color wheel). LED PARs and RGB panels have no wheel
-                // mechanics, so they MUST be allowed to receive absolute zero on all channels.
-                const dimmerIsManual = sources['dimmer'] === ControlLayer.MANUAL;
-                const hasMechanicalWheel = state.hasColorWheel === true;
-                const panSafe = sources['pan'] === ControlLayer.MANUAL;
-                const tiltSafe = sources['tilt'] === ControlLayer.MANUAL;
-                const colorPassFromDimmer = dimmerIsManual && hasMechanicalWheel;
-                // Mutate in-place
-                if (!dimmerIsManual)
-                    state.dimmer = 0;
-                state.r = (sources['red'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.r : 0;
-                state.g = (sources['green'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.g : 0;
-                state.b = (sources['blue'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.b : 0;
-                state.white = (sources['white'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.white : 0;
-                state.colorWheel = (sources['color_wheel'] === ControlLayer.MANUAL || colorPassFromDimmer) ? state.colorWheel : undefined;
-                if (!panSafe) {
-                    state.pan = 128;
-                    state.physicalPan = 128;
-                }
-                if (!tiltSafe) {
-                    state.tilt = 128;
-                    state.physicalTilt = 128;
-                }
-            }
-        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⚡ WAVE 3160: THE IMMUTABLE GATE
+        //
+        // ANTES (WAVE 2228–3050): La Aduana mutaba FixtureState IN-PLACE cuando
+        // !outputEnabled. Eso corrompía las referencias que React/IPC leía
+        // asíncronamente → race condition → "mosca borracha" en la UI.
+        //
+        // AHORA: Los FixtureState son INMUTABLES dentro de sendToDriver().
+        // El gate se aplica en la capa de bytes DMX (post statesToDMXPackets),
+        // dejando intacta la intención matemática del motor para UI/preview.
+        // La variable `outputEnabled` se usa más abajo, en la Aduana de bytes.
+        // ═══════════════════════════════════════════════════════════════════════
         // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
         const withWhite = states.filter(s => s.white !== undefined && s.white > 0);
         // Removed noisy retina-killing log: [HAL] 🔆 WHITE PRE-DMX
@@ -1641,7 +1575,78 @@ export class HardwareAbstraction {
         const physicalStates = states.filter(s => !s.isVirtual);
         const packets = this.mapper.statesToDMXPackets(physicalStates);
         // ═══════════════════════════════════════════════════════════════════════
-        // � WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER
+        // ⚡ WAVE 3160: ADUANA INMUTABLE — Gate en capa de bytes DMX
+        //
+        // Cuando !outputEnabled (ARMED), los bytes DMX se fuerzan a safe values.
+        // Los FixtureState originales NUNCA se tocan — React/UI los lee intactos.
+        //
+        // Semántica preservada de WAVE 2228/2229/2961/2980:
+        //   - Manual (Layer 2) channels → pass through (calibración en ARMED)
+        //   - WAVE 2961: dimmer manual + color wheel mecánica → color pass through
+        //   - WAVE 2980: Babelfish Sello — color coherence SOLO para wheels mecánicas
+        //   - Todos los demás → safe values (dimmer=0, color=black, pos=center)
+        // ═══════════════════════════════════════════════════════════════════════
+        if (!outputEnabled) {
+            for (let i = 0; i < packets.length; i++) {
+                const packet = packets[i];
+                const state = physicalStates[i];
+                if (!state)
+                    continue;
+                const sources = state._controlSources;
+                const channelDefs = state.channels;
+                // No source metadata or no channel definitions → full blackout on bytes
+                if (!sources) {
+                    packet.channels.fill(0);
+                    continue;
+                }
+                // Shortcut: no manual channels at all → full blackout on bytes
+                const hasAnyManual = Object.values(sources).some(v => v === ControlLayer.MANUAL);
+                if (!hasAnyManual) {
+                    packet.channels.fill(0);
+                    continue;
+                }
+                // Per-channel gate on DMX bytes
+                const dimmerIsManual = sources['dimmer'] === ControlLayer.MANUAL;
+                const hasMechanicalWheel = state.hasColorWheel === true;
+                const colorPassFromDimmer = dimmerIsManual && hasMechanicalWheel;
+                if (!channelDefs || channelDefs.length === 0) {
+                    // Legacy 8-channel format: [dimmer, r, g, b, pan, tilt, zoom, focus]
+                    if (!dimmerIsManual)
+                        packet.channels[0] = 0;
+                    packet.channels[1] = (sources['red'] === ControlLayer.MANUAL || colorPassFromDimmer) ? packet.channels[1] : 0;
+                    packet.channels[2] = (sources['green'] === ControlLayer.MANUAL || colorPassFromDimmer) ? packet.channels[2] : 0;
+                    packet.channels[3] = (sources['blue'] === ControlLayer.MANUAL || colorPassFromDimmer) ? packet.channels[3] : 0;
+                    if (sources['pan'] !== ControlLayer.MANUAL)
+                        packet.channels[4] = 128;
+                    if (sources['tilt'] !== ControlLayer.MANUAL)
+                        packet.channels[5] = 128;
+                    // zoom (6) and focus (7): leave as-is if manual, otherwise center
+                    if (sources['zoom'] !== ControlLayer.MANUAL)
+                        packet.channels[6] = 128;
+                    if (sources['focus'] !== ControlLayer.MANUAL)
+                        packet.channels[7] = 128;
+                    continue;
+                }
+                // Dynamic channels: gate each byte by its channel type
+                const sorted = [...channelDefs].sort((a, b) => a.index - b.index);
+                for (let ci = 0; ci < sorted.length && ci < packet.channels.length; ci++) {
+                    const chType = sorted[ci].type;
+                    const sourceKey = this._channelTypeToSourceKey(chType);
+                    const isManual = sourceKey ? sources[sourceKey] === ControlLayer.MANUAL : false;
+                    const isColorChannel = chType === 'red' || chType === 'green' || chType === 'blue' ||
+                        chType === 'white' || chType === 'amber' || chType === 'uv' ||
+                        chType === 'color_wheel';
+                    if (isManual)
+                        continue; // Manual channel → byte passes through
+                    if (isColorChannel && colorPassFromDimmer)
+                        continue; // Babelfish Sello
+                    // Apply safe value for this channel type
+                    packet.channels[ci] = this._safeValueForChannelType(chType, sorted[ci].defaultValue);
+                }
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 3000: INYECTAR PACKETS EN BUFFERS DEL DRIVER
         // Sin esto, sendAll() envía buffers vacíos/stale.
         // Cada DMXPacket tiene {universe, address, channels[]} que se escribe
         // en la posición correcta del buffer del universo correspondiente.
@@ -1708,6 +1713,67 @@ export class HardwareAbstraction {
         this.config.driverType = type;
         // Connect new driver
         return await this.driver.connect();
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 3160: ADUANA HELPERS — Channel type → source key / safe value
+    // ═══════════════════════════════════════════════════════════════════════
+    /** Map a DMX channel type to the _controlSources key used by MasterArbiter */
+    _channelTypeToSourceKey(chType) {
+        switch (chType) {
+            case 'dimmer':
+            case 'shutter': return 'dimmer';
+            case 'red': return 'red';
+            case 'green': return 'green';
+            case 'blue': return 'blue';
+            case 'white': return 'white';
+            case 'amber': return 'amber';
+            case 'uv': return 'uv';
+            case 'pan':
+            case 'pan_fine': return 'pan';
+            case 'tilt':
+            case 'tilt_fine': return 'tilt';
+            case 'zoom': return 'zoom';
+            case 'focus': return 'focus';
+            case 'color_wheel': return 'color_wheel';
+            case 'gobo': return 'gobo';
+            case 'prism': return 'prism';
+            case 'strobe': return 'strobe';
+            case 'speed': return 'speed';
+            case 'frost': return 'frost';
+            case 'rotation': return 'rotation';
+            case 'macro':
+            case 'control': return null; // No arbiter control
+            default: return null;
+        }
+    }
+    /** Safe DMX byte value for a channel type when output is ARMED (not LIVE) */
+    _safeValueForChannelType(chType, defaultValue) {
+        switch (chType) {
+            case 'dimmer':
+            case 'strobe': return 0;
+            case 'red':
+            case 'green':
+            case 'blue':
+            case 'white':
+            case 'amber':
+            case 'uv': return 0;
+            case 'color_wheel':
+            case 'gobo':
+            case 'prism':
+            case 'frost': return 0;
+            case 'pan':
+            case 'tilt': return 128; // Center
+            case 'pan_fine':
+            case 'tilt_fine': return 0;
+            case 'zoom':
+            case 'focus':
+            case 'speed': return 128; // Center/neutral
+            case 'rotation': return 128; // Stop
+            case 'shutter': return 255; // Open (safe — don't close the shutter)
+            case 'macro':
+            case 'control': return defaultValue ?? 0;
+            default: return 0;
+        }
     }
     // ═══════════════════════════════════════════════════════════════════════
     // STATE MANAGEMENT

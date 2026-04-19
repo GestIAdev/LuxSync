@@ -76,7 +76,7 @@ export class CorazonLatino extends BaseEffect {
         this.name = 'Corazón Latino';
         this.category = 'physical';
         this.priority = 85; // Alta prioridad - es épico
-        this.mixBus = 'global'; // 🚂 WAVE 800: Dictador - corazón necesita sus colores
+        this.mixBus = 'htp'; // 🚂 WAVE 3307: HTP — ambient effect, color flows to movers through Deep Seal
         this.currentHeartbeat = 0;
         this.heartbeatPhase = 'rest';
         this.phaseTimer = 0;

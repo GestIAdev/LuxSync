@@ -84,8 +84,13 @@ export const VIBE_FIESTA_LATINA = {
         preferredSync: 'beat',
     },
     effects: {
-        allowed: ['fog', 'beam'],
-        maxStrobeRate: 0, // Sin strobe para latino
+        allowed: ['fog', 'beam', 'strobe'],
+        // WAVE 3300: Strobe liberado para fiesta-latina.
+        // El Latino tiene momentos épicos que merecen tormenta real.
+        // 25Hz = techo físico del hardware (mismo que techno-club).
+        // El StrobeStorm ya implementa su propio chaos engine determinista
+        // que modula dentro de este techo según BPM + beatPhase.
+        maxStrobeRate: 25,
         maxIntensity: 1.0,
         autoFog: true,
     },

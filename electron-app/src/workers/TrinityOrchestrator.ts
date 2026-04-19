@@ -36,6 +36,12 @@ import {
   isMusicalContext  // 🧠 WAVE 230: THE LOBOTOMY
 } from './WorkerProtocol';
 
+// WAVE 3401: OMNI-INPUT MATRIX -- SharedArrayBuffer + AudioMatrix
+import { SharedRingBufferWriter, createSharedRingBuffer } from '../core/audio/SharedRingBuffer';
+import { AudioMatrix } from '../core/audio/AudioMatrix';
+import { LegacyBridgeProvider } from '../core/audio/LegacyBridgeProvider';
+import type { IAudioMatrix } from '../core/audio/OmniInputTypes';
+
 // ============================================
 // CIRCUIT BREAKER (Adapted from Swarm)
 // ============================================
@@ -103,6 +109,17 @@ export class TrinityOrchestrator extends EventEmitter {
   
   // 🧠 WAVE 258: Worker paths - detect dist-electron folder correctly
   private readonly WORKER_PATHS: { beta: string; gamma: string };
+
+  // WAVE 3401: OMNI-INPUT MATRIX -- Shared memory + central bus
+  private sharedRingWriter: SharedRingBufferWriter | null = null;
+  private sharedAudioBuffer: SharedArrayBuffer | null = null;
+  private audioMatrix: AudioMatrix | null = null;
+  private legacyBridge: LegacyBridgeProvider | null = null;
+
+  // WAVE 3401: Expose AudioMatrix for external provider registration (OSCNexus, USB, etc.)
+  getAudioMatrix(): IAudioMatrix | null {
+    return this.audioMatrix;
+  }
   
   private static getWorkerDir(): string {
     // In Electron bundled with Vite, we need to find dist-electron
@@ -194,6 +211,18 @@ export class TrinityOrchestrator extends EventEmitter {
     this.isRunning = true;
     
     try {
+      // WAVE 3401: Initialize OMNI-INPUT MATRIX before spawning workers
+      // The SharedArrayBuffer must exist before BETA is spawned so it can
+      // be passed via workerData.
+      const { sab, writer } = createSharedRingBuffer();
+      this.sharedAudioBuffer = sab;
+      this.sharedRingWriter = writer;
+
+      this.audioMatrix = new AudioMatrix(writer);
+      this.legacyBridge = new LegacyBridgeProvider();
+      this.audioMatrix.registerProvider(this.legacyBridge);
+      console.log('[ALPHA] WAVE 3401: AudioMatrix initialized (SAB + LegacyBridge)');
+
       // Spawn workers
       await this.spawnWorker('beta');
       await this.spawnWorker('gamma');
@@ -217,6 +246,15 @@ export class TrinityOrchestrator extends EventEmitter {
   async stop(): Promise<void> {
     // WAVE 2098: Boot silence
     this.isRunning = false;
+
+    // WAVE 3401: Dispose AudioMatrix and providers
+    if (this.audioMatrix) {
+      this.audioMatrix.dispose();
+      this.audioMatrix = null;
+    }
+    this.legacyBridge = null;
+    this.sharedRingWriter = null;
+    // sharedAudioBuffer stays alive until GC (workers may still read)
     
     // Stop intervals
     if (this.heartbeatInterval) {
@@ -284,7 +322,14 @@ export class TrinityOrchestrator extends EventEmitter {
     }
     
     const worker = new Worker(workerPath, {
-      workerData: { config: this.config }
+      workerData: {
+        config: this.config,
+        // WAVE 3401: Pass SharedArrayBuffer to BETA for zero-copy audio
+        ...(nodeId === 'beta' && this.sharedAudioBuffer
+          ? { sharedAudioBuffer: this.sharedAudioBuffer }
+          : {}
+        )
+      }
     });
     
     // Set up message handler
@@ -578,16 +623,18 @@ export class TrinityOrchestrator extends EventEmitter {
     }
     
     this.audioBufferCount++;
-    
+
+    // WAVE 3401: Route through AudioMatrix → SharedRingBuffer (zero-copy to BETA)
+    // The LegacyBridgeProvider receives the buffer and the AudioMatrix writes
+    // it to the SharedRingBuffer. BETA polls the SAB directly — no postMessage.
+    if (this.legacyBridge && this.audioMatrix) {
+      this.legacyBridge.feedFromIPC(buffer);
+      return;
+    }
+
+    // Fallback: direct postMessage path (pre-WAVE 3401 behavior)
     const beta = this.nodes.get('beta');
     
-    // 🧹 WAVE 671.5: Silenced audio buffer spam (every 2s)
-    // 🔍 WAVE 264.7: Log cada 2 segundos (~120 frames a 60fps)
-    // if (this.audioBufferCount % 120 === 0) {
-    //   console.log(`[ALPHA 📡] feedAudioBuffer #${this.audioBufferCount} | beta.ready=${beta?.isReady} | circuit=${beta?.circuit.state} | failures=${beta?.circuit.failures}`);
-    // }
-    
-    // 🔍 WAVE 262 DEBUG: ¿Por qué BETA no recibe audio?
     if (!beta?.worker) {
       console.warn('[ALPHA] ⚠️ BETA worker not available!');
       return;

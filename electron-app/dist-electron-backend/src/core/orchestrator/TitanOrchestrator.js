@@ -96,6 +96,16 @@ export class TitanOrchestrator {
         // AFTER: Single buffer reused across frames. Zero GC from FFT.
         // ═══════════════════════════════════════════════════════════════════════════
         this.EMPTY_FFT_BUFFER = Object.freeze(new Array(256).fill(0));
+        // WAVE 3190: PRE-ALLOCATED HEPHAESTUS ROUTING BUFFERS — GC Zero Allocation
+        // Eliminan los new Map() que se creaban CADA FRAME cuando hay clips activos.
+        // Se limpian con .clear() al inicio del bloque Hephaestus y se reusan.
+        this._hephByFixtureId = new Map();
+        this._hephByZone = new Map();
+        // Pool de arrays de outputs por fixture — se reusan across frames
+        // El pool crece hasta N fixtures y nunca encoge (GC amortizado)
+        this._hephOutputPool = new Map();
+        // WAVE 3190: Pre-allocated EffectIntentMap — evita new Map() cada frame con effects activos
+        this._effectIntentBuf = new Map();
         // WAVE 252: Real fixtures from ConfigManager (no more mocks)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.fixtures = [];
@@ -321,30 +331,29 @@ export class TitanOrchestrator {
         // lo esperado — GC mayor, IPC backpressure, spin-lock, etc.
         // 5ms interval = detecta spikes con 5ms de resolución.
         // ─────────────────────────────────────────────────────────────────
-        let _cardiogramaLastTick = performance.now();
-        let _cardiogramaPeak = 0;
-        let _cardiogramaCount = 0;
-        this.cardiogramaInterval = setInterval(() => {
-            const _now = performance.now();
-            const _delta = _now - _cardiogramaLastTick;
-            _cardiogramaLastTick = _now;
-            if (_delta > _cardiogramaPeak)
-                _cardiogramaPeak = _delta;
-            _cardiogramaCount++;
-            // Solo loguear si supera 40ms (bloqueo GRAVE, no baseline de 15ms)
-            // o cada 600 ticks (~5s) como heartbeat de diagnóstico
-            if (_delta > 40) {
-                const _msg = `🫀 HARD BLOCK ${_delta.toFixed(1)}ms — event loop frozen`;
-                console.warn(`[CARDIOGRAMA MAIN] ⚠️ ${_msg}`);
-                this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`);
-            }
-            else if (_cardiogramaCount % 600 === 0) {
-                const _msg = `🫀 heartbeat — peak:${_cardiogramaPeak.toFixed(1)}ms (last 5s)`;
-                console.warn(`[CARDIOGRAMA MAIN] ${_msg}`);
-                this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`);
-                _cardiogramaPeak = 0;
-            }
-        }, 5);
+        // DEBUG PROBE — Reactivar para auditoría (WAVE 3290 OJO DEL HURACÁN)
+        // let _cardiogramaLastTick = performance.now()
+        // let _cardiogramaPeak = 0
+        // let _cardiogramaCount = 0
+        // this.cardiogramaInterval = setInterval(() => {
+        //   const _now = performance.now()
+        //   const _delta = _now - _cardiogramaLastTick
+        //   _cardiogramaLastTick = _now
+        //   if (_delta > _cardiogramaPeak) _cardiogramaPeak = _delta
+        //   _cardiogramaCount++
+        //   // Solo loguear si supera 40ms (bloqueo GRAVE, no baseline de 15ms)
+        //   // o cada 600 ticks (~5s) como heartbeat de diagnóstico
+        //   if (_delta > 40) {
+        //     const _msg = `🫀 HARD BLOCK ${_delta.toFixed(1)}ms — event loop frozen`
+        //     console.warn(`[CARDIOGRAMA MAIN] ⚠️ ${_msg}`)
+        //     this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
+        //   } else if (_cardiogramaCount % 600 === 0) {
+        //     const _msg = `🫀 heartbeat — peak:${_cardiogramaPeak.toFixed(1)}ms (last 5s)`
+        //     console.warn(`[CARDIOGRAMA MAIN] ${_msg}`)
+        //     this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
+        //     _cardiogramaPeak = 0
+        //   }
+        // }, 5)
         // Relay CARDIOGRAMA del USB Worker → Tactical Log del frontend
         universalDMX.onWarning = (msg) => {
             console.warn(msg);
@@ -429,8 +438,6 @@ export class TitanOrchestrator {
         if (this.isProcessingFrame)
             return;
         this.isProcessingFrame = true;
-        // 🔬 WAVE 3030: SONDA FRAME — Timestamp inicio absoluto del frame
-        const _sondaFrameStart = performance.now();
         try {
             if (!this.brain || !this.engine || !this.hal)
                 return;
@@ -670,10 +677,7 @@ export class TitanOrchestrator {
                 bpmConfidence: this.lastAudioData?.workerBpmConfidence ?? 0,
             };
             // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
-            // 🔬 WAVE 3030: SONDA ENGINE
-            const _sondaEngineStart = performance.now();
             const intent = await this.engine.update(context, engineAudioMetrics);
-            const _sondaEngineMs = performance.now() - _sondaEngineStart;
             // ═══════════════════════════════════════════════════════════════════════════
             // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
             // Instead of sending intent directly to HAL, we now:
@@ -706,11 +710,15 @@ export class TitanOrchestrator {
             // Chronos protection: fixtures being painted by Chronos are off-limits
             const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
             if (effectOutput.hasActiveEffects) {
-                const intentMap = new Map();
+                // WAVE 3190: Reutilizar buffer pre-asignado — cero new Map() por frame con effects activos
+                this._effectIntentBuf.clear();
+                const intentMap = this._effectIntentBuf;
                 // ── ZONE OVERRIDES (pinceles finos) ──────────────────────────────
                 if (effectOutput.zoneOverrides) {
-                    const activeZones = Object.keys(effectOutput.zoneOverrides);
-                    for (const zoneId of activeZones) {
+                    // WAVE 3190: for...in en lugar de Object.keys() — cero alloc de array intermedio
+                    for (const zoneId in effectOutput.zoneOverrides) {
+                        if (!Object.prototype.hasOwnProperty.call(effectOutput.zoneOverrides, zoneId))
+                            continue;
                         const zoneData = effectOutput.zoneOverrides[zoneId];
                         const fixtureIds = masterArbiter.getFixtureIdsByZone(zoneId);
                         for (const fixtureId of fixtureIds) {
@@ -832,10 +840,7 @@ export class TitanOrchestrator {
                 }
             }
             // Arbitrate all layers (this merges manual overrides, effects, blackout)
-            // 🔬 WAVE 3030: SONDA ARBITER
-            const _sondaArbiterStart = performance.now();
             const arbitratedTarget = masterArbiter.arbitrate();
-            const _sondaArbiterMs = performance.now() - _sondaArbiterStart;
             // ═══════════════════════════════════════════════════════════════════════
             // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
             // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
@@ -884,10 +889,7 @@ export class TitanOrchestrator {
             // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
             // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
             // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
-            // 🔬 WAVE 3030: SONDA HAL RENDER
-            const _sondaHalStart = performance.now();
-            let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
-            const _sondaHalMs = performance.now() - _sondaHalStart;
+            const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
             // ═══════════════════════════════════════════════════════════════════════
             // � WAVE 2662: POST-HAL MUTATION ELIMINATED
             //
@@ -942,164 +944,153 @@ export class TitanOrchestrator {
             // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
             // ═══════════════════════════════════════════════════════════════════════════
             const hephRuntime = getHephaestusRuntime();
-            // 🔬 WAVE 3030: SONDA HEPHAESTUS
-            const _sondaHephStart = performance.now();
             const hephOutputs = hephRuntime.tick(now); // ⚡ WAVE 3050: unified timestamp
             // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
             // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
             // The engine runs but its output never reaches fixtures.
             if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
-                // Group outputs by parameter for efficient processing
+                // WAVE 3190: Reutilizar buffers pre-asignados — cero new Map() por frame
                 // 🎯 WAVE 2544.3: Separate outputs into two buckets:
                 //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
                 //   - zone bucket: output targets a zone string (tickWithPhase legacy path)
-                const hephByFixtureId = new Map();
-                const hephByZone = new Map();
+                this._hephByFixtureId.clear();
+                this._hephByZone.clear();
+                // Limpiar arrays del pool reutilizados el frame anterior
+                for (const arr of this._hephOutputPool.values())
+                    arr.length = 0;
                 for (const output of hephOutputs) {
                     // If fixtureId looks like a real fixture ID (not 'zone:xxx'), use fixture bucket
                     if (output.fixtureId && !output.fixtureId.startsWith('zone:')) {
-                        if (!hephByFixtureId.has(output.fixtureId)) {
-                            hephByFixtureId.set(output.fixtureId, []);
+                        let arr = this._hephByFixtureId.get(output.fixtureId);
+                        if (!arr) {
+                            // Reusar del pool o crear uno nuevo (solo en el primer clip para esta fixture)
+                            arr = this._hephOutputPool.get(output.fixtureId);
+                            if (!arr) {
+                                arr = [];
+                                this._hephOutputPool.set(output.fixtureId, arr);
+                            }
+                            this._hephByFixtureId.set(output.fixtureId, arr);
                         }
-                        hephByFixtureId.get(output.fixtureId).push(output);
+                        arr.push(output);
                     }
                     else {
                         const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
-                        if (!hephByZone.has(zoneKey)) {
-                            hephByZone.set(zoneKey, []);
+                        let arr = this._hephByZone.get(zoneKey);
+                        if (!arr) {
+                            arr = this._hephOutputPool.get(`zone:${zoneKey}`);
+                            if (!arr) {
+                                arr = [];
+                                this._hephOutputPool.set(`zone:${zoneKey}`, arr);
+                            }
+                            this._hephByZone.set(zoneKey, arr);
                         }
-                        hephByZone.get(zoneKey).push(output);
+                        arr.push(output);
                     }
                 }
-                // Apply Hephaestus outputs to fixtures
-                fixtureStates = fixtureStates.map((f, index) => {
+                // WAVE 3190: Mutation in-place — cero map()+spread() por frame
+                // Apply Hephaestus outputs to fixtures mutando f directamente.
+                // fixtureStates son objetos propios del HAL por frame — son seguros de mutar.
+                for (let index = 0; index < fixtureStates.length; index++) {
+                    const f = fixtureStates[index];
                     // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
                     const fixtureId = this.fixtures[index]?.id;
                     if (fixtureId && chronosFixtureIds.has(fixtureId))
-                        return f;
-                    const applicableOutputs = [];
-                    // 🎯 WAVE 2544.3: Check fixture-ID-specific outputs first (AND-gated path)
-                    if (fixtureId) {
-                        const directOutputs = hephByFixtureId.get(fixtureId);
-                        if (directOutputs)
-                            applicableOutputs.push(...directOutputs);
-                    }
-                    // Check 'all' zone outputs (legacy / global clips)
-                    const allZoneOutputs = hephByZone.get('all');
-                    if (allZoneOutputs)
-                        applicableOutputs.push(...allZoneOutputs);
-                    // Check zone-specific outputs (old zone-string path)
-                    // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support in Hephaestus outputs
+                        continue;
+                    // Collect applicable outputs inline (sin crear array intermedio cuando posible)
+                    const directOutputs = fixtureId ? this._hephByFixtureId.get(fixtureId) : undefined;
+                    const allOutputs = this._hephByZone.get('all');
+                    // Chequear si hay algo que aplicar antes de iterar zonas
                     const fixtureZone = (f.zone || '').toLowerCase();
                     const positionX = this.fixtures[index]?.position?.x ?? 0;
-                    for (const [zoneKey, outputs] of hephByZone) {
+                    let hasAny = !!(directOutputs?.length) || !!(allOutputs?.length);
+                    if (!hasAny) {
+                        for (const [zoneKey] of this._hephByZone) {
+                            if (zoneKey === 'all')
+                                continue;
+                            if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
+                                hasAny = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!hasAny)
+                        continue;
+                    // ⚒️ WAVE 2030.21: THE TRANSLATOR — mutar f in-place
+                    // Values arrive PRE-SCALED from HephaestusRuntime. Zero scaling here.
+                    const applyOutputs = (outputs) => {
+                        for (const output of outputs) {
+                            switch (output.parameter) {
+                                case 'intensity':
+                                    f.dimmer = Math.max(f.dimmer, output.value);
+                                    break;
+                                case 'strobe':
+                                    f.strobe = Math.min(255, (f.strobe || 0) + output.value);
+                                    break;
+                                case 'pan':
+                                    f.pan = output.value;
+                                    if (output.fine !== undefined)
+                                        f.panFine = output.fine;
+                                    break;
+                                case 'tilt':
+                                    f.tilt = output.value;
+                                    if (output.fine !== undefined)
+                                        f.tiltFine = output.fine;
+                                    break;
+                                case 'color':
+                                    if (output.rgb) {
+                                        f.r = output.rgb.r;
+                                        f.g = output.rgb.g;
+                                        f.b = output.rgb.b;
+                                    }
+                                    break;
+                                case 'white':
+                                    f.white = output.value;
+                                    break;
+                                case 'amber':
+                                    f.amber = output.value;
+                                    break;
+                                case 'zoom':
+                                    f.zoom = output.value;
+                                    break;
+                                case 'focus':
+                                    f.focus = output.value;
+                                    break;
+                                case 'iris':
+                                    f.iris = output.value;
+                                    break;
+                                case 'gobo1':
+                                    f.gobo = output.value;
+                                    break;
+                                case 'gobo2':
+                                    f.gobo2 = output.value;
+                                    break;
+                                case 'prism':
+                                    f.prism = output.value;
+                                    break;
+                                // speed/width/direction/globalComp: engine-internal — no DMX channel
+                            }
+                        }
+                    };
+                    if (directOutputs)
+                        applyOutputs(directOutputs);
+                    if (allOutputs)
+                        applyOutputs(allOutputs);
+                    // Check zone-specific outputs (old zone-string path)
+                    // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support
+                    for (const [zoneKey, outputs] of this._hephByZone) {
                         if (zoneKey === 'all')
                             continue;
                         if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
-                            applicableOutputs.push(...outputs);
+                            applyOutputs(outputs);
                         }
                     }
-                    if (applicableOutputs.length === 0)
-                        return f;
-                    // Apply each parameter with appropriate merge strategy
-                    let newF = { ...f };
-                    // ⚒️ WAVE 2030.21: THE TRANSLATOR
-                    // Values arrive PRE-SCALED from HephaestusRuntime.
-                    // DMX params: already 0-255. Color: already rgb {r,g,b} 0-255.
-                    // TitanOrchestrator ONLY merges. Zero scaling here.
-                    for (const output of applicableOutputs) {
-                        switch (output.parameter) {
-                            case 'intensity': {
-                                // HTP: Highest Takes Precedence (value is already 0-255)
-                                newF.dimmer = Math.max(newF.dimmer, output.value);
-                                break;
-                            }
-                            case 'strobe': {
-                                // Additive: sum clamped to 255 (value is already 0-255)
-                                newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + output.value) };
-                                break;
-                            }
-                            case 'pan': {
-                                // ⚒️ WAVE 2030.24: LTP with 16-bit precision
-                                // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
-                                // 🛡️ WAVE 2085: ONLY set TARGET. physicalPan is SACRED — owned exclusively
-                                // by FixturePhysicsDriver. HAL will interpolate toward this target.
-                                newF.pan = output.value;
-                                // panFine carried in output.fine (if fixture supports 16-bit)
-                                if (output.fine !== undefined) {
-                                    newF.panFine = output.fine;
-                                }
-                                break;
-                            }
-                            case 'tilt': {
-                                // ⚒️ WAVE 2030.24: LTP with 16-bit precision
-                                // 🛡️ WAVE 2085: ONLY set TARGET. physicalTilt is SACRED.
-                                newF.tilt = output.value;
-                                if (output.fine !== undefined) {
-                                    newF.tiltFine = output.fine;
-                                }
-                                break;
-                            }
-                            case 'color': {
-                                // LTP: RGB pre-converted from HSL in Runtime
-                                if (output.rgb) {
-                                    newF.r = output.rgb.r;
-                                    newF.g = output.rgb.g;
-                                    newF.b = output.rgb.b;
-                                }
-                                break;
-                            }
-                            case 'white': {
-                                // LTP overlay (value is already 0-255)
-                                newF.white = output.value;
-                                break;
-                            }
-                            case 'amber': {
-                                // LTP overlay (value is already 0-255)
-                                newF.amber = output.value;
-                                break;
-                            }
-                            // ⚒️ WAVE 2030.24: Extended DMX params (8-bit, LTP overlay)
-                            case 'zoom': {
-                                newF.zoom = output.value;
-                                break;
-                            }
-                            case 'focus': {
-                                newF.focus = output.value;
-                                break;
-                            }
-                            case 'iris': {
-                                // FixtureState doesn't have iris yet — store as dynamic channel
-                                newF.iris = output.value;
-                                break;
-                            }
-                            case 'gobo1': {
-                                newF.gobo = output.value;
-                                break;
-                            }
-                            case 'gobo2': {
-                                // Secondary gobo — store as dynamic channel
-                                newF.gobo2 = output.value;
-                                break;
-                            }
-                            case 'prism': {
-                                newF.prism = output.value;
-                                break;
-                            }
-                            // speed/width/direction/globalComp: engine-internal (0-1 float)
-                            // No DMX channel mapping - consumed by engine subsystems only
-                        }
-                    }
-                    return newF;
-                });
+                }
                 // Throttled debug log
                 if (this.frameCount % 60 === 0) {
                     const activeClips = hephRuntime.getStats().activeClips;
                     console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
                 }
             }
-            // 🔬 WAVE 3030: Cerrar sonda Hephaestus (abarca tick + merge loop)
-            const _sondaHephMs = performance.now() - _sondaHephStart;
             // ═══════════════════════════════════════════════════════════════════════════
             // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
             //
@@ -1161,6 +1152,14 @@ export class TitanOrchestrator {
                     onBeat: engineAudioMetrics.isBeat,
                     beatConfidence: engineAudioMetrics.beatConfidence,
                     bpm: engineAudioMetrics.bpm,
+                    // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
+                    // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
+                    // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
+                    // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
+                    bass,
+                    mid,
+                    high,
+                    energy,
                     fixtures: fixtureStates.map((f, i) => {
                         const originalFixture = this.fixtures[i];
                         const realId = originalFixture?.id || `fix_${i}`;
@@ -1186,27 +1185,7 @@ export class TitanOrchestrator {
                 this.onHotFrame(hotFrame);
             }
             // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
-            // 🔬 WAVE 3030: SONDA SEND
-            const _sondaSendStart = performance.now();
             this.hal.flushToDriver(fixtureStates);
-            const _sondaSendMs = performance.now() - _sondaSendStart;
-            // 🔬 WAVE 3030: SONDA TOTAL FRAME — Log SIEMPRE cada 30 frames (1/segundo)
-            // + Log urgente si algún frame supera 10ms
-            const _sondaFrameTotalMs = performance.now() - _sondaFrameStart;
-            if (this.frameCount % 30 === 0) {
-                // Telemetría periódica: muestra el coste real de un frame normal
-                const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`;
-                const _msg = `🔬 FRAME ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`;
-                console.warn(`[SONDA FRAME] ${_msg}`);
-                this.log('Error', `[SONDA FRAME] ${_msg}`);
-            }
-            else if (_sondaFrameTotalMs > 10) {
-                // Urgente: frame individual supera umbral
-                const _breakdown = `engine:${_sondaEngineMs.toFixed(1)} arb:${_sondaArbiterMs.toFixed(1)} hal:${_sondaHalMs.toFixed(1)} heph:${_sondaHephMs.toFixed(1)} send:${_sondaSendMs.toFixed(1)}`;
-                const _msg = `🔬 FRAME LENTO ${this.frameCount} total:${_sondaFrameTotalMs.toFixed(1)}ms | ${_breakdown}`;
-                console.warn(`[SONDA FRAME] ${_msg}`);
-                this.log('Error', `[SONDA FRAME] ${_msg}`);
-            }
             // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
             // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.
             // El broadcast UI siempre recibe los valores reales del engine.
@@ -1451,6 +1430,14 @@ export class TitanOrchestrator {
             }
             // 🌊 WAVE 2432: THE GREAT WIRING — Hot-swap profile on vibe change
             this.engine.setActiveProfile(normalizedVibeId);
+            // 🧹 WAVE 3230: THE VIBE RESET — Clean Slate al cambiar de motor de físicas
+            // Un cambio de Vibe es un cambio de universo. Los overrides manuales del
+            // Layer 2 pertenecen al universo anterior. Limpiarlos garantiza que el
+            // nuevo estado se hidrate desde cero desde la AI (Layer 0).
+            // Usamos releaseAllManualOverrides() en lugar de un clear() brutalista
+            // para respetar las transiciones crossfade ya configuradas.
+            masterArbiter.releaseAllManualOverrides();
+            console.log(`[TitanOrchestrator] 🧹 WAVE 3230: Layer 2 purged — Clean Slate for vibe ${normalizedVibeId}`);
         }
     }
     /**

@@ -236,7 +236,11 @@ export const LATINO_PROFILE = {
     // ═══════════════════════════════════════════════════════════════
     // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
     // Latino/Reggaetón: energía alta, mucho mid melódico desde el inicio
-    morphFloor: 0.25, // Umbral bajo — el dembow ya trae mid desde el primer beat
+    // WAVE 3312: morphFloor 0.25→0.45 — el Centroid Shield (900×(1-morph)) bajaba
+    //   centroidFloor a 675Hz con morph=0.25, silenciando TAckas legítimos del dembow
+    //   que coincidían en el mismo frame que un kick. Con 0.45: floor=495Hz,
+    //   Shield mucho más permisivo con las frecuencias medias de caja/clave.
+    morphFloor: 0.45, // WAVE 3312: 0.25→0.45 — Shield menos agresivo, caja/bombo legítimos pasan
     morphCeiling: 0.65, // Techo medio — no necesita mid extremo para morph pleno
     kickEdgeMinInterval: 60, // MÁS corto que techno (80) — el dembow es rápido
     kickVetoFrames: 0, // CERO — la síncopa 3-3-2 no puede aguantar vetos

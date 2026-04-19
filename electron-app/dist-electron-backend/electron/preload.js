@@ -649,6 +649,12 @@ const luxApi = {
         setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMasterSpeed', { value }),
         /** 🎚️ WAVE 2472: Get Grand Master Speed */
         getGrandMasterSpeed: () => ipcRenderer.invoke('lux:arbiter:getGrandMasterSpeed'),
+        /** 🔒 WAVE 3270: Set per-fixture inhibit limit (0-1 proportional ceiling) */
+        setInhibitLimit: (fixtureIds, value) => ipcRenderer.invoke('lux:arbiter:setInhibitLimit', { fixtureIds, value }),
+        /** 🔒 WAVE 3270: Clear per-fixture inhibit limits (restore full power) */
+        clearInhibitLimit: (fixtureIds) => ipcRenderer.invoke('lux:arbiter:clearInhibitLimit', { fixtureIds }),
+        /** 🔒 WAVE 3270: Get all active inhibit limits */
+        getInhibitLimits: () => ipcRenderer.invoke('lux:arbiter:getInhibitLimits'),
         /**
          * 🎛️ WAVE 375.3: Set manual override for fixtures
          * @param fixtureIds - Array of fixture IDs to override

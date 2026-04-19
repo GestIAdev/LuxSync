@@ -36,6 +36,12 @@ import { mergeChannel, clampDMX } from './merge/MergeStrategies';
 import { CrossfadeEngine } from './CrossfadeEngine';
 import { resolveZone } from '../zones/ZoneMapper';
 import { solveGroupWithFan as ikSolveGroupWithFan, buildProfile as ikBuildProfile, } from '../../engine/movement/InverseKinematicsEngine';
+// 🛡️ WAVE 3304: MOVER SHIELD — canales de color que los movers deben ignorar de efectos
+// Constante a nivel de módulo para evitar re-creación en cada frame/fixture
+const MOVER_SHIELD_CHANNELS = new Set([
+    'red', 'green', 'blue', 'white', 'amber',
+    'uv', 'cyan', 'magenta', 'yellow', 'color_wheel',
+]);
 export class MasterArbiter extends EventEmitter {
     constructor(config = {}) {
         super();
@@ -105,6 +111,10 @@ export class MasterArbiter extends EventEmitter {
         this._ikProcessedFixtures = new Set();
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
+        // 🔒 WAVE 3270: THE RETINA SAVER — Per-fixture inhibit limit
+        // Proportional multiplier (0-1) per fixtureId. Missing = 1.0 (no limit).
+        // Applied AFTER Grand Master: dimmerfinal = dimmer * grandMaster * inhibitLimit
+        this.inhibitLimits = new Map();
         // 🔬 WAVE 2910 WIRETAP: rastreador de si cada fixture tenía posición manual en el frame anterior
         this._wiretap_prevHadPosition = new Map();
         // 🔥 WAVE 2495: Grand Master Speed — scales Layer 2 pattern speed too
@@ -124,6 +134,14 @@ export class MasterArbiter extends EventEmitter {
         // Also tracks last modification stacktrace per fixture for forensics.
         // ═══════════════════════════════════════════════════════════════════════
         this._prevFrameOverrideIds = new Set();
+        // WAVE 3190: Pre-allocated reuse — evita new Set() cada frame en arbitrate()
+        this._currentOverrideIdsBuf = new Set();
+        // WAVE 3190: Pre-allocated — evita Array.from() cada frame en _layerActivity
+        this._manualFixtureIdsBuf = [];
+        // WAVE 3190: Pre-allocated — evita [].map(e=>e.type) cada frame
+        this._activeEffectTypesBuf = [];
+        // WAVE 3190: Pre-allocated — evita new Set() en getPlaybackAffectedFixtureIds()
+        this._playbackAffectedBuf = new Set();
         this._layer2LastModStack = new Map();
         this._blackBoxThrottleMs = 0;
         this._layerLossThrottleMs = 0;
@@ -757,15 +775,30 @@ export class MasterArbiter extends EventEmitter {
      * Clean up expired effects
      */
     cleanupExpiredEffects() {
+        // WAVE 3190: Mutation in-place en lugar de .filter() — cero alloc cuando no hay expirados
         const now = performance.now();
-        this.layer3_effects = this.layer3_effects.filter(effect => {
-            const elapsed = now - effect.startTime;
-            if (elapsed >= effect.durationMs) {
+        let i = this.layer3_effects.length - 1;
+        while (i >= 0) {
+            const effect = this.layer3_effects[i];
+            if (now - effect.startTime >= effect.durationMs) {
                 this.emit('effectEnd', effect.type);
-                return false;
+                this.layer3_effects.splice(i, 1);
             }
-            return true;
-        });
+            i--;
+        }
+    }
+    // WAVE 3190: Helpers de buffer pre-asignado — cero alloc per frame
+    _buildManualFixtureIdsBuf() {
+        this._manualFixtureIdsBuf.length = 0;
+        for (const k of this.layer2_manualOverrides.keys())
+            this._manualFixtureIdsBuf.push(k);
+        return this._manualFixtureIdsBuf;
+    }
+    _buildActiveEffectTypesBuf() {
+        this._activeEffectTypesBuf.length = 0;
+        for (const e of this.layer3_effects)
+            this._activeEffectTypesBuf.push(e.type);
+        return this._activeEffectTypesBuf;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🎯 WAVE 2662: EFFECT INTENTS — EffectManager as Layer 3 input
@@ -778,8 +811,26 @@ export class MasterArbiter extends EventEmitter {
      * Intents are cleared at the end of each arbitrate() cycle for frame freshness.
      *
      * This replaces the old post-HAL mutation pattern. Single Source of Truth.
+     *
+     * 🛡️ WAVE 3305: ZERO-TOLERANCE MOVEMENT — Effects CANNOT move fixtures.
+     * Any movement data is stripped at injection time. Pan/tilt is EXCLUSIVELY
+     * controlled by Layer 0 (Titan AI) and Layer 2 (Manual Override).
+     * Effects only control dimmer, color, white, and amber.
      */
     setEffectIntents(intents) {
+        // 🛡️ WAVE 3305: Strip movement from ALL effect intents
+        // 🛡️ WAVE 3307: Deep Seal — strip color/white/amber from movers on global effects
+        for (const [fixtureId, intent] of intents) {
+            delete intent.movement;
+            if (intent.mixBus === 'global') {
+                const fixtureMeta = this.fixtures.get(fixtureId);
+                if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
+                    delete intent.color;
+                    delete intent.white;
+                    delete intent.amber;
+                }
+            }
+        }
         this.layer3_effectIntents = intents;
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -831,6 +882,45 @@ export class MasterArbiter extends EventEmitter {
      */
     getGrandMaster() {
         return this.grandMaster;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔒 WAVE 3270: INHIBIT LIMIT — Per-fixture proportional ceiling
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set inhibit limit for specific fixtures.
+     * Proportional multiplier 0-1. AI dynamics preserved, just scaled down.
+     * If limit=0.5 and AI asks 80%, output = 40%. Curve intact.
+     */
+    setInhibitLimit(fixtureIds, value) {
+        const clamped = Math.max(0, Math.min(1, value));
+        for (const id of fixtureIds) {
+            if (clamped >= 1.0) {
+                this.inhibitLimits.delete(id); // 1.0 = no limit, remove from Map
+            }
+            else {
+                this.inhibitLimits.set(id, clamped);
+            }
+        }
+    }
+    /**
+     * Get inhibit limit for a fixture. Returns 1.0 if no limit set.
+     */
+    getInhibitLimit(fixtureId) {
+        return this.inhibitLimits.get(fixtureId) ?? 1.0;
+    }
+    /**
+     * Clear inhibit limits for specific fixtures (restore to full power).
+     */
+    clearInhibitLimit(fixtureIds) {
+        for (const id of fixtureIds) {
+            this.inhibitLimits.delete(id);
+        }
+    }
+    /**
+     * Get all active inhibit limits.
+     */
+    getInhibitLimits() {
+        return new Map(this.inhibitLimits);
     }
     /**
      * 🔥 WAVE 2495: Set Grand Master Speed — scales Layer 2 manual pattern speed.
@@ -1105,9 +1195,14 @@ export class MasterArbiter extends EventEmitter {
      * EffectManager/HephaestusRuntime (only the ones Chronos is touching).
      */
     getPlaybackAffectedFixtureIds() {
-        if (!this.playbackActive)
-            return new Set();
-        return new Set(this.currentPlaybackFrame.keys());
+        // WAVE 3190: Reutilizar buffer pre-asignado — cero allocations por frame
+        this._playbackAffectedBuf.clear();
+        if (this.playbackActive) {
+            for (const k of this.currentPlaybackFrame.keys()) {
+                this._playbackAffectedBuf.add(k);
+            }
+        }
+        return this._playbackAffectedBuf;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // MAIN ARBITRATION
@@ -1178,7 +1273,9 @@ export class MasterArbiter extends EventEmitter {
                     // COLOR: Same logic applies per blendMode.
                     // MOVEMENT: Always from Titan (the vibe owns choreography).
                     // ═══════════════════════════════════════════════════════════════════
-                    const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster);
+                    // 🔒 WAVE 3270: Chronos path also applies per-fixture inhibit limit
+                    const inhibitLimit = this.inhibitLimits.get(fixtureId) ?? 1.0;
+                    const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster * inhibitLimit);
                     const titanDim = titanTarget.dimmer;
                     // 🎛️ WAVE 2066: Read blendMode from the enriched frame
                     const blendMode = chronosData.blendMode ?? 'HTP';
@@ -1372,18 +1469,25 @@ export class MasterArbiter extends EventEmitter {
         // 🔧 WAVE 2775: Throttled to max 1 log per 2s. Collects lost IDs and
         // flushes as a single-line summary to prevent IPC/console saturation.
         // ═══════════════════════════════════════════════════════════════════════
-        const currentOverrideIds = new Set(this.layer2_manualOverrides.keys());
+        // WAVE 3190: Reutilizar buffer — cero alloc por frame en el detector LAYER_LOSS
+        this._currentOverrideIdsBuf.clear();
+        for (const k of this.layer2_manualOverrides.keys())
+            this._currentOverrideIdsBuf.add(k);
         for (const prevId of this._prevFrameOverrideIds) {
-            if (!currentOverrideIds.has(prevId)) {
+            if (!this._currentOverrideIdsBuf.has(prevId)) {
                 this._layerLossPending.push(prevId);
             }
         }
         if (this._layerLossPending.length > 0 && now - this._layerLossThrottleMs > 2000) {
             console.warn(`[📡 LAYER_LOSS] 🚨 ${this._layerLossPending.length} fixture(s) lost Layer 2 override: [${this._layerLossPending.join(', ')}] | frame ${this.frameNumber}`);
-            this._layerLossPending = [];
+            this._layerLossPending.length = 0; // clear sin alloc
             this._layerLossThrottleMs = now;
         }
-        this._prevFrameOverrideIds = currentOverrideIds;
+        // Swap buffers: _currentOverrideIdsBuf pasa a ser _prevFrameOverrideIds
+        // sin crear nuevos Sets — intercambiamos referencias y reutilizamos el viejo
+        const _swapBuf = this._prevFrameOverrideIds;
+        this._prevFrameOverrideIds = this._currentOverrideIdsBuf;
+        this._currentOverrideIdsBuf = _swapBuf;
         // Arbitrate each fixture
         const fixtureTargets = [];
         for (const [fixtureId] of this.fixtures) {
@@ -1432,8 +1536,9 @@ export class MasterArbiter extends EventEmitter {
                 consciousnessActive: this.layer1_consciousness?.active ?? false,
                 consciousnessStatus: this.layer1_consciousness?.status,
                 manualOverrideCount: this.layer2_manualOverrides.size,
-                manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
-                activeEffects: this.layer3_effects.map(e => e.type),
+                // WAVE 3190: Reutilizar buffer pre-asignado — cero Array.from() por frame
+                manualFixtureIds: this._buildManualFixtureIdsBuf(),
+                activeEffects: this._buildActiveEffectTypesBuf(),
                 // 🎯 WAVE 2662: Track intent-based effects in layer activity
                 effectIntentCount: this.layer3_effectIntents.size,
             }
@@ -1465,10 +1570,6 @@ export class MasterArbiter extends EventEmitter {
         // The Arbiter calculates 100% of the show, always, for all layers.
         // ═══════════════════════════════════════════════════════════════════════
         const manualOverride = this.layer2_manualOverrides.get(fixtureId);
-        // LAYER 4: Check blackout first (highest priority)
-        if (this.layer4_blackout) {
-            return this.createBlackoutTarget(fixtureId, controlSources);
-        }
         // Get values from each layer
         const titanValues = this.getTitanValuesForFixture(fixtureId);
         // manualOverride already fetched above for OUTPUT GATE check
@@ -1480,41 +1581,17 @@ export class MasterArbiter extends EventEmitter {
         // Get position (with pattern/formation applied)
         const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now);
         // ═══════════════════════════════════════════════════════════════════════
-        // 🎯 WAVE 2662: EFFECT INTENT — Movement overlay
+        // 🛡️ WAVE 3305: ZERO-TOLERANCE MOVEMENT
         //
-        // If the EffectIntent has movement data, apply it as Layer 3 contribution.
-        //   isAbsolute=true  → Intent value is the final position
-        //   isAbsolute=false → Intent value is a delta offset from Titan position
-        //
-        // Movement intents lose to Manual Override (Layer 2), checked below.
+        // Effects CANNOT move fixtures. movement is stripped at injection time
+        // in setEffectIntents(). Pan/tilt is EXCLUSIVELY controlled by
+        // Layer 0 (Titan AI) and Layer 2 (Manual Override).
+        // effectAdjustedPan/Tilt = rawPan/rawTilt always (no effect overlay).
         // ═══════════════════════════════════════════════════════════════════════
-        const movementIntent = this.layer3_effectIntents.get(fixtureId)?.movement;
-        let effectAdjustedPan = rawPan;
-        let effectAdjustedTilt = rawTilt;
-        let movementFromEffect = false;
-        // ⚔️ WAVE 2910 FIX: Layer 2 (Manual) always beats Layer 3 (Effects).
-        // If the user has manual position override active, effectIntents CANNOT overwrite it.
-        // Without this guard, isAbsolute=true intents silently hijack the mover mid-session.
-        const manualHoldsPosition = !!(manualOverride?.overrideChannels.includes('pan') ||
-            manualOverride?.overrideChannels.includes('tilt'));
-        if (movementIntent && !manualHoldsPosition) {
-            if (movementIntent.isAbsolute) {
-                if (movementIntent.pan !== undefined)
-                    effectAdjustedPan = movementIntent.pan;
-                if (movementIntent.tilt !== undefined)
-                    effectAdjustedTilt = movementIntent.tilt;
-            }
-            else {
-                if (movementIntent.pan !== undefined)
-                    effectAdjustedPan = rawPan + movementIntent.pan;
-                if (movementIntent.tilt !== undefined)
-                    effectAdjustedTilt = rawTilt + movementIntent.tilt;
-            }
-            movementFromEffect = true;
-        }
+        const effectAdjustedPan = rawPan;
+        const effectAdjustedTilt = rawTilt;
         // ═══════════════════════════════════════════════════════════════════════
         // 🔧 WAVE 2232: VIP PASSPORT — Stamp pan/tilt controlSources
-        // 🎯 WAVE 2662: Effect movement also stamps controlSources
         //
         // getAdjustedPosition() bypasses mergeChannelForFixture(), so pan/tilt
         // never get their controlSource stamped. Without this, the HAL Aduana
@@ -1524,17 +1601,11 @@ export class MasterArbiter extends EventEmitter {
         if (manualOverride?.overrideChannels.includes('pan')) {
             controlSources['pan'] = ControlLayer.MANUAL;
         }
-        else if (movementFromEffect) {
-            controlSources['pan'] = ControlLayer.EFFECTS;
-        }
         else {
             controlSources['pan'] = ControlLayer.TITAN_AI;
         }
         if (manualOverride?.overrideChannels.includes('tilt')) {
             controlSources['tilt'] = ControlLayer.MANUAL;
-        }
-        else if (movementFromEffect) {
-            controlSources['tilt'] = ControlLayer.EFFECTS;
         }
         else {
             controlSources['tilt'] = ControlLayer.TITAN_AI;
@@ -1544,17 +1615,16 @@ export class MasterArbiter extends EventEmitter {
             manualOverride?.overrideChannels.includes('tilt'));
         const prevHadPosition = this._wiretap_prevHadPosition.get(fixtureId) ?? false;
         if (prevHadPosition && !nowHasPosition) {
-            console.trace(`🚨 [WIRETAP WAVE 2910] TRANSICIÓN DETECTADA: ${fixtureId} pasó de MANUAL a ${manualOverride ? 'override-sin-pos' : 'SIN-OVERRIDE'} en arbitrateFixture`, '\n  manualOverride existente:', manualOverride ? JSON.stringify({ channels: manualOverride.overrideChannels, source: manualOverride.source }) : 'null', '\n  movementFromEffect:', movementFromEffect, '\n  frame:', this.frameNumber);
+            console.trace(`🚨 [WIRETAP WAVE 2910] TRANSICIÓN DETECTADA: ${fixtureId} pasó de MANUAL a ${manualOverride ? 'override-sin-pos' : 'SIN-OVERRIDE'} en arbitrateFixture`, '\n  manualOverride existente:', manualOverride ? JSON.stringify({ channels: manualOverride.overrideChannels, source: manualOverride.source }) : 'null', '\n  frame:', this.frameNumber);
         }
         this._wiretap_prevHadPosition.set(fixtureId, nowHasPosition);
         // ═══════════════════════════════════════════════════════════════════════
         // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
-        // 🎯 WAVE 2662: Now uses effectAdjustedPan/Tilt as base (includes intent overlay)
         //
         // Si hay un fade activo para este fixture, interpolamos entre la última
-        // posición manual (fromPan/fromTilt) y la posición actual (con intent si aplica).
+        // posición manual (fromPan/fromTilt) y la posición actual.
         //
-        // Esto es un POST-PROCESS: getAdjustedPosition + effectIntent ya dieron el valor
+        // Esto es un POST-PROCESS: getAdjustedPosition ya dio el valor
         // correcto. Nosotros solo lo suavizamos temporalmente.
         // NO contaminamos Titan values. NO creamos zombies.
         // Después de durationMs, el fade se auto-purga.
@@ -1636,8 +1706,10 @@ export class MasterArbiter extends EventEmitter {
         // Check if any crossfade is active
         const crossfadeActive = this.isAnyCrossfadeActive(fixtureId);
         const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0;
-        // Apply Grand Master to dimmer (final step before clamping)
-        const dimmerfinal = clampDMX(dimmer * this.grandMaster);
+        // Apply Grand Master + Inhibit Limit to dimmer (final step before clamping)
+        // 🔒 WAVE 3270: inhibitLimit is per-fixture proportional ceiling
+        const inhibitLimit = this.inhibitLimits.get(fixtureId) ?? 1.0;
+        const dimmerfinal = clampDMX(dimmer * this.grandMaster * inhibitLimit);
         // ⚡ WAVE 2750: NaN BOMB UPSTREAM GUARD — pan/tilt fallback to last known position
         // Si la aritmética upstream (IK, interpolation, effectIntent) generó NaN,
         // preservamos la última posición válida en vez de snap a 0 (HOME).
@@ -1671,6 +1743,30 @@ export class MasterArbiter extends EventEmitter {
         const safePanT = Number.isFinite(target.pan) ? target.pan : 128;
         const safeTiltT = Number.isFinite(target.tilt) ? target.tilt : 128;
         this.lastKnownPositions.set(fixtureId, { pan: safePanT, tilt: safeTiltT });
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🖤 WAVE 3240: LAYER 4 — MOVE IN BLACK (Professional Blackout)
+        //
+        // El Blackout NO es un estado alternativo del fixture. Es un MUTE estricto
+        // de la intensidad lumínica. El motor sigue corriendo en oscuridad.
+        //
+        // ANTES (amateur): early-return con createBlackoutTarget() que hardcodeaba
+        //   color={r:0,g:0,b:0}, zoom=128, focus=128, phantomChannels={} — matando
+        //   gobos, primas y cualquier valor que el operador hubiera programado.
+        //
+        // AHORA (profesional): El arbitrado completo (L0→L2→L3) se ejecuta siempre.
+        //   Solo al final, si Layer 4 está activo, SOLO se fuerza dimmer=0.
+        //   Pan, tilt, color, gobo, prism y phantomChannels fluyen libremente.
+        //   Al levantar el Blackout, el show continúa exactamente donde estaba.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this.layer4_blackout) {
+            target.dimmer = 0;
+            target._controlSources['dimmer'] = ControlLayer.BLACKOUT;
+            // shutter también si el fixture lo usa (phantomChannels['shutter'])
+            if (target.phantomChannels['shutter'] !== undefined) {
+                target.phantomChannels['shutter'] = 0;
+                target._controlSources['shutter'] = ControlLayer.BLACKOUT;
+            }
+        }
         return target;
     }
     /**
@@ -1706,63 +1802,101 @@ export class MasterArbiter extends EventEmitter {
         // Layer 1: Consciousness (CORE 3 - placeholder)
         // Will be implemented when consciousness is connected
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔧 WAVE 440.5: MANUAL OVERRIDE = ABSOLUTE PRIORITY
-        // 
-        // The previous LTP (Latest Takes Precedence) strategy was WRONG for manual.
-        // Titan updates every frame with a new timestamp, so it always won.
-        // 
-        // FIX: Manual overrides WIN unconditionally. No timestamp comparison.
-        // When user grabs control, they KEEP it until they release.
+        // 🔧 WAVE 440.5 + WAVE 3200: LAYER HIERARCHY — L0 → L2 → L3
+        //
+        // WAVE 440.5 gave Manual (L2) absolute priority over Titan (L0) — correct.
+        // But the early-return prevented Layer 3 (Effects) from ever being evaluated.
+        // WAVE 3200 FIX: Establish the base value from L0 or L2, THEN let L3 override.
+        //
+        // Hierarchy:  Layer 0 (Titan AI) → Layer 2 (Manual) → Layer 3 (Effects)
+        // Layer 3 is SUPREME: strobe blackout, blinder flash, etc. always win.
         // ═══════════════════════════════════════════════════════════════════════
+        let baseValue = titanValue;
+        let baseSource = ControlLayer.TITAN_AI;
         if (manualOverride && manualOverride.overrideChannels.includes(channel)) {
-            const manualValue = this.getManualChannelValue(manualOverride, channel);
-            controlSources[channel] = ControlLayer.MANUAL;
-            // DIRECT RETURN - Manual wins, skip merge entirely
-            return manualValue;
+            baseValue = this.getManualChannelValue(manualOverride, channel);
+            baseSource = ControlLayer.MANUAL;
         }
         // ═══════════════════════════════════════════════════════════════════════
-        // 🎯 WAVE 2662: EFFECT INTENTS — Layer 3 via EffectIntentMap
-        //
-        // EffectManager intents are the PRIMARY Layer 3 source.
-        // If an intent exists for this fixture+channel combo, it takes precedence
-        // over legacy getEffectValueForChannel() (strobe/blinder/flash/freeze).
+        // 🎯 WAVE 2662 + WAVE 3200 + WAVE 3303: EFFECT INTENTS — Layer 3 SUPREME
         //
         // mixBus='htp'    → Collaborative: dimmer=HTP(max), color=LTP(intent wins)
-        // mixBus='global' → Dictator: LERP(titan, intent, globalComposition)
+        // mixBus='global' → Dictator Split:
+        //
+        //   DIMMER  → REPLACE ESTRICTO (no LERP, no HTP).
+        //     GatlingRaid dice dimmer=0 entre balas → es 0 absoluto.
+        //     La alpha/globalComposition no interviene aquí — el efecto ES el dueño.
+        //
+        //   COLOR/WHITE/AMBER → FALLBACK TRANSPARENTE.
+        //     Si el intent define color → ese color gana (LTP, sin LERP).
+        //     Si el intent NO define color (null) → deja fluir la capa base.
+        //     Esto preserva la saturación de la sala durante las ráfagas.
         // ═══════════════════════════════════════════════════════════════════════
         const effectIntent = this.layer3_effectIntents.get(fixtureId);
         if (effectIntent) {
             const intentValue = this.getIntentValueForChannel(effectIntent, channel);
-            if (intentValue !== null) {
-                if (effectIntent.mixBus === 'global') {
-                    // GLOBAL mode: LERP between Titan base and intent
-                    const alpha = effectIntent.globalComposition;
-                    const blended = titanValue + (intentValue - titanValue) * alpha;
-                    controlSources[channel] = ControlLayer.EFFECTS;
-                    return blended;
+            // ═══════════════════════════════════════════════════════════════════
+            // 🛡️ WAVE 3304 + WAVE 3305: HAL EVASION SHIELD — Mover color protection
+            //
+            // Movers have mechanical color wheels. Fast color changes (30fps+)
+            // trigger DarkSpinFilter (500ms blackout) — eating strobes/flashes.
+            //
+            // WAVE 3305 REFINEMENT:
+            //   mixBus='global' (destructive effects: Gatling, StrobeStorm)
+            //     → BLOCK color channels for movers. Dimmer passes through.
+            //     → Mover inherits Layer 0 static color — DarkSpinFilter stays asleep.
+            //
+            //   mixBus='htp' (ambient effects: CorazonLatino, vibes)
+            //     → ALLOW color through. Ambient effects change color slowly enough
+            //       that HarmonicQuantizer gates them to safe beat subdivisions.
+            // ═══════════════════════════════════════════════════════════════════
+            // 🛡️ WAVE 3305: Mover shield ONLY for global (destructive) effects
+            let moverShieldActive = false;
+            if (MOVER_SHIELD_CHANNELS.has(channel) && effectIntent.mixBus === 'global') {
+                const fixtureMeta = this.fixtures.get(fixtureId);
+                if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
+                    moverShieldActive = true;
+                }
+            }
+            if (moverShieldActive) {
+                // Mover + canal de color → efecto NO aplica, base fluye intacta
+            }
+            else if (effectIntent.mixBus === 'global') {
+                controlSources[channel] = ControlLayer.EFFECTS;
+                if (channel === 'dimmer') {
+                    // WAVE 3303: REPLACE ESTRICTO — dimmer del efecto aplasta siempre.
+                    // Si Gatling dice "0", es negro absoluto (para que el strobe funcione).
+                    return intentValue !== null ? intentValue : 0;
                 }
                 else {
-                    // HTP mode: dimmer = max(titan, intent), color channels = intent wins (LTP)
-                    if (channel === 'dimmer') {
-                        controlSources[channel] = ControlLayer.EFFECTS;
-                        return Math.max(titanValue, intentValue);
-                    }
-                    else {
-                        // Color channels (red, green, blue) and white/amber → LTP, intent wins
-                        controlSources[channel] = ControlLayer.EFFECTS;
-                        return intentValue;
-                    }
+                    // Color channels: FALLBACK TRANSPARENTE
+                    // Intent define color → ese color. No define → hereda base (sala conserva vibe).
+                    return intentValue !== null ? intentValue : baseValue;
+                }
+            }
+            else if (intentValue !== null) {
+                // HTP mode: dimmer = max(base, intent), color channels = intent wins (LTP)
+                if (channel === 'dimmer') {
+                    controlSources[channel] = ControlLayer.EFFECTS;
+                    return Math.max(baseValue, intentValue);
+                }
+                else {
+                    controlSources[channel] = ControlLayer.EFFECTS;
+                    return intentValue;
                 }
             }
         }
         // Layer 3 legacy: strobe/blinder/flash/freeze effects (pre-WAVE 2662)
         const effectValue = this.getEffectValueForChannel(fixtureId, channel, now);
         if (effectValue !== null) {
-            values.push({
-                layer: ControlLayer.EFFECTS,
-                value: effectValue,
-                timestamp: now,
-            });
+            // Legacy effect overrides base (L0 or L2)
+            controlSources[channel] = ControlLayer.EFFECTS;
+            return effectValue;
+        }
+        // No Layer 3 active — return the base value (L2 if manual, else L0)
+        if (baseSource === ControlLayer.MANUAL) {
+            controlSources[channel] = ControlLayer.MANUAL;
+            return baseValue;
         }
         // Check if crossfade is active for this channel
         if (this.crossfadeEngine.isTransitioning(fixtureId, channel)) {
@@ -2129,12 +2263,16 @@ export class MasterArbiter extends EventEmitter {
         }
         // Convert selected HSL to RGB
         // ⛺ WAVE 2790: COLOR BUNKER — Oceanic Mute Guard
-        // If this fixture has ANY Layer 2 manual override active, the tide zone transition
-        // must NOT alter its color. The operator has taken control — the ocean goes silent
-        // for this fixture. We serve the last known stable color instead of the new palette.
-        const hasAnyManualOverride = this.layer2_manualOverrides.has(fixtureId);
-        if (hasAnyManualOverride) {
-            // Fixture is a bunker: serve last known color (frozen before manual takeover)
+        // 🔧 WAVE 3200: GRANULAR BUNKER — Only freeze color when the override
+        // actually holds COLOR channels (red, green, blue, white, amber, color_wheel...).
+        // Previously, ANY override (even position-only pan/tilt) triggered the bunker,
+        // blocking Selene AI color updates while the user was only adjusting position.
+        const manualOverrideForBunker = this.layer2_manualOverrides.get(fixtureId);
+        const hasColorOverride = manualOverrideForBunker
+            ? manualOverrideForBunker.overrideChannels.some(ch => getChannelCategory(ch) === 'color')
+            : false;
+        if (hasColorOverride) {
+            // Fixture color is a bunker: serve last known color (frozen before manual takeover)
             const frozen = this.lastKnownColors.get(fixtureId);
             if (frozen) {
                 defaults.red = frozen.r;
@@ -2527,6 +2665,8 @@ export class MasterArbiter extends EventEmitter {
             outputEnabled: this._outputEnabled,
             blackoutActive: this.layer4_blackout,
             grandMaster: this.grandMaster,
+            // 🔒 WAVE 3270: Per-fixture inhibit limits
+            inhibitLimits: Object.fromEntries(this.inhibitLimits),
             titanActive: this.layer0_titan !== null,
             titanVibeId: this.layer0_titan?.vibeId ?? null,
             consciousnessActive: this.layer1_consciousness?.active ?? false,

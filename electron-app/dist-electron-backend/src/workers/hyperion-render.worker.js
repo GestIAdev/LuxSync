@@ -1,7 +1,7 @@
 // 🧠 WORKER THREAD ALIVE — OPERACIÓN LÁZARO (WAVE 2520)
-// 🔇 OPERACIÓN BLACKOUT — Web Worker console hijack (RESTAURAR: comentar bloque)
-;
-(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
+// 🔇 WAVE 3290: HYPERION RENDER WORKER — Silenciado. No pertenece al whitelist.
+// DEBUG PROBE — Reactivar para auditoría del render worker 3D.
+// ;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
 // [BLACKOUT] console.log('🧠 WORKER THREAD ALIVE')
 /**
  * ═══════════════════════════════════════════════════════════════════════════

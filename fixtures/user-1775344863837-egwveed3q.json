@@ -1,0 +1,374 @@
+{
+  "id": "user-1775344863837-egwveed3q",
+  "name": "250",
+  "manufacturer": "Big Dipper",
+  "type": "moving-head",
+  "channels": [
+    {
+      "index": 0,
+      "name": "Color Wheel",
+      "type": "color_wheel",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 1,
+      "name": "Gobo",
+      "type": "gobo",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "name": "Gobo Rot",
+      "type": "gobo_rotation",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "name": "Strobe",
+      "type": "strobe",
+      "defaultValue": 255,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "name": "Pan",
+      "type": "pan",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "name": "Tilt",
+      "type": "tilt",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "name": "",
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "name": "Prism",
+      "type": "prism",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "name": "Focus",
+      "type": "focus",
+      "defaultValue": 128,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "name": "Dimmer",
+      "type": "dimmer",
+      "defaultValue": 255,
+      "is16bit": false
+    },
+    {
+      "index": 10,
+      "name": "",
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 11,
+      "name": "",
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ],
+  "capabilities": {
+    "colorEngine": "wheel",
+    "hasPan": true,
+    "hasTilt": true,
+    "hasColorMixing": false,
+    "hasColorWheel": true,
+    "hasGobo": true,
+    "hasPrism": true,
+    "hasStrobe": true,
+    "hasDimmer": true,
+    "colorWheel": {
+      "colors": [
+        {
+          "dmx": 0,
+          "name": "White",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "eff74346-db5a-41fe-83d9-b04788f70563"
+        },
+        {
+          "dmx": 10,
+          "name": "Red",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          },
+          "_key": "e374e9d7-df78-4f1f-add8-c41cd3b9b1df"
+        },
+        {
+          "dmx": 20,
+          "name": "Red",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          },
+          "_key": "50aa6145-7363-4c57-9f93-2a81176b03df"
+        },
+        {
+          "dmx": 30,
+          "name": "Blue",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "2c93bde3-d1c0-4d25-8dd5-2e25f302b4d0"
+        },
+        {
+          "dmx": 40,
+          "name": "Green",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "48f4be3b-868a-4ebb-9c05-458b46eb40fe"
+        },
+        {
+          "dmx": 50,
+          "name": "Yellow",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "8a79a720-107d-4eeb-b538-c1bcdddcdc81"
+        },
+        {
+          "dmx": 60,
+          "name": "Magenta",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "fef4c351-9a1a-4406-9b4a-1fc373202176"
+        },
+        {
+          "dmx": 70,
+          "name": "Orange",
+          "rgb": {
+            "r": 255,
+            "g": 128,
+            "b": 0
+          },
+          "_key": "6241269b-2de4-4e1e-ae5a-8b0c5344e467"
+        },
+        {
+          "dmx": 80,
+          "name": "Orange",
+          "rgb": {
+            "r": 255,
+            "g": 128,
+            "b": 0
+          },
+          "_key": "95c386d8-4335-49dc-aabd-b0cfa3dc73d8"
+        },
+        {
+          "dmx": 90,
+          "name": "UV",
+          "rgb": {
+            "r": 170,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "2e09f1b3-852c-4e96-91b7-de0663a45486"
+        },
+        {
+          "dmx": 100,
+          "name": "Pink",
+          "rgb": {
+            "r": 255,
+            "g": 105,
+            "b": 180
+          },
+          "_key": "58a59312-4f20-48c3-82a4-4d9888507c6d"
+        },
+        {
+          "dmx": 110,
+          "name": "Cyan",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "57184fd5-3205-40b9-8692-28a64d770b4a"
+        }
+      ],
+      "allowsContinuousSpin": false,
+      "minChangeTimeMs": 500
+    }
+  },
+  "physics": {
+    "motorType": "stepper-cheap",
+    "maxAcceleration": 900,
+    "maxVelocity": 350,
+    "safetyCap": true,
+    "orientation": "floor",
+    "invertPan": false,
+    "invertTilt": false,
+    "swapPanTilt": false,
+    "homePosition": {
+      "pan": 127,
+      "tilt": 127
+    },
+    "tiltLimits": {
+      "min": 15,
+      "max": 220
+    }
+  },
+  "wheels": {
+    "colors": [
+      {
+        "dmx": 0,
+        "name": "White",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "eff74346-db5a-41fe-83d9-b04788f70563"
+      },
+      {
+        "dmx": 10,
+        "name": "Red",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        "_key": "e374e9d7-df78-4f1f-add8-c41cd3b9b1df"
+      },
+      {
+        "dmx": 20,
+        "name": "Red",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        "_key": "50aa6145-7363-4c57-9f93-2a81176b03df"
+      },
+      {
+        "dmx": 30,
+        "name": "Blue",
+        "rgb": {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "2c93bde3-d1c0-4d25-8dd5-2e25f302b4d0"
+      },
+      {
+        "dmx": 40,
+        "name": "Green",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "48f4be3b-868a-4ebb-9c05-458b46eb40fe"
+      },
+      {
+        "dmx": 50,
+        "name": "Yellow",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "8a79a720-107d-4eeb-b538-c1bcdddcdc81"
+      },
+      {
+        "dmx": 60,
+        "name": "Magenta",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "fef4c351-9a1a-4406-9b4a-1fc373202176"
+      },
+      {
+        "dmx": 70,
+        "name": "Orange",
+        "rgb": {
+          "r": 255,
+          "g": 128,
+          "b": 0
+        },
+        "_key": "6241269b-2de4-4e1e-ae5a-8b0c5344e467"
+      },
+      {
+        "dmx": 80,
+        "name": "Orange",
+        "rgb": {
+          "r": 255,
+          "g": 128,
+          "b": 0
+        },
+        "_key": "95c386d8-4335-49dc-aabd-b0cfa3dc73d8"
+      },
+      {
+        "dmx": 90,
+        "name": "UV",
+        "rgb": {
+          "r": 170,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "2e09f1b3-852c-4e96-91b7-de0663a45486"
+      },
+      {
+        "dmx": 100,
+        "name": "Pink",
+        "rgb": {
+          "r": 255,
+          "g": 105,
+          "b": 180
+        },
+        "_key": "58a59312-4f20-48c3-82a4-4d9888507c6d"
+      },
+      {
+        "dmx": 110,
+        "name": "Cyan",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "57184fd5-3205-40b9-8692-28a64d770b4a"
+      }
+    ]
+  },
+  "source": "user",
+  "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1775344863837-egwveed3q.json",
+  "savedAt": "2026-04-19T00:26:34.136Z"
+}

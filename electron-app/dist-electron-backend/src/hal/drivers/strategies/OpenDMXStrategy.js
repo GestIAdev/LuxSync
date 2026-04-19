@@ -38,8 +38,6 @@ export class OpenDMXStrategy {
         // Dirty tracking: solo enviar IPC cuando el buffer realmente cambió.
         // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
         this.lastSentHash = 0;
-        // 🔬 WAVE 3020: DOUBLE-SEND TRAP
-        this._lastSendTime = 0;
     }
     /**
      * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
@@ -72,8 +70,8 @@ export class OpenDMXStrategy {
                 switch (msg.type) {
                     case 'LOG':
                         if (msg.message) {
-                            // CARDIOGRAMA messages bypass the debug gate — always visible
-                            if (msg.message.includes('CARDIOGRAMA')) {
+                            // CARDIOGRAMA + WAVE 3170 messages bypass the debug gate — always visible
+                            if (msg.message.includes('CARDIOGRAMA') || msg.message.includes('WAVE 3170 TRAP')) {
                                 console.warn(msg.message);
                             }
                             else {
@@ -135,8 +133,11 @@ export class OpenDMXStrategy {
                 this.child.on('message', handler);
                 // 🔥 WAVE 2100: Adaptive Pacing — 30Hz conservador para cables tontos (FTDI/CH340).
                 // Tornado spec: 33fps max. 30Hz da margen de seguridad.
-                // breakMode 'baudrate': compatible con TODO chip USB-serial (Freestyler/QLC+ method).
-                this.child.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'baudrate' });
+                // 🔬 WAVE 3180: THE NATIVE BREAK — modo 'set' usa SetCommBreak IOCTL del driver.
+                // Delega la generación del pulso BREAK al hardware FTDI/CH340 en lugar de
+                // depender del baudrate-switch asíncrono. Si el chip no soporta SetCommBreak,
+                // sendFrameSetBreak() degrada automáticamente a baudrate-switch.
+                this.child.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'set' });
             });
             this.workerReady = connected;
             if (connected) {
@@ -177,19 +178,7 @@ export class OpenDMXStrategy {
         for (let i = 0; i < len; i++) {
             channels[i] = buffer[i];
         }
-        // 🔬 WAVE 3020: DOUBLE-SEND TRAP al child process
-        const _now = performance.now();
-        const _gap = _now - this._lastSendTime;
-        if (this._lastSendTime > 0 && _gap < 2) {
-            console.error(`[DOUBLE-SEND TRAP] 🚨 Dos child.send() en ${_gap.toFixed(2)}ms! Fuego cruzado en IPC USB.`);
-        }
-        this._lastSendTime = _now;
-        const _t0 = performance.now();
         this.child.send({ type: 'UPDATE_BUFFER', channels });
-        const _dt = performance.now() - _t0;
-        if (_dt > 5) {
-            console.warn(`[IPC PROBE] 🐢 USB child.send BLOCK ${_dt.toFixed(1)}ms | ${len}ch`);
-        }
     }
     /**
      * Termina el child process y libera recursos.

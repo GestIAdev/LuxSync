@@ -59,6 +59,9 @@ type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'i
 // 🎨 WAVE 686.10: Import IDMXDriver for external driver injection
 import type { IDMXDriver } from '../../hal/drivers'
 
+// WAVE 3401: OSC Nexus Provider for bidirectional OSC over UDP
+import { OSCNexusProvider } from '../audio/OSCNexusProvider'
+
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 
@@ -123,6 +126,9 @@ export class TitanOrchestrator {
   private hal: HardwareAbstraction | null = null
   private trinity: TrinityOrchestrator | null = null  // 🧠 WAVE 258: Trinity reference
   private eventRouter: EventRouter
+
+  // WAVE 3401: OSC Nexus Provider (bidirectional OSC over UDP)
+  private oscProvider: OSCNexusProvider | null = null
   
   // ❤️ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
   private beatDetector: BeatDetector | null = null
@@ -409,6 +415,16 @@ export class TitanOrchestrator {
       });
       
       await trinity.start()
+
+      // WAVE 3401: Initialize OSC Nexus Provider
+      // Register with AudioMatrix for bidirectional OSC + audio input
+      this.oscProvider = new OSCNexusProvider()
+      const audioMatrix = trinity.getAudioMatrix()
+      if (audioMatrix) {
+        audioMatrix.registerProvider(this.oscProvider)
+      }
+      this.oscProvider.start()
+      console.log('[TitanOrchestrator] WAVE 3401: OSCNexusProvider started (UDP 9000/9001)')
     } catch (e) {
       console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e)
     }
@@ -544,6 +560,12 @@ export class TitanOrchestrator {
     }
     universalDMX.onWarning = null
     this.isRunning = false
+
+    // WAVE 3401: Stop OSC Nexus Provider
+    if (this.oscProvider) {
+      this.oscProvider.stop()
+      this.oscProvider = null
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // 🧹 WAVE 2227: REACTOR CLEANUP — Purgar estado residual
@@ -1577,6 +1599,29 @@ export class TitanOrchestrator {
     //   const currentVibe = this.engine.getCurrentVibe()
     //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
     // }
+
+    // WAVE 3401: OSC State Publisher -- broadcast current state every 3 frames (~12Hz)
+    // Low-frequency broadcast avoids flooding the network while keeping external
+    // VJ/lighting software in sync with LuxSync's musical analysis.
+    if (this.oscProvider && this.frameCount % 3 === 0) {
+      const currentVibe = this.engine?.getCurrentVibe() ?? 'idle'
+      this.oscProvider.publishState({
+        vibe: currentVibe,
+        energy,
+        bpm: context.bpm,
+        onBeat: beatState.onBeat,
+        section: context.section?.type ?? 'unknown',
+        bands: [
+          bass,
+          this.smoothedMetrics.subBass ?? 0,
+          this.smoothedMetrics.lowMid ?? 0,
+          mid,
+          this.smoothedMetrics.highMid ?? 0,
+          high,
+          this.smoothedMetrics.spectralCentroid ?? 0,
+        ]
+      })
+    }
     
     } finally {
       // 🔒 WAVE 2211: ALWAYS release the guard, even if processFrame() throws

@@ -46,9 +46,10 @@
 // PRIORITY_HIGHEST (o PRIORITY_ABOVE_NORMAL como fallback) hace que el scheduler
 // del OS ejecute nuestro loop DMX ANTES que el renderizado del cursor.
 // ─────────────────────────────────────────────────────────────────────────────
-// 🔇 OPERACIÓN BLACKOUT — child_process console hijack (RESTAURAR: comentar bloque)
-;
-(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
+// 🔇 WAVE 3290: DMX WORKER — Silenciado. Usa process.send() para logs críticos.
+// El filtro de whitelist en electron/main.ts permite [DMX-Worker] si es necesario.
+// DEBUG PROBE — Reactivar para auditoría hardware del DMX worker.
+// ;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
 import * as os from 'os';
 try {
     // PRIORITY_HIGHEST = -20 en POSIX, REALTIME_PRIORITY_CLASS en Windows.
@@ -205,52 +206,143 @@ let _phantomPeakReportTime = process.hrtime.bigint();
 const _PHANTOM_REPORT_NS = BigInt(5000000000); // reporte cada 5s
 const _PHANTOM_STARVATION_MS = 40; // umbral de inanicion segura
 // ─────────────────────────────────────────────────────────────────────────────
-// 🔬 WAVE 3100: SONDAS DE OBSERVACIÓN — solo lectura, cero interferencia con lógica
+// 🔬 WAVE 3170: THE MICROSCOPIC TRAP — caza de anomalías en el 100% de los frames
+//
+// Trampas activas:
+//   1. LATENCIA DE CADENCIA: ring buffer de los últimos 10 frame deltas.
+//      Si el delta entre frames supera 40ms → volcado inmediato del historial.
+//   2. LATENCIA DE BREAK: si la negociación BAUD-BREAK supera 15ms → volcado.
+//   3. MUTACIÓN OCULTA: snapshot del buffer pre-write. Si un canal manual
+//      cae a 0 entre frames consecutivos → volcado inmediato.
+//   4. FRAME CYCLE TIME: tiempo total desde inicio del BREAK hasta fin del
+//      port.write() callback. Si supera el período de frame (minFrameNs en ms)
+//      → overlap garantizado → parpadeo. Reporta peak cada 5s siempre.
+//
+// Todo en memoria. CERO console.log por frame. Solo dispara cuando hay anomalía.
 // ─────────────────────────────────────────────────────────────────────────────
-let _probeFrameCount = 0;
-const _PROBE_SNAPSHOT_INTERVAL = 30; // volcado cada 30 frames (~1s a 30Hz)
-const _PROBE_WRITE_WARN_MS = 4; // umbral de alerta para port.write latencia
-let _probeWritePeakMs = 0;
-let _probeWritePeakReportTime = process.hrtime.bigint();
-let _probePostResetFrames = 0; // frames desde último RESET_BUFFER
-const _PROBE_POST_RESET_WATCH = 10; // observar los 10 primeros frames post-reset
-/**
- * 🔬 SONDA 1: Volcado de buffer pre-write.
- * Emite snapshot de los primeros 30 canales EXACTOS que van al puerto serial.
- * Si el buffer es limpio [0,0,0...] pero el foco convulsiona → framing error en hardware.
- * Si el buffer tiene basura fluctuante → bug en el renderizado del backend.
- */
-function _probeBufferSnapshot(context) {
-    // Primeros 30 canales (índices 1-30, el 0 es start code)
-    const ch = [];
-    for (let i = 1; i <= 30; i++)
-        ch.push(dmxBuffer[i]);
-    // Detectar si el buffer está "limpio" (all-zero) o tiene valores
-    const nonZero = ch.filter(v => v !== 0).length;
-    const tag = nonZero === 0 ? '🟢 ALL-ZERO' : `🔴 ${nonZero}/30 non-zero`;
-    log(`[SONDA-BUFFER] ${context} ${tag} ch[1..30]=[${ch.join(',')}]`);
-}
-/**
- * 🔬 SONDA 2: Profiling de latencia de port.write().
- * Si la escritura al UART tarda >4ms, el event loop del worker se bloquea
- * y el frame siguiente sufre starvation.
- */
-function _probeWriteComplete(startNs, context) {
-    const elapsedNs = process.hrtime.bigint() - startNs;
-    const elapsedMs = Number(elapsedNs) / 1000000;
-    if (elapsedMs > _probeWritePeakMs)
-        _probeWritePeakMs = elapsedMs;
-    if (elapsedMs > _PROBE_WRITE_WARN_MS) {
-        log(`[SONDA-WRITE] ⚠️ ${context} port.write() tardó ${elapsedMs.toFixed(2)}ms (umbral: ${_PROBE_WRITE_WARN_MS}ms)`);
-    }
-    // Reporte de pico cada 5s
-    const now = process.hrtime.bigint();
-    if (now - _probeWritePeakReportTime >= _PHANTOM_REPORT_NS) {
-        log(`[SONDA-WRITE] 📊 peak write latency: ${_probeWritePeakMs.toFixed(2)}ms (last 5s)`);
-        _probeWritePeakMs = 0;
-        _probeWritePeakReportTime = now;
-    }
-}
+// DEBUG PROBE — Reactivar para auditoría (WAVE 3290 OJO DEL HURACÁN)
+// Ring buffer de cadencia: últimos 10 deltas de frame (nanosegundos)
+// const _W3170_RING_SIZE = 10
+// const _w3170FrameDeltas: number[] = new Array(_W3170_RING_SIZE).fill(0)
+// let _w3170RingIdx = 0
+// let _w3170LastFrameEndNs: bigint = BigInt(0)
+// Umbrales de disparo
+// const _W3170_CADENCE_WARN_MS = 40   // delta entre frames > 40ms = apagón (30Hz → 33.3ms máximo)
+// const _W3170_BREAK_WARN_MS = 15     // negociación BREAK > 15ms = overlapping
+// ─── TRAP 4: FRAME CYCLE TIME ────────────────────────────────────────────────
+// Mide el tiempo total que tarda un frame completo (BREAK start → write callback).
+// A 30Hz el período es 33.3ms. El frame DMX de 513 bytes a 250000 baud = ~22.6ms
+// de transmisión pura. Si el ciclo total supera el período → overlap → parpadeo.
+// let _w3170CycleStartNs: bigint = BigInt(0)
+// let _w3170CyclePeakMs: number = 0
+// let _w3170CyclePeakReportNs: bigint = BigInt(0)
+// const _W3170_CYCLE_REPORT_NS = BigInt(5_000_000_000) // reporte cada 5s
+// Snapshot de buffer anterior para trampa de mutación oculta
+// const _w3170PrevBuffer: Uint8Array = new Uint8Array(513)
+// let _w3170HasPrev = false
+// DEBUG PROBE — Reactivar para auditoría (WAVE 3290 OJO DEL HURACÁN)
+// /**
+//  * 🔬 WAVE 3170 TRAP 1: Registra el delta del frame y dispara si hay apagón.
+//  * Llamar al INICIO de cada sendFrame(), DESPUÉS de que scheduleNextFrame
+//  * ya midió el CARDIOGRAMA (que es el heartbeat de scheduling).
+//  * Esta trampa mide el tiempo REAL entre el fin de un write y el inicio del
+//  * siguiente — la cadencia que el hardware experimenta.
+//  */
+// function _w3170RecordFrameStart(): void {
+//   const now = process.hrtime.bigint()
+//   if (_w3170LastFrameEndNs > BigInt(0)) {
+//     const deltaMs = Number((now - _w3170LastFrameEndNs)) / 1_000_000
+//     _w3170FrameDeltas[_w3170RingIdx] = deltaMs
+//     _w3170RingIdx = (_w3170RingIdx + 1) % _W3170_RING_SIZE
+//
+//     if (deltaMs > _W3170_CADENCE_WARN_MS) {
+//       // APAGÓN DETECTADO — volcado del historial
+//       const history = []
+//       for (let i = 0; i < _W3170_RING_SIZE; i++) {
+//         const idx = (_w3170RingIdx + i) % _W3170_RING_SIZE
+//         history.push(_w3170FrameDeltas[idx].toFixed(1))
+//       }
+//       log(`[WAVE 3170 TRAP] 🚨 CADENCE GAP ${deltaMs.toFixed(1)}ms (umbral: ${_W3170_CADENCE_WARN_MS}ms) last10=[${history.join(',')}]ms`)
+//     }
+//   }
+// }
+// /** Marcar el fin del frame (llamar después de port.write callback) */
+// function _w3170RecordFrameEnd(): void {
+//   _w3170LastFrameEndNs = process.hrtime.bigint()
+// }
+// /**
+//  * 🔬 WAVE 3170 TRAP 4a: Marcar el inicio del ciclo completo de frame.
+//  * Llamar justo al inicio de sendFrameBaudrateBreak() o sendFrameSetBreak(),
+//  * ANTES de cualquier operación serial. Esto marca "el fixture empieza a
+//  * recibir el BREAK ahora".
+//  */
+// function _w3170CycleStart(): void {
+//   _w3170CycleStartNs = process.hrtime.bigint()
+// }
+// /**
+//  * 🔬 WAVE 3170 TRAP 4b: Calcular y registrar el tiempo total del ciclo.
+//  * Llamar al final del port.write() callback, ANTES de scheduleNextFrame().
+//  * Si el ciclo total supera el período de frame → OVERLAP → parpadeo garantizado.
+//  * Reporta el pico cada 5s siempre (aunque no haya overlap) para tener baseline.
+//  */
+// function _w3170CycleEnd(): void {
+//   if (_w3170CycleStartNs === BigInt(0)) return
+//   const cycleMs = Number(process.hrtime.bigint() - _w3170CycleStartNs) / 1_000_000
+//   if (cycleMs > _w3170CyclePeakMs) _w3170CyclePeakMs = cycleMs
+//
+//   const periodMs = Number(minFrameNs) / 1_000_000
+//   if (cycleMs > periodMs) {
+//     log(`[WAVE 3170 TRAP] 🚨 FRAME OVERLAP cycle:${cycleMs.toFixed(1)}ms > period:${periodMs.toFixed(1)}ms — fixture recibió frame incompleto`)
+//   }
+//
+//   const now = process.hrtime.bigint()
+//   if (now - _w3170CyclePeakReportNs >= _W3170_CYCLE_REPORT_NS) {
+//     log(`[WAVE 3170 TRAP] 📊 CYCLE peak:${_w3170CyclePeakMs.toFixed(1)}ms period:${periodMs.toFixed(1)}ms (last 5s)`)
+//     _w3170CyclePeakMs = 0
+//     _w3170CyclePeakReportNs = now
+//   }
+// }
+// /**
+//  * 🔬 WAVE 3170 TRAP 2: Mide la duración de la negociación BAUD-BREAK.
+//  * Si supera 15ms, hay riesgo de overlapping con el frame de datos.
+//  */
+// function _w3170CheckBreakLatency(breakStartNs: bigint, context: string): void {
+//   const elapsedMs = Number(process.hrtime.bigint() - breakStartNs) / 1_000_000
+//   if (elapsedMs > _W3170_BREAK_WARN_MS) {
+//     log(`[WAVE 3170 TRAP] 🚨 BREAK LATENCY ${elapsedMs.toFixed(1)}ms (umbral: ${_W3170_BREAK_WARN_MS}ms) mode=${context}`)
+//   }
+// }
+// /**
+//  * 🔬 WAVE 3170 TRAP 3: Trampa de mutación oculta.
+//  * Compara el buffer actual con el snapshot del frame anterior.
+//  * Si algún canal que tenía un valor >0 cae a 0 de golpe → volcado.
+//  * Se llama justo ANTES de port.write().
+//  */
+// function _w3170CheckMutation(): void {
+//   if (!_w3170HasPrev) {
+//     // Primer frame — solo guardar snapshot
+//     dmxBuffer.copy(_w3170PrevBuffer)
+//     _w3170HasPrev = true
+//     return
+//   }
+//
+//   // Buscar canales que cayeron a 0 desde un valor >0
+//   const drops: string[] = []
+//   for (let ch = 1; ch <= 512; ch++) {
+//     const prev = _w3170PrevBuffer[ch]
+//     const curr = dmxBuffer[ch]
+//     if (prev > 0 && curr === 0) {
+//       drops.push(`ch${ch}:${prev}→0`)
+//     }
+//   }
+//
+//   if (drops.length > 0) {
+//     log(`[WAVE 3170 TRAP] 🚨 MUTATION DROP ${drops.length} channels zeroed: ${drops.slice(0, 10).join(' ')}${drops.length > 10 ? ` (+${drops.length - 10} more)` : ''}`)
+//   }
+//
+//   // Actualizar snapshot
+//   dmxBuffer.copy(_w3170PrevBuffer)
+// }
 function startOutputLoop() {
     if (outputLoop)
         return;
@@ -258,6 +350,7 @@ function startOutputLoop() {
         ? 'no data yet'
         : `${Number((process.hrtime.bigint() - lastBufferUpdateNs) / BigInt(1000000))}ms since last UPDATE_BUFFER`;
     log(`Output loop started — hrtime pacing, setImmediate scheduling (${sinceLastUpdate})`);
+    log(`🔌 WAVE 3180: BREAK mode = '${breakMode}' | BREAK duration = ${Number(BREAK_NS) / 1000}µs`);
     lastFrameStart = process.hrtime.bigint();
     scheduleNextFrame();
 }
@@ -273,20 +366,20 @@ function scheduleNextFrame() {
         if (!isOpen || !port)
             return;
         // 🫠 WAVE 3030: PHANTOM HEARTBEAT — medir delta real entre frames
-        const _pNow = process.hrtime.bigint();
-        const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1000000));
-        _phantomLastFrame = _pNow;
-        if (_pDeltaMs > _phantomPeakMs)
-            _phantomPeakMs = _pDeltaMs;
-        if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
-            log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`);
-        }
-        // Reporte de pico cada 5s
-        if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
-            log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`);
-            _phantomPeakMs = 0;
-            _phantomPeakReportTime = _pNow;
-        }
+        // DEBUG PROBE — Reactivar para auditoría (WAVE 3290 OJO DEL HURACÁN)
+        // const _pNow = process.hrtime.bigint()
+        // const _pDeltaMs = Number((_pNow - _phantomLastFrame) / BigInt(1_000_000))
+        // _phantomLastFrame = _pNow
+        // if (_pDeltaMs > _phantomPeakMs) _phantomPeakMs = _pDeltaMs
+        // if (_pDeltaMs > _PHANTOM_STARVATION_MS) {
+        //   log(`[CARDIOGRAMA WORKER] 🚨 STARVATION! frame delta: ${_pDeltaMs.toFixed(1)}ms (umbral: ${_PHANTOM_STARVATION_MS}ms)`)
+        // }
+        // // Reporte de pico cada 5s
+        // if (_pNow - _phantomPeakReportTime >= _PHANTOM_REPORT_NS) {
+        //   log(`[CARDIOGRAMA WORKER] 🫠 heartbeat — peak:${_phantomPeakMs.toFixed(1)}ms (last 5s)`)
+        //   _phantomPeakMs = 0
+        //   _phantomPeakReportTime = _pNow
+        // }
         const now = process.hrtime.bigint();
         const remaining = (lastFrameStart + minFrameNs) - now;
         if (remaining > MAX_PACING_SPIN_NS) {
@@ -330,9 +423,11 @@ function spinWaitNs(ns) {
     // eslint-disable-next-line no-empty
     while (process.hrtime.bigint() < end) { }
 }
-// BREAK: 1ms (spec mínimo 88µs, máximo no definido en práctica ≤1s)
-// Usado solo en modo 'set'. En modo 'baudrate' el break lo genera el propio byte 0x00.
-const BREAK_NS = BigInt(1000000);
+// BREAK: 110µs — mínimo del estándar DMX512 es 88µs. Usamos 110µs como margen
+// conservador pero rápido. QLC+ usa 88µs, Freestyler usa 92µs. 1ms era innecesariamente
+// largo y bloqueaba el event loop del worker durante 10× el tiempo mínimo requerido.
+// 🔬 WAVE 3180: reducido de 1ms → 110µs para minimizar bloqueo del event loop.
+const BREAK_NS = BigInt(110000);
 // MAB mínimo en modo baudrate-switch: 8µs. El cambio de baud + drain del UART
 // ya tarda >8µs, pero añadimos un spin explícito de 20µs por seguridad.
 const MAB_NS = BigInt(20000);
@@ -355,6 +450,8 @@ function sendFrame() {
         scheduleNextFrame();
         return;
     }
+    // 🔬 WAVE 3170: Registrar inicio de frame para trampa de cadencia
+    // _w3170RecordFrameStart() // DEBUG PROBE — Reactivar para auditoría
     if (breakMode === 'baudrate') {
         sendFrameBaudrateBreak();
     }
@@ -368,6 +465,8 @@ function sendFrame() {
 function sendFrameSetBreak() {
     const portAny = port;
     // Si el driver no expone port.set, degradar a baudrate-switch automáticamente
+    // 🔬 WAVE 3170 TRAP 4: Marcar inicio del ciclo completo de frame
+    // _w3170CycleStart() // DEBUG PROBE — Reactivar para auditoría
     if (typeof portAny.set !== 'function') {
         log('⚠️ port.set no disponible — degradando a baudrate-switch');
         breakMode = 'baudrate';
@@ -385,16 +484,11 @@ function sendFrameSetBreak() {
                 scheduleNextFrame();
                 return;
             }
-            // 🔬 WAVE 3100: SONDAS pre-write (modo set-break)
-            _probeFrameCount++;
-            if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
-                _probeBufferSnapshot(`SET-BREAK frame#${_probeFrameCount}`);
-                if (_probePostResetFrames > 0)
-                    _probePostResetFrames--;
-            }
-            const _writeStartSet = process.hrtime.bigint();
+            // 🔬 WAVE 3170: Trampas pre-write (modo set-break)
+            // _w3170CheckMutation() // DEBUG PROBE — Reactivar para auditoría
             port.write(dmxBuffer, (err3) => {
-                _probeWriteComplete(_writeStartSet, 'SET-BREAK');
+                // _w3170RecordFrameEnd() // DEBUG PROBE — Reactivar para auditoría
+                // _w3170CycleEnd()  // 🔬 WAVE 3170 TRAP 4: ciclo completo medido
                 if (err3)
                     log(`Write error: ${err3.message}`);
                 scheduleNextFrame();
@@ -415,18 +509,15 @@ function sendFrameSetBreak() {
  */
 function sendFrameBaudrateBreak() {
     const portAny = port;
+    // 🔬 WAVE 3170: Timestamp para medir latencia total del BAUD-BREAK + ciclo completo
+    // const _breakStartNs = process.hrtime.bigint() // DEBUG PROBE — Reactivar para auditoría
+    // _w3170CycleStart() // DEBUG PROBE — Reactivar para auditoría
     if (typeof portAny.update !== 'function') {
         // Último recurso: sin BREAK, enviar directo (mejor que nada)
-        // 🔬 WAVE 3100: SONDA pre-write (fallback sin BREAK)
-        _probeFrameCount++;
-        if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
-            _probeBufferSnapshot(`NO-BREAK frame#${_probeFrameCount}`);
-            if (_probePostResetFrames > 0)
-                _probePostResetFrames--;
-        }
-        const _writeStartFallback = process.hrtime.bigint();
+        // _w3170CheckMutation() // DEBUG PROBE — Reactivar para auditoría
         port.write(dmxBuffer, () => {
-            _probeWriteComplete(_writeStartFallback, 'NO-BREAK');
+            // _w3170RecordFrameEnd() // DEBUG PROBE — Reactivar para auditoría
+            // _w3170CycleEnd() // DEBUG PROBE — Reactivar para auditoría
             scheduleNextFrame();
         });
         return;
@@ -456,19 +547,16 @@ function sendFrameBaudrateBreak() {
                         scheduleNextFrame();
                         return;
                     }
+                    // 🔬 WAVE 3170: Medir latencia total del BAUD-BREAK (PASO 1→PASO 3)
+                    // _w3170CheckBreakLatency(_breakStartNs, 'baudrate') // DEBUG PROBE — Reactivar para auditoría
                     // PASO 4: MAB — 20µs mínimo
                     spinWaitNs(MAB_NS);
                     // PASO 5: Emitir los 513 bytes del universo DMX
-                    // 🔬 WAVE 3100: SONDAS pre-write (modo baudrate-break)
-                    _probeFrameCount++;
-                    if (_probeFrameCount % _PROBE_SNAPSHOT_INTERVAL === 0 || _probePostResetFrames > 0) {
-                        _probeBufferSnapshot(`BAUD-BREAK frame#${_probeFrameCount}`);
-                        if (_probePostResetFrames > 0)
-                            _probePostResetFrames--;
-                    }
-                    const _writeStartBaud = process.hrtime.bigint();
+                    // 🔬 WAVE 3170: Trampa de mutación pre-write
+                    // _w3170CheckMutation() // DEBUG PROBE — Reactivar para auditoría
                     port.write(dmxBuffer, (err5) => {
-                        _probeWriteComplete(_writeStartBaud, 'BAUD-BREAK');
+                        // _w3170RecordFrameEnd() // DEBUG PROBE — Reactivar para auditoría
+                        // _w3170CycleEnd()  // 🔬 WAVE 3170 TRAP 4: ciclo completo medido
                         if (err5)
                             log(`Write error: ${err5.message}`);
                         scheduleNextFrame();
@@ -534,7 +622,7 @@ process.on('message', (msg) => {
             dmxBuffer.fill(0);
             dmxBuffer[0] = 0; // start code siempre 0
             lastBufferUpdateNs = BigInt(0); // reset JITTER GUARD
-            _probePostResetFrames = _PROBE_POST_RESET_WATCH; // 🔬 WAVE 3100: observar los 10 frames post-reset
+            // _w3170HasPrev = false  // 🔬 WAVE 3170: reset mutation snapshot post-purge (DEBUG PROBE — Reactivar para auditoría)
             log('🧹 Buffer purgado — todos los canales a 0 (cambio de show)');
             break;
         case 'DISCONNECT':

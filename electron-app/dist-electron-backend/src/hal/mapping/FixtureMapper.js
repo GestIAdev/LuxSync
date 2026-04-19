@@ -506,19 +506,26 @@ export class FixtureMapper {
     }
     applyActiveEffects(state, timestamp) {
         const result = { ...state };
+        // 🖤 WAVE 3240: MOVE IN BLACK — Si el Arbiter marcó dimmer como BLACKOUT (ControlLayer=4),
+        // los efectos HAL-level NO deben sobrescribir el dimmer con 255.
+        // El motor de fx sigue corriendo (color, gobo, etc.) — solo el dimmer es sagrado.
+        const arbiterBlackout = state._controlSources?.['dimmer'] === 4; // ControlLayer.BLACKOUT
         if (this.activeEffects.has('strobe')) {
             const strobeOn = (Math.floor(timestamp / 50) % 2) === 0;
-            result.dimmer = strobeOn ? 255 : 0;
+            if (!arbiterBlackout)
+                result.dimmer = strobeOn ? 255 : 0;
         }
         if (this.activeEffects.has('blinder')) {
-            result.dimmer = 255;
+            if (!arbiterBlackout)
+                result.dimmer = 255;
             result.r = 255;
             result.g = 255;
             result.b = 255;
         }
         if (this.activeEffects.has('police')) {
             const policePhase = (Math.floor(timestamp / 250) % 2) === 0;
-            result.dimmer = 255;
+            if (!arbiterBlackout)
+                result.dimmer = 255;
             result.r = policePhase ? 255 : 0;
             result.g = 0;
             result.b = policePhase ? 0 : 255;
@@ -529,7 +536,8 @@ export class FixtureMapper {
             result.r = rgb.r;
             result.g = rgb.g;
             result.b = rgb.b;
-            result.dimmer = 255;
+            if (!arbiterBlackout)
+                result.dimmer = 255;
         }
         return result;
     }

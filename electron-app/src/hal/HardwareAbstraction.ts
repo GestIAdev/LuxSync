@@ -977,7 +977,11 @@ export class HardwareAbstraction {
           // gobo/prism every frame, killing values set by the operator.
           gobo: fixtureTarget.phantomChannels?.['gobo'] ?? 0,
           prism: fixtureTarget.phantomChannels?.['prism'] ?? 0,
-          strobe: 0,
+          // 🔥 WAVE 3313: strobe UNDEFINED — igual que shutter (WAVE 2190).
+          // Hardcoding 0 bloqueaba el fallback a channel.defaultValue en FixtureMapper.
+          // Fixtures como el 250 Big Dipper tienen strobe canal dual (1-127=flash, 128-255=open)
+          // con defaultValue:255. Con strobe:0 → canal cerrado → luz apagada aunque dimmer=255.
+          strobe: undefined,
           // 🔥 WAVE 2084: PHANTOM PANEL — Canales extra desde el Arbiter
           phantomChannels: fixtureTarget.phantomChannels,
           // 🚧 WAVE 2228: DMX ADUANA — Propagate control sources for HAL gate

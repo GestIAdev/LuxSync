@@ -29,12 +29,15 @@
     "postprocessing": "^6.38.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "bindings": "^1.5.0",
     "serialport": "^13.0.0",
     "three": "^0.182.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
+    "node-addon-api": "^8.3.1",
+    "node-gyp": "^11.2.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -67,12 +70,14 @@
       "node_modules/file-uri-to-path/**/*",
       "node_modules/@serialport/**/*",
       "node_modules/serialport/**/*",
-      "node_modules/bytenode/**/*"
+      "node_modules/bytenode/**/*",
+      "native/build/**/*"
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*",
       "node_modules/@serialport/bindings-cpp/**/*",
       "node_modules/bytenode/**/*",
+      "native/build/**/*",
       "dist-electron/license/**/*"
     ],
     "extraResources": [

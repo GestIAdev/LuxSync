@@ -66,6 +66,10 @@ export interface AudioDeviceInfo {
   readonly sampleRate: number
   readonly channels: number
   readonly isDefault: boolean
+  readonly isLoopback?: boolean
+  readonly isExclusiveCapable?: boolean
+  readonly driver?: 'wasapi' | 'coreaudio' | 'jack' | 'alsa'
+  readonly sampleRates?: readonly number[]
 }
 
 // ============================================

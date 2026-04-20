@@ -37,7 +37,9 @@ static Napi::Value EnumerateDevices(const Napi::CallbackInfo& info) {
         g_enumerator = createDeviceEnumerator();
     }
 
+    fprintf(stderr, "[OmniInput] enumerateDevices() called\n");
     auto devices = g_enumerator->enumerate();
+    fprintf(stderr, "[OmniInput] enumerateDevices() returned %zu devices\n", devices.size());
     Napi::Array result = Napi::Array::New(env, devices.size());
 
     for (size_t i = 0; i < devices.size(); i++) {
@@ -138,6 +140,11 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
         1    // 1 initial thread
     );
 
+    fprintf(stderr, "[OmniInput] startCapture: device='%s' rate=%d ch=%d buf=%d excl=%d\n",
+        config.deviceId.empty() ? "(default)" : config.deviceId.c_str(),
+        config.sampleRate, config.channels, config.bufferSizeFrames,
+        config.exclusiveMode ? 1 : 0);
+
     auto stream = createCaptureStream();
     int handle = g_nextHandle++;
 
@@ -177,10 +184,14 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
 
     bool started = stream->start(config, callback);
     if (!started) {
+        fprintf(stderr, "[OmniInput] startCapture FAILED — stream->start() returned false for device='%s'\n",
+            config.deviceId.empty() ? "(default)" : config.deviceId.c_str());
         tsfn.Release();
         Napi::Error::New(env, "Failed to start audio capture").ThrowAsJavaScriptException();
         return env.Undefined();
     }
+
+    fprintf(stderr, "[OmniInput] startCapture OK — handle=%d\n", handle);
 
     {
         std::lock_guard<std::mutex> lock(g_streamsMutex);

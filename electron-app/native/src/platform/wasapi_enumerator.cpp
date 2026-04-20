@@ -150,6 +150,8 @@ private:
 
         UINT count = 0;
         pCollection->GetCount(&count);
+        fprintf(stderr, "[WASAPI] enumerateFlow: flow=%s found %u active endpoints\n",
+            flow == eCapture ? "eCapture" : "eRender", count);
 
         // Get default device ID for this flow
         std::wstring defaultId;
@@ -266,6 +268,18 @@ private:
             }
 
             out.push_back(std::move(info));
+            // Print after push so std::move hasn't destroyed the local yet — we
+            // read it from out.back()
+            const auto& logged = out.back();
+            fprintf(stderr, "[WASAPI] Device[%zu]: \"%-40s\" | %dch @ %dHz | loopback=%-5s | excl=%-5s | default=%-5s | id=%s\n",
+                out.size() - 1,
+                logged.name.c_str(),
+                logged.channels,
+                logged.sampleRate,
+                logged.isLoopback     ? "true" : "false",
+                logged.isExclusiveCapable ? "true" : "false",
+                logged.isDefault      ? "true" : "false",
+                logged.id.c_str());
             pDevice->Release();
         }
 

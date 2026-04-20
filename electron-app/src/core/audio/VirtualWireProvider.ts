@@ -67,9 +67,11 @@ export class VirtualWireProvider implements IInputProvider {
 
   async initialize(config: InputProviderConfig): Promise<void> {
     this.config = config
+    console.log('[VirtualWire] initialize() — checking native bridge...')
 
     const bridge = getNativeAudioBridge()
     if (!bridge.available) {
+      console.error(`[VirtualWire] ❌ Native bridge unavailable: ${bridge.loadError}`)
       this.updateStatus({
         state: 'error',
         deviceName: null,
@@ -84,10 +86,14 @@ export class VirtualWireProvider implements IInputProvider {
     // Auto-detect virtual wire device if no deviceId specified
     if (config.deviceId) {
       this.selectedDeviceId = config.deviceId
+      console.log(`[VirtualWire] Using explicitly configured deviceId: "${config.deviceId}"`)
     } else {
       const loopbackDevice = this.findLoopbackDevice()
       if (loopbackDevice) {
         this.selectedDeviceId = loopbackDevice.id
+        console.log(`[VirtualWire] Auto-detected loopback device: "${loopbackDevice.name}" (${loopbackDevice.id})`)
+      } else {
+        console.warn('[VirtualWire] ⚠️  No loopback device auto-detected. VB-Cable/BlackHole not found in enumeration.')
       }
     }
 
@@ -104,14 +110,25 @@ export class VirtualWireProvider implements IInputProvider {
       errorMessage: this.selectedDeviceId ? null : 'No VB-Cable/BlackHole detected',
     })
 
+    if (this.selectedDeviceId) {
+      console.log(`[VirtualWire] ✅ Initialized — device: "${deviceName}" ready, waiting for start()`)
+    } else {
+      console.warn('[VirtualWire] ⚠️  Initialized with NO device — start() will fail until a loopback device is available')
+    }
+
     // Register for hot-plug events
     this.deviceChangeHandler = () => this.handleDeviceChange()
     bridge.onDeviceChange(this.deviceChangeHandler)
   }
 
   async start(): Promise<void> {
-    if (this._status.state !== 'ready') return
+    console.log(`[VirtualWire] start() — current state: "${this._status.state}"`)
+    if (this._status.state !== 'ready') {
+      console.warn(`[VirtualWire] start() aborted — state is "${this._status.state}", expected "ready"`)
+      return
+    }
     if (!this.selectedDeviceId) {
+      console.error('[VirtualWire] ❌ start() aborted — no device selected')
       this.updateStatus({
         ...this._status,
         state: 'error',
@@ -121,10 +138,15 @@ export class VirtualWireProvider implements IInputProvider {
     }
 
     const bridge = getNativeAudioBridge()
-    if (!bridge.available) return
+    if (!bridge.available) {
+      console.error('[VirtualWire] ❌ start() aborted — native bridge not available')
+      return
+    }
 
     const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE
     const channels = this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS
+
+    console.log(`[VirtualWire] Starting native capture — device: "${this.selectedDeviceId}" | ${channels}ch @ ${targetRate}Hz | exclusive: ${this.config.exclusiveMode ?? true}`)
 
     this.captureHandle = bridge.startCapture(
       {
@@ -140,6 +162,7 @@ export class VirtualWireProvider implements IInputProvider {
     )
 
     if (!this.captureHandle) {
+      console.error('[VirtualWire] ❌ captureHandle is null after startCapture — native addon rejected the config')
       this.updateStatus({
         ...this._status,
         state: 'error',
@@ -149,6 +172,7 @@ export class VirtualWireProvider implements IInputProvider {
     }
 
     this.startTime = Date.now()
+    console.log(`[VirtualWire] ✅ Capture streaming — handle: ${this.captureHandle.id}`)
     this.updateStatus({
       ...this._status,
       state: 'streaming',

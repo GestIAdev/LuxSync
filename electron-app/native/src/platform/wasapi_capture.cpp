@@ -77,6 +77,7 @@ private:
         // Initialize COM for this thread (MTA)
         hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         if (FAILED(hr)) {
+            fprintf(stderr, "[WASAPI] CoInitializeEx failed: hr=0x%08X\n", (unsigned)hr);
             m_running.store(false);
             return;
         }
@@ -104,7 +105,7 @@ private:
             CLSCTX_ALL, __uuidof(IMMDeviceEnumerator),
             reinterpret_cast<void**>(&pEnumerator)
         );
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) { fprintf(stderr, "[WASAPI] CoCreateInstance(MMDeviceEnumerator) failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
 
         // Get device (default or specific)
         if (m_config.deviceId.empty()) {
@@ -116,13 +117,20 @@ private:
             MultiByteToWideChar(CP_UTF8, 0, m_config.deviceId.c_str(), -1, &wideId[0], wlen);
             hr = pEnumerator->GetDevice(wideId.c_str(), &pDevice);
         }
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) {
+            if (m_config.deviceId.empty()) {
+                fprintf(stderr, "[WASAPI] GetDefaultAudioEndpoint failed: hr=0x%08X\n", (unsigned)hr);
+            } else {
+                fprintf(stderr, "[WASAPI] GetDevice('%s') failed: hr=0x%08X\n", m_config.deviceId.c_str(), (unsigned)hr);
+            }
+            cleanup(); m_running.store(false); return;
+        }
 
         hr = pDevice->Activate(
             __uuidof(IAudioClient), CLSCTX_ALL, nullptr,
             reinterpret_cast<void**>(&pAudioClient)
         );
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) { fprintf(stderr, "[WASAPI] pDevice->Activate(IAudioClient) failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
 
         // Configure WAVEFORMATEXTENSIBLE for Float32
         WAVEFORMATEXTENSIBLE wfx = {};
@@ -159,7 +167,9 @@ private:
             );
             if (SUCCEEDED(hr)) {
                 exclusiveActive = true;
+                fprintf(stderr, "[WASAPI] Exclusive mode initialized @ %dHz %dch\n", m_config.sampleRate, m_config.channels);
             } else {
+                fprintf(stderr, "[WASAPI] Exclusive mode failed (hr=0x%08X), falling back to shared\n", (unsigned)hr);
                 // Exclusive failed — release and re-activate for shared mode
                 pAudioClient->Release();
                 pAudioClient = nullptr;
@@ -202,15 +212,15 @@ private:
                     CoTaskMemFree(pMixFormat);
                 }
             }
-            if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+            if (FAILED(hr)) { fprintf(stderr, "[WASAPI] Shared mode Initialize failed (all formats exhausted): hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
         }
 
         // Create event for buffer notifications
         hEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        if (!hEvent) { cleanup(); m_running.store(false); return; }
+        if (!hEvent) { fprintf(stderr, "[WASAPI] CreateEvent failed: GetLastError=%lu\n", GetLastError()); cleanup(); m_running.store(false); return; }
 
         hr = pAudioClient->SetEventHandle(hEvent);
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) { fprintf(stderr, "[WASAPI] SetEventHandle failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
 
         // Get actual buffer size
         UINT32 actualBufferSize = 0;
@@ -225,15 +235,22 @@ private:
             __uuidof(IAudioCaptureClient),
             reinterpret_cast<void**>(&pCaptureClient)
         );
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) { fprintf(stderr, "[WASAPI] GetService(IAudioCaptureClient) failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
 
         // Elevate thread priority for real-time audio
         DWORD taskIndex = 0;
         hTask = AvSetMmThreadCharacteristicsW(L"Pro Audio", &taskIndex);
 
+        fprintf(stderr, "[WASAPI] Starting capture: device='%s' %dHz %dch buf=%d exclusive=%d latency=%.2fms\n",
+            m_config.deviceId.empty() ? "(default)" : m_config.deviceId.c_str(),
+            m_config.sampleRate, m_config.channels, m_config.bufferSizeFrames,
+            m_config.exclusiveMode, m_latencyMs.load());
+
         // Start capturing
         hr = pAudioClient->Start();
-        if (FAILED(hr)) { cleanup(); m_running.store(false); return; }
+        if (FAILED(hr)) { fprintf(stderr, "[WASAPI] pAudioClient->Start() failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
+
+        fprintf(stderr, "[WASAPI] Capture loop running\n");
 
         // Capture loop
         while (m_running.load()) {

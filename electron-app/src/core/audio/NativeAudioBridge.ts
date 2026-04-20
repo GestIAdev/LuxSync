@@ -103,9 +103,38 @@ export class NativeAudioBridge {
    * Enumerate all audio input devices (physical + virtual/loopback)
    */
   enumerateDevices(): NativeAudioDeviceInfo[] {
-    if (!this.addon) return []
+    if (!this.addon) {
+      console.error('[NativeAudio] enumerateDevices() called but addon not loaded')
+      return []
+    }
 
     const nativeDevices = this.addon.enumerateDevices()
+
+    // ─── LIFT LOG BLACKOUT: dump full device table ───────────────────────────
+    console.log(`[NativeAudio] Device enumeration — ${nativeDevices.length} device(s) found:`)
+    for (const dev of nativeDevices) {
+      const flags = [
+        dev.isDefault    ? 'DEFAULT'   : null,
+        dev.isLoopback   ? 'LOOPBACK'  : null,
+        dev.isExclusiveCapable ? 'EXCLUSIVE' : null,
+      ].filter(Boolean).join(', ') || 'shared-only'
+      console.log(
+        `[NativeAudio]   [${dev.driver.toUpperCase()}] "${dev.name}"` +
+        ` | ${dev.channels}ch @ ${dev.sampleRate}Hz` +
+        ` | flags: [${flags}]` +
+        ` | supported rates: [${dev.sampleRates.join(', ')}]` +
+        ` | id: ${dev.id}`
+      )
+    }
+
+    const loopbacks = nativeDevices.filter(d => d.isLoopback)
+    if (loopbacks.length === 0) {
+      console.warn('[NativeAudio] ⚠️  No loopback/virtual-cable devices detected. VirtualWire will be unavailable.')
+    } else {
+      console.log(`[NativeAudio] ✅ Loopback device(s) detected: ${loopbacks.map(d => `"${d.name}"`).join(', ')}`)
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     return nativeDevices.map((dev): NativeAudioDeviceInfo => ({
       id: dev.id,
       name: dev.name,
@@ -130,9 +159,27 @@ export class NativeAudioBridge {
     config: NativeCaptureConfig,
     onData: NativeAudioCallback
   ): CaptureHandle | null {
-    if (!this.addon) return null
+    if (!this.addon) {
+      console.error('[NativeAudio] startCapture() called but addon not loaded')
+      return null
+    }
 
-    const handle = this.addon.startCapture(config, onData)
+    console.log(
+      `[NativeAudio] startCapture — device: "${config.deviceId || 'default'}"` +
+      ` | ${config.channels}ch @ ${config.sampleRate}Hz` +
+      ` | bufferSize: ${config.bufferSizeFrames} frames` +
+      ` | exclusive: ${config.exclusiveMode}`
+    )
+
+    let handle: number
+    try {
+      handle = this.addon.startCapture(config, onData)
+    } catch (err) {
+      console.error(
+        `[NativeAudio] ❌ startCapture FAILED for device "${config.deviceId || 'default'}": ${err}`
+      )
+      return null
+    }
 
     const captureHandle: CaptureHandle = {
       id: handle,
@@ -203,6 +250,7 @@ export class NativeAudioBridge {
   // ============================================
 
   private loadNativeAddon(): void {
+    console.log('[NativeAudio] Loading native addon luxsync_audio...')
     try {
       // The native addon is built by node-gyp and placed in build/Release/
       // In production, electron-builder unpacks it via asar.
@@ -211,14 +259,15 @@ export class NativeAudioBridge {
       this.addon = bindings('luxsync_audio') as NativeAddon
       this._available = true
       this._loadError = null
+      console.log('[NativeAudio] ✅ Native addon loaded successfully')
     } catch (err) {
       this.addon = null
       this._available = false
       this._loadError = err instanceof Error ? err.message : String(err)
-      console.warn(
-        '[NativeAudioBridge] Native addon not available — ' +
-        'providers requiring native access will be disabled. ' +
-        `Error: ${this._loadError}`
+      console.error(
+        '[NativeAudio] ❌ Native addon FAILED to load — ' +
+        'VirtualWire and USBDirectLink will be unavailable.\n' +
+        `  Error: ${this._loadError}`
       )
     }
   }

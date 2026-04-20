@@ -104,6 +104,8 @@ interface TrinityContextValue {
   startMicrophone: () => Promise<void>
   /** WAVE 3000: Detener captura de audio completamente (modo OFF) */
   stopAudio: () => void
+  /** WAVE 3415: Activar fuente Omni (VirtualWire, USB, OSC) sin WebAudio — marca isAudioActive */
+  activateOmniSource: (source: string) => Promise<void>
 }
 
 // ============================================================================
@@ -576,6 +578,14 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
             }).catch((err) => {
               console.warn('[Trinity] WAVE 2501: Microphone re-engage failed:', err)
             })
+          } else if (savedSource === 'virtual-wire' || savedSource === 'usb-directlink' || savedSource === 'osc-nexus') {
+            // WAVE 3415: Re-engage Omni sources — native addon, no WebAudio needed
+            const matrixApi = (window as any).luxsync?.audioMatrix
+            if (matrixApi?.forceSource) {
+              matrixApi.forceSource(savedSource)
+                .then(() => setState(prev => ({ ...prev, isAudioActive: true })))
+                .catch((err: unknown) => console.warn(`[Trinity] WAVE 3415: ${savedSource} re-engage failed:`, err))
+            }
           }
         }
       })
@@ -611,6 +621,27 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     setState(prev => ({ ...prev, isAudioActive: false }))
   }, [stopCapture])
 
+  // WAVE 3415: Activar fuente Omni (VirtualWire, USB, OSC) sin pasar por WebAudio.
+  // Estas fuentes usan el native addon directo — no hay getUserMedia ni AudioContext.
+  // forceSource arranca el provider WASAPI; aquí marcamos isAudioActive para que
+  // la UI refleje el estado correcto y el sistema no quede en 'offline' visual.
+  const activateOmniSource = useCallback(async (source: string) => {
+    const matrixApi = (window as any).luxsync?.audioMatrix
+    if (!matrixApi) {
+      console.error('[Trinity] WAVE 3415: AudioMatrix IPC not available')
+      return
+    }
+    try {
+      await matrixApi.forceSource(source)
+      setIsSimulating(false)
+      setSimulationMode(false)
+      setState(prev => ({ ...prev, isAudioActive: true }))
+      console.log(`[Trinity] WAVE 3415: Omni source '${source}' activated — isAudioActive=true`)
+    } catch (err) {
+      console.error(`[Trinity] WAVE 3415: activateOmniSource('${source}') failed:`, err)
+    }
+  }, [setSimulationMode])
+
   // Context value
   const value: TrinityContextValue = {
     state,
@@ -622,6 +653,7 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     startSystemAudio,
     startMicrophone,
     stopAudio,
+    activateOmniSource,
   }
   
   return (

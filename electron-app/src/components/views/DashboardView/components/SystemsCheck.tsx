@@ -615,20 +615,16 @@ export const SystemsCheck: React.FC = () => {
         console.log('[SystemsCheck] 🎤 WAVE 3409: Microphone connected (AudioMatrix → legacy-bridge)')
 
       } else if (OMNI_SOURCES.has(source)) {
-        // WAVE 3403: Omni-Input sources routed through AudioMatrix
-        const matrixApi = getAudioMatrixApi()
-        if (matrixApi) {
-          const result = await matrixApi.forceSource(source)
-          if (result?.success) {
-            trinity.setSimulating(false)
-            setAudioSource(source)
-            console.log(`[SystemsCheck] WAVE 3403: AudioMatrix forced to ${source}`)
-          } else {
-            throw new Error(result?.error || `Failed to force ${source}`)
-          }
-        } else {
-          throw new Error('AudioMatrix IPC not available')
-        }
+        // WAVE 3415: Omni-Input sources (VirtualWire, USB, OSC) via TrinityProvider.activateOmniSource.
+        // La llamada directa a matrixApi.forceSource() aquí era insuficiente: forceSource arranca
+        // el provider nativo pero no marcaba trinity.state.isAudioActive=true, dejando la UI
+        // en estado 'offline' aunque el audio fluía. activateOmniSource unifica:
+        //   1. forceSource(source) → native WASAPI start
+        //   2. trinity.resetPacemaker() → ya incluido en IPC handler (WAVE 3414)
+        //   3. setState({isAudioActive: true}) → UI refleja estado correcto
+        await trinity.activateOmniSource(source)
+        setAudioSource(source)
+        console.log(`[SystemsCheck] WAVE 3415: Omni source '${source}' activated via TrinityProvider`)
       }
       
       // Persist to config file

@@ -423,8 +423,13 @@ export class TitanOrchestrator {
       if (audioMatrix) {
         audioMatrix.registerProvider(this.oscProvider)
       }
-      this.oscProvider.start()
-      console.log('[TitanOrchestrator] WAVE 3401: OSCNexusProvider started (UDP 9000/9001)')
+      try {
+        await this.oscProvider.start()
+        console.log('[TitanOrchestrator] WAVE 3401: OSCNexusProvider started (UDP 9000/9001)')
+      } catch (oscErr) {
+        console.error('[TitanOrchestrator] ⚠️ OSCNexusProvider failed to start:', oscErr)
+        // Non-fatal: LuxSync operates without OSC. Provider state → error, AudioMatrix falls back.
+      }
     } catch (e) {
       console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e)
     }

@@ -301,9 +301,21 @@ export class OSCNexusProvider implements IInputProvider {
     })
 
     // Setup publish socket
+    // WAVE 3403.1: bind() must complete before setBroadcast() — the socket needs
+    // a valid file descriptor (EBADF otherwise). Port 0 = OS picks ephemeral port.
     if (this.config.enablePublisher) {
       this.publishSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
-      this.publishSocket.setBroadcast(true)
+      await new Promise<void>((resolve, reject) => {
+        this.publishSocket!.bind(0, () => {
+          try {
+            this.publishSocket!.setBroadcast(true)
+            resolve()
+          } catch (err) {
+            reject(err)
+          }
+        })
+        this.publishSocket!.once('error', reject)
+      })
       console.log(`[OSCNexus] WAVE 3401: Publisher ready on UDP port ${this.config.publishPort}`)
     }
 

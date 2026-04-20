@@ -143,7 +143,6 @@ export class VirtualWireProvider {
             return;
         }
         const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE;
-        const channels = this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS;
         // WAVE 3406: if the selected device is an eRender loopback endpoint
         // (isLoopback=true, e.g. "CABLE Input"), tell the native capture to open
         // it with AUDCLNT_STREAMFLAGS_LOOPBACK. Exclusive mode is incompatible
@@ -151,6 +150,17 @@ export class VirtualWireProvider {
         const devices = getNativeAudioBridge().enumerateDevices();
         const selectedDevice = devices.find(d => d.id === this.selectedDeviceId);
         const isLoopbackDevice = selectedDevice?.isLoopback ?? false;
+        // WAVE 3411: Para dispositivos loopback siempre solicitamos 2 canales.
+        //
+        // DEFAULT_CHANNELS = 1. WASAPI en modo loopback sobre VB-Cable (stereo)
+        // con channels=1 hace el downmix internamente tomando solo el canal L
+        // (comportamiento idéntico al bug original del downmix). handleAudioData
+        // nunca llega al bloque if(_channels > 1) — no hay samples que mezclar.
+        //
+        // Fix: forzar 2ch para loopback. WASAPI entrega el par interleaved L,R.
+        // handleAudioData hace el sum-to-mono correcto (L+R)/2 desde la señal completa.
+        // Para mic/non-loopback mantenemos el channelSelection del config (puede ser 1ch).
+        const channels = isLoopbackDevice ? 2 : (this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS);
         console.log(`[VirtualWire] Starting native capture — device: "${this.selectedDeviceId}" | ${channels}ch @ ${targetRate}Hz | exclusive: ${!isLoopbackDevice && (this.config.exclusiveMode ?? true)} | loopback: ${isLoopbackDevice}`);
         this.captureHandle = bridge.startCapture({
             deviceId: this.selectedDeviceId,
@@ -229,17 +239,39 @@ export class VirtualWireProvider {
         if (this._status.state !== 'streaming' || !this.onAudioData)
             return;
         const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE;
-        // Mono downmix if needed (take first channel)
+        // WAVE 3410 ANOMALÍA 2: DOWNMIX CORRECTO (suma y promedio, no selección de canal)
+        //
+        // El downmix anterior tomaba data[i * _channels] (solo canal L).
+        // Para señales stereo esto descarta el 50% de la energía espectral.
+        // En techno con kick centrado pero procesado por canal, el canal L
+        // puede tener hasta -6dB respecto al sum-to-mono correcto, aplastando
+        // el rawBassEnergy que alimenta el IntervalBPMTracker.
+        //
+        // FIX: suma todos los canales disponibles y promedía → rango -1.0 a +1.0
+        // conservado, ganancia de suma cuadrada evitada.
         let monoData;
         if (_channels > 1) {
             monoData = new Float32Array(frameCount);
+            const invChannels = 1.0 / _channels;
             for (let i = 0; i < frameCount; i++) {
-                monoData[i] = data[i * _channels]; // First channel only
+                let sum = 0;
+                for (let c = 0; c < _channels; c++) {
+                    sum += data[i * _channels + c];
+                }
+                monoData[i] = sum * invChannels;
             }
         }
         else {
             monoData = data.subarray(0, frameCount);
         }
+        // WAVE 3411: Normalización de pico ELIMINADA (Fix B de WAVE 3410 revertido).
+        // La amplificación artificial destruye la relación pico/media que el
+        // IntervalBPMTracker necesita para operar: ratio = rawBassEnergy / rollingAvg.
+        // Si se normaliza el pico, tanto el pico como la media suben proporcionalmente
+        // y el ratio no cambia — PERO el rango dinámico (distancia pico-a-valle) se
+        // colapsa contra el techo, aplastando la detección de transients.
+        // La señal llega CRUDA al SAB; el AGC del Worker (senses.ts) es la única
+        // capa de ganancia autorizada (WAVE 2162).
         // Resample if source rate differs from target
         let outputData;
         let outputRate;

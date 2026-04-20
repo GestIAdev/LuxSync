@@ -171,7 +171,6 @@ export class VirtualWireProvider implements IInputProvider {
     }
 
     const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE
-    const channels = this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS
 
     // WAVE 3406: if the selected device is an eRender loopback endpoint
     // (isLoopback=true, e.g. "CABLE Input"), tell the native capture to open
@@ -180,6 +179,18 @@ export class VirtualWireProvider implements IInputProvider {
     const devices = getNativeAudioBridge().enumerateDevices()
     const selectedDevice = devices.find(d => d.id === this.selectedDeviceId)
     const isLoopbackDevice = selectedDevice?.isLoopback ?? false
+
+    // WAVE 3411: Para dispositivos loopback siempre solicitamos 2 canales.
+    //
+    // DEFAULT_CHANNELS = 1. WASAPI en modo loopback sobre VB-Cable (stereo)
+    // con channels=1 hace el downmix internamente tomando solo el canal L
+    // (comportamiento idéntico al bug original del downmix). handleAudioData
+    // nunca llega al bloque if(_channels > 1) — no hay samples que mezclar.
+    //
+    // Fix: forzar 2ch para loopback. WASAPI entrega el par interleaved L,R.
+    // handleAudioData hace el sum-to-mono correcto (L+R)/2 desde la señal completa.
+    // Para mic/non-loopback mantenemos el channelSelection del config (puede ser 1ch).
+    const channels = isLoopbackDevice ? 2 : (this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS)
 
     console.log(`[VirtualWire] Starting native capture — device: "${this.selectedDeviceId}" | ${channels}ch @ ${targetRate}Hz | exclusive: ${!isLoopbackDevice && (this.config.exclusiveMode ?? true)} | loopback: ${isLoopbackDevice}`)
 

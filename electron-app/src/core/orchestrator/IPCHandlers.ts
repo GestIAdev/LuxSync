@@ -1702,6 +1702,12 @@ function setupAudioMatrixHandlers(_deps: IPCDependencies): void {
     const matrix = trinity?.getAudioMatrix()
     if (!matrix) return { success: false, error: 'AudioMatrix not initialized' }
     matrix.forceSource(sourceType)
+    // WAVE 3414: Al cambiar de fuente de audio el Worker mantiene estado del
+    // tracker anterior (peakEnergyEstimate, bpmHistory, adaptive floor) calibrado
+    // para la fuente previa. Eso mata los kicks de la nueva fuente via PEAK_DISCRIMINATOR.
+    // Mandamos RESET_PACEMAKER para que el Worker arranque con pizarra en blanco.
+    trinity!.resetPacemaker()
+    console.log(`[IPCHandlers] 🔄 WAVE 3414: source → "${sourceType}" — Pacemaker reset (Amnesia Protocol)`)
     return { success: true }
   })
 

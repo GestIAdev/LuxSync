@@ -1372,7 +1372,12 @@ function handleMessage(message: WorkerMessage): void {
         prevSubEnergy = 0;
         prevBassOnlyEnergy = 0;
         prevMidEnergy = 0;
-        console.log('[BETA] 🧨 WAVE 2168: IntervalBPMTracker HARD RESET — Amnesia Protocol executed');
+        // WAVE 3414: También purgar adaptive floor buffer — estaba calibrado para
+        // la fuente previa (MIC vs VirtualWire tienen niveles distintos).
+        // Sin este reset el floor del MIC mata los kicks de VirtualWire y viceversa.
+        adaptiveFloorBuffer.length = 0;
+        adaptiveFloor = 0.015; // Bootstrap value
+        console.log('[BETA] 🧨 WAVE 3414: Amnesia Protocol — BPM tracker + adaptive floor reseteados');
         break;
         
       default:

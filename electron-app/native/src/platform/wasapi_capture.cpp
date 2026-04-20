@@ -181,20 +181,55 @@ private:
         }
 
         // Fallback: Shared Mode
+        // WAVE 3404: Force Float32 output with auto-convert flags.
+        // AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM tells Windows to accept any PCM
+        // format we request and convert from the device's internal mix format.
+        // AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY adds high-quality SRC.
+        // This guarantees the buffer we receive is always Float32, regardless
+        // of how the user configured the device in Windows Sound Control Panel.
         if (!exclusiveActive) {
+            // Build explicit Float32 format at device's native sample rate.
+            // We query GetMixFormat only to honour the device's native rate
+            // (avoids an extra SRC stage), but we override the subformat to
+            // IEEE_FLOAT and request our channel count. Windows does the rest.
+            WAVEFORMATEX* pMixFmt = nullptr;
+            pAudioClient->GetMixFormat(&pMixFmt);
+            DWORD nativeSampleRate = pMixFmt
+                ? pMixFmt->nSamplesPerSec
+                : static_cast<DWORD>(m_config.sampleRate);
+            if (pMixFmt) CoTaskMemFree(pMixFmt);
+
+            WAVEFORMATEXTENSIBLE wfxShared = {};
+            wfxShared.Format.wFormatTag      = WAVE_FORMAT_EXTENSIBLE;
+            wfxShared.Format.nChannels       = static_cast<WORD>(m_config.channels);
+            wfxShared.Format.nSamplesPerSec  = nativeSampleRate;
+            wfxShared.Format.wBitsPerSample  = 32;
+            wfxShared.Format.nBlockAlign     = wfxShared.Format.nChannels * 4;
+            wfxShared.Format.nAvgBytesPerSec = nativeSampleRate * wfxShared.Format.nBlockAlign;
+            wfxShared.Format.cbSize          = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
+            wfxShared.Samples.wValidBitsPerSample = 32;
+            wfxShared.dwChannelMask = (m_config.channels == 1)
+                ? SPEAKER_FRONT_CENTER
+                : (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
+            wfxShared.SubFormat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+
             hr = pAudioClient->Initialize(
                 AUDCLNT_SHAREMODE_SHARED,
-                AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+                AUDCLNT_STREAMFLAGS_EVENTCALLBACK
+                    | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
+                    | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
                 bufferDuration,
                 0,
-                reinterpret_cast<WAVEFORMATEX*>(&wfx),
+                reinterpret_cast<WAVEFORMATEX*>(&wfxShared),
                 nullptr
             );
             if (FAILED(hr)) {
-                // Try with device's mix format as last resort
-                WAVEFORMATEX* pMixFormat = nullptr;
-                pAudioClient->GetMixFormat(&pMixFormat);
-                if (pMixFormat) {
+                fprintf(stderr, "[WASAPI] Shared+Float32+AutoConvert failed (hr=0x%08X), retrying with mix format\n", (unsigned)hr);
+                // Last resort: honour whatever format the device wants.
+                // We'll detect non-float in the capture loop and convert manually.
+                WAVEFORMATEX* pFallbackFmt = nullptr;
+                pAudioClient->GetMixFormat(&pFallbackFmt);
+                if (pFallbackFmt) {
                     pAudioClient->Release();
                     pAudioClient = nullptr;
                     pDevice->Activate(
@@ -203,13 +238,18 @@ private:
                     );
                     hr = pAudioClient->Initialize(
                         AUDCLNT_SHAREMODE_SHARED,
-                        AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+                        AUDCLNT_STREAMFLAGS_EVENTCALLBACK
+                            | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
+                            | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
                         bufferDuration,
                         0,
-                        pMixFormat,
+                        pFallbackFmt,
                         nullptr
                     );
-                    CoTaskMemFree(pMixFormat);
+                    // Remember if mix format is integer so the loop can convert
+                    m_sharedModeIsInt16 = (pFallbackFmt->wBitsPerSample == 16
+                        && pFallbackFmt->wFormatTag != WAVE_FORMAT_IEEE_FLOAT);
+                    CoTaskMemFree(pFallbackFmt);
                 }
             }
             if (FAILED(hr)) { fprintf(stderr, "[WASAPI] Shared mode Initialize failed (all formats exhausted): hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
@@ -277,6 +317,18 @@ private:
                         // Silent buffer — feed zeros
                         std::vector<float> silence(framesAvailable * m_config.channels, 0.0f);
                         m_callback(silence.data(), framesAvailable, m_config.channels, m_config.sampleRate);
+                    } else if (m_sharedModeIsInt16) {
+                        // Last-resort fallback: mix format was int16, convert manually.
+                        // This path is only taken when AUTOCONVERTPCM negotiation failed
+                        // and we were forced to accept the device's raw int16 format.
+                        const int16_t* pInt16 = reinterpret_cast<const int16_t*>(pData);
+                        int totalSamples = static_cast<int>(framesAvailable) * m_config.channels;
+                        std::vector<float> converted(totalSamples);
+                        constexpr float kScale = 1.0f / 32768.0f;
+                        for (int i = 0; i < totalSamples; ++i) {
+                            converted[i] = pInt16[i] * kScale;
+                        }
+                        m_callback(converted.data(), framesAvailable, m_config.channels, m_config.sampleRate);
                     } else {
                         m_callback(
                             reinterpret_cast<const float*>(pData),
@@ -298,6 +350,9 @@ private:
 
     CaptureConfig m_config;
     AudioCallback m_callback;
+    // True only when AUTOCONVERTPCM negotiation failed and we accepted a raw
+    // int16 mix format — the capture loop will convert manually in that case.
+    bool m_sharedModeIsInt16 = false;
     std::thread m_captureThread;
     std::atomic<bool> m_running{false};
     std::atomic<int> m_bufferUnderruns{0};

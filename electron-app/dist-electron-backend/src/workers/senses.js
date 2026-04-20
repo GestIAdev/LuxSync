@@ -57,6 +57,39 @@ import { MoodSynthesizer } from '../engine/musical/classification/MoodSynthesize
 // ============================================
 const config = workerData?.config ?? DEFAULT_CONFIG;
 const NODE_ID = 'beta';
+// ============================================
+// WAVE 3401: SHARED RING BUFFER -- SAB Consumer Setup
+// ============================================
+// If TrinityOrchestrator passed a SharedArrayBuffer via workerData,
+// BETA reads audio directly from shared memory (zero-copy).
+// Falls back to postMessage AUDIO_BUFFER if no SAB is provided.
+import { SharedRingBufferReader } from '../core/audio/SharedRingBuffer';
+import { OMNI_CONSTANTS } from '../core/audio/OmniInputTypes';
+const sharedAudioBuffer = workerData?.sharedAudioBuffer ?? null;
+const sabReader = sharedAudioBuffer
+    ? new SharedRingBufferReader(sharedAudioBuffer)
+    : null;
+// Pre-allocated read buffer for SAB polling (avoids GC in hot path)
+const sabReadBuffer = new Float32Array(OMNI_CONSTANTS.FFT_SIZE);
+// SAB polling interval handle -- started on INIT, stopped on SHUTDOWN
+let sabPollInterval = null;
+// WAVE 3401: SAB poll function -- reads available samples and processes them
+function pollSharedRingBuffer() {
+    if (!sabReader || !state.isRunning)
+        return;
+    const available = sabReader.available;
+    if (available === 0)
+        return;
+    // Read up to FFT_SIZE samples per poll cycle
+    const toRead = Math.min(available, OMNI_CONSTANTS.FFT_SIZE);
+    const samplesRead = sabReader.read(sabReadBuffer, toRead);
+    if (samplesRead > 0) {
+        // Feed the samples through the same processAudioBuffer pipeline
+        const slice = sabReadBuffer.subarray(0, samplesRead);
+        const analysis = processAudioBuffer(slice);
+        sendMessage(MessageType.AUDIO_ANALYSIS, 'alpha', analysis, analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL);
+    }
+}
 const state = {
     isRunning: false,
     frameCount: 0,
@@ -943,11 +976,24 @@ function handleMessage(message) {
                 state.isRunning = true;
                 state.startTime = Date.now();
                 // WAVE 2098: Boot silence
+                // WAVE 3401: Start SAB polling if SharedArrayBuffer was provided
+                if (sabReader && !sabPollInterval) {
+                    // Poll at ~47Hz (21ms) -- slightly faster than 25fps DMX to ensure
+                    // we never starve the ring buffer. processAudioBuffer handles
+                    // buffering via its own 4096-sample ring.
+                    sabPollInterval = setInterval(pollSharedRingBuffer, 21);
+                    console.log('[BETA] WAVE 3401: SharedRingBuffer consumer active (SAB poll @ 47Hz)');
+                }
                 sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
                 break;
             case MessageType.SHUTDOWN:
                 console.log('[BETA] Shutting down...');
                 state.isRunning = false;
+                // WAVE 3401: Stop SAB polling
+                if (sabPollInterval) {
+                    clearInterval(sabPollInterval);
+                    sabPollInterval = null;
+                }
                 // Send final health before shutdown
                 sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
                 process.exit(0);

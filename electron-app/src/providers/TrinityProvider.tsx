@@ -555,12 +555,22 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
             setSimulationMode(true)
             setState(prev => ({ ...prev, isAudioActive: true }))
           } else if (savedSource === 'system') {
+            // WAVE 3409: Force AudioMatrix to legacy-bridge before starting capture
+            const matrixApi = (window as any).luxsync?.audioMatrix
+            if (matrixApi?.forceSource) {
+              matrixApi.forceSource('legacy-bridge').catch(() => {})
+            }
             startSystemAudio().then(() => {
               setState(prev => ({ ...prev, isAudioActive: true }))
             }).catch((err) => {
               console.warn('[Trinity] WAVE 2501: System audio re-engage failed:', err)
             })
           } else if (savedSource === 'microphone') {
+            // WAVE 3409: Force AudioMatrix to legacy-bridge before starting capture
+            const matrixApi = (window as any).luxsync?.audioMatrix
+            if (matrixApi?.forceSource) {
+              matrixApi.forceSource('legacy-bridge').catch(() => {})
+            }
             startMicrophone().then(() => {
               setState(prev => ({ ...prev, isAudioActive: true }))
             }).catch((err) => {

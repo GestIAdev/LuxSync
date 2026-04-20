@@ -220,8 +220,13 @@ export class TrinityOrchestrator extends EventEmitter {
 
       this.audioMatrix = new AudioMatrix(writer);
       this.legacyBridge = new LegacyBridgeProvider();
+      // WAVE 3409: LegacyBridge must be initialized + started so feedFromIPC()
+      // accepts data (it guards on state === 'streaming'). Without this,
+      // MIC and System Audio buffers arriving via IPC are silently discarded.
+      await this.legacyBridge.initialize({});
+      await this.legacyBridge.start();
       this.audioMatrix.registerProvider(this.legacyBridge);
-      console.log('[ALPHA] WAVE 3401: AudioMatrix initialized (SAB + LegacyBridge)');
+      console.log('[ALPHA] WAVE 3409: AudioMatrix initialized (SAB + LegacyBridge STREAMING)');
 
       // Spawn workers
       await this.spawnWorker('beta');

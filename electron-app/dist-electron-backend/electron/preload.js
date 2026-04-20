@@ -163,6 +163,15 @@ const api = {
         getDesktopSources: () => ipcRenderer.invoke('audio:getDesktopSources')
     },
     // ============================================
+    // WAVE 3403: AUDIO MATRIX (Omni-Input)
+    // ============================================
+    audioMatrix: {
+        getStatus: () => ipcRenderer.invoke('audio-matrix:get-status'),
+        getDiagnostics: () => ipcRenderer.invoke('audio-matrix:get-diagnostics'),
+        forceSource: (sourceType) => ipcRenderer.invoke('audio-matrix:force-source', sourceType),
+        releaseForce: () => ipcRenderer.invoke('audio-matrix:release-force'),
+    },
+    // ============================================
     // SELENE
     // ============================================
     selene: {

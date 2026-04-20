@@ -83,6 +83,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
         '[UniversalDMX',
         '[VIBE',
         '[LuxSync',
+        // Native audio subsystem — LIFT LOG BLACKOUT (WAVE 3403.2)
+        '[NativeAudio',
+        '[VirtualWire',
+        '[WASAPI',
+        '[OmniInput',
         // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
         // hibernados — son ruido de ticker, no eventos de conciencia.
         // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.
@@ -452,6 +457,12 @@ async function initTitan() {
 // =============================================================================
 // APP LIFECYCLE
 // =============================================================================
+// WAVE 3401: Enable SharedArrayBuffer for Node.js Worker Threads
+// Required for OMNI-INPUT MATRIX zero-copy audio pipeline (ALPHA → BETA).
+// Node.js Workers in Electron main process do NOT need COOP/COEP headers
+// (those are only for browser Service Workers / cross-origin isolation).
+// This switch ensures SAB is available in the V8 isolate backing worker_threads.
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
 app.whenReady().then(async () => {
     // ═══════════════════════════════════════════════════════════════════════════
     // 🛡️ WAVE 2489 + 2491: THE OBSIDIAN VAULT — Two-Gate License Validation

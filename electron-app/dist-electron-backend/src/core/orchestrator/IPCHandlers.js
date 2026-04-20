@@ -13,6 +13,8 @@ import { deserializeHephClip } from '../hephaestus/types';
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 // ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
+// WAVE 3403: AudioMatrix IPC bridge
+import { getTrinity } from '../../workers/TrinityOrchestrator';
 // âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime = null;
 /**
@@ -52,6 +54,7 @@ export function setupIPCHandlers(deps) {
     // setupShowHandlers PURGED - WAVE 365: Use StageIPCHandlers instead
     setupDMXHandlers(deps);
     setupArtNetHandlers(deps);
+    setupAudioMatrixHandlers(deps);
 }
 // =============================================================================
 // TITAN ORCHESTRATOR HANDLERS (WAVE 254: THE SPARK)
@@ -1372,5 +1375,53 @@ function setupArtNetHandlers(deps) {
     });
     discovery.on('state-change', (state) => {
         deps.mainWindow?.webContents.send('artnet:discovery:state-change', state);
+    });
+}
+// =============================================================================
+// WAVE 3403: AUDIO MATRIX IPC HANDLERS
+// =============================================================================
+function setupAudioMatrixHandlers(_deps) {
+    ipcMain.handle('audio-matrix:get-status', () => {
+        const trinity = getTrinity();
+        const matrix = trinity?.getAudioMatrix();
+        if (!matrix)
+            return { success: false, error: 'AudioMatrix not initialized' };
+        return { success: true, status: matrix.getStatus() };
+    });
+    ipcMain.handle('audio-matrix:get-diagnostics', () => {
+        const trinity = getTrinity();
+        const matrix = trinity?.getAudioMatrix();
+        if (!matrix)
+            return { success: false, error: 'AudioMatrix not initialized' };
+        const status = matrix.getStatus();
+        const activeProvider = matrix.getActiveProvider();
+        const providerDiag = activeProvider?.getDiagnostics() ?? null;
+        // AGC diagnostics (only USBDirectLinkProvider exposes this)
+        const agcDiag = activeProvider?.getAutoGainDiagnostics?.() ?? null;
+        // Resampler info
+        const resamplerActive = !!activeProvider?.resampler;
+        return {
+            success: true,
+            status,
+            providerDiagnostics: providerDiag,
+            agc: agcDiag,
+            resamplerActive,
+        };
+    });
+    ipcMain.handle('audio-matrix:force-source', (_event, sourceType) => {
+        const trinity = getTrinity();
+        const matrix = trinity?.getAudioMatrix();
+        if (!matrix)
+            return { success: false, error: 'AudioMatrix not initialized' };
+        matrix.forceSource(sourceType);
+        return { success: true };
+    });
+    ipcMain.handle('audio-matrix:release-force', () => {
+        const trinity = getTrinity();
+        const matrix = trinity?.getAudioMatrix();
+        if (!matrix)
+            return { success: false, error: 'AudioMatrix not initialized' };
+        matrix.releaseForce();
+        return { success: true };
     });
 }

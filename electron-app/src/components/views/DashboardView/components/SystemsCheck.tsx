@@ -588,17 +588,31 @@ export const SystemsCheck: React.FC = () => {
         
       } else if (source === 'system') {
         // 🖥️ System Audio - WASAPI loopback
+        // WAVE 3409: Force AudioMatrix to legacy-bridge so ingestAudio() accepts
+        // the IPC-fed buffers from the frontend WebAudio capture loop.
+        // Without this, AudioMatrix.ingestAudio('legacy-bridge', ...) is silently
+        // discarded because effectiveSource is null or a different provider.
+        const matrixApi = getAudioMatrixApi()
+        if (matrixApi) {
+          await matrixApi.forceSource('legacy-bridge')
+        }
         await trinity.startSystemAudio()
         trinity.setSimulating(false)
         setAudioSource('system')
-        console.log('[SystemsCheck] 🖥️ System Audio connected!')
+        console.log('[SystemsCheck] 🖥️ WAVE 3409: System Audio connected (AudioMatrix → legacy-bridge)')
         
       } else if (source === 'microphone') {
-        // Microphone input (legacy bridge fallback)
+        // 🎤 Microphone input — routed through AudioMatrix as legacy-bridge
+        // WAVE 3409: Same fix as system — force AudioMatrix to accept
+        // LegacyBridgeProvider data, otherwise ingestAudio() gate rejects it.
+        const matrixApi = getAudioMatrixApi()
+        if (matrixApi) {
+          await matrixApi.forceSource('legacy-bridge')
+        }
         await trinity.startMicrophone()
         trinity.setSimulating(false)
         setAudioSource('microphone')
-        console.log('[SystemsCheck] Microphone connected (legacy bridge)')
+        console.log('[SystemsCheck] 🎤 WAVE 3409: Microphone connected (AudioMatrix → legacy-bridge)')
 
       } else if (OMNI_SOURCES.has(source)) {
         // WAVE 3403: Omni-Input sources routed through AudioMatrix

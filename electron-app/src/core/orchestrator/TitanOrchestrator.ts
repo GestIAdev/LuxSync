@@ -61,6 +61,9 @@ import type { IDMXDriver } from '../../hal/drivers'
 
 // WAVE 3401: OSC Nexus Provider for bidirectional OSC over UDP
 import { OSCNexusProvider } from '../audio/OSCNexusProvider'
+// WAVE 3402: Native audio providers
+import { VirtualWireProvider } from '../audio/VirtualWireProvider'
+import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
@@ -129,6 +132,9 @@ export class TitanOrchestrator {
 
   // WAVE 3401: OSC Nexus Provider (bidirectional OSC over UDP)
   private oscProvider: OSCNexusProvider | null = null
+  // WAVE 3402: Native audio providers
+  private virtualWireProvider: VirtualWireProvider | null = null
+  private usbDirectLinkProvider: USBDirectLinkProvider | null = null
   
   // ❤️ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
   private beatDetector: BeatDetector | null = null
@@ -430,6 +436,20 @@ export class TitanOrchestrator {
         console.error('[TitanOrchestrator] ⚠️ OSCNexusProvider failed to start:', oscErr)
         // Non-fatal: LuxSync operates without OSC. Provider state → error, AudioMatrix falls back.
       }
+
+      // WAVE 3402: Register native audio providers (VirtualWire + USBDirectLink)
+      // initialize() detects hardware / checks addon availability — never throws
+      if (audioMatrix) {
+        this.virtualWireProvider = new VirtualWireProvider()
+        await this.virtualWireProvider.initialize({})
+        audioMatrix.registerProvider(this.virtualWireProvider)
+        console.log('[TitanOrchestrator] WAVE 3402: VirtualWireProvider registered')
+
+        this.usbDirectLinkProvider = new USBDirectLinkProvider()
+        await this.usbDirectLinkProvider.initialize({})
+        audioMatrix.registerProvider(this.usbDirectLinkProvider)
+        console.log('[TitanOrchestrator] WAVE 3402: USBDirectLinkProvider registered')
+      }
     } catch (e) {
       console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e)
     }
@@ -570,6 +590,16 @@ export class TitanOrchestrator {
     if (this.oscProvider) {
       this.oscProvider.stop()
       this.oscProvider = null
+    }
+
+    // WAVE 3402: Stop native audio providers
+    if (this.virtualWireProvider) {
+      await this.virtualWireProvider.stop()
+      this.virtualWireProvider = null
+    }
+    if (this.usbDirectLinkProvider) {
+      await this.usbDirectLinkProvider.stop()
+      this.usbDirectLinkProvider = null
     }
 
     // ═══════════════════════════════════════════════════════════════════

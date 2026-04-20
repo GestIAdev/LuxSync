@@ -83,12 +83,18 @@ export class VirtualWireProvider implements IInputProvider {
       return
     }
 
+    // Enumerate once — reused for device selection AND name lookup to avoid double COM roundtrip
+    const devices = bridge.enumerateDevices()
+
     // Auto-detect virtual wire device if no deviceId specified
     if (config.deviceId) {
       this.selectedDeviceId = config.deviceId
       console.log(`[VirtualWire] Using explicitly configured deviceId: "${config.deviceId}"`)
     } else {
-      const loopbackDevice = this.findLoopbackDevice()
+      const loopbackDevice =
+        devices.find(d => d.isLoopback && d.isDefault) ??
+        devices.find(d => d.isLoopback) ??
+        null
       if (loopbackDevice) {
         this.selectedDeviceId = loopbackDevice.id
         console.log(`[VirtualWire] Auto-detected loopback device: "${loopbackDevice.name}" (${loopbackDevice.id})`)
@@ -98,7 +104,7 @@ export class VirtualWireProvider implements IInputProvider {
     }
 
     const deviceName = this.selectedDeviceId
-      ? this.getDeviceName(this.selectedDeviceId)
+      ? (devices.find(d => d.id === this.selectedDeviceId)?.name ?? null)
       : null
 
     this.updateStatus({

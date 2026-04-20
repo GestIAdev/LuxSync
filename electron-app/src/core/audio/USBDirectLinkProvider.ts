@@ -85,11 +85,17 @@ export class USBDirectLinkProvider implements IInputProvider {
       return
     }
 
+    // Enumerate once — reused for device selection AND name lookup to avoid double COM roundtrip
+    const devices = bridge.enumerateDevices()
+
     // Select device: explicit ID, or auto-detect USB audio device
     if (config.deviceId) {
       this.selectedDeviceId = config.deviceId
     } else {
-      const usbDevice = this.findUSBDevice()
+      const usbDevice =
+        devices.find(d => !d.isLoopback && d.isExclusiveCapable && !d.isDefault) ??
+        devices.find(d => !d.isLoopback && d.isExclusiveCapable) ??
+        null
       if (usbDevice) {
         this.selectedDeviceId = usbDevice.id
       }
@@ -101,7 +107,7 @@ export class USBDirectLinkProvider implements IInputProvider {
     this.autoGain = new AutoGainProcessor(targetRate)
 
     const deviceName = this.selectedDeviceId
-      ? this.getDeviceName(this.selectedDeviceId)
+      ? (devices.find(d => d.id === this.selectedDeviceId)?.name ?? null)
       : null
 
     this.updateStatus({

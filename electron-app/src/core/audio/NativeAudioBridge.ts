@@ -31,6 +31,8 @@ interface NativeCaptureConfig {
   channels: number
   bufferSizeFrames: number
   exclusiveMode: boolean
+  /** WAVE 3406: tap eRender endpoint via AUDCLNT_STREAMFLAGS_LOOPBACK */
+  loopbackMode?: boolean
 }
 
 type NativeAudioCallback = (

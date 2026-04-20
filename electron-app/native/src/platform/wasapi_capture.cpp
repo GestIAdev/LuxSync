@@ -108,8 +108,11 @@ private:
         if (FAILED(hr)) { fprintf(stderr, "[WASAPI] CoCreateInstance(MMDeviceEnumerator) failed: hr=0x%08X\n", (unsigned)hr); cleanup(); m_running.store(false); return; }
 
         // Get device (default or specific)
+        // WAVE 3406: loopback mode taps an eRender endpoint — open as eRender.
+        // Standard capture opens as eCapture.
+        EDataFlow deviceFlow = m_config.loopbackMode ? eRender : eCapture;
         if (m_config.deviceId.empty()) {
-            hr = pEnumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &pDevice);
+            hr = pEnumerator->GetDefaultAudioEndpoint(deviceFlow, eConsole, &pDevice);
         } else {
             // Convert device ID from UTF-8 to wide string
             int wlen = MultiByteToWideChar(CP_UTF8, 0, m_config.deviceId.c_str(), -1, nullptr, 0);
@@ -155,8 +158,11 @@ private:
             );
 
         // Try Exclusive Mode first
+        // WAVE 3406: AUDCLNT_STREAMFLAGS_LOOPBACK is incompatible with exclusive
+        // mode — Windows returns AUDCLNT_E_UNSUPPORTED_FORMAT immediately.
+        // Force shared mode when loopback is requested.
         bool exclusiveActive = false;
-        if (m_config.exclusiveMode) {
+        if (m_config.exclusiveMode && !m_config.loopbackMode) {
             hr = pAudioClient->Initialize(
                 AUDCLNT_SHAREMODE_EXCLUSIVE,
                 AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
@@ -217,7 +223,9 @@ private:
                 AUDCLNT_SHAREMODE_SHARED,
                 AUDCLNT_STREAMFLAGS_EVENTCALLBACK
                     | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
-                    | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                    | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY
+                    // WAVE 3406: inject LOOPBACK flag to tap render output
+                    | (m_config.loopbackMode ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0u),
                 bufferDuration,
                 0,
                 reinterpret_cast<WAVEFORMATEX*>(&wfxShared),
@@ -240,7 +248,8 @@ private:
                         AUDCLNT_SHAREMODE_SHARED,
                         AUDCLNT_STREAMFLAGS_EVENTCALLBACK
                             | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
-                            | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                            | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY
+                            | (m_config.loopbackMode ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0u),
                         bufferDuration,
                         0,
                         pFallbackFmt,
@@ -281,10 +290,10 @@ private:
         DWORD taskIndex = 0;
         hTask = AvSetMmThreadCharacteristicsW(L"Pro Audio", &taskIndex);
 
-        fprintf(stderr, "[WASAPI] Starting capture: device='%s' %dHz %dch buf=%d exclusive=%d latency=%.2fms\n",
+        fprintf(stderr, "[WASAPI] Starting capture: device='%s' %dHz %dch buf=%d exclusive=%d loopback=%d latency=%.2fms\n",
             m_config.deviceId.empty() ? "(default)" : m_config.deviceId.c_str(),
             m_config.sampleRate, m_config.channels, m_config.bufferSizeFrames,
-            m_config.exclusiveMode, m_latencyMs.load());
+            m_config.exclusiveMode, m_config.loopbackMode, m_latencyMs.load());
 
         // Start capturing
         hr = pAudioClient->Start();

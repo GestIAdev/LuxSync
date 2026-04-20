@@ -131,6 +131,9 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
         ? configObj.Get("bufferSizeFrames").As<Napi::Number>().Int32Value() : 256;
     config.exclusiveMode = configObj.Has("exclusiveMode")
         ? configObj.Get("exclusiveMode").As<Napi::Boolean>().Value() : true;
+    // WAVE 3406: loopback tap of eRender endpoint
+    config.loopbackMode = configObj.Has("loopbackMode")
+        ? configObj.Get("loopbackMode").As<Napi::Boolean>().Value() : false;
 
     // Create ThreadSafeFunction for audio callback.
     // max_queue_size=0 (unlimited) — the audio thread uses NonBlockingCall which
@@ -144,10 +147,10 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
         1    // 1 initial thread
     );
 
-    fprintf(stderr, "[OmniInput] startCapture: device='%s' rate=%d ch=%d buf=%d excl=%d\n",
+    fprintf(stderr, "[OmniInput] startCapture: device='%s' rate=%d ch=%d buf=%d excl=%d loopback=%d\n",
         config.deviceId.empty() ? "(default)" : config.deviceId.c_str(),
         config.sampleRate, config.channels, config.bufferSizeFrames,
-        config.exclusiveMode ? 1 : 0);
+        config.exclusiveMode ? 1 : 0, config.loopbackMode ? 1 : 0);
 
     auto stream = createCaptureStream();
     int handle = g_nextHandle++;

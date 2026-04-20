@@ -91,37 +91,36 @@ export class VirtualWireProvider implements IInputProvider {
       this.selectedDeviceId = config.deviceId
       console.log(`[VirtualWire] Using explicitly configured deviceId: "${config.deviceId}"`)
     } else {
-      // WAVE 3405 — Opcion A: detect eCapture-side virtual cable by name.
+      // WAVE 3406 — Opcion B (loopback nativo): capturar el lado eRender del
+      // cable virtual via AUDCLNT_STREAMFLAGS_LOOPBACK.
       //
-      // VB-Cable "CABLE Output" is an eCapture endpoint: Windows delivers the
-      // audio that was sent to "CABLE Input" directly into this capture stream.
-      // It must NOT be opened with AUDCLNT_STREAMFLAGS_LOOPBACK — that flag is
-      // only valid on eRender endpoints and produces zero-filled buffers when
-      // applied to eCapture.
+      // "CABLE Input" (VB-Audio) es el endpoint de RENDER al que Chrome/Brave
+      // envían el audio.  Abrirlo con isLoopback=true permite interceptar la
+      // señal limpia antes del DAC sin depender del canal eCapture, que en
+      // algunas configuraciones de Windows sufre colapsos de canal (1ch->2ch)
+      // o bloqueos de privacidad que devuelven buffers vacíos.
       //
-      // isLoopback=true is deliberately kept for eRender endpoints only (see
-      // wasapi_enumerator.cpp WAVE 3405 comment) so we must NOT filter on it
-      // here.  Instead we match by device name.
+      // isLoopback=true en el enumerador garantiza que es eRender (WAVE 3405).
+      // AUDCLNT_STREAMFLAGS_LOOPBACK se aplica en wasapi_capture.cpp cuando el
+      // CaptureConfig lo indique — pendiente WAVE 3407.
       //
-      // Priority:
-      //   1. "CABLE Output" (VB-Cable capture side, eCapture, isLoopback=false)
-      //   2. Any eCapture device whose name contains a known virtual driver prefix
-      //   3. No device found → warn, user must configure explicitly
-      const virtualCaptureNames = ['CABLE Output', 'VB-Cable', 'BlackHole', 'Voicemeeter', 'Virtual Audio']
-
-      const isVirtualCapture = (d: NativeAudioDeviceInfo) =>
-        !d.isLoopback && virtualCaptureNames.some(n => d.name.includes(n))
+      // Prioridad:
+      //   1. "CABLE Input" eRender con isLoopback=true  (VB-Cable render side)
+      //   2. Cualquier eRender virtual con isLoopback=true y nombre conocido
+      //   3. No encontrado → warn, usuario debe configurar explícitamente
+      const isVirtualRenderLoopback = (d: NativeAudioDeviceInfo) =>
+        d.isLoopback && ['CABLE Input', 'VB-Cable', 'BlackHole', 'Voicemeeter', 'Virtual Audio'].some(n => d.name.includes(n))
 
       const virtualDevice =
-        devices.find(d => isVirtualCapture(d) && d.isDefault) ??
-        devices.find(d => isVirtualCapture(d)) ??
+        devices.find(d => d.isLoopback && d.name.includes('CABLE Input')) ??
+        devices.find(d => isVirtualRenderLoopback(d)) ??
         null
 
       if (virtualDevice) {
         this.selectedDeviceId = virtualDevice.id
         console.log(`[VirtualWire] Auto-detected virtual capture device: "${virtualDevice.name}" (${virtualDevice.id}) — isLoopback=${virtualDevice.isLoopback}`)
       } else {
-        console.warn('[VirtualWire] ⚠️  No virtual capture device auto-detected. VB-Cable/BlackHole not found in enumeration.')
+        console.warn('[VirtualWire] ⚠️  No virtual loopback device auto-detected. VB-Cable "CABLE Input" not found in enumeration.')
       }
     }
 
@@ -174,7 +173,15 @@ export class VirtualWireProvider implements IInputProvider {
     const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE
     const channels = this.config.channelSelection ?? OMNI_CONSTANTS.DEFAULT_CHANNELS
 
-    console.log(`[VirtualWire] Starting native capture — device: "${this.selectedDeviceId}" | ${channels}ch @ ${targetRate}Hz | exclusive: ${this.config.exclusiveMode ?? true}`)
+    // WAVE 3406: if the selected device is an eRender loopback endpoint
+    // (isLoopback=true, e.g. "CABLE Input"), tell the native capture to open
+    // it with AUDCLNT_STREAMFLAGS_LOOPBACK. Exclusive mode is incompatible
+    // with loopback and is forced off in that case.
+    const devices = getNativeAudioBridge().enumerateDevices()
+    const selectedDevice = devices.find(d => d.id === this.selectedDeviceId)
+    const isLoopbackDevice = selectedDevice?.isLoopback ?? false
+
+    console.log(`[VirtualWire] Starting native capture — device: "${this.selectedDeviceId}" | ${channels}ch @ ${targetRate}Hz | exclusive: ${!isLoopbackDevice && (this.config.exclusiveMode ?? true)} | loopback: ${isLoopbackDevice}`)
 
     this.captureHandle = bridge.startCapture(
       {
@@ -182,7 +189,8 @@ export class VirtualWireProvider implements IInputProvider {
         sampleRate: targetRate,
         channels,
         bufferSizeFrames: 256,
-        exclusiveMode: this.config.exclusiveMode ?? true,
+        exclusiveMode: !isLoopbackDevice && (this.config.exclusiveMode ?? true),
+        loopbackMode: isLoopbackDevice,
       },
       (data, frameCount, ch, sampleRate) => {
         this.handleAudioData(data, frameCount, ch, sampleRate)

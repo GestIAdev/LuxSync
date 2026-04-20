@@ -40,6 +40,10 @@ struct CaptureConfig {
     int channels;                // target: 1 (mono mix)
     int bufferSizeFrames;        // target: 256 (5.8ms @ 44100)
     bool exclusiveMode;          // true = bypass OS mixer/loudness normalization
+    // WAVE 3406: when true, open the device as eRender and inject
+    // AUDCLNT_STREAMFLAGS_LOOPBACK to tap render output (system audio).
+    // Exclusive mode is incompatible with loopback — it is forced off.
+    bool loopbackMode = false;
 };
 
 // ============================================

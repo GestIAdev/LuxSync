@@ -306,34 +306,14 @@ export class VirtualWireProvider implements IInputProvider {
       monoData = data.subarray(0, frameCount)
     }
 
-    // WAVE 3410 ANOMALÍA 2: NORMALIZACIÓN DE AMPLITUD WASAPI
-    //
-    // WASAPI Loopback y WebAudio (getUserMedia) difieren en su headroom:
-    // - getUserMedia/ScriptProcessor entrega float32 con peak headroom típico
-    //   de -6 a -3 dBFS (master de mezcla tiene headroom reservado).
-    // - WASAPI Loopback del render endpoint captura TODO el render graph,
-    //   incluyendo la ganancia de volumen del dispositivo Windows. Si el
-    //   volumen del sistema está al 60%, la señal loopback llega al 60% del
-    //   pico matemático, mientras que getUserMedia lo normaliza internamente.
-    //
-    // El GodEarFFT recibe la señal CRUDA (sin AGC — WAVE 2162). Si la señal
-    // WASAPI tiene la mitad de amplitud, rawBassEnergy es ~1/4 del valor de
-    // referencia WebAudio (amplitud² → energía), la confianza del
-    // IntervalBPMTracker cae a ~0.05 y entra en FREEWHEEL.
-    //
-    // FIX: Normalización pico-a-pico sobre la ventana actual.
-    // Buscamos el pico absoluto del frame. Si está muy por debajo de -6dBFS
-    // (peak < 0.5), aplicamos ganancia para llevarlo a zona nominal.
-    // Si ya está en zona nominal (peak >= 0.5), no tocamos (evitamos clipping).
-    // Este normalize es PREVIO al SAB — el AGC del Worker sigue actuando.
-    const peak = monoData.reduce((max, s) => Math.max(max, Math.abs(s)), 0)
-    if (peak > 0.001 && peak < 0.5) {
-      // señal demasiado baja — normalizar al 85% del rango para dejar headroom
-      const gain = 0.85 / peak
-      for (let i = 0; i < monoData.length; i++) {
-        monoData[i] *= gain
-      }
-    }
+    // WAVE 3411: Normalización de pico ELIMINADA (Fix B de WAVE 3410 revertido).
+    // La amplificación artificial destruye la relación pico/media que el
+    // IntervalBPMTracker necesita para operar: ratio = rawBassEnergy / rollingAvg.
+    // Si se normaliza el pico, tanto el pico como la media suben proporcionalmente
+    // y el ratio no cambia — PERO el rango dinámico (distancia pico-a-valle) se
+    // colapsa contra el techo, aplastando la detección de transients.
+    // La señal llega CRUDA al SAB; el AGC del Worker (senses.ts) es la única
+    // capa de ganancia autorizada (WAVE 2162).
 
     // Resample if source rate differs from target
     let outputData: Float32Array

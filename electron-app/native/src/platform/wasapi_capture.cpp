@@ -350,12 +350,43 @@ private:
                             BYTE* pWakeData = nullptr;
                             hrWake = pWakeRender->GetBuffer(wakeBufferSize, &pWakeData);
                             if (SUCCEEDED(hrWake)) {
-                                // Write silence — fills the render endpoint buffer with zeros
-                                // so the Windows audio engine registers the active session
-                                memset(pWakeData, 0,
-                                    wakeBufferSize * pWakeFmt->nBlockAlign);
-                                pWakeRender->ReleaseBuffer(wakeBufferSize,
-                                    AUDCLNT_BUFFERFLAGS_SILENT);
+                                // WAVE 3411: DITHER WAKE-UP — NOT silence.
+                                //
+                                // Windows Audio drops a buffer if AUDCLNT_BUFFERFLAGS_SILENT
+                                // is set OR if the PCM payload is all-zeros: the engine
+                                // detects the silent session and keeps the endpoint in
+                                // low-power idle regardless of IAudioClient::Start().
+                                //
+                                // Fix: inject dither at -90.3 dBFS (±1 LSB of 16-bit).
+                                // On a 32-bit float endpoint (KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+                                // 1 LSB of 16-bit = 1/32768 ≈ 0.0000305f.
+                                // This is below the threshold of any perceptible noise
+                                // (< -90 dBFS) but is non-zero PCM, which forces the Windows
+                                // audio engine to bring the render graph out of idle and
+                                // transitions the session from INACTIVE to ACTIVE.
+                                // ReleaseBuffer is called WITHOUT AUDCLNT_BUFFERFLAGS_SILENT
+                                // so the engine processes the live (non-zero) samples.
+                                const float kDitherAmplitude = 3.05176e-05f; // 1/32768
+                                const UINT32 totalSamples = wakeBufferSize
+                                    * (pWakeFmt->nBlockAlign / sizeof(float));
+
+                                // Check that the format is indeed float32 before treating
+                                // pWakeData as float* (AUTOCONVERTPCM may deliver other formats
+                                // on exotic drivers — guard with wBitsPerSample check).
+                                if (pWakeFmt->wBitsPerSample == 32) {
+                                    float* pFloat = reinterpret_cast<float*>(pWakeData);
+                                    // Alternating +/- dither: DC-neutral over any even-length.
+                                    for (UINT32 s = 0; s < totalSamples; ++s) {
+                                        pFloat[s] = (s & 1) ? kDitherAmplitude : -kDitherAmplitude;
+                                    }
+                                } else {
+                                    // Fallback for non-float formats: use raw zero (original
+                                    // behaviour — will not wake on some configs, but safe).
+                                    memset(pWakeData, 0,
+                                        wakeBufferSize * pWakeFmt->nBlockAlign);
+                                }
+                                // NO AUDCLNT_BUFFERFLAGS_SILENT — real PCM payload
+                                pWakeRender->ReleaseBuffer(wakeBufferSize, 0);
                             }
                             pWakeClient->Start();
                             // 50ms is enough for the render graph to transition to active

@@ -17,10 +17,14 @@
  * GAMMA (mind) nunca habla directamente con BETA.
  */
 
-// 🔇 WAVE 3290: SENSES WORKER — Blackout del hilo de audio. Silencia [GOD EAR], [BETA],
-// [INTERVAL], [AGC], [Harmony], [SimpleSectionTracker] y todos sus imports.
-// DEBUG PROBE — Comentar para auditoría de audio analysis.
-;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+// 🔇 WAVE 3290: SENSES WORKER — Blackout del hilo de audio.
+// WAVE 3411 LIFT: Logs de [IntervalBPMTracker] y [GodEarFFT] DESBLOQUEADOS
+// para auditoría de rawBassEnergy y rollingAverage post-fix.
+// Re-comentar esta sección cuando la recuperación del rango dinámico esté confirmada.
+//
+// ACTIVO (bloqueado): console.info, console.debug
+// INACTIVO (libre):   console.log, console.warn, console.error
+;(function(){const _n=()=>{};console.info=_n;console.debug=_n;})()
 
 import { parentPort, workerData } from 'worker_threads';
 import {

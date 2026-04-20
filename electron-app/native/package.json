@@ -1,0 +1,11 @@
+{
+  "name": "luxsync-audio-native",
+  "version": "1.0.0",
+  "description": "LuxSync native audio addon — WASAPI exclusive mode capture",
+  "main": "build/Release/luxsync_audio.node",
+  "private": true,
+  "gypfile": true,
+  "dependencies": {
+    "node-addon-api": "^8.3.1"
+  }
+}

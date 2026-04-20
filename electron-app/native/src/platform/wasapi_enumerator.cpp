@@ -12,8 +12,10 @@
 
 #include <windows.h>
 #include <mmdeviceapi.h>
+#include <audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <endpointvolume.h>
+#include <ksmedia.h>
 
 #include <string>
 #include <vector>

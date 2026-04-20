@@ -252,11 +252,18 @@ export class NativeAudioBridge {
   private loadNativeAddon(): void {
     console.log('[NativeAudio] Loading native addon luxsync_audio...')
     try {
-      // The native addon is built by node-gyp and placed in build/Release/
-      // In production, electron-builder unpacks it via asar.
+      // The native addon is built by node-gyp into native/build/Release/
+      // bindings() searches relative to __dirname of the calling module.
+      // In Electron main process (Vite bundle), __dirname = dist-electron/,
+      // so we must tell bindings where the native/ module root actually is.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path')
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { app } = require('electron') as typeof import('electron')
+      const nativeRoot = path.join(app.getAppPath(), 'native')
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const bindings = require('bindings')
-      this.addon = bindings('luxsync_audio') as NativeAddon
+      this.addon = bindings({ bindings: 'luxsync_audio', module_root: nativeRoot }) as NativeAddon
       this._available = true
       this._loadError = null
       console.log('[NativeAudio] ✅ Native addon loaded successfully')

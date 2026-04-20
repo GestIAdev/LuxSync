@@ -1348,6 +1348,8 @@ export class TitanOrchestrator {
     // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
     // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
     if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
+      // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
+      const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
       const hotFrame = {
         frameNumber: this.frameCount,
         timestamp: now, // ⚡ WAVE 3050: unified timestamp
@@ -1362,6 +1364,9 @@ export class TitanOrchestrator {
         mid,
         high,
         energy,
+        // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
+        ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
+        activeAudioSource: matrixStatus?.activeSource ?? null,
         fixtures: fixtureStates.map((f, i) => {
           const originalFixture = this.fixtures[i]
           const realId = originalFixture?.id || `fix_${i}`

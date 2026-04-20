@@ -277,3 +277,45 @@
 .audio-spectrum-titan__dist-segment--high {
   background: #f59e0b;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 3403: RING BUFFER GAUGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-spectrum-titan__stat--ring-buffer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+}
+
+.audio-spectrum-titan__ring-gauge {
+  width: 8px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.audio-spectrum-titan__ring-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: #22d3ee;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.audio-spectrum-titan__source-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  white-space: nowrap;
+}

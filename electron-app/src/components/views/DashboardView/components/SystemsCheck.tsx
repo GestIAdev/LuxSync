@@ -21,19 +21,24 @@ import { useHardware, useAudio } from '../../../../stores/truthStore'
 import { useSetupStore, selectUsbDmxPanel, selectSystemsCheckConfig } from '../../../../stores/setupStore'
 import { useAudioStore, selectSetInputGain } from '../../../../stores/audioStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
-import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
+import { AudioWaveIcon, NetworkIcon, ControlsIcon, MicrophoneIcon, MixerIcon, WaveformIcon } from '../../../icons/LuxIcons'
 import { useShallow } from 'zustand/shallow'
 import './SystemsCheck.css'
 
-// 🎨 WAVE 686: ArtNet API access
+// WAVE 686: ArtNet API access
 const getArtnetApi = () => (window as any).luxsync?.artnet
 const getDmxApi = () => (window as any).luxsync?.dmx
+// WAVE 3403: AudioMatrix API access
+const getAudioMatrixApi = () => (window as any).luxsync?.audioMatrix
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-type AudioSource = 'simulation' | 'system' | 'microphone' | 'off'
+type AudioSource = 'simulation' | 'system' | 'microphone' | 'virtual-wire' | 'usb-directlink' | 'osc-nexus' | 'off'
+
+// WAVE 3403: Omni-Input sources routed through AudioMatrix
+const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus'])
 type DMXDriver = 'virtual' | 'usb-serial' | 'artnet'
 type AccordionSection = 'audio' | 'dmx'
 
@@ -442,6 +447,10 @@ export const SystemsCheck: React.FC = () => {
   const [dmxProtocol, setDmxProtocol] = useState<string | null>(null)
   const [isDmxDisconnecting, setIsDmxDisconnecting] = useState(false)
   const [isDmxReconnecting, setIsDmxReconnecting] = useState(false)
+
+  // WAVE 3403: AudioMatrix hot-swap visual feedback
+  const [isHotSwapping, setIsHotSwapping] = useState(false)
+  const [autoFallbackSource, setAutoFallbackSource] = useState<string | null>(null)
   
   // 🪗 WAVE 1203: Toggle accordion (click mismo = cierra)
   const toggleSection = useCallback((section: AccordionSection) => {
@@ -506,6 +515,35 @@ export const SystemsCheck: React.FC = () => {
       }))
     }
   }, [trinity?.state?.isAudioActive])
+
+  // WAVE 3403: Poll AudioMatrix status when Omni source is active
+  useEffect(() => {
+    if (!OMNI_SOURCES.has(audioSource as string)) {
+      setIsHotSwapping(false)
+      setAutoFallbackSource(null)
+      return
+    }
+    const matrixApi = getAudioMatrixApi()
+    if (!matrixApi) return
+
+    const poll = async () => {
+      try {
+        const res = await matrixApi.getStatus()
+        if (res?.success && res.status) {
+          setIsHotSwapping(res.status.isHotSwapping ?? false)
+          // Detect auto-fallback: active source differs from what user selected
+          if (res.status.activeSource && res.status.activeSource !== audioSource) {
+            setAutoFallbackSource(res.status.activeSource)
+          } else {
+            setAutoFallbackSource(null)
+          }
+        }
+      } catch { /* silent */ }
+    }
+    poll()
+    const interval = setInterval(poll, 2000)
+    return () => clearInterval(interval)
+  }, [audioSource])
   
   // DMX driver options
   const dmxOptions: { id: DMXDriver; label: string; icon: string }[] = [
@@ -529,13 +567,18 @@ export const SystemsCheck: React.FC = () => {
     
     try {
       if (source === 'off') {
-        // ⛔ OFF — detener toda captura de audio. DMX sigue vivo para control manual.
+        // OFF — detener toda captura de audio. DMX sigue vivo para control manual.
         if (trinity) {
           trinity.stopAudio()
           trinity.setSimulating(false)
         }
+        // WAVE 3403: Release AudioMatrix force when turning off
+        const matrixApi = getAudioMatrixApi()
+        if (matrixApi) {
+          matrixApi.releaseForce().catch(() => {})
+        }
         setAudioSource('off')
-        console.log('[SystemsCheck] ⛔ Audio OFF — DMX remains LIVE')
+        console.log('[SystemsCheck] Audio OFF — DMX remains LIVE')
 
       } else if (source === 'simulation') {
         // 🎵 Simulation mode - no hardware needed
@@ -551,11 +594,27 @@ export const SystemsCheck: React.FC = () => {
         console.log('[SystemsCheck] 🖥️ System Audio connected!')
         
       } else if (source === 'microphone') {
-        // 🎤 Microphone input
+        // Microphone input (legacy bridge fallback)
         await trinity.startMicrophone()
         trinity.setSimulating(false)
         setAudioSource('microphone')
-        console.log('[SystemsCheck] 🎤 Microphone connected!')
+        console.log('[SystemsCheck] Microphone connected (legacy bridge)')
+
+      } else if (OMNI_SOURCES.has(source)) {
+        // WAVE 3403: Omni-Input sources routed through AudioMatrix
+        const matrixApi = getAudioMatrixApi()
+        if (matrixApi) {
+          const result = await matrixApi.forceSource(source)
+          if (result?.success) {
+            trinity.setSimulating(false)
+            setAudioSource(source)
+            console.log(`[SystemsCheck] WAVE 3403: AudioMatrix forced to ${source}`)
+          } else {
+            throw new Error(result?.error || `Failed to force ${source}`)
+          }
+        } else {
+          throw new Error('AudioMatrix IPC not available')
+        }
       }
       
       // Persist to config file
@@ -650,11 +709,13 @@ export const SystemsCheck: React.FC = () => {
     }
   }, [setDmxDriver])
 
-  // Audio source options (sin 'off' — eso lo maneja el toggle master)
-  const audioSourceOptions: { id: Exclude<AudioSource, 'off'>; label: string; icon: string }[] = [
-    { id: 'simulation', label: 'Simulation', icon: '🎵' },
-    { id: 'system', label: 'System Audio', icon: '🖥️' },
-    { id: 'microphone', label: 'Microphone', icon: '🎤' },
+  // WAVE 3403: Audio source options — Omni-Input Matrix switchboard
+  // MIC = legacy bridge fallback, the rest route through AudioMatrix
+  const audioSourceOptions: { id: Exclude<AudioSource, 'off'>; label: string; icon: React.ReactNode }[] = [
+    { id: 'microphone', label: 'MIC', icon: <MicrophoneIcon size={14} /> },
+    { id: 'virtual-wire', label: 'VIRTUAL WIRE', icon: <WaveformIcon size={14} /> },
+    { id: 'usb-directlink', label: 'USB ASIO', icon: <MixerIcon size={14} /> },
+    { id: 'osc-nexus', label: 'OSC NEXUS', icon: <NetworkIcon size={14} /> },
   ]
 
   // KILL AUTO-AUDIO: ¿está el audio encendido? audioSource !== 'off' es el estado master.
@@ -735,7 +796,19 @@ export const SystemsCheck: React.FC = () => {
             ))}
           </div>
 
-          {/* 🎚️ WAVE 2502: INPUT GAIN CONTROL */}
+          {/* WAVE 3403: Hot-swap / auto-fallback status badge */}
+          {isHotSwapping && (
+            <div className="audio-matrix-badge audio-matrix-badge--swapping">
+              HOT-SWAP IN PROGRESS
+            </div>
+          )}
+          {autoFallbackSource && !isHotSwapping && (
+            <div className="audio-matrix-badge audio-matrix-badge--fallback">
+              AUTO-FALLBACK → {autoFallbackSource.toUpperCase()}
+            </div>
+          )}
+
+          {/* WAVE 2502: INPUT GAIN CONTROL */}
           <div className="gain-control">
             <div className="gain-control-header">
               <span className="gain-label">GAIN</span>

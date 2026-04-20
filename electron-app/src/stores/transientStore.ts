@@ -49,6 +49,12 @@ const transientRef: {
 // Se reconstruye solo cuando llega una full SeleneTruth (7Hz), no en cada hot-frame.
 let fixtureIndex: Map<string, any> = new Map()
 
+// WAVE 3403: AudioMatrix telemetry — piggybacked on hot-frame, read by RAF components
+const audioMatrixTelemetry = {
+  ringBufferFillLevel: 0,
+  activeAudioSource: null as string | null,
+}
+
 // 🪞 WAVE 3260: VIBE GENERATION COUNTER — Monotonically incrementing.
 // 3D components read this to detect vibe changes and SNAP (reset smooth refs)
 // instead of slowly lerping to the new state (which creates desync).
@@ -179,6 +185,12 @@ export function injectHotFrame(hotFrame: any): void {
     transientRef.current.sensory.audio.energy = hotFrame.energy
   }
 
+  // WAVE 3403: Patch AudioMatrix telemetry from hot-frame
+  if (hotFrame.ringBufferFillLevel !== undefined) {
+    audioMatrixTelemetry.ringBufferFillLevel = hotFrame.ringBufferFillLevel
+    audioMatrixTelemetry.activeAudioSource = hotFrame.activeAudioSource ?? null
+  }
+
   // ── Patch frame number ────────────────────────────────────────────
   if (transientRef.current.system) {
     transientRef.current.system.frameNumber = hotFrame.frameNumber ?? transientRef.current.system.frameNumber
@@ -191,6 +203,14 @@ export function injectHotFrame(hotFrame: any): void {
  */
 export function getTransientTruth(): SeleneTruth | null {
   return transientRef.current
+}
+
+/**
+ * WAVE 3403: Read AudioMatrix telemetry imperatively (called by RAF loops).
+ * Zero allocation — returns the same mutable object every time.
+ */
+export function getAudioMatrixTelemetry() {
+  return audioMatrixTelemetry
 }
 
 /**

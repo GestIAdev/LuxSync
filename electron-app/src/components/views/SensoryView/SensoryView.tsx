@@ -15,6 +15,7 @@ import React, { memo } from 'react'
 import { AudioSpectrumTitan } from './AudioSpectrumTitan'
 import { ChromaticCoreComplete } from './ChromaticCoreComplete'
 import { ContextMatrixExpanded } from './ContextMatrixExpanded'
+import { OmniMatrixTelemetry } from './OmniMatrixTelemetry'
 import './SensoryView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -37,6 +38,11 @@ export const SensoryView: React.FC = memo(() => {
         </div>
       </div>
       
+      {/* WAVE 3403: Omni Matrix Telemetry strip */}
+      <div className="sensory-view__telemetry">
+        <OmniMatrixTelemetry />
+      </div>
+
       {/* Footer: Context Matrix Expanded */}
       <div className="sensory-view__context">
         <ContextMatrixExpanded />

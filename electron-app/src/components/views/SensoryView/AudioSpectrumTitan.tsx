@@ -17,7 +17,7 @@
  */
 
 import React, { memo, useRef, useEffect } from 'react'
-import { getTransientTruth } from '../../../stores/transientStore'
+import { getTransientTruth, getAudioMatrixTelemetry } from '../../../stores/transientStore'
 import { SpectrumBarsIcon, LiveDotIcon } from '../../icons/LuxIcons'
 import './AudioSpectrumTitan.css'
 
@@ -125,6 +125,11 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
   const distBassRef = useRef<HTMLDivElement | null>(null)
   const distMidRef = useRef<HTMLDivElement | null>(null)
   const distHighRef = useRef<HTMLDivElement | null>(null)
+
+  // WAVE 3403: Ring buffer gauge refs (imperative DOM mutation, zero React)
+  const ringFillRef = useRef<HTMLDivElement | null>(null)
+  const ringLabelRef = useRef<HTMLSpanElement | null>(null)
+  const sourceTagRef = useRef<HTMLSpanElement | null>(null)
 
   // ─── Ref assignment callbacks (stable, never re-created) ───────────────
   const barRefCallbacks = useRef<((el: HTMLDivElement | null) => void)[]>([])
@@ -275,6 +280,22 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
       if (distMidRef.current) distMidRef.current.style.width = `${(eMid * 100) | 0}%`
       if (distHighRef.current) distHighRef.current.style.width = `${(eHigh * 100) | 0}%`
 
+      // ── WAVE 3403: Ring Buffer Gauge — DOM mutation, zero React ──
+      const matrix = getAudioMatrixTelemetry()
+      const fill = matrix.ringBufferFillLevel
+      if (ringFillRef.current) {
+        ringFillRef.current.style.height = `${(fill * 100) | 0}%`
+        // Color transitions: green → yellow → red based on fill level
+        ringFillRef.current.style.background =
+          fill > 0.85 ? '#ef4444' : fill > 0.6 ? '#fbbf24' : '#22d3ee'
+      }
+      if (ringLabelRef.current) {
+        ringLabelRef.current.textContent = `${(fill * 100) | 0}%`
+      }
+      if (sourceTagRef.current) {
+        sourceTagRef.current.textContent = matrix.activeAudioSource ?? 'NONE'
+      }
+
       // ── Next frame ──
       frameId = requestAnimationFrame(tick)
     }
@@ -397,6 +418,16 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
             <div className="audio-spectrum-titan__dist-segment audio-spectrum-titan__dist-segment--mid" ref={distMidRef} />
             <div className="audio-spectrum-titan__dist-segment audio-spectrum-titan__dist-segment--high" ref={distHighRef} />
           </div>
+        </div>
+
+        {/* WAVE 3403: Ring Buffer Gauge — fill indicator mutated by RAF */}
+        <div className="audio-spectrum-titan__stat audio-spectrum-titan__stat--ring-buffer">
+          <span className="audio-spectrum-titan__stat-label">RING BUFFER</span>
+          <div className="audio-spectrum-titan__ring-gauge">
+            <div className="audio-spectrum-titan__ring-fill" ref={ringFillRef} />
+          </div>
+          <span className="audio-spectrum-titan__stat-value" ref={ringLabelRef}>0%</span>
+          <span className="audio-spectrum-titan__source-tag" ref={sourceTagRef}>NONE</span>
         </div>
       </div>
     </div>

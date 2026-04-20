@@ -33,9 +33,9 @@ export interface SetupState {
   // === AUDIO CONFIG (Visual Cache) ===
   audioDeviceId: string | null
   audioDeviceName: string | null
-  audioSource: 'microphone' | 'system' | 'simulation' | 'off' | null
+  audioSource: 'microphone' | 'system' | 'simulation' | 'virtual-wire' | 'usb-directlink' | 'osc-nexus' | 'off' | null
   setAudioDevice: (id: string, name: string) => void
-  setAudioSource: (source: 'microphone' | 'system' | 'simulation' | 'off') => void
+  setAudioSource: (source: 'microphone' | 'system' | 'simulation' | 'virtual-wire' | 'usb-directlink' | 'osc-nexus' | 'off') => void
   
   // === DMX CONFIG (Visual Cache) ===
   dmxDriver: string | null           // 'usb-serial' | 'artnet' | 'virtual'

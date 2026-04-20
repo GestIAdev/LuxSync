@@ -1,0 +1,109 @@
+/**
+ * WAVE 3403: OMNI MATRIX TELEMETRY — CSS
+ *
+ * Compact diagnostic strip matching the LuxSync dark/cyan/glass aesthetic.
+ * Terminal-style readout with mono fonts and subtle glow.
+ */
+
+.omni-telemetry {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, rgba(18, 18, 26, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  gap: 6px;
+  min-height: 0;
+}
+
+.omni-telemetry__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.omni-telemetry__title {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.7);
+  flex: 1;
+}
+
+.omni-telemetry__status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: #666;
+}
+
+.omni-telemetry__status--on {
+  color: #22d3ee;
+}
+
+.omni-telemetry__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 4px 10px;
+}
+
+.omni-telemetry__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.omni-telemetry__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.omni-telemetry__value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
+.omni-telemetry__value--source {
+  color: #22d3ee;
+}
+
+.omni-telemetry__value--alert {
+  color: #fbbf24;
+}
+
+.omni-telemetry__value--active {
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+
+/* Ring buffer mini-bar */
+.omni-telemetry__bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.omni-telemetry__bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background 0.3s ease;
+}

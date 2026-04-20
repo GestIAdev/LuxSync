@@ -13,6 +13,7 @@
 #include "common.h"
 #include <unordered_map>
 #include <mutex>
+#include <cstring>
 
 namespace luxsync {
 
@@ -165,23 +166,13 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
 
         tsfn.NonBlockingCall(
             [dataCopy, fc, ch, sr](Napi::Env env, Napi::Function jsCallback) {
-                // ArrayBuffer takes ownership via hint finalizer — V8 calls delete[] when GC'd.
-                // node-addon-api's ArrayBuffer::New takes void* data and a finalizer with
-                // signature void(Env, void* /*externalData*/, Hint*). We use Hint=float*
-                // so the pointer to free is passed explicitly and type-safe.
-                auto arrayBuffer = Napi::ArrayBuffer::New(
-                    env,
-                    dataCopy,
-                    static_cast<size_t>(fc * ch) * sizeof(float),
-                    [](Napi::Env /*env*/, void* /*externalData*/, float* hint) { delete[] hint; },
-                    dataCopy
-                );
-                auto float32Array = Napi::Float32Array::New(
-                    env,
-                    static_cast<size_t>(fc * ch),
-                    arrayBuffer,
-                    0
-                );
+                // Electron 21+ disables napi_create_external_arraybuffer (V8 security policy).
+                // We must allocate a V8-managed ArrayBuffer and copy into it.
+                // dataCopy is freed here after the copy — V8 owns the Float32Array memory.
+                size_t totalSamples = static_cast<size_t>(fc * ch);
+                auto float32Array = Napi::Float32Array::New(env, totalSamples);
+                std::memcpy(float32Array.Data(), dataCopy, totalSamples * sizeof(float));
+                delete[] dataCopy;
 
                 jsCallback.Call({
                     float32Array,

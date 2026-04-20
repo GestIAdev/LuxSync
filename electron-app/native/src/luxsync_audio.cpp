@@ -131,12 +131,15 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
     config.exclusiveMode = configObj.Has("exclusiveMode")
         ? configObj.Get("exclusiveMode").As<Napi::Boolean>().Value() : true;
 
-    // Create ThreadSafeFunction for audio callback
+    // Create ThreadSafeFunction for audio callback.
+    // max_queue_size=0 (unlimited) — the audio thread uses NonBlockingCall which
+    // silently drops frames when JS is busy. A small finite queue (e.g. 2) would
+    // fill instantly at 256-frame / 5.8ms intervals and trigger DEP0168 warnings.
     auto tsfn = Napi::ThreadSafeFunction::New(
         env,
         info[1].As<Napi::Function>(),
         "luxsync_audio_data",
-        2,   // max queue size (double buffer)
+        0,   // unlimited queue — NonBlockingCall drops frames gracefully when full
         1    // 1 initial thread
     );
 
@@ -152,22 +155,27 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
     auto callback = [tsfn](const float* data, int frameCount, int channels, int sampleRate) mutable {
         // Copy data to heap — audio thread cannot block
         int totalSamples = frameCount * channels;
-        auto dataCopy = std::make_shared<std::vector<float>>(data, data + totalSamples);
+        // Use raw heap allocation so we can transfer ownership to V8 via finalizer.
+        // A shared_ptr would be freed when the lambda ends, leaving a dangling ArrayBuffer ptr.
+        float* dataCopy = new float[totalSamples];
+        std::copy(data, data + totalSamples, dataCopy);
         int fc = frameCount;
         int ch = channels;
         int sr = sampleRate;
 
         tsfn.NonBlockingCall(
             [dataCopy, fc, ch, sr](Napi::Env env, Napi::Function jsCallback) {
-                // Create Float32Array from captured data
+                // ArrayBuffer takes ownership via finalizer — V8 calls delete[] when GC'd.
+                // This is the only safe pattern: memory lives exactly as long as the ArrayBuffer.
                 auto arrayBuffer = Napi::ArrayBuffer::New(
                     env,
-                    const_cast<float*>(dataCopy->data()),
-                    dataCopy->size() * sizeof(float)
+                    dataCopy,
+                    static_cast<size_t>(fc * ch) * sizeof(float),
+                    [](Napi::Env /*env*/, float* ptr) { delete[] ptr; }
                 );
                 auto float32Array = Napi::Float32Array::New(
                     env,
-                    dataCopy->size(),
+                    static_cast<size_t>(fc * ch),
                     arrayBuffer,
                     0
                 );

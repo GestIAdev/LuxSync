@@ -23,7 +23,8 @@ struct AudioDeviceInfo {
     int sampleRate;
     int channels;
     bool isDefault;
-    bool isLoopback;            // true for VB-Cable, BlackHole, etc.
+    bool isLoopback;            // true ONLY for eRender endpoints (system-audio tap via STREAMFLAGS_LOOPBACK).
+                                // eCapture virtual devices (VB-Cable "CABLE Output", BlackHole) are false.
     bool isExclusiveCapable;    // true if exclusive/hog mode supported
     std::string driver;         // "wasapi" | "coreaudio" | "jack"
     std::vector<int> sampleRates; // supported sample rates

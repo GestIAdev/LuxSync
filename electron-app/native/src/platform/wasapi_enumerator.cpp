@@ -118,9 +118,11 @@ public:
         std::vector<AudioDeviceInfo> result;
         if (!m_pEnumerator) return result;
 
-        // Enumerate both capture and render (for loopback) devices
+        // Enumerate capture endpoints first (capture side of virtual cables,
+        // physical mics, USB interfaces), then render endpoints flagged as
+        // loopback-capable for "system audio" tap use cases.
         enumerateFlow(eCapture, result, false);
-        enumerateFlow(eRender, result, true); // render devices = loopback capable
+        enumerateFlow(eRender,  result, true); // render devices = loopback capable
 
         return result;
     }
@@ -143,7 +145,7 @@ public:
     }
 
 private:
-    void enumerateFlow(EDataFlow flow, std::vector<AudioDeviceInfo>& out, bool isLoopback) {
+    void enumerateFlow(EDataFlow flow, std::vector<AudioDeviceInfo>& out, bool defaultLoopback) {
         IMMDeviceCollection* pCollection = nullptr;
         HRESULT hr = m_pEnumerator->EnumAudioEndpoints(
             flow, DEVICE_STATE_ACTIVE, &pCollection
@@ -176,7 +178,11 @@ private:
             if (FAILED(hr) || !pDevice) continue;
 
             AudioDeviceInfo info = {};
-            info.isLoopback = isLoopback;
+            // For eCapture endpoints isLoopback is always false — even virtual
+            // cables (VB-Cable "CABLE Output") are normal capture endpoints.
+            // For eRender endpoints we set true by default; the name heuristic
+            // block below may also set it, but eCapture MUST NOT be touched.
+            info.isLoopback = defaultLoopback;
             info.driver = "wasapi";
 
             // Get device ID
@@ -259,15 +265,36 @@ private:
                 pAudioClient->Release();
             }
 
-            // Detect loopback by name heuristics (VB-Cable, BlackHole, Virtual Cable)
-            auto nameContains = [&](const char* substr) {
-                return info.name.find(substr) != std::string::npos;
-            };
-            if (nameContains("VB-") || nameContains("CABLE") ||
-                nameContains("BlackHole") || nameContains("Virtual") ||
-                nameContains("Voicemeeter")) {
-                info.isLoopback = true;
+            // WAVE 3405: isLoopback semantics — CRITICAL INVARIANT
+            // -----------------------------------------------------------
+            // isLoopback = true  → eRender endpoint being accessed via
+            //                       AUDCLNT_STREAMFLAGS_LOOPBACK (render tap).
+            //                       Client opens the speaker as a capture source.
+            // isLoopback = false → eCapture endpoint accessed normally.
+            //                       This includes ALL virtual cable capture sides:
+            //                       VB-Cable "CABLE Output", BlackHole, etc.
+            //
+            // DO NOT set isLoopback on eCapture endpoints, even if their names
+            // contain "VB-", "CABLE", "BlackHole" or similar.  Those devices
+            // already present themselves as capture endpoints — using the loopback
+            // flag on them delivers a zero-filled buffer (Windows silences it).
+            //
+            // The heuristic below is therefore intentionally restricted to eRender:
+            if (flow == eRender) {
+                auto nameContains = [&](const char* substr) {
+                    return info.name.find(substr) != std::string::npos;
+                };
+                // Mark render-side virtual devices as loopback-capable so the UI
+                // can offer them for "system audio" capture via Opcion B.
+                if (nameContains("VB-") || nameContains("CABLE") ||
+                    nameContains("BlackHole") || nameContains("Virtual") ||
+                    nameContains("Voicemeeter")) {
+                    info.isLoopback = true;
+                }
+                // isLoopback was already set to true for ALL eRender above.
+                // The name-based override just makes it explicit in logs.
             }
+            // eCapture devices: isLoopback stays false (set at line 179).
 
             out.push_back(std::move(info));
             // Print after push so std::move hasn't destroyed the local yet — we

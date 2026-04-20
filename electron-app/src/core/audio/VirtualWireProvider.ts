@@ -91,15 +91,37 @@ export class VirtualWireProvider implements IInputProvider {
       this.selectedDeviceId = config.deviceId
       console.log(`[VirtualWire] Using explicitly configured deviceId: "${config.deviceId}"`)
     } else {
-      const loopbackDevice =
-        devices.find(d => d.isLoopback && d.isDefault) ??
-        devices.find(d => d.isLoopback) ??
+      // WAVE 3405 — Opcion A: detect eCapture-side virtual cable by name.
+      //
+      // VB-Cable "CABLE Output" is an eCapture endpoint: Windows delivers the
+      // audio that was sent to "CABLE Input" directly into this capture stream.
+      // It must NOT be opened with AUDCLNT_STREAMFLAGS_LOOPBACK — that flag is
+      // only valid on eRender endpoints and produces zero-filled buffers when
+      // applied to eCapture.
+      //
+      // isLoopback=true is deliberately kept for eRender endpoints only (see
+      // wasapi_enumerator.cpp WAVE 3405 comment) so we must NOT filter on it
+      // here.  Instead we match by device name.
+      //
+      // Priority:
+      //   1. "CABLE Output" (VB-Cable capture side, eCapture, isLoopback=false)
+      //   2. Any eCapture device whose name contains a known virtual driver prefix
+      //   3. No device found → warn, user must configure explicitly
+      const virtualCaptureNames = ['CABLE Output', 'VB-Cable', 'BlackHole', 'Voicemeeter', 'Virtual Audio']
+
+      const isVirtualCapture = (d: NativeAudioDeviceInfo) =>
+        !d.isLoopback && virtualCaptureNames.some(n => d.name.includes(n))
+
+      const virtualDevice =
+        devices.find(d => isVirtualCapture(d) && d.isDefault) ??
+        devices.find(d => isVirtualCapture(d)) ??
         null
-      if (loopbackDevice) {
-        this.selectedDeviceId = loopbackDevice.id
-        console.log(`[VirtualWire] Auto-detected loopback device: "${loopbackDevice.name}" (${loopbackDevice.id})`)
+
+      if (virtualDevice) {
+        this.selectedDeviceId = virtualDevice.id
+        console.log(`[VirtualWire] Auto-detected virtual capture device: "${virtualDevice.name}" (${virtualDevice.id}) — isLoopback=${virtualDevice.isLoopback}`)
       } else {
-        console.warn('[VirtualWire] ⚠️  No loopback device auto-detected. VB-Cable/BlackHole not found in enumeration.')
+        console.warn('[VirtualWire] ⚠️  No virtual capture device auto-detected. VB-Cable/BlackHole not found in enumeration.')
       }
     }
 

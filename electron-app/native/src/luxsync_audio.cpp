@@ -165,13 +165,16 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
 
         tsfn.NonBlockingCall(
             [dataCopy, fc, ch, sr](Napi::Env env, Napi::Function jsCallback) {
-                // ArrayBuffer takes ownership via finalizer — V8 calls delete[] when GC'd.
-                // This is the only safe pattern: memory lives exactly as long as the ArrayBuffer.
+                // ArrayBuffer takes ownership via hint finalizer — V8 calls delete[] when GC'd.
+                // node-addon-api's ArrayBuffer::New takes void* data and a finalizer with
+                // signature void(Env, void* /*externalData*/, Hint*). We use Hint=float*
+                // so the pointer to free is passed explicitly and type-safe.
                 auto arrayBuffer = Napi::ArrayBuffer::New(
                     env,
                     dataCopy,
                     static_cast<size_t>(fc * ch) * sizeof(float),
-                    [](Napi::Env /*env*/, float* ptr) { delete[] ptr; }
+                    [](Napi::Env /*env*/, void* /*externalData*/, float* hint) { delete[] hint; },
+                    dataCopy
                 );
                 auto float32Array = Napi::Float32Array::New(
                     env,
@@ -186,6 +189,16 @@ static Napi::Value StartCapture(const Napi::CallbackInfo& info) {
                     Napi::Number::New(env, ch),
                     Napi::Number::New(env, sr)
                 });
+
+                // If the JS callback threw an exception, it becomes a "pending exception"
+                // on the Napi::Env. With NAPI_DISABLE_CPP_EXCEPTIONS, we must clear it
+                // manually — otherwise N-API propagates it as an uncaught exception and
+                // triggers DEP0168 on every subsequent audio frame.
+                if (env.IsExceptionPending()) {
+                    Napi::Error err = env.GetAndClearPendingException();
+                    fprintf(stderr, "[OmniInput] ❌ Audio callback exception (now cleared): %s\n",
+                        err.Message().c_str());
+                }
             }
         );
     };

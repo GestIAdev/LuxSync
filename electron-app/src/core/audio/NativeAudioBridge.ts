@@ -171,9 +171,23 @@ export class NativeAudioBridge {
       ` | exclusive: ${config.exclusiveMode}`
     )
 
+    // Wrap the user callback in a try/catch so any JS exception thrown inside
+    // it is caught and logged rather than propagating up through N-API and
+    // triggering an uncaught DEP0168 deprecation warning.
+    const safeOnData: NativeAudioCallback = (data, frameCount, channels, sampleRate) => {
+      try {
+        onData(data, frameCount, channels, sampleRate)
+      } catch (err) {
+        console.error(
+          '[NativeAudio] ❌ Uncaught exception in audio callback — this would have caused DEP0168:',
+          err
+        )
+      }
+    }
+
     let handle: number
     try {
-      handle = this.addon.startCapture(config, onData)
+      handle = this.addon.startCapture(config, safeOnData)
     } catch (err) {
       console.error(
         `[NativeAudio] ❌ startCapture FAILED for device "${config.deviceId || 'default'}": ${err}`

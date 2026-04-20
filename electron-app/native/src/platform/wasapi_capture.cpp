@@ -20,6 +20,7 @@
 
 #include <thread>
 #include <atomic>
+#include <chrono>
 #include <string>
 #include <cstring>
 #include <cmath>
@@ -289,6 +290,87 @@ private:
         // Elevate thread priority for real-time audio
         DWORD taskIndex = 0;
         hTask = AvSetMmThreadCharacteristicsW(L"Pro Audio", &taskIndex);
+
+        // WAVE 3410 ANOMALÍA 1: COLD START WAKE-UP
+        //
+        // WASAPI Loopback (AUDCLNT_STREAMFLAGS_LOOPBACK) over an eRender endpoint
+        // only delivers real PCM samples when the render graph is ACTIVE — i.e.,
+        // some application is currently streaming audio to that endpoint.
+        //
+        // When LuxSync starts cold and no other app has activated the render
+        // endpoint yet (VB-Cable "CABLE Input"), Windows keeps the endpoint in
+        // low-power idle.  The loopback capture starts, GetBuffer() returns
+        // AUDCLNT_BUFFERFLAGS_SILENT on every callback, and the SharedRingBuffer
+        // receives only zeros.  The user then clicks MIC → getUserMedia() forces
+        // the Windows audio subsystem to fully activate, which as a side effect
+        // wakes the render graph → VIRTUAL WIRE now works.
+        //
+        // FIX: Before starting the real capture, open a SECOND IAudioClient on
+        // the SAME render endpoint and feed it one buffer of silence.  This
+        // forces Windows to activate the render graph (WASAPI session registers
+        // the device), after which AUDCLNT_STREAMFLAGS_LOOPBACK receives real
+        // PCM data from the very first captured buffer.
+        //
+        // The dummy render client is immediately stopped and released before
+        // the real loopback capture begins — it leaves NO audible artifact.
+        if (m_config.loopbackMode) {
+            IAudioClient*        pWakeClient  = nullptr;
+            IAudioRenderClient*  pWakeRender  = nullptr;
+
+            HRESULT hrWake = pDevice->Activate(
+                __uuidof(IAudioClient), CLSCTX_ALL, nullptr,
+                reinterpret_cast<void**>(&pWakeClient));
+
+            if (SUCCEEDED(hrWake)) {
+                WAVEFORMATEX* pWakeFmt = nullptr;
+                pWakeClient->GetMixFormat(&pWakeFmt);
+
+                if (pWakeFmt) {
+                    // 100ms buffer — plenty of time for the render graph to wake
+                    REFERENCE_TIME wakeBufferDuration =
+                        static_cast<REFERENCE_TIME>(0.1 * 10000000.0); // 100ms in 100ns units
+
+                    hrWake = pWakeClient->Initialize(
+                        AUDCLNT_SHAREMODE_SHARED,
+                        0,                      // No event callback — polling is fine here
+                        wakeBufferDuration,
+                        0,
+                        pWakeFmt,
+                        nullptr);
+
+                    if (SUCCEEDED(hrWake)) {
+                        UINT32 wakeBufferSize = 0;
+                        pWakeClient->GetBufferSize(&wakeBufferSize);
+
+                        hrWake = pWakeClient->GetService(
+                            __uuidof(IAudioRenderClient),
+                            reinterpret_cast<void**>(&pWakeRender));
+
+                        if (SUCCEEDED(hrWake) && wakeBufferSize > 0) {
+                            BYTE* pWakeData = nullptr;
+                            hrWake = pWakeRender->GetBuffer(wakeBufferSize, &pWakeData);
+                            if (SUCCEEDED(hrWake)) {
+                                // Write silence — fills the render endpoint buffer with zeros
+                                // so the Windows audio engine registers the active session
+                                memset(pWakeData, 0,
+                                    wakeBufferSize * pWakeFmt->nBlockAlign);
+                                pWakeRender->ReleaseBuffer(wakeBufferSize,
+                                    AUDCLNT_BUFFERFLAGS_SILENT);
+                            }
+                            pWakeClient->Start();
+                            // 50ms is enough for the render graph to transition to active
+                            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                            pWakeClient->Stop();
+                            fprintf(stderr, "[WASAPI] WAVE 3410: Cold-start wake-up rendered (loopback endpoint activated)\n");
+                        }
+                    }
+                    CoTaskMemFree(pWakeFmt);
+                }
+            }
+
+            if (pWakeRender) pWakeRender->Release();
+            if (pWakeClient) pWakeClient->Release();
+        }
 
         fprintf(stderr, "[WASAPI] Starting capture: device='%s' %dHz %dch buf=%d exclusive=%d loopback=%d latency=%.2fms\n",
             m_config.deviceId.empty() ? "(default)" : m_config.deviceId.c_str(),

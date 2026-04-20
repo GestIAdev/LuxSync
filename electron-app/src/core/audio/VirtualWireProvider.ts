@@ -281,15 +281,58 @@ export class VirtualWireProvider implements IInputProvider {
 
     const targetRate = this.config.sampleRate ?? OMNI_CONSTANTS.DEFAULT_SAMPLE_RATE
 
-    // Mono downmix if needed (take first channel)
+    // WAVE 3410 ANOMALÍA 2: DOWNMIX CORRECTO (suma y promedio, no selección de canal)
+    //
+    // El downmix anterior tomaba data[i * _channels] (solo canal L).
+    // Para señales stereo esto descarta el 50% de la energía espectral.
+    // En techno con kick centrado pero procesado por canal, el canal L
+    // puede tener hasta -6dB respecto al sum-to-mono correcto, aplastando
+    // el rawBassEnergy que alimenta el IntervalBPMTracker.
+    //
+    // FIX: suma todos los canales disponibles y promedía → rango -1.0 a +1.0
+    // conservado, ganancia de suma cuadrada evitada.
     let monoData: Float32Array
     if (_channels > 1) {
       monoData = new Float32Array(frameCount)
+      const invChannels = 1.0 / _channels
       for (let i = 0; i < frameCount; i++) {
-        monoData[i] = data[i * _channels] // First channel only
+        let sum = 0
+        for (let c = 0; c < _channels; c++) {
+          sum += data[i * _channels + c]
+        }
+        monoData[i] = sum * invChannels
       }
     } else {
       monoData = data.subarray(0, frameCount)
+    }
+
+    // WAVE 3410 ANOMALÍA 2: NORMALIZACIÓN DE AMPLITUD WASAPI
+    //
+    // WASAPI Loopback y WebAudio (getUserMedia) difieren en su headroom:
+    // - getUserMedia/ScriptProcessor entrega float32 con peak headroom típico
+    //   de -6 a -3 dBFS (master de mezcla tiene headroom reservado).
+    // - WASAPI Loopback del render endpoint captura TODO el render graph,
+    //   incluyendo la ganancia de volumen del dispositivo Windows. Si el
+    //   volumen del sistema está al 60%, la señal loopback llega al 60% del
+    //   pico matemático, mientras que getUserMedia lo normaliza internamente.
+    //
+    // El GodEarFFT recibe la señal CRUDA (sin AGC — WAVE 2162). Si la señal
+    // WASAPI tiene la mitad de amplitud, rawBassEnergy es ~1/4 del valor de
+    // referencia WebAudio (amplitud² → energía), la confianza del
+    // IntervalBPMTracker cae a ~0.05 y entra en FREEWHEEL.
+    //
+    // FIX: Normalización pico-a-pico sobre la ventana actual.
+    // Buscamos el pico absoluto del frame. Si está muy por debajo de -6dBFS
+    // (peak < 0.5), aplicamos ganancia para llevarlo a zona nominal.
+    // Si ya está en zona nominal (peak >= 0.5), no tocamos (evitamos clipping).
+    // Este normalize es PREVIO al SAB — el AGC del Worker sigue actuando.
+    const peak = monoData.reduce((max, s) => Math.max(max, Math.abs(s)), 0)
+    if (peak > 0.001 && peak < 0.5) {
+      // señal demasiado baja — normalizar al 85% del rango para dejar headroom
+      const gain = 0.85 / peak
+      for (let i = 0; i < monoData.length; i++) {
+        monoData[i] *= gain
+      }
     }
 
     // Resample if source rate differs from target

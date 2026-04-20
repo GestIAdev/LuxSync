@@ -146,12 +146,34 @@ export class AudioMatrix implements IAudioMatrix {
   private ingestAudio(source: InputSourceType, buffer: Float32Array, _sampleRate: number): void {
     if (this.disposed) return
 
-    // Only accept data from the active source (or forced source)
-    const accepted = this.forcedSource
-      ? source === this.forcedSource
-      : source === this.activeSource
+    // Only accept data from the active source (or forced source).
+    // WAVE 3403.1: If the forced source is in error/disposed state, fall back
+    // to the best streaming provider in the priority chain so audio is never
+    // silenced by a provider that cannot stream (e.g. VirtualWire without
+    // native addon).
+    let effectiveSource: InputSourceType | null = this.forcedSource
+    if (this.forcedSource) {
+      const forcedProvider = this.providers.get(this.forcedSource)
+      if (
+        !forcedProvider ||
+        forcedProvider.status.state === 'error' ||
+        forcedProvider.status.state === 'disposed'
+      ) {
+        // Forced source is unavailable — fall back to the best streaming provider
+        effectiveSource = null
+        for (const type of this.config.priorityChain) {
+          const p = this.providers.get(type)
+          if (p && (p.status.state === 'streaming' || p.status.state === 'ready')) {
+            effectiveSource = type
+            break
+          }
+        }
+      }
+    } else {
+      effectiveSource = this.activeSource
+    }
 
-    if (!accepted) return
+    if (source !== effectiveSource) return
 
     this.lastAudioTimestamp = Date.now()
     this.totalSamplesWritten += buffer.length
@@ -362,6 +384,16 @@ export class AudioMatrix implements IAudioMatrix {
     if (!provider) {
       console.warn(`[AudioMatrix] Cannot force unknown source: ${type}`)
       return
+    }
+
+    // WAVE 3403.1: Warn early if provider is unavailable — audio will fall back
+    // to the priority-chain active source (see ingestAudio). This is intentional:
+    // we record the user's intent so releaseForce() works correctly later.
+    if (provider.status.state === 'error' || provider.status.state === 'disposed') {
+      console.warn(
+        `[AudioMatrix] forceSource('${type}'): provider is ${provider.status.state}. ` +
+        `Audio will fall back to active source until provider recovers.`
+      )
     }
 
     this.forcedSource = type

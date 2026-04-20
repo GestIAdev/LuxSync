@@ -285,9 +285,12 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
       const fill = matrix.ringBufferFillLevel
       if (ringFillRef.current) {
         ringFillRef.current.style.height = `${(fill * 100) | 0}%`
-        // Color transitions: green → yellow → red based on fill level
+        // Color: gray baseline (ring buffer empty/idle) → cyan → yellow → red
         ringFillRef.current.style.background =
-          fill > 0.85 ? '#ef4444' : fill > 0.6 ? '#fbbf24' : '#22d3ee'
+          fill > 0.85 ? '#ef4444'
+          : fill > 0.6 ? '#fbbf24'
+          : fill > 0.01 ? '#22d3ee'
+          : 'rgba(255,255,255,0.2)'
       }
       if (ringLabelRef.current) {
         ringLabelRef.current.textContent = `${(fill * 100) | 0}%`

@@ -526,6 +526,44 @@ describe('AudioMatrix -- forceSource override', () => {
     // After releasing we expect legacy-bridge to be selected (either directly or as hotSwapTarget)
     expect(['legacy-bridge', 'osc-nexus']).toContain(matrix.getStatus().activeSource)
   })
+
+  it('WAVE 3403.1: audio falls back to activeSource when forcedSource is in error', async () => {
+    // Scenario: user forces 'virtual-wire' but it has no native addon → error state
+    // Audio from 'legacy-bridge' must still reach the ring buffer
+    const pLegacy = new StubProvider('legacy-bridge', 'streaming')
+    const pVirtual = new StubProvider('virtual-wire', 'error')
+    matrix.registerProvider(pLegacy)
+    matrix.registerProvider(pVirtual)
+    vi.advanceTimersByTime(50) // let evaluateActiveSource settle
+
+    await matrix.forceSource('virtual-wire')
+    vi.advanceTimersByTime(300)
+
+    // Simulate audio arriving from legacy-bridge (as happens via IPC)
+    const samples = new Float32Array(1024).fill(0.5)
+    matrix['ingestAudio']('legacy-bridge', samples, 44100)
+
+    // The ring buffer writer must have been called — audio was NOT blocked
+    expect(writer.write).toHaveBeenCalled()
+  })
+
+  it('WAVE 3403.1: audio is blocked from non-active source when forcedSource is healthy', async () => {
+    const pLegacy = new StubProvider('legacy-bridge', 'streaming')
+    const pVirtual = new StubProvider('virtual-wire', 'streaming')
+    matrix.registerProvider(pLegacy)
+    matrix.registerProvider(pVirtual)
+
+    await matrix.forceSource('virtual-wire')
+    vi.advanceTimersByTime(300)
+
+    vi.mocked(writer.write).mockClear()
+
+    // Audio from legacy-bridge must be rejected when virtual-wire is healthy + forced
+    const samples = new Float32Array(1024).fill(0.5)
+    matrix['ingestAudio']('legacy-bridge', samples, 44100)
+
+    expect(writer.write).not.toHaveBeenCalled()
+  })
 })
 
 // ============================================

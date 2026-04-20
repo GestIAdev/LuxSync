@@ -380,7 +380,55 @@ export class TitanOrchestrator {
         beatPhase?: number; beatStrength?: number;
         kickCount?: number;
       }) => {
-        // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
+        // WAVE 3416: Detect if active source is Omni (VirtualWire / USB / OSC).
+        // These sources bypass the WebAudio IPC path entirely — processAudioFrame()
+        // is never called, so bass/mid/high/energy would stay frozen at 0 forever.
+        // When an Omni source is active, the Worker IS the only audio pipeline,
+        // so we promote its bands to core authority and update lastAudioTimestamp
+        // so hasRealAudio can flip true and the lighting engine reacts.
+        const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
+        const activeSource = matrixStatus?.activeSource ?? null
+        const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus'])
+        const isOmniActive = activeSource ? OMNI_SOURCES.has(activeSource) : false
+
+        if (isOmniActive) {
+          // Omni path: Worker = SOLE AUTHORITY for all bands + timestamp
+          this.lastAudioData = {
+            ...this.lastAudioData,
+            bass: levels.bass,
+            mid: levels.mid,
+            high: levels.treble,
+            energy: levels.energy,
+            subBass: levels.subBass ?? this.lastAudioData.subBass,
+            lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
+            highMid: levels.highMid ?? this.lastAudioData.highMid,
+            harshness: levels.harshness ?? this.lastAudioData.harshness,
+            spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
+            spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+            crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
+            kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
+            snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
+            hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+            rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+            workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+            workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+            workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+            workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+            workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+            workerKickCount: (levels.kickCount != null && levels.kickCount > 0) ? levels.kickCount : this.lastAudioData.workerKickCount,
+          }
+          // Update audio presence detection — mirrors processAudioFrame() logic
+          const wasActive = this.hasRealAudio
+          this.hasRealAudio = levels.energy > 0.01
+          this.lastAudioTimestamp = Date.now()
+          if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+            this.hasLoggedFirstAudio = true
+            this.log('System', `🎧 WAVE 3416: Audio LIVE via ${activeSource} — Selene is now listening!`)
+          } else if (!this.hasRealAudio && wasActive) {
+            this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
+          }
+        } else {
+        // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY (frontend/WebAudio path)
         // NO sobrescribir bass/mid/high/energy — Frontend tiene prioridad temporal (60fps)
         // SÍ actualizar métricas FFT extendidas — Worker tiene precisión espectral
         this.lastAudioData = {
@@ -418,6 +466,7 @@ export class TitanOrchestrator {
             ? levels.kickCount
             : this.lastAudioData.workerKickCount,
         };
+        } // end isOmniActive else
       });
       
       await trinity.start()

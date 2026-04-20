@@ -112,6 +112,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
     '[UniversalDMX',
     '[VIBE',
     '[LuxSync',
+    // Native audio subsystem — LIFT LOG BLACKOUT (WAVE 3403.2)
+    '[NativeAudio',
+    '[VirtualWire',
+    '[WASAPI',
+    '[OmniInput',
     // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
     // hibernados — son ruido de ticker, no eventos de conciencia.
     // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.

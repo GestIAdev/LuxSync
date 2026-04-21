@@ -20,7 +20,9 @@
 // 🔇 WAVE 3290: SENSES WORKER — Blackout del hilo de audio.
 // WAVE 3411 LIFT: Logs de [IntervalBPMTracker] y [GodEarFFT] DESBLOQUEADOS
 // para auditoría de rawBassEnergy y rollingAverage post-fix.
-// Re-comentar esta sección cuando la recuperación del rango dinámico esté confirmada.
+// WAVE 3418 LIFT: Logs de Peak SAB vs LegacyBridge DESBLOQUEADOS
+// para medir diferencia de voltaje digital entre fuentes.
+// Re-comentar esta sección cuando la auditoría de señal esté confirmada.
 //
 // ACTIVO (bloqueado): console.info, console.debug
 // INACTIVO (libre):   console.log, console.warn, console.error
@@ -114,6 +116,24 @@ const sabReadBuffer = new Float32Array(OMNI_CONSTANTS.FFT_SIZE);
 let sabPollInterval: ReturnType<typeof setInterval> | null = null;
 
 // WAVE 3401: SAB poll function -- reads available samples and processes them
+// ═══════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 3418: RAW PEAK TELEMETRY — Contadores por path de entrada
+// Permite comparar el voltaje digital entre SAB (VW/WASAPI) e IPC (LegacyBridge)
+// ═══════════════════════════════════════════════════════════════════════
+let _sabPeakFrameCount = 0;
+let _legacyPeakFrameCount = 0;
+const PEAK_LOG_INTERVAL = 94; // ~2 segundos a 47fps
+
+/** Calcula el pico absoluto máximo de un buffer Float32 */
+function _calcPeakAbs(buf: Float32Array, len: number): number {
+  let peak = 0;
+  for (let i = 0; i < len; i++) {
+    const abs = Math.abs(buf[i]);
+    if (abs > peak) peak = abs;
+  }
+  return peak;
+}
+
 function pollSharedRingBuffer(): void {
   if (!sabReader || !state.isRunning) return;
 
@@ -127,6 +147,22 @@ function pollSharedRingBuffer(): void {
   if (samplesRead > 0) {
     // Feed the samples through the same processAudioBuffer pipeline
     const slice = sabReadBuffer.subarray(0, samplesRead);
+
+    // 🔬 WAVE 3418: Peak crudo del buffer SAB antes del ring/FFT
+    _sabPeakFrameCount++;
+    if (_sabPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
+      const peakAbs = _calcPeakAbs(slice, samplesRead);
+      const rms = Math.sqrt(
+        slice.reduce((acc, s) => acc + s * s, 0) / samplesRead
+      );
+      console.log(
+        `[🔬 PEAK-SAB] frame=${_sabPeakFrameCount} ` +
+        `samples=${samplesRead} ` +
+        `peak=${peakAbs.toFixed(5)} ` +
+        `rms=${rms.toFixed(5)}`
+      );
+    }
+
     const analysis = processAudioBuffer(slice);
 
     sendMessage(
@@ -1320,6 +1356,21 @@ function handleMessage(message: WorkerMessage): void {
         // 🔍 WAVE 263: Log cada ~5 segundos
         if (state.frameCount % 300 === 0) {
           console.log(`[BETA 📡] AUDIO_BUFFER #${state.frameCount} | size=${buffer?.length || 0}`);
+        }
+
+        // 🔬 WAVE 3418: Peak crudo del buffer IPC (LegacyBridge) antes del ring/FFT
+        _legacyPeakFrameCount++;
+        if (_legacyPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
+          const legacyPeak = _calcPeakAbs(buffer, buffer.length);
+          const legacyRms = buffer.length > 0
+            ? Math.sqrt(buffer.reduce((acc, s) => acc + s * s, 0) / buffer.length)
+            : 0;
+          console.log(
+            `[🔬 PEAK-IPC] frame=${_legacyPeakFrameCount} ` +
+            `samples=${buffer.length} ` +
+            `peak=${legacyPeak.toFixed(5)} ` +
+            `rms=${legacyRms.toFixed(5)}`
+          );
         }
         
         const analysis = processAudioBuffer(buffer);

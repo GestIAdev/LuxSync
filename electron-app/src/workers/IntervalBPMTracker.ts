@@ -221,6 +221,9 @@ export class IntervalBPMTracker {
   // ─── Frame Duration ───────────────────────────────────────────────
   private readonly frameDurationMs: number
 
+  // ─── WAVE 3418: Periodic telemetry counter (no-kick frames) ──────
+  private _periodicLogCounter = 0
+
   constructor(sampleRate: number = 44100, bufferSize: number = 2048, overrideFrameDurationMs?: number) {
     this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000
     this.energyHistory = new Float32Array(ENERGY_HISTORY_SIZE)
@@ -470,6 +473,22 @@ export class IntervalBPMTracker {
         `delta=${delta.toFixed(4)} ` +
         `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
         `bpmBuf=[${histSnapshot}]`
+      )
+    }
+
+    // ─── WAVE 3418: Periodic no-kick telemetry (~2s cadence) ──────
+    // Visible incluso cuando el ratio NUNCA supera el threshold.
+    // Diagnóstico clave: si ratio < 1.6 siempre → señal demasiado débil.
+    this._periodicLogCounter++
+    if (this._periodicLogCounter % 95 === 0) {
+      const ratio = rollingAvg > 0 ? rawBassEnergy / rollingAvg : 0
+      console.log(
+        `[🔬 BPM-TELEMETRY] frame=${this._periodicLogCounter} ` +
+        `energy=${rawBassEnergy.toFixed(5)} avg=${rollingAvg.toFixed(5)} ` +
+        `ratio=${ratio.toFixed(3)} threshold=1.60 ` +
+        `delta=${delta.toFixed(5)} ` +
+        `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
+        `kicks=${this.totalKicks} bpm=${this.stableBpm}`
       )
     }
 

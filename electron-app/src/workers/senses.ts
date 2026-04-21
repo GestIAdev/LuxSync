@@ -389,9 +389,8 @@ let shadowDumped = false;
 // ============================================
 // Keep Radix-2/GodEar math untouched. We only map extracted linear magnitudes
 // to the same [0..1] range shape used by WebAudio's analyser byte scaling.
-const W3431_MIN_DB = -100;
-const W3431_MAX_DB = -30;
-const W3431_DB_EPSILON = 1e-6;
+const W3431_MIN_DB = 10;
+const W3431_MAX_DB = 70;
 const W3431_OUTPUT_SCALE = 2.5;
 
 function clamp(value: number, min: number, max: number): number {
@@ -400,9 +399,22 @@ function clamp(value: number, min: number, max: number): number {
 
 function toWebAudioScaledLevel(linearMagnitude: number): number {
   const safeMag = Math.max(0, linearMagnitude);
-  const db = 20 * Math.log10(safeMag + W3431_DB_EPSILON);
+  const db = 20 * Math.log10(safeMag + 1);
   const scaled = (db - W3431_MIN_DB) / (W3431_MAX_DB - W3431_MIN_DB);
   return clamp(scaled, 0, 1) * W3431_OUTPUT_SCALE;
+}
+
+// WAVE 3432: zombie frame flush window after reset/hot-swap.
+const W3432_ZOMBIE_FLUSH_MS = 250;
+let dropLegacyIpcUntilTimestamp = 0;
+
+function flushWorkerAudioPipeline(): void {
+  state.ringBuffer.fill(0);
+  state.snapshotBuffer.fill(0);
+  state.ringBufferWriteIndex = 0;
+  state.ringBufferFilled = false;
+  state.totalSamplesProcessed = 0;
+  sabReadBuffer.fill(0);
 }
 
 // ============================================
@@ -1412,6 +1424,11 @@ function handleMessage(message: WorkerMessage): void {
         if (sabPollInterval !== null) {
           break;
         }
+
+        if (message.timestamp <= dropLegacyIpcUntilTimestamp) {
+          break;
+        }
+
         const buffer = message.payload as Float32Array;
         
         // 🔍 WAVE 263: Log cada ~5 segundos
@@ -1483,6 +1500,8 @@ function handleMessage(message: WorkerMessage): void {
         spectrumAnalyzer.reset();
         resetAGC();
         bpmTracker.reset();
+        flushWorkerAudioPipeline();
+        dropLegacyIpcUntilTimestamp = Date.now() + W3432_ZOMBIE_FLUSH_MS;
         prevSubEnergy = 0;
         prevBassOnlyEnergy = 0;
         prevMidEnergy = 0;

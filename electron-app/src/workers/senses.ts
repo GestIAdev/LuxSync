@@ -80,7 +80,7 @@ import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
 //  WAVE 670: AGC - Normalización de buffer ANTES del FFT
 // CRITICAL: Sin esto, los Z-Scores del WAVE 660 son ficción matemática
-import { getAGC, type AGCOutput } from './utils/AutomaticGainControl';
+import { getAGC, resetAGC, type AGCOutput } from './utils/AutomaticGainControl';
 
 // 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
 // WAVE 254: Migrado desde selene-lux-core a engine/consciousness
@@ -385,6 +385,45 @@ const MAX_SHADOW_FRAMES = 1000; // ~46.4 seconds at 2048/44100Hz per frame
 let shadowDumped = false;
 
 // ============================================
+// WAVE 3430: PSYCHOACOUSTIC BRIDGE (linear -> perceptual)
+// ============================================
+// Keep Radix-2/GodEar math untouched. We only translate extracted band
+// magnitudes before packaging them for LiquidEngine consumers.
+const W3430_DB_SCALE = 1 / 6.020599913279624; // 20*log10(2) -> mag=1 maps ~1.0
+const W3430_MAX_OUTPUT = 2.5;
+const W3430_A_WEIGHT_BLEND = 0.35; // 0=no weighting, 1=full A-weighting
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function computeAWeightingLinear(centerHz: number): number {
+  const f = Math.max(10, centerHz);
+  const f2 = f * f;
+  const c1 = 20.6 * 20.6;
+  const c2 = 107.7 * 107.7;
+  const c3 = 737.9 * 737.9;
+  const c4 = 12200 * 12200;
+
+  const numerator = c4 * f2 * f2;
+  const denominator = (f2 + c1) * Math.sqrt((f2 + c2) * (f2 + c3)) * (f2 + c4);
+  const ra = denominator > 0 ? numerator / denominator : 0;
+  const aDb = ra > 0 ? 20 * Math.log10(ra) + 2 : -80;
+  return Math.pow(10, aDb / 20);
+}
+
+function toPsychoacousticLevel(linearMagnitude: number, centerHz: number): number {
+  const safeMag = Math.max(0, linearMagnitude);
+  const dbNormalized = 20 * Math.log10(1 + safeMag) * W3430_DB_SCALE;
+
+  const aWeightLinear = computeAWeightingLinear(centerHz);
+  const boundedAWeight = clamp(aWeightLinear, 0.35, 2.8);
+  const weighting = 1 + (boundedAWeight - 1) * W3430_A_WEIGHT_BLEND;
+
+  return clamp(dbNormalized * weighting, 0, W3430_MAX_OUTPUT);
+}
+
+// ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
 
@@ -467,16 +506,25 @@ class SpectrumAnalyzer {
     // 📦 Legacy Adapter - Convertir a formato viejo para Vibes existentes
     const legacy = toLegacyFormat(godEarResult);
     
-    // Calcular flujo espectral (cambio de energía total)
-    const currentEnergy = legacy.bass + legacy.mid + legacy.treble;
+    const psycho = {
+      subBass: toPsychoacousticLevel(legacy.subBass, 40),
+      bass: toPsychoacousticLevel(legacy.bass, 130),
+      lowMid: toPsychoacousticLevel(legacy.lowMid, 350),
+      mid: toPsychoacousticLevel(legacy.mid, 1000),
+      highMid: toPsychoacousticLevel(legacy.highMid, 3200),
+      treble: toPsychoacousticLevel(legacy.treble, 9000),
+    };
+
+    // Calcular flujo espectral (cambio de energía total) en dominio perceptual
+    const currentEnergy = psycho.bass + psycho.mid + psycho.treble;
     const spectralFlux = Math.min(1, Math.abs(currentEnergy - this.prevEnergy) * 2);
     this.prevEnergy = currentEnergy;
     
     return {
       // Bandas principales (normalizadas 0-1) - LEGACY FORMAT
-      bass: legacy.bass,
-      mid: legacy.mid,
-      treble: legacy.treble,
+      bass: psycho.bass,
+      mid: psycho.mid,
+      treble: psycho.treble,
       
       // 🎸 WAVE 1011.2: spectralCentroid EN HZ (no normalizado!)
       // RockStereoPhysics2 necesita Hz para detectar "bright" (>2000) vs "dark" (<1200)
@@ -484,9 +532,9 @@ class SpectrumAnalyzer {
       spectralFlux,
       
       // 🧮 Bandas extendidas (LEGACY FORMAT con GOD EAR data)
-      subBass: legacy.subBass,
-      lowMid: legacy.lowMid,
-      highMid: legacy.highMid,
+      subBass: psycho.subBass,
+      lowMid: psycho.lowMid,
+      highMid: psycho.highMid,
       dominantFrequency: godEarResult.dominantFrequency,
       
       // 🥁 Transient detection - GOD EAR slope-based (más preciso)
@@ -495,7 +543,7 @@ class SpectrumAnalyzer {
       hihatDetected: godEarResult.transients.hihat,
       
       // 🤖 Texture metrics - GOD EAR native
-      harshness: godEarResult.bands.highMid, // Proxy para harshness
+      harshness: psycho.highMid, // Proxy perceptual para harshness
       spectralFlatness: godEarResult.spectral.flatness,
       // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor entra al flujo de datos
       crestFactor: godEarResult.spectral.crestFactor,
@@ -1451,6 +1499,7 @@ function handleMessage(message: WorkerMessage): void {
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
         spectrumAnalyzer.reset();
+        resetAGC();
         bpmTracker.reset();
         prevSubEnergy = 0;
         prevBassOnlyEnergy = 0;
@@ -1460,7 +1509,7 @@ function handleMessage(message: WorkerMessage): void {
         // Sin este reset el floor del MIC mata los kicks de VirtualWire y viceversa.
         adaptiveFloorBuffer.length = 0;
         adaptiveFloor = 0.015; // Bootstrap value
-        console.log('[BETA] 🧨 WAVE 3414: Amnesia Protocol — BPM tracker + adaptive floor reseteados');
+        console.log('[BETA] 🧨 WAVE 3430/3414: Amnesia Protocol — AGC + BPM tracker + adaptive floor reseteados');
         break;
         
       default:

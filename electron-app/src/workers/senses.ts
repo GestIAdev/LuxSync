@@ -389,8 +389,8 @@ let shadowDumped = false;
 // ============================================
 // Keep Radix-2/GodEar math untouched. We only map extracted linear magnitudes
 // to the same [0..1] range shape used by WebAudio's analyser byte scaling.
-const W3431_MIN_DB = 10;
-const W3431_MAX_DB = 70;
+const W3431_MIN_DB = 0;
+const W3431_MAX_DB = 8;
 const W3431_OUTPUT_SCALE = 2.5;
 
 // WAVE 3433-A: forensic math telemetry throttle (max 1 log/sec)
@@ -1434,6 +1434,12 @@ function handleMessage(message: WorkerMessage): void {
         break;
         
       case MessageType.AUDIO_BUFFER:
+        // WAVE 3434: IPC GAG — if SAB polling is active, BETA must be deaf to
+        // IPC audio buffers to prevent hot-swap contamination.
+        if (sabPollInterval !== null) {
+          return;
+        }
+
         {
           const zombieText = `[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`;
           sendMessage(MessageType.FORENSIC_LOG, 'alpha', {
@@ -1449,15 +1455,6 @@ function handleMessage(message: WorkerMessage): void {
           }
           break;
         }
-        // WAVE 3424: SAB MODE GATE — Defensa en profundidad.
-        // Si el poll del SAB está activo, este Worker ya ingesta audio vía SharedRingBuffer
-        // (fuente nativa: VirtualWire, USB-DirectLink, etc.).
-        // Cualquier AUDIO_BUFFER IPC que llegue aquí es un residual del path IPC
-        // que no fue filtrado upstream. Descartarlo evita el doble procesado.
-        if (sabPollInterval !== null) {
-          break;
-        }
-
         if (message.timestamp <= dropLegacyIpcUntilTimestamp) {
           break;
         }

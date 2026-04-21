@@ -673,7 +673,10 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       zeroCrossingRate: 0,
       kickDetected: false,
       snareDetected: false,
-      hihatDetected: false
+      hihatDetected: false,
+      // 🔬 WAVE 3418: Propagar telemetría raw incluso en early-exit (pre-ring)
+      inputPeakAbs: _w3418_inputPeakAbs,
+      inputRMS: _w3418_inputRMS,
     };
   }
   

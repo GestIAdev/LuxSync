@@ -503,10 +503,10 @@ class SpectrumAnalyzer {
       // 🎭 WAVE 1018: Clarity para PROG ROCK detection
       clarity: godEarResult.spectral.clarity,
       
-      // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+      // 🔥 WAVE 1162 / WAVE 3425: THE BYPASS - PRE-AGC BASS FOR PACEMAKER
       // El AGC comprime la dinámica y mata los transients.
-      // rawBassEnergy es la suma de subBass + bass ANTES del AGC.
-      // Esto permite al BeatDetector ver los PICOS REALES de los kicks.
+      // bandsRaw viene del path post-FFT/pre-AGC (integral + legacy gain),
+      // así el tracker recibe señal amplificada sin contaminación de AGC.
       rawBassEnergy: godEarResult.bandsRaw.subBass + godEarResult.bandsRaw.bass,
 
       // ═══════════════════════════════════════════════════════════════════
@@ -534,7 +534,10 @@ class SpectrumAnalyzer {
   }
   
   reset(): void {
+    this.godEar.reset();
     this.prevEnergy = 0;
+    this.lastSpectralFlux = 0;
+    this.frameCount = 0;
     this.lastGodEarResult = null;
   }
 }
@@ -1447,6 +1450,7 @@ function handleMessage(message: WorkerMessage): void {
       // A vibe change = near-certain song change. Wipe BPM tracker memory
       // so the engine listens to the new track with a clean slate.
       case MessageType.RESET_PACEMAKER:
+        spectrumAnalyzer.reset();
         bpmTracker.reset();
         prevSubEnergy = 0;
         prevBassOnlyEnergy = 0;

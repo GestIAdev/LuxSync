@@ -263,11 +263,11 @@ const AGC_CONFIG = {
  * magnitude is comparable to the historical WebAudio visual scale.
  *
  * IMPORTANT:
- * - This scaling is applied ONLY to the visual/control band path.
- * - bandsRaw remains untouched for IntervalBPMTracker raw flux/needle logic.
+ * - This scaling is applied to the pre-AGC band path used by UI/DMX and rBPM feed.
+ * - AGC is applied after this stage on `bands` only.
  */
 const POST_FFT_LEGACY_EQ_GAIN = 2.25;
-const POST_FFT_BAND_OUTPUT_CLAMP = 2.5;
+const POST_FFT_BAND_OUTPUT_CLAMP = 1.0;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 3: WINDOWING - BLACKMAN-HARRIS 4-TERM
@@ -1370,7 +1370,8 @@ export class GodEarAnalyzer {
       ultraAir: extractBandEnergy(this.magnitudes, filterMasks.get('ultraAir')!),
     };
 
-    // WAVE 3424: scale ONLY the visual/control path (bands), keep bandsRaw intact.
+    // WAVE 3425: scale pre-AGC bands so UI/DMX and BPM tracker share the same
+    // deterministic post-FFT magnitude domain.
     const scaledBands: GodEarBands = {
       subBass: scaleBandEnergyForVisual(rawBands.subBass, filterWeightSums.get('subBass') ?? 1),
       bass: scaleBandEnergyForVisual(rawBands.bass, filterWeightSums.get('bass') ?? 1),
@@ -1445,7 +1446,7 @@ export class GodEarAnalyzer {
     // ═══ STAGE 7: Output ═══
     return {
       bands,
-      bandsRaw: rawBands,
+      bandsRaw: scaledBands,
       spectral,
       stereo: null, // Mono analysis
       transients,
@@ -1690,6 +1691,11 @@ export interface LegacyBandEnergy {
   spectralFlatness: number;
 }
 
+function softClip01(value: number): number {
+  if (value <= 0) return 0;
+  return value / (1 + value);
+}
+
 /**
  * Convert GodEarSpectrum to legacy BandEnergy format.
  *
@@ -1704,18 +1710,22 @@ export interface LegacyBandEnergy {
  * Los side fields lowMid/highMid se preservan sin cambio para consumers upstream.
  */
 export function toLegacyFormat(spectrum: GodEarSpectrum): LegacyBandEnergy {
+  const bass = spectrum.bands.bass + spectrum.bands.subBass * 0.5 + spectrum.bands.lowMid * 0.4;
+  const mid = spectrum.bands.mid + spectrum.bands.highMid * 0.6;
+  const treble = spectrum.bands.treble + spectrum.bands.ultraAir * 0.5;
+
   return {
     // WAVE 3421: lowMid * 0.4 devuelve el punch de 250-500Hz al canal bass
-    bass: spectrum.bands.bass + spectrum.bands.subBass * 0.5 + spectrum.bands.lowMid * 0.4,
-    lowMid: spectrum.bands.lowMid, // side field preservado
+    bass: softClip01(bass),
+    lowMid: softClip01(spectrum.bands.lowMid), // side field preservado
     // WAVE 3421: highMid * 0.6 devuelve la melodía de 2-6kHz al canal mid
-    mid: spectrum.bands.mid + spectrum.bands.highMid * 0.6,
-    highMid: spectrum.bands.highMid, // side field preservado (harshness proxy)
-    treble: spectrum.bands.treble + spectrum.bands.ultraAir * 0.5,
-    subBass: spectrum.bands.subBass,
+    mid: softClip01(mid),
+    highMid: softClip01(spectrum.bands.highMid), // side field preservado (harshness proxy)
+    treble: softClip01(treble),
+    subBass: softClip01(spectrum.bands.subBass),
     dominantFrequency: spectrum.dominantFrequency,
     spectralCentroid: spectrum.spectral.centroid,
-    harshness: spectrum.bands.highMid, // Approximate
+    harshness: softClip01(spectrum.bands.highMid), // Approximate
     spectralFlatness: spectrum.spectral.flatness,
   };
 }

@@ -262,6 +262,15 @@ export class TitanOrchestrator {
     lowMid: 0,
     highMid: 0,
     crestFactor: 0,  // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
+    // WAVE 3422: Core bands para el path Omni (VirtualWire/USB).
+    // En el path frontend (WebAudio IPC) estos campos no se usan — el frontend
+    // envía bass/mid/high a 60fps y ya trae su propio suavizado.
+    // En el path Omni el Worker es única autoridad pero a ~10fps con gaps entre
+    // frames. Sin EMA, bass oscila entre 0 y el valor real en cada frame vacío.
+    bass: 0,
+    mid: 0,
+    high: 0,
+    energy: 0,
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -396,12 +405,25 @@ export class TitanOrchestrator {
 
         if (isOmniActive) {
           // Omni path: Worker = SOLE AUTHORITY for all bands + timestamp
+          //
+          // WAVE 3422 — EMA anti-parpadeo para bandas principales:
+          // El Worker emite frames a ~10fps con VW, pero el SAB tiene gaps entre
+          // entregas. Frames "vacíos" (bass≈0) se intercalan con frames reales.
+          // Sin suavizado, bass oscila 0 ↔ 0.18 en cada ciclo → parpadeo visible.
+          // Alpha 0.35: reacciona en ~3 frames (~210ms) — suficientemente rápido
+          // para que los kicks se sientan pero elimina el flip a cero entre frames.
+          const OMNI_EMA = 0.35;
+          this.smoothedMetrics.bass   = (1 - OMNI_EMA) * this.smoothedMetrics.bass   + OMNI_EMA * levels.bass;
+          this.smoothedMetrics.mid    = (1 - OMNI_EMA) * this.smoothedMetrics.mid    + OMNI_EMA * levels.mid;
+          this.smoothedMetrics.high   = (1 - OMNI_EMA) * this.smoothedMetrics.high   + OMNI_EMA * levels.treble;
+          this.smoothedMetrics.energy = (1 - OMNI_EMA) * this.smoothedMetrics.energy + OMNI_EMA * levels.energy;
+
           this.lastAudioData = {
             ...this.lastAudioData,
-            bass: levels.bass,
-            mid: levels.mid,
-            high: levels.treble,
-            energy: levels.energy,
+            bass:   this.smoothedMetrics.bass,
+            mid:    this.smoothedMetrics.mid,
+            high:   this.smoothedMetrics.high,
+            energy: this.smoothedMetrics.energy,
             subBass: levels.subBass ?? this.lastAudioData.subBass,
             lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
             highMid: levels.highMid ?? this.lastAudioData.highMid,

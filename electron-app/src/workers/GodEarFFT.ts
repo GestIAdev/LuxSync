@@ -247,6 +247,28 @@ const AGC_CONFIG = {
   ultraAir: { attackMs: 30, releaseMs: 180, targetRMS: 0.3, maxGain: 4.0 },
 };
 
+/**
+ * WAVE 3424 - Post-FFT amplitude recovery (visual/control path only).
+ *
+ * For each band we first compute an RMS over the weighted bins:
+ *   rms_avg = sqrt( Σ(|X[k]|^2 * w[k]) / Σ(w[k]) )
+ *
+ * That average is mathematically clean but visually tiny, because energy of a
+ * strong transient is spread across many bins (windowing + finite FFT resolution).
+ * To recover proportional band amplitude for DMX modulation we convert to an
+ * integrated RMS estimate:
+ *   rms_integrated ≈ rms_avg * sqrt(Σ(w[k]))
+ *
+ * Then we apply a deterministic legacy-equivalence gain so the post-FFT band
+ * magnitude is comparable to the historical WebAudio visual scale.
+ *
+ * IMPORTANT:
+ * - This scaling is applied ONLY to the visual/control band path.
+ * - bandsRaw remains untouched for IntervalBPMTracker raw flux/needle logic.
+ */
+const POST_FFT_LEGACY_EQ_GAIN = 2.25;
+const POST_FFT_BAND_OUTPUT_CLAMP = 2.5;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 3: WINDOWING - BLACKMAN-HARRIS 4-TERM
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -517,6 +539,7 @@ function computeMagnitudeSpectrum(
  * Pre-computed LR4 filter masks for each band
  */
 let LR4_FILTER_MASKS: Map<string, Float32Array> | null = null;
+let LR4_FILTER_WEIGHT_SUMS: Map<string, number> | null = null;
 
 /**
  * Calculate Linkwitz-Riley 4th order response at a specific frequency.
@@ -596,20 +619,45 @@ function generateBandMask(
  * Initialize or get pre-computed LR4 filter masks for all bands.
  */
 function getLR4FilterMasks(fftSize: number, sampleRate: number): Map<string, Float32Array> {
-  if (LR4_FILTER_MASKS) {
+  if (LR4_FILTER_MASKS && LR4_FILTER_WEIGHT_SUMS) {
     return LR4_FILTER_MASKS;
   }
   
   // WAVE 2098: Boot silence — LR4 filter generation logs removed
   
   LR4_FILTER_MASKS = new Map();
+  LR4_FILTER_WEIGHT_SUMS = new Map();
   
   for (const [key, config] of Object.entries(GOD_EAR_BAND_CONFIG)) {
     const mask = generateBandMask(fftSize, sampleRate, config.freqLow, config.freqHigh);
     LR4_FILTER_MASKS.set(config.id, mask);
+
+    let weightSum = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (mask[i] > 0.001) {
+        weightSum += mask[i];
+      }
+    }
+    LR4_FILTER_WEIGHT_SUMS.set(config.id, weightSum);
   }
   
   return LR4_FILTER_MASKS;
+}
+
+function getLR4FilterWeightSums(fftSize: number, sampleRate: number): Map<string, number> {
+  if (!LR4_FILTER_MASKS || !LR4_FILTER_WEIGHT_SUMS) {
+    getLR4FilterMasks(fftSize, sampleRate);
+  }
+  return LR4_FILTER_WEIGHT_SUMS!;
+}
+
+function scaleBandEnergyForVisual(rawRms: number, weightSum: number): number {
+  if (rawRms <= 0) return 0;
+
+  // rms_avg -> rms_integrated conversion to compensate spectral spread across bins.
+  const integratedRms = rawRms * Math.sqrt(Math.max(1, weightSum));
+  const scaled = integratedRms * POST_FFT_LEGACY_EQ_GAIN;
+  return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, scaled);
 }
 
 /**
@@ -1023,8 +1071,8 @@ class AGCTrustZone {
     const alpha = Math.min(1.0, deltaMs / smoothingTime);
     this.gains[bandId] = currentGain + gainDiff * alpha;
     
-    // Apply gain
-    return Math.min(1.0, rawValue * this.gains[bandId]);
+    // WAVE 3424: DMX protection clamp after post-FFT scaling + AGC gain.
+    return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, rawValue * this.gains[bandId]);
   }
   
   /**
@@ -1307,6 +1355,7 @@ export class GodEarAnalyzer {
 
     // ═══ STAGE 5: LR4 Filter Bank + Band Extraction ═══
     const filterMasks = getLR4FilterMasks(this.fftSize, this.sampleRate);
+    const filterWeightSums = getLR4FilterWeightSums(this.fftSize, this.sampleRate);
     const deltaMs = this.lastTimestamp > 0 ? startTime - this.lastTimestamp : 50;
     this.lastTimestamp = startTime;
     
@@ -1320,17 +1369,28 @@ export class GodEarAnalyzer {
       treble: extractBandEnergy(this.magnitudes, filterMasks.get('treble')!),
       ultraAir: extractBandEnergy(this.magnitudes, filterMasks.get('ultraAir')!),
     };
+
+    // WAVE 3424: scale ONLY the visual/control path (bands), keep bandsRaw intact.
+    const scaledBands: GodEarBands = {
+      subBass: scaleBandEnergyForVisual(rawBands.subBass, filterWeightSums.get('subBass') ?? 1),
+      bass: scaleBandEnergyForVisual(rawBands.bass, filterWeightSums.get('bass') ?? 1),
+      lowMid: scaleBandEnergyForVisual(rawBands.lowMid, filterWeightSums.get('lowMid') ?? 1),
+      mid: scaleBandEnergyForVisual(rawBands.mid, filterWeightSums.get('mid') ?? 1),
+      highMid: scaleBandEnergyForVisual(rawBands.highMid, filterWeightSums.get('highMid') ?? 1),
+      treble: scaleBandEnergyForVisual(rawBands.treble, filterWeightSums.get('treble') ?? 1),
+      ultraAir: scaleBandEnergyForVisual(rawBands.ultraAir, filterWeightSums.get('ultraAir') ?? 1),
+    };
     
     // ═══ STAGE 6: AGC Trust Zones ═══
     const bands: GodEarBands = this.useAGC ? {
-      subBass: this.agc.process('subBass', rawBands.subBass, deltaMs),
-      bass: this.agc.process('bass', rawBands.bass, deltaMs),
-      lowMid: this.agc.process('lowMid', rawBands.lowMid, deltaMs),
-      mid: this.agc.process('mid', rawBands.mid, deltaMs),
-      highMid: this.agc.process('highMid', rawBands.highMid, deltaMs),
-      treble: this.agc.process('treble', rawBands.treble, deltaMs),
-      ultraAir: this.agc.process('ultraAir', rawBands.ultraAir, deltaMs),
-    } : rawBands;
+      subBass: this.agc.process('subBass', scaledBands.subBass, deltaMs),
+      bass: this.agc.process('bass', scaledBands.bass, deltaMs),
+      lowMid: this.agc.process('lowMid', scaledBands.lowMid, deltaMs),
+      mid: this.agc.process('mid', scaledBands.mid, deltaMs),
+      highMid: this.agc.process('highMid', scaledBands.highMid, deltaMs),
+      treble: this.agc.process('treble', scaledBands.treble, deltaMs),
+      ultraAir: this.agc.process('ultraAir', scaledBands.ultraAir, deltaMs),
+    } : scaledBands;
     
     // ═══ Spectral Metrics (reads from this.magnitudes, no allocation) ═══
     const flatness = calculateSpectralFlatness(this.magnitudes);

@@ -268,6 +268,7 @@ const AGC_CONFIG = {
  */
 const POST_FFT_LEGACY_EQ_GAIN = 2.25;
 const POST_FFT_BAND_OUTPUT_CLAMP = 1.0;
+const RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES = 60;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 3: WINDOWING - BLACKMAN-HARRIS 4-TERM
@@ -1381,6 +1382,26 @@ export class GodEarAnalyzer {
       treble: scaleBandEnergyForVisual(rawBands.treble, filterWeightSums.get('treble') ?? 1),
       ultraAir: scaleBandEnergyForVisual(rawBands.ultraAir, filterWeightSums.get('ultraAir') ?? 1),
     };
+
+    const telemetryFrame = this.frameIndex + 1;
+    if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
+      const rawPeak = Math.max(
+        scaledBands.subBass,
+        scaledBands.bass,
+        scaledBands.lowMid,
+        scaledBands.mid,
+        scaledBands.highMid,
+        scaledBands.treble,
+        scaledBands.ultraAir
+      );
+      console.log(
+        `[RADIX2 RAW] Peak: ${rawPeak.toFixed(6)} | Bands: ` +
+        `sub=${scaledBands.subBass.toFixed(6)} ` +
+        `bass=${scaledBands.bass.toFixed(6)} ` +
+        `mid=${scaledBands.mid.toFixed(6)} ` +
+        `highMid=${scaledBands.highMid.toFixed(6)}`
+      );
+    }
     
     // ═══ STAGE 6: AGC Trust Zones ═══
     const bands: GodEarBands = this.useAGC ? {

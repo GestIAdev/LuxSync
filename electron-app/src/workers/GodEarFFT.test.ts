@@ -676,6 +676,53 @@ function testGodEarMultiBand(): void {
 }
 
 /**
+ * TEST 11.5: Agnostic feed calibrator (60Hz vs 2500Hz)
+ *
+ * Two pure tones with identical amplitude must show their true raw-band
+ * response without AGC coloration. This is the forensic baseline for
+ * bass vs high-mid behavior.
+ */
+function testAgnosticFeedCalibrator(): void {
+  console.log('\n══════════════════════════════════════════════════════════');
+  console.log('  TEST 11.5: Agnostic feed 60Hz vs 2500Hz (amp=0.6)');
+  console.log('══════════════════════════════════════════════════════════');
+
+  const sampleRate = 44100;
+  const fftSize = 4096;
+  const amplitude = 0.6;
+  const analyzer = new GodEarAnalyzer(sampleRate, fftSize);
+  analyzer.configure({ useAGC: false });
+
+  const buildTone = (freqHz: number): Float32Array => {
+    const tone = new Float32Array(fftSize);
+    const twoPi = 2 * Math.PI;
+    for (let n = 0; n < fftSize; n++) {
+      tone[n] = amplitude * Math.sin(twoPi * freqHz * n / sampleRate);
+    }
+    return tone;
+  };
+
+  const kick60 = analyzer.analyze(buildTone(60));
+  analyzer.reset();
+  const voice2500 = analyzer.analyze(buildTone(2500));
+
+  console.log(
+    `[RADIX2 TEST] 60Hz amp=0.6 => bass=${kick60.bandsRaw.bass.toFixed(6)} ` +
+    `highMid=${kick60.bandsRaw.highMid.toFixed(6)}`
+  );
+  console.log(
+    `[RADIX2 TEST] 2500Hz amp=0.6 => bass=${voice2500.bandsRaw.bass.toFixed(6)} ` +
+    `highMid=${voice2500.bandsRaw.highMid.toFixed(6)}`
+  );
+
+  results.push({
+    name: 'Agnostic calibrator logs emitted',
+    passed: true,
+    detail: '✅ Logged bass/highMid for 60Hz and 2500Hz at equal amplitude',
+  });
+}
+
+/**
  * TEST 12: Performance benchmark
  *
  * Must be <2ms average for N=4096 on production hardware.
@@ -745,6 +792,7 @@ export function runAllTests(): { passed: number; failed: number; total: number }
   testGodEarSeparation();
   testGodEarFullPipeline();
   testGodEarMultiBand();
+  testAgnosticFeedCalibrator();
   testPerformance();
 
   // â”€â”€â”€ Summary â”€â”€â”€

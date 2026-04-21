@@ -82,6 +82,93 @@ function radix2DIT(samples: Float32Array, outRe: Float32Array, outIm: Float32Arr
   }
 }
 
+const RADIX2_TELEMETRY_INTERVAL_FRAMES = 60;
+
+function getBandEnergy(
+  outRe: Float32Array,
+  outIm: Float32Array,
+  sampleRate: number,
+  fftSize: number,
+  lowHz: number,
+  highHz: number
+): number {
+  const nyquistBin = fftSize >> 1;
+  const hzPerBin = sampleRate / fftSize;
+  const startBin = Math.max(1, Math.floor(lowHz / hzPerBin));
+  const endBin = Math.min(nyquistBin, Math.ceil(highHz / hzPerBin));
+
+  if (endBin < startBin) return 0;
+
+  let sum = 0;
+  for (let k = startBin; k <= endBin; k++) {
+    const mag2 = outRe[k] * outRe[k] + outIm[k] * outIm[k];
+    sum += mag2;
+  }
+
+  return Math.sqrt(sum);
+}
+
+function getRawBands(
+  outRe: Float32Array,
+  outIm: Float32Array,
+  sampleRate: number,
+  fftSize: number
+): { sub: number; bass: number; mid: number; highMid: number } {
+  return {
+    sub: getBandEnergy(outRe, outIm, sampleRate, fftSize, 20, 60),
+    bass: getBandEnergy(outRe, outIm, sampleRate, fftSize, 60, 250),
+    mid: getBandEnergy(outRe, outIm, sampleRate, fftSize, 500, 2000),
+    highMid: getBandEnergy(outRe, outIm, sampleRate, fftSize, 2000, 6000),
+  };
+}
+
+function logRadix2Raw(frame: number, bands: { sub: number; bass: number; mid: number; highMid: number }): void {
+  if (frame % RADIX2_TELEMETRY_INTERVAL_FRAMES !== 0) return;
+
+  const peak = Math.max(bands.sub, bands.bass, bands.mid, bands.highMid);
+  console.log(
+    `[RADIX2 RAW] Peak: ${peak.toFixed(6)} | Bands: ` +
+    `sub=${bands.sub.toFixed(6)} bass=${bands.bass.toFixed(6)} ` +
+    `mid=${bands.mid.toFixed(6)} highMid=${bands.highMid.toFixed(6)}`
+  );
+}
+
+function runAgnosticFeedCalibrator(): void {
+  const sampleRate = 44100;
+  const fftSize = 4096;
+  const amplitude = 0.6;
+  const outRe = new Float32Array(fftSize);
+  const outIm = new Float32Array(fftSize);
+
+  const buildTone = (freqHz: number): Float32Array => {
+    const tone = new Float32Array(fftSize);
+    for (let n = 0; n < fftSize; n++) {
+      tone[n] = amplitude * Math.sin(2 * Math.PI * freqHz * n / sampleRate);
+    }
+    return tone;
+  };
+
+  const tone60 = buildTone(60);
+  const tone2500 = buildTone(2500);
+
+  radix2DIT(tone60, outRe, outIm);
+  const bands60 = getRawBands(outRe, outIm, sampleRate, fftSize);
+  logRadix2Raw(60, bands60);
+
+  radix2DIT(tone2500, outRe, outIm);
+  const bands2500 = getRawBands(outRe, outIm, sampleRate, fftSize);
+  logRadix2Raw(120, bands2500);
+
+  console.log(
+    `[RADIX2 TEST] 60Hz amp=0.6 => bass=${bands60.bass.toFixed(6)} ` +
+    `highMid=${bands60.highMid.toFixed(6)}`
+  );
+  console.log(
+    `[RADIX2 TEST] 2500Hz amp=0.6 => bass=${bands2500.bass.toFixed(6)} ` +
+    `highMid=${bands2500.highMid.toFixed(6)}`
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // TESTS
 // ═══════════════════════════════════════════════════════════════
@@ -142,6 +229,9 @@ for (let n = 0; n < 4096; n++) {
   mt4k.push(Math.cos(2*Math.PI*3*n/4096) + 0.5*Math.cos(2*Math.PI*100*n/4096));
 }
 ok = testFFT(mt4k, 'MultiTone4096') && ok;
+
+console.log('\n--- Agnostic Feed Calibrator (60Hz vs 2500Hz @ amp=0.6) ---');
+runAgnosticFeedCalibrator();
 
 // Performance
 console.log('\n--- Performance (N=4096) ---');

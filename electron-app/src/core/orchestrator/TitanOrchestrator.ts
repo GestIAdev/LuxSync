@@ -391,6 +391,7 @@ export class TitanOrchestrator {
         bpm?: number; bpmConfidence?: number; onBeat?: boolean;
         beatPhase?: number; beatStrength?: number;
         kickCount?: number;
+        inputPeakAbs?: number; inputRMS?: number;  // 🔬 WAVE 3418: Raw input telemetry
       }) => {
         // WAVE 3416: Detect if active source is Omni (VirtualWire / USB / OSC).
         // These sources bypass the WebAudio IPC path entirely — processAudioFrame()

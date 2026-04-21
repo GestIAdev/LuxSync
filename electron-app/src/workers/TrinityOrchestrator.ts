@@ -624,6 +624,7 @@ export class TrinityOrchestrator extends EventEmitter {
    */
   private audioBufferCount = 0; // 🔍 WAVE 263: Contador para debug
   private audioRejectCount = 0; // 🔍 WAVE 264.7: Contador de rechazos
+  private zombieIpcCount = 0; // WAVE 3433-A: forensic counter (IPC packets outside legacy source)
   
   feedAudioBuffer(buffer: Float32Array): void {
     if (!this.isRunning) {
@@ -642,6 +643,16 @@ export class TrinityOrchestrator extends EventEmitter {
     // The LegacyBridgeProvider receives the buffer and the AudioMatrix writes
     // it to the SharedRingBuffer. BETA polls the SAB directly — no postMessage.
     if (this.legacyBridge && this.audioMatrix) {
+      const activeSource = this.audioMatrix.getStatus().activeSource;
+      if (activeSource && activeSource !== 'legacy-bridge') {
+        this.zombieIpcCount++;
+        if (this.zombieIpcCount % 60 === 1) {
+          console.log(
+            `[TitanOrchestrator] [ZOMBIE RADAR] IPC buffer while activeSource=${activeSource} ` +
+            `| zombieIpcCount=${this.zombieIpcCount} (ignored by AudioMatrix source gate)`
+          );
+        }
+      }
       this.legacyBridge.feedFromIPC(buffer);
       return;
     }

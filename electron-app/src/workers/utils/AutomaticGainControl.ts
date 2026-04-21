@@ -65,6 +65,14 @@ export interface AGCConfig {
   
   /** RMS mínimo para considerar señal válida (evita amplificar silencio) */
   noiseFloor: number;
+
+  /**
+   * WAVE 3421 — Fast Attack: tamaño del rolling window para suavizar ganancia.
+   * Ventana corta = respuesta rápida a drops desde el silencio (ej. inicio de drop techno).
+   * Ventana larga = menos pumping en material continuo.
+   * Default: 8 frames (~133ms @ 60fps) para respuesta agresiva en graves.
+   */
+  gainSmoothSize: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -83,6 +91,7 @@ const DEFAULT_AGC_CONFIG: AGCConfig = {
   minGain: 0.5,         // 🔥 WAVE 1011.9: Subido de 0.25 a 0.5 (mínimo 50% de señal)
   warmupFrames: 60,     // 1 segundo @ 60fps para calibrar
   noiseFloor: 0.005,    // Debajo de esto = silencio, no amplificar
+  gainSmoothSize: 8,    // WAVE 3421: 8 frames (~133ms) — fast attack para drops desde silencio
 };
 
 /**
@@ -108,7 +117,8 @@ export class AutomaticGainControl {
   
   /** Rolling buffer para suavizar ganancia (evita pumping) */
   private gainHistory: number[] = [];
-  private readonly GAIN_SMOOTH_SIZE = 15; // ~250ms @ 60fps
+  // WAVE 3421: tamaño del rolling window leído desde config (default 8 frames = fast attack)
+  private get GAIN_SMOOTH_SIZE(): number { return this.config.gainSmoothSize; }
   
   constructor(config: Partial<AGCConfig> = {}) {
     this.config = { ...DEFAULT_AGC_CONFIG, ...config };

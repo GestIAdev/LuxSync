@@ -1632,13 +1632,25 @@ export interface LegacyBandEnergy {
 
 /**
  * Convert GodEarSpectrum to legacy BandEnergy format.
+ *
+ * WAVE 3421 — Pilar 2: Crossover de bandas huérfanas.
+ * Antes: lowMid (250-500Hz) y highMid (2-6kHz) existían como side fields
+ * pero nunca contribuían a los canales bass/mid que controlan los fixtures.
+ * Resultado: bass anémico con VW (picos 0.56 → bass 0.07), synth melódico invisible.
+ *
+ * Coeficientes derivados del Blueprint WAVE 3420:
+ *   bass  += lowMid  * 0.4  → punch del kick/bass synth (250-500Hz entra al canal bass)
+ *   mid   += highMid * 0.6  → melodía del synth (2-6kHz entra al canal mid)
+ * Los side fields lowMid/highMid se preservan sin cambio para consumers upstream.
  */
 export function toLegacyFormat(spectrum: GodEarSpectrum): LegacyBandEnergy {
   return {
-    bass: spectrum.bands.bass + spectrum.bands.subBass * 0.5,
-    lowMid: spectrum.bands.lowMid,
-    mid: spectrum.bands.mid,
-    highMid: spectrum.bands.highMid + spectrum.bands.treble * 0.3,
+    // WAVE 3421: lowMid * 0.4 devuelve el punch de 250-500Hz al canal bass
+    bass: spectrum.bands.bass + spectrum.bands.subBass * 0.5 + spectrum.bands.lowMid * 0.4,
+    lowMid: spectrum.bands.lowMid, // side field preservado
+    // WAVE 3421: highMid * 0.6 devuelve la melodía de 2-6kHz al canal mid
+    mid: spectrum.bands.mid + spectrum.bands.highMid * 0.6,
+    highMid: spectrum.bands.highMid, // side field preservado (harshness proxy)
     treble: spectrum.bands.treble + spectrum.bands.ultraAir * 0.5,
     subBass: spectrum.bands.subBass,
     dominantFrequency: spectrum.dominantFrequency,

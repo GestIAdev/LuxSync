@@ -121,6 +121,9 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
     '[🔬 PEAK-SAB]',
     '[🔬 PEAK-IPC]',
     '[🔬 BPM-TELEMETRY]',
+    // WAVE 3433-A: Forensic audit logs
+    '[MATH AUDIT]',
+    '[ZOMBIE RADAR]',
     // 🥁 BPM Tracker diagnostics (WAVE 3411 lift)
     '[🥁 INTERVAL BPM]',
     '[DEMBOW CEILING',

@@ -77,7 +77,10 @@ export enum MessageType {
   
   // 🧠 WAVE 230: Musical Context (Brain Lobotomy)
   // El Worker ahora emite contexto puro, sin decidir colores
-  MUSICAL_CONTEXT = 'musical_context'
+  MUSICAL_CONTEXT = 'musical_context',
+
+  // WAVE 3433-A: Forensic telemetry bridge (Worker -> Alpha)
+  FORENSIC_LOG = 'forensic_log'
 }
 
 export enum MessagePriority {

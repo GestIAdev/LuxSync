@@ -466,6 +466,15 @@ export class TrinityOrchestrator extends EventEmitter {
           this.handleWorkerFailure(sourceId, errorPayload.error);
         }
         break;
+
+      case MessageType.FORENSIC_LOG:
+        {
+          const forensic = message.payload as { tag?: string; text?: string };
+          if (typeof forensic?.text === 'string' && forensic.text.length > 0) {
+            console.log(`[TitanOrchestrator] ${forensic.text}`);
+          }
+        }
+        break;
         
       default:
         console.warn(`[ALPHA] Unhandled message type: ${message.type}`);

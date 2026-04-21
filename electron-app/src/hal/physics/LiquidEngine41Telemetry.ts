@@ -152,7 +152,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
 
     writeFileSync(resolvedPath, lines.join('\n'), 'utf-8')
     // 🔇 WAVE 2465: TELEMETRÍA COMENTADA — logger limpio en producción
-    // console.log(`[LATINO-41 TELEMETRY] ${this._buffer.length} frames exportados → ${resolvedPath}`)
+    // console.error(`[LATINO-41 TELEMETRY] ${this._buffer.length} frames exportados → ${resolvedPath}`)
     return this._buffer.length
   }
 
@@ -222,7 +222,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
       // Desactivar con setTelemetryEnabled(false) antes de producción estable.
       // 🔇 WAVE 2465: TELEMETRÍA COMENTADA — logger limpio en producción
-      // console.log(
+      // console.error(
       //   `[LATINO-41]` +
       //   ` sB:${bands.subBass.toFixed(3)}` +
       //   ` mid:${bands.mid.toFixed(3)}` +

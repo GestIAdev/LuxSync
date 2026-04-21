@@ -393,38 +393,16 @@ const W3431_MIN_DB = 0;
 const W3431_MAX_DB = 8;
 const W3431_OUTPUT_SCALE = 2.5;
 
-// WAVE 3433-A: forensic math telemetry throttle (max 1 log/sec)
-let lastMathAuditLogMs = 0;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function toWebAudioScaledLevel(linearMagnitude: number, bandLabel?: string): number {
+function toWebAudioScaledLevel(linearMagnitude: number): number {
   const safeMag = Math.max(0, linearMagnitude);
   const db = 20 * Math.log10(safeMag + 1);
   const scaledPreClamp = (db - W3431_MIN_DB) / (W3431_MAX_DB - W3431_MIN_DB);
   const scaledClamped = clamp(scaledPreClamp, 0, 1);
   const scaledFinal = scaledClamped * W3431_OUTPUT_SCALE;
-
-  if ((bandLabel === 'mid' || bandLabel === 'highMid')) {
-    const now = Date.now();
-    if (now - lastMathAuditLogMs >= 1000) {
-      lastMathAuditLogMs = now;
-      sendMessage(MessageType.FORENSIC_LOG, 'alpha', {
-        tag: 'MATH_AUDIT',
-        text:
-          `[MATH AUDIT] band=${bandLabel} | MagCruda: ${safeMag.toFixed(6)} | ` +
-          `dbCalc: ${db.toFixed(3)} | scaledPreClamp: ${scaledPreClamp.toFixed(6)} | ` +
-          `scaledFinal: ${scaledFinal.toFixed(6)}`
-      }, MessagePriority.HIGH);
-      console.error(
-        `[MATH AUDIT] band=${bandLabel} | MagCruda: ${safeMag.toFixed(6)} | ` +
-        `dbCalc: ${db.toFixed(3)} | scaledPreClamp: ${scaledPreClamp.toFixed(6)} | ` +
-        `scaledFinal: ${scaledFinal.toFixed(6)}`
-      );
-    }
-  }
 
   return scaledFinal;
 }
@@ -526,12 +504,12 @@ class SpectrumAnalyzer {
     const legacy = toLegacyFormat(godEarResult);
     
     const psycho = {
-      subBass: toWebAudioScaledLevel(legacy.subBass, 'subBass'),
-      bass: toWebAudioScaledLevel(legacy.bass, 'bass'),
-      lowMid: toWebAudioScaledLevel(legacy.lowMid, 'lowMid'),
-      mid: toWebAudioScaledLevel(legacy.mid, 'mid'),
-      highMid: toWebAudioScaledLevel(legacy.highMid, 'highMid'),
-      treble: toWebAudioScaledLevel(legacy.treble, 'treble'),
+      subBass: toWebAudioScaledLevel(legacy.subBass),
+      bass: toWebAudioScaledLevel(legacy.bass),
+      lowMid: toWebAudioScaledLevel(legacy.lowMid),
+      mid: toWebAudioScaledLevel(legacy.mid),
+      highMid: toWebAudioScaledLevel(legacy.highMid),
+      treble: toWebAudioScaledLevel(legacy.treble),
     };
 
     // Calcular flujo espectral (cambio de energía total) en dominio perceptual

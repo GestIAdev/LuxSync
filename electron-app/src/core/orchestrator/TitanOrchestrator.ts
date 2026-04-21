@@ -239,6 +239,9 @@ export class TitanOrchestrator {
     workerBeatStrength?: number;
     // 🥁 WAVE 2213: Cumulative kick counter from Worker (phrase detection)
     workerKickCount?: number;
+    // 🔬 WAVE 3418: Raw input telemetry (peak y RMS del buffer crudo pre-ring-buffer)
+    inputPeakAbs?: number;
+    inputRMS?: number;
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
@@ -416,6 +419,9 @@ export class TitanOrchestrator {
             workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
             workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
             workerKickCount: (levels.kickCount != null && levels.kickCount > 0) ? levels.kickCount : this.lastAudioData.workerKickCount,
+            // 🔬 WAVE 3418: Raw input telemetry
+            inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
+            inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
           }
           // Update audio presence detection — mirrors processAudioFrame() logic
           const wasActive = this.hasRealAudio
@@ -465,6 +471,9 @@ export class TitanOrchestrator {
           workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
             ? levels.kickCount
             : this.lastAudioData.workerKickCount,
+          // 🔬 WAVE 3418: Raw input telemetry
+          inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
+          inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
         };
         } // end isOmniActive else
       });
@@ -838,7 +847,10 @@ export class TitanOrchestrator {
           : ''
         const rawEnergy = (this.lastAudioData.rawBassEnergy ?? 0).toFixed(4)
         const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a'
-        console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill}`)
+        // 🔬 WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
+        const inputPeak = (this.lastAudioData.inputPeakAbs ?? 0).toFixed(5)
+        const inputRms  = (this.lastAudioData.inputRMS ?? 0).toFixed(5)
+        console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | 🔬in_peak=${inputPeak} in_rms=${inputRms}`)
       }
     } else if (this.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio

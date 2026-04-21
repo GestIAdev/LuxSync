@@ -180,6 +180,11 @@ export interface AudioAnalysis {
   // 12-bin chromagram from GodEar Worker (pitch classes C through B, normalized 0-1).
   // Computed via exact bin-frequency → MIDI → pitch class math, no band heuristics.
   chroma?: number[];
+
+  // 🔬 WAVE 3418: RAW INPUT TELEMETRY — peak y RMS del buffer CRUDO que entra al Worker
+  // antes del ring-buffer, AGC y FFT. Permite comparar voltaje digital SAB vs IPC.
+  inputPeakAbs?: number;  // Pico absoluto máximo del incomingBuffer
+  inputRMS?: number;      // RMS del incomingBuffer
 }
 
 // ============================================

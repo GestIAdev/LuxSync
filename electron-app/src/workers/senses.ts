@@ -588,7 +588,20 @@ interface ExtendedAudioAnalysis extends AudioAnalysis {
 function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis {
   const startTime = performance.now();
   state.frameCount++;
-  
+
+  // 🔬 WAVE 3418: Capturar peak/RMS del buffer CRUDO antes de cualquier procesamiento
+  // Estos valores se devuelven en AudioAnalysis para ser visibles en TitanOrchestrator logs
+  let _w3418_inputPeakAbs = 0;
+  let _w3418_inputRMSSum = 0;
+  for (let i = 0; i < incomingBuffer.length; i++) {
+    const abs = Math.abs(incomingBuffer[i]);
+    if (abs > _w3418_inputPeakAbs) _w3418_inputPeakAbs = abs;
+    _w3418_inputRMSSum += incomingBuffer[i] * incomingBuffer[i];
+  }
+  const _w3418_inputRMS = incomingBuffer.length > 0
+    ? Math.sqrt(_w3418_inputRMSSum / incomingBuffer.length)
+    : 0;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // 🏎️ WAVE 1013: NITRO BOOST - RING BUFFER / OVERLAP STRATEGY
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1202,7 +1215,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // 12-bin pitch class vector (C through B, normalized 0-1).
     // Consumed by HarmonyDetector in GAMMA — replaces spectrumToChroma() heuristic.
     chroma: spectrum.chroma,
-    
+
+    // 🔬 WAVE 3418: Raw input telemetry — visible en TitanOrchestrator logs (proceso principal)
+    inputPeakAbs: _w3418_inputPeakAbs,
+    inputRMS: _w3418_inputRMS,
+
     // === WAVE 8 RICH DATA FOR GAMMA ===
     wave8: {
       rhythm: rhythmOutput,

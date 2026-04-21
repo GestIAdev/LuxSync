@@ -1371,6 +1371,14 @@ function handleMessage(message: WorkerMessage): void {
           }
           break;
         }
+        // WAVE 3424: SAB MODE GATE — Defensa en profundidad.
+        // Si el poll del SAB está activo, este Worker ya ingesta audio vía SharedRingBuffer
+        // (fuente nativa: VirtualWire, USB-DirectLink, etc.).
+        // Cualquier AUDIO_BUFFER IPC que llegue aquí es un residual del path IPC
+        // que no fue filtrado upstream. Descartarlo evita el doble procesado.
+        if (sabPollInterval !== null) {
+          break;
+        }
         const buffer = message.payload as Float32Array;
         
         // 🔍 WAVE 263: Log cada ~5 segundos

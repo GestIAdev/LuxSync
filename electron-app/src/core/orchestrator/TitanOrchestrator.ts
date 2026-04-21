@@ -2126,7 +2126,24 @@ export class TitanOrchestrator {
     
     // 🗡️ WAVE 265: Update timestamp - el buffer llegando ES la señal de que el frontend vive
     this.lastAudioTimestamp = Date.now()
-    
+
+    // WAVE 3424: TWO MASTERS GUARD — Early exit si la fuente activa del AudioMatrix
+    // NO es legacy-bridge. Cuando VW (u otra fuente SAB) está activa, AudioMatrix.ingestAudio()
+    // rechaza el dato IPC con `source !== effectiveSource`. Pero el trabajo ya habría
+    // ocurrido: applyMicHeadroom (O(n) loop), write al SAB, etc.
+    // Cortamos aquí: si audioMatrix existe y la fuente activa es SAB, no hay nada que hacer.
+    if (this.trinity) {
+      const _matrix = this.trinity.getAudioMatrix()
+      if (_matrix) {
+        const _matrixStatus = _matrix.getStatus()
+        if (_matrixStatus.activeSource && _matrixStatus.activeSource !== 'legacy-bridge') {
+          // Fuente SAB activa — el IPC data es redundante, AudioMatrix lo rechazará de todos modos.
+          // Marcamos timestamp pero descartamos el buffer para evitar trabajo innecesario.
+          return
+        }
+      }
+    }
+
     // 🩸 Send raw buffer to Trinity -> BETA Worker for FFT
     if (this.trinity) {
       this.trinity.feedAudioBuffer(buffer)

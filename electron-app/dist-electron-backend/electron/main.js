@@ -88,6 +88,16 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
         '[VirtualWire',
         '[WASAPI',
         '[OmniInput',
+        // 🔬 WAVE 3418: Raw peak telemetry — SAB vs LegacyBridge voltage comparison
+        '[🔬 PEAK-SAB]',
+        '[🔬 PEAK-IPC]',
+        '[🔬 BPM-TELEMETRY]',
+        // WAVE 3433-A: Forensic audit logs
+        '[MATH AUDIT]',
+        '[ZOMBIE RADAR]',
+        // 🥁 BPM Tracker diagnostics (WAVE 3411 lift)
+        '[🥁 INTERVAL BPM]',
+        '[DEMBOW CEILING',
         // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
         // hibernados — son ruido de ticker, no eventos de conciencia.
         // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.

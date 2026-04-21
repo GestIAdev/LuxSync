@@ -411,7 +411,7 @@ function toWebAudioScaledLevel(linearMagnitude: number, bandLabel?: string): num
     const now = Date.now();
     if (now - lastMathAuditLogMs >= 1000) {
       lastMathAuditLogMs = now;
-      console.log(
+      console.error(
         `[MATH AUDIT] band=${bandLabel} | MagCruda: ${safeMag.toFixed(6)} | ` +
         `dbCalc: ${db.toFixed(3)} | scaledPreClamp: ${scaledPreClamp.toFixed(6)} | ` +
         `scaledFinal: ${scaledFinal.toFixed(6)}`
@@ -1427,7 +1427,7 @@ function handleMessage(message: WorkerMessage): void {
         break;
         
       case MessageType.AUDIO_BUFFER:
-        console.log(`[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`);
+        console.error(`[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`);
         if (!state.isRunning) {
           // 🔍 WAVE 263: Log si no está corriendo
           if (state.frameCount % 300 === 0) {

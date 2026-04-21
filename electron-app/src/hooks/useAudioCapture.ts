@@ -87,6 +87,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   const lastMetricsSendRef = useRef<number>(0)
   const lastBufferSendRef = useRef<number>(0)
   const isBufferBusyRef = useRef<boolean>(false)
+  const legacyIpcCaptureEnabledRef = useRef<boolean>(true)
   
   const energyHistoryRef = useRef<number[]>([])
   const lastBeatTimeRef = useRef<number>(0)
@@ -199,14 +200,14 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     
     // ⚡ WAVE 3060b PHOENIX: audioFrame IPC RESTAURADO (sin fftBins)
     // Frontend provee bass/mid/energy/treble a 60fps para fluidez visual + LiquidEngine
-    if (now - lastMetricsSendRef.current >= METRICS_INTERVAL_MS) {
+    if (legacyIpcCaptureEnabledRef.current && now - lastMetricsSendRef.current >= METRICS_INTERVAL_MS) {
       lastMetricsSendRef.current = now
       if (window.lux?.audioFrame) {
         window.lux.audioFrame({ bass, mid, treble, energy, bpm })
       }
     }
     
-    if (now - lastBufferSendRef.current >= BUFFER_INTERVAL_MS && !isBufferBusyRef.current) {
+    if (legacyIpcCaptureEnabledRef.current && now - lastBufferSendRef.current >= BUFFER_INTERVAL_MS && !isBufferBusyRef.current) {
       lastBufferSendRef.current = now
       const rawBuffer = timeDomainDataRef.current
       const preAmpGain = inputGainRef.current * 10
@@ -344,6 +345,38 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   const setSimulationMode = useCallback((_enabled: boolean) => {
     console.log('[PHOENIX] Simulation disabled - Anti-Simulacion Axiom')
+  }, [])
+
+  useEffect(() => {
+    const setCapturePolicy = (sourceType: string | null | undefined) => {
+      const allowLegacyIpcCapture = !sourceType || sourceType === 'legacy-bridge'
+      legacyIpcCaptureEnabledRef.current = allowLegacyIpcCapture
+      if (!allowLegacyIpcCapture && audioLoopRef.current !== null) {
+        clearInterval(audioLoopRef.current)
+        audioLoopRef.current = null
+        setIsCapturing(false)
+        setAudioSource('none')
+      }
+    }
+
+    const syncWithMatrix = async () => {
+      try {
+        const res = await window.lux?.getAudioMatrixStatus?.()
+        setCapturePolicy(res?.status?.activeSource ?? null)
+      } catch {
+        // If status fetch fails, keep legacy bridge enabled by default.
+      }
+    }
+
+    syncWithMatrix()
+
+    const unsubscribe = window.lux?.onAudioMatrixSourceChange?.((data) => {
+      setCapturePolicy(data?.sourceType ?? null)
+    })
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
   }, [])
 
   useEffect(() => {

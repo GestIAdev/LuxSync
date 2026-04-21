@@ -1702,6 +1702,10 @@ function setupAudioMatrixHandlers(_deps: IPCDependencies): void {
     const matrix = trinity?.getAudioMatrix()
     if (!matrix) return { success: false, error: 'AudioMatrix not initialized' }
     await matrix.forceSource(sourceType)
+    _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
+      sourceType,
+      timestamp: Date.now(),
+    })
     // WAVE 3414: Al cambiar de fuente de audio el Worker mantiene estado del
     // tracker anterior (peakEnergyEstimate, bpmHistory, adaptive floor) calibrado
     // para la fuente previa. Eso mata los kicks de la nueva fuente via PEAK_DISCRIMINATOR.
@@ -1716,6 +1720,10 @@ function setupAudioMatrixHandlers(_deps: IPCDependencies): void {
     const matrix = trinity?.getAudioMatrix()
     if (!matrix) return { success: false, error: 'AudioMatrix not initialized' }
     matrix.releaseForce()
+    _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
+      sourceType: matrix.getStatus().activeSource,
+      timestamp: Date.now(),
+    })
     return { success: true }
   })
 }

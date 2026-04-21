@@ -251,6 +251,10 @@ declare global {
     
     // 🗡️ WAVE 15.3 REAL: Raw audio buffer - El único camino a Trinity
     audioBuffer: (buffer: Float32Array) => Promise<{ success: boolean }>
+
+    // WAVE 3431: AudioMatrix source awareness for frontend hot-swap killswitch
+    getAudioMatrixStatus: () => Promise<{ success: boolean; status?: { activeSource?: string | null } }>
+    onAudioMatrixSourceChange: (callback: (data: { sourceType: string | null; timestamp: number }) => void) => () => void
     
     // Legacy: NO alimenta Trinity Workers
     // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)

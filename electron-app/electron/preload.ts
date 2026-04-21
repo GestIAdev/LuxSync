@@ -560,6 +560,16 @@ const luxApi = {
   // ⚡ WAVE 3060b PHOENIX: fftBins eliminado del payload (nadie lo consume en backend)
   audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) =>
     ipcRenderer.send('lux:audio-frame', metrics),
+
+  /** WAVE 3431: Query active AudioMatrix source from frontend capture loop */
+  getAudioMatrixStatus: () => ipcRenderer.invoke('audio-matrix:get-status'),
+
+  /** WAVE 3431: Receive immediate source changes for hot-swap killswitch */
+  onAudioMatrixSourceChange: (callback: (data: { sourceType: string | null; timestamp: number }) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: { sourceType: string | null; timestamp: number }) => callback(data)
+    ipcRenderer.on('audio-matrix:active-source', handler)
+    return () => ipcRenderer.removeListener('audio-matrix:active-source', handler)
+  },
   
   /** Obtener estado actual */
   getState: () => ipcRenderer.invoke('lux:get-state'),

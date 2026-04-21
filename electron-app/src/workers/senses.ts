@@ -385,42 +385,24 @@ const MAX_SHADOW_FRAMES = 1000; // ~46.4 seconds at 2048/44100Hz per frame
 let shadowDumped = false;
 
 // ============================================
-// WAVE 3430: PSYCHOACOUSTIC BRIDGE (linear -> perceptual)
+// WAVE 3431: TRUE WEBAUDIO POLYFILL (AnalyserNode-compatible scaling)
 // ============================================
-// Keep Radix-2/GodEar math untouched. We only translate extracted band
-// magnitudes before packaging them for LiquidEngine consumers.
-const W3430_DB_SCALE = 1 / 6.020599913279624; // 20*log10(2) -> mag=1 maps ~1.0
-const W3430_MAX_OUTPUT = 2.5;
-const W3430_A_WEIGHT_BLEND = 0.35; // 0=no weighting, 1=full A-weighting
+// Keep Radix-2/GodEar math untouched. We only map extracted linear magnitudes
+// to the same [0..1] range shape used by WebAudio's analyser byte scaling.
+const W3431_MIN_DB = -100;
+const W3431_MAX_DB = -30;
+const W3431_DB_EPSILON = 1e-6;
+const W3431_OUTPUT_SCALE = 2.5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function computeAWeightingLinear(centerHz: number): number {
-  const f = Math.max(10, centerHz);
-  const f2 = f * f;
-  const c1 = 20.6 * 20.6;
-  const c2 = 107.7 * 107.7;
-  const c3 = 737.9 * 737.9;
-  const c4 = 12200 * 12200;
-
-  const numerator = c4 * f2 * f2;
-  const denominator = (f2 + c1) * Math.sqrt((f2 + c2) * (f2 + c3)) * (f2 + c4);
-  const ra = denominator > 0 ? numerator / denominator : 0;
-  const aDb = ra > 0 ? 20 * Math.log10(ra) + 2 : -80;
-  return Math.pow(10, aDb / 20);
-}
-
-function toPsychoacousticLevel(linearMagnitude: number, centerHz: number): number {
+function toWebAudioScaledLevel(linearMagnitude: number): number {
   const safeMag = Math.max(0, linearMagnitude);
-  const dbNormalized = 20 * Math.log10(1 + safeMag) * W3430_DB_SCALE;
-
-  const aWeightLinear = computeAWeightingLinear(centerHz);
-  const boundedAWeight = clamp(aWeightLinear, 0.35, 2.8);
-  const weighting = 1 + (boundedAWeight - 1) * W3430_A_WEIGHT_BLEND;
-
-  return clamp(dbNormalized * weighting, 0, W3430_MAX_OUTPUT);
+  const db = 20 * Math.log10(safeMag + W3431_DB_EPSILON);
+  const scaled = (db - W3431_MIN_DB) / (W3431_MAX_DB - W3431_MIN_DB);
+  return clamp(scaled, 0, 1) * W3431_OUTPUT_SCALE;
 }
 
 // ============================================
@@ -507,12 +489,12 @@ class SpectrumAnalyzer {
     const legacy = toLegacyFormat(godEarResult);
     
     const psycho = {
-      subBass: toPsychoacousticLevel(legacy.subBass, 40),
-      bass: toPsychoacousticLevel(legacy.bass, 130),
-      lowMid: toPsychoacousticLevel(legacy.lowMid, 350),
-      mid: toPsychoacousticLevel(legacy.mid, 1000),
-      highMid: toPsychoacousticLevel(legacy.highMid, 3200),
-      treble: toPsychoacousticLevel(legacy.treble, 9000),
+      subBass: toWebAudioScaledLevel(legacy.subBass),
+      bass: toWebAudioScaledLevel(legacy.bass),
+      lowMid: toWebAudioScaledLevel(legacy.lowMid),
+      mid: toWebAudioScaledLevel(legacy.mid),
+      highMid: toWebAudioScaledLevel(legacy.highMid),
+      treble: toWebAudioScaledLevel(legacy.treble),
     };
 
     // Calcular flujo espectral (cambio de energía total) en dominio perceptual

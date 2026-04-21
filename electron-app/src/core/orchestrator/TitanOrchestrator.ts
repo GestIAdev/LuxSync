@@ -445,15 +445,25 @@ export class TitanOrchestrator {
             inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
             inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
           }
-          // Update audio presence detection — mirrors processAudioFrame() logic
+          // Update audio presence detection
+          //
+          // WAVE 3423: En el path Omni, hasRealAudio NO debe flipear por la energía
+          // del frame individual. VW entrega frames con energy≈0 durante silencios
+          // (intro, pausa entre drops) y el EMA ya se encarga de la caída gradual.
+          // Si usamos levels.energy > 0.01 como gate, cada frame de silencio flipea
+          // hasRealAudio=false → processFrame fuerza bass=0 → parpadeo epiléptico.
+          //
+          // Regla: en Omni, el primer frame activa hasRealAudio=true.
+          //        Solo el STALENESS TIMEOUT (2s) puede desactivarlo.
+          //        Esto es correcto: la fuente Omni está conectada o no lo está.
           const wasActive = this.hasRealAudio
-          this.hasRealAudio = levels.energy > 0.01
+          this.hasRealAudio = true
           this.lastAudioTimestamp = Date.now()
-          if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+          if (!wasActive && !this.hasLoggedFirstAudio) {
             this.hasLoggedFirstAudio = true
             this.log('System', `🎧 WAVE 3416: Audio LIVE via ${activeSource} — Selene is now listening!`)
-          } else if (!this.hasRealAudio && wasActive) {
-            this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
+          } else if (!wasActive) {
+            this.log('System', `🎧 Audio restored via ${activeSource}`)
           }
         } else {
         // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY (frontend/WebAudio path)
@@ -749,8 +759,18 @@ export class TitanOrchestrator {
     // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
     // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
     // ⚡ WAVE 3050: UNIFIED FRAME TIMESTAMP — one syscall per frame, not 9
+    //
+    // WAVE 3423: Omni sources (VW/USB) usan threshold extendido de 2000ms.
+    // VW entrega ~10fps pero el SAB puede tener gaps de 200-400ms durante
+    // silencios largos (intro, pausa entre drops). Con 500ms el staleness
+    // se dispara en cualquier intro silenciosa y mata las luces en plena música.
     const now = Date.now()
-    if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
+    const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus()
+    const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null
+    const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus'])
+    const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false
+    const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.AUDIO_STALENESS_THRESHOLD_MS
+    if (this.hasRealAudio && (now - this.lastAudioTimestamp) > effectiveStalenessThreshold) {
       if (shouldLog) {
         console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`)
       }

@@ -1,271 +1,635 @@
-electron\shows\TESTING12FIXTURES.v2.luxshow
-HyperionView.tsx:132 [Hyperion] ✅ Show loaded: C:\Users\Raulacate\AppData\Roaming\luxsync-electron\shows\TESTING12FIXTURES.v2.luxshow
-TitanSyncBridge.tsx:192 [TitanSyncBridge] 🔄 Syncing 13 fixtures...
-TitanSyncBridge.tsx:113 [TitanSyncBridge] ✅ SYNC OK: 13 fixtures active.
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5000 smooth:0.5000 → 0° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5000 smooth:0.5000 → 0° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.5000 smooth:0.5000 → 0° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.5000 smooth:0.5000 → 0° | Δ:0.0000
-useSystemPower.ts:83 [SystemPower] 🔌 Powering ON...
-useSystemPower.ts:108 [SystemPower] ✅ System ONLINE (awaiting mode selection)
-controlStore.ts:288 [ControlStore] ⚛️ System ARM explicitly set: ARMED
-TrinityProvider.tsx:535 [Trinity] 🔌 POWER ON - Starting audio & workers
-controlStore.ts:288 [ControlStore] ⚛️ System ARM explicitly set: ARMED
-CommandDeck.tsx:147 [CommandDeck] ⚛️ System 🟢 ARMED (engine running)
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-useAudioCapture.ts:248 [PHOENIX] Setting up System Audio
-useAudioCapture.ts:273 [PHOENIX] System Audio ACTIVE - setInterval @ 16ms
-TrinityProvider.tsx:371 [Selene UI] ✅ Trinity Online
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:120 memoInvalidations:45 | 38.7 renders/s | mover physPan:0.4980 pan:0.5020 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4980 smooth:0.4980 → -1° | Δ:-0.0000
-useSeleneVibe.ts:178 [useSeleneVibe] Vibe set request sent: techno-club
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:240 memoInvalidations:85 | 111.1 renders/s | mover physPan:0.5020 pan:0.5020 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5020 smooth:0.5020 → 1° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5020 smooth:0.5020 → 1° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.5020 smooth:0.5020 → 1° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.5020 smooth:0.5020 → 1° | Δ:0.0000
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:360 memoInvalidations:127 | 102.3 renders/s | mover physPan:0.5020 pan:0.5020 | hwFixtures:13
-controlStore.ts:305 [ControlStore] 🚦 Output explicitly set: LIVE
-CommandDeck.tsx:177 [CommandDeck] 🚦 DMX Gate 🟢 OPEN - DMX flowing
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8360 smooth:0.8398 → 92° | Δ:-0.0038
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8360 smooth:0.8398 → 92° | Δ:-0.0038
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4613 smooth:0.4534 → -13° | Δ:0.0079
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4613 smooth:0.4534 → -13° | Δ:0.0079
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:480 memoInvalidations:166 | 115.4 renders/s | mover physPan:0.6479 pan:0.6471 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5583 smooth:0.5614 → 17° | Δ:-0.0031
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5583 smooth:0.5614 → 17° | Δ:-0.0031
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.7751 smooth:0.7724 → 74° | Δ:0.0026
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.7751 smooth:0.7724 → 74° | Δ:0.0026
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:600 memoInvalidations:209 | 93.4 renders/s | mover physPan:0.2097 pan:0.2078 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.2097 smooth:0.2209 → -75° | Δ:-0.0112
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.2097 smooth:0.2209 → -75° | Δ:-0.0112
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9529 smooth:0.9513 → 122° | Δ:0.0016
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9529 smooth:0.9513 → 122° | Δ:0.0016
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0471 smooth:0.0482 → -122° | Δ:-0.0011
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0471 smooth:0.0482 → -122° | Δ:-0.0011
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8601 smooth:0.8663 → 99° | Δ:-0.0061
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8601 smooth:0.8663 → 99° | Δ:-0.0061
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:720 memoInvalidations:248 | 112.0 renders/s | mover physPan:0.0432 pan:0.0431 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1013 smooth:0.0934 → -110° | Δ:0.0078
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1013 smooth:0.0934 → -110° | Δ:0.0078
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.6250 smooth:0.6424 → 38° | Δ:-0.0174
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.6250 smooth:0.6424 → 38° | Δ:-0.0174
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:840 memoInvalidations:288 | 109.2 renders/s | mover physPan:0.1718 pan:0.1725 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.3632 smooth:0.3461 → -42° | Δ:0.0172
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.3632 smooth:0.3461 → -42° | Δ:0.0172
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.2882 smooth:0.3060 → -52° | Δ:-0.0178
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.2882 smooth:0.3060 → -52° | Δ:-0.0178
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:960 memoInvalidations:328 | 120.0 renders/s | mover physPan:0.4692 pan:0.4706 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.6497 smooth:0.6347 → 36° | Δ:0.0150
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.6497 smooth:0.6347 → 36° | Δ:0.0150
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0908 smooth:0.0973 → -109° | Δ:-0.0065
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0908 smooth:0.0973 → -109° | Δ:-0.0065
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1080 memoInvalidations:367 | 113.5 renders/s | mover physPan:0.7914 pan:0.7922 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8816 smooth:0.8731 → 101° | Δ:0.0086
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8816 smooth:0.8731 → 101° | Δ:0.0086
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0504 smooth:0.0469 → -122° | Δ:0.0034
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0504 smooth:0.0469 → -122° | Δ:0.0034
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1200 memoInvalidations:407 | 114.6 renders/s | mover physPan:0.9490 pan:0.9490 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9602 smooth:0.9580 → 124° | Δ:0.0022
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9602 smooth:0.9580 → 124° | Δ:0.0022
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1595 smooth:0.1504 → -94° | Δ:0.0091
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1595 smooth:0.1504 → -94° | Δ:0.0091
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1320 memoInvalidations:449 | 116.1 renders/s | mover physPan:0.9177 pan:0.9176 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9143 smooth:0.9153 → 112° | Δ:-0.0010
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9143 smooth:0.9153 → 112° | Δ:-0.0010
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.3517 smooth:0.3491 → -41° | Δ:0.0026
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.3517 smooth:0.3491 → -41° | Δ:0.0026
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.7424 smooth:0.7483 → 67° | Δ:-0.0059
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.7424 smooth:0.7483 → 67° | Δ:-0.0059
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.6065 smooth:0.5992 → 27° | Δ:0.0074
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.6065 smooth:0.5992 → 27° | Δ:0.0074
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1440 memoInvalidations:488 | 116.6 renders/s | mover physPan:0.7229 pan:0.7216 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4837 smooth:0.4881 → -3° | Δ:-0.0044
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4837 smooth:0.4881 → -3° | Δ:-0.0044
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8385 smooth:0.8361 → 91° | Δ:0.0024
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8385 smooth:0.8361 → 91° | Δ:0.0024
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1560 memoInvalidations:530 | 115.1 renders/s | mover physPan:0.4322 pan:0.4314 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.2165 smooth:0.2220 → -75° | Δ:-0.0055
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.2165 smooth:0.2220 → -75° | Δ:-0.0055
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9686 smooth:0.9682 → 126° | Δ:0.0004
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9686 smooth:0.9682 → 126° | Δ:0.0004
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1680 memoInvalidations:569 | 123.2 renders/s | mover physPan:0.1738 pan:0.1725 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0477 smooth:0.0511 → -121° | Δ:-0.0034
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0477 smooth:0.0511 → -121° | Δ:-0.0034
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9301 smooth:0.9334 → 117° | Δ:-0.0033
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9301 smooth:0.9334 → 117° | Δ:-0.0033
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1800 memoInvalidations:610 | 111.1 renders/s | mover physPan:0.0236 pan:0.0235 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0386 smooth:0.0359 → -125° | Δ:0.0027
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0386 smooth:0.0359 → -125° | Δ:0.0027
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.7229 smooth:0.7311 → 62° | Δ:-0.0082
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.7229 smooth:0.7311 → 62° | Δ:-0.0082
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:1920 memoInvalidations:651 | 111.6 renders/s | mover physPan:0.0827 pan:0.0784 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.2463 smooth:0.2433 → -69° | Δ:0.0030
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.2463 smooth:0.2433 → -69° | Δ:0.0030
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.3811 smooth:0.3839 → -31° | Δ:-0.0027
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.3811 smooth:0.3839 → -31° | Δ:-0.0027
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2040 memoInvalidations:698 | 81.2 renders/s | mover physPan:0.4260 pan:0.4275 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5207 smooth:0.5183 → 5° | Δ:0.0023
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5207 smooth:0.5183 → 5° | Δ:0.0023
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1340 smooth:0.1356 → -98° | Δ:-0.0016
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1340 smooth:0.1356 → -98° | Δ:-0.0016
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2160 memoInvalidations:740 | 102.9 renders/s | mover physPan:0.7660 pan:0.7686 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8129 smooth:0.8025 → 82° | Δ:0.0104
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8129 smooth:0.8025 → 82° | Δ:0.0104
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1715 smooth:0.1826 → -86° | Δ:-0.0112
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1715 smooth:0.1826 → -86° | Δ:-0.0112
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9517 smooth:0.9640 → 125° | Δ:-0.0123
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9517 smooth:0.9640 → 125° | Δ:-0.0123
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0530 smooth:0.0410 → -124° | Δ:0.0121
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0530 smooth:0.0410 → -124° | Δ:0.0121
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2280 memoInvalidations:781 | 112.7 renders/s | mover physPan:0.9786 pan:0.9843 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8054 smooth:0.8181 → 86° | Δ:-0.0127
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8054 smooth:0.8181 → 86° | Δ:-0.0127
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1946 smooth:0.1819 → -86° | Δ:0.0127
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1946 smooth:0.1819 → -86° | Δ:0.0127
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2400 memoInvalidations:822 | 114.0 renders/s | mover physPan:0.7348 pan:0.7333 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4759 smooth:0.5001 → 0° | Δ:-0.0242
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4759 smooth:0.5001 → 0° | Δ:-0.0242
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.5241 smooth:0.4999 → 0° | Δ:0.0242
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.5241 smooth:0.4999 → 0° | Δ:0.0242
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2520 memoInvalidations:864 | 114.1 renders/s | mover physPan:0.2888 pan:0.2863 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1353 smooth:0.1529 → -94° | Δ:-0.0175
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1353 smooth:0.1529 → -94° | Δ:-0.0175
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8647 smooth:0.8471 → 94° | Δ:0.0175
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8647 smooth:0.8471 → 94° | Δ:0.0175
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2640 memoInvalidations:905 | 112.7 renders/s | mover physPan:0.0471 pan:0.0471 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0471 smooth:0.0471 → -122° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0471 smooth:0.0471 → -122° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9529 smooth:0.9529 → 122° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9529 smooth:0.9529 → 122° | Δ:0.0000
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2760 memoInvalidations:947 | 111.6 renders/s | mover physPan:0.0353 pan:0.0353 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0353 smooth:0.0353 → -125° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0353 smooth:0.0353 → -125° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9647 smooth:0.9647 → 125° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9647 smooth:0.9647 → 125° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1398 smooth:0.1366 → -98° | Δ:0.0032
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1398 smooth:0.1366 → -98° | Δ:0.0032
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8602 smooth:0.8634 → 98° | Δ:-0.0032
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8602 smooth:0.8634 → 98° | Δ:-0.0032
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:2880 memoInvalidations:989 | 108.1 renders/s | mover physPan:0.2054 pan:0.2078 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5783 smooth:0.5680 → 18° | Δ:0.0103
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5783 smooth:0.5680 → 18° | Δ:0.0103
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4217 smooth:0.4320 → -18° | Δ:-0.0103
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4217 smooth:0.4320 → -18° | Δ:-0.0103
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3000 memoInvalidations:1031 | 114.1 renders/s | mover physPan:0.6914 pan:0.6941 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9882 smooth:0.9882 → 132° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9882 smooth:0.9882 → 132° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0118 smooth:0.0118 → -132° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0118 smooth:0.0118 → -132° | Δ:-0.0000
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3120 memoInvalidations:1077 | 91.0 renders/s | mover physPan:0.9922 pan:0.9922 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9922 smooth:0.9922 → 133° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9922 smooth:0.9922 → 133° | Δ:0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0078 smooth:0.0078 → -133° | Δ:-0.0000
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0078 smooth:0.0078 → -133° | Δ:-0.0000
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3240 memoInvalidations:1123 | 91.4 renders/s | mover physPan:0.7525 pan:0.7490 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5645 smooth:0.5793 → 21° | Δ:-0.0148
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5645 smooth:0.5793 → 21° | Δ:-0.0148
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4439 smooth:0.4297 → -19° | Δ:0.0142
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4439 smooth:0.4297 → -19° | Δ:0.0142
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3360 memoInvalidations:1164 | 108.0 renders/s | mover physPan:0.0000 pan:0.0000 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.0033 smooth:0.0028 → -134° | Δ:0.0006
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.0033 smooth:0.0028 → -134° | Δ:0.0006
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.9967 smooth:0.9972 → 134° | Δ:-0.0006
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.9967 smooth:0.9972 → 134° | Δ:-0.0006
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.7030 smooth:0.6848 → 50° | Δ:0.0183
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.7030 smooth:0.6848 → 50° | Δ:0.0183
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.2970 smooth:0.3152 → -50° | Δ:-0.0183
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.2970 smooth:0.3152 → -50° | Δ:-0.0183
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3480 memoInvalidations:1206 | 108.4 renders/s | mover physPan:0.7383 pan:0.7412 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8879 smooth:0.9033 → 109° | Δ:-0.0154
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8879 smooth:0.9033 → 109° | Δ:-0.0154
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1121 smooth:0.0967 → -109° | Δ:0.0154
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1121 smooth:0.0967 → -109° | Δ:0.0154
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3600 memoInvalidations:1248 | 111.9 renders/s | mover physPan:0.8114 pan:0.8078 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1087 smooth:0.1221 → -102° | Δ:-0.0134
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1087 smooth:0.1221 → -102° | Δ:-0.0134
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8913 smooth:0.8779 → 102° | Δ:0.0134
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8913 smooth:0.8779 → 102° | Δ:0.0134
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3720 memoInvalidations:1298 | 90.6 renders/s | mover physPan:0.0189 pan:0.0196 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.3952 smooth:0.3739 → -34° | Δ:0.0213
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.3952 smooth:0.3739 → -34° | Δ:0.0213
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.6048 smooth:0.6261 → 34° | Δ:-0.0213
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.6048 smooth:0.6261 → 34° | Δ:-0.0213
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3840 memoInvalidations:1343 | 98.8 renders/s | mover physPan:0.8414 pan:0.8431 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.9529 smooth:0.9528 → 122° | Δ:0.0002
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.9529 smooth:0.9528 → 122° | Δ:0.0002
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.0471 smooth:0.0472 → -122° | Δ:-0.0002
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.0471 smooth:0.0472 → -122° | Δ:-0.0002
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:3960 memoInvalidations:1388 | 98.5 renders/s | mover physPan:0.4791 pan:0.4745 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.3373 smooth:0.3456 → -42° | Δ:-0.0083
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.3373 smooth:0.3456 → -42° | Δ:-0.0083
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.6627 smooth:0.6544 → 42° | Δ:0.0083
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.6627 smooth:0.6544 → 42° | Δ:0.0083
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4080 memoInvalidations:1430 | 109.8 renders/s | mover physPan:0.0849 pan:0.0863 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1306 smooth:0.1184 → -103° | Δ:0.0122
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1306 smooth:0.1184 → -103° | Δ:0.0122
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8694 smooth:0.8816 → 103° | Δ:-0.0122
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8694 smooth:0.8816 → 103° | Δ:-0.0122
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.8885 smooth:0.8762 → 102° | Δ:0.0123
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.8885 smooth:0.8762 → 102° | Δ:0.0123
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.1115 smooth:0.1238 → -102° | Δ:-0.0123
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.1115 smooth:0.1238 → -102° | Δ:-0.0123
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4200 memoInvalidations:1472 | 106.1 renders/s | mover physPan:0.9033 pan:0.9059 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.6166 smooth:0.6327 → 36° | Δ:-0.0161
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.6166 smooth:0.6327 → 36° | Δ:-0.0161
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.3834 smooth:0.3673 → -36° | Δ:0.0161
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.3834 smooth:0.3673 → -36° | Δ:0.0161
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4320 memoInvalidations:1517 | 97.5 renders/s | mover physPan:0.4639 pan:0.4588 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1013 smooth:0.0941 → -110° | Δ:0.0072
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1013 smooth:0.0941 → -110° | Δ:0.0072
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8916 smooth:0.9026 → 109° | Δ:-0.0110
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8916 smooth:0.9026 → 109° | Δ:-0.0110
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4440 memoInvalidations:1569 | 67.8 renders/s | mover physPan:0.3894 pan:0.3882 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.7178 smooth:0.7659 → 72° | Δ:-0.0480
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.7178 smooth:0.7659 → 72° | Δ:-0.0480
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.2822 smooth:0.2341 → -72° | Δ:0.0480
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.2822 smooth:0.2341 → -72° | Δ:0.0480
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4560 memoInvalidations:1625 | 52.8 renders/s | mover physPan:0.3878 pan:0.3843 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1605 smooth:0.2366 → -71° | Δ:-0.0761
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1605 smooth:0.2366 → -71° | Δ:-0.0761
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8395 smooth:0.7634 → 71° | Δ:0.0761
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8395 smooth:0.7634 → 71° | Δ:0.0761
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4680 memoInvalidations:1680 | 55.6 renders/s | mover physPan:0.3766 pan:0.3804 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.5267 smooth:0.5733 → 20° | Δ:-0.0465
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.5267 smooth:0.5733 → 20° | Δ:-0.0465
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.4733 smooth:0.4267 → -20° | Δ:0.0465
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.4733 smooth:0.4267 → -20° | Δ:0.0465
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4800 memoInvalidations:1735 | 73.4 renders/s | mover physPan:0.1534 pan:0.1529 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.4315 smooth:0.4425 → -16° | Δ:-0.0110
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.4315 smooth:0.4425 → -16° | Δ:-0.0110
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.5685 smooth:0.5575 → 16° | Δ:0.0110
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.5685 smooth:0.5575 → 16° | Δ:0.0110
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:4920 memoInvalidations:1784 | 84.8 renders/s | mover physPan:0.1226 pan:0.1216 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.6576 smooth:0.6019 → 28° | Δ:0.0557
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.6576 smooth:0.6019 → 28° | Δ:0.0557
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.3424 smooth:0.3981 → -28° | Δ:-0.0557
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.3424 smooth:0.3981 → -28° | Δ:-0.0557
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:5040 memoInvalidations:1839 | 77.0 renders/s | mover physPan:0.8073 pan:0.8039 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1575 smooth:0.1738 → -88° | Δ:-0.0163
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1575 smooth:0.1738 → -88° | Δ:-0.0163
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8425 smooth:0.8262 → 88° | Δ:0.0163
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8425 smooth:0.8262 → 88° | Δ:0.0163
-useFixture3DData.ts:258 [🔬 MEMO PROBE] renders:5160 memoInvalidations:1892 | 79.1 renders/s | mover physPan:0.3254 pan:0.3294 | hwFixtures:13
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 928922 | store.physPan:0.1751 smooth:0.1625 → -91° | Δ:0.0126
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 934504 | store.physPan:0.1751 smooth:0.1625 → -91° | Δ:0.0126
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 939144 | store.physPan:0.8249 smooth:0.8375 → 91° | Δ:-0.0126
-HyperionMovingHead3D.tsx:188 [🔬 3D PROBE] 944991 | store.physPan:0.8249 smooth:0.8375 → 91° | Δ:-0.0126
+[LATINO-41] sB:0.028 mid:0.259 hMid:0.131 tr:0.147 | morph:0.820 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.024 mid:0.237 hMid:0.122 tr:0.137 | morph:0.782 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.020 mid:0.241 hMid:0.122 tr:0.134 | morph:0.745 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.016 mid:0.248 hMid:0.128 tr:0.131 | morph:0.710 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.013 mid:0.246 hMid:0.126 tr:0.123 | morph:0.676 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.011 mid:0.241 hMid:0.122 tr:0.117 | morph:0.641 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.010 mid:0.252 hMid:0.121 tr:0.107 | morph:0.609 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.009 mid:0.252 hMid:0.120 tr:0.107 | morph:0.577 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.007 mid:0.293 hMid:0.131 tr:0.103 | morph:0.549 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.007 mid:0.386 hMid:0.150 tr:0.104 | morph:0.532 tDelta:0.0006 percRaw:0.003 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] Transition complete -> wave_y
+[LATINO-41] sB:0.006 mid:0.485 hMid:0.165 tr:0.109 | morph:0.525 tDelta:0.0047 percRaw:0.019 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.553 hMid:0.184 tr:0.110 | morph:0.525 tDelta:0.0014 percRaw:0.006 | fPar:0.000 bPar:0.351 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.565 hMid:0.197 tr:0.114 | morph:0.532 tDelta:0.0036 percRaw:0.014 | fPar:0.000 bPar:0.145 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.586 hMid:0.208 tr:0.108 | morph:0.554 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.034 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.586 hMid:0.217 tr:0.108 | morph:0.573 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.002 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.557 hMid:0.208 tr:0.098 | morph:0.573 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.177 mR:0.177 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.546 hMid:0.201 tr:0.085 | morph:0.571 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.008 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.491 hMid:0.200 tr:0.074 | morph:0.564 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.177 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.434 hMid:0.202 tr:0.067 | morph:0.551 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.430 hMid:0.215 tr:0.075 | morph:0.538 tDelta:0.0077 percRaw:0.031 | fPar:0.000 bPar:0.000 mL:0.731 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.504 hMid:0.240 tr:0.079 | morph:0.532 tDelta:0.0044 percRaw:0.018 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.800 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.556 hMid:0.259 tr:0.078 | morph:0.532 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.574 hMid:0.247 tr:0.068 | morph:0.545 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.574 hMid:0.238 tr:0.068 | morph:0.556 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.510 hMid:0.237 tr:0.063 | morph:0.551 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.176 mR:0.176 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.480 hMid:0.232 tr:0.063 | morph:0.543 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.008 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.439 hMid:0.239 tr:0.080 | morph:0.531 tDelta:0.0167 percRaw:0.067 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.527 hMid:0.263 tr:0.101 | morph:0.528 tDelta:0.0215 percRaw:0.086 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.674 hMid:0.301 tr:0.112 | morph:0.617 tDelta:0.0104 percRaw:0.042 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.742 hMid:0.330 tr:0.122 | morph:0.744 tDelta:0.0109 percRaw:0.044 | fPar:0.000 bPar:0.369 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.762 hMid:0.350 tr:0.123 | morph:0.866 tDelta:0.0009 percRaw:0.004 | fPar:0.000 bPar:0.165 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.003 mid:0.769 hMid:0.357 tr:0.122 | morph:0.975 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.067 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.760 hMid:0.363 tr:0.124 | morph:1.000 tDelta:0.0020 percRaw:0.008 | fPar:0.000 bPar:0.007 mL:0.195 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.760 hMid:0.367 tr:0.124 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.004 mid:0.772 hMid:0.373 tr:0.122 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.808 hMid:0.363 tr:0.128 | morph:1.000 tDelta:0.0064 percRaw:0.026 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.825 hMid:0.346 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.773 hMid:0.328 tr:0.108 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.686 hMid:0.300 tr:0.093 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.617 hMid:0.272 tr:0.076 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.006 mid:0.554 hMid:0.242 tr:0.063 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.526 hMid:0.215 tr:0.052 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.502 hMid:0.231 tr:0.052 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.481 hMid:0.249 tr:0.061 | morph:1.000 tDelta:0.0098 percRaw:0.039 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=97 conf=0.37 | PLL=FREEWHEEL [mem=97@-0f] phase=0.00 sync=0.59 | beat #33 | bass=0.0454 sab=0.000 | 🔬in_peak=0.21486 in_rms=0.07349
+[LATINO-41] sB:0.005 mid:0.481 hMid:0.263 tr:0.061 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.508 hMid:0.282 tr:0.070 | morph:1.000 tDelta:0.0087 percRaw:0.035 | fPar:0.000 bPar:0.000 mL:0.824 mR:0.710 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.005 mid:0.472 hMid:0.282 tr:0.070 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.190 mR:0.163 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#2500 | frames=441 | peak=0.2171 | ch=2
+[LATINO-41] sB:0.006 mid:0.444 hMid:0.271 tr:0.061 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.013 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.027 mid:0.438 hMid:0.255 tr:0.058 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.042 mid:0.552 hMid:0.248 tr:0.063 | morph:1.000 tDelta:0.0045 percRaw:0.018 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.626 hMid:0.260 tr:0.069 | morph:1.000 tDelta:0.0060 percRaw:0.024 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.026 mid:0.657 hMid:0.278 tr:0.077 | morph:1.000 tDelta:0.0084 percRaw:0.034 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.021 mid:0.657 hMid:0.291 tr:0.077 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.018 mid:0.680 hMid:0.309 tr:0.084 | morph:1.000 tDelta:0.0072 percRaw:0.029 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.015 mid:0.717 hMid:0.317 tr:0.089 | morph:1.000 tDelta:0.0048 percRaw:0.019 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.013 mid:0.665 hMid:0.307 tr:0.079 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.011 mid:0.606 hMid:0.288 tr:0.069 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.010 mid:0.552 hMid:0.261 tr:0.058 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.012 mid:0.497 hMid:0.241 tr:0.054 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.023 mid:0.510 hMid:0.242 tr:0.060 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:8 | Pan:-103 Tilt:-49 | sBPM:97 phase:313°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:8 | Pan:-4 Tilt:-71 | sBPM:97 phase:313°
+[LATINO-41] sB:0.029 mid:0.586 hMid:0.269 tr:0.071 | morph:1.000 tDelta:0.0111 percRaw:0.045 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.033 mid:0.586 hMid:0.290 tr:0.071 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.037 mid:0.646 hMid:0.311 tr:0.082 | morph:1.000 tDelta:0.0105 percRaw:0.042 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.037 mid:0.710 hMid:0.337 tr:0.089 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.738 hMid:0.368 tr:0.092 | morph:1.000 tDelta:0.0030 percRaw:0.012 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.736 hMid:0.373 tr:0.090 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.033 mid:0.700 hMid:0.345 tr:0.082 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.030 mid:0.629 hMid:0.316 tr:0.078 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.028 mid:0.601 hMid:0.293 tr:0.072 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.024 mid:0.576 hMid:0.265 tr:0.067 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.028 mid:0.543 hMid:0.238 tr:0.092 | morph:1.000 tDelta:0.0253 percRaw:0.101 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.040 mid:0.590 hMid:0.294 tr:0.245 | morph:1.000 tDelta:0.1524 percRaw:0.610 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.137 mid:0.677 hMid:0.353 tr:0.350 | morph:1.000 tDelta:0.1048 percRaw:0.419 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.209 mid:0.677 hMid:0.397 tr:0.350 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.345 mid:0.773 hMid:0.395 tr:0.340 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.457 mid:0.806 hMid:0.370 tr:0.295 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.487 mid:0.785 hMid:0.341 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.500 mid:0.779 hMid:0.316 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.450 mid:0.771 hMid:0.303 tr:0.154 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.375 mid:0.729 hMid:0.281 tr:0.123 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.301 mid:0.701 hMid:0.257 tr:0.107 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.241 mid:0.653 hMid:0.257 tr:0.150 | morph:1.000 tDelta:0.0429 percRaw:0.172 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.226 mid:0.620 hMid:0.282 tr:0.236 | morph:1.000 tDelta:0.0862 percRaw:0.345 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.215 mid:0.620 hMid:0.301 tr:0.236 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.564 hMid:0.286 tr:0.276 | morph:1.000 tDelta:0.0406 percRaw:0.162 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.139 mid:0.507 hMid:0.274 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.472 hMid:0.254 tr:0.243 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.094 mid:0.454 hMid:0.263 tr:0.253 | morph:1.000 tDelta:0.0097 percRaw:0.039 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.078 mid:0.445 hMid:0.282 tr:0.292 | morph:1.000 tDelta:0.0385 percRaw:0.154 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.439 hMid:0.280 tr:0.336 | morph:1.000 tDelta:0.0446 percRaw:0.178 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.054 mid:0.410 hMid:0.263 tr:0.327 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.044 mid:0.377 hMid:0.249 tr:0.288 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.371 hMid:0.234 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.046 mid:0.459 hMid:0.281 tr:0.324 | morph:1.000 tDelta:0.0775 percRaw:0.310 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.053 mid:0.459 hMid:0.316 tr:0.324 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.542 hMid:0.359 tr:0.404 | morph:1.000 tDelta:0.0804 percRaw:0.322 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.286 mid:0.574 hMid:0.377 tr:0.410 | morph:1.000 tDelta:0.0062 percRaw:0.025 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.397 mid:0.556 hMid:0.347 tr:0.363 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.506 mid:0.511 hMid:0.314 tr:0.297 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.513 mid:0.505 hMid:0.289 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.473 mid:0.570 hMid:0.286 tr:0.202 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.401 mid:0.633 hMid:0.266 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.305 mid:0.654 hMid:0.251 tr:0.143 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.232 mid:0.654 hMid:0.239 tr:0.143 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=97 conf=0.32 | PLL=FREEWHEEL [mem=97@-0f] phase=0.00 sync=0.46 | beat #34 | bass=0.0378 sab=0.108 | 🔬in_peak=0.34619 in_rms=0.12452
+[LATINO-41] sB:0.183 mid:0.617 hMid:0.234 tr:0.158 | morph:1.000 tDelta:0.0156 percRaw:0.062 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.184 mid:0.612 hMid:0.261 tr:0.237 | morph:1.000 tDelta:0.0786 percRaw:0.314 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.178 mid:0.594 hMid:0.251 tr:0.280 | morph:1.000 tDelta:0.0436 percRaw:0.174 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.143 mid:0.507 hMid:0.235 tr:0.279 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.195 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.117 mid:0.447 hMid:0.212 tr:0.245 | morph:0.996 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.427 hMid:0.204 tr:0.226 | morph:0.973 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.081 mid:0.471 hMid:0.255 tr:0.280 | morph:0.956 tDelta:0.0533 percRaw:0.213 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.551 hMid:0.281 tr:0.321 | morph:0.947 tDelta:0.0413 percRaw:0.165 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.805 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.058 mid:0.518 hMid:0.268 tr:0.317 | morph:0.935 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.385 mL:0.570 mR:0.182 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.518 hMid:0.258 tr:0.317 | morph:0.923 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.174 mL:0.471 mR:0.011 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.039 mid:0.447 hMid:0.241 tr:0.276 | morph:0.904 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.076 mL:0.106 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.032 mid:0.401 hMid:0.215 tr:0.234 | morph:0.881 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.007 mL:0.002 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.032 mid:0.426 hMid:0.231 tr:0.266 | morph:0.861 tDelta:0.0323 percRaw:0.129 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.082 mid:0.522 hMid:0.296 tr:0.372 | morph:0.851 tDelta:0.1058 percRaw:0.423 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.239 mid:0.588 hMid:0.343 tr:0.397 | morph:0.848 tDelta:0.0249 percRaw:0.100 | fPar:0.000 bPar:0.378 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.388 mid:0.594 hMid:0.348 tr:0.358 | morph:0.845 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.168 mL:0.796 mR:0.673 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:8 | Pan:146 Tilt:-45 | sBPM:96 phase:76°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:8 | Pan:167 Tilt:20 | sBPM:96 phase:76°
+[LATINO-41] sB:0.482 mid:0.628 hMid:0.345 tr:0.309 | morph:0.852 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.065 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.512 mid:0.616 hMid:0.319 tr:0.251 | morph:0.852 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.006 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.503 mid:0.609 hMid:0.306 tr:0.217 | morph:0.851 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.677 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.428 mid:0.633 hMid:0.308 tr:0.202 | morph:0.860 tDelta:0.0000 percRaw:0.000 | fPar:0.455 bPar:0.000 mL:0.819 mR:0.819 | sc:1 scDuck:0.964
+[LATINO-41] sB:0.372 mid:0.633 hMid:0.309 tr:0.202 | morph:0.868 tDelta:0.0000 percRaw:0.000 | fPar:0.259 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.979
+[LATINO-41] sB:0.313 mid:0.659 hMid:0.311 tr:0.182 | morph:0.895 tDelta:0.0000 percRaw:0.000 | fPar:0.148 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.265 mid:0.681 hMid:0.303 tr:0.178 | morph:0.934 tDelta:0.0000 percRaw:0.000 | fPar:0.085 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.699 hMid:0.316 tr:0.236 | morph:0.981 tDelta:0.0581 percRaw:0.232 | fPar:0.019 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.211 mid:0.672 hMid:0.301 tr:0.272 | morph:1.000 tDelta:0.0364 percRaw:0.146 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.191 mid:0.616 hMid:0.281 tr:0.292 | morph:0.997 tDelta:0.0196 percRaw:0.078 | fPar:0.144 bPar:0.000 mL:0.847 mR:0.847 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.616 hMid:0.265 tr:0.292 | morph:0.993 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.145 mid:0.520 hMid:0.238 tr:0.249 | morph:0.980 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.833 mR:0.833 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.117 mid:0.464 hMid:0.222 tr:0.228 | morph:0.962 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.190 mR:0.190 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.096 mid:0.459 hMid:0.253 tr:0.280 | morph:0.944 tDelta:0.0521 percRaw:0.208 | fPar:0.000 bPar:0.000 mL:0.013 mR:0.013 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.440 hMid:0.270 tr:0.328 | morph:0.924 tDelta:0.0484 percRaw:0.194 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.067 mid:0.433 hMid:0.283 tr:0.339 | morph:0.904 tDelta:0.0107 percRaw:0.043 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.053 mid:0.422 hMid:0.277 tr:0.294 | morph:0.883 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.042 mid:0.381 hMid:0.256 tr:0.246 | morph:0.858 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.040 mid:0.405 hMid:0.264 tr:0.259 | morph:0.837 tDelta:0.0130 percRaw:0.052 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.495 hMid:0.314 tr:0.352 | morph:0.824 tDelta:0.0929 percRaw:0.372 | fPar:0.000 bPar:0.850 mL:0.759 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.068 mid:0.495 hMid:0.352 tr:0.352 | morph:0.812 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.375 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.212 mid:0.568 hMid:0.385 tr:0.392 | morph:0.808 tDelta:0.0407 percRaw:0.163 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.363 mid:0.571 hMid:0.373 tr:0.352 | morph:0.804 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.374 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.473 mid:0.533 hMid:0.347 tr:0.293 | morph:0.796 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.165 mL:0.633 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.485 mid:0.499 hMid:0.322 tr:0.233 | morph:0.785 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.059 mL:0.625 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.475 mid:0.467 hMid:0.287 tr:0.179 | morph:0.771 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.005 mL:0.613 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.420 mid:0.462 hMid:0.258 tr:0.139 | morph:0.757 tDelta:0.0000 percRaw:0.000 | fPar:0.448 bPar:0.000 mL:0.138 mR:0.000 | sc:1 scDuck:0.964
+[LATINO-41] sB:0.335 mid:0.459 hMid:0.232 tr:0.107 | morph:0.742 tDelta:0.0000 percRaw:0.000 | fPar:0.251 bPar:0.000 mL:0.005 mR:0.000 | sc:1 scDuck:0.980
+[LATINO-41] sB:0.263 mid:0.441 hMid:0.206 tr:0.097 | morph:0.727 tDelta:0.0000 percRaw:0.000 | fPar:0.140 bPar:0.000 mL:0.000 mR:0.618 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.238 mid:0.463 hMid:0.223 tr:0.155 | morph:0.713 tDelta:0.0579 percRaw:0.232 | fPar:0.074 bPar:0.000 mL:0.000 mR:0.606 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.214 mid:0.529 hMid:0.252 tr:0.228 | morph:0.707 tDelta:0.0727 percRaw:0.291 | fPar:0.800 bPar:0.850 mL:0.723 mR:0.563 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.197 mid:0.529 hMid:0.273 tr:0.228 | morph:0.701 tDelta:0.0000 percRaw:0.000 | fPar:0.125 bPar:0.366 mL:0.850 mR:0.596 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.167 mid:0.584 hMid:0.276 tr:0.259 | morph:0.700 tDelta:0.0307 percRaw:0.123 | fPar:0.001 bPar:0.157 mL:0.850 mR:0.128 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.609 hMid:0.277 tr:0.240 | morph:0.715 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.049 mL:0.850 mR:0.846 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.592 hMid:0.266 tr:0.218 | morph:0.715 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.004 mL:0.850 mR:0.776 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.092 mid:0.588 hMid:0.284 tr:0.237 | morph:0.714 tDelta:0.0191 percRaw:0.076 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.607 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.076 mid:0.571 hMid:0.287 tr:0.262 | morph:0.712 tDelta:0.0244 percRaw:0.098 | fPar:0.000 bPar:0.000 mL:0.605 mR:0.605 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.559 hMid:0.273 tr:0.239 | morph:0.709 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.602 mR:0.130 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.559 hMid:0.262 tr:0.239 | morph:0.705 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.003 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.044 mid:0.490 hMid:0.231 tr:0.205 | morph:0.695 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.591 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.035 mid:0.406 hMid:0.203 tr:0.170 | morph:0.677 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.126 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.029 mid:0.353 hMid:0.186 tr:0.159 | morph:0.654 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.003 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.042 mid:0.479 hMid:0.253 tr:0.289 | morph:0.643 tDelta:0.1304 percRaw:0.522 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.181 mid:0.582 hMid:0.311 tr:0.359 | morph:0.646 tDelta:0.0695 percRaw:0.278 | fPar:0.800 bPar:0.361 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.47 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.45 | beat #38 | bass=0.3594 sab=0.108 | 🔬in_peak=0.34028 in_rms=0.12652
+[LATINO-41] sB:0.341 mid:0.609 hMid:0.311 tr:0.339 | morph:0.668 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.154 mL:0.796 mR:0.532 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.440 mid:0.624 hMid:0.286 tr:0.288 | morph:0.699 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.045 mL:0.796 mR:0.114 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.477 mid:0.637 hMid:0.259 tr:0.229 | morph:0.734 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.004 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.487 mid:0.676 hMid:0.241 tr:0.182 | morph:0.794 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.493 mid:0.676 hMid:0.227 tr:0.182 | morph:0.845 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.441 mid:0.754 hMid:0.214 tr:0.146 | morph:0.946 tDelta:0.0000 percRaw:0.000 | fPar:0.461 bPar:0.000 mL:0.819 mR:0.819 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.369 mid:0.803 hMid:0.203 tr:0.122 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.267 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.979
+[LATINO-41] sB:0.292 mid:0.806 hMid:0.188 tr:0.112 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.155 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.266 mid:0.826 hMid:0.202 tr:0.163 | morph:1.000 tDelta:0.0511 percRaw:0.204 | fPar:0.090 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.238 mid:0.833 hMid:0.228 tr:0.235 | morph:1.000 tDelta:0.0715 percRaw:0.286 | fPar:0.022 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.192 mid:0.831 hMid:0.227 tr:0.268 | morph:1.000 tDelta:0.0337 percRaw:0.135 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.152 mid:0.822 hMid:0.217 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.844 hMid:0.212 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.844 hMid:0.207 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.858 hMid:0.227 tr:0.237 | morph:1.000 tDelta:0.0208 percRaw:0.083 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.088 mid:0.868 hMid:0.242 tr:0.272 | morph:1.000 tDelta:0.0349 percRaw:0.140 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:9 | Pan:-40 Tilt:-8 | sBPM:95 phase:195°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:9 | Pan:-18 Tilt:-20 | sBPM:95 phase:195°
+[LATINO-41] sB:0.077 mid:0.875 hMid:0.241 tr:0.303 | morph:1.000 tDelta:0.0315 percRaw:0.126 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.073 mid:0.881 hMid:0.236 tr:0.291 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.070 mid:0.888 hMid:0.222 tr:0.251 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.883 hMid:0.209 tr:0.215 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.070 mid:0.893 hMid:0.259 tr:0.297 | morph:1.000 tDelta:0.0822 percRaw:0.329 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.884 hMid:0.319 tr:0.379 | morph:1.000 tDelta:0.0820 percRaw:0.328 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.173 mid:0.884 hMid:0.365 tr:0.379 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.309 mid:0.852 hMid:0.359 tr:0.360 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.437 mid:0.831 hMid:0.331 tr:0.301 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.489 mid:0.825 hMid:0.301 tr:0.247 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.500 mid:0.819 hMid:0.267 tr:0.196 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.462 mid:0.825 hMid:0.245 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.398 mid:0.831 hMid:0.227 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.319 mid:0.843 hMid:0.214 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.253 mid:0.850 hMid:0.212 tr:0.128 | morph:1.000 tDelta:0.0074 percRaw:0.030 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.207 mid:0.832 hMid:0.233 tr:0.184 | morph:1.000 tDelta:0.0556 percRaw:0.222 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.172 mid:0.832 hMid:0.248 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.150 mid:0.777 hMid:0.239 tr:0.232 | morph:1.000 tDelta:0.0481 percRaw:0.193 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.139 mid:0.730 hMid:0.225 tr:0.222 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.725 hMid:0.218 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.114 mid:0.742 hMid:0.226 tr:0.194 | morph:1.000 tDelta:0.0031 percRaw:0.012 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.105 mid:0.769 hMid:0.245 tr:0.236 | morph:1.000 tDelta:0.0423 percRaw:0.169 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.098 mid:0.774 hMid:0.249 tr:0.290 | morph:1.000 tDelta:0.0539 percRaw:0.216 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.763 hMid:0.247 tr:0.298 | morph:1.000 tDelta:0.0077 percRaw:0.031 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.100 mid:0.778 hMid:0.236 tr:0.259 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.098 mid:0.781 hMid:0.220 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.781 hMid:0.209 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.738 hMid:0.250 tr:0.278 | morph:1.000 tDelta:0.0600 percRaw:0.240 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.692 hMid:0.295 tr:0.353 | morph:1.000 tDelta:0.0757 percRaw:0.303 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.277 mid:0.649 hMid:0.317 tr:0.365 | morph:1.000 tDelta:0.0116 percRaw:0.046 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.013 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.398 mid:0.598 hMid:0.299 tr:0.328 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.183 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.500 mid:0.551 hMid:0.276 tr:0.278 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.013 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.546 mid:0.511 hMid:0.264 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.580 mid:0.511 hMid:0.255 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.533 mid:0.512 hMid:0.256 tr:0.248 | morph:1.000 tDelta:0.0015 percRaw:0.006 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.459 mid:0.518 hMid:0.297 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.356 mid:0.501 hMid:0.303 tr:0.229 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.273 mid:0.461 hMid:0.283 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.429 hMid:0.263 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.412 hMid:0.238 tr:0.124 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.379 hMid:0.214 tr:0.103 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.096 mid:0.379 hMid:0.197 tr:0.103 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.074 mid:0.358 hMid:0.180 tr:0.086 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.059 mid:0.326 hMid:0.165 tr:0.075 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.42 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.48 | beat #38 | bass=0.0328 sab=0.108 | 🔬in_peak=0.26280 in_rms=0.07641
+[LATINO-41] sB:0.047 mid:0.395 hMid:0.232 tr:0.115 | morph:1.000 tDelta:0.0402 percRaw:0.161 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.038 mid:0.471 hMid:0.326 tr:0.154 | morph:1.000 tDelta:0.0393 percRaw:0.157 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.645 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#3000 | frames=441 | peak=0.1138 | ch=2
+[LATINO-41] sB:0.030 mid:0.445 hMid:0.331 tr:0.197 | morph:1.000 tDelta:0.0428 percRaw:0.171 | fPar:0.000 bPar:0.391 mL:0.195 mR:0.148 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.025 mid:0.415 hMid:0.306 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.014 mR:0.006 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.022 mid:0.385 hMid:0.274 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.394 hMid:0.259 tr:0.124 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.504 hMid:0.293 tr:0.170 | morph:1.000 tDelta:0.0458 percRaw:0.183 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.045 mid:0.582 hMid:0.368 tr:0.199 | morph:1.000 tDelta:0.0294 percRaw:0.118 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.038 mid:0.582 hMid:0.424 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.032 mid:0.524 hMid:0.377 tr:0.161 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.027 mid:0.500 hMid:0.340 tr:0.130 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.024 mid:0.562 hMid:0.353 tr:0.157 | morph:1.000 tDelta:0.0267 percRaw:0.107 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.021 mid:0.589 hMid:0.391 tr:0.175 | morph:1.000 tDelta:0.0185 percRaw:0.074 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.018 mid:0.569 hMid:0.399 tr:0.192 | morph:1.000 tDelta:0.0163 percRaw:0.065 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.015 mid:0.556 hMid:0.400 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.016 mid:0.489 hMid:0.364 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:9 | Pan:-100 Tilt:-48 | sBPM:95 phase:314°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:9 | Pan:-3 Tilt:-70 | sBPM:95 phase:314°
+[LATINO-41] sB:0.016 mid:0.489 hMid:0.337 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.026 mid:0.487 hMid:0.326 tr:0.156 | morph:1.000 tDelta:0.0137 percRaw:0.055 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.031 mid:0.476 hMid:0.320 tr:0.174 | morph:1.000 tDelta:0.0182 percRaw:0.073 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.033 mid:0.460 hMid:0.303 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.412 hMid:0.261 tr:0.124 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.195 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.365 hMid:0.232 tr:0.095 | morph:0.980 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.014 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.033 mid:0.372 hMid:0.263 tr:0.132 | morph:0.952 tDelta:0.0371 percRaw:0.148 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.031 mid:0.415 hMid:0.322 tr:0.168 | morph:0.930 tDelta:0.0356 percRaw:0.142 | fPar:0.000 bPar:0.850 mL:0.790 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.028 mid:0.387 hMid:0.312 tr:0.206 | morph:0.905 tDelta:0.0375 percRaw:0.150 | fPar:0.000 bPar:0.383 mL:0.178 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.026 mid:0.356 hMid:0.296 tr:0.162 | morph:0.877 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.171 mL:0.010 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.024 mid:0.356 hMid:0.284 tr:0.162 | morph:0.850 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.069 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.022 mid:0.312 hMid:0.247 tr:0.130 | morph:0.819 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.006 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.029 mid:0.325 hMid:0.264 tr:0.158 | morph:0.791 tDelta:0.0279 percRaw:0.111 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.064 mid:0.450 hMid:0.339 tr:0.304 | morph:0.775 tDelta:0.1458 percRaw:0.583 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.211 mid:0.514 hMid:0.391 tr:0.376 | morph:0.766 tDelta:0.0717 percRaw:0.287 | fPar:0.800 bPar:0.371 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.374 mid:0.545 hMid:0.401 tr:0.367 | morph:0.760 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.162 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.453 mid:0.532 hMid:0.373 tr:0.318 | morph:0.753 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.055 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.530 mid:0.521 hMid:0.356 tr:0.273 | morph:0.745 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.004 mL:0.593 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.546 mid:0.505 hMid:0.359 tr:0.267 | morph:0.735 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.585 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.559 mid:0.505 hMid:0.361 tr:0.267 | morph:0.726 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.501 mid:0.518 hMid:0.383 tr:0.238 | morph:0.718 tDelta:0.0000 percRaw:0.000 | fPar:0.446 bPar:0.000 mL:0.820 mR:0.000 | sc:1 scDuck:0.964
+[LATINO-41] sB:0.413 mid:0.456 hMid:0.345 tr:0.182 | morph:0.705 tDelta:0.0000 percRaw:0.000 | fPar:0.248 bPar:0.000 mL:0.587 mR:0.000 | sc:1 scDuck:0.980
+[LATINO-41] sB:0.336 mid:0.397 hMid:0.311 tr:0.140 | morph:0.685 tDelta:0.0000 percRaw:0.000 | fPar:0.138 bPar:0.000 mL:0.128 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.296 mid:0.383 hMid:0.299 tr:0.142 | morph:0.665 tDelta:0.0021 percRaw:0.008 | fPar:0.069 bPar:0.000 mL:0.003 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.286 mid:0.425 hMid:0.315 tr:0.218 | morph:0.649 tDelta:0.0760 percRaw:0.304 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.229 mid:0.443 hMid:0.318 tr:0.269 | morph:0.635 tDelta:0.0503 percRaw:0.201 | fPar:0.121 bPar:0.360 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.177 mid:0.455 hMid:0.312 tr:0.250 | morph:0.623 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.152 mL:0.523 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.403 hMid:0.275 tr:0.216 | morph:0.606 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.041 mL:0.110 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.109 mid:0.381 hMid:0.260 tr:0.190 | morph:0.587 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.003 mL:0.002 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.089 mid:0.405 hMid:0.299 tr:0.242 | morph:0.571 tDelta:0.0521 percRaw:0.209 | fPar:0.000 bPar:0.850 mL:0.485 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.074 mid:0.405 hMid:0.328 tr:0.242 | morph:0.555 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.353 mL:0.101 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.408 hMid:0.338 tr:0.307 | morph:0.539 tDelta:0.0646 percRaw:0.259 | fPar:0.000 bPar:0.146 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.412 hMid:0.344 tr:0.292 | morph:0.525 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.034 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.041 mid:0.376 hMid:0.312 tr:0.252 | morph:0.507 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.002 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.371 hMid:0.284 tr:0.213 | morph:0.489 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.039 mid:0.455 hMid:0.319 tr:0.294 | morph:0.480 tDelta:0.0811 percRaw:0.325 | fPar:0.000 bPar:0.850 mL:0.557 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.147 mid:0.550 hMid:0.366 tr:0.379 | morph:0.483 tDelta:0.0846 percRaw:0.338 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.227 mid:0.550 hMid:0.402 tr:0.379 | morph:0.485 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.347 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.381 mid:0.587 hMid:0.429 tr:0.378 | morph:0.515 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.143 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.490 mid:0.628 hMid:0.486 tr:0.351 | morph:0.571 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.454 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.551 mid:0.560 hMid:0.420 tr:0.279 | morph:0.571 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.355 mL:0.454 mR:0.095 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.552 mid:0.531 hMid:0.410 tr:0.248 | morph:0.567 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.148 mL:0.451 mR:0.001 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.500 mid:0.519 hMid:0.407 tr:0.251 | morph:0.563 tDelta:0.0030 percRaw:0.012 | fPar:0.436 bPar:0.036 mL:0.462 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.422 mid:0.516 hMid:0.413 tr:0.256 | morph:0.558 tDelta:0.0047 percRaw:0.019 | fPar:0.237 bPar:0.003 mL:0.834 mR:0.000 | sc:1 scDuck:0.981
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.37 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.42 | beat #40 | bass=0.0603 sab=0.054 | 🔬in_peak=0.11570 in_rms=0.03870
+[LATINO-41] sB:0.347 mid:0.474 hMid:0.376 tr:0.214 | morph:0.549 tDelta:0.0000 percRaw:0.000 | fPar:0.129 bPar:0.000 mL:0.467 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.291 mid:0.474 hMid:0.348 tr:0.214 | morph:0.541 tDelta:0.0000 percRaw:0.000 | fPar:0.054 bPar:0.000 mL:0.460 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.258 mid:0.433 hMid:0.319 tr:0.197 | morph:0.528 tDelta:0.0000 percRaw:0.000 | fPar:0.009 bPar:0.000 mL:0.449 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.225 mid:0.428 hMid:0.323 tr:0.260 | morph:0.516 tDelta:0.0621 percRaw:0.249 | fPar:0.001 bPar:0.000 mL:0.438 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.191 mid:0.420 hMid:0.314 tr:0.295 | morph:0.502 tDelta:0.0353 percRaw:0.141 | fPar:0.000 bPar:0.000 mL:0.090 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.156 mid:0.402 hMid:0.290 tr:0.264 | morph:0.487 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.389 hMid:0.266 tr:0.222 | morph:0.472 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.096 mid:0.374 hMid:0.242 tr:0.195 | morph:0.455 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.076 mid:0.383 hMid:0.265 tr:0.231 | morph:0.439 tDelta:0.0358 percRaw:0.143 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.399 hMid:0.298 tr:0.302 | morph:0.425 tDelta:0.0711 percRaw:0.284 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.399 hMid:0.323 tr:0.302 | morph:0.411 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.341 mL:0.350 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.043 mid:0.391 hMid:0.325 tr:0.311 | morph:0.397 tDelta:0.0095 percRaw:0.038 | fPar:0.000 bPar:0.136 mL:0.053 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.360 hMid:0.303 tr:0.270 | morph:0.380 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.025 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.030 mid:0.344 hMid:0.266 tr:0.230 | morph:0.362 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.002 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.442 hMid:0.307 tr:0.321 | morph:0.354 tDelta:0.0904 percRaw:0.361 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.099 mid:0.545 hMid:0.370 tr:0.405 | morph:0.372 tDelta:0.0840 percRaw:0.336 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:10 | Pan:149 Tilt:-47 | sBPM:95 phase:73°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:10 | Pan:172 Tilt:20 | sBPM:95 phase:73°
+[LATINO-41] sB:0.238 mid:0.593 hMid:0.426 tr:0.413 | morph:0.424 tDelta:0.0084 percRaw:0.034 | fPar:0.000 bPar:0.342 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.375 mid:0.579 hMid:0.417 tr:0.388 | morph:0.457 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.139 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.482 mid:0.517 hMid:0.374 tr:0.321 | morph:0.454 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.028 mL:0.362 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.563 mid:0.517 hMid:0.342 tr:0.321 | morph:0.452 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.360 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.566 mid:0.488 hMid:0.345 tr:0.272 | morph:0.447 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.355 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.520 mid:0.496 hMid:0.362 tr:0.276 | morph:0.442 tDelta:0.0043 percRaw:0.017 | fPar:0.428 bPar:0.000 mL:0.821 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.433 mid:0.479 hMid:0.362 tr:0.267 | morph:0.436 tDelta:0.0000 percRaw:0.000 | fPar:0.229 bPar:0.000 mL:0.736 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.347 mid:0.481 hMid:0.379 tr:0.248 | morph:0.431 tDelta:0.0000 percRaw:0.000 | fPar:0.122 bPar:0.000 mL:0.816 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.286 mid:0.428 hMid:0.343 tr:0.216 | morph:0.420 tDelta:0.0000 percRaw:0.000 | fPar:0.044 bPar:0.000 mL:0.357 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.268 mid:0.428 hMid:0.343 tr:0.254 | morph:0.409 tDelta:0.0375 percRaw:0.150 | fPar:0.007 bPar:0.000 mL:0.057 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.255 mid:0.428 hMid:0.343 tr:0.254 | morph:0.399 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.223 mid:0.419 hMid:0.328 tr:0.292 | morph:0.388 tDelta:0.0387 percRaw:0.155 | fPar:0.000 bPar:0.000 mL:0.330 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.176 mid:0.425 hMid:0.322 tr:0.269 | morph:0.378 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.044 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.138 mid:0.415 hMid:0.305 tr:0.225 | morph:0.367 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.381 hMid:0.285 tr:0.215 | morph:0.352 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.385 hMid:0.304 tr:0.265 | morph:0.339 tDelta:0.0503 percRaw:0.201 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.391 hMid:0.320 tr:0.332 | morph:0.326 tDelta:0.0665 percRaw:0.266 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.070 mid:0.388 hMid:0.323 tr:0.327 | morph:0.313 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.357 hMid:0.292 tr:0.280 | morph:0.298 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.357 hMid:0.268 tr:0.280 | morph:0.283 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.038 mid:0.330 hMid:0.246 tr:0.235 | morph:0.265 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.046 mid:0.417 hMid:0.285 tr:0.306 | morph:0.256 tDelta:0.0709 percRaw:0.283 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.517 hMid:0.351 tr:0.394 | morph:0.268 tDelta:0.0879 percRaw:0.352 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.269 mid:0.548 hMid:0.370 tr:0.410 | morph:0.302 tDelta:0.0155 percRaw:0.062 | fPar:0.156 bPar:0.332 mL:0.839 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.401 mid:0.574 hMid:0.363 tr:0.370 | morph:0.349 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.131 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.491 mid:0.533 hMid:0.335 tr:0.306 | morph:0.359 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.022 mL:0.286 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.531 mid:0.513 hMid:0.332 tr:0.263 | morph:0.358 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.285 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.501 mid:0.519 hMid:0.351 tr:0.270 | morph:0.358 tDelta:0.0071 percRaw:0.028 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.438 mid:0.525 hMid:0.374 tr:0.285 | morph:0.360 tDelta:0.0154 percRaw:0.062 | fPar:0.423 bPar:0.000 mL:0.821 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.369 mid:0.494 hMid:0.358 tr:0.239 | morph:0.358 tDelta:0.0000 percRaw:0.000 | fPar:0.224 bPar:0.000 mL:0.835 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.306 mid:0.443 hMid:0.322 tr:0.197 | morph:0.350 tDelta:0.0000 percRaw:0.000 | fPar:0.118 bPar:0.000 mL:0.297 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.259 mid:0.443 hMid:0.294 tr:0.197 | morph:0.342 tDelta:0.0000 percRaw:0.000 | fPar:0.038 bPar:0.000 mL:0.291 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.220 mid:0.449 hMid:0.296 tr:0.228 | morph:0.335 tDelta:0.0308 percRaw:0.123 | fPar:0.006 bPar:0.000 mL:0.029 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.204 mid:0.449 hMid:0.298 tr:0.271 | morph:0.328 tDelta:0.0437 percRaw:0.175 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.187 mid:0.494 hMid:0.313 tr:0.270 | morph:0.326 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.625 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.169 mid:0.459 hMid:0.293 tr:0.225 | morph:0.321 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.272 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.404 hMid:0.259 tr:0.188 | morph:0.309 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.024 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.393 hMid:0.272 tr:0.217 | morph:0.298 tDelta:0.0285 percRaw:0.114 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.121 mid:0.394 hMid:0.299 tr:0.257 | morph:0.286 tDelta:0.0404 percRaw:0.161 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.102 mid:0.396 hMid:0.320 tr:0.260 | morph:0.275 tDelta:0.0026 percRaw:0.010 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.365 hMid:0.288 tr:0.219 | morph:0.261 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.321 hMid:0.255 tr:0.181 | morph:0.243 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.053 mid:0.298 hMid:0.228 tr:0.156 | morph:0.223 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.430 hMid:0.296 tr:0.296 | morph:0.216 tDelta:0.1399 percRaw:0.560 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.31 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.48 | beat #40 | bass=0.2995 sab=0.054 | 🔬in_peak=0.31211 in_rms=0.13379
+[LATINO-41] sB:0.192 mid:0.522 hMid:0.348 tr:0.371 | morph:0.238 tDelta:0.0748 percRaw:0.299 | fPar:0.000 bPar:0.326 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.275 mid:0.522 hMid:0.388 tr:0.371 | morph:0.256 tDelta:0.0000 percRaw:0.000 | fPar:0.195 bPar:0.126 mL:0.837 mR:0.000 | sc:1 scDuck:0.984
+[LATINO-41] sB:0.417 mid:0.550 hMid:0.390 tr:0.367 | morph:0.293 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.018 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.483 mid:0.558 hMid:0.384 tr:0.316 | morph:0.330 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.550 mid:0.505 hMid:0.334 tr:0.246 | morph:0.329 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.262 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.542 mid:0.480 hMid:0.304 tr:0.193 | morph:0.326 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.259 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.503 mid:0.470 hMid:0.277 tr:0.151 | morph:0.321 tDelta:0.0000 percRaw:0.000 | fPar:0.421 bPar:0.000 mL:0.264 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.414 mid:0.470 hMid:0.257 tr:0.118 | morph:0.317 tDelta:0.0000 percRaw:0.000 | fPar:0.221 bPar:0.000 mL:0.264 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.344 mid:0.478 hMid:0.250 tr:0.099 | morph:0.313 tDelta:0.0000 percRaw:0.000 | fPar:0.116 bPar:0.000 mL:0.023 mR:0.266 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.312 mid:0.486 hMid:0.273 tr:0.148 | morph:0.310 tDelta:0.0491 percRaw:0.196 | fPar:0.035 bPar:0.000 mL:0.514 mR:0.264 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.290 mid:0.492 hMid:0.299 tr:0.236 | morph:0.308 tDelta:0.0887 percRaw:0.355 | fPar:0.005 bPar:0.000 mL:0.657 mR:0.021 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.248 mid:0.484 hMid:0.320 tr:0.290 | morph:0.306 tDelta:0.0538 percRaw:0.215 | fPar:0.001 bPar:0.000 mL:0.636 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.205 mid:0.438 hMid:0.296 tr:0.277 | morph:0.298 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.254 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.407 hMid:0.278 tr:0.230 | morph:0.288 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.019 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.435 hMid:0.304 tr:0.236 | morph:0.281 tDelta:0.0054 percRaw:0.022 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.452 hMid:0.330 tr:0.290 | morph:0.275 tDelta:0.0543 percRaw:0.217 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:10 | Pan:-36 Tilt:-7 | sBPM:95 phase:194°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:10 | Pan:-16 Tilt:-17 | sBPM:95 phase:194°
+[LATINO-41] sB:0.089 mid:0.452 hMid:0.349 tr:0.290 | morph:0.270 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.074 mid:0.546 hMid:0.419 tr:0.342 | morph:0.301 tDelta:0.0519 percRaw:0.208 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.493 hMid:0.381 tr:0.322 | morph:0.300 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.331 mL:0.255 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.046 mid:0.462 hMid:0.356 tr:0.272 | morph:0.295 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.129 mL:0.251 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.420 hMid:0.327 tr:0.225 | morph:0.286 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.020 mL:0.243 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.031 mid:0.462 hMid:0.348 tr:0.283 | morph:0.281 tDelta:0.0583 percRaw:0.233 | fPar:0.000 bPar:0.850 mL:0.016 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.557 hMid:0.398 tr:0.380 | morph:0.319 tDelta:0.0970 percRaw:0.388 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.290 mid:0.596 hMid:0.415 tr:0.396 | morph:0.381 tDelta:0.0153 percRaw:0.061 | fPar:0.800 bPar:0.338 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.432 mid:0.571 hMid:0.407 tr:0.355 | morph:0.415 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.136 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.466 mid:0.552 hMid:0.376 tr:0.296 | morph:0.429 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.026 mL:0.341 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.491 mid:0.552 hMid:0.353 tr:0.296 | morph:0.441 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.351 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.513 mid:0.522 hMid:0.333 tr:0.251 | morph:0.440 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.350 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.487 mid:0.582 hMid:0.362 tr:0.210 | morph:0.473 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.414 mid:0.565 hMid:0.359 tr:0.176 | morph:0.488 tDelta:0.0000 percRaw:0.000 | fPar:0.431 bPar:0.000 mL:0.821 mR:0.734 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.335 mid:0.508 hMid:0.331 tr:0.163 | morph:0.484 tDelta:0.0000 percRaw:0.000 | fPar:0.232 bPar:0.000 mL:0.403 mR:0.403 | sc:1 scDuck:0.981
+[LATINO-41] sB:0.275 mid:0.493 hMid:0.324 tr:0.160 | morph:0.478 tDelta:0.0000 percRaw:0.000 | fPar:0.125 bPar:0.000 mL:0.407 mR:0.407 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.259 mid:0.478 hMid:0.336 tr:0.212 | morph:0.472 tDelta:0.0517 percRaw:0.207 | fPar:0.047 bPar:0.000 mL:0.401 mR:0.083 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.226 mid:0.486 hMid:0.338 tr:0.259 | morph:0.466 tDelta:0.0474 percRaw:0.189 | fPar:0.800 bPar:0.000 mL:0.076 mR:0.001 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.187 mid:0.471 hMid:0.331 tr:0.276 | morph:0.459 tDelta:0.0168 percRaw:0.067 | fPar:0.109 bPar:0.000 mL:0.390 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.443 hMid:0.326 tr:0.236 | morph:0.449 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.381 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.413 hMid:0.303 tr:0.207 | morph:0.436 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.071 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.399 hMid:0.305 tr:0.223 | morph:0.422 tDelta:0.0151 percRaw:0.061 | fPar:0.000 bPar:0.000 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.395 hMid:0.303 tr:0.288 | morph:0.408 tDelta:0.0650 percRaw:0.260 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.395 hMid:0.302 tr:0.288 | morph:0.395 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.421 hMid:0.313 tr:0.301 | morph:0.384 tDelta:0.0134 percRaw:0.054 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.391 hMid:0.297 tr:0.267 | morph:0.370 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.040 mid:0.391 hMid:0.288 tr:0.227 | morph:0.357 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.423 hMid:0.289 tr:0.213 | morph:0.347 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.530 hMid:0.344 tr:0.330 | morph:0.355 tDelta:0.1169 percRaw:0.468 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.206 mid:0.590 hMid:0.384 tr:0.381 | morph:0.406 tDelta:0.0501 percRaw:0.201 | fPar:0.800 bPar:0.341 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.377 mid:0.593 hMid:0.370 tr:0.355 | morph:0.453 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.138 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.487 mid:0.554 hMid:0.338 tr:0.300 | morph:0.463 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.028 mL:0.369 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.520 mid:0.487 hMid:0.301 tr:0.232 | morph:0.458 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.075 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.523 mid:0.454 hMid:0.270 tr:0.177 | morph:0.449 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.001 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.487 mid:0.490 hMid:0.293 tr:0.180 | morph:0.444 tDelta:0.0031 percRaw:0.012 | fPar:0.428 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.397 mid:0.521 hMid:0.326 tr:0.219 | morph:0.442 tDelta:0.0389 percRaw:0.156 | fPar:0.229 bPar:0.000 mL:0.503 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.330 mid:0.521 hMid:0.351 tr:0.219 | morph:0.440 tDelta:0.0000 percRaw:0.000 | fPar:0.123 bPar:0.000 mL:0.565 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.276 mid:0.517 hMid:0.353 tr:0.246 | morph:0.438 tDelta:0.0274 percRaw:0.110 | fPar:0.044 bPar:0.000 mL:0.527 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.266 mid:0.531 hMid:0.355 tr:0.243 | morph:0.438 tDelta:0.0000 percRaw:0.000 | fPar:0.007 bPar:0.000 mL:0.616 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.235 mid:0.534 hMid:0.347 tr:0.282 | morph:0.437 tDelta:0.0392 percRaw:0.157 | fPar:0.800 bPar:0.000 mL:0.561 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.200 mid:0.518 hMid:0.322 tr:0.303 | morph:0.435 tDelta:0.0204 percRaw:0.082 | fPar:0.108 bPar:0.000 mL:0.121 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.185 mid:0.460 hMid:0.286 tr:0.264 | morph:0.428 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.002 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.163 mid:0.414 hMid:0.253 tr:0.218 | morph:0.416 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.139 mid:0.395 hMid:0.242 tr:0.214 | morph:0.402 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#3500 | frames=441 | peak=0.1385 | ch=2
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.47 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.56 | beat #44 | bass=0.1183 sab=0.108 | 🔬in_peak=0.26381 in_rms=0.07812
+[LATINO-41] sB:0.113 mid:0.414 hMid:0.260 tr:0.262 | morph:0.390 tDelta:0.0485 percRaw:0.194 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.091 mid:0.464 hMid:0.303 tr:0.324 | morph:0.384 tDelta:0.0614 percRaw:0.245 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.072 mid:0.459 hMid:0.318 tr:0.320 | morph:0.377 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.338 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.515 hMid:0.365 tr:0.287 | morph:0.376 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.850 mL:0.559 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.044 mid:0.515 hMid:0.400 tr:0.287 | morph:0.375 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.338 mL:0.635 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.035 mid:0.520 hMid:0.351 tr:0.231 | morph:0.374 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.134 mL:0.526 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.049 mid:0.574 hMid:0.375 tr:0.322 | morph:0.411 tDelta:0.0911 percRaw:0.364 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.638 hMid:0.417 tr:0.404 | morph:0.491 tDelta:0.0816 percRaw:0.327 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.268 mid:0.642 hMid:0.419 tr:0.398 | morph:0.561 tDelta:0.0000 percRaw:0.000 | fPar:0.095 bPar:0.354 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.402 mid:0.604 hMid:0.394 tr:0.341 | morph:0.593 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.148 mL:0.167 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.495 mid:0.559 hMid:0.353 tr:0.276 | morph:0.592 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.038 mL:0.008 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.525 mid:0.498 hMid:0.329 tr:0.226 | morph:0.585 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.003 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.497 mid:0.516 hMid:0.364 tr:0.237 | morph:0.580 tDelta:0.0113 percRaw:0.045 | fPar:0.800 bPar:0.000 mL:0.474 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.411 mid:0.539 hMid:0.409 tr:0.257 | morph:0.577 tDelta:0.0203 percRaw:0.081 | fPar:0.437 bPar:0.000 mL:0.790 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.347 mid:0.539 hMid:0.442 tr:0.257 | morph:0.575 tDelta:0.0000 percRaw:0.000 | fPar:0.239 bPar:0.000 mL:0.834 mR:0.000 | sc:1 scDuck:0.981
+[LATINO-41] sB:0.267 mid:0.472 hMid:0.402 tr:0.196 | morph:0.565 tDelta:0.0000 percRaw:0.000 | fPar:0.130 bPar:0.000 mL:0.177 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:11 | Pan:-104 Tilt:-50 | sBPM:95 phase:314°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:11 | Pan:-3 Tilt:-72 | sBPM:95 phase:314°
+[LATINO-41] sB:0.234 mid:0.413 hMid:0.353 tr:0.178 | morph:0.550 tDelta:0.0000 percRaw:0.000 | fPar:0.055 bPar:0.000 mL:0.008 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.244 mid:0.410 hMid:0.345 tr:0.235 | morph:0.535 tDelta:0.0577 percRaw:0.231 | fPar:0.009 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.212 mid:0.444 hMid:0.361 tr:0.289 | morph:0.524 tDelta:0.0534 percRaw:0.214 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.184 mid:0.462 hMid:0.378 tr:0.297 | morph:0.515 tDelta:0.0082 percRaw:0.033 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.159 mid:0.429 hMid:0.348 tr:0.246 | morph:0.502 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.409 hMid:0.326 tr:0.216 | morph:0.488 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.389 hMid:0.313 tr:0.227 | morph:0.472 tDelta:0.0113 percRaw:0.045 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.111 mid:0.411 hMid:0.345 tr:0.264 | morph:0.459 tDelta:0.0364 percRaw:0.146 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.091 mid:0.522 hMid:0.447 tr:0.268 | morph:0.457 tDelta:0.0042 percRaw:0.017 | fPar:0.000 bPar:0.850 mL:0.808 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.508 hMid:0.451 tr:0.271 | morph:0.454 tDelta:0.0035 percRaw:0.014 | fPar:0.000 bPar:0.345 mL:0.689 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.064 mid:0.450 hMid:0.418 tr:0.218 | morph:0.445 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.139 mL:0.139 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.437 hMid:0.402 tr:0.255 | morph:0.435 tDelta:0.0363 percRaw:0.145 | fPar:0.000 bPar:0.028 mL:0.369 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.437 hMid:0.390 tr:0.255 | morph:0.425 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.002 mL:0.064 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.091 mid:0.510 hMid:0.419 tr:0.358 | morph:0.422 tDelta:0.1031 percRaw:0.412 | fPar:0.000 bPar:0.850 mL:0.561 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.237 mid:0.569 hMid:0.449 tr:0.389 | morph:0.448 tDelta:0.0315 percRaw:0.126 | fPar:0.000 bPar:0.344 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.372 mid:0.544 hMid:0.417 tr:0.362 | morph:0.451 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.139 mL:0.738 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.453 mid:0.483 hMid:0.366 tr:0.299 | morph:0.445 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.028 mL:0.149 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.514 mid:0.447 hMid:0.336 tr:0.251 | morph:0.436 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.005 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.511 mid:0.470 hMid:0.350 tr:0.254 | morph:0.429 tDelta:0.0029 percRaw:0.012 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.468 mid:0.493 hMid:0.366 tr:0.250 | morph:0.425 tDelta:0.0000 percRaw:0.000 | fPar:0.427 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.395 mid:0.509 hMid:0.392 tr:0.227 | morph:0.422 tDelta:0.0000 percRaw:0.000 | fPar:0.228 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.323 mid:0.455 hMid:0.342 tr:0.174 | morph:0.414 tDelta:0.0000 percRaw:0.000 | fPar:0.122 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.262 mid:0.433 hMid:0.332 tr:0.201 | morph:0.404 tDelta:0.0275 percRaw:0.110 | fPar:0.042 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.216 mid:0.433 hMid:0.324 tr:0.201 | morph:0.395 tDelta:0.0000 percRaw:0.000 | fPar:0.006 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.201 mid:0.432 hMid:0.318 tr:0.261 | morph:0.385 tDelta:0.0602 percRaw:0.241 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.167 mid:0.414 hMid:0.304 tr:0.281 | morph:0.374 tDelta:0.0200 percRaw:0.080 | fPar:0.104 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.137 mid:0.430 hMid:0.298 tr:0.249 | morph:0.364 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.385 hMid:0.267 tr:0.209 | morph:0.350 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.085 mid:0.367 hMid:0.265 tr:0.217 | morph:0.335 tDelta:0.0078 percRaw:0.031 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.068 mid:0.383 hMid:0.292 tr:0.284 | morph:0.322 tDelta:0.0672 percRaw:0.269 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.391 hMid:0.314 tr:0.337 | morph:0.309 tDelta:0.0529 percRaw:0.212 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.045 mid:0.417 hMid:0.351 tr:0.333 | morph:0.300 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.037 mid:0.379 hMid:0.313 tr:0.291 | morph:0.287 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.031 mid:0.387 hMid:0.285 tr:0.244 | morph:0.275 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.044 mid:0.468 hMid:0.322 tr:0.316 | morph:0.271 tDelta:0.0723 percRaw:0.289 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.584 hMid:0.381 tr:0.397 | morph:0.331 tDelta:0.0807 percRaw:0.323 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.293 mid:0.590 hMid:0.382 tr:0.394 | morph:0.386 tDelta:0.0000 percRaw:0.000 | fPar:0.208 bPar:0.339 mL:0.836 mR:0.000 | sc:1 scDuck:0.983
+[LATINO-41] sB:0.419 mid:0.557 hMid:0.356 tr:0.340 | morph:0.408 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.136 mL:0.325 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.513 mid:0.557 hMid:0.336 tr:0.340 | morph:0.427 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.026 mL:0.050 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.547 mid:0.499 hMid:0.305 tr:0.273 | morph:0.423 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.543 mid:0.498 hMid:0.313 tr:0.240 | morph:0.420 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.493 mid:0.515 hMid:0.335 tr:0.244 | morph:0.418 tDelta:0.0035 percRaw:0.014 | fPar:0.427 bPar:0.000 mL:0.490 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.417 mid:0.506 hMid:0.349 tr:0.265 | morph:0.415 tDelta:0.0210 percRaw:0.084 | fPar:0.228 bPar:0.000 mL:0.100 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.347 mid:0.463 hMid:0.320 tr:0.207 | morph:0.408 tDelta:0.0000 percRaw:0.000 | fPar:0.121 bPar:0.000 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.42 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.53 | beat #45 | bass=0.0644 sab=0.108 | 🔬in_peak=0.25542 in_rms=0.08001
+[LATINO-41] sB:0.295 mid:0.408 hMid:0.288 tr:0.174 | morph:0.396 tDelta:0.0000 percRaw:0.000 | fPar:0.042 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.256 mid:0.394 hMid:0.289 tr:0.215 | morph:0.382 tDelta:0.0406 percRaw:0.162 | fPar:0.006 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.229 mid:0.407 hMid:0.291 tr:0.273 | morph:0.370 tDelta:0.0578 percRaw:0.231 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.203 mid:0.398 hMid:0.277 tr:0.280 | morph:0.357 tDelta:0.0071 percRaw:0.028 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.164 mid:0.379 hMid:0.251 tr:0.233 | morph:0.343 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.134 mid:0.379 hMid:0.232 tr:0.233 | morph:0.329 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.109 mid:0.350 hMid:0.211 tr:0.201 | morph:0.313 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.371 hMid:0.246 tr:0.229 | morph:0.298 tDelta:0.0286 percRaw:0.114 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.085 mid:0.400 hMid:0.288 tr:0.300 | morph:0.287 tDelta:0.0705 percRaw:0.282 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.422 hMid:0.327 tr:0.327 | morph:0.279 tDelta:0.0272 percRaw:0.109 | fPar:0.000 bPar:0.330 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.061 mid:0.382 hMid:0.309 tr:0.292 | morph:0.267 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.127 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.362 hMid:0.288 tr:0.250 | morph:0.252 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.019 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.043 mid:0.380 hMid:0.283 tr:0.249 | morph:0.240 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.501 hMid:0.346 tr:0.366 | morph:0.242 tDelta:0.1174 percRaw:0.470 | fPar:0.000 bPar:0.850 mL:0.624 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.573 hMid:0.396 tr:0.409 | morph:0.298 tDelta:0.0424 percRaw:0.170 | fPar:0.800 bPar:0.331 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.379 mid:0.569 hMid:0.398 tr:0.388 | morph:0.343 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.131 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:11 | Pan:158 Tilt:-48 | sBPM:95 phase:76°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:11 | Pan:180 Tilt:22 | sBPM:95 phase:76°
+[LATINO-41] sB:0.491 mid:0.530 hMid:0.359 tr:0.324 | morph:0.352 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.021 mL:0.157 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.533 mid:0.485 hMid:0.332 tr:0.260 | morph:0.348 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.005 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.518 mid:0.521 hMid:0.377 tr:0.241 | morph:0.349 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.768 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.506 mid:0.521 hMid:0.410 tr:0.241 | morph:0.351 tDelta:0.0000 percRaw:0.000 | fPar:0.422 bPar:0.000 mL:0.821 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.446 mid:0.504 hMid:0.401 tr:0.236 | morph:0.349 tDelta:0.0000 percRaw:0.000 | fPar:0.223 bPar:0.000 mL:0.165 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.362 mid:0.468 hMid:0.370 tr:0.221 | morph:0.344 tDelta:0.0000 percRaw:0.000 | fPar:0.118 bPar:0.000 mL:0.006 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.304 mid:0.417 hMid:0.334 tr:0.167 | morph:0.334 tDelta:0.0000 percRaw:0.000 | fPar:0.037 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.282 mid:0.380 hMid:0.307 tr:0.179 | morph:0.320 tDelta:0.0127 percRaw:0.051 | fPar:0.005 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.263 mid:0.401 hMid:0.313 tr:0.246 | morph:0.309 tDelta:0.0670 percRaw:0.268 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.220 mid:0.387 hMid:0.304 tr:0.279 | morph:0.296 tDelta:0.0321 percRaw:0.128 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.379 hMid:0.290 tr:0.243 | morph:0.283 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.141 mid:0.338 hMid:0.254 tr:0.200 | morph:0.266 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.315 hMid:0.241 tr:0.186 | morph:0.247 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.092 mid:0.341 hMid:0.274 tr:0.252 | morph:0.232 tDelta:0.0664 percRaw:0.266 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.073 mid:0.387 hMid:0.318 tr:0.322 | morph:0.221 tDelta:0.0695 percRaw:0.278 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.061 mid:0.353 hMid:0.295 tr:0.285 | morph:0.207 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.324 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.050 mid:0.322 hMid:0.269 tr:0.239 | morph:0.190 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.123 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.042 mid:0.322 hMid:0.249 tr:0.239 | morph:0.173 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.015 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.035 mid:0.306 hMid:0.233 tr:0.200 | morph:0.155 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.415 hMid:0.289 tr:0.298 | morph:0.148 tDelta:0.0980 percRaw:0.392 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.171 mid:0.508 hMid:0.350 tr:0.382 | morph:0.170 tDelta:0.0844 percRaw:0.338 | fPar:0.000 bPar:0.850 mL:0.840 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.329 mid:0.555 hMid:0.378 tr:0.392 | morph:0.223 tDelta:0.0100 percRaw:0.040 | fPar:0.432 bPar:0.325 mL:0.821 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.467 mid:0.567 hMid:0.374 tr:0.354 | morph:0.277 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.126 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.510 mid:0.520 hMid:0.337 tr:0.288 | morph:0.288 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.018 mL:0.155 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.534 mid:0.469 hMid:0.320 tr:0.235 | morph:0.285 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.005 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.513 mid:0.483 hMid:0.350 tr:0.235 | morph:0.282 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.611 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.455 mid:0.495 hMid:0.373 tr:0.227 | morph:0.281 tDelta:0.0000 percRaw:0.000 | fPar:0.418 bPar:0.000 mL:0.747 mR:0.000 | sc:1 scDuck:0.967
+[LATINO-41] sB:0.381 mid:0.462 hMid:0.344 tr:0.176 | morph:0.276 tDelta:0.0000 percRaw:0.000 | fPar:0.218 bPar:0.000 mL:0.147 mR:0.000 | sc:1 scDuck:0.983
+[LATINO-41] sB:0.324 mid:0.409 hMid:0.307 tr:0.133 | morph:0.267 tDelta:0.0000 percRaw:0.000 | fPar:0.114 bPar:0.000 mL:0.004 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.299 mid:0.407 hMid:0.298 tr:0.156 | morph:0.257 tDelta:0.0222 percRaw:0.089 | fPar:0.032 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.283 mid:0.425 hMid:0.312 tr:0.226 | morph:0.250 tDelta:0.0700 percRaw:0.280 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.255 mid:0.409 hMid:0.299 tr:0.269 | morph:0.240 tDelta:0.0431 percRaw:0.172 | fPar:0.095 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.202 mid:0.372 hMid:0.271 tr:0.241 | morph:0.228 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.157 mid:0.342 hMid:0.243 tr:0.198 | morph:0.213 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.123 mid:0.378 hMid:0.286 tr:0.229 | morph:0.201 tDelta:0.0310 percRaw:0.124 | fPar:0.000 bPar:0.000 mL:0.171 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.378 hMid:0.318 tr:0.229 | morph:0.190 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.005 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.381 hMid:0.332 tr:0.274 | morph:0.179 tDelta:0.0450 percRaw:0.180 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.396 hMid:0.348 tr:0.309 | morph:0.170 tDelta:0.0344 percRaw:0.137 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.386 hMid:0.336 tr:0.264 | morph:0.160 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.044 mid:0.344 hMid:0.296 tr:0.215 | morph:0.147 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.322 hMid:0.265 tr:0.180 | morph:0.131 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.043 mid:0.433 hMid:0.312 tr:0.303 | morph:0.127 tDelta:0.1234 percRaw:0.494 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.524 hMid:0.366 tr:0.384 | morph:0.163 tDelta:0.0812 percRaw:0.325 | fPar:0.000 bPar:0.320 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.256 mid:0.556 hMid:0.373 tr:0.383 | morph:0.218 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.122 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.47 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.46 | beat #47 | bass=0.2756 sab=0.054 | 🔬in_peak=0.29432 in_rms=0.10908
+[LATINO-41] sB:0.372 mid:0.614 hMid:0.372 tr:0.339 | morph:0.308 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.017 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.481 mid:0.589 hMid:0.353 tr:0.285 | morph:0.366 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.514 mid:0.537 hMid:0.339 tr:0.240 | morph:0.377 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.158 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.455 mid:0.530 hMid:0.326 tr:0.208 | morph:0.380 tDelta:0.0000 percRaw:0.000 | fPar:0.424 bPar:0.000 mL:0.006 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.410 mid:0.530 hMid:0.317 tr:0.208 | morph:0.384 tDelta:0.0000 percRaw:0.000 | fPar:0.225 bPar:0.000 mL:0.835 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.364 mid:0.554 hMid:0.322 tr:0.187 | morph:0.404 tDelta:0.0000 percRaw:0.000 | fPar:0.120 bPar:0.000 mL:0.850 mR:0.517 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.309 mid:0.579 hMid:0.327 tr:0.163 | morph:0.440 tDelta:0.0000 percRaw:0.000 | fPar:0.041 bPar:0.000 mL:0.850 mR:0.512 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.268 mid:0.553 hMid:0.308 tr:0.157 | morph:0.451 tDelta:0.0000 percRaw:0.000 | fPar:0.006 bPar:0.000 mL:0.850 mR:0.104 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.248 mid:0.535 hMid:0.324 tr:0.221 | morph:0.451 tDelta:0.0639 percRaw:0.256 | fPar:0.001 bPar:0.000 mL:0.172 mR:0.001 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.543 hMid:0.335 tr:0.266 | morph:0.453 tDelta:0.0447 percRaw:0.179 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.194 mid:0.539 hMid:0.321 tr:0.259 | morph:0.452 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.172 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.155 mid:0.485 hMid:0.300 tr:0.219 | morph:0.447 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.007 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.131 mid:0.432 hMid:0.276 tr:0.191 | morph:0.436 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.125 mid:0.422 hMid:0.273 tr:0.200 | morph:0.425 tDelta:0.0090 percRaw:0.036 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.433 hMid:0.286 tr:0.260 | morph:0.414 tDelta:0.0598 percRaw:0.239 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.441 hMid:0.291 tr:0.301 | morph:0.405 tDelta:0.0411 percRaw:0.164 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:11 | Pan:-47 Tilt:-9 | sBPM:94 phase:197°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:11 | Pan:-21 Tilt:-23 | sBPM:94 phase:197°
+[LATINO-41] sB:0.104 mid:0.394 hMid:0.274 tr:0.285 | morph:0.391 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.089 mid:0.355 hMid:0.243 tr:0.240 | morph:0.374 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.339 hMid:0.212 tr:0.203 | morph:0.355 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.078 mid:0.456 hMid:0.275 tr:0.292 | morph:0.349 tDelta:0.0895 percRaw:0.358 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.161 mid:0.540 hMid:0.332 tr:0.376 | morph:0.364 tDelta:0.0838 percRaw:0.335 | fPar:0.800 bPar:0.337 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.300 mid:0.580 hMid:0.366 tr:0.388 | morph:0.407 tDelta:0.0122 percRaw:0.049 | fPar:0.271 bPar:0.135 mL:0.832 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.435 mid:0.579 hMid:0.362 tr:0.349 | morph:0.443 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.025 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.481 mid:0.576 hMid:0.364 tr:0.301 | morph:0.470 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.002 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.493 mid:0.539 hMid:0.363 tr:0.263 | morph:0.470 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.162 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.455 mid:0.524 hMid:0.355 tr:0.239 | morph:0.468 tDelta:0.0000 percRaw:0.000 | fPar:0.430 bPar:0.000 mL:0.007 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.396 mid:0.545 hMid:0.360 tr:0.219 | morph:0.469 tDelta:0.0000 percRaw:0.000 | fPar:0.231 bPar:0.000 mL:0.834 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.328 mid:0.552 hMid:0.375 tr:0.192 | morph:0.475 tDelta:0.0000 percRaw:0.000 | fPar:0.124 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.274 mid:0.493 hMid:0.341 tr:0.174 | morph:0.469 tDelta:0.0000 percRaw:0.000 | fPar:0.047 bPar:0.000 mL:0.173 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.231 mid:0.475 hMid:0.336 tr:0.206 | morph:0.462 tDelta:0.0315 percRaw:0.126 | fPar:0.007 bPar:0.000 mL:0.007 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.199 mid:0.475 hMid:0.332 tr:0.206 | morph:0.456 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.487 hMid:0.348 tr:0.268 | morph:0.450 tDelta:0.0622 percRaw:0.249 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.154 mid:0.428 hMid:0.319 tr:0.262 | morph:0.439 tDelta:0.0000 percRaw:0.000 | fPar:0.108 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.131 mid:0.353 hMid:0.271 tr:0.214 | morph:0.421 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.120 mid:0.332 hMid:0.239 tr:0.178 | morph:0.400 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.369 hMid:0.260 tr:0.211 | morph:0.384 tDelta:0.0333 percRaw:0.133 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.438 hMid:0.294 tr:0.290 | morph:0.375 tDelta:0.0788 percRaw:0.315 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.487 hMid:0.321 tr:0.314 | morph:0.371 tDelta:0.0240 percRaw:0.096 | fPar:0.000 bPar:0.338 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.492 hMid:0.330 tr:0.285 | morph:0.368 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.134 mL:0.524 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.431 hMid:0.295 tr:0.255 | morph:0.359 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.023 mL:0.104 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.392 hMid:0.276 tr:0.233 | morph:0.346 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.509 hMid:0.343 tr:0.345 | morph:0.345 tDelta:0.1113 percRaw:0.445 | fPar:0.000 bPar:0.850 mL:0.654 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.234 mid:0.546 hMid:0.382 tr:0.399 | morph:0.365 tDelta:0.0545 percRaw:0.218 | fPar:0.800 bPar:0.337 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.377 mid:0.539 hMid:0.378 tr:0.393 | morph:0.377 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.134 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.463 mid:0.469 hMid:0.339 tr:0.338 | morph:0.372 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.024 mL:0.158 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.502 mid:0.398 hMid:0.300 tr:0.284 | morph:0.359 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.005 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.531 mid:0.398 hMid:0.270 tr:0.284 | morph:0.347 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.517 mid:0.384 hMid:0.270 tr:0.264 | morph:0.333 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.461 mid:0.399 hMid:0.289 tr:0.246 | morph:0.321 tDelta:0.0000 percRaw:0.000 | fPar:0.421 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.383 mid:0.436 hMid:0.308 tr:0.232 | morph:0.314 tDelta:0.0000 percRaw:0.000 | fPar:0.221 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.982
+[LATINO-41] sB:0.315 mid:0.443 hMid:0.314 tr:0.210 | morph:0.307 tDelta:0.0000 percRaw:0.000 | fPar:0.116 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.259 mid:0.425 hMid:0.306 tr:0.187 | morph:0.298 tDelta:0.0000 percRaw:0.000 | fPar:0.035 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.198 mid:0.400 hMid:0.289 tr:0.159 | morph:0.287 tDelta:0.0000 percRaw:0.000 | fPar:0.005 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.152 mid:0.358 hMid:0.267 tr:0.134 | morph:0.272 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.118 mid:0.358 hMid:0.250 tr:0.134 | morph:0.257 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.334 hMid:0.238 tr:0.115 | morph:0.241 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#4000 | frames=441 | peak=0.1243 | ch=2
+[LATINO-41] sB:0.072 mid:0.323 hMid:0.224 tr:0.099 | morph:0.223 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.329 hMid:0.211 tr:0.087 | morph:0.207 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.046 mid:0.362 hMid:0.241 tr:0.117 | morph:0.194 tDelta:0.0305 percRaw:0.122 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.037 mid:0.418 hMid:0.280 tr:0.154 | morph:0.187 tDelta:0.0365 percRaw:0.146 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=93 conf=0.38 | PLL=FREEWHEEL [mem=93@-0f] phase=0.00 sync=0.41 | beat #50 | bass=0.0275 sab=0.054 | 🔬in_peak=0.16031 in_rms=0.05346
+[LATINO-41] sB:0.031 mid:0.483 hMid:0.316 tr:0.179 | morph:0.186 tDelta:0.0254 percRaw:0.102 | fPar:0.000 bPar:0.850 mL:0.558 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.027 mid:0.499 hMid:0.333 tr:0.184 | morph:0.195 tDelta:0.0046 percRaw:0.018 | fPar:0.000 bPar:0.323 mL:0.681 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.024 mid:0.499 hMid:0.345 tr:0.184 | morph:0.202 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.123 mL:0.698 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.029 mid:0.479 hMid:0.346 tr:0.174 | morph:0.201 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.016 mL:0.133 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.536 hMid:0.343 tr:0.179 | morph:0.235 tDelta:0.0049 percRaw:0.020 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.046 mid:0.554 hMid:0.341 tr:0.190 | morph:0.278 tDelta:0.0107 percRaw:0.043 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.037 mid:0.528 hMid:0.327 tr:0.180 | morph:0.295 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.848 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.030 mid:0.492 hMid:0.318 tr:0.169 | morph:0.293 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.165 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.027 mid:0.531 hMid:0.319 tr:0.162 | morph:0.310 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.818 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.023 mid:0.552 hMid:0.334 tr:0.179 | morph:0.340 tDelta:0.0171 percRaw:0.069 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.514 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.020 mid:0.568 hMid:0.358 tr:0.198 | morph:0.377 tDelta:0.0188 percRaw:0.075 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.665 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.017 mid:0.558 hMid:0.370 tr:0.198 | morph:0.402 tDelta:0.0001 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.668 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.016 mid:0.523 hMid:0.373 tr:0.192 | morph:0.401 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.170 mR:0.134 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.027 mid:0.509 hMid:0.370 tr:0.182 | morph:0.399 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.006 mR:0.003 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.032 mid:0.536 hMid:0.379 tr:0.187 | morph:0.403 tDelta:0.0047 percRaw:0.019 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.036 mid:0.536 hMid:0.387 tr:0.187 | morph:0.407 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:12 | Pan:-107 Tilt:-55 | sBPM:93 phase:317°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:12 | Pan:1 Tilt:-76 | sBPM:93 ph

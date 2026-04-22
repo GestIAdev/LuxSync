@@ -1,1007 +1,573 @@
-[F] B:0.82 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.20 SnP:0.51 OUT:0.06 | [M] Morph:0.53
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.53
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.16 SnP:0.40 OUT:0.01 | [M] Morph:0.53
-[F] B:0.85 Snap:0.070 Kick:N OUT:0.34 | [B] M:0.51 T:0.22 SnP:0.55 OUT:0.10 | [M] Morph:0.53
-[F] B:0.85 Snap:0.000 Kick:N OUT:0.26 | [B] M:0.52 T:0.19 SnP:0.49 OUT:0.04 | [M] Morph:0.53
-[F] B:0.84 Snap:0.000 Kick:N OUT:0.21 | [B] M:0.53 T:0.23 SnP:0.59 OUT:0.17 | [M] Morph:0.54
-[F] B:0.85 Snap:0.005 Kick:Y OUT:0.16 | [B] M:0.52 T:0.23 SnP:0.59 OUT:0.17 | [M] Morph:0.54
-[F] B:0.84 Snap:0.000 Kick:Y OUT:0.13 | [B] M:0.49 T:0.18 SnP:0.46 OUT:0.02 | [M] Morph:0.54
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #256
-[TitanEngine 🧠] Stabilization: Key=F Emotion=BRIGHT Strategy=triadic Temp=3516K
-[F] B:0.89 Snap:0.046 Kick:N OUT:0.10 | [B] M:0.50 T:0.18 SnP:0.47 OUT:0.03 | [M] Morph:0.54
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.8360
-[F] B:0.89 Snap:0.002 Kick:Y OUT:0.00 | [B] M:0.48 T:0.17 SnP:0.43 OUT:0.01 | [M] Morph:0.54
-[F] B:0.88 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.45 T:0.15 SnP:0.39 OUT:0.00 | [M] Morph:0.53
-[F] B:0.86 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.53
-[F] B:0.85 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.53
-[F] B:0.85 Snap:0.008 Kick:N OUT:0.00 | [B] M:0.45 T:0.24 SnP:0.58 OUT:0.15 | [M] Morph:0.52
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.57 OUT:0.14 | [M] Morph:0.52
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.58 OUT:0.15 | [M] Morph:0.52
-[IPC 📡] audioBuffer #5512 | titan.running=true | size=8192
-[F] B:0.84 Snap:0.033 Kick:N OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.58 OUT:0.15 | [M] Morph:0.52
-[F] B:0.85 Snap:0.009 Kick:N OUT:0.00 | [B] M:0.44 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.51
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=77% B/D/N=395/115/1
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.88 Snap:0.035 Kick:Y OUT:0.00 | [B] M:0.50 T:0.25 SnP:0.59 OUT:0.18 | [M] Morph:0.51
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(39%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [LERP] [MIRROR F0/2] | Bar:64 | Pan:-170 Tilt:-1 | sBPM:134 phase:245°
-[CHOREO] techno-club | scan_x [LERP] [MIRROR F1/2] | Bar:64 | Pan:179 Tilt:0 | sBPM:134 phase:245°
-[F] B:0.88 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.59 OUT:0.17 | [M] Morph:0.51
-[🥁 INTERVAL BPM] KICK #257 bpm=124 conf=0.00 energy=0.1582 avg=0.0500 ratio=3.16 delta=0.1582 history=8/8 bpmBuf=[161,86,185,81,185,86,161,86]
-[F] B:0.84 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.41 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.51
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.50
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.33 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.49
-[F] B:0.79 Snap:0.057 Kick:N OUT:0.32 | [B] M:0.33 T:0.22 SnP:0.50 OUT:0.05 | [M] Morph:0.48
-[F] B:0.83 Snap:0.042 Kick:N OUT:0.24 | [B] M:0.32 T:0.22 SnP:0.51 OUT:0.05 | [M] Morph:0.48
-[F] B:0.85 Snap:0.014 Kick:N OUT:0.19 | [B] M:0.31 T:0.19 SnP:0.44 OUT:0.01 | [M] Morph:0.47
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.30 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.46
-[INTERVAL] F5520 bpm=124 raw=124 conf=0.000 kick=false phase=0.48 needle=0.0000 bassFlux=0.0000 midFlux=0.0026 centroid=558Hz kicks=257
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5520: bpm=134, energy=0.55
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.30 T:0.16 SnP:0.37 OUT:0.00 | [M] Morph:0.45
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.995 (Rock target: >0.7)
-   Flatness:    0.000 (Tonal<0.3, Noise>0.7)
-   Centroid:    264Hz (Bright>2000, Dark<1200)
-   CrestFactor: 18.87 (Dynamics)
-   Rolloff:     484Hz (85% energy)
-   Latency:     1.53ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.60x | In: 0.396 → Out: 0.238 | Peak: 0.826 | ✅ ACTIVE
-[F] B:0.84 Snap:0.053 Kick:N OUT:0.34 | [B] M:0.51 T:0.18 SnP:0.42 OUT:0.01 | [M] Morph:0.46
-[🥁 INTERVAL BPM] KICK #258 bpm=124 conf=0.00 energy=0.1293 avg=0.0528 ratio=2.45 delta=0.1293 history=8/8 bpmBuf=[161,86,185,81,185,86,161,86]
-[F] B:0.86 Snap:0.021 Kick:Y OUT:0.26 | [B] M:0.51 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.47
-[F] B:0.85 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.50 T:0.14 SnP:0.34 OUT:0.00 | [M] Morph:0.48
-[F] B:0.83 Snap:0.000 Kick:Y OUT:0.15 | [B] M:0.49 T:0.14 SnP:0.36 OUT:0.00 | [M] Morph:0.48
-[F] B:0.83 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.49 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.48
-[F] B:0.83 Snap:0.001 Kick:N OUT:0.09 | [B] M:0.47 T:0.21 SnP:0.51 OUT:0.05 | [M] Morph:0.47
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.25 SnP:0.62 OUT:0.24 | [M] Morph:0.47
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.59 OUT:0.17 | [M] Morph:0.47
-[F] B:0.82 Snap:0.032 Kick:N OUT:0.00 | [B] M:0.52 T:0.24 SnP:0.60 OUT:0.20 | [M] Morph:0.48
-[🥁 INTERVAL BPM] KICK #259 bpm=161 conf=0.00 energy=0.1429 avg=0.0507 ratio=2.82 delta=0.1429 history=8/8 bpmBuf=[161,86,185,81,185,215,161,86]
-[F] B:0.84 Snap:0.021 Kick:Y OUT:0.00 | [B] M:0.52 T:0.21 SnP:0.53 OUT:0.07 | [M] Morph:0.49
-[F] B:0.83 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.55 T:0.21 SnP:0.53 OUT:0.08 | [M] Morph:0.51
-[F] B:0.87 Snap:0.040 Kick:N OUT:0.00 | [B] M:0.56 T:0.25 SnP:0.65 OUT:0.32 | [M] Morph:0.53
-[F] B:0.86 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.53 T:0.23 SnP:0.60 OUT:0.20 | [M] Morph:0.54
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.45 T:0.19 SnP:0.50 OUT:0.05 | [M] Morph:0.53
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.17 SnP:0.43 OUT:0.01 | [M] Morph:0.53
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.15 SnP:0.40 OUT:0.00 | [M] Morph:0.53
-[CHOREO] Transition complete -> scan_x
-[F] B:0.83 Snap:0.061 Kick:N OUT:0.33 | [B] M:0.47 T:0.23 SnP:0.58 OUT:0.15 | [M] Morph:0.53
-[F] B:0.87 Snap:0.039 Kick:N OUT:0.26 | [B] M:0.48 T:0.23 SnP:0.58 OUT:0.15 | [M] Morph:0.52
-[🥁 INTERVAL BPM] KICK #260 bpm=173 conf=0.00 energy=0.1070 avg=0.0511 ratio=2.09 delta=0.1070 history=8/8 bpmBuf=[161,86,185,81,185,215,185,86]
-[F] B:0.86 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.48 T:0.24 SnP:0.58 OUT:0.16 | [M] Morph:0.52
-[F] B:0.85 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.49 T:0.22 SnP:0.56 OUT:0.12 | [M] Morph:0.52
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.45 T:0.17 SnP:0.42 OUT:0.01 | [M] Morph:0.52
-[F] B:0.84 Snap:0.036 Kick:N OUT:0.09 | [B] M:0.46 T:0.16 SnP:0.41 OUT:0.01 | [M] Morph:0.52
-[F] B:0.87 Snap:0.022 Kick:N OUT:0.00 | [B] M:0.42 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.51
-[F] B:0.84 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.40 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.51
-[INTERVAL] F5540 bpm=130 raw=173 conf=0.000 kick=false phase=0.67 needle=0.0000 bassFlux=0.0000 midFlux=0.0152 centroid=588Hz kicks=260
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.10 SnP:0.25 OUT:0.00 | [M] Morph:0.50
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.49
-[F] B:0.80 Snap:0.012 Kick:N OUT:0.00 | [B] M:0.44 T:0.24 SnP:0.56 OUT:0.12 | [M] Morph:0.49
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.23 SnP:0.54 OUT:0.09 | [M] Morph:0.49
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.23 SnP:0.55 OUT:0.10 | [M] Morph:0.49
-[F] B:0.79 Snap:0.013 Kick:N OUT:0.00 | [B] M:0.43 T:0.21 SnP:0.51 OUT:0.05 | [M] Morph:0.48
-[F] B:0.79 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.46 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.48
-[F] B:0.85 Snap:0.062 Kick:N OUT:0.34 | [B] M:0.47 T:0.23 SnP:0.56 OUT:0.12 | [M] Morph:0.48
-[IPC 📡] audioBuffer #5546 | titan.running=true | size=8192
-[🥁 INTERVAL BPM] KICK #261 bpm=179 conf=0.00 energy=0.1622 avg=0.0435 ratio=3.73 delta=0.1622 history=8/8 bpmBuf=[161,173,185,173,185,215,185,117]
-[F] B:0.90 Snap:0.050 Kick:Y OUT:0.26 | [B] M:0.42 T:0.22 SnP:0.53 OUT:0.07 | [M] Morph:0.48
-[F] B:0.87 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.39 T:0.20 SnP:0.48 OUT:0.03 | [M] Morph:0.47
-[F] B:0.83 Snap:0.000 Kick:Y OUT:0.16 | [B] M:0.35 T:0.19 SnP:0.46 OUT:0.02 | [M] Morph:0.46
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.31 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.46
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.44 T:0.23 SnP:0.52 OUT:0.06 | [M] Morph:0.45
-[F] B:0.80 Snap:0.065 Kick:N OUT:0.32 | [B] M:0.48 T:0.21 SnP:0.49 OUT:0.03 | [M] Morph:0.45
-[F] B:0.82 Snap:0.016 Kick:N OUT:0.25 | [B] M:0.49 T:0.20 SnP:0.46 OUT:0.02 | [M] Morph:0.46
-[F] B:0.83 Snap:0.009 Kick:Y OUT:0.19 | [B] M:0.52 T:0.20 SnP:0.49 OUT:0.03 | [M] Morph:0.47
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #261
-[TitanEngine 🧠] Stabilization: Key=F Emotion=BRIGHT Strategy=triadic Temp=3638K
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.15 | [B] M:0.50 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.48
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.54 T:0.18 SnP:0.45 OUT:0.02 | [M] Morph:0.49
-[F] B:0.88 Snap:0.101 Kick:N OUT:0.35 | [B] M:0.52 T:0.16 SnP:0.40 OUT:0.00 | [M] Morph:0.50
-[🥁 INTERVAL BPM] KICK #262 bpm=179 conf=0.00 energy=0.2388 avg=0.0529 ratio=4.51 delta=0.2388 history=8/8 bpmBuf=[161,173,185,173,185,215,185,117]
-[F] B:0.87 Snap:0.000 Kick:Y OUT:0.27 | [B] M:0.50 T:0.14 SnP:0.36 OUT:0.00 | [M] Morph:0.50
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.21 | [B] M:0.46 T:0.14 SnP:0.35 OUT:0.00 | [M] Morph:0.50
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.47 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.50
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.47 T:0.13 SnP:0.33 OUT:0.00 | [M] Morph:0.50
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.47 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.50
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.18 SnP:0.46 OUT:0.02 | [M] Morph:0.50
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.20 SnP:0.50 OUT:0.04 | [M] Morph:0.49
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=72% B/D/N=364/137/4
-[StrategyArbiter] 🔒 LOCKED: triadic | Remaining: 1500 frames (25.0s)
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.74 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.49 T:0.20 SnP:0.50 OUT:0.04 | [M] Morph:0.49
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:65 | Pan:86 Tilt:0 | sBPM:134 phase:24°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:65 | Pan:-199 Tilt:0 | sBPM:134 phase:24°
-[F] B:0.76 Snap:0.026 Kick:N OUT:0.00 | [B] M:0.48 T:0.18 SnP:0.46 OUT:0.02 | [M] Morph:0.49
-[F] B:0.77 Snap:0.004 Kick:N OUT:0.00 | [B] M:0.49 T:0.17 SnP:0.44 OUT:0.01 | [M] Morph:0.49
-[INTERVAL] F5560 bpm=134 raw=179 conf=0.000 kick=false phase=0.83 needle=0.0000 bassFlux=0.0013 midFlux=0.0058 centroid=1389Hz kicks=262
-[F] B:0.83 Snap:0.068 Kick:N OUT:0.33 | [B] M:0.50 T:0.22 SnP:0.55 OUT:0.10 | [M] Morph:0.50
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.984 (Rock target: >0.7)
-   Flatness:    0.007 (Tonal<0.3, Noise>0.7)
-   Centroid:    317Hz (Bright>2000, Dark<1200)
-   CrestFactor: 16.30 (Dynamics)
-   Rolloff:     183Hz (85% energy)
-   Latency:     1.42ms
-   UltraAir:    0.003 (NEW: 16-22kHz sizzle)
-[🥁 INTERVAL BPM] KICK #263 bpm=185 conf=0.00 energy=0.1980 avg=0.0537 ratio=3.68 delta=0.1980 history=8/8 bpmBuf=[161,185,185,173,185,215,185,117]
-[F] B:0.84 Snap:0.010 Kick:Y OUT:0.26 | [B] M:0.49 T:0.21 SnP:0.52 OUT:0.07 | [M] Morph:0.49
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.20 | [B] M:0.44 T:0.19 SnP:0.46 OUT:0.02 | [M] Morph:0.49
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.43 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.49
-[SimpleSectionTracker] 📍 verse → breakdown | bassR=0.71 wE=0.22 ΔE=-0.145 kick=false
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.43 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.49
-[F] B:0.77 Snap:0.083 Kick:N OUT:0.31 | [B] M:0.44 T:0.22 SnP:0.52 OUT:0.07 | [M] Morph:0.48
-[F] B:0.80 Snap:0.031 Kick:N OUT:0.24 | [B] M:0.45 T:0.19 SnP:0.47 OUT:0.02 | [M] Morph:0.48
-[F] B:0.78 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.47 T:0.22 SnP:0.53 OUT:0.07 | [M] Morph:0.48
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.46 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.48
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.48 T:0.19 SnP:0.47 OUT:0.02 | [M] Morph:0.48
-[F] B:0.82 Snap:0.068 Kick:N OUT:0.33 | [B] M:0.47 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.48
-[🥁 INTERVAL BPM] KICK #264 bpm=185 conf=0.00 energy=0.1679 avg=0.0566 ratio=2.97 delta=0.1679 history=8/8 bpmBuf=[161,185,185,173,185,215,185,117]
-[F] B:0.86 Snap:0.039 Kick:Y OUT:0.25 | [B] M:0.42 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.47
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.40 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.47
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.15 | [B] M:0.37 T:0.11 SnP:0.26 OUT:0.00 | [M] Morph:0.46
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.36 T:0.08 SnP:0.20 OUT:0.00 | [M] Morph:0.46
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.39 T:0.25 SnP:0.57 OUT:0.13 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.24 SnP:0.54 OUT:0.09 | [M] Morph:0.45
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.21 SnP:0.47 OUT:0.03 | [M] Morph:0.44
-[F] B:0.71 Snap:0.034 Kick:N OUT:0.00 | [B] M:0.36 T:0.21 SnP:0.47 OUT:0.02 | [M] Morph:0.43
-[F] B:0.74 Snap:0.028 Kick:N OUT:0.00 | [B] M:0.37 T:0.19 SnP:0.42 OUT:0.01 | [M] Morph:0.43
-[F] B:0.83 Snap:0.088 Kick:Y OUT:0.33 | [B] M:0.44 T:0.24 SnP:0.52 OUT:0.06 | [M] Morph:0.43
-[F] B:0.85 Snap:0.028 Kick:N OUT:0.25 | [B] M:0.42 T:0.24 SnP:0.54 OUT:0.08 | [M] Morph:0.43
-[F] B:0.81 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.37 T:0.21 SnP:0.49 OUT:0.04 | [M] Morph:0.42
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.15 | [B] M:0.33 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.41
-[IPC 📡] audioBuffer #5578 | titan.running=true | size=8192
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.27 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[F] B:0.69 Snap:0.026 Kick:N OUT:0.08 | [B] M:0.30 T:0.21 SnP:0.46 OUT:0.02 | [M] Morph:0.40
-[INTERVAL] F5580 bpm=123 raw=185 conf=0.000 kick=false phase=0.72 needle=0.0000 bassFlux=0.1314 midFlux=0.0034 centroid=3083Hz kicks=264
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5580: bpm=134, energy=0.44
-[F] B:0.75 Snap:0.063 Kick:N OUT:0.30 | [B] M:0.29 T:0.21 SnP:0.45 OUT:0.01 | [M] Morph:0.39
-[AGC 🎚️] Gain: 0.64x | In: 0.612 → Out: 0.390 | Peak: 0.767 | ✅ ACTIVE
-[F] B:0.78 Snap:0.026 Kick:Y OUT:0.23 | [B] M:0.26 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.38
-[F] B:0.75 Snap:0.000 Kick:Y OUT:0.17 | [B] M:0.24 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.37
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.22 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.36
-[F] B:0.74 Snap:0.032 Kick:N OUT:0.10 | [B] M:0.44 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.36
-[F] B:0.79 Snap:0.048 Kick:N OUT:0.00 | [B] M:0.48 T:0.17 SnP:0.38 OUT:0.00 | [M] Morph:0.37
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.16 SnP:0.35 OUT:0.00 | [M] Morph:0.39
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.19 SnP:0.45 OUT:0.01 | [M] Morph:0.40
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.41
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.56 OUT:0.10 | [M] Morph:0.41
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.26 SnP:0.60 OUT:0.18 | [M] Morph:0.42
-[F] B:0.56 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.23 SnP:0.53 OUT:0.07 | [M] Morph:0.42
-[F] B:0.62 Snap:0.061 Kick:N OUT:0.25 | [B] M:0.46 T:0.23 SnP:0.55 OUT:0.09 | [M] Morph:0.42
-[F] B:0.66 Snap:0.038 Kick:N OUT:0.19 | [B] M:0.46 T:0.21 SnP:0.50 OUT:0.04 | [M] Morph:0.42
-[F] B:0.66 Snap:0.003 Kick:Y OUT:0.14 | [B] M:0.44 T:0.20 SnP:0.46 OUT:0.01 | [M] Morph:0.42
-[F] B:0.72 Snap:0.053 Kick:Y OUT:0.11 | [B] M:0.53 T:0.27 SnP:0.63 OUT:0.26 | [M] Morph:0.44
-[F] B:0.76 Snap:0.042 Kick:N OUT:0.08 | [B] M:0.53 T:0.27 SnP:0.64 OUT:0.29 | [M] Morph:0.46
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.51 T:0.25 SnP:0.59 OUT:0.17 | [M] Morph:0.47
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.24 SnP:0.57 OUT:0.13 | [M] Morph:0.47
-[F] B:0.60 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.18 SnP:0.44 OUT:0.01 | [M] Morph:0.47
-[F] B:0.68 Snap:0.072 Kick:N OUT:0.27 | [B] M:0.48 T:0.25 SnP:0.61 OUT:0.20 | [M] Morph:0.47
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #264
-[TitanEngine 🧠] Stabilization: Key=F Emotion=BRIGHT Strategy=triadic Temp=4007K
-[F] B:0.68 Snap:0.007 Kick:N OUT:0.21 | [B] M:0.49 T:0.23 SnP:0.56 OUT:0.11 | [M] Morph:0.47
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.48 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.47
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.48 T:0.22 SnP:0.53 OUT:0.08 | [M] Morph:0.47
-[F] B:0.61 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.46 T:0.18 SnP:0.45 OUT:0.01 | [M] Morph:0.47
-[F] B:0.72 Snap:0.110 Kick:N OUT:0.29 | [B] M:0.47 T:0.17 SnP:0.42 OUT:0.01 | [M] Morph:0.47
-[F] B:0.77 Snap:0.055 Kick:Y OUT:0.22 | [B] M:0.47 T:0.16 SnP:0.39 OUT:0.00 | [M] Morph:0.47
-[F] B:0.72 Snap:0.000 Kick:Y OUT:0.17 | [B] M:0.45 T:0.14 SnP:0.35 OUT:0.00 | [M] Morph:0.47
-[INTERVAL] F5600 bpm=123 raw=185 conf=0.000 kick=false phase=0.58 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=1560Hz kicks=264
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.45 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.47
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.44 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.46
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.990 (Rock target: >0.7)
-   Flatness:    0.002 (Tonal<0.3, Noise>0.7)
-   Centroid:    821Hz (Bright>2000, Dark<1200)
-   CrestFactor: 16.06 (Dynamics)
-   Rolloff:     1001Hz (85% energy)
-   Latency:     0.79ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[F] B:0.61 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.25 SnP:0.58 OUT:0.14 | [M] Morph:0.46
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=61% B/D/N=300/167/21
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.60 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.26 SnP:0.60 OUT:0.20 | [M] Morph:0.46
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:66 | Pan:65 Tilt:0 | sBPM:134 phase:163°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:66 | Pan:101 Tilt:0 | sBPM:134 phase:163°
-[F] B:0.59 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.25 SnP:0.57 OUT:0.14 | [M] Morph:0.46
-[F] B:0.59 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.26 SnP:0.59 OUT:0.18 | [M] Morph:0.45
-[F] B:0.63 Snap:0.045 Kick:N OUT:0.00 | [B] M:0.40 T:0.21 SnP:0.49 OUT:0.03 | [M] Morph:0.45
-[F] B:0.65 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.56 OUT:0.11 | [M] Morph:0.45
-[F] B:0.79 Snap:0.142 Kick:N OUT:0.32 | [B] M:0.48 T:0.27 SnP:0.62 OUT:0.25 | [M] Morph:0.45
-[🥁 INTERVAL BPM] KICK #265 bpm=185 conf=0.00 energy=0.2176 avg=0.0259 ratio=8.40 delta=0.2176 history=8/8 bpmBuf=[161,185,185,173,185,215,185,117]
-[F] B:0.80 Snap:0.004 Kick:Y OUT:0.24 | [B] M:0.45 T:0.25 SnP:0.60 OUT:0.18 | [M] Morph:0.45
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.39 T:0.24 SnP:0.55 OUT:0.10 | [M] Morph:0.44
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.33 T:0.19 SnP:0.43 OUT:0.01 | [M] Morph:0.44
-[F] B:0.61 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.34 T:0.20 SnP:0.46 OUT:0.02 | [M] Morph:0.43
-[IPC 📡] audioBuffer #5609 | titan.running=true | size=8192
-[F] B:0.74 Snap:0.123 Kick:N OUT:0.29 | [B] M:0.37 T:0.25 SnP:0.55 OUT:0.10 | [M] Morph:0.42
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.22 | [B] M:0.38 T:0.21 SnP:0.46 OUT:0.02 | [M] Morph:0.42
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.17 | [B] M:0.37 T:0.22 SnP:0.50 OUT:0.04 | [M] Morph:0.42
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.33 T:0.17 SnP:0.38 OUT:0.00 | [M] Morph:0.41
-[F] B:0.57 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.44 T:0.21 SnP:0.47 OUT:0.02 | [M] Morph:0.41
-[F] B:0.57 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.24 SnP:0.55 OUT:0.09 | [M] Morph:0.41
-[F] B:0.52 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.23 SnP:0.54 OUT:0.08 | [M] Morph:0.41
-[F] B:0.48 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.27 SnP:0.64 OUT:0.29 | [M] Morph:0.42
-[F] B:0.48 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.26 SnP:0.64 OUT:0.30 | [M] Morph:0.42
-[F] B:0.44 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.25 SnP:0.60 OUT:0.17 | [M] Morph:0.42
-[F] B:0.45 Snap:0.005 Kick:N OUT:0.00 | [B] M:0.49 T:0.30 SnP:0.72 OUT:0.64 | [M] Morph:0.43
-[F] B:0.46 Snap:0.005 Kick:N OUT:0.00 | [B] M:0.47 T:0.28 SnP:0.70 OUT:0.52 | [M] Morph:0.43
-[F] B:0.44 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.29 SnP:0.71 OUT:0.60 | [M] Morph:0.43
-[F] B:0.44 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.29 SnP:0.70 OUT:0.53 | [M] Morph:0.43
-[F] B:0.39 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.26 SnP:0.63 OUT:0.27 | [M] Morph:0.43
-[INTERVAL] F5620 bpm=123 raw=185 conf=0.000 kick=false phase=0.00 needle=0.0000 bassFlux=0.0000 midFlux=0.0046 centroid=1318Hz kicks=265
-[F] B:0.39 Snap:0.003 Kick:N OUT:0.00 | [B] M:0.51 T:0.27 SnP:0.66 OUT:0.34 | [M] Morph:0.45
-[F] B:0.35 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.52 T:0.25 SnP:0.62 OUT:0.25 | [M] Morph:0.46
-[F] B:0.33 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.53 T:0.26 SnP:0.66 OUT:0.37 | [M] Morph:0.48
-[F] B:0.44 Snap:0.108 Kick:N OUT:0.18 | [B] M:0.54 T:0.27 SnP:0.69 OUT:0.50 | [M] Morph:0.50
-[F] B:0.42 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.53 T:0.26 SnP:0.68 OUT:0.44 | [M] Morph:0.51
-[F] B:0.39 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.58 T:0.28 SnP:0.74 OUT:0.75 | [M] Morph:0.53
-[F] B:0.40 Snap:0.011 Kick:N OUT:0.08 | [B] M:0.57 T:0.28 SnP:0.75 OUT:0.76 | [M] Morph:0.56
-[F] B:0.35 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.55 T:0.26 SnP:0.72 OUT:0.61 | [M] Morph:0.57
-[F] B:0.45 Snap:0.103 Kick:N OUT:0.18 | [B] M:0.55 T:0.28 SnP:0.75 OUT:0.82 | [M] Morph:0.58
-[F] B:0.45 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.50 T:0.25 SnP:0.69 OUT:0.47 | [M] Morph:0.57
-[F] B:0.45 Snap:0.004 Kick:N OUT:0.11 | [B] M:0.54 T:0.29 SnP:0.78 OUT:0.96 | [M] Morph:0.58
-[F] B:0.42 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.51 T:0.26 SnP:0.70 OUT:0.55 | [M] Morph:0.58
-[F] B:0.42 Snap:0.005 Kick:N OUT:0.00 | [B] M:0.51 T:0.27 SnP:0.74 OUT:0.72 | [M] Morph:0.58
-[F] B:0.49 Snap:0.069 Kick:N OUT:0.20 | [B] M:0.53 T:0.28 SnP:0.77 OUT:0.91 | [M] Morph:0.58
-[F] B:0.48 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.50 T:0.26 SnP:0.71 OUT:0.57 | [M] Morph:0.57
-[F] B:0.46 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.54 T:0.29 SnP:0.78 OUT:1.01 | [M] Morph:0.58
-[F] B:0.44 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.52 T:0.26 SnP:0.73 OUT:0.68 | [M] Morph:0.58
-[F] B:0.39 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.52 T:0.28 SnP:0.78 OUT:0.96 | [M] Morph:0.58
-[F] B:0.42 Snap:0.026 Kick:N OUT:0.00 | [B] M:0.51 T:0.28 SnP:0.76 OUT:0.85 | [M] Morph:0.58
-[F] B:0.38 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.25 SnP:0.69 OUT:0.48 | [M] Morph:0.57
-[F] B:0.34 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.51 T:0.24 SnP:0.66 OUT:0.39 | [M] Morph:0.57
-[F] B:0.28 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.57 T:0.24 SnP:0.67 OUT:0.42 | [M] Morph:0.59
-[F] B:0.25 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.55 T:0.22 SnP:0.62 OUT:0.26 | [M] Morph:0.59
-[F] B:0.22 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.52 T:0.19 SnP:0.53 OUT:0.09 | [M] Morph:0.59
-[F] B:0.19 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.16 SnP:0.45 OUT:0.02 | [M] Morph:0.59
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #265
-[F] B:0.18 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.14 SnP:0.38 OUT:0.00 | [M] Morph:0.58
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.16 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.12 SnP:0.33 OUT:0.00 | [M] Morph:0.58
-[INTERVAL] F5640 bpm=123 raw=185 conf=0.000 kick=false phase=0.87 needle=0.0000 bassFlux=0.0008 midFlux=0.0104 centroid=1470Hz kicks=265
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5640: bpm=134, energy=0.07
-[F] B:0.15 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.11 SnP:0.30 OUT:0.00 | [M] Morph:0.58
-[IPC 📡] audioBuffer #5641 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.985 (Rock target: >0.7)
-   Flatness:    0.003 (Tonal<0.3, Noise>0.7)
-   Centroid:    1470Hz (Bright>2000, Dark<1200)
-   CrestFactor: 17.97 (Dynamics)
-   Rolloff:     2196Hz (85% energy)
-   Latency:     1.27ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.73x | In: 0.274 → Out: 0.201 | Peak: 0.669 | ✅ ACTIVE
-[F] B:0.12 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.08 SnP:0.22 OUT:0.00 | [M] Morph:0.57
-[F] B:0.12 Snap:0.006 Kick:N OUT:0.00 | [B] M:0.43 T:0.06 SnP:0.19 OUT:0.00 | [M] Morph:0.57
-[F] B:0.35 Snap:0.226 Kick:N OUT:0.14 | [B] M:0.48 T:0.11 SnP:0.30 OUT:0.00 | [M] Morph:0.56
-[F] B:0.79 Snap:0.441 Kick:Y OUT:0.11 | [B] M:0.47 T:0.10 SnP:0.28 OUT:0.00 | [M] Morph:0.56
-[🥁 INTERVAL BPM] KICK #266 bpm=185 conf=0.00 energy=0.3103 avg=0.0173 ratio=17.89 delta=0.2044 history=8/8 bpmBuf=[161,185,185,173,185,215,185,117]
-[F] B:0.83 Snap:0.042 Kick:Y OUT:0.09 | [B] M:0.44 T:0.08 SnP:0.22 OUT:0.00 | [M] Morph:0.56
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.40 T:0.05 SnP:0.14 OUT:0.00 | [M] Morph:0.55
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.04 SnP:0.10 OUT:0.00 | [M] Morph:0.54
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=55% B/D/N=253/132/76
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.79 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.44 T:0.04 SnP:0.11 OUT:0.00 | [M] Morph:0.54
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:66 | Pan:-184 Tilt:0 | sBPM:134 phase:304°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:66 | Pan:44 Tilt:0 | sBPM:134 phase:304°
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.04 SnP:0.13 OUT:0.00 | [M] Morph:0.54
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.53
-[F] B:0.76 Snap:0.014 Kick:N OUT:0.00 | [B] M:0.45 T:0.03 SnP:0.12 OUT:0.00 | [M] Morph:0.53
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.02 SnP:0.10 OUT:0.00 | [M] Morph:0.53
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.16 SnP:0.41 OUT:0.01 | [M] Morph:0.52
-[F] B:0.84 Snap:0.089 Kick:N OUT:0.34 | [B] M:0.45 T:0.21 SnP:0.53 OUT:0.08 | [M] Morph:0.52
-[🥁 INTERVAL BPM] KICK #267 bpm=185 conf=0.00 energy=0.2844 avg=0.0335 ratio=8.50 delta=0.2844 history=8/8 bpmBuf=[161,185,185,161,185,215,185,117]
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.26 | [B] M:0.42 T:0.18 SnP:0.46 OUT:0.02 | [M] Morph:0.52
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.37 T:0.14 SnP:0.35 OUT:0.00 | [M] Morph:0.51
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.36 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.50
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.40 T:0.09 SnP:0.22 OUT:0.00 | [M] Morph:0.50
-[F] B:0.77 Snap:0.032 Kick:N OUT:0.09 | [B] M:0.41 T:0.08 SnP:0.21 OUT:0.00 | [M] Morph:0.49
-[F] B:0.80 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.42 T:0.06 SnP:0.18 OUT:0.00 | [M] Morph:0.49
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.04 SnP:0.13 OUT:0.00 | [M] Morph:0.49
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.03 SnP:0.09 OUT:0.00 | [M] Morph:0.48
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.05 SnP:0.13 OUT:0.00 | [M] Morph:0.47
-[F] B:0.84 Snap:0.117 Kick:N OUT:0.34 | [B] M:0.37 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.47
-[F] B:0.85 Snap:0.006 Kick:N OUT:0.26 | [B] M:0.34 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.46
-[INTERVAL] F5660 bpm=123 raw=185 conf=0.000 kick=false phase=0.15 needle=0.1320 bassFlux=0.1320 midFlux=0.0000 centroid=87Hz kicks=267
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.32 T:0.03 SnP:0.07 OUT:0.00 | [M] Morph:0.45
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.30 T:0.02 SnP:0.06 OUT:0.00 | [M] Morph:0.44
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.27 T:0.01 SnP:0.03 OUT:0.00 | [M] Morph:0.43
-[F] B:0.78 Snap:0.008 Kick:N OUT:0.09 | [B] M:0.37 T:0.02 SnP:0.06 OUT:0.00 | [M] Morph:0.43
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.03 SnP:0.09 OUT:0.00 | [M] Morph:0.43
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.02 SnP:0.07 OUT:0.00 | [M] Morph:0.42
-[F] B:0.78 Snap:0.063 Kick:N OUT:0.31 | [B] M:0.36 T:0.01 SnP:0.06 OUT:0.00 | [M] Morph:0.42
-[F] B:0.78 Snap:0.001 Kick:N OUT:0.24 | [B] M:0.37 T:0.04 SnP:0.11 OUT:0.00 | [M] Morph:0.41
-[F] B:0.88 Snap:0.100 Kick:Y OUT:0.18 | [B] M:0.44 T:0.23 SnP:0.53 OUT:0.07 | [M] Morph:0.41
-[F] B:0.87 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.42 T:0.22 SnP:0.51 OUT:0.04 | [M] Morph:0.41
-[F] B:0.85 Snap:0.000 Kick:Y OUT:0.10 | [B] M:0.38 T:0.19 SnP:0.44 OUT:0.01 | [M] Morph:0.40
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.33 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.40
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.30 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.39
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.08 SnP:0.19 OUT:0.00 | [M] Morph:0.38
-[F] B:0.78 Snap:0.051 Kick:N OUT:0.31 | [B] M:0.40 T:0.05 SnP:0.13 OUT:0.00 | [M] Morph:0.38
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.24 | [B] M:0.38 T:0.04 SnP:0.11 OUT:0.00 | [M] Morph:0.38
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.33 T:0.01 SnP:0.06 OUT:0.00 | [M] Morph:0.37
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.32 T:0.03 SnP:0.09 OUT:0.00 | [M] Morph:0.37
-[IPC 📡] audioBuffer #5674 | titan.running=true | size=8192
-[F] B:0.83 Snap:0.113 Kick:N OUT:0.33 | [B] M:0.34 T:0.08 SnP:0.20 OUT:0.00 | [M] Morph:0.36
-[🥁 INTERVAL BPM] KICK #268 bpm=173 conf=0.00 energy=0.2705 avg=0.0582 ratio=4.65 delta=0.2705 history=8/8 bpmBuf=[161,185,185,161,56,215,185,117]
-[F] B:0.86 Snap:0.023 Kick:Y OUT:0.25 | [B] M:0.29 T:0.05 SnP:0.11 OUT:0.00 | [M] Morph:0.35
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.27 T:0.03 SnP:0.07 OUT:0.00 | [M] Morph:0.34
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.25 T:0.01 SnP:0.03 OUT:0.00 | [M] Morph:0.34
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.28 T:0.01 SnP:0.02 OUT:0.00 | [M] Morph:0.33
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.32 T:0.01 SnP:0.04 OUT:0.00 | [M] Morph:0.32
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.02 SnP:0.08 OUT:0.00 | [M] Morph:0.32
-[F] B:0.74 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.44 T:0.03 SnP:0.10 OUT:0.00 | [M] Morph:0.33
-[INTERVAL] F5680 bpm=130 raw=173 conf=0.000 kick=false phase=0.67 needle=0.0000 bassFlux=0.0078 midFlux=0.0000 centroid=1671Hz kicks=268
-[F] B:0.78 Snap:0.042 Kick:N OUT:0.00 | [B] M:0.47 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.34
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.984 (Rock target: >0.7)
-   Flatness:    0.005 (Tonal<0.3, Noise>0.7)
-   Centroid:    771Hz (Bright>2000, Dark<1200)
-   CrestFactor: 20.61 (Dynamics)
-   Rolloff:     2444Hz (85% energy)
-   Latency:     0.89ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.17 SnP:0.43 OUT:0.01 | [M] Morph:0.36
-[F] B:0.84 Snap:0.064 Kick:N OUT:0.33 | [B] M:0.53 T:0.24 SnP:0.59 OUT:0.15 | [M] Morph:0.39
-[F] B:0.86 Snap:0.021 Kick:N OUT:0.25 | [B] M:0.50 T:0.24 SnP:0.59 OUT:0.16 | [M] Morph:0.41
-[🥁 INTERVAL BPM] KICK #269 bpm=167 conf=0.00 energy=0.1867 avg=0.0496 ratio=3.76 delta=0.1867 history=8/8 bpmBuf=[161,185,185,161,173,161,185,117]
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.44 T:0.18 SnP:0.45 OUT:0.01 | [M] Morph:0.41
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.44 T:0.16 SnP:0.41 OUT:0.00 | [M] Morph:0.41
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #269
-[TitanEngine 🧠] Stabilization: Key=F Emotion=BRIGHT Strategy=triadic Temp=4308K
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.42 T:0.13 SnP:0.34 OUT:0.00 | [M] Morph:0.41
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.75 Snap:0.006 Kick:N OUT:0.09 | [B] M:0.44 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[F] B:0.80 Snap:0.056 Kick:N OUT:0.32 | [B] M:0.44 T:0.07 SnP:0.21 OUT:0.00 | [M] Morph:0.40
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.24 | [B] M:0.44 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.40
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.46 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.40
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.44 T:0.03 SnP:0.10 OUT:0.00 | [M] Morph:0.40
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.47 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.40
-[F] B:0.84 Snap:0.091 Kick:Y OUT:0.33 | [B] M:0.44 T:0.09 SnP:0.24 OUT:0.00 | [M] Morph:0.40
-[🥁 INTERVAL BPM] KICK #270 bpm=161 conf=0.00 energy=0.2101 avg=0.0575 ratio=3.66 delta=0.0728 history=8/8 bpmBuf=[161,185,185,161,173,161,161,117]
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.25 | [B] M:0.41 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.40
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.37 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.40
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=46% B/D/N=204/158/82
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.31 T:0.01 SnP:0.04 OUT:0.00 | [M] Morph:0.39
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:67 | Pan:225 Tilt:0 | sBPM:134 phase:85°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:67 | Pan:-173 Tilt:0 | sBPM:134 phase:85°
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.29 T:0.00 SnP:0.02 OUT:0.00 | [M] Morph:0.38
-[F] B:0.77 Snap:0.002 Kick:N OUT:0.08 | [B] M:0.26 T:0.00 SnP:0.02 OUT:0.00 | [M] Morph:0.37
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.29 T:0.00 SnP:0.02 OUT:0.00 | [M] Morph:0.36
-[F] B:0.77 Snap:0.036 Kick:N OUT:0.00 | [B] M:0.39 T:0.02 SnP:0.05 OUT:0.00 | [M] Morph:0.36
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.01 SnP:0.05 OUT:0.00 | [M] Morph:0.36
-[F] B:0.82 Snap:0.056 Kick:Y OUT:0.33 | [B] M:0.50 T:0.22 SnP:0.50 OUT:0.04 | [M] Morph:0.38
-[F] B:0.84 Snap:0.012 Kick:N OUT:0.25 | [B] M:0.50 T:0.22 SnP:0.52 OUT:0.06 | [M] Morph:0.40
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.46 T:0.20 SnP:0.48 OUT:0.02 | [M] Morph:0.40
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.45 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.40
-[INTERVAL] F5700 bpm=121 raw=161 conf=0.000 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0133 centroid=1205Hz kicks=270
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5700: bpm=134, energy=0.44
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.44 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.40
-[BETA 📡] AUDIO_BUFFER #5700 | size=2048
-[AGC 🎚️] Gain: 0.62x | In: 0.427 → Out: 0.264 | Peak: 0.792 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=1.16/1.4 wE=0.12/0.75 kick=false cool=false
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.43 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[F] B:0.79 Snap:0.100 Kick:N OUT:0.31 | [B] M:0.46 T:0.09 SnP:0.24 OUT:0.00 | [M] Morph:0.40
-[🥁 INTERVAL BPM] KICK #271 bpm=161 conf=0.00 energy=0.1903 avg=0.0563 ratio=3.38 delta=0.1903 history=8/8 bpmBuf=[161,185,185,161,173,161,161,117]
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.55 ΔE=0.057 kick=false
-[F] B:0.80 Snap:0.011 Kick:Y OUT:0.24 | [B] M:0.47 T:0.09 SnP:0.24 OUT:0.00 | [M] Morph:0.40
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.44 T:0.06 SnP:0.18 OUT:0.00 | [M] Morph:0.40
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.42 T:0.05 SnP:0.15 OUT:0.00 | [M] Morph:0.40
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.46 T:0.15 SnP:0.37 OUT:0.00 | [M] Morph:0.40
-[F] B:0.74 Snap:0.034 Kick:N OUT:0.00 | [B] M:0.48 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.41
-[F] B:0.79 Snap:0.042 Kick:N OUT:0.00 | [B] M:0.46 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.41
-[🥁 INTERVAL BPM] KICK #272 bpm=167 conf=0.00 energy=0.2080 avg=0.0581 ratio=3.58 delta=0.0889 history=8/8 bpmBuf=[258,185,185,161,173,161,161,117]
-[F] B:0.75 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.40 T:0.08 SnP:0.20 OUT:0.00 | [M] Morph:0.40
-[IPC 📡] audioBuffer #5708 | titan.running=true | size=8192
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.05 SnP:0.13 OUT:0.00 | [M] Morph:0.40
-[F] B:0.77 Snap:0.039 Kick:N OUT:0.00 | [B] M:0.32 T:0.03 SnP:0.07 OUT:0.00 | [M] Morph:0.39
-[F] B:0.79 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.30 T:0.03 SnP:0.07 OUT:0.00 | [M] Morph:0.38
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.26 T:0.01 SnP:0.03 OUT:0.00 | [M] Morph:0.37
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.26 T:0.02 SnP:0.04 OUT:0.00 | [M] Morph:0.36
-[F] B:0.77 Snap:0.045 Kick:N OUT:0.00 | [B] M:0.28 T:0.02 SnP:0.06 OUT:0.00 | [M] Morph:0.36
-[F] B:0.81 Snap:0.043 Kick:N OUT:0.00 | [B] M:0.31 T:0.08 SnP:0.16 OUT:0.00 | [M] Morph:0.35
-[F] B:0.84 Snap:0.023 Kick:N OUT:0.00 | [B] M:0.44 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.35
-[F] B:0.85 Snap:0.017 Kick:Y OUT:0.00 | [B] M:0.48 T:0.23 SnP:0.51 OUT:0.04 | [M] Morph:0.37
-[F] B:0.83 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.45 T:0.22 SnP:0.48 OUT:0.03 | [M] Morph:0.37
-[F] B:0.78 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.40 T:0.16 SnP:0.35 OUT:0.00 | [M] Morph:0.37
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.36
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.36
-[F] B:0.77 Snap:0.016 Kick:N OUT:0.00 | [B] M:0.35 T:0.10 SnP:0.21 OUT:0.00 | [M] Morph:0.35
-[F] B:0.78 Snap:0.008 Kick:N OUT:0.00 | [B] M:0.31 T:0.06 SnP:0.14 OUT:0.00 | [M] Morph:0.35
-[F] B:0.80 Snap:0.019 Kick:N OUT:0.00 | [B] M:0.33 T:0.06 SnP:0.13 OUT:0.00 | [M] Morph:0.34
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.29 T:0.02 SnP:0.05 OUT:0.00 | [M] Morph:0.33
-[F] B:0.83 Snap:0.033 Kick:N OUT:0.00 | [B] M:0.41 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.33
-[INTERVAL] F5720 bpm=125 raw=167 conf=0.000 kick=false phase=0.68 needle=0.0000 bassFlux=0.0000 midFlux=0.0033 centroid=957Hz kicks=272
-[F] B:0.84 Snap:0.012 Kick:N OUT:0.00 | [B] M:0.42 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.33
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.991 (Rock target: >0.7)
-   Flatness:    0.001 (Tonal<0.3, Noise>0.7)
-   Centroid:    145Hz (Bright>2000, Dark<1200)
-   CrestFactor: 20.15 (Dynamics)
-   Rolloff:     108Hz (85% energy)
-   Latency:     1.56ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[🥁 INTERVAL BPM] KICK #273 bpm=161 conf=0.00 energy=0.1889 avg=0.0520 ratio=3.63 delta=0.1889 history=8/8 bpmBuf=[258,92,185,161,173,161,161,117]
-[F] B:0.82 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.40 T:0.10 SnP:0.23 OUT:0.00 | [M] Morph:0.33
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.06 SnP:0.13 OUT:0.00 | [M] Morph:0.33
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.30 T:0.03 SnP:0.06 OUT:0.00 | [M] Morph:0.32
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.30 T:0.05 SnP:0.11 OUT:0.00 | [M] Morph:0.31
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.28 T:0.04 SnP:0.08 OUT:0.00 | [M] Morph:0.31
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.29 T:0.07 SnP:0.15 OUT:0.00 | [M] Morph:0.30
-[F] B:0.75 Snap:0.047 Kick:N OUT:0.00 | [B] M:0.47 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.32
-[F] B:0.82 Snap:0.071 Kick:N OUT:0.33 | [B] M:0.49 T:0.15 SnP:0.32 OUT:0.00 | [M] Morph:0.34
-[F] B:0.86 Snap:0.034 Kick:N OUT:0.25 | [B] M:0.52 T:0.23 SnP:0.52 OUT:0.05 | [M] Morph:0.37
-[F] B:0.89 Snap:0.037 Kick:N OUT:0.19 | [B] M:0.50 T:0.27 SnP:0.62 OUT:0.23 | [M] Morph:0.39
-[F] B:0.88 Snap:0.000 Kick:Y OUT:0.14 | [B] M:0.48 T:0.26 SnP:0.59 OUT:0.17 | [M] Morph:0.40
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #273
-[F] B:0.83 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.43 T:0.22 SnP:0.51 OUT:0.05 | [M] Morph:0.40
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.0781
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.39 T:0.20 SnP:0.44 OUT:0.01 | [M] Morph:0.39
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.39
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.47 T:0.20 SnP:0.44 OUT:0.01 | [M] Morph:0.40
-[🥁 INTERVAL BPM] KICK #274 bpm=161 conf=0.00 energy=0.2737 avg=0.0537 ratio=5.10 delta=0.2737 history=8/8 bpmBuf=[258,92,117,161,173,161,161,117]
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.48 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.40
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.13 SnP:0.32 OUT:0.00 | [M] Morph:0.40
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.40
-[F] B:0.79 Snap:0.109 Kick:N OUT:0.31 | [B] M:0.46 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.40
-[F] B:0.81 Snap:0.026 Kick:Y OUT:0.24 | [B] M:0.46 T:0.16 SnP:0.37 OUT:0.00 | [M] Morph:0.40
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.44 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=40% B/D/N=175/172/89
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.38 T:0.09 SnP:0.21 OUT:0.00 | [M] Morph:0.39
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(42%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:68 | Pan:-166 Tilt:0 | sBPM:134 phase:226°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:68 | Pan:229 Tilt:0 | sBPM:134 phase:226°
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.36 T:0.07 SnP:0.18 OUT:0.00 | [M] Morph:0.39
-[F] B:0.79 Snap:0.019 Kick:N OUT:0.00 | [B] M:0.46 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.39
-[F] B:0.79 Snap:0.007 Kick:N OUT:0.00 | [B] M:0.52 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.41
-[IPC 📡] audioBuffer #5740 | titan.running=true | size=8192
-[INTERVAL] F5740 bpm=121 raw=161 conf=0.000 kick=false phase=1.00 needle=0.0000 bassFlux=0.0000 midFlux=0.0172 centroid=1237Hz kicks=274
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.51 T:0.16 SnP:0.40 OUT:0.00 | [M] Morph:0.43
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.13 SnP:0.33 OUT:0.00 | [M] Morph:0.44
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.09 SnP:0.24 OUT:0.00 | [M] Morph:0.44
-[F] B:0.80 Snap:0.037 Kick:N OUT:0.00 | [B] M:0.52 T:0.23 SnP:0.53 OUT:0.07 | [M] Morph:0.46
-[F] B:0.84 Snap:0.040 Kick:N OUT:0.00 | [B] M:0.51 T:0.23 SnP:0.56 OUT:0.12 | [M] Morph:0.47
-[🥁 INTERVAL BPM] KICK #275 bpm=139 conf=0.00 energy=0.2405 avg=0.0618 ratio=3.89 delta=0.2405 history=8/8 bpmBuf=[258,92,117,108,173,161,161,117]
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.46 T:0.21 SnP:0.50 OUT:0.04 | [M] Morph:0.47
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.44 T:0.19 SnP:0.46 OUT:0.02 | [M] Morph:0.46
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.46
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.46
-[F] B:0.78 Snap:0.029 Kick:N OUT:0.00 | [B] M:0.48 T:0.19 SnP:0.45 OUT:0.02 | [M] Morph:0.46
-[F] B:0.80 Snap:0.022 Kick:N OUT:0.00 | [B] M:0.49 T:0.16 SnP:0.40 OUT:0.00 | [M] Morph:0.46
-[F] B:0.81 Snap:0.010 Kick:N OUT:0.00 | [B] M:0.47 T:0.14 SnP:0.35 OUT:0.00 | [M] Morph:0.46
-[F] B:0.82 Snap:0.005 Kick:N OUT:0.00 | [B] M:0.43 T:0.10 SnP:0.25 OUT:0.00 | [M] Morph:0.46
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.16 SnP:0.39 OUT:0.00 | [M] Morph:0.45
-[F] B:0.82 Snap:0.022 Kick:N OUT:0.00 | [B] M:0.50 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.46
-[🥁 INTERVAL BPM] KICK #276 bpm=139 conf=0.00 energy=0.1784 avg=0.0510 ratio=3.50 delta=0.1784 history=8/8 bpmBuf=[258,92,117,108,161,161,161,117]
-[F] B:0.83 Snap:0.012 Kick:Y OUT:0.00 | [B] M:0.48 T:0.15 SnP:0.37 OUT:0.00 | [M] Morph:0.46
-[F] B:0.78 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.43 T:0.11 SnP:0.28 OUT:0.00 | [M] Morph:0.46
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.08 SnP:0.20 OUT:0.00 | [M] Morph:0.45
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.34 T:0.05 SnP:0.13 OUT:0.00 | [M] Morph:0.45
-[F] B:0.72 Snap:0.019 Kick:N OUT:0.00 | [B] M:0.36 T:0.09 SnP:0.21 OUT:0.00 | [M] Morph:0.44
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.33 T:0.06 SnP:0.15 OUT:0.00 | [M] Morph:0.43
-[F] B:0.72 Snap:0.006 Kick:N OUT:0.00 | [B] M:0.41 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.43
-[F] B:0.79 Snap:0.077 Kick:N OUT:0.32 | [B] M:0.48 T:0.16 SnP:0.39 OUT:0.00 | [M] Morph:0.43
-[🥁 INTERVAL BPM] KICK #277 bpm=139 conf=0.00 energy=0.1596 avg=0.0478 ratio=3.34 delta=0.1596 history=8/8 bpmBuf=[258,92,117,108,161,215,161,117]
-[F] B:0.81 Snap:0.016 Kick:Y OUT:0.24 | [B] M:0.48 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.44
-[F] B:0.84 Snap:0.034 Kick:Y OUT:0.19 | [B] M:0.53 T:0.24 SnP:0.58 OUT:0.15 | [M] Morph:0.46
-[F] B:0.89 Snap:0.045 Kick:N OUT:0.14 | [B] M:0.50 T:0.25 SnP:0.60 OUT:0.19 | [M] Morph:0.46
-[INTERVAL] F5760 bpm=139 raw=139 conf=0.000 kick=false phase=0.22 needle=0.1585 bassFlux=0.1585 midFlux=0.0000 centroid=208Hz kicks=277
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5760: bpm=134, energy=0.90
-[F] B:0.85 Snap:0.000 Kick:Y OUT:0.11 | [B] M:0.45 T:0.22 SnP:0.54 OUT:0.08 | [M] Morph:0.46
-[F] B:0.78 Snap:0.000 Kick:Y OUT:0.08 | [B] M:0.39 T:0.18 SnP:0.44 OUT:0.01 | [M] Morph:0.46
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.979 (Rock target: >0.7)
-   Flatness:    0.012 (Tonal<0.3, Noise>0.7)
-   Centroid:    298Hz (Bright>2000, Dark<1200)
-   CrestFactor: 23.51 (Dynamics)
-   Rolloff:     118Hz (85% energy)
-   Latency:     1.00ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.66x | In: 0.446 → Out: 0.293 | Peak: 0.793 | ✅ ACTIVE
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.14 SnP:0.34 OUT:0.00 | [M] Morph:0.44
-[F] B:0.74 Snap:0.014 Kick:N OUT:0.00 | [B] M:0.35 T:0.11 SnP:0.25 OUT:0.00 | [M] Morph:0.44
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.34 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.43
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.32 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.42
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.30 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.41
-[F] B:0.80 Snap:0.099 Kick:N OUT:0.32 | [B] M:0.43 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.41
-[F] B:0.83 Snap:0.036 Kick:N OUT:0.24 | [B] M:0.41 T:0.18 SnP:0.39 OUT:0.00 | [M] Morph:0.41
-[🥁 INTERVAL BPM] KICK #278 bpm=131 conf=0.00 energy=0.2793 avg=0.0495 ratio=5.65 delta=0.2793 history=8/8 bpmBuf=[258,92,117,108,161,215,144,117]
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.37 T:0.16 SnP:0.35 OUT:0.00 | [M] Morph:0.40
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.34 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.30 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.39
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.40 T:0.12 SnP:0.27 OUT:0.00 | [M] Morph:0.39
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.10 SnP:0.25 OUT:0.00 | [M] Morph:0.39
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.08 SnP:0.21 OUT:0.00 | [M] Morph:0.38
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.72 wE=0.18 ΔE=-0.142 kick=false
-[F] B:0.68 Snap:0.026 Kick:N OUT:0.00 | [B] M:0.40 T:0.07 SnP:0.20 OUT:0.00 | [M] Morph:0.38
-[F] B:0.72 Snap:0.039 Kick:N OUT:0.00 | [B] M:0.38 T:0.06 SnP:0.15 OUT:0.00 | [M] Morph:0.38
-[IPC 📡] audioBuffer #5773 | titan.running=true | size=8192
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.38
-[F] B:0.77 Snap:0.059 Kick:N OUT:0.31 | [B] M:0.48 T:0.24 SnP:0.55 OUT:0.09 | [M] Morph:0.39
-[🥁 INTERVAL BPM] KICK #279 bpm=153 conf=0.00 energy=0.1834 avg=0.0454 ratio=4.04 delta=0.1834 history=8/8 bpmBuf=[258,92,117,108,161,215,144,185]
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #279
-[F] B:0.78 Snap:0.010 Kick:Y OUT:0.23 | [B] M:0.43 T:0.23 SnP:0.52 OUT:0.05 | [M] Morph:0.38
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.75 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.40 T:0.19 SnP:0.44 OUT:0.01 | [M] Morph:0.38
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.37 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.38
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.38 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.37
-[F] B:0.71 Snap:0.023 Kick:N OUT:0.00 | [B] M:0.44 T:0.11 SnP:0.25 OUT:0.00 | [M] Morph:0.37
-[F] B:0.72 Snap:0.010 Kick:N OUT:0.00 | [B] M:0.44 T:0.09 SnP:0.23 OUT:0.00 | [M] Morph:0.37
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.37
-[INTERVAL] F5780 bpm=153 raw=153 conf=0.000 kick=false phase=0.71 needle=0.0578 bassFlux=0.0578 midFlux=0.0000 centroid=345Hz kicks=279
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.04 SnP:0.11 OUT:0.00 | [M] Morph:0.37
-[F] B:0.72 Snap:0.016 Kick:N OUT:0.00 | [B] M:0.48 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.38
-[F] B:0.77 Snap:0.052 Kick:N OUT:0.31 | [B] M:0.45 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.38
-[🥁 INTERVAL BPM] KICK #280 bpm=153 conf=0.00 energy=0.1701 avg=0.0453 ratio=3.75 delta=0.1701 history=8/8 bpmBuf=[161,92,117,108,161,215,144,185]
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=43% B/D/N=151/183/96
-[StrategyArbiter] 🔄 Running... frame=7800 | current=triadic | commitment=1201
-[StrategyArbiter] 🔒 LOCKED: triadic | Remaining: 1200 frames (20.0s)
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.79 Snap:0.020 Kick:Y OUT:0.23 | [B] M:0.39 T:0.10 SnP:0.23 OUT:0.00 | [M] Morph:0.38
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(40%) | Safety:✅OK
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:70 | Pan:26 Tilt:0 | sBPM:134 phase:6°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:70 | Pan:-179 Tilt:0 | sBPM:134 phase:6°
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.37 T:0.09 SnP:0.20 OUT:0.00 | [M] Morph:0.37
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.13 | [B] M:0.31 T:0.05 SnP:0.11 OUT:0.00 | [M] Morph:0.37
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[F] B:0.74 Snap:0.011 Kick:N OUT:0.10 | [B] M:0.36 T:0.05 SnP:0.12 OUT:0.00 | [M] Morph:0.36
-[F] B:0.75 Snap:0.013 Kick:N OUT:0.00 | [B] M:0.43 T:0.06 SnP:0.15 OUT:0.00 | [M] Morph:0.36
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.06 SnP:0.15 OUT:0.00 | [M] Morph:0.36
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.41 T:0.04 SnP:0.12 OUT:0.00 | [M] Morph:0.36
-[F] B:0.70 Snap:0.011 Kick:N OUT:0.00 | [B] M:0.39 T:0.02 SnP:0.07 OUT:0.00 | [M] Morph:0.36
-[F] B:0.72 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.36 T:0.01 SnP:0.05 OUT:0.00 | [M] Morph:0.35
-[F] B:0.80 Snap:0.073 Kick:N OUT:0.32 | [B] M:0.47 T:0.24 SnP:0.53 OUT:0.06 | [M] Morph:0.36
-[F] B:0.83 Snap:0.034 Kick:Y OUT:0.24 | [B] M:0.45 T:0.24 SnP:0.54 OUT:0.07 | [M] Morph:0.37
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.41 T:0.22 SnP:0.50 OUT:0.04 | [M] Morph:0.36
-[F] B:0.72 Snap:0.000 Kick:Y OUT:0.14 | [B] M:0.33 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.36
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.31 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.35
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.35
-[F] B:0.75 Snap:0.059 Kick:N OUT:0.30 | [B] M:0.43 T:0.12 SnP:0.27 OUT:0.00 | [M] Morph:0.35
-[F] B:0.75 Snap:0.005 Kick:N OUT:0.22 | [B] M:0.41 T:0.09 SnP:0.22 OUT:0.00 | [M] Morph:0.35
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.17 | [B] M:0.37 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.34
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.32 T:0.03 SnP:0.10 OUT:0.00 | [M] Morph:0.34
-[F] B:0.79 Snap:0.119 Kick:N OUT:0.32 | [B] M:0.35 T:0.08 SnP:0.19 OUT:0.00 | [M] Morph:0.33
-[F] B:0.83 Snap:0.045 Kick:N OUT:0.24 | [B] M:0.29 T:0.04 SnP:0.10 OUT:0.00 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #281 bpm=153 conf=0.00 energy=0.3015 avg=0.0586 ratio=5.14 delta=0.3015 history=8/8 bpmBuf=[161,86,117,108,161,215,144,185]
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.29 T:0.03 SnP:0.08 OUT:0.00 | [M] Morph:0.32
-[F] B:0.79 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.28 T:0.02 SnP:0.06 OUT:0.00 | [M] Morph:0.31
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.25 T:0.00 SnP:0.02 OUT:0.00 | [M] Morph:0.30
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.25 T:0.00 SnP:0.01 OUT:0.00 | [M] Morph:0.30
-[INTERVAL] F5800 bpm=153 raw=153 conf=0.000 kick=false phase=0.36 needle=0.0799 bassFlux=0.0799 midFlux=0.0144 centroid=1022Hz kicks=281
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.03 SnP:0.08 OUT:0.00 | [M] Morph:0.29
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.978 (Rock target: >0.7)
-   Flatness:    0.009 (Tonal<0.3, Noise>0.7)
-   Centroid:    1722Hz (Bright>2000, Dark<1200)
-   CrestFactor: 15.13 (Dynamics)
-   Rolloff:     2950Hz (85% energy)
-   Latency:     0.95ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.06 SnP:0.17 OUT:0.00 | [M] Morph:0.32
-[F] B:0.69 Snap:0.010 Kick:N OUT:0.00 | [B] M:0.51 T:0.07 SnP:0.19 OUT:0.00 | [M] Morph:0.35
-[F] B:0.69 Snap:0.006 Kick:N OUT:0.00 | [B] M:0.49 T:0.05 SnP:0.16 OUT:0.00 | [M] Morph:0.37
-[F] B:0.74 Snap:0.046 Kick:N OUT:0.00 | [B] M:0.56 T:0.23 SnP:0.59 OUT:0.16 | [M] Morph:0.41
-[F] B:0.81 Snap:0.074 Kick:N OUT:0.32 | [B] M:0.54 T:0.24 SnP:0.63 OUT:0.27 | [M] Morph:0.44
-[IPC 📡] audioBuffer #5805 | titan.running=true | size=8192
-[🥁 INTERVAL BPM] KICK #282 bpm=161 conf=0.00 energy=0.2244 avg=0.0591 ratio=3.80 delta=0.2244 history=8/8 bpmBuf=[161,86,161,108,161,215,144,185]
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.25 | [B] M:0.50 T:0.22 SnP:0.58 OUT:0.15 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.49 T:0.18 SnP:0.49 OUT:0.03 | [M] Morph:0.45
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.46 T:0.14 SnP:0.37 OUT:0.00 | [M] Morph:0.45
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.48 T:0.12 SnP:0.33 OUT:0.00 | [M] Morph:0.45
-[F] B:0.73 Snap:0.064 Kick:N OUT:0.29 | [B] M:0.46 T:0.09 SnP:0.26 OUT:0.00 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.23 | [B] M:0.46 T:0.06 SnP:0.19 OUT:0.00 | [M] Morph:0.45
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.17 | [B] M:0.47 T:0.06 SnP:0.18 OUT:0.00 | [M] Morph:0.45
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.43 T:0.06 SnP:0.19 OUT:0.00 | [M] Morph:0.44
-[F] B:0.76 Snap:0.099 Kick:N OUT:0.31 | [B] M:0.46 T:0.10 SnP:0.28 OUT:0.00 | [M] Morph:0.44
-[F] B:0.80 Snap:0.035 Kick:N OUT:0.23 | [B] M:0.45 T:0.09 SnP:0.27 OUT:0.00 | [M] Morph:0.44
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.43 T:0.07 SnP:0.21 OUT:0.00 | [M] Morph:0.44
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.14 | [B] M:0.36 T:0.03 SnP:0.10 OUT:0.00 | [M] Morph:0.43
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.35 T:0.02 SnP:0.07 OUT:0.00 | [M] Morph:0.43
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.30 T:0.00 SnP:0.04 OUT:0.00 | [M] Morph:0.42
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.29 T:0.00 SnP:0.03 OUT:0.00 | [M] Morph:0.41
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.32 T:0.01 SnP:0.04 OUT:0.00 | [M] Morph:0.40
-[F] B:0.68 Snap:0.039 Kick:N OUT:0.00 | [B] M:0.38 T:0.02 SnP:0.07 OUT:0.00 | [M] Morph:0.40
-[F] B:0.73 Snap:0.049 Kick:N OUT:0.00 | [B] M:0.38 T:0.02 SnP:0.06 OUT:0.00 | [M] Morph:0.40
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.18 SnP:0.42 OUT:0.01 | [M] Morph:0.40
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #282
-[F] B:0.83 Snap:0.112 Kick:N OUT:0.33 | [B] M:0.51 T:0.25 SnP:0.57 OUT:0.12 | [M] Morph:0.42
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[🥁 INTERVAL BPM] KICK #283 bpm=161 conf=0.00 energy=0.1768 avg=0.0521 ratio=3.39 delta=0.1768 history=8/8 bpmBuf=[161,86,161,86,161,215,144,185]
-[INTERVAL] F5820 bpm=121 raw=161 conf=0.000 kick=true phase=0.00 needle=0.1768 bassFlux=0.1768 midFlux=0.0136 centroid=1401Hz kicks=283
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5820: bpm=134, energy=0.70
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.25 | [B] M:0.49 T:0.23 SnP:0.55 OUT:0.09 | [M] Morph:0.43
-[AGC 🎚️] Gain: 0.73x | In: 0.616 → Out: 0.453 | Peak: 0.682 | ✅ ACTIVE
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.47 T:0.21 SnP:0.51 OUT:0.05 | [M] Morph:0.43
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.46 T:0.17 SnP:0.44 OUT:0.01 | [M] Morph:0.43
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.44 T:0.13 SnP:0.35 OUT:0.00 | [M] Morph:0.43
-[F] B:0.68 Snap:0.055 Kick:N OUT:0.27 | [B] M:0.46 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.43
-[F] B:0.69 Snap:0.007 Kick:N OUT:0.21 | [B] M:0.47 T:0.11 SnP:0.30 OUT:0.00 | [M] Morph:0.43
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.46 T:0.09 SnP:0.26 OUT:0.00 | [M] Morph:0.43
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.41 T:0.06 SnP:0.18 OUT:0.00 | [M] Morph:0.43
-[F] B:0.61 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.39 T:0.07 SnP:0.19 OUT:0.00 | [M] Morph:0.42
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=39% B/D/N=154/166/105
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.76 Snap:0.153 Kick:N OUT:0.30 | [B] M:0.53 T:0.21 SnP:0.52 OUT:0.06 | [M] Morph:0.44
-[CHOREO] techno-club | scan_x [MIRROR F0/2] | Bar:70 | Pan:123 Tilt:0 | sBPM:134 phase:147°
-[CHOREO] techno-club | scan_x [MIRROR F1/2] | Bar:70 | Pan:48 Tilt:0 | sBPM:134 phase:147°
-[🥁 INTERVAL BPM] KICK #284 bpm=161 conf=0.00 energy=0.2396 avg=0.0457 ratio=5.25 delta=0.2396 history=8/8 bpmBuf=[161,86,161,86,161,215,144,185]
-[F] B:0.81 Snap:0.055 Kick:Y OUT:0.23 | [B] M:0.51 T:0.19 SnP:0.48 OUT:0.03 | [M] Morph:0.46
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.47 T:0.18 SnP:0.46 OUT:0.02 | [M] Morph:0.46
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.48 T:0.16 SnP:0.42 OUT:0.01 | [M] Morph:0.46
-[F] B:0.74 Snap:0.001 Kick:N OUT:0.11 | [B] M:0.47 T:0.14 SnP:0.35 OUT:0.00 | [M] Morph:0.46
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.44 T:0.11 SnP:0.28 OUT:0.00 | [M] Morph:0.45
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.07 SnP:0.18 OUT:0.00 | [M] Morph:0.45
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.15 SnP:0.35 OUT:0.00 | [M] Morph:0.45
-[F] B:0.68 Snap:0.019 Kick:N OUT:0.00 | [B] M:0.52 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.46
-[F] B:0.69 Snap:0.016 Kick:N OUT:0.00 | [B] M:0.51 T:0.16 SnP:0.41 OUT:0.01 | [M] Morph:0.47
-[F] B:0.76 Snap:0.065 Kick:N OUT:0.30 | [B] M:0.54 T:0.27 SnP:0.69 OUT:0.48 | [M] Morph:0.49
-[F] B:0.84 Snap:0.084 Kick:Y OUT:0.23 | [B] M:0.51 T:0.27 SnP:0.68 OUT:0.44 | [M] Morph:0.50
-[🥁 INTERVAL BPM] KICK #285 bpm=161 conf=0.00 energy=0.2240 avg=0.0450 ratio=4.97 delta=0.1267 history=8/8 bpmBuf=[161,86,161,86,161,161,144,185]
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.47 T:0.24 SnP:0.60 OUT:0.20 | [M] Morph:0.50
-[F] B:0.76 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.44 T:0.21 SnP:0.52 OUT:0.07 | [M] Morph:0.49
-[IPC 📡] audioBuffer #5838 | titan.running=true | size=8192
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.39 T:0.16 SnP:0.40 OUT:0.00 | [M] Morph:0.49
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.44 T:0.18 SnP:0.44 OUT:0.01 | [M] Morph:0.49
-[F] B:0.75 Snap:0.074 Kick:N OUT:0.30 | [B] M:0.48 T:0.17 SnP:0.41 OUT:0.01 | [M] Morph:0.48
-[INTERVAL] F5840 bpm=121 raw=161 conf=0.000 kick=false phase=0.50 needle=0.0726 bassFlux=0.0726 midFlux=0.0000 centroid=965Hz kicks=285
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.23 | [B] M:0.47 T:0.15 SnP:0.39 OUT:0.00 | [M] Morph:0.48
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.980 (Rock target: >0.7)
-   Flatness:    0.012 (Tonal<0.3, Noise>0.7)
-   Centroid:    755Hz (Bright>2000, Dark<1200)
-   CrestFactor: 12.93 (Dynamics)
-   Rolloff:     926Hz (85% energy)
-   Latency:     1.07ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.43 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.48
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.40 T:0.10 SnP:0.26 OUT:0.00 | [M] Morph:0.48
-[F] B:0.79 Snap:0.108 Kick:N OUT:0.32 | [B] M:0.43 T:0.16 SnP:0.38 OUT:0.00 | [M] Morph:0.47
-[F] B:0.83 Snap:0.039 Kick:Y OUT:0.24 | [B] M:0.39 T:0.12 SnP:0.31 OUT:0.00 | [M] Morph:0.47
-[🥁 INTERVAL BPM] KICK #286 bpm=161 conf=0.00 energy=0.1594 avg=0.0427 ratio=3.73 delta=0.0091 history=8/8 bpmBuf=[161,86,161,86,161,161,161,185]
-[F] B:0.80 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.35 T:0.09 SnP:0.23 OUT:0.00 | [M] Morph:0.46
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.30 T:0.05 SnP:0.13 OUT:0.00 | [M] Morph:0.45
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.28 T:0.03 SnP:0.08 OUT:0.00 | [M] Morph:0.44
-[F] B:0.71 Snap:0.007 Kick:N OUT:0.08 | [B] M:0.39 T:0.12 SnP:0.28 OUT:0.00 | [M] Morph:0.44
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.44
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.12 SnP:0.28 OUT:0.00 | [M] Morph:0.43
-[F] B:0.71 Snap:0.011 Kick:N OUT:0.00 | [B] M:0.41 T:0.09 SnP:0.23 OUT:0.00 | [M] Morph:0.43
-[F] B:0.73 Snap:0.016 Kick:N OUT:0.00 | [B] M:0.39 T:0.08 SnP:0.19 OUT:0.00 | [M] Morph:0.43
-[F] B:0.75 Snap:0.029 Kick:Y OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.53 OUT:0.07 | [M] Morph:0.43
-[F] B:0.84 Snap:0.085 Kick:N OUT:0.34 | [B] M:0.45 T:0.25 SnP:0.58 OUT:0.14 | [M] Morph:0.43
-[F] B:0.80 Snap:0.000 Kick:N OUT:0.26 | [B] M:0.40 T:0.22 SnP:0.53 OUT:0.07 | [M] Morph:0.42
-[🥁 INTERVAL BPM] KICK #287 bpm=161 conf=0.00 energy=0.2122 avg=0.0462 ratio=4.60 delta=0.2122 history=8/8 bpmBuf=[161,86,161,86,161,161,161,161]
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.20 | [B] M:0.38 T:0.21 SnP:0.50 OUT:0.04 | [M] Morph:0.42
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.32 T:0.17 SnP:0.39 OUT:0.00 | [M] Morph:0.41
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.33 T:0.17 SnP:0.38 OUT:0.00 | [M] Morph:0.40
-[F] B:0.69 Snap:0.028 Kick:N OUT:0.09 | [B] M:0.45 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.40
-[F] B:0.75 Snap:0.056 Kick:N OUT:0.30 | [B] M:0.46 T:0.18 SnP:0.42 OUT:0.00 | [M] Morph:0.40
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.23 | [B] M:0.54 T:0.23 SnP:0.54 OUT:0.08 | [M] Morph:0.43
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.53 T:0.21 SnP:0.50 OUT:0.05 | [M] Morph:0.45
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.54 T:0.22 SnP:0.55 OUT:0.10 | [M] Morph:0.48
-[F] B:0.75 Snap:0.101 Kick:N OUT:0.30 | [B] M:0.54 T:0.21 SnP:0.54 OUT:0.09 | [M] Morph:0.49
-[🥁 INTERVAL BPM] KICK #288 bpm=161 conf=0.00 energy=0.2845 avg=0.0576 ratio=4.94 delta=0.2397 history=8/8 bpmBuf=[185,86,161,86,161,161,161,161]
-[F] B:0.78 Snap:0.032 Kick:Y OUT:0.23 | [B] M:0.52 T:0.21 SnP:0.55 OUT:0.10 | [M] Morph:0.50
-[CHOREO] Pattern transition: scan_x -> square (2s LERP)
-[F] B:0.75 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.51 T:0.21 SnP:0.53 OUT:0.08 | [M] Morph:0.51
-[INTERVAL] F5860 bpm=121 raw=161 conf=0.000 kick=false phase=0.12 needle=0.0000 bassFlux=0.0000 midFlux=0.0016 centroid=2024Hz kicks=288
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.52 T:0.21 SnP:0.54 OUT:0.09 | [M] Morph:0.51
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.52 T:0.20 SnP:0.53 OUT:0.07 | [M] Morph:0.52
-[F] B:0.69 Snap:0.007 Kick:N OUT:0.09 | [B] M:0.49 T:0.19 SnP:0.48 OUT:0.03 | [M] Morph:0.52
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.51
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.17 SnP:0.42 OUT:0.01 | [M] Morph:0.51
-[F] B:0.64 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.49 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.51
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #288
-[F] B:0.65 Snap:0.015 Kick:N OUT:0.00 | [B] M:0.48 T:0.18 SnP:0.45 OUT:0.02 | [M] Morph:0.51
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.75 Snap:0.097 Kick:N OUT:0.30 | [B] M:0.52 T:0.25 SnP:0.63 OUT:0.27 | [M] Morph:0.51
-[F] B:0.81 Snap:0.061 Kick:Y OUT:0.23 | [B] M:0.49 T:0.25 SnP:0.64 OUT:0.29 | [M] Morph:0.51
-[F] B:0.78 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.45 T:0.23 SnP:0.58 OUT:0.16 | [M] Morph:0.51
-[F] B:0.71 Snap:0.000 Kick:Y OUT:0.14 | [B] M:0.41 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.51
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.38 T:0.17 SnP:0.42 OUT:0.01 | [M] Morph:0.50
-[F] B:0.71 Snap:0.046 Kick:N OUT:0.08 | [B] M:0.46 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.50
-[IPC 📡] audioBuffer #5870 | titan.running=true | size=8192
-[F] B:0.73 Snap:0.027 Kick:N OUT:0.00 | [B] M:0.49 T:0.17 SnP:0.43 OUT:0.01 | [M] Morph:0.50
-[F] B:0.75 Snap:0.014 Kick:N OUT:0.00 | [B] M:0.47 T:0.15 SnP:0.38 OUT:0.00 | [M] Morph:0.50
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.13 SnP:0.33 OUT:0.00 | [M] Morph:0.49
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=45% B/D/N=169/199/70
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.10 SnP:0.25 OUT:0.00 | [M] Morph:0.49
-[CHOREO] techno-club | square [LERP] [MIRROR F0/2] | Bar:72 | Pan:-147 Tilt:97 | sBPM:134 phase:287°
-[CHOREO] techno-club | square [LERP] [MIRROR F1/2] | Bar:72 | Pan:140 Tilt:99 | sBPM:134 phase:287°
-[F] B:0.69 Snap:0.015 Kick:N OUT:0.00 | [B] M:0.44 T:0.17 SnP:0.40 OUT:0.00 | [M] Morph:0.49
-[F] B:0.80 Snap:0.108 Kick:N OUT:0.32 | [B] M:0.41 T:0.15 SnP:0.36 OUT:0.00 | [M] Morph:0.48
-[🥁 INTERVAL BPM] KICK #289 bpm=161 conf=0.00 energy=0.3151 avg=0.0525 ratio=6.00 delta=0.3151 history=8/8 bpmBuf=[185,86,161,86,161,161,161,161]
-[F] B:0.83 Snap:0.030 Kick:Y OUT:0.25 | [B] M:0.35 T:0.10 SnP:0.25 OUT:0.00 | [M] Morph:0.48
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.31 T:0.07 SnP:0.18 OUT:0.00 | [M] Morph:0.47
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.28 T:0.04 SnP:0.11 OUT:0.00 | [M] Morph:0.46
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.39 T:0.14 SnP:0.33 OUT:0.00 | [M] Morph:0.45
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.48 T:0.17 SnP:0.40 OUT:0.00 | [M] Morph:0.45
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.46 T:0.13 SnP:0.33 OUT:0.00 | [M] Morph:0.45
-[F] B:0.66 Snap:0.013 Kick:N OUT:0.00 | [B] M:0.45 T:0.12 SnP:0.30 OUT:0.00 | [M] Morph:0.45
-[F] B:0.71 Snap:0.041 Kick:N OUT:0.00 | [B] M:0.41 T:0.08 SnP:0.21 OUT:0.00 | [M] Morph:0.45
-[INTERVAL] F5880 bpm=121 raw=161 conf=0.000 kick=false phase=0.75 needle=0.1489 bassFlux=0.1489 midFlux=0.0000 centroid=189Hz kicks=289
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.12 wE=0.53 ΔE=0.032 kick=false
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5880: bpm=134, energy=0.62
-[F] B:0.70 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.44 T:0.18 SnP:0.43 OUT:0.01 | [M] Morph:0.45
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.938 (Rock target: >0.7)
-   Flatness:    0.056 (Tonal<0.3, Noise>0.7)
-   Centroid:    1912Hz (Bright>2000, Dark<1200)
-   CrestFactor: 21.05 (Dynamics)
-   Rolloff:     5835Hz (85% energy)
-   Latency:     1.40ms
-   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.69x | In: 0.620 → Out: 0.428 | Peak: 0.710 | ✅ ACTIVE
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.29 SnP:0.68 OUT:0.45 | [M] Morph:0.45
-[F] B:0.59 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.28 SnP:0.68 OUT:0.43 | [M] Morph:0.45
-[F] B:0.54 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.25 SnP:0.63 OUT:0.26 | [M] Morph:0.45
-[F] B:0.51 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.42 T:0.22 SnP:0.54 OUT:0.08 | [M] Morph:0.45
-[F] B:0.59 Snap:0.083 Kick:N OUT:0.24 | [B] M:0.44 T:0.24 SnP:0.57 OUT:0.13 | [M] Morph:0.45
-[F] B:0.66 Snap:0.069 Kick:N OUT:0.18 | [B] M:0.45 T:0.25 SnP:0.59 OUT:0.17 | [M] Morph:0.45
-[F] B:0.72 Snap:0.056 Kick:Y OUT:0.14 | [B] M:0.45 T:0.26 SnP:0.62 OUT:0.23 | [M] Morph:0.44
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.39 T:0.21 SnP:0.52 OUT:0.06 | [M] Morph:0.44
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.35 T:0.17 SnP:0.40 OUT:0.00 | [M] Morph:0.43
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.16 SnP:0.37 OUT:0.00 | [M] Morph:0.43
-[F] B:0.76 Snap:0.121 Kick:N OUT:0.31 | [B] M:0.42 T:0.18 SnP:0.42 OUT:0.01 | [M] Morph:0.43
-[F] B:0.81 Snap:0.045 Kick:N OUT:0.23 | [B] M:0.39 T:0.17 SnP:0.38 OUT:0.00 | [M] Morph:0.42
-[🥁 INTERVAL BPM] KICK #290 bpm=161 conf=0.00 energy=0.2144 avg=0.0376 ratio=5.69 delta=0.1298 history=8/8 bpmBuf=[185,86,81,86,161,161,161,161]
-[F] B:0.79 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.37 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.42
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.36 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.41
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.37 T:0.17 SnP:0.37 OUT:0.00 | [M] Morph:0.41
-[CHOREO] Transition complete -> square
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.26 SnP:0.58 OUT:0.14 | [M] Morph:0.41
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.28 SnP:0.64 OUT:0.30 | [M] Morph:0.42
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.28 SnP:0.65 OUT:0.34 | [M] Morph:0.43
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.28 SnP:0.67 OUT:0.39 | [M] Morph:0.43
-[F] B:0.67 Snap:0.040 Kick:N OUT:0.00 | [B] M:0.44 T:0.21 SnP:0.49 OUT:0.03 | [M] Morph:0.43
-[F] B:0.67 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.52 T:0.27 SnP:0.65 OUT:0.32 | [M] Morph:0.45
-[F] B:0.75 Snap:0.082 Kick:Y OUT:0.30 | [B] M:0.51 T:0.28 SnP:0.67 OUT:0.38 | [M] Morph:0.46
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.23 | [B] M:0.43 T:0.24 SnP:0.57 OUT:0.14 | [M] Morph:0.46
-[F] B:0.68 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.40 T:0.21 SnP:0.51 OUT:0.05 | [M] Morph:0.45
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.36 T:0.18 SnP:0.42 OUT:0.01 | [M] Morph:0.45
-[INTERVAL] F5900 bpm=121 raw=161 conf=0.000 kick=false phase=0.25 needle=0.0000 bassFlux=0.0131 midFlux=0.0051 centroid=3723Hz kicks=290
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.41 T:0.23 SnP:0.55 OUT:0.09 | [M] Morph:0.44
-[F] B:0.67 Snap:0.023 Kick:N OUT:0.08 | [B] M:0.46 T:0.27 SnP:0.61 OUT:0.22 | [M] Morph:0.44
-[F] B:0.69 Snap:0.019 Kick:N OUT:0.00 | [B] M:0.43 T:0.23 SnP:0.56 OUT:0.11 | [M] Morph:0.44
-[F] B:0.69 Snap:0.003 Kick:N OUT:0.00 | [B] M:0.43 T:0.26 SnP:0.61 OUT:0.22 | [M] Morph:0.44
-[IPC 📡] audioBuffer #5903 | titan.running=true | size=8192
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.20 SnP:0.48 OUT:0.03 | [M] Morph:0.43
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.20 SnP:0.48 OUT:0.03 | [M] Morph:0.43
-[F] B:0.77 Snap:0.135 Kick:N OUT:0.31 | [B] M:0.40 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.43
-[F] B:0.78 Snap:0.011 Kick:N OUT:0.23 | [B] M:0.33 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.42
-[🥁 INTERVAL BPM] KICK #291 bpm=161 conf=0.00 energy=0.2432 avg=0.0370 ratio=6.57 delta=0.2432 history=8/8 bpmBuf=[185,86,81,86,161,161,161,161]
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.32 T:0.15 SnP:0.34 OUT:0.00 | [M] Morph:0.41
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.30 T:0.13 SnP:0.30 OUT:0.00 | [M] Morph:0.41
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.31 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.40
-[F] B:0.73 Snap:0.025 Kick:N OUT:0.00 | [B] M:0.42 T:0.28 SnP:0.60 OUT:0.19 | [M] Morph:0.40
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.26 SnP:0.59 OUT:0.16 | [M] Morph:0.40
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #291
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.27 SnP:0.61 OUT:0.20 | [M] Morph:0.39
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[F] B:0.70 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.43 T:0.25 SnP:0.57 OUT:0.12 | [M] Morph:0.39
-[F] B:0.72 Snap:0.023 Kick:N OUT:0.00 | [B] M:0.40 T:0.22 SnP:0.49 OUT:0.03 | [M] Morph:0.39
-[F] B:0.78 Snap:0.057 Kick:Y OUT:0.31 | [B] M:0.47 T:0.26 SnP:0.58 OUT:0.13 | [M] Morph:0.39
-[F] B:0.78 Snap:0.005 Kick:N OUT:0.24 | [B] M:0.44 T:0.25 SnP:0.58 OUT:0.13 | [M] Morph:0.39
-[F] B:0.77 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.41 T:0.24 SnP:0.55 OUT:0.09 | [M] Morph:0.39
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.37 T:0.22 SnP:0.51 OUT:0.04 | [M] Morph:0.39
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.32 T:0.19 SnP:0.43 OUT:0.01 | [M] Morph:0.38
-[F] B:0.69 Snap:0.011 Kick:N OUT:0.00 | [B] M:0.41 T:0.27 SnP:0.59 OUT:0.16 | [M] Morph:0.38
-[F] B:0.71 Snap:0.021 Kick:N OUT:0.00 | [B] M:0.43 T:0.26 SnP:0.59 OUT:0.16 | [M] Morph:0.38
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=42% B/D/N=150/181/98
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.73 Snap:0.011 Kick:N OUT:0.00 | [B] M:0.40 T:0.24 SnP:0.54 OUT:0.08 | [M] Morph:0.37
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[CHOREO] techno-club | square [MIRROR F0/2] | Bar:72 | Pan:209 Tilt:-50 | sBPM:134 phase:66°
-[CHOREO] techno-club | square [MIRROR F1/2] | Bar:72 | Pan:-209 Tilt:-50 | sBPM:134 phase:66°
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.21 SnP:0.48 OUT:0.03 | [M] Morph:0.37
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.32 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.36
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.36
-[🥁 INTERVAL BPM] KICK #292 bpm=124 conf=0.00 energy=0.2032 avg=0.0375 ratio=5.41 delta=0.2032 history=8/8 bpmBuf=[185,86,81,86,86,161,161,161]
-[INTERVAL] F5920 bpm=124 raw=124 conf=0.000 kick=true phase=0.00 needle=0.2032 bassFlux=0.2032 midFlux=0.0000 centroid=518Hz kicks=292
-[F] B:0.83 Snap:0.202 Kick:Y OUT:0.33 | [B] M:0.38 T:0.16 SnP:0.35 OUT:0.00 | [M] Morph:0.36
-[F] B:0.81 Snap:0.000 Kick:Y OUT:0.25 | [B] M:0.34 T:0.13 SnP:0.29 OUT:0.00 | [M] Morph:0.35
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.991 (Rock target: >0.7)
-   Flatness:    0.004 (Tonal<0.3, Noise>0.7)
-   Centroid:    282Hz (Bright>2000, Dark<1200)
-   CrestFactor: 23.04 (Dynamics)
-   Rolloff:     345Hz (85% energy)
-   Latency:     1.36ms
-   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
-[F] B:0.75 Snap:0.000 Kick:N OUT:0.19 | [B] M:0.31 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.35
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.28 T:0.13 SnP:0.28 OUT:0.00 | [M] Morph:0.34
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.33 T:0.22 SnP:0.46 OUT:0.01 | [M] Morph:0.33
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.41 T:0.27 SnP:0.58 OUT:0.14 | [M] Morph:0.33
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.23 SnP:0.52 OUT:0.05 | [M] Morph:0.34
-[F] B:0.65 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.50 T:0.22 SnP:0.54 OUT:0.07 | [M] Morph:0.36
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.19 SnP:0.48 OUT:0.03 | [M] Morph:0.38
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.54 T:0.23 SnP:0.59 OUT:0.16 | [M] Morph:0.42
-[F] B:0.77 Snap:0.154 Kick:N OUT:0.31 | [B] M:0.55 T:0.28 SnP:0.72 OUT:0.61 | [M] Morph:0.45
-[F] B:0.80 Snap:0.026 Kick:N OUT:0.24 | [B] M:0.50 T:0.25 SnP:0.66 OUT:0.37 | [M] Morph:0.45
-[🥁 INTERVAL BPM] KICK #293 bpm=124 conf=0.00 energy=0.2621 avg=0.0380 ratio=6.89 delta=0.2621 history=8/8 bpmBuf=[185,86,81,86,86,161,161,161]
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.49 T:0.24 SnP:0.63 OUT:0.27 | [M] Morph:0.46
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.47 T:0.20 SnP:0.51 OUT:0.06 | [M] Morph:0.46
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.46 T:0.22 SnP:0.56 OUT:0.12 | [M] Morph:0.45
-[F] B:0.69 Snap:0.017 Kick:N OUT:0.08 | [B] M:0.48 T:0.28 SnP:0.69 OUT:0.48 | [M] Morph:0.45
-[F] B:0.71 Snap:0.029 Kick:N OUT:0.00 | [B] M:0.46 T:0.26 SnP:0.64 OUT:0.29 | [M] Morph:0.45
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.24 SnP:0.59 OUT:0.16 | [M] Morph:0.45
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.45 T:0.20 SnP:0.52 OUT:0.06 | [M] Morph:0.45
-[F] B:0.60 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.51 T:0.22 SnP:0.56 OUT:0.11 | [M] Morph:0.46
-[F] B:0.80 Snap:0.200 Kick:N OUT:0.32 | [B] M:0.49 T:0.20 SnP:0.50 OUT:0.04 | [M] Morph:0.46
-[🥁 INTERVAL BPM] KICK #294 bpm=124 conf=0.00 energy=0.1729 avg=0.0331 ratio=5.22 delta=0.1729 history=8/8 bpmBuf=[185,86,81,86,86,161,185,161]
-[F] B:0.81 Snap:0.012 Kick:Y OUT:0.25 | [B] M:0.46 T:0.17 SnP:0.43 OUT:0.01 | [M] Morph:0.46
-[IPC 📡] audioBuffer #5936 | titan.running=true | size=8192
-[F] B:0.75 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.42 T:0.19 SnP:0.47 OUT:0.03 | [M] Morph:0.46
-[F] B:0.72 Snap:0.000 Kick:N OUT:0.15 | [B] M:0.39 T:0.18 SnP:0.44 OUT:0.01 | [M] Morph:0.46
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.35 T:0.26 SnP:0.62 OUT:0.24 | [M] Morph:0.45
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.34 T:0.27 SnP:0.63 OUT:0.27 | [M] Morph:0.44
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.31 T:0.25 SnP:0.58 OUT:0.15 | [M] Morph:0.43
-[INTERVAL] F5940 bpm=124 raw=124 conf=0.000 kick=false phase=0.48 needle=0.0000 bassFlux=0.0000 midFlux=0.0176 centroid=4197Hz kicks=294
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 5940: bpm=134, energy=0.22
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.40 T:0.26 SnP:0.61 OUT:0.22 | [M] Morph:0.43
-[F] B:0.65 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.42 T:0.23 SnP:0.55 OUT:0.10 | [M] Morph:0.43
-[AGC 🎚️] Gain: 0.73x | In: 0.516 → Out: 0.376 | Peak: 0.673 | ✅ ACTIVE
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.50 T:0.26 SnP:0.63 OUT:0.27 | [M] Morph:0.44
-[F] B:0.79 Snap:0.148 Kick:N OUT:0.32 | [B] M:0.51 T:0.26 SnP:0.66 OUT:0.37 | [M] Morph:0.45
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.24 | [B] M:0.49 T:0.25 SnP:0.63 OUT:0.28 | [M] Morph:0.45
-[🥁 INTERVAL BPM] KICK #295 bpm=124 conf=0.00 energy=0.1940 avg=0.0454 ratio=4.27 delta=0.1940 history=8/8 bpmBuf=[185,86,81,86,86,161,185,161]
-[F] B:0.72 Snap:0.000 Kick:Y OUT:0.19 | [B] M:0.46 T:0.24 SnP:0.62 OUT:0.23 | [M] Morph:0.45
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.46 T:0.23 SnP:0.58 OUT:0.14 | [M] Morph:0.45
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.43 T:0.22 SnP:0.56 OUT:0.11 | [M] Morph:0.45
-[F] B:0.64 Snap:0.021 Kick:N OUT:0.08 | [B] M:0.44 T:0.24 SnP:0.61 OUT:0.20 | [M] Morph:0.45
-[F] B:0.68 Snap:0.037 Kick:N OUT:0.00 | [B] M:0.45 T:0.23 SnP:0.57 OUT:0.13 | [M] Morph:0.44
-[F] B:0.68 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.45 T:0.24 SnP:0.61 OUT:0.21 | [M] Morph:0.44
-[F] B:0.69 Snap:0.004 Kick:N OUT:0.00 | [B] M:0.43 T:0.25 SnP:0.61 OUT:0.22 | [M] Morph:0.44
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.41 T:0.22 SnP:0.54 OUT:0.08 | [M] Morph:0.44
-[F] B:0.77 Snap:0.113 Kick:N OUT:0.31 | [B] M:0.51 T:0.24 SnP:0.58 OUT:0.14 | [M] Morph:0.45
-[F] B:0.80 Snap:0.029 Kick:N OUT:0.24 | [B] M:0.50 T:0.23 SnP:0.57 OUT:0.13 | [M] Morph:0.46
-[🥁 INTERVAL BPM] KICK #296 bpm=124 conf=0.00 energy=0.1587 avg=0.0415 ratio=3.83 delta=0.1587 history=8/8 bpmBuf=[161,86,81,86,86,161,185,161]
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.18 | [B] M:0.45 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.46
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.14 | [B] M:0.43 T:0.20 SnP:0.49 OUT:0.04 | [M] Morph:0.45
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.11 | [B] M:0.39 T:0.17 SnP:0.41 OUT:0.00 | [M] Morph:0.45
-[F] B:0.68 Snap:0.000 Kick:N OUT:0.08 | [B] M:0.39 T:0.29 SnP:0.67 OUT:0.38 | [M] Morph:0.45
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #296
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.26 SnP:0.61 OUT:0.20 | [M] Morph:0.44
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3484
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.28 SnP:0.64 OUT:0.28 | [M] Morph:0.43
-[F] B:0.68 Snap:0.058 Kick:N OUT:0.27 | [B] M:0.38 T:0.27 SnP:0.62 OUT:0.23 | [M] Morph:0.43
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.21 | [B] M:0.43 T:0.28 SnP:0.64 OUT:0.28 | [M] Morph:0.43
-[F] B:0.72 Snap:0.062 Kick:N OUT:0.16 | [B] M:0.47 T:0.28 SnP:0.64 OUT:0.29 | [M] Morph:0.43
-[F] B:0.77 Snap:0.048 Kick:Y OUT:0.12 | [B] M:0.46 T:0.26 SnP:0.60 OUT:0.19 | [M] Morph:0.43
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.42 T:0.25 SnP:0.58 OUT:0.14 | [M] Morph:0.42
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.23 SnP:0.52 OUT:0.06 | [M] Morph:0.42
-[INTERVAL] F5960 bpm=124 raw=124 conf=0.000 kick=false phase=0.86 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=4596Hz kicks=296
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.41
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.862 (Rock target: >0.7)
-   Flatness:    0.179 (Tonal<0.3, Noise>0.7)
-   Centroid:    6748Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.51 (Dynamics)
-   Rolloff:     11316Hz (85% energy)
-   Latency:     1.08ms
-   UltraAir:    0.015 (NEW: 16-22kHz sizzle)
-[F] B:0.66 Snap:0.002 Kick:N OUT:0.00 | [B] M:0.37 T:0.25 SnP:0.57 OUT:0.13 | [M] Morph:0.41
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=44% B/D/N=99/177/130
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.67 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.36 T:0.26 SnP:0.58 OUT:0.14 | [M] Morph:0.40
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[CHOREO] techno-club | square [MIRROR F0/2] | Bar:74 | Pan:-218 Tilt:-41 | sBPM:134 phase:208°
-[CHOREO] techno-club | square [MIRROR F1/2] | Bar:74 | Pan:218 Tilt:-41 | sBPM:134 phase:208°
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.36 T:0.26 SnP:0.59 OUT:0.16 | [M] Morph:0.40
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.37 T:0.26 SnP:0.58 OUT:0.14 | [M] Morph:0.39
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.34 T:0.23 SnP:0.52 OUT:0.05 | [M] Morph:0.39
-[F] B:0.71 Snap:0.083 Kick:N OUT:0.29 | [B] M:0.46 T:0.25 SnP:0.56 OUT:0.10 | [M] Morph:0.39
-[F] B:0.79 Snap:0.082 Kick:N OUT:0.22 | [B] M:0.46 T:0.23 SnP:0.53 OUT:0.06 | [M] Morph:0.39
-[🥁 INTERVAL BPM] KICK #297 bpm=124 conf=0.00 energy=0.2132 avg=0.0236 ratio=9.04 delta=0.2132 history=8/8 bpmBuf=[161,86,81,86,86,161,185,161]
-[F] B:0.76 Snap:0.000 Kick:Y OUT:0.16 | [B] M:0.40 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.39
-[F] B:0.74 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.38 T:0.21 SnP:0.48 OUT:0.03 | [M] Morph:0.39
-[IPC 📡] audioBuffer #5968 | titan.running=true | size=8192
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.32 T:0.19 SnP:0.42 OUT:0.00 | [M] Morph:0.38
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.30 SnP:0.65 OUT:0.31 | [M] Morph:0.37
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.34 T:0.30 SnP:0.65 OUT:0.33 | [M] Morph:0.37
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.34 T:0.28 SnP:0.62 OUT:0.22 | [M] Morph:0.36
-[F] B:0.65 Snap:0.025 Kick:N OUT:0.00 | [B] M:0.46 T:0.30 SnP:0.65 OUT:0.33 | [M] Morph:0.37
-[F] B:0.67 Snap:0.024 Kick:N OUT:0.00 | [B] M:0.46 T:0.29 SnP:0.64 OUT:0.27 | [M] Morph:0.37
-[F] B:0.79 Snap:0.113 Kick:N OUT:0.32 | [B] M:0.49 T:0.29 SnP:0.65 OUT:0.32 | [M] Morph:0.39
-[F] B:0.82 Snap:0.032 Kick:N OUT:0.24 | [B] M:0.47 T:0.28 SnP:0.65 OUT:0.31 | [M] Morph:0.39
-[F] B:0.78 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.40 T:0.25 SnP:0.58 OUT:0.14 | [M] Morph:0.39
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.14 | [B] M:0.37 T:0.24 SnP:0.56 OUT:0.10 | [M] Morph:0.39
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.32 T:0.20 SnP:0.46 OUT:0.02 | [M] Morph:0.38
-[F] B:0.72 Snap:0.053 Kick:N OUT:0.29 | [B] M:0.41 T:0.30 SnP:0.66 OUT:0.34 | [M] Morph:0.38
-[F] B:0.73 Snap:0.011 Kick:N OUT:0.22 | [B] M:0.45 T:0.28 SnP:0.61 OUT:0.20 | [M] Morph:0.38
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.16 | [B] M:0.45 T:0.26 SnP:0.59 OUT:0.16 | [M] Morph:0.38
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.12 | [B] M:0.44 T:0.28 SnP:0.63 OUT:0.25 | [M] Morph:0.38
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.09 | [B] M:0.42 T:0.26 SnP:0.59 OUT:0.15 | [M] Morph:0.38
-[F] B:0.69 Snap:0.024 Kick:N OUT:0.00 | [B] M:0.46 T:0.26 SnP:0.58 OUT:0.13 | [M] Morph:0.38
-[INTERVAL] F5980 bpm=124 raw=124 conf=0.000 kick=false phase=0.34 needle=0.0000 bassFlux=0.0361 midFlux=0.0000 centroid=2128Hz kicks=297
-[F] B:0.77 Snap:0.078 Kick:N OUT:0.31 | [B] M:0.46 T:0.24 SnP:0.55 OUT:0.08 | [M] Morph:0.38
-[🥁 INTERVAL BPM] KICK #298 bpm=124 conf=0.00 energy=0.1487 avg=0.0208 ratio=7.14 delta=0.1487 history=8/8 bpmBuf=[161,86,86,86,86,161,185,161]
-[F] B:0.73 Snap:0.000 Kick:Y OUT:0.23 | [B] M:0.41 T:0.21 SnP:0.49 OUT:0.03 | [M] Morph:0.38
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.18 | [B] M:0.40 T:0.22 SnP:0.49 OUT:0.03 | [M] Morph:0.38
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.35 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.37
-[F] B:0.68 Snap:0.005 Kick:N OUT:0.10 | [B] M:0.39 T:0.24 SnP:0.53 OUT:0.06 | [M] Morph:0.37
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.30 SnP:0.67 OUT:0.37 | [M] Morph:0.39
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.48 T:0.28 SnP:0.64 OUT:0.30 | [M] Morph:0.40
-[F] B:0.67 Snap:0.017 Kick:N OUT:0.00 | [B] M:0.46 T:0.27 SnP:0.63 OUT:0.24 | [M] Morph:0.40
-[F] B:0.69 Snap:0.022 Kick:N OUT:0.00 | [B] M:0.43 T:0.25 SnP:0.58 OUT:0.14 | [M] Morph:0.40
-[F] B:0.71 Snap:0.022 Kick:Y OUT:0.00 | [B] M:0.54 T:0.28 SnP:0.65 OUT:0.31 | [M] Morph:0.43
-[F] B:0.75 Snap:0.036 Kick:N OUT:0.00 | [B] M:0.53 T:0.27 SnP:0.64 OUT:0.29 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.49 T:0.24 SnP:0.56 OUT:0.12 | [M] Morph:0.45
-[F] B:0.71 Snap:0.000 Kick:Y OUT:0.00 | [B] M:0.47 T:0.23 SnP:0.54 OUT:0.08 | [M] Morph:0.45
-[SimpleSectionTracker] 📍 buildup → verse | bassR=0.97 wE=0.29 ΔE=-0.006 kick=false
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.44 T:0.21 SnP:0.50 OUT:0.05 | [M] Morph:0.45
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.41 T:0.24 SnP:0.55 OUT:0.10 | [M] Morph:0.45
-[F] B:0.73 Snap:0.065 Kick:N OUT:0.29 | [B] M:0.47 T:0.30 SnP:0.71 OUT:0.55 | [M] Morph:0.45
-[F] B:0.75 Snap:0.022 Kick:N OUT:0.22 | [B] M:0.45 T:0.28 SnP:0.66 OUT:0.35 | [M] Morph:0.45
-[F] B:0.73 Snap:0.000 Kick:N OUT:0.17 | [B] M:0.44 T:0.28 SnP:0.67 OUT:0.38 | [M] Morph:0.44
-[F] B:0.71 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.42 T:0.27 SnP:0.63 OUT:0.25 | [M] Morph:0.44
-[F] B:0.67 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.44 T:0.25 SnP:0.59 OUT:0.16 | [M] Morph:0.44
-[F] B:0.73 Snap:0.062 Kick:N OUT:0.29 | [B] M:0.48 T:0.25 SnP:0.59 OUT:0.16 | [M] Morph:0.44
-[F] B:0.77 Snap:0.032 Kick:N OUT:0.22 | [B] M:0.44 T:0.23 SnP:0.53 OUT:0.07 | [M] Morph:0.44
-[🥁 INTERVAL BPM] KICK #299 bpm=124 conf=0.00 energy=0.1778 avg=0.0283 ratio=6.29 delta=0.0956 history=8/8 bpmBuf=[161,86,86,86,86,161,185,161]
-[F] B:0.72 Snap:0.000 Kick:Y OUT:0.17 | [B] M:0.40 T:0.22 SnP:0.51 OUT:0.05 | [M] Morph:0.43
-[F] B:0.69 Snap:0.000 Kick:N OUT:0.13 | [B] M:0.37 T:0.22 SnP:0.50 OUT:0.04 | [M] Morph:0.43
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.10 | [B] M:0.31 T:0.19 SnP:0.43 OUT:0.01 | [M] Morph:0.42
-[TitanOrchestrator] 🎧 WORKER BPM=134 conf=0.36 | PLL=FREEWHEEL [mem=134@-0f] phase=0.00 sync=1.00 | beat #299
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.33 SnP:0.75 OUT:0.79 | [M] Morph:0.42
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[IPC 📡] audioBuffer #6000 | titan.running=true | size=8192
-[F] B:0.62 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.30 SnP:0.68 OUT:0.41 | [M] Morph:0.41
-[INTERVAL] F6000 bpm=124 raw=124 conf=0.000 kick=false phase=0.38 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=5336Hz kicks=299
-[BETA 🎵] Key Detected: F minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 6000: bpm=134, energy=0.16
-[F] B:0.59 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.65 OUT:0.33 | [M] Morph:0.41
-[BETA 📡] AUDIO_BUFFER #6000 | size=2048
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.901 (Rock target: >0.7)
-   Flatness:    0.117 (Tonal<0.3, Noise>0.7)
-   Centroid:    3786Hz (Bright>2000, Dark<1200)
-   CrestFactor: 10.60 (Dynamics)
-   Rolloff:     8904Hz (85% energy)
-   Latency:     1.43ms
-   UltraAir:    0.011 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.74x | In: 0.444 → Out: 0.329 | Peak: 0.661 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=verse | bassR=1.15/1.4 wE=0.24/0.75 kick=false cool=false
-[F] B:0.65 Snap:0.056 Kick:N OUT:0.26 | [B] M:0.47 T:0.30 SnP:0.69 OUT:0.47 | [M] Morph:0.41
-[F] B:0.64 Snap:0.000 Kick:N OUT:0.20 | [B] M:0.52 T:0.27 SnP:0.66 OUT:0.36 | [M] Morph:0.43
-[F] B:0.73 Snap:0.084 Kick:N OUT:0.15 | [B] M:0.52 T:0.28 SnP:0.68 OUT:0.43 | [M] Morph:0.45
-[F] B:0.78 Snap:0.055 Kick:Y OUT:0.12 | [B] M:0.47 T:0.26 SnP:0.64 OUT:0.31 | [M] Morph:0.45
-[F] B:0.74 Snap:0.000 Kick:Y OUT:0.09 | [B] M:0.41 T:0.25 SnP:0.60 OUT:0.18 | [M] Morph:0.44
-[F] B:0.70 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.39 T:0.24 SnP:0.57 OUT:0.13 | [M] Morph:0.44
-[F] B:0.63 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.35 T:0.22 SnP:0.53 OUT:0.07 | [M] Morph:0.43
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=42% B/D/N=76/161/150
-[StrategyArbiter] 🔒 LOCKED: triadic | Remaining: 900 frames (15.0s)
-[DRIFT RADAR] In: 'bright' -> Act: 'bright' | Drift: +30° | BaseHue: 150° | FinalHue: 165°
-[F] B:0.66 Snap:0.025 Kick:N OUT:0.00 | [B] M:0.36 T:0.29 SnP:0.67 OUT:0.41 | [M] Morph:0.43
-[CHOREO] techno-club | square [MIRROR F0/2] | Bar:74 | Pan:170 Tilt:111 | sBPM:134 phase:349°
-[CHOREO] techno-club | square [MIRROR F1/2] | Bar:74 | Pan:-170 Tilt:111 | sBPM:134 phase:349°
-[F] B:0.67 Snap:0.009 Kick:N OUT:0.00 | [B] M:0.34 T:0.26 SnP:0.61 OUT:0.21 | [M] Morph:0.42
-[F] B:0.66 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.32 T:0.26 SnP:0.60 OUT:0.17 | [M] Morph:0.41
-[F] B:0.65 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.33 T:0.25 SnP:0.57 OUT:0.12 | [M] Morph:0.41
-[F] B:0.61 Snap:0.000 Kick:N OUT:0.00 | [B] M:0.43 T:0.23 SnP:0.53 OUT:0.07 | [M] Morph:0.41
-[F] B:0.72 Snap:0.110 Kick:N OUT:0.17 | [B] M:0.44 T:0.23 SnP:0.53 OUT:0.06 | [M] Morph:0.40
-[F] B:0.77 Snap:0.049 Kick:N OUT:0.13 | [B] M:0.42 T:0.20 SnP:0.46 OUT:0.02 | [M] Morph:0.40
-[🥁 INTERVAL BPM] KICK #300 bpm=124 conf=0.00 energy=0.2150 avg=0.0281 ratio=7.64 delta=0.2150 history=8/8 bpmBuf=[161,86,86,86,86,161,185,161]
-[F] B:0.77 Snap:0.000 Kick:Y OUT:0.10 | [B] M:0.42 T:0.20 SnP:0.46 OUT:0.02 | [M] Morph:0.4
+[LATINO-41] sB:0.472 mid:0.323 hMid:0.304 tr:0.241 | morph:0.000 tDelta:0.0127 percRaw:0.051 | fPar:0.000 bPar:0.000 mL:0.049 mR:0.325 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.443 mid:0.295 hMid:0.277 tr:0.210 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.027 mR:0.242 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.420 mid:0.295 hMid:0.257 tr:0.210 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.027 mR:0.242 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.443 mid:0.252 hMid:0.214 tr:0.161 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.001 mR:0.118 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.420 mid:0.228 hMid:0.188 tr:0.130 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.051 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.397 mid:0.205 hMid:0.167 tr:0.112 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.017 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.419 mid:0.162 hMid:0.140 tr:0.092 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.440 mid:0.128 hMid:0.118 tr:0.077 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.445 mid:0.118 hMid:0.110 tr:0.079 | morph:0.000 tDelta:0.0012 percRaw:0.005 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.448 mid:0.113 hMid:0.107 tr:0.082 | morph:0.000 tDelta:0.0038 percRaw:0.015 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.417 mid:0.101 hMid:0.096 tr:0.075 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.429 mid:0.092 hMid:0.087 tr:0.071 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.405 mid:0.208 hMid:0.159 tr:0.148 | morph:0.000 tDelta:0.0777 percRaw:0.311 | fPar:0.000 bPar:1.000 mL:0.000 mR:0.090 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.1848 sab=0.108 | 🔬in_peak=0.12319 in_rms=0.04406
+[LATINO-41] sB:0.423 mid:0.269 hMid:0.211 tr:0.191 | morph:0.000 tDelta:0.0426 percRaw:0.171 | fPar:0.000 bPar:0.020 mL:0.010 mR:0.192 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.395 mid:0.242 hMid:0.186 tr:0.153 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.100 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.360 mid:0.221 hMid:0.164 tr:0.125 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.041 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.329 mid:0.202 hMid:0.153 tr:0.112 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.017 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.343 mid:0.176 hMid:0.137 tr:0.098 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.335 mid:0.137 hMid:0.114 tr:0.082 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.340 mid:0.119 hMid:0.104 tr:0.077 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.344 mid:0.119 hMid:0.096 tr:0.077 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.324 mid:0.113 hMid:0.095 tr:0.076 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.299 mid:0.100 hMid:0.089 tr:0.070 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.269 mid:0.084 hMid:0.079 tr:0.061 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.257 mid:0.109 hMid:0.090 tr:0.075 | morph:0.000 tDelta:0.0139 percRaw:0.055 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.230 hMid:0.177 tr:0.163 | morph:0.000 tDelta:0.0885 percRaw:0.354 | fPar:0.000 bPar:1.000 mL:0.000 mR:0.124 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.219 mid:0.257 hMid:0.197 tr:0.176 | morph:0.000 tDelta:0.0126 percRaw:0.051 | fPar:0.000 bPar:0.020 mL:0.003 mR:0.155 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.195 mid:0.232 hMid:0.174 tr:0.142 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.075 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.222 hMid:0.159 tr:0.121 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.033 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.208 mid:0.224 hMid:0.154 tr:0.111 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.015 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.219 hMid:0.143 tr:0.097 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.224 mid:0.207 hMid:0.132 tr:0.089 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.216 mid:0.216 hMid:0.131 tr:0.094 | morph:0.000 tDelta:0.0048 percRaw:0.019 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.212 mid:0.218 hMid:0.127 tr:0.092 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.187 mid:0.212 hMid:0.122 tr:0.087 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.167 mid:0.200 hMid:0.116 tr:0.080 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.158 mid:0.277 hMid:0.187 tr:0.162 | morph:0.000 tDelta:0.0825 percRaw:0.330 | fPar:0.000 bPar:1.000 mL:0.052 mR:0.121 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.154 mid:0.298 hMid:0.218 tr:0.185 | morph:0.000 tDelta:0.0231 percRaw:0.092 | fPar:0.000 bPar:0.020 mL:0.088 mR:0.177 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.152 mid:0.298 hMid:0.240 tr:0.185 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.088 mR:0.177 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.186 mid:0.265 hMid:0.210 tr:0.152 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.007 mR:0.097 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.168 mid:0.244 hMid:0.184 tr:0.124 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.039 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.160 mid:0.243 hMid:0.174 tr:0.115 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.005 mR:0.022 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.177 mid:0.235 hMid:0.162 tr:0.105 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.005 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.171 mid:0.220 hMid:0.146 tr:0.091 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.157 mid:0.231 hMid:0.160 tr:0.118 | morph:0.000 tDelta:0.0277 percRaw:0.111 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.028 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.159 mid:0.295 hMid:0.224 tr:0.190 | morph:0.000 tDelta:0.0715 percRaw:0.286 | fPar:0.000 bPar:1.000 mL:0.082 mR:0.189 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.281 hMid:0.217 tr:0.179 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.020 mL:0.044 mR:0.163 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.246 hMid:0.188 tr:0.141 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.075 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.146 mid:0.236 hMid:0.171 tr:0.123 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.036 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.126 mid:0.232 hMid:0.161 tr:0.114 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.010 mR:0.020 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.144 mid:0.224 hMid:0.147 tr:0.098 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.143 mid:0.208 hMid:0.133 tr:0.087 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.121 mid:0.202 hMid:0.126 tr:0.082 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.206 hMid:0.124 tr:0.082 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.132 mid:0.202 hMid:0.120 tr:0.079 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.195 hMid:0.114 tr:0.072 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.283 hMid:0.194 tr:0.162 | morph:0.000 tDelta:0.0897 percRaw:0.359 | fPar:0.000 bPar:1.000 mL:0.074 mR:0.121 | sc:0 scDuck:1.000
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:180 Tilt:-135 | sBPM:126 phase:97°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:-180 Tilt:-135 | sBPM:126 phase:97°
+[LATINO-41] sB:0.126 mid:0.283 hMid:0.254 tr:0.162 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.020 mL:0.074 mR:0.121 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.130 mid:0.276 hMid:0.247 tr:0.168 | morph:0.000 tDelta:0.0059 percRaw:0.024 | fPar:0.000 bPar:0.000 mL:0.060 mR:0.135 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.320 hMid:0.275 tr:0.208 | morph:0.000 tDelta:0.0407 percRaw:0.163 | fPar:0.000 bPar:0.000 mL:0.133 mR:0.237 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.104 mid:0.303 hMid:0.263 tr:0.199 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.105 mR:0.212 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.097 mid:0.356 hMid:0.304 tr:0.250 | morph:0.000 tDelta:0.0505 percRaw:0.202 | fPar:0.000 bPar:1.000 mL:0.207 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.114 mid:0.331 hMid:0.285 tr:0.230 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.020 mL:0.139 mR:0.294 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.364 hMid:0.316 tr:0.263 | morph:0.017 tDelta:0.0331 percRaw:0.132 | fPar:0.000 bPar:0.000 mL:0.208 mR:0.386 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.364 hMid:0.338 tr:0.263 | morph:0.038 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.208 mR:0.386 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.121 mid:0.336 hMid:0.312 tr:0.236 | morph:0.046 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.162 mR:0.311 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.356 hMid:0.332 tr:0.264 | morph:0.060 tDelta:0.0281 percRaw:0.112 | fPar:0.000 bPar:0.000 mL:0.211 mR:0.389 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.331 hMid:0.312 tr:0.241 | morph:0.063 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.148 mR:0.324 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.284 hMid:0.261 tr:0.182 | morph:0.061 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.094 mR:0.169 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.104 mid:0.271 hMid:0.228 tr:0.148 | morph:0.058 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.104 mR:0.090 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.267 hMid:0.209 tr:0.130 | morph:0.055 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.128 mR:0.050 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.263 hMid:0.188 tr:0.110 | morph:0.052 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.144 mR:0.013 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.101 mid:0.259 hMid:0.173 tr:0.095 | morph:0.049 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.138 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.0483 sab=0.054 | 🔬in_peak=0.09447 in_rms=0.02764
+[LATINO-41] sB:0.086 mid:0.249 hMid:0.160 tr:0.090 | morph:0.045 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.105 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.088 mid:0.218 hMid:0.145 tr:0.083 | morph:0.040 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.020 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.218 hMid:0.134 tr:0.083 | morph:0.036 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.020 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.177 hMid:0.113 tr:0.067 | morph:0.029 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.147 hMid:0.095 tr:0.056 | morph:0.020 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.244 hMid:0.170 tr:0.148 | morph:0.017 tDelta:0.0923 percRaw:0.369 | fPar:0.000 bPar:1.000 mL:0.000 mR:0.090 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.123 mid:0.304 hMid:0.231 tr:0.208 | morph:0.017 tDelta:0.0600 percRaw:0.240 | fPar:0.000 bPar:0.029 mL:0.123 mR:0.236 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.109 mid:0.284 hMid:0.216 tr:0.178 | morph:0.016 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.071 mR:0.160 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.258 hMid:0.189 tr:0.140 | morph:0.014 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.072 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.134 mid:0.241 hMid:0.177 tr:0.123 | morph:0.010 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.038 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.152 mid:0.207 hMid:0.157 tr:0.101 | morph:0.005 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.001 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.180 mid:0.175 hMid:0.137 tr:0.079 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.258 mid:0.158 hMid:0.124 tr:0.066 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.204 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.939
+[LATINO-41] sB:0.375 mid:0.159 hMid:0.124 tr:0.071 | morph:0.000 tDelta:0.0051 percRaw:0.020 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.498 mid:0.151 hMid:0.116 tr:0.067 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.598 mid:0.147 hMid:0.110 tr:0.062 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.645 mid:0.158 hMid:0.114 tr:0.068 | morph:0.000 tDelta:0.0059 percRaw:0.024 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.641 mid:0.246 hMid:0.183 tr:0.146 | morph:0.000 tDelta:0.0776 percRaw:0.310 | fPar:0.529 bPar:1.000 mL:0.000 mR:0.084 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.659 mid:0.262 hMid:0.199 tr:0.162 | morph:0.000 tDelta:0.0167 percRaw:0.067 | fPar:0.529 bPar:0.020 mL:0.005 mR:0.122 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.683 mid:0.228 hMid:0.170 tr:0.125 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.041 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.724 mid:0.208 hMid:0.152 tr:0.104 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.004 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.755 mid:0.208 hMid:0.139 tr:0.104 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.004 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.708 mid:0.201 hMid:0.134 tr:0.095 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.734 mid:0.191 hMid:0.123 tr:0.082 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.757 mid:0.187 hMid:0.114 tr:0.072 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.765 mid:0.190 hMid:0.116 tr:0.075 | morph:0.000 tDelta:0.0025 percRaw:0.010 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.778 mid:0.190 hMid:0.117 tr:0.077 | morph:0.000 tDelta:0.0022 percRaw:0.009 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.803 mid:0.186 hMid:0.111 tr:0.070 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.820 mid:0.184 hMid:0.105 tr:0.062 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.802 mid:0.254 hMid:0.157 tr:0.127 | morph:0.000 tDelta:0.0655 percRaw:0.262 | fPar:0.529 bPar:1.000 mL:0.002 mR:0.045 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.797 mid:0.273 hMid:0.179 tr:0.149 | morph:0.000 tDelta:0.0220 percRaw:0.088 | fPar:0.117 bPar:0.020 mL:0.012 mR:0.092 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.766 mid:0.261 hMid:0.160 tr:0.123 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.005 mR:0.037 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.743 mid:0.261 hMid:0.146 tr:0.123 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.005 mR:0.037 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.729 mid:0.251 hMid:0.135 tr:0.102 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.002 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#44500 | frames=441 | peak=0.1630 | ch=2
+[LATINO-41] sB:0.726 mid:0.227 hMid:0.133 tr:0.097 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.718 mid:0.199 hMid:0.125 tr:0.086 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.688 mid:0.157 hMid:0.103 tr:0.064 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.663 mid:0.129 hMid:0.087 tr:0.053 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.655 mid:0.231 hMid:0.164 tr:0.139 | morph:0.000 tDelta:0.0858 percRaw:0.343 | fPar:0.000 bPar:1.000 mL:0.000 mR:0.068 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.652 mid:0.247 hMid:0.180 tr:0.148 | morph:0.000 tDelta:0.0094 percRaw:0.037 | fPar:0.529 bPar:0.020 mL:0.000 mR:0.089 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.639 mid:0.229 hMid:0.159 tr:0.119 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.595 mid:0.219 hMid:0.145 tr:0.100 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.595 mid:0.197 hMid:0.138 tr:0.093 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.594 mid:0.197 hMid:0.133 tr:0.093 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:-205 Tilt:-134 | sBPM:126 phase:178°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:205 Tilt:-134 | sBPM:126 phase:178°
+[LATINO-41] sB:0.609 mid:0.157 hMid:0.112 tr:0.072 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.587 mid:0.119 hMid:0.090 tr:0.053 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.594 mid:0.132 hMid:0.091 tr:0.061 | morph:0.000 tDelta:0.0087 percRaw:0.035 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.586 mid:0.150 hMid:0.099 tr:0.071 | morph:0.000 tDelta:0.0093 percRaw:0.037 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.564 mid:0.150 hMid:0.093 tr:0.063 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.569 mid:0.127 hMid:0.078 tr:0.048 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.578 mid:0.147 hMid:0.093 tr:0.074 | morph:0.000 tDelta:0.0255 percRaw:0.102 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.571 mid:0.225 hMid:0.156 tr:0.133 | morph:0.000 tDelta:0.0597 percRaw:0.239 | fPar:0.117 bPar:1.000 mL:0.000 mR:0.057 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.566 mid:0.225 hMid:0.203 tr:0.133 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.020 mL:0.000 mR:0.057 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.565 mid:0.271 hMid:0.227 tr:0.176 | morph:0.000 tDelta:0.0427 percRaw:0.171 | fPar:0.529 bPar:0.000 mL:0.011 mR:0.154 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.559 mid:0.279 hMid:0.235 tr:0.185 | morph:0.000 tDelta:0.0087 percRaw:0.035 | fPar:0.117 bPar:0.000 mL:0.016 mR:0.176 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.551 mid:0.322 hMid:0.270 tr:0.218 | morph:0.000 tDelta:0.0335 percRaw:0.134 | fPar:0.003 bPar:0.000 mL:0.048 mR:0.262 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.532 mid:0.300 hMid:0.263 tr:0.205 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.031 mR:0.229 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.517 mid:0.319 hMid:0.276 tr:0.221 | morph:0.000 tDelta:0.0156 percRaw:0.062 | fPar:0.000 bPar:0.000 mL:0.046 mR:0.270 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.506 mid:0.286 hMid:0.266 tr:0.204 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.021 mR:0.226 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.514 mid:0.334 hMid:0.295 tr:0.241 | morph:0.000 tDelta:0.0368 percRaw:0.147 | fPar:0.000 bPar:0.000 mL:0.058 mR:0.325 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.1918 sab=0.000 | 🔬in_peak=0.20742 in_rms=0.06530
+[LATINO-41] sB:0.519 mid:0.334 hMid:0.317 tr:0.241 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.058 mR:0.325 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.491 mid:0.317 hMid:0.289 tr:0.211 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.044 mR:0.243 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.471 mid:0.281 hMid:0.241 tr:0.159 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.018 mR:0.114 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.460 mid:0.259 hMid:0.206 tr:0.124 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.039 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.437 mid:0.244 hMid:0.193 tr:0.119 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.029 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.435 mid:0.196 hMid:0.161 tr:0.092 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.443 mid:0.150 hMid:0.128 tr:0.067 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.447 mid:0.132 hMid:0.118 tr:0.066 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.455 mid:0.147 hMid:0.131 tr:0.085 | morph:0.000 tDelta:0.0194 percRaw:0.078 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.429 mid:0.129 hMid:0.118 tr:0.077 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.368 mid:0.103 hMid:0.095 tr:0.055 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.322 mid:0.103 hMid:0.077 tr:0.055 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.342 mid:0.209 hMid:0.145 tr:0.131 | morph:0.000 tDelta:0.0756 percRaw:0.302 | fPar:0.000 bPar:1.000 mL:0.000 mR:0.052 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.369 mid:0.290 hMid:0.214 tr:0.201 | morph:0.000 tDelta:0.0702 percRaw:0.281 | fPar:0.000 bPar:1.000 mL:0.024 mR:0.217 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.351 mid:0.273 hMid:0.194 tr:0.165 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.020 mL:0.012 mR:0.128 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.334 mid:0.254 hMid:0.170 tr:0.129 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.002 mR:0.050 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.365 mid:0.244 hMid:0.166 tr:0.124 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.038 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.359 mid:0.214 hMid:0.153 tr:0.107 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.009 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.343 mid:0.165 hMid:0.122 tr:0.075 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.367 mid:0.130 hMid:0.103 tr:0.060 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.335 mid:0.148 hMid:0.123 tr:0.082 | morph:0.000 tDelta:0.0222 percRaw:0.089 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.302 mid:0.127 hMid:0.114 tr:0.076 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.272 mid:0.096 hMid:0.092 tr:0.054 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.255 mid:0.128 hMid:0.104 tr:0.076 | morph:0.000 tDelta:0.0222 percRaw:0.089 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.237 mid:0.263 hMid:0.194 tr:0.177 | morph:0.000 tDelta:0.1007 percRaw:0.403 | fPar:0.000 bPar:1.000 mL:0.047 mR:0.157 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.222 mid:0.311 hMid:0.213 tr:0.184 | morph:0.000 tDelta:0.0070 percRaw:0.028 | fPar:0.000 bPar:0.020 mL:0.147 mR:0.174 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.215 mid:0.320 hMid:0.194 tr:0.156 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.168 mR:0.106 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.320 hMid:0.180 tr:0.156 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.168 mR:0.106 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.318 hMid:0.173 tr:0.138 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.170 mR:0.066 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.216 mid:0.319 hMid:0.180 tr:0.137 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.169 mR:0.065 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.238 mid:0.294 hMid:0.161 tr:0.115 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.108 mR:0.021 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.227 mid:0.266 hMid:0.144 tr:0.097 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.062 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.224 mid:0.256 hMid:0.137 tr:0.088 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.044 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.222 mid:0.287 hMid:0.141 tr:0.092 | morph:0.000 tDelta:0.0042 percRaw:0.017 | fPar:0.000 bPar:0.000 mL:0.116 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.200 mid:0.303 hMid:0.134 tr:0.085 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.169 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.183 mid:0.303 hMid:0.129 tr:0.085 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.169 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.313 hMid:0.125 tr:0.081 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.210 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.344 hMid:0.165 tr:0.139 | morph:0.010 tDelta:0.0582 percRaw:0.233 | fPar:0.000 bPar:0.000 mL:0.265 mR:0.069 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.172 mid:0.372 hMid:0.223 tr:0.197 | morph:0.035 tDelta:0.0586 percRaw:0.234 | fPar:0.000 bPar:1.000 mL:0.307 mR:0.208 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.193 mid:0.328 hMid:0.196 tr:0.157 | morph:0.040 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.045 mL:0.178 mR:0.111 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.191 mid:0.295 hMid:0.173 tr:0.124 | morph:0.039 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.110 mR:0.039 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.180 mid:0.310 hMid:0.176 tr:0.128 | morph:0.039 tDelta:0.0035 percRaw:0.014 | fPar:0.000 bPar:0.000 mL:0.175 mR:0.046 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.189 mid:0.315 hMid:0.168 tr:0.117 | morph:0.039 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.195 mR:0.026 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.192 mid:0.317 hMid:0.155 tr:0.101 | morph:0.039 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.214 mR:0.001 | sc:0 scDuck:1.000
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:-206 Tilt:50 | sBPM:126 phase:258°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:206 Tilt:50 | sBPM:126 phase:258°
+[LATINO-41] sB:0.173 mid:0.311 hMid:0.146 tr:0.095 | morph:0.039 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.226 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.159 mid:0.311 hMid:0.139 tr:0.095 | morph:0.039 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.226 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.361 hMid:0.211 tr:0.177 | morph:0.056 tDelta:0.0819 percRaw:0.328 | fPar:0.000 bPar:1.000 mL:0.305 mR:0.156 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.173 mid:0.360 hMid:0.236 tr:0.194 | morph:0.070 tDelta:0.0172 percRaw:0.069 | fPar:0.000 bPar:0.074 mL:0.280 mR:0.199 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.163 mid:0.314 hMid:0.204 tr:0.149 | morph:0.069 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.182 mR:0.091 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.281 hMid:0.180 tr:0.119 | morph:0.067 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.122 mR:0.029 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.125 mid:0.308 hMid:0.187 tr:0.123 | morph:0.066 tDelta:0.0037 percRaw:0.015 | fPar:0.000 bPar:0.000 mL:0.226 mR:0.036 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.316 hMid:0.176 tr:0.114 | morph:0.066 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.253 mR:0.021 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.315 hMid:0.159 tr:0.098 | morph:0.065 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.240 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.132 mid:0.327 hMid:0.166 tr:0.107 | morph:0.065 tDelta:0.0094 percRaw:0.037 | fPar:0.000 bPar:0.000 mL:0.262 mR:0.009 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.327 hMid:0.172 tr:0.107 | morph:0.066 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.262 mR:0.009 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.131 mid:0.313 hMid:0.174 tr:0.112 | morph:0.065 tDelta:0.0044 percRaw:0.018 | fPar:0.000 bPar:0.000 mL:0.210 mR:0.017 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.287 hMid:0.156 tr:0.094 | morph:0.063 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.146 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.267 hMid:0.142 tr:0.082 | morph:0.060 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.101 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.328 hMid:0.207 tr:0.153 | morph:0.062 tDelta:0.0708 percRaw:0.283 | fPar:0.000 bPar:1.000 mL:0.222 mR:0.100 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.369 hMid:0.265 tr:0.211 | morph:0.078 tDelta:0.0585 percRaw:0.234 | fPar:0.000 bPar:0.081 mL:0.309 mR:0.245 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.0734 sab=0.161 | 🔬in_peak=0.21222 in_rms=0.06163
+[LATINO-41] sB:0.122 mid:0.367 hMid:0.265 tr:0.204 | morph:0.092 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.291 mR:0.225 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.114 mid:0.369 hMid:0.273 tr:0.211 | morph:0.104 tDelta:0.0072 percRaw:0.029 | fPar:0.000 bPar:0.000 mL:0.300 mR:0.244 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.099 mid:0.369 hMid:0.273 tr:0.215 | morph:0.114 tDelta:0.0037 percRaw:0.015 | fPar:0.000 bPar:0.000 mL:0.319 mR:0.254 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.110 mid:0.387 hMid:0.298 tr:0.236 | morph:0.130 tDelta:0.0207 percRaw:0.083 | fPar:0.000 bPar:0.000 mL:0.334 mR:0.310 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.388 hMid:0.297 tr:0.237 | morph:0.143 tDelta:0.0009 percRaw:0.004 | fPar:0.000 bPar:0.000 mL:0.325 mR:0.312 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.368 hMid:0.277 tr:0.209 | morph:0.147 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.289 mR:0.239 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.411 hMid:0.318 tr:0.247 | morph:0.167 tDelta:0.0377 percRaw:0.151 | fPar:0.000 bPar:1.000 mL:0.390 mR:0.341 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.118 mid:0.406 hMid:0.329 tr:0.251 | morph:0.181 tDelta:0.0041 percRaw:0.016 | fPar:0.000 bPar:0.123 mL:0.372 mR:0.352 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.106 mid:0.357 hMid:0.277 tr:0.189 | morph:0.181 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.280 mR:0.187 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.100 mid:0.328 hMid:0.239 tr:0.151 | morph:0.178 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.237 mR:0.095 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.087 mid:0.336 hMid:0.235 tr:0.152 | morph:0.177 tDelta:0.0018 percRaw:0.007 | fPar:0.000 bPar:0.000 mL:0.275 mR:0.099 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.324 hMid:0.210 tr:0.131 | morph:0.174 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.262 mR:0.052 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.309 hMid:0.187 tr:0.107 | morph:0.171 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.237 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.310 hMid:0.182 tr:0.110 | morph:0.168 tDelta:0.0036 percRaw:0.014 | fPar:0.000 bPar:0.000 mL:0.250 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.310 hMid:0.178 tr:0.110 | morph:0.166 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.250 mR:0.014 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.072 mid:0.285 hMid:0.182 tr:0.115 | morph:0.161 tDelta:0.0051 percRaw:0.020 | fPar:0.000 bPar:0.000 mL:0.189 mR:0.022 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.082 mid:0.250 hMid:0.165 tr:0.100 | morph:0.156 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.083 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.202 hMid:0.137 tr:0.074 | morph:0.148 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.106 mid:0.220 hMid:0.151 tr:0.098 | morph:0.141 tDelta:0.0239 percRaw:0.096 | fPar:0.000 bPar:0.000 mL:0.019 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.303 hMid:0.221 tr:0.170 | morph:0.138 tDelta:0.0720 percRaw:0.288 | fPar:0.000 bPar:1.000 mL:0.153 mR:0.139 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.105 mid:0.308 hMid:0.209 tr:0.154 | morph:0.136 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.104 mL:0.148 mR:0.103 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.291 hMid:0.184 tr:0.124 | morph:0.133 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.071 mR:0.038 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.278 hMid:0.170 tr:0.109 | morph:0.129 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.046 mR:0.013 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.111 mid:0.278 hMid:0.160 tr:0.109 | morph:0.125 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.046 mR:0.013 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.262 hMid:0.167 tr:0.116 | morph:0.121 tDelta:0.0063 percRaw:0.025 | fPar:0.000 bPar:0.000 mL:0.006 mR:0.023 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.151 mid:0.225 hMid:0.148 tr:0.091 | morph:0.115 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.235 mid:0.194 hMid:0.131 tr:0.073 | morph:0.107 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.354 mid:0.199 hMid:0.143 tr:0.094 | morph:0.100 tDelta:0.0210 percRaw:0.084 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.477 mid:0.191 hMid:0.141 tr:0.092 | morph:0.092 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.576 mid:0.175 hMid:0.129 tr:0.079 | morph:0.084 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.647 mid:0.171 hMid:0.123 tr:0.071 | morph:0.076 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.663 mid:0.258 hMid:0.187 tr:0.146 | morph:0.072 tDelta:0.0749 percRaw:0.300 | fPar:0.529 bPar:1.000 mL:0.003 mR:0.085 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.643 mid:0.266 hMid:0.183 tr:0.140 | morph:0.069 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.073 mL:0.008 mR:0.071 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.627 mid:0.266 hMid:0.180 tr:0.140 | morph:0.066 tDelta:0.0000 percRaw:0.000 | fPar:0.123 bPar:0.000 mL:0.008 mR:0.071 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.661 mid:0.255 hMid:0.158 tr:0.112 | morph:0.063 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.002 mR:0.017 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.738 mid:0.227 hMid:0.139 tr:0.092 | morph:0.058 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.694 mid:0.247 hMid:0.153 tr:0.110 | morph:0.054 tDelta:0.0186 percRaw:0.074 | fPar:0.122 bPar:0.000 mL:0.000 mR:0.014 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.720 mid:0.247 hMid:0.147 tr:0.105 | morph:0.050 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.006 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.744 mid:0.245 hMid:0.136 tr:0.091 | morph:0.046 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.760 mid:0.262 hMid:0.148 tr:0.107 | morph:0.044 tDelta:0.0155 percRaw:0.062 | fPar:0.529 bPar:0.000 mL:0.006 mR:0.009 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.772 mid:0.262 hMid:0.157 tr:0.107 | morph:0.041 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.006 mR:0.009 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.782 mid:0.272 hMid:0.162 tr:0.113 | morph:0.039 tDelta:0.0059 percRaw:0.024 | fPar:0.529 bPar:0.000 mL:0.012 mR:0.018 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.807 mid:0.240 hMid:0.148 tr:0.096 | morph:0.035 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.819 mid:0.224 hMid:0.137 tr:0.081 | morph:0.030 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:116 Tilt:82 | sBPM:126 phase:339°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:-116 Tilt:82 | sBPM:126 phase:339°
+[LATINO-41] sB:0.803 mid:0.289 hMid:0.190 tr:0.156 | morph:0.029 tDelta:0.0745 percRaw:0.298 | fPar:0.529 bPar:1.000 mL:0.023 mR:0.107 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.794 mid:0.329 hMid:0.227 tr:0.192 | morph:0.036 tDelta:0.0360 percRaw:0.144 | fPar:0.120 bPar:0.041 mL:0.054 mR:0.194 | sc:1 scDuck:0.964
+[LATINO-41] sB:0.771 mid:0.315 hMid:0.209 tr:0.158 | morph:0.036 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.043 mR:0.112 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.751 mid:0.300 hMid:0.190 tr:0.124 | morph:0.035 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.031 mR:0.040 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.736 mid:0.300 hMid:0.175 tr:0.124 | morph:0.035 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.031 mR:0.040 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.729 mid:0.292 hMid:0.182 tr:0.135 | morph:0.034 tDelta:0.0103 percRaw:0.041 | fPar:0.000 bPar:0.000 mL:0.025 mR:0.061 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.722 mid:0.254 hMid:0.165 tr:0.118 | morph:0.031 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.002 mR:0.027 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.705 mid:0.210 hMid:0.142 tr:0.091 | morph:0.025 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.676 mid:0.200 hMid:0.133 tr:0.089 | morph:0.020 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.662 mid:0.285 hMid:0.202 tr:0.162 | morph:0.019 tDelta:0.0722 percRaw:0.289 | fPar:0.000 bPar:1.000 mL:0.020 mR:0.120 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.662 mid:0.302 hMid:0.210 tr:0.166 | morph:0.019 tDelta:0.0042 percRaw:0.017 | fPar:0.529 bPar:0.030 mL:0.033 mR:0.130 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.644 mid:0.290 hMid:0.185 tr:0.132 | morph:0.018 tDelta:0.0000 percRaw:0.000 | fPar:0.119 bPar:0.000 mL:0.024 mR:0.055 | sc:1 scDuck:0.964
+[LATINO-41] sB:0.612 mid:0.286 hMid:0.181 tr:0.129 | morph:0.017 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.021 mR:0.049 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.588 mid:0.286 hMid:0.178 tr:0.129 | morph:0.016 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.021 mR:0.049 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.582 mid:0.282 hMid:0.189 tr:0.142 | morph:0.014 tDelta:0.0129 percRaw:0.052 | fPar:0.000 bPar:0.000 mL:0.018 mR:0.076 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.597 mid:0.248 hMid:0.170 tr:0.121 | morph:0.011 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.033 | sc:1 scDuck:0.841
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.1453 sab=0.054 | 🔬in_peak=0.25660 in_rms=0.07374
+[LATINO-41] sB:0.569 mid:0.194 hMid:0.142 tr:0.087 | morph:0.006 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.574 mid:0.179 hMid:0.132 tr:0.079 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.570 mid:0.215 hMid:0.154 tr:0.102 | morph:0.000 tDelta:0.0232 percRaw:0.093 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.002 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.553 mid:0.209 hMid:0.146 tr:0.096 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.545 mid:0.186 hMid:0.129 tr:0.075 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.550 mid:0.259 hMid:0.167 tr:0.128 | morph:0.000 tDelta:0.0534 percRaw:0.214 | fPar:0.529 bPar:1.000 mL:0.004 mR:0.047 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.549 mid:0.333 hMid:0.225 tr:0.193 | morph:0.000 tDelta:0.0647 percRaw:0.259 | fPar:0.529 bPar:1.000 mL:0.070 mR:0.197 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.556 mid:0.374 hMid:0.244 tr:0.215 | morph:0.027 tDelta:0.0220 percRaw:0.088 | fPar:0.529 bPar:0.035 mL:0.161 mR:0.254 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.543 mid:0.389 hMid:0.267 tr:0.234 | morph:0.056 tDelta:0.0191 percRaw:0.077 | fPar:0.122 bPar:0.000 mL:0.210 mR:0.305 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.556 mid:0.388 hMid:0.264 tr:0.227 | morph:0.081 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.193 mR:0.286 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.535 mid:0.427 hMid:0.313 tr:0.274 | morph:0.116 tDelta:0.0474 percRaw:0.189 | fPar:0.416 bPar:1.000 mL:0.297 mR:0.418 | sc:1 scDuck:0.875
+[LATINO-41] sB:0.513 mid:0.409 hMid:0.300 tr:0.251 | morph:0.140 tDelta:0.0000 percRaw:0.000 | fPar:0.102 bPar:0.106 mL:0.262 mR:0.353 | sc:1 scDuck:0.969
+[LATINO-41] sB:0.489 mid:0.409 hMid:0.311 tr:0.253 | morph:0.159 tDelta:0.0019 percRaw:0.008 | fPar:0.003 bPar:0.000 mL:0.281 mR:0.359 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.496 mid:0.438 hMid:0.332 tr:0.270 | morph:0.187 tDelta:0.0162 percRaw:0.065 | fPar:0.068 bPar:0.000 mL:0.347 mR:0.405 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.479 mid:0.449 hMid:0.342 tr:0.269 | morph:0.215 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.392 mR:0.404 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.441 mid:0.390 hMid:0.298 tr:0.215 | morph:0.216 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.278 mR:0.254 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.446 mid:0.344 hMid:0.256 tr:0.164 | morph:0.214 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.183 mR:0.127 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.415 mid:0.338 hMid:0.246 tr:0.164 | morph:0.212 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.196 mR:0.126 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.421 mid:0.332 hMid:0.229 tr:0.149 | morph:0.209 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.171 mR:0.090 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.431 mid:0.314 hMid:0.201 tr:0.122 | morph:0.206 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.105 mR:0.035 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.423 mid:0.304 hMid:0.180 tr:0.105 | morph:0.202 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.092 mR:0.005 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.424 mid:0.315 hMid:0.195 tr:0.131 | morph:0.199 tDelta:0.0268 percRaw:0.107 | fPar:0.000 bPar:0.000 mL:0.118 mR:0.053 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.382 mid:0.276 hMid:0.178 tr:0.114 | morph:0.193 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.050 mR:0.020 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.350 mid:0.276 hMid:0.164 tr:0.114 | morph:0.188 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.050 mR:0.020 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.351 mid:0.230 hMid:0.143 tr:0.086 | morph:0.181 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.384 mid:0.257 hMid:0.170 tr:0.126 | morph:0.175 tDelta:0.0397 percRaw:0.159 | fPar:0.000 bPar:0.000 mL:0.003 mR:0.042 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.405 mid:0.335 hMid:0.234 tr:0.191 | morph:0.174 tDelta:0.0658 percRaw:0.263 | fPar:0.000 bPar:1.000 mL:0.141 mR:0.193 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.409 mid:0.353 hMid:0.241 tr:0.193 | morph:0.173 tDelta:0.0016 percRaw:0.006 | fPar:0.000 bPar:0.119 mL:0.184 mR:0.197 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.378 mid:0.342 hMid:0.215 tr:0.154 | morph:0.171 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.189 mR:0.104 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#45000 | frames=441 | peak=0.0947 | ch=2
+[LATINO-41] sB:0.340 mid:0.332 hMid:0.194 tr:0.130 | morph:0.170 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.191 mR:0.051 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.339 mid:0.326 hMid:0.209 tr:0.150 | morph:0.167 tDelta:0.0196 percRaw:0.078 | fPar:0.000 bPar:0.000 mL:0.151 mR:0.094 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.340 mid:0.280 hMid:0.185 tr:0.123 | morph:0.163 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.055 mR:0.037 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.342 mid:0.227 hMid:0.161 tr:0.092 | morph:0.156 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.355 mid:0.254 hMid:0.173 tr:0.114 | morph:0.151 tDelta:0.0220 percRaw:0.088 | fPar:0.000 bPar:0.000 mL:0.009 mR:0.021 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.325 mid:0.264 hMid:0.184 tr:0.127 | morph:0.146 tDelta:0.0129 percRaw:0.051 | fPar:0.000 bPar:0.000 mL:0.042 mR:0.045 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.286 mid:0.229 hMid:0.159 tr:0.101 | morph:0.139 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.012 mR:0.001 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.250 mid:0.201 hMid:0.137 tr:0.078 | morph:0.132 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.234 mid:0.273 hMid:0.178 tr:0.129 | morph:0.128 tDelta:0.0508 percRaw:0.203 | fPar:0.000 bPar:1.000 mL:0.113 mR:0.049 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.218 mid:0.328 hMid:0.220 tr:0.173 | morph:0.127 tDelta:0.0434 percRaw:0.174 | fPar:0.000 bPar:1.000 mL:0.233 mR:0.146 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.221 mid:0.334 hMid:0.211 tr:0.161 | morph:0.126 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.100 mL:0.237 mR:0.118 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.196 mid:0.329 hMid:0.191 tr:0.132 | morph:0.125 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.245 mR:0.055 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.214 mid:0.359 hMid:0.213 tr:0.158 | morph:0.128 tDelta:0.0254 percRaw:0.102 | fPar:0.000 bPar:0.000 mL:0.302 mR:0.111 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.365 hMid:0.223 tr:0.169 | morph:0.133 tDelta:0.0110 percRaw:0.044 | fPar:0.000 bPar:0.000 mL:0.324 mR:0.137 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.227 mid:0.358 hMid:0.200 tr:0.141 | morph:0.135 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.300 mR:0.073 | sc:0 scDuck:1.000
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:209 Tilt:-68 | sBPM:126 phase:62°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:-209 Tilt:-68 | sBPM:126 phase:62°
+[LATINO-41] sB:0.223 mid:0.357 hMid:0.190 tr:0.134 | morph:0.136 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.305 mR:0.058 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.217 mid:0.379 hMid:0.217 tr:0.162 | morph:0.145 tDelta:0.0288 percRaw:0.115 | fPar:0.000 bPar:0.000 mL:0.367 mR:0.122 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.214 mid:0.378 hMid:0.218 tr:0.159 | morph:0.153 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.366 mR:0.113 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.185 mid:0.352 hMid:0.199 tr:0.129 | morph:0.152 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.338 mR:0.049 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.165 mid:0.339 hMid:0.190 tr:0.117 | morph:0.151 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.323 mR:0.026 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.397 hMid:0.249 tr:0.196 | morph:0.165 tDelta:0.0789 percRaw:0.316 | fPar:0.000 bPar:1.000 mL:0.467 mR:0.204 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.375 hMid:0.245 tr:0.189 | morph:0.168 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.117 mL:0.378 mR:0.187 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.184 mid:0.350 hMid:0.219 tr:0.149 | morph:0.167 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.318 mR:0.091 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.152 mid:0.340 hMid:0.211 tr:0.137 | morph:0.166 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.322 mR:0.066 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.143 mid:0.366 hMid:0.234 tr:0.168 | morph:0.166 tDelta:0.0307 percRaw:0.123 | fPar:0.000 bPar:0.000 mL:0.383 mR:0.136 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.312 hMid:0.206 tr:0.135 | morph:0.163 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.220 mR:0.062 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.177 mid:0.312 hMid:0.186 tr:0.135 | morph:0.161 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.220 mR:0.062 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.261 hMid:0.162 tr:0.103 | morph:0.156 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.111 mR:0.004 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.157 mid:0.336 hMid:0.213 tr:0.175 | morph:0.154 tDelta:0.0712 percRaw:0.285 | fPar:0.000 bPar:1.000 mL:0.289 mR:0.151 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.168 mid:0.402 hMid:0.273 tr:0.235 | morph:0.170 tDelta:0.0607 percRaw:0.243 | fPar:0.000 bPar:1.000 mL:0.451 mR:0.309 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.173 mid:0.390 hMid:0.257 tr:0.214 | morph:0.178 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.121 mL:0.416 mR:0.252 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #689 | bass=0.0575 sab=0.000 | 🔬in_peak=0.16105 in_rms=0.04267
+[LATINO-41] sB:0.170 mid:0.378 hMid:0.229 tr:0.169 | morph:0.180 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.398 mR:0.137 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.169 mid:0.368 hMid:0.225 tr:0.163 | morph:0.180 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.374 mR:0.123 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.151 mid:0.351 hMid:0.236 tr:0.174 | morph:0.179 tDelta:0.0115 percRaw:0.046 | fPar:0.000 bPar:0.000 mL:0.316 mR:0.151 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.168 mid:0.301 hMid:0.209 tr:0.140 | morph:0.176 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.192 mR:0.072 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.250 hMid:0.181 tr:0.107 | morph:0.170 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.090 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.144 mid:0.319 hMid:0.209 tr:0.146 | morph:0.167 tDelta:0.0391 percRaw:0.156 | fPar:0.000 bPar:1.000 mL:0.247 mR:0.084 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.337 hMid:0.232 tr:0.164 | morph:0.166 tDelta:0.0184 percRaw:0.074 | fPar:0.000 bPar:0.116 mL:0.306 mR:0.126 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.138 mid:0.294 hMid:0.199 tr:0.126 | morph:0.162 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.198 mR:0.043 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.120 mid:0.282 hMid:0.184 tr:0.113 | morph:0.158 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.184 mR:0.019 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.123 mid:0.366 hMid:0.244 tr:0.186 | morph:0.159 tDelta:0.0728 percRaw:0.291 | fPar:0.000 bPar:1.000 mL:0.394 mR:0.179 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.126 mid:0.382 hMid:0.246 tr:0.186 | morph:0.166 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.116 mL:0.436 mR:0.178 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.437 hMid:0.289 tr:0.239 | morph:0.192 tDelta:0.0539 percRaw:0.216 | fPar:0.000 bPar:1.000 mL:0.587 mR:0.320 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.444 hMid:0.297 tr:0.243 | morph:0.218 tDelta:0.0038 percRaw:0.015 | fPar:0.000 bPar:0.137 mL:0.604 mR:0.331 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.101 mid:0.499 hMid:0.353 tr:0.303 | morph:0.260 tDelta:0.0594 percRaw:0.238 | fPar:0.000 bPar:1.000 mL:0.767 mR:0.501 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.118 mid:0.458 hMid:0.344 tr:0.280 | morph:0.280 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.162 mL:0.623 mR:0.434 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.470 hMid:0.364 tr:0.305 | morph:0.302 tDelta:0.0248 percRaw:0.099 | fPar:0.000 bPar:0.003 mL:0.641 mR:0.507 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.138 mid:0.470 hMid:0.379 tr:0.305 | morph:0.320 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.641 mR:0.507 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.460 hMid:0.359 tr:0.280 | morph:0.332 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.626 mR:0.436 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.488 hMid:0.379 tr:0.308 | morph:0.353 tDelta:0.0271 percRaw:0.108 | fPar:0.000 bPar:0.000 mL:0.712 mR:0.516 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.456 hMid:0.337 tr:0.253 | morph:0.358 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.640 mR:0.358 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.427 hMid:0.292 tr:0.199 | morph:0.358 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.583 mR:0.211 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.096 mid:0.440 hMid:0.287 tr:0.198 | morph:0.357 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.633 mR:0.210 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.088 mid:0.440 hMid:0.298 tr:0.216 | morph:0.357 tDelta:0.0181 percRaw:0.072 | fPar:0.000 bPar:0.000 mL:0.640 mR:0.257 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.417 hMid:0.272 tr:0.186 | morph:0.356 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.570 mR:0.179 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.105 mid:0.406 hMid:0.249 tr:0.155 | morph:0.354 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.525 mR:0.106 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.413 hMid:0.254 tr:0.171 | morph:0.353 tDelta:0.0161 percRaw:0.064 | fPar:0.000 bPar:0.000 mL:0.556 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.413 hMid:0.258 tr:0.171 | morph:0.351 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.556 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.078 mid:0.433 hMid:0.277 tr:0.196 | morph:0.351 tDelta:0.0246 percRaw:0.098 | fPar:0.000 bPar:0.000 mL:0.610 mR:0.205 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.106 mid:0.404 hMid:0.252 tr:0.166 | morph:0.349 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.497 mR:0.131 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.118 mid:0.394 hMid:0.233 tr:0.143 | morph:0.347 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.460 mR:0.078 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.458 hMid:0.256 tr:0.176 | morph:0.354 tDelta:0.0329 percRaw:0.132 | fPar:0.000 bPar:1.000 mL:0.630 mR:0.155 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.470 hMid:0.290 tr:0.211 | morph:0.365 tDelta:0.0352 percRaw:0.141 | fPar:0.000 bPar:0.196 mL:0.662 mR:0.244 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.412 hMid:0.257 tr:0.173 | morph:0.363 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.447 mR:0.147 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.134 mid:0.360 hMid:0.227 tr:0.140 | morph:0.359 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.265 mR:0.071 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.136 mid:0.418 hMid:0.249 tr:0.174 | morph:0.358 tDelta:0.0345 percRaw:0.138 | fPar:0.000 bPar:1.000 mL:0.392 mR:0.150 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.144 mid:0.389 hMid:0.235 tr:0.160 | morph:0.355 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.192 mL:0.276 mR:0.116 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.184 mid:0.368 hMid:0.218 tr:0.136 | morph:0.351 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.008 mL:0.228 mR:0.064 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.283 mid:0.352 hMid:0.211 tr:0.130 | morph:0.347 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.114 mR:0.052 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.379 mid:0.368 hMid:0.239 tr:0.162 | morph:0.343 tDelta:0.0311 percRaw:0.124 | fPar:0.529 bPar:0.000 mL:0.109 mR:0.120 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.510 mid:0.322 hMid:0.226 tr:0.146 | morph:0.337 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.049 mR:0.085 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.608 mid:0.274 hMid:0.203 tr:0.123 | morph:0.329 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.013 mR:0.037 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.647 mid:0.374 hMid:0.234 tr:0.164 | morph:0.327 tDelta:0.0407 percRaw:0.163 | fPar:0.529 bPar:1.000 mL:0.093 mR:0.125 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.677 mid:0.374 hMid:0.257 tr:0.164 | morph:0.324 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.180 mL:0.093 mR:0.125 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.683 mid:0.388 hMid:0.272 tr:0.177 | morph:0.322 tDelta:0.0129 percRaw:0.052 | fPar:0.529 bPar:0.005 mL:0.105 mR:0.156 | sc:1 scDuck:0.841
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:-48 Tilt:-135 | sBPM:126 phase:145°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:48 Tilt:-135 | sBPM:126 phase:145°
+[LATINO-41] sB:0.627 mid:0.424 hMid:0.289 tr:0.195 | morph:0.321 tDelta:0.0180 percRaw:0.072 | fPar:0.146 bPar:0.000 mL:0.139 mR:0.201 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.698 mid:0.411 hMid:0.292 tr:0.203 | morph:0.321 tDelta:0.0082 percRaw:0.033 | fPar:0.800 bPar:0.000 mL:0.089 mR:0.155 | sc:1 scDuck:0.760
+[LATINO-41] sB:0.721 mid:0.417 hMid:0.300 tr:0.214 | morph:0.320 tDelta:0.0110 percRaw:0.044 | fPar:0.529 bPar:0.000 mL:0.132 mR:0.251 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.671 mid:0.438 hMid:0.326 tr:0.234 | morph:0.324 tDelta:0.0200 percRaw:0.080 | fPar:0.146 bPar:0.000 mL:0.172 mR:0.305 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.706 mid:0.460 hMid:0.334 tr:0.240 | morph:0.335 tDelta:0.0065 percRaw:0.026 | fPar:0.529 bPar:0.000 mL:0.214 mR:0.323 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.736 mid:0.441 hMid:0.327 tr:0.234 | morph:0.338 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.158 mR:0.304 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.750 mid:0.435 hMid:0.318 tr:0.233 | morph:0.338 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.150 mR:0.302 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.757 mid:0.422 hMid:0.317 tr:0.239 | morph:0.337 tDelta:0.0063 percRaw:0.025 | fPar:0.529 bPar:0.000 mL:0.138 mR:0.319 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.763 mid:0.422 hMid:0.317 tr:0.239 | morph:0.337 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.138 mR:0.319 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.792 mid:0.380 hMid:0.272 tr:0.186 | morph:0.334 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.098 mR:0.180 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.800 mid:0.358 hMid:0.245 tr:0.164 | morph:0.330 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.079 mR:0.126 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.792 mid:0.408 hMid:0.267 tr:0.198 | morph:0.329 tDelta:0.0341 percRaw:0.136 | fPar:0.146 bPar:0.000 mL:0.123 mR:0.210 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.788 mid:0.382 hMid:0.264 tr:0.194 | morph:0.326 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.100 mR:0.200 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.763 mid:0.339 hMid:0.234 tr:0.161 | morph:0.322 tDelta:0.0000 percRaw:0.000 | fPar:0.146 bPar:0.000 mL:0.062 mR:0.118 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.747 mid:0.311 hMid:0.212 tr:0.139 | morph:0.316 tDelta:0.0000 percRaw:0.000 | fPar:0.010 bPar:0.000 mL:0.040 mR:0.070 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.736 mid:0.375 hMid:0.260 tr:0.198 | morph:0.313 tDelta:0.0590 percRaw:0.236 | fPar:0.000 bPar:1.000 mL:0.093 mR:0.210 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #690 | bass=0.2897 sab=0.000 | 🔬in_peak=0.25955 in_rms=0.08966
+[LATINO-41] sB:0.729 mid:0.377 hMid:0.253 tr:0.192 | morph:0.311 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.174 mL:0.096 mR:0.194 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.724 mid:0.377 hMid:0.248 tr:0.192 | morph:0.309 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.004 mL:0.096 mR:0.194 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.684 mid:0.403 hMid:0.277 tr:0.221 | morph:0.308 tDelta:0.0292 percRaw:0.117 | fPar:0.000 bPar:0.000 mL:0.167 mR:0.270 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.670 mid:0.417 hMid:0.282 tr:0.228 | morph:0.307 tDelta:0.0074 percRaw:0.030 | fPar:0.000 bPar:0.000 mL:0.216 mR:0.290 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.673 mid:0.428 hMid:0.301 tr:0.245 | morph:0.309 tDelta:0.0165 percRaw:0.066 | fPar:0.529 bPar:0.000 mL:0.241 mR:0.335 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.679 mid:0.407 hMid:0.283 tr:0.223 | morph:0.308 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.178 mR:0.276 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.639 mid:0.414 hMid:0.293 tr:0.241 | morph:0.308 tDelta:0.0179 percRaw:0.072 | fPar:0.144 bPar:0.000 mL:0.240 mR:0.325 | sc:1 scDuck:0.957
+[LATINO-41] sB:0.608 mid:0.433 hMid:0.295 tr:0.242 | morph:0.312 tDelta:0.0008 percRaw:0.003 | fPar:0.010 bPar:0.000 mL:0.320 mR:0.327 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.601 mid:0.460 hMid:0.310 tr:0.258 | morph:0.325 tDelta:0.0157 percRaw:0.063 | fPar:0.000 bPar:0.000 mL:0.399 mR:0.371 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.611 mid:0.424 hMid:0.282 tr:0.219 | morph:0.325 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.276 mR:0.264 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.586 mid:0.385 hMid:0.250 tr:0.180 | morph:0.322 tDelta:0.0000 percRaw:0.000 | fPar:0.146 bPar:0.000 mL:0.218 mR:0.164 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.586 mid:0.367 hMid:0.238 tr:0.174 | morph:0.319 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.172 mR:0.150 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.580 mid:0.397 hMid:0.272 tr:0.215 | morph:0.318 tDelta:0.0409 percRaw:0.164 | fPar:0.145 bPar:0.000 mL:0.243 mR:0.254 | sc:1 scDuck:0.956
+[LATINO-41] sB:0.559 mid:0.385 hMid:0.260 tr:0.201 | morph:0.316 tDelta:0.0000 percRaw:0.000 | fPar:0.010 bPar:0.000 mL:0.237 mR:0.218 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.551 mid:0.361 hMid:0.234 tr:0.171 | morph:0.312 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.199 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.547 mid:0.396 hMid:0.258 tr:0.201 | morph:0.311 tDelta:0.0295 percRaw:0.118 | fPar:0.529 bPar:0.000 mL:0.297 mR:0.217 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.559 mid:0.397 hMid:0.261 tr:0.203 | morph:0.310 tDelta:0.0020 percRaw:0.008 | fPar:0.529 bPar:0.000 mL:0.288 mR:0.222 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.551 mid:0.455 hMid:0.298 tr:0.237 | morph:0.321 tDelta:0.0347 percRaw:0.139 | fPar:0.529 bPar:1.000 mL:0.471 mR:0.315 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.556 mid:0.466 hMid:0.311 tr:0.241 | morph:0.335 tDelta:0.0040 percRaw:0.016 | fPar:0.529 bPar:0.184 mL:0.492 mR:0.326 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.550 mid:0.509 hMid:0.334 tr:0.267 | morph:0.364 tDelta:0.0253 percRaw:0.101 | fPar:0.149 bPar:0.007 mL:0.623 mR:0.397 | sc:1 scDuck:0.955
+[LATINO-41] sB:0.542 mid:0.488 hMid:0.331 tr:0.268 | morph:0.380 tDelta:0.0013 percRaw:0.005 | fPar:0.012 bPar:0.000 mL:0.566 mR:0.401 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.524 mid:0.499 hMid:0.336 tr:0.274 | morph:0.397 tDelta:0.0059 percRaw:0.023 | fPar:0.000 bPar:0.000 mL:0.609 mR:0.417 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.502 mid:0.490 hMid:0.338 tr:0.276 | morph:0.409 tDelta:0.0019 percRaw:0.008 | fPar:0.000 bPar:0.000 mL:0.601 mR:0.423 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.516 mid:0.505 hMid:0.347 tr:0.281 | morph:0.424 tDelta:0.0056 percRaw:0.022 | fPar:0.529 bPar:0.000 mL:0.622 mR:0.439 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.469 mid:0.479 hMid:0.335 tr:0.269 | morph:0.428 tDelta:0.0000 percRaw:0.000 | fPar:0.155 bPar:0.000 mL:0.588 mR:0.404 | sc:1 scDuck:0.954
+[LATINO-41] sB:0.478 mid:0.423 hMid:0.288 tr:0.218 | morph:0.425 tDelta:0.0000 percRaw:0.000 | fPar:0.015 bPar:0.000 mL:0.422 mR:0.261 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.486 mid:0.423 hMid:0.253 tr:0.218 | morph:0.423 tDelta:0.0000 percRaw:0.000 | fPar:0.107 bPar:0.000 mL:0.422 mR:0.261 | sc:1 scDuck:0.968
+[LATINO-41] sB:0.466 mid:0.397 hMid:0.234 tr:0.191 | morph:0.419 tDelta:0.0000 percRaw:0.000 | fPar:0.005 bPar:0.000 mL:0.376 mR:0.192 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.424 mid:0.453 hMid:0.287 tr:0.255 | morph:0.419 tDelta:0.0643 percRaw:0.257 | fPar:0.000 bPar:1.000 mL:0.585 mR:0.364 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.425 mid:0.428 hMid:0.277 tr:0.237 | morph:0.417 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.217 mL:0.505 mR:0.315 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.430 mid:0.390 hMid:0.251 tr:0.208 | morph:0.413 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.016 mL:0.362 mR:0.236 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.414 mid:0.368 hMid:0.233 tr:0.190 | morph:0.408 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.305 mR:0.190 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.409 mid:0.429 hMid:0.287 tr:0.253 | morph:0.406 tDelta:0.0625 percRaw:0.250 | fPar:0.000 bPar:1.000 mL:0.498 mR:0.358 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.386 mid:0.486 hMid:0.310 tr:0.281 | morph:0.415 tDelta:0.0281 percRaw:0.112 | fPar:0.000 bPar:0.216 mL:0.675 mR:0.438 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.368 mid:0.486 hMid:0.328 tr:0.281 | morph:0.422 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.017 mL:0.675 mR:0.438 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.321 mid:0.498 hMid:0.347 tr:0.301 | morph:0.433 tDelta:0.0198 percRaw:0.079 | fPar:0.000 bPar:0.000 mL:0.741 mR:0.496 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.354 mid:0.487 hMid:0.335 tr:0.287 | morph:0.438 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.671 mR:0.454 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.329 mid:0.469 hMid:0.333 tr:0.280 | morph:0.438 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.644 mR:0.436 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.292 mid:0.486 hMid:0.322 tr:0.269 | morph:0.442 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.716 mR:0.404 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.282 mid:0.501 hMid:0.342 tr:0.293 | morph:0.451 tDelta:0.0238 percRaw:0.095 | fPar:0.000 bPar:0.000 mL:0.757 mR:0.473 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.319 mid:0.527 hMid:0.358 tr:0.310 | morph:0.469 tDelta:0.0173 percRaw:0.069 | fPar:0.000 bPar:0.000 mL:0.789 mR:0.524 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.319 mid:0.537 hMid:0.377 tr:0.325 | morph:0.487 tDelta:0.0149 percRaw:0.059 | fPar:0.000 bPar:0.000 mL:0.807 mR:0.569 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.310 mid:0.478 hMid:0.330 tr:0.274 | morph:0.487 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.646 mR:0.419 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.316 mid:0.425 hMid:0.290 tr:0.233 | morph:0.483 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.493 mR:0.303 | sc:0 scDuck:1.000
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:-209 Tilt:-25 | sBPM:126 phase:226°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:209 Tilt:-25 | sBPM:126 phase:226°
+[LATINO-41] sB:0.321 mid:0.425 hMid:0.260 tr:0.233 | morph:0.480 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.493 mR:0.303 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.311 mid:0.471 hMid:0.300 tr:0.276 | morph:0.479 tDelta:0.0425 percRaw:0.170 | fPar:0.000 bPar:1.000 mL:0.654 mR:0.422 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.285 mid:0.467 hMid:0.318 tr:0.291 | morph:0.477 tDelta:0.0156 percRaw:0.062 | fPar:0.000 bPar:0.241 mL:0.681 mR:0.467 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.261 mid:0.420 hMid:0.286 tr:0.252 | morph:0.474 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.030 mL:0.564 mR:0.356 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.249 mid:0.377 hMid:0.254 tr:0.211 | morph:0.468 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.449 mR:0.244 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.226 mid:0.343 hMid:0.224 tr:0.172 | morph:0.461 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.370 mR:0.145 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.225 mid:0.317 hMid:0.201 tr:0.136 | morph:0.453 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.287 mR:0.064 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.213 mid:0.301 hMid:0.183 tr:0.113 | morph:0.444 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.246 mR:0.019 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.189 mid:0.301 hMid:0.174 tr:0.100 | morph:0.435 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.256 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.202 mid:0.303 hMid:0.167 tr:0.091 | morph:0.426 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.241 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.205 mid:0.298 hMid:0.161 tr:0.082 | morph:0.418 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.238 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.228 mid:0.289 hMid:0.155 tr:0.078 | morph:0.409 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.208 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.225 mid:0.286 hMid:0.147 tr:0.074 | morph:0.400 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.217 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.280 hMid:0.144 tr:0.073 | morph:0.391 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.207 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.239 mid:0.282 hMid:0.146 tr:0.071 | morph:0.382 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.214 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.255 mid:0.278 hMid:0.144 tr:0.071 | morph:0.373 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.193 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #690 | bass=0.0397 sab=0.054 | 🔬in_peak=0.08039 in_rms=0.02855
+[LATINO-41] sB:0.240 mid:0.277 hMid:0.139 tr:0.068 | morph:0.365 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.210 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.210 mid:0.282 hMid:0.138 tr:0.066 | morph:0.357 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.253 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.191 mid:0.283 hMid:0.138 tr:0.064 | morph:0.349 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.263 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.179 mid:0.286 hMid:0.136 tr:0.065 | morph:0.341 tDelta:0.0012 percRaw:0.005 | fPar:0.000 bPar:0.000 mL:0.277 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.180 mid:0.284 hMid:0.135 tr:0.066 | morph:0.333 tDelta:0.0011 percRaw:0.004 | fPar:0.000 bPar:0.000 mL:0.271 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.180 mid:0.284 hMid:0.134 tr:0.066 | morph:0.326 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.271 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.164 mid:0.291 hMid:0.133 tr:0.065 | morph:0.319 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.307 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.293 hMid:0.134 tr:0.065 | morph:0.312 tDelta:0.0003 percRaw:0.001 | fPar:0.000 bPar:0.000 mL:0.325 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.293 hMid:0.132 tr:0.064 | morph:0.306 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.333 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.105 mid:0.295 hMid:0.133 tr:0.065 | morph:0.299 tDelta:0.0008 percRaw:0.003 | fPar:0.000 bPar:0.000 mL:0.340 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.091 mid:0.288 hMid:0.127 tr:0.063 | morph:0.293 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.313 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.281 hMid:0.124 tr:0.061 | morph:0.286 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.292 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.064 mid:0.274 hMid:0.123 tr:0.060 | morph:0.279 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.268 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.270 hMid:0.125 tr:0.062 | morph:0.272 tDelta:0.0019 percRaw:0.008 | fPar:0.000 bPar:0.000 mL:0.271 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.277 hMid:0.128 tr:0.062 | morph:0.265 tDelta:0.0002 percRaw:0.001 | fPar:0.000 bPar:0.000 mL:0.296 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.048 mid:0.280 hMid:0.125 tr:0.060 | morph:0.259 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.304 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.045 mid:0.280 hMid:0.123 tr:0.060 | morph:0.253 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.304 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.039 mid:0.272 hMid:0.116 tr:0.060 | morph:0.246 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.281 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.034 mid:0.264 hMid:0.107 tr:0.058 | morph:0.239 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.248 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.031 mid:0.264 hMid:0.109 tr:0.057 | morph:0.233 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.230 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.025 mid:0.259 hMid:0.106 tr:0.057 | morph:0.226 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.203 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.021 mid:0.248 hMid:0.103 tr:0.055 | morph:0.219 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.166 mR:0.000 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#45500 | frames=441 | peak=0.0656 | ch=2
+[LATINO-41] sB:0.021 mid:0.246 hMid:0.105 tr:0.057 | morph:0.212 tDelta:0.0017 percRaw:0.007 | fPar:0.000 bPar:0.000 mL:0.177 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.019 mid:0.242 hMid:0.104 tr:0.058 | morph:0.205 tDelta:0.0011 percRaw:0.005 | fPar:0.000 bPar:0.000 mL:0.177 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.017 mid:0.240 hMid:0.103 tr:0.057 | morph:0.198 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.174 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.016 mid:0.229 hMid:0.102 tr:0.056 | morph:0.190 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.131 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.015 mid:0.229 hMid:0.102 tr:0.056 | morph:0.183 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.131 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.014 mid:0.225 hMid:0.100 tr:0.053 | morph:0.176 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.100 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.013 mid:0.212 hMid:0.099 tr:0.049 | morph:0.168 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.050 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.012 mid:0.199 hMid:0.098 tr:0.048 | morph:0.159 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.009 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.012 mid:0.199 hMid:0.096 tr:0.044 | morph:0.151 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.013 mid:0.194 hMid:0.094 tr:0.042 | morph:0.143 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.014 mid:0.190 hMid:0.090 tr:0.039 | morph:0.134 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.018 mid:0.177 hMid:0.086 tr:0.035 | morph:0.125 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.025 mid:0.172 hMid:0.082 tr:0.030 | morph:0.117 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.032 mid:0.160 hMid:0.078 tr:0.027 | morph:0.107 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.040 mid:0.152 hMid:0.072 tr:0.023 | morph:0.098 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.146 hMid:0.069 tr:0.023 | morph:0.088 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.082 mid:0.134 hMid:0.063 tr:0.022 | morph:0.078 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.124 hMid:0.058 tr:0.023 | morph:0.068 tDelta:0.0010 percRaw:0.004 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.119 hMid:0.056 tr:0.025 | morph:0.057 tDelta:0.0020 percRaw:0.008 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.199 mid:0.111 hMid:0.054 tr:0.028 | morph:0.047 tDelta:0.0026 percRaw:0.010 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.214 mid:0.103 hMid:0.054 tr:0.030 | morph:0.036 tDelta:0.0021 percRaw:0.008 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.230 mid:0.098 hMid:0.053 tr:0.030 | morph:0.025 tDelta:0.0004 percRaw:0.002 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:-31 Tilt:75 | sBPM:126 phase:308°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:31 Tilt:75 | sBPM:126 phase:308°
+[LATINO-41] sB:0.225 mid:0.100 hMid:0.056 tr:0.034 | morph:0.015 tDelta:0.0036 percRaw:0.014 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.208 mid:0.102 hMid:0.058 tr:0.036 | morph:0.004 tDelta:0.0019 percRaw:0.007 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.176 mid:0.109 hMid:0.063 tr:0.038 | morph:0.000 tDelta:0.0023 percRaw:0.009 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.118 hMid:0.067 tr:0.042 | morph:0.000 tDelta:0.0034 percRaw:0.014 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.137 mid:0.118 hMid:0.069 tr:0.042 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.121 mid:0.125 hMid:0.074 tr:0.048 | morph:0.000 tDelta:0.0060 percRaw:0.024 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.140 hMid:0.079 tr:0.051 | morph:0.000 tDelta:0.0037 percRaw:0.015 | fPar:0.000 bPar:0.000 mL:0.015 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.146 hMid:0.085 tr:0.057 | morph:0.000 tDelta:0.0061 percRaw:0.024 | fPar:0.000 bPar:0.000 mL:0.038 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.060 mid:0.160 hMid:0.095 tr:0.067 | morph:0.000 tDelta:0.0099 percRaw:0.040 | fPar:0.000 bPar:0.000 mL:0.072 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.176 hMid:0.106 tr:0.077 | morph:0.000 tDelta:0.0103 percRaw:0.041 | fPar:0.000 bPar:0.000 mL:0.079 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.208 mid:0.330 hMid:0.181 tr:0.143 | morph:0.000 tDelta:0.0657 percRaw:0.263 | fPar:0.800 bPar:1.000 mL:0.120 mR:0.055 | sc:1 scDuck:0.760
+[LATINO-41] sB:0.431 mid:0.278 hMid:0.168 tr:0.151 | morph:0.000 tDelta:0.0074 percRaw:0.030 | fPar:0.529 bPar:0.020 mL:0.011 mR:0.066 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.598 mid:0.241 hMid:0.159 tr:0.152 | morph:0.000 tDelta:0.0016 percRaw:0.007 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.098 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.724 mid:0.241 hMid:0.151 tr:0.152 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.098 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.818 mid:0.214 hMid:0.145 tr:0.151 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.095 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.889 mid:0.203 hMid:0.138 tr:0.141 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.073 | sc:1 scDuck:0.841
+[TitanOrchestrator] 🎧 WORKER BPM=127 conf=0.05 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #691 | bass=0.9601 sab=0.000 | 🔬in_peak=0.47101 in_rms=0.27914
+[LATINO-41] sB:0.942 mid:0.187 hMid:0.132 tr:0.139 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.068 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.981 mid:0.178 hMid:0.125 tr:0.135 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.060 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.997 mid:0.184 hMid:0.129 tr:0.136 | morph:0.000 tDelta:0.0010 percRaw:0.004 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.062 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.972 mid:0.254 hMid:0.136 tr:0.143 | morph:0.000 tDelta:0.0072 percRaw:0.029 | fPar:0.529 bPar:0.000 mL:0.001 mR:0.077 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.967 mid:0.252 hMid:0.135 tr:0.144 | morph:0.000 tDelta:0.0008 percRaw:0.003 | fPar:0.117 bPar:0.000 mL:0.001 mR:0.079 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.960 mid:0.231 hMid:0.131 tr:0.146 | morph:0.000 tDelta:0.0021 percRaw:0.008 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.084 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.923 mid:0.258 hMid:0.137 tr:0.151 | morph:0.000 tDelta:0.0057 percRaw:0.023 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.097 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.844 mid:0.309 hMid:0.148 tr:0.156 | morph:0.000 tDelta:0.0048 percRaw:0.019 | fPar:0.000 bPar:0.000 mL:0.038 mR:0.107 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.832 mid:0.279 hMid:0.143 tr:0.151 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.016 mR:0.095 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.823 mid:0.279 hMid:0.140 tr:0.151 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.016 mR:0.095 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.825 mid:0.245 hMid:0.139 tr:0.151 | morph:0.000 tDelta:0.0001 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.096 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.758 mid:0.366 hMid:0.200 tr:0.196 | morph:0.000 tDelta:0.0454 percRaw:0.181 | fPar:0.117 bPar:1.000 mL:0.085 mR:0.205 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.734 mid:0.373 hMid:0.213 tr:0.211 | morph:0.008 tDelta:0.0143 percRaw:0.057 | fPar:0.003 bPar:0.024 mL:0.092 mR:0.242 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.733 mid:0.319 hMid:0.208 tr:0.218 | morph:0.014 tDelta:0.0072 percRaw:0.029 | fPar:0.529 bPar:0.000 mL:0.046 mR:0.261 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.754 mid:0.280 hMid:0.202 tr:0.222 | morph:0.013 tDelta:0.0039 percRaw:0.016 | fPar:0.529 bPar:0.000 mL:0.017 mR:0.272 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.766 mid:0.242 hMid:0.187 tr:0.203 | morph:0.010 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.222 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.784 mid:0.208 hMid:0.165 tr:0.168 | morph:0.005 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.135 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.791 mid:0.185 hMid:0.147 tr:0.146 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.084 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.787 mid:0.169 hMid:0.135 tr:0.132 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.055 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.682 mid:0.256 hMid:0.146 tr:0.130 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.117 bPar:0.000 mL:0.003 mR:0.051 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.656 mid:0.282 hMid:0.143 tr:0.127 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.018 mR:0.044 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.652 mid:0.251 hMid:0.136 tr:0.128 | morph:0.000 tDelta:0.0014 percRaw:0.006 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.046 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.649 mid:0.246 hMid:0.137 tr:0.131 | morph:0.000 tDelta:0.0028 percRaw:0.011 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.052 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.646 mid:0.246 hMid:0.139 tr:0.131 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.052 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.617 mid:0.295 hMid:0.145 tr:0.133 | morph:0.000 tDelta:0.0022 percRaw:0.009 | fPar:0.117 bPar:0.000 mL:0.027 mR:0.057 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.634 mid:0.285 hMid:0.140 tr:0.130 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.020 mR:0.052 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.651 mid:0.255 hMid:0.135 tr:0.129 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.002 mR:0.048 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.655 mid:0.263 hMid:0.141 tr:0.140 | morph:0.000 tDelta:0.0112 percRaw:0.045 | fPar:0.529 bPar:0.000 mL:0.006 mR:0.072 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.614 mid:0.321 hMid:0.153 tr:0.156 | morph:0.000 tDelta:0.0163 percRaw:0.065 | fPar:0.117 bPar:0.000 mL:0.047 mR:0.108 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.588 mid:0.255 hMid:0.136 tr:0.131 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.002 mR:0.052 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.607 mid:0.221 hMid:0.127 tr:0.120 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.647 mid:0.191 hMid:0.117 tr:0.107 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.009 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.676 mid:0.174 hMid:0.109 tr:0.100 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.704 mid:0.156 hMid:0.101 tr:0.091 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.708 mid:0.149 hMid:0.096 tr:0.089 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.665 mid:0.182 hMid:0.104 tr:0.095 | morph:0.000 tDelta:0.0059 percRaw:0.024 | fPar:0.117 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.591 mid:0.236 hMid:0.112 tr:0.107 | morph:0.000 tDelta:0.0120 percRaw:0.048 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.008 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.614 mid:0.223 hMid:0.115 tr:0.111 | morph:0.000 tDelta:0.0043 percRaw:0.017 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.015 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.642 mid:0.213 hMid:0.118 tr:0.114 | morph:0.000 tDelta:0.0031 percRaw:0.013 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.021 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.647 mid:0.244 hMid:0.130 tr:0.122 | morph:0.000 tDelta:0.0076 percRaw:0.030 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.034 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.649 mid:0.287 hMid:0.138 tr:0.120 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.022 mR:0.031 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.664 mid:0.261 hMid:0.139 tr:0.123 | morph:0.000 tDelta:0.0028 percRaw:0.011 | fPar:0.529 bPar:0.000 mL:0.005 mR:0.036 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.680 mid:0.239 hMid:0.137 tr:0.122 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.035 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.624 mid:0.377 hMid:0.210 tr:0.180 | morph:0.000 tDelta:0.0580 percRaw:0.232 | fPar:0.117 bPar:1.000 mL:0.095 mR:0.164 | sc:1 scDuck:0.965
+[CHOREO] techno-club | square [MIRROR F0/2] | Bar:172 | Pan:224 Tilt:8 | sBPM:126 phase:31°
+[CHOREO] techno-club | square [MIRROR F1/2] | Bar:172 | Pan:-224 Tilt:8 | sBPM:126 phase:31°
+[LATINO-41] sB:0.640 mid:0.330 hMid:0.210 tr:0.192 | morph:0.000 tDelta:0.0125 percRaw:0.050 | fPar:0.529 bPar:0.020 mL:0.055 mR:0.195 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.668 mid:0.286 hMid:0.206 tr:0.207 | morph:0.000 tDelta:0.0145 percRaw:0.058 | fPar:0.529 bPar:0.000 mL:0.021 mR:0.233 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.705 mid:0.249 hMid:0.198 tr:0.208 | morph:0.000 tDelta:0.0013 percRaw:0.005 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.236 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.736 mid:0.220 hMid:0.179 tr:0.183 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.172 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.775 mid:0.206 hMid:0.158 tr:0.150 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.093 | sc:1 scDuck:0.841
+[LATINO-41] sB:0.794 mid:0.189 hMid:0.143 tr:0.127 | morph:0.000 tDelta:0.0000 percRaw:0.000 | fPar:0.529 bPar:0.000 mL:0.000 mR:0.045 | sc:1 scDuck:0.841

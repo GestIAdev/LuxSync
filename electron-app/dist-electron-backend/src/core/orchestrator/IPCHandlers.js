@@ -402,8 +402,9 @@ function setupSeleneLuxHandlers(deps) {
         const now = Date.now();
         if (now - lastLogTime >= 2000) {
             const titanState = titanOrchestrator?.getState();
-            console.log(`[IPC ðŸ“¡] audioBuffer #${audioBufferCallCount} | ` +
-                `titan.running=${titanState?.isRunning ?? 'null'} | ` +
+            const activeSource = getTrinity()?.getAudioMatrix()?.getStatus().activeSource ?? 'none';
+            console.log(`[TitanOrchestrator] [IPC AUDIT] audioBuffer #${audioBufferCallCount} | ` +
+                `activeSource=${activeSource} | titan.running=${titanState?.isRunning ?? 'null'} | ` +
                 `size=${buffer?.byteLength || 0}`);
             lastLogTime = now;
         }

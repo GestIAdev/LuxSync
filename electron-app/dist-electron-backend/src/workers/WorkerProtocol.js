@@ -56,6 +56,8 @@ export var MessageType;
     // 🧠 WAVE 230: Musical Context (Brain Lobotomy)
     // El Worker ahora emite contexto puro, sin decidir colores
     MessageType["MUSICAL_CONTEXT"] = "musical_context";
+    // WAVE 3433-A: Forensic telemetry bridge (Worker -> Alpha)
+    MessageType["FORENSIC_LOG"] = "forensic_log";
 })(MessageType || (MessageType = {}));
 export var MessagePriority;
 (function (MessagePriority) {

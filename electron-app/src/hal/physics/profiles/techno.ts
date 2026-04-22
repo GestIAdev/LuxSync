@@ -91,13 +91,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //   Subimos gate+percGate para requerir un hit de percusión real.
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.18,   // WAVE 3311: 0.05→0.18 — filtra voces y ruido de fondo
-    boost: 2.5,     // WAVE 3311: 3.0→2.5 — compensamos el gate más alto
+    gateOn: 0.33,   // WAVE 3445: 0.18→0.33 — THE SYNTH DAM: muro dinámico, synths comprimidos pasan, voz queda bloqueada
+    boost: 2.5,     // WAVE 3311: 3.0→2.5 — sin cambio: compensación por gate alto
     crushExponent: 1.0,
     decayBase: 0.05,
-    decayRange: 0.40,      // WAVE 2451: 0.15→0.40 — en Anyma (morph=0.8) decay=0.37, flote melódico.
+    decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
-    squelchBase: 0.02,
+    squelchBase: 0.32,     // WAVE 3445: 0.02→0.32 — squelch agresivo: piso de ruido aplastado por debajo del umbral vocal
     squelchSlope: 0.10,
     ghostCap: 0.00,
     gateMargin: 0.01,
@@ -110,13 +110,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
-    gateOn: 0.02,
+    gateOn: 0.35,   // WAVE 3445: 0.02→0.35 — límite matemático del techno: synths brutalmente comprimidos superan, voz flota por debajo
     boost: 5.0,
     crushExponent: 1.0,
     decayBase: 0.60,
     decayRange: 0.03,
     maxIntensity: 0.85,
-    squelchBase: 0.02,
+    squelchBase: 0.33,     // WAVE 3445: 0.02→0.33 — squelch agresivo alineado con el gate, piso vocal eliminado
     squelchSlope: 0.10,
     ghostCap: 0.05,
     gateMargin: 0.005,

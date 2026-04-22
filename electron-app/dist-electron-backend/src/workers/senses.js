@@ -249,29 +249,18 @@ let shadowDumped = false;
 // ============================================
 // Keep Radix-2/GodEar math untouched. We only map extracted linear magnitudes
 // to the same [0..1] range shape used by WebAudio's analyser byte scaling.
-const W3431_MIN_DB = 10;
-const W3431_MAX_DB = 70;
+const W3431_MIN_DB = 0;
+const W3431_MAX_DB = 8;
 const W3431_OUTPUT_SCALE = 2.5;
-// WAVE 3433-A: forensic math telemetry throttle (max 1 log/sec)
-let lastMathAuditLogMs = 0;
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
-function toWebAudioScaledLevel(linearMagnitude, bandLabel) {
+function toWebAudioScaledLevel(linearMagnitude) {
     const safeMag = Math.max(0, linearMagnitude);
     const db = 20 * Math.log10(safeMag + 1);
     const scaledPreClamp = (db - W3431_MIN_DB) / (W3431_MAX_DB - W3431_MIN_DB);
     const scaledClamped = clamp(scaledPreClamp, 0, 1);
     const scaledFinal = scaledClamped * W3431_OUTPUT_SCALE;
-    if ((bandLabel === 'mid' || bandLabel === 'highMid')) {
-        const now = Date.now();
-        if (now - lastMathAuditLogMs >= 1000) {
-            lastMathAuditLogMs = now;
-            console.log(`[MATH AUDIT] band=${bandLabel} | MagCruda: ${safeMag.toFixed(6)} | ` +
-                `dbCalc: ${db.toFixed(3)} | scaledPreClamp: ${scaledPreClamp.toFixed(6)} | ` +
-                `scaledFinal: ${scaledFinal.toFixed(6)}`);
-        }
-    }
     return scaledFinal;
 }
 // WAVE 3432: zombie frame flush window after reset/hot-swap.
@@ -330,12 +319,12 @@ class SpectrumAnalyzer {
         // 📦 Legacy Adapter - Convertir a formato viejo para Vibes existentes
         const legacy = toLegacyFormat(godEarResult);
         const psycho = {
-            subBass: toWebAudioScaledLevel(legacy.subBass, 'subBass'),
-            bass: toWebAudioScaledLevel(legacy.bass, 'bass'),
-            lowMid: toWebAudioScaledLevel(legacy.lowMid, 'lowMid'),
-            mid: toWebAudioScaledLevel(legacy.mid, 'mid'),
-            highMid: toWebAudioScaledLevel(legacy.highMid, 'highMid'),
-            treble: toWebAudioScaledLevel(legacy.treble, 'treble'),
+            subBass: toWebAudioScaledLevel(legacy.subBass),
+            bass: toWebAudioScaledLevel(legacy.bass),
+            lowMid: toWebAudioScaledLevel(legacy.lowMid),
+            mid: toWebAudioScaledLevel(legacy.mid),
+            highMid: toWebAudioScaledLevel(legacy.highMid),
+            treble: toWebAudioScaledLevel(legacy.treble),
         };
         // Calcular flujo espectral (cambio de energía total) en dominio perceptual
         const currentEnergy = psycho.bass + psycho.mid + psycho.treble;
@@ -1117,20 +1106,24 @@ function handleMessage(message) {
                 sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
                 break;
             case MessageType.AUDIO_BUFFER:
-                console.log(`[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`);
+                // WAVE 3434: IPC GAG — if SAB polling is active, BETA must be deaf to
+                // IPC audio buffers to prevent hot-swap contamination.
+                if (sabPollInterval !== null) {
+                    return;
+                }
+                {
+                    const zombieText = `[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`;
+                    sendMessage(MessageType.FORENSIC_LOG, 'alpha', {
+                        tag: 'ZOMBIE_RADAR',
+                        text: zombieText
+                    }, MessagePriority.HIGH);
+                    console.error(zombieText);
+                }
                 if (!state.isRunning) {
                     // 🔍 WAVE 263: Log si no está corriendo
                     if (state.frameCount % 300 === 0) {
                         console.warn('[BETA] ⚠️ AUDIO_BUFFER received but isRunning=false');
                     }
-                    break;
-                }
-                // WAVE 3424: SAB MODE GATE — Defensa en profundidad.
-                // Si el poll del SAB está activo, este Worker ya ingesta audio vía SharedRingBuffer
-                // (fuente nativa: VirtualWire, USB-DirectLink, etc.).
-                // Cualquier AUDIO_BUFFER IPC que llegue aquí es un residual del path IPC
-                // que no fue filtrado upstream. Descartarlo evita el doble procesado.
-                if (sabPollInterval !== null) {
                     break;
                 }
                 if (message.timestamp <= dropLegacyIpcUntilTimestamp) {

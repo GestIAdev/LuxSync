@@ -315,7 +315,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     backLMidWeight: 0.00,      // WAVE 2461: mid ya no va a backL (es del Galán)
     backLLowMidWeight: 0.00,   // WAVE 2461: lowMid es solo bajo continuo, no percusión
 
-    // ── S3: EL GALÁN — WAVE 2465: decay inercial + ghostCap continuo ───
+    // ── WAVE 3443: EL GALÁN — Viscosidad anti-flutter en canal melódico ──
     // Con moverLMidWeight=0.80, señal = mid×0.80 ≈ 0.44-0.53.
     // gateOn: 0.35 — filtra ruido sin matar melodía (sin cambios).
     // boost 4.0: el mid ya llega fuerte (sin cambios).
@@ -323,20 +323,20 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // El override solo necesita cambiar el gate y el boost — decay/ghostCap
     // se heredan del valor base (0.82 / 0.18) que ya tienen la calibración.
     envelopeTreble: {
-      gateOn: 0.30,        // WAVE 3437: por encima del suelo hMid/tr para cero real
-      squelchBase: 0.38,
-      boost: 1.00,         // WAVE 3437: menos variación de dimmer en frases vocales
-      decayBase: 0.18,     // WAVE 3438: sustain perezoso para soldar sílabas
-      ghostCap: 0.85,      // WAVE 3438: restaurar RMS hold en canal melódico
+      gateOn: 0.25,        // WAVE 3444: umbral más firme para cerrar en silencios vocales
+      squelchBase: 0.25,
+      boost: 1.00,         // WAVE 3443: anti-spike, sin amplificación artificial
+      decayBase: 0.82,     // WAVE 3444: release más rápido para recuperar contraste dinámico
+      ghostCap: 0.35,      // WAVE 3444: sustain floor moderado, sin cegado continuo
     },
 
-    // ── S3: LA DAMA — sin cambios, treble=0.25-0.36 funciona bien ─
+    // ── WAVE 3443: LA DAMA — Viscosidad anti-flutter en canal vocal ─────
     envelopeVocal: {
-      gateOn: 0.32,
-      squelchBase: 0.38,
-      boost: 1.00,
-      decayBase: 0.18,     // WAVE 3438: sustain perezoso para frases vocales
-      ghostCap: 0.85,      // WAVE 3438: restaurar RMS hold en canal melódico
+      gateOn: 0.25,
+      squelchBase: 0.25,
+      boost: 1.00,         // WAVE 3443: anti-spike, follow RMS real
+      decayBase: 0.82,     // WAVE 3444: release más rápido para recuperar contraste dinámico
+      ghostCap: 0.35,      // WAVE 3444: sustain floor moderado, sin cegado continuo
     },
 
     // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────

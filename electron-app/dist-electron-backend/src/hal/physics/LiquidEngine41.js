@@ -60,17 +60,15 @@ export class LiquidEngine41 extends LiquidEngineBase {
             outMoverL = moverLeft;
             outMoverR = moverRight;
         }
-        // ── [LAB-DATA] front/back — Comentado (WAVE 2440.3). Útil para calibrar PARs.
-        // if (this.profile.id === 'techno-industrial') {
-        //   const f = (n: number) => n.toFixed(3)
-        //   const fi = (n: number) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ')
-        //   console.log(
-        //     `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
-        //     `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
-        //     `trbD:${f(frame.rawTrebleDelta)} hmD:${f(frame.rawHighMidDelta)} midD:${f(frame.rawMidDelta)} harsh:${f(frame.harshness)} | ` +
-        //     `oF:${f(frontPar)} oB:${f(backPar)}`
-        //   )
-        // }
+        // ── [LAB-DATA] front/back — Telemetría táctica para calibración 4.1
+        if (this.profile.id === 'techno-industrial') {
+            const f = (n) => n.toFixed(3);
+            const fi = (n) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ');
+            console.error(`[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
+                `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
+                `trbD:${f(frame.rawTrebleDelta)} hmD:${f(frame.rawHighMidDelta)} midD:${f(frame.rawMidDelta)} harsh:${f(frame.harshness)} | ` +
+                `oF:${f(frontPar)} oB:${f(backPar)}`);
+        }
         return {
             frontLeftIntensity: frontPar,
             frontRightIntensity: frontPar,

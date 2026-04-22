@@ -2326,14 +2326,9 @@ export class MasterArbiter extends EventEmitter {
                     // THE DEEP FIELD / CELESTIAL MOVERS: Use explicit coordinates
                     defaults.pan = mechanic.pan * 255;
                     defaults.tilt = mechanic.tilt * 255;
-                    // WAVE 1048: Intensity coupling (if present)
-                    // 🔥 WAVE 1135.3: Aplicamos Dead Zone también a intensidad de mechanics
-                    if (mechanic.intensity !== undefined) {
-                        const dMinMech = fixture?.capabilities?.dimmerMin ?? 0;
-                        defaults.dimmer = mechanic.intensity > 0
-                            ? Math.round(dMinMech + (mechanic.intensity * (255 - dMinMech)))
-                            : 0;
-                    }
+                    // WAVE 3440: ANTI-MIB — Movement domain must NEVER rewrite dimmer.
+                    // Dimmer authority is exclusively audio/physics (LiquidEngine -> zone routing).
+                    // mechanics.intensity is ignored to prevent kinetic dimmer ducking/flicker.
                     // ═══════════════════════════════════════════════════════════════════
                     // 🌊 WAVE 1072: DEPRECATED - colorOverride bypass removed
                     // ═══════════════════════════════════════════════════════════════════

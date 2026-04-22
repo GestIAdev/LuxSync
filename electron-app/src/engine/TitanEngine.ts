@@ -1077,18 +1077,46 @@ export class TitanEngine extends EventEmitter {
       // Antes: el bloque reconstruía zones sin claves stereo → hasStereoSignal=false en Arbiter
       // → todos los PARs chill caían a modo mono. Ahora aplicamos blendZoneIntensity
       // a las zonas stereo si existen, manteniéndolas vivas a través del globalComp blend.
+      const baseZones: any = zones
       const blendedZones: typeof zones = {
-        front: { intensity: blendZoneIntensity(zones.front?.intensity ?? 0.5), paletteRole: 'primary' },
-        back: { intensity: blendZoneIntensity(zones.back?.intensity ?? 0.5), paletteRole: 'primary' },
-        left: { intensity: blendZoneIntensity(zones.left?.intensity ?? 0.5), paletteRole: 'primary' },
-        right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
-        ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
+        front: {
+          intensity: blendZoneIntensity(baseZones.front?.intensity ?? 0.5),
+          paletteRole: baseZones.front?.paletteRole ?? 'primary',
+        },
+        back: {
+          intensity: blendZoneIntensity(baseZones.back?.intensity ?? 0.5),
+          paletteRole: baseZones.back?.paletteRole ?? 'accent',
+        },
+        left: {
+          intensity: blendZoneIntensity(baseZones.left?.intensity ?? 0.5),
+          paletteRole: baseZones.left?.paletteRole ?? 'secondary',
+        },
+        right: {
+          intensity: blendZoneIntensity(baseZones.right?.intensity ?? 0.5),
+          paletteRole: baseZones.right?.paletteRole ?? 'ambient',
+        },
+        ambient: {
+          intensity: blendZoneIntensity(baseZones.ambient?.intensity ?? 0.3),
+          paletteRole: baseZones.ambient?.paletteRole ?? 'ambient',
+        },
       }
-      if ((zones as any).frontL !== undefined) {
-        (blendedZones as any).frontL = { intensity: blendZoneIntensity((zones as any).frontL.intensity), paletteRole: 'primary' }
-        ;(blendedZones as any).frontR = { intensity: blendZoneIntensity((zones as any).frontR.intensity), paletteRole: 'primary' }
-        ;(blendedZones as any).backL  = { intensity: blendZoneIntensity((zones as any).backL.intensity),  paletteRole: 'accent'  }
-        ;(blendedZones as any).backR  = { intensity: blendZoneIntensity((zones as any).backR.intensity),  paletteRole: 'accent'  }
+      if (baseZones.frontL !== undefined) {
+        ;(blendedZones as any).frontL = {
+          intensity: blendZoneIntensity(baseZones.frontL.intensity),
+          paletteRole: baseZones.frontL.paletteRole ?? 'primary',
+        }
+        ;(blendedZones as any).frontR = {
+          intensity: blendZoneIntensity(baseZones.frontR.intensity),
+          paletteRole: baseZones.frontR.paletteRole ?? 'primary',
+        }
+        ;(blendedZones as any).backL  = {
+          intensity: blendZoneIntensity(baseZones.backL.intensity),
+          paletteRole: baseZones.backL.paletteRole ?? 'accent',
+        }
+        ;(blendedZones as any).backR  = {
+          intensity: blendZoneIntensity(baseZones.backR.intensity),
+          paletteRole: baseZones.backR.paletteRole ?? 'accent',
+        }
       }
       zones = blendedZones
       

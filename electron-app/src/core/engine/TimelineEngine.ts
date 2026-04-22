@@ -836,8 +836,19 @@ export class TimelineEngine {
       }
     }
 
-    // Auto-white injection: dimmer > 0 but no color
-    if (controls.dimmer > 0 && controls.red === undefined && controls.green === undefined && controls.blue === undefined) {
+    // WAVE 3438: NO inyectar auto-white cuando el output solo tiene canales de
+    // movimiento (pan/tilt/speed). Un clip de movimiento puro no debe contaminar
+    // el color del fixture con blanco — eso congela el color de Selene.
+    const movementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer'])
+    const hasNonMovementChannels = channels.some(ch => !movementOnlyChannels.has(ch))
+    const isMovementOnlyOutput = !hasNonMovementChannels &&
+      (channels.includes('pan') || channels.includes('tilt'))
+
+    if (!isMovementOnlyOutput &&
+        controls.dimmer > 0 &&
+        controls.red === undefined &&
+        controls.green === undefined &&
+        controls.blue === undefined) {
       controls.red = 255
       controls.green = 255
       controls.blue = 255
@@ -999,16 +1010,26 @@ export class TimelineEngine {
         channels.push('dimmer')
     }
 
-    // Auto-white injection
-    if (controls.dimmer !== undefined && controls.dimmer > 0) {
-      if (controls.red === undefined && controls.green === undefined && controls.blue === undefined) {
-        controls.red = 255
-        controls.green = 255
-        controls.blue = 255
-        if (!channels.includes('red')) channels.push('red')
-        if (!channels.includes('green')) channels.push('green')
-        if (!channels.includes('blue')) channels.push('blue')
-      }
+    // WAVE 3438: NO inyectar auto-white si el clip Hephaestus solo mueve
+    // pan/tilt/speed sin especificar color. Un mover en movimiento no debe
+    // recibir blanco por defecto — Selene ya provee el color en Layer 1.
+    const hephMovementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer'])
+    const hephHasNonMovement = channels.some(ch => !hephMovementOnlyChannels.has(ch))
+    const hephIsMovementOnly = !hephHasNonMovement &&
+      (channels.includes('pan') || channels.includes('tilt'))
+
+    if (!hephIsMovementOnly &&
+        controls.dimmer !== undefined &&
+        controls.dimmer > 0 &&
+        controls.red === undefined &&
+        controls.green === undefined &&
+        controls.blue === undefined) {
+      controls.red = 255
+      controls.green = 255
+      controls.blue = 255
+      if (!channels.includes('red')) channels.push('red')
+      if (!channels.includes('green')) channels.push('green')
+      if (!channels.includes('blue')) channels.push('blue')
     }
 
     if (channels.length === 0) return

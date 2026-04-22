@@ -63,7 +63,9 @@ export const TheProgrammerContent: React.FC = () => {
   // until user touches a control
   const [currentDimmer, setCurrentDimmer] = useState<number | null>(null)
   const [currentStrobe, setCurrentStrobe] = useState(0)
-  const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
+  // WAVE 3438: Inicializar en gris neutro — blanco puro causaba contaminación
+  // del override antes de que el usuario interactuara con el Color Picker.
+  const [currentColor, setCurrentColor] = useState({ r: 128, g: 128, b: 128 })
   // 🔒 WAVE 3270: Inhibit limit (100 = full power, no limit)
   const [currentLimit, setCurrentLimit] = useState(100)
   

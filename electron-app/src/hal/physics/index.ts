@@ -6,30 +6,23 @@
  * WAVE 1031: THE PHOTON WEAVER - Laser & Washer physics
  * WAVE 1044: THE DEEP FIELD - Chill ecosystem rewrite
  * WAVE 2401: THE LIQUID STEREO - 7-band engine + LiquidEnvelope
+ * WAVE 3450: THE AMBIENT REBIRTH - ChillAmbientEngine, legacy purge
  */
 
 export * from './PhysicsEngine'
-export { TechnoStereoPhysics, technoStereoPhysics } from './TechnoStereoPhysics'
-// ❌ WAVE 1011: DELETED LEGACY FRANKENSTEIN
-// export { RockStereoPhysics } from './RockStereoPhysics'
-export { LatinoStereoPhysics } from './LatinoStereoPhysics'
+// ⚰️ WAVE 3450 THE AMBIENT REBIRTH: TechnoStereoPhysics, LatinoStereoPhysics, RockStereoPhysics2
+// movidos a _legacy_archive. Los paths de SeleneLux (techno/rock/latino) importan directamente.
 
-// 🌌 WAVE 1044: THE DEEP FIELD - Chill Lounge Generative Ecosystem
-export { 
-  calculateChillStereo, 
-  resetDeepFieldState,
-  getDeepFieldState,
-  getOceanicMorphFactor,    // WAVE 2470: Hydrostatic Bridge
-  type DeepFieldOutput 
-} from './ChillStereoPhysics'
+// 🧘 WAVE 3450: EL NUEVO CEREBRO ZEN — Motor ambiental sin FFT, sin océano, puro tiempo
+export {
+  ChillAmbientEngine,
+  chillAmbientEngine,
+  type ChillAmbientFrame,
+} from './ChillAmbientEngine'
 
-// 🎸 WAVE 1011.5: UNIFIED ROCK PHYSICS (Lobotomized - No Subgenres)
-export { 
-  RockStereoPhysics2, 
-  rockPhysics2,
-  type RockPhysicsInput,
-  type RockPhysicsResult,
-} from './RockStereoPhysics2'
+// 🎸 WAVE 3450: Stubs de compatibilidad — los legacy fallbacks de SeleneLux
+// (techno/rock/latino) siguen importando desde _legacy_archive directamente si se activan.
+// El barrel ya no los re-exporta para no contaminar el árbol de módulos limpio.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics

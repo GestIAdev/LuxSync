@@ -32,6 +32,7 @@
     "src/__tests__",
     "src/tests",
     "src/**/disabled",
+    "src/**/_legacy_archive",
     "src/**/*.micro-diag.ts",
     "src/**/*.radix2.ts",
     "src/**/*.radix4.ts",

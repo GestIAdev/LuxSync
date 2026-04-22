@@ -28,15 +28,15 @@
 // IMPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ⚰️ WAVE 3450: Motores legacy importados directamente desde _legacy_archive.
+// El barrel hal/physics ya no los re-exporta (purga Zero Debt).
+import { TechnoStereoPhysics, technoStereoPhysics } from '../../hal/physics/_legacy_archive/TechnoStereoPhysics'
+import { RockStereoPhysics2, rockPhysics2, type RockPhysicsInput } from '../../hal/physics/_legacy_archive/RockStereoPhysics2'
+import { LatinoStereoPhysics } from '../../hal/physics/_legacy_archive/LatinoStereoPhysics'
+// ⚰️ WAVE 3450: calculateChillStereo / getOceanicMorphFactor eliminados.
+// El path chill ya corre 100% por liquidEngine71 + ChillAmbientEngine. Sin océano.
+
 import { 
-  TechnoStereoPhysics,
-  technoStereoPhysics,
-  RockStereoPhysics2,    // 🎸 WAVE 1011.5: UNIFIED ARCHITECTURE (Lobotomized)
-  rockPhysics2,          // 🎸 WAVE 1011.5: Singleton instance
-  LatinoStereoPhysics, 
-  calculateChillStereo,
-  getOceanicMorphFactor,    // WAVE 2470: Tide machine → morphFactor
-  type RockPhysicsInput, // 🎸 WAVE 1011.5: Unified input type
   // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics
   LaserPhysics,
   laserPhysics,
@@ -584,63 +584,19 @@ export class SeleneLux {
       };
 
       // ═══════════════════════════════════════════════════════════════════
-      // 🌊 WAVE 2470: HYDROSTATIC BRIDGE — Puente de la Tide Machine
-      //
-      // Cuando el vibe es chill-lounge:
-      //   1. Avanzamos el reloj oceánico llamando calculateChillStereo().
-      //      Esta función es STATEFUL — actualiza state.currentDepth internamente.
-      //   2. Leemos el morphFactor hidrostático vía getOceanicMorphFactor()
-      //      (devuelve 1 - depth/MAX_DEPTH: superficie=1.0, abismo=0.0)
-      //   3. Lo inyectamos en liquidInput.morphFactorOverride para que
-      //      LiquidEngineBase lo use en lugar del centroid espectral.
-      //   4. Guardamos los resultados oceánicos para SeleneColorEngine
-      //      (oceanicContext, oceanicTriggers, deepFieldMechanics).
-      //      El color y los triggers siguen su curso normal — no losinterrumpimos.
-      //
-      // Para todos los demás vibes: morphFactorOverride = undefined (no-op).
+      // 🪨 WAVE 3450: CHILL MORPH — El hydrostatic bridge oceánico fue purgado.
+      // ChillAmbientEngine genera intensidades vía ondas senoidales asíncronas.
+      // El morphFactorOverride se alimenta ahora con una onda lenta de 30s
+      // (0.30–0.70) para que LiquidEngine71 module el colchón de forma orgánica
+      // sin depender de FFT. Suelo 0.30 garantiza que nunca se apague.
       // ═══════════════════════════════════════════════════════════════════
       let chillMorphFactor: number | undefined = undefined
 
       if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
           vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
-        const godEarMetrics = {
-          clarity: audioMetrics.clarity ?? 0.95,
-          spectralFlatness: audioMetrics.spectralFlatness ?? 0.35,
-          bassEnergy: audioMetrics.normalizedBass ?? 0,
-          transientDensity: ((audioMetrics.kickDetected ? 0.4 : 0) +
-                             (audioMetrics.snareDetected ? 0.35 : 0) +
-                             (audioMetrics.hihatDetected ? 0.25 : 0)) *
-                             (0.6 + (audioMetrics.avgNormEnergy ?? 0) * 0.6),
-          centroid: audioMetrics.spectralCentroid ?? 800,
-          bass: audioMetrics.normalizedBass ?? 0,
-        }
-        const chillResult = calculateChillStereo(
-          Date.now() / 1000,
-          audioMetrics.avgNormEnergy ?? 0,
-          audioMetrics.normalizedTreble ?? 0,
-          audioMetrics.kickDetected ?? false,
-          godEarMetrics,
-          vibeContext.bpm ?? 60
-        )
-        // Leer la profundidad hidrostática actualizada y calcular el morphFactor
-        chillMorphFactor = getOceanicMorphFactor()
-
-        // Preservar los contextos oceánicos para SeleneColorEngine
-        // El color y triggers siguen su curso — no los interrumpimos.
-        this.oceanicContextState = chillResult.oceanicContext
-        this.oceanicTriggersState = chillResult.oceanicTriggers
-        this.deepFieldMechanics = {
-          moverL: {
-            pan: chillResult.moverL.pan,
-            tilt: chillResult.moverL.tilt,
-            intensity: chillResult.moverL.intensity,
-          },
-          moverR: {
-            pan: chillResult.moverR.pan,
-            tilt: chillResult.moverR.tilt,
-            intensity: chillResult.moverR.intensity,
-          },
-        }
+        // Onda senoidal de 30 segundos → morphFactor ∈ [0.30, 0.70]
+        const tSec = performance.now() / 1000
+        chillMorphFactor = 0.50 + 0.20 * Math.sin((2 * Math.PI * tSec) / 30)
         dimmerOverride = 0.75  // Chill ambient: siempre suave
       }
 

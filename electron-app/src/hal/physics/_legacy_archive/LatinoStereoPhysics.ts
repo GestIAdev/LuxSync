@@ -1,5 +1,5 @@
 ﻿
-import { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
+import { ElementalModifiers } from '../../../engine/physics/ElementalModifiers';
 
 export interface RGB { r: number; g: number; b: number; }
 export interface HSL { h: number; s: number; l: number; }

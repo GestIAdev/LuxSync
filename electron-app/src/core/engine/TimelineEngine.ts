@@ -67,14 +67,7 @@ import { PowerChord } from '../effects/library/poprock/PowerChord'
 import { StageWash } from '../effects/library/poprock/StageWash'
 
 // ─── CHILL-LOUNGE ───
-import { WhaleSong } from '../effects/library/chillLounge/WhaleSong'
-import { SurfaceShimmer } from '../effects/library/chillLounge/SurfaceShimmer'
-import { SolarCaustics } from '../effects/library/chillLounge/SolarCaustics'
-import { SchoolOfFish } from '../effects/library/chillLounge/SchoolOfFish'
-import { AbyssalJellyfish } from '../effects/library/chillLounge/AbyssalJellyfish'
-import { PlanktonDrift } from '../effects/library/chillLounge/PlanktonDrift'
-import { DeepCurrentPulse } from '../effects/library/chillLounge/DeepCurrentPulse'
-import { BioluminescentSpore } from '../effects/library/chillLounge/BioluminescentSpore'
+// ⚰️ WAVE 3450: Efectos oceánicos purged — ChillAmbientEngine gestiona la luz directamente.
 
 // ─── FIESTA LATINA ───
 import { SolarFlare } from '../effects/library/fiestalatina/SolarFlare'
@@ -149,15 +142,7 @@ EFFECT_FACTORIES.set('feedback_storm',    () => new FeedbackStorm())
 EFFECT_FACTORIES.set('spotlight_pulse',   () => new SpotlightPulse())
 EFFECT_FACTORIES.set('power_chord',       () => new PowerChord())
 EFFECT_FACTORIES.set('stage_wash',        () => new StageWash())
-// ── CHILL-LOUNGE ──
-EFFECT_FACTORIES.set('whale_song',        () => new WhaleSong())
-EFFECT_FACTORIES.set('surface_shimmer',   () => new SurfaceShimmer())
-EFFECT_FACTORIES.set('solar_caustics',    () => new SolarCaustics())
-EFFECT_FACTORIES.set('school_of_fish',    () => new SchoolOfFish())
-EFFECT_FACTORIES.set('abyssal_jellyfish', () => new AbyssalJellyfish())
-EFFECT_FACTORIES.set('plankton_drift',    () => new PlanktonDrift())
-EFFECT_FACTORIES.set('deep_current_pulse',() => new DeepCurrentPulse())
-EFFECT_FACTORIES.set('bioluminescent_spore', () => new BioluminescentSpore())
+// ── CHILL-LOUNGE — WAVE 3450: arsenal purged, ChillAmbientEngine autogestiona ──
 // ── FIESTA LATINA ──
 EFFECT_FACTORIES.set('solar_flare',       () => new SolarFlare())
 EFFECT_FACTORIES.set('salsa_fire',        () => new SalsaFire())

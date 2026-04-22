@@ -30,8 +30,8 @@
  * @version WAVE 770 - THE BLADE
  */
 
-import { hslToRgb } from '../../engine/color/SeleneColorEngine';
-import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
+import { hslToRgb } from '../../../engine/color/SeleneColorEngine';
+import type { ElementalModifiers } from '../../../engine/physics/ElementalModifiers';
 
 // ===========================================================================
 // TYPES - LEGACY API (Colores/Strobe)

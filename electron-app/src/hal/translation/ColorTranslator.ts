@@ -208,16 +208,6 @@ export function rgbToCmy(rgb: RGB): CMY {
   }
 }
 
-/**
- * Calcula la saturación aproximada de un color
- */
-function getSaturation(c: RGB): number {
-  const max = Math.max(c.r, c.g, c.b)
-  const min = Math.min(c.r, c.g, c.b)
-  if (max === 0) return 0
-  return (max - min) / max
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // COLOR TRANSLATOR CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -383,27 +373,24 @@ export class ColorTranslator {
       }
     }
     
+    // ⚡ WAVE 3441: INDESTRUCTIBLE WHEEL MATCHER
+    // El traductor SIEMPRE devuelve el cristal físico más cercano.
+    // Se eliminó el fallback a blanco/open (era el "fallback cobarde"):
+    // antes, si ΔE* era alto Y saturación < 0.3, se forzaba el slot Open.
+    // Ahora: si Selene pide Celeste y el cristal más cercano es Azul Puro,
+    // el Mover hará Azul Puro — mucho mejor que un flash de Blanco.
+    // La señal poorMatch se preserva para que el caller decida si loggear.
     let finalColor = wheel.colors[nearestIndex]
-    const poorMatch = smallestDeltaE > this.POOR_MATCH_THRESHOLD
     
-    // If poor match and target is low saturation → prefer white/open
-    if (poorMatch && getSaturation(target) < 0.3) {
-      const whiteColor = wheel.colors.find(
-        c => c.name.toLowerCase().includes('white') || c.name.toLowerCase().includes('open')
-      )
-      if (whiteColor) {
-        finalColor = whiteColor
-        smallestDeltaE = deltaE76(targetLab, rgbToLab(whiteColor.rgb))
-        return {
-          outputRGB: finalColor.rgb,
-          colorWheelDmx: finalColor.dmx,
-          colorName: finalColor.name,
-          colorDistance: smallestDeltaE,
-          wasTranslated: true,
-          poorMatch: true,
-        }
-      }
+    // Protección NaN: si smallestDeltaE es NaN (perfil con RGB inválido),
+    // usar el primer cristal de la rueda como fallback determinista.
+    if (!Number.isFinite(smallestDeltaE)) {
+      smallestDeltaE = 999
+      nearestIndex = 0
+      finalColor = wheel.colors[0]
     }
+    
+    const poorMatch = smallestDeltaE > this.POOR_MATCH_THRESHOLD
     
     // ─────────────────────────────────────────────────────────────────
     // WAVE 2096.2: HALF-COLOR POSITIONING (VULN-COLOR-04)

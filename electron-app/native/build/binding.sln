@@ -15,18 +15,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luxsync_audio", "luxsync_au
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Release|x64 = Release|x64
 		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Release|x64.ActiveCfg = Release|x64
-		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Release|x64.Build.0 = Release|x64
 		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Debug|x64.ActiveCfg = Debug|x64
 		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Debug|x64.Build.0 = Debug|x64
-		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Release|x64.ActiveCfg = Release|x64
-		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Release|x64.Build.0 = Release|x64
+		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Release|x64.ActiveCfg = Release|x64
+		{B2F6E6A5-E54A-728E-3756-D62AE51A9FD8}.Release|x64.Build.0 = Release|x64
 		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Debug|x64.ActiveCfg = Debug|x64
 		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Debug|x64.Build.0 = Debug|x64
+		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Release|x64.ActiveCfg = Release|x64
+		{F050B8F3-2CA6-282A-9E31-E8421D09EA6C}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

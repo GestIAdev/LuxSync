@@ -323,16 +323,20 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // El override solo necesita cambiar el gate y el boost — decay/ghostCap
     // se heredan del valor base (0.82 / 0.18) que ya tienen la calibración.
     envelopeTreble: {
-      gateOn: 0.35,        // WAVE 2461: calibrado para señal mid=0.44-0.53
-      boost: 4.0,
-      decayBase: 0.82,     // WAVE 2465: espejo del valor base — continuidad
-      ghostCap: 0.18,      // WAVE 2465: espejo del valor base — suelo continuo
+      gateOn: 0.30,        // WAVE 3437: por encima del suelo hMid/tr para cero real
+      squelchBase: 0.38,
+      boost: 1.00,         // WAVE 3437: menos variación de dimmer en frases vocales
+      decayBase: 0.18,     // WAVE 3438: sustain perezoso para soldar sílabas
+      ghostCap: 0.85,      // WAVE 3438: restaurar RMS hold en canal melódico
     },
 
     // ── S3: LA DAMA — sin cambios, treble=0.25-0.36 funciona bien ─
     envelopeVocal: {
-      gateOn: 0.22,
-      boost: 5.0,
+      gateOn: 0.32,
+      squelchBase: 0.38,
+      boost: 1.00,
+      decayBase: 0.18,     // WAVE 3438: sustain perezoso para frases vocales
+      ghostCap: 0.85,      // WAVE 3438: restaurar RMS hold en canal melódico
     },
 
     // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────
@@ -344,9 +348,10 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // Señal base (treble×0.50 = 0.12-0.18) debe quedar bajo el gate.
     // Solo un snare/hi-hat real (treble>0.35) romperá el gate de 0.20.
     envelopeHighMid: {
-      gateOn: 0.20,      // WAVE 2461: filtra treble base, pasa picos transientes
-      decayBase: 0.28,   // latiguazo rápido, no DC
-      ghostCap: 0.00,    // negro absoluto entre golpes
+      gateOn: 0.32,
+      squelchBase: 0.30,
+      decayBase: 0.34,   // WAVE 3437: cola corta para negro absoluto entre golpes
+      ghostCap: 0.00,
     },
 
     // ── FRONT SubBass — WAVE 2462: gate anti-bajo-continuo ───────
@@ -359,7 +364,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     envelopeSubBass: {
       decayBase: 0.50,   // WAVE 2461: staccato latino real
       gateOn: 0.22,      // WAVE 2462: 0.15→0.22 — bloquea bajo melódico continuo
-      boost: 1.8,        // WAVE 2462: 2.5→1.8 — señal real ya es suficientemente fuerte
+      boost: 1.25,       // WAVE 3436: VW entrega picos masivos, preservar dinámica
     },
 
     // ── KICK STACCATO ─────────────────────────────────────────────
@@ -370,8 +375,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
     // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
     envelopeSnare: {
-      decayBase: 0.22,   // 0.45→0.22 WAVE 2459 S1: disparo limpio
-      boost: 4.5,        // 3.5→4.5: más presencia para ganar el max() al tumbao
+      gateOn: 0.34,
+      squelchBase: 0.30,
+      decayBase: 0.36,
+      ghostCap: 0.00,
+      boost: 4.0,
     },
 
     // Sidechain más suave — frontPar compactado tiene más energía constante

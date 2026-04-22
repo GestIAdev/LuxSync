@@ -42,6 +42,7 @@ const DEFAULT_AGC_CONFIG = {
     minGain: 0.5, // 🔥 WAVE 1011.9: Subido de 0.25 a 0.5 (mínimo 50% de señal)
     warmupFrames: 60, // 1 segundo @ 60fps para calibrar
     noiseFloor: 0.005, // Debajo de esto = silencio, no amplificar
+    gainSmoothSize: 8, // WAVE 3421: 8 frames (~133ms) — fast attack para drops desde silencio
 };
 /**
  * 🎚️ AUTOMATIC GAIN CONTROL - BUFFER NORMALIZER
@@ -50,6 +51,8 @@ const DEFAULT_AGC_CONFIG = {
  * todas las fuentes entreguen niveles consistentes.
  */
 export class AutomaticGainControl {
+    // WAVE 3421: tamaño del rolling window leído desde config (default 8 frames = fast attack)
+    get GAIN_SMOOTH_SIZE() { return this.config.gainSmoothSize; }
     constructor(config = {}) {
         /** Ganancia actual aplicada */
         this.currentGain = 1.0;
@@ -59,7 +62,6 @@ export class AutomaticGainControl {
         this.lastLogFrame = 0;
         /** Rolling buffer para suavizar ganancia (evita pumping) */
         this.gainHistory = [];
-        this.GAIN_SMOOTH_SIZE = 15; // ~250ms @ 60fps
         this.config = { ...DEFAULT_AGC_CONFIG, ...config };
         this.peakRMS = this.config.targetRMS; // Empezar en target
     }

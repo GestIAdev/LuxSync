@@ -1,1200 +1,650 @@
-HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1277 adaptive=true subBass=0.0373 bpm=117 conf=0.333 kicks=51
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.690 (Rock target: >0.7)
-   Flatness:    0.428 (Tonal<0.3, Noise>0.7)
-   Centroid:    8208Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.73 (Dynamics)
-   Rolloff:     18260Hz (85% energy)
-   Latency:     0.42ms
-   UltraAir:    0.032 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.55 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4294K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-216 Tilt:-48 | sBPM:117 phase:287°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-84 Tilt:-110 | sBPM:117 phase:287°
-[IPC 📡] audioBuffer #1298 | titan.running=true | size=8192
-[PM2 🩺] F1300 adaptive=false subBass=0.0132 bpm=117 conf=0.333 kicks=51
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.55 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4292K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-36 Tilt:-27 | sBPM:117 phase:351°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:12 Tilt:-32 | sBPM:117 phase:351°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: G minor (Confidence: 0.79)
-[GAMMA 🎵] Frame 1320: bpm=117, energy=0.29
-[AGC 🎚️] Gain: 0.62x | In: 0.595 → Out: 0.368 | Peak: 0.790 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.741 (Rock target: >0.7)
-   Flatness:    0.410 (Tonal<0.3, Noise>0.7)
-   Centroid:    7896Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.59 (Dynamics)
-   Rolloff:     17603Hz (85% energy)
-   Latency:     0.48ms
-   UltraAir:    0.017 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=3 onsets=51
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4455K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:167 Tilt:83 | sBPM:117 phase:48°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:0 Tilt:118 | sBPM:117 phase:48°
-[PM2 🩺] F1327 adaptive=true subBass=0.0338 bpm=117 conf=0.333 kicks=52
-[IPC 📡] audioBuffer #1328 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:206 Tilt:-57 | sBPM:117 phase:112°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:227 Tilt:32 | sBPM:117 phase:112°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #1358 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.731 (Rock target: >0.7)
-   Flatness:    0.363 (Tonal<0.3, Noise>0.7)
-   Centroid:    7504Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.88 (Dynamics)
-   Rolloff:     18056Hz (85% energy)
-   Latency:     0.39ms
-   UltraAir:    0.013 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.55 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:16 Tilt:-12 | sBPM:117 phase:176°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:28 Tilt:-3 | sBPM:117 phase:176°
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1376 adaptive=true subBass=0.0303 bpm=117 conf=0.333 kicks=53
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 1380: bpm=117, energy=0.61
-[AGC 🎚️] Gain: 0.66x | In: 0.537 → Out: 0.352 | Peak: 0.747 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=3 onsets=53
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.37 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-176 Tilt:85 | sBPM:117 phase:230°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-245 Tilt:-2 | sBPM:117 phase:230°
-[IPC 📡] audioBuffer #1387 | titan.running=true | size=8192
-[PM2 🩺] F1387 adaptive=true subBass=0.0409 bpm=117 conf=0.333 kicks=54
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.10 wE=0.68 ΔE=0.056 kick=false
-[PM2 🩺] F1399 adaptive=true subBass=0.0369 bpm=117 conf=0.333 kicks=55
-[PM2 🩺] F1400 adaptive=false subBass=0.0293 bpm=117 conf=0.333 kicks=55
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.804 (Rock target: >0.7)
-   Flatness:    0.327 (Tonal<0.3, Noise>0.7)
-   Centroid:    7194Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.00 (Dynamics)
-   Rolloff:     17948Hz (85% energy)
-   Latency:     0.83ms
-   UltraAir:    0.014 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[StrategyArbiter] 🔄 Running... frame=4200 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-221 Tilt:-44 | sBPM:117 phase:285°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-95 Tilt:-109 | sBPM:117 phase:285°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.6413
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1417 | titan.running=true | size=8192
-[PM2 🩺] F1421 adaptive=true subBass=0.0347 bpm=117 conf=0.333 kicks=56
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.57 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-74 Tilt:-52 | sBPM:117 phase:340°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:21 Tilt:-63 | sBPM:117 phase:340°
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 1440: bpm=117, energy=0.64
-[AGC 🎚️] Gain: 0.65x | In: 0.737 → Out: 0.475 | Peak: 0.811 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.735 (Rock target: >0.7)
-   Flatness:    0.355 (Tonal<0.3, Noise>0.7)
-   Centroid:    7558Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.87 (Dynamics)
-   Rolloff:     18088Hz (85% energy)
-   Latency:     0.69ms
-   UltraAir:    0.028 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=4 onsets=56
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:140 Tilt:84 | sBPM:117 phase:37°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-20 Tilt:109 | sBPM:117 phase:37°
-[IPC 📡] audioBuffer #1447 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.53 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:217 Tilt:-34 | sBPM:117 phase:102°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:202 Tilt:53 | sBPM:117 phase:102°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1475 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.787 (Rock target: >0.7)
-   Flatness:    0.349 (Tonal<0.3, Noise>0.7)
-   Centroid:    6684Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.98 (Dynamics)
-   Rolloff:     16559Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.58 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:42 Tilt:-31 | sBPM:117 phase:169°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:74 Tilt:-7 | sBPM:117 phase:169°
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.81 wE=0.33 ΔE=-0.106 kick=false
-[PM2 🩺] F1497 adaptive=true subBass=0.0334 bpm=117 conf=0.333 kicks=57
-[PM2 🩺] F1500 adaptive=false subBass=0.0203 bpm=117 conf=0.333 kicks=57
-[BETA 🎵] Key Detected: G minor (Confidence: 0.79)
-[GAMMA 🎵] Frame 1500: bpm=117, energy=0.55
-[BETA 📡] AUDIO_BUFFER #1500 | size=2048
-[AGC 🎚️] Gain: 0.68x | In: 0.372 → Out: 0.252 | Peak: 0.723 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=2 onsets=57
-[SimpleSectionTracker] 📊 section=breakdown | bassR=0.80/1.2 wE=0.30/0.7 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.58 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4577K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-185 Tilt:85 | sBPM:117 phase:232°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-252 Tilt:-5 | sBPM:117 phase:232°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #1505 | titan.running=true | size=8192
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.4674
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1505 adaptive=true subBass=0.0313 bpm=117 conf=0.333 kicks=58
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.678 (Rock target: >0.7)
-   Flatness:    0.424 (Tonal<0.3, Noise>0.7)
-   Centroid:    7224Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.53 (Dynamics)
-   Rolloff:     17420Hz (85% energy)
-   Latency:     0.25ms
-   UltraAir:    0.029 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4576K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-208 Tilt:-66 | sBPM:117 phase:295°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-53 Tilt:-120 | sBPM:117 phase:295°
-[IPC 📡] audioBuffer #1536 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.09 wE=0.74 ΔE=0.055 kick=false
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-8 Tilt:-6 | sBPM:117 phase:358°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:3 Tilt:-7 | sBPM:117 phase:358°
-[PM2 🩺] F1549 adaptive=true subBass=0.0300 bpm=117 conf=0.333 kicks=59
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[BETA 🎵] Key Detected: G minor (Confidence: 0.77)
-[GAMMA 🎵] Frame 1560: bpm=117, energy=0.55
-[AGC 🎚️] Gain: 0.58x | In: 0.722 → Out: 0.418 | Peak: 0.871 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.678 (Rock target: >0.7)
-   Flatness:    0.399 (Tonal<0.3, Noise>0.7)
-   Centroid:    7126Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.22 (Dynamics)
-   Rolloff:     17636Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=3 onsets=59
-[IPC 📡] audioBuffer #1564 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.64 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:177 Tilt:81 | sBPM:117 phase:52°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:10 Tilt:120 | sBPM:117 phase:52°
-[PM2 🩺] F1568 adaptive=true subBass=0.0312 bpm=117 conf=0.333 kicks=60
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:217 Tilt:-47 | sBPM:117 phase:107°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:220 Tilt:44 | sBPM:117 phase:107°
-[PM2 🩺] F1593 adaptive=true subBass=0.0319 bpm=117 conf=0.333 kicks=61
-[IPC 📡] audioBuffer #1595 | titan.running=true | size=8192
-[PM2 🩺] F1600 adaptive=false subBass=0.0262 bpm=117 conf=0.333 kicks=61
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[StrategyArbiter] 🔄 Running... frame=4800 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:77 Tilt:-55 | sBPM:117 phase:161°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:132 Tilt:-11 | sBPM:117 phase:161°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.6586
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.741 (Rock target: >0.7)
-   Flatness:    0.350 (Tonal<0.3, Noise>0.7)
-   Centroid:    6978Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.07 (Dynamics)
-   Rolloff:     17000Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.021 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1604 adaptive=true subBass=0.0319 bpm=117 conf=0.333 kicks=62
-[PM2 🩺] F1611 adaptive=true subBass=0.0328 bpm=117 conf=0.333 kicks=63
-[BETA 🎵] Key Detected: G minor (Confidence: 0.78)
-[GAMMA 🎵] Frame 1620: bpm=117, energy=0.55
-[AGC 🎚️] Gain: 0.63x | In: 0.532 → Out: 0.335 | Peak: 0.788 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.333 intervals=5 onsets=63
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.56 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-160 Tilt:79 | sBPM:117 phase:229°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-225 Tilt:-1 | sBPM:117 phase:229°
-[IPC 📡] audioBuffer #1625 | titan.running=true | size=8192
-[PM2 🩺] F1632 adaptive=true subBass=0.0326 bpm=117 conf=0.333 kicks=64
-[Harmony ⚠️] Freq 54Hz fuera de rango musical
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.735 (Rock target: >0.7)
-   Flatness:    0.406 (Tonal<0.3, Noise>0.7)
-   Centroid:    7061Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.43 (Dynamics)
-   Rolloff:     17453Hz (85% energy)
-   Latency:     0.48ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[PM2 🩺] F1644 adaptive=true subBass=0.0274 bpm=117 conf=0.333 kicks=65
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-209 Tilt:-67 | sBPM:117 phase:295°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-52 Tilt:-121 | sBPM:117 phase:295°
-[IPC 📡] audioBuffer #1655 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F1658 adaptive=true subBass=0.0298 bpm=117 conf=0.333 kicks=66
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[TitanEngine 🧠] Stabilization: Key=C Emotion=NEUTRAL Strategy=analogous Temp=4572K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(40%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=fire
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-8 Tilt:-6 | sBPM:117 phase:358°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:3 Tilt:-7 | sBPM:117 phase:358°
-[PM2 🩺] F1671 adaptive=true subBass=0.0310 bpm=117 conf=0.167 kicks=67
-[HAL] ⚠️ Driver not connected, dropping frames
-[KeyStabilizer] 🎵 KEY CHANGE: C → G (after 1800 frames, 2 total changes)
-[BETA 🎵] Key Detected: G minor (Confidence: 0.78)
-[GAMMA 🎵] Frame 1680: bpm=117, energy=0.77
-[AGC 🎚️] Gain: 0.62x | In: 0.743 → Out: 0.463 | Peak: 0.788 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.757 (Rock target: >0.7)
-   Flatness:    0.372 (Tonal<0.3, Noise>0.7)
-   Centroid:    7092Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.61 (Dynamics)
-   Rolloff:     17733Hz (85% energy)
-   Latency:     0.43ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.167 intervals=6 onsets=67
-[PM2 🩺] F1682 adaptive=true subBass=0.0305 bpm=117 conf=0.286 kicks=68
-[IPC 📡] audioBuffer #1684 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.03 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:191 Tilt:81 | sBPM:117 phase:55°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:20 Tilt:125 | sBPM:117 phase:55°
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.82 wE=0.45 ΔE=-0.116 kick=false
-[PM2 🩺] F1700 adaptive=false subBass=0.0260 bpm=117 conf=0.286 kicks=68
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:203 Tilt:-71 | sBPM:117 phase:118°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:243 Tilt:22 | sBPM:117 phase:118°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1708 adaptive=true subBass=0.0304 bpm=117 conf=0.286 kicks=69
-[IPC 📡] audioBuffer #1714 | titan.running=true | size=8192
-[PM2 🩺] F1715 adaptive=true subBass=0.0375 bpm=117 conf=0.250 kicks=70
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.747 (Rock target: >0.7)
-   Flatness:    0.368 (Tonal<0.3, Noise>0.7)
-   Centroid:    7311Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.32 (Dynamics)
-   Rolloff:     17797Hz (85% energy)
-   Latency:     0.31ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.93 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:9 Tilt:-7 | sBPM:117 phase:178°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:16 Tilt:-2 | sBPM:117 phase:178°
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 1740: bpm=117, energy=0.57
-[AGC 🎚️] Gain: 0.59x | In: 0.670 → Out: 0.395 | Peak: 0.831 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.250 intervals=8 onsets=70
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1745 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=1.00 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-197 Tilt:73 | sBPM:117 phase:241°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-242 Tilt:-18 | sBPM:117 phase:241°
-[PM2 🩺] F1751 adaptive=true subBass=0.0371 bpm=117 conf=0.250 kicks=71
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.770 (Rock target: >0.7)
-   Flatness:    0.391 (Tonal<0.3, Noise>0.7)
-   Centroid:    7047Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.46 (Dynamics)
-   Rolloff:     17690Hz (85% energy)
-   Latency:     0.27ms
-   UltraAir:    0.030 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.83 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-184 Tilt:-77 | sBPM:117 phase:304°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-20 Tilt:-120 | sBPM:117 phase:304°
-[IPC 📡] audioBuffer #1775 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.46 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:8 Tilt:6 | sBPM:117 phase:2°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-3 Tilt:7 | sBPM:117 phase:2°
-[PM2 🩺] F1800 adaptive=false subBass=0.0212 bpm=117 conf=0.286 kicks=71
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.13 wE=0.69 ΔE=0.056 kick=false
-[BETA 🎵] Key Detected: G minor (Confidence: 0.79)
-[GAMMA 🎵] Frame 1800: bpm=117, energy=0.81
-[BETA 📡] AUDIO_BUFFER #1800 | size=2048
-[AGC 🎚️] Gain: 0.64x | In: 0.695 → Out: 0.442 | Peak: 0.770 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.728 (Rock target: >0.7)
-   Flatness:    0.343 (Tonal<0.3, Noise>0.7)
-   Centroid:    7217Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.72 (Dynamics)
-   Rolloff:     18045Hz (85% energy)
-   Latency:     0.37ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.286 intervals=7 onsets=71
-[SimpleSectionTracker] 📊 section=buildup | bassR=1.19/1.2 wE=0.63/0.7 kick=false cool=false
-[IPC 📡] audioBuffer #1803 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.50 | beat #0
-[StrategyArbiter] 🔄 Running... frame=5400 | current=analogous | commitment=0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:205 Tilt:80 | sBPM:117 phase:58°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:31 Tilt:129 | sBPM:117 phase:58°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.57 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:189 Tilt:-79 | sBPM:117 phase:124°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:245 Tilt:11 | sBPM:117 phase:124°
-[IPC 📡] audioBuffer #1833 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.734 (Rock target: >0.7)
-   Flatness:    0.388 (Tonal<0.3, Noise>0.7)
-   Centroid:    7041Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.24 (Dynamics)
-   Rolloff:     16947Hz (85% energy)
-   Latency:     0.59ms
-   UltraAir:    0.028 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.45 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-32 Tilt:24 | sBPM:117 phase:188°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-56 Tilt:6 | sBPM:117 phase:188°
-[PM2 🩺] F1853 adaptive=true subBass=0.0364 bpm=117 conf=0.286 kicks=72
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 1860: bpm=117, energy=0.44
-[AGC 🎚️] Gain: 0.61x | In: 0.505 → Out: 0.308 | Peak: 0.824 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=117) conf=0.286 intervals=7 onsets=72
-[IPC 📡] audioBuffer #1863 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.41 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-211 Tilt:72 | sBPM:117 phase:243°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-251 Tilt:-24 | sBPM:117 phase:243°
-[PM2 🩺] F1872 adaptive=true subBass=0.0387 bpm=117 conf=0.333 kicks=73
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.693 (Rock target: >0.7)
-   Flatness:    0.383 (Tonal<0.3, Noise>0.7)
-   Centroid:    7031Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.33 (Dynamics)
-   Rolloff:     17345Hz (85% energy)
-   Latency:     0.37ms
-   UltraAir:    0.013 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.57 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-205 Tilt:-75 | sBPM:117 phase:299°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-38 Tilt:-125 | sBPM:117 phase:299°
-[IPC 📡] audioBuffer #1893 | titan.running=true | size=8192
-[PM2 🩺] F1900 adaptive=false subBass=0.0152 bpm=117 conf=0.333 kicks=73
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.45 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-19 Tilt:-14 | sBPM:117 phase:355°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:7 Tilt:-17 | sBPM:117 phase:355°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1917 adaptive=true subBass=0.0320 bpm=117 conf=0.333 kicks=74
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 1920: bpm=117, energy=0.60
-[AGC 🎚️] Gain: 0.62x | In: 0.607 → Out: 0.374 | Peak: 0.799 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.727 (Rock target: >0.7)
-   Flatness:    0.352 (Tonal<0.3, Noise>0.7)
-   Centroid:    6562Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.76 (Dynamics)
-   Rolloff:     16344Hz (85% energy)
-   Latency:     0.35ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=185) conf=0.333 intervals=3 onsets=74
-[IPC 📡] audioBuffer #1922 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.49 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:177 Tilt:86 | sBPM:117 phase:50°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:4 Tilt:123 | sBPM:117 phase:50°
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1939 adaptive=true subBass=0.0325 bpm=117 conf=0.333 kicks=75
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.46 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:223 Tilt:-42 | sBPM:117 phase:104°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:217 Tilt:49 | sBPM:117 phase:104°
-[IPC 📡] audioBuffer #1951 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F1960 adaptive=true subBass=0.0317 bpm=117 conf=0.333 kicks=76
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.822 (Rock target: >0.7)
-   Flatness:    0.290 (Tonal<0.3, Noise>0.7)
-   Centroid:    7772Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.99 (Dynamics)
-   Rolloff:     18292Hz (85% energy)
-   Latency:     0.37ms
-   UltraAir:    0.014 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.58 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:47 Tilt:-34 | sBPM:117 phase:168°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:82 Tilt:-8 | sBPM:117 phase:168°
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F1977 adaptive=true subBass=0.0317 bpm=117 conf=0.333 kicks=77
-[BETA 🎵] Key Detected: G minor (Confidence: 0.79)
-[GAMMA 🎵] Frame 1980: bpm=117, energy=0.58
-[AGC 🎚️] Gain: 0.61x | In: 0.608 → Out: 0.371 | Peak: 0.805 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=185) conf=0.333 intervals=1 onsets=77
-[IPC 📡] audioBuffer #1982 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.46 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-180 Tilt:85 | sBPM:117 phase:231°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-248 Tilt:-3 | sBPM:117 phase:231°
-[PM2 🩺] F1990 adaptive=true subBass=0.0378 bpm=117 conf=0.333 kicks=78
-[PM2 🩺] F2000 adaptive=false subBass=0.0177 bpm=117 conf=0.333 kicks=78
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.731 (Rock target: >0.7)
-   Flatness:    0.390 (Tonal<0.3, Noise>0.7)
-   Centroid:    7227Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.25 (Dynamics)
-   Rolloff:     17474Hz (85% energy)
-   Latency:     0.34ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.50 | beat #0
-[StrategyArbiter] 🔄 Running... frame=6000 | current=analogous | commitment=0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(38%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-228 Tilt:-50 | sBPM:117 phase:287°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-90 Tilt:-116 | sBPM:117 phase:287°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2011 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-61 Tilt:-44 | sBPM:117 phase:345°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:19 Tilt:-53 | sBPM:117 phase:345°
-[PM2 🩺] F2023 adaptive=true subBass=0.0332 bpm=117 conf=0.333 kicks=79
-[HAL] ⚠️ Driver not connected, dropping frames
-[Harmony ⚠️] Freq 32Hz fuera de rango musical
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2040: bpm=117, energy=0.36
-[IPC 📡] audioBuffer #2041 | titan.running=true | size=8192
-[AGC 🎚️] Gain: 0.61x | In: 0.724 → Out: 0.441 | Peak: 0.803 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.740 (Rock target: >0.7)
-   Flatness:    0.358 (Tonal<0.3, Noise>0.7)
-   Centroid:    6951Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.11 (Dynamics)
-   Rolloff:     17119Hz (85% energy)
-   Latency:     0.29ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=185) conf=0.333 intervals=2 onsets=79
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.53 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:155 Tilt:87 | sBPM:117 phase:42°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-13 Tilt:116 | sBPM:117 phase:42°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F2062 adaptive=true subBass=0.0362 bpm=117 conf=0.333 kicks=80
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:227 Tilt:-50 | sBPM:117 phase:107°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:232 Tilt:45 | sBPM:117 phase:107°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2070 | titan.running=true | size=8192
-[PM2 🩺] F2072 adaptive=true subBass=0.0446 bpm=117 conf=0.333 kicks=81
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.735 (Rock target: >0.7)
-   Flatness:    0.377 (Tonal<0.3, Noise>0.7)
-   Centroid:    7214Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.13 (Dynamics)
-   Rolloff:     17862Hz (85% energy)
-   Latency:     0.47ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.53 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(40%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:62 Tilt:-45 | sBPM:117 phase:165°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:107 Tilt:-10 | sBPM:117 phase:165°
-[IPC 📡] audioBuffer #2100 | titan.running=true | size=8192
-[PM2 🩺] F2100 adaptive=false subBass=0.0176 bpm=117 conf=0.333 kicks=81
-[BETA 🎵] Key Detected: G minor (Confidence: 0.82)
-[GAMMA 🎵] Frame 2100: bpm=117, energy=0.74
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.54 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-150 Tilt:87 | sBPM:117 phase:220°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-229 Tilt:8 | sBPM:117 phase:220°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 📡] AUDIO_BUFFER #2100 | size=2048
-[AGC 🎚️] Gain: 0.62x | In: 0.771 → Out: 0.481 | Peak: 0.786 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=185) conf=0.333 intervals=3 onsets=81
-[SimpleSectionTracker] 📊 section=buildup | bassR=1.08/1.2 wE=0.51/0.7 kick=false cool=false
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[Harmony 🎵] Key Change (fallback): G → C
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-231 Tilt:-15 | sBPM:117 phase:275°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-142 Tilt:-92 | sBPM:117 phase:275°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.676 (Rock target: >0.7)
-   Flatness:    0.416 (Tonal<0.3, Noise>0.7)
-   Centroid:    7411Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.39 (Dynamics)
-   Rolloff:     17571Hz (85% energy)
-   Latency:     0.39ms
-   UltraAir:    0.027 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2131 | titan.running=true | size=8192
-[Harmony 🎵] Key Change (fallback): C → D
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-78 Tilt:-55 | sBPM:117 phase:341°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:23 Tilt:-67 | sBPM:117 phase:341°
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.89 wE=0.32 ΔE=-0.101 kick=false
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2159 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: D minor (Confidence: 0.82)
-[GAMMA 🎵] Frame 2160: bpm=117, energy=0.63
-[AGC 🎚️] Gain: 0.61x | In: 0.804 → Out: 0.494 | Peak: 0.813 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.740 (Rock target: >0.7)
-   Flatness:    0.371 (Tonal<0.3, Noise>0.7)
-   Centroid:    7290Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.15 (Dynamics)
-   Rolloff:     17959Hz (85% energy)
-   Latency:     0.88ms
-   UltraAir:    0.028 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 117bpm (raw=185) conf=0.333 intervals=3 onsets=81
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.55 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:170 Tilt:88 | sBPM:117 phase:46°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-4 Tilt:123 | sBPM:117 phase:46°
-[PM2 🩺] F2164 adaptive=true subBass=0.0399 bpm=117 conf=0.333 kicks=82
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2175 adaptive=true subBass=0.0341 bpm=117 conf=0.333 kicks=83
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:221 Tilt:-56 | sBPM:117 phase:110°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:236 Tilt:38 | sBPM:117 phase:110°
-[PM2 🩺] F2188 adaptive=true subBass=0.0359 bpm=117 conf=0.333 kicks=84
-[IPC 📡] audioBuffer #2189 | titan.running=true | size=8192
-[MoodArbiter] 🎭 EMOTION SHIFT: NEUTRAL → BRIGHT (dominance=60.1%, after 109.4s)
-[PM2 🩺] F2197 adaptive=true subBass=0.0380 bpm=117 conf=0.333 kicks=85
-[PM2 🩺] F2200 adaptive=false subBass=0.0278 bpm=117 conf=0.333 kicks=85
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.712 (Rock target: >0.7)
-   Flatness:    0.357 (Tonal<0.3, Noise>0.7)
-   Centroid:    6839Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.59 (Dynamics)
-   Rolloff:     17356Hz (85% energy)
-   Latency:     0.52ms
-   UltraAir:    0.024 (NEW: 16-22kHz sizzle)
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.56 ΔE=0.094 kick=false
-[TitanOrchestrator] � WORKER BPM=117 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.52 | beat #0
-[StrategyArbiter] 🔄 Running... frame=6600 | current=analogous | commitment=0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:18 Tilt:-14 | sBPM:117 phase:175°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:32 Tilt:-3 | sBPM:117 phase:175°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2220 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: D minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2220: bpm=117, energy=0.53
-[AGC 🎚️] Gain: 0.61x | In: 0.676 → Out: 0.414 | Peak: 0.805 | ✅ ACTIVE
-[💓 PACEMAKER v2] 117bpm (raw=99) conf=0.333 intervals=6 onsets=85
-[TitanOrchestrator] � WORKER BPM=113 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.39 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-192 Tilt:84 | sBPM:117 phase:234°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-255 Tilt:-8 | sBPM:117 phase:234°
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.787 (Rock target: >0.7)
-   Flatness:    0.339 (Tonal<0.3, Noise>0.7)
-   Centroid:    7060Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.84 (Dynamics)
-   Rolloff:     17733Hz (85% energy)
-   Latency:     0.55ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[PM2 🩺] F2247 adaptive=true subBass=0.0424 bpm=99 conf=0.333 kicks=86
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=BRIGHT Strategy=analogous Temp=3444K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-230 Tilt:-50 | sBPM:100 phase:287°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-92 Tilt:-117 | sBPM:100 phase:287°
-[IPC 📡] audioBuffer #2251 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.83 wE=0.07 ΔE=-0.123 kick=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=BRIGHT Strategy=analogous Temp=3414K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-74 Tilt:-52 | sBPM:99 phase:341°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:22 Tilt:-63 | sBPM:99 phase:341°
-[Harmony 🎵] Key Change (fallback): D → C
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2280: bpm=99, energy=0.55
-[IPC 📡] audioBuffer #2281 | titan.running=true | size=8192
-[AGC 🎚️] Gain: 0.66x | In: 0.588 → Out: 0.386 | Peak: 0.745 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.748 (Rock target: >0.7)
-   Flatness:    0.359 (Tonal<0.3, Noise>0.7)
-   Centroid:    6979Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.25 (Dynamics)
-   Rolloff:     17270Hz (85% energy)
-   Latency:     0.29ms
-   UltraAir:    0.019 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=99) conf=0.333 intervals=4 onsets=86
-[PM2 🩺] F2285 adaptive=true subBass=0.0334 bpm=99 conf=0.333 kicks=87
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=BRIGHT Strategy=analogous Temp=3469K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:134 Tilt:83 | sBPM:99 phase:35°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-22 Tilt:106 | sBPM:99 phase:35°
-[Harmony 🎵] Key Change (fallback): C → G
-[PM2 🩺] F2300 adaptive=false subBass=0.0241 bpm=99 conf=0.333 kicks=87
-[IPC 📡] audioBuffer #2311 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.38 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=BRIGHT Strategy=analogous Temp=3635K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:227 Tilt:-3 | sBPM:99 phase:91°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:164 Tilt:79 | sBPM:99 phase:91°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.773 (Rock target: >0.7)
-   Flatness:    0.363 (Tonal<0.3, Noise>0.7)
-   Centroid:    7144Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.76 (Dynamics)
-   Rolloff:     17614Hz (85% energy)
-   Latency:     0.47ms
-   UltraAir:    0.029 (NEW: 16-22kHz sizzle)
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.10 wE=0.63 ΔE=0.051 kick=false
-[PM2 🩺] F2326 adaptive=true subBass=0.0295 bpm=99 conf=0.333 kicks=88
-[MoodArbiter] 🎭 EMOTION SHIFT: BRIGHT → NEUTRAL (dominance=60.1%, after 6.4s)
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.56 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=NEUTRAL Strategy=analogous Temp=3840K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:129 Tilt:-81 | sBPM:99 phase:146°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:205 Tilt:-11 | sBPM:99 phase:146°
-[IPC 📡] audioBuffer #2340 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2340: bpm=99, energy=0.72
-[AGC 🎚️] Gain: 0.66x | In: 0.671 → Out: 0.443 | Peak: 0.743 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=99) conf=0.333 intervals=4 onsets=89
-[PM2 🩺] F2341 adaptive=true subBass=0.0314 bpm=99 conf=0.333 kicks=89
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.40 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=NEUTRAL Strategy=analogous Temp=4050K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-48 Tilt:35 | sBPM:99 phase:191°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-83 Tilt:8 | sBPM:99 phase:191°
-[PM2 🩺] F2355 adaptive=true subBass=0.0282 bpm=99 conf=0.333 kicks=90
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.788 (Rock target: >0.7)
-   Flatness:    0.349 (Tonal<0.3, Noise>0.7)
-   Centroid:    7327Hz (Bright>2000, Dark<1200)
-   CrestFactor: 7.11 (Dynamics)
-   Rolloff:     17959Hz (85% energy)
-   Latency:     0.43ms
-   UltraAir:    0.029 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2369 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.36 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=NEUTRAL Strategy=analogous Temp=4088K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-198 Tilt:81 | sBPM:99 phase:237°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-255 Tilt:-12 | sBPM:99 phase:237°
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.59 | beat #0
-[TitanEngine 🧠] Stabilization: Key=G Emotion=NEUTRAL Strategy=analogous Temp=4261K
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-219 Tilt:-36 | sBPM:99 phase:283°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-103 Tilt:-103 | sBPM:99 phase:283°
-[PM2 🩺] F2396 adaptive=true subBass=0.0313 bpm=99 conf=0.333 kicks=91
-[IPC 📡] audioBuffer #2398 | titan.running=true | size=8192
-[PM2 🩺] F2400 adaptive=false subBass=0.0152 bpm=99 conf=0.333 kicks=91
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2400: bpm=99, energy=0.58
-[BETA 📡] AUDIO_BUFFER #2400 | size=2048
-[AGC 🎚️] Gain: 0.64x | In: 0.696 → Out: 0.442 | Peak: 0.775 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.777 (Rock target: >0.7)
-   Flatness:    0.374 (Tonal<0.3, Noise>0.7)
-   Centroid:    7321Hz (Bright>2000, Dark<1200)
-   CrestFactor: 7.47 (Dynamics)
-   Rolloff:     17937Hz (85% energy)
-   Latency:     0.40ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=99) conf=0.333 intervals=5 onsets=91
-[SimpleSectionTracker] 📊 section=buildup | bassR=0.95/1.2 wE=0.61/0.7 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.54 | beat #0
-[StrategyArbiter] 🔄 Running... frame=7200 | current=analogous | commitment=0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-98 Tilt:-66 | sBPM:99 phase:335°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:25 Tilt:-81 | sBPM:99 phase:335°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.7670
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2412 adaptive=true subBass=0.0333 bpm=99 conf=0.167 kicks=92
-[IPC 📡] audioBuffer #2429 | titan.running=true | size=8192
-[PM2 🩺] F2430 adaptive=true subBass=0.0326 bpm=99 conf=0.143 kicks=93
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.97 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:116 Tilt:76 | sBPM:99 phase:29°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-25 Tilt:95 | sBPM:99 phase:29°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.653 (Rock target: >0.7)
-   Flatness:    0.440 (Tonal<0.3, Noise>0.7)
-   Centroid:    7974Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.04 (Dynamics)
-   Rolloff:     18045Hz (85% energy)
-   Latency:     0.41ms
-   UltraAir:    0.017 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=1.00 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:235 Tilt:11 | sBPM:99 phase:87°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:151 Tilt:91 | sBPM:99 phase:87°
-[PM2 🩺] F2456 adaptive=true subBass=0.0340 bpm=99 conf=0.167 kicks=94
-[BETA 🎵] Key Detected: G minor (Confidence: 0.79)
-[GAMMA 🎵] Frame 2460: bpm=99, energy=0.65
-[IPC 📡] audioBuffer #2461 | titan.running=true | size=8192
-[AGC 🎚️] Gain: 0.64x | In: 0.542 → Out: 0.349 | Peak: 0.759 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=99) conf=0.167 intervals=4 onsets=94
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F2471 adaptive=true subBass=0.0297 bpm=99 conf=0.167 kicks=95
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=1.00 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(37%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:155 Tilt:-89 | sBPM:99 phase:140°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:235 Tilt:-8 | sBPM:99 phase:140°
-[PM2 🩺] F2478 adaptive=true subBass=0.0371 bpm=99 conf=0.333 kicks=96
-[StrategyArbiter] 🎨 STRATEGY SHIFT: analogous → complementary | avgSync=0.70 | commitment=1800 frames (30s) | canChange=true | isLocked=true | framesSinceChange=7385
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.700 (Rock target: >0.7)
-   Flatness:    0.403 (Tonal<0.3, Noise>0.7)
-   Centroid:    6836Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.66 (Dynamics)
-   Rolloff:     17140Hz (85% energy)
-   Latency:     0.27ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2488 adaptive=true subBass=0.0343 bpm=99 conf=0.286 kicks=97
-[IPC 📡] audioBuffer #2493 | titan.running=true | size=8192
-[PM2 🩺] F2495 adaptive=true subBass=0.0338 bpm=99 conf=0.250 kicks=98
-[TitanOrchestrator] � WORKER BPM=99 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.37 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-15 Tilt:11 | sBPM:99 phase:184°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-27 Tilt:3 | sBPM:99 phase:184°
-[PM2 🩺] F2500 adaptive=false subBass=0.0155 bpm=99 conf=0.250 kicks=98
-[PM2 🩺] F2508 adaptive=true subBass=0.0309 bpm=99 conf=0.222 kicks=99
-[TitanOrchestrator] � WORKER BPM=99 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.99 | beat #0
-[StrategyArbiter] 🔒 LOCKED: complementary | Remaining: 1685 frames (28.1s)
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-178 Tilt:80 | sBPM:99 phase:233°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-239 Tilt:-7 | sBPM:99 phase:233°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.2805
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.77 wE=0.30 ΔE=-0.109 kick=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2517 adaptive=true subBass=0.0336 bpm=99 conf=0.200 kicks=100
-[BETA 🎵] Key Detected: G minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2520: bpm=99, energy=0.86
-[IPC 📡] audioBuffer #2521 | titan.running=true | size=8192
-[AGC 🎚️] Gain: 0.64x | In: 0.634 → Out: 0.409 | Peak: 0.803 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.748 (Rock target: >0.7)
-   Flatness:    0.388 (Tonal<0.3, Noise>0.7)
-   Centroid:    7391Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.55 (Dynamics)
-   Rolloff:     17948Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.024 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.200 intervals=10 onsets=100
-[PM2 🩺] F2524 adaptive=true subBass=0.0391 bpm=99 conf=0.273 kicks=101
-[TitanOrchestrator] � WORKER BPM=99 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.71 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-226 Tilt:-30 | sBPM:99 phase:280°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-117 Tilt:-101 | sBPM:99 phase:280°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2550 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.41 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-116 Tilt:-75 | sBPM:99 phase:329°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:23 Tilt:-94 | sBPM:99 phase:329°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.748 (Rock target: >0.7)
-   Flatness:    0.354 (Tonal<0.3, Noise>0.7)
-   Centroid:    6839Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.21 (Dynamics)
-   Rolloff:     16322Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.019 (NEW: 16-22kHz sizzle)
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F2571 adaptive=true subBass=0.0332 bpm=99 conf=0.273 kicks=102
-[TitanOrchestrator] � WORKER BPM=99 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.45 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:90 Tilt:63 | sBPM:99 phase:22°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-25 Tilt:76 | sBPM:99 phase:22°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2579 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2580: bpm=99, energy=0.75
-[AGC 🎚️] Gain: 0.62x | In: 0.820 → Out: 0.506 | Peak: 0.820 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.273 intervals=11 onsets=102
-[PM2 🩺] F2582 adaptive=true subBass=0.0350 bpm=99 conf=0.250 kicks=103
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.12 wE=0.78 ΔE=0.060 kick=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.81 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:213 Tilt:63 | sBPM:99 phase:67°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:62 Tilt:120 | sBPM:99 phase:67°
-[Harmony ⚠️] Freq 11Hz fuera de rango musical
-[PM2 🩺] F2600 adaptive=false subBass=0.0279 bpm=99 conf=0.273 kicks=103
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.754 (Rock target: >0.7)
-   Flatness:    0.354 (Tonal<0.3, Noise>0.7)
-   Centroid:    7020Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.32 (Dynamics)
-   Rolloff:     17528Hz (85% energy)
-   Latency:     0.45ms
-   UltraAir:    0.028 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=99 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.68 | beat #0
-[StrategyArbiter] 🔄 Running... frame=7800 | current=complementary | commitment=1386
-[StrategyArbiter] 🔒 LOCKED: complementary | Remaining: 1385 frames (23.1s)
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:209 Tilt:-69 | sBPM:99 phase:116°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:245 Tilt:25 | sBPM:99 phase:116°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2610 | titan.running=true | size=8192
-[PM2 🩺] F2617 adaptive=true subBass=0.0468 bpm=99 conf=0.300 kicks=104
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.83 wE=0.25 ΔE=-0.119 kick=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.30 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:25 Tilt:-19 | sBPM:99 phase:173°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:44 Tilt:-4 | sBPM:99 phase:173°
-[IPC 📡] audioBuffer #2639 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2640: bpm=99, energy=0.74
-[AGC 🎚️] Gain: 0.65x | In: 0.721 → Out: 0.469 | Peak: 0.753 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.735 (Rock target: >0.7)
-   Flatness:    0.374 (Tonal<0.3, Noise>0.7)
-   Centroid:    7195Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.13 (Dynamics)
-   Rolloff:     17840Hz (85% energy)
-   Latency:     0.39ms
-   UltraAir:    0.026 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.300 intervals=10 onsets=104
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.30 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-143 Tilt:80 | sBPM:99 phase:222°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-214 Tilt:6 | sBPM:99 phase:222°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2669 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.30 | PLL=FREEWHEEL phase=0.00 sync=0.48 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-217 Tilt:-10 | sBPM:99 phase:273°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-139 Tilt:-84 | sBPM:99 phase:273°
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.744 (Rock target: >0.7)
-   Flatness:    0.351 (Tonal<0.3, Noise>0.7)
-   Centroid:    7049Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.04 (Dynamics)
-   Rolloff:     17711Hz (85% energy)
-   Latency:     0.47ms
-   UltraAir:    0.006 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=99 conf=0.38 | PLL=FREEWHEEL phase=0.00 sync=0.40 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-120 Tilt:-76 | sBPM:99 phase:327°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:22 Tilt:-96 | sBPM:99 phase:327°
-[IPC 📡] audioBuffer #2697 | titan.running=true | size=8192
-[PM2 🩺] F2700 adaptive=false subBass=0.0108 bpm=99 conf=0.375 kicks=104
-[BETA 🎵] Key Detected: G minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2700: bpm=99, energy=0.47
-[BETA 📡] AUDIO_BUFFER #2700 | size=2048
-[AGC 🎚️] Gain: 0.78x | In: 0.502 → Out: 0.390 | Peak: 0.631 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.375 intervals=8 onsets=104
-[SimpleSectionTracker] 📊 section=breakdown | bassR=0.67/1.2 wE=0.47/0.7 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.38 | PLL=FREEWHEEL phase=0.00 sync=0.42 | beat #0
-[StrategyArbiter] 🔒 LOCKED: complementary | Remaining: 1085 frames (18.1s)
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:46 Tilt:34 | sBPM:99 phase:12°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-15 Tilt:40 | sBPM:99 phase:12°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3399
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.15 wE=0.59 ΔE=0.058 kick=false
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.713 (Rock target: >0.7)
-   Flatness:    0.380 (Tonal<0.3, Noise>0.7)
-   Centroid:    7100Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.69 (Dynamics)
-   Rolloff:     17442Hz (85% energy)
-   Latency:     0.36ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2727 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.38 | PLL=FREEWHEEL phase=0.00 sync=0.53 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:192 Tilt:66 | sBPM:99 phase:63°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:42 Tilt:115 | sBPM:99 phase:63°
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.39 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:201 Tilt:-64 | sBPM:99 phase:115°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:233 Tilt:26 | sBPM:99 phase:115°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2757 | titan.running=true | size=8192
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.71 wE=0.23 ΔE=-0.131 kick=false
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2760: bpm=99, energy=0.28
-[AGC 🎚️] Gain: 0.89x | In: 0.552 → Out: 0.489 | Peak: 0.553 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.736 (Rock target: >0.7)
-   Flatness:    0.380 (Tonal<0.3, Noise>0.7)
-   Centroid:    6999Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.27 (Dynamics)
-   Rolloff:     17130Hz (85% energy)
-   Latency:     0.31ms
-   UltraAir:    0.032 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.333 intervals=4 onsets=105
-[PM2 🩺] F2761 adaptive=true subBass=0.0266 bpm=99 conf=0.333 kicks=105
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.48 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(30%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:74 Tilt:-53 | sBPM:99 phase:162°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:127 Tilt:-11 | sBPM:99 phase:162°
-[PM2 🩺] F2768 adaptive=true subBass=0.0304 bpm=99 conf=0.333 kicks=106
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2775 adaptive=true subBass=0.0350 bpm=99 conf=0.333 kicks=107
-[IPC 📡] audioBuffer #2786 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-133 Tilt:81 | sBPM:99 phase:216°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-209 Tilt:10 | sBPM:99 phase:216°
-[PM2 🩺] F2800 adaptive=false subBass=0.0133 bpm=99 conf=0.333 kicks=107
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.719 (Rock target: >0.7)
-   Flatness:    0.385 (Tonal<0.3, Noise>0.7)
-   Centroid:    7089Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.88 (Dynamics)
-   Rolloff:     17646Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.012 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.37 | beat #0
-[StrategyArbiter] 🔄 Running... frame=8400 | current=complementary | commitment=786
-[StrategyArbiter] 🔒 LOCKED: complementary | Remaining: 785 frames (13.1s)
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-219 Tilt:10 | sBPM:99 phase:266°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-170 Tilt:-70 | sBPM:99 phase:266°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3156
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2813 adaptive=true subBass=0.0293 bpm=99 conf=0.333 kicks=108
-[IPC 📡] audioBuffer #2816 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.81)
-[GAMMA 🎵] Frame 2820: bpm=99, energy=0.26
-[AGC 🎚️] Gain: 0.75x | In: 0.215 → Out: 0.162 | Peak: 0.650 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.333 intervals=3 onsets=108
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.38 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-154 Tilt:-81 | sBPM:99 phase:314°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:5 Tilt:-112 | sBPM:99 phase:314°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.765 (Rock target: >0.7)
-   Flatness:    0.358 (Tonal<0.3, Noise>0.7)
-   Centroid:    7190Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.54 (Dynamics)
-   Rolloff:     17506Hz (85% energy)
-   Latency:     0.37ms
-   UltraAir:    0.032 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2846 | titan.running=true | size=8192
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.06 wE=0.43 ΔE=0.063 kick=false
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.37 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(35%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:38 Tilt:28 | sBPM:99 phase:10°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-13 Tilt:33 | sBPM:99 phase:10°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[PM2 🩺] F2863 adaptive=true subBass=0.0308 bpm=99 conf=0.333 kicks=109
-[Harmony ⚠️] Freq 65Hz fuera de rango musical
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.48 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:197 Tilt:79 | sBPM:99 phase:58°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:28 Tilt:125 | sBPM:99 phase:58°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2876 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.80)
-[GAMMA 🎵] Frame 2880: bpm=99, energy=0.25
-[AGC 🎚️] Gain: 0.60x | In: 0.629 → Out: 0.377 | Peak: 0.817 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.738 (Rock target: >0.7)
-   Flatness:    0.376 (Tonal<0.3, Noise>0.7)
-   Centroid:    6978Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.22 (Dynamics)
-   Rolloff:     17108Hz (85% energy)
-   Latency:     0.36ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.333 intervals=2 onsets=109
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.43 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:221 Tilt:-54 | sBPM:99 phase:109°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:232 Tilt:40 | sBPM:99 phase:109°
-[PM2 🩺] F2891 adaptive=true subBass=0.0293 bpm=99 conf=0.333 kicks=110
-[PM2 🩺] F2900 adaptive=false subBass=0.0077 bpm=99 conf=0.333 kicks=110
-[IPC 📡] audioBuffer #2907 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.58 | beat #0
-[StrategyArbiter] 🔒 LOCKED: complementary | Remaining: 485 frames (8.1s)
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:79 Tilt:-56 | sBPM:99 phase:160°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:134 Tilt:-12 | sBPM:99 phase:160°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.6792
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.782 (Rock target: >0.7)
-   Flatness:    0.373 (Tonal<0.3, Noise>0.7)
-   Centroid:    7054Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.82 (Dynamics)
-   Rolloff:     17560Hz (85% energy)
-   Latency:     0.61ms
-   UltraAir:    0.030 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.41 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-111 Tilt:73 | sBPM:99 phase:209°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-181 Tilt:12 | sBPM:99 phase:209°
-[IPC 📡] audioBuffer #2938 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: G minor (Confidence: 0.77)
-[GAMMA 🎵] Frame 2940: bpm=99, energy=0.65
-[AGC 🎚️] Gain: 0.58x | In: 0.648 → Out: 0.378 | Peak: 0.839 | ✅ ACTIVE
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.333 intervals=2 onsets=110
-[PM2 🩺] F2943 adaptive=true subBass=0.0374 bpm=99 conf=0.333 kicks=111
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.51 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(38%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-213 Tilt:41 | sBPM:99 phase:255°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-209 Tilt:-46 | sBPM:99 phase:255°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.711 (Rock target: >0.7)
-   Flatness:    0.396 (Tonal<0.3, Noise>0.7)
-   Centroid:    7176Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.88 (Dynamics)
-   Rolloff:     17571Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.023 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2968 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.45 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-186 Tilt:-86 | sBPM:99 phase:308°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:-10 Tilt:-127 | sBPM:99 phase:308°
-[PM2 🩺] F2973 adaptive=true subBass=0.0253 bpm=99 conf=0.333 kicks=112
-[HAL] ⚠️ Driver not connected, dropping frames
-[PM2 🩺] F2982 adaptive=true subBass=0.0458 bpm=99 conf=0.333 kicks=113
-[TitanOrchestrator] � WORKER BPM=99 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.43 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=latino Strobe=false Element=water
-[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:0 | Pan:-13 Tilt:-10 | sBPM:99 phase:357°
-[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:0 | Pan:5 Tilt:-12 | sBPM:99 phase:357°
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.89 wE=0.17 ΔE=-0.116 kick=false
-[IPC 📡] audioBuffer #2999 | titan.running=true | size=8192
-[PM2 🩺] F3000 adaptive=false subBass=0.0017 bpm=99 conf=0.333 kicks=113
-[BETA 🎵] Key Detected: G minor (Confidence: 0.77)
-[GAMMA 🎵] Frame 3000: bpm=99, energy=0.07
-[BETA 📡] AUDIO_BUFFER #3000 | size=2048
-[AGC 🎚️] Gain: 0.60x | In: 0.040 → Out: 0.024 | Peak: 0.817 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.718 (Rock target: >0.7)
-   Flatness:    0.380 (Tonal<0.3, Noise>0.7)
-   Centroid:    6983Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.79 (Dynamics)
-   Rolloff:     17679Hz (85% energy)
-   Latency:     0.29ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[💓 PACEMAKER v2] 99bpm (raw=185) conf=0.333 intervals=3 onsets=113
+[LATINO-41] sB:0.387 mid:0.669 hMid:0.404 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.347 mid:0.619 hMid:0.381 tr:0.173 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.138 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.290 mid:0.621 hMid:0.366 tr:0.158 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.389 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.231 mid:0.683 hMid:0.398 tr:0.225 | morph:1.000 tDelta:0.0671 percRaw:0.268 | fPar:0.156 bPar:0.850 mL:0.588 mR:0.619 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.187 mid:0.748 hMid:0.431 tr:0.249 | morph:1.000 tDelta:0.0238 percRaw:0.095 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.155 mid:0.790 hMid:0.433 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.126 mid:0.836 hMid:0.460 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.105 mid:0.836 hMid:0.481 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.849 hMid:0.482 tr:0.223 | morph:1.000 tDelta:0.0014 percRaw:0.006 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.083 mid:0.852 hMid:0.484 tr:0.219 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.072 mid:0.818 hMid:0.475 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.774 hMid:0.449 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.774 hMid:0.445 tr:0.244 | morph:1.000 tDelta:0.0522 percRaw:0.209 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.226 mid:0.756 hMid:0.450 tr:0.268 | morph:1.000 tDelta:0.0247 percRaw:0.099 | fPar:0.144 bPar:0.000 mL:0.365 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.323 mid:0.779 hMid:0.452 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.327 mid:0.832 hMid:0.477 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.330 mid:0.832 hMid:0.496 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.361 mid:0.852 hMid:0.522 tr:0.229 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:110 | Pan:151 Tilt:-34 | sBPM:96 phase:113°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:110 | Pan:155 Tilt:29 | sBPM:96 phase:113°
+[LATINO-41] sB:0.390 mid:0.868 hMid:0.543 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.411 mid:0.860 hMid:0.541 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.381 mid:0.863 hMid:0.535 tr:0.212 | morph:1.000 tDelta:0.0062 percRaw:0.025 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.347 mid:0.893 hMid:0.549 tr:0.236 | morph:1.000 tDelta:0.0244 percRaw:0.098 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.332 mid:0.881 hMid:0.560 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.306 mid:0.872 hMid:0.559 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.265 mid:0.876 hMid:0.576 tr:0.226 | morph:1.000 tDelta:0.0188 percRaw:0.075 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.226 mid:0.841 hMid:0.566 tr:0.270 | morph:1.000 tDelta:0.0446 percRaw:0.178 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.197 mid:0.841 hMid:0.558 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.770 hMid:0.523 tr:0.281 | morph:1.000 tDelta:0.0103 percRaw:0.041 | fPar:0.003 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.133 mid:0.679 hMid:0.483 tr:0.254 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.670 hMid:0.462 tr:0.272 | morph:1.000 tDelta:0.0184 percRaw:0.074 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.207 mid:0.686 hMid:0.461 tr:0.318 | morph:1.000 tDelta:0.0460 percRaw:0.184 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.295 mid:0.646 hMid:0.446 tr:0.317 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.632 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.949
+[LATINO-41] sB:0.372 mid:0.656 hMid:0.431 tr:0.276 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.398 mid:0.735 hMid:0.454 tr:0.237 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.451 mR:0.441 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.418 mid:0.735 hMid:0.472 tr:0.237 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.514 mR:0.428 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.390 mid:0.756 hMid:0.489 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.337 mid:0.749 hMid:0.507 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.269 mid:0.742 hMid:0.523 tr:0.224 | morph:1.000 tDelta:0.0165 percRaw:0.066 | fPar:0.269 bPar:0.009 mL:0.790 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.213 mid:0.757 hMid:0.544 tr:0.279 | morph:1.000 tDelta:0.0554 percRaw:0.222 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.174 mid:0.794 hMid:0.543 tr:0.276 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.138 mid:0.825 hMid:0.532 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.826 hMid:0.487 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.094 mid:0.803 hMid:0.464 tr:0.226 | morph:1.000 tDelta:0.0085 percRaw:0.034 | fPar:0.001 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.078 mid:0.803 hMid:0.447 tr:0.226 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.714 hMid:0.422 tr:0.213 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.645 hMid:0.390 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.604 hMid:0.380 tr:0.196 | morph:1.000 tDelta:0.0096 percRaw:0.038 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.150 mid:0.629 hMid:0.401 tr:0.259 | morph:1.000 tDelta:0.0629 percRaw:0.252 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.002 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.267 mid:0.609 hMid:0.390 tr:0.277 | morph:1.000 tDelta:0.0173 percRaw:0.069 | fPar:0.202 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.984
+[LATINO-41] sB:0.364 mid:0.628 hMid:0.366 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.408 mid:0.672 hMid:0.358 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.440 mid:0.672 hMid:0.353 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.432 mid:0.709 hMid:0.361 tr:0.221 | morph:1.000 tDelta:0.0005 percRaw:0.002 | fPar:0.800 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.67 | beat #444 | bass=0.1710 sab=0.000 | 🔬in_peak=0.23420 in_rms=0.10284
+[LATINO-41] sB:0.382 mid:0.729 hMid:0.355 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.346 mR:0.725 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.342 mid:0.715 hMid:0.321 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.151 mR:0.823 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.345 mid:0.730 hMid:0.332 tr:0.223 | morph:1.000 tDelta:0.0554 percRaw:0.222 | fPar:0.800 bPar:0.000 mL:0.043 mR:0.323 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.357 mid:0.730 hMid:0.333 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.003 mR:0.755 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.354 mid:0.759 hMid:0.323 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.511 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.324 mid:0.697 hMid:0.290 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.226 mR:0.336 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.262 mid:0.733 hMid:0.369 tr:0.208 | morph:1.000 tDelta:0.0678 percRaw:0.271 | fPar:0.269 bPar:0.850 mL:0.437 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.215 mid:0.733 hMid:0.428 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.391 mL:0.692 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.176 mid:0.727 hMid:0.462 tr:0.237 | morph:1.000 tDelta:0.0287 percRaw:0.115 | fPar:0.091 bPar:0.180 mL:0.765 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.144 mid:0.641 hMid:0.426 tr:0.212 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.083 mL:0.329 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.538 hMid:0.369 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.009 mL:0.141 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.532 hMid:0.366 tr:0.219 | morph:1.000 tDelta:0.0350 percRaw:0.140 | fPar:0.001 bPar:0.001 mL:0.035 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.194 mid:0.644 hMid:0.415 tr:0.252 | morph:1.000 tDelta:0.0332 percRaw:0.133 | fPar:0.800 bPar:0.850 mL:0.003 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.284 mid:0.696 hMid:0.429 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.434 bPar:0.391 mL:0.640 mR:0.339 | sc:1 scDuck:0.965
+[LATINO-41] sB:0.363 mid:0.744 hMid:0.420 tr:0.194 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.375 mid:0.804 hMid:0.400 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[VirtualWire] 📡 SAB feed — cb#36000 | frames=441 | peak=0.3002 | ch=2
+[LATINO-41] sB:0.358 mid:0.816 hMid:0.397 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.344 mid:0.816 hMid:0.395 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.306 mid:0.847 hMid:0.410 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.247 mid:0.844 hMid:0.393 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.198 mid:0.822 hMid:0.403 tr:0.201 | morph:1.000 tDelta:0.0636 percRaw:0.254 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.167 mid:0.804 hMid:0.404 tr:0.202 | morph:1.000 tDelta:0.0018 percRaw:0.007 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.769 hMid:0.370 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.117 mid:0.722 hMid:0.354 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.106 mid:0.712 hMid:0.359 tr:0.186 | morph:1.000 tDelta:0.0232 percRaw:0.093 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:111 | Pan:-125 Tilt:-26 | sBPM:96 phase:233°
+[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:111 | Pan:-51 Tilt:-63 | sBPM:96 phase:233°
+[LATINO-41] sB:0.090 mid:0.618 hMid:0.328 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.077 mid:0.534 hMid:0.289 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.073 mid:0.502 hMid:0.276 tr:0.148 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.575 hMid:0.345 tr:0.234 | morph:1.000 tDelta:0.0855 percRaw:0.342 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.252 mid:0.575 hMid:0.396 tr:0.234 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.367 mid:0.620 hMid:0.444 tr:0.252 | morph:1.000 tDelta:0.0181 percRaw:0.072 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.450 mid:0.633 hMid:0.469 tr:0.253 | morph:1.000 tDelta:0.0012 percRaw:0.005 | fPar:0.800 bPar:0.391 mL:0.446 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.471 mid:0.654 hMid:0.490 tr:0.259 | morph:1.000 tDelta:0.0057 percRaw:0.023 | fPar:0.800 bPar:0.180 mL:0.762 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.455 mid:0.681 hMid:0.514 tr:0.277 | morph:1.000 tDelta:0.0185 percRaw:0.074 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.478 mid:0.665 hMid:0.513 tr:0.262 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.449 mid:0.655 hMid:0.513 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.426 mid:0.655 hMid:0.514 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.812 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.384 mid:0.671 hMid:0.517 tr:0.276 | morph:1.000 tDelta:0.0275 percRaw:0.110 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.379 mid:0.659 hMid:0.517 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.370 mid:0.648 hMid:0.514 tr:0.243 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.315 mid:0.648 hMid:0.492 tr:0.231 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.157 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.257 mid:0.748 hMid:0.514 tr:0.274 | morph:1.000 tDelta:0.0432 percRaw:0.173 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.200 mid:0.785 hMid:0.526 tr:0.284 | morph:1.000 tDelta:0.0105 percRaw:0.042 | fPar:0.001 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.161 mid:0.788 hMid:0.501 tr:0.258 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.813 hMid:0.456 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.813 hMid:0.421 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.135 mid:0.865 hMid:0.423 tr:0.262 | morph:1.000 tDelta:0.0411 percRaw:0.165 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[CHOREO] Pattern transition: wave_y -> ballyhoo (2s LERP)
+[LATINO-41] sB:0.217 mid:0.866 hMid:0.410 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.314 mid:0.845 hMid:0.392 tr:0.239 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.376 mid:0.775 hMid:0.366 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.375 mid:0.686 hMid:0.341 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.349 mid:0.549 hMid:0.297 tr:0.161 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.298 mid:0.446 hMid:0.253 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.235 mid:0.467 hMid:0.260 tr:0.168 | morph:1.000 tDelta:0.0355 percRaw:0.142 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.190 mid:0.552 hMid:0.301 tr:0.228 | morph:1.000 tDelta:0.0604 percRaw:0.241 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.590 hMid:0.315 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.590 hMid:0.326 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.103 mid:0.593 hMid:0.304 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.084 mid:0.570 hMid:0.305 tr:0.260 | morph:1.000 tDelta:0.0682 percRaw:0.273 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.515 hMid:0.301 tr:0.317 | morph:1.000 tDelta:0.0574 percRaw:0.230 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=98 conf=0.05 | PLL=FREEWHEEL [mem=96@-15f] phase=0.00 sync=0.81 | beat #448 | bass=0.0356 sab=0.108 | 🔬in_peak=0.15361 in_rms=0.04292
+[LATINO-41] sB:0.060 mid:0.465 hMid:0.289 tr:0.351 | morph:1.000 tDelta:0.0342 percRaw:0.137 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.420 hMid:0.276 tr:0.375 | morph:1.000 tDelta:0.0235 percRaw:0.094 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.489 hMid:0.307 tr:0.397 | morph:1.000 tDelta:0.0225 percRaw:0.090 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.182 mid:0.531 hMid:0.337 tr:0.404 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.274 mid:0.537 hMid:0.346 tr:0.368 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.282 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.977
+[LATINO-41] sB:0.352 mid:0.567 hMid:0.344 tr:0.281 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.346 mid:0.581 hMid:0.324 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.308 mR:0.439 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.415 mid:0.572 hMid:0.297 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.133 mR:0.460 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.467 mid:0.572 hMid:0.277 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.033 mR:0.446 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.400 mid:0.556 hMid:0.249 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.003 mR:0.607 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.377 mid:0.526 hMid:0.237 tr:0.171 | morph:1.000 tDelta:0.0040 percRaw:0.016 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.253 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.375 mid:0.545 hMid:0.266 tr:0.229 | morph:1.000 tDelta:0.0586 percRaw:0.234 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.099 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.360 mid:0.466 hMid:0.246 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.012 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.315 mid:0.390 hMid:0.213 tr:0.135 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.001 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.255 mid:0.412 hMid:0.201 tr:0.116 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.218 mid:0.619 hMid:0.301 tr:0.211 | morph:1.000 tDelta:0.0950 percRaw:0.380 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.722 hMid:0.353 tr:0.232 | morph:1.000 tDelta:0.0212 percRaw:0.085 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.785 hMid:0.352 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.809 hMid:0.335 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.809 hMid:0.323 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.173 mid:0.751 hMid:0.324 tr:0.249 | morph:1.000 tDelta:0.0500 percRaw:0.200 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.262 mid:0.658 hMid:0.310 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.152 bPar:0.000 mL:0.155 mR:0.141 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.350 mid:0.569 hMid:0.292 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.395 mid:0.485 hMid:0.260 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.380 mid:0.497 hMid:0.269 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | ballyhoo [LERP] [SNAKE F0/2] | Bar:112 | Pan:-142 Tilt:4 | sBPM:96 phase:314°
+[CHOREO] fiesta-latina | ballyhoo [LERP] [SNAKE F1/2] | Bar:112 | Pan:-108 Tilt:-48 | sBPM:96 phase:314°
+[LATINO-41] sB:0.349 mid:0.444 hMid:0.249 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.294 mid:0.386 hMid:0.214 tr:0.119 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.234 mid:0.472 hMid:0.258 tr:0.185 | morph:1.000 tDelta:0.0660 percRaw:0.264 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.188 mid:0.472 hMid:0.291 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.155 mid:0.556 hMid:0.328 tr:0.225 | morph:1.000 tDelta:0.0402 percRaw:0.161 | fPar:0.023 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.133 mid:0.533 hMid:0.325 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.391 mL:0.559 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.513 hMid:0.316 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.180 mL:0.241 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.587 hMid:0.357 tr:0.189 | morph:1.000 tDelta:0.0056 percRaw:0.023 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.076 mid:0.654 hMid:0.405 tr:0.206 | morph:1.000 tDelta:0.0178 percRaw:0.071 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.627 hMid:0.406 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.058 mid:0.627 hMid:0.407 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.054 mid:0.546 hMid:0.361 tr:0.158 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.103 mid:0.589 hMid:0.373 tr:0.213 | morph:1.000 tDelta:0.0553 percRaw:0.221 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.619 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.201 mid:0.658 hMid:0.402 tr:0.252 | morph:1.000 tDelta:0.0392 percRaw:0.157 | fPar:0.144 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.303 mid:0.729 hMid:0.406 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.798 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.393 mid:0.744 hMid:0.382 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.391 mid:0.787 hMid:0.386 tr:0.164 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.419 mid:0.832 hMid:0.385 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.440 mid:0.832 hMid:0.384 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.448 mid:0.887 hMid:0.376 tr:0.129 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.400 mid:0.938 hMid:0.379 tr:0.144 | morph:1.000 tDelta:0.0142 percRaw:0.057 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.389 mid:0.960 hMid:0.397 tr:0.174 | morph:1.000 tDelta:0.0300 percRaw:0.120 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.360 mid:0.969 hMid:0.402 tr:0.147 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.327 mid:1.005 hMid:0.441 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.267 mid:1.033 hMid:0.486 tr:0.140 | morph:1.000 tDelta:0.0193 percRaw:0.077 | fPar:0.023 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.214 mid:1.003 hMid:0.520 tr:0.216 | morph:1.000 tDelta:0.0760 percRaw:0.304 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.176 mid:0.991 hMid:0.531 tr:0.249 | morph:1.000 tDelta:0.0329 percRaw:0.132 | fPar:0.001 bPar:0.391 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.143 mid:0.995 hMid:0.518 tr:0.225 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.997 hMid:0.504 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.997 hMid:0.494 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.178 mid:0.999 hMid:0.475 tr:0.257 | morph:1.000 tDelta:0.0509 percRaw:0.204 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.246 mid:1.017 hMid:0.448 tr:0.260 | morph:1.000 tDelta:0.0031 percRaw:0.013 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.303 mid:1.052 hMid:0.409 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.782 bPar:0.000 mL:0.797 mR:0.797 | sc:1 scDuck:0.937
+[LATINO-41] sB:0.325 mid:1.069 hMid:0.386 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[CHOREO] Transition complete -> ballyhoo
+[LATINO-41] sB:0.319 mid:1.072 hMid:0.378 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.82 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.23 | beat #452 | bass=0.1282 sab=0.108 | 🔬in_peak=0.41430 in_rms=0.13472
+[LATINO-41] sB:0.287 mid:1.042 hMid:0.377 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.352 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.239 mid:0.952 hMid:0.370 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.154 mR:0.341 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.189 mid:0.901 hMid:0.389 tr:0.182 | morph:1.000 tDelta:0.0635 percRaw:0.254 | fPar:0.156 bPar:0.000 mL:0.048 mR:0.141 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.158 mid:0.916 hMid:0.404 tr:0.207 | morph:1.000 tDelta:0.0251 percRaw:0.100 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.888 hMid:0.407 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.107 mid:0.888 hMid:0.409 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.094 mid:0.903 hMid:0.413 tr:0.160 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.923 hMid:0.410 tr:0.171 | morph:1.000 tDelta:0.0112 percRaw:0.045 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.931 hMid:0.408 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.058 mid:0.929 hMid:0.398 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.049 mid:0.892 hMid:0.399 tr:0.125 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.083 mid:0.850 hMid:0.436 tr:0.207 | morph:1.000 tDelta:0.0819 percRaw:0.328 | fPar:0.800 bPar:0.850 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.191 mid:0.794 hMid:0.435 tr:0.244 | morph:1.000 tDelta:0.0366 percRaw:0.147 | fPar:0.144 bPar:0.391 mL:0.048 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.322 mid:0.733 hMid:0.417 tr:0.213 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.004 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.356 mid:0.678 hMid:0.392 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.002 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.382 mid:0.729 hMid:0.423 tr:0.202 | morph:1.000 tDelta:0.0302 percRaw:0.121 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.414 mid:0.708 hMid:0.413 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.438 mid:0.708 hMid:0.406 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.412 mid:0.638 hMid:0.369 tr:0.131 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.412 mid:0.594 hMid:0.359 tr:0.180 | morph:1.000 tDelta:0.0487 percRaw:0.195 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.390 mid:0.584 hMid:0.358 tr:0.208 | morph:1.000 tDelta:0.0280 percRaw:0.112 | fPar:0.464 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.372 mid:0.533 hMid:0.313 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.302 mid:0.472 hMid:0.269 tr:0.113 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.239 mid:0.457 hMid:0.277 tr:0.139 | morph:1.000 tDelta:0.0254 percRaw:0.102 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.206 mid:0.591 hMid:0.342 tr:0.216 | morph:1.000 tDelta:0.0777 percRaw:0.311 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:113 | Pan:171 Tilt:103 | sBPM:97 phase:15°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:113 | Pan:-25 Tilt:134 | sBPM:97 phase:15°
+[LATINO-41] sB:0.171 mid:0.615 hMid:0.366 tr:0.223 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.140 mid:0.576 hMid:0.342 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.126 mid:0.555 hMid:0.336 tr:0.226 | morph:1.000 tDelta:0.0369 percRaw:0.148 | fPar:0.000 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.115 mid:0.555 hMid:0.332 tr:0.226 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.202 mid:0.538 hMid:0.332 tr:0.267 | morph:1.000 tDelta:0.0409 percRaw:0.164 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.290 mid:0.504 hMid:0.318 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.532 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.957
+[LATINO-41] sB:0.371 mid:0.442 hMid:0.290 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.395 mid:0.424 hMid:0.264 tr:0.177 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.381 mid:0.386 hMid:0.242 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.339 mid:0.331 hMid:0.209 tr:0.127 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.292 mid:0.285 hMid:0.176 tr:0.098 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.229 mid:0.304 hMid:0.191 tr:0.128 | morph:1.000 tDelta:0.0291 percRaw:0.116 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.186 mid:0.421 hMid:0.257 tr:0.193 | morph:1.000 tDelta:0.0656 percRaw:0.262 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.151 mid:0.438 hMid:0.270 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.125 mid:0.438 hMid:0.279 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.103 mid:0.416 hMid:0.263 tr:0.148 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.084 mid:0.453 hMid:0.267 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.460 hMid:0.266 tr:0.163 | morph:1.000 tDelta:0.0216 percRaw:0.087 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.422 hMid:0.243 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.060 mid:0.382 hMid:0.218 tr:0.109 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.074 mid:0.447 hMid:0.251 tr:0.176 | morph:1.000 tDelta:0.0668 percRaw:0.267 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.193 mid:0.529 hMid:0.306 tr:0.251 | morph:1.000 tDelta:0.0749 percRaw:0.300 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.307 mid:0.599 hMid:0.361 tr:0.253 | morph:1.000 tDelta:0.0025 percRaw:0.010 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.785 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.350 mid:0.634 hMid:0.401 tr:0.253 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.354 mid:0.739 hMid:0.410 tr:0.254 | morph:1.000 tDelta:0.0013 percRaw:0.005 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.383 mid:0.770 hMid:0.426 tr:0.260 | morph:1.000 tDelta:0.0055 percRaw:0.022 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.409 mid:0.775 hMid:0.429 tr:0.242 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.400 mid:0.756 hMid:0.442 tr:0.240 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.351 mid:0.721 hMid:0.439 tr:0.267 | morph:1.000 tDelta:0.0272 percRaw:0.109 | fPar:0.464 bPar:0.009 mL:0.151 mR:0.336 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.320 mid:0.716 hMid:0.468 tr:0.266 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.304 mid:0.744 hMid:0.504 tr:0.255 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.287 mid:0.754 hMid:0.497 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.244 mid:0.787 hMid:0.529 tr:0.292 | morph:1.000 tDelta:0.0465 percRaw:0.186 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.197 mid:0.756 hMid:0.525 tr:0.302 | morph:1.000 tDelta:0.0095 percRaw:0.038 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.162 mid:0.685 hMid:0.485 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=98 conf=0.06 | PLL=FREEWHEEL [mem=97@-4f] phase=0.00 sync=0.68 | beat #457 | bass=0.0766 sab=0.054 | 🔬in_peak=0.34440 in_rms=0.13235
+[LATINO-41] sB:0.134 mid:0.597 hMid:0.426 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.148 mid:0.611 hMid:0.420 tr:0.271 | morph:1.000 tDelta:0.0410 percRaw:0.164 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.234 mid:0.604 hMid:0.418 tr:0.293 | morph:1.000 tDelta:0.0219 percRaw:0.088 | fPar:0.000 bPar:0.001 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.329 mid:0.633 hMid:0.431 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.647 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.382 mid:0.625 hMid:0.427 tr:0.251 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.710 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.421 mid:0.625 hMid:0.424 tr:0.251 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.690 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.409 mid:0.543 hMid:0.381 tr:0.304 | morph:1.000 tDelta:0.0521 percRaw:0.208 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.283 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.377 mid:0.452 hMid:0.339 tr:0.338 | morph:1.000 tDelta:0.0342 percRaw:0.137 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.119 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.320 mid:0.366 hMid:0.290 tr:0.340 | morph:1.000 tDelta:0.0021 percRaw:0.008 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.020 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.255 mid:0.314 hMid:0.252 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.004 mR:0.001 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.204 mid:0.440 hMid:0.296 tr:0.307 | morph:1.000 tDelta:0.0129 percRaw:0.051 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.168 mid:0.561 hMid:0.345 tr:0.289 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.850 mL:0.850 mR:0.518 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.139 mid:0.652 hMid:0.348 tr:0.235 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#36500 | frames=441 | peak=0.2395 | ch=2
+[LATINO-41] sB:0.108 mid:0.688 hMid:0.335 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.089 mid:0.728 hMid:0.343 tr:0.216 | morph:1.000 tDelta:0.0071 percRaw:0.029 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.734 hMid:0.341 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.062 mid:0.707 hMid:0.324 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.052 mid:0.707 hMid:0.312 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.068 mid:0.708 hMid:0.321 tr:0.199 | morph:1.000 tDelta:0.0365 percRaw:0.146 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.195 mid:0.679 hMid:0.326 tr:0.242 | morph:1.000 tDelta:0.0430 percRaw:0.172 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.299 mid:0.660 hMid:0.329 tr:0.245 | morph:1.000 tDelta:0.0034 percRaw:0.013 | fPar:0.700 bPar:0.000 mL:0.148 mR:0.030 | sc:1 scDuck:0.944
+[LATINO-41] sB:0.388 mid:0.658 hMid:0.321 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.421 mid:0.716 hMid:0.320 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.428 mid:0.739 hMid:0.311 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.379 mid:0.750 hMid:0.294 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:114 | Pan:111 Tilt:4 | sBPM:97 phase:77°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:114 | Pan:73 Tilt:42 | sBPM:97 phase:77°
+[LATINO-41] sB:0.328 mid:0.766 hMid:0.279 tr:0.130 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.320 mid:0.807 hMid:0.321 tr:0.203 | morph:1.000 tDelta:0.0734 percRaw:0.293 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.325 mid:0.792 hMid:0.345 tr:0.190 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.319 mid:0.700 hMid:0.309 tr:0.146 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.180 mL:0.352 mR:0.138 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.313 mid:0.700 hMid:0.282 tr:0.146 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.083 mL:0.154 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.307 mid:0.633 hMid:0.258 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.009 mL:0.048 mR:0.344 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.264 mid:0.706 hMid:0.353 tr:0.215 | morph:1.000 tDelta:0.0972 percRaw:0.389 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.212 mid:0.704 hMid:0.391 tr:0.242 | morph:1.000 tDelta:0.0260 percRaw:0.104 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.171 mid:0.662 hMid:0.373 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.563 hMid:0.329 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.572 hMid:0.330 tr:0.229 | morph:1.000 tDelta:0.0534 percRaw:0.214 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.232 mid:0.596 hMid:0.345 tr:0.256 | morph:1.000 tDelta:0.0273 percRaw:0.109 | fPar:0.144 bPar:0.001 mL:0.459 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.310 mid:0.610 hMid:0.346 tr:0.244 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.585 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.378 mid:0.607 hMid:0.345 tr:0.211 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.529 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.384 mid:0.584 hMid:0.340 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.228 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.366 mid:0.476 hMid:0.297 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.101 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.315 mid:0.366 hMid:0.240 tr:0.130 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.014 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.255 mid:0.304 hMid:0.211 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.001 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.211 mid:0.304 hMid:0.190 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.489 hMid:0.264 tr:0.200 | morph:1.000 tDelta:0.0812 percRaw:0.325 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.140 mid:0.633 hMid:0.301 tr:0.220 | morph:1.000 tDelta:0.0203 percRaw:0.081 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.112 mid:0.685 hMid:0.301 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.695 hMid:0.303 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.728 hMid:0.312 tr:0.184 | morph:1.000 tDelta:0.0181 percRaw:0.073 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.704 hMid:0.302 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.659 hMid:0.282 tr:0.138 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.586 hMid:0.265 tr:0.140 | morph:1.000 tDelta:0.0026 percRaw:0.010 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.161 mid:0.627 hMid:0.289 tr:0.211 | morph:1.000 tDelta:0.0707 percRaw:0.283 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.261 mid:0.668 hMid:0.302 tr:0.228 | morph:1.000 tDelta:0.0170 percRaw:0.068 | fPar:0.147 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.352 mid:0.700 hMid:0.322 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.414 mid:0.745 hMid:0.351 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.439 mid:0.786 hMid:0.390 tr:0.180 | morph:1.000 tDelta:0.0133 percRaw:0.053 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.458 mid:0.786 hMid:0.420 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.422 mid:0.824 hMid:0.438 tr:0.174 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.353 mid:0.827 hMid:0.444 tr:0.155 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[TitanOrchestrator] 🎧 WORKER BPM=97 conf=0.05 | PLL=FREEWHEEL [mem=97@-64f] phase=0.00 sync=0.02 | beat #462 | bass=0.1478 sab=0.108 | 🔬in_peak=0.38033 in_rms=0.13097
+[LATINO-41] sB:0.345 mid:0.853 hMid:0.460 tr:0.194 | morph:1.000 tDelta:0.0386 percRaw:0.154 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.357 mid:0.872 hMid:0.483 tr:0.214 | morph:1.000 tDelta:0.0197 percRaw:0.079 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.345 mid:0.879 hMid:0.516 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.325 mid:0.833 hMid:0.523 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.352 mR:0.336 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.277 mid:0.813 hMid:0.540 tr:0.242 | morph:1.000 tDelta:0.0496 percRaw:0.198 | fPar:0.269 bPar:0.000 mL:0.154 mR:0.140 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.231 mid:0.782 hMid:0.542 tr:0.289 | morph:1.000 tDelta:0.0470 percRaw:0.188 | fPar:0.156 bPar:0.000 mL:0.048 mR:0.031 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.190 mid:0.687 hMid:0.487 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.159 mid:0.687 hMid:0.445 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.000 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.132 mid:0.588 hMid:0.390 tr:0.217 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.000 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.619 hMid:0.406 tr:0.272 | morph:1.000 tDelta:0.0552 percRaw:0.221 | fPar:0.800 bPar:0.000 mL:0.642 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.233 mid:0.623 hMid:0.401 tr:0.310 | morph:1.000 tDelta:0.0380 percRaw:0.152 | fPar:0.144 bPar:0.000 mL:0.704 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.321 mid:0.593 hMid:0.382 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.284 mR:0.002 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.393 mid:0.628 hMid:0.390 tr:0.244 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.645 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.396 mid:0.711 hMid:0.414 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.377 mid:0.753 hMid:0.419 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.391 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.325 mid:0.745 hMid:0.454 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.180 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.264 mid:0.709 hMid:0.455 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.083 mL:0.361 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.209 mid:0.737 hMid:0.466 tr:0.223 | morph:1.000 tDelta:0.0595 percRaw:0.238 | fPar:0.091 bPar:0.009 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.174 mid:0.771 hMid:0.475 tr:0.222 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.148 mid:0.771 hMid:0.481 tr:0.222 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.122 mid:0.790 hMid:0.441 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.101 mid:0.748 hMid:0.398 tr:0.174 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.708 hMid:0.375 tr:0.185 | morph:1.000 tDelta:0.0115 percRaw:0.046 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.623 hMid:0.337 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.533 hMid:0.292 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:115 | Pan:176 Tilt:-13 | sBPM:97 phase:139°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:115 | Pan:143 Tilt:53 | sBPM:97 phase:139°
+[LATINO-41] sB:0.054 mid:0.529 hMid:0.297 tr:0.156 | morph:1.000 tDelta:0.0226 percRaw:0.090 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.142 mid:0.597 hMid:0.341 tr:0.238 | morph:1.000 tDelta:0.0819 percRaw:0.328 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.253 mid:0.571 hMid:0.319 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.360 mid:0.625 hMid:0.297 tr:0.193 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.382 mid:0.657 hMid:0.274 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.330 mR:0.574 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.354 mid:0.729 hMid:0.303 tr:0.190 | morph:1.000 tDelta:0.0222 percRaw:0.089 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.346 mid:0.781 hMid:0.306 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.391 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.360 mid:0.764 hMid:0.282 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.370 mid:0.764 hMid:0.264 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.367 mid:0.742 hMid:0.293 tr:0.223 | morph:1.000 tDelta:0.0696 percRaw:0.278 | fPar:0.800 bPar:0.009 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.333 mid:0.690 hMid:0.288 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.046 mR:0.138 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.311 mid:0.627 hMid:0.272 tr:0.161 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.004 mR:0.031 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.287 mid:0.509 hMid:0.237 tr:0.124 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.002 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.255 mid:0.573 hMid:0.328 tr:0.200 | morph:1.000 tDelta:0.0761 percRaw:0.305 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.211 mid:0.624 hMid:0.390 tr:0.248 | morph:1.000 tDelta:0.0480 percRaw:0.192 | fPar:0.023 bPar:0.391 mL:0.524 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.176 mid:0.582 hMid:0.386 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.225 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.146 mid:0.505 hMid:0.340 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.097 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.158 mid:0.539 hMid:0.347 tr:0.250 | morph:1.000 tDelta:0.0520 percRaw:0.208 | fPar:0.800 bPar:0.009 mL:0.011 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.167 mid:0.539 hMid:0.352 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.242 mid:0.569 hMid:0.388 tr:0.279 | morph:1.000 tDelta:0.0286 percRaw:0.114 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.322 mid:0.679 hMid:0.416 tr:0.254 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.710 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.386 mid:0.709 hMid:0.396 tr:0.211 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.393 mid:0.766 hMid:0.368 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.372 mid:0.772 hMid:0.354 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.322 mid:0.778 hMid:0.350 tr:0.139 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.009 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.261 mid:0.766 hMid:0.336 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.001 mL:0.361 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.207 mid:0.781 hMid:0.367 tr:0.198 | morph:1.000 tDelta:0.0662 percRaw:0.265 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.166 mid:0.781 hMid:0.390 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.141 mid:0.762 hMid:0.386 tr:0.208 | morph:1.000 tDelta:0.0093 percRaw:0.037 | fPar:0.004 bPar:0.180 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.111 mid:0.699 hMid:0.356 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.630 hMid:0.325 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.089 mid:0.577 hMid:0.314 tr:0.189 | morph:1.000 tDelta:0.0212 percRaw:0.085 | fPar:0.000 bPar:0.001 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.079 mid:0.512 hMid:0.287 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.073 mid:0.457 hMid:0.259 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.078 mid:0.501 hMid:0.283 tr:0.195 | morph:1.000 tDelta:0.0429 percRaw:0.172 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=104 conf=0.33 | PLL=FREEWHEEL [mem=104@-0f] phase=0.00 sync=0.02 | beat #467 | bass=0.4067 sab=0.054 | 🔬in_peak=0.49826 in_rms=0.18677
+[LATINO-41] sB:0.145 mid:0.579 hMid:0.333 tr:0.265 | morph:1.000 tDelta:0.0696 percRaw:0.279 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.196 mid:0.579 hMid:0.370 tr:0.265 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.294 mid:0.628 hMid:0.423 tr:0.271 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.608 bPar:0.850 mL:0.809 mR:0.000 | sc:1 scDuck:0.951
+[LATINO-41] sB:0.332 mid:0.641 hMid:0.449 tr:0.266 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.379 mid:0.660 hMid:0.480 tr:0.262 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.424 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.413 mid:0.691 hMid:0.513 tr:0.270 | morph:1.000 tDelta:0.0080 percRaw:0.032 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.370 mid:0.674 hMid:0.524 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.818 mR:0.709 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.381 mid:0.654 hMid:0.518 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.282 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.385 mid:0.635 hMid:0.514 tr:0.273 | morph:1.000 tDelta:0.0224 percRaw:0.089 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.116 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.387 mid:0.635 hMid:0.512 tr:0.273 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.019 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.351 mid:0.634 hMid:0.509 tr:0.259 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.001 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.322 mid:0.630 hMid:0.506 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.341 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.281 mid:0.642 hMid:0.491 tr:0.239 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.631 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.237 mid:0.767 hMid:0.520 tr:0.282 | morph:1.000 tDelta:0.0425 percRaw:0.170 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.192 mid:0.809 hMid:0.524 tr:0.293 | morph:1.000 tDelta:0.0117 percRaw:0.047 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.153 mid:0.810 hMid:0.485 tr:0.264 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.127 mid:0.826 hMid:0.454 tr:0.229 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.175 mid:0.852 hMid:0.444 tr:0.270 | morph:1.000 tDelta:0.0418 percRaw:0.167 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.212 mid:0.852 hMid:0.437 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.279 mid:0.865 hMid:0.424 tr:0.269 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.348 bPar:0.000 mL:0.826 mR:0.826 | sc:1 scDuck:0.972
+[LATINO-41] sB:0.362 mid:0.845 hMid:0.400 tr:0.240 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.408 mid:0.773 hMid:0.369 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.398 mid:0.700 hMid:0.346 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.368 mid:0.566 hMid:0.299 tr:0.160 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.313 mid:0.461 hMid:0.255 tr:0.131 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:117 | Pan:-206 Tilt:-77 | sBPM:100 phase:202°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:117 | Pan:-37 Tilt:-127 | sBPM:100 phase:202°
+[LATINO-41] sB:0.253 mid:0.498 hMid:0.277 tr:0.170 | morph:1.000 tDelta:0.0393 percRaw:0.157 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.202 mid:0.585 hMid:0.315 tr:0.221 | morph:1.000 tDelta:0.0512 percRaw:0.205 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.167 mid:0.605 hMid:0.337 tr:0.231 | morph:1.000 tDelta:0.0091 percRaw:0.036 | fPar:0.023 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.134 mid:0.623 hMid:0.314 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.405 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.109 mid:0.623 hMid:0.298 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.392 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.604 hMid:0.302 tr:0.267 | morph:1.000 tDelta:0.0651 percRaw:0.260 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.161 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.076 mid:0.531 hMid:0.307 tr:0.328 | morph:1.000 tDelta:0.0619 percRaw:0.248 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.045 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.460 hMid:0.295 tr:0.360 | morph:1.000 tDelta:0.0319 percRaw:0.127 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.003 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.385 hMid:0.279 tr:0.383 | morph:1.000 tDelta:0.0227 percRaw:0.091 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.080 mid:0.460 hMid:0.310 tr:0.409 | morph:1.000 tDelta:0.0265 percRaw:0.106 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.215 mid:0.498 hMid:0.331 tr:0.407 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.337 mid:0.497 hMid:0.328 tr:0.343 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.430 mid:0.522 hMid:0.308 tr:0.271 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.408 mid:0.516 hMid:0.293 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.392 mid:0.516 hMid:0.282 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.443 mid:0.512 hMid:0.264 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.437 mid:0.499 hMid:0.228 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.387 mid:0.425 hMid:0.209 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.377 mid:0.485 hMid:0.249 tr:0.232 | morph:1.000 tDelta:0.0601 percRaw:0.240 | fPar:0.269 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.394 mid:0.436 hMid:0.230 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.374 mid:0.371 hMid:0.197 tr:0.133 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.302 mid:0.405 hMid:0.184 tr:0.117 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.244 mid:0.580 hMid:0.275 tr:0.211 | morph:1.000 tDelta:0.0946 percRaw:0.378 | fPar:0.269 bPar:0.850 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.193 mid:0.722 hMid:0.330 tr:0.221 | morph:1.000 tDelta:0.0099 percRaw:0.040 | fPar:0.156 bPar:0.391 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.154 mid:0.722 hMid:0.371 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.126 mid:0.782 hMid:0.357 tr:0.195 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.787 hMid:0.353 tr:0.230 | morph:1.000 tDelta:0.0348 percRaw:0.139 | fPar:0.004 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.169 mid:0.775 hMid:0.357 tr:0.272 | morph:1.000 tDelta:0.0418 percRaw:0.167 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.253 mid:0.710 hMid:0.351 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.337 mid:0.586 hMid:0.312 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.400 mid:0.586 hMid:0.283 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.596 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.420 mid:0.478 hMid:0.248 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.245 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.395 mid:0.412 hMid:0.225 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.100 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.351 mid:0.353 hMid:0.195 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.013 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.295 mid:0.385 hMid:0.172 tr:0.126 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.001 | sc:1 scDuck:0.978
+[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.60 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.46 | beat #470 | bass=0.1280 sab=0.161 | 🔬in_peak=0.40819 in_rms=0.14731
+[LATINO-41] sB:0.234 mid:0.506 hMid:0.229 tr:0.194 | morph:1.000 tDelta:0.0679 percRaw:0.272 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.195 mid:0.575 hMid:0.280 tr:0.230 | morph:1.000 tDelta:0.0357 percRaw:0.143 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.156 mid:0.604 hMid:0.298 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.129 mid:0.614 hMid:0.339 tr:0.193 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.670 hMid:0.382 tr:0.199 | morph:1.000 tDelta:0.0064 percRaw:0.026 | fPar:0.001 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.092 mid:0.670 hMid:0.415 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.083 mid:0.717 hMid:0.449 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.075 mid:0.738 hMid:0.492 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.065 mid:0.773 hMid:0.546 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.800 hMid:0.586 tr:0.228 | morph:1.000 tDelta:0.0573 percRaw:0.229 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.215 mid:0.805 hMid:0.607 tr:0.258 | morph:1.000 tDelta:0.0302 percRaw:0.121 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[VirtualWire] 📡 SAB feed — cb#37000 | frames=441 | peak=0.3390 | ch=2
+[LATINO-41] sB:0.293 mid:0.816 hMid:0.635 tr:0.233 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.587 bPar:0.180 mL:0.810 mR:0.810 | sc:1 scDuck:0.953
+[LATINO-41] sB:0.377 mid:0.837 hMid:0.660 tr:0.204 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.380 mid:0.844 hMid:0.672 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.419 mid:0.839 hMid:0.625 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.420 mid:0.823 hMid:0.544 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.386 mid:0.849 hMid:0.504 tr:0.159 | morph:1.000 tDelta:0.0099 percRaw:0.040 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.361 mid:0.849 hMid:0.473 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.358 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.367 mid:0.875 hMid:0.454 tr:0.162 | morph:1.000 tDelta:0.0030 percRaw:0.012 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.353 mid:0.898 hMid:0.437 tr:0.133 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.290 mid:0.916 hMid:0.436 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.243 mid:0.922 hMid:0.443 tr:0.151 | morph:1.000 tDelta:0.0298 percRaw:0.119 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.203 mid:0.942 hMid:0.474 tr:0.219 | morph:1.000 tDelta:0.0676 percRaw:0.271 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.168 mid:0.948 hMid:0.475 tr:0.256 | morph:1.000 tDelta:0.0376 percRaw:0.150 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.137 mid:0.951 hMid:0.453 tr:0.242 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:118 | Pan:-120 Tilt:-3 | sBPM:96 phase:263°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:118 | Pan:-80 Tilt:-44 | sBPM:96 phase:263°
+[LATINO-41] sB:0.117 mid:0.952 hMid:0.434 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.164 mid:0.963 hMid:0.466 tr:0.289 | morph:1.000 tDelta:0.0612 percRaw:0.245 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.198 mid:0.963 hMid:0.490 tr:0.289 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.250 mid:0.996 hMid:0.535 tr:0.292 | morph:1.000 tDelta:0.0033 percRaw:0.013 | fPar:0.029 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.290 mid:0.996 hMid:0.550 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.531 bPar:0.391 mL:0.814 mR:0.814 | sc:1 scDuck:0.958
+[LATINO-41] sB:0.294 mid:0.971 hMid:0.540 tr:0.204 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.614 bPar:0.180 mL:0.348 mR:0.808 | sc:1 scDuck:0.951
+[LATINO-41] sB:0.307 mid:0.959 hMid:0.532 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.319 mid:0.954 hMid:0.523 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.321 mid:0.939 hMid:0.493 tr:0.145 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.004 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.317 mid:0.935 hMid:0.481 tr:0.159 | morph:1.000 tDelta:0.0147 percRaw:0.059 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.306 mid:0.923 hMid:0.474 tr:0.183 | morph:1.000 tDelta:0.0234 percRaw:0.094 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.301 mid:0.926 hMid:0.469 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.740 bPar:0.000 mL:0.800 mR:0.800 | sc:1 scDuck:0.941
+[LATINO-41] sB:0.241 mid:0.929 hMid:0.465 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.429 bPar:0.000 mL:0.821 mR:0.821 | sc:1 scDuck:0.966
+[LATINO-41] sB:0.186 mid:0.913 hMid:0.446 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.249 bPar:0.000 mL:0.358 mR:0.833 | sc:1 scDuck:0.980
+[LATINO-41] sB:0.146 mid:0.884 hMid:0.433 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.884 hMid:0.423 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.084 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.093 mid:0.863 hMid:0.422 tr:0.134 | morph:1.000 tDelta:0.0005 percRaw:0.002 | fPar:0.018 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.076 mid:0.852 hMid:0.422 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.119 mid:0.876 hMid:0.479 tr:0.219 | morph:1.000 tDelta:0.0868 percRaw:0.347 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.206 mid:0.870 hMid:0.486 tr:0.244 | morph:1.000 tDelta:0.0247 percRaw:0.099 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.242 mid:0.846 hMid:0.457 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.285 mid:0.832 hMid:0.434 tr:0.175 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.317 mid:0.832 hMid:0.417 tr:0.175 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.324 mid:0.838 hMid:0.409 tr:0.145 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.338 mid:0.826 hMid:0.383 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.329 mid:0.826 hMid:0.371 tr:0.107 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.340 mid:0.842 hMid:0.372 tr:0.102 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.340 mid:0.860 hMid:0.369 tr:0.096 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.324 mid:0.862 hMid:0.355 tr:0.088 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.269 mid:0.856 hMid:0.345 tr:0.084 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.358 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.228 mid:0.856 hMid:0.338 tr:0.084 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.191 mid:0.874 hMid:0.391 tr:0.158 | morph:1.000 tDelta:0.0740 percRaw:0.296 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.164 mid:0.882 hMid:0.427 tr:0.188 | morph:1.000 tDelta:0.0306 percRaw:0.122 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.134 mid:0.919 hMid:0.469 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.886 hMid:0.475 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.40 | beat #473 | bass=0.1058 sab=0.108 | 🔬in_peak=0.52532 in_rms=0.17366
+[LATINO-41] sB:0.110 mid:0.899 hMid:0.479 tr:0.198 | morph:1.000 tDelta:0.0322 percRaw:0.129 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.172 mid:0.910 hMid:0.497 tr:0.243 | morph:1.000 tDelta:0.0452 percRaw:0.181 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.241 mid:0.893 hMid:0.474 tr:0.228 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.275 mid:0.888 hMid:0.444 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.302 bPar:0.000 mL:0.357 mR:0.829 | sc:1 scDuck:0.976
+[LATINO-41] sB:0.300 mid:0.870 hMid:0.407 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.721 bPar:0.000 mL:0.148 mR:0.801 | sc:1 scDuck:0.942
+[LATINO-41] sB:0.319 mid:0.860 hMid:0.375 tr:0.123 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.329 mid:0.853 hMid:0.351 tr:0.104 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.336 mid:0.853 hMid:0.332 tr:0.104 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.339 mid:0.802 hMid:0.311 tr:0.091 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.342 mid:0.773 hMid:0.332 tr:0.131 | morph:1.000 tDelta:0.0399 percRaw:0.160 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.325 mid:0.752 hMid:0.351 tr:0.167 | morph:1.000 tDelta:0.0363 percRaw:0.145 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.264 mid:0.702 hMid:0.331 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.002 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.204 mid:0.621 hMid:0.300 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.160 mid:0.535 hMid:0.277 tr:0.116 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.130 mid:0.470 hMid:0.253 tr:0.100 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.110 mid:0.423 hMid:0.230 tr:0.087 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.510 hMid:0.258 tr:0.122 | morph:1.000 tDelta:0.0354 percRaw:0.142 | fPar:0.001 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.181 mid:0.660 hMid:0.314 tr:0.207 | morph:1.000 tDelta:0.0845 percRaw:0.338 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.246 mid:0.660 hMid:0.356 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.313 mid:0.717 hMid:0.368 tr:0.228 | morph:1.000 tDelta:0.0211 percRaw:0.084 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.383 mid:0.750 hMid:0.389 tr:0.234 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.484 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.448 mid:0.761 hMid:0.395 tr:0.237 | morph:1.000 tDelta:0.0024 percRaw:0.009 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.577 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.454 mid:0.794 hMid:0.406 tr:0.253 | morph:1.000 tDelta:0.0162 percRaw:0.065 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.450 mid:0.812 hMid:0.421 tr:0.257 | morph:1.000 tDelta:0.0045 percRaw:0.018 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.462 mid:0.839 hMid:0.454 tr:0.264 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:118 | Pan:-209 Tilt:25 | sBPM:96 phase:324°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:118 | Pan:-183 Tilt:-56 | sBPM:96 phase:324°
+[LATINO-41] sB:0.429 mid:0.868 hMid:0.482 tr:0.280 | morph:1.000 tDelta:0.0166 percRaw:0.066 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.423 mid:0.884 hMid:0.505 tr:0.302 | morph:1.000 tDelta:0.0214 percRaw:0.086 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.399 mid:0.852 hMid:0.510 tr:0.286 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.344 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.327 mid:0.839 hMid:0.512 tr:0.272 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.273 mid:0.839 hMid:0.514 tr:0.272 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.225 mid:0.882 hMid:0.541 tr:0.302 | morph:1.000 tDelta:0.0298 percRaw:0.119 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.179 mid:0.904 hMid:0.558 tr:0.314 | morph:1.000 tDelta:0.0124 percRaw:0.050 | fPar:0.001 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.149 mid:0.894 hMid:0.552 tr:0.303 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.124 mid:0.882 hMid:0.543 tr:0.286 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.906 hMid:0.571 tr:0.308 | morph:1.000 tDelta:0.0219 percRaw:0.088 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.197 mid:0.889 hMid:0.559 tr:0.333 | morph:1.000 tDelta:0.0249 percRaw:0.100 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.279 mid:0.890 hMid:0.548 tr:0.313 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.355 bPar:0.000 mL:0.826 mR:0.826 | sc:1 scDuck:0.972
+[LATINO-41] sB:0.356 mid:0.900 hMid:0.554 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.388 mid:0.916 hMid:0.541 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.412 mid:0.916 hMid:0.532 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.390 mid:0.847 hMid:0.474 tr:0.229 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.338 mid:0.802 hMid:0.439 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.138 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.275 mid:0.774 hMid:0.446 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.031 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.218 mid:0.833 hMid:0.483 tr:0.242 | morph:1.000 tDelta:0.0654 percRaw:0.261 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.178 mid:0.875 hMid:0.508 tr:0.244 | morph:1.000 tDelta:0.0027 percRaw:0.011 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.144 mid:0.880 hMid:0.518 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.116 mid:0.874 hMid:0.530 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.095 mid:0.874 hMid:0.540 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.081 mid:0.872 hMid:0.537 tr:0.221 | morph:1.000 tDelta:0.0072 percRaw:0.029 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.066 mid:0.793 hMid:0.504 tr:0.200 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.056 mid:0.646 hMid:0.419 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.051 mid:0.584 hMid:0.379 tr:0.170 | morph:1.000 tDelta:0.0141 percRaw:0.057 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.149 mid:0.649 hMid:0.379 tr:0.230 | morph:1.000 tDelta:0.0594 percRaw:0.238 | fPar:0.800 bPar:0.850 mL:0.004 mR:0.002 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.236 mid:0.686 hMid:0.364 tr:0.228 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.315 mid:0.755 hMid:0.357 tr:0.203 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.306 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.397 mid:0.811 hMid:0.356 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.403 mid:0.860 hMid:0.377 tr:0.186 | morph:1.000 tDelta:0.0097 percRaw:0.039 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.448 mid:0.884 hMid:0.384 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.423 mid:0.787 hMid:0.342 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.425 mid:0.749 hMid:0.332 tr:0.179 | morph:1.000 tDelta:0.0296 percRaw:0.118 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
+[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.00 | beat #477 | bass=0.1801 sab=0.054 | 🔬in_peak=0.41926 in_rms=0.15762
+[LATINO-41] sB:0.398 mid:0.780 hMid:0.368 tr:0.240 | morph:1.000 tDelta:0.0614 percRaw:0.246 | fPar:0.464 bPar:0.850 mL:0.528 mR:0.030 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.388 mid:0.841 hMid:0.379 tr:0.202 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.391 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.332 mid:0.875 hMid:0.388 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.180 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.274 mid:0.794 hMid:0.379 tr:0.206 | morph:1.000 tDelta:0.0341 percRaw:0.136 | fPar:0.091 bPar:0.083 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.231 mid:0.794 hMid:0.372 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.009 mL:0.637 mR:0.835 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.202 mid:0.788 hMid:0.428 tr:0.300 | morph:1.000 tDelta:0.0935 percRaw:0.374 | fPar:0.004 bPar:0.850 mL:0.801 mR:0.343 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.167 mid:0.727 hMid:0.445 tr:0.350 | morph:1.000 tDelta:0.0506 percRaw:0.202 | fPar:0.001 bPar:0.391 mL:0.345 mR:0.140 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.137 mid:0.630 hMid:0.410 tr:0.373 | morph:1.000 tDelta:0.0221 percRaw:0.089 | fPar:0.000 bPar:0.180 mL:0.148 mR:0.030 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.113 mid:0.566 hMid:0.381 tr:0.385 | morph:1.000 tDelta:0.0125 percRaw:0.050 | fPar:0.000 bPar:0.083 mL:0.040 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.179 mid:0.587 hMid:0.379 tr:0.383 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.003 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.253 mid:0.679 hMid:0.394 tr:0.344 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.344 mid:0.759 hMid:0.393 tr:0.284 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.735 mR:0.521 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.373 mid:0.818 hMid:0.359 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.359 mid:0.847 hMid:0.333 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.349 mid:0.847 hMid:0.313 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.313 mid:0.878 hMid:0.295 tr:0.155 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.257 mid:0.900 hMid:0.296 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.203 mid:0.905 hMid:0.323 tr:0.190 | morph:1.000 tDelta:0.0578 percRaw:0.231 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.890 hMid:0.359 tr:0.229 | morph:1.000 tDelta:0.0388 percRaw:0.155 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.136 mid:0.870 hMid:0.364 tr:0.212 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.108 mid:0.816 hMid:0.353 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.090 mid:0.760 hMid:0.346 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.084 mid:0.692 hMid:0.345 tr:0.187 | morph:1.000 tDelta:0.0169 percRaw:0.067 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.072 mid:0.623 hMid:0.322 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.071 mid:0.574 hMid:0.291 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:119 | Pan:211 Tilt:67 | sBPM:96 phase:24°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:119 | Pan:55 Tilt:122 | sBPM:96 phase:24°
+[LATINO-41] sB:0.117 mid:0.642 hMid:0.316 tr:0.205 | morph:1.000 tDelta:0.0674 percRaw:0.270 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.151 mid:0.642 hMid:0.335 tr:0.205 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.233 mid:0.741 hMid:0.346 tr:0.240 | morph:1.000 tDelta:0.0354 percRaw:0.142 | fPar:0.000 bPar:0.850 mL:0.599 mR:0.359 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.290 mid:0.837 hMid:0.345 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.537 bPar:0.391 mL:0.813 mR:0.813 | sc:1 scDuck:0.957
+[LATINO-41] sB:0.305 mid:0.839 hMid:0.325 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.283 mid:0.840 hMid:0.316 tr:0.154 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.324 mid:0.851 hMid:0.328 tr:0.163 | morph:1.000 tDelta:0.0082 percRaw:0.033 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.374 mid:0.859 hMid:0.316 tr:0.139 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.405 mid:0.866 hMid:0.331 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.420 mid:0.854 hMid:0.385 tr:0.190 | morph:1.000 tDelta:0.0561 percRaw:0.224 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.426 mid:0.815 hMid:0.414 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.342 mR:0.134 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.431 mid:0.815 hMid:0.436 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.380 mid:0.758 hMid:0.468 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.352 mR:0.336 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.323 mid:0.686 hMid:0.464 tr:0.226 | morph:1.000 tDelta:0.0464 percRaw:0.186 | fPar:0.269 bPar:0.009 mL:0.154 mR:0.140 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.263 mid:0.712 hMid:0.494 tr:0.316 | morph:1.000 tDelta:0.0909 percRaw:0.363 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.031 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.209 mid:0.674 hMid:0.497 tr:0.382 | morph:1.000 tDelta:0.0657 percRaw:0.263 | fPar:0.091 bPar:0.391 mL:0.365 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.166 mid:0.592 hMid:0.451 tr:0.389 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.023 bPar:0.180 mL:0.157 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.138 mid:0.533 hMid:0.398 tr:0.344 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.048 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.195 mid:0.580 hMid:0.397 tr:0.362 | morph:1.000 tDelta:0.0180 percRaw:0.072 | fPar:0.800 bPar:0.009 mL:0.004 mR:0.000 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.239 mid:0.580 hMid:0.395 tr:0.362 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.307 mid:0.718 hMid:0.398 tr:0.342 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.474 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.383 mid:0.784 hMid:0.388 tr:0.281 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.407 mid:0.755 hMid:0.354 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.393 mid:0.689 hMid:0.320 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.349 mid:0.542 hMid:0.271 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.046 mR:0.138 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.288 mid:0.421 hMid:0.222 tr:0.129 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.004 mR:0.031 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.229 mid:0.491 hMid:0.266 tr:0.193 | morph:1.000 tDelta:0.0644 percRaw:0.258 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.002 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.186 mid:0.603 hMid:0.308 tr:0.229 | morph:1.000 tDelta:0.0361 percRaw:0.144 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.159 mid:0.686 hMid:0.309 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.128 mid:0.724 hMid:0.286 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.102 mid:0.687 hMid:0.289 tr:0.179 | morph:1.000 tDelta:0.0007 percRaw:0.003 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.086 mid:0.625 hMid:0.293 tr:0.179 | morph:1.000 tDelta:0.0001 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.069 mid:0.573 hMid:0.289 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.057 mid:0.573 hMid:0.285 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.002 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.055 mid:0.516 hMid:0.278 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.000 | sc:0 scDuck:1.000
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.57 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.00 | beat #480 | bass=0.2702 sab=0.108 | 🔬in_peak=0.45230 in_rms=0.16375
+[LATINO-41] sB:0.111 mid:0.590 hMid:0.344 tr:0.229 | morph:1.000 tDelta:0.0890 percRaw:0.356 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[CHOREO] Pattern transition: ballyhoo -> figure8 (2s LERP)
+[LATINO-41] sB:0.236 mid:0.619 hMid:0.351 tr:0.247 | morph:1.000 tDelta:0.0180 percRaw:0.072 | fPar:0.144 bPar:0.391 mL:0.646 mR:0.000 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.374 mid:0.657 hMid:0.373 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.659 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.461 mid:0.679 hMid:0.386 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.446 mid:0.708 hMid:0.421 tr:0.196 | morph:1.000 tDelta:0.0112 percRaw:0.045 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.474 mid:0.709 hMid:0.432 tr:0.207 | morph:1.000 tDelta:0.0109 percRaw:0.044 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.502 mid:0.743 hMid:0.431 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.479 mid:0.738 hMid:0.443 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.453 mid:0.768 hMid:0.442 tr:0.207 | morph:1.000 tDelta:0.0278 percRaw:0.111 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[VirtualWire] 📡 SAB feed — cb#37500 | frames=441 | peak=0.4942 | ch=2
+[LATINO-41] sB:0.456 mid:0.824 hMid:0.444 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.433 mid:0.895 hMid:0.462 tr:0.150 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
+[LATINO-41] sB:0.378 mid:0.915 hMid:0.480 tr:0.169 | morph:1.000 tDelta:0.0192 percRaw:0.077 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
+[LATINO-41] sB:0.311 mid:0.931 hMid:0.517 tr:0.225 | morph:1.000 tDelta:0.0557 percRaw:0.223 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
+[LATINO-41] sB:0.248 mid:0.916 hMid:0.511 tr:0.235 | morph:1.000 tDelta:0.0097 percRaw:0.039 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.199 mid:0.909 hMid:0.460 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.163 mid:0.913 hMid:0.420 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.157 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.136 mid:0.913 hMid:0.391 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.048 mR:0.850 | sc:0 scDuck:1.000
+[LATINO-41] sB:0.213 mid:0.855 hMid:0.381 tr:0.257 | morph:1.000 tDelta:0.0476 percRaw:0.190 | fPar:0.800 bPar:0.001 mL:0.004 mR:0.326 | sc:1 scDuck:0.936
+[LATINO-41] sB:0.293 mid:0.797 hMid:0.357 tr:0.243 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.8
 [

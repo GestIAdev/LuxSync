@@ -19,7 +19,9 @@
 // 🔇 WAVE 3290: SENSES WORKER — Blackout del hilo de audio.
 // WAVE 3411 LIFT: Logs de [IntervalBPMTracker] y [GodEarFFT] DESBLOQUEADOS
 // para auditoría de rawBassEnergy y rollingAverage post-fix.
-// Re-comentar esta sección cuando la recuperación del rango dinámico esté confirmada.
+// WAVE 3418 LIFT: Logs de Peak SAB vs LegacyBridge DESBLOQUEADOS
+// para medir diferencia de voltaje digital entre fuentes.
+// Re-comentar esta sección cuando la auditoría de señal esté confirmada.
 //
 // ACTIVO (bloqueado): console.info, console.debug
 // INACTIVO (libre):   console.log, console.warn, console.error
@@ -51,7 +53,7 @@ import { SimpleRhythmDetector, SimpleHarmonyDetector, SimpleSectionTracker, } fr
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 //  WAVE 670: AGC - Normalización de buffer ANTES del FFT
 // CRITICAL: Sin esto, los Z-Scores del WAVE 660 son ficción matemática
-import { getAGC } from './utils/AutomaticGainControl';
+import { getAGC, resetAGC } from './utils/AutomaticGainControl';
 // 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
 // WAVE 254: Migrado desde selene-lux-core a engine/consciousness
 // WAVE 2026: Migrado a engine/musical/classification
@@ -78,6 +80,23 @@ const sabReadBuffer = new Float32Array(OMNI_CONSTANTS.FFT_SIZE);
 // SAB polling interval handle -- started on INIT, stopped on SHUTDOWN
 let sabPollInterval = null;
 // WAVE 3401: SAB poll function -- reads available samples and processes them
+// ═══════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 3418: RAW PEAK TELEMETRY — Contadores por path de entrada
+// Permite comparar el voltaje digital entre SAB (VW/WASAPI) e IPC (LegacyBridge)
+// ═══════════════════════════════════════════════════════════════════════
+let _sabPeakFrameCount = 0;
+let _legacyPeakFrameCount = 0;
+const PEAK_LOG_INTERVAL = 94; // ~2 segundos a 47fps
+/** Calcula el pico absoluto máximo de un buffer Float32 */
+function _calcPeakAbs(buf, len) {
+    let peak = 0;
+    for (let i = 0; i < len; i++) {
+        const abs = Math.abs(buf[i]);
+        if (abs > peak)
+            peak = abs;
+    }
+    return peak;
+}
 function pollSharedRingBuffer() {
     if (!sabReader || !state.isRunning)
         return;
@@ -90,6 +109,16 @@ function pollSharedRingBuffer() {
     if (samplesRead > 0) {
         // Feed the samples through the same processAudioBuffer pipeline
         const slice = sabReadBuffer.subarray(0, samplesRead);
+        // 🔬 WAVE 3418: Peak crudo del buffer SAB antes del ring/FFT
+        _sabPeakFrameCount++;
+        if (_sabPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
+            const peakAbs = _calcPeakAbs(slice, samplesRead);
+            const rms = Math.sqrt(slice.reduce((acc, s) => acc + s * s, 0) / samplesRead);
+            console.log(`[🔬 PEAK-SAB] frame=${_sabPeakFrameCount} ` +
+                `samples=${samplesRead} ` +
+                `peak=${peakAbs.toFixed(5)} ` +
+                `rms=${rms.toFixed(5)}`);
+        }
         const analysis = processAudioBuffer(slice);
         sendMessage(MessageType.AUDIO_ANALYSIS, 'alpha', analysis, analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL);
     }
@@ -216,6 +245,47 @@ const shadowLog = [];
 const MAX_SHADOW_FRAMES = 1000; // ~46.4 seconds at 2048/44100Hz per frame
 let shadowDumped = false;
 // ============================================
+// WAVE 3431: TRUE WEBAUDIO POLYFILL (AnalyserNode-compatible scaling)
+// ============================================
+// Keep Radix-2/GodEar math untouched. We only map extracted linear magnitudes
+// to the same [0..1] range shape used by WebAudio's analyser byte scaling.
+const W3431_MIN_DB = 10;
+const W3431_MAX_DB = 70;
+const W3431_OUTPUT_SCALE = 2.5;
+// WAVE 3433-A: forensic math telemetry throttle (max 1 log/sec)
+let lastMathAuditLogMs = 0;
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+function toWebAudioScaledLevel(linearMagnitude, bandLabel) {
+    const safeMag = Math.max(0, linearMagnitude);
+    const db = 20 * Math.log10(safeMag + 1);
+    const scaledPreClamp = (db - W3431_MIN_DB) / (W3431_MAX_DB - W3431_MIN_DB);
+    const scaledClamped = clamp(scaledPreClamp, 0, 1);
+    const scaledFinal = scaledClamped * W3431_OUTPUT_SCALE;
+    if ((bandLabel === 'mid' || bandLabel === 'highMid')) {
+        const now = Date.now();
+        if (now - lastMathAuditLogMs >= 1000) {
+            lastMathAuditLogMs = now;
+            console.log(`[MATH AUDIT] band=${bandLabel} | MagCruda: ${safeMag.toFixed(6)} | ` +
+                `dbCalc: ${db.toFixed(3)} | scaledPreClamp: ${scaledPreClamp.toFixed(6)} | ` +
+                `scaledFinal: ${scaledFinal.toFixed(6)}`);
+        }
+    }
+    return scaledFinal;
+}
+// WAVE 3432: zombie frame flush window after reset/hot-swap.
+const W3432_ZOMBIE_FLUSH_MS = 250;
+let dropLegacyIpcUntilTimestamp = 0;
+function flushWorkerAudioPipeline() {
+    state.ringBuffer.fill(0);
+    state.snapshotBuffer.fill(0);
+    state.ringBufferWriteIndex = 0;
+    state.ringBufferFilled = false;
+    state.totalSamplesProcessed = 0;
+    sabReadBuffer.fill(0);
+}
+// ============================================
 // SPECTRUM ANALYZER - 🩻 WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
 /**
@@ -259,39 +329,47 @@ class SpectrumAnalyzer {
         }
         // 📦 Legacy Adapter - Convertir a formato viejo para Vibes existentes
         const legacy = toLegacyFormat(godEarResult);
-        // Calcular flujo espectral (cambio de energía total)
-        const currentEnergy = legacy.bass + legacy.mid + legacy.treble;
+        const psycho = {
+            subBass: toWebAudioScaledLevel(legacy.subBass, 'subBass'),
+            bass: toWebAudioScaledLevel(legacy.bass, 'bass'),
+            lowMid: toWebAudioScaledLevel(legacy.lowMid, 'lowMid'),
+            mid: toWebAudioScaledLevel(legacy.mid, 'mid'),
+            highMid: toWebAudioScaledLevel(legacy.highMid, 'highMid'),
+            treble: toWebAudioScaledLevel(legacy.treble, 'treble'),
+        };
+        // Calcular flujo espectral (cambio de energía total) en dominio perceptual
+        const currentEnergy = psycho.bass + psycho.mid + psycho.treble;
         const spectralFlux = Math.min(1, Math.abs(currentEnergy - this.prevEnergy) * 2);
         this.prevEnergy = currentEnergy;
         return {
             // Bandas principales (normalizadas 0-1) - LEGACY FORMAT
-            bass: legacy.bass,
-            mid: legacy.mid,
-            treble: legacy.treble,
+            bass: psycho.bass,
+            mid: psycho.mid,
+            treble: psycho.treble,
             // 🎸 WAVE 1011.2: spectralCentroid EN HZ (no normalizado!)
             // RockStereoPhysics2 necesita Hz para detectar "bright" (>2000) vs "dark" (<1200)
             spectralCentroid: godEarResult.spectral.centroid, // Hz directo del GOD EAR
             spectralFlux,
             // 🧮 Bandas extendidas (LEGACY FORMAT con GOD EAR data)
-            subBass: legacy.subBass,
-            lowMid: legacy.lowMid,
-            highMid: legacy.highMid,
+            subBass: psycho.subBass,
+            lowMid: psycho.lowMid,
+            highMid: psycho.highMid,
             dominantFrequency: godEarResult.dominantFrequency,
             // 🥁 Transient detection - GOD EAR slope-based (más preciso)
             kickDetected: godEarResult.transients.kick,
             snareDetected: godEarResult.transients.snare,
             hihatDetected: godEarResult.transients.hihat,
             // 🤖 Texture metrics - GOD EAR native
-            harshness: godEarResult.bands.highMid, // Proxy para harshness
+            harshness: psycho.highMid, // Proxy perceptual para harshness
             spectralFlatness: godEarResult.spectral.flatness,
             // 💥 WAVE 2347: EL TUBO ARREGLADO — crestFactor entra al flujo de datos
             crestFactor: godEarResult.spectral.crestFactor,
             // 🎭 WAVE 1018: Clarity para PROG ROCK detection
             clarity: godEarResult.spectral.clarity,
-            // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+            // 🔥 WAVE 1162 / WAVE 3425: THE BYPASS - PRE-AGC BASS FOR PACEMAKER
             // El AGC comprime la dinámica y mata los transients.
-            // rawBassEnergy es la suma de subBass + bass ANTES del AGC.
-            // Esto permite al BeatDetector ver los PICOS REALES de los kicks.
+            // bandsRaw viene del path post-FFT/pre-AGC (integral + legacy gain),
+            // así el tracker recibe señal amplificada sin contaminación de AGC.
             rawBassEnergy: godEarResult.bandsRaw.subBass + godEarResult.bandsRaw.bass,
             // ═══════════════════════════════════════════════════════════════════
             // 🔪 WAVE 2118: THE FREQUENCY SCALPEL — Bandas raw individuales
@@ -316,7 +394,10 @@ class SpectrumAnalyzer {
         return this.lastGodEarResult;
     }
     reset() {
+        this.godEar.reset();
         this.prevEnergy = 0;
+        this.lastSpectralFlux = 0;
+        this.frameCount = 0;
         this.lastGodEarResult = null;
     }
 }
@@ -334,6 +415,19 @@ const moodSynthesizer = new MoodSynthesizer();
 function processAudioBuffer(incomingBuffer) {
     const startTime = performance.now();
     state.frameCount++;
+    // 🔬 WAVE 3418: Capturar peak/RMS del buffer CRUDO antes de cualquier procesamiento
+    // Estos valores se devuelven en AudioAnalysis para ser visibles en TitanOrchestrator logs
+    let _w3418_inputPeakAbs = 0;
+    let _w3418_inputRMSSum = 0;
+    for (let i = 0; i < incomingBuffer.length; i++) {
+        const abs = Math.abs(incomingBuffer[i]);
+        if (abs > _w3418_inputPeakAbs)
+            _w3418_inputPeakAbs = abs;
+        _w3418_inputRMSSum += incomingBuffer[i] * incomingBuffer[i];
+    }
+    const _w3418_inputRMS = incomingBuffer.length > 0
+        ? Math.sqrt(_w3418_inputRMSSum / incomingBuffer.length)
+        : 0;
     // ═══════════════════════════════════════════════════════════════════════════
     // 🏎️ WAVE 1013: NITRO BOOST - RING BUFFER / OVERLAP STRATEGY
     // ═══════════════════════════════════════════════════════════════════════════
@@ -400,7 +494,10 @@ function processAudioBuffer(incomingBuffer) {
             zeroCrossingRate: 0,
             kickDetected: false,
             snareDetected: false,
-            hihatDetected: false
+            hihatDetected: false,
+            // 🔬 WAVE 3418: Propagar telemetría raw incluso en early-exit (pre-ring)
+            inputPeakAbs: _w3418_inputPeakAbs,
+            inputRMS: _w3418_inputRMS,
         };
     }
     // 3. Crear snapshot lineal del ring buffer para FFT (4096 samples)
@@ -888,6 +985,9 @@ function processAudioBuffer(incomingBuffer) {
         // 12-bin pitch class vector (C through B, normalized 0-1).
         // Consumed by HarmonyDetector in GAMMA — replaces spectrumToChroma() heuristic.
         chroma: spectrum.chroma,
+        // 🔬 WAVE 3418: Raw input telemetry — visible en TitanOrchestrator logs (proceso principal)
+        inputPeakAbs: _w3418_inputPeakAbs,
+        inputRMS: _w3418_inputRMS,
         // === WAVE 8 RICH DATA FOR GAMMA ===
         wave8: {
             rhythm: rhythmOutput,
@@ -1017,6 +1117,7 @@ function handleMessage(message) {
                 sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
                 break;
             case MessageType.AUDIO_BUFFER:
+                console.log(`[ZOMBIE RADAR] Paquete IPC recibido. SAB Poll Activo?: ${sabPollInterval !== null}`);
                 if (!state.isRunning) {
                     // 🔍 WAVE 263: Log si no está corriendo
                     if (state.frameCount % 300 === 0) {
@@ -1024,10 +1125,33 @@ function handleMessage(message) {
                     }
                     break;
                 }
+                // WAVE 3424: SAB MODE GATE — Defensa en profundidad.
+                // Si el poll del SAB está activo, este Worker ya ingesta audio vía SharedRingBuffer
+                // (fuente nativa: VirtualWire, USB-DirectLink, etc.).
+                // Cualquier AUDIO_BUFFER IPC que llegue aquí es un residual del path IPC
+                // que no fue filtrado upstream. Descartarlo evita el doble procesado.
+                if (sabPollInterval !== null) {
+                    break;
+                }
+                if (message.timestamp <= dropLegacyIpcUntilTimestamp) {
+                    break;
+                }
                 const buffer = message.payload;
                 // 🔍 WAVE 263: Log cada ~5 segundos
                 if (state.frameCount % 300 === 0) {
                     console.log(`[BETA 📡] AUDIO_BUFFER #${state.frameCount} | size=${buffer?.length || 0}`);
+                }
+                // 🔬 WAVE 3418: Peak crudo del buffer IPC (LegacyBridge) antes del ring/FFT
+                _legacyPeakFrameCount++;
+                if (_legacyPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
+                    const legacyPeak = _calcPeakAbs(buffer, buffer.length);
+                    const legacyRms = buffer.length > 0
+                        ? Math.sqrt(buffer.reduce((acc, s) => acc + s * s, 0) / buffer.length)
+                        : 0;
+                    console.log(`[🔬 PEAK-IPC] frame=${_legacyPeakFrameCount} ` +
+                        `samples=${buffer.length} ` +
+                        `peak=${legacyPeak.toFixed(5)} ` +
+                        `rms=${legacyRms.toFixed(5)}`);
                 }
                 const analysis = processAudioBuffer(buffer);
                 // ══════════════════════════════════════════════════════════════
@@ -1064,11 +1188,20 @@ function handleMessage(message) {
             // A vibe change = near-certain song change. Wipe BPM tracker memory
             // so the engine listens to the new track with a clean slate.
             case MessageType.RESET_PACEMAKER:
+                spectrumAnalyzer.reset();
+                resetAGC();
                 bpmTracker.reset();
+                flushWorkerAudioPipeline();
+                dropLegacyIpcUntilTimestamp = Date.now() + W3432_ZOMBIE_FLUSH_MS;
                 prevSubEnergy = 0;
                 prevBassOnlyEnergy = 0;
                 prevMidEnergy = 0;
-                console.log('[BETA] 🧨 WAVE 2168: IntervalBPMTracker HARD RESET — Amnesia Protocol executed');
+                // WAVE 3414: También purgar adaptive floor buffer — estaba calibrado para
+                // la fuente previa (MIC vs VirtualWire tienen niveles distintos).
+                // Sin este reset el floor del MIC mata los kicks de VirtualWire y viceversa.
+                adaptiveFloorBuffer.length = 0;
+                adaptiveFloor = 0.015; // Bootstrap value
+                console.log('[BETA] 🧨 WAVE 3430/3414: Amnesia Protocol — AGC + BPM tracker + adaptive floor reseteados');
                 break;
             default:
                 console.warn(`[BETA] Unknown message type: ${message.type}`);

@@ -145,6 +145,13 @@ export class AudioMatrix {
         else {
             this.ringWriter.write(buffer);
         }
+        // WAVE 3413: SAB fill-level diagnóstico — log cada 2000 writes (~20s hot-path)
+        // Confirma que el Ring Buffer recibe datos y que el lector (Worker) los consume.
+        // fill=0.00 persistente = Worker lee más rápido que writer (sano).
+        // fill>0.80 = Worker bloqueado o no consume (leak).
+        if (this.totalSamplesWritten % 512000 < buffer.length) {
+            console.log(`[AudioMatrix] 📊 SAB fill=${this.ringWriter.fillLevel.toFixed(3)} | src=${source} | forced=${this.forcedSource ?? 'none'} | active=${this.activeSource ?? 'none'} | total=${this.totalSamplesWritten}`);
+        }
     }
     // ============================================
     // SOURCE EVALUATION (PRIORITY CHAIN)

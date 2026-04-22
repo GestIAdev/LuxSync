@@ -151,8 +151,8 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     }
 
     writeFileSync(resolvedPath, lines.join('\n'), 'utf-8')
-    // 🔇 WAVE 2465: TELEMETRÍA COMENTADA — logger limpio en producción
-    // console.error(`[LATINO-41 TELEMETRY] ${this._buffer.length} frames exportados → ${resolvedPath}`)
+    // Calibración activa: emitir por console.error para bypass del Gate A.
+    console.error(`[LATINO-41 TELEMETRY] ${this._buffer.length} frames exportados → ${resolvedPath}`)
     return this._buffer.length
   }
 
@@ -221,23 +221,22 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       // [LATINO-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
       // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
       // Desactivar con setTelemetryEnabled(false) antes de producción estable.
-      // 🔇 WAVE 2465: TELEMETRÍA COMENTADA — logger limpio en producción
-      // console.error(
-      //   `[LATINO-41]` +
-      //   ` sB:${bands.subBass.toFixed(3)}` +
-      //   ` mid:${bands.mid.toFixed(3)}` +
-      //   ` hMid:${bands.highMid.toFixed(3)}` +
-      //   ` tr:${bands.treble.toFixed(3)}` +
-      //   ` | morph:${morphFactor.toFixed(3)}` +
-      //   ` tDelta:${trebleDelta.toFixed(4)}` +
-      //   ` percRaw:${percRaw.toFixed(3)}` +
-      //   ` | fPar:${frontPar.toFixed(3)}` +
-      //   ` bPar:${backPar.toFixed(3)}` +
-      //   ` mL:${mL.toFixed(3)}` +
-      //   ` mR:${mR.toFixed(3)}` +
-      //   ` | sc:${sidechainFired ? 1 : 0}` +
-      //   ` scDuck:${duckingApplied.toFixed(3)}`
-      // )
+      console.error(
+        `[LATINO-41]` +
+        ` sB:${bands.subBass.toFixed(3)}` +
+        ` mid:${bands.mid.toFixed(3)}` +
+        ` hMid:${bands.highMid.toFixed(3)}` +
+        ` tr:${bands.treble.toFixed(3)}` +
+        ` | morph:${morphFactor.toFixed(3)}` +
+        ` tDelta:${trebleDelta.toFixed(4)}` +
+        ` percRaw:${percRaw.toFixed(3)}` +
+        ` | fPar:${frontPar.toFixed(3)}` +
+        ` bPar:${backPar.toFixed(3)}` +
+        ` mL:${mL.toFixed(3)}` +
+        ` mR:${mR.toFixed(3)}` +
+        ` | sc:${sidechainFired ? 1 : 0}` +
+        ` scDuck:${duckingApplied.toFixed(3)}`
+      )
 
       this._frameCount++
     }

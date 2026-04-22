@@ -153,6 +153,15 @@ export class TitanOrchestrator {
             lowMid: 0,
             highMid: 0,
             crestFactor: 0, // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
+            // WAVE 3422: Core bands para el path Omni (VirtualWire/USB).
+            // En el path frontend (WebAudio IPC) estos campos no se usan — el frontend
+            // envía bass/mid/high a 60fps y ya trae su propio suavizado.
+            // En el path Omni el Worker es única autoridad pero a ~10fps con gaps entre
+            // frames. Sin EMA, bass oscila entre 0 y el valor real en cada frame vacío.
+            bass: 0,
+            mid: 0,
+            high: 0,
+            energy: 0,
         };
         // ═══════════════════════════════════════════════════════════════════════════
         // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
@@ -253,40 +262,118 @@ export class TitanOrchestrator {
             // ═══════════════════════════════════════════════════════════════════════════
             // ⚡ WAVE 3060b PHOENIX: RESTAURADO — Frontend = core bands, Worker = extended FFT only
             this.brain.on('audio-levels', (levels) => {
-                // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
-                // NO sobrescribir bass/mid/high/energy — Frontend tiene prioridad temporal (60fps)
-                // SÍ actualizar métricas FFT extendidas — Worker tiene precisión espectral
-                this.lastAudioData = {
-                    ...this.lastAudioData,
-                    // Core bands — IGNORADOS (Frontend es más rápido a 60fps)
-                    // bass: levels.bass,     // ❌ Frontend tiene prioridad
-                    // mid: levels.mid,       // ❌ Frontend tiene prioridad  
-                    // high: levels.treble,   // ❌ Frontend tiene prioridad
-                    // energy: levels.energy, // ❌ Frontend tiene prioridad
-                    // Extended FFT metrics — WORKER AUTHORITATIVE (precisión espectral)
-                    subBass: levels.subBass ?? this.lastAudioData.subBass,
-                    lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
-                    highMid: levels.highMid ?? this.lastAudioData.highMid,
-                    harshness: levels.harshness ?? this.lastAudioData.harshness,
-                    spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
-                    spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
-                    crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
-                    // Transient detection — WORKER AUTHORITATIVE
-                    kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
-                    snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
-                    hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
-                    // Raw bass energy — WORKER ONLY
-                    rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
-                    // BPM — WORKER AUTHORITATIVE (GodEarBPMTracker)
-                    workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
-                    workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
-                    workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
-                    workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
-                    workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
-                    workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
-                        ? levels.kickCount
-                        : this.lastAudioData.workerKickCount,
-                };
+                // WAVE 3416: Detect if active source is Omni (VirtualWire / USB / OSC).
+                // These sources bypass the WebAudio IPC path entirely — processAudioFrame()
+                // is never called, so bass/mid/high/energy would stay frozen at 0 forever.
+                // When an Omni source is active, the Worker IS the only audio pipeline,
+                // so we promote its bands to core authority and update lastAudioTimestamp
+                // so hasRealAudio can flip true and the lighting engine reacts.
+                const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
+                const activeSource = matrixStatus?.activeSource ?? null;
+                const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
+                const isOmniActive = activeSource ? OMNI_SOURCES.has(activeSource) : false;
+                if (isOmniActive) {
+                    // Omni path: Worker = SOLE AUTHORITY for all bands + timestamp
+                    //
+                    // WAVE 3422 — EMA anti-parpadeo para bandas principales:
+                    // El Worker emite frames a ~10fps con VW, pero el SAB tiene gaps entre
+                    // entregas. Frames "vacíos" (bass≈0) se intercalan con frames reales.
+                    // Sin suavizado, bass oscila 0 ↔ 0.18 en cada ciclo → parpadeo visible.
+                    // Alpha 0.35: reacciona en ~3 frames (~210ms) — suficientemente rápido
+                    // para que los kicks se sientan pero elimina el flip a cero entre frames.
+                    const OMNI_EMA = 0.35;
+                    this.smoothedMetrics.bass = (1 - OMNI_EMA) * this.smoothedMetrics.bass + OMNI_EMA * levels.bass;
+                    this.smoothedMetrics.mid = (1 - OMNI_EMA) * this.smoothedMetrics.mid + OMNI_EMA * levels.mid;
+                    this.smoothedMetrics.high = (1 - OMNI_EMA) * this.smoothedMetrics.high + OMNI_EMA * levels.treble;
+                    this.smoothedMetrics.energy = (1 - OMNI_EMA) * this.smoothedMetrics.energy + OMNI_EMA * levels.energy;
+                    this.lastAudioData = {
+                        ...this.lastAudioData,
+                        bass: this.smoothedMetrics.bass,
+                        mid: this.smoothedMetrics.mid,
+                        high: this.smoothedMetrics.high,
+                        energy: this.smoothedMetrics.energy,
+                        subBass: levels.subBass ?? this.lastAudioData.subBass,
+                        lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
+                        highMid: levels.highMid ?? this.lastAudioData.highMid,
+                        harshness: levels.harshness ?? this.lastAudioData.harshness,
+                        spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
+                        spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+                        crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
+                        kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
+                        snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
+                        hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+                        rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+                        workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+                        workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+                        workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+                        workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+                        workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+                        workerKickCount: (levels.kickCount != null && levels.kickCount > 0) ? levels.kickCount : this.lastAudioData.workerKickCount,
+                        // 🔬 WAVE 3418: Raw input telemetry
+                        inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
+                        inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+                    };
+                    // Update audio presence detection
+                    //
+                    // WAVE 3423: En el path Omni, hasRealAudio NO debe flipear por la energía
+                    // del frame individual. VW entrega frames con energy≈0 durante silencios
+                    // (intro, pausa entre drops) y el EMA ya se encarga de la caída gradual.
+                    // Si usamos levels.energy > 0.01 como gate, cada frame de silencio flipea
+                    // hasRealAudio=false → processFrame fuerza bass=0 → parpadeo epiléptico.
+                    //
+                    // Regla: en Omni, el primer frame activa hasRealAudio=true.
+                    //        Solo el STALENESS TIMEOUT (2s) puede desactivarlo.
+                    //        Esto es correcto: la fuente Omni está conectada o no lo está.
+                    const wasActive = this.hasRealAudio;
+                    this.hasRealAudio = true;
+                    this.lastAudioTimestamp = Date.now();
+                    if (!wasActive && !this.hasLoggedFirstAudio) {
+                        this.hasLoggedFirstAudio = true;
+                        this.log('System', `🎧 WAVE 3416: Audio LIVE via ${activeSource} — Selene is now listening!`);
+                    }
+                    else if (!wasActive) {
+                        this.log('System', `🎧 Audio restored via ${activeSource}`);
+                    }
+                }
+                else {
+                    // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY (frontend/WebAudio path)
+                    // NO sobrescribir bass/mid/high/energy — Frontend tiene prioridad temporal (60fps)
+                    // SÍ actualizar métricas FFT extendidas — Worker tiene precisión espectral
+                    this.lastAudioData = {
+                        ...this.lastAudioData,
+                        // Core bands — IGNORADOS (Frontend es más rápido a 60fps)
+                        // bass: levels.bass,     // ❌ Frontend tiene prioridad
+                        // mid: levels.mid,       // ❌ Frontend tiene prioridad  
+                        // high: levels.treble,   // ❌ Frontend tiene prioridad
+                        // energy: levels.energy, // ❌ Frontend tiene prioridad
+                        // Extended FFT metrics — WORKER AUTHORITATIVE (precisión espectral)
+                        subBass: levels.subBass ?? this.lastAudioData.subBass,
+                        lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
+                        highMid: levels.highMid ?? this.lastAudioData.highMid,
+                        harshness: levels.harshness ?? this.lastAudioData.harshness,
+                        spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
+                        spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+                        crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
+                        // Transient detection — WORKER AUTHORITATIVE
+                        kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
+                        snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
+                        hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+                        // Raw bass energy — WORKER ONLY
+                        rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+                        // BPM — WORKER AUTHORITATIVE (GodEarBPMTracker)
+                        workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
+                        workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+                        workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
+                        workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
+                        workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
+                        workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
+                            ? levels.kickCount
+                            : this.lastAudioData.workerKickCount,
+                        // 🔬 WAVE 3418: Raw input telemetry
+                        inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
+                        inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+                    };
+                } // end isOmniActive else
             });
             await trinity.start();
             // WAVE 3401: Initialize OSC Nexus Provider
@@ -508,8 +595,18 @@ export class TitanOrchestrator {
             // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
             // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
             // ⚡ WAVE 3050: UNIFIED FRAME TIMESTAMP — one syscall per frame, not 9
+            //
+            // WAVE 3423: Omni sources (VW/USB) usan threshold extendido de 2000ms.
+            // VW entrega ~10fps pero el SAB puede tener gaps de 200-400ms durante
+            // silencios largos (intro, pausa entre drops). Con 500ms el staleness
+            // se dispara en cualquier intro silenciosa y mata las luces en plena música.
             const now = Date.now();
-            if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
+            const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus();
+            const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null;
+            const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
+            const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false;
+            const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.AUDIO_STALENESS_THRESHOLD_MS;
+            if (this.hasRealAudio && (now - this.lastAudioTimestamp) > effectiveStalenessThreshold) {
                 if (shouldLog) {
                     console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`);
                 }
@@ -619,7 +716,12 @@ export class TitanOrchestrator {
                     const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
                         ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
                         : '';
-                    console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0}`);
+                    const rawEnergy = (this.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
+                    const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
+                    // 🔬 WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
+                    const inputPeak = (this.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
+                    const inputRms = (this.lastAudioData.inputRMS ?? 0).toFixed(5);
+                    console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | 🔬in_peak=${inputPeak} in_rms=${inputRms}`);
                 }
             }
             else if (this.beatDetector) {
@@ -1772,6 +1874,22 @@ export class TitanOrchestrator {
         // El buffer llega correctamente — log eliminado.
         // 🗡️ WAVE 265: Update timestamp - el buffer llegando ES la señal de que el frontend vive
         this.lastAudioTimestamp = Date.now();
+        // WAVE 3424: TWO MASTERS GUARD — Early exit si la fuente activa del AudioMatrix
+        // NO es legacy-bridge. Cuando VW (u otra fuente SAB) está activa, AudioMatrix.ingestAudio()
+        // rechaza el dato IPC con `source !== effectiveSource`. Pero el trabajo ya habría
+        // ocurrido: applyMicHeadroom (O(n) loop), write al SAB, etc.
+        // Cortamos aquí: si audioMatrix existe y la fuente activa es SAB, no hay nada que hacer.
+        if (this.trinity) {
+            const _matrix = this.trinity.getAudioMatrix();
+            if (_matrix) {
+                const _matrixStatus = _matrix.getStatus();
+                if (_matrixStatus.activeSource && _matrixStatus.activeSource !== 'legacy-bridge') {
+                    // Fuente SAB activa — el IPC data es redundante, AudioMatrix lo rechazará de todos modos.
+                    // Marcamos timestamp pero descartamos el buffer para evitar trabajo innecesario.
+                    return;
+                }
+            }
+        }
         // 🩸 Send raw buffer to Trinity -> BETA Worker for FFT
         if (this.trinity) {
             this.trinity.feedAudioBuffer(buffer);

@@ -1408,12 +1408,22 @@ function setupAudioMatrixHandlers(_deps) {
             resamplerActive,
         };
     });
-    ipcMain.handle('audio-matrix:force-source', (_event, sourceType) => {
+    ipcMain.handle('audio-matrix:force-source', async (_event, sourceType) => {
         const trinity = getTrinity();
         const matrix = trinity?.getAudioMatrix();
         if (!matrix)
             return { success: false, error: 'AudioMatrix not initialized' };
-        matrix.forceSource(sourceType);
+        await matrix.forceSource(sourceType);
+        _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
+            sourceType,
+            timestamp: Date.now(),
+        });
+        // WAVE 3414: Al cambiar de fuente de audio el Worker mantiene estado del
+        // tracker anterior (peakEnergyEstimate, bpmHistory, adaptive floor) calibrado
+        // para la fuente previa. Eso mata los kicks de la nueva fuente via PEAK_DISCRIMINATOR.
+        // Mandamos RESET_PACEMAKER para que el Worker arranque con pizarra en blanco.
+        trinity.resetPacemaker();
+        console.log(`[IPCHandlers] 🔄 WAVE 3414/3415: source → "${sourceType}" — Pacemaker reset (Amnesia Protocol)`);
         return { success: true };
     });
     ipcMain.handle('audio-matrix:release-force', () => {
@@ -1422,6 +1432,10 @@ function setupAudioMatrixHandlers(_deps) {
         if (!matrix)
             return { success: false, error: 'AudioMatrix not initialized' };
         matrix.releaseForce();
+        _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
+            sourceType: matrix.getStatus().activeSource,
+            timestamp: Date.now(),
+        });
         return { success: true };
     });
 }

@@ -116,6 +116,28 @@ const AGC_CONFIG = {
     treble: { attackMs: 40, releaseMs: 150, targetRMS: 0.4, maxGain: 3.0 },
     ultraAir: { attackMs: 30, releaseMs: 180, targetRMS: 0.3, maxGain: 4.0 },
 };
+/**
+ * WAVE 3424 - Post-FFT amplitude recovery (visual/control path only).
+ *
+ * For each band we first compute an RMS over the weighted bins:
+ *   rms_avg = sqrt( Σ(|X[k]|^2 * w[k]) / Σ(w[k]) )
+ *
+ * That average is mathematically clean but visually tiny, because energy of a
+ * strong transient is spread across many bins (windowing + finite FFT resolution).
+ * To recover proportional band amplitude for DMX modulation we convert to an
+ * integrated RMS estimate:
+ *   rms_integrated ≈ rms_avg * sqrt(Σ(w[k]))
+ *
+ * Then we apply a deterministic legacy-equivalence gain so the post-FFT band
+ * magnitude is comparable to the historical WebAudio visual scale.
+ *
+ * IMPORTANT:
+ * - This scaling is applied to the pre-AGC band path used by UI/DMX and rBPM feed.
+ * - AGC is applied after this stage on `bands` only.
+ */
+const POST_FFT_LEGACY_EQ_GAIN = 2.25;
+const POST_FFT_BAND_OUTPUT_CLAMP = 1.0;
+const RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES = 60;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 3: WINDOWING - BLACKMAN-HARRIS 4-TERM
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -352,6 +374,7 @@ function computeMagnitudeSpectrum(real, imag, output, numBins) {
  * Pre-computed LR4 filter masks for each band
  */
 let LR4_FILTER_MASKS = null;
+let LR4_FILTER_WEIGHT_SUMS = null;
 /**
  * Calculate Linkwitz-Riley 4th order response at a specific frequency.
  *
@@ -413,16 +436,38 @@ function generateBandMask(fftSize, sampleRate, lowCrossover, highCrossover) {
  * Initialize or get pre-computed LR4 filter masks for all bands.
  */
 function getLR4FilterMasks(fftSize, sampleRate) {
-    if (LR4_FILTER_MASKS) {
+    if (LR4_FILTER_MASKS && LR4_FILTER_WEIGHT_SUMS) {
         return LR4_FILTER_MASKS;
     }
     // WAVE 2098: Boot silence — LR4 filter generation logs removed
     LR4_FILTER_MASKS = new Map();
+    LR4_FILTER_WEIGHT_SUMS = new Map();
     for (const [key, config] of Object.entries(GOD_EAR_BAND_CONFIG)) {
         const mask = generateBandMask(fftSize, sampleRate, config.freqLow, config.freqHigh);
         LR4_FILTER_MASKS.set(config.id, mask);
+        let weightSum = 0;
+        for (let i = 0; i < mask.length; i++) {
+            if (mask[i] > 0.001) {
+                weightSum += mask[i];
+            }
+        }
+        LR4_FILTER_WEIGHT_SUMS.set(config.id, weightSum);
     }
     return LR4_FILTER_MASKS;
+}
+function getLR4FilterWeightSums(fftSize, sampleRate) {
+    if (!LR4_FILTER_MASKS || !LR4_FILTER_WEIGHT_SUMS) {
+        getLR4FilterMasks(fftSize, sampleRate);
+    }
+    return LR4_FILTER_WEIGHT_SUMS;
+}
+function scaleBandEnergyForVisual(rawRms, weightSum) {
+    if (rawRms <= 0)
+        return 0;
+    // rms_avg -> rms_integrated conversion to compensate spectral spread across bins.
+    const integratedRms = rawRms * Math.sqrt(Math.max(1, weightSum));
+    const scaled = integratedRms * POST_FFT_LEGACY_EQ_GAIN;
+    return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, scaled);
 }
 /**
  * Extract band energy using LR4 filtered magnitudes.
@@ -756,8 +801,8 @@ class AGCTrustZone {
         // Exponential smoothing
         const alpha = Math.min(1.0, deltaMs / smoothingTime);
         this.gains[bandId] = currentGain + gainDiff * alpha;
-        // Apply gain
-        return Math.min(1.0, rawValue * this.gains[bandId]);
+        // WAVE 3424: DMX protection clamp after post-FFT scaling + AGC gain.
+        return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, rawValue * this.gains[bandId]);
     }
     /**
      * Get current AGC state for all bands.
@@ -974,6 +1019,7 @@ export class GodEarAnalyzer {
         computeChromaFromSpectrum(this.magnitudes, this.numBins, this.sampleRate, this.fftSize, this.chromaBuffer);
         // ═══ STAGE 5: LR4 Filter Bank + Band Extraction ═══
         const filterMasks = getLR4FilterMasks(this.fftSize, this.sampleRate);
+        const filterWeightSums = getLR4FilterWeightSums(this.fftSize, this.sampleRate);
         const deltaMs = this.lastTimestamp > 0 ? startTime - this.lastTimestamp : 50;
         this.lastTimestamp = startTime;
         // Extract raw band energies (reads from this.magnitudes, no allocation)
@@ -986,16 +1032,36 @@ export class GodEarAnalyzer {
             treble: extractBandEnergy(this.magnitudes, filterMasks.get('treble')),
             ultraAir: extractBandEnergy(this.magnitudes, filterMasks.get('ultraAir')),
         };
+        // WAVE 3425: scale pre-AGC bands so UI/DMX and BPM tracker share the same
+        // deterministic post-FFT magnitude domain.
+        const scaledBands = {
+            subBass: scaleBandEnergyForVisual(rawBands.subBass, filterWeightSums.get('subBass') ?? 1),
+            bass: scaleBandEnergyForVisual(rawBands.bass, filterWeightSums.get('bass') ?? 1),
+            lowMid: scaleBandEnergyForVisual(rawBands.lowMid, filterWeightSums.get('lowMid') ?? 1),
+            mid: scaleBandEnergyForVisual(rawBands.mid, filterWeightSums.get('mid') ?? 1),
+            highMid: scaleBandEnergyForVisual(rawBands.highMid, filterWeightSums.get('highMid') ?? 1),
+            treble: scaleBandEnergyForVisual(rawBands.treble, filterWeightSums.get('treble') ?? 1),
+            ultraAir: scaleBandEnergyForVisual(rawBands.ultraAir, filterWeightSums.get('ultraAir') ?? 1),
+        };
+        const telemetryFrame = this.frameIndex + 1;
+        if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
+            const rawPeak = Math.max(scaledBands.subBass, scaledBands.bass, scaledBands.lowMid, scaledBands.mid, scaledBands.highMid, scaledBands.treble, scaledBands.ultraAir);
+            console.log(`[RADIX2 RAW] Peak: ${rawPeak.toFixed(6)} | Bands: ` +
+                `sub=${scaledBands.subBass.toFixed(6)} ` +
+                `bass=${scaledBands.bass.toFixed(6)} ` +
+                `mid=${scaledBands.mid.toFixed(6)} ` +
+                `highMid=${scaledBands.highMid.toFixed(6)}`);
+        }
         // ═══ STAGE 6: AGC Trust Zones ═══
         const bands = this.useAGC ? {
-            subBass: this.agc.process('subBass', rawBands.subBass, deltaMs),
-            bass: this.agc.process('bass', rawBands.bass, deltaMs),
-            lowMid: this.agc.process('lowMid', rawBands.lowMid, deltaMs),
-            mid: this.agc.process('mid', rawBands.mid, deltaMs),
-            highMid: this.agc.process('highMid', rawBands.highMid, deltaMs),
-            treble: this.agc.process('treble', rawBands.treble, deltaMs),
-            ultraAir: this.agc.process('ultraAir', rawBands.ultraAir, deltaMs),
-        } : rawBands;
+            subBass: this.agc.process('subBass', scaledBands.subBass, deltaMs),
+            bass: this.agc.process('bass', scaledBands.bass, deltaMs),
+            lowMid: this.agc.process('lowMid', scaledBands.lowMid, deltaMs),
+            mid: this.agc.process('mid', scaledBands.mid, deltaMs),
+            highMid: this.agc.process('highMid', scaledBands.highMid, deltaMs),
+            treble: this.agc.process('treble', scaledBands.treble, deltaMs),
+            ultraAir: this.agc.process('ultraAir', scaledBands.ultraAir, deltaMs),
+        } : scaledBands;
         // ═══ Spectral Metrics (reads from this.magnitudes, no allocation) ═══
         const flatness = calculateSpectralFlatness(this.magnitudes);
         const crestFactor = calculateCrestFactor(this.magnitudes);
@@ -1038,7 +1104,7 @@ export class GodEarAnalyzer {
         // ═══ STAGE 7: Output ═══
         return {
             bands,
-            bandsRaw: rawBands,
+            bandsRaw: scaledBands,
             spectral,
             stereo: null, // Mono analysis
             transients,
@@ -1233,20 +1299,40 @@ export function benchmarkPerformance(iterations = 100) {
     console.log(`   Grade:   ${grade}`);
     console.log(`   Target:  <2ms ← ${avgTime < 2.0 ? '✅ ACHIEVED' : '⚠️ NEEDS OPTIMIZATION'}`);
 }
+function softClip01(value) {
+    if (value <= 0)
+        return 0;
+    return value / (1 + value);
+}
 /**
  * Convert GodEarSpectrum to legacy BandEnergy format.
+ *
+ * WAVE 3421 — Pilar 2: Crossover de bandas huérfanas.
+ * Antes: lowMid (250-500Hz) y highMid (2-6kHz) existían como side fields
+ * pero nunca contribuían a los canales bass/mid que controlan los fixtures.
+ * Resultado: bass anémico con VW (picos 0.56 → bass 0.07), synth melódico invisible.
+ *
+ * Coeficientes derivados del Blueprint WAVE 3420:
+ *   bass  += lowMid  * 0.4  → punch del kick/bass synth (250-500Hz entra al canal bass)
+ *   mid   += highMid * 0.6  → melodía del synth (2-6kHz entra al canal mid)
+ * Los side fields lowMid/highMid se preservan sin cambio para consumers upstream.
  */
 export function toLegacyFormat(spectrum) {
+    const bass = spectrum.bands.bass + spectrum.bands.subBass * 0.5 + spectrum.bands.lowMid * 0.4;
+    const mid = spectrum.bands.mid + spectrum.bands.highMid * 0.6;
+    const treble = spectrum.bands.treble + spectrum.bands.ultraAir * 0.5;
     return {
-        bass: spectrum.bands.bass + spectrum.bands.subBass * 0.5,
-        lowMid: spectrum.bands.lowMid,
-        mid: spectrum.bands.mid,
-        highMid: spectrum.bands.highMid + spectrum.bands.treble * 0.3,
-        treble: spectrum.bands.treble + spectrum.bands.ultraAir * 0.5,
-        subBass: spectrum.bands.subBass,
+        // WAVE 3421: lowMid * 0.4 devuelve el punch de 250-500Hz al canal bass
+        bass: softClip01(bass),
+        lowMid: softClip01(spectrum.bands.lowMid), // side field preservado
+        // WAVE 3421: highMid * 0.6 devuelve la melodía de 2-6kHz al canal mid
+        mid: softClip01(mid),
+        highMid: softClip01(spectrum.bands.highMid), // side field preservado (harshness proxy)
+        treble: softClip01(treble),
+        subBass: softClip01(spectrum.bands.subBass),
         dominantFrequency: spectrum.dominantFrequency,
         spectralCentroid: spectrum.spectral.centroid,
-        harshness: spectrum.bands.highMid, // Approximate
+        harshness: softClip01(spectrum.bands.highMid), // Approximate
         spectralFlatness: spectrum.spectral.flatness,
     };
 }

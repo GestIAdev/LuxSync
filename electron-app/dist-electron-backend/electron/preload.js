@@ -412,6 +412,14 @@ const luxApi = {
     // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
     // ⚡ WAVE 3060b PHOENIX: fftBins eliminado del payload (nadie lo consume en backend)
     audioFrame: (metrics) => ipcRenderer.send('lux:audio-frame', metrics),
+    /** WAVE 3431: Query active AudioMatrix source from frontend capture loop */
+    getAudioMatrixStatus: () => ipcRenderer.invoke('audio-matrix:get-status'),
+    /** WAVE 3431: Receive immediate source changes for hot-swap killswitch */
+    onAudioMatrixSourceChange: (callback) => {
+        const handler = (_, data) => callback(data);
+        ipcRenderer.on('audio-matrix:active-source', handler);
+        return () => ipcRenderer.removeListener('audio-matrix:active-source', handler);
+    },
     /** Obtener estado actual */
     getState: () => ipcRenderer.invoke('lux:get-state'),
     /** 🎯 WAVE 13.6: Obtener estado COMPLETO del Backend (DMX, Selene, Fixtures, Audio) */

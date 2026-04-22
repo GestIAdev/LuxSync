@@ -301,6 +301,18 @@ export class VirtualWireProvider {
         }
         this.samplesProcessed += outputData.length;
         this.callbackCount++;
+        // WAVE 3413: Telemetría diagnóstica — log cada 500 callbacks (~3s @ 44100Hz/256)
+        // Confirma que el pipeline WASAPI → handleAudioData → onAudioData está activo
+        // y que la señal tiene amplitud real (no silencio). visible en main log.
+        if (this.callbackCount % 500 === 0) {
+            let peak = 0;
+            for (let i = 0; i < outputData.length; i++) {
+                const abs = Math.abs(outputData[i]);
+                if (abs > peak)
+                    peak = abs;
+            }
+            console.log(`[VirtualWire] 📡 SAB feed — cb#${this.callbackCount} | frames=${outputData.length} | peak=${peak.toFixed(4)} | ch=${_channels}`);
+        }
         this.onAudioData(outputData, outputRate);
     }
     findLoopbackDevice() {

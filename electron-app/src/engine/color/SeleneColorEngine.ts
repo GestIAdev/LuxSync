@@ -1153,8 +1153,22 @@ export class SeleneColorEngine {
     }
     // Si es 'neutral', moodDrift es 0 (Se mantiene el color puro de la Key)
 
-    // El Hue final es: Base + Modo + Deriva Emocional (SIN GÉNERO)
-    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
+    // 🌊 WAVE 3480: ENERGY HUE MOD — El primario respira aunque la key esté bloqueada.
+    // Con mood forzado a 'neutral' (WAVE 2791) y KeyStabilizer a 30s, el moodDrift
+    // es siempre 0 y la key nunca cambia → finalHue es una constante absoluta durante
+    // minutos, produciendo paleta completamente estática.
+    //
+    // Solución: usar la energía instantánea como modulador de hue.
+    //   - Centro de la modulación: baseHue + modeMod.hue (la identidad tonal de la key)
+    //   - Amplitud: ±12° (suficiente para cruzar el threshold de 8° del Interpolator)
+    //   - Forma: lineal centrada en energy=0.5 → neutro, energy>0.5 → +hue, <0.5 → -hue
+    // El Interpolator (LERP 4s) suaviza el resultado: durante un drop el primario
+    // deriva ~10° hacia el lado cálido/frío y regresa con la caída de energía.
+    // Primary (PARs frontales) se mantiene dentro de la identidad cromática de la key.
+    const energyHueMod = (energy - 0.5) * 24; // rango -12° a +12°
+
+    // El Hue final es: Base + Modo + Deriva Emocional + Respiración de Energía (SIN GÉNERO)
+    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift + energyHueMod);
 
     // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
     // ⛔ WAVE 2791: Comentado — mood forzado a 'neutral', siempre muestra Drift: 0° (spam inútil)
@@ -2259,7 +2273,10 @@ export class SeleneColorInterpolator {
     let hueDiff = Math.abs(fromHue - toHue);
     if (hueDiff > 180) hueDiff = 360 - hueDiff;
 
-    return hueDiff > 15
+    // 🌊 WAVE 3480: Reducido de 15° a 8° para que el EnergyHueMod (±12°)
+    // dispare transiciones reales cuando la energía cambia significativamente.
+    // El Desaturation Dip (WAVE 67.5) sigue protegiendo de arcoíris sucios.
+    return hueDiff > 8
       || Math.abs(from.s - to.s) > 3
       || Math.abs(from.l - to.l) > 3;
   }

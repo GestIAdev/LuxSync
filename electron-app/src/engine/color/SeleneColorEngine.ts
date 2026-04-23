@@ -947,6 +947,14 @@ export class SeleneColorEngine {
   private static lastLoggedVibe: string | null = null;
   private static logCooldownFrames = 0;
   private static readonly LOG_COOLDOWN = 180;  // 3 segundos entre logs similares
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 3450-C: CHROMAGRAM DRIFT EMA STATE
+  // EMA asimétrico de inercia pesada para el drift armónico de secondary/ambient.
+  // El valor crudo del chromagrama se promedia a lo largo de ~6-8 segundos
+  // para lograr una deriva tonal geológicamente lenta (Addendum: Cláusula de Inercia).
+  // ═══════════════════════════════════════════════════════════════════════
+  private static chromaDriftEMA = 0;  // grados, state persistente entre frames
   
   /**
    * 🔬 WAVE 65: CHROMATIC AUDIT LOG
@@ -1353,7 +1361,35 @@ export class SeleneColorEngine {
     const satMax = options?.saturationRange?.[1] ?? 100;
     const lightMin = options?.lightnessRange?.[0] ?? 35;
     const lightMax = options?.lightnessRange?.[1] ?? 60;
-    
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🫁 WAVE 3450-C | BLOQUE B — SPECTRAL BREATH
+    // Modula S/L según distribución espectral del frame.
+    // Voces/sintes dominantes -> desatura (champagne). Drops/bajos -> satura.
+    // El clamp constitucional preexistente (abajo) es la red de seguridad.
+    // Los Movers usan PWM (no ruedas mecánicas): pueden respirar a ritmo de audio.
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      const highMidEnergy = data.highMid ?? data.mid ?? 0;
+      const subBassEnergy = data.subBass ?? data.bass ?? 0;
+      const kickFired     = data.wave8?.rhythm?.drums?.kickDetected ?? false;
+
+      const voiceRatio = Math.max(0, Math.min(1, highMidEnergy - subBassEnergy));
+      const dropActive  = subBassEnergy > 0.40 || kickFired;
+
+      const satRange   = satMax - satMin;
+      const lightRange = lightMax - lightMin;
+
+      const satDelta   = (-voiceRatio * satRange * 0.35)
+                       + (dropActive ? subBassEnergy * satRange * 0.50 : 0);
+      const lightDelta = ( voiceRatio * lightRange * 0.25)
+                       + (dropActive ? -subBassEnergy * lightRange * 0.20 : 0);
+
+      correctedSat   = correctedSat   + satDelta;
+      correctedLight = correctedLight + lightDelta;
+      // ↑ El clamp constitucional preexistente (líneas siguientes) garantiza rangos legales.
+    }
+
     correctedSat = clamp(correctedSat, satMin, satMax);
     correctedLight = clamp(correctedLight, lightMin, lightMax);
     
@@ -1916,8 +1952,71 @@ export class SeleneColorEngine {
       ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp, gravityStrength);
       accent.h = applyThermalGravity(accent.h, options.atmosphericTemp, gravityStrength);
     }
+
     // ═══════════════════════════════════════════════════════════════════════
-    
+    // 🎹 WAVE 3450-C | BLOQUE A — CHROMAGRAM DRIFT (EMA geológico)
+    // Inyecta tensión armónica real en los Movers (secondary + ambient).
+    // El drift NUNCA se aplica crudo al HUE: pasa por un EMA asimétrico
+    // de ~7 segundos para que la deriva tonal sea una MAREA LENTA, no un
+    // parpadeo. Cumple la Cláusula de Inercia del Addendum del blueprint.
+    //
+    // — Fuente: data.chroma[12] del chromagrama de GodEar (WAVE 2301)
+    // — Destino: secondary.h ± chromaDrift, ambient.h ± chromaDrift*0.6
+    // — Primary (PARs frontales): INTOCABLE. Solo los Movers derivan.
+    // — Si data.chroma es undefined este frame: drift converge a 0 (natural).
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      const chroma  = data.chroma;
+      const harmKey = (data as any).wave8?.harmony?.key ?? (data as any).key ?? null;
+      const harmMode: string = (data as any).wave8?.harmony?.mode ?? mode ?? 'minor';
+
+      const KEY_TO_BIN: Record<string, number> = {
+        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+        'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7,
+        'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
+      };
+
+      // Calcular el target de drift crudo desde el chromagrama real
+      let rawDrift = 0;
+      if (chroma && chroma.length === 12 && harmKey && KEY_TO_BIN[harmKey] !== undefined) {
+        const rootBin    = KEY_TO_BIN[harmKey];
+        const fifthBin   = (rootBin + 7)  % 12;
+        const seventhBin = (rootBin + 11) % 12;
+        const secondBin  = (rootBin + 2)  % 12;
+
+        const tensionEnergy =
+          chroma[fifthBin]   * 1.0 +
+          chroma[seventhBin] * 1.5 +
+          chroma[secondBin]  * 0.7;
+
+        const totalChromaEnergy = chroma.reduce((acc: number, v: number) => acc + v, 0);
+        const normalizedTension = totalChromaEnergy > 0.01
+          ? Math.min(1, tensionEnergy / totalChromaEnergy)
+          : 0;
+
+        const DRIFT_AMPLITUDE = 20; // grados máximos
+        const driftSign = harmMode === 'minor' ? -1 : 1;
+        rawDrift = driftSign * normalizedTension * DRIFT_AMPLITUDE;
+      }
+      // Si chroma es undefined -> rawDrift permanece 0, el EMA converge hacia 0 (natural).
+
+      // EMA asimétrico de inercia pesada (~7 segundos a 60fps):
+      //   alpha_up   = 1/420 → sube lento (tensión que crece: 7s para estabilizarse)
+      //   alpha_down = 1/420 → baja igualmente lento (release de tensión: igual de geológico)
+      // Resultado: la paleta NO reacciona a acordes individuales sino a estados armónicos sostenidos.
+      const alpha = 1 / 420;
+      SeleneColorEngine.chromaDriftEMA =
+        SeleneColorEngine.chromaDriftEMA + alpha * (rawDrift - SeleneColorEngine.chromaDriftEMA);
+
+      const smoothedDrift = SeleneColorEngine.chromaDriftEMA;
+
+      // Aplicar el drift suavizado a secondary y ambient (los Movers).
+      // El Constitutional Enforcement que sigue después actúa de guardia final.
+      secondary.h = normalizeHue(secondary.h + smoothedDrift);
+      ambient.h   = normalizeHue(ambient.h   + smoothedDrift * 0.6);
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"
     // ═══════════════════════════════════════════════════════════════════════

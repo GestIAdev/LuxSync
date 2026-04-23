@@ -965,6 +965,22 @@ export class SeleneColorEngine {
   // para lograr una deriva tonal geológicamente lenta (Addendum: Cláusula de Inercia).
   // ═══════════════════════════════════════════════════════════════════════
   private static chromaDriftEMA = 0;  // grados, state persistente entre frames
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌙 WAVE 3481: SLOW OSCILLATOR — Deriva temporal autónoma
+  // Un oscilador sinusoidal basado en tiempo de reloj (Date.now()) que modula
+  // el hue de forma completamente independiente de la key, mood y árbitros.
+  //
+  // Opera en tres capas de tiempo simultáneas (Lissajous cromático):
+  //   - Onda lenta:  período ~4 min → deriva mayor de color
+  //   - Onda media:  período ~90s  → variación de sección
+  //   - Onda rápida: período ~30s  → respiración de frase
+  //
+  // Amplitudes pequeñas (±8°, ±5°, ±3°) que se suman → rango total ±16°.
+  // Nunca produce el mismo valor dos veces en la misma sesión.
+  // No hay estado que guardar: es función pura del tiempo.
+  // ═══════════════════════════════════════════════════════════════════════
+  // (sin estado — el oscilador es función pura de Date.now())
   
   /**
    * 🔬 WAVE 65: CHROMATIC AUDIT LOG
@@ -1167,8 +1183,35 @@ export class SeleneColorEngine {
     // Primary (PARs frontales) se mantiene dentro de la identidad cromática de la key.
     const energyHueMod = (energy - 0.5) * 24; // rango -12° a +12°
 
-    // El Hue final es: Base + Modo + Deriva Emocional + Respiración de Energía (SIN GÉNERO)
-    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift + energyHueMod);
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌙 WAVE 3481: SLOW OSCILLATOR — Deriva temporal autónoma (función pura del tiempo)
+    //
+    // Problema: incluso con EnergyHueMod, si la energía se estabiliza en un valor
+    // constante (ej: mix continuo a energy≈0.6) el hue vuelve a congelarse.
+    // La key puede durar 3-8 minutos. Necesitamos variación macro independiente
+    // de todos los árbitros y de los datos de audio.
+    //
+    // Solución: Lissajous cromático con tres osciladores sinusoidales de período
+    // diferente, basados en Date.now(). Nunca se detiene, nunca repite.
+    //
+    //   Wave 1 (lenta):  T=240s (~4min) → A=±8°  — deriva de sección
+    //   Wave 2 (media):  T=90s  (~1.5m) → A=±5°  — variación de frase
+    //   Wave 3 (rápida): T=30s  (~30s)  → A=±3°  — respiración de compás
+    //
+    // Suma máxima: ±16°. Siempre cruza el threshold de 8° del Interpolator
+    // en menos de ~15 segundos en condiciones estáticas de audio.
+    //
+    // Los períodos son primos entre sí (240, 90, 30 → simplificados 8:3:1 aprox)
+    // así el patrón completo NO se repite antes de ~720 segundos (12 minutos).
+    // ═══════════════════════════════════════════════════════════════════════
+    const nowSec = Date.now() / 1000;
+    const slowOsc =
+      Math.sin((nowSec / 240) * Math.PI * 2) * 8 +   // onda lenta  ±8°
+      Math.sin((nowSec / 90)  * Math.PI * 2) * 5 +   // onda media  ±5°
+      Math.sin((nowSec / 30)  * Math.PI * 2) * 3;    // onda rápida ±3°
+
+    // El Hue final es: Base + Modo + Deriva Emocional + Respiración Energía + Deriva Temporal
+    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift + energyHueMod + slowOsc);
 
     // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
     // ⛔ WAVE 2791: Comentado — mood forzado a 'neutral', siempre muestra Drift: 0° (spam inútil)

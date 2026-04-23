@@ -101,6 +101,10 @@ export interface RhythmOutput {
   pattern?: string;
   /** Nivel de sincopación (0-1) - CRÍTICO para género */
   syncopation: number;
+  /** Señales percutivas de alta resolución (si están disponibles) */
+  drums?: {
+    kickDetected?: boolean;
+  };
   /** Groove/feel (0-1) */
   groove?: number;
   /** Subdivisión del beat */
@@ -162,10 +166,16 @@ export interface ExtendedAudioAnalysis {
   // === SPECTRUM ===
   /** Energía de bajos (0-1) */
   bass?: number;
+  /** Energía de subgraves (0-1) */
+  subBass?: number;
   /** Energía de medios (0-1) */
   mid?: number;
+  /** Energía high-mid (0-1) */
+  highMid?: number;
   /** Energía de agudos (0-1) */
   treble?: number;
+  /** Chromagrama de 12 bins (C..B), normalizado 0-1 */
+  chroma?: number[];
   
   // === TOP-LEVEL (ACCESO RÁPIDO) ===
   /** Sincopación (0-1) - duplicado de wave8.rhythm.syncopation */
@@ -1461,7 +1471,59 @@ export class SeleneColorEngine {
       else if (keyIndex === 9) saltRotation = +35;  // A → Miami Pink
     }
     
-    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎹 WAVE 3450-C | CHROMAGRAM DRIFT — inyectado en secondaryHue
+    // El drift armónico se aplica AQUÍ, antes de que el Tropical Mirror,
+    // el MINT/NAVY override y el Constitutional Enforcement actúen sobre
+    // secondary. Así todos los postprocesos trabajan con el hue ya shiftado.
+    //
+    // EMA alpha = 1/60 ≈ 1 segundo de inercia a 60fps:
+    //   - No reacciona a acordes individuales fugaces
+    //   - Sí reacciona a estados armónicos sostenidos (8-10 segundos musicales)
+    //   - El SeleneColorInterpolator suaviza adicionalmente la transición de paleta
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      const chroma  = data.chroma;
+      const harmKey = data.wave8?.harmony?.key ?? data.key ?? null;
+      const harmMode: string = data.wave8?.harmony?.mode ?? mode ?? 'minor';
+
+      const KEY_TO_BIN: Record<string, number> = {
+        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+        'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7,
+        'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
+      };
+
+      let rawDrift = 0;
+      if (chroma && chroma.length === 12 && harmKey && KEY_TO_BIN[harmKey] !== undefined) {
+        const rootBin    = KEY_TO_BIN[harmKey];
+        const fifthBin   = (rootBin + 7)  % 12;
+        const seventhBin = (rootBin + 11) % 12;
+        const secondBin  = (rootBin + 2)  % 12;
+
+        const tensionEnergy =
+          chroma[fifthBin]   * 1.0 +
+          chroma[seventhBin] * 1.5 +
+          chroma[secondBin]  * 0.7;
+
+        const totalChromaEnergy = chroma.reduce((acc: number, v: number) => acc + v, 0);
+        const normalizedTension = totalChromaEnergy > 0.01
+          ? Math.min(1, tensionEnergy / totalChromaEnergy)
+          : 0;
+
+        const DRIFT_AMPLITUDE = 25; // ±25° máximo para que sea perceptible
+        const driftSign = (harmMode === 'minor' || harmMode === 'dorian') ? -1 : 1;
+        rawDrift = driftSign * normalizedTension * DRIFT_AMPLITUDE;
+      }
+      // Si chroma es undefined → rawDrift=0, EMA converge suavemente a 0.
+
+      // EMA con alpha=1/60: la paleta tarda ~1s en reaccionar al cambio armónico.
+      // El SeleneColorInterpolator (LERP ~8s) añade otra capa de suavizado encima.
+      const alpha = 1 / 60;
+      SeleneColorEngine.chromaDriftEMA =
+        SeleneColorEngine.chromaDriftEMA + alpha * (rawDrift - SeleneColorEngine.chromaDriftEMA);
+    }
+
+    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation + SeleneColorEngine.chromaDriftEMA);
     const secondary: HSLColor = {
       h: secondaryHue,
       s: clamp(correctedSat + 5, 20, 100),  // Ligeramente más saturado
@@ -1952,70 +2014,6 @@ export class SeleneColorEngine {
       ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp, gravityStrength);
       accent.h = applyThermalGravity(accent.h, options.atmosphericTemp, gravityStrength);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎹 WAVE 3450-C | BLOQUE A — CHROMAGRAM DRIFT (EMA geológico)
-    // Inyecta tensión armónica real en los Movers (secondary + ambient).
-    // El drift NUNCA se aplica crudo al HUE: pasa por un EMA asimétrico
-    // de ~7 segundos para que la deriva tonal sea una MAREA LENTA, no un
-    // parpadeo. Cumple la Cláusula de Inercia del Addendum del blueprint.
-    //
-    // — Fuente: data.chroma[12] del chromagrama de GodEar (WAVE 2301)
-    // — Destino: secondary.h ± chromaDrift, ambient.h ± chromaDrift*0.6
-    // — Primary (PARs frontales): INTOCABLE. Solo los Movers derivan.
-    // — Si data.chroma es undefined este frame: drift converge a 0 (natural).
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      const chroma  = data.chroma;
-      const harmKey = (data as any).wave8?.harmony?.key ?? (data as any).key ?? null;
-      const harmMode: string = (data as any).wave8?.harmony?.mode ?? mode ?? 'minor';
-
-      const KEY_TO_BIN: Record<string, number> = {
-        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-        'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7,
-        'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
-      };
-
-      // Calcular el target de drift crudo desde el chromagrama real
-      let rawDrift = 0;
-      if (chroma && chroma.length === 12 && harmKey && KEY_TO_BIN[harmKey] !== undefined) {
-        const rootBin    = KEY_TO_BIN[harmKey];
-        const fifthBin   = (rootBin + 7)  % 12;
-        const seventhBin = (rootBin + 11) % 12;
-        const secondBin  = (rootBin + 2)  % 12;
-
-        const tensionEnergy =
-          chroma[fifthBin]   * 1.0 +
-          chroma[seventhBin] * 1.5 +
-          chroma[secondBin]  * 0.7;
-
-        const totalChromaEnergy = chroma.reduce((acc: number, v: number) => acc + v, 0);
-        const normalizedTension = totalChromaEnergy > 0.01
-          ? Math.min(1, tensionEnergy / totalChromaEnergy)
-          : 0;
-
-        const DRIFT_AMPLITUDE = 20; // grados máximos
-        const driftSign = harmMode === 'minor' ? -1 : 1;
-        rawDrift = driftSign * normalizedTension * DRIFT_AMPLITUDE;
-      }
-      // Si chroma es undefined -> rawDrift permanece 0, el EMA converge hacia 0 (natural).
-
-      // EMA asimétrico de inercia pesada (~7 segundos a 60fps):
-      //   alpha_up   = 1/420 → sube lento (tensión que crece: 7s para estabilizarse)
-      //   alpha_down = 1/420 → baja igualmente lento (release de tensión: igual de geológico)
-      // Resultado: la paleta NO reacciona a acordes individuales sino a estados armónicos sostenidos.
-      const alpha = 1 / 420;
-      SeleneColorEngine.chromaDriftEMA =
-        SeleneColorEngine.chromaDriftEMA + alpha * (rawDrift - SeleneColorEngine.chromaDriftEMA);
-
-      const smoothedDrift = SeleneColorEngine.chromaDriftEMA;
-
-      // Aplicar el drift suavizado a secondary y ambient (los Movers).
-      // El Constitutional Enforcement que sigue después actúa de guardia final.
-      secondary.h = normalizeHue(secondary.h + smoothedDrift);
-      ambient.h   = normalizeHue(ambient.h   + smoothedDrift * 0.6);
-    }
-    // ═══════════════════════════════════════════════════════════════════════
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"

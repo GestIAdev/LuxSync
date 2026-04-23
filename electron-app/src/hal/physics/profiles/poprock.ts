@@ -223,7 +223,7 @@ export const POPROCK_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   sidechainThreshold: 0.20,     // Alto — solo kicks extremos activan ducking
-  sidechainDepth: 0.05,         // CASI NULO — el bombo es compañero, no dictador
+  sidechainDepth: 0.00,         // WAVE 3457: sidechain exterminado globalmente
   snareSidechainDepth: 0.03,    // Mínimo — el snare no debe matar la guitarra
 
   // WAVE 2438 — GUILLOTINA 4.1 (desactivada en poprock: los graves sostienen la melodía)

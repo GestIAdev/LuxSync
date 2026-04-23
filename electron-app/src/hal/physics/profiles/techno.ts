@@ -91,13 +91,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //   Subimos gate+percGate para requerir un hit de percusión real.
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.33,   // WAVE 3445: 0.18→0.33 — THE SYNTH DAM: muro dinámico, synths comprimidos pasan, voz queda bloqueada
-    boost: 2.5,     // WAVE 3311: 3.0→2.5 — sin cambio: compensación por gate alto
+    gateOn: 0.40,   // WAVE 3457: umbral duro anti-micro-hihat en layout 4.1
+    boost: 1.5,     // WAVE 3457: cap anti-spike para evitar estrobo por hits marginales
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
-    squelchBase: 0.32,     // WAVE 3445: 0.02→0.32 — squelch agresivo: piso de ruido aplastado por debajo del umbral vocal
+    squelchBase: 0.40,     // WAVE 3457: piso más alto para bloquear tss-tss débil
     squelchSlope: 0.10,
     ghostCap: 0.00,
     gateMargin: 0.01,
@@ -110,13 +110,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
-    gateOn: 0.35,   // WAVE 3445: 0.02→0.35 — límite matemático del techno: synths brutalmente comprimidos superan, voz flota por debajo
-    boost: 5.0,
+    gateOn: 0.40,   // WAVE 3457: endurecido para cazar golpes grandes y filtrar microtransitorios
+    boost: 1.5,
     crushExponent: 1.0,
     decayBase: 0.60,
     decayRange: 0.03,
     maxIntensity: 0.85,
-    squelchBase: 0.33,     // WAVE 3445: 0.02→0.33 — squelch agresivo alineado con el gate, piso vocal eliminado
+    squelchBase: 0.40,     // WAVE 3457: alineado con gate para bloquear ruido fino de hihat
     squelchSlope: 0.10,
     ghostCap: 0.05,
     gateMargin: 0.005,
@@ -193,7 +193,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   sidechainThreshold: 0.1,
-  sidechainDepth: 0.30,  // WAVE 2412: ducking suave — techno tiene graves continuos, no asfixiar movers
+  sidechainDepth: 0.00,  // WAVE 3457: sidechain exterminado globalmente
   snareSidechainDepth: 0.15,  // WAVE 2420: 0.80→0.15 (liberamos Mover R — la guillotina era fratricida)
 
   // WAVE 2438 — valores legacy, ya no usados en strict-split pero se conservan

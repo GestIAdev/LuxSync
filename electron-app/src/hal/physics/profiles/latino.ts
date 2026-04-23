@@ -233,7 +233,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   sidechainThreshold: 0.15,     // Ligeramente más alto que techno (0.1)
-  sidechainDepth: 0.12,         // MUCHO MENOS que techno (0.30) — no asfixiar
+  sidechainDepth: 0.00,         // WAVE 3457: sidechain exterminado globalmente
   snareSidechainDepth: 0.05,    // Mínimo — el snare latino es compañero, no rival
 
   // WAVE 2438 — GUILLOTINA 4.1 (desactivada en latino: el groove es continuo)
@@ -382,7 +382,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
       boost: 4.0,
     },
 
-    // Sidechain más suave — frontPar compactado tiene más energía constante
-    sidechainDepth: 0.08,     // 0.12→0.08: menos ducking en 4.1
+    // WAVE 3457: sidechain exterminado también en overrides 4.1
+    sidechainDepth: 0.00,
   },
 }

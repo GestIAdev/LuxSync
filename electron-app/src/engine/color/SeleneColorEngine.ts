@@ -1406,23 +1406,27 @@ export class SeleneColorEngine {
         };
         // Aplicar allowedHueRanges del slot al finalHue ahora mismo
         // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
+        // El snap dirige al CENTRO del rango más cercano, no al borde,
+        // para evitar colores de frontera y generar la zona auténtica del slot.
         if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
           const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
           if (!isFullCircle) {
             let isAllowed = false;
-            let closestTarget = finalHue;
+            let closestCenter = finalHue;
             let minDist = Infinity;
             for (const [mn, mx] of slot.allowedHueRanges) {
               const inRange = mn <= mx
                 ? (finalHue >= mn && finalHue <= mx)
                 : (finalHue >= mn || finalHue <= mx);
               if (inRange) { isAllowed = true; break; }
-              const dMin = Math.min(Math.abs(finalHue - mn), 360 - Math.abs(finalHue - mn));
-              const dMax = Math.min(Math.abs(finalHue - mx), 360 - Math.abs(finalHue - mx));
-              const d = Math.min(dMin, dMax);
-              if (d < minDist) { minDist = d; closestTarget = dMin <= dMax ? mn : mx; }
+              // Calcular centro del rango (handling wrap-around)
+              const center = mn <= mx
+                ? (mn + mx) / 2
+                : normalizeHue((mn + mx + 360) / 2);
+              const d = Math.min(Math.abs(finalHue - center), 360 - Math.abs(finalHue - center));
+              if (d < minDist) { minDist = d; closestCenter = center; }
             }
-            if (!isAllowed) finalHue = normalizeHue(closestTarget);
+            if (!isAllowed) finalHue = normalizeHue(closestCenter);
           }
         }
       }

@@ -709,7 +709,7 @@ export class VibeMovementManager {
     if (!isSameFrame) {
       const beatsPerSecond = this.smoothedBPM / 60
       const phasePerBeat = (2 * Math.PI) / patternPeriod  // radians per beat
-      const chillSedationFactor = vibeId === 'chill-lounge' ? 0.05 : 1.0
+      const chillSedationFactor = vibeId === 'chill-lounge' ? 0.80 : 1.0
       const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier * chillSedationFactor
       this.phaseAccumulator += phaseDelta
     }

@@ -101,22 +101,12 @@ import { FeedbackStorm } from './library/poprock/FeedbackStorm';
 import { PowerChord } from './library/poprock/PowerChord';
 import { StageWash } from './library/poprock/StageWash';
 import { SpotlightPulse } from './library/poprock/SpotlightPulse';
-// ═══════════════════════════════════════════════════════════════════════════
-// 🌊 WAVE 1070.6: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
-// ═══════════════════════════════════════════════════════════════════════════
-import { SolarCaustics } from './library/chillLounge/SolarCaustics';
-import { SchoolOfFish } from './library/chillLounge/SchoolOfFish';
-import { WhaleSong } from './library/chillLounge/WhaleSong';
-import { AbyssalJellyfish } from './library/chillLounge/AbyssalJellyfish';
-// 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
-import { SurfaceShimmer } from './library/chillLounge/SurfaceShimmer';
-import { PlanktonDrift } from './library/chillLounge/PlanktonDrift';
-import { DeepCurrentPulse } from './library/chillLounge/DeepCurrentPulse';
-import { BioluminescentSpore } from './library/chillLounge/BioluminescentSpore';
+// ⚰️ WAVE 3450: Efectos chillLounge movidos a _legacy_archive. ChillAmbientEngine
+// gestiona la luz de ambiente chill directamente mediante osciladores sen. No hay
+// effectos oceánicos que registrar — el sistema ya no los dispara.
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager';
-// 🌊 WAVE 1070.3: Import depth validation for oceanic effects
-import { isOceanicEffectValidForDepth } from '../../hal/physics/ChillStereoPhysics';
+// ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 // 🌊 WAVE 1071: Import ContextualEffectSelector for cooldown registration
 import { getContextualEffectSelector } from './ContextualEffectSelector';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -124,19 +114,11 @@ import { getContextualEffectSelector } from './ContextualEffectSelector';
 // ═══════════════════════════════════════════════════════════════════════════
 /**
  * Efectos PERMITIDOS en Chill Lounge
- * Solo estos efectos pueden dispararse cuando vibeId === 'chill-lounge'
+ * ⚰️ WAVE 3450: Efectos oceánicos purged. ChillAmbientEngine gestiona la luz
+ * ambiental de forma autónoma. El shield bloquea todo efecto externo en chill.
  */
 const CHILL_LOUNGE_ALLOWED_EFFECTS = [
-    // 🌊 WAVE 1070: THE LIVING OCEAN - Major Oceanic Effects
-    'solar_caustics', // ☀️ Rayos de sol en superficie (depth < 1000m)
-    'school_of_fish', // 🐟 Banco de peces en aguas abiertas (1000-3000m)
-    'whale_song', // 🐋 Canto de ballena en zona crepuscular (3000-6000m)
-    'abyssal_jellyfish', // 🪼 Medusas bioluminiscentes en abismo (depth > 6000m)
-    // 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
-    'surface_shimmer', // ✨ Destellos de superficie (0-1000m)
-    'plankton_drift', // 🦠 Deriva de plancton (1000-3000m)
-    'deep_current_pulse', // 🌀 Pulsos de corriente (3000-6000m)
-    'bioluminescent_spore', // ✨ Esporas abisales (6000m+)
+// WAVE 3450: Lista vacía — chill es autocontenido vía ChillAmbientEngine
 ];
 /**
  * Efectos BLOQUEADOS EXPLÍCITAMENTE en Chill Lounge
@@ -223,18 +205,7 @@ const EFFECT_VIBE_RULES = {
     'power_chord': { isDynamic: true }, // ⚡ Power chord flash - golpe del acorde
     'stage_wash': { isDynamic: false }, // 🌊 Warm wash - respiro cálido (allowed in chill)
     'spotlight_pulse': { isDynamic: true }, // 💡 Breathing spotlight - pulso emotivo
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
-    // ═══════════════════════════════════════════════════════════════════════════
-    'solar_caustics': { isDynamic: false }, // ☀️ Sun rays underwater - shallow zone atmosphere
-    'school_of_fish': { isDynamic: false }, // 🐠 Fish school crossing - open ocean fauna
-    'whale_song': { isDynamic: false }, // 🐋 Majestic whale crossing - twilight zone giant
-    'abyssal_jellyfish': { isDynamic: false }, // 🪼 Bioluminescent pulse - deep abyss creature
-    // 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
-    'surface_shimmer': { isDynamic: false }, // ✨ Surface sparkles
-    'plankton_drift': { isDynamic: false }, // 🦠 Drifting particles
-    'deep_current_pulse': { isDynamic: false }, // 🌀 Deep water currents
-    'bioluminescent_spore': { isDynamic: false }, // ✨ Abyssal spores
+    // ⚰️ WAVE 3450: Efectos oceánicos chillLounge purged — ver _legacy_archive
 };
 const EFFECT_ZONE_MAP = {
     // 🌑 SILENCE (0-15%): Respiración profunda y ecos minimalistas
@@ -299,22 +270,7 @@ const EFFECT_ZONE_MAP = {
     'spotlight_pulse': 'active',
     // ⚡ POWER_CHORD (intense): Golpe del acorde - downbeats/drops
     'power_chord': 'intense',
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1070: THE LIVING OCEAN - Zone Mapping
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ☀️ SOLAR_CAUSTICS (silence→valley): Rayos de sol en aguas someras
-    'solar_caustics': 'silence',
-    // 🐠 SCHOOL_OF_FISH (ambient): Cardumen cruzando el océano abierto
-    'school_of_fish': 'ambient',
-    // 🐋 WHALE_SONG (valley→ambient): Canto de ballena en zona crepuscular
-    'whale_song': 'valley',
-    // 🪼 ABYSSAL_JELLYFISH (valley): Medusas bioluminiscentes en el abismo
-    'abyssal_jellyfish': 'valley',
-    // 🦠 WAVE 1074: MICRO-FAUNA - Zone Mapping (all silence/ambient - background fillers)
-    'surface_shimmer': 'silence', // ✨ Fondo sutil en superficie
-    'plankton_drift': 'silence', // 🦠 Fondo sutil en océano
-    'deep_current_pulse': 'ambient', // 🌀 Más presencia en twilight
-    'bioluminescent_spore': 'valley', // ✨ Contraste en abismo
+    // ⚰️ WAVE 3450: Efectos oceánicos chillLounge purged — ver _legacy_archive
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MANAGER CLASS
@@ -895,21 +851,10 @@ export class EffectManager extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         // 🌊 WAVE 1070.6: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
         // ═══════════════════════════════════════════════════════════════════════
-        // ☀️ Solar Caustics - Rayos de sol danzando en aguas someras (SHALLOWS 0-1000m)
-        this.effectFactories.set('solar_caustics', () => new SolarCaustics());
-        // 🐠 School of Fish - Cardumen cruzando el océano abierto (OCEAN 1000-3000m)
-        this.effectFactories.set('school_of_fish', () => new SchoolOfFish());
-        // 🐋 Whale Song - Canto de ballena en zona crepuscular (TWILIGHT 3000-6000m)
-        this.effectFactories.set('whale_song', () => new WhaleSong());
-        // 🪼 Abyssal Jellyfish - Medusas bioluminiscentes del abismo (MIDNIGHT 6000+m)
-        this.effectFactories.set('abyssal_jellyfish', () => new AbyssalJellyfish());
         // ═══════════════════════════════════════════════════════════════════════
-        // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers
+        // ⚰️ WAVE 3450: CHILL LOUNGE ARSENAL PURGED — efectos oceánicos archivados.
+        // ChillAmbientEngine gestiona la iluminación ambiental directamente.
         // ═══════════════════════════════════════════════════════════════════════
-        this.effectFactories.set('surface_shimmer', () => new SurfaceShimmer());
-        this.effectFactories.set('plankton_drift', () => new PlanktonDrift());
-        this.effectFactories.set('deep_current_pulse', () => new DeepCurrentPulse());
-        this.effectFactories.set('bioluminescent_spore', () => new BioluminescentSpore());
     }
     /**
      * 🚦 IS BUSY - Check if a critical effect is hogging the stage
@@ -1118,11 +1063,12 @@ export class EffectManager extends EventEmitter {
             vibeEffects = { allowed: [], maxStrobeRate: 0, maxIntensity: 0 };
         }
         // ═══════════════════════════════════════════════════════════════
-        // REGLA 1: chill-lounge = CHILL SHIELD (whitelist + blacklist)
-        // 🌊 WAVE 1070: THE LIVING OCEAN
+        // REGLA 1: chill-lounge = CHILL SHIELD TOTAL (WAVE 3450)
+        // ChillAmbientEngine es el único dueño de la luz en modo chill.
+        // Ningún efecto externo puede dispararse. Punto.
         // ═══════════════════════════════════════════════════════════════
         if (vibeId === 'chill-lounge') {
-            // PRIORITY 1: Block explicitly forbidden effects
+            // PRIORITY 1: Block explicitly forbidden effects (strobes, agresivos)
             if (CHILL_LOUNGE_BLOCKED_EFFECTS.includes(effectType)) {
                 return {
                     allowed: false,
@@ -1130,37 +1076,12 @@ export class EffectManager extends EventEmitter {
                     message: `🛡️ CHILL SHIELD: "${effectType}" está BLOQUEADO en Chill Lounge (lista negra)`,
                 };
             }
-            // PRIORITY 2: Check whitelist
-            if (CHILL_LOUNGE_ALLOWED_EFFECTS.includes(effectType)) {
-                // 🌊 WAVE 1070.3: DEPTH VALIDATION
-                // Efectos oceánicos solo pueden dispararse en su zona de profundidad
-                const depthCheck = isOceanicEffectValidForDepth(effectType);
-                if (!depthCheck.valid) {
-                    return {
-                        allowed: false,
-                        degraded: false,
-                        message: depthCheck.reason,
-                    };
-                }
-                return {
-                    allowed: true,
-                    degraded: false,
-                    message: `🌊 LIVING OCEAN: "${effectType}" permitido en Chill Lounge`,
-                };
-            }
-            // PRIORITY 3: Block anything dynamic not in whitelist
-            if (rules.isDynamic) {
-                return {
-                    allowed: false,
-                    degraded: false,
-                    message: `🛡️ CHILL SHIELD: Efecto dinámico "${effectType}" bloqueado (no está en whitelist)`,
-                };
-            }
-            // Non-dynamic effects not in whitelist: block for safety
+            // PRIORITY 2: Whitelist vacía — todo bloqueado por defecto
+            // WAVE 3450: ChillAmbientEngine gestiona la luz directamente.
             return {
                 allowed: false,
                 degraded: false,
-                message: `🛡️ CHILL SHIELD: "${effectType}" no está en whitelist de Chill Lounge`,
+                message: `🛡️ CHILL SHIELD TOTAL: "${effectType}" bloqueado — ChillAmbientEngine es el único dueño`,
             };
         }
         // ═══════════════════════════════════════════════════════════════

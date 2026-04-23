@@ -80,6 +80,7 @@ export class HardwareAbstraction {
         this.universeBuffers = new Map();
         this.lastFixtureStates = [];
         this.lastDebugTime = 0; // WAVE 256.7: For throttled debug logging
+        this._el1140LastLog = 0; // WAVE-DIAG: EL1140 diagnostic throttle
         // 🔬 WAVE 3040: COLOR CHANGE DETECTOR — color anterior por fixture
         this._colorSnapshot = new Map(); // fixtureId → último RGB enviado
         // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
@@ -1106,6 +1107,10 @@ export class HardwareAbstraction {
         // If color_wheel came from a MANUAL override, respect it regardless of value.
         const colorWheelSource = state._controlSources?.color_wheel;
         if (colorWheelSource === ControlLayer.MANUAL || existingColorWheel > 0) {
+            // 🔍 WAVE-DIAG: Log skip reason for moving fixtures
+            if (fixture.name?.includes('EL 1140') || fixture.name?.includes('1140')) {
+                console.warn(`[🔍 COLOR-DIAG] ${fixture.name}: SKIP — existingColorWheel=${existingColorWheel} source=${colorWheelSource} | state.r=${state.r} g=${state.g} b=${state.b}`);
+            }
             return state;
         }
         // Get fixture profile
@@ -1193,6 +1198,14 @@ export class HardwareAbstraction {
             const qTag = (isMechanicalFixture(profile) && quantizedColorDmx === (this.safetyLayer.getLastColor(fixtureId) ?? quantizedColorDmx)) ? ' [Q-HOLD]' : '';
             const sTag = safetyResult.wasBlocked ? ' [S-BLOCK]' : '';
             console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${qTag}${sTag}`);
+        }
+        // 🔍 WAVE-DIAG: Always log for EL1140
+        if (fixture.name?.includes('EL 1140') || fixture.name?.includes('1140')) {
+            const _now = performance.now();
+            if (_now - (this._el1140LastLog ?? 0) > 1000) {
+                this._el1140LastLog = _now;
+                console.warn(`[🔍 COLOR-DIAG] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → slot="${translation.colorName}" DMX=${safetyResult.finalColorDmx} translated=${translation.wasTranslated} poorMatch=${translation.poorMatch}`);
+            }
         }
         // ─────────────────────────────────────────────────────────────────
         // 🌑 WAVE 2690: DARK-SPIN — Blackout transitorio durante tránsito de rueda

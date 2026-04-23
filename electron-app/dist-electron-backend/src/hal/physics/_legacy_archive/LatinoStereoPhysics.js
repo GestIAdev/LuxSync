@@ -1,0 +1,413 @@
+/**
+ * @deprecated WAVE 2488 — DT-03: LEGACY PURGE
+ *
+ * Motor predecesor reemplazado por LiquidEngine41/LiquidEngine71 con LATINO_PROFILE.
+ * El Omniliquid Engine cubre dembow, Schwarzenegger Mode, bass subtractor adaptativo
+ * y mover swap L↔R con parametrización completa via ILiquidProfile.
+ *
+ * Ruta de migración:
+ *   new LatinoStereoPhysics()  →  new LiquidEngine71(LATINO_PROFILE).applyBands()
+ *
+ * ESTE ARCHIVO SE ELIMINARÁ en la siguiente ola de deuda técnica.
+ * Última referencia activa: SeleneLux.ts (pendiente de migración al Omniliquid Engine).
+ * @see LiquidEngine71
+ * @see LATINO_PROFILE
+ */
+export class LatinoStereoPhysics {
+    constructor() {
+        // ESTADO INTERNO
+        this.blackoutFramesRemaining = 0;
+        this.lastEnergy = 0;
+        this.lastBass = 0;
+        this.lastFrameTime = Date.now();
+        this.lastBpm = 0;
+        this.currentFlareIntensity = 0;
+        this.currentMoverIntensity = 0;
+        this.currentBackParIntensity = 0;
+        this.currentFrontParIntensity = 0;
+        this.frontParActive = false; // WAVE 2199: hysteresis ON/OFF clon Techno
+        this.lastSectionType = 'verse';
+        this.whitePuncturePhase = 'idle';
+        this.whitePunctureFramesRemaining = 0;
+        // ?? WAVE 1004.1: STEREO SPLIT & FAT BASS STATE
+        this.currentMoverIntensityL = 0; // El Gal�n (Mid/Voz)
+        this.currentMoverIntensityR = 0; // La Dama (Treble/Trompetas)
+        this.frontParPeak = 0; // Fat Bass Peak Hold
+    }
+    apply(palette, metrics, bpm, mods, sectionType) {
+        const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
+        const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
+        const now = Date.now();
+        const deltaTime = metrics.deltaTime ?? (now - this.lastFrameTime);
+        this.lastFrameTime = now;
+        const previousEnergy = metrics.previousEnergy ?? this.lastEnergy;
+        const currentEnergy = metrics.normalizedEnergy;
+        const detectedBpm = bpm ?? this.lastBpm;
+        if (bpm)
+            this.lastBpm = bpm;
+        const currentSection = sectionType ?? 'verse';
+        const justEnteredDrop = currentSection === 'drop' && this.lastSectionType !== 'drop';
+        this.lastSectionType = currentSection;
+        if (justEnteredDrop) {
+            this.whitePuncturePhase = 'dip';
+            this.whitePunctureFramesRemaining = LatinoStereoPhysics.WHITE_PUNCTURE_DIP_FRAMES;
+        }
+        const flavor = 'fiesta-standard';
+        const resultPalette = {
+            primary: { ...palette.primary },
+            secondary: { ...palette.secondary },
+            ambient: { ...palette.ambient },
+            accent: { ...palette.accent },
+        };
+        const accentHsl = this.rgbToHsl(palette.accent);
+        if (accentHsl.s < 30) {
+            const goldenRescue = { h: 40, s: 100, l: 55 };
+            resultPalette.accent = this.hslToRgb(goldenRescue);
+        }
+        let isSolarFlare = false;
+        let isMachineGunBlackout = false;
+        let dimmerOverride = null;
+        const forceMovement = true;
+        const bass = metrics.normalizedBass;
+        const mid = metrics.normalizedMid ?? metrics.normalizedEnergy;
+        const treble = metrics.normalizedHigh ?? 0;
+        const highMid = metrics.normalizedHighMid ?? (mid * 0.6 + treble * 0.4);
+        const bassDelta = bass - this.lastBass;
+        const energyDelta = previousEnergy - currentEnergy;
+        // MACHINE GUN BLACKOUT
+        const isNegativeDrop = (energyDelta >= LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD &&
+            deltaTime <= LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS &&
+            previousEnergy > 0.6);
+        if (isNegativeDrop) {
+            this.blackoutFramesRemaining = LatinoStereoPhysics.BLACKOUT_FRAMES;
+        }
+        if (this.blackoutFramesRemaining > 0) {
+            isMachineGunBlackout = true;
+            dimmerOverride = 0;
+            this.blackoutFramesRemaining--;
+        }
+        // SOLAR FLARE
+        if (!isMachineGunBlackout) {
+            const effectiveThreshold = LatinoStereoPhysics.KICK_THRESHOLD * thresholdMod;
+            const effectiveDelta = LatinoStereoPhysics.BASS_DELTA_THRESHOLD * thresholdMod;
+            const isKick = bass > effectiveThreshold && bassDelta > effectiveDelta;
+            if (isKick) {
+                const kickPower = (bass - effectiveThreshold) / (1 - effectiveThreshold);
+                this.currentFlareIntensity = Math.min(1.0, kickPower * 1.5);
+                isSolarFlare = true;
+            }
+            else {
+                this.currentFlareIntensity = Math.max(0, this.currentFlareIntensity - LatinoStereoPhysics.DECAY_RATE);
+            }
+            if (this.currentFlareIntensity > 0.1) {
+                isSolarFlare = true;
+                const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
+                resultPalette.accent = this.boostBrightness(resultPalette.accent, boostAmount);
+                resultPalette.primary = this.boostBrightness(resultPalette.primary, boostAmount * 0.75);
+            }
+        }
+        // BACK PARs - WAVE 294: BOFETADA PRECISA = Snares, Hi-hats, Platos
+        // Filosof�a reggaeton: T�N-tacka-T�N-tacka
+        //   - T�N = bombo (BASS) ? FRONT PARs
+        //   - tacka = snare/hi-hat (TREBLE) ? BACK PARs
+        // Gate 0.14: Solo picos reales de treble (>0.14) activan
+        // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
+        // BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+        // Clon exacto de TechnoStereoPhysics: snareAndSynthPower cocktail
+        const snareAndSynthPower = Math.min(1.0, (mid * 0.5) + // El cuerpo del sinte y la caja
+            (treble * 0.8) + // El latigazo metalico del snare
+            (mid * treble * 0.3) // Un poco de peso para que la bofetada se sienta gorda
+        );
+        if (snareAndSynthPower > LatinoStereoPhysics.BACK_PAR_GATE) {
+            const gated = (snareAndSynthPower - LatinoStereoPhysics.BACK_PAR_GATE) / (1.0 - LatinoStereoPhysics.BACK_PAR_GATE);
+            const target = Math.min(1.0, Math.pow(gated, 1.5) * LatinoStereoPhysics.BACK_PAR_GAIN);
+            this.currentBackParIntensity += (target - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
+        }
+        else {
+            this.currentBackParIntensity *= 0.42; // WAVE 2200: decay pesado dembow (+lento que Techno 0.25)
+            if (this.currentBackParIntensity < 0.05)
+                this.currentBackParIntensity = 0;
+        }
+        // MOVERS (WAVE 296 - MID PURO con Treble Rejection)
+        // TREBLE_REJECTION 0.30 - las voces con autotune tienen arm�nicos agudos
+        const midPuro = Math.max(0, mid - treble * LatinoStereoPhysics.MOVER_TREBLE_REJECTION);
+        const moverTarget = midPuro;
+        if (moverTarget > LatinoStereoPhysics.MOVER_GATE) {
+            const boostedTarget = Math.min(1.0, moverTarget * LatinoStereoPhysics.MOVER_GAIN);
+            this.currentMoverIntensity += (boostedTarget - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_ATTACK;
+        }
+        else {
+            // Decay normal
+            this.currentMoverIntensity *= LatinoStereoPhysics.MOVER_DECAY_FACTOR;
+            // ?? HIST�RESIS 0.20: Piso m�s alto rellena microhuecos entre vocales
+            // Estamos en zona de transici�n - mantener el piso
+            if (this.currentMoverIntensity > LatinoStereoPhysics.MOVER_HYSTERESIS &&
+                this.currentMoverIntensity < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
+                // Estamos en zona de transici�n - mantener el piso
+                this.currentMoverIntensity = LatinoStereoPhysics.MOVER_HYSTERESIS;
+            }
+            else if (this.currentMoverIntensity < 0.05) {
+                // Silencio real - apagar completamente
+                this.currentMoverIntensity = 0;
+            }
+        }
+        // ------------------------------------------------------------------------
+        // ?? WAVE 1004.1: STEREO SPLIT - "LA PAREJA DE BAILE"
+        // ------------------------------------------------------------------------
+        // --- LEFT CHANNEL (El Gal�n / MID PURO - Voz/Congas) ---
+        // Hereda l�gica probada de Wave 296 (Mid - Treble Rejection)
+        if (midPuro > LatinoStereoPhysics.MOVER_L_GATE) {
+            const target = Math.min(1.0, midPuro * LatinoStereoPhysics.MOVER_GAIN);
+            this.currentMoverIntensityL += (target - this.currentMoverIntensityL) * LatinoStereoPhysics.MOVER_L_ATTACK;
+        }
+        else {
+            this.currentMoverIntensityL *= LatinoStereoPhysics.MOVER_L_DECAY;
+        }
+        // Hist�resis para Left (Voz) - Mantiene el "suelo" para que no parpadee en frases
+        if (this.currentMoverIntensityL > LatinoStereoPhysics.MOVER_HYSTERESIS &&
+            this.currentMoverIntensityL < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
+            this.currentMoverIntensityL = LatinoStereoPhysics.MOVER_HYSTERESIS;
+        }
+        else if (this.currentMoverIntensityL < 0.05) {
+            this.currentMoverIntensityL = 0;
+        }
+        // --- RIGHT CHANNEL (La Dama / TREBLE -- Schwarzenegger Suavizado WAVE 2195) ---
+        if (treble > LatinoStereoPhysics.MOVER_R_GATE) {
+            const normalized = (treble - LatinoStereoPhysics.MOVER_R_GATE) / (1.0 - LatinoStereoPhysics.MOVER_R_GATE);
+            const target = Math.min(1.0, Math.pow(normalized, 1.2) * LatinoStereoPhysics.MOVER_R_GAIN);
+            this.currentMoverIntensityR += (target - this.currentMoverIntensityR) * LatinoStereoPhysics.MOVER_R_ATTACK;
+        }
+        else {
+            this.currentMoverIntensityR *= LatinoStereoPhysics.MOVER_R_DECAY;
+        }
+        if (this.currentMoverIntensityR < 0.05) {
+            this.currentMoverIntensityR = 0;
+        }
+        // ------------------------------------------------------------------------
+        // FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
+        // ------------------------------------------------------------------------
+        // Clon exacto de TechnoStereoPhysics.calculateFrontPar()
+        // Hysteresis ON/OFF + BASS_VITAMIN_BOOST + pow(x,2.0)
+        if (this.frontParActive) {
+            if (bass < LatinoStereoPhysics.FRONT_PAR_GATE_OFF) {
+                this.frontParActive = false;
+                this.currentFrontParIntensity = 0;
+            }
+        }
+        else {
+            if (bass >= LatinoStereoPhysics.FRONT_PAR_GATE) {
+                this.frontParActive = true;
+            }
+        }
+        if (this.frontParActive) {
+            const gated = (bass - LatinoStereoPhysics.FRONT_PAR_GATE) / (1.0 - LatinoStereoPhysics.FRONT_PAR_GATE);
+            const boosted = gated * LatinoStereoPhysics.BASS_VITAMIN_BOOST;
+            const target = Math.min(1.0, Math.pow(Math.max(0, boosted), 2.0));
+            this.currentFrontParIntensity += (target - this.currentFrontParIntensity) * LatinoStereoPhysics.FRONT_PAR_ATTACK;
+        }
+        else {
+            this.currentFrontParIntensity *= 0.12;
+            if (this.currentFrontParIntensity < 0.05)
+                this.currentFrontParIntensity = 0;
+        }
+        let frontParIntensity = this.currentFrontParIntensity;
+        // WHITE PUNCTURE STATE MACHINE
+        let isWhitePuncture = false;
+        let whitePunctureColor = null;
+        if (this.whitePuncturePhase !== 'idle') {
+            this.whitePunctureFramesRemaining--;
+            if (this.whitePuncturePhase === 'dip') {
+                dimmerOverride = LatinoStereoPhysics.WHITE_PUNCTURE_DIP_LEVEL;
+                if (this.whitePunctureFramesRemaining <= 0) {
+                    this.whitePuncturePhase = 'flash';
+                    this.whitePunctureFramesRemaining = LatinoStereoPhysics.WHITE_PUNCTURE_FLASH_FRAMES;
+                }
+            }
+            else if (this.whitePuncturePhase === 'flash') {
+                isWhitePuncture = true;
+                whitePunctureColor = { r: 255, g: 255, b: 255 };
+                dimmerOverride = 1.0;
+                if (this.whitePunctureFramesRemaining <= 0) {
+                    this.whitePuncturePhase = 'idle';
+                }
+            }
+        }
+        this.lastEnergy = currentEnergy;
+        this.lastBass = bass;
+        // 🔧 WAVE 2775: FINAL CLAMP — Garantiza [0, 1] estricto antes de DMX conversion
+        frontParIntensity = Math.min(1.0, Math.max(0.0, frontParIntensity));
+        const clampedBackPar = Math.min(1.0, Math.max(0.0, this.currentBackParIntensity));
+        const clampedMoverL = Math.min(1.0, Math.max(0.0, this.currentMoverIntensityL));
+        const clampedMoverR = Math.min(1.0, Math.max(0.0, this.currentMoverIntensityR));
+        return {
+            palette: resultPalette,
+            isSolarFlare,
+            isMachineGunBlackout,
+            dimmerOverride,
+            forceMovement,
+            flavor,
+            backParIntensity: clampedBackPar,
+            moverIntensity: Math.max(clampedMoverL, clampedMoverR), // Fallback para efectos legacy
+            frontParIntensity,
+            isWhitePuncture,
+            whitePunctureColor,
+            // ?? WAVE 1004.1: STEREO SPLIT OUTPUT
+            moverIntensityL: clampedMoverL, // El Gal�n (Mid/Voz)
+            moverIntensityR: clampedMoverR, // La Dama (Treble/Trompetas)
+            debugInfo: {
+                bass, mid, treble, bassDelta,
+                flareIntensity: this.currentFlareIntensity,
+                detectedBpm,
+                whitePuncturePhase: this.whitePuncturePhase,
+                sectionType: currentSection,
+                // ?? WAVE 1004.1: Debug stereo
+                moverL: this.currentMoverIntensityL,
+                moverR: this.currentMoverIntensityR,
+                fatBassPeak: this.currentFrontParIntensity,
+            },
+        };
+    }
+    detectFlavor(_bpm, _metrics) {
+        return 'fiesta-standard';
+    }
+    reset() {
+        this.blackoutFramesRemaining = 0;
+        this.lastEnergy = 0;
+        this.lastBass = 0;
+        this.lastFrameTime = Date.now();
+        this.lastBpm = 0;
+        this.currentFlareIntensity = 0;
+        this.currentMoverIntensity = 0;
+        this.currentBackParIntensity = 0;
+        this.currentFrontParIntensity = 0;
+        // ?? WAVE 1004.1: Reset stereo & fat bass state
+        this.currentMoverIntensityL = 0;
+        this.currentMoverIntensityR = 0;
+        this.frontParPeak = 0;
+        this.frontParActive = false; // WAVE 2199
+    }
+    hslToRgb(hsl) {
+        const h = hsl.h / 360;
+        const s = hsl.s / 100;
+        const l = hsl.l / 100;
+        let r, g, b;
+        if (s === 0) {
+            r = g = b = l;
+        }
+        else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0)
+                    t += 1;
+                if (t > 1)
+                    t -= 1;
+                if (t < 1 / 6)
+                    return p + (q - p) * 6 * t;
+                if (t < 1 / 2)
+                    return q;
+                if (t < 2 / 3)
+                    return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1 / 3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1 / 3);
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+    }
+    rgbToHsl(rgb) {
+        const r = rgb.r / 255;
+        const g = rgb.g / 255;
+        const b = rgb.b / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const l = (max + min) / 2;
+        let h = 0;
+        let s = 0;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r:
+                    h = (g - b) / d + (g < b ? 6 : 0);
+                    break;
+                case g:
+                    h = (b - r) / d + 2;
+                    break;
+                case b:
+                    h = (r - g) / d + 4;
+                    break;
+            }
+            h /= 6;
+        }
+        return {
+            h: Math.round(h * 360),
+            s: Math.round(s * 100),
+            l: Math.round(l * 100),
+        };
+    }
+    boostBrightness(rgb, percent) {
+        const factor = 1 + (percent / 100);
+        return {
+            r: Math.min(255, Math.round(rgb.r * factor)),
+            g: Math.min(255, Math.round(rgb.g * factor)),
+            b: Math.min(255, Math.round(rgb.b * factor)),
+        };
+    }
+    blendRgb(from, to, factor) {
+        const f = Math.max(0, Math.min(1, factor));
+        return {
+            r: Math.round(from.r + (to.r - from.r) * f),
+            g: Math.round(from.g + (to.g - from.g) * f),
+            b: Math.round(from.b + (to.b - from.b) * f),
+        };
+    }
+}
+// SOLAR FLARE
+LatinoStereoPhysics.KICK_THRESHOLD = 0.55;
+LatinoStereoPhysics.BASS_DELTA_THRESHOLD = 0.08;
+LatinoStereoPhysics.DECAY_RATE = 0.08;
+// MOVERS (WAVE 760 - HIGH-FRAMERATE PRECISION)
+// El nuevo FFT elimina jitter ? podemos usar decay m�s agresivo
+// An�lisis estad�stico de 200+ muestras de cumbia:
+//   - ~11.5% de beats perdidos con gate 0.24
+//   - Zona 0.20-0.24 tiene voces/melod�as rescatables
+//   - Gate 0.22 rescata la mayor�a sin meter ruido
+//   - Decay 0.60 (antes 0.75) para respuesta m�s robot, menos ghost
+LatinoStereoPhysics.MOVER_ATTACK = 0.65; // Subida r�pida
+LatinoStereoPhysics.MOVER_DECAY_FACTOR = 0.60; // ?? WAVE 760: Bajado de 0.75 (m�s robot, menos ghost)
+LatinoStereoPhysics.MOVER_GATE = 0.22; // Sin cambio (rescatar zona 0.22-0.24)
+LatinoStereoPhysics.MOVER_GAIN = 1.50; // ?? WAVE 760: Subido de 1.30 (compensar decay m�s r�pido)
+LatinoStereoPhysics.MOVER_HYSTERESIS = 0.00; // WAVE 2192: GUILLOTINA         // Piso de relleno
+LatinoStereoPhysics.MOVER_TREBLE_REJECTION = 0.30; // ?? ORO PURO - Voces autotune tienen treble
+// ?? WAVE 1004.1: STEREO SPLIT - MOVERS COMO PAREJA DE BAILE
+// LEFT (El Gal�n / Mid / Conga / Voz) - Hereda l�gica "Mid Puro"
+LatinoStereoPhysics.MOVER_L_GATE = 0.28; // WAVE 2192
+LatinoStereoPhysics.MOVER_L_ATTACK = 0.65;
+LatinoStereoPhysics.MOVER_L_DECAY = 0.25; // WAVE 2192: guillotina
+// RIGHT (La Dama / Treble / Brass / G�ira) - Nueva l�gica "Brillo"
+LatinoStereoPhysics.MOVER_R_GATE = 0.18; // WAVE 2195: Schwarzenegger despierta facil             // WAVE 2194: solo picos reales
+LatinoStereoPhysics.MOVER_R_ATTACK = 0.80; // Ataque r�pido (trompetazo)
+LatinoStereoPhysics.MOVER_R_DECAY = 0.50; // WAVE 2195: liquido no estrobo            // WAVE 2194
+LatinoStereoPhysics.MOVER_R_GAIN = 4.0; // WAVE 2195: protocolo Techno     // Boost para que brille
+// BACK PARs -- SNARE SNIPER TECHNO CLONE (WAVE 2199)
+LatinoStereoPhysics.BACK_PAR_GATE = 0.45; // WAVE 2200: +0.05 sobre Techno (filtra hihats debiles y autotune)
+LatinoStereoPhysics.BACK_PAR_GAIN = 5.0; // WAVE 2199: BACK_PAR_SLAP_MULT clon Techno
+LatinoStereoPhysics.BACK_PAR_ATTACK = 0.85;
+LatinoStereoPhysics.BACK_PAR_DECAY = 0.25;
+// FRONT PARs -- BOMBO TERMINATOR TECHNO CLONE (WAVE 2199)
+LatinoStereoPhysics.FRONT_PAR_GATE = 0.48; // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_ON
+LatinoStereoPhysics.FRONT_PAR_GATE_OFF = 0.35; // WAVE 2199: clon exacto Techno FRONT_PAR_GATE_OFF
+LatinoStereoPhysics.BASS_VITAMIN_BOOST = 1.8; // WAVE 2199: clon exacto Techno
+LatinoStereoPhysics.FRONT_PAR_ATTACK = 0.70; // Ataque rapido
+LatinoStereoPhysics.FRONT_PAR_GAIN = 2.0; // WAVE 2197: cuadratica pura
+// Machine Gun Blackout
+LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD = 0.4;
+LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS = 100;
+LatinoStereoPhysics.BLACKOUT_FRAMES = 3;
+// White Puncture
+LatinoStereoPhysics.WHITE_PUNCTURE_DIP_FRAMES = 2;
+LatinoStereoPhysics.WHITE_PUNCTURE_FLASH_FRAMES = 1;
+LatinoStereoPhysics.WHITE_PUNCTURE_DIP_LEVEL = 0.30;
+export default LatinoStereoPhysics;

@@ -2097,6 +2097,15 @@ export class SeleneColorInterpolator {
         this.targetPalette!,
         this.transitionProgress
       );
+    } else if (hasAnyPaletteDelta && this.targetPalette) {
+      // ⚡ WAVE 3455: MOVER LIVE-TRACK — transición completa pero la paleta sigue cambiando.
+      // secondary/ambient usan snap (t=1.0) en lerpPalette, así que aplicar el newTarget
+      // directamente para esos canales. primary/accent/contrast no cambian (isRealChange=false).
+      this.currentPalette = {
+        ...this.currentPalette!,
+        secondary: this.targetPalette.secondary,
+        ambient:   this.targetPalette.ambient,
+      };
     }
     
     return this.currentPalette;

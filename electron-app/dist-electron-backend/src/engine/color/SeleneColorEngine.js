@@ -534,7 +534,7 @@ export class SeleneColorEngine {
         // pero por si algún path futuro inyecta el enum en mayúsculas, blindamos la comparación.
         const activeMood = String(data.mood || 'neutral').toLowerCase();
         const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
-        const energy = clamp(data.energy ?? 0.5, 0, 1);
+        const energy = Number.isFinite(data.energy) ? clamp(data.energy, 0, 1) : 0.5;
         // 🎨 WAVE 90: Detectar vibeId temprano (necesario para Golden Reversal)
         const vibeId = data.vibeId || 'idle';
         // === B. DETERMINAR HUE BASE (Matemática Pura) ===
@@ -1402,48 +1402,103 @@ export class SeleneColorInterpolator {
             this.transitionProgress = 1.0;
             return newTarget;
         }
-        // � WAVE 70.5: Calcular diferencia de Hue con camino más corto en el círculo
-        const currentTargetHue = normalizeHue(this.targetPalette.primary.h);
-        const newTargetHue = normalizeHue(newTarget.primary.h);
-        let hueDiff = Math.abs(currentTargetHue - newTargetHue);
-        if (hueDiff > 180)
-            hueDiff = 360 - hueDiff; // Camino más corto
-        // 🌊 WAVE 70.5: Solo es cambio REAL si supera tolerancia de 15°
-        // Evita flicker por jitter/oscilación del análisis
-        const isRealChange = hueDiff > 15;
+        // 🛡️ WAVE 3454: FULL PALETTE DIFF GATE
+        // La transición ya no depende solo del hue primario:
+        // si cualquier canal H/S/L cambia de forma significativa, se transiciona.
+        const isRealChange = this.hasSignificantPaletteDifference(this.currentPalette, newTarget);
+        const hasAnyPaletteDelta = this.hasAnyPaletteDifference(this.targetPalette ?? this.currentPalette, newTarget);
         if (isRealChange) {
-            // Cambio significativo de Key/Mood - iniciar nueva transición
+            // Cambio significativo en cualquier canal de la paleta - iniciar transición
             this.targetPalette = newTarget;
             this.transitionProgress = 0;
             // Velocidad según contexto
             const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
             this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
         }
-        else if (hueDiff > 0) {
-            // 🌊 WAVE 70.5: Jitter detectado - actualizar target silenciosamente
-            // NO reseteamos transitionProgress, permitiendo corrección suave del rumbo
+        else if (hasAnyPaletteDelta) {
+            // Cambios menores: actualizar target sin reiniciar transición
             this.targetPalette = newTarget;
         }
         // Avanzar transición
         if (this.transitionProgress < 1.0) {
             this.transitionProgress = Math.min(1.0, this.transitionProgress + this.transitionSpeed);
-            // Interpolar todos los colores de la paleta
+            // ⚡ WAVE 3440: MOVER FAST-TRACK
+            // primary/accent/contrast → LERP suave (rampa normal para PARs/wash)
+            // secondary/ambient       → Snap inmediato a targetPalette (t=1.0)
+            // Razón: los Movers (secondary/ambient) tienen ruedas de color mecánicas.
+            // Un LERP de 4s produce 4-5 colores intermedios en el HarmonicQuantizer,
+            // que el DarkSpinFilter revela como arcoíris en ventanas entre blackouts.
+            // El snap genera exactamente 1 cambio → 1 blackout → color destino limpio.
             this.currentPalette = this.lerpPalette(this.currentPalette, this.targetPalette, this.transitionProgress);
+        }
+        else if (hasAnyPaletteDelta && this.targetPalette) {
+            // ⚡ WAVE 3455: MOVER LIVE-TRACK — transición completa pero la paleta sigue cambiando.
+            // secondary/ambient usan snap (t=1.0) en lerpPalette, así que aplicar el newTarget
+            // directamente para esos canales. primary/accent/contrast no cambian (isRealChange=false).
+            this.currentPalette = {
+                ...this.currentPalette,
+                secondary: this.targetPalette.secondary,
+                ambient: this.targetPalette.ambient,
+            };
         }
         return this.currentPalette;
     }
     /**
-     * Interpola entre dos paletas completas
+     * Interpola entre dos paletas completas.
+     *
+     * ⚡ WAVE 3440: MOVER FAST-TRACK
+     * secondary y ambient usan t=1.0 siempre (snap inmediato al color destino).
+     * primary, accent y contrast mantienen el LERP progresivo normal.
+     *
+     * Motivación: secondary/ambient son los roles asignados a los Movers (ruedas
+     * de color mecánicas). Si reciben una rampa de 240 frames, el HarmonicQuantizer
+     * deja pasar 4-5 colores intermedios y el DarkSpinFilter dispara múltiples
+     * blackouts, revelando el arcoíris físico entre ventanas de tránsito.
+     * Con snap, el Quantizer muestrea siempre el color destino → 1 blackout → limpio.
      */
     lerpPalette(from, to, t) {
         return {
-            primary: this.lerpHSL(from.primary, to.primary, t),
-            secondary: this.lerpHSL(from.secondary, to.secondary, t),
-            accent: this.lerpHSL(from.accent, to.accent, t),
-            ambient: this.lerpHSL(from.ambient, to.ambient, t),
-            contrast: this.lerpHSL(from.contrast, to.contrast, t),
+            primary: this.lerpHSL(from.primary, to.primary, t), // Rampa suave
+            secondary: this.lerpHSL(from.secondary, to.secondary, 1.0), // ⚡ Snap Mover
+            accent: this.lerpHSL(from.accent, to.accent, t), // Rampa suave
+            ambient: this.lerpHSL(from.ambient, to.ambient, 1.0), // ⚡ Snap Mover
+            contrast: this.lerpHSL(from.contrast, to.contrast, t), // Rampa suave
             meta: t >= 0.5 ? to.meta : from.meta, // Metadata cambia a mitad de transición
         };
+    }
+    hasSignificantPaletteDifference(from, to) {
+        return this.hasSignificantColorDifference(from.primary, to.primary)
+            || this.hasSignificantColorDifference(from.secondary, to.secondary)
+            || this.hasSignificantColorDifference(from.accent, to.accent)
+            || this.hasSignificantColorDifference(from.ambient, to.ambient)
+            || this.hasSignificantColorDifference(from.contrast, to.contrast);
+    }
+    hasAnyPaletteDifference(from, to) {
+        return this.hasAnyColorDifference(from.primary, to.primary)
+            || this.hasAnyColorDifference(from.secondary, to.secondary)
+            || this.hasAnyColorDifference(from.accent, to.accent)
+            || this.hasAnyColorDifference(from.ambient, to.ambient)
+            || this.hasAnyColorDifference(from.contrast, to.contrast);
+    }
+    hasSignificantColorDifference(from, to) {
+        if (!Number.isFinite(from.h) || !Number.isFinite(from.s) || !Number.isFinite(from.l)
+            || !Number.isFinite(to.h) || !Number.isFinite(to.s) || !Number.isFinite(to.l)) {
+            return true;
+        }
+        const fromHue = normalizeHue(from.h);
+        const toHue = normalizeHue(to.h);
+        let hueDiff = Math.abs(fromHue - toHue);
+        if (hueDiff > 180)
+            hueDiff = 360 - hueDiff;
+        return hueDiff > 15
+            || Math.abs(from.s - to.s) > 3
+            || Math.abs(from.l - to.l) > 3;
+    }
+    hasAnyColorDifference(from, to) {
+        const epsilon = 0.001;
+        return Math.abs(from.h - to.h) > epsilon
+            || Math.abs(from.s - to.s) > epsilon
+            || Math.abs(from.l - to.l) > epsilon;
     }
     /**
      * Interpola entre dos colores HSL

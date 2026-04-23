@@ -91,13 +91,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //   Subimos gate+percGate para requerir un hit de percusión real.
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.40,   // WAVE 3457: umbral duro anti-micro-hihat en layout 4.1
-    boost: 1.5,     // WAVE 3457: cap anti-spike para evitar estrobo por hits marginales
+    gateOn: 0.35,   // WAVE 3460: aislamiento extremo para conservar caja y aniquilar hihat/reverb media
+    boost: 1.0,     // WAVE 3457: cap anti-spike para evitar estrobo por hits marginales
     crushExponent: 1.0,
     decayBase: 0.05,
     decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
-    squelchBase: 0.40,     // WAVE 3457: piso más alto para bloquear tss-tss débil
+    squelchBase: 0.52,     // WAVE 3460: piso estricto para filtrar ruido fino y cola de reverb
     squelchSlope: 0.10,
     ghostCap: 0.00,
     gateMargin: 0.01,
@@ -110,13 +110,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
-    gateOn: 0.40,   // WAVE 3457: endurecido para cazar golpes grandes y filtrar microtransitorios
+    gateOn: 0.15,   // WAVE 3464: sensibilidad logarítmica para recuperar señal tras sustracción de graves
     boost: 1.5,
-    crushExponent: 1.0,
-    decayBase: 0.60,
-    decayRange: 0.03,
+    crushExponent: 2.0,
+    decayBase: 0.65,       // WAVE 3464: viscosidad extrema para glow de sinte sostenido
+    decayRange: 0.35,      // WAVE 3460: morph amplio de caída para apagar como lava
     maxIntensity: 0.85,
-    squelchBase: 0.40,     // WAVE 3457: alineado con gate para bloquear ruido fino de hihat
+    squelchBase: 0.18,     // WAVE 3464: piso reactivo para abrir con melodía y cerrar micro-residuo
     squelchSlope: 0.10,
     ghostCap: 0.05,
     gateMargin: 0.005,
@@ -156,19 +156,16 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   bassSubtractRange: 0.45,
 
   // ═══════════════════════════════════════════════════════════════
-  // BACK L (MID SYNTHS): Cross-filter (WAVE 2411 → WAVE 2430 PARAMETRIZADO)
-  // Original hardcodeado: mid×0.6 - bass×0.2
-  // Nuevo: lowMid×backLLowMidWeight + mid×backLMidWeight - treble×backLTrebleSub
-  // Para Techno: lowMid×0.0 + mid×0.6 - treble×0.0 (bass×0.2 se pierde, era marginal)
-  // NOTA: El original restaba bass, el nuevo resta treble. Para mantener exactitud,
-  // usamos lowMid=-0.2 como proxy (lowMid ≈ bass en techno). Pero lowMid no existe
-  // como peso negativo limpio. Solucón pragmática: mid×0.6, el resto en 0.
+  // BACK L (MID SYNTHS): Ghost Mids Reform (WAVE 3464)
+  // Objetivo: alimentar Back L con cuerpo melódico (MID) y purgar fuga de bombo.
+  // Señal efectiva buscada: mid*1.0 - bass*0.7 (sustracción híbrida purificada).
+  // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
   // ═══════════════════════════════════════════════════════════════
 
   backLLowMidWeight: 0.0,   // WAVE 2430: original no usaba lowMid
-  backLMidWeight: 0.6,      // WAVE 2430: original = mid×0.6
+  backLMidWeight: 1.0,      // WAVE 3464: MID como alimento principal del Back L
   backLTrebleSub: 0.0,      // WAVE 2430: original no restaba treble
-  backLBassSub: 0.2,        // WAVE 2430: original = -bass×0.2
+  backLBassSub: 0.7,        // WAVE 3464: ghost subtraction del bombo (rango solicitado 0.6-0.8)
 
   // ═══════════════════════════════════════════════════════════════
   // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)

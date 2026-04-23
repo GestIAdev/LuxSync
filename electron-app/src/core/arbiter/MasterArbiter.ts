@@ -155,6 +155,7 @@ export class MasterArbiter extends EventEmitter {
   // color modulation (tide zone changes) must NOT alter its color.
   // We freeze the last stable RGB here and serve it instead of the new palette.
   private lastKnownColors: Map<string, { r: number; g: number; b: number }> = new Map()
+  private _moverDiagLastLog = 0  // WAVE-DIAG: throttle for mover diagnostic log
   
   // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
   // When operator releases manual control, we store the position here so AI adopts it as "home"
@@ -2705,6 +2706,15 @@ export class MasterArbiter extends EventEmitter {
     const hasColorOverride = manualOverrideForBunker
       ? manualOverrideForBunker.overrideChannels.some(ch => getChannelCategory(ch) === 'color')
       : false
+    // 🔍 WAVE-DIAG: Log movers color resolution
+    if (fixture?.name?.includes('1140') || fixture?.name?.includes('EL 1140')) {
+      const _t = performance.now()
+      if (_t - (this._moverDiagLastLog ?? 0) > 1000) {
+        this._moverDiagLastLog = _t
+        const palJson = intent?.palette ? `p=${JSON.stringify(intent.palette.primary)} s=${JSON.stringify(intent.palette.secondary)} amb=${JSON.stringify(intent.palette.ambient)}` : 'NO-PALETTE'
+        console.warn(`[🔍 ARBITER-DIAG] ${fixture?.name} zone=${zone} paletteRole=${paletteRole} selectedColor=${JSON.stringify(selectedColor)} hasColorOverride=${hasColorOverride} | ${palJson}`)
+      }
+    }
     if (hasColorOverride) {
       // Fixture color is a bunker: serve last known color (frozen before manual takeover)
       const frozen = this.lastKnownColors.get(fixtureId)

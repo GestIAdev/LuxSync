@@ -127,6 +127,10 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
     // 🥁 BPM Tracker diagnostics (WAVE 3411 lift)
     '[🥁 INTERVAL BPM]',
     '[DEMBOW CEILING',
+    // 🔍 WAVE-DIAG: Color pipeline diagnostics (EL1140 / movers)
+    '[🔍 COLOR-DIAG]',
+    '[🔍 ARBITER-DIAG]',
+    '[🐟 BABEL FISH]',
     // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
     // hibernados — son ruido de ticker, no eventos de conciencia.
     // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.

@@ -29,6 +29,7 @@
     "src/stores/**/*.ts",
     "src/components/**/*.tsx",
     "src/core/intelligence/dream/disabled/**/*.ts",
+    "src/**/_legacy_archive/**/*.ts",
     "src/hooks/**/*.ts",
     "src/tests/**/*.ts",
     "**/__tests__/**",

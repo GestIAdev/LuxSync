@@ -1,650 +1,450 @@
-[LATINO-41] sB:0.387 mid:0.669 hMid:0.404 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.347 mid:0.619 hMid:0.381 tr:0.173 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.138 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.290 mid:0.621 hMid:0.366 tr:0.158 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.389 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.231 mid:0.683 hMid:0.398 tr:0.225 | morph:1.000 tDelta:0.0671 percRaw:0.268 | fPar:0.156 bPar:0.850 mL:0.588 mR:0.619 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.187 mid:0.748 hMid:0.431 tr:0.249 | morph:1.000 tDelta:0.0238 percRaw:0.095 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.155 mid:0.790 hMid:0.433 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.126 mid:0.836 hMid:0.460 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.105 mid:0.836 hMid:0.481 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.095 mid:0.849 hMid:0.482 tr:0.223 | morph:1.000 tDelta:0.0014 percRaw:0.006 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.083 mid:0.852 hMid:0.484 tr:0.219 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.072 mid:0.818 hMid:0.475 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.065 mid:0.774 hMid:0.449 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.112 mid:0.774 hMid:0.445 tr:0.244 | morph:1.000 tDelta:0.0522 percRaw:0.209 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.226 mid:0.756 hMid:0.450 tr:0.268 | morph:1.000 tDelta:0.0247 percRaw:0.099 | fPar:0.144 bPar:0.000 mL:0.365 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.323 mid:0.779 hMid:0.452 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.327 mid:0.832 hMid:0.477 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.330 mid:0.832 hMid:0.496 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.361 mid:0.852 hMid:0.522 tr:0.229 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:110 | Pan:151 Tilt:-34 | sBPM:96 phase:113°
-[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:110 | Pan:155 Tilt:29 | sBPM:96 phase:113°
-[LATINO-41] sB:0.390 mid:0.868 hMid:0.543 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.411 mid:0.860 hMid:0.541 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.381 mid:0.863 hMid:0.535 tr:0.212 | morph:1.000 tDelta:0.0062 percRaw:0.025 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.347 mid:0.893 hMid:0.549 tr:0.236 | morph:1.000 tDelta:0.0244 percRaw:0.098 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.332 mid:0.881 hMid:0.560 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.306 mid:0.872 hMid:0.559 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.265 mid:0.876 hMid:0.576 tr:0.226 | morph:1.000 tDelta:0.0188 percRaw:0.075 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.226 mid:0.841 hMid:0.566 tr:0.270 | morph:1.000 tDelta:0.0446 percRaw:0.178 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.197 mid:0.841 hMid:0.558 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.162 mid:0.770 hMid:0.523 tr:0.281 | morph:1.000 tDelta:0.0103 percRaw:0.041 | fPar:0.003 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.133 mid:0.679 hMid:0.483 tr:0.254 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.122 mid:0.670 hMid:0.462 tr:0.272 | morph:1.000 tDelta:0.0184 percRaw:0.074 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.207 mid:0.686 hMid:0.461 tr:0.318 | morph:1.000 tDelta:0.0460 percRaw:0.184 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.295 mid:0.646 hMid:0.446 tr:0.317 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.632 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.949
-[LATINO-41] sB:0.372 mid:0.656 hMid:0.431 tr:0.276 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.398 mid:0.735 hMid:0.454 tr:0.237 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.451 mR:0.441 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.418 mid:0.735 hMid:0.472 tr:0.237 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.514 mR:0.428 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.390 mid:0.756 hMid:0.489 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.337 mid:0.749 hMid:0.507 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.269 mid:0.742 hMid:0.523 tr:0.224 | morph:1.000 tDelta:0.0165 percRaw:0.066 | fPar:0.269 bPar:0.009 mL:0.790 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.213 mid:0.757 hMid:0.544 tr:0.279 | morph:1.000 tDelta:0.0554 percRaw:0.222 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.174 mid:0.794 hMid:0.543 tr:0.276 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.138 mid:0.825 hMid:0.532 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.115 mid:0.826 hMid:0.487 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.094 mid:0.803 hMid:0.464 tr:0.226 | morph:1.000 tDelta:0.0085 percRaw:0.034 | fPar:0.001 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.078 mid:0.803 hMid:0.447 tr:0.226 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.069 mid:0.714 hMid:0.422 tr:0.213 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.062 mid:0.645 hMid:0.390 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.057 mid:0.604 hMid:0.380 tr:0.196 | morph:1.000 tDelta:0.0096 percRaw:0.038 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.150 mid:0.629 hMid:0.401 tr:0.259 | morph:1.000 tDelta:0.0629 percRaw:0.252 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.002 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.267 mid:0.609 hMid:0.390 tr:0.277 | morph:1.000 tDelta:0.0173 percRaw:0.069 | fPar:0.202 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.984
-[LATINO-41] sB:0.364 mid:0.628 hMid:0.366 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.408 mid:0.672 hMid:0.358 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.440 mid:0.672 hMid:0.353 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.432 mid:0.709 hMid:0.361 tr:0.221 | morph:1.000 tDelta:0.0005 percRaw:0.002 | fPar:0.800 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.67 | beat #444 | bass=0.1710 sab=0.000 | 🔬in_peak=0.23420 in_rms=0.10284
-[LATINO-41] sB:0.382 mid:0.729 hMid:0.355 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.346 mR:0.725 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.342 mid:0.715 hMid:0.321 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.151 mR:0.823 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.345 mid:0.730 hMid:0.332 tr:0.223 | morph:1.000 tDelta:0.0554 percRaw:0.222 | fPar:0.800 bPar:0.000 mL:0.043 mR:0.323 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.357 mid:0.730 hMid:0.333 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.003 mR:0.755 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.354 mid:0.759 hMid:0.323 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.511 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.324 mid:0.697 hMid:0.290 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.226 mR:0.336 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.262 mid:0.733 hMid:0.369 tr:0.208 | morph:1.000 tDelta:0.0678 percRaw:0.271 | fPar:0.269 bPar:0.850 mL:0.437 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.215 mid:0.733 hMid:0.428 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.391 mL:0.692 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.176 mid:0.727 hMid:0.462 tr:0.237 | morph:1.000 tDelta:0.0287 percRaw:0.115 | fPar:0.091 bPar:0.180 mL:0.765 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.144 mid:0.641 hMid:0.426 tr:0.212 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.083 mL:0.329 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.122 mid:0.538 hMid:0.369 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.009 mL:0.141 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.116 mid:0.532 hMid:0.366 tr:0.219 | morph:1.000 tDelta:0.0350 percRaw:0.140 | fPar:0.001 bPar:0.001 mL:0.035 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.194 mid:0.644 hMid:0.415 tr:0.252 | morph:1.000 tDelta:0.0332 percRaw:0.133 | fPar:0.800 bPar:0.850 mL:0.003 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.284 mid:0.696 hMid:0.429 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.434 bPar:0.391 mL:0.640 mR:0.339 | sc:1 scDuck:0.965
-[LATINO-41] sB:0.363 mid:0.744 hMid:0.420 tr:0.194 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.375 mid:0.804 hMid:0.400 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[VirtualWire] 📡 SAB feed — cb#36000 | frames=441 | peak=0.3002 | ch=2
-[LATINO-41] sB:0.358 mid:0.816 hMid:0.397 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.344 mid:0.816 hMid:0.395 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.306 mid:0.847 hMid:0.410 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.247 mid:0.844 hMid:0.393 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.198 mid:0.822 hMid:0.403 tr:0.201 | morph:1.000 tDelta:0.0636 percRaw:0.254 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.167 mid:0.804 hMid:0.404 tr:0.202 | morph:1.000 tDelta:0.0018 percRaw:0.007 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.140 mid:0.769 hMid:0.370 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.117 mid:0.722 hMid:0.354 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.106 mid:0.712 hMid:0.359 tr:0.186 | morph:1.000 tDelta:0.0232 percRaw:0.093 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[CHOREO] fiesta-latina | wave_y [SNAKE F0/2] | Bar:111 | Pan:-125 Tilt:-26 | sBPM:96 phase:233°
-[CHOREO] fiesta-latina | wave_y [SNAKE F1/2] | Bar:111 | Pan:-51 Tilt:-63 | sBPM:96 phase:233°
-[LATINO-41] sB:0.090 mid:0.618 hMid:0.328 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.077 mid:0.534 hMid:0.289 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.073 mid:0.502 hMid:0.276 tr:0.148 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.175 mid:0.575 hMid:0.345 tr:0.234 | morph:1.000 tDelta:0.0855 percRaw:0.342 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.252 mid:0.575 hMid:0.396 tr:0.234 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.367 mid:0.620 hMid:0.444 tr:0.252 | morph:1.000 tDelta:0.0181 percRaw:0.072 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.450 mid:0.633 hMid:0.469 tr:0.253 | morph:1.000 tDelta:0.0012 percRaw:0.005 | fPar:0.800 bPar:0.391 mL:0.446 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.471 mid:0.654 hMid:0.490 tr:0.259 | morph:1.000 tDelta:0.0057 percRaw:0.023 | fPar:0.800 bPar:0.180 mL:0.762 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.455 mid:0.681 hMid:0.514 tr:0.277 | morph:1.000 tDelta:0.0185 percRaw:0.074 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.478 mid:0.665 hMid:0.513 tr:0.262 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.449 mid:0.655 hMid:0.513 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.426 mid:0.655 hMid:0.514 tr:0.249 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.812 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.384 mid:0.671 hMid:0.517 tr:0.276 | morph:1.000 tDelta:0.0275 percRaw:0.110 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.379 mid:0.659 hMid:0.517 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.370 mid:0.648 hMid:0.514 tr:0.243 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.315 mid:0.648 hMid:0.492 tr:0.231 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.157 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.257 mid:0.748 hMid:0.514 tr:0.274 | morph:1.000 tDelta:0.0432 percRaw:0.173 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.200 mid:0.785 hMid:0.526 tr:0.284 | morph:1.000 tDelta:0.0105 percRaw:0.042 | fPar:0.001 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.161 mid:0.788 hMid:0.501 tr:0.258 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.135 mid:0.813 hMid:0.456 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.115 mid:0.813 hMid:0.421 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.135 mid:0.865 hMid:0.423 tr:0.262 | morph:1.000 tDelta:0.0411 percRaw:0.165 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[CHOREO] Pattern transition: wave_y -> ballyhoo (2s LERP)
-[LATINO-41] sB:0.217 mid:0.866 hMid:0.410 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.314 mid:0.845 hMid:0.392 tr:0.239 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.376 mid:0.775 hMid:0.366 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.375 mid:0.686 hMid:0.341 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.349 mid:0.549 hMid:0.297 tr:0.161 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.298 mid:0.446 hMid:0.253 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.235 mid:0.467 hMid:0.260 tr:0.168 | morph:1.000 tDelta:0.0355 percRaw:0.142 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.190 mid:0.552 hMid:0.301 tr:0.228 | morph:1.000 tDelta:0.0604 percRaw:0.241 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.153 mid:0.590 hMid:0.315 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.124 mid:0.590 hMid:0.326 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.103 mid:0.593 hMid:0.304 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.084 mid:0.570 hMid:0.305 tr:0.260 | morph:1.000 tDelta:0.0682 percRaw:0.273 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.071 mid:0.515 hMid:0.301 tr:0.317 | morph:1.000 tDelta:0.0574 percRaw:0.230 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=98 conf=0.05 | PLL=FREEWHEEL [mem=96@-15f] phase=0.00 sync=0.81 | beat #448 | bass=0.0356 sab=0.108 | 🔬in_peak=0.15361 in_rms=0.04292
-[LATINO-41] sB:0.060 mid:0.465 hMid:0.289 tr:0.351 | morph:1.000 tDelta:0.0342 percRaw:0.137 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.051 mid:0.420 hMid:0.276 tr:0.375 | morph:1.000 tDelta:0.0235 percRaw:0.094 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.065 mid:0.489 hMid:0.307 tr:0.397 | morph:1.000 tDelta:0.0225 percRaw:0.090 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.182 mid:0.531 hMid:0.337 tr:0.404 | morph:1.000 tDelta:0.0063 percRaw:0.025 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.274 mid:0.537 hMid:0.346 tr:0.368 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.282 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.977
-[LATINO-41] sB:0.352 mid:0.567 hMid:0.344 tr:0.281 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.346 mid:0.581 hMid:0.324 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.308 mR:0.439 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.415 mid:0.572 hMid:0.297 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.133 mR:0.460 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.467 mid:0.572 hMid:0.277 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.033 mR:0.446 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.400 mid:0.556 hMid:0.249 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.003 mR:0.607 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.377 mid:0.526 hMid:0.237 tr:0.171 | morph:1.000 tDelta:0.0040 percRaw:0.016 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.253 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.375 mid:0.545 hMid:0.266 tr:0.229 | morph:1.000 tDelta:0.0586 percRaw:0.234 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.099 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.360 mid:0.466 hMid:0.246 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.012 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.315 mid:0.390 hMid:0.213 tr:0.135 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.001 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.255 mid:0.412 hMid:0.201 tr:0.116 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.218 mid:0.619 hMid:0.301 tr:0.211 | morph:1.000 tDelta:0.0950 percRaw:0.380 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.175 mid:0.722 hMid:0.353 tr:0.232 | morph:1.000 tDelta:0.0212 percRaw:0.085 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.142 mid:0.785 hMid:0.352 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.122 mid:0.809 hMid:0.335 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.107 mid:0.809 hMid:0.323 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.173 mid:0.751 hMid:0.324 tr:0.249 | morph:1.000 tDelta:0.0500 percRaw:0.200 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.262 mid:0.658 hMid:0.310 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.152 bPar:0.000 mL:0.155 mR:0.141 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.350 mid:0.569 hMid:0.292 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.395 mid:0.485 hMid:0.260 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.380 mid:0.497 hMid:0.269 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[CHOREO] fiesta-latina | ballyhoo [LERP] [SNAKE F0/2] | Bar:112 | Pan:-142 Tilt:4 | sBPM:96 phase:314°
-[CHOREO] fiesta-latina | ballyhoo [LERP] [SNAKE F1/2] | Bar:112 | Pan:-108 Tilt:-48 | sBPM:96 phase:314°
-[LATINO-41] sB:0.349 mid:0.444 hMid:0.249 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.294 mid:0.386 hMid:0.214 tr:0.119 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.234 mid:0.472 hMid:0.258 tr:0.185 | morph:1.000 tDelta:0.0660 percRaw:0.264 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.188 mid:0.472 hMid:0.291 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.155 mid:0.556 hMid:0.328 tr:0.225 | morph:1.000 tDelta:0.0402 percRaw:0.161 | fPar:0.023 bPar:0.850 mL:0.850 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.133 mid:0.533 hMid:0.325 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.391 mL:0.559 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.108 mid:0.513 hMid:0.316 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.180 mL:0.241 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.090 mid:0.587 hMid:0.357 tr:0.189 | morph:1.000 tDelta:0.0056 percRaw:0.023 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.076 mid:0.654 hMid:0.405 tr:0.206 | morph:1.000 tDelta:0.0178 percRaw:0.071 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.066 mid:0.627 hMid:0.406 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.058 mid:0.627 hMid:0.407 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.054 mid:0.546 hMid:0.361 tr:0.158 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.103 mid:0.589 hMid:0.373 tr:0.213 | morph:1.000 tDelta:0.0553 percRaw:0.221 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.619 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.201 mid:0.658 hMid:0.402 tr:0.252 | morph:1.000 tDelta:0.0392 percRaw:0.157 | fPar:0.144 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.303 mid:0.729 hMid:0.406 tr:0.220 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.798 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.393 mid:0.744 hMid:0.382 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.391 mid:0.787 hMid:0.386 tr:0.164 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.419 mid:0.832 hMid:0.385 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.440 mid:0.832 hMid:0.384 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.448 mid:0.887 hMid:0.376 tr:0.129 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.400 mid:0.938 hMid:0.379 tr:0.144 | morph:1.000 tDelta:0.0142 percRaw:0.057 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.389 mid:0.960 hMid:0.397 tr:0.174 | morph:1.000 tDelta:0.0300 percRaw:0.120 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.360 mid:0.969 hMid:0.402 tr:0.147 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.327 mid:1.005 hMid:0.441 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.267 mid:1.033 hMid:0.486 tr:0.140 | morph:1.000 tDelta:0.0193 percRaw:0.077 | fPar:0.023 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.214 mid:1.003 hMid:0.520 tr:0.216 | morph:1.000 tDelta:0.0760 percRaw:0.304 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.176 mid:0.991 hMid:0.531 tr:0.249 | morph:1.000 tDelta:0.0329 percRaw:0.132 | fPar:0.001 bPar:0.391 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.143 mid:0.995 hMid:0.518 tr:0.225 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.122 mid:0.997 hMid:0.504 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.107 mid:0.997 hMid:0.494 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.178 mid:0.999 hMid:0.475 tr:0.257 | morph:1.000 tDelta:0.0509 percRaw:0.204 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.246 mid:1.017 hMid:0.448 tr:0.260 | morph:1.000 tDelta:0.0031 percRaw:0.013 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.303 mid:1.052 hMid:0.409 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.782 bPar:0.000 mL:0.797 mR:0.797 | sc:1 scDuck:0.937
-[LATINO-41] sB:0.325 mid:1.069 hMid:0.386 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[CHOREO] Transition complete -> ballyhoo
-[LATINO-41] sB:0.319 mid:1.072 hMid:0.378 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.82 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.23 | beat #452 | bass=0.1282 sab=0.108 | 🔬in_peak=0.41430 in_rms=0.13472
-[LATINO-41] sB:0.287 mid:1.042 hMid:0.377 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.352 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.239 mid:0.952 hMid:0.370 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.154 mR:0.341 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.189 mid:0.901 hMid:0.389 tr:0.182 | morph:1.000 tDelta:0.0635 percRaw:0.254 | fPar:0.156 bPar:0.000 mL:0.048 mR:0.141 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.158 mid:0.916 hMid:0.404 tr:0.207 | morph:1.000 tDelta:0.0251 percRaw:0.100 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.129 mid:0.888 hMid:0.407 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.107 mid:0.888 hMid:0.409 tr:0.184 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.094 mid:0.903 hMid:0.413 tr:0.160 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.079 mid:0.923 hMid:0.410 tr:0.171 | morph:1.000 tDelta:0.0112 percRaw:0.045 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.066 mid:0.931 hMid:0.408 tr:0.169 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.058 mid:0.929 hMid:0.398 tr:0.142 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.049 mid:0.892 hMid:0.399 tr:0.125 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.083 mid:0.850 hMid:0.436 tr:0.207 | morph:1.000 tDelta:0.0819 percRaw:0.328 | fPar:0.800 bPar:0.850 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.191 mid:0.794 hMid:0.435 tr:0.244 | morph:1.000 tDelta:0.0366 percRaw:0.147 | fPar:0.144 bPar:0.391 mL:0.048 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.322 mid:0.733 hMid:0.417 tr:0.213 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.004 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.356 mid:0.678 hMid:0.392 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.002 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.382 mid:0.729 hMid:0.423 tr:0.202 | morph:1.000 tDelta:0.0302 percRaw:0.121 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.414 mid:0.708 hMid:0.413 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.438 mid:0.708 hMid:0.406 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.412 mid:0.638 hMid:0.369 tr:0.131 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.412 mid:0.594 hMid:0.359 tr:0.180 | morph:1.000 tDelta:0.0487 percRaw:0.195 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.390 mid:0.584 hMid:0.358 tr:0.208 | morph:1.000 tDelta:0.0280 percRaw:0.112 | fPar:0.464 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.372 mid:0.533 hMid:0.313 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.302 mid:0.472 hMid:0.269 tr:0.113 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.239 mid:0.457 hMid:0.277 tr:0.139 | morph:1.000 tDelta:0.0254 percRaw:0.102 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.206 mid:0.591 hMid:0.342 tr:0.216 | morph:1.000 tDelta:0.0777 percRaw:0.311 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:113 | Pan:171 Tilt:103 | sBPM:97 phase:15°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:113 | Pan:-25 Tilt:134 | sBPM:97 phase:15°
-[LATINO-41] sB:0.171 mid:0.615 hMid:0.366 tr:0.223 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.140 mid:0.576 hMid:0.342 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.126 mid:0.555 hMid:0.336 tr:0.226 | morph:1.000 tDelta:0.0369 percRaw:0.148 | fPar:0.000 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.115 mid:0.555 hMid:0.332 tr:0.226 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.202 mid:0.538 hMid:0.332 tr:0.267 | morph:1.000 tDelta:0.0409 percRaw:0.164 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.290 mid:0.504 hMid:0.318 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.532 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.957
-[LATINO-41] sB:0.371 mid:0.442 hMid:0.290 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.395 mid:0.424 hMid:0.264 tr:0.177 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.381 mid:0.386 hMid:0.242 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.339 mid:0.331 hMid:0.209 tr:0.127 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.292 mid:0.285 hMid:0.176 tr:0.098 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.229 mid:0.304 hMid:0.191 tr:0.128 | morph:1.000 tDelta:0.0291 percRaw:0.116 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.186 mid:0.421 hMid:0.257 tr:0.193 | morph:1.000 tDelta:0.0656 percRaw:0.262 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.151 mid:0.438 hMid:0.270 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.125 mid:0.438 hMid:0.279 tr:0.183 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.103 mid:0.416 hMid:0.263 tr:0.148 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.084 mid:0.453 hMid:0.267 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.080 mid:0.460 hMid:0.266 tr:0.163 | morph:1.000 tDelta:0.0216 percRaw:0.087 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.066 mid:0.422 hMid:0.243 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.060 mid:0.382 hMid:0.218 tr:0.109 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.074 mid:0.447 hMid:0.251 tr:0.176 | morph:1.000 tDelta:0.0668 percRaw:0.267 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.193 mid:0.529 hMid:0.306 tr:0.251 | morph:1.000 tDelta:0.0749 percRaw:0.300 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.307 mid:0.599 hMid:0.361 tr:0.253 | morph:1.000 tDelta:0.0025 percRaw:0.010 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.785 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.350 mid:0.634 hMid:0.401 tr:0.253 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.354 mid:0.739 hMid:0.410 tr:0.254 | morph:1.000 tDelta:0.0013 percRaw:0.005 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.383 mid:0.770 hMid:0.426 tr:0.260 | morph:1.000 tDelta:0.0055 percRaw:0.022 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.409 mid:0.775 hMid:0.429 tr:0.242 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.400 mid:0.756 hMid:0.442 tr:0.240 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.351 mid:0.721 hMid:0.439 tr:0.267 | morph:1.000 tDelta:0.0272 percRaw:0.109 | fPar:0.464 bPar:0.009 mL:0.151 mR:0.336 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.320 mid:0.716 hMid:0.468 tr:0.266 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.304 mid:0.744 hMid:0.504 tr:0.255 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.287 mid:0.754 hMid:0.497 tr:0.246 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.244 mid:0.787 hMid:0.529 tr:0.292 | morph:1.000 tDelta:0.0465 percRaw:0.186 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.197 mid:0.756 hMid:0.525 tr:0.302 | morph:1.000 tDelta:0.0095 percRaw:0.038 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.162 mid:0.685 hMid:0.485 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=98 conf=0.06 | PLL=FREEWHEEL [mem=97@-4f] phase=0.00 sync=0.68 | beat #457 | bass=0.0766 sab=0.054 | 🔬in_peak=0.34440 in_rms=0.13235
-[LATINO-41] sB:0.134 mid:0.597 hMid:0.426 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.148 mid:0.611 hMid:0.420 tr:0.271 | morph:1.000 tDelta:0.0410 percRaw:0.164 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.234 mid:0.604 hMid:0.418 tr:0.293 | morph:1.000 tDelta:0.0219 percRaw:0.088 | fPar:0.000 bPar:0.001 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.329 mid:0.633 hMid:0.431 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.647 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.382 mid:0.625 hMid:0.427 tr:0.251 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.710 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.421 mid:0.625 hMid:0.424 tr:0.251 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.690 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.409 mid:0.543 hMid:0.381 tr:0.304 | morph:1.000 tDelta:0.0521 percRaw:0.208 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.283 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.377 mid:0.452 hMid:0.339 tr:0.338 | morph:1.000 tDelta:0.0342 percRaw:0.137 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.119 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.320 mid:0.366 hMid:0.290 tr:0.340 | morph:1.000 tDelta:0.0021 percRaw:0.008 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.020 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.255 mid:0.314 hMid:0.252 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.004 mR:0.001 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.204 mid:0.440 hMid:0.296 tr:0.307 | morph:1.000 tDelta:0.0129 percRaw:0.051 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.168 mid:0.561 hMid:0.345 tr:0.289 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.850 mL:0.850 mR:0.518 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.139 mid:0.652 hMid:0.348 tr:0.235 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[VirtualWire] 📡 SAB feed — cb#36500 | frames=441 | peak=0.2395 | ch=2
-[LATINO-41] sB:0.108 mid:0.688 hMid:0.335 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.089 mid:0.728 hMid:0.343 tr:0.216 | morph:1.000 tDelta:0.0071 percRaw:0.029 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.075 mid:0.734 hMid:0.341 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.062 mid:0.707 hMid:0.324 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.052 mid:0.707 hMid:0.312 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.068 mid:0.708 hMid:0.321 tr:0.199 | morph:1.000 tDelta:0.0365 percRaw:0.146 | fPar:0.000 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.195 mid:0.679 hMid:0.326 tr:0.242 | morph:1.000 tDelta:0.0430 percRaw:0.172 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.299 mid:0.660 hMid:0.329 tr:0.245 | morph:1.000 tDelta:0.0034 percRaw:0.013 | fPar:0.700 bPar:0.000 mL:0.148 mR:0.030 | sc:1 scDuck:0.944
-[LATINO-41] sB:0.388 mid:0.658 hMid:0.321 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.421 mid:0.716 hMid:0.320 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.428 mid:0.739 hMid:0.311 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.379 mid:0.750 hMid:0.294 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:114 | Pan:111 Tilt:4 | sBPM:97 phase:77°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:114 | Pan:73 Tilt:42 | sBPM:97 phase:77°
-[LATINO-41] sB:0.328 mid:0.766 hMid:0.279 tr:0.130 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.320 mid:0.807 hMid:0.321 tr:0.203 | morph:1.000 tDelta:0.0734 percRaw:0.293 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.325 mid:0.792 hMid:0.345 tr:0.190 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.319 mid:0.700 hMid:0.309 tr:0.146 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.180 mL:0.352 mR:0.138 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.313 mid:0.700 hMid:0.282 tr:0.146 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.083 mL:0.154 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.307 mid:0.633 hMid:0.258 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.009 mL:0.048 mR:0.344 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.264 mid:0.706 hMid:0.353 tr:0.215 | morph:1.000 tDelta:0.0972 percRaw:0.389 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.212 mid:0.704 hMid:0.391 tr:0.242 | morph:1.000 tDelta:0.0260 percRaw:0.104 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.171 mid:0.662 hMid:0.373 tr:0.210 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.142 mid:0.563 hMid:0.329 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.153 mid:0.572 hMid:0.330 tr:0.229 | morph:1.000 tDelta:0.0534 percRaw:0.214 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.232 mid:0.596 hMid:0.345 tr:0.256 | morph:1.000 tDelta:0.0273 percRaw:0.109 | fPar:0.144 bPar:0.001 mL:0.459 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.310 mid:0.610 hMid:0.346 tr:0.244 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.585 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.378 mid:0.607 hMid:0.345 tr:0.211 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.529 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.384 mid:0.584 hMid:0.340 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.228 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.366 mid:0.476 hMid:0.297 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.101 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.315 mid:0.366 hMid:0.240 tr:0.130 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.014 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.255 mid:0.304 hMid:0.211 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.001 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.211 mid:0.304 hMid:0.190 tr:0.118 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.174 mid:0.489 hMid:0.264 tr:0.200 | morph:1.000 tDelta:0.0812 percRaw:0.325 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.140 mid:0.633 hMid:0.301 tr:0.220 | morph:1.000 tDelta:0.0203 percRaw:0.081 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.112 mid:0.685 hMid:0.301 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.090 mid:0.695 hMid:0.303 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.086 mid:0.728 hMid:0.312 tr:0.184 | morph:1.000 tDelta:0.0181 percRaw:0.073 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.075 mid:0.704 hMid:0.302 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.071 mid:0.659 hMid:0.282 tr:0.138 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.069 mid:0.586 hMid:0.265 tr:0.140 | morph:1.000 tDelta:0.0026 percRaw:0.010 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.161 mid:0.627 hMid:0.289 tr:0.211 | morph:1.000 tDelta:0.0707 percRaw:0.283 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.261 mid:0.668 hMid:0.302 tr:0.228 | morph:1.000 tDelta:0.0170 percRaw:0.068 | fPar:0.147 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.352 mid:0.700 hMid:0.322 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.414 mid:0.745 hMid:0.351 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.439 mid:0.786 hMid:0.390 tr:0.180 | morph:1.000 tDelta:0.0133 percRaw:0.053 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.458 mid:0.786 hMid:0.420 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.422 mid:0.824 hMid:0.438 tr:0.174 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.353 mid:0.827 hMid:0.444 tr:0.155 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[TitanOrchestrator] 🎧 WORKER BPM=97 conf=0.05 | PLL=FREEWHEEL [mem=97@-64f] phase=0.00 sync=0.02 | beat #462 | bass=0.1478 sab=0.108 | 🔬in_peak=0.38033 in_rms=0.13097
-[LATINO-41] sB:0.345 mid:0.853 hMid:0.460 tr:0.194 | morph:1.000 tDelta:0.0386 percRaw:0.154 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.357 mid:0.872 hMid:0.483 tr:0.214 | morph:1.000 tDelta:0.0197 percRaw:0.079 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.345 mid:0.879 hMid:0.516 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.325 mid:0.833 hMid:0.523 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.352 mR:0.336 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.277 mid:0.813 hMid:0.540 tr:0.242 | morph:1.000 tDelta:0.0496 percRaw:0.198 | fPar:0.269 bPar:0.000 mL:0.154 mR:0.140 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.231 mid:0.782 hMid:0.542 tr:0.289 | morph:1.000 tDelta:0.0470 percRaw:0.188 | fPar:0.156 bPar:0.000 mL:0.048 mR:0.031 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.190 mid:0.687 hMid:0.487 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.159 mid:0.687 hMid:0.445 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.000 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.132 mid:0.588 hMid:0.390 tr:0.217 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.000 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.153 mid:0.619 hMid:0.406 tr:0.272 | morph:1.000 tDelta:0.0552 percRaw:0.221 | fPar:0.800 bPar:0.000 mL:0.642 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.233 mid:0.623 hMid:0.401 tr:0.310 | morph:1.000 tDelta:0.0380 percRaw:0.152 | fPar:0.144 bPar:0.000 mL:0.704 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.321 mid:0.593 hMid:0.382 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.284 mR:0.002 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.393 mid:0.628 hMid:0.390 tr:0.244 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.645 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.396 mid:0.711 hMid:0.414 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.377 mid:0.753 hMid:0.419 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.391 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.325 mid:0.745 hMid:0.454 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.180 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.264 mid:0.709 hMid:0.455 tr:0.163 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.083 mL:0.361 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.209 mid:0.737 hMid:0.466 tr:0.223 | morph:1.000 tDelta:0.0595 percRaw:0.238 | fPar:0.091 bPar:0.009 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.174 mid:0.771 hMid:0.475 tr:0.222 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.148 mid:0.771 hMid:0.481 tr:0.222 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.122 mid:0.790 hMid:0.441 tr:0.189 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.101 mid:0.748 hMid:0.398 tr:0.174 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.086 mid:0.708 hMid:0.375 tr:0.185 | morph:1.000 tDelta:0.0115 percRaw:0.046 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.069 mid:0.623 hMid:0.337 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.057 mid:0.533 hMid:0.292 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:115 | Pan:176 Tilt:-13 | sBPM:97 phase:139°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:115 | Pan:143 Tilt:53 | sBPM:97 phase:139°
-[LATINO-41] sB:0.054 mid:0.529 hMid:0.297 tr:0.156 | morph:1.000 tDelta:0.0226 percRaw:0.090 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.142 mid:0.597 hMid:0.341 tr:0.238 | morph:1.000 tDelta:0.0819 percRaw:0.328 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.253 mid:0.571 hMid:0.319 tr:0.230 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.360 mid:0.625 hMid:0.297 tr:0.193 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.382 mid:0.657 hMid:0.274 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.330 mR:0.574 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.354 mid:0.729 hMid:0.303 tr:0.190 | morph:1.000 tDelta:0.0222 percRaw:0.089 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.346 mid:0.781 hMid:0.306 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.391 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.360 mid:0.764 hMid:0.282 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.370 mid:0.764 hMid:0.264 tr:0.153 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.367 mid:0.742 hMid:0.293 tr:0.223 | morph:1.000 tDelta:0.0696 percRaw:0.278 | fPar:0.800 bPar:0.009 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.333 mid:0.690 hMid:0.288 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.046 mR:0.138 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.311 mid:0.627 hMid:0.272 tr:0.161 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.004 mR:0.031 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.287 mid:0.509 hMid:0.237 tr:0.124 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.002 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.255 mid:0.573 hMid:0.328 tr:0.200 | morph:1.000 tDelta:0.0761 percRaw:0.305 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.211 mid:0.624 hMid:0.390 tr:0.248 | morph:1.000 tDelta:0.0480 percRaw:0.192 | fPar:0.023 bPar:0.391 mL:0.524 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.176 mid:0.582 hMid:0.386 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.225 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.146 mid:0.505 hMid:0.340 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.097 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.158 mid:0.539 hMid:0.347 tr:0.250 | morph:1.000 tDelta:0.0520 percRaw:0.208 | fPar:0.800 bPar:0.009 mL:0.011 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.167 mid:0.539 hMid:0.352 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.001 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.242 mid:0.569 hMid:0.388 tr:0.279 | morph:1.000 tDelta:0.0286 percRaw:0.114 | fPar:0.003 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.322 mid:0.679 hMid:0.416 tr:0.254 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.710 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.386 mid:0.709 hMid:0.396 tr:0.211 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.393 mid:0.766 hMid:0.368 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.372 mid:0.772 hMid:0.354 tr:0.167 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.322 mid:0.778 hMid:0.350 tr:0.139 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.009 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.261 mid:0.766 hMid:0.336 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.001 mL:0.361 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.207 mid:0.781 hMid:0.367 tr:0.198 | morph:1.000 tDelta:0.0662 percRaw:0.265 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.166 mid:0.781 hMid:0.390 tr:0.198 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.141 mid:0.762 hMid:0.386 tr:0.208 | morph:1.000 tDelta:0.0093 percRaw:0.037 | fPar:0.004 bPar:0.180 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.111 mid:0.699 hMid:0.356 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.095 mid:0.630 hMid:0.325 tr:0.168 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.089 mid:0.577 hMid:0.314 tr:0.189 | morph:1.000 tDelta:0.0212 percRaw:0.085 | fPar:0.000 bPar:0.001 mL:0.004 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.079 mid:0.512 hMid:0.287 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.073 mid:0.457 hMid:0.259 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.078 mid:0.501 hMid:0.283 tr:0.195 | morph:1.000 tDelta:0.0429 percRaw:0.172 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=104 conf=0.33 | PLL=FREEWHEEL [mem=104@-0f] phase=0.00 sync=0.02 | beat #467 | bass=0.4067 sab=0.054 | 🔬in_peak=0.49826 in_rms=0.18677
-[LATINO-41] sB:0.145 mid:0.579 hMid:0.333 tr:0.265 | morph:1.000 tDelta:0.0696 percRaw:0.279 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.196 mid:0.579 hMid:0.370 tr:0.265 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.294 mid:0.628 hMid:0.423 tr:0.271 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.608 bPar:0.850 mL:0.809 mR:0.000 | sc:1 scDuck:0.951
-[LATINO-41] sB:0.332 mid:0.641 hMid:0.449 tr:0.266 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.379 mid:0.660 hMid:0.480 tr:0.262 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.424 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.413 mid:0.691 hMid:0.513 tr:0.270 | morph:1.000 tDelta:0.0080 percRaw:0.032 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.370 mid:0.674 hMid:0.524 tr:0.261 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.818 mR:0.709 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.381 mid:0.654 hMid:0.518 tr:0.250 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.282 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.385 mid:0.635 hMid:0.514 tr:0.273 | morph:1.000 tDelta:0.0224 percRaw:0.089 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.116 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.387 mid:0.635 hMid:0.512 tr:0.273 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.019 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.351 mid:0.634 hMid:0.509 tr:0.259 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.001 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.322 mid:0.630 hMid:0.506 tr:0.241 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.341 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.281 mid:0.642 hMid:0.491 tr:0.239 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.631 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.237 mid:0.767 hMid:0.520 tr:0.282 | morph:1.000 tDelta:0.0425 percRaw:0.170 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.192 mid:0.809 hMid:0.524 tr:0.293 | morph:1.000 tDelta:0.0117 percRaw:0.047 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.153 mid:0.810 hMid:0.485 tr:0.264 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.127 mid:0.826 hMid:0.454 tr:0.229 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.175 mid:0.852 hMid:0.444 tr:0.270 | morph:1.000 tDelta:0.0418 percRaw:0.167 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.212 mid:0.852 hMid:0.437 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.279 mid:0.865 hMid:0.424 tr:0.269 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.348 bPar:0.000 mL:0.826 mR:0.826 | sc:1 scDuck:0.972
-[LATINO-41] sB:0.362 mid:0.845 hMid:0.400 tr:0.240 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.408 mid:0.773 hMid:0.369 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.398 mid:0.700 hMid:0.346 tr:0.186 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.368 mid:0.566 hMid:0.299 tr:0.160 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.004 mR:0.002 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.313 mid:0.461 hMid:0.255 tr:0.131 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:117 | Pan:-206 Tilt:-77 | sBPM:100 phase:202°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:117 | Pan:-37 Tilt:-127 | sBPM:100 phase:202°
-[LATINO-41] sB:0.253 mid:0.498 hMid:0.277 tr:0.170 | morph:1.000 tDelta:0.0393 percRaw:0.157 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.202 mid:0.585 hMid:0.315 tr:0.221 | morph:1.000 tDelta:0.0512 percRaw:0.205 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.167 mid:0.605 hMid:0.337 tr:0.231 | morph:1.000 tDelta:0.0091 percRaw:0.036 | fPar:0.023 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.134 mid:0.623 hMid:0.314 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.000 mR:0.405 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.109 mid:0.623 hMid:0.298 tr:0.201 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.000 mR:0.392 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.093 mid:0.604 hMid:0.302 tr:0.267 | morph:1.000 tDelta:0.0651 percRaw:0.260 | fPar:0.000 bPar:0.009 mL:0.000 mR:0.161 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.076 mid:0.531 hMid:0.307 tr:0.328 | morph:1.000 tDelta:0.0619 percRaw:0.248 | fPar:0.000 bPar:0.001 mL:0.000 mR:0.045 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.065 mid:0.460 hMid:0.295 tr:0.360 | morph:1.000 tDelta:0.0319 percRaw:0.127 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.003 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.056 mid:0.385 hMid:0.279 tr:0.383 | morph:1.000 tDelta:0.0227 percRaw:0.091 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.080 mid:0.460 hMid:0.310 tr:0.409 | morph:1.000 tDelta:0.0265 percRaw:0.106 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.215 mid:0.498 hMid:0.331 tr:0.407 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.337 mid:0.497 hMid:0.328 tr:0.343 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.430 mid:0.522 hMid:0.308 tr:0.271 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.408 mid:0.516 hMid:0.293 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.392 mid:0.516 hMid:0.282 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.001 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.443 mid:0.512 hMid:0.264 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.437 mid:0.499 hMid:0.228 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.387 mid:0.425 hMid:0.209 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.377 mid:0.485 hMid:0.249 tr:0.232 | morph:1.000 tDelta:0.0601 percRaw:0.240 | fPar:0.269 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.394 mid:0.436 hMid:0.230 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.374 mid:0.371 hMid:0.197 tr:0.133 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.302 mid:0.405 hMid:0.184 tr:0.117 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.000 mR:0.000 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.244 mid:0.580 hMid:0.275 tr:0.211 | morph:1.000 tDelta:0.0946 percRaw:0.378 | fPar:0.269 bPar:0.850 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.193 mid:0.722 hMid:0.330 tr:0.221 | morph:1.000 tDelta:0.0099 percRaw:0.040 | fPar:0.156 bPar:0.391 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.154 mid:0.722 hMid:0.371 tr:0.221 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.126 mid:0.782 hMid:0.357 tr:0.195 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.113 mid:0.787 hMid:0.353 tr:0.230 | morph:1.000 tDelta:0.0348 percRaw:0.139 | fPar:0.004 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.169 mid:0.775 hMid:0.357 tr:0.272 | morph:1.000 tDelta:0.0418 percRaw:0.167 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.253 mid:0.710 hMid:0.351 tr:0.270 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.337 mid:0.586 hMid:0.312 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.400 mid:0.586 hMid:0.283 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.596 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.420 mid:0.478 hMid:0.248 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.245 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.395 mid:0.412 hMid:0.225 tr:0.165 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.100 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.351 mid:0.353 hMid:0.195 tr:0.141 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.013 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.295 mid:0.385 hMid:0.172 tr:0.126 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.001 | sc:1 scDuck:0.978
-[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.60 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.46 | beat #470 | bass=0.1280 sab=0.161 | 🔬in_peak=0.40819 in_rms=0.14731
-[LATINO-41] sB:0.234 mid:0.506 hMid:0.229 tr:0.194 | morph:1.000 tDelta:0.0679 percRaw:0.272 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.195 mid:0.575 hMid:0.280 tr:0.230 | morph:1.000 tDelta:0.0357 percRaw:0.143 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.156 mid:0.604 hMid:0.298 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.129 mid:0.614 hMid:0.339 tr:0.193 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.108 mid:0.670 hMid:0.382 tr:0.199 | morph:1.000 tDelta:0.0064 percRaw:0.026 | fPar:0.001 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.092 mid:0.670 hMid:0.415 tr:0.199 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.083 mid:0.717 hMid:0.449 tr:0.197 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.075 mid:0.738 hMid:0.492 tr:0.182 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.065 mid:0.773 hMid:0.546 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.119 mid:0.800 hMid:0.586 tr:0.228 | morph:1.000 tDelta:0.0573 percRaw:0.229 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.215 mid:0.805 hMid:0.607 tr:0.258 | morph:1.000 tDelta:0.0302 percRaw:0.121 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[VirtualWire] 📡 SAB feed — cb#37000 | frames=441 | peak=0.3390 | ch=2
-[LATINO-41] sB:0.293 mid:0.816 hMid:0.635 tr:0.233 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.587 bPar:0.180 mL:0.810 mR:0.810 | sc:1 scDuck:0.953
-[LATINO-41] sB:0.377 mid:0.837 hMid:0.660 tr:0.204 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.380 mid:0.844 hMid:0.672 tr:0.191 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.419 mid:0.839 hMid:0.625 tr:0.181 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.420 mid:0.823 hMid:0.544 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.386 mid:0.849 hMid:0.504 tr:0.159 | morph:1.000 tDelta:0.0099 percRaw:0.040 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.361 mid:0.849 hMid:0.473 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.358 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.367 mid:0.875 hMid:0.454 tr:0.162 | morph:1.000 tDelta:0.0030 percRaw:0.012 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.353 mid:0.898 hMid:0.437 tr:0.133 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.290 mid:0.916 hMid:0.436 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.243 mid:0.922 hMid:0.443 tr:0.151 | morph:1.000 tDelta:0.0298 percRaw:0.119 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.203 mid:0.942 hMid:0.474 tr:0.219 | morph:1.000 tDelta:0.0676 percRaw:0.271 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.168 mid:0.948 hMid:0.475 tr:0.256 | morph:1.000 tDelta:0.0376 percRaw:0.150 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.137 mid:0.951 hMid:0.453 tr:0.242 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:118 | Pan:-120 Tilt:-3 | sBPM:96 phase:263°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:118 | Pan:-80 Tilt:-44 | sBPM:96 phase:263°
-[LATINO-41] sB:0.117 mid:0.952 hMid:0.434 tr:0.227 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.164 mid:0.963 hMid:0.466 tr:0.289 | morph:1.000 tDelta:0.0612 percRaw:0.245 | fPar:0.000 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.198 mid:0.963 hMid:0.490 tr:0.289 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.250 mid:0.996 hMid:0.535 tr:0.292 | morph:1.000 tDelta:0.0033 percRaw:0.013 | fPar:0.029 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.290 mid:0.996 hMid:0.550 tr:0.245 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.531 bPar:0.391 mL:0.814 mR:0.814 | sc:1 scDuck:0.958
-[LATINO-41] sB:0.294 mid:0.971 hMid:0.540 tr:0.204 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.614 bPar:0.180 mL:0.348 mR:0.808 | sc:1 scDuck:0.951
-[LATINO-41] sB:0.307 mid:0.959 hMid:0.532 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.319 mid:0.954 hMid:0.523 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.321 mid:0.939 hMid:0.493 tr:0.145 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.004 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.317 mid:0.935 hMid:0.481 tr:0.159 | morph:1.000 tDelta:0.0147 percRaw:0.059 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.306 mid:0.923 hMid:0.474 tr:0.183 | morph:1.000 tDelta:0.0234 percRaw:0.094 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.301 mid:0.926 hMid:0.469 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.740 bPar:0.000 mL:0.800 mR:0.800 | sc:1 scDuck:0.941
-[LATINO-41] sB:0.241 mid:0.929 hMid:0.465 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.429 bPar:0.000 mL:0.821 mR:0.821 | sc:1 scDuck:0.966
-[LATINO-41] sB:0.186 mid:0.913 hMid:0.446 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.249 bPar:0.000 mL:0.358 mR:0.833 | sc:1 scDuck:0.980
-[LATINO-41] sB:0.146 mid:0.884 hMid:0.433 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.157 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.116 mid:0.884 hMid:0.423 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.084 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.093 mid:0.863 hMid:0.422 tr:0.134 | morph:1.000 tDelta:0.0005 percRaw:0.002 | fPar:0.018 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.076 mid:0.852 hMid:0.422 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.119 mid:0.876 hMid:0.479 tr:0.219 | morph:1.000 tDelta:0.0868 percRaw:0.347 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.029 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.206 mid:0.870 hMid:0.486 tr:0.244 | morph:1.000 tDelta:0.0247 percRaw:0.099 | fPar:0.144 bPar:0.391 mL:0.850 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.242 mid:0.846 hMid:0.457 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.003 bPar:0.180 mL:0.365 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.285 mid:0.832 hMid:0.434 tr:0.175 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.317 mid:0.832 hMid:0.417 tr:0.175 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.324 mid:0.838 hMid:0.409 tr:0.145 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.338 mid:0.826 hMid:0.383 tr:0.121 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.329 mid:0.826 hMid:0.371 tr:0.107 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.340 mid:0.842 hMid:0.372 tr:0.102 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.340 mid:0.860 hMid:0.369 tr:0.096 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.324 mid:0.862 hMid:0.355 tr:0.088 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.269 mid:0.856 hMid:0.345 tr:0.084 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.358 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.228 mid:0.856 hMid:0.338 tr:0.084 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.191 mid:0.874 hMid:0.391 tr:0.158 | morph:1.000 tDelta:0.0740 percRaw:0.296 | fPar:0.091 bPar:0.850 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.164 mid:0.882 hMid:0.427 tr:0.188 | morph:1.000 tDelta:0.0306 percRaw:0.122 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.134 mid:0.919 hMid:0.469 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.113 mid:0.886 hMid:0.475 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.40 | beat #473 | bass=0.1058 sab=0.108 | 🔬in_peak=0.52532 in_rms=0.17366
-[LATINO-41] sB:0.110 mid:0.899 hMid:0.479 tr:0.198 | morph:1.000 tDelta:0.0322 percRaw:0.129 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.172 mid:0.910 hMid:0.497 tr:0.243 | morph:1.000 tDelta:0.0452 percRaw:0.181 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.241 mid:0.893 hMid:0.474 tr:0.228 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.000 mL:0.850 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.275 mid:0.888 hMid:0.444 tr:0.187 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.302 bPar:0.000 mL:0.357 mR:0.829 | sc:1 scDuck:0.976
-[LATINO-41] sB:0.300 mid:0.870 hMid:0.407 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.721 bPar:0.000 mL:0.148 mR:0.801 | sc:1 scDuck:0.942
-[LATINO-41] sB:0.319 mid:0.860 hMid:0.375 tr:0.123 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.045 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.329 mid:0.853 hMid:0.351 tr:0.104 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.004 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.336 mid:0.853 hMid:0.332 tr:0.104 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.339 mid:0.802 hMid:0.311 tr:0.091 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.342 mid:0.773 hMid:0.332 tr:0.131 | morph:1.000 tDelta:0.0399 percRaw:0.160 | fPar:0.800 bPar:0.000 mL:0.000 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.325 mid:0.752 hMid:0.351 tr:0.167 | morph:1.000 tDelta:0.0363 percRaw:0.145 | fPar:0.464 bPar:0.000 mL:0.000 mR:0.030 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.264 mid:0.702 hMid:0.331 tr:0.159 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.000 mR:0.002 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.204 mid:0.621 hMid:0.300 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.000 mR:0.000 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.160 mid:0.535 hMid:0.277 tr:0.116 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.130 mid:0.470 hMid:0.253 tr:0.100 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.110 mid:0.423 hMid:0.230 tr:0.087 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.095 mid:0.510 hMid:0.258 tr:0.122 | morph:1.000 tDelta:0.0354 percRaw:0.142 | fPar:0.001 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.181 mid:0.660 hMid:0.314 tr:0.207 | morph:1.000 tDelta:0.0845 percRaw:0.338 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.246 mid:0.660 hMid:0.356 tr:0.207 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.313 mid:0.717 hMid:0.368 tr:0.228 | morph:1.000 tDelta:0.0211 percRaw:0.084 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.383 mid:0.750 hMid:0.389 tr:0.234 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.484 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.448 mid:0.761 hMid:0.395 tr:0.237 | morph:1.000 tDelta:0.0024 percRaw:0.009 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.577 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.454 mid:0.794 hMid:0.406 tr:0.253 | morph:1.000 tDelta:0.0162 percRaw:0.065 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.450 mid:0.812 hMid:0.421 tr:0.257 | morph:1.000 tDelta:0.0045 percRaw:0.018 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.462 mid:0.839 hMid:0.454 tr:0.264 | morph:1.000 tDelta:0.0066 percRaw:0.026 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:118 | Pan:-209 Tilt:25 | sBPM:96 phase:324°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:118 | Pan:-183 Tilt:-56 | sBPM:96 phase:324°
-[LATINO-41] sB:0.429 mid:0.868 hMid:0.482 tr:0.280 | morph:1.000 tDelta:0.0166 percRaw:0.066 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.423 mid:0.884 hMid:0.505 tr:0.302 | morph:1.000 tDelta:0.0214 percRaw:0.086 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.399 mid:0.852 hMid:0.510 tr:0.286 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.344 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.327 mid:0.839 hMid:0.512 tr:0.272 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.091 bPar:0.000 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.273 mid:0.839 hMid:0.514 tr:0.272 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.225 mid:0.882 hMid:0.541 tr:0.302 | morph:1.000 tDelta:0.0298 percRaw:0.119 | fPar:0.004 bPar:0.850 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.179 mid:0.904 hMid:0.558 tr:0.314 | morph:1.000 tDelta:0.0124 percRaw:0.050 | fPar:0.001 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.149 mid:0.894 hMid:0.552 tr:0.303 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.124 mid:0.882 hMid:0.543 tr:0.286 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.083 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.113 mid:0.906 hMid:0.571 tr:0.308 | morph:1.000 tDelta:0.0219 percRaw:0.088 | fPar:0.000 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.197 mid:0.889 hMid:0.559 tr:0.333 | morph:1.000 tDelta:0.0249 percRaw:0.100 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.279 mid:0.890 hMid:0.548 tr:0.313 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.355 bPar:0.000 mL:0.826 mR:0.826 | sc:1 scDuck:0.972
-[LATINO-41] sB:0.356 mid:0.900 hMid:0.554 tr:0.294 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.388 mid:0.916 hMid:0.541 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.412 mid:0.916 hMid:0.532 tr:0.268 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.390 mid:0.847 hMid:0.474 tr:0.229 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.338 mid:0.802 hMid:0.439 tr:0.188 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.151 mR:0.138 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.275 mid:0.774 hMid:0.446 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.000 mL:0.047 mR:0.031 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.218 mid:0.833 hMid:0.483 tr:0.242 | morph:1.000 tDelta:0.0654 percRaw:0.261 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.178 mid:0.875 hMid:0.508 tr:0.244 | morph:1.000 tDelta:0.0027 percRaw:0.011 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.144 mid:0.880 hMid:0.518 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.116 mid:0.874 hMid:0.530 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.095 mid:0.874 hMid:0.540 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.081 mid:0.872 hMid:0.537 tr:0.221 | morph:1.000 tDelta:0.0072 percRaw:0.029 | fPar:0.000 bPar:0.001 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.066 mid:0.793 hMid:0.504 tr:0.200 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.056 mid:0.646 hMid:0.419 tr:0.156 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.157 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.051 mid:0.584 hMid:0.379 tr:0.170 | morph:1.000 tDelta:0.0141 percRaw:0.057 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.149 mid:0.649 hMid:0.379 tr:0.230 | morph:1.000 tDelta:0.0594 percRaw:0.238 | fPar:0.800 bPar:0.850 mL:0.004 mR:0.002 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.236 mid:0.686 hMid:0.364 tr:0.228 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.315 mid:0.755 hMid:0.357 tr:0.203 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.306 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.397 mid:0.811 hMid:0.356 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.403 mid:0.860 hMid:0.377 tr:0.186 | morph:1.000 tDelta:0.0097 percRaw:0.039 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.448 mid:0.884 hMid:0.384 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.423 mid:0.787 hMid:0.342 tr:0.149 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.342 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.425 mid:0.749 hMid:0.332 tr:0.179 | morph:1.000 tDelta:0.0296 percRaw:0.118 | fPar:0.800 bPar:0.000 mL:0.147 mR:0.134 | sc:1 scDuck:0.936
-[TitanOrchestrator] 🎧 WORKER BPM=96 conf=0.32 | PLL=FREEWHEEL [mem=96@-0f] phase=0.00 sync=0.00 | beat #477 | bass=0.1801 sab=0.054 | 🔬in_peak=0.41926 in_rms=0.15762
-[LATINO-41] sB:0.398 mid:0.780 hMid:0.368 tr:0.240 | morph:1.000 tDelta:0.0614 percRaw:0.246 | fPar:0.464 bPar:0.850 mL:0.528 mR:0.030 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.388 mid:0.841 hMid:0.379 tr:0.202 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.391 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.332 mid:0.875 hMid:0.388 tr:0.172 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.180 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.274 mid:0.794 hMid:0.379 tr:0.206 | morph:1.000 tDelta:0.0341 percRaw:0.136 | fPar:0.091 bPar:0.083 mL:0.365 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.231 mid:0.794 hMid:0.372 tr:0.206 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.009 mL:0.637 mR:0.835 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.202 mid:0.788 hMid:0.428 tr:0.300 | morph:1.000 tDelta:0.0935 percRaw:0.374 | fPar:0.004 bPar:0.850 mL:0.801 mR:0.343 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.167 mid:0.727 hMid:0.445 tr:0.350 | morph:1.000 tDelta:0.0506 percRaw:0.202 | fPar:0.001 bPar:0.391 mL:0.345 mR:0.140 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.137 mid:0.630 hMid:0.410 tr:0.373 | morph:1.000 tDelta:0.0221 percRaw:0.089 | fPar:0.000 bPar:0.180 mL:0.148 mR:0.030 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.113 mid:0.566 hMid:0.381 tr:0.385 | morph:1.000 tDelta:0.0125 percRaw:0.050 | fPar:0.000 bPar:0.083 mL:0.040 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.179 mid:0.587 hMid:0.379 tr:0.383 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.009 mL:0.003 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.253 mid:0.679 hMid:0.394 tr:0.344 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.344 mid:0.759 hMid:0.393 tr:0.284 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.735 mR:0.521 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.373 mid:0.818 hMid:0.359 tr:0.223 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.359 mid:0.847 hMid:0.333 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.349 mid:0.847 hMid:0.313 tr:0.192 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.313 mid:0.878 hMid:0.295 tr:0.155 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.257 mid:0.900 hMid:0.296 tr:0.132 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.156 bPar:0.000 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.203 mid:0.905 hMid:0.323 tr:0.190 | morph:1.000 tDelta:0.0578 percRaw:0.231 | fPar:0.091 bPar:0.000 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.166 mid:0.890 hMid:0.359 tr:0.229 | morph:1.000 tDelta:0.0388 percRaw:0.155 | fPar:0.023 bPar:0.000 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.136 mid:0.870 hMid:0.364 tr:0.212 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.000 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.108 mid:0.816 hMid:0.353 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.000 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.090 mid:0.760 hMid:0.346 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.084 mid:0.692 hMid:0.345 tr:0.187 | morph:1.000 tDelta:0.0169 percRaw:0.067 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.072 mid:0.623 hMid:0.322 tr:0.162 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.071 mid:0.574 hMid:0.291 tr:0.137 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:119 | Pan:211 Tilt:67 | sBPM:96 phase:24°
-[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:119 | Pan:55 Tilt:122 | sBPM:96 phase:24°
-[LATINO-41] sB:0.117 mid:0.642 hMid:0.316 tr:0.205 | morph:1.000 tDelta:0.0674 percRaw:0.270 | fPar:0.000 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.151 mid:0.642 hMid:0.335 tr:0.205 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.391 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.233 mid:0.741 hMid:0.346 tr:0.240 | morph:1.000 tDelta:0.0354 percRaw:0.142 | fPar:0.000 bPar:0.850 mL:0.599 mR:0.359 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.290 mid:0.837 hMid:0.345 tr:0.208 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.537 bPar:0.391 mL:0.813 mR:0.813 | sc:1 scDuck:0.957
-[LATINO-41] sB:0.305 mid:0.839 hMid:0.325 tr:0.171 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.283 mid:0.840 hMid:0.316 tr:0.154 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.324 mid:0.851 hMid:0.328 tr:0.163 | morph:1.000 tDelta:0.0082 percRaw:0.033 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.374 mid:0.859 hMid:0.316 tr:0.139 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.405 mid:0.866 hMid:0.331 tr:0.134 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.420 mid:0.854 hMid:0.385 tr:0.190 | morph:1.000 tDelta:0.0561 percRaw:0.224 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.426 mid:0.815 hMid:0.414 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.342 mR:0.134 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.431 mid:0.815 hMid:0.436 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.380 mid:0.758 hMid:0.468 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.083 mL:0.352 mR:0.336 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.323 mid:0.686 hMid:0.464 tr:0.226 | morph:1.000 tDelta:0.0464 percRaw:0.186 | fPar:0.269 bPar:0.009 mL:0.154 mR:0.140 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.263 mid:0.712 hMid:0.494 tr:0.316 | morph:1.000 tDelta:0.0909 percRaw:0.363 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.031 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.209 mid:0.674 hMid:0.497 tr:0.382 | morph:1.000 tDelta:0.0657 percRaw:0.263 | fPar:0.091 bPar:0.391 mL:0.365 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.166 mid:0.592 hMid:0.451 tr:0.389 | morph:1.000 tDelta:0.0070 percRaw:0.028 | fPar:0.023 bPar:0.180 mL:0.157 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.138 mid:0.533 hMid:0.398 tr:0.344 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.048 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.195 mid:0.580 hMid:0.397 tr:0.362 | morph:1.000 tDelta:0.0180 percRaw:0.072 | fPar:0.800 bPar:0.009 mL:0.004 mR:0.000 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.239 mid:0.580 hMid:0.395 tr:0.362 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.144 bPar:0.001 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.307 mid:0.718 hMid:0.398 tr:0.342 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.850 mL:0.796 mR:0.474 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.383 mid:0.784 hMid:0.388 tr:0.281 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.391 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.407 mid:0.755 hMid:0.354 tr:0.238 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.342 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.393 mid:0.689 hMid:0.320 tr:0.214 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.147 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.349 mid:0.542 hMid:0.271 tr:0.166 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.009 mL:0.046 mR:0.138 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.288 mid:0.421 hMid:0.222 tr:0.129 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.269 bPar:0.001 mL:0.004 mR:0.031 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.229 mid:0.491 hMid:0.266 tr:0.193 | morph:1.000 tDelta:0.0644 percRaw:0.258 | fPar:0.156 bPar:0.850 mL:0.000 mR:0.002 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.186 mid:0.603 hMid:0.308 tr:0.229 | morph:1.000 tDelta:0.0361 percRaw:0.144 | fPar:0.091 bPar:0.850 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.159 mid:0.686 hMid:0.309 tr:0.216 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.391 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.128 mid:0.724 hMid:0.286 tr:0.178 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.180 mL:0.850 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.102 mid:0.687 hMid:0.289 tr:0.179 | morph:1.000 tDelta:0.0007 percRaw:0.003 | fPar:0.001 bPar:0.083 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.086 mid:0.625 hMid:0.293 tr:0.179 | morph:1.000 tDelta:0.0001 percRaw:0.000 | fPar:0.000 bPar:0.009 mL:0.365 mR:0.143 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.069 mid:0.573 hMid:0.289 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.001 mL:0.157 mR:0.031 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.057 mid:0.573 hMid:0.285 tr:0.152 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.048 mR:0.002 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.055 mid:0.516 hMid:0.278 tr:0.140 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.000 bPar:0.000 mL:0.004 mR:0.000 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.57 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.00 | beat #480 | bass=0.2702 sab=0.108 | 🔬in_peak=0.45230 in_rms=0.16375
-[LATINO-41] sB:0.111 mid:0.590 hMid:0.344 tr:0.229 | morph:1.000 tDelta:0.0890 percRaw:0.356 | fPar:0.800 bPar:0.850 mL:0.000 mR:0.000 | sc:1 scDuck:0.936
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8352550983569543,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8352550983569543,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:41 | Pan:137 Tilt:-110 | sBPM:85 phase:168°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:41 | Pan:253 Tilt:-29 | sBPM:85 phase:168°
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.92 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.58 | beat #167 | bass=0.3071 sab=0.108 | 🔬in_peak=0.33705 in_rms=0.12655
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8352550983569543,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:41 | Pan:-163 Tilt:-11 | sBPM:85 phase:221°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:41 | Pan:-99 Tilt:-65 | sBPM:85 phase:221°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8352550983569543,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.87 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.55 | beat #167 | bass=0.0490 sab=0.108 | 🔬in_peak=0.21494 in_rms=0.07900
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8352550983569543,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:41 | Pan:-111 Tilt:2 | sBPM:85 phase:275°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:41 | Pan:-81 Tilt:-38 | sBPM:85 phase:275°
+[VirtualWire] 📡 SAB feed — cb#16000 | frames=441 | peak=0.0109 | ch=2
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.81 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.47 | beat #167 | bass=0.0382 sab=0.108 | 🔬in_peak=0.21245 in_rms=0.07115
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8310191237428758,"l":0.5,"hex":"#e916d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8509076913904232,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:42 | Pan:-202 Tilt:39 | sBPM:85 phase:329°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:42 | Pan:-198 Tilt:-44 | sBPM:85 phase:329°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.63 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.59 | beat #170 | bass=0.2755 sab=0.108 | 🔬in_peak=0.22628 in_rms=0.11348
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8509076913904232,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:43 | Pan:214 Tilt:68 | sBPM:85 phase:24°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:43 | Pan:56 Tilt:124 | sBPM:85 phase:24°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8509076913904232,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.59 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.60 | beat #172 | bass=0.0434 sab=0.108 | 🔬in_peak=0.14192 in_rms=0.04899
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8509076913904232,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[VirtualWire] 📡 SAB feed — cb#16500 | frames=441 | peak=0.3180 | ch=2
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:43 | Pan:110 Tilt:4 | sBPM:91 phase:79°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:43 | Pan:72 Tilt:41 | sBPM:91 phase:79°
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.58 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.49 | beat #174 | bass=0.0431 sab=0.108 | 🔬in_peak=0.29349 in_rms=0.10969
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8509076913904232,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8385914402173809,"l":0.5,"hex":"#ea15d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:44 | Pan:175 Tilt:-10 | sBPM:92 phase:137°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:44 | Pan:138 Tilt:55 | sBPM:92 phase:137°
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.90 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.53 | beat #177 | bass=0.8379 sab=0.000 | 🔬in_peak=0.49827 in_rms=0.24982
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8399048435397946,"l":0.5,"hex":"#eb14d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:44 | Pan:-170 Tilt:-103 | sBPM:93 phase:195°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:44 | Pan:26 Tilt:-133 | sBPM:93 phase:195°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8422068214951792,"l":0.5,"hex":"#eb14d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.89 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.53 | beat #179 | bass=0.3023 sab=0.108 | 🔬in_peak=0.53710 in_rms=0.17467
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8330438462759243,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[VirtualWire] 📡 SAB feed — cb#17000 | frames=441 | peak=0.0433 | ch=2
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:45 | Pan:-99 Tilt:-4 | sBPM:93 phase:254°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:45 | Pan:-65 Tilt:-38 | sBPM:93 phase:254°
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.90 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.51 | beat #181 | bass=0.2438 sab=0.000 | 🔬in_peak=0.28621 in_rms=0.10916
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8461297891158053,"l":0.5,"hex":"#eb14d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8445332720292447,"l":0.5,"hex":"#eb14d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:45 | Pan:-140 Tilt:2 | sBPM:92 phase:311°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:45 | Pan:-102 Tilt:-48 | sBPM:92 phase:311°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.85 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.56 | beat #182 | bass=0.0207 sab=0.108 | 🔬in_peak=0.60140 in_rms=0.18772
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:46 | Pan:127 Tilt:127 | sBPM:92 phase:10°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:46 | Pan:-89 Tilt:135 | sBPM:92 phase:10°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.83 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.34 | beat #186 | bass=0.3009 sab=0.054 | 🔬in_peak=0.35141 in_rms=0.13051
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[VirtualWire] 📡 SAB feed — cb#17500 | frames=441 | peak=0.4028 | ch=2
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F0/2] | Bar:47 | Pan:102 Tilt:2 | sBPM:93 phase:67°
+[CHOREO] fiesta-latina | ballyhoo [SNAKE F1/2] | Bar:47 | Pan:69 Tilt:38 | sBPM:93 phase:67°
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.33 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.57 | beat #189 | bass=0.0035 sab=0.108 | 🔬in_peak=0.48259 in_rms=0.05985
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
 [CHOREO] Pattern transition: ballyhoo -> figure8 (2s LERP)
-[LATINO-41] sB:0.236 mid:0.619 hMid:0.351 tr:0.247 | morph:1.000 tDelta:0.0180 percRaw:0.072 | fPar:0.144 bPar:0.391 mL:0.646 mR:0.000 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.374 mid:0.657 hMid:0.373 tr:0.218 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.180 mL:0.796 mR:0.659 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.461 mid:0.679 hMid:0.386 tr:0.185 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.083 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.446 mid:0.708 hMid:0.421 tr:0.196 | morph:1.000 tDelta:0.0112 percRaw:0.045 | fPar:0.800 bPar:0.009 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.474 mid:0.709 hMid:0.432 tr:0.207 | morph:1.000 tDelta:0.0109 percRaw:0.044 | fPar:0.800 bPar:0.001 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.502 mid:0.743 hMid:0.431 tr:0.180 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.479 mid:0.738 hMid:0.443 tr:0.179 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.453 mid:0.768 hMid:0.442 tr:0.207 | morph:1.000 tDelta:0.0278 percRaw:0.111 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[VirtualWire] 📡 SAB feed — cb#37500 | frames=441 | peak=0.4942 | ch=2
-[LATINO-41] sB:0.456 mid:0.824 hMid:0.444 tr:0.176 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.800 bPar:0.000 mL:0.796 mR:0.796 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.433 mid:0.895 hMid:0.462 tr:0.150 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.464 bPar:0.000 mL:0.818 mR:0.818 | sc:1 scDuck:0.963
-[LATINO-41] sB:0.378 mid:0.915 hMid:0.480 tr:0.169 | morph:1.000 tDelta:0.0192 percRaw:0.077 | fPar:0.269 bPar:0.000 mL:0.832 mR:0.832 | sc:1 scDuck:0.978
-[LATINO-41] sB:0.311 mid:0.931 hMid:0.517 tr:0.225 | morph:1.000 tDelta:0.0557 percRaw:0.223 | fPar:0.156 bPar:0.850 mL:0.839 mR:0.839 | sc:1 scDuck:0.988
-[LATINO-41] sB:0.248 mid:0.916 hMid:0.511 tr:0.235 | morph:1.000 tDelta:0.0097 percRaw:0.039 | fPar:0.091 bPar:0.391 mL:0.850 mR:0.348 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.199 mid:0.909 hMid:0.460 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.023 bPar:0.180 mL:0.365 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.163 mid:0.913 hMid:0.420 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.004 bPar:0.083 mL:0.157 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.136 mid:0.913 hMid:0.391 tr:0.209 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.001 bPar:0.009 mL:0.048 mR:0.850 | sc:0 scDuck:1.000
-[LATINO-41] sB:0.213 mid:0.855 hMid:0.381 tr:0.257 | morph:1.000 tDelta:0.0476 percRaw:0.190 | fPar:0.800 bPar:0.001 mL:0.004 mR:0.326 | sc:1 scDuck:0.936
-[LATINO-41] sB:0.293 mid:0.797 hMid:0.357 tr:0.243 | morph:1.000 tDelta:0.0000 percRaw:0.000 | fPar:0.8
-[
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | figure8 [LERP] [SNAKE F0/2] | Bar:48 | Pan:112 Tilt:-1 | sBPM:94 phase:125°
+[CHOREO] fiesta-latina | figure8 [LERP] [SNAKE F1/2] | Bar:48 | Pan:81 Tilt:39 | sBPM:94 phase:125°
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.33 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=0.98 | beat #193 | bass=0.0186 sab=0.000 | 🔬in_peak=0.18181 in_rms=0.07403
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [LERP] [SNAKE F0/2] | Bar:48 | Pan:-20 Tilt:15 | sBPM:94 phase:187°
+[CHOREO] fiesta-latina | figure8 [LERP] [SNAKE F1/2] | Bar:48 | Pan:-35 Tilt:3 | sBPM:94 phase:187°
+[CHOREO] Transition complete -> figure8
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8475362126752215,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.33 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=1.00 | beat #195 | bass=0.0038 sab=0.000 | 🔬in_peak=0.02356 in_rms=0.00340
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8424521437866717,"l":0.5,"hex":"#eb14d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[VirtualWire] 📡 SAB feed — cb#18000 | frames=441 | peak=0.0590 | ch=2
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:48 | Pan:-162 Tilt:49 | sBPM:94 phase:246°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:48 | Pan:-184 Tilt:-23 | sBPM:94 phase:246°
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.33 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=1.00 | beat #195 | bass=0.2163 sab=0.108 | 🔬in_peak=0.29849 in_rms=0.09448
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8333512297706319,"l":0.5,"hex":"#ea15d5"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8518463461502109,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:49 | Pan:-156 Tilt:-66 | sBPM:94 phase:304°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:49 | Pan:-17 Tilt:-102 | sBPM:94 phase:304°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.33 | PLL=FREEWHEEL [mem=94@-0f] phase=0.00 sync=1.00 | beat #197 | bass=0.0414 sab=0.108 | 🔬in_peak=0.19401 in_rms=0.07207
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8384384017035768,"l":0.5,"hex":"#ea15d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:49 | Pan:8 Tilt:6 | sBPM:93 phase:3°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:49 | Pan:-3 Tilt:7 | sBPM:93 phase:3°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8364027434380005,"l":0.5,"hex":"#ea15d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[TitanOrchestrator] 🎧 WORKER BPM=92 conf=0.45 | PLL=FREEWHEEL [mem=92@-0f] phase=0.00 sync=0.59 | beat #200 | bass=0.2952 sab=0.108 | 🔬in_peak=0.33245 in_rms=0.13963
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8503014991038852,"l":0.5,"hex":"#ec13d7"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[VirtualWire] 📡 SAB feed — cb#18500 | frames=441 | peak=0.3080 | ch=2
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:50 | Pan:169 Tilt:61 | sBPM:94 phase:61°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:50 | Pan:33 Tilt:103 | sBPM:94 phase:61°
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.43 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.57 | beat #202 | bass=0.0165 sab=0.108 | 🔬in_peak=0.16040 in_rms=0.05017
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8561312992503437,"l":0.5,"hex":"#ed12d8"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(15,189,163) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} hasColorOverride=false | p={"h":0.8493948412698412,"s":0.8449238776962841,"l":0.5,"hex":"#eb14d6"} s={"h":0.47523809523809524,"s":0.85,"l":0.4,"hex":"#0fbda3"} amb={"h":0.9745634920634921,"s":0.85,"l":0.44,"hex":"#d0112e"}
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:51 | Pan:174 Tilt:-67 | sBPM:95 phase:121°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:51 | Pan:218 Tilt:14 | sBPM:95 phase:121°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,163) → slot="Cyan" DMX=20 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.89 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.50 | beat #205 | bass=0.2550 sab=0.054 | 🔬in_peak=0.34149 in_rms=0.11132
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8976168969274131,"l":0.4,"hex":"#0ac278"} hasColorOverride=false | p={"h":0.8865252909003749,"s":0.8458084031063264,"l":0.5067980770901588,"hex":"#ec17a8"} s={"h":0.43335536422902504,"s":0.8976168969274131,"l":0.4,"hex":"#0ac278"} amb={"h":0.023712507086167674,"s":0.8976168969274131,"l":0.44,"hex":"#d5280b"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(10,194,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(11,193,120) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:51 | Pan:0 Tilt:0 | sBPM:95 phase:180°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:51 | Pan:0 Tilt:0 | sBPM:95 phase:180°
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.81 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.56 | beat #207 | bass=0.0298 sab=0.108 | 🔬in_peak=0.10447 in_rms=0.03637
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8973100738204741,"l":0.4,"hex":"#0ac278"} hasColorOverride=false | p={"h":0.919456938401353,"s":0.8465596281651376,"l":0.5128274109831017,"hex":"#ec1a7f"} s={"h":0.43335536422902504,"s":0.8973100738204741,"l":0.4,"hex":"#0ac278"} amb={"h":0.023712507086167674,"s":0.8973100738204741,"l":0.44,"hex":"#d5280c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(11,193,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8787894121997649,"l":0.4,"hex":"#0cc078"} hasColorOverride=false | p={"h":0.9536158388005656,"s":0.8471384465702778,"l":0.5190814380832192,"hex":"#ec1c56"} s={"h":0.43335536422902504,"s":0.8787894121997649,"l":0.4,"hex":"#0cc078"} amb={"h":0.023712507086167674,"s":0.8787894121997649,"l":0.44,"hex":"#d32a0e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(12,192,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[VirtualWire] 📡 SAB feed — cb#19000 | frames=441 | peak=0.1920 | ch=2
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(12,192,120) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:52 | Pan:-159 Tilt:61 | sBPM:95 phase:239°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:52 | Pan:-200 Tilt:-13 | sBPM:95 phase:239°
+[TitanOrchestrator] 🎧 WORKER BPM=95 conf=0.73 | PLL=FREEWHEEL [mem=95@-0f] phase=0.00 sync=0.48 | beat #209 | bass=0.2366 sab=0.108 | 🔬in_peak=0.17517 in_rms=0.06411
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8662286290678223,"l":0.4,"hex":"#0ebe78"} hasColorOverride=false | p={"h":0.9855712083653303,"s":0.8476799264139199,"l":0.524932028849218,"hex":"#ed1f31"} s={"h":0.43335536422902504,"s":0.8662286290678223,"l":0.4,"hex":"#0ebe78"} amb={"h":0.023712507086167674,"s":0.8662286290678223,"l":0.44,"hex":"#d12b0f"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(14,190,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:52 | Pan:-163 Tilt:-59 | sBPM:97 phase:299°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:52 | Pan:-32 Tilt:-99 | sBPM:97 phase:299°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8558767888189379,"l":0.4,"hex":"#0fbd77"} hasColorOverride=false | p={"h":0.008606847054920132,"s":0.8480702625047152,"l":0.5291495389841909,"hex":"#ed2c21"} s={"h":0.43335536422902504,"s":0.8558767888189379,"l":0.4,"hex":"#0fbd77"} amb={"h":0.023712507086167674,"s":0.8558767888189379,"l":0.44,"hex":"#d02b10"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(15,189,119) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(14,190,120) → Cyan (DMX 20) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.67 | PLL=FREEWHEEL [mem=103@-0f] phase=0.00 sync=0.43 | beat #212 | bass=0.0737 sab=0.108 | 🔬in_peak=0.16677 in_rms=0.05345
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8642117718620378,"l":0.4,"hex":"#0ebe78"} hasColorOverride=false | p={"h":0.027766901276403327,"s":0.8483949272889231,"l":0.5326574826515943,"hex":"#ed4423"} s={"h":0.43335536422902504,"s":0.8642117718620378,"l":0.4,"hex":"#0ebe78"} amb={"h":0.023712507086167674,"s":0.8642117718620378,"l":0.44,"hex":"#d12b0f"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(14,190,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:7 Tilt:5 | sBPM:103 phase:2°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:-3 Tilt:6 | sBPM:103 phase:2°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.62 | PLL=FREEWHEEL [mem=103@-0f] phase=0.00 sync=0.49 | beat #212 | bass=0.1829 sab=0.054 | 🔬in_peak=0.12214 in_rms=0.06384
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8903381990926391,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.040986629233633366,"s":0.848618933968388,"l":0.5350778338904942,"hex":"#ed5524"} s={"h":0.43335536422902504,"s":0.8903381990926391,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8903381990926391,"l":0.44,"hex":"#d4290c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(11,193,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(11,193,120) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8752172497042673,"l":0.4,"hex":"#0dbf78"} hasColorOverride=false | p={"h":0.05236138945657195,"s":0.8488116778943972,"l":0.5371603967909447,"hex":"#ed6425"} s={"h":0.43335536422902504,"s":0.8752172497042673,"l":0.4,"hex":"#0dbf78"} amb={"h":0.023712507086167674,"s":0.8752172497042673,"l":0.44,"hex":"#d22a0e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(13,191,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[VirtualWire] 📡 SAB feed — cb#19500 | frames=441 | peak=0.1554 | ch=2
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:183 Tilt:55 | sBPM:103 phase:67°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:52 Tilt:103 | sBPM:103 phase:67°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.56 | PLL=FREEWHEEL [mem=103@-0f] phase=0.00 sync=0.56 | beat #212 | bass=0.2186 sab=0.000 | 🔬in_peak=0.15107 in_rms=0.06659
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8919319023902562,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.062148668782435836,"s":0.8489775221500334,"l":0.5389523136683916,"hex":"#ed7026"} s={"h":0.43335536422902504,"s":0.8919319023902562,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8919319023902562,"l":0.44,"hex":"#d4290c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(11,193,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(11,193,120) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:154 Tilt:-75 | sBPM:103 phase:131°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:216 Tilt:1 | sBPM:103 phase:131°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8890590659827757,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.07078635233309333,"s":0.8491238866453326,"l":0.5405337552949289,"hex":"#ed7b26"} s={"h":0.43335536422902504,"s":0.8890590659827757,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8890590659827757,"l":0.44,"hex":"#d4290c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(11,193,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.47 | PLL=FREEWHEEL [mem=103@-0f] phase=0.00 sync=0.54 | beat #212 | bass=0.2796 sab=0.108 | 🔬in_peak=0.17789 in_rms=0.09033
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8986410814041151,"l":0.4,"hex":"#0ac278"} hasColorOverride=false | p={"h":0.0780022124797818,"s":0.8492461585162948,"l":0.5418548805179492,"hex":"#ed8427"} s={"h":0.43335536422902504,"s":0.8986410814041151,"l":0.4,"hex":"#0ac278"} amb={"h":0.023712507086167674,"s":0.8986410814041151,"l":0.44,"hex":"#d5280b"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(10,194,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(10,194,120) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:-50 Tilt:36 | sBPM:103 phase:195°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:-86 Tilt:8 | sBPM:103 phase:195°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL [mem=103@-31f] phase=0.00 sync=0.13 | beat #212 | bass=0.0554 sab=0.000 | 🔬in_peak=0.43551 in_rms=0.13877
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8734704514865698,"l":0.4,"hex":"#0dbf78"} hasColorOverride=false | p={"h":0.10842295378351123,"s":0.8497616342710427,"l":0.5474245018551619,"hex":"#eea92a"} s={"h":0.43335536422902504,"s":0.8734704514865698,"l":0.4,"hex":"#0dbf78"} amb={"h":0.023712507086167674,"s":0.8734704514865698,"l":0.44,"hex":"#d22a0e"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(13,191,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.882145121326318,"l":0.4,"hex":"#0cc078"} hasColorOverride=false | p={"h":0.12247705476943432,"s":0.8499997792998137,"l":0.5499976153748165,"hex":"#eeba2b"} s={"h":0.43335536422902504,"s":0.882145121326318,"l":0.4,"hex":"#0cc078"} amb={"h":0.023712507086167674,"s":0.882145121326318,"l":0.44,"hex":"#d3290d"}
+[VirtualWire] 📡 SAB feed — cb#20000 | frames=441 | peak=0.3326 | ch=2
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(12,192,120) → Cyan (DMX 20) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(12,192,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:-196 Tilt:27 | sBPM:103 phase:259°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:-177 Tilt:-50 | sBPM:103 phase:259°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL [mem=103@-91f] phase=0.00 sync=0.00 | beat #212 | bass=0.1892 sab=0.054 | 🔬in_peak=0.31160 in_rms=0.10774
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8941608129930779,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.12249007935540071,"s":0.849999999999836,"l":0.549999999998228,"hex":"#eeba2b"} s={"h":0.43335536422902504,"s":0.8941608129930779,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8941608129930779,"l":0.44,"hex":"#d5280c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(11,193,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:-121 Tilt:-73 | sBPM:103 phase:323°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:17 Tilt:-94 | sBPM:103 phase:323°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9017710143847925,"l":0.4,"hex":"#0ac278"} hasColorOverride=false | p={"h":0.12249007936507926,"s":0.8521288607582393,"l":0.55,"hex":"#eeba2a"} s={"h":0.43335536422902504,"s":0.9017710143847925,"l":0.4,"hex":"#0ac278"} amb={"h":0.023712507086167674,"s":0.9017710143847925,"l":0.44,"hex":"#d5280b"}
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #213 | bass=0.2881 sab=0.000 | 🔬in_peak=0.24344 in_rms=0.10852
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(10,194,120) → Cyan (DMX 20) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(10,194,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8886515718272401,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.850000000000009,"l":0.55,"hex":"#eeba2b"} s={"h":0.43335536422902504,"s":0.8886515718272401,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8886515718272401,"l":0.44,"hex":"#d4290c"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(12,192,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:89 Tilt:59 | sBPM:103 phase:28°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:-21 Tilt:74 | sBPM:103 phase:28°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #213 | bass=0.2310 sab=0.161 | 🔬in_peak=0.46816 in_rms=0.12747
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.8906021963817707,"l":0.4,"hex":"#0bc178"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.85,"l":0.55,"hex":"#eeba2b"} s={"h":0.43335536422902504,"s":0.8906021963817707,"l":0.4,"hex":"#0bc178"} amb={"h":0.023712507086167674,"s":0.8906021963817707,"l":0.44,"hex":"#d4290c"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(11,193,120) → Cyan (DMX 20) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(12,192,120) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[VirtualWire] 📡 SAB feed — cb#20500 | frames=441 | peak=0.1704 | ch=2
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:199 Tilt:-4 | sBPM:103 phase:92°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:147 Tilt:67 | sBPM:103 phase:92°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #213 | bass=0.2270 sab=0.054 | 🔬in_peak=0.27212 in_rms=0.09756
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(9,195,121) → Cyan (DMX 20) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:81 Tilt:-56 | sBPM:103 phase:156°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:136 Tilt:-11 | sBPM:103 phase:156°
+[TitanOrchestrator] 🎧 WORKER BPM=103 conf=0.06 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #213 | bass=0.1084 sab=0.108 | 🔬in_peak=0.21988 in_rms=0.08367
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(9,195,121) → Cyan (DMX 20) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:53 | Pan:-126 Tilt:70 | sBPM:103 phase:222°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:53 | Pan:-188 Tilt:5 | sBPM:103 phase:222°
+[TitanOrchestrator] 🎧 WORKER BPM=105 conf=0.69 | PLL=FREEWHEEL [mem=105@-0f] phase=0.00 sync=0.02 | beat #215 | bass=0.2269 sab=0.000 | 🔬in_peak=0.29608 in_rms=0.10254
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[VirtualWire] 📡 SAB feed — cb#21000 | frames=441 | peak=0.2287 | ch=2
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(9,195,121) → Cyan (DMX 20) [Q-HOLD]
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:54 | Pan:-193 Tilt:-44 | sBPM:105 phase:288°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:54 | Pan:-74 Tilt:-100 | sBPM:105 phase:288°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[TitanOrchestrator] 🎧 WORKER BPM=105 conf=0.78 | PLL=FREEWHEEL [mem=105@-0f] phase=0.00 sync=0.41 | beat #219 | bass=0.1655 sab=0.108 | 🔬in_peak=0.15995 in_rms=0.06608
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[CHOREO] fiesta-latina | figure8 [SNAKE F0/2] | Bar:55 | Pan:-41 Tilt:-30 | sBPM:87 phase:348°
+[CHOREO] fiesta-latina | figure8 [SNAKE F1/2] | Bar:55 | Pan:14 Tilt:-36 | sBPM:87 phase:348°
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.73 | PLL=FREEWHEEL [mem=85@-0f] phase=0.00 sync=0.44 | beat #221 | bass=0.2107 sab=0.161 | 🔬in_peak=0.15493 in_rms=0.07099
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(9,195,121) → Cyan (DMX 20) [Q-HOLD]
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 translated=true poorMatch=true
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} hasColorOverride=false | p={"h":0.12249007936507941,"s":0.8579284650934709,"l":0.55,"hex":"#efbb2a"} s={"h":0.43335536422902504,"s":0.9079284650934709,"l":0.4,"hex":"#09c379"} amb={"h":0.023712507086167674,"s":0.9079284650934709,"l":0.44,"hex":"#d6270a"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(9,195,121) → slot="Cyan" DMX=20 transl
+
+----------------------------------
+---------------------------------
+
+AQUI CAMBIO A TECHNO VIBE Y EL MOVER R se vuelve BLANCO .
+
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #145 | bass=0.0722 sab=0.000 | 🔬in_peak=0.53158 in_rms=0.15191
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.10)
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.59)
+[SeleneTitanConscious] ⏸️ Disabled
+[TitanOrchestrator] 🧬 Consciousness DISABLED ⏸️
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:179 | Pan:71 Tilt:-99 | sBPM:132 phase:150°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:179 | Pan:-71 Tilt:-99 | sBPM:132 phase:150°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #146 | bass=0.5116 sab=0.108 | 🔬in_peak=0.50655 in_rms=0.21123
+[VirtualWire] 📡 SAB feed — cb#61000 | frames=441 | peak=0.4138 | ch=2
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:179 | Pan:-95 Tilt:27 | sBPM:132 phase:318°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:179 | Pan:95 Tilt:27 | sBPM:132 phase:318°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #146 | bass=0.1980 sab=0.108 | 🔬in_peak=0.48807 in_rms=0.16016
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:135 Tilt:-68 | sBPM:132 phase:124°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:-135 Tilt:-68 | sBPM:132 phase:124°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #149 | bass=0.2632 sab=0.000 | 🔬in_peak=0.61463 in_rms=0.16197
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:-166 Tilt:-2 | sBPM:132 phase:291°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:166 Tilt:-2 | sBPM:132 phase:291°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.1896 sab=0.054 | 🔬in_peak=0.37536 in_rms=0.12147
+[VirtualWire] 📡 SAB feed — cb#61500 | frames=441 | peak=0.2559 | ch=2
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:206 Tilt:-33 | sBPM:132 phase:95°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:-206 Tilt:-33 | sBPM:132 phase:95°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.2083 sab=0.054 | 🔬in_peak=0.37776 in_rms=0.12787
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:-190 Tilt:-42 | sBPM:132 phase:258°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:190 Tilt:-42 | sBPM:132 phase:258°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.3069 sab=0.000 | 🔬in_peak=0.52907 in_rms=0.18086
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:156 Tilt:5 | sBPM:132 phase:64°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:-156 Tilt:5 | sBPM:132 phase:64°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.2474 sab=0.000 | 🔬in_peak=0.26018 in_rms=0.10082
+[VirtualWire] 📡 SAB feed — cb#62000 | frames=441 | peak=0.4679 | ch=2
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(174,4,96) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45,"hex":"#0bda2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.35,"hex":"#ae0460"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4,"hex":"#0f77bd"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(174,4,96) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(191,5,105) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:-129 Tilt:-73 | sBPM:132 phase:233°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:129 Tilt:-73 | sBPM:132 phase:233°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.1701 sab=0.054 | 🔬in_peak=0.41216 in_rms=0.15668
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.38113386912935016,"hex":"#be0568"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.45577285691969344,"hex":"#0cdd2e"} s={"h":0.9103998445582514,"s":0.95,"l":0.38113386912935016,"hex":"#be0568"} amb={"h":0.5668272547708897,"s":0.85,"l":0.43113386912935014,"hex":"#1080cb"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(187,5,103) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.3783538082314575,"hex":"#bc0567"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.47763679355015737,"hex":"#0ce731"} s={"h":0.9103998445582514,"s":0.95,"l":0.3783538082314575,"hex":"#bc0567"} amb={"h":0.5668272547708897,"s":0.85,"l":0.42835380823145747,"hex":"#1080ca"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:95 Tilt:33 | sBPM:132 phase:40°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:-95 Tilt:33 | sBPM:132 phase:40°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(189,5,104) → Pink (DMX 10) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.1322 sab=0.000 | 🔬in_peak=0.49366 in_rms=0.15978
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(187,5,103) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.3738099689380362,"hex":"#ba0566"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.47350797836693176,"hex":"#0ce530"} s={"h":0.9103998445582514,"s":0.95,"l":0.3738099689380362,"hex":"#ba0566"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4238099689380362,"hex":"#107ec8"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(189,5,104) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:-66 Tilt:-104 | sBPM:132 phase:207°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:66 Tilt:-104 | sBPM:132 phase:207°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.37966759802708927,"hex":"#bd0568"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.47973647009525633,"hex":"#0ce831"} s={"h":0.9103998445582514,"s":0.95,"l":0.37966759802708927,"hex":"#bd0568"} amb={"h":0.5668272547708897,"s":0.85,"l":0.42966759802708926,"hex":"#1080cb"}
+[VirtualWire] 📡 SAB feed — cb#62500 | frames=441 | peak=0.4066 | ch=2
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.2925 sab=0.108 | 🔬in_peak=0.32970 in_rms=0.12945
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(189,5,104) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(188,5,103) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.37794868621059324,"hex":"#bc0567"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4778734920877876,"hex":"#0ce831"} s={"h":0.9103998445582514,"s":0.95,"l":0.37794868621059324,"hex":"#bc0567"} amb={"h":0.5668272547708897,"s":0.85,"l":0.42794868621059323,"hex":"#107fca"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:180 | Pan:26 Tilt:62 | sBPM:132 phase:11°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:180 | Pan:-26 Tilt:62 | sBPM:132 phase:11°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(184,5,101) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #151 | bass=0.0644 sab=0.108 | 🔬in_peak=0.37957 in_rms=0.12737
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.3600539418417661,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4600973154408663,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.3600539418417661,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4100539418417661,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(180,5,99) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.3692270145686448,"hex":"#b80565"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.46919062585732507,"hex":"#0ce330"} s={"h":0.9103998445582514,"s":0.95,"l":0.3692270145686448,"hex":"#b80565"} amb={"h":0.5668272547708897,"s":0.85,"l":0.4192270145686448,"hex":"#107dc6"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:181 | Pan:9 Tilt:-117 | sBPM:132 phase:176°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:181 | Pan:-9 Tilt:-117 | sBPM:132 phase:176°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #152 | bass=0.0264 sab=0.108 | 🔬in_peak=0.41508 in_rms=0.09689
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:181 | Pan:-35 Tilt:62 | sBPM:132 phase:345°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:181 | Pan:35 Tilt:62 | sBPM:132 phase:345°
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[VirtualWire] 📡 SAB feed — cb#63000 | frames=441 | peak=0.2725 | ch=2
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #153 | bass=0.0451 sab=0.108 | 🔬in_peak=0.21068 in_rms=0.07151
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:181 | Pan:70 Tilt:-98 | sBPM:132 phase:150°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:181 | Pan:-70 Tilt:-98 | sBPM:132 phase:150°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #154 | bass=0.0275 sab=0.215 | 🔬in_peak=0.23083 in_rms=0.07875
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:181 | Pan:-100 Tilt:29 | sBPM:132 phase:318°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:181 | Pan:100 Tilt:29 | sBPM:132 phase:318°
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #155 | bass=0.0735 sab=0.054 | 🔬in_peak=0.35439 in_rms=0.10469
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:182 | Pan:127 Tilt:-69 | sBPM:132 phase:126°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:182 | Pan:-127 Tilt:-69 | sBPM:132 phase:126°
+[VirtualWire] 📡 SAB feed — cb#63500 | frames=441 | peak=0.3060 | ch=2
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #157 | bass=0.4183 sab=0.108 | 🔬in_peak=0.44001 in_rms=0.14371
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:182 | Pan:-160 Tilt:1 | sBPM:132 phase:293°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:182 | Pan:160 Tilt:1 | sBPM:132 phase:293°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #158 | bass=0.2976 sab=0.108 | 🔬in_peak=0.42824 in_rms=0.14445
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:183 | Pan:175 Tilt:-35 | sBPM:132 phase:98°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:183 | Pan:-175 Tilt:-35 | sBPM:132 phase:98°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #160 | bass=0.3159 sab=0.000 | 🔬in_peak=0.25525 in_rms=0.10371
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:183 | Pan:-186 Tilt:-31 | sBPM:132 phase:266°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:183 | Pan:186 Tilt:-31 | sBPM:132 phase:266°
+[VirtualWire] 📡 SAB feed — cb#64000 | frames=441 | peak=0.2653 | ch=2
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #161 | bass=0.4183 sab=0.000 | 🔬in_peak=0.31761 in_rms=0.12759
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[CHOREO] techno-club | diamond [MIRROR F0/2] | Bar:183 | Pan:160 Tilt:-13 | sBPM:132 phase:76°
+[CHOREO] techno-club | diamond [MIRROR F1/2] | Bar:183 | Pan:-160 Tilt:-13 | sBPM:132 phase:76°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #163 | bass=0.0103 sab=0.054 | 🔬in_peak=0.00997 in_rms=0.00353
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] Pattern transition: diamond -> botstep (2s LERP)
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[CHOREO] techno-club | botstep [LERP] [MIRROR F0/2] | Bar:184 | Pan:-26 Tilt:-88 | sBPM:132 phase:244°
+[CHOREO] techno-club | botstep [LERP] [MIRROR F1/2] | Bar:184 | Pan:27 Tilt:-84 | sBPM:132 phase:244°
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #164 | bass=0.0495 sab=0.108 | 🔬in_peak=0.18024 in_rms=0.04896
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[CHOREO] Transition complete -> botstep
+[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:184 | Pan:-160 Tilt:-63 | sBPM:132 phase:50°
+[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:184 | Pan:160 Tilt:-63 | sBPM:132 phase:50°
+[VirtualWire] 📡 SAB feed — cb#64500 | frames=441 | peak=0.1896 | ch=2
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #165 | bass=0.0524 sab=0.108 | 🔬in_peak=0.14921 in_rms=0.04919
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:184 | Pan:78 Tilt:-92 | sBPM:132 phase:215°
+[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:184 | Pan:-78 Tilt:-92 | sBPM:132 phase:215°
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[TitanOrchestrator] 🎧 WORKER BPM=132 conf=0.25 | PLL=FREEWHEEL [mem=132@-0f] phase=0.00 sync=1.00 | beat #166 | bass=0.0381 sab=0.108 | 🔬in_peak=0.39074 in_rms=0.12132
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} hasColorOverride=false | p={"h":0.3611111111111111,"s":0.9,"l":0.4598989480759872,"hex":"#0cdf2f"} s={"h":0.9103998445582514,"s":0.95,"l":0.35989894807598716,"hex":"#b30562"} amb={"h":0.5668272547708897,"s":0.85,"l":0.40989894807598715,"hex":"#107ac1"}
+[🐟 BABEL FISH] EL 1140 TESTING: RGB(179,5,98) → Pink (DMX 10) [Q-HOLD]
+[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(179,5,98) → slot="Pink" DMX=10 translated=true poorMatch=false
+[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.

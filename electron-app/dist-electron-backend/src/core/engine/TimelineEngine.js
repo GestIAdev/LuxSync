@@ -58,14 +58,7 @@ import { SpotlightPulse } from '../effects/library/poprock/SpotlightPulse';
 import { PowerChord } from '../effects/library/poprock/PowerChord';
 import { StageWash } from '../effects/library/poprock/StageWash';
 // ─── CHILL-LOUNGE ───
-import { WhaleSong } from '../effects/library/chillLounge/WhaleSong';
-import { SurfaceShimmer } from '../effects/library/chillLounge/SurfaceShimmer';
-import { SolarCaustics } from '../effects/library/chillLounge/SolarCaustics';
-import { SchoolOfFish } from '../effects/library/chillLounge/SchoolOfFish';
-import { AbyssalJellyfish } from '../effects/library/chillLounge/AbyssalJellyfish';
-import { PlanktonDrift } from '../effects/library/chillLounge/PlanktonDrift';
-import { DeepCurrentPulse } from '../effects/library/chillLounge/DeepCurrentPulse';
-import { BioluminescentSpore } from '../effects/library/chillLounge/BioluminescentSpore';
+// ⚰️ WAVE 3450: Efectos oceánicos purged — ChillAmbientEngine gestiona la luz directamente.
 // ─── FIESTA LATINA ───
 import { SolarFlare } from '../effects/library/fiestalatina/SolarFlare';
 import { SalsaFire } from '../effects/library/fiestalatina/SalsaFire';
@@ -107,15 +100,7 @@ EFFECT_FACTORIES.set('feedback_storm', () => new FeedbackStorm());
 EFFECT_FACTORIES.set('spotlight_pulse', () => new SpotlightPulse());
 EFFECT_FACTORIES.set('power_chord', () => new PowerChord());
 EFFECT_FACTORIES.set('stage_wash', () => new StageWash());
-// ── CHILL-LOUNGE ──
-EFFECT_FACTORIES.set('whale_song', () => new WhaleSong());
-EFFECT_FACTORIES.set('surface_shimmer', () => new SurfaceShimmer());
-EFFECT_FACTORIES.set('solar_caustics', () => new SolarCaustics());
-EFFECT_FACTORIES.set('school_of_fish', () => new SchoolOfFish());
-EFFECT_FACTORIES.set('abyssal_jellyfish', () => new AbyssalJellyfish());
-EFFECT_FACTORIES.set('plankton_drift', () => new PlanktonDrift());
-EFFECT_FACTORIES.set('deep_current_pulse', () => new DeepCurrentPulse());
-EFFECT_FACTORIES.set('bioluminescent_spore', () => new BioluminescentSpore());
+// ── CHILL-LOUNGE — WAVE 3450: arsenal purged, ChillAmbientEngine autogestiona ──
 // ── FIESTA LATINA ──
 EFFECT_FACTORIES.set('solar_flare', () => new SolarFlare());
 EFFECT_FACTORIES.set('salsa_fire', () => new SalsaFire());
@@ -716,8 +701,18 @@ export class TimelineEngine {
                 channels.push('speed');
             }
         }
-        // Auto-white injection: dimmer > 0 but no color
-        if (controls.dimmer > 0 && controls.red === undefined && controls.green === undefined && controls.blue === undefined) {
+        // WAVE 3438: NO inyectar auto-white cuando el output solo tiene canales de
+        // movimiento (pan/tilt/speed). Un clip de movimiento puro no debe contaminar
+        // el color del fixture con blanco — eso congela el color de Selene.
+        const movementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer']);
+        const hasNonMovementChannels = channels.some(ch => !movementOnlyChannels.has(ch));
+        const isMovementOnlyOutput = !hasNonMovementChannels &&
+            (channels.includes('pan') || channels.includes('tilt'));
+        if (!isMovementOnlyOutput &&
+            controls.dimmer > 0 &&
+            controls.red === undefined &&
+            controls.green === undefined &&
+            controls.blue === undefined) {
             controls.red = 255;
             controls.green = 255;
             controls.blue = 255;
@@ -877,19 +872,28 @@ export class TimelineEngine {
                 controls.dimmer = intensity * 255;
                 channels.push('dimmer');
         }
-        // Auto-white injection
-        if (controls.dimmer !== undefined && controls.dimmer > 0) {
-            if (controls.red === undefined && controls.green === undefined && controls.blue === undefined) {
-                controls.red = 255;
-                controls.green = 255;
-                controls.blue = 255;
-                if (!channels.includes('red'))
-                    channels.push('red');
-                if (!channels.includes('green'))
-                    channels.push('green');
-                if (!channels.includes('blue'))
-                    channels.push('blue');
-            }
+        // WAVE 3438: NO inyectar auto-white si el clip Hephaestus solo mueve
+        // pan/tilt/speed sin especificar color. Un mover en movimiento no debe
+        // recibir blanco por defecto — Selene ya provee el color en Layer 1.
+        const hephMovementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer']);
+        const hephHasNonMovement = channels.some(ch => !hephMovementOnlyChannels.has(ch));
+        const hephIsMovementOnly = !hephHasNonMovement &&
+            (channels.includes('pan') || channels.includes('tilt'));
+        if (!hephIsMovementOnly &&
+            controls.dimmer !== undefined &&
+            controls.dimmer > 0 &&
+            controls.red === undefined &&
+            controls.green === undefined &&
+            controls.blue === undefined) {
+            controls.red = 255;
+            controls.green = 255;
+            controls.blue = 255;
+            if (!channels.includes('red'))
+                channels.push('red');
+            if (!channels.includes('green'))
+                channels.push('green');
+            if (!channels.includes('blue'))
+                channels.push('blue');
         }
         if (channels.length === 0)
             return;

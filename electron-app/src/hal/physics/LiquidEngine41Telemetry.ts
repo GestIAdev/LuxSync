@@ -35,6 +35,7 @@ import { LiquidEngineBase, type ProcessedFrame } from './LiquidEngineBase'
 import type { LiquidStereoResult } from './LiquidStereoPhysics'
 import type { ILiquidProfile } from './profiles/ILiquidProfile'
 import { LATINO_PROFILE } from './profiles/latino'
+import type { LiquidEnvelopeConfig } from './LiquidEnvelope'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LOG RECORD — Lo que se captura por frame
@@ -50,6 +51,26 @@ export interface Latino41TelemetryRecord {
   morphFactor: number
   trebleDelta: number   // señal entregada al transient shaper ANTES de ×4
   percRaw: number       // rawRight = trebleDelta × 4 (input del envSnare)
+  kickRaw: number       // señal cruda de kick antes del envKick
+  kickDynGate: number
+  kickSquelch: number
+  kickPower: number
+  kickGatePassed: boolean
+  kickIgnited: boolean
+  isKick: boolean
+  isKickEdge: boolean
+  snareInput: number
+  snareDynGate: number
+  snareSquelch: number
+  snarePower: number
+  snareGatePassed: boolean
+  snareIgnited: boolean
+  highMidInput: number
+  highMidDynGate: number
+  highMidSquelch: number
+  highMidPower: number
+  highMidGatePassed: boolean
+  highMidIgnited: boolean
   // Outputs 4.1 (post-routeZones, post-sidechain)
   frontPar: number
   backPar: number
@@ -59,6 +80,22 @@ export interface Latino41TelemetryRecord {
   sidechainFired: boolean
   duckingApplied: number  // 1.0 = sin ducking, <1.0 = atenuación real
   isBreakdown: boolean
+}
+
+interface LiquidEnvelopeProbeState {
+  avgSignal: number
+  avgSignalPeak: number
+  lastFireTime: number
+  lastSignal: number
+  wasAttacking: boolean
+}
+
+interface LiquidEnvelopeProbeResult {
+  dynamicGate: number
+  squelch: number
+  kickPower: number
+  gatePassed: boolean
+  ignited: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,9 +113,86 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
   private static readonly BUFFER_SIZE = 600
   private _buffer: Latino41TelemetryRecord[] = []
   private _bufferHead = 0
+  private _kickProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
+  private _snareProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
+  private _highMidProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
 
   constructor(profile: ILiquidProfile = LATINO_PROFILE) {
     super(profile, '4.1')
+  }
+
+  private static freshProbeState(): LiquidEnvelopeProbeState {
+    return {
+      avgSignal: 0,
+      avgSignalPeak: 0,
+      lastFireTime: 0,
+      lastSignal: 0,
+      wasAttacking: false,
+    }
+  }
+
+  private evaluateEnvelopeProbe(
+    signal: number,
+    config: LiquidEnvelopeConfig,
+    morphFactor: number,
+    now: number,
+    isBreakdown: boolean,
+    state: LiquidEnvelopeProbeState,
+  ): LiquidEnvelopeProbeResult {
+    const velocity = signal - state.lastSignal
+    state.lastSignal = signal
+
+    const isRisingAttack = velocity >= -0.005
+    const isGraceFrame = state.wasAttacking && velocity >= -0.03
+    const isAttacking = isRisingAttack || isGraceFrame
+    state.wasAttacking = isRisingAttack && velocity > 0.01
+
+    if (signal > state.avgSignal) {
+      state.avgSignal = state.avgSignal * 0.98 + signal * 0.02
+    } else {
+      state.avgSignal = state.avgSignal * 0.88 + signal * 0.12
+    }
+
+    const timeSinceLastFire = state.lastFireTime > 0 ? now - state.lastFireTime : 0
+    const isDrySpell = timeSinceLastFire > 2000
+    const peakDecay = isDrySpell ? 0.985 : 0.993
+    if (state.avgSignal > state.avgSignalPeak) {
+      state.avgSignalPeak = state.avgSignal
+    } else {
+      state.avgSignalPeak = state.avgSignalPeak * peakDecay + state.avgSignal * (1 - peakDecay)
+    }
+
+    const drySpellFloorDecay = timeSinceLastFire > 3000
+      ? Math.min(1.0, (timeSinceLastFire - 3000) / 3000)
+      : 0
+    const adaptiveFloor = config.gateOn - (0.12 * drySpellFloorDecay)
+    const avgEffective = Math.max(state.avgSignal, state.avgSignalPeak * 0.55, adaptiveFloor)
+    const dynamicGate = avgEffective + config.gateMargin
+
+    const breakdownPenalty = isBreakdown ? 0.06 : 0
+    let kickPower = 0
+    const gatePassed = signal > dynamicGate && isAttacking && signal > 0.15
+    if (gatePassed) {
+      const requiredJump = 0.14 - 0.07 * morphFactor + breakdownPenalty
+      let rawPower = (signal - dynamicGate) / requiredJump
+      rawPower = Math.min(1.0, Math.max(0, rawPower))
+      const crushExp = config.crushExponent + 0.3 * (1.0 - morphFactor)
+      kickPower = Math.pow(rawPower, crushExp)
+    }
+
+    const squelch = Math.max(0.02, config.squelchBase - config.squelchSlope * morphFactor)
+    const ignited = kickPower > squelch
+    if (ignited) {
+      state.lastFireTime = now
+    }
+
+    return {
+      dynamicGate,
+      squelch,
+      kickPower,
+      gatePassed,
+      ignited,
+    }
   }
 
   /** Activa o desactiva el logging. En producción: siempre false. */
@@ -102,6 +216,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     this._buffer = []
     this._bufferHead = 0
     this._frameCount = 0
+    this._kickProbe = LiquidEngine41Telemetry.freshProbeState()
+    this._snareProbe = LiquidEngine41Telemetry.freshProbeState()
+    this._highMidProbe = LiquidEngine41Telemetry.freshProbeState()
   }
 
   /**
@@ -127,7 +244,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     const lines: string[] = [
       `# LATINO-41 TELEMETRY — ${new Date().toISOString()}`,
       `# Frames capturados: ${this._buffer.length}`,
-      `# Formato: [LATINO-41] sB mid hMid tr | morph tDelta percRaw | fPar bPar mL mR | sc scDuck`,
+      `# Formato: [LATINO-41] bandas | morph/kick | frontProbe | backProbe | out`,
       '',
     ]
 
@@ -141,6 +258,26 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         ` | morph:${r.morphFactor.toFixed(3)}` +
         ` tDelta:${r.trebleDelta.toFixed(4)}` +
         ` percRaw:${r.percRaw.toFixed(3)}` +
+        ` kickRaw:${r.kickRaw.toFixed(3)}` +
+        ` isKick:${r.isKick ? 1 : 0}` +
+        ` isKEdge:${r.isKickEdge ? 1 : 0}` +
+        ` | kGate:${r.kickDynGate.toFixed(3)}` +
+        ` kSq:${r.kickSquelch.toFixed(3)}` +
+        ` kPow:${r.kickPower.toFixed(3)}` +
+        ` kPass:${r.kickGatePassed ? 1 : 0}` +
+        ` kIgn:${r.kickIgnited ? 1 : 0}` +
+        ` | snIn:${r.snareInput.toFixed(3)}` +
+        ` snGate:${r.snareDynGate.toFixed(3)}` +
+        ` snSq:${r.snareSquelch.toFixed(3)}` +
+        ` snPow:${r.snarePower.toFixed(3)}` +
+        ` snPass:${r.snareGatePassed ? 1 : 0}` +
+        ` snIgn:${r.snareIgnited ? 1 : 0}` +
+        ` hmIn:${r.highMidInput.toFixed(3)}` +
+        ` hmGate:${r.highMidDynGate.toFixed(3)}` +
+        ` hmSq:${r.highMidSquelch.toFixed(3)}` +
+        ` hmPow:${r.highMidPower.toFixed(3)}` +
+        ` hmPass:${r.highMidGatePassed ? 1 : 0}` +
+        ` hmIgn:${r.highMidIgnited ? 1 : 0}` +
         ` | fPar:${r.frontPar.toFixed(3)}` +
         ` bPar:${r.backPar.toFixed(3)}` +
         ` mL:${r.moverL.toFixed(3)}` +
@@ -193,6 +330,39 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
 
     // ── TELEMETRY RECORD ─────────────────────────────────────────────
     if (this._telemetryEnabled) {
+      const kickLocked = this.profile.layout41Strategy === 'strict-split' && !frame.isKick
+      const kickRaw = kickLocked ? 0 : (frame.isKickEdge ? bands.bass : 0)
+      const snareInput = frame.snareAttack
+      const highMidInput = Math.max(0,
+        bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight
+        - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub
+      )
+
+      const kickProbe = this.evaluateEnvelopeProbe(
+        kickRaw,
+        p.envelopeKick,
+        morphFactor,
+        frame.now,
+        frame.isBreakdown,
+        this._kickProbe,
+      )
+      const snareProbe = this.evaluateEnvelopeProbe(
+        snareInput,
+        p.envelopeSnare,
+        morphFactor,
+        frame.now,
+        frame.isBreakdown,
+        this._snareProbe,
+      )
+      const highMidProbe = this.evaluateEnvelopeProbe(
+        highMidInput,
+        p.envelopeHighMid,
+        morphFactor,
+        frame.now,
+        frame.isBreakdown,
+        this._highMidProbe,
+      )
+
       const record: Latino41TelemetryRecord = {
         subBass:        bands.subBass,
         mid:            bands.mid,
@@ -201,6 +371,26 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         morphFactor,
         trebleDelta,
         percRaw,
+        kickRaw,
+        kickDynGate: kickProbe.dynamicGate,
+        kickSquelch: kickProbe.squelch,
+        kickPower: kickProbe.kickPower,
+        kickGatePassed: kickProbe.gatePassed,
+        kickIgnited: kickProbe.ignited,
+        isKick: frame.isKick,
+        isKickEdge: frame.isKickEdge,
+        snareInput,
+        snareDynGate: snareProbe.dynamicGate,
+        snareSquelch: snareProbe.squelch,
+        snarePower: snareProbe.kickPower,
+        snareGatePassed: snareProbe.gatePassed,
+        snareIgnited: snareProbe.ignited,
+        highMidInput,
+        highMidDynGate: highMidProbe.dynamicGate,
+        highMidSquelch: highMidProbe.squelch,
+        highMidPower: highMidProbe.kickPower,
+        highMidGatePassed: highMidProbe.gatePassed,
+        highMidIgnited: highMidProbe.ignited,
         frontPar,
         backPar,
         moverL:         mL,
@@ -222,7 +412,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
       // Desactivar con setTelemetryEnabled(false) antes de producción estable.
       console.error(
-        `[LATINO-41]` +
+        `[MATH AUDIT][LATINO-41]` +
         ` sB:${bands.subBass.toFixed(3)}` +
         ` mid:${bands.mid.toFixed(3)}` +
         ` hMid:${bands.highMid.toFixed(3)}` +
@@ -230,6 +420,26 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         ` | morph:${morphFactor.toFixed(3)}` +
         ` tDelta:${trebleDelta.toFixed(4)}` +
         ` percRaw:${percRaw.toFixed(3)}` +
+        ` kickRaw:${kickRaw.toFixed(3)}` +
+        ` isKick:${frame.isKick ? 1 : 0}` +
+        ` isKEdge:${frame.isKickEdge ? 1 : 0}` +
+        ` | kGate:${kickProbe.dynamicGate.toFixed(3)}` +
+        ` kSq:${kickProbe.squelch.toFixed(3)}` +
+        ` kPow:${kickProbe.kickPower.toFixed(3)}` +
+        ` kPass:${kickProbe.gatePassed ? 1 : 0}` +
+        ` kIgn:${kickProbe.ignited ? 1 : 0}` +
+        ` | snIn:${snareInput.toFixed(3)}` +
+        ` snGate:${snareProbe.dynamicGate.toFixed(3)}` +
+        ` snSq:${snareProbe.squelch.toFixed(3)}` +
+        ` snPow:${snareProbe.kickPower.toFixed(3)}` +
+        ` snPass:${snareProbe.gatePassed ? 1 : 0}` +
+        ` snIgn:${snareProbe.ignited ? 1 : 0}` +
+        ` hmIn:${highMidInput.toFixed(3)}` +
+        ` hmGate:${highMidProbe.dynamicGate.toFixed(3)}` +
+        ` hmSq:${highMidProbe.squelch.toFixed(3)}` +
+        ` hmPow:${highMidProbe.kickPower.toFixed(3)}` +
+        ` hmPass:${highMidProbe.gatePassed ? 1 : 0}` +
+        ` hmIgn:${highMidProbe.ignited ? 1 : 0}` +
         ` | fPar:${frontPar.toFixed(3)}` +
         ` bPar:${backPar.toFixed(3)}` +
         ` mL:${mL.toFixed(3)}` +

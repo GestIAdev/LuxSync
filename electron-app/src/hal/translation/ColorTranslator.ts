@@ -173,6 +173,35 @@ function deltaE76(lab1: Lab, lab2: Lab): number {
   return Math.sqrt(dL * dL + da * da + db * db)
 }
 
+/**
+ * ⚡ WAVE 3456: RGB → HSL (H en grados 0-360, S y L en 0-1)
+ * Para matching por hue en ruedas mecánicas.
+ */
+function rgbToHsl(rgb: { r: number; g: number; b: number }): { h: number; s: number; l: number } {
+  const r = rgb.r / 255
+  const g = rgb.g / 255
+  const b = rgb.b / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  if (max === min) return { h: 0, s: 0, l }
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h: number
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+  else if (max === g) h = ((b - r) / d + 2) / 6
+  else h = ((r - g) / d + 4) / 6
+  return { h: h * 360, s, l }
+}
+
+/**
+ * ⚡ WAVE 3456: Diferencia circular de hue (0-180°)
+ */
+function circularHueDiff(h1: number, h2: number): number {
+  const diff = Math.abs(h1 - h2) % 360
+  return diff > 180 ? 360 - diff : diff
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RGBW & CMY CONVERSION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -341,108 +370,98 @@ export class ColorTranslator {
   }
   
   /**
-   *  WAVE 2096.1: Find nearest wheel color using CIE76 ΔE*
-   * Pre-computes L*a*b* for all wheel colors (cached per profile).
+   * ⚡ WAVE 3456: MECHANICAL HUE MATCHER — Wheel-aware color matching
+   *
+   * Ruedas mecánicas de moving head: el cristal controla SOLO el matiz.
+   * La luminosidad y saturación las gestiona el dimmer/shutter — no la rueda.
+   *
+   * El matching por ΔE LAB fallaba porque Blue puro (0,0,255) en Lab está
+   * muy lejos de un azul marino (5,114,182) — el algoritmo elegía White
+   * como "más cercano". Esto es incorrecto para ruedas mecánicas.
+   *
+   * Nuevo criterio (hue circular):
+   *   1. Convertir target + cada slot a HSL
+   *   2. Si el target tiene saturación > 0.15:
+   *      - Penalizar fuertemente slots neutros (s < 0.15): distancia = 180°
+   *      - Resto: distancia = diferencia de hue circular (0-180°)
+   *   3. Si target es neutro (s < 0.15): usar slot 0 (Open/White) directamente
+   *   4. poorMatch = hue diff > 45°
    */
   private findNearestColorLab(target: RGB, wheel: ColorWheelDefinition, profileId: string): ColorTranslationResult {
-    // Get or compute L*a*b* for wheel colors
-    let wheelLabs = this.wheelLabCache.get(profileId)
-    if (!wheelLabs) {
-      wheelLabs = wheel.colors.map(c => rgbToLab(c.rgb))
-      this.wheelLabCache.set(profileId, wheelLabs)
+    // Convertir target a HSL para matching por hue
+    const targetHsl = rgbToHsl(target)
+    const targetIsChromatic = targetHsl.s > 0.15
+
+    // Si el target es neutro/blanco: devolver el primer slot (Open/White) directamente
+    if (!targetIsChromatic) {
+      const openSlot = wheel.colors[0]
+      return {
+        outputRGB: openSlot.rgb,
+        colorWheelDmx: openSlot.dmx,
+        colorName: openSlot.name,
+        colorDistance: 0,
+        wasTranslated: true,
+        poorMatch: false,
+      }
     }
-    
-    const targetLab = rgbToLab(target)
-    
-    // Find the two closest colors (for half-color positioning)
+
     let nearestIndex = 0
     let secondNearestIndex = -1
-    let smallestDeltaE = Infinity
-    let secondSmallestDeltaE = Infinity
-    
+    let smallestHueDiff = Infinity
+    let secondSmallestHueDiff = Infinity
+
     for (let i = 0; i < wheel.colors.length; i++) {
-      const dE = deltaE76(targetLab, wheelLabs[i])
-      if (dE < smallestDeltaE) {
-        secondSmallestDeltaE = smallestDeltaE
+      const slotHsl = rgbToHsl(wheel.colors[i].rgb)
+      const slotIsChromatic = slotHsl.s > 0.15
+
+      // Slots neutros (White, Open): distancia máxima cuando target es cromático
+      const hueDiff = slotIsChromatic
+        ? circularHueDiff(targetHsl.h, slotHsl.h)
+        : 180
+
+      if (hueDiff < smallestHueDiff) {
+        secondSmallestHueDiff = smallestHueDiff
         secondNearestIndex = nearestIndex
-        smallestDeltaE = dE
+        smallestHueDiff = hueDiff
         nearestIndex = i
-      } else if (dE < secondSmallestDeltaE) {
-        secondSmallestDeltaE = dE
+      } else if (hueDiff < secondSmallestHueDiff) {
+        secondSmallestHueDiff = hueDiff
         secondNearestIndex = i
       }
     }
-    
-    // ⚡ WAVE 3441: INDESTRUCTIBLE WHEEL MATCHER
-    // El traductor SIEMPRE devuelve el cristal físico más cercano.
-    // Se eliminó el fallback a blanco/open (era el "fallback cobarde"):
-    // antes, si ΔE* era alto Y saturación < 0.3, se forzaba el slot Open.
-    // Ahora: si Selene pide Celeste y el cristal más cercano es Azul Puro,
-    // el Mover hará Azul Puro — mucho mejor que un flash de Blanco.
-    // La señal poorMatch se preserva para que el caller decida si loggear.
+
     let finalColor = wheel.colors[nearestIndex]
-    
-    // Protección NaN: si smallestDeltaE es NaN (perfil con RGB inválido),
-    // usar el primer cristal de la rueda como fallback determinista.
-    if (!Number.isFinite(smallestDeltaE)) {
-      smallestDeltaE = 999
-      nearestIndex = 0
-      finalColor = wheel.colors[0]
-    }
-    
-    const poorMatch = smallestDeltaE > this.POOR_MATCH_THRESHOLD
-    
-    // ─────────────────────────────────────────────────────────────────
-    // WAVE 2096.2: HALF-COLOR POSITIONING (VULN-COLOR-04)
-    // 
-    // If the target sits between two adjacent wheel colors,
-    // interpolate the DMX value for analog wheel positioning.
-    // 
-    // Requirements for half-color:
-    //   1. Two valid colors found
-    //   2. They are ADJACENT on the wheel (index difference of 1)
-    //   3. The nearest match is not a perfect match (dE > 3)
-    //   4. The second color is meaningfully close (dE < 60)
-    //   5. Not a poor match overall
-    // ─────────────────────────────────────────────────────────────────
+    const poorMatch = smallestHueDiff > 45  // > 45° de diferencia de hue = match pobre
+
+    // Half-color positioning: si el target cae entre dos slots adyacentes
     let interpolatedDmx = finalColor.dmx
     let colorName = finalColor.name
-    
+
     if (
       secondNearestIndex >= 0 &&
       !poorMatch &&
-      smallestDeltaE > 3 &&           // Not already a perfect match
-      secondSmallestDeltaE < 60       // Second color is in the neighborhood
+      smallestHueDiff > 3 &&          // No es match perfecto
+      secondSmallestHueDiff < 45      // El segundo está en el vecindario
     ) {
       const secondColor = wheel.colors[secondNearestIndex]
-      
-      // Check adjacency: colors must be neighbors on the physical wheel
-      // Adjacent = index difference of 1 (or wrap-around for first/last)
       const indexDiff = Math.abs(nearestIndex - secondNearestIndex)
       const isAdjacent = indexDiff === 1 || indexDiff === wheel.colors.length - 1
-      
+
       if (isAdjacent) {
-        // Interpolation factor: how far toward secondColor (0 = at nearest, 1 = at second)
-        const totalDistance = smallestDeltaE + secondSmallestDeltaE
-        const t = totalDistance > 0 ? smallestDeltaE / totalDistance : 0
-        
-        // Interpolate DMX value between the two slots
-        const dmxA = finalColor.dmx
-        const dmxB = secondColor.dmx
-        interpolatedDmx = Math.round(dmxA + (dmxB - dmxA) * t)
-        
-        // Label with both colors when meaningfully between them
+        const totalDistance = smallestHueDiff + secondSmallestHueDiff
+        const t = totalDistance > 0 ? smallestHueDiff / totalDistance : 0
+        interpolatedDmx = Math.round(finalColor.dmx + (secondColor.dmx - finalColor.dmx) * t)
         if (t > 0.15) {
           colorName = `${finalColor.name}/${secondColor.name}`
         }
       }
     }
-    
+
     return {
       outputRGB: finalColor.rgb,
       colorWheelDmx: interpolatedDmx,
       colorName,
-      colorDistance: smallestDeltaE,
+      colorDistance: smallestHueDiff,
       wasTranslated: true,
       poorMatch,
     }

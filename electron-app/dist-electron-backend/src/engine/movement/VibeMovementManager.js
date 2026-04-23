@@ -507,10 +507,13 @@ export class VibeMovementManager {
         }
         // Accumulate phase delta using smoothed BPM and frame dt
         // 🎚️ WAVE 2472: globalSpeedMultiplier scales the AI's time flow
+        // 🌿 WAVE 3450: CHILL SEDATION — 5% de velocidad. La medusa no tiene prisa.
+        //   Un ciclo drift (256 beats @ 120BPM) pasa de ~2 min a ~42 min. Glacial.
         if (!isSameFrame) {
             const beatsPerSecond = this.smoothedBPM / 60;
             const phasePerBeat = (2 * Math.PI) / patternPeriod; // radians per beat
-            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier;
+            const chillSedationFactor = vibeId === 'chill-lounge' ? 0.80 : 1.0;
+            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier * chillSedationFactor;
             this.phaseAccumulator += phaseDelta;
         }
         const phase = this.phaseAccumulator;

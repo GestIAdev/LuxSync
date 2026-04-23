@@ -44,8 +44,8 @@ import { SeleneTitanConscious,
 getHuntStats, getDreamStats, getLastPrediction, } from '../core/intelligence';
 // 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos
 import { getEffectManager, } from '../core/effects';
-// 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context for color modulation
-import { calculateChillStereo, } from '../hal/physics/ChillStereoPhysics';
+// ⚰️ WAVE 3450: ChillStereoPhysics purged — ChillAmbientEngine gestiona la luz directamente.
+// OceanicMusicalContext, calculateChillStereo, DeepFieldOutput archivados.
 // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline control injection
 import { getChronosInjector, } from '../chronos/bridge/ChronosInjector';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -476,44 +476,9 @@ export class TitanEngine extends EventEmitter {
             ...constitution,
             forceStrategy: mappedStrategy,
         };
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context
-        // Si el vibe es chill, calculamos el contexto oceánico ANTES de la paleta
-        // para que SeleneColorEngine pueda modular los colores naturalmente
-        // en vez de bypasear con colorOverride
-        // ═══════════════════════════════════════════════════════════════════════
-        let preComputedOceanicContext = null;
-        const isChillVibe = vibeProfile.id.includes('chill') || vibeProfile.id.includes('lounge');
-        if (isChillVibe) {
-            // Pre-calculate chill physics para obtener oceanicContext
-            const godEarMetrics = {
-                clarity: audio.clarity ?? 0.95,
-                spectralFlatness: audio.spectralFlatness ?? 0.35,
-                bassEnergy: audio.bass,
-                transientDensity: ((audio.kickDetected ? 0.4 : 0) +
-                    (audio.snareDetected ? 0.35 : 0) +
-                    (audio.hihatDetected ? 0.25 : 0)) *
-                    (0.6 + energyOutput.smoothedEnergy * 0.6),
-                centroid: audio.spectralCentroid ?? 800,
-            };
-            const chillResult = calculateChillStereo(now, energyOutput.smoothedEnergy, audio.high, audio.kickDetected ?? false, godEarMetrics, processedContext.bpm // 🩰 WAVE 1102: Pasar BPM para Elastic Time
-            );
-            preComputedOceanicContext = chillResult.oceanicContext;
-            // Inyectar oceanicModulation en la constitution
-            constitution = {
-                ...constitution,
-                oceanicModulation: {
-                    enabled: true,
-                    hueInfluence: preComputedOceanicContext.hueInfluence,
-                    hueInfluenceStrength: preComputedOceanicContext.hueInfluenceStrength,
-                    saturationMod: preComputedOceanicContext.saturationMod,
-                    lightnessMod: preComputedOceanicContext.lightnessMod,
-                    breathingFactor: preComputedOceanicContext.breathingFactor,
-                    zone: preComputedOceanicContext.zone,
-                    depth: preComputedOceanicContext.depth,
-                }
-            };
-        }
+        // ⚰️ WAVE 3450: OCEAN TRANSLATOR retired.
+        // La paleta chill usa SeleneColorEngine estándar sin oceanicModulation.
+        // ChillAmbientEngine gestiona la intensidad de zona directamente.
         // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
         // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
         //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
@@ -796,88 +761,8 @@ export class TitanEngine extends EventEmitter {
                 }
             }
         }
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
-        // When ChillStereoPhysics detects oceanic conditions, dispatch effects
-        // ═══════════════════════════════════════════════════════════════════════
-        if (nervousOutput.oceanicTriggers) {
-            const triggers = nervousOutput.oceanicTriggers;
-            if (triggers.solarCaustics) {
-                this.effectManager.trigger({
-                    effectType: 'solar_caustics',
-                    intensity: 1.5, // 🌊 WAVE 1073.8: 0.95→1.5 (compensar atenuación de zonas + global envelope)
-                    source: 'physics', // Physics-driven oceanic trigger
-                    reason: '🌊 LIVING OCEAN: SolarCaustics - clarity alta en SHALLOWS',
-                });
-                console.log('[TitanEngine] 🌊 LIVING OCEAN: ☀️ Solar Caustics triggered');
-            }
-            if (triggers.schoolOfFish) {
-                this.effectManager.trigger({
-                    effectType: 'school_of_fish',
-                    intensity: 0.85, // 🌊 WAVE 1073.3: Subido de 0.75 a 0.85
-                    source: 'physics', // Physics-driven oceanic trigger
-                    reason: '🌊 LIVING OCEAN: SchoolOfFish - transientDensity alta en OPEN_OCEAN',
-                });
-                console.log('[TitanEngine] 🌊 LIVING OCEAN: 🐠 School of Fish triggered');
-            }
-            if (triggers.whaleSong) {
-                this.effectManager.trigger({
-                    effectType: 'whale_song',
-                    intensity: 0.80, // 🌊 WAVE 1073.3: Subido de 0.70 a 0.80
-                    source: 'physics', // Physics-driven oceanic trigger
-                    reason: '🌊 LIVING OCEAN: WhaleSong - bass profundo en TWILIGHT',
-                });
-                console.log('[TitanEngine] 🌊 LIVING OCEAN: 🐋 Whale Song triggered');
-            }
-            if (triggers.abyssalJellyfish) {
-                this.effectManager.trigger({
-                    effectType: 'abyssal_jellyfish',
-                    intensity: 0.75, // 🌊 WAVE 1073.3: Subido de 0.6 a 0.75
-                    source: 'physics', // Physics-driven oceanic trigger
-                    reason: '🌊 LIVING OCEAN: AbyssalJellyfish - spectralFlatness bajo en MIDNIGHT',
-                });
-                console.log('[TitanEngine] 🌊 LIVING OCEAN: 🪼 Abyssal Jellyfish triggered');
-            }
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers
-            // ═══════════════════════════════════════════════════════════════════════
-            if (triggers.surfaceShimmer) {
-                this.effectManager.trigger({
-                    effectType: 'surface_shimmer',
-                    intensity: 0.45, // Sutil
-                    source: 'physics',
-                    reason: '🦠 MICRO-FAUNA: SurfaceShimmer - claridad en SHALLOWS',
-                });
-                console.log('[TitanEngine] 🦠 MICRO-FAUNA: ✨ Surface Shimmer triggered');
-            }
-            if (triggers.planktonDrift) {
-                this.effectManager.trigger({
-                    effectType: 'plankton_drift',
-                    intensity: 0.35, // Muy sutil
-                    source: 'physics',
-                    reason: '🦠 MICRO-FAUNA: PlanktonDrift - transientes en OCEAN',
-                });
-                console.log('[TitanEngine] 🦠 MICRO-FAUNA: 🦠 Plankton Drift triggered');
-            }
-            if (triggers.deepCurrentPulse) {
-                this.effectManager.trigger({
-                    effectType: 'deep_current_pulse',
-                    intensity: 0.40, // Presencia moderada
-                    source: 'physics',
-                    reason: '🦠 MICRO-FAUNA: DeepCurrentPulse - bass suave en TWILIGHT',
-                });
-                console.log('[TitanEngine] 🦠 MICRO-FAUNA: 🌀 Deep Current Pulse triggered');
-            }
-            if (triggers.bioluminescentSpore) {
-                this.effectManager.trigger({
-                    effectType: 'bioluminescent_spore',
-                    intensity: 0.55, // Contraste en oscuridad
-                    source: 'physics',
-                    reason: '🦠 MICRO-FAUNA: BioluminescentSpore - silencio en MIDNIGHT',
-                });
-                console.log('[TitanEngine] 🦠 MICRO-FAUNA: ✨ Bioluminescent Spore triggered');
-            }
-        }
+        // ⚰️ WAVE 3450: THE LIVING OCEAN purged. ChillAmbientEngine gestiona la luz.
+        // nervousOutput.oceanicTriggers siempre será null/undefined desde ahora.
         // Update all active effects (EffectManager maneja su propio deltaTime)
         this.effectManager.update();
         // Get aggregated effect output (HTP blending)
@@ -922,18 +807,47 @@ export class TitanEngine extends EventEmitter {
             // Antes: el bloque reconstruía zones sin claves stereo → hasStereoSignal=false en Arbiter
             // → todos los PARs chill caían a modo mono. Ahora aplicamos blendZoneIntensity
             // a las zonas stereo si existen, manteniéndolas vivas a través del globalComp blend.
+            const baseZones = zones;
             const blendedZones = {
-                front: { intensity: blendZoneIntensity(zones.front?.intensity ?? 0.5), paletteRole: 'primary' },
-                back: { intensity: blendZoneIntensity(zones.back?.intensity ?? 0.5), paletteRole: 'primary' },
-                left: { intensity: blendZoneIntensity(zones.left?.intensity ?? 0.5), paletteRole: 'primary' },
-                right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
-                ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
+                front: {
+                    intensity: blendZoneIntensity(baseZones.front?.intensity ?? 0.5),
+                    paletteRole: baseZones.front?.paletteRole ?? 'primary',
+                },
+                back: {
+                    intensity: blendZoneIntensity(baseZones.back?.intensity ?? 0.5),
+                    paletteRole: baseZones.back?.paletteRole ?? 'accent',
+                },
+                left: {
+                    intensity: blendZoneIntensity(baseZones.left?.intensity ?? 0.5),
+                    paletteRole: baseZones.left?.paletteRole ?? 'secondary',
+                },
+                right: {
+                    intensity: blendZoneIntensity(baseZones.right?.intensity ?? 0.5),
+                    paletteRole: baseZones.right?.paletteRole ?? 'ambient',
+                },
+                ambient: {
+                    intensity: blendZoneIntensity(baseZones.ambient?.intensity ?? 0.3),
+                    paletteRole: baseZones.ambient?.paletteRole ?? 'ambient',
+                },
             };
-            if (zones.frontL !== undefined) {
-                blendedZones.frontL = { intensity: blendZoneIntensity(zones.frontL.intensity), paletteRole: 'primary' };
-                blendedZones.frontR = { intensity: blendZoneIntensity(zones.frontR.intensity), paletteRole: 'primary' };
-                blendedZones.backL = { intensity: blendZoneIntensity(zones.backL.intensity), paletteRole: 'accent' };
-                blendedZones.backR = { intensity: blendZoneIntensity(zones.backR.intensity), paletteRole: 'accent' };
+            if (baseZones.frontL !== undefined) {
+                ;
+                blendedZones.frontL = {
+                    intensity: blendZoneIntensity(baseZones.frontL.intensity),
+                    paletteRole: baseZones.frontL.paletteRole ?? 'primary',
+                };
+                blendedZones.frontR = {
+                    intensity: blendZoneIntensity(baseZones.frontR.intensity),
+                    paletteRole: baseZones.frontR.paletteRole ?? 'primary',
+                };
+                blendedZones.backL = {
+                    intensity: blendZoneIntensity(baseZones.backL.intensity),
+                    paletteRole: baseZones.backL.paletteRole ?? 'accent',
+                };
+                blendedZones.backR = {
+                    intensity: blendZoneIntensity(baseZones.backR.intensity),
+                    paletteRole: baseZones.backR.paletteRole ?? 'accent',
+                };
             }
             zones = blendedZones;
             // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario

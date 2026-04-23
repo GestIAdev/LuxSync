@@ -85,13 +85,14 @@ export const LATINO_PROFILE: ILiquidProfile = {
     gateOn: 0.15,          // WAVE 3492: 0.28->0.15 — trompetas/güira reales pasan
     boost: 4.0,            // WAVE 2195: protocolo Schwarzenegger
     crushExponent: 1.5,    // WAVE 3492: 3.5->1.5 — La Dama canta, no solo ataca
-    decayBase: 0.65,       // WAVE 3492: 0.70->0.65 — más ágil para ritmos
+    decayBase: 0.80,       // WAVE 3492: 0.70->0.65 — más ágil para ritmos
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.08,     // WAVE 3492: 0.30->0.08 — piso moderado, no hermético
     squelchSlope: 0.15,
     ghostCap: 0.04,        // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
     gateMargin: 0.01,
+    riseRate: 0.20,        // WAVE 3493: rampa de ataque — La Dama sube suave, canta continuo
   },
 
   // Back R — El Látigo del Dembow (Snare/Hi-hat — WAVE 2199/2200)
@@ -153,13 +154,14 @@ export const LATINO_PROFILE: ILiquidProfile = {
     gateOn: 0.18,              // WAVE 3492: 0.25->0.18 — deja pasar melodias reales
     boost: 3.5,
     crushExponent: 1.8,        // WAVE 3492: 3.5->1.8 — picos melódicos no aplastados
-    decayBase: 0.55,           // WAVE 3492: 0.82->0.55 — dinamismo real sin parpadeo
+    decayBase: 0.70,           // WAVE 3492: 0.82->0.55 — dinamismo real sin parpadeo
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.12,         // WAVE 3492: 0.30->0.12 — melodías suaves pasan
     squelchSlope: 0.15,
     ghostCap: 0.06,            // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
     gateMargin: 0.01,
+    riseRate: 0.18,            // WAVE 3493: rampa de ataque — sube máx 18%/frame, elimina tembleque
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -314,22 +316,24 @@ export const LATINO_PROFILE: ILiquidProfile = {
     backLMidWeight: 0.00,
     backLLowMidWeight: 0.00,
 
-    // ── WAVE 3492: EL GALÁN — override alineado con nueva base ─────────
+    // ── WAVE 3493: riseRate en overrides41 (alineado con base) ─────────
     envelopeTreble: {
       gateOn: 0.18,        // WAVE 3492: igual que base
       squelchBase: 0.12,   // WAVE 3492: igual que base
       boost: 3.50,
-      decayBase: 0.55,     // WAVE 3492: dinamismo real
+      decayBase: 0.70,     // Alineado con edición manual del usuario
       ghostCap: 0.06,      // WAVE 3492: suelo ligerisimo
+      riseRate: 0.18,      // WAVE 3493: rampa anti-tembleque
     },
 
-    // ── WAVE 3492: LA DAMA — override alineado con nueva base ─────────
+    // ── WAVE 3493: La Dama override con riseRate ─────────────────
     envelopeVocal: {
       gateOn: 0.15,        // WAVE 3492: trompetas/güira pasan
       squelchBase: 0.08,   // WAVE 3492: piso moderado
       boost: 4.00,
-      decayBase: 0.65,
+      decayBase: 0.80,     // Alineado con edición manual del usuario
       ghostCap: 0.04,
+      riseRate: 0.20,      // WAVE 3493: rampa anti-tembleque
     },
 
     // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────

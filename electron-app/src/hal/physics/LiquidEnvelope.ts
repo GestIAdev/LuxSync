@@ -56,6 +56,16 @@ export interface LiquidEnvelopeConfig {
   readonly ghostCap: number
   /** Margen fijo añadido sobre gate adaptativo */
   readonly gateMargin: number
+
+  /**
+   * Velocidad máxima de SUBIDA de intensidad por frame (0-1).
+   * Controla la rampa de ataque del OUTPUT (no del tracking de señal).
+   * 1.0 = instantáneo (comportamiento legacy).
+   * 0.15 = sube 15% por frame → elimina parpadeos sin afectar decay.
+   * Solo afecta la subida. El decay sigue siendo libre.
+   * WAVE 3493: introducido para movers latinos (anti-tembleque).
+   */
+  readonly riseRate?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -224,7 +234,17 @@ export class LiquidEnvelope {
         c.maxIntensity,
         kickPower * (1.2 + 0.8 * morphFactor) * c.boost
       )
-      s.intensity = Math.max(s.intensity, hit)
+      // WAVE 3493: riseRate — rampa de ataque en el OUTPUT.
+      // Si riseRate está definido (< 1.0), la intensidad sube en pasos máximos
+      // de riseRate por frame. El decay sigue libre. Elimina parpadeos en movers
+      // sin afectar el groove (la bajada no cambia).
+      // riseRate=1.0 o undefined → comportamiento instantáneo legacy.
+      if (c.riseRate !== undefined && c.riseRate < 1.0) {
+        const ceiling = Math.max(s.intensity, hit)
+        s.intensity = Math.min(ceiling, s.intensity + c.riseRate)
+      } else {
+        s.intensity = Math.max(s.intensity, hit)
+      }
     } else if (ghostPower > 0) {
       s.intensity = Math.max(s.intensity, ghostPower)
     }

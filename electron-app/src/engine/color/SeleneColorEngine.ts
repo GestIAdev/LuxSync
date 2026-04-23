@@ -101,10 +101,6 @@ export interface RhythmOutput {
   pattern?: string;
   /** Nivel de sincopación (0-1) - CRÍTICO para género */
   syncopation: number;
-  /** Señales percutivas de alta resolución (si están disponibles) */
-  drums?: {
-    kickDetected?: boolean;
-  };
   /** Groove/feel (0-1) */
   groove?: number;
   /** Subdivisión del beat */
@@ -166,16 +162,10 @@ export interface ExtendedAudioAnalysis {
   // === SPECTRUM ===
   /** Energía de bajos (0-1) */
   bass?: number;
-  /** Energía de subgraves (0-1) */
-  subBass?: number;
   /** Energía de medios (0-1) */
   mid?: number;
-  /** Energía high-mid (0-1) */
-  highMid?: number;
   /** Energía de agudos (0-1) */
   treble?: number;
-  /** Chromagrama de 12 bins (C..B), normalizado 0-1 */
-  chroma?: number[];
   
   // === TOP-LEVEL (ACCESO RÁPIDO) ===
   /** Sincopación (0-1) - duplicado de wave8.rhythm.syncopation */
@@ -957,30 +947,6 @@ export class SeleneColorEngine {
   private static lastLoggedVibe: string | null = null;
   private static logCooldownFrames = 0;
   private static readonly LOG_COOLDOWN = 180;  // 3 segundos entre logs similares
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 3450-C: CHROMAGRAM DRIFT EMA STATE
-  // EMA asimétrico de inercia pesada para el drift armónico de secondary/ambient.
-  // El valor crudo del chromagrama se promedia a lo largo de ~6-8 segundos
-  // para lograr una deriva tonal geológicamente lenta (Addendum: Cláusula de Inercia).
-  // ═══════════════════════════════════════════════════════════════════════
-  private static chromaDriftEMA = 0;  // grados, state persistente entre frames
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🌙 WAVE 3481: SLOW OSCILLATOR — Deriva temporal autónoma
-  // Un oscilador sinusoidal basado en tiempo de reloj (Date.now()) que modula
-  // el hue de forma completamente independiente de la key, mood y árbitros.
-  //
-  // Opera en tres capas de tiempo simultáneas (Lissajous cromático):
-  //   - Onda lenta:  período ~4 min → deriva mayor de color
-  //   - Onda media:  período ~90s  → variación de sección
-  //   - Onda rápida: período ~30s  → respiración de frase
-  //
-  // Amplitudes pequeñas (±8°, ±5°, ±3°) que se suman → rango total ±16°.
-  // Nunca produce el mismo valor dos veces en la misma sesión.
-  // No hay estado que guardar: es función pura del tiempo.
-  // ═══════════════════════════════════════════════════════════════════════
-  // (sin estado — el oscilador es función pura de Date.now())
   
   /**
    * 🔬 WAVE 65: CHROMATIC AUDIT LOG
@@ -1169,49 +1135,8 @@ export class SeleneColorEngine {
     }
     // Si es 'neutral', moodDrift es 0 (Se mantiene el color puro de la Key)
 
-    // 🌊 WAVE 3480: ENERGY HUE MOD — El primario respira aunque la key esté bloqueada.
-    // Con mood forzado a 'neutral' (WAVE 2791) y KeyStabilizer a 30s, el moodDrift
-    // es siempre 0 y la key nunca cambia → finalHue es una constante absoluta durante
-    // minutos, produciendo paleta completamente estática.
-    //
-    // Solución: usar la energía instantánea como modulador de hue.
-    //   - Centro de la modulación: baseHue + modeMod.hue (la identidad tonal de la key)
-    //   - Amplitud: ±12° (suficiente para cruzar el threshold de 8° del Interpolator)
-    //   - Forma: lineal centrada en energy=0.5 → neutro, energy>0.5 → +hue, <0.5 → -hue
-    // El Interpolator (LERP 4s) suaviza el resultado: durante un drop el primario
-    // deriva ~10° hacia el lado cálido/frío y regresa con la caída de energía.
-    // Primary (PARs frontales) se mantiene dentro de la identidad cromática de la key.
-    const energyHueMod = (energy - 0.5) * 24; // rango -12° a +12°
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌙 WAVE 3481: SLOW OSCILLATOR — Deriva temporal autónoma (función pura del tiempo)
-    //
-    // Problema: incluso con EnergyHueMod, si la energía se estabiliza en un valor
-    // constante (ej: mix continuo a energy≈0.6) el hue vuelve a congelarse.
-    // La key puede durar 3-8 minutos. Necesitamos variación macro independiente
-    // de todos los árbitros y de los datos de audio.
-    //
-    // Solución: Lissajous cromático con tres osciladores sinusoidales de período
-    // diferente, basados en Date.now(). Nunca se detiene, nunca repite.
-    //
-    //   Wave 1 (lenta):  T=240s (~4min) → A=±8°  — deriva de sección
-    //   Wave 2 (media):  T=90s  (~1.5m) → A=±5°  — variación de frase
-    //   Wave 3 (rápida): T=30s  (~30s)  → A=±3°  — respiración de compás
-    //
-    // Suma máxima: ±16°. Siempre cruza el threshold de 8° del Interpolator
-    // en menos de ~15 segundos en condiciones estáticas de audio.
-    //
-    // Los períodos son primos entre sí (240, 90, 30 → simplificados 8:3:1 aprox)
-    // así el patrón completo NO se repite antes de ~720 segundos (12 minutos).
-    // ═══════════════════════════════════════════════════════════════════════
-    const nowSec = Date.now() / 1000;
-    const slowOsc =
-      Math.sin((nowSec / 240) * Math.PI * 2) * 8 +   // onda lenta  ±8°
-      Math.sin((nowSec / 90)  * Math.PI * 2) * 5 +   // onda media  ±5°
-      Math.sin((nowSec / 30)  * Math.PI * 2) * 3;    // onda rápida ±3°
-
-    // El Hue final es: Base + Modo + Deriva Emocional + Respiración Energía + Deriva Temporal
-    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift + energyHueMod + slowOsc);
+    // El Hue final es: Base + Modo + Deriva Emocional (SIN GÉNERO)
+    let finalHue = normalizeHue(baseHue + modeMod.hue + moodDrift);
 
     // 📡 WAVE 2204.1: DRIFT RADAR — Chivato de consola para confirmar que el Arbiter late
     // ⛔ WAVE 2791: Comentado — mood forzado a 'neutral', siempre muestra Drift: 0° (spam inútil)
@@ -1428,35 +1353,7 @@ export class SeleneColorEngine {
     const satMax = options?.saturationRange?.[1] ?? 100;
     const lightMin = options?.lightnessRange?.[0] ?? 35;
     const lightMax = options?.lightnessRange?.[1] ?? 60;
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🫁 WAVE 3450-C | BLOQUE B — SPECTRAL BREATH
-    // Modula S/L según distribución espectral del frame.
-    // Voces/sintes dominantes -> desatura (champagne). Drops/bajos -> satura.
-    // El clamp constitucional preexistente (abajo) es la red de seguridad.
-    // Los Movers usan PWM (no ruedas mecánicas): pueden respirar a ritmo de audio.
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      const highMidEnergy = data.highMid ?? data.mid ?? 0;
-      const subBassEnergy = data.subBass ?? data.bass ?? 0;
-      const kickFired     = data.wave8?.rhythm?.drums?.kickDetected ?? false;
-
-      const voiceRatio = Math.max(0, Math.min(1, highMidEnergy - subBassEnergy));
-      const dropActive  = subBassEnergy > 0.40 || kickFired;
-
-      const satRange   = satMax - satMin;
-      const lightRange = lightMax - lightMin;
-
-      const satDelta   = (-voiceRatio * satRange * 0.35)
-                       + (dropActive ? subBassEnergy * satRange * 0.50 : 0);
-      const lightDelta = ( voiceRatio * lightRange * 0.25)
-                       + (dropActive ? -subBassEnergy * lightRange * 0.20 : 0);
-
-      correctedSat   = correctedSat   + satDelta;
-      correctedLight = correctedLight + lightDelta;
-      // ↑ El clamp constitucional preexistente (líneas siguientes) garantiza rangos legales.
-    }
-
+    
     correctedSat = clamp(correctedSat, satMin, satMax);
     correctedLight = clamp(correctedLight, lightMin, lightMax);
     
@@ -1528,59 +1425,7 @@ export class SeleneColorEngine {
       else if (keyIndex === 9) saltRotation = +35;  // A → Miami Pink
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎹 WAVE 3450-C | CHROMAGRAM DRIFT — inyectado en secondaryHue
-    // El drift armónico se aplica AQUÍ, antes de que el Tropical Mirror,
-    // el MINT/NAVY override y el Constitutional Enforcement actúen sobre
-    // secondary. Así todos los postprocesos trabajan con el hue ya shiftado.
-    //
-    // EMA alpha = 1/60 ≈ 1 segundo de inercia a 60fps:
-    //   - No reacciona a acordes individuales fugaces
-    //   - Sí reacciona a estados armónicos sostenidos (8-10 segundos musicales)
-    //   - El SeleneColorInterpolator suaviza adicionalmente la transición de paleta
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      const chroma  = data.chroma;
-      const harmKey = data.wave8?.harmony?.key ?? data.key ?? null;
-      const harmMode: string = data.wave8?.harmony?.mode ?? mode ?? 'minor';
-
-      const KEY_TO_BIN: Record<string, number> = {
-        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-        'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7,
-        'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
-      };
-
-      let rawDrift = 0;
-      if (chroma && chroma.length === 12 && harmKey && KEY_TO_BIN[harmKey] !== undefined) {
-        const rootBin    = KEY_TO_BIN[harmKey];
-        const fifthBin   = (rootBin + 7)  % 12;
-        const seventhBin = (rootBin + 11) % 12;
-        const secondBin  = (rootBin + 2)  % 12;
-
-        const tensionEnergy =
-          chroma[fifthBin]   * 1.0 +
-          chroma[seventhBin] * 1.5 +
-          chroma[secondBin]  * 0.7;
-
-        const totalChromaEnergy = chroma.reduce((acc: number, v: number) => acc + v, 0);
-        const normalizedTension = totalChromaEnergy > 0.01
-          ? Math.min(1, tensionEnergy / totalChromaEnergy)
-          : 0;
-
-        const DRIFT_AMPLITUDE = 25; // ±25° máximo para que sea perceptible
-        const driftSign = (harmMode === 'minor' || harmMode === 'dorian') ? -1 : 1;
-        rawDrift = driftSign * normalizedTension * DRIFT_AMPLITUDE;
-      }
-      // Si chroma es undefined → rawDrift=0, EMA converge suavemente a 0.
-
-      // EMA con alpha=1/60: la paleta tarda ~1s en reaccionar al cambio armónico.
-      // El SeleneColorInterpolator (LERP ~8s) añade otra capa de suavizado encima.
-      const alpha = 1 / 60;
-      SeleneColorEngine.chromaDriftEMA =
-        SeleneColorEngine.chromaDriftEMA + alpha * (rawDrift - SeleneColorEngine.chromaDriftEMA);
-    }
-
-    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation + SeleneColorEngine.chromaDriftEMA);
+    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
     const secondary: HSLColor = {
       h: secondaryHue,
       s: clamp(correctedSat + 5, 20, 100),  // Ligeramente más saturado
@@ -2071,7 +1916,8 @@ export class SeleneColorEngine {
       ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp, gravityStrength);
       accent.h = applyThermalGravity(accent.h, options.atmosphericTemp, gravityStrength);
     }
-
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"
     // ═══════════════════════════════════════════════════════════════════════
@@ -2316,10 +2162,7 @@ export class SeleneColorInterpolator {
     let hueDiff = Math.abs(fromHue - toHue);
     if (hueDiff > 180) hueDiff = 360 - hueDiff;
 
-    // 🌊 WAVE 3480: Reducido de 15° a 8° para que el EnergyHueMod (±12°)
-    // dispare transiciones reales cuando la energía cambia significativamente.
-    // El Desaturation Dip (WAVE 67.5) sigue protegiendo de arcoíris sucios.
-    return hueDiff > 8
+    return hueDiff > 15
       || Math.abs(from.s - to.s) > 3
       || Math.abs(from.l - to.l) > 3;
   }

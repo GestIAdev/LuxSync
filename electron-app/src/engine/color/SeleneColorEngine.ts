@@ -459,6 +459,46 @@ export interface GenerationOptions {
    * Rango de temperatura de color permitido (Kelvin).
    */
   temperatureRange?: [number, number];
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN H: SIDEREAL CLOCK (WAVE 3490)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * WAVE 3490 — SIDEREAL CLOCK
+   *
+   * Carrusel temporal de zonas cromáticas. Cada slot define
+   * allowedHueRanges y lightnessRange que sobreescriben los de la
+   * constitución base durante ese período de tiempo.
+   *
+   * El slot activo se determina por:
+   *   Math.floor(Date.now() / slotDurationMs) % slots.length
+   *
+   * Función pura y determinista: mismo timestamp → mismo slot siempre.
+   * Compatible con cualquier constitución. Si siderealClock es undefined,
+   * el motor funciona exactamente igual que antes.
+   */
+  siderealClock?: {
+    /** Duración de cada slot en milisegundos. */
+    slotDurationMs: number;
+    slots: Array<{
+      /** Rangos de hue permitidos durante este slot. */
+      allowedHueRanges: [number, number][];
+      /** Rango de lightness durante este slot. */
+      lightnessRange: [number, number];
+      /** Etiqueta para debug/logging. */
+      label?: string;
+    }>;
+  };
+
+  /**
+   * WAVE 3490 — Suprime el Tropical Bias (WAVE 162).
+   *
+   * Cuando es true, las keys en zona fría (150-270°) NO se rotan
+   * automáticamente a naranja/magenta en vibes latinos.
+   * Útil cuando el Sidereal Clock ya gestiona la zona cromática activa.
+   */
+  suppressTropicalBias?: boolean;
 }
 
 // ============================================================
@@ -1101,7 +1141,8 @@ export class SeleneColorEngine {
       // 🌴 WAVE 162: TROPICAL BIAS - Latino rota keys frías hacia cálidos
       // Problema: A=270°, E=120°, F=150° son fríos, pero Latino quiere fiesta
       // Solución: Keys en zona fría (150-270°) rotan hacia zona cálida
-      if (isLatinoHueFree && baseHue >= 150 && baseHue <= 270) {
+      // 🚫 WAVE 3490: suppressTropicalBias desactiva esto cuando el Sidereal Clock gestiona la zona
+      if (isLatinoHueFree && !options?.suppressTropicalBias && baseHue >= 150 && baseHue <= 270) {
         // Rotar hacia zona tropical: 0-60° (rojos/naranjas) o 300-360° (magentas)
         // Alternar según paridad del root para variedad
         const root = KEY_TO_ROOT[key] ?? 0;
@@ -1349,10 +1390,47 @@ export class SeleneColorEngine {
     // Aplicar clamps finales
     // 🛡️ WAVE 87: Límites más estrictos para evitar whitewashing
     // 🎛️ WAVE 142: GenerationOptions pueden sobrescribir estos límites
-    const satMin = options?.saturationRange?.[0] ?? 70;
-    const satMax = options?.saturationRange?.[1] ?? 100;
-    const lightMin = options?.lightnessRange?.[0] ?? 35;
-    const lightMax = options?.lightnessRange?.[1] ?? 60;
+    // ⏱️ WAVE 3490: SIDEREAL CLOCK — override de allowedHueRanges y lightnessRange
+    // Se resuelve aquí, justo antes de los clamps, para que el slot activo
+    // determine el espacio cromático real sin tocar el resto del pipeline.
+    let effectiveOptions = options;
+    if (options?.siderealClock) {
+      const clock = options.siderealClock;
+      if (clock.slots && clock.slots.length > 0) {
+        const slotIndex = Math.floor(Date.now() / clock.slotDurationMs) % clock.slots.length;
+        const slot = clock.slots[slotIndex];
+        effectiveOptions = {
+          ...options,
+          allowedHueRanges: slot.allowedHueRanges,
+          lightnessRange:   slot.lightnessRange,
+        };
+        // Aplicar allowedHueRanges del slot al finalHue ahora mismo
+        // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
+        if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+          const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
+          if (!isFullCircle) {
+            let isAllowed = false;
+            let closestTarget = finalHue;
+            let minDist = Infinity;
+            for (const [mn, mx] of slot.allowedHueRanges) {
+              const inRange = mn <= mx
+                ? (finalHue >= mn && finalHue <= mx)
+                : (finalHue >= mn || finalHue <= mx);
+              if (inRange) { isAllowed = true; break; }
+              const dMin = Math.min(Math.abs(finalHue - mn), 360 - Math.abs(finalHue - mn));
+              const dMax = Math.min(Math.abs(finalHue - mx), 360 - Math.abs(finalHue - mx));
+              const d = Math.min(dMin, dMax);
+              if (d < minDist) { minDist = d; closestTarget = dMin <= dMax ? mn : mx; }
+            }
+            if (!isAllowed) finalHue = normalizeHue(closestTarget);
+          }
+        }
+      }
+    }
+    const satMin = effectiveOptions?.saturationRange?.[0] ?? 70;
+    const satMax = effectiveOptions?.saturationRange?.[1] ?? 100;
+    const lightMin = effectiveOptions?.lightnessRange?.[0] ?? 35;
+    const lightMax = effectiveOptions?.lightnessRange?.[1] ?? 60;
     
     correctedSat = clamp(correctedSat, satMin, satMax);
     correctedLight = clamp(correctedLight, lightMin, lightMax);

@@ -131,77 +131,152 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
     floor: 0.05,   // Casi blackout OK
     ceiling: 1.0,  // Full power
   },
+
+  // ⏱️ WAVE 3490: SIDEREAL CLOCK TECHNO
+  // 5 actos × 6 minutos = ciclo de 30 minutos.
+  // El Neon Protocol + Thermal Gravity siguen activos en cada slot.
+  // El slot solo restringe dónde puede caer el hue dentro del espectro frío.
+  siderealClock: {
+    slotDurationMs: 6 * 60 * 1000,  // 6 minutos por slot
+    slots: [
+      {
+        label: 'BUNKER — Cyan Eléctrico Profundo',
+        allowedHueRanges: [[170, 210]],  // Cyan-Turquesa puro
+        lightnessRange: [40, 52],
+      },
+      {
+        label: 'MAGENTA — Neón Rosa Industrial',
+        allowedHueRanges: [[290, 340]],  // Magenta a Rosa Neón
+        lightnessRange: [42, 55],
+      },
+      {
+        label: 'LASER — Verde Ultravioleta',
+        allowedHueRanges: [[110, 160]],  // Verde Láser a Turquesa oscuro
+        lightnessRange: [40, 52],
+      },
+      {
+        label: 'ABISAL — Azul Profundo',
+        allowedHueRanges: [[210, 260]],  // Azul Rey a Índigo
+        lightnessRange: [38, 50],        // Más oscuro — el piso del abismo
+      },
+      {
+        label: 'TRANSGRESION — Rojo Magenta',
+        allowedHueRanges: [[0, 20], [340, 360]],  // Rojo puro a Magenta oscuro
+        lightnessRange: [40, 52],
+      },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌴 CONSTITUCIÓN FIESTA-LATINA: "CARIBE" (WAVE 288.3)
+// 🌴 CONSTITUCIÓN FIESTA-LATINA: "CARIBE NOCTURNO" (WAVE 3490)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * WAVE 288.3: CARIBE - Mar, Selva, Flores y Fuego
- * 
- * FILOSOFÍA: "La fiesta latina ES COLORIDA. El Caribe tiene TODO."
- * 
- * 🌊 MAR: Azules tropicales (190-230°) - El océano Caribe
- * 🌴 SELVA: Verdes vibrantes (90-160°) - Palmeras y naturaleza
- * 🌺 FLORES: Magentas y rosas (280-330°) - Flores tropicales
- * 🔥 FUEGO: Rojos y naranjas (0-50°) - La pasión latina
- * 
- * ZONAS PROHIBIDAS (el infierno del color):
- * - BARRO: 55° - 85° (Amarillos sucios, mostaza, caca)
- * - VERDE BESUGO: 160° - 180° (Verde enfermizo, aguacate muerto)
- * - UV INDUSTRIAL: 260° - 280° (Violeta de discoteca barata)
+ * WAVE 3490: CARIBE NOCTURNO — Escenografía cinematográfica.
+ *
+ * El reguetón moderno pide oscuridad y contraste, no fiesta de colores.
+ * El Caribe tiene noche, profundidad, selva, neon de bar, flores tropicales.
+ *
+ * REFORMA WAVE 3490:
+ * — Temperatura neutra (6200K): sin polo cálido que empuje todo al oro.
+ * — Amarillo puro prohibido (45°+): el dorado es accent exclusivo.
+ * — Lightness floor = 35%: oscuridad real disponible.
+ * — Tropical Bias suprimido: el Sidereal Clock gestiona la zona.
+ * — Sidereal Clock: 6 actos × 4min = ciclo de 24min.
+ *
+ * EL DORADO SOBREVIVE: solarFlareAccent { h:35 } = su trono, no su dictadura.
+ *
+ * SLOTS (actos):
+ * 🌊 ENTRADA    — Azul Caribeño Profundo (190-255°)
+ * 🌿 ASCENSO   — Verde Selva y Agua (90-190°)
+ * 🔥 FUEGO     — Rojo Pasional y Magenta (0-44° | 300-360°)
+ * 🟡 APEX      — Caribe Completo (forbidden rules solo)
+ * 🌸 DESCENSO  — Flores Tropicales (285-360°)
+ * 🌙 NOCHE     — Azul Nocturno Profundo (195-255°)
  */
 export const LATINO_CONSTITUTION: GenerationOptions = {
-  // Syncopation decide la estrategia
   forceStrategy: undefined,
-  
-  // 🌅 WAVE 288.3: Gravedad CÁLIDA pero no agresiva
-  // 3500K = Atardecer caribeño (no vela de iglesia)
-  atmosphericTemp: 3500,
-  
-  // 🌿 WAVE 288.2: Gravedad relajada
-  thermalGravityStrength: 0.22,
-  
-  // 🚫 WAVE 288.3: SOLO PROHIBIMOS LO FEO
-  // Barro (55-85°) + Verde Besugo (160-180°) + UV Industrial (260-280°)
+
+  // WAVE 3490: Temperatura neutra — sin polo cálido empujando al amarillo.
+  // 6200K = zona neutra (5000-7000K), sin arrastre cromático dominante.
+  atmosphericTemp: 6200,
+  thermalGravityStrength: 0.12,  // Fuerza reducida: suave pero presente
+
+  // WAVE 3490: Amarillo puro ahora prohibido.
+  // El naranja pasional (0-44°) y el magenta siguen libres.
+  // El agua caribeña (185-255°) sigue libre.
+  // La selva (90-155°) sigue libre.
   forbiddenHueRanges: [
-    [55, 85],    // BARRO: Amarillos sucios, mostaza
-    [160, 180],  // VERDE BESUGO: Verde enfermizo
-    [260, 280],  // UV INDUSTRIAL: Violeta barato
+    [45, 90],    // AMARILLO + BARRO: 45° es el límite del naranja pasional
+    [155, 185],  // VERDE BESUGO (ampliado desde 160-180)
+    [255, 285],  // UV INDUSTRIAL (ampliado desde 260-280)
   ],
 
-  // 🌈 WAVE 288.3: CARIBE COMPLETO
-  // TODO permitido excepto las zonas prohibidas de arriba
-  // El sistema rotará automáticamente fuera de zonas prohibidas
-  allowedHueRanges: [[0, 360]],  // Full circle - forbiddenHueRanges hace el trabajo
-  elasticRotation: 20,  // Rotación generosa para escapar del barro
-  
-  // 💪 Saturación ALTA para colores vibrantes
-  saturationRange: [80, 100],
-  
-  // ☀️ Luminosidad tropical - BRILLA
-  lightnessRange: [50, 70],
-  
-  // 🛡️ MudGuard relajado (forbiddenHueRanges ya cubre el barro)
+  // El Sidereal Clock refina allowedHueRanges dinámicamente por slot.
+  allowedHueRanges: [[0, 360]],
+  elasticRotation: 20,
+
+  // WAVE 3490: Oscuridad disponible. Floor bajado de 50% a 35%.
+  saturationRange: [75, 100],
+  lightnessRange: [35, 60],
+
+  // WAVE 3490: Suprimir Tropical Bias. El Sidereal Clock gestiona la zona.
+  suppressTropicalBias: true,
+
   mudGuard: {
     enabled: true,
-    swampZone: [55, 85],    // Misma zona que forbiddenHueRanges
-    minLightness: 55,
-    minSaturation: 85,
+    swampZone: [45, 90],  // Actualizado para coincidir con new forbiddenHueRanges
+    minLightness: 50,
+    minSaturation: 80,
   },
-  
-  // 🌴 WAVE 288.3: Tropical Mirror REACTIVADO
-  // Con forbiddenHueRanges cubriendo las zonas feas, el mirror es seguro
+
   tropicalMirror: true,
-  
-  // 💥 Accent = Solar Flare (oro/miel)
+
+  // El dorado es el accent — su trono, no su dictadura.
   accentBehavior: 'solar-flare',
   solarFlareAccent: { h: 35, s: 100, l: 55 },
-  
-  // Dimming con floor (siempre algo de brasa)
+
   dimmingConfig: {
     floor: 0.08,
     ceiling: 1.0,
+  },
+
+  // WAVE 3490: EL RELOJ SIDÉREO
+  // 6 actos × 4 minutos = ciclo de 24 minutos.
+  siderealClock: {
+    slotDurationMs: 4 * 60 * 1000,  // 4 minutos exactos por slot
+    slots: [
+      {
+        label: 'ENTRADA — Azul Caribeño Profundo',
+        allowedHueRanges: [[190, 255]],
+        lightnessRange: [35, 50],
+      },
+      {
+        label: 'ASCENSO — Verde Selva y Agua',
+        allowedHueRanges: [[90, 190]],
+        lightnessRange: [40, 55],
+      },
+      {
+        label: 'FUEGO — Rojo Pasional y Magenta',
+        allowedHueRanges: [[0, 44], [300, 360]],
+        lightnessRange: [40, 60],
+      },
+      {
+        label: 'APEX — Caribe Completo',
+        allowedHueRanges: [[0, 360]],  // Todo el Caribe (solo rigen los forbidden)
+        lightnessRange: [45, 62],
+      },
+      {
+        label: 'DESCENSO — Flores Tropicales',
+        allowedHueRanges: [[285, 360]],
+        lightnessRange: [38, 55],
+      },
+      {
+        label: 'NOCHE — Azul Nocturno Profundo',
+        allowedHueRanges: [[195, 255]],
+        lightnessRange: [35, 48],
+      },
+    ],
   },
 };
 

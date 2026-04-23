@@ -85,14 +85,14 @@ export const LATINO_PROFILE: ILiquidProfile = {
     gateOn: 0.15,          // WAVE 3492: 0.28->0.15 — trompetas/güira reales pasan
     boost: 4.0,            // WAVE 2195: protocolo Schwarzenegger
     crushExponent: 1.5,    // WAVE 3492: 3.5->1.5 — La Dama canta, no solo ataca
-    decayBase: 0.80,       // WAVE 3492: 0.70->0.65 — más ágil para ritmos
+    decayBase: 0.72,       // WAVE 3494: 0.80->0.72 — más contraste sin perder fluidez
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.08,     // WAVE 3492: 0.30->0.08 — piso moderado, no hermético
     squelchSlope: 0.15,
     ghostCap: 0.04,        // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
     gateMargin: 0.01,
-    riseRate: 0.20,        // WAVE 3493: rampa de ataque — La Dama sube suave, canta continuo
+    riseRate: 0.14,        // WAVE 3494: 0.20->0.14 — rampa más lenta, mata tembleque residual
   },
 
   // Back R — El Látigo del Dembow (Snare/Hi-hat — WAVE 2199/2200)
@@ -154,14 +154,14 @@ export const LATINO_PROFILE: ILiquidProfile = {
     gateOn: 0.18,              // WAVE 3492: 0.25->0.18 — deja pasar melodias reales
     boost: 3.5,
     crushExponent: 1.8,        // WAVE 3492: 3.5->1.8 — picos melódicos no aplastados
-    decayBase: 0.70,           // WAVE 3492: 0.82->0.55 — dinamismo real sin parpadeo
+    decayBase: 0.62,           // WAVE 3494: 0.70->0.62 — contraste real entre notas
     decayRange: 0.05,
     maxIntensity: 0.85,
     squelchBase: 0.12,         // WAVE 3492: 0.30->0.12 — melodías suaves pasan
     squelchSlope: 0.15,
     ghostCap: 0.06,            // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
     gateMargin: 0.01,
-    riseRate: 0.18,            // WAVE 3493: rampa de ataque — sube máx 18%/frame, elimina tembleque
+    riseRate: 0.12,            // WAVE 3494: 0.18->0.12 — rampa más lenta, tembleque residual eliminado
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -321,9 +321,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
       gateOn: 0.18,        // WAVE 3492: igual que base
       squelchBase: 0.12,   // WAVE 3492: igual que base
       boost: 3.50,
-      decayBase: 0.70,     // Alineado con edición manual del usuario
-      ghostCap: 0.06,      // WAVE 3492: suelo ligerisimo
-      riseRate: 0.18,      // WAVE 3493: rampa anti-tembleque
+      decayBase: 0.62,     // WAVE 3494: alineado con base
+      ghostCap: 0.06,
+      riseRate: 0.12,      // WAVE 3494: alineado con base
     },
 
     // ── WAVE 3493: La Dama override con riseRate ─────────────────
@@ -331,9 +331,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
       gateOn: 0.15,        // WAVE 3492: trompetas/güira pasan
       squelchBase: 0.08,   // WAVE 3492: piso moderado
       boost: 4.00,
-      decayBase: 0.80,     // Alineado con edición manual del usuario
+      decayBase: 0.72,     // WAVE 3494: alineado con base
       ghostCap: 0.04,
-      riseRate: 0.20,      // WAVE 3493: rampa anti-tembleque
+      riseRate: 0.14,      // WAVE 3494: alineado con base
     },
 
     // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────

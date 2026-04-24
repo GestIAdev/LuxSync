@@ -1620,7 +1620,7 @@ export class EffectDreamSimulator {
     let relevance = 1.0 - (distance / MAX_DISTANCE)
     
     // 🎨 WAVE 1029: Apply texture bonus/penalty
-    relevance = Math.max(0, Math.min(1, relevance - textureCheck.penalty))
+    relevance = Math.max(0, Math.min(1, (relevance - textureCheck.penalty) * (effectDNA.selectionBias ?? 1)))
     
     return { relevance, distance, targetDNA }
   }

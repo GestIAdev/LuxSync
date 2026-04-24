@@ -46,8 +46,9 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    latchMs: 250, // 250ms de muro sólido
-    totalMs: 1200, // 1200ms total (SHORT — puede usar color en movers)
+    latchMs: 600, // WAVE 3473: ventana mecánica real para rueda de color
+    decayMs: 1400, // WAVE 3473: cola más majestuosa
+    totalMs: 2000, // WAVE 3473: 600 + 1400
     decayCurve: 2.5, // Decay exponencial moderado-rápido (resonancia bombo)
     decayFloor: 0.0, // Apagado completo
     // Movers DMX — valores en rango 0-255
@@ -76,6 +77,9 @@ const DEFAULT_CONFIG = {
 // ORO SÓLIDO CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 export class OroSolido extends BaseEffect {
+    normalizeTimingConfig() {
+        this.config.totalMs = this.config.latchMs + this.config.decayMs;
+    }
     constructor(config) {
         super('oro_solido');
         // ─────────────────────────────────────────────────────────────────────────
@@ -87,6 +91,7 @@ export class OroSolido extends BaseEffect {
         this.priority = 98; // Entre latina_meltdown (95) y solar_flare (100)
         this.mixBus = 'global'; // 🥇 DICTADOR — silencia todo
         this.config = { ...DEFAULT_CONFIG, ...config };
+        this.normalizeTimingConfig();
     }
     // ─────────────────────────────────────────────────────────────────────────
     // ILightEffect implementation
@@ -94,6 +99,7 @@ export class OroSolido extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         this.zones = ['front', 'back', 'all-movers'];
+        this.normalizeTimingConfig();
         console.log(`[OroSolido 🥇] TROMPETAZO! Intensity=${this.triggerIntensity.toFixed(2)} Source=${this.source}`);
         console.log(`[OroSolido 🥇] DNA: A=0.90 C=0.15 O=0.40 | LATCH=${this.config.latchMs}ms TOTAL=${this.config.totalMs}ms`);
     }

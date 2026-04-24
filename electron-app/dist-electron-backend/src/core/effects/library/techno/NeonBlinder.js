@@ -32,8 +32,8 @@ import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
     durationMs: 1000,
     attackMs: 50,
-    strobePhaseMs: 175, // Latigazo de 175ms
-    strobeHz: 22, // 22Hz — hipnótico y agresivo
+    strobePhaseMs: 266, // WAVE 3472: 4 destellos exactos @ 15Hz (4 * 66ms)
+    strobeHz: 15, // WAVE 3472: frecuencia estandarizada
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // NEON BLINDER EFFECT
@@ -58,15 +58,15 @@ export class NeonBlinder extends BaseEffect {
         // Color según intensidad del trigger
         if (triggerConfig.intensity > 0.85) {
             this.flashColor = { h: 0, s: 100, l: 50 }; // Rojo Sangre
-            this.strobeColor = { h: 0, s: 0, l: 100 }; // Blanco puro — máximo impacto
+            this.strobeColor = { ...this.flashColor };
         }
         else if (triggerConfig.intensity > 0.6) {
             this.flashColor = { h: 300, s: 100, l: 55 }; // Magenta Eléctrico
-            this.strobeColor = { h: 300, s: 100, l: 85 }; // Magenta muy saturado y brillante
+            this.strobeColor = { ...this.flashColor };
         }
         else {
             this.flashColor = { h: 185, s: 100, l: 55 }; // Cian Eléctrico
-            this.strobeColor = { h: 185, s: 100, l: 85 }; // Cian muy brillante
+            this.strobeColor = { ...this.flashColor };
         }
         console.log(`[NeonBlinder 💥] TRIGGERED: color=h${this.flashColor.h} strobeHz=${this.config.strobeHz} ` +
             `strobePhase=${this.config.strobePhaseMs}ms intensity=${triggerConfig.intensity.toFixed(2)}`);
@@ -96,11 +96,9 @@ export class NeonBlinder extends BaseEffect {
         let dimmer;
         let activeColor;
         if (this.elapsedMs < this.config.strobePhaseMs) {
-            // Toggle determinístico — sin Math.random(), ciclo puro por tiempo
-            const cycleMs = 1000 / this.config.strobeHz;
-            const positionInCycle = this.elapsedMs % cycleMs;
-            const isOn = positionInCycle < (cycleMs * 0.45); // 45% duty cycle
-            dimmer = isOn ? this.triggerIntensity : 0;
+            // ⚡ WAVE 3472: Oscilador estricto 15Hz (66ms ciclo, 33ms ON)
+            const pos = this.elapsedMs % 66;
+            dimmer = pos < 33 ? 1.0 : 0;
             activeColor = this.strobeColor;
         }
         else {
@@ -110,7 +108,7 @@ export class NeonBlinder extends BaseEffect {
             // ═══════════════════════════════════════════════════════════════════
             const meltProgress = (this.elapsedMs - this.config.strobePhaseMs)
                 / (this.config.durationMs - this.config.strobePhaseMs);
-            dimmer = Math.exp(-3 * meltProgress) * this.triggerIntensity;
+            dimmer = Math.exp(-3 * meltProgress);
             activeColor = this.flashColor;
         }
         const output = {

@@ -100,15 +100,15 @@ export const TECHNO_PROFILE = {
     //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
     envelopeHighMid: {
         name: 'Back L (Mid Synths)',
-        gateOn: 0.15, // WAVE 3464: sensibilidad logarítmica para recuperar señal tras sustracción de graves
+        gateOn: 0.22, // WAVE 3492: 0.15->0.22 — gate más selectivo, synth buildups no pasan
         boost: 1.5,
-        crushExponent: 2.0,
-        decayBase: 0.65, // WAVE 3464: viscosidad extrema para glow de sinte sostenido
-        decayRange: 0.35, // WAVE 3460: morph amplio de caída para apagar como lava
+        crushExponent: 2.5, // WAVE 3492: 2.0->2.5 — más no lineal, picos percusivos si, masa no
+        decayBase: 0.28, // WAVE 3492: 0.65->0.28 — synths no se quedan pegados
+        decayRange: 0.25, // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
         maxIntensity: 0.85,
-        squelchBase: 0.18, // WAVE 3464: piso reactivo para abrir con melodía y cerrar micro-residuo
+        squelchBase: 0.25, // WAVE 3492: 0.18->0.25 — piso más estricto anti-masa continua
         squelchSlope: 0.10,
-        ghostCap: 0.05,
+        ghostCap: 0.00, // WAVE 3492: 0.05->0.00 — negro entre golpes
         gateMargin: 0.005,
     },
     // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)

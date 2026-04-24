@@ -36,10 +36,10 @@
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
     durationMs: 4000, // 4 segundos de actividad
-    flashDurationMs: 80, // Flash de 80ms (suave)
+    flashDurationMs: 33, // WAVE 3472: flash eléctrico seco
     flashProbability: 0.08, // 8% por fixture por tick → dispersión natural
-    minIntensity: 0.40, // 40% mínimo
-    maxIntensity: 0.70, // 70% máximo (no cegador)
+    minIntensity: 1.0, // WAVE 3472: intensidad forzada al 100%
+    maxIntensity: 1.0, // WAVE 3472: intensidad forzada al 100%
     tickIntervalMs: 100, // Evaluar cada 100ms (~10Hz)
     bpmSync: false, // NO sync - queremos dispersión orgánica
 };
@@ -108,14 +108,11 @@ export class AmbientStrobe extends BaseEffect {
                 const zoneHash = zone.charCodeAt(0) + zone.charCodeAt(zone.length - 1);
                 const pseudoRandom = ((this.tickCounter * 7919 + zoneHash * 104729) % 10000) / 10000;
                 // ¿Este fixture destella en este tick?
-                if (pseudoRandom < this.config.flashProbability) {
-                    // Intensidad pseudo-aleatoria dentro del rango
-                    const intensityRange = this.config.maxIntensity - this.config.minIntensity;
-                    const intensityRandom = ((this.tickCounter * 3571 + zoneHash * 7907) % 10000) / 10000;
-                    const flashIntensity = this.config.minIntensity + (intensityRange * intensityRandom);
+                const boostedProbability = Math.min(1, this.config.flashProbability * 1.5);
+                if (pseudoRandom < boostedProbability) {
                     this.activeFlashes.set(zone, {
                         startTime: now,
-                        intensity: flashIntensity * this.triggerIntensity,
+                        intensity: 1.0,
                     });
                 }
             }

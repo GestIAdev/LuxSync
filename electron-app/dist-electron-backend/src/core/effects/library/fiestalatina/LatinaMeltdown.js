@@ -42,7 +42,7 @@ const DEFAULT_CONFIG = {
     maxIntensity: 1.0, // 100% sin piedad
     alternateColors: true, // Rojo → Amarillo → Rojo → Amarillo
     fadeInMs: 0, // 🩸 WAVE 2190: 200→0ms — ATAQUE INMEDIATO, sin carita suave
-    fadeOutMs: 400, // 🩸 WAVE 2190: 600→400ms — salida más corta, el golpe termina seco
+    fadeOutMs: 400, // Restaurado: decay de salida para mezcla fluida global
 };
 // Duración total calculada: ~1500ms (SHORT effect - puede usar color en movers)
 // (50 + 80 + 120) * 6 = 1500ms

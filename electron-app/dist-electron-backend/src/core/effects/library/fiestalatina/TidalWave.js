@@ -49,8 +49,16 @@ const DEFAULT_CONFIG = {
     whiteOnPeak: true, // 🌊 WAVE 750: Destello en el pico
     intensityFloor: 0.0, // 🌊 WAVE 805.2: NEGRO TOTAL en valles (era 0.1)
 };
-// 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
-const ZONE_ORDER = ['front', 'all-pars', 'back', 'all-movers'];
+// WAVE 3473: Ola lateral izquierda → derecha (offsets absolutos por zona)
+const ZONE_PHASE_OFFSETS = [
+    ['movers-left', 0.0],
+    ['frontL', 0.0],
+    ['backL', 0.0],
+    ['center', 0.5],
+    ['frontR', 1.0],
+    ['backR', 1.0],
+    ['movers-right', 1.0],
+];
 // ═══════════════════════════════════════════════════════════════════════════
 // TIDAL WAVE CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,7 +83,7 @@ export class TidalWave extends BaseEffect {
         this.zoneIntensities = new Map();
         this.config = { ...DEFAULT_CONFIG, ...config };
         // Init zone intensities
-        for (const zone of ZONE_ORDER) {
+        for (const [zone] of ZONE_PHASE_OFFSETS) {
             this.zoneIntensities.set(zone, 0);
         }
     }
@@ -132,22 +140,32 @@ export class TidalWave extends BaseEffect {
         for (const [zone, zoneIntensity] of this.zoneIntensities) {
             // Threshold 0.0 → TODAS las zonas incluidas, incluso valles negros
             if (zoneIntensity >= 0.0) {
-                const scaledIntensity = this.getIntensityFromZScore(zoneIntensity * this.triggerIntensity, 0.25);
-                // 🌊 WAVE 805.5: VITAMINAS - Luminosidad más agresiva en el pico
-                // Pico: 100% lum, Valles: 20% lum (antes era 30%)
-                const zoneLuminosity = baseColor.l * (0.2 + scaledIntensity * 0.8);
-                const zoneColor = {
-                    ...baseColor,
-                    l: Math.min(75, zoneLuminosity) // Cap a 75 para no quemar
-                };
-                // � WAVE 1009: FREEDOM DAY - TODOS reciben color (incluido movers)
-                // HAL traduce Cian/Turquesa → DMX 20 en EL-1140
+                const amplifiedIntensity = Math.min(1.0, zoneIntensity * this.triggerIntensity);
+                const scaledIntensity = this.getIntensityFromZScore(amplifiedIntensity, 0.25);
+                const isPeak = scaledIntensity >= 0.9;
+                // WAVE 3473: En el pico la ola entra en modo brutal absoluto.
+                const zoneColor = isPeak
+                    ? { ...baseColor }
+                    : {
+                        ...baseColor,
+                        l: Math.min(75, baseColor.l * (0.2 + scaledIntensity * 0.8)),
+                    };
                 zoneOverrides[zone] = {
                     color: zoneColor,
-                    dimmer: scaledIntensity,
-                    blendMode: 'replace', // La ola manda
+                    dimmer: isPeak ? 1.0 : scaledIntensity,
+                    blendMode: 'replace',
                 };
             }
+        }
+        // WAVE 3473: color explícito también para el grupo agregado de movers.
+        const leftMover = zoneOverrides['movers-left'];
+        const rightMover = zoneOverrides['movers-right'];
+        if (leftMover || rightMover) {
+            zoneOverrides['all-movers'] = {
+                color: baseColor,
+                dimmer: Math.max(leftMover?.dimmer ?? 0, rightMover?.dimmer ?? 0),
+                blendMode: 'replace',
+            };
         }
         // Calcular intensidad máxima para el output legacy
         let maxIntensity = 0;
@@ -202,23 +220,13 @@ export class TidalWave extends BaseEffect {
         this.actualWavePeriodMs = Math.max(200, Math.min(5000, this.actualWavePeriodMs));
     }
     updateZoneIntensities() {
-        const numZones = ZONE_ORDER.length;
         // 🌊 WAVE 750: PING-PONG - La ola va y vuelve
         // En ola par (0, 2, 4...): forward
         // En ola impar (1, 3, 5...): reverse
         const isReverse = this.wavesCompleted % 2 === 1;
-        for (let i = 0; i < numZones; i++) {
-            const zone = ZONE_ORDER[i];
-            // Calcular offset de fase para esta zona
-            // Forward: front=0, pars=0.25, back=0.5, movers=0.75
-            // Reverse: front=0.75, pars=0.5, back=0.25, movers=0
-            let phaseOffset;
-            if (isReverse) {
-                phaseOffset = (numZones - 1 - i) / numZones;
-            }
-            else {
-                phaseOffset = i / numZones;
-            }
+        for (const [zone, baseOffset] of ZONE_PHASE_OFFSETS) {
+            // Reverse invierte el eje X completo (derecha → izquierda)
+            const phaseOffset = isReverse ? 1 - baseOffset : baseOffset;
             // Fase local de esta zona
             const localPhase = (this.wavePhase + phaseOffset) % 1;
             // 🌊 WAVE 805.5: Curva ULTRA-BRUTAL con vitaminas de intensidad

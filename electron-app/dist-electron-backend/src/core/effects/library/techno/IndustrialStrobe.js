@@ -82,13 +82,8 @@ export class IndustrialStrobe extends BaseEffect {
         this.calculateTotalDuration();
     }
     calculateTotalDuration() {
-        // Pre-duck + primer flash (más largo) + flashes de seguimiento + gaps irregulares
-        const followUpFlashes = this.config.flashCount - 1;
-        const totalGaps = this.config.gapDurationsMs.reduce((a, b) => a + b, 0);
-        this.totalDurationMs = this.config.preDuckMs +
-            this.config.firstFlashDurationMs +
-            followUpFlashes * this.config.flashDurationMs +
-            totalGaps;
+        // ⚡ WAVE 3472: Ventana activa basada en 15Hz estricto (66ms por ciclo, 4 flashes)
+        this.totalDurationMs = this.config.preDuckMs + (this.config.flashCount * 66);
     }
     // ─────────────────────────────────────────────────────────────────────────
     // ILightEffect implementation
@@ -145,40 +140,18 @@ export class IndustrialStrobe extends BaseEffect {
         if (this.isPreDucking) {
             if (this.phaseTimer >= this.config.preDuckMs) {
                 this.isPreDucking = false;
-                this.isFlashOn = true;
                 this.phaseTimer = 0;
             }
             return;
         }
-        // 🔪 FASE 2: Flash/Gap alternante
-        if (this.isFlashOn) {
-            // Estamos en un flash
-            // 🔨 WAVE 2202: El primer flash dura más — es el martillo inicial
-            const thisFlashDuration = (this.currentFlash === 0)
-                ? this.config.firstFlashDurationMs
-                : this.config.flashDurationMs;
-            if (this.phaseTimer >= thisFlashDuration) {
-                this.isFlashOn = false;
-                this.phaseTimer = 0;
-                this.currentFlash++;
-                // ¿Terminamos todos los flashes?
-                if (this.currentFlash >= this.config.flashCount) {
-                    this.phase = 'finished';
-                    console.log(`[IndustrialStrobe ⚡] FINISHED (${this.elapsedMs}ms)`);
-                    return;
-                }
-            }
-        }
-        else {
-            // Estamos en un gap — duración irregular según índice del gap
-            // currentFlash ya fue incrementado al salir del flash anterior,
-            // así que el gap actual es el índice (currentFlash - 1) dentro del array
-            const gapIndex = Math.min(this.currentFlash - 1, this.config.gapDurationsMs.length - 1);
-            const thisGapDuration = this.config.gapDurationsMs[gapIndex];
-            if (this.phaseTimer >= thisGapDuration) {
-                this.isFlashOn = true;
-                this.phaseTimer = 0;
-            }
+        // ⚡ WAVE 3472: Oscilador Industrial 15Hz Puro
+        const activeElapsed = Math.max(0, this.elapsedMs - this.config.preDuckMs);
+        const pos = activeElapsed % 66;
+        this.isFlashOn = pos < 33;
+        if (this.elapsedMs >= this.totalDurationMs) {
+            this.phase = 'finished';
+            console.log(`[IndustrialStrobe ⚡] FINISHED (${this.elapsedMs}ms)`);
+            return;
         }
     }
     getOutput() {
@@ -216,7 +189,8 @@ export class IndustrialStrobe extends BaseEffect {
                 phase: this.phase,
                 progress,
                 dimmerOverride: 1.0,
-                colorOverride: this.calculatedColor,
+                colorOverride: { h: 0, s: 0, l: 1.0 },
+                whiteOverride: 1.0,
                 intensity: 1.0, // FULL
                 zones: this.zones,
                 globalComposition: fadeOpacity // 🌊 WAVE 1090
@@ -230,6 +204,7 @@ export class IndustrialStrobe extends BaseEffect {
             progress,
             dimmerOverride: 0,
             colorOverride: { h: 0, s: 0, l: 0 }, // Negro
+            whiteOverride: 0,
             intensity: 0,
             zones: this.zones,
             globalComposition: fadeOpacity // 🌊 WAVE 1090

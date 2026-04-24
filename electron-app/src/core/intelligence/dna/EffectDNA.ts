@@ -112,6 +112,9 @@ export interface EffectDNA {
   
   /** 🎨 WAVE 1029: Afinidad de textura espectral */
   textureAffinity?: TextureAffinity
+
+  /** ☢️ WAVE 3469: sesgo paramétrico para romper empates euclidianos */
+  selectionBias?: number
 }
 
 /**
@@ -274,12 +277,11 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'clean',  // 🎨 Elegante, requiere claridad
   },
   'core_meltdown': {
-    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA — intocable
-    chaos: 0.75,        // ☢️ WAVE 2202: 0.65→0.75. El meltdown original era más caótico.
-                        // En algún punto entre waves se bajó y perdió personalidad.
-                        // 0.75 lo devuelve a su estado salvaje: impredecible, devastador.
-    organicity: 0.00,   // 100% máquina apocalíptica — intocable
+    aggression: 0.96,   // ☢️ WAVE 3469: frontera alta — evita el sesgo anti-extremos absolutos
+    chaos: 0.94,        // ☢️ WAVE 3469: caos casi máximo sin caer en el absoluto 1.0
+    organicity: 0.05,   // ☢️ WAVE 3469: mínima traza orgánica para no morir en el borde matemático
     textureAffinity: 'universal',
+    selectionBias: 2.0, // ☢️ WAVE 3469: rompe empates y empuja a La Bestia sobre rivales cercanos
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -808,7 +810,9 @@ export class DNAAnalyzer {
     const diversityIndex = Math.min(usageCount, this.DIVERSITY_FACTORS.length - 1)
     const diversityFactor = this.DIVERSITY_FACTORS[diversityIndex]
     
-    return confidenceWeighted * diversityFactor
+    const selectionBiased = Math.min(1, confidenceWeighted * (effectDNA.selectionBias ?? 1))
+
+    return selectionBiased * diversityFactor
   }
   
   /**

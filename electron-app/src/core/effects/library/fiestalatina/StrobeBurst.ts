@@ -72,13 +72,13 @@ interface StrobeBurstConfig {
 }
 
 const DEFAULT_CONFIG: StrobeBurstConfig = {
-  flashCount: 2,           // 🪜 LADDER: Solo 2 flashes (antes 4)
-  flashDurationMs: 80,     // 🪜 LADDER: 80ms por flash (antes 50ms) - más suave
-  gapDurationMs: 200,      // 🪜 LADDER: 200ms entre flashes (antes 100ms) - más espacio
-  bpmSync: true,           // Sincronizar con beat
-  maxFrequencyHz: 6,       // 🪜 LADDER: Máximo 6 Hz (antes 10 Hz) - más calmado
+  flashCount: 6,           // WAVE 3471: latigazo visible de alta frecuencia
+  flashDurationMs: 33,     // WAVE 3471: 33ms ON
+  gapDurationMs: 33,       // WAVE 3471: 33ms OFF
+  bpmSync: false,          // WAVE 3471: sin esclavitud al BPM
+  maxFrequencyHz: 15,      // WAVE 3471: software strobe bloqueado a 15Hz
   flashColor: null,        // Usar paleta del vibe
-  colorIntensity: 0.7,     // 🪜 LADDER: 70% saturación (antes 80%) - menos intenso
+  colorIntensity: 1.0,     // WAVE 3471: intensidad total
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -175,19 +175,23 @@ export class StrobeBurst extends BaseEffect {
   }
   
   private adjustTimingToBPM(): void {
-    if (!this.config.bpmSync || !this.musicalContext?.bpm) return
-    
-    const msPerBeat = 60000 / this.musicalContext.bpm
-    
-    // Ajustar gap para que los flashes caigan en subdivisiones del beat
-    // Para reggaetón/cumbia: 16th notes feeling
-    const sixteenthNote = msPerBeat / 4
-    
-    // El gap debe ser múltiplo de 16th note
-    this.config.gapDurationMs = Math.round(sixteenthNote)
-    
-    // Recalcular duración total
+    // ⚡ WAVE 3471: timing estricto por software. Nunca reabrir al BPM.
+    this.config.flashDurationMs = 33
+    this.config.gapDurationMs = 33
     this.calculateTotalDuration()
+  }
+
+  private calculateState(): { isFlashOn: boolean; flashIntensity: number } {
+    // ⚡ WAVE 3471: Oscilador estricto a 15Hz (66ms por ciclo)
+    const strobePeriodMs = 66
+    const pos = this.elapsedMs % strobePeriodMs
+    const isFlashOn = pos < 33
+
+    // Flash siempre al 100% cuando está ON.
+    return {
+      isFlashOn,
+      flashIntensity: isFlashOn ? 1.0 : 0,
+    }
   }
   
   update(deltaMs: number): void {
@@ -229,23 +233,22 @@ export class StrobeBurst extends BaseEffect {
   
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
+
+    const { isFlashOn, flashIntensity } = this.calculateState()
     
     // Si estamos en gap, output mínimo
-    if (!this.isFlashOn) {
+    if (!isFlashOn) {
       return {
         effectId: this.id,
         category: this.category,
         phase: this.phase,
         progress: this.elapsedMs / this.totalDurationMs,
         zones: this.zones,
-        intensity: 0.05,  // Mínimo durante gap
-        dimmerOverride: 0.05,
+        intensity: 0,
+        dimmerOverride: 0,
         // 🌊 WAVE 1080: globalComposition omitido = 0 (física manda)
       }
     }
-    
-    // FLASH ON - Intensidad máxima
-    const flashIntensity = this.getIntensityFromZScore(this.triggerIntensity, 0.3)
     
     return {
       effectId: this.id,

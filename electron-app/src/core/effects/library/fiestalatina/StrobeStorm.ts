@@ -97,8 +97,8 @@ const DEFAULT_CONFIG: StrobeStormConfig = {
   preBlackoutMs:    60,   // Silencio quirúrgico antes del caos
   burstMs:          800,  // 800ms de infierno multi-zona
   decayMs:          150,  // Cascada de apagado por zona
-  burstFrequencyHz: 22,   // 22Hz base — agresivamente latino
-  maxFrequencyHz:   28,   // Techo (debajo del límite perceptivo ~30Hz)
+  burstFrequencyHz: 15,   // WAVE 3471: strobe software bloqueado a 15Hz
+  maxFrequencyHz:   15,   // WAVE 3471: techo estricto de 15Hz
   degradedMode:     false,
 }
 
@@ -171,7 +171,9 @@ export class StrobeStorm extends BaseEffect {
   // ---------------------------------------------------------------------------
 
   public setVibeConstraints(maxHz: number, degraded: boolean): void {
-    this.config.maxFrequencyHz = maxHz > 0 ? maxHz : DEFAULT_CONFIG.maxFrequencyHz
+    void maxHz
+    // WAVE 3471/3471.1: StrobeStorm queda bloqueado a 15Hz, sin degradación por BPM ni límites dinámicos.
+    this.config.maxFrequencyHz = 15
     this.config.degradedMode   = degraded
   }
 
@@ -188,17 +190,12 @@ export class StrobeStorm extends BaseEffect {
     // Derivado del BPM y del índice de zona — sin Math.random.
     //   offset = (i × beatsub32) % halfCycleMs
     //   donde beatsub32 = período de un 32avo de beat en ms
-    const bpm         = this.getCurrentBpm(128)
-    const baseHz      = Math.min(this.config.burstFrequencyHz, this.config.maxFrequencyHz)
-    const baseHalfMs  = 500 / baseHz
+    const baseHz = 15
 
     this.volleys = STORM_ZONES.map((_, i) => {
-      const beatsub32Ms   = (60000 / bpm) / 32
-      const phaseOffsetMs = (i * beatsub32Ms) % baseHalfMs
-
       return {
-        accMs:       phaseOffsetMs,  // Arrancar ya desincronizadas
-        isOn:        i % 2 === 0,    // Alternar estado inicial por índice
+        accMs:       0,
+        isOn:        true,
         halfCycleMs: this.computeHalfCycle(i),
       }
     })
@@ -241,14 +238,8 @@ export class StrobeStorm extends BaseEffect {
 
       case 'decay': {
         this.advanceAllVolleys(deltaMs)
-        // Apagar zonas en cascada: front primero (índice bajo), movers último (índice alto)
+        // WAVE 3471.1: Global total en decay — sin apagado en cascada por zonas.
         const decayProgress = Math.min(1, phaseElapsed / this.config.decayMs)
-        const slotSize       = 1 / STORM_ZONES.length
-        STORM_ZONES.forEach((_, i) => {
-          if (decayProgress >= slotSize * (i + 1)) {
-            this.activeInDecay[i] = false
-          }
-        })
         if (decayProgress >= 1) {
           this.transitionPhase('finished')
           console.log(`[StrobeStorm] Impact complete — ${this.elapsedMs.toFixed(0)}ms total`)
@@ -304,29 +295,20 @@ export class StrobeStorm extends BaseEffect {
   // ---------------------------------------------------------------------------
 
   private computeHalfCycle(zoneIndex: number): number {
-    const bpm       = this.getCurrentBpm(128)
-    const beatPhase = this.musicalContext?.beatPhase ?? 0
+    void zoneIndex
 
-    // Frecuencia base modulada por intensidad de trigger
-    const baseHz = Math.min(
-      this.config.burstFrequencyHz * this.triggerIntensity,
-      this.config.maxFrequencyHz
-    )
+    // ⚡ WAVE 3471: Oscilador estricto a 15Hz.
+    // 66ms por ciclo completo, 33ms por half-cycle.
+    return 33
+  }
 
-    // Asimetría determinista por beatPhase (misma lógica que WAVE 2700)
-    // beatPhase oscila 0→1 cada beat; fracturamos en 32nds
-    const subGrid  = (beatPhase * 32) % 1  // posición dentro de un 32nd
-    const beatAsym = subGrid < 0.5 ? 1.10 : 0.85
+  private calculateState(): number {
+    // ⚡ WAVE 3471: Oscilador estricto a 15Hz (66.6ms por ciclo)
+    const strobePeriodMs = 66
+    const pos = this.elapsedMs % strobePeriodMs
 
-    // Desincronización geográfica: cada zona desvía +N% respecto a la base.
-    // Zona 0: +0%, zona 1: +6.25% (1/16 de beat), zona 2: +12.5%, etc.
-    // Períodos de subdivisión de beat — musicalmente coherente.
-    const zoneDetuneRatio = 1 + ((zoneIndex % 4) * 0.0625)
-
-    const effectiveHz = Math.min(baseHz * beatAsym * zoneDetuneRatio, this.config.maxFrequencyHz)
-    const clampedHz   = Math.max(effectiveHz, 1)  // mínimo 1 Hz (evitar div/0)
-
-    return 500 / clampedHz
+    // 50% Duty Cycle: 33ms ON, 33ms OFF
+    return pos < 33 ? 1.0 : 0
   }
 
   // ---------------------------------------------------------------------------
@@ -353,12 +335,10 @@ export class StrobeStorm extends BaseEffect {
 
   private buildStormOutput(): EffectFrameOutput {
     const progress = this.calculateProgress()
+    const strictDimmer = this.calculateState()
 
-    // Intensidad global del frame: si alguna zona está ON, el output no es cero
-    const anyOn = this.volleys.some((v, i) =>
-      v.isOn && (this.phase !== 'decay' || this.activeInDecay[i])
-    )
-    const globalIntensity = anyOn ? this.triggerIntensity : 0
+    // WAVE 3471.1: Strobe perfectamente global y sincronizado.
+    const globalIntensity = strictDimmer
 
     // Construir zoneOverrides para cada zona de la tormenta.
     // CLAVE: NO enviamos strobeRate — usamos dimmer puro.
@@ -371,9 +351,8 @@ export class StrobeStorm extends BaseEffect {
     }> = {}
 
     STORM_ZONES.forEach((zone, i) => {
-      const volley  = this.volleys[i]
       const active  = this.phase !== 'decay' || this.activeInDecay[i]
-      const dimmer  = active && volley.isOn ? this.triggerIntensity : 0
+      const dimmer  = active ? strictDimmer : 0
       const isMover = MOVER_ZONES.has(zone)
 
       zoneOverrides[zone] = {
@@ -401,13 +380,7 @@ export class StrobeStorm extends BaseEffect {
   }
 
   private getDegradedOutput(): EffectFrameOutput {
-    // Modo degradado (vibe restrictivo). Corte duro ON/OFF cada 2 beats.
-    // Sin sinusoide, sin rampa. Degradado no es cariñoso.
-    const bpm         = this.getCurrentBpm(120)
-    const msPerBeat   = 60000 / bpm
-    const cutPeriodMs = msPerBeat * 2
-    const pos         = (this.elapsedMs % cutPeriodMs) / cutPeriodMs
-    const dimmer      = pos < 0.5 ? this.triggerIntensity : 0
+    const dimmer = this.calculateState()
 
     return {
       effectId:          this.id,

@@ -52,20 +52,17 @@ import {
  * 🔥 WAVE 610: GLOBAL BLINDING - Attack instantáneo, decay cálido pasando por rojo
  */
 interface SolarFlareConfig {
-  /** Tiempo de subida al pico */
-  attackMs: number
-  
-  /** Tiempo en el pico */
-  sustainMs: number
+  /** Tiempo de build-up (0 → 60%) */
+  buildMs: number
+
+  /** Tiempo del flash cegador (100%) */
+  flashMs: number
   
   /** Tiempo de bajada */
   decayMs: number
   
   /** Curva de decay (exponencial) */
   decayCurve: number
-  
-  /** 🪜 WAVE 1004.4: Pre-blackout antes del flash (ms) */
-  preBlackoutMs: number
   
   /** Color RGBWA del flare (dorado intenso) */
   flareColorRGBWA: {
@@ -90,13 +87,10 @@ interface SolarFlareConfig {
 }
 
 const DEFAULT_CONFIG: SolarFlareConfig = {
-  attackMs: 0,         // 🔥 INSTANTÁNEO - sin ramp
-  sustainMs: 150,      // Pico sostenido
-  decayMs: 500,        // Decay lento y cálido
-  decayCurve: 2.0,     // Exponencial suave
-  
-  // 🪜 WAVE 1004.4: PRE-BLACKOUT para INTENSE ZONE
-  preBlackoutMs: 50,   // 50ms de negro antes del flash (máximo contraste)
+  buildMs: 1500,       // WAVE 3473: tensión lenta hasta 60%
+  flashMs: 300,        // WAVE 3473: explosión cegadora
+  decayMs: 2000,       // WAVE 3473: cola cálida masiva
+  decayCurve: 1.7,     // Decay largo con caída orgánica
   
   // 🌟 WAVE 630: GOLDEN WHITE - Dorado brillante que no se ve gris
   // ⚠️ RGB(255,255,255) se ve azulado en LEDs baratos
@@ -157,10 +151,6 @@ export class SolarFlare implements ILightEffect {
   private zones: EffectZone[] = ['all']
   private source: string = 'unknown'
   
-  /** 🪜 WAVE 1004.4: Pre-blackout state */
-  private preBlackoutActive = false
-  private preBlackoutEndTime = 0
-  
   // ─────────────────────────────────────────────────────────────────────────
   // Constructor
   // ─────────────────────────────────────────────────────────────────────────
@@ -180,25 +170,16 @@ export class SolarFlare implements ILightEffect {
    */
   trigger(triggerConfig: EffectTriggerConfig): void {
     const now = Date.now()
-    
-    // 🪜 WAVE 1004.4: Pre-blackout antes del flash
-    if (this.config.preBlackoutMs > 0) {
-      this.preBlackoutActive = true
-      this.preBlackoutEndTime = now + this.config.preBlackoutMs
-      this.phase = 'attack'  // En attack pero con intensidad 0 (pre-blackout)
-      this.intensity = 0     // Negro total
-    } else {
-      this.phase = 'attack'
-      this.preBlackoutActive = false
-    }
-    
+
+    this.phase = 'attack' // attack = BUILD
     this.phaseStartTime = now
     this.elapsedMs = 0
+    this.intensity = 0
     this.triggerIntensity = triggerConfig.intensity
     this.zones = triggerConfig.zones || ['all']
     this.source = triggerConfig.source
-    
-    console.log(`[SolarFlare ☀️] TRIGGERED! Intensity=${this.triggerIntensity.toFixed(2)} Source=${this.source} PreBlackout=${this.config.preBlackoutMs}ms`)
+
+    console.log(`[SolarFlare ☀️] TRIGGERED! Intensity=${this.triggerIntensity.toFixed(2)} Source=${this.source} Build=${this.config.buildMs}ms Flash=${this.config.flashMs}ms Decay=${this.config.decayMs}ms`)
   }
   
   /**
@@ -214,10 +195,10 @@ export class SolarFlare implements ILightEffect {
     
     switch (this.phase) {
       case 'attack':
-        this.processAttack(phaseElapsed)
+        this.processBuild(phaseElapsed)
         break
       case 'sustain':
-        this.processSustain(phaseElapsed)
+        this.processFlash(phaseElapsed)
         break
       case 'decay':
         this.processDecay(phaseElapsed)
@@ -287,7 +268,7 @@ export class SolarFlare implements ILightEffect {
       // 🔥 WAVE 790.1: CRITICAL OVERRIDES para preservar el ORO
       // HTP + overrides raíz = Dominancia total en white/amber (ORO GARANTIZADO)
       dimmerOverride: intensityScaled,
-      whiteOverride: (rgbwa.white / 255) * intensityScaled,
+      whiteOverride: this.phase === 'sustain' ? 1.0 : (rgbwa.white / 255) * intensityScaled,
       amberOverride: (rgbwa.amber / 255) * intensityScaled,
       
       // 🎨 Color override (HSL para compatibilidad)
@@ -350,7 +331,7 @@ export class SolarFlare implements ILightEffect {
    * With defaults: 50 + 0 + 150 + 500 = 700ms (NOT the registry's 3000ms!)
    */
   getDurationMs(): number {
-    return this.config.preBlackoutMs + this.config.attackMs + this.config.sustainMs + this.config.decayMs
+    return this.config.buildMs + this.config.flashMs + this.config.decayMs
   }
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -362,33 +343,12 @@ export class SolarFlare implements ILightEffect {
    * 🔥 WAVE 610: Sin ramp - directo a 100%
    * 🪜 WAVE 1004.4: Respeta pre-blackout antes del flash
    */
-  private processAttack(phaseElapsed: number): void {
-    const now = Date.now()
-    
-    // 🪜 WAVE 1004.4: Si estamos en pre-blackout, mantener negro
-    if (this.preBlackoutActive && now < this.preBlackoutEndTime) {
-      this.intensity = 0  // Negro total durante pre-blackout
-      return
-    }
-    
-    // Pre-blackout terminó, ahora sí flasheamos
-    if (this.preBlackoutActive) {
-      this.preBlackoutActive = false
-      this.phaseStartTime = now  // Reset del timer de attack
-    }
-    
-    // Si attackMs es 0, transición instantánea a sustain
-    if (this.config.attackMs === 0) {
-      this.intensity = 1.0
-      this.transitionTo('sustain')
-      return
-    }
-    
-    // Fallback para configs con attack > 0ms
-    const attackElapsed = now - this.phaseStartTime
-    const progress = Math.min(1, attackElapsed / this.config.attackMs)
-    this.intensity = 1 - Math.pow(1 - progress, 3)
-    
+  private processBuild(phaseElapsed: number): void {
+    const progress = Math.min(1, phaseElapsed / this.config.buildMs)
+
+    // WAVE 3473: tensión lenta (curva exponencial) hasta 60%
+    this.intensity = Math.pow(progress, 2.4) * 0.6
+
     if (progress >= 1) {
       this.transitionTo('sustain')
     }
@@ -397,10 +357,10 @@ export class SolarFlare implements ILightEffect {
   /**
    * ➡️ SUSTAIN - Mantiene el pico
    */
-  private processSustain(phaseElapsed: number): void {
+  private processFlash(phaseElapsed: number): void {
     this.intensity = 1.0
-    
-    if (phaseElapsed >= this.config.sustainMs) {
+
+    if (phaseElapsed >= this.config.flashMs) {
       this.transitionTo('decay')
     }
   }
@@ -435,7 +395,7 @@ export class SolarFlare implements ILightEffect {
    * 📊 CALCULATE PROGRESS - Progreso total del efecto (0-1)
    */
   private calculateProgress(): number {
-    const totalDuration = this.config.attackMs + this.config.sustainMs + this.config.decayMs
+    const totalDuration = this.config.buildMs + this.config.flashMs + this.config.decayMs
     return Math.min(1, this.elapsedMs / totalDuration)
   }
 }

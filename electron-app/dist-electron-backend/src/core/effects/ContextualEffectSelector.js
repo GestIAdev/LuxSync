@@ -56,7 +56,7 @@ export const DICTATOR_HARD_MINIMUM_COOLDOWNS = {
     'abyssal_rise': 20000, // 20s MÍNIMO ABSOLUTO (efecto de 4-5s + respiro)
     'gatling_raid': 15000, // 15s MÍNIMO ABSOLUTO (efecto de 1.6s + respiro)
     'industrial_strobe': 8000, // 8s MÍNIMO ABSOLUTO (efecto de ~0.5s pero es STROBE)
-    'core_meltdown': 25000, // 25s MÍNIMO ABSOLUTO (LA BESTIA necesita espacio)
+    'core_meltdown': 12000, // WAVE 3469: 12s MÍNIMO ABSOLUTO — override nuclear operativo
     // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE (dictadores APEX)
     'neon_blinder': 12000, // 12s MÍNIMO ABSOLUTO (flash wall, espacio entre impactos)
     'surgical_strike': 10000, // 10s MÍNIMO ABSOLUTO (bisturí rápido, pero no spam)
@@ -119,7 +119,7 @@ export const EFFECT_COOLDOWNS = {
     'seismic_snap': 8000, // 8s base → BALANCED:12s (was 12s)
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': 20000, // 20s base → Traveling colors ambient (long effect, needs space)
-    'core_meltdown': 30000, // 30s base → LA BESTIA es RARA (epic moment only)
+    'core_meltdown': 12000, // WAVE 3469: 12s base → La Bestia entra en rotación pesada
     // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
     'neon_blinder': 10000, // 10s base → BALANCED:15s — flash wall, impactos espaciados
     'surgical_strike': 8000, // 8s base → BALANCED:12s — bisturí rápido, parte de la rotación

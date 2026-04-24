@@ -36,13 +36,13 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    bulletCount: 6, // 6 posiciones (3 front + 3 back)
+    bulletCount: 8, // WAVE 3469: cargador ampliado, 2 impactos extra por barrido
     bulletDurationMs: 30, // 🔫 WAVE 930.4: 30ms por bala (was 25ms) - más visible
     bulletGapMs: 35, // 🔫 WAVE 930.4: 35ms entre balas (was 40ms) - más rápido
     sweepCount: 3, // 🔫 WAVE 930.4: 3 barridos completos (was 2) - más ametralladora
     pattern: 'linear', // L→C→R default
     fadeInMs: 0, // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
-    fadeOutMs: 200, // 🌊 WAVE 1090: Salida corta
+    fadeOutMs: 200, // Restaurado: cola de salida para continuidad visual
 };
 // Posiciones del rig (orden de disparo)
 const LINEAR_SEQUENCE = [

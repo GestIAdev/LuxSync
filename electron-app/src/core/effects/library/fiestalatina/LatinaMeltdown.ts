@@ -80,7 +80,7 @@ const DEFAULT_CONFIG: LatinaMeltdownConfig = {
   maxIntensity: 1.0,        // 100% sin piedad
   alternateColors: true,    // Rojo → Amarillo → Rojo → Amarillo
   fadeInMs: 0,              // 🩸 WAVE 2190: 200→0ms — ATAQUE INMEDIATO, sin carita suave
-  fadeOutMs: 400,           // 🩸 WAVE 2190: 600→400ms — salida más corta, el golpe termina seco
+  fadeOutMs: 400,           // Restaurado: decay de salida para mezcla fluida global
 }
 
 // Duración total calculada: ~1500ms (SHORT effect - puede usar color en movers)
@@ -229,35 +229,21 @@ export class LatinaMeltdown extends BaseEffect {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 NUCLEAR SALSA OUTPUT
+    // 🚀 WAVE 3476: ORESHNIK BARRAGE — 15Hz estricto sin BPM
     // ═══════════════════════════════════════════════════════════════════════
-    
-    let dimmer = 0
-    let color = MELTDOWN_PALETTE.ROJO_NUCLEAR
-    
-    switch (this.hitPhase) {
-      case 'pre-blackout':
-        // 50ms de NEGRURA total - contraste máximo
-        dimmer = 0
-        break
-        
-      case 'flash':
-        // EXPLOSIÓN NUCLEAR
-        dimmer = this.config.maxIntensity
-        
-        // Alternar colores si está configurado
-        if (this.config.alternateColors) {
-          color = this.currentHit % 2 === 0 
-            ? MELTDOWN_PALETTE.ROJO_NUCLEAR 
-            : MELTDOWN_PALETTE.AMARILLO_NUCLEAR
-        }
-        break
-        
-      case 'gap':
-        // Oscuridad entre golpes (no total, pero baja)
-        dimmer = 0.05  // 5% para no ser negro absoluto
-        break
-    }
+    const strobePeriodMs = 66
+    const pos = elapsed % strobePeriodMs
+    const isWhite = pos < 33
+
+    // Dimmer cuadrado a 15Hz: 33ms ON / 33ms OFF
+    const dimmer = pos < 33 ? this.config.maxIntensity : 0
+
+    // Alternancia implacable de color cada 33ms
+    const color = isWhite
+      ? { h: 0, s: 0, l: 100 }
+      : (this.config.alternateColors
+          ? MELTDOWN_PALETTE.AMARILLO_NUCLEAR
+          : MELTDOWN_PALETTE.ROJO_NUCLEAR)
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🩸 WAVE 2190.1: ZONE-COMPLETE DISPATCH — ANTI AUTO-WHITE
@@ -273,13 +259,8 @@ export class LatinaMeltdown extends BaseEffect {
     // front/back → alternancia Rojo↔Amarillo (RGB safe)
     // ═══════════════════════════════════════════════════════════════════════
 
-    const isSilent = this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap'
-    const parsColor = isSilent
-      ? { h: 0, s: 0, l: 0 }  // Negro en pre-blackout/gap
-      : color                   // Rojo o Amarillo en flash
-    const moversColor = isSilent
-      ? { h: 0, s: 0, l: 0 }  // Negro en pre-blackout/gap
-      : MELTDOWN_PALETTE.NARANJA_FUSION  // DORADO fijo en flash (sin color wheel)
+    const parsColor = color
+    const moversColor = color
 
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
       front: {

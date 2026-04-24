@@ -70,7 +70,7 @@ interface CumbiaMoonConfig {
 }
 
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
-  cycleDurationMs: 3000,  // 🌙 WAVE 750: 3 segundos - más corto
+  cycleDurationMs: 4000,  // WAVE 3474: +1000ms de respiración lunar
   peakIntensity: 0.30,     // 🌙 WAVE 785: 30% máximo - lunitas sutiles
   floorIntensity: 0.15,   // 🌙 WAVE 750: Casi apagado
   peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
@@ -215,8 +215,8 @@ export class CumbiaMoon extends BaseEffect {
     // CumbiaMoon ahora puede dar BLANCO (plata lunar) a los movers
     // El traductor HAL tiene múltiples medidas de seguridad para EL-1140
     
-    // Color blanco lunar (plata brillante)
-    const moonWhite = { h: 0, s: 0, l: 95 }  // BLANCO puro (sin tinte)
+    // Color lunar sutil para sobresalir sin romper atmósfera.
+    const moonWhite = { h: 0, s: 0, l: 80 }
     
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
       'front': {
@@ -232,8 +232,8 @@ export class CumbiaMoon extends BaseEffect {
       // � WAVE 1010.6: MOVERS reciben BLANCO - HAL traduce a DMX seguro
       'all-movers': {
         color: moonWhite,  // ✅ BLANCO lunar para movers (HAL traduce a Color Wheel)
-        dimmer: this.currentIntensity * 0.5,  // Movers muy sutiles (luna suave)
-        blendMode: 'max',
+        dimmer: this.currentIntensity * 0.15,
+        blendMode: 'replace',
       },
     }
 

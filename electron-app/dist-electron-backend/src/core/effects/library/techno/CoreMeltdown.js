@@ -34,14 +34,13 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    // 🔨 WAVE 2202: VISUAL REPOWER
-    // Era: 800ms, 12Hz, fadeOut 300ms (37% del tiempo en fade = efecto castrado)
-    // Ahora: 1200ms (La Bestia necesita espacio), 14Hz (más violento), fadeOut 150ms (solo 12%)
-    durationMs: 1200, // 1200ms — La Bestia necesita tiempo para devastar
-    strobeRateHz: 14, // 14 Hz — Dentro del límite 15Hz, MUCHO más brutal
+    // ☢️ WAVE 3469: NUCLEAR OVERRIDE
+    // Duración extendida para absorber cualquier smoothing upstream y sostener destrucción real.
+    durationMs: 4200, // 4.2s — 3.2s+ de demolición neta incluso con tax externo
+    strobeRateHz: 15, // 15 Hz — techo operativo techno
     maxIntensity: 1.0, // 100% - SIN PIEDAD
     fadeInMs: 0, // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
-    fadeOutMs: 150, // 🌊 WAVE 2202: 300→150ms. Era el 37% del efecto. Reducido al 12%.
+    fadeOutMs: 0, // ☢️ WAVE 3469: sin rampa de salida, corte seco
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // COLORES NUCLEARES

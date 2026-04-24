@@ -61,7 +61,7 @@ const DEFAULT_CONFIG = {
     strobeSpeedMs: 80, // Strobe rápido en fase crush
     maxStrobeCount: 3, // Solo 3 flashes (quirúrgico, NO spam)
     fadeInMs: 0, // 🌊 WAVE 1090: Ataque instantáneo (techno)
-    fadeOutMs: 200, // 🌊 WAVE 1090: Salida limpia (void absorbe)
+    fadeOutMs: 200, // Restaurado: salida suave para composición global
 };
 // Colores del viaje - WAVE 997: SIN BLANCO
 const COLORS = {
@@ -108,14 +108,9 @@ export class AbyssalRise extends BaseEffect {
         this.zones = ['front', 'back', 'all-pars', 'all-movers'];
         // Reset state
         this.currentPhase = 'pressure';
-        // Ajustar duración si viene BPM del contexto
-        if (config.musicalContext?.bpm) {
-            const bpm = config.musicalContext.bpm;
-            const beatsPerMs = bpm / 60000;
-            // ~4 compases = 16 beats
-            this.config.durationMs = Math.min(4000, 16 / beatsPerMs);
-            this.calculatePhaseTimings();
-        }
+        // WAVE 3471.1: duración fija para impacto consistente, independiente de BPM lento.
+        this.config.durationMs = DEFAULT_CONFIG.durationMs;
+        this.calculatePhaseTimings();
         console.log(`[AbyssalPressure 🦈] TRIGGERED: ${(this.config.durationMs / 1000).toFixed(2)}s | ` +
             `Phases: PRESSURE(${(this.config.pressurePhaseRatio * 100).toFixed(0)}%) → ` +
             `CRUSH(${(this.config.crushPhaseRatio * 100).toFixed(0)}%) → ` +

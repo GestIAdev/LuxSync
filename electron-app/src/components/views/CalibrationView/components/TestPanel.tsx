@@ -32,10 +32,75 @@ interface ChannelInfo {
   type: string
 }
 
+function clampDmx(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function buildHydratedScannerValues(
+  channels: ChannelInfo[],
+  state: {
+    dimmer?: number | null
+    color?: string | null
+    pan?: number | null
+    tilt?: number | null
+    zoom?: number | null
+    focus?: number | null
+  } | null | undefined
+): Record<number, number> {
+  if (!state) return {}
+
+  const hydrated: Record<number, number> = {}
+  const rgb = state.color && /^#[0-9a-f]{6}$/i.test(state.color)
+    ? {
+        red: parseInt(state.color.slice(1, 3), 16),
+        green: parseInt(state.color.slice(3, 5), 16),
+        blue: parseInt(state.color.slice(5, 7), 16),
+      }
+    : null
+
+  for (const channel of channels) {
+    let value: number | null = null
+
+    switch (channel.type) {
+      case 'dimmer':
+        value = state.dimmer != null ? clampDmx(state.dimmer * 2.55) : null
+        break
+      case 'red':
+        value = rgb?.red ?? null
+        break
+      case 'green':
+        value = rgb?.green ?? null
+        break
+      case 'blue':
+        value = rgb?.blue ?? null
+        break
+      case 'pan':
+        value = state.pan != null ? clampDmx((state.pan / 540) * 255) : null
+        break
+      case 'tilt':
+        value = state.tilt != null ? clampDmx((state.tilt / 270) * 255) : null
+        break
+      case 'zoom':
+        value = state.zoom != null ? clampDmx(state.zoom * 2.55) : null
+        break
+      case 'focus':
+        value = state.focus != null ? clampDmx(state.focus * 2.55) : null
+        break
+    }
+
+    if (value != null && value > 0) {
+      hydrated[channel.index] = value
+    }
+  }
+
+  return hydrated
+}
+
 export const TestPanel: React.FC<TestPanelProps> = ({
   fixtureId,
   disabled = false,
 }) => {
+  const dmxApi = (window as any).lux?.dmx
   const [activeTest, setActiveTest] = useState<TestType>(null)
   const [scannerValues, setScannerValues] = useState<Record<number, number>>({})
   const [showScanner, setShowScanner] = useState(false)
@@ -85,11 +150,11 @@ export const TestPanel: React.FC<TestPanelProps> = ({
     const clamped = Math.max(0, Math.min(255, Math.floor(value)))
 
     try {
-      await window.lux.dmx.sendDirect(universe, absoluteAddress, clamped)
+      await dmxApi?.sendDirect(universe, absoluteAddress, clamped)
     } catch (err) {
       console.error('[TestPanel] ❌ DMX raw sendDirect falló:', err)
     }
-  }, [fixtureId, dmxBaseAddress, universe])
+  }, [dmxApi, fixtureId, dmxBaseAddress, universe])
 
   /**
    * Envía un frame combinado del scanner vía DMX crudo.
@@ -125,14 +190,53 @@ export const TestPanel: React.FC<TestPanelProps> = ({
         Array.from(channelsToWrite).map(channelIndex => {
           const absoluteAddress = dmxBaseAddress + channelIndex
           const value = normalized[channelIndex] ?? 0
-          return window.lux.dmx.sendDirect(universe, absoluteAddress, value)
+          return dmxApi?.sendDirect(universe, absoluteAddress, value)
         })
       )
       sentScannerFrameRef.current = normalized
     } catch (err) {
       console.error('[TestPanel] ❌ sendScannerFrame raw falló:', err)
     }
-  }, [fixtureId, dmxBaseAddress, universe])
+  }, [dmxApi, fixtureId, dmxBaseAddress, universe])
+
+  useEffect(() => {
+    if (!fixtureId) {
+      scannerValuesRef.current = {}
+      setScannerValues({})
+      setActiveTest(null)
+      return
+    }
+
+    let cancelled = false
+
+    const hydrateFromArbiter = async () => {
+      try {
+        const result = await window.lux?.arbiter?.getFixturesState([fixtureId])
+        if (cancelled) return
+
+        const hydrated = result?.success
+          ? buildHydratedScannerValues(channels, result.state)
+          : {}
+
+        scannerValuesRef.current = hydrated
+        setScannerValues(hydrated)
+        setActiveTest(null)
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[TestPanel] ❌ Hydration error:', err)
+          scannerValuesRef.current = {}
+          setScannerValues({})
+          setActiveTest(null)
+        }
+      }
+    }
+
+    void hydrateFromArbiter()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fixtureId, channels])
 
   useEffect(() => {
     return () => {
@@ -141,11 +245,11 @@ export const TestPanel: React.FC<TestPanelProps> = ({
       void Promise.all(
         Object.keys(lastFrame).map((idx) => {
           const absoluteAddress = (dmxBaseAddress ?? 1) + Number(idx)
-          return window.lux.dmx.sendDirect(universe, absoluteAddress, 0)
+          return dmxApi?.sendDirect(universe, absoluteAddress, 0)
         })
       )
     }
-  }, [dmxBaseAddress, universe])
+  }, [dmxApi, dmxBaseAddress, universe])
 
   /**
    * Actualiza un canal del scanner manteniendo el resto y envía trama combinada.

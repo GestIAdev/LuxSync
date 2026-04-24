@@ -53,6 +53,70 @@ interface ChannelInfo {
   type: string
 }
 
+function clampDmx(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function buildHydratedChannelValues(
+  channels: ChannelInfo[],
+  state: {
+    dimmer?: number | null
+    color?: string | null
+    pan?: number | null
+    tilt?: number | null
+    zoom?: number | null
+    focus?: number | null
+  } | null | undefined
+): Record<number, number> {
+  if (!state) return {}
+
+  const hydrated: Record<number, number> = {}
+  const rgb = state.color && /^#[0-9a-f]{6}$/i.test(state.color)
+    ? {
+        red: parseInt(state.color.slice(1, 3), 16),
+        green: parseInt(state.color.slice(3, 5), 16),
+        blue: parseInt(state.color.slice(5, 7), 16),
+      }
+    : null
+
+  for (const channel of channels) {
+    let value: number | null = null
+
+    switch (channel.type) {
+      case 'dimmer':
+        value = state.dimmer != null ? clampDmx(state.dimmer * 2.55) : null
+        break
+      case 'red':
+        value = rgb?.red ?? null
+        break
+      case 'green':
+        value = rgb?.green ?? null
+        break
+      case 'blue':
+        value = rgb?.blue ?? null
+        break
+      case 'pan':
+        value = state.pan != null ? clampDmx((state.pan / 540) * 255) : null
+        break
+      case 'tilt':
+        value = state.tilt != null ? clampDmx((state.tilt / 270) * 255) : null
+        break
+      case 'zoom':
+        value = state.zoom != null ? clampDmx(state.zoom * 2.55) : null
+        break
+      case 'focus':
+        value = state.focus != null ? clampDmx(state.focus * 2.55) : null
+        break
+    }
+
+    if (value != null && value > 0) {
+      hydrated[channel.index] = value
+    }
+  }
+
+  return hydrated
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SAFETY CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -142,6 +206,53 @@ const CalibrationView: React.FC = () => {
       type: ch.type || 'unknown'
     }))
   }, [activeFixture])
+
+  useEffect(() => {
+    if (!activeFixtureId) {
+      setChannelValues({})
+      setActiveTest(null)
+      return
+    }
+
+    let cancelled = false
+
+    const hydrateCalibrationState = async () => {
+      try {
+        const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
+        if (!arbiter?.getFixturesState) return
+
+        const result = await arbiter.getFixturesState([activeFixtureId])
+        if (cancelled) return
+
+        const hydrated = result?.success
+          ? buildHydratedChannelValues(channels, result.state)
+          : {}
+
+        setChannelValues(hydrated)
+        setActiveTest(null)
+
+        if (result?.success && result.state?.pan != null) {
+          setPan(Math.max(0, Math.min(SAFE_PAN_MAX, Math.round(result.state.pan))))
+        }
+
+        if (result?.success && result.state?.tilt != null) {
+          setTilt(Math.max(0, Math.min(SAFE_TILT_MAX, Math.round(result.state.tilt))))
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[CalibrationLab] Hydration error:', err)
+          setChannelValues({})
+          setActiveTest(null)
+        }
+      }
+    }
+
+    void hydrateCalibrationState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeFixtureId, channels])
   
   const dmxBaseAddress = activeFixture?.address || 1
   const universe = activeFixture?.universe ?? 0
@@ -184,16 +295,13 @@ const CalibrationView: React.FC = () => {
     return () => {
       cancelled = true
       try {
-        // 🔬 WAVE 2200: EXORCISMO DEL OVERRIDE — limpieza estricta al desmontar
-        // exitCalibrationMode libera solo pan/tilt del enterCalibrationMode.
-        // clearAllManual limpia TODOS los overrides manuales instalados vía
-        // sendDMX / sendPosition / TestPanel durante la sesión de calibración.
-        // Sin esto, dimmer, colores, gobo, etc. quedan pegados al navegar a LiveView.
+        // WAVE 3479.4: no hacer wipe global al salir de Calibración.
+        // El panel debe respetar el estado manual existente del Arbiter para que
+        // Canvas y Calibración compartan la misma verdad visual al navegar.
         void electron.ipcRenderer.invoke('lux:arbiter:exitCalibrationMode', {
           fixtureId: activeFixtureId,
         })
-        void electron.ipcRenderer.invoke('lux:arbiter:clearAllManual')
-        console.log(`[CalibrationLab] 🧹 Calibration EXIT + clearAllManual for ${activeFixtureId}`)
+        console.log(`[CalibrationLab] 🧹 Calibration EXIT preserving manual state for ${activeFixtureId}`)
       } catch {
         // ignore cleanup errors
       }

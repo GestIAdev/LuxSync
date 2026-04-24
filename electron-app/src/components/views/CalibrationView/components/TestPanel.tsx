@@ -37,31 +37,15 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   disabled = false,
 }) => {
   const [activeTest, setActiveTest] = useState<TestType>(null)
-  const [scannerChannel, setScannerChannel] = useState(0)
-  const [scannerValue, setScannerValue] = useState(0)
+  const [scannerValues, setScannerValues] = useState<Record<number, number>>({})
   const [showScanner, setShowScanner] = useState(false)
   
   // Throttle: el slider React actualiza el DOM a 60fps pero el IPC al backend
   // sólo dispara cada THROTTLE_MS. Coincide con el loop de TitanOrchestrator (40ms/25fps).
   const THROTTLE_MS = 40  // 25fps — sincronizado con el frame DMX-safe del Orchestrator
   const lastSendTime = useRef<number>(0)
-  // Ref para capturar el fixtureId actual en el closure del cleanup sin re-registrar el efecto
-  const fixtureIdRef = useRef<string | null>(fixtureId)
-  useEffect(() => { fixtureIdRef.current = fixtureId }, [fixtureId])
-
-  // ── CLEANUP ON UNMOUNT ────────────────────────────────────────────────────
-  // Al desmontar el TestPanel, libera todos los overrides manuales del fixture
-  // activo en el MasterArbiter. Sin esto, los canales quedan "zombies" luchando
-  // contra la LiveView indefinidamente.
-  useEffect(() => {
-    return () => {
-      const id = fixtureIdRef.current
-      if (!id) return
-      window.lux.arbiter.clearManual({ fixtureIds: [id] })
-        .catch((err: unknown) => console.error('[TestPanel] ❌ clearManual en unmount falló:', err))
-    }
-  }, []) // [] = solo se ejecuta el return en unmount, nunca en re-render
-  // ─────────────────────────────────────────────────────────────────────────
+  const scannerValuesRef = useRef<Record<number, number>>({})
+  const sentScannerFrameRef = useRef<Record<number, number>>({})
 
   // 🔥 WAVE 1008: Get fixture data from store for DMX address calculation
   const fixture = useStageStore(state => {
@@ -89,80 +73,110 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   }, [fixture])
   
   /**
-   * Canales que el Arbiter entiende nativamente (tienen campo propio en ManualControls).
-   * El resto va por phantomChannels para que el HAL los trate como passthrough.
-   * Fuente de verdad: MasterArbiter.ts → NATIVE_CHANNELS set.
-   */
-  const ARBITER_NATIVE_CHANNELS = new Set([
-    'dimmer', 'red', 'green', 'blue', 'pan', 'tilt',
-    'zoom', 'focus', 'speed', 'color_wheel',
-  ])
-
-  /**
-   * Envía un valor al Arbiter vía setManual.
-   * NUNCA bypassa el Arbiter — sin sendDmxChannel, sin dmx.sendDirect.
-   * 
-   * Routing:
-   *   - Canal nativo  → controls: { [type]: value }, channels: [type]
-   *   - Canal phantom → controls: { phantomChannels: { [type]: value } }, channels: [type]
-   * 
-   * Esto evita el tug-of-war entre el TestPanel y el ciclo HAL a 30Hz
-   * que causaba micro-oscilaciones en los motores de los cabezales.
+   * WAVE 3479.3: RAW DMX BYPASS.
+   * Envía un canal absoluto directo al hardware, sin pasar por Arbiter.
    */
   const sendDirectDMX = useCallback(async (channelIndex: number, value: number) => {
-    if (!fixtureId) {
+    if (!fixtureId || dmxBaseAddress === null) {
       console.warn('[TestPanel] ⚠️ No fixture configured')
       return
     }
-
-    const channelInfo = channels[channelIndex]
-    const channelType = channelInfo?.type || 'unknown'
-
-    if (channelType === 'unknown') {
-      console.warn(`[TestPanel] ⚠️ Canal ${channelIndex} sin tipo definido — no se envía`)
-      return
-    }
-
-    const isNative = ARBITER_NATIVE_CHANNELS.has(channelType)
-
-    const controls: Record<string, unknown> = isNative
-      ? { [channelType]: value }
-      : { phantomChannels: { [channelType]: value } }
-
-    console.log(`[TestPanel] 🎛️ Arbiter.setManual → ${channelType}=${value} (${isNative ? 'native' : 'phantom'})`)
+    const absoluteAddress = dmxBaseAddress + channelIndex
+    const clamped = Math.max(0, Math.min(255, Math.floor(value)))
 
     try {
-      await window.lux.arbiter.setManual({
-        fixtureIds: [fixtureId],
-        controls: controls as Record<string, number>,
-        channels: [channelType],
-      })
+      await window.lux.dmx.sendDirect(universe, absoluteAddress, clamped)
     } catch (err) {
-      console.error('[TestPanel] ❌ Arbiter.setManual falló:', err)
+      console.error('[TestPanel] ❌ DMX raw sendDirect falló:', err)
     }
-  }, [fixtureId, channels])
-  
+  }, [fixtureId, dmxBaseAddress, universe])
+
   /**
-   * 🔥 WAVE 1008: Scanner slider change
-   * El estado local (UI) se actualiza siempre para que el slider sea fluido.
-   * La llamada al backend se throttlea a ~30fps para no saturar el driver serial.
+   * Envía un frame combinado del scanner vía DMX crudo.
+   * Usa diff contra el último frame enviado para apagar canales que fueron retirados.
    */
-  const handleScannerChange = useCallback((value: number) => {
-    setScannerValue(value)
+  const sendScannerFrame = useCallback(async (values: Record<number, number>, bypassThrottle = false) => {
+    if (!fixtureId || dmxBaseAddress === null) return
+
     const now = Date.now()
-    if (now - lastSendTime.current >= THROTTLE_MS) {
-      lastSendTime.current = now
-      sendDirectDMX(scannerChannel, value)
+    if (!bypassThrottle && now - lastSendTime.current < THROTTLE_MS) {
+      return
     }
-  }, [scannerChannel, sendDirectDMX])
+    lastSendTime.current = now
+
+    const normalized: Record<number, number> = {}
+    for (const [idx, raw] of Object.entries(values)) {
+      const channelIndex = Number(idx)
+      const value = Math.max(0, Math.min(255, Math.floor(raw)))
+      if (value > 0) {
+        normalized[channelIndex] = value
+      }
+    }
+
+    const channelsToWrite = new Set<number>([
+      ...Object.keys(sentScannerFrameRef.current).map(Number),
+      ...Object.keys(normalized).map(Number),
+    ])
+
+    if (channelsToWrite.size === 0) return
+
+    try {
+      await Promise.all(
+        Array.from(channelsToWrite).map(channelIndex => {
+          const absoluteAddress = dmxBaseAddress + channelIndex
+          const value = normalized[channelIndex] ?? 0
+          return window.lux.dmx.sendDirect(universe, absoluteAddress, value)
+        })
+      )
+      sentScannerFrameRef.current = normalized
+    } catch (err) {
+      console.error('[TestPanel] ❌ sendScannerFrame raw falló:', err)
+    }
+  }, [fixtureId, dmxBaseAddress, universe])
+
+  useEffect(() => {
+    return () => {
+      const lastFrame = sentScannerFrameRef.current
+      if (Object.keys(lastFrame).length === 0) return
+      void Promise.all(
+        Object.keys(lastFrame).map((idx) => {
+          const absoluteAddress = (dmxBaseAddress ?? 1) + Number(idx)
+          return window.lux.dmx.sendDirect(universe, absoluteAddress, 0)
+        })
+      )
+    }
+  }, [dmxBaseAddress, universe])
+
+  /**
+   * Actualiza un canal del scanner manteniendo el resto y envía trama combinada.
+   */
+  const handleChannelChange = useCallback((channelIndex: number, value: number) => {
+    const updatedValues = { ...scannerValuesRef.current }
+    if (value <= 0) {
+      delete updatedValues[channelIndex]
+    } else {
+      updatedValues[channelIndex] = value
+    }
+
+    setScannerValues(updatedValues)
+    scannerValuesRef.current = updatedValues
+
+    void sendScannerFrame(updatedValues)
+  }, [sendScannerFrame])
   
   /**
    * 🔥 WAVE 1008: Quick test specific channel
    */
   const testChannel = useCallback((channelIndex: number, value: number) => {
-    setScannerChannel(channelIndex)
-    setScannerValue(value)
-    sendDirectDMX(channelIndex, value)
+    const next = { ...scannerValuesRef.current }
+    if (value <= 0) {
+      delete next[channelIndex]
+    } else {
+      next[channelIndex] = value
+    }
+    setScannerValues(next)
+    scannerValuesRef.current = next
+    void sendDirectDMX(channelIndex, value)
   }, [sendDirectDMX])
   
   /**
@@ -192,23 +206,23 @@ export const TestPanel: React.FC<TestPanelProps> = ({
     switch (testType) {
       case 'color':
         // Full white - just dimmer on
-        if (dimmerIdx >= 0) sendDirectDMX(dimmerIdx, 255)
-        if (colorWheelIdx >= 0) sendDirectDMX(colorWheelIdx, 0) // Open white
+        if (dimmerIdx >= 0) testChannel(dimmerIdx, 255)
+        if (colorWheelIdx >= 0) testChannel(colorWheelIdx, 0) // Open white
         break
         
       case 'strobe':
         // Strobe effect
-        if (dimmerIdx >= 0) sendDirectDMX(dimmerIdx, 255)
-        if (strobeIdx >= 0) sendDirectDMX(strobeIdx, 195)
+        if (dimmerIdx >= 0) testChannel(dimmerIdx, 255)
+        if (strobeIdx >= 0) testChannel(strobeIdx, 195)
         break
         
       case 'gobo':
         // Test gobo
-        if (dimmerIdx >= 0) sendDirectDMX(dimmerIdx, 255)
-        if (goboIdx >= 0) sendDirectDMX(goboIdx, 39)
+        if (dimmerIdx >= 0) testChannel(dimmerIdx, 255)
+        if (goboIdx >= 0) testChannel(goboIdx, 39)
         break
     }
-  }, [fixtureId, disabled, activeTest, dmxBaseAddress, channels, sendDirectDMX])
+  }, [fixtureId, disabled, activeTest, dmxBaseAddress, channels, testChannel])
   
   /**
    * Blackout - all off
@@ -217,6 +231,8 @@ export const TestPanel: React.FC<TestPanelProps> = ({
     if (!fixtureId || dmxBaseAddress === null) return
     
     setActiveTest(null)
+    setScannerValues({})
+    scannerValuesRef.current = {}
     
     // 🔥 WAVE 1008: Direct DMX blackout
     const dimmerIdx = channels.findIndex(c => c.type === 'dimmer')
@@ -231,19 +247,16 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   /**
    * Reset fixture to default state
    */
-  const handleReset = useCallback(async () => {
+  const handleReset = useCallback(() => {
     if (!fixtureId) return
     
     setActiveTest(null)
-    setScannerValue(0)
-    
-    // 🔥 Reset all channels to 0
-    channels.forEach((ch, idx) => {
-      sendDirectDMX(idx, 0)
-    })
+    scannerValuesRef.current = {}
+    setScannerValues({})
+    void sendScannerFrame({}, true)
     
     console.log(`[TestPanel] 🔄 Reset ${fixtureId}`)
-  }, [fixtureId, channels, sendDirectDMX])
+  }, [fixtureId, sendScannerFrame])
   
   return (
     <div className={`test-panel ${disabled ? 'disabled' : ''}`}>
@@ -267,60 +280,61 @@ export const TestPanel: React.FC<TestPanelProps> = ({
         
         {showScanner && (
           <div className="scanner-panel">
-            {/* Channel selector */}
-            <div className="scanner-channel-select">
-              <label>Channel:</label>
-              <select
-                value={scannerChannel}
-                onChange={(e) => {
-                  setScannerChannel(Number(e.target.value))
-                  setScannerValue(0)
-                }}
-                disabled={disabled}
-              >
-                {channels.map((ch) => (
-                  <option key={ch.index} value={ch.index}>
-                    CH{ch.index + 1}: {ch.name} ({ch.type})
-                  </option>
-                ))}
-                {channels.length === 0 && (
-                  <option value={0}>No channels</option>
-                )}
-              </select>
-            </div>
-            
-            {/* Value slider */}
-            <div className="scanner-slider-row">
-              <input
-                type="range"
-                className="scanner-slider"
-                min="0"
-                max="255"
-                value={scannerValue}
-                onChange={(e) => handleScannerChange(Number(e.target.value))}
-                disabled={disabled}
-              />
-              <span className="scanner-value">{scannerValue}</span>
-            </div>
-            
-            {/* Quick value buttons */}
-            <div className="scanner-quick-btns">
-              {[0, 64, 127, 191, 255].map((v) => (
-                <button
-                  key={v}
-                  className="quick-val-btn"
-                  onClick={() => handleScannerChange(v)}
-                  disabled={disabled}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
+            {channels.map((ch) => {
+              const channelValue = scannerValues[ch.index] || 0
+
+              return (
+                <div key={ch.index} className="scanner-channel-block">
+                  <div className="scanner-channel-select">
+                    <label>CH{ch.index + 1}: {ch.name} ({ch.type})</label>
+                  </div>
+
+                  <div className="scanner-slider-row">
+                    <input
+                      type="range"
+                      className="scanner-slider"
+                      min="0"
+                      max="255"
+                      value={channelValue}
+                      onChange={(e) => handleChannelChange(ch.index, Number(e.target.value))}
+                      disabled={disabled}
+                    />
+                    <span className="scanner-value">{channelValue}</span>
+                  </div>
+
+                  <div className="scanner-quick-btns">
+                    {[0, 64, 127, 191, 255].map((v) => (
+                      <button
+                        key={`${ch.index}-${v}`}
+                        className="quick-val-btn"
+                        onClick={() => handleChannelChange(ch.index, v)}
+                        disabled={disabled}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+
+            {channels.length === 0 && (
+              <div className="scanner-info">No channels</div>
+            )}
             
             {/* Info */}
             <div className="scanner-info">
-              → DMX {dmxBaseAddress !== null ? dmxBaseAddress + scannerChannel : '?'}
+              → DMX base {dmxBaseAddress ?? '?'} | canales activos: {Object.keys(scannerValues).length}
             </div>
+
+            <button
+              className="test-btn apply-now"
+              onClick={() => void sendScannerFrame(scannerValues, true)}
+              disabled={disabled}
+              title="Force send current combined frame"
+            >
+              ⚡ APPLY FRAME NOW
+            </button>
           </div>
         )}
       </div>

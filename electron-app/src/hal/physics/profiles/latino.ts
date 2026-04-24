@@ -92,7 +92,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     squelchSlope: 0.15,
     ghostCap: 0.04,        // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
     gateMargin: 0.01,
-    riseRate: 0.14,        // WAVE 3494: 0.20->0.14 — rampa más lenta, mata tembleque residual
+    riseRate: 0.20,        // WAVE 3494: 0.20->0.14 — rampa más lenta, mata tembleque residual
   },
 
   // Back R — El Látigo del Dembow (Snare/Hi-hat — WAVE 2199/2200)
@@ -161,7 +161,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     squelchSlope: 0.15,
     ghostCap: 0.06,            // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
     gateMargin: 0.01,
-    riseRate: 0.12,            // WAVE 3494: 0.18->0.12 — rampa más lenta, tembleque residual eliminado
+    riseRate: 0.08,            // WAVE 3494: 0.18->0.12 — rampa más lenta, tembleque residual eliminado
   },
 
   // ═══════════════════════════════════════════════════════════════

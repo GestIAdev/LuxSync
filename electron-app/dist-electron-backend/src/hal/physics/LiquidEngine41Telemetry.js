@@ -274,8 +274,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             // [LATINO-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
             // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
             // Desactivar con setTelemetryEnabled(false) antes de producción estable.
-            console.error(`[MATH AUDIT][LATINO-41]` +
-                ` sB:${bands.subBass.toFixed(3)}` +
+            // console.error(
+            //   `[MATH AUDIT][LATINO-41]` +
+            ` sB:${bands.subBass.toFixed(3)}` +
                 ` mid:${bands.mid.toFixed(3)}` +
                 ` hMid:${bands.highMid.toFixed(3)}` +
                 ` tr:${bands.treble.toFixed(3)}` +
@@ -307,7 +308,8 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 ` mL:${mL.toFixed(3)}` +
                 ` mR:${mR.toFixed(3)}` +
                 ` | sc:${sidechainFired ? 1 : 0}` +
-                ` scDuck:${duckingApplied.toFixed(3)}`);
+                ` scDuck:${duckingApplied.toFixed(3)}`;
+            // )
             this._frameCount++;
         }
         return {

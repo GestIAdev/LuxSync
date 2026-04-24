@@ -570,7 +570,8 @@ export class SeleneColorEngine {
             // 🌴 WAVE 162: TROPICAL BIAS - Latino rota keys frías hacia cálidos
             // Problema: A=270°, E=120°, F=150° son fríos, pero Latino quiere fiesta
             // Solución: Keys en zona fría (150-270°) rotan hacia zona cálida
-            if (isLatinoHueFree && baseHue >= 150 && baseHue <= 270) {
+            // 🚫 WAVE 3490: suppressTropicalBias desactiva esto cuando el Sidereal Clock gestiona la zona
+            if (isLatinoHueFree && !options?.suppressTropicalBias && baseHue >= 150 && baseHue <= 270) {
                 // Rotar hacia zona tropical: 0-60° (rojos/naranjas) o 300-360° (magentas)
                 // Alternar según paridad del root para variedad
                 const root = KEY_TO_ROOT[key] ?? 0;
@@ -768,10 +769,58 @@ export class SeleneColorEngine {
         // Aplicar clamps finales
         // 🛡️ WAVE 87: Límites más estrictos para evitar whitewashing
         // 🎛️ WAVE 142: GenerationOptions pueden sobrescribir estos límites
-        const satMin = options?.saturationRange?.[0] ?? 70;
-        const satMax = options?.saturationRange?.[1] ?? 100;
-        const lightMin = options?.lightnessRange?.[0] ?? 35;
-        const lightMax = options?.lightnessRange?.[1] ?? 60;
+        // ⏱️ WAVE 3490: SIDEREAL CLOCK — override de allowedHueRanges y lightnessRange
+        // Se resuelve aquí, justo antes de los clamps, para que el slot activo
+        // determine el espacio cromático real sin tocar el resto del pipeline.
+        let effectiveOptions = options;
+        if (options?.siderealClock) {
+            const clock = options.siderealClock;
+            if (clock.slots && clock.slots.length > 0) {
+                const slotIndex = Math.floor(Date.now() / clock.slotDurationMs) % clock.slots.length;
+                const slot = clock.slots[slotIndex];
+                effectiveOptions = {
+                    ...options,
+                    allowedHueRanges: slot.allowedHueRanges,
+                    lightnessRange: slot.lightnessRange,
+                };
+                // Aplicar allowedHueRanges del slot al finalHue ahora mismo
+                // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
+                // El snap dirige al CENTRO del rango más cercano, no al borde,
+                // para evitar colores de frontera y generar la zona auténtica del slot.
+                if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+                    const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
+                    if (!isFullCircle) {
+                        let isAllowed = false;
+                        let closestCenter = finalHue;
+                        let minDist = Infinity;
+                        for (const [mn, mx] of slot.allowedHueRanges) {
+                            const inRange = mn <= mx
+                                ? (finalHue >= mn && finalHue <= mx)
+                                : (finalHue >= mn || finalHue <= mx);
+                            if (inRange) {
+                                isAllowed = true;
+                                break;
+                            }
+                            // Calcular centro del rango (handling wrap-around)
+                            const center = mn <= mx
+                                ? (mn + mx) / 2
+                                : normalizeHue((mn + mx + 360) / 2);
+                            const d = Math.min(Math.abs(finalHue - center), 360 - Math.abs(finalHue - center));
+                            if (d < minDist) {
+                                minDist = d;
+                                closestCenter = center;
+                            }
+                        }
+                        if (!isAllowed)
+                            finalHue = normalizeHue(closestCenter);
+                    }
+                }
+            }
+        }
+        const satMin = effectiveOptions?.saturationRange?.[0] ?? 70;
+        const satMax = effectiveOptions?.saturationRange?.[1] ?? 100;
+        const lightMin = effectiveOptions?.lightnessRange?.[0] ?? 35;
+        const lightMax = effectiveOptions?.lightnessRange?.[1] ?? 60;
         correctedSat = clamp(correctedSat, satMin, satMax);
         correctedLight = clamp(correctedLight, lightMin, lightMax);
         // ═══════════════════════════════════════════════════════════════════════

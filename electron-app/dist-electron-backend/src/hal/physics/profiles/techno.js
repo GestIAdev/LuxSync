@@ -59,17 +59,16 @@ export const TECHNO_PROFILE = {
         gateMargin: 0.0213,
     },
     // Mover R — El Coro / Voces (WAVE 2419 MONTE CARLO RIGHT HEMISPHERE)
-    // gateOn 0.15→0.01, boost 2.2→1.5, crush 1.5→1.5, decay 0.65→0.70
-    // maxI 0.65→0.80, squelch 0.06→0.02, squelchSlope 0.45→0.10
+    // WAVE 3491: Bozal de Mover — solo picos afilados de synth/arpegio pasan.
     envelopeVocal: {
         name: 'Mover R (Vocal & Synth Wash)',
-        gateOn: 0.01,
+        gateOn: 0.25, // WAVE 3491: 0.01→0.25 — mínimo obligatorio Bozal
         boost: 1.5,
-        crushExponent: 1.5,
+        crushExponent: 3.5, // WAVE 3491: Bozal — aplasta colchón de graves/medios
         decayBase: 0.70,
         decayRange: 0.05,
         maxIntensity: 0.80,
-        squelchBase: 0.02,
+        squelchBase: 0.30, // WAVE 3491: 0.02→0.30 — piso estricto
         squelchSlope: 0.10,
         ghostCap: 0.00,
         gateMargin: 0.01,
@@ -113,19 +112,18 @@ export const TECHNO_PROFILE = {
         gateMargin: 0.005,
     },
     // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)
-    // gateOn 0.14→0.02, boost 8.0→4.0 (ML menos agresivo), decay 0.50→0.78
-    // crush 1.2→1.0, decayRange 0.20→0.03
+    // WAVE 3491: Bozal de Mover — arpegios agudos pasan, colchón de graves NO.
     envelopeTreble: {
         name: 'Mover L (Tonal Melodies)',
-        gateOn: 0.02,
+        gateOn: 0.25, // WAVE 3491: 0.02→0.25 — mínimo obligatorio Bozal
         boost: 4.0,
-        crushExponent: 1.0,
+        crushExponent: 3.5, // WAVE 3491: Bozal — solo picos afilados de arpegio
         decayBase: 0.78,
         decayRange: 0.03,
         maxIntensity: 1.0,
-        squelchBase: 0.02,
+        squelchBase: 0.30, // WAVE 3491: 0.02→0.30 — piso estricto
         squelchSlope: 0.10,
-        ghostCap: 0.04,
+        ghostCap: 0.00, // WAVE 3491: 0.04→0.00 — negro absoluto entre arpegios
         gateMargin: 0.005,
     },
     // ═══════════════════════════════════════════════════════════════

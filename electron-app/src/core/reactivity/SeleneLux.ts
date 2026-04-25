@@ -464,6 +464,11 @@ export class SeleneLux {
     const actualMode = mode === 'legacy' ? '4.1' : mode;
     this.liquidLayout = actualMode;
     this.useLiquidStereo = true; // Siempre liquid activo
+    if (actualMode === '4.1') {
+      // WAVE 3483: asegurar que el inyector de telemetría 4.1 quede activo
+      // aunque haya sido apagado manualmente en una sesión previa.
+      latinoEngine41Telemetry.setTelemetryEnabled(true)
+    }
     console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
   }
 

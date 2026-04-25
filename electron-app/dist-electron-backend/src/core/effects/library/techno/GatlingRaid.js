@@ -191,7 +191,10 @@ export class GatlingRaid extends BaseEffect {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = Math.min(1, this.elapsedMs / this.totalDurationMs);
-        const targetPosition = this.sequence[this.currentBullet];
+        const sequenceLength = this.sequence.length;
+        const targetPosition = sequenceLength > 0
+            ? this.sequence[this.currentBullet % sequenceLength]
+            : LINEAR_SEQUENCE[0];
         // 🌊 WAVE 1090: FLUID DYNAMICS
         let fadeOpacity = 1.0;
         const fadeOutStart = this.totalDurationMs - this.config.fadeOutMs;

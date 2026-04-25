@@ -389,34 +389,27 @@ export class MasterArbiter extends EventEmitter {
         const incomingHasPosition = override.overrideChannels.includes('pan') ||
             override.overrideChannels.includes('tilt');
         if (existingOverride) {
-            // Determine which categories the NEW override touches
             const incomingCategories = getChannelCategories(override.overrideChannels);
-            // PRESERVE: existing channels whose category is NOT in the incoming set
-            const preservedChannels = existingOverride.overrideChannels.filter(ch => !incomingCategories.has(getChannelCategory(ch)));
-            // Build preserved controls — only keep control values for preserved channels
-            const preservedControls = {};
-            for (const ch of preservedChannels) {
-                const value = existingOverride.controls[ch];
-                if (value !== undefined) {
-                    preservedControls[ch] = value;
-                }
-            }
-            // Phantom channels: deep merge — preserve phantoms from non-incoming categories,
-            // overlay with new phantoms
-            const existingPhantom = existingOverride.controls?.phantomChannels ?? {};
+            const existingControls = existingOverride.controls;
+            // WAVE 3479.7: synchronous deep merge.
+            // setManual() must preserve every previously asserted manual channel unless the
+            // new payload explicitly overwrites it or clearManual() releases it.
+            // This avoids same-category stomp like red -> green killing red.
+            const existingPhantom = existingControls?.phantomChannels ?? {};
             const newPhantom = override.controls?.phantomChannels ?? {};
             const mergedPhantom = { ...existingPhantom, ...newPhantom };
-            // FINAL CONTROLS: preserved (old categories) + incoming (new categories)
             const mergedControls = {
-                ...preservedControls,
+                ...existingControls,
                 ...override.controls,
             };
             if (Object.keys(mergedPhantom).length > 0) {
                 mergedControls.phantomChannels = mergedPhantom;
             }
-            // FINAL CHANNELS: preserved + incoming (no duplicates, category-clean)
+            else {
+                delete mergedControls.phantomChannels;
+            }
             const mergedChannels = [...new Set([
-                    ...preservedChannels,
+                    ...existingOverride.overrideChannels,
                     ...override.overrideChannels,
                 ])];
             // Store category-segmented override
@@ -438,10 +431,9 @@ export class MasterArbiter extends EventEmitter {
                 console.trace(`🚨 [WIRETAP WAVE 2910] FIXTURE ${override.fixtureId} PERDÍÓ POSICIÓN DURANTE MERGE!`, '\n  teniaPos=true, incomingHasPos=' + incomingHasPosition, '\n  existingChannels:', existingOverride.overrideChannels, '\n  incomingChannels:', override.overrideChannels, '\n  mergedChannels:', mergedChannels, '\n  incomingCategories:', [...incomingCategories], '\n  mergedControls:', mergedControls);
             }
             if (this.config.debug) {
-                console.log(`[MasterArbiter] 🔧 WAVE 2711 Segmented merge: ${override.fixtureId}`, {
+                console.log(`[MasterArbiter] 🔧 WAVE 3479.7 Deep merge: ${override.fixtureId}`, {
                     incomingCategories: [...incomingCategories],
                     incomingChannels: override.overrideChannels,
-                    preservedChannels,
                     finalChannels: mergedChannels
                 });
             }
@@ -823,7 +815,7 @@ export class MasterArbiter extends EventEmitter {
         // 🛡️ WAVE 3307: Deep Seal — strip color/white/amber from movers on global effects
         for (const [fixtureId, intent] of intents) {
             delete intent.movement;
-            if (intent.mixBus === 'global') {
+            if (intent.mixBus === 'global' && !intent.overrideMoverShield) {
                 const fixtureMeta = this.fixtures.get(fixtureId);
                 if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
                     delete intent.color;
@@ -1853,7 +1845,7 @@ export class MasterArbiter extends EventEmitter {
             // ═══════════════════════════════════════════════════════════════════
             // 🛡️ WAVE 3305: Mover shield ONLY for global (destructive) effects
             let moverShieldActive = false;
-            if (MOVER_SHIELD_CHANNELS.has(channel) && effectIntent.mixBus === 'global') {
+            if (MOVER_SHIELD_CHANNELS.has(channel) && effectIntent.mixBus === 'global' && !effectIntent.overrideMoverShield) {
                 const fixtureMeta = this.fixtures.get(fixtureId);
                 if (fixtureMeta && this.isMovingFixture(fixtureMeta)) {
                     moverShieldActive = true;

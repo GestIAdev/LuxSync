@@ -479,6 +479,11 @@ export interface EffectIntent {
   mixBus: 'htp' | 'global'
   /** Global composition alpha (0=invisible, 1=dictator) for LERP blending */
   globalComposition: number
+  /**
+   * 🛂 WAVE 3477: Diplomatic passport.
+   * When true, movers are allowed to receive color channels under global mixBus.
+   */
+  overrideMoverShield?: boolean
 }
 
 /**

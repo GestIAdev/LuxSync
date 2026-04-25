@@ -535,6 +535,8 @@ export class EffectManager extends EventEmitter {
         let highestPriority = -1; // Para color (legacy)
         // 🚂 WAVE 800: Mix Bus del efecto dominante
         let dominantMixBus = 'htp';
+        // 🛂 WAVE 3477: Pasaporte diplomático heredado del efecto dominante
+        let dominantOverrideMoverShield = false;
         // 🔗 WAVE 991: Prioridad separada para mixBus (THE MISSING LINK)
         let mixBusPriority = -1;
         // 🥁 WAVE 700.7: Movement tracking
@@ -601,6 +603,7 @@ export class EffectManager extends EventEmitter {
                 (effect.priority === mixBusPriority && effect.mixBus === 'global')) {
                 mixBusPriority = effect.priority;
                 dominantMixBus = effect.mixBus;
+                dominantOverrideMoverShield = output.overrideMoverShield === true;
             }
             // 🥁 WAVE 700.7: Highest priority takes movement
             if (output.movement && effect.priority > movementPriority) {
@@ -669,6 +672,7 @@ export class EffectManager extends EventEmitter {
             intensity: maxIntensity,
             contributingEffects: contributing,
             globalComposition: globalComposition > 0 ? globalComposition : undefined, // 🌊 WAVE 1080
+            overrideMoverShield: dominantOverrideMoverShield || undefined, // 🛂 WAVE 3477
             zones: allZones.size > 0 ? Array.from(allZones) : undefined, // 🌴 WAVE 700.8
             movementOverride: highestPriorityMovement, // 🥁 WAVE 700.7
             zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined, // 🎨 WAVE 725

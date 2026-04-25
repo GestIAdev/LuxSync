@@ -137,6 +137,13 @@ export interface EffectFrameOutput {
    * "sangre" a través de los rayos de sol mientras desaparecen.
    */
   globalComposition?: number
+
+  /**
+   * 🛂 WAVE 3477: DIPLOMATIC PASSPORT
+   * Permite a efectos concretos saltarse el escudo de movers
+   * para color/white/amber incluso en mixBus='global'.
+   */
+  overrideMoverShield?: boolean
   
   /**
    * 🧨 WAVE 630: AMBER OVERRIDE
@@ -497,6 +504,13 @@ export interface CombinedEffectOutput {
    * FinalOutput = (BasePhysics × (1-globalComposition)) + (GlobalEffect × globalComposition)
    */
   globalComposition?: number
+
+  /**
+   * 🛂 WAVE 3477: DIPLOMATIC PASSPORT (combinado)
+   * Se propaga desde el efecto dominante para que el Arbiter decida
+   * si debe respetar o saltar el escudo cromático de movers.
+   */
+  overrideMoverShield?: boolean
   
   /**
    * 🌴 WAVE 700.8: ZONE FILTERING

@@ -1067,6 +1067,7 @@ export class TitanOrchestrator {
             const fixtureIntent: EffectIntent = {
               mixBus: effectOutput.mixBus || 'htp',
               globalComposition: effectOutput.globalComposition ?? 1,
+              overrideMoverShield: effectOutput.overrideMoverShield,
             }
             
             // Color: HSL → RGB conversion
@@ -1168,6 +1169,7 @@ export class TitanOrchestrator {
             color,
             mixBus: effectOutput.mixBus || 'htp',
             globalComposition: globalComp,
+            overrideMoverShield: effectOutput.overrideMoverShield,
           })
         }
       }

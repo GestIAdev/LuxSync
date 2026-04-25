@@ -52,8 +52,12 @@ const DEFAULT_CONFIG = {
 const MELTDOWN_PALETTE = {
     // Rojo Profundo - El corazón del fuego
     ROJO_NUCLEAR: { h: 10, s: 100, l: 50 },
+    // Magenta vibrante - golpe latino principal para PARs
+    MAGENTA_NUCLEAR: { h: 330, s: 100, l: 58 },
     // Amarillo Nuclear - La explosión
     AMARILLO_NUCLEAR: { h: 55, s: 100, l: 55 },
+    // Oro caliente - pareja cromática del magenta en PARs
+    ORO_NUCLEAR: { h: 45, s: 95, l: 58 },
     // Naranja Fundido - Transición
     NARANJA_FUSION: { h: 30, s: 100, l: 52 },
 };
@@ -159,30 +163,19 @@ export class LatinaMeltdown extends BaseEffect {
             fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5;
         }
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔥 NUCLEAR SALSA OUTPUT
+        // 🚀 WAVE 3476: ORESHNIK BARRAGE — 15Hz estricto sin BPM
         // ═══════════════════════════════════════════════════════════════════════
-        let dimmer = 0;
-        let color = MELTDOWN_PALETTE.ROJO_NUCLEAR;
-        switch (this.hitPhase) {
-            case 'pre-blackout':
-                // 50ms de NEGRURA total - contraste máximo
-                dimmer = 0;
-                break;
-            case 'flash':
-                // EXPLOSIÓN NUCLEAR
-                dimmer = this.config.maxIntensity;
-                // Alternar colores si está configurado
-                if (this.config.alternateColors) {
-                    color = this.currentHit % 2 === 0
-                        ? MELTDOWN_PALETTE.ROJO_NUCLEAR
-                        : MELTDOWN_PALETTE.AMARILLO_NUCLEAR;
-                }
-                break;
-            case 'gap':
-                // Oscuridad entre golpes (no total, pero baja)
-                dimmer = 0.05; // 5% para no ser negro absoluto
-                break;
-        }
+        const strobePeriodMs = 66;
+        const pos = elapsed % strobePeriodMs;
+        const isWhite = pos < 33;
+        // Dimmer cuadrado a 15Hz: 33ms ON / 33ms OFF
+        const dimmer = pos < 33 ? this.config.maxIntensity : 0;
+        // Alternancia implacable de color cada 33ms
+        const color = isWhite
+            ? { h: 0, s: 0, l: 100 }
+            : (this.config.alternateColors
+                ? MELTDOWN_PALETTE.AMARILLO_NUCLEAR
+                : MELTDOWN_PALETTE.ROJO_NUCLEAR);
         // ═══════════════════════════════════════════════════════════════════════
         // 🩸 WAVE 2190.1: ZONE-COMPLETE DISPATCH — ANTI AUTO-WHITE
         //
@@ -196,13 +189,12 @@ export class LatinaMeltdown extends BaseEffect {
         // movers → NARANJA_FUSION fijo (sin riesgo Color Wheel)
         // front/back → alternancia Rojo↔Amarillo (RGB safe)
         // ═══════════════════════════════════════════════════════════════════════
-        const isSilent = this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap';
-        const parsColor = isSilent
-            ? { h: 0, s: 0, l: 0 } // Negro en pre-blackout/gap
-            : color; // Rojo o Amarillo en flash
-        const moversColor = isSilent
-            ? { h: 0, s: 0, l: 0 } // Negro en pre-blackout/gap
-            : MELTDOWN_PALETTE.NARANJA_FUSION; // DORADO fijo en flash (sin color wheel)
+        // PARs: strobo colorido latino (magenta/oro), nunca blanco techno.
+        // Movers: conservan la lógica actual para no tocar su identidad visual.
+        const parsColor = isWhite
+            ? MELTDOWN_PALETTE.MAGENTA_NUCLEAR
+            : MELTDOWN_PALETTE.ORO_NUCLEAR;
+        const moversColor = color;
         const zoneOverrides = {
             front: {
                 color: parsColor,

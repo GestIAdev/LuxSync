@@ -73,9 +73,7 @@ export class USBDirectLinkProvider {
             this.selectedDeviceId = config.deviceId;
         }
         else {
-            const usbDevice = devices.find(d => !d.isLoopback && d.isExclusiveCapable && !d.isDefault) ??
-                devices.find(d => !d.isLoopback && d.isExclusiveCapable) ??
-                null;
+            const usbDevice = this.findUSBDevice(devices);
             if (usbDevice) {
                 this.selectedDeviceId = usbDevice.id;
             }
@@ -102,6 +100,13 @@ export class USBDirectLinkProvider {
         if (this._status.state !== 'ready')
             return;
         if (!this.selectedDeviceId) {
+            const usbDevice = this.findUSBDevice();
+            if (usbDevice) {
+                this.selectedDeviceId = usbDevice.id;
+                console.log('[USBDirectLink] ✅ Auto-detected USB interface:', usbDevice.name);
+            }
+        }
+        if (!this.selectedDeviceId) {
             this.updateStatus({
                 ...this._status,
                 state: 'error',
@@ -119,7 +124,7 @@ export class USBDirectLinkProvider {
             sampleRate: targetRate,
             channels,
             bufferSizeFrames: 256,
-            exclusiveMode: this.config.exclusiveMode ?? true, // USB devices: always exclusive
+            exclusiveMode: false,
         }, (data, frameCount, ch, sampleRate) => {
             this.handleAudioData(data, frameCount, ch, sampleRate);
         });
@@ -169,8 +174,8 @@ export class USBDirectLinkProvider {
         const bridge = getNativeAudioBridge();
         if (!bridge.available)
             return [];
-        // Return non-loopback, exclusive-capable devices (physical hardware)
-        return bridge.enumerateDevices().filter(d => !d.isLoopback && d.isExclusiveCapable);
+        // Return non-loopback USB capture devices (no exclusivity restriction)
+        return bridge.enumerateDevices().filter(d => d.isLoopback === false && (d.name ?? '').toUpperCase().includes('USB'));
     }
     getDiagnostics() {
         const uptimeMs = this.startTime > 0 ? Date.now() - this.startTime : 0;
@@ -253,16 +258,30 @@ export class USBDirectLinkProvider {
         this.callbackCount++;
         this.onAudioData(processedData, outputRate);
     }
-    findUSBDevice() {
+    findUSBDevice(existingDevices) {
         const bridge = getNativeAudioBridge();
         if (!bridge.available)
             return null;
-        const devices = bridge.enumerateDevices();
-        // Prefer exclusive-capable, non-loopback devices (real hardware)
-        // Prioritize non-default devices (USB consoles are rarely the system default)
-        return devices.find(d => !d.isLoopback && d.isExclusiveCapable && !d.isDefault) ??
-            devices.find(d => !d.isLoopback && d.isExclusiveCapable) ??
-            null;
+        // 🚨 WAVE 3482: Bulletproof USB Matcher
+        const devices = existingDevices ?? bridge.enumerateDevices();
+        const findUSBDevice = (deviceList) => {
+            // Imprimir TODO lo que vemos para debug visual en consola
+            console.log('[USBDirectLink] 🔍 Buscando USB en la lista...');
+            const target = deviceList.find(d => {
+                // CONDICIÓN ÚNICA: Que sea de captura (no loopback) y que su nombre contenga USB
+                const isCapture = d.isLoopback === false;
+                const hasUSB = (d.name ?? '').toUpperCase().includes('USB');
+                return isCapture && hasUSB;
+            });
+            if (target) {
+                console.log(`[USBDirectLink] ✅ ¡ENCONTRADO POR FUERZA BRUTA!: ${target.name} (ID: ${target.id})`);
+            }
+            else {
+                console.log('[USBDirectLink] ❌ NO SE ENCONTRÓ NINGÚN DISPOSITIVO DE CAPTURA USB');
+            }
+            return target;
+        };
+        return findUSBDevice(devices) ?? null;
     }
     getDeviceName(deviceId) {
         const bridge = getNativeAudioBridge();

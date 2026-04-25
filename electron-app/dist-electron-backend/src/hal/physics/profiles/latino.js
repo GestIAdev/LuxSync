@@ -158,8 +158,8 @@ export const LATINO_PROFILE = {
     // En latino el transient shaper caza el hi-hat y las claves.
     // Gate más permisivo porque el swing del dembow es irregular.
     // ═══════════════════════════════════════════════════════════════
-    percMidSubtract: 0.6, // Menos agresivo que techno (1.0) — el mid latino es aliado
-    percGate: 0.019, // WAVE 2434: Monte Carlo winner — con 0.005 falseAlarmRate=53% (ruido de fondo disparando TAcka); 0.019 aísla el TAcka real (percRaw>0.35, hitRate=100%)
+    percMidSubtract: 2.0, // WAVE 3485: purga anti-autotune agresiva en Transient Shaper
+    percGate: 0.045, // WAVE 3483: hotfix directo — subir el muro para ignorar micro-transientes y ruido de línea en show
     percBoost: 4.0, // Moderado (techno=5.0) — no saturar
     percExponent: 0.6, // Ligeramente más convexo que techno (0.5)
     // ═══════════════════════════════════════════════════════════════
@@ -275,7 +275,7 @@ export const LATINO_PROFILE = {
     // ═══════════════════════════════════════════════════════════════
     overrides41: {
         // ── ANTI-AUTOTUNE: Matar falsos latigazos en Back R ──────────
-        percMidSubtract: 1.5, // 0.6→1.5: voz+autotune cancelada en transient shaper
+        percMidSubtract: 2.0, // WAVE 3485: modo 4.1 hereda purga agresiva contra voz sostenida
         // ── BACK L: WAVE 3492 — trebleSub restaurado a positivo ─────
         // El truco -0.50 (sumaba treble al canal) generaba que el treble
         // continuo de voces/sinths colara al Back L. Con +0.20 convencional
@@ -307,8 +307,8 @@ export const LATINO_PROFILE = {
         // La base ya aplica decayBase 0.14 / gateOn 0.35 / squelchBase 0.38.
         // El override confirma los valores críticos para garantizar el snap violento.
         envelopeHighMid: {
-            gateOn: 0.35, // WAVE 3491: alineado con base
-            squelchBase: 0.38, // WAVE 3491: anti-barro total
+            gateOn: 0.22, // WAVE 3483: abrir el Back L para que respiren congas/palmas reales
+            squelchBase: 0.20, // WAVE 3483: bajar el bozal del override 4.1 en directo
             decayBase: 0.14, // WAVE 3491: GUILLOTINA — snap percusivo
             ghostCap: 0.00, // Negro absoluto
         },
@@ -331,11 +331,11 @@ export const LATINO_PROFILE = {
         // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
         // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
         envelopeSnare: {
-            gateOn: 0.34,
-            squelchBase: 0.30,
-            decayBase: 0.36,
+            gateOn: 0.45,
+            squelchBase: 0.35,
+            decayBase: 0.14,
             ghostCap: 0.00,
-            boost: 4.0,
+            boost: 2.5,
         },
         // WAVE 3457: sidechain exterminado también en overrides 4.1
         sidechainDepth: 0.00,

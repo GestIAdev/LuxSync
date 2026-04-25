@@ -93,9 +93,15 @@ const DEFAULT_CONFIG: LatinaMeltdownConfig = {
 const MELTDOWN_PALETTE = {
   // Rojo Profundo - El corazón del fuego
   ROJO_NUCLEAR: { h: 10, s: 100, l: 50 },
+
+  // Magenta vibrante - golpe latino principal para PARs
+  MAGENTA_NUCLEAR: { h: 330, s: 100, l: 58 },
   
   // Amarillo Nuclear - La explosión
   AMARILLO_NUCLEAR: { h: 55, s: 100, l: 55 },
+
+  // Oro caliente - pareja cromática del magenta en PARs
+  ORO_NUCLEAR: { h: 45, s: 95, l: 58 },
   
   // Naranja Fundido - Transición
   NARANJA_FUSION: { h: 30, s: 100, l: 52 },
@@ -259,7 +265,11 @@ export class LatinaMeltdown extends BaseEffect {
     // front/back → alternancia Rojo↔Amarillo (RGB safe)
     // ═══════════════════════════════════════════════════════════════════════
 
-    const parsColor = color
+    // PARs: strobo colorido latino (magenta/oro), nunca blanco techno.
+    // Movers: conservan la lógica actual para no tocar su identidad visual.
+    const parsColor = isWhite
+      ? MELTDOWN_PALETTE.MAGENTA_NUCLEAR
+      : MELTDOWN_PALETTE.ORO_NUCLEAR
     const moversColor = color
 
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {

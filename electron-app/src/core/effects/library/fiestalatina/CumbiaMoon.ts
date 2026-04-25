@@ -70,7 +70,7 @@ interface CumbiaMoonConfig {
 }
 
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
-  cycleDurationMs: 4000,  // WAVE 3474: +1000ms de respiración lunar
+  cycleDurationMs: 5000,  // WAVE 3478: un poco más de respiración lunar
   peakIntensity: 0.30,     // 🌙 WAVE 785: 30% máximo - lunitas sutiles
   floorIntensity: 0.15,   // 🌙 WAVE 750: Casi apagado
   peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
@@ -81,7 +81,7 @@ const DEFAULT_CONFIG: CumbiaMoonConfig = {
     { h: 210, s: 10, l: 55 },   // Plata oscura (final)
   ],
   bpmSync: true,
-  beatsPerCycle: 4,  // 🌙 WAVE 750: 4 beats = más rápido
+  beatsPerCycle: 5,  // WAVE 3478: ciclo ligeramente más largo también con BPM-sync
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -244,6 +244,9 @@ export class CumbiaMoon extends BaseEffect {
       progress: this.elapsedMs / this.actualCycleDurationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
+
+      // 🛂 WAVE 3477: Pasaporte diplomático para mover color en bus global
+      overrideMoverShield: true,
       
       dimmerOverride: undefined,
       colorOverride: undefined,

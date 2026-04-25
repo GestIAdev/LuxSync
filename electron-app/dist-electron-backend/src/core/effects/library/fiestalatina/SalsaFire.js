@@ -164,24 +164,16 @@ export class SalsaFire extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
-        // � WAVE 1009: FREEDOM DAY - TODOS reciben color
-        // El HAL traduce Rojo/Naranja → DMX 120 en EL-1140
+        // PARs: rojo dictador fijo. Movers: solo dimmer (sin override de color).
         const zoneOverrides = {
-            'front': {
-                color: this.currentColor,
+            'all-pars': {
+                color: { h: 0, s: 100, l: 50 },
                 dimmer: this.currentIntensity,
-                blendMode: 'max',
+                blendMode: 'replace',
             },
-            'back': {
-                color: this.currentColor,
-                dimmer: this.currentIntensity * 0.8, // Back un poco más suave
-                blendMode: 'max',
-            },
-            // � WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
             'all-movers': {
-                color: this.currentColor, // 🔓 ¡LIBERTAD! Rojo fuego para movers
-                dimmer: this.currentIntensity * 0.6, // Movers más sutiles que PARs
-                blendMode: 'max',
+                dimmer: this.currentIntensity * 0.6,
+                blendMode: 'replace',
             },
         };
         return {

@@ -141,14 +141,15 @@ export class CoreMeltdown extends BaseEffect {
             fadeOpacity = ((this.config.durationMs - this.elapsedMs) / this.config.fadeOutMs) ** 1.5;
         }
         // ═════════════════════════════════════════════════════════════════════
-        // NUCLEAR STROBE: ON/OFF binario, sin fades
+        // 🚀 WAVE 3476: ORESHNIK BARRAGE — oscilador determinista 15Hz
         // ═════════════════════════════════════════════════════════════════════
-        // Determinar color actual
-        const currentColor = this.strobeState
-            ? (this.useWhiteFlash ? COLORS.blindingWhite : COLORS.nuclearMagenta)
-            : COLORS.absoluteBlack;
-        // Intensidad: 100% cuando ON, 0% cuando OFF (binario puro)
-        const intensity = this.strobeState ? this.config.maxIntensity : 0;
+        const strobePeriodMs = 66;
+        const pos = this.elapsedMs % strobePeriodMs;
+        // Alternancia ultra-rápida: 33ms blanco, 33ms magenta
+        const isWhite = pos < 33;
+        const currentColor = isWhite ? COLORS.blindingWhite : COLORS.nuclearMagenta;
+        // Dimmer 15Hz estricto (33ms ON, 33ms OFF)
+        const intensity = pos < 33 ? this.config.maxIntensity : 0;
         // ═════════════════════════════════════════════════════════════════════
         // ZONE OVERRIDES: TODAS LAS ZONAS CON blendMode='replace'
         // TEST DE OVERRIDE MÁXIMO

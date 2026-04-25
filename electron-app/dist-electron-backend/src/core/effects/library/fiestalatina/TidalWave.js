@@ -157,6 +157,21 @@ export class TidalWave extends BaseEffect {
                 };
             }
         }
+        // WAVE 3474: inyección imperativa de color en movers aunque estén en valle.
+        if (!zoneOverrides['movers-left']) {
+            zoneOverrides['movers-left'] = {
+                color: baseColor,
+                dimmer: 0,
+                blendMode: 'replace',
+            };
+        }
+        if (!zoneOverrides['movers-right']) {
+            zoneOverrides['movers-right'] = {
+                color: baseColor,
+                dimmer: 0,
+                blendMode: 'replace',
+            };
+        }
         // WAVE 3473: color explícito también para el grupo agregado de movers.
         const leftMover = zoneOverrides['movers-left'];
         const rightMover = zoneOverrides['movers-right'];
@@ -194,6 +209,8 @@ export class TidalWave extends BaseEffect {
             whiteOverride: this.config.whiteOnPeak && scaledMaxIntensity > 0.8
                 ? (scaledMaxIntensity - 0.8) * 5 // Ramp de 0.8→1 = white 0→1
                 : undefined,
+            // 🛂 WAVE 3477: Pasaporte diplomático para mover color en bus global
+            overrideMoverShield: true,
             // � WAVE 725: ZONE OVERRIDES - El corazón de la ola espacial
             zoneOverrides,
         };

@@ -263,7 +263,7 @@ export class IndustrialStrobe extends BaseEffect {
         phase: this.phase,
         progress,
         dimmerOverride: 1.0,
-        colorOverride: { h: 0, s: 0, l: 1.0 },
+        colorOverride: { h: 0, s: 0, l: 100 },
         whiteOverride: 1.0,
         intensity: 1.0,  // FULL
         zones: this.zones,

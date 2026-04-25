@@ -286,6 +286,9 @@ export class TidalWave extends BaseEffect {
       whiteOverride: this.config.whiteOnPeak && scaledMaxIntensity > 0.8 
         ? (scaledMaxIntensity - 0.8) * 5  // Ramp de 0.8→1 = white 0→1
         : undefined,
+
+      // 🛂 WAVE 3477: Pasaporte diplomático para mover color en bus global
+      overrideMoverShield: true,
       
       // � WAVE 725: ZONE OVERRIDES - El corazón de la ola espacial
       zoneOverrides,

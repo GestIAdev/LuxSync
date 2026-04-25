@@ -1754,9 +1754,11 @@ export class HardwareAbstraction {
             case 'speed': return 'speed';
             case 'frost': return 'frost';
             case 'rotation': return 'rotation';
-            case 'macro':
-            case 'control': return null; // No arbiter control
-            default: return null;
+            case 'macro': return 'macro';
+            case 'control': return 'control';
+            case 'custom': return 'custom';
+            case 'unknown': return 'unknown';
+            default: return chType;
         }
     }
     /** Safe DMX byte value for a channel type when output is ARMED (not LIVE) */

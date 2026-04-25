@@ -35,7 +35,7 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    cycleDurationMs: 3000, // 🌙 WAVE 750: 3 segundos - más corto
+    cycleDurationMs: 5000, // WAVE 3478: un poco más de respiración lunar
     peakIntensity: 0.30, // 🌙 WAVE 785: 30% máximo - lunitas sutiles
     floorIntensity: 0.15, // 🌙 WAVE 750: Casi apagado
     peakSustainMs: 400, // 🌙 WAVE 750: Sustain breve
@@ -46,7 +46,7 @@ const DEFAULT_CONFIG = {
         { h: 210, s: 10, l: 55 }, // Plata oscura (final)
     ],
     bpmSync: true,
-    beatsPerCycle: 4, // 🌙 WAVE 750: 4 beats = más rápido
+    beatsPerCycle: 5, // WAVE 3478: ciclo ligeramente más largo también con BPM-sync
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // CUMBIA MOON CLASS
@@ -155,8 +155,8 @@ export class CumbiaMoon extends BaseEffect {
         // � WAVE 1010.6: MOVER COLOR FREEDOM - HAL traduce RGB→ColorWheel seguro
         // CumbiaMoon ahora puede dar BLANCO (plata lunar) a los movers
         // El traductor HAL tiene múltiples medidas de seguridad para EL-1140
-        // Color blanco lunar (plata brillante)
-        const moonWhite = { h: 0, s: 0, l: 95 }; // BLANCO puro (sin tinte)
+        // Color lunar sutil para sobresalir sin romper atmósfera.
+        const moonWhite = { h: 0, s: 0, l: 80 };
         const zoneOverrides = {
             'front': {
                 color: moonWhite, // Blanco lunar en front
@@ -171,8 +171,8 @@ export class CumbiaMoon extends BaseEffect {
             // � WAVE 1010.6: MOVERS reciben BLANCO - HAL traduce a DMX seguro
             'all-movers': {
                 color: moonWhite, // ✅ BLANCO lunar para movers (HAL traduce a Color Wheel)
-                dimmer: this.currentIntensity * 0.5, // Movers muy sutiles (luna suave)
-                blendMode: 'max',
+                dimmer: this.currentIntensity * 0.15,
+                blendMode: 'replace',
             },
         };
         return {
@@ -182,6 +182,8 @@ export class CumbiaMoon extends BaseEffect {
             progress: this.elapsedMs / this.actualCycleDurationMs,
             zones: Object.keys(zoneOverrides),
             intensity: this.currentIntensity,
+            // 🛂 WAVE 3477: Pasaporte diplomático para mover color en bus global
+            overrideMoverShield: true,
             dimmerOverride: undefined,
             colorOverride: undefined,
             zoneOverrides,

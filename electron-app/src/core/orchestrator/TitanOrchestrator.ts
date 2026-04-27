@@ -65,6 +65,12 @@ import { OSCNexusProvider } from '../audio/OSCNexusProvider'
 import { VirtualWireProvider } from '../audio/VirtualWireProvider'
 import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider'
 
+// ⚡ WAVE 3504.5: Extracted math + scheduling modules
+import { SyncSmoother } from './metrics/SyncSmoother'
+import { IntentComposer } from './intent/IntentComposer'
+import { FrameScheduler } from './scheduler/FrameScheduler'
+import type { FixtureSnapshot } from './intent/types'
+
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 
@@ -150,18 +156,14 @@ export class TitanOrchestrator {
   private config: TitanConfig
   private isInitialized = false
   private isRunning = false
-  private mainLoopInterval: NodeJS.Timeout | null = null
   private cardiogramaInterval: NodeJS.Timeout | null = null
   private frameCount = 0
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
-  // setInterval fires every Xms regardless of whether the previous
-  // processFrame() has finished. Since processFrame() is async (await engine.update()),
-  // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
-  // This flag ensures only ONE processFrame() runs at a time.
+  // ⚡ WAVE 3504.5: FRAME SCHEDULER — replaces bare setInterval + isProcessingFrame
+  // The Stampede Guard now lives inside FrameScheduler (WAVE 2211 contract kept).
   // ═══════════════════════════════════════════════════════════════════════════
-  private isProcessingFrame = false
+  private readonly scheduler = new FrameScheduler(23, () => this.processFrame())
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔧 DMX TIMING — Frame-drop protection for physical DMX timing
@@ -248,41 +250,12 @@ export class TitanOrchestrator {
   private hasRealAudio = false
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
-  // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
+  // ⚡ WAVE 3504.5: PURE MATH MODULES — extracted from the monolith
+  // SyncSmoother:   EMA filter bank + syncopation estimator + freewheel chain
+  // IntentComposer: CombinedEffectOutput → per-fixture EffectIntentMap
   // ═══════════════════════════════════════════════════════════════════════════
-  private readonly EMA_ALPHA_FAST = 0.25;   // Para métricas reactivas (harshness, transients)
-  private readonly EMA_ALPHA_SLOW = 0.08;   // Para contexto ambiental (centroid, flatness)
-  
-  private smoothedMetrics = {
-    harshness: 0,
-    spectralFlatness: 0.5,
-    spectralCentroid: 2000,
-    subBass: 0,
-    lowMid: 0,
-    highMid: 0,
-    crestFactor: 0,  // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
-    // WAVE 3422: Core bands para el path Omni (VirtualWire/USB).
-    // En el path frontend (WebAudio IPC) estos campos no se usan — el frontend
-    // envía bass/mid/high a 60fps y ya trae su propio suavizado.
-    // En el path Omni el Worker es única autoridad pero a ~10fps con gaps entre
-    // frames. Sin EMA, bass oscila entre 0 y el valor real en cada frame vacío.
-    bass: 0,
-    mid: 0,
-    high: 0,
-    energy: 0,
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
-  // Since BETA worker no longer has beatPhase (Pacemaker is in main thread),
-  // syncopation must be estimated HERE using Pacemaker's real beatPhase.
-  // Uses same algorithm as SimpleRhythmDetector but with real phase data.
-  // ═══════════════════════════════════════════════════════════════════════════
-  private syncopationPhaseHistory: { phase: number; energy: number }[] = []
-  private smoothedSyncopation: number = 0.35 // Neutral default (same as Worker)
-  private readonly SYNC_HISTORY_SIZE = 32
-  private readonly SYNC_EMA_ALPHA = 0.08 // Same smoothing factor as Worker
+  private readonly syncSmoother = new SyncSmoother()
+  private readonly intentComposer = new IntentComposer()
   
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
@@ -407,24 +380,26 @@ export class TitanOrchestrator {
         if (isOmniActive) {
           // Omni path: Worker = SOLE AUTHORITY for all bands + timestamp
           //
-          // WAVE 3422 — EMA anti-parpadeo para bandas principales:
-          // El Worker emite frames a ~10fps con VW, pero el SAB tiene gaps entre
-          // entregas. Frames "vacíos" (bass≈0) se intercalan con frames reales.
-          // Sin suavizado, bass oscila 0 ↔ 0.18 en cada ciclo → parpadeo visible.
-          // Alpha 0.35: reacciona en ~3 frames (~210ms) — suficientemente rápido
-          // para que los kicks se sientan pero elimina el flip a cero entre frames.
-          const OMNI_EMA = 0.35;
-          this.smoothedMetrics.bass   = (1 - OMNI_EMA) * this.smoothedMetrics.bass   + OMNI_EMA * levels.bass;
-          this.smoothedMetrics.mid    = (1 - OMNI_EMA) * this.smoothedMetrics.mid    + OMNI_EMA * levels.mid;
-          this.smoothedMetrics.high   = (1 - OMNI_EMA) * this.smoothedMetrics.high   + OMNI_EMA * levels.treble;
-          this.smoothedMetrics.energy = (1 - OMNI_EMA) * this.smoothedMetrics.energy + OMNI_EMA * levels.energy;
+          // WAVE 3422 — EMA anti-parpadeo para bandas principales.
+          // WAVE 3504.5: delegated to SyncSmoother.smooth(raw, omniPath=true).
+          // SyncSmoother holds its own EMA state — no smoothedMetrics field here.
+          const smoothedOmni = this.syncSmoother.smooth(
+            {
+              bass: levels.bass, mid: levels.mid, high: levels.treble,
+              energy: levels.energy,
+              harshness: levels.harshness, spectralFlatness: levels.spectralFlatness,
+              spectralCentroid: levels.spectralCentroid, subBass: levels.subBass,
+              lowMid: levels.lowMid, highMid: levels.highMid, crestFactor: levels.crestFactor,
+            },
+            true /* omniPath */,
+          )
 
           this.lastAudioData = {
             ...this.lastAudioData,
-            bass:   this.smoothedMetrics.bass,
-            mid:    this.smoothedMetrics.mid,
-            high:   this.smoothedMetrics.high,
-            energy: this.smoothedMetrics.energy,
+            bass:   smoothedOmni.bass,
+            mid:    smoothedOmni.mid,
+            high:   smoothedOmni.high,
+            energy: smoothedOmni.energy,
             subBass: levels.subBass ?? this.lastAudioData.subBass,
             lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
             highMid: levels.highMid ?? this.lastAudioData.highMid,
@@ -588,11 +563,8 @@ export class TitanOrchestrator {
     }
     
     this.isRunning = true
-    this.mainLoopInterval = setInterval(() => {
-      this.processFrame()
-    }, 23) // ⚡ WAVE 2510: 44fps — feeds RenderWorker hot-frames at Nyquist-safe rate
-           // Strobes up to 22Hz resolvable. DMX dispatch is hardware-adaptive:
-           // Enttec Pro/Art-Net @ 44Hz, generic USB @ 30Hz (separate from tick rate)
+    // ⚡ WAVE 3504.5: 44 Hz interval + Stampede Guard delegated to FrameScheduler
+    this.scheduler.start()
 
     // ─────────────────────────────────────────────────────────────────
     // 🫀 OPERACIÓN CARDIOGRAMA — Event Loop Lag Monitor (Main Thread)
@@ -666,10 +638,8 @@ export class TitanOrchestrator {
     await new Promise<void>(resolve => setTimeout(resolve, 30))
 
     // Paso 4: Ahora sí podemos matar el loop sin dejar zombis
-    if (this.mainLoopInterval) {
-      clearInterval(this.mainLoopInterval)
-      this.mainLoopInterval = null
-    }
+    // WAVE 3504.5: scheduler encapsulates the interval and stampede guard
+    await this.scheduler.stop()
     if (this.cardiogramaInterval) {
       clearInterval(this.cardiogramaInterval)
       this.cardiogramaInterval = null
@@ -714,29 +684,17 @@ export class TitanOrchestrator {
 
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline
-   */
-  /**
    * 🎬 PROCESAR FRAME: El latido del universo
    * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
-   * 🔒 WAVE 2211: ASYNC STAMPEDE GUARD — prevents overlapping processFrame() calls
+   * 🔒 WAVE 2211: Stampede guard delegated to FrameScheduler (WAVE 3504.5)
    */
   private async processFrame(): Promise<void> {
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔒 WAVE 2211: STAMPEDE GUARD
-    // setInterval(16) doesn't wait for async completion. If engine.update()
-    // takes >16ms, multiple processFrame() calls stack up, corrupting:
-    //   - HAL.measurePhysicsDeltaTime() (dt becomes ~0ms for the interloper)
-    //   - FixturePhysicsDriver positions (two frames writing simultaneously)
-    //   - MasterArbiter state (two arbitrate() calls with different intents)
-    // Result: erratic movement, "chill acting like rock", position jumps.
-    // FIX: Skip frame if previous is still processing. No data loss —
-    //   the NEXT interval will pick up with correct dt measurement.
+    // 🔒 WAVE 2211: STAMPEDE GUARD (now in FrameScheduler._onInterval())
+    // The FrameScheduler skips ticks if the previous async processFrame()
+    // is still running. Contract preserved — guard moved to the scheduler.
     // ═══════════════════════════════════════════════════════════════════════
-    if (this.isProcessingFrame) return
-    this.isProcessingFrame = true
-    
-    try {
-    
+
     if (!this.brain || !this.engine || !this.hal) return
     
     this.frameCount++
@@ -813,12 +771,22 @@ export class TitanOrchestrator {
       energy = 0
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1011.5: THE DAM - Apply EMA smoothing to FFT metrics
-    // Esto elimina el parpadeo causado por picos/caídas bruscas del FFT crudo
-    // Bass/Mid/Treble ya están normalizados por AGC - NO los tocamos
-    // ═══════════════════════════════════════════════════════════════════════════
-    this.applyEMASmoothing();
+    // ⚡ WAVE 3504.5: Delegated to SyncSmoother — apply EMA to all FFT metrics
+    // Frontend (WebAudio path): omniPath=false (bass/mid/high/energy untouched)
+    // Worker (Omni path): already smoothed in brain.on('audio-levels') handler
+    this.syncSmoother.smooth(
+      {
+        harshness:       this.lastAudioData.harshness,
+        spectralFlatness: this.lastAudioData.spectralFlatness,
+        spectralCentroid: this.lastAudioData.spectralCentroid,
+        subBass:          this.lastAudioData.subBass,
+        lowMid:           this.lastAudioData.lowMid,
+        highMid:          this.lastAudioData.highMid,
+        crestFactor:      this.lastAudioData.crestFactor,
+        bass: 0, mid: 0, high: 0, energy: 0, // not smoothed on frontend path
+      },
+      false /* omniPath */,
+    )
     
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
@@ -883,7 +851,7 @@ export class TitanOrchestrator {
       
       if (this.frameCount % 60 === 0) {
         const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
-        const syncInfo = this.smoothedSyncopation.toFixed(2)
+        const syncInfo = this.syncSmoother.currentSyncopation.toFixed(2)
         const _framesSinceLog = this.frameCount - this.lastStableWorkerBpmFrame
         const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
           ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
@@ -920,18 +888,18 @@ export class TitanOrchestrator {
       context.beatPhase = beatState.pllLocked
         ? (beatState.pllPhase ?? beatState.phase)
         : workerBeatPhase
-      context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid)
+      context.syncopation = this.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (hasFreewheelMemory) {
       // 🔥 WAVE 2179: Priority 2 — FREEWHEEL MEMORY
       // Las luces no se enteran del break. El show continúa en el BPM real.
       context.bpm = this.lastStableWorkerBpm
       context.beatPhase = beatState.pllPhase ?? beatState.phase
-      context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid)
+      context.syncopation = this.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (beatState.bpm > 0 && beatState.confidence > 0) {
       // Priority 3: Pacemaker interno (cuando no hay ningún recuerdo del Worker)
       context.bpm = beatState.bpm
       context.beatPhase = beatState.pllPhase ?? beatState.phase
-      context.syncopation = this.estimateSyncopation(
+      context.syncopation = this.syncSmoother.estimateSyncopation(
         beatState.pllPhase ?? beatState.phase,
         bass,
         mid
@@ -961,17 +929,17 @@ export class TitanOrchestrator {
       beatCount: this.lastAudioData.workerKickCount ?? beatState.beatCount,
       bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
       beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
-      // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
-      harshness: this.smoothedMetrics.harshness,
-      spectralFlatness: this.smoothedMetrics.spectralFlatness,
-      spectralCentroid: this.smoothedMetrics.spectralCentroid,
+      // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS (WAVE 3504.5: via SyncSmoother)
+      harshness: this.syncSmoother.currentSmoothed.harshness,
+      spectralFlatness: this.syncSmoother.currentSmoothed.spectralFlatness,
+      spectralCentroid: this.syncSmoother.currentSmoothed.spectralCentroid,
       // 💥 WAVE 2352: crestFactor RAW para physics engines - los transitorios de kick NO se suavizan
       // El EMA destruye el pico que diferencia un bombo de un rolling bass
-      crestFactor: this.lastAudioData.crestFactor ?? this.smoothedMetrics.crestFactor,
+      crestFactor: this.lastAudioData.crestFactor ?? this.syncSmoother.currentSmoothed.crestFactor,
       // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
-      subBass: this.smoothedMetrics.subBass,
-      lowMid: this.smoothedMetrics.lowMid,
-      highMid: this.smoothedMetrics.highMid,
+      subBass: this.syncSmoother.currentSmoothed.subBass,
+      lowMid: this.syncSmoother.currentSmoothed.lowMid,
+      highMid: this.syncSmoother.currentSmoothed.highMid,
       // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
       // 🛡️ WAVE 2512 FIX 2: Kick Signal Veto in Freewheel
       // kickDetected only fires if Worker directly detected OR PLL has a real lock.
@@ -1047,148 +1015,15 @@ export class TitanOrchestrator {
     const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds()
     
     if (effectOutput.hasActiveEffects) {
-      // WAVE 3190: Reutilizar buffer pre-asignado — cero new Map() por frame con effects activos
+      // ⚡ WAVE 3504.5: Delegated to IntentComposer (pure module extracted from monolith)
+      // Pre-allocated _effectIntentBuf passed as outMap → zero new Map() per frame.
       this._effectIntentBuf.clear()
-      const intentMap = this._effectIntentBuf
-      
-      // ── ZONE OVERRIDES (pinceles finos) ──────────────────────────────
-      if (effectOutput.zoneOverrides) {
-        // WAVE 3190: for...in en lugar de Object.keys() — cero alloc de array intermedio
-        for (const zoneId in effectOutput.zoneOverrides) {
-          if (!Object.prototype.hasOwnProperty.call(effectOutput.zoneOverrides, zoneId)) continue
-          const zoneData = effectOutput.zoneOverrides[zoneId]
-          const fixtureIds = masterArbiter.getFixtureIdsByZone(zoneId)
-          
-          for (const fixtureId of fixtureIds) {
-            // Skip Chronos-protected fixtures
-            if (chronosFixtureIds.has(fixtureId)) continue
-            
-            // Build the effect intent for this fixture
-            const fixtureIntent: EffectIntent = {
-              mixBus: effectOutput.mixBus || 'htp',
-              globalComposition: effectOutput.globalComposition ?? 1,
-              overrideMoverShield: effectOutput.overrideMoverShield,
-            }
-            
-            // Color: HSL → RGB conversion
-            if (zoneData.color) {
-              const rgb = this.hslToRgb(
-                zoneData.color.h,
-                zoneData.color.s,
-                zoneData.color.l
-              )
-              fixtureIntent.color = rgb
-            }
-            
-            // Dimmer: convert 0-1 → 0-255
-            if (zoneData.dimmer !== undefined) {
-              fixtureIntent.dimmer = Math.round(zoneData.dimmer * 255)
-            }
-            
-            // White/Amber: convert 0-1 → 0-255
-            if (zoneData.white !== undefined) {
-              fixtureIntent.white = Math.round(zoneData.white * 255)
-            } else if (effectOutput.mixBus === 'global') {
-              // 🛡️ WAVE 993: THE IRON CURTAIN — unspecified channels die under global bus
-              fixtureIntent.white = 0
-            }
-            
-            if (zoneData.amber !== undefined) {
-              fixtureIntent.amber = Math.round(zoneData.amber * 255)
-            } else if (effectOutput.mixBus === 'global') {
-              fixtureIntent.amber = 0
-            }
-            
-            // Movement: preserve original format for MasterArbiter
-            if (zoneData.movement) {
-              fixtureIntent.movement = {
-                pan: zoneData.movement.pan !== undefined
-                  ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.pan * 255) : Math.round((zoneData.movement.pan - 0.5) * 255))
-                  : undefined,
-                tilt: zoneData.movement.tilt !== undefined
-                  ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.tilt * 255) : Math.round((zoneData.movement.tilt - 0.5) * 255))
-                  : undefined,
-                isAbsolute: zoneData.movement.isAbsolute,
-              }
-            }
-            
-            // Merge: if fixture already has an intent (from another zone), keep highest priority
-            const existing = intentMap.get(fixtureId)
-            if (existing) {
-              // HTP merge for dimmer, LTP for color (last zone wins)
-              if (fixtureIntent.dimmer !== undefined && existing.dimmer !== undefined) {
-                fixtureIntent.dimmer = Math.max(fixtureIntent.dimmer, existing.dimmer)
-              }
-            }
-            
-            intentMap.set(fixtureId, fixtureIntent)
-          }
-        }
-      }
-      
-      // ── GLOBAL BROCHA GORDA (legacy: one color for all affected fixtures) ──
-      if (!effectOutput.zoneOverrides && effectOutput.dimmerOverride !== undefined) {
-        // Determine affected fixture IDs
-        const zones = effectOutput.zones || []
-        const globalComp = effectOutput.globalComposition ?? 0
-        
-        // Color: use colorOverride or default dorado
-        let color = { r: 255, g: 200, b: 80 } // Default dorado (SolarFlare legacy)
-        if (effectOutput.colorOverride) {
-          color = this.hslToRgb(
-            effectOutput.colorOverride.h,
-            effectOutput.colorOverride.s,
-            effectOutput.colorOverride.l
-          )
-        }
-        
-        for (let i = 0; i < this.fixtures.length; i++) {
-          const fixture = this.fixtures[i]
-          if (!fixture?.id) continue
-          if (chronosFixtureIds.has(fixture.id)) continue
-          
-          // Check if this fixture should be affected
-          let shouldApply = false
-          if (globalComp > 0) {
-            shouldApply = true // globalComposition affects ALL fixtures
-          } else if (zones.length > 0) {
-            const fixtureZone = (fixture.zone || '').toLowerCase()
-            const positionX = fixture.position?.x ?? 0
-            for (const zone of zones) {
-              if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-                shouldApply = true
-                break
-              }
-            }
-          }
-          
-          if (!shouldApply) continue
-          
-          intentMap.set(fixture.id, {
-            dimmer: Math.round(effectOutput.dimmerOverride * 255),
-            color,
-            mixBus: effectOutput.mixBus || 'htp',
-            globalComposition: globalComp,
-            overrideMoverShield: effectOutput.overrideMoverShield,
-          })
-        }
-      }
-      
-      // ── MOVEMENT OVERRIDE (global fallback for all movers) ──
-      // 🚫 WAVE 2900: CHRONOS SELECTIVE SEAL — La IA tiene prohibido emitir movimiento.
-      // movementOverride proviene de Core Effects procedurales (IA/Selene).
-      // El movimiento de movers es exclusivo del usuario (Hephaestus/XY pad/manual override).
-      // Este bloque queda desactivado permanentemente.
-      // if (effectOutput.movementOverride) { ... }
-      
-      // ═══════════════════════════════════════════════════════════════════
-      // 🎵 WAVE 2672→2720: HARMONIC QUANTIZER — MIGRADO AL HAL
-      // La cuantización armónica ahora vive en HAL.translateColorToWheel()
-      // (LA LEY UNIVERSAL DEL PÉNDULO). Toda orden de color dirigida a un
-      // fixture mecánico es cuantizada en HAL, sin importar la fuente:
-      // Titan, Chronos, Timeline, UI Manual — TODOS son gateados.
-      // El bloque de cuantización por efecto en Titan ya no es necesario.
-      // ═══════════════════════════════════════════════════════════════════
+      const { intentMap } = this.intentComposer.compose(
+        effectOutput,
+        this.fixtures as import('./intent/types').FixtureSnapshot[],
+        chronosFixtureIds,
+        this._effectIntentBuf,
+      )
 
       // Inject intents into the Arbiter BEFORE arbitration
       masterArbiter.setEffectIntents(intentMap)
@@ -1377,7 +1212,7 @@ export class TitanOrchestrator {
         if (!hasAny) {
           for (const [zoneKey] of this._hephByZone) {
             if (zoneKey === 'all') continue
-            if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) { hasAny = true; break }
+            if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) { hasAny = true; break }
           }
         }
         if (!hasAny) continue
@@ -1419,7 +1254,7 @@ export class TitanOrchestrator {
         // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support
         for (const [zoneKey, outputs] of this._hephByZone) {
           if (zoneKey === 'all') continue
-          if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
+          if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) {
             applyOutputs(outputs)
           }
         }
@@ -1598,11 +1433,11 @@ export class TitanOrchestrator {
           },
           // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
           spectrumBands: {
-            subBass: this.smoothedMetrics.subBass,
+            subBass: this.syncSmoother.currentSmoothed.subBass,
             bass: bass,  // Use the already available bass from engineAudioMetrics
-            lowMid: this.smoothedMetrics.lowMid,
+            lowMid: this.syncSmoother.currentSmoothed.lowMid,
             mid: mid,    // Use the already available mid from engineAudioMetrics
-            highMid: this.smoothedMetrics.highMid,
+            highMid: this.syncSmoother.currentSmoothed.highMid,
             treble: high * 0.8,  // Approximate from high
             ultraAir: high * 0.3, // Approximate ultra-high from high
             dominant: bass > mid && bass > high ? 'bass' as const : 
@@ -1761,19 +1596,14 @@ export class TitanOrchestrator {
         section: context.section?.type ?? 'unknown',
         bands: [
           bass,
-          this.smoothedMetrics.subBass ?? 0,
-          this.smoothedMetrics.lowMid ?? 0,
+          this.syncSmoother.currentSmoothed.subBass ?? 0,
+          this.syncSmoother.currentSmoothed.lowMid ?? 0,
           mid,
-          this.smoothedMetrics.highMid ?? 0,
+          this.syncSmoother.currentSmoothed.highMid ?? 0,
           high,
-          this.smoothedMetrics.spectralCentroid ?? 0,
+          this.syncSmoother.currentSmoothed.spectralCentroid ?? 0,
         ]
       })
-    }
-    
-    } finally {
-      // 🔒 WAVE 2211: ALWAYS release the guard, even if processFrame() throws
-      this.isProcessingFrame = false
     }
   }
 
@@ -2255,157 +2085,6 @@ export class TitanOrchestrator {
     }
   }
   
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 WAVE 692.2: HSL to RGB conversion for effect colors
-  // ═══════════════════════════════════════════════════════════════════════════
-  private hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-    // h: 0-360, s: 0-100, l: 0-100
-    const hNorm = h / 360
-    const sNorm = s / 100
-    const lNorm = l / 100
-    
-    let r: number, g: number, b: number
-    
-    if (sNorm === 0) {
-      r = g = b = lNorm
-    } else {
-      const hue2rgb = (p: number, q: number, t: number): number => {
-        if (t < 0) t += 1
-        if (t > 1) t -= 1
-        if (t < 1/6) return p + (q - p) * 6 * t
-        if (t < 1/2) return q
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
-        return p
-      }
-      
-      const q = lNorm < 0.5 
-        ? lNorm * (1 + sNorm) 
-        : lNorm + sNorm - lNorm * sNorm
-      const p = 2 * lNorm - q
-      
-      r = hue2rgb(p, q, hNorm + 1/3)
-      g = hue2rgb(p, q, hNorm)
-      b = hue2rgb(p, q, hNorm - 1/3)
-    }
-    
-    return {
-      r: Math.round(r * 255),
-      g: Math.round(g * 255),
-      b: Math.round(b * 255),
-    }
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🗺️ WAVE 2543.5: Single zone matcher — ZoneMapper handles stereo detection internally
-  // fixtureMatchesZone (no-position) eliminated — always pass positionX for correctness
-  // ═══════════════════════════════════════════════════════════════════════════
-  private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
-    return zoneMapperMatch(fixtureZone, targetZone, positionX)
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
-  // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
-  // 
-  // EMA Formula: smoothed = (1 - alpha) * smoothed + alpha * raw
-  // - ALPHA_FAST (0.25): Reacciona en ~4 frames (~133ms) - para harshness/guitarras
-  // - ALPHA_SLOW (0.08): Reacciona en ~12 frames (~400ms) - para contexto/ambiente
-  // ═══════════════════════════════════════════════════════════════════════════
-  private applyEMASmoothing(): void {
-    const raw = this.lastAudioData;
-    
-    // Harshness: FAST - queremos que responda a guitarras distorsionadas
-    if (typeof raw.harshness === 'number') {
-      this.smoothedMetrics.harshness = 
-        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.harshness + 
-        this.EMA_ALPHA_FAST * raw.harshness;
-    }
-    
-    // SpectralFlatness: SLOW - contexto ambiental, no debería saltar
-    if (typeof raw.spectralFlatness === 'number') {
-      this.smoothedMetrics.spectralFlatness = 
-        (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralFlatness + 
-        this.EMA_ALPHA_SLOW * raw.spectralFlatness;
-    }
-    
-    // SpectralCentroid: SLOW - el "brillo" tonal es contexto, no evento
-    if (typeof raw.spectralCentroid === 'number') {
-      this.smoothedMetrics.spectralCentroid = 
-        (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralCentroid + 
-        this.EMA_ALPHA_SLOW * raw.spectralCentroid;
-    }
-    
-    // SubBass: FAST - kicks profundos deben sentirse
-    if (typeof raw.subBass === 'number') {
-      this.smoothedMetrics.subBass = 
-        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.subBass + 
-        this.EMA_ALPHA_FAST * raw.subBass;
-    }
-    
-    // LowMid: FAST - presencia de guitarras/voces
-    if (typeof raw.lowMid === 'number') {
-      this.smoothedMetrics.lowMid = 
-        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.lowMid + 
-        this.EMA_ALPHA_FAST * raw.lowMid;
-    }
-    
-    // HighMid: FAST - claridad/ataque
-    if (typeof raw.highMid === 'number') {
-      this.smoothedMetrics.highMid = 
-        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid + 
-        this.EMA_ALPHA_FAST * raw.highMid;
-    }
-
-    // 💥 WAVE 2347: CrestFactor: FAST - los transients de kick son eventos, deben sentirse
-    if (typeof raw.crestFactor === 'number') {
-      this.smoothedMetrics.crestFactor =
-        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.crestFactor +
-        this.EMA_ALPHA_FAST * raw.crestFactor;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Syncopation estimator
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Mirror of SimpleRhythmDetector algorithm but using REAL beatPhase
-  // from Pacemaker instead of the dead beatPhase=0 from Worker.
-  //
-  // Syncopation = ratio of off-beat energy to total energy.
-  // On-beat: phase < 0.25 || phase > 0.75 (50% window around beat)
-  // Off-beat: everything else (the "and" of the beat)
-  // High syncopation = energy concentrated off-beat (funk, breakbeat)
-  // Low syncopation = energy on-beat (four-on-floor techno)
-  // ═══════════════════════════════════════════════════════════════════════════
-  private estimateSyncopation(beatPhase: number, bass: number, mid: number): number {
-    const energy = bass + mid * 0.5
-    
-    this.syncopationPhaseHistory.push({ phase: beatPhase, energy })
-    if (this.syncopationPhaseHistory.length > this.SYNC_HISTORY_SIZE) {
-      this.syncopationPhaseHistory.shift()
-    }
-    
-    let onBeatEnergy = 0
-    let offBeatEnergy = 0
-    
-    for (const frame of this.syncopationPhaseHistory) {
-      const isOnBeat = frame.phase < 0.25 || frame.phase > 0.75
-      if (isOnBeat) {
-        onBeatEnergy += frame.energy
-      } else {
-        offBeatEnergy += frame.energy
-      }
-    }
-    
-    const totalEnergy = onBeatEnergy + offBeatEnergy
-    const instantSync = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0
-    
-    // EMA smoothing — same alpha as Worker for behavioral parity
-    this.smoothedSyncopation = 
-      (this.SYNC_EMA_ALPHA * instantSync) + 
-      ((1 - this.SYNC_EMA_ALPHA) * this.smoothedSyncopation)
-    
-    return this.smoothedSyncopation
-  }
 }
 
 // Singleton instance

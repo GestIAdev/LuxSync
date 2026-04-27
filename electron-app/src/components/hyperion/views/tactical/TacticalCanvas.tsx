@@ -54,6 +54,19 @@ import type {
 } from '../../../../workers/hyperion-render.types'
 import './TacticalCanvas.css'
 
+const HYPERION_RUNTIME_METRICS_EVENT = 'hyperion:runtime-metrics'
+
+interface HyperionRuntimeMetricsPayload {
+  queueDepth: number
+  workerBusy: boolean
+  framesSent: number
+  framesAcked: number
+  framesDropped: number
+  ackHz: number
+  dropRatePct: number
+  timestamp: number
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -183,6 +196,18 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // unmounted in production). The worker lives for the entire session lifetime.
   const observerRef = useRef<ResizeObserver | null>(null)
   const isTransferredRef = useRef(false)
+  const isWorkerBusyRef = useRef(false)
+  const mailboxRef = useRef<WorkerInboundMessage | null>(null)
+  const mailboxTransferRef = useRef<Transferable[] | undefined>(undefined)
+  const isFramePipelineReadyRef = useRef(false)
+  const runtimeCountersRef = useRef({
+    framesSent: 0,
+    framesAcked: 0,
+    framesDropped: 0,
+    lastAckAt: 0,
+    ackHz: 0,
+    lastPublishAt: 0,
+  })
   const metricsRef = useRef<RenderMetrics>({
     fps: 60,
     frameTime: 0,
@@ -246,6 +271,56 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     }
   }, [])
 
+  const publishRuntimeMetrics = useCallback((force = false) => {
+    if (typeof window === 'undefined') return
+
+    const now = performance.now()
+    const counters = runtimeCountersRef.current
+    if (!force && now - counters.lastPublishAt < 250) {
+      return
+    }
+    counters.lastPublishAt = now
+
+    const attempted = counters.framesSent + counters.framesDropped
+    const dropRatePct = attempted > 0 ? (counters.framesDropped / attempted) * 100 : 0
+    const queueDepth = mailboxRef.current ? 1 : 0
+
+    const payload: HyperionRuntimeMetricsPayload = {
+      queueDepth,
+      workerBusy: isWorkerBusyRef.current,
+      framesSent: counters.framesSent,
+      framesAcked: counters.framesAcked,
+      framesDropped: counters.framesDropped,
+      ackHz: counters.ackHz,
+      dropRatePct,
+      timestamp: Date.now(),
+    }
+
+    window.dispatchEvent(new CustomEvent(HYPERION_RUNTIME_METRICS_EVENT, { detail: payload }))
+  }, [])
+
+  const flushFrameMailbox = useCallback(() => {
+    const w = workerRef.current
+    const pending = mailboxRef.current
+    if (!w || !pending || !isFramePipelineReadyRef.current || isWorkerBusyRef.current) {
+      return
+    }
+
+    isWorkerBusyRef.current = true
+    mailboxRef.current = null
+    const transfer = mailboxTransferRef.current
+    mailboxTransferRef.current = undefined
+
+    if (transfer && transfer.length > 0) {
+      w.postMessage(pending, transfer)
+    } else {
+      w.postMessage(pending)
+    }
+
+    runtimeCountersRef.current.framesSent++
+    publishRuntimeMetrics()
+  }, [publishRuntimeMetrics])
+
   // ── Worker Init & Canvas Transfer ─────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current
@@ -285,7 +360,31 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       const msg = e.data
       switch (msg.type) {
         case 'READY':
+          isFramePipelineReadyRef.current = true
+          isWorkerBusyRef.current = false
           setIsReady(true)
+          flushFrameMailbox()
+          break
+
+        case 'FRAME_ACK':
+          {
+            const counters = runtimeCountersRef.current
+            const now = performance.now()
+            if (counters.lastAckAt > 0) {
+              const dt = now - counters.lastAckAt
+              if (dt > 0) {
+                const instantAckHz = 1000 / dt
+                counters.ackHz = counters.ackHz === 0
+                  ? instantAckHz
+                  : counters.ackHz * 0.8 + instantAckHz * 0.2
+              }
+            }
+            counters.lastAckAt = now
+            counters.framesAcked++
+          }
+          isWorkerBusyRef.current = false
+          flushFrameMailbox()
+          publishRuntimeMetrics()
           break
 
         case 'HIT_TEST': {
@@ -393,15 +492,41 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     observer.observe(container)
     observerRef.current = observer
 
-    // ── IMMORTAL CLEANUP ───────────────────────────────────────────────
-    // This function is intentionally a no-op for Strict Mode survival.
-    // The worker and canvas transfer must persist across the fake unmount.
-    // In a true production unmount (hot reload, route change), the browser
-    // will GC the worker anyway. If we ever need explicit teardown, use the
-    // observerRef and workerRef directly from outside this effect.
+    // ── DETERMINISTIC CLEANUP ───────────────────────────────────────────
+    // WAVE 3502: Explicit teardown to avoid residual queues/listeners.
     return () => {
-      // Intentionally empty — The Immortal Worker survives Strict Mode.
-      // See architecture note above (CSS persistence, session lifetime).
+      // En dev (React Strict Mode), el fake unmount no debe destruir el worker
+      // porque OffscreenCanvas no puede transferirse dos veces sobre el mismo nodo.
+      if (import.meta.env.DEV) {
+        return
+      }
+
+      try {
+        observerRef.current?.disconnect()
+      } catch {}
+      observerRef.current = null
+
+      isFramePipelineReadyRef.current = false
+      isWorkerBusyRef.current = false
+      mailboxRef.current = null
+      mailboxTransferRef.current = undefined
+      runtimeCountersRef.current.framesSent = 0
+      runtimeCountersRef.current.framesAcked = 0
+      runtimeCountersRef.current.framesDropped = 0
+      runtimeCountersRef.current.ackHz = 0
+      runtimeCountersRef.current.lastAckAt = 0
+      publishRuntimeMetrics(true)
+
+      const activeWorker = workerRef.current
+      if (activeWorker) {
+        try {
+          activeWorker.postMessage({ type: 'SHUTDOWN' })
+        } catch {}
+        activeWorker.onmessage = null
+        activeWorker.onerror = null
+        activeWorker.terminate()
+      }
+      workerRef.current = null
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -508,7 +633,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
 
       frameNumber++
 
-      // Send to worker with Transferrable (zero-copy)
+      // Mailbox latest-only: keep only freshest frame while worker is busy.
       const msg: WorkerInboundMessage = {
         type: 'FRAME',
         frameNumber,
@@ -518,7 +643,15 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         fixtureCount: currentFixtures.length,
         frameData,
       }
-      postToWorker(msg, [frameData.buffer])
+
+      if (mailboxRef.current) {
+        runtimeCountersRef.current.framesDropped++
+      }
+
+      mailboxRef.current = msg
+      mailboxTransferRef.current = [frameData.buffer]
+      flushFrameMailbox()
+      publishRuntimeMetrics()
 
       rafId = requestAnimationFrame(pump)
     }
@@ -528,7 +661,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     return () => {
       if (rafId) cancelAnimationFrame(rafId)
     }
-  }, [isReady, isVisible, postToWorker])
+  }, [isReady, isVisible, flushFrameMailbox, publishRuntimeMetrics])
 
   // ── Mouse Handlers (DOM → Worker) ─────────────────────────────────────
   

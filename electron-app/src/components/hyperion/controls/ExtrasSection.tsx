@@ -107,6 +107,10 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   // Definition cache: defId → CachedPhantomDef
   const cacheRef = useRef<Map<string, CachedPhantomDef>>(new Map())
   
+  // WAVE 3502: Track which channelIndices have been explicitly set by the operator.
+  // This prevents hasOverride snap-to-defaults from overwriting programmed values.
+  const operatorSetRef = useRef<Set<number>>(new Set())
+  
   // ═══════════════════════════════════════════════════════════════════
   // FIXTURE RESOLUTION — Cross-reference selected IDs with stage DNA
   // ═══════════════════════════════════════════════════════════════════
@@ -176,8 +180,35 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   // CHANNEL RESOLUTION — Inline first, IPC only when needed
   // ═══════════════════════════════════════════════════════════════════
   
+  // WAVE 3503: Stable ref to selectedFixtures — accessed in the resolve effect
+  // without putting it in deps (stageFixtures updates every render cycle and
+  // would cause channelValues to be wiped on every HAL tick).
+  const selectedFixturesRef = useRef(selectedFixtures)
   useEffect(() => {
-    if (!isExpanded || selectedFixtures.length === 0) {
+    selectedFixturesRef.current = selectedFixtures
+  }, [selectedFixtures])
+
+  // WAVE 3502: Resolve phantom channels whenever the fixture SELECTION changes —
+  // NOT gated by isExpanded. Gating on isExpanded caused re-resolution every time
+  // the accordion opened/closed, which triggered the snap-to-defaults chain.
+  //
+  // WAVE 3502.1: Reset is INTEGRATED here (runs before the async fetch) so it
+  // always precedes the resolution — never after it. A separate reset useEffect
+  // created an inverted execution order: resolve fired first, then reset wiped it.
+  //
+  // WAVE 3503: Dep is JSON.stringify(selectedIds) NOT selectedFixtures. The fixture
+  // objects (stageFixtures) update on every HAL tick which creates new array refs,
+  // which would reset channelValues every frame. We only need to re-resolve when
+  // the set of selected fixture IDs actually changes (user picks different fixtures).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Always reset when selection changes, even if empty
+    setPhantomChannels([])
+    setChannelValues(new Map())
+    operatorSetRef.current.clear()
+
+    const currentFixtures = selectedFixturesRef.current
+    if (currentFixtures.length === 0) {
       return
     }
     
@@ -188,7 +219,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
       const allPhantomChannels: PhantomChannel[] = []
       const now = Date.now()
       
-      for (const fixture of selectedFixtures) {
+      for (const fixture of currentFixtures) {
         if (cancelled) break
         const f = fixture as any
         
@@ -290,16 +321,13 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         allPhantomChannels.sort((a, b) => a.channelIndex - b.channelIndex)
         setPhantomChannels(allPhantomChannels)
         
-        // Initialize values with defaults
-        const defaults = new Map<number, number>()
-        for (const ch of allPhantomChannels) {
-          defaults.set(ch.channelIndex, ch.defaultValue)
-        }
+        // Initialize values with defaults — but ONLY for channels not yet in state
+        // (preserves any values the operator already set before resolution finished)
         setChannelValues(prev => {
           const merged = new Map(prev)
-          for (const [idx, val] of defaults) {
-            if (!merged.has(idx)) {
-              merged.set(idx, val)
+          for (const ch of allPhantomChannels) {
+            if (!merged.has(ch.channelIndex)) {
+              merged.set(ch.channelIndex, ch.defaultValue)
             }
           }
           return merged
@@ -311,22 +339,24 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     resolvePhantomChannels()
     
     return () => { cancelled = true }
-  }, [isExpanded, selectedFixtures, resolveDefId, extractInlinePhantoms])
+    // WAVE 3503: JSON.stringify(selectedIds) — solo re-resolve cuando cambia la selección,
+    // NO cuando cambian los objetos de selectedFixtures (que se recrean en cada tick del HAL).
+  }, [JSON.stringify(selectedIds)])  // eslint-disable-line react-hooks/exhaustive-deps
   
-  // Reset when selection changes
-  useEffect(() => {
-    setPhantomChannels([])
-    setChannelValues(new Map())
-  }, [selectedIds.length])
-  
-  // 🔥 WAVE 2084.12: HYDRATION RESET — When override is released, snap UI to defaults
+  // WAVE 3502: HYDRATION RESET guarded — only snap channels the operator has NOT explicitly
+  // programmed. Channels in operatorSetRef survive the hasOverride transition.
+  // This prevents accordion close/open cycles from destroying programmed values.
   useEffect(() => {
     if (!hasOverride && phantomChannels.length > 0) {
-      const defaults = new Map<number, number>()
-      for (const ch of phantomChannels) {
-        defaults.set(ch.channelIndex, ch.defaultValue)
-      }
-      setChannelValues(defaults)
+      setChannelValues(prev => {
+        const next = new Map(prev)
+        for (const ch of phantomChannels) {
+          if (!operatorSetRef.current.has(ch.channelIndex)) {
+            next.set(ch.channelIndex, ch.defaultValue)
+          }
+        }
+        return next
+      })
     }
   }, [hasOverride, phantomChannels])
   
@@ -337,7 +367,10 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   /**
    * Send a phantom channel value to Arbiter
    */
-  const handleChannelChange = useCallback(async (channelIndex: number, value: number, channelType: string) => {
+  const handleChannelChange = useCallback(async (channelIndex: number, value: number, channelType: string, channelLabel: string) => {
+    // WAVE 3502: Mark this channel as operator-programmed so hydration resets don't clobber it
+    operatorSetRef.current.add(channelIndex)
+    
     setChannelValues(prev => {
       const next = new Map(prev)
       next.set(channelIndex, value)
@@ -346,11 +379,21 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     
     onOverrideChange(true)
     
+    // WAVE 3503: For 'custom'/'unknown' channels, key by NAME not by type.
+    // Multiple custom channels share the same type string — sending controls[type]
+    // collapses all 20 channels into one key. The Arbiter phantom lookup (PATH 1)
+    // already uses channel.name as the key, so we match that here.
+    const isNameKeyed = channelType === 'custom' || channelType === 'unknown'
+    const controlsPayload = isNameKeyed
+      ? { phantomChannels: { [channelLabel]: value } }
+      : { [channelType]: value }
+    const channelsPayload = isNameKeyed ? [channelLabel] : [channelType]
+    
     try {
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
-        controls: { [channelType]: value },
-        channels: [channelType],
+        controls: controlsPayload,
+        channels: channelsPayload,
         source: 'ui_programmer_extras',
       })
     } catch (err) {
@@ -362,14 +405,18 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
    * Release all phantom channels back to AI
    */
   const handleRelease = useCallback(async () => {
+    // WAVE 3502: On explicit release, clear the operator set so defaults can take over
+    operatorSetRef.current.clear()
     onOverrideChange(false)
     
-    const channelTypes = phantomChannels.map(ch => ch.type)
+    const channelKeys = phantomChannels.map(ch =>
+      (ch.type === 'custom' || ch.type === 'unknown') ? ch.label : ch.type
+    )
     
     try {
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
-        channels: channelTypes,
+        channels: channelKeys,
       })
       console.log(`[Extras] 🔓 Phantom channels released for ${selectedIds.length} fixtures`)
     } catch (err) {
@@ -482,7 +529,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
                   >
                     <div className="phantom-channel-header">
                       <span className="phantom-channel-label">{ch.label}</span>
-                      <span className="phantom-channel-value">
+                      <span className="phantom-channel-value">, ch.label
                         {formatValue(value, ch.continuousRotation)}
                       </span>
                     </div>
@@ -492,7 +539,7 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
                       min={0}
                       max={255}
                       value={value}
-                      onChange={(e) => handleChannelChange(ch.channelIndex, parseInt(e.target.value, 10), ch.type)}
+                      onChange={(e) => handleChannelChange(ch.channelIndex, parseInt(e.target.value, 10), ch.type, ch.label)}
                     />
                   </div>
                 )

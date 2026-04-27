@@ -513,7 +513,11 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     window.electron.ipcRenderer.on('lux:fixtures-loaded', _fixtureListener)
     
     return () => {
-      // Solo cleanup, sin log
+      if (_fixtureListener) {
+        window.electron.ipcRenderer.removeListener('lux:fixtures-loaded', _fixtureListener)
+      }
+      _fixtureListener = null
+      _hasSubscribedToFixtures = false
     }
   }, [])
   

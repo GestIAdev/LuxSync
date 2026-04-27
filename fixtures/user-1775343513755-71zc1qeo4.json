@@ -145,12 +145,23 @@
       "is16bit": false
     }
   ],
+  "capabilities": {
+    "colorEngine": "rgbw",
+    "hasPan": false,
+    "hasTilt": false,
+    "hasColorMixing": false,
+    "hasColorWheel": false,
+    "hasGobo": false,
+    "hasPrism": false,
+    "hasStrobe": false,
+    "hasDimmer": false
+  },
   "physics": {
     "motorType": "stepper-cheap",
-    "maxAcceleration": 1500,
+    "maxAcceleration": 1000,
     "maxVelocity": 400,
     "safetyCap": true,
-    "orientation": "ceiling",
+    "orientation": "wall-left",
     "invertPan": false,
     "invertTilt": false,
     "swapPanTilt": false,
@@ -163,17 +174,7 @@
       "max": 180
     }
   },
-  "capabilities": {
-    "colorEngine": "rgbw",
-    "hasPan": false,
-    "hasTilt": false,
-    "hasColorMixing": false,
-    "hasColorWheel": false,
-    "hasGobo": false,
-    "hasPrism": false,
-    "hasStrobe": false,
-    "hasDimmer": false
-  },
-  "savedAt": "2026-04-04T22:59:07.247Z",
-  "source": "user"
+  "source": "user",
+  "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1775343513755-71zc1qeo4.json",
+  "savedAt": "2026-04-25T18:00:08.605Z"
 }

@@ -2023,16 +2023,17 @@ export class MasterArbiter extends EventEmitter {
     
     // Obtener canales del fixture registrado
     const fixtureData = this.fixtures.get(fixtureId)
-    const channelDefs: Array<{ type: string; name?: string; index?: number; defaultValue?: number }> =
+    const channelDefs: Array<{ type: string; name?: string; customName?: string; index?: number; defaultValue?: number }> =
       (fixtureData as any)?.channelDefinitions ?? (fixtureData as any)?.channels ?? []
     if (channelDefs.length > 0) {
       for (const ch of channelDefs) {
         if (!NATIVE_CHANNELS.has(ch.type)) {
           // Para canales custom/unknown usamos el nombre como key (evita colisión cuando
           // hay múltiples canales del mismo tipo). Para el resto usamos el tipo.
+          const labelKey = (ch.customName || ch.name || '').trim()
           const phantomKey =
             (ch.type === 'custom' || ch.type === 'unknown')
-              ? (ch.name || `unknown_${ch.index ?? 0}`)
+              ? (labelKey || `unknown_${ch.index ?? 0}`)
               : ch.type
           
           // Check manual override first:
@@ -2040,6 +2041,7 @@ export class MasterArbiter extends EventEmitter {
           // 2) controls[type] directamente — ruta directa de BeamSection (prism, gobo, strobe...)
           const manualPhantomValue =
             manualOverride?.controls?.phantomChannels?.[phantomKey] ??
+            (labelKey ? manualOverride?.controls?.phantomChannels?.[labelKey] : undefined) ??
             manualOverride?.controls?.phantomChannels?.[ch.type] ??
             (manualOverride?.overrideChannels?.includes(ch.type as ChannelType)
               ? (manualOverride.controls as Record<string, number>)[ch.type]

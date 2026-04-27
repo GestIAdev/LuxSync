@@ -213,6 +213,12 @@ export interface WorkerOutMetrics {
   fixtureCount: number
 }
 
+/** Ack de consumo de frame para backpressure latest-only */
+export interface WorkerOutFrameAck {
+  type: 'FRAME_ACK'
+  frameNumber: number
+}
+
 /** Worker crashed or encountered fatal error */
 export interface WorkerOutError {
   type: 'ERROR'
@@ -224,6 +230,7 @@ export type WorkerOutboundMessage =
   | WorkerOutHitTest
   | WorkerOutLassoComplete
   | WorkerOutMetrics
+  | WorkerOutFrameAck
   | WorkerOutError
 
 // ═══════════════════════════════════════════════════════════════════════════

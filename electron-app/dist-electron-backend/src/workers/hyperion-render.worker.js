@@ -437,6 +437,7 @@ self.onmessage = (e) => {
                 beatVisualEnvelope = 1.0;
             }
             lastOnBeat = msg.onBeat;
+            sendMessage({ type: 'FRAME_ACK', frameNumber: msg.frameNumber });
             break;
         }
         case 'SELECTION': {

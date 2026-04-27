@@ -2023,8 +2023,29 @@ export class HardwareAbstraction {
 
         // Dynamic channels: gate each byte by its channel type
         const sorted = [...channelDefs].sort((a, b) => a.index - b.index)
+        // WAVE 3503: Pre-compute whether ANY phantom channel has a manual override.
+        // 'custom'/'unknown' channels cannot be gated by a single sourceKey because
+        // N channels share the same type — the Arbiter stores them by NAME in
+        // phantomChannels. If at least one phantom is MANUAL, all custom bytes
+        // that were produced by the Arbiter already carry the correct values from
+        // the phantom passthrough — let them through intact.
+        const hasAnyPhantomManual = Object.entries(sources).some(
+          ([k, v]) => v === ControlLayer.MANUAL && !['dimmer','red','green','blue','pan','tilt','zoom','focus','speed','color_wheel'].includes(k)
+        )
         for (let ci = 0; ci < sorted.length && ci < packet.channels.length; ci++) {
           const chType = sorted[ci].type
+          const isCustomOrUnknown = chType === 'custom' || chType === 'unknown'
+          
+          // WAVE 3503: Custom/unknown channels pass through if ANY phantom is manual.
+          // Individual gating by name is not possible here (FixtureMapper already
+          // wrote the correct value from state.phantomChannels[name]).
+          if (isCustomOrUnknown) {
+            if (!hasAnyPhantomManual) {
+              packet.channels[ci] = sorted[ci].defaultValue ?? 0
+            }
+            continue
+          }
+          
           const sourceKey = this._channelTypeToSourceKey(chType)
           const isManual = sourceKey ? sources[sourceKey] === ControlLayer.MANUAL : false
           const isColorChannel = chType === 'red' || chType === 'green' || chType === 'blue' ||
@@ -2165,6 +2186,8 @@ export class HardwareAbstraction {
       case 'rotation': return 128 // Stop
       case 'shutter': return 255 // Open (safe — don't close the shutter)
       case 'macro': case 'control': return defaultValue ?? 0
+      // WAVE 3503: custom/unknown — use fixture defaultValue (usually 0 but respect profile)
+      case 'custom': case 'unknown': return defaultValue ?? 0
       default: return 0
     }
   }

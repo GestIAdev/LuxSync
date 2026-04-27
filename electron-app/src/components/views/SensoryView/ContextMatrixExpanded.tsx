@@ -12,7 +12,6 @@ import React, { memo, useMemo, useState, useEffect, useRef } from 'react'
 import { useTruthContext, useTruthCognitive, useTruthAudio, useTruthBeat } from '../../../hooks/useSeleneTruth'
 import { ContextMatrixIcon } from '../../icons/LuxIcons'
 import type { SectionType, MusicalKey, MusicalMode } from '../../../core/protocol/MusicalContext'
-import type { VibeId } from '../../../core/protocol/SeleneProtocol'
 import './ContextMatrixExpanded.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -52,13 +51,17 @@ const ENERGY_ZONE_CONFIG: Record<string, { label: string; emoji: string; color: 
   'idle': { label: 'IDLE', emoji: '💤', color: '#64748b' },
 }
 
-const VIBE_CONFIG: Record<VibeId, { label: string; color: string; emoji: string }> = {
-  'techno-club': { label: 'Techno Club', color: '#ef4444', emoji: '🎛️' },
-  'fiesta-latina': { label: 'Fiesta Latina', color: '#f97316', emoji: '💃' },
-  'pop-rock': { label: 'Pop Rock', color: '#8b5cf6', emoji: '🎸' },
-  'chill-lounge': { label: 'Chill Lounge', color: '#06b6d4', emoji: '🍸' },
-  'idle': { label: 'Idle', color: '#64748b', emoji: '💤' },
-  'custom': { label: 'Custom', color: '#a855f7', emoji: '✨' },
+const HYPERION_RUNTIME_METRICS_EVENT = 'hyperion:runtime-metrics'
+
+interface RuntimeMetrics {
+  queueDepth: number
+  workerBusy: boolean
+  framesSent: number
+  framesAcked: number
+  framesDropped: number
+  ackHz: number
+  dropRatePct: number
+  timestamp: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -167,6 +170,21 @@ export const ContextMatrixExpanded: React.FC = memo(() => {
   const energyHistoryRef = useRef<number[]>([])
   const [bpmHistory, setBpmHistory] = useState<number[]>([])
   const [energyHistory, setEnergyHistory] = useState<number[]>([])
+  const [runtimeMetrics, setRuntimeMetrics] = useState<RuntimeMetrics>({
+    queueDepth: 0,
+    workerBusy: false,
+    framesSent: 0,
+    framesAcked: 0,
+    framesDropped: 0,
+    ackHz: 0,
+    dropRatePct: 0,
+    timestamp: 0,
+  })
+  const [ackHzUi, setAckHzUi] = useState(0)
+  const ackTicksRef = useRef(0)
+  const lastAckedRef = useRef(0)
+  const lastMetricsAtRef = useRef(0)
+  const lastPayloadAckHzRef = useRef(0)
   
   // Update sparkline data
   useEffect(() => {
@@ -185,20 +203,76 @@ export const ContextMatrixExpanded: React.FC = memo(() => {
     }
     setEnergyHistory([...energyHistoryRef.current])
   }, [beat.bpm, audio.energy])
+
+  useEffect(() => {
+    const onRuntimeMetrics = (event: Event) => {
+      const customEvent = event as CustomEvent<RuntimeMetrics>
+      if (customEvent.detail) {
+        const next = customEvent.detail
+        const deltaAck = Math.max(0, next.framesAcked - lastAckedRef.current)
+        ackTicksRef.current += deltaAck
+        lastAckedRef.current = next.framesAcked
+        lastMetricsAtRef.current = Date.now()
+        lastPayloadAckHzRef.current = Number.isFinite(next.ackHz) ? next.ackHz : 0
+        setRuntimeMetrics(next)
+      }
+    }
+
+    window.addEventListener(HYPERION_RUNTIME_METRICS_EVENT, onRuntimeMetrics as EventListener)
+    return () => {
+      window.removeEventListener(HYPERION_RUNTIME_METRICS_EVENT, onRuntimeMetrics as EventListener)
+    }
+  }, [])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const currentHz = ackTicksRef.current
+      ackTicksRef.current = 0
+
+      if (currentHz > 0) {
+        setAckHzUi(currentHz)
+        return
+      }
+
+      const now = Date.now()
+      const metricsAgeMs = now - lastMetricsAtRef.current
+
+      // Si hay telemetría reciente pero este segundo no juntó ticks,
+      // usar ackHz instantáneo reportado por el emisor para evitar 0 fantasma.
+      if (metricsAgeMs <= 1500 && lastPayloadAckHzRef.current > 0) {
+        setAckHzUi(Math.round(lastPayloadAckHzRef.current))
+        return
+      }
+
+      // Sin telemetría fresca por varios segundos: sí mostramos cero real.
+      if (metricsAgeMs > 3000) {
+        setAckHzUi(0)
+      }
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
   
   // Extract values
   const key = context.key || 'C'
   const mode = context.mode || 'unknown'
   const section = context.section?.type || 'unknown'
   const sectionConf = context.section?.confidence || 0
-  const vibe = cognitive.vibe?.active || 'idle'
   const energyZone = cognitive.ai?.energyZone || 'idle'
   
   // Configs
   const modeInfo = MODE_CONFIG[mode]
   const sectionInfo = SECTION_CONFIG[section]
-  const vibeInfo = VIBE_CONFIG[vibe]
   const energyInfo = ENERGY_ZONE_CONFIG[energyZone] || ENERGY_ZONE_CONFIG['idle']
+  const runtimeHealthColor = runtimeMetrics.dropRatePct > 20
+    ? '#ef4444'
+    : runtimeMetrics.dropRatePct > 5
+      ? '#f97316'
+      : runtimeMetrics.queueDepth > 0
+        ? '#fbbf24'
+        : '#22c55e'
   
   // Calculate trend direction
   const energyTrend = useMemo(() => {
@@ -260,10 +334,11 @@ export const ContextMatrixExpanded: React.FC = memo(() => {
         
         {/* Row 2 */}
         <ContextCard
-          label="VIBE"
-          value={vibeInfo.label}
-          emoji={vibeInfo.emoji}
-          color={vibeInfo.color}
+          label="RUNTIME"
+          value={`Q${runtimeMetrics.queueDepth} · ${runtimeMetrics.workerBusy ? 'BUSY' : 'IDLE'}`}
+          subValue={`${ackHzUi}Hz ACK · ${runtimeMetrics.dropRatePct.toFixed(1)}% drop`}
+          emoji="🧵"
+          color={runtimeHealthColor}
         />
         
         <ContextCard

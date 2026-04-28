@@ -1,16 +1,16 @@
 /**
  * ---------------------------------------------------------------------------
- * ??  AETHER MATRIX — PUBLIC CONTRACT SURFACE
+ * ??  AETHER MATRIX ï¿½ PUBLIC CONTRACT SURFACE
  * ---------------------------------------------------------------------------
  *
- * WAVE 3505.2: Barrel export — contratos + implementaciones concretas.
+ * WAVE 3505.2: Barrel export ï¿½ contratos + implementaciones concretas.
  *
- * Este archivo es la ÚNICA puerta de entrada al módulo Aether.
+ * Este archivo es la ï¿½NICA puerta de entrada al mï¿½dulo Aether.
  * Cualquier consumidor externo importa desde `core/aether`.
  * Nunca se importa directamente de los archivos internos.
  *
  * REGLA: Re-exporta tipos, interfaces, enums, y clases concretas.
- * Nunca instancia clases ni ejecuta lógica de negocio aquí.
+ * Nunca instancia clases ni ejecuta lï¿½gica de negocio aquï¿½.
  *
  * @module core/aether
  * @version WAVE 3505.2
@@ -100,12 +100,12 @@ export type {
 } from './intent-bus'
 
 // ---------------------------------------------------------------------------
-// CONCRETE IMPLEMENTATIONS — WAVE 3505.2
+// CONCRETE IMPLEMENTATIONS ï¿½ WAVE 3505.2
 // ---------------------------------------------------------------------------
 
 /**
- * Implementaciones concretas del Motor Agnóstico.
- * Instanciar desde `core/aether` — nunca desde archivos internos.
+ * Implementaciones concretas del Motor Agnï¿½stico.
+ * Instanciar desde `core/aether` ï¿½ nunca desde archivos internos.
  *
  * Uso:
  * ```ts
@@ -117,3 +117,28 @@ export type {
  */
 export { NodeGraph } from './NodeGraph'
 export { IntentBus } from './IntentBus'
+
+// ---------------------------------------------------------------------------
+// SYSTEMS â€” WAVE 3505.3
+// ---------------------------------------------------------------------------
+
+/**
+ * Los Sistemas son los "cerebros" del Motor AgnÃ³stico.
+ * Cada sistema procesa un NodeFamily especÃ­fico y escribe intents al bus.
+ *
+ * Uso:
+ * ```ts
+ * import { ImpactSystem, ColorSystem, KineticSystem } from 'core/aether'
+ *
+ * const systems = [new ImpactSystem(), new ColorSystem(), new KineticSystem()]
+ * ```
+ */
+export { BaseSystem, ImpactSystem, ColorSystem, KineticSystem } from './systems'
+export type {
+  IAetherSystem,
+  FrameContext,
+  AudioMetrics,
+  VibeProfile,
+  MusicalContext,
+  ColorEntry,
+} from './systems'

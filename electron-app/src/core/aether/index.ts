@@ -165,3 +165,30 @@ export type {
  */
 export { NodeArbiter } from './NodeArbiter'
 export { NodeResolver } from './resolver'
+
+// ---------------------------------------------------------------------------
+// INGESTION — WAVE 3507: THE SPATIAL GENESIS (F1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pipeline de ingesta: convierte FixtureDefinition legacy a
+ * IDeviceDefinition Aether V2 con CapabilityNodes descompuestos.
+ *
+ * Uso completo:
+ * ```ts
+ * import { NodeExtractionPipeline, SpatialRegistrar } from 'core/aether'
+ *
+ * const pipeline  = new NodeExtractionPipeline()
+ * const registrar = new SpatialRegistrar()
+ *
+ * // Cuando el usuario añade un fixture al Stage:
+ * const deviceDef = pipeline.extract(fixtureDef, address, universe, zoneId)
+ * registrar.register(deviceDef, fixtureV2.position, orchestrator)
+ * ```
+ */
+export {
+  NodeExtractionPipeline,
+  SpatialRegistrar,
+  type IAetherRegistrationTarget,
+  type SpatialRegistrarOptions,
+} from './ingestion'

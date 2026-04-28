@@ -77,6 +77,8 @@ import type { IDeviceDefinition } from '../aether'
 
 // WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
 import { AduanaFilter } from '../aether/safety/AduanaFilter'
+// WAVE 3512: Master Switch — universos bajo control exclusivo del pipeline Aether
+import { aetherConfig } from '../aether/AetherConfig'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
@@ -296,6 +298,9 @@ export class TitanOrchestrator {
     this._aetherResolver.registerUniverse(definition.universe)
     // WAVE 3511: Registrar en la Aduana (patch time — zero-alloc en hot path)
     this._aduanaFilter.registerDevice(definition)
+    // WAVE 3512: Master Switch — Aether reclama este universo atomicamente.
+    // El pipeline legacy (flushToDriver) omitira los fixtures de este universo.
+    aetherConfig.claimUniverse(definition.universe)
     this._aetherHasDevices = true
   }
 
@@ -305,12 +310,52 @@ export class TitanOrchestrator {
    * @param deviceId — ID del dispositivo a retirar
    */
   public unregisterAetherDevice(deviceId: string): void {
-    this._aetherGraph.unregisterDevice(deviceId as import('../aether/types').DeviceId)
+    const did = deviceId as import('../aether/types').DeviceId
+    // Capturar el universo del device ANTES de desregistrarlo
+    const def = this._aetherGraph.getDevice(did)
+    this._aetherGraph.unregisterDevice(did)
+    // WAVE 3512: Liberar el universo si ya no quedan otros devices en el mismo universo.
+    // Basta con iterar los deviceIds restantes y comprobar si alguno comparte el universo.
+    if (def) {
+      const universeStillUsed = this._aetherGraph.getDeviceIds().some(
+        id => this._aetherGraph.getDevice(id)?.universe === def.universe
+      )
+      if (!universeStillUsed) {
+        aetherConfig.releaseUniverse(def.universe)
+      }
+    }
     // _aetherHasDevices permanece true si hay otros devices registrados
-    // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+    // (optimizacion: NodeGraph.size o similar podria comprobarlo, but it's fine)
   }
-  
-  // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
+
+  /**
+   * WAVE 3512: MASTER SWITCH — Toggle de universo Aether/Legacy en caliente.
+   *
+   * Permite a la UI (o un script de test) cambiar de cerebro por universo
+   * sin reiniciar el sistema. La decision se aplica el frame siguiente.
+   *
+   * CRITICO: Solo un pipeline puede escribir en un universo dado.
+   * Esta funcion garantiza la atomicidad del cambio (Set.add / Set.delete).
+   *
+   * @param universe - Numero de universo DMX (1-based)
+   * @param enabled  - true = Aether toma el universo | false = legacy recupera
+   */
+  public toggleAetherUniverse(universe: number, enabled: boolean): void {
+    if (enabled) {
+      aetherConfig.claimUniverse(universe)
+    } else {
+      aetherConfig.releaseUniverse(universe)
+    }
+  }
+
+  /**
+   * WAVE 3512: Estado actual del Master Switch (para IPC y telemetria).
+   */
+  public getAetherUniverses(): readonly number[] {
+    return aetherConfig.getAetherUniverses()
+  }
+
+  // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulacion
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
   // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
   private lastAudioTimestamp = 0

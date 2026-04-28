@@ -65,6 +65,8 @@ import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovem
 
 // � WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
 import { masterArbiter, ControlLayer } from '../core/arbiter'
+// WAVE 3512: Master Switch — excluir universos Aether del pipeline legacy
+import { aetherConfig } from '../core/aether/AetherConfig'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -1981,7 +1983,25 @@ export class HardwareAbstraction {
     //
     // This is the SOLE gate. One filter, one place, zero leaks.
     // ═══════════════════════════════════════════════════════════════════════
-    const physicalStates = states.filter(s => !s.isVirtual)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 3512: MASTER SWITCH — Modo Dual Seguro
+    //
+    // Si Aether controla un universo, el pipeline legacy NO escribe en el.
+    // Los FixtureState de ese universo ya fueron procesados por NodeResolver
+    // y enviados via sendUniverseRaw(). Escribirlos aqui tambien causaria
+    // una race condition (ultimo escritor gana → corrupcion de output).
+    //
+    // Shortcircuit: si no hay universos Aether registrados (caso comun durante
+    // la migracion), se evita el filter() completamente — coste O(1).
+    //
+    // `aetherConfig.ownsUniverse()` es Set.has() — O(1), zero-alloc.
+    // ═══════════════════════════════════════════════════════════════════════
+    const legacyStates = aetherConfig.getAetherUniverseCount() === 0
+      ? states
+      : states.filter(s => aetherConfig.isLegacyUniverse(s.universe ?? 0))
+
+    const physicalStates = legacyStates.filter(s => !s.isVirtual)
     const packets = this.mapper.statesToDMXPackets(physicalStates)
 
     // ═══════════════════════════════════════════════════════════════════════

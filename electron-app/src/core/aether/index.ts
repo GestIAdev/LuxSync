@@ -192,3 +192,30 @@ export {
   type IAetherRegistrationTarget,
   type SpatialRegistrarOptions,
 } from './ingestion'
+
+// ---------------------------------------------------------------------------
+// ADAPTERS — WAVE 3508: BLOOD & MUSCLE (F2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Los Adapters son el puente entre los motores de física existentes
+ * (VibeMovementManager, LiquidEngine) y la capa Aether V2.
+ *
+ * VMMAdapter:          VibeMovementManager → IKineticNodeData intents (pan/tilt)
+ * LiquidImpactAdapter: LiquidEngine → IImpactNodeData intents (dimmer zonal)
+ * LiquidColorAdapter:  LiquidEngine → IColorNodeData intents (rgb tintado)
+ *
+ * Uso:
+ * ```ts
+ * import { VMMAdapter, LiquidImpactAdapter, LiquidColorAdapter } from 'core/aether'
+ *
+ * const vmmAdapter    = new VMMAdapter()
+ * const impactAdapter = new LiquidImpactAdapter()
+ * const colorAdapter  = new LiquidColorAdapter()
+ *
+ * // En patch-time, opcionalmente fijar epicentro:
+ * impactAdapter.setEpicenter(0, 3, 0)   // 3m hacia el fondo del stage
+ * colorAdapter.setEpicenter(0, 3, 0)
+ * ```
+ */
+export { VMMAdapter, LiquidImpactAdapter, LiquidColorAdapter } from './adapters'

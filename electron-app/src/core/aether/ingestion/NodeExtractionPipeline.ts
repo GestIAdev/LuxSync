@@ -121,10 +121,11 @@ const IMPACT_TRANSFER_CURVE: TransferCurve = {
 const IMPACT_BAND_MIX: BandMixWeights = {
   subBass:  0.80,
   bass:     0.60,
+  lowMid:   0.20,
   mid:      0.20,
   highMid:  0.10,
-  presence: 0.05,
-  air:      0.0,
+  treble:   0.05,
+  ultraAir: 0.0,
   energy:   0.40,
 }
 

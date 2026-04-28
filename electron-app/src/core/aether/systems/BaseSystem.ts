@@ -26,7 +26,7 @@
  * Las subclases deben pre-alocar toda estructura en el constructor.
  *
  * @module core/aether/systems/BaseSystem
- * @version WAVE 3505.3
+ * @version WAVE 3509.1 — GOD EAR SYNC (7-Band Alignment)
  */
 
 import type { IIntentBus, INodeIntent } from '../intent-bus'
@@ -54,14 +54,16 @@ export interface AudioMetrics {
   readonly subBass: number
   /** Bass (60-250 Hz) — el bajo fundamental */
   readonly bass: number
-  /** Mid (250 Hz - 2 kHz) — el cuerpo armónico */
+  /** Low-mid (250-500 Hz) — calor rítmico, cuerpo del tom */
+  readonly lowMid: number
+  /** Mid (500-2000 Hz) — voces, snare, lead (corazón musical) */
   readonly mid: number
-  /** High-mid (2-6 kHz) — presencia, ataque, claridad */
+  /** High-mid (2000-6000 Hz) — presencia, ataque, claridad */
   readonly highMid: number
-  /** Presence (6-12 kHz) — brillo, mordida, sibilancia */
-  readonly presence: number
-  /** Air (12-20 kHz) — el éter, el shimmer */
-  readonly air: number
+  /** Treble (6000-16000 Hz) — brillo, hi-hats, sibilancia */
+  readonly treble: number
+  /** Ultra-Air (16000-22000 Hz) — éter digital, armónicos superiores */
+  readonly ultraAir: number
 
   // ── Métricas globales ─────────────────────────────────────────────────
   /** Energía RMS global (0-1) */
@@ -397,10 +399,11 @@ export abstract class BaseSystem<T extends ICapabilityNode> {
     const raw =
       audio.subBass  * weights.subBass  +
       audio.bass     * weights.bass     +
+      audio.lowMid   * weights.lowMid   +
       audio.mid      * weights.mid      +
       audio.highMid  * weights.highMid  +
-      audio.presence * weights.presence +
-      audio.air      * weights.air      +
+      audio.treble   * weights.treble   +
+      audio.ultraAir * weights.ultraAir +
       audio.energy   * weights.energy
 
     return raw < 0 ? 0 : raw > 1 ? 1 : raw

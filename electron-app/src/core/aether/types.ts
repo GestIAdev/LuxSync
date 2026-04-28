@@ -14,7 +14,7 @@
  * o un type alias, no pertenece aquí."
  *
  * @module core/aether/types
- * @version WAVE 3505.1
+ * @version WAVE 3509.1 — GOD EAR SYNC (7-Band Alignment)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -419,14 +419,16 @@ export interface BandMixWeights {
   readonly subBass: number
   /** Bass (60-250 Hz) — Peso del bajo fundamental */
   readonly bass: number
-  /** Mid (250 Hz - 2 kHz) — Peso de las frecuencias medias */
+  /** Low-mid (250-500 Hz) — Peso del calor rítmico */
+  readonly lowMid: number
+  /** Mid (500-2000 Hz) — Peso del corazón musical (voces, snare) */
   readonly mid: number
-  /** High-mid (2-6 kHz) — Peso de las frecuencias medias-altas */
+  /** High-mid (2000-6000 Hz) — Peso de presencia y ataque */
   readonly highMid: number
-  /** Presence (6-12 kHz) — Peso de la presencia */
-  readonly presence: number
-  /** Air (12-20 kHz) — Peso del brillo/aire */
-  readonly air: number
+  /** Treble (6000-16000 Hz) — Peso del brillo percusivo */
+  readonly treble: number
+  /** Ultra-Air (16000-22000 Hz) — Peso del éter digital */
+  readonly ultraAir: number
   /** Energía global — Peso de la energía RMS total */
   readonly energy: number
 }

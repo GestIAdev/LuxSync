@@ -39,10 +39,11 @@
  * -------------|------------|--------|--------|--------
  *  subBass     |    0.80    |  0.10  |  0.00  |  0.10
  *  bass        |    0.60    |  0.20  |  0.05  |  0.15
- *  mid         |    0.10    |  0.70  |  0.10  |  0.10
+ *  lowMid      |    0.15    |  0.30  |  0.05  |  0.10
+ *  mid         |    0.10    |  0.50  |  0.10  |  0.10
  *  highMid     |    0.05    |  0.15  |  0.70  |  0.10
- *  presence    |    0.00    |  0.10  |  0.80  |  0.10
- *  air         |    0.00    |  0.05  |  0.60  |  0.35
+ *  treble      |    0.00    |  0.10  |  0.80  |  0.10
+ *  ultraAir    |    0.00    |  0.05  |  0.60  |  0.35
  *  energy      |    0.20    |  0.30  |  0.20  |  0.30
  *
  * ENVELOPE DECAY:
@@ -55,7 +56,7 @@
  * - ambient:    decay lentísimo (fondo que persiste)
  *
  * @module core/aether/systems/ImpactSystem
- * @version WAVE 3505.3
+ * @version WAVE 3509.1 — GOD EAR SYNC (7-Band Alignment)
  */
 
 import { NodeFamily, type BandMixWeights, type TransferCurveType } from '../types'
@@ -79,50 +80,55 @@ import {
 const DEFAULT_BAND_MIX_PERCUSSION: BandMixWeights = Object.freeze({
   subBass:  0.80,
   bass:     0.60,
+  lowMid:   0.15,
   mid:      0.10,
   highMid:  0.05,
-  presence: 0.00,
-  air:      0.00,
+  treble:   0.00,
+  ultraAir: 0.00,
   energy:   0.20,
 })
 
 const DEFAULT_BAND_MIX_BREATH: BandMixWeights = Object.freeze({
   subBass:  0.10,
   bass:     0.20,
-  mid:      0.70,
+  lowMid:   0.30,
+  mid:      0.50,
   highMid:  0.15,
-  presence: 0.10,
-  air:      0.05,
+  treble:   0.10,
+  ultraAir: 0.05,
   energy:   0.30,
 })
 
 const DEFAULT_BAND_MIX_ACCENT: BandMixWeights = Object.freeze({
   subBass:  0.00,
   bass:     0.05,
+  lowMid:   0.05,
   mid:      0.10,
   highMid:  0.70,
-  presence: 0.80,
-  air:      0.60,
+  treble:   0.80,
+  ultraAir: 0.60,
   energy:   0.20,
 })
 
 const DEFAULT_BAND_MIX_AMBIENT: BandMixWeights = Object.freeze({
   subBass:  0.10,
   bass:     0.15,
+  lowMid:   0.10,
   mid:      0.10,
   highMid:  0.10,
-  presence: 0.10,
-  air:      0.35,
+  treble:   0.10,
+  ultraAir: 0.35,
   energy:   0.30,
 })
 
 const DEFAULT_BAND_MIX_PRIMARY: BandMixWeights = Object.freeze({
   subBass:  0.20,
   bass:     0.30,
+  lowMid:   0.20,
   mid:      0.25,
   highMid:  0.10,
-  presence: 0.05,
-  air:      0.00,
+  treble:   0.05,
+  ultraAir: 0.00,
   energy:   0.40,
 })
 

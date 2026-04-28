@@ -151,11 +151,11 @@ export class LiquidImpactAdapter extends BaseSystem<IImpactNodeData> implements 
 
     b.subBass  = audio.subBass
     b.bass     = audio.bass
-    b.lowMid   = audio.bass * 0.5           // AudioMetrics no tiene lowMid directo
+    b.lowMid   = audio.lowMid
     b.mid      = audio.mid
     b.highMid  = audio.highMid
-    b.treble   = audio.presence             // presence (4-8kHz) ≈ treble percusivo
-    b.ultraAir = audio.air                  // air (12-20kHz) = ultraAir del LiquidEngine
+    b.treble   = audio.treble
+    b.ultraAir = audio.ultraAir
 
     inp.isRealSilence    = audio.energy < 0.01
     inp.isAGCTrap        = false
@@ -283,11 +283,11 @@ export class LiquidColorAdapter extends BaseSystem<IColorNodeData> implements IA
 
     b.subBass  = audio.subBass
     b.bass     = audio.bass
-    b.lowMid   = audio.bass * 0.5
+    b.lowMid   = audio.lowMid
     b.mid      = audio.mid
     b.highMid  = audio.highMid
-    b.treble   = audio.presence
-    b.ultraAir = audio.air
+    b.treble   = audio.treble
+    b.ultraAir = audio.ultraAir
 
     inp.isRealSilence    = audio.energy < 0.01
     inp.isAGCTrap        = false

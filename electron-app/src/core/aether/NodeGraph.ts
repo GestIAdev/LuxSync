@@ -230,6 +230,15 @@ export class NodeGraph implements INodeGraph {
    */
   private readonly _deviceIndex = new Map<DeviceId, NodeId[]>()
 
+  /**
+   * DeviceId → IDeviceDefinition.
+   *
+   * Usado por el NodeResolver en el hot path para obtener
+   * dmxAddress y universe sin reconstruir el contexto desde los nodos.
+   * Se popula en registerDevice() y se limpia en unregisterDevice().
+   */
+  private readonly _deviceDefs = new Map<DeviceId, IDeviceDefinition>()
+
   // ── Vistas pre-creadas por familia ────────────────────────────────────
 
   /**
@@ -301,6 +310,9 @@ export class NodeGraph implements INodeGraph {
       registeredIds.push(node.nodeId)
     }
 
+    // Almacenar la definición para acceso O(1) por el NodeResolver
+    this._deviceDefs.set(definition.deviceId, definition)
+
     // Esta es la ÚNICA vez que creamos arrays en este path:
     // los índices de zona y rol. Una vez construidos,
     // los reutilizamos cada frame sin realocación.
@@ -333,6 +345,7 @@ export class NodeGraph implements INodeGraph {
     }
 
     this._deviceIndex.delete(deviceId)
+    this._deviceDefs.delete(deviceId)
     this._rebuildViews()
   }
 
@@ -384,6 +397,10 @@ export class NodeGraph implements INodeGraph {
 
   getDeviceNodes(deviceId: DeviceId): readonly NodeId[] {
     return this._deviceIndex.get(deviceId) ?? NodeGraph._EMPTY_IDS
+  }
+
+  getDevice(deviceId: DeviceId): IDeviceDefinition | undefined {
+    return this._deviceDefs.get(deviceId)
   }
 
   /**

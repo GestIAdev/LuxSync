@@ -1754,6 +1754,22 @@ export class HardwareAbstraction {
     this.sendToDriver(states)
   }
 
+  /**
+   * WAVE 3505.4: AETHER MATRIX — Envío directo de universo DMX desde el NodeResolver.
+   *
+   * Bypass del pipeline legacy (renderFromTarget → fixtureStates → Aduana).
+   * Solo pasa por el gate de conexión del driver.
+   * El NodeResolver ya aplicó calibración, transferCurves y clamping.
+   *
+   * @param universe — Número de universo (1-based)
+   * @param data — Uint8Array(512) pre-allocated del NodeResolver
+   * @returns true si el envío fue exitoso
+   */
+  public sendUniverseRaw(universe: number, data: Uint8Array): boolean {
+    if (!this.driver.isConnected) return false
+    return this.driver.sendUniverse(universe, data)
+  }
+
   /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
    * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
   public sendStatesWithPhysics(states: FixtureState[]): void {

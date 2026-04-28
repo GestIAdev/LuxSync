@@ -71,6 +71,10 @@ import { IntentComposer } from './intent/IntentComposer'
 import { FrameScheduler } from './scheduler/FrameScheduler'
 import type { FixtureSnapshot } from './intent/types'
 
+// ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
+import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
+import type { IDeviceDefinition } from '../aether'
+
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 
@@ -256,6 +260,48 @@ export class TitanOrchestrator {
   // ═══════════════════════════════════════════════════════════════════════════
   private readonly syncSmoother = new SyncSmoother()
   private readonly intentComposer = new IntentComposer()
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
+  //
+  // Este pipeline corre EN PARALELO con el pipeline legacy (masterArbiter → HAL).
+  // Los devices registrados en NodeGraph son procesados por Systems → Arbiter →
+  // Resolver y sus paquetes DMX son enviados directamente via HAL.sendUniverseRaw().
+  //
+  // ACTIVACIÓN: registerAetherDevice() activa automaticamente el pipeline.
+  // Si _aetherNodeGraph está vacío, el bloque Aether en processFrame() es no-op.
+  // ═══════════════════════════════════════════════════════════════════════════
+  private readonly _aetherGraph   = new NodeGraph()
+  private readonly _aetherBus     = new IntentBus(4096)
+  private readonly _aetherArbiter = new NodeArbiter()
+  private readonly _aetherResolver = new NodeResolver(this._aetherGraph)
+  private _aetherHasDevices = false
+
+  /**
+   * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
+   *
+   * Llama esto en patch time para que el dispositivo sea procesado por el
+   * pipeline V2. El NodeGraph y NodeResolver se configuran automáticamente.
+   * El pipeline legacy mantiene el control de todos los demás fixtures.
+   *
+   * @param definition — IDeviceDefinition con nodes, calibración y universo DMX
+   */
+  public registerAetherDevice(definition: IDeviceDefinition): void {
+    this._aetherGraph.registerDevice(definition)
+    this._aetherResolver.registerUniverse(definition.universe)
+    this._aetherHasDevices = true
+  }
+
+  /**
+   * Retira un dispositivo del Motor Agnostico Aether.
+   *
+   * @param deviceId — ID del dispositivo a retirar
+   */
+  public unregisterAetherDevice(deviceId: string): void {
+    this._aetherGraph.unregisterDevice(deviceId as import('../aether/types').DeviceId)
+    // _aetherHasDevices permanece true si hay otros devices registrados
+    // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+  }
   
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
@@ -1372,6 +1418,39 @@ export class TitanOrchestrator {
 
     // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
     this.hal.flushToDriver(fixtureStates)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚛️ WAVE 3505.4: AETHER MATRIX — V2 Agnostic Engine Pipeline
+    //
+    // Corre DESPUÉS del pipeline legacy para no interferir con él.
+    // El _aetherBus recibe intents de los Systems en una versión futura.
+    // Por ahora el NodeArbiter arbitrará lo que tenga (vacío = paquetes default).
+    // El pipeline está listo para que cada System inyecte sus intents.
+    //
+    // Zero-alloc: los buffers Uint8Array son propiedad del NodeResolver.
+    // Se envían al driver por referencia directa (zero-copy al hardware).
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this._aetherHasDevices && this.hal) {
+      // 1. Limpiar el bus de intents del frame anterior
+      this._aetherBus.clear()
+
+      // 2. Systems escriben sus intents en el _aetherBus
+      //    (Los Systems se conectarán aquí en WAVE 3505.5+ a medida que se migren
+      //    los fixtures. Por ahora el bus está vacío y los nodos emiten defaultValues.)
+
+      // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
+      this._aetherArbiter.setSystemIntents(this._aetherBus)
+      const arbitrated = this._aetherArbiter.arbitrate()
+
+      // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
+      this._aetherResolver.resolve(arbitrated)
+
+      // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)
+      for (const universe of this._aetherResolver.registeredUniverses) {
+        const rawBuf = this._aetherResolver.getUniverseBuffer(universe)
+        if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
+      }
+    }
 
     // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
     // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.

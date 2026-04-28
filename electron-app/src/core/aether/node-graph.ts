@@ -268,6 +268,15 @@ export interface INodeGraph {
    */
   getDeviceNodes(deviceId: DeviceId): readonly NodeId[]
 
+  /**
+   * Retorna la IDeviceDefinition completa para un Device registrado.
+   * O(1) lookup — usado por el NodeResolver para obtener dmxAddress y universe.
+   *
+   * @param deviceId — ID del Device
+   * @returns IDeviceDefinition, o undefined si el Device no está registrado
+   */
+  getDevice(deviceId: DeviceId): IDeviceDefinition | undefined
+
   // ── Acceso directo a nodos ───────────────────────────────────────────
 
   /**

@@ -142,3 +142,26 @@ export type {
   MusicalContext,
   ColorEntry,
 } from './systems'
+
+// ---------------------------------------------------------------------------
+// ARBITER & RESOLVER — WAVE 3505.4
+// ---------------------------------------------------------------------------
+
+/**
+ * El NodeArbiter unifica intents de todas las capas (L0-L4) y produce
+ * el ArbitratedNodeMap que el NodeResolver traduce a DMX.
+ *
+ * El NodeResolver es el último paso antes del HAL: convierte valores
+ * normalizados a Uint8Array pre-allocated (zero-alloc en hot path).
+ *
+ * Uso:
+ * ```ts
+ * import { NodeArbiter, NodeResolver } from 'core/aether'
+ *
+ * const arbiter  = new NodeArbiter()
+ * const resolver = new NodeResolver(nodeGraph)
+ * resolver.registerUniverse(1)   // una vez en patch time
+ * ```
+ */
+export { NodeArbiter } from './NodeArbiter'
+export { NodeResolver } from './resolver'

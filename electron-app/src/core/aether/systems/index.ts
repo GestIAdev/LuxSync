@@ -20,6 +20,8 @@ export type {
 } from './BaseSystem'
 
 // Concrete systems
-export { ImpactSystem }  from './ImpactSystem'
-export { ColorSystem }   from './ColorSystem'
-export { KineticSystem } from './KineticSystem'
+export { ImpactSystem }     from './ImpactSystem'
+export { ColorSystem }      from './ColorSystem'
+export { KineticSystem }    from './KineticSystem'
+export { BeamSystem }       from './BeamSystem'
+export { AtmosphereSystem } from './AtmosphereSystem'

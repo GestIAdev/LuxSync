@@ -133,7 +133,7 @@ export { IntentBus } from './IntentBus'
  * const systems = [new ImpactSystem(), new ColorSystem(), new KineticSystem()]
  * ```
  */
-export { BaseSystem, ImpactSystem, ColorSystem, KineticSystem } from './systems'
+export { BaseSystem, ImpactSystem, ColorSystem, KineticSystem, BeamSystem, AtmosphereSystem } from './systems'
 export type {
   IAetherSystem,
   FrameContext,

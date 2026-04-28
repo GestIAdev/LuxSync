@@ -75,6 +75,9 @@ import type { FixtureSnapshot } from './intent/types'
 import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
 import type { IDeviceDefinition } from '../aether'
 
+// WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
+import { AduanaFilter } from '../aether/safety/AduanaFilter'
+
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
 
@@ -275,6 +278,8 @@ export class TitanOrchestrator {
   private readonly _aetherBus     = new IntentBus(4096)
   private readonly _aetherArbiter = new NodeArbiter()
   private readonly _aetherResolver = new NodeResolver(this._aetherGraph)
+  // WAVE 3511: Gate de Seguridad — DarkSpin + HarmonicQuantizer + OutputGate
+  private readonly _aduanaFilter  = new AduanaFilter()
   private _aetherHasDevices = false
 
   /**
@@ -289,6 +294,8 @@ export class TitanOrchestrator {
   public registerAetherDevice(definition: IDeviceDefinition): void {
     this._aetherGraph.registerDevice(definition)
     this._aetherResolver.registerUniverse(definition.universe)
+    // WAVE 3511: Registrar en la Aduana (patch time — zero-alloc en hot path)
+    this._aduanaFilter.registerDevice(definition)
     this._aetherHasDevices = true
   }
 
@@ -1442,8 +1449,23 @@ export class TitanOrchestrator {
       this._aetherArbiter.setSystemIntents(this._aetherBus)
       const arbitrated = this._aetherArbiter.arbitrate()
 
+      // WAVE 3511: AduanaFilter — DarkSpin + HarmonicQuantizer + OutputGate
+      // Intercepta el ArbitratedNodeMap ANTES del NodeResolver.
+      // Aplica:
+      //   - HarmonicQuantizer: gatea cambios de rueda de color al BPM
+      //   - DarkSpinFilter: blackout durante transitos mecanicos de rueda
+      //   - OutputGate: zerifica canales AUTO si masterArbiter.isOutputEnabled()=false
+      //                  preserva canales MANUAL (override del operador)
+      const safeArbitrated = this._aduanaFilter.filter(
+        arbitrated,
+        this._aetherGraph,
+        workerBpm,
+        workerConfidence,
+        masterArbiter.isOutputEnabled(),
+      )
+
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
-      this._aetherResolver.resolve(arbitrated)
+      this._aetherResolver.resolve(safeArbitrated)
 
       // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)
       for (const universe of this._aetherResolver.registeredUniverses) {

@@ -1487,39 +1487,23 @@ export class TitanOrchestrator {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ⚛️ WAVE 3513.3: THE MIRROR — Proyectar estado Aether → FixtureState[]
-    //
-    // JUSTO ANTES del hot-frame para que Hyperion vea los valores de la
-    // Aether Matrix. Solo sobreescribe fixtures cuyos universos son "claimed".
-    // Mutación in-place — cero new Object() en el hot path.
-    // ═══════════════════════════════════════════════════════════════════════
-    // if (this._aetherHasDevices) {
-    //   this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
-    // }
+    // ⚛️ WAVE 3513.3 → WAVE 3516: UIProjector migrado a FASE 4.4 del bloque Aether.
+    // La proyección ocurre post-Arbiter+Aduana+Resolver, cuando los nodos
+    // tienen sus valores finales. Ver bloque WAVE 3516 abajo.
+    // (Comentado aquí como registro histórico de la migración)
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
+    // ⚡ WAVE 3065 → WAVE 3517: PHYSICS-FIRST, AETHER-THEN-BROADCAST
     //
-    // WAVE 3050 introdujo un regression: sendStatesWithPhysics() mutaba los
-    // objetos fixtureStates IN-PLACE con la Aduana (zerificando dimmer/r/g/b
-    // cuando outputEnabled=false) ANTES de que el hot-frame los leyera.
-    // Resultado: HyperionView siempre negro con output OFF.
-    //
-    // Fix arquitectónico correcto:
-    //   1. applyPhysicsOnly()  → physicalPan/Tilt actualizados, SIN Aduana
-    //   2. Hot-frame + Truth   → UI lee valores reales del engine
-    //   3. flushToDriver()     → Aduana + DMX (puede zerificar, pero ya no importa)
-    //
-    // De esta forma el preview siempre refleja la realidad del engine,
-    // y la Aduana sigue siendo el único gate para el hardware físico.
+    // Orden canonico del pipeline de salida:
+    //   1. renderFromTarget()  → fixtureStates (legacy — física + color)
+    //   2. Bloque Aether       → Systems → IntentBus → Arbiter → Aduana
+    //                           → Resolver → sendUniverseRaw (DMX Aether)
+    //                           → UIProjector.project() sobreescribe fixtureStates
+    //   3. onHotFrame          → Hyperion ve fixtureStates post-Aether (ONE VOICE)
+    //   4. flushToDriver()     → DMX legacy (solo universos no-Aether, guard WAVE 3512)
+    //   5. onBroadcast         → SeleneTruth con fixtureStates post-Aether
     // ═══════════════════════════════════════════════════════════════════════════
-
-    // ⚡ WAVE 3070: applyPhysicsOnly() eliminado — renderFromTarget() ya corrió
-    // la física (translateDMX + calibrationOffsets) internamente. Llamarlo aquí
-    // era doble-física: el mover se simulaba dos veces por frame, duplicando la
-    // velocidad aparente y produciendo jitter esquizofrénico en la UI.
-    // El pipeline correcto es: renderFromTarget (física+cálculo) → broadcast UI
-    // → flushToDriver (Aduana+send). Sin pasos intermedios redundantes.
 
     // ═══════════════════════════════════════════════════════════════════════
     // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (22Hz) + Full Truth (~7Hz)
@@ -1534,74 +1518,16 @@ export class TitanOrchestrator {
     // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
     // full truth at full rate (44fps) since Cinema needs complete data.
     //
-    // ⚡ WAVE 3065: Broadcast happens BEFORE flushToDriver() so the Aduana
-    // never pollutes the UI data with DMX gate zeros.
+    // ⚡ WAVE 3517 — ONE VOICE: Los broadcasts se emiten DESPUÉS del bloque Aether
+    // para que AetherUIProjector.project() haya sobreescrito fixtureStates in-place
+    // con los valores reales de la Matrix antes de que Hyperion los lea.
+    // Orden correcto: renderFromTarget (legacy físico) → Aether Pipeline → UIProjector
+    //   → PeakHold + HotFrame + flushToDriver + SeleneTruth
     // ═══════════════════════════════════════════════════════════════════════
 
-    // 👻 Chronos bypass check
+    // 👻 Chronos bypass check (declarado aquí para que esté en scope del bloque Aether)
     const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false
     const shouldBroadcastFullTruth = chronosPlaying || (this.frameCount % TitanOrchestrator.TRUTH_BROADCAST_DIVIDER === 0)
-
-    // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
-    if (!chronosPlaying) {
-      for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
-        const _f = fixtureStates[_pi]
-        const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
-        const _prev = this.peakHoldMap.get(_id) ?? 0
-        if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
-      }
-    }
-
-    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
-    // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
-    // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
-    if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
-      // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
-      const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
-      const hotFrame = {
-        frameNumber: this.frameCount,
-        timestamp: now, // ⚡ WAVE 3050: unified timestamp
-        onBeat: engineAudioMetrics.isBeat,
-        beatConfidence: engineAudioMetrics.beatConfidence,
-        bpm: engineAudioMetrics.bpm,
-        // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
-        // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
-        // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
-        // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
-        bass,
-        mid,
-        high,
-        energy,
-        // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
-        ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
-        activeAudioSource: matrixStatus?.activeSource ?? null,
-        fixtures: fixtureStates.map((f, i) => {
-          const originalFixture = this.fixtures[i]
-          const realId = originalFixture?.id || `fix_${i}`
-          return {
-            id: realId,
-            dimmer: f.dimmer / 255,
-            r: Math.round(f.r),
-            g: Math.round(f.g),
-            b: Math.round(f.b),
-            white: Math.round(f.white ?? 0),
-            amber: Math.round(f.amber ?? 0),
-            pan: f.pan / 255,
-            tilt: f.tilt / 255,
-            zoom: f.zoom,
-            focus: f.focus,
-            physicalPan: (f.physicalPan ?? f.pan) / 255,
-            physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
-            panVelocity: f.panVelocity ?? 0,
-            tiltVelocity: f.tiltVelocity ?? 0,
-          }
-        })
-      }
-      this.onHotFrame(hotFrame)
-    }
-
-    // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
-    this.hal.flushToDriver(fixtureStates)
 
     // ═══════════════════════════════════════════════════════════════════════
     // ⚛️ WAVE 3516: THE HOLISTIC MATRIX — Aether V2 Full Pipeline
@@ -1794,9 +1720,94 @@ export class TitanOrchestrator {
       this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 3517 — ONE VOICE: Post-Aether Broadcast & DMX Flush
+    //
+    // Este bloque se ejecuta DESPUÉS de que AetherUIProjector.project() ha
+    // sobreescrito in-place los FixtureState[] de universos reclamados por
+    // Aether. Cuando _aetherHasDevices=true, fixtureStates refleja la
+    // verdad de la Matrix — no del pipeline legacy.
+    //
+    // Orden garantizado por WAVE 3517:
+    //   1. renderFromTarget() — calcula fixtureStates del pipeline legacy (física)
+    //   2. Bloque Aether — Arbiter → Aduana → Resolver → sendUniverseRaw()
+    //                     → UIProjector.project() sobreescribe fixtureStates
+    //   3. PeakHold — acumula picos sobre fixtureStates ya proyectados
+    //   4. onHotFrame — Hyperion lee fixtureStates post-Aether (ONE VOICE)
+    //   5. flushToDriver — envía solo universos legacy (guard WAVE 3512)
+    //   6. onBroadcast / SeleneTruth — lee fixtureStates post-Aether
+    //
+    // Resultado: UN SOLO EMISOR hacia UI y hardware — AetherMatrix.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
+    // (post-Aether: los dimmer ya son los valores Aether-proyectados)
+    if (!chronosPlaying) {
+      for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+        const _f = fixtureStates[_pi]
+        const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
+        const _prev = this.peakHoldMap.get(_id) ?? 0
+        if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
+      }
+    }
+
+    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
+    // ⚡ WAVE 3517: Emitido POST-Aether. fixtureStates contiene valores Aether.
+    // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+    if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
+      // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
+      const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
+      const hotFrame = {
+        frameNumber: this.frameCount,
+        timestamp: now, // ⚡ WAVE 3050: unified timestamp
+        onBeat: engineAudioMetrics.isBeat,
+        beatConfidence: engineAudioMetrics.beatConfidence,
+        bpm: engineAudioMetrics.bpm,
+        // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
+        // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
+        // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
+        // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
+        bass,
+        mid,
+        high,
+        energy,
+        // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
+        ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
+        activeAudioSource: matrixStatus?.activeSource ?? null,
+        // ⚡ WAVE 3517: fixtures es post-Aether UIProjector — ONE VOICE
+        fixtures: fixtureStates.map((f, i) => {
+          const originalFixture = this.fixtures[i]
+          const realId = originalFixture?.id || `fix_${i}`
+          return {
+            id: realId,
+            dimmer: f.dimmer / 255,
+            r: Math.round(f.r),
+            g: Math.round(f.g),
+            b: Math.round(f.b),
+            white: Math.round(f.white ?? 0),
+            amber: Math.round(f.amber ?? 0),
+            pan: f.pan / 255,
+            tilt: f.tilt / 255,
+            zoom: f.zoom,
+            focus: f.focus,
+            physicalPan: (f.physicalPan ?? f.pan) / 255,
+            physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
+            panVelocity: f.panVelocity ?? 0,
+            tiltVelocity: f.tiltVelocity ?? 0,
+          }
+        })
+      }
+      this.onHotFrame(hotFrame)
+    }
+
+    // ⚡ WAVE 3517: DMX Aduana + hardware flush — DESPUÉS del broadcast UI y post-Aether.
+    // WAVE 3512 (HAL guard): flushToDriver ya filtra universos Aether vía
+    // aetherConfig.isLegacyUniverse() — solo escribe en universos NO reclamados.
+    // Los universos Aether ya recibieron sus datos via sendUniverseRaw() en FASE 4.3.
+    this.hal.flushToDriver(fixtureStates)
+
     // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
-    // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.
-    // El broadcast UI siempre recibe los valores reales del engine.
+    // WAVE 3517 refuerza esto: onBroadcast lee fixtureStates post-Aether UIProjector.
 
     // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) ────────
     if (this.onBroadcast && shouldBroadcastFullTruth) {

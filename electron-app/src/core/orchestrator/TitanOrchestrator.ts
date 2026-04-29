@@ -72,12 +72,16 @@ import { FrameScheduler } from './scheduler/FrameScheduler'
 import type { FixtureSnapshot } from './intent/types'
 
 // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
-import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
+import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, NodeFamily } from '../aether'
 import type { IDeviceDefinition } from '../aether'
 // WAVE 3513: Genesis Cut — ingestion pipeline para poblar el NodeGraph desde setFixtures()
 import { NodeExtractionPipeline, SpatialRegistrar } from '../aether'
 // WAVE 3513.3: THE MIRROR — proyector Aether → FixtureState[] para Hyperion
 import { AetherUIProjector } from '../aether'
+// WAVE 3514: THE SOLDERED CABLE — adapters + FrameContext pre-allocated
+import { LiquidImpactAdapter, LiquidColorAdapter } from '../aether'
+import type { FrameContext, AudioMetrics, VibeProfile, ColorEntry } from '../aether'
+import type { MusicalContext as AetherMusicalCtx } from '../aether'
 
 // WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
 import { AduanaFilter } from '../aether/safety/AduanaFilter'
@@ -292,6 +296,51 @@ export class TitanOrchestrator {
   private readonly _spatialRegistrar   = new SpatialRegistrar()
   // WAVE 3513.3: THE MIRROR — proyector estado Aether → FixtureState[] (sin alloc)
   private readonly _uiProjector        = new AetherUIProjector()
+
+  // ── WAVE 3514: THE SOLDERED CABLE — Systems + FrameContext pre-alloc ─────────────
+  // Los adapters conectan el audio del TitanEngine con el IntentBus de Aether.
+  // Se instancian UNA vez; process() se llama 44Hz — zero-alloc garantizado.
+  private readonly _impactAdapter = new LiquidImpactAdapter()
+  private readonly _colorAdapter  = new LiquidColorAdapter()
+
+  /**
+   * FrameContext pre-allocado — mutado in-place cada frame.
+   * Los campos readonly son para los Systems (contrato de lectura);
+   * el Orchestrator actúa como owner y los actualiza directamente.
+   * Se castea a FrameContext al pasarlo a los adapters (zero-alloc — no new).
+   */
+  private readonly _aetherCtx: {
+    audio:      AudioMetrics
+    musical:    AetherMusicalCtx
+    vibe:       VibeProfile
+    nowMs:      number
+    deltaMs:    number
+    frameIndex: number
+  } = {
+    audio: {
+      subBass:          0, bass:     0, lowMid:   0, mid:      0,
+      highMid:          0, treble:   0, ultraAir: 0,
+      energy:           0, hasTransient: false, transientStrength: 0,
+      bpm:              0, beatPhase: 0, beatCount: 0,
+    },
+    musical: {
+      section:          'unknown',
+      dropImminent:     false,
+      sectionIntensity: 0,
+      harmonicTension:  0,
+      sectionElapsedMs: 0,
+    },
+    vibe: {
+      name:              'idle',
+      palette:           [{ h: 0, s: 0, l: 0.5 }] as ColorEntry[],
+      movementSpeed:     0.5,
+      intensity:         1.0,
+      beamExpressiveness: 0.5,
+    },
+    nowMs:      0,
+    deltaMs:    23,
+    frameIndex: 0,
+  }
 
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
@@ -1510,9 +1559,87 @@ export class TitanOrchestrator {
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
 
-      // 2. Systems escriben sus intents en el _aetherBus
-      //    (Los Systems se conectarán aquí en WAVE 3505.5+ a medida que se migren
-      //    los fixtures. Por ahora el bus está vacío y los nodos emiten defaultValues.)
+      // 2. WAVE 3514: THE SOLDERED CABLE — actualizar FrameContext in-place y
+      //    despachar los adapters para poblar el _aetherBus con intents reales.
+      {
+        // ── Audio (in-place, cero alloc) ──────────────────────────────────────
+        const a    = this._aetherCtx.audio as {
+          subBass: number; bass: number; lowMid: number; mid: number
+          highMid: number; treble: number; ultraAir: number
+          energy: number; hasTransient: boolean; transientStrength: number
+          bpm: number; beatPhase: number; beatCount: number
+        }
+        a.subBass          = engineAudioMetrics.subBass
+        a.bass             = engineAudioMetrics.bass
+        a.lowMid           = engineAudioMetrics.lowMid
+        a.mid              = engineAudioMetrics.mid
+        a.highMid          = engineAudioMetrics.highMid
+        a.treble           = engineAudioMetrics.high
+        a.ultraAir         = 0  // no expuesto en engineAudioMetrics; neutral
+        a.energy           = engineAudioMetrics.energy
+        a.hasTransient     = engineAudioMetrics.isBeat
+        a.transientStrength = engineAudioMetrics.kickDetected ? 1 : 0
+        a.bpm              = engineAudioMetrics.bpm
+        a.beatPhase        = engineAudioMetrics.beatPhase
+        a.beatCount        = engineAudioMetrics.beatCount
+
+        // ── Musical context (in-place) ────────────────────────────────────────
+        // Mapea SectionType del protocol → sección de Aether (más simple)
+        const rawSection = context.section?.type ?? 'unknown'
+        const m = this._aetherCtx.musical as {
+          section: string; dropImminent: boolean
+          sectionIntensity: number; harmonicTension: number; sectionElapsedMs: number
+        }
+        m.section = (
+          rawSection === 'buildup'   ? 'build'
+          : rawSection === 'breakdown' ? 'break'
+          : rawSection === 'chorus'    ? 'drop'
+          : rawSection
+        ) as AetherMusicalCtx['section']
+        m.dropImminent     = rawSection === 'buildup'
+        m.sectionIntensity = context.energy
+        m.harmonicTension  = context.syncopation
+        m.sectionElapsedMs = context.section?.duration ?? 0
+
+        // ── Vibe (in-place, palette desde intent.palette) ─────────────────────
+        // ColorEntry = { h, s, l } normalizado — HSLColor del LightingIntent ya
+        // está en 0-1, misma referencia de escala.
+        const v = this._aetherCtx.vibe as {
+          name: string; palette: ColorEntry[]
+          movementSpeed: number; intensity: number; beamExpressiveness: number
+        }
+        // Reutilizar la misma array pre-alloc sobreescribiendo los elementos
+        const pal = v.palette as ColorEntry[]
+        if (pal.length < 4) {
+          // Primer frame — poblar la array con 4 entradas
+          while (pal.length < 4) pal.push({ h: 0, s: 0, l: 0.5 })
+        }
+        ;(pal[0] as { h: number; s: number; l: number }).h = intent.palette.primary.h
+        ;(pal[0] as { h: number; s: number; l: number }).s = intent.palette.primary.s
+        ;(pal[0] as { h: number; s: number; l: number }).l = intent.palette.primary.l
+        ;(pal[1] as { h: number; s: number; l: number }).h = intent.palette.secondary.h
+        ;(pal[1] as { h: number; s: number; l: number }).s = intent.palette.secondary.s
+        ;(pal[1] as { h: number; s: number; l: number }).l = intent.palette.secondary.l
+        ;(pal[2] as { h: number; s: number; l: number }).h = intent.palette.accent.h
+        ;(pal[2] as { h: number; s: number; l: number }).s = intent.palette.accent.s
+        ;(pal[2] as { h: number; s: number; l: number }).l = intent.palette.accent.l
+        ;(pal[3] as { h: number; s: number; l: number }).h = intent.palette.ambient.h
+        ;(pal[3] as { h: number; s: number; l: number }).s = intent.palette.ambient.s
+        ;(pal[3] as { h: number; s: number; l: number }).l = intent.palette.ambient.l
+        v.name             = this.engine.getCurrentVibe()
+        v.intensity        = intent.masterIntensity
+        v.movementSpeed    = intent.movement.speed
+
+        // ── Timestamps (in-place) ─────────────────────────────────────────────
+        this._aetherCtx.nowMs      = now
+        this._aetherCtx.deltaMs    = 23  // ⏱ 44Hz → ~22.7ms/frame
+        this._aetherCtx.frameIndex = this.frameCount
+
+        const ctx = this._aetherCtx as FrameContext
+        // ── Dispatch Systems → _aetherBus (hot path — zero-alloc) ────────────
+        this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus)
+        this._colorAdapter.process(this._aetherGraph.getView(NodeFamily.COLOR),   ctx, this._aetherBus)
+      }
 
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       this._aetherArbiter.setSystemIntents(this._aetherBus)

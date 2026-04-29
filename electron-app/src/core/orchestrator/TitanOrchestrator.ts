@@ -74,6 +74,8 @@ import type { FixtureSnapshot } from './intent/types'
 // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
 import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
 import type { IDeviceDefinition } from '../aether'
+// WAVE 3513: Genesis Cut — ingestion pipeline para poblar el NodeGraph desde setFixtures()
+import { NodeExtractionPipeline, SpatialRegistrar } from '../aether'
 
 // WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
 import { AduanaFilter } from '../aether/safety/AduanaFilter'
@@ -283,6 +285,9 @@ export class TitanOrchestrator {
   // WAVE 3511: Gate de Seguridad — DarkSpin + HarmonicQuantizer + OutputGate
   private readonly _aduanaFilter  = new AduanaFilter()
   private _aetherHasDevices = false
+  // WAVE 3513: Genesis Cut — pipeline de extraccion e inyeccion espacial
+  private readonly _extractionPipeline = new NodeExtractionPipeline()
+  private readonly _spatialRegistrar   = new SpatialRegistrar()
 
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
@@ -346,6 +351,7 @@ export class TitanOrchestrator {
     } else {
       aetherConfig.releaseUniverse(universe)
     }
+    console.info('[AETHER] 🔀 DUAL MODE SWITCH: Aether is now ' + (enabled ? 'LIVE' : 'MUTED') + ' on universe ' + universe)
   }
 
   /**
@@ -406,6 +412,9 @@ export class TitanOrchestrator {
     
     this.eventRouter = getEventRouter()
     // WAVE 2098: Boot silence
+
+    // [DEV OVERRIDE] Exponer a consola para testear Aether Switch
+    ;(globalThis as any).TitanOrchestrator = this
   }
 
   /**
@@ -2203,6 +2212,105 @@ export class TitanOrchestrator {
       }
     }
     // WAVE 2098: Boot silence
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 3513: GENESIS CUT — Poblar la Aether Matrix con los fixtures cargados
+    //
+    // Punto de convergencia: el mismo setFixtures() que alimenta al legacy
+    // ahora tambien construye el grafo de nodos Aether. El legacy NO se toca.
+    // SI un fixture no tiene channels, se omite (no puede extraerse).
+    // ═══════════════════════════════════════════════════════════════════════
+    this._ingestAetherDevices(this.fixtures)
+  }
+
+  /**
+   * WAVE 3513: GENESIS CUT — Extraccion e inyeccion de fixtures en la Aether Matrix.
+   *
+   * Convierte cada fixture legacy (any[] normalizado) en un IDeviceDefinition
+   * con CapabilityNodes descompuestos por familia, lo enriquece con la posicion
+   * 3D del StageBuilder y lo registra en el NodeGraph via SpatialRegistrar.
+   *
+   * INVARIANTES:
+   * - Solo patch time. Nunca se llama desde el hot path (44Hz).
+   * - Si el fixture no tiene 'channels', se omite con un warn.
+   * - El MasterConfig legacy se mantiene intacto (no se modifica nada previo).
+   * - Los universos reclamados antes (llamadas manuales a registerAetherDevice)
+   *   se preservan — solo se anade lo nuevo.
+   *
+   * @param fixtures — Array normalizado de setFixtures() (dmxAddress ya existe)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _ingestAetherDevices(fixtures: any[]): void {
+    // Desregistrar la generacion anterior del graph completo antes de reingestar.
+    // Esto garantiza idempotencia: si el usuario edita y reaplica el patch,
+    // no se acumulan nodos duplicados.
+    for (const did of this._aetherGraph.getDeviceIds()) {
+      this.unregisterAetherDevice(did as string)
+    }
+
+    let registered = 0
+    let skipped    = 0
+
+    for (const f of fixtures) {
+      // Guard: sin channels no hay topologia Aether que extraer
+      if (!Array.isArray(f.channels) || f.channels.length === 0) {
+        skipped++
+        continue
+      }
+
+      // Construir el FixtureDefinition minimo que NodeExtractionPipeline espera.
+      // FixtureV2 ya tiene todos estos campos; los normalizamos aqui.
+      const fixtureDef = {
+        id:           f.id           as string,
+        name:         f.name         as string,
+        manufacturer: f.manufacturer as string ?? 'Unknown',
+        type:         (f.type        as string) || 'generic',
+        channels:     f.channels,
+        physics:      f.physics,
+        capabilities: f.capabilities,
+      }
+
+      const dmxAddress = (f.dmxAddress as number) || 1
+      // universe en ShowFileV2 es 0-based (ArtNet). NodeExtractionPipeline usa 1-based.
+      // El Reality Check confirma que FixtureV2.universe es 0-indexed (linea 958 HAL).
+      // Convertimos aqui para que Aether sea consistente con 1-based internamente.
+      const universe   = ((f.universe as number) ?? 0) + 1
+      const zoneId     = (f.zone as string) || 'unassigned'
+
+      try {
+        const deviceDef = this._extractionPipeline.extract(
+          fixtureDef as import('../../types/FixtureDefinition').FixtureDefinition,
+          dmxAddress,
+          universe,
+          zoneId as import('../aether/types').ZoneId,
+          f.id as import('../aether/types').DeviceId,
+        )
+
+        // Posicion 3D del StageBuilder. Si no hay posicion, usamos origen.
+        const stagePosition: import('../stage/ShowFileV2').Position3D = f.position ?? { x: 0, y: 0, z: 0 }
+
+        this._spatialRegistrar.register(deviceDef, stagePosition, this)
+        registered++
+
+        console.info(
+          `[AETHER-GENESIS] Extracted ${deviceDef.nodes.length} nodes for Fixture "${f.name}" ` +
+          `(id=${f.id} addr=${dmxAddress} univ=${universe} zone=${zoneId})`
+        )
+      } catch (err) {
+        // Un fixture malformado no debe bloquear el resto del patch
+        console.warn(
+          `[AETHER-GENESIS] Skipped fixture "${f.name ?? f.id}" — extraction failed:`,
+          err
+        )
+        skipped++
+      }
+    }
+
+    console.info(
+      `[AETHER-GENESIS] Ingestion complete — ` +
+      `registered=${registered} fixtures | skipped=${skipped} | ` +
+      `totalNodes=${this._aetherGraph.totalNodes}`
+    )
   }
 
   /**

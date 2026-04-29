@@ -1,0 +1,136 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚡ AETHER MATRIX — VMM ADAPTER
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * WAVE 3508: THE KINETIC BRIDGE — Fase 2 Acoplamiento de Motores
+ *
+ * RESPONSABILIDAD:
+ * Wrappear el VibeMovementManager (motor real de movimiento) y traducir
+ * su salida abstracta (-1,+1) en INodeIntent de pan/tilt (0-1) para
+ * todos los KINETIC_NODEs en el IntentBus.
+ *
+ * FILOSOFÍA:
+ * El VMM sabe de vibes, fases y BPM. El Aether sabe de nodos y canales.
+ * Este adapter es el traductor — no tiene lógica propia de movimiento.
+ * Solo transforma tipos y normaliza coordenadas.
+ *
+ * ESTEREO:
+ * Los nodos con position.x < 0 (lado izquierdo físico) espejean el pan.
+ * Compatible con todos los stereoTypes del VMM (mirror/snake/sync).
+ * El VMM ya maneja el desfase de fase vía stereoIndex — el adapter
+ * solo aporta la inversión de espejo para la geometría espacial.
+ *
+ * ZERO-ALLOC GARANTIZADO @ 44Hz:
+ * - _vmmAudio: puente pre-allocado, campos sobrescritos in-place cada frame.
+ * - _intentScratch + _valuesDict: heredados de BaseSystem — nunca new.
+ * - VMM.generateIntent() devuelve nuevo objeto cada llamada → los campos se
+ *   copian a variables locales del stack. Sin retener referencias.
+ *
+ * VIBES → VMM ID:
+ * context.vibe.name se mapea a vibeId del VMM via VIBE_ID_MAP estático.
+ * Si el nombre no está en el mapa, se usa 'techno-club' como fallback seguro.
+ *
+ * @module core/aether/adapters/VMMAdapter
+ * @version WAVE 3508 — BLOOD & MUSCLE F2
+ */
+import { NodeFamily } from '../types';
+import { BaseSystem } from '../systems';
+import { VibeMovementManager, } from '../../../engine/movement/VibeMovementManager';
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+/** Priority L0 — sistemas base de IA */
+const INTENT_PRIORITY = 10;
+/** Fuente identificable para debug y arbitraje */
+const INTENT_SOURCE = 'vmm-adapter';
+/**
+ * Mapa de VibeProfile.name → VMM vibeId.
+ * El VMM reconoce estos IDs en su diccionario de patrones y perfiles.
+ * Si se añade un nuevo vibe al sistema, se actualiza este mapa — nunca el adapter.
+ */
+const VIBE_ID_MAP = {
+    'techno-club': 'techno-club',
+    'techno': 'techno-club',
+    'electro': 'techno-club',
+    'fiesta-latina': 'fiesta-latina',
+    'latino': 'fiesta-latina',
+    'salsa': 'fiesta-latina',
+    'reggaeton': 'fiesta-latina',
+    'pop-rock': 'pop-rock',
+    'rock': 'pop-rock',
+    'pop': 'pop-rock',
+    'chill-lounge': 'chill-lounge',
+    'chill': 'chill-lounge',
+    'lounge': 'chill-lounge',
+    'ambient': 'chill-lounge',
+    'jazz': 'chill-lounge',
+    'idle': 'idle',
+};
+const FALLBACK_VIBE_ID = 'techno-club';
+// ─────────────────────────────────────────────────────────────────────────────
+// VMM ADAPTER
+// ─────────────────────────────────────────────────────────────────────────────
+export class VMMAdapter extends BaseSystem {
+    constructor() {
+        super();
+        this.name = 'VMMAdapter';
+        this.family = NodeFamily.KINETIC;
+        this.source = INTENT_SOURCE;
+        // Puente pre-allocado: se sobrescriben campos in-place en el hot-path.
+        // Nunca se crea un nuevo objeto dentro de process().
+        this._vmmAudio = {
+            energy: 0,
+            bass: 0,
+            mids: 0,
+            highs: 0,
+            bpm: 120,
+            beatPhase: 0,
+            beatCount: 0,
+        };
+        this._vmm = new VibeMovementManager();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // HOT-PATH — 44Hz
+    // ─────────────────────────────────────────────────────────────────────────
+    process(nodes, context, bus) {
+        const { audio, musical, vibe } = context;
+        // ── 1. Resolver vibeId → VMM vibeId (lookup O(1), sin alloc)
+        const vibeId = VIBE_ID_MAP[vibe.name] ?? FALLBACK_VIBE_ID;
+        // ── 2. Actualizar puente de audio in-place (cero alloc)
+        const va = this._vmmAudio;
+        va.energy = audio.energy;
+        va.bass = audio.bass;
+        va.mids = audio.mid; // AudioMetrics.mid → vmmAudio.mids
+        va.highs = audio.highMid; // AudioMetrics.highMid ≈ vmmAudio.highs
+        va.bpm = audio.bpm;
+        va.beatPhase = audio.beatPhase;
+        va.beatCount = audio.beatCount ?? 0;
+        // ── 3. Preparar scratch de intent (fuente y prioridad invariantes)
+        this._intentScratch.priority = INTENT_PRIORITY;
+        this._intentScratch.confidence = BaseSystem.clamp01(audio.energy * 0.8 + 0.2);
+        this._intentScratch.source = INTENT_SOURCE;
+        // ── 4. Iterar nodos (forEach es zero-alloc — no crea array)
+        nodes.forEach((node, _index) => {
+            // Obtener intent del VMM para este nodo
+            const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed);
+            // Normalizar (-1,+1) → (0,1)
+            let pan = (intent.x + 1) * 0.5;
+            let tilt = (intent.y + 1) * 0.5;
+            // Espejo espacial: nodos físicamente a la izquierda del escenario (x < 0)
+            // invierten el pan para simetría visual real.
+            // El VMM maneja el phase offset — aquí solo reflejamos la geometría.
+            if ((node.position?.x ?? 0) < 0) {
+                pan = 1 - pan;
+            }
+            // Clamp defensivo — el VMM puede dar valores fuera de rango en edge cases
+            this._valuesDict['pan'] = BaseSystem.clamp01(pan);
+            this._valuesDict['tilt'] = BaseSystem.clamp01(tilt);
+            // Speed normalizado del intent del VMM (ya es 0-1)
+            this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed);
+            // Escribir al bus (IntentBus copia los valores — seguro reutilizar scratch)
+            this._intentScratch.nodeId = node.nodeId;
+            bus.push(this._intentScratch);
+        });
+    }
+}

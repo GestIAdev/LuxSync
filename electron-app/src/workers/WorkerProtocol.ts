@@ -152,6 +152,9 @@ export interface AudioAnalysis {
   subBass?: number;           // 0-1 (20-60Hz - deep kicks)
   lowMid?: number;            // 0-1 (250-500Hz)
   highMid?: number;           // 0-1 (2000-4000Hz - presence)
+  // ⚛️ WAVE 3516: Raw GodEar bands for Aether 7-band pipeline
+  rawTreble?: number;         // 0-1 (6000-16000Hz - brillo sin ultraAir)
+  ultraAir?: number;          // 0-1 (16000-22000Hz - armónicos superiores)
   
   // 🎸 WAVE 1011: Spectral texture metrics (FFT.ts advanced)
   harshness?: number;         // 0-1 (ratio 2-5kHz vs total)

@@ -1,0 +1,12 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚛️  AETHER MATRIX — RESOLVER BARREL
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * WAVE 3505.4: Punto de entrada del subsistema de resolución DMX.
+ *
+ * @module core/aether/resolver
+ */
+export { NodeResolver } from './NodeResolver';
+// WAVE 3513.3: THE MIRROR — retroalimentación visual Aether → FixtureState[]
+export { AetherUIProjector } from './AetherUIProjector';

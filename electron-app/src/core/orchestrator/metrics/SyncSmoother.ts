@@ -133,6 +133,13 @@ export class SyncSmoother {
       // WAVE 2347: crestFactor stays FAST — kick transients must be felt
       s.crestFactor = ema(s.crestFactor, raw.crestFactor, EMA_ALPHA_FAST)
     }
+    // WAVE 3516: Raw 7-band GodEar treble/ultraAir for Aether pipeline
+    if (typeof raw.rawTreble === 'number') {
+      s.rawTreble = ema(s.rawTreble, raw.rawTreble, EMA_ALPHA_FAST)
+    }
+    if (typeof raw.ultraAir === 'number') {
+      s.ultraAir = ema(s.ultraAir, raw.ultraAir, EMA_ALPHA_FAST)
+    }
 
     // ── Ambient context (SLOW) ───────────────────────────────────────────────
 

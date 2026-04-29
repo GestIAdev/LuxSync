@@ -44,6 +44,8 @@ import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver';
 import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
 // � WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
 import { masterArbiter, ControlLayer } from '../core/arbiter';
+// WAVE 3512: Master Switch — excluir universos Aether del pipeline legacy
+import { aetherConfig } from '../core/aether/AetherConfig';
 // ═══════════════════════════════════════════════════════════════════════════
 // HARDWARE ABSTRACTION CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1387,6 +1389,22 @@ export class HardwareAbstraction {
     flushToDriver(states) {
         this.sendToDriver(states);
     }
+    /**
+     * WAVE 3505.4: AETHER MATRIX — Envío directo de universo DMX desde el NodeResolver.
+     *
+     * Bypass del pipeline legacy (renderFromTarget → fixtureStates → Aduana).
+     * Solo pasa por el gate de conexión del driver.
+     * El NodeResolver ya aplicó calibración, transferCurves y clamping.
+     *
+     * @param universe — Número de universo (1-based)
+     * @param data — Uint8Array(512) pre-allocated del NodeResolver
+     * @returns true si el envío fue exitoso
+     */
+    sendUniverseRaw(universe, data) {
+        if (!this.driver.isConnected)
+            return false;
+        return this.driver.sendUniverse(universe, data);
+    }
     /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
      * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
     sendStatesWithPhysics(states) {
@@ -1585,7 +1603,23 @@ export class HardwareAbstraction {
         //
         // This is the SOLE gate. One filter, one place, zero leaks.
         // ═══════════════════════════════════════════════════════════════════════
-        const physicalStates = states.filter(s => !s.isVirtual);
+        // ═══════════════════════════════════════════════════════════════════════
+        // WAVE 3512: MASTER SWITCH — Modo Dual Seguro
+        //
+        // Si Aether controla un universo, el pipeline legacy NO escribe en el.
+        // Los FixtureState de ese universo ya fueron procesados por NodeResolver
+        // y enviados via sendUniverseRaw(). Escribirlos aqui tambien causaria
+        // una race condition (ultimo escritor gana → corrupcion de output).
+        //
+        // Shortcircuit: si no hay universos Aether registrados (caso comun durante
+        // la migracion), se evita el filter() completamente — coste O(1).
+        //
+        // `aetherConfig.ownsUniverse()` es Set.has() — O(1), zero-alloc.
+        // ═══════════════════════════════════════════════════════════════════════
+        const legacyStates = aetherConfig.getAetherUniverseCount() === 0
+            ? states
+            : states.filter(s => aetherConfig.isLegacyUniverse(s.universe ?? 0));
+        const physicalStates = legacyStates.filter(s => !s.isVirtual);
         const packets = this.mapper.statesToDMXPackets(physicalStates);
         // ═══════════════════════════════════════════════════════════════════════
         // ⚡ WAVE 3160: ADUANA INMUTABLE — Gate en capa de bytes DMX

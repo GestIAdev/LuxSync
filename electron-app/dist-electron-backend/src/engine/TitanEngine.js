@@ -22,7 +22,7 @@
  * @version TITAN 2.0 + WAVE 271 + WAVE 1208.5
  */
 import { EventEmitter } from 'events';
-import { createDefaultLightingIntent, withHex, } from '../core/protocol/LightingIntent';
+import { createDefaultLightingIntent, } from '../core/protocol/LightingIntent';
 import { SeleneColorEngine, SeleneColorInterpolator } from './color/SeleneColorEngine';
 import { getColorConstitution } from './color/colorConstitutions';
 import { VibeManager } from './vibe/VibeManager';
@@ -34,10 +34,11 @@ import { StrategyArbiter } from './color/StrategyArbiter';
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity';
 import { getModifiersFromKey } from './physics/ElementalModifiers';
-// 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
-import { vibeMovementManager } from './movement/VibeMovementManager';
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
-import { getOpticsConfig, getMovementPhysics } from './movement/VibeMovementPresets';
+import { getOpticsConfig } from './movement/VibeMovementPresets';
+// ⚡ WAVE 3504-EXT.2: Pure math modules — replace inline private methods
+import { generateStereoMovement, buildMechanicsBypassIntent, } from './generators/MovementGenerators';
+import { selenePaletteToColorPalette, applyConsciousnessColorDecision, applyConsciousnessPhysicsModifier, calculateMasterIntensity, calculateZoneIntents, normalizeSectionType, } from './color/ColorProcessors';
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
 import { SeleneTitanConscious, 
 // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
@@ -483,8 +484,8 @@ export class TitanEngine extends EventEmitter {
         // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
         //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
         const selenePalette = this.colorInterpolator.update(audioAnalysis, energyOutput.isRelativeDrop ?? false, constitution);
-        // Convertir SelenePalette → ColorPalette
-        const palette = this.selenePaletteToColorPalette(selenePalette);
+        // Convertir SelenePalette → ColorPalette (⚡ WAVE 3504-EXT.2: pure module)
+        const palette = selenePaletteToColorPalette(selenePalette);
         this.state.lastPalette = palette;
         // Log cromático (cada 60 frames = 1 segundo)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
@@ -551,17 +552,17 @@ export class TitanEngine extends EventEmitter {
             console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`);
         }
         // ─────────────────────────────────────────────────────────────────────
-        // 2. CALCULAR INTENSIDAD GLOBAL
+        // 2. CALCULAR INTENSIDAD GLOBAL  (⚡ WAVE 3504-EXT.2: pure module)
         // ─────────────────────────────────────────────────────────────────────
-        const masterIntensity = this.calculateMasterIntensity(audio, vibeProfile);
+        const masterIntensity = calculateMasterIntensity(audio.energy, vibeProfile.dimmer);
         // ─────────────────────────────────────────────────────────────────────
-        // 3. CALCULAR INTENCIONES POR ZONA
+        // 3. CALCULAR INTENCIONES POR ZONA  (⚡ WAVE 3504-EXT.2: pure module)
         // 🔥 WAVE 290.1: Si physics=latino, usar zoneIntensities del NervousSystem
         // ⚡ WAVE 290.3: Si physics=techno, usar zoneIntensities del NervousSystem
         // 🎸 WAVE 298.5: Si physics=rock, usar zoneIntensities del NervousSystem
         // 🌊 WAVE 315.3: Si physics=chill, usar zoneIntensities del NervousSystem
         // ─────────────────────────────────────────────────────────────────────
-        let zones = this.calculateZoneIntents(audio, context, vibeProfile);
+        let zones = calculateZoneIntents(audio);
         // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
         // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
         // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
@@ -621,7 +622,7 @@ export class TitanEngine extends EventEmitter {
             }
         }
         // ─────────────────────────────────────────────────────────────────────
-        // 4. CALCULAR MOVIMIENTO
+        // 4. CALCULAR MOVIMIENTO  (⚡ WAVE 3504-EXT.2: pure modules)
         // ═══════════════════════════════════════════════════════════════════════
         // 🔧 WAVE 1046: THE MECHANICS BYPASS
         // Si la física envía coordenadas directas (THE DEEP FIELD), usarlas.
@@ -629,32 +630,28 @@ export class TitanEngine extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         let movement;
         if (nervousOutput.mechanics) {
-            // 🔧 MECHANICS BYPASS: La física manda, VMM calla
-            // THE DEEP FIELD envía coordenadas 0-1 normalizadas
+            // 🔧 MECHANICS BYPASS: La física manda, VMM calla (pure module)
             const mech = nervousOutput.mechanics;
-            // Usar promedio de L/R para el centerX/centerY global
-            // (MasterArbiter se encargará del spread per-mover)
-            const avgPan = (mech.moverL.pan + mech.moverR.pan) / 2;
-            const avgTilt = (mech.moverL.tilt + mech.moverR.tilt) / 2;
-            movement = {
-                pattern: 'CELESTIAL_MOVERS',
-                speed: 0.1, // Lento - la velocidad está implícita en las coordenadas
-                amplitude: 0.5, // El amplitud ya está en las coordenadas
-                centerX: Math.max(0, Math.min(1, avgPan)),
-                centerY: Math.max(0, Math.min(1, avgTilt)),
-                beatSync: false, // THE DEEP FIELD no usa beatSync
-                // 🔧 WAVE 1046: Include raw L/R coordinates for MasterArbiter stereo routing
-                mechanicsL: mech.moverL,
-                mechanicsR: mech.moverR,
-            };
+            movement = buildMechanicsBypassIntent(mech.moverL, mech.moverR);
             // Debug log cada 60 frames (~1s)
             if (this.state.frameCount % 60 === 0) {
                 console.log(`[🔧 MECHANICS BYPASS] ${mech.source}: L(${mech.moverL.pan.toFixed(2)},${mech.moverL.tilt.toFixed(2)}) R(${mech.moverR.pan.toFixed(2)},${mech.moverR.tilt.toFixed(2)})`);
             }
         }
         else {
-            // Sin mechanics: Delegar al VMM normalmente
-            movement = this.calculateMovement(audio, context, vibeProfile);
+            // Sin mechanics: Delegar al VMM vía pure module
+            const movAudio = {
+                bass: audio.bass,
+                mid: audio.mid,
+                high: audio.high,
+                beatPhase: audio.beatPhase,
+                beatCount: audio.beatCount,
+            };
+            const movMusical = {
+                energy: processedContext.energy,
+                bpm: processedContext.bpm,
+            };
+            movement = generateStereoMovement(this.vibeManager.getActiveVibe().id, movAudio, movMusical);
         }
         // ─────────────────────────────────────────────────────────────────────
         // ─────────────────────────────────────────────────────────────────────
@@ -702,7 +699,7 @@ export class TitanEngine extends EventEmitter {
             bpm: processedContext.bpm,
             beatPhase: processedContext.beatPhase,
             syncopation: processedContext.syncopation,
-            sectionType: this.normalizeSectionType(processedContext.section.type),
+            sectionType: normalizeSectionType(processedContext.section.type),
             // Paleta actual
             currentPalette: selenePalette,
             // Timing
@@ -771,17 +768,17 @@ export class TitanEngine extends EventEmitter {
         // 6. CONSTRUIR LIGHTING INTENT
         // 🧬 WAVE 500: Aplicar decisiones de consciencia
         // ─────────────────────────────────────────────────────────────────────
-        // 🧬 Aplicar modificaciones de consciencia a la paleta (si hay decisión)
+        // 🧬 Aplicar modificaciones de consciencia a la paleta (⚡ WAVE 3504-EXT.2: pure module)
         let finalPalette = palette;
         if (consciousnessOutput.colorDecision && consciousnessOutput.confidence > 0.5) {
-            finalPalette = this.applyConsciousnessColorDecision(palette, consciousnessOutput.colorDecision);
+            finalPalette = applyConsciousnessColorDecision(palette, consciousnessOutput.colorDecision);
         }
-        // 🧬 Aplicar modificaciones de consciencia a los efectos (respetando Energy Override)
+        // 🧬 Aplicar modificaciones de consciencia a los efectos (⚡ WAVE 3504-EXT.2: pure module)
         let finalEffects = effects;
         if (consciousnessOutput.physicsModifier && consciousnessOutput.confidence > 0.5) {
             // ⚠️ ENERGY OVERRIDE: Si energía > 0.85, física tiene VETO TOTAL
             if (energyOutput.smoothedEnergy < 0.85) {
-                finalEffects = this.applyConsciousnessPhysicsModifier(effects, consciousnessOutput.physicsModifier);
+                finalEffects = applyConsciousnessPhysicsModifier(effects, consciousnessOutput.physicsModifier);
             }
         }
         // 🧨 WAVE 600: Aplicar Effect Arsenal overrides (HTP - Highest Takes Precedence)
@@ -954,7 +951,7 @@ export class TitanEngine extends EventEmitter {
         const selenePalette = SeleneColorEngine.generate(mockAudio, constitution);
         // 🎨 WAVE 2096.1: Force immediate en interpolator (sin transición LERP)
         this.colorInterpolator.forceImmediate(selenePalette);
-        const palette = this.selenePaletteToColorPalette(selenePalette);
+        const palette = selenePaletteToColorPalette(selenePalette); // ⚡ WAVE 3504-EXT.2: pure module
         this.state.lastPalette = palette;
         console.log(`[TitanEngine] 🎨 FORCED PALETTE REFRESH for vibe: ${vibeProfile.id}`);
         console.log(`[TitanEngine] 🎨 New palette: primary=${selenePalette.primary.h.toFixed(0)}° accent=${selenePalette.accent.h.toFixed(0)}°`);
@@ -1391,243 +1388,8 @@ export class TitanEngine extends EventEmitter {
         this.lastEthicsFlags = [...currentEthicsFlags];
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // PRIVATE: CÁLCULOS INTERNOS
+    // PRIVATE: CÁLCULOS INTERNOS (residuales — no extraídos aún)
     // ═══════════════════════════════════════════════════════════════════════
-    /**
-     * 🔥 WAVE 269: Convierte SelenePalette a ColorPalette
-     * SelenePalette usa HSL en rango 0-360/0-100, ColorPalette usa 0-1
-     */
-    selenePaletteToColorPalette(selene) {
-        // Función para normalizar HSL de Selene (0-360, 0-100, 0-100) a LightingIntent (0-1)
-        const normalizeHSL = (color) => {
-            const normalized = {
-                h: color.h / 360,
-                s: color.s / 100,
-                l: color.l / 100,
-            };
-            return withHex(normalized);
-        };
-        return {
-            primary: normalizeHSL(selene.primary),
-            secondary: normalizeHSL(selene.secondary),
-            accent: normalizeHSL(selene.accent),
-            ambient: normalizeHSL(selene.ambient),
-            strategy: selene.meta.strategy,
-        };
-    }
-    /**
-     * 🧬 WAVE 500: Normaliza el tipo de sección al formato esperado por TitanStabilizedState
-     */
-    normalizeSectionType(sectionType) {
-        const normalized = sectionType?.toLowerCase() ?? 'unknown';
-        // Mapeo de secciones comunes
-        const sectionMap = {
-            intro: 'intro',
-            verse: 'verse',
-            chorus: 'chorus',
-            drop: 'drop',
-            bridge: 'bridge',
-            outro: 'outro',
-            build: 'build',
-            buildup: 'build',
-            breakdown: 'breakdown',
-            hook: 'chorus',
-            prechorus: 'build',
-            postchorus: 'verse',
-        };
-        return sectionMap[normalized] ?? 'unknown';
-    }
-    /**
-     * 🧬 WAVE 500: Aplica decisiones de color de la consciencia a la paleta
-     *
-     * La consciencia puede modificar saturación y brillo de los colores,
-     * pero RESPETA la paleta base generada por SeleneColorEngine.
-     */
-    applyConsciousnessColorDecision(palette, decision) {
-        // Clonar paleta para no mutar
-        const newPalette = {
-            primary: { ...palette.primary },
-            secondary: { ...palette.secondary },
-            accent: { ...palette.accent },
-            ambient: { ...palette.ambient },
-            strategy: palette.strategy,
-        };
-        // Aplicar modificadores de saturación (0.8-1.2)
-        const satMod = decision.saturationMod ?? 1;
-        const clampedSatMod = Math.max(0.8, Math.min(1.2, satMod));
-        // Aplicar modificadores de brillo (0.8-1.2)
-        const brightMod = decision.brightnessMod ?? 1;
-        const clampedBrightMod = Math.max(0.8, Math.min(1.2, brightMod));
-        // Modificar cada color de la paleta
-        for (const role of ['primary', 'secondary', 'accent', 'ambient']) {
-            const color = newPalette[role];
-            // Aplicar saturación (clamped 0-1)
-            color.s = Math.max(0, Math.min(1, color.s * clampedSatMod));
-            // Aplicar brillo (clamped 0-1)
-            color.l = Math.max(0, Math.min(1, color.l * clampedBrightMod));
-        }
-        return newPalette;
-    }
-    /**
-     * 🧬 WAVE 500: Aplica modificadores de física de la consciencia a los efectos
-     *
-     * ⚠️ ESTE MÉTODO SOLO SE LLAMA SI energy < 0.85
-     * En drops (energy >= 0.85), la física tiene VETO TOTAL.
-     */
-    applyConsciousnessPhysicsModifier(effects, modifier) {
-        if (!modifier)
-            return effects;
-        return effects.map(effect => {
-            const newEffect = { ...effect };
-            // Modificar intensidad de strobe/flash
-            if (effect.type === 'strobe' && modifier.strobeIntensity !== undefined) {
-                newEffect.intensity *= modifier.strobeIntensity;
-            }
-            if (effect.type === 'flash' && modifier.flashIntensity !== undefined) {
-                newEffect.intensity *= modifier.flashIntensity;
-            }
-            // Clamp final
-            newEffect.intensity = Math.max(0, Math.min(1, newEffect.intensity));
-            return newEffect;
-        });
-    }
-    calculateMasterIntensity(audio, vibeProfile) {
-        const { floor, ceiling } = vibeProfile.dimmer;
-        // WAVE 2990: NOISE GATE — sub-threshold energy = absolute silence
-        const rawIntensity = audio.energy < TitanEngine.NOISE_GATE ? 0 : audio.energy;
-        const mappedIntensity = floor + (rawIntensity * (ceiling - floor));
-        return Math.max(0, Math.min(1, mappedIntensity));
-    }
-    /**
-     * Calcula las intenciones de color/intensidad por zona.
-     */
-    calculateZoneIntents(audio, _context, _vibeProfile) {
-        // WAVE 2990: NOISE GATE applied per-band before zone math.
-        // Sub-threshold band energy = 0. Prevents noise floor from generating
-        // residual intensity in any zone.
-        const NG = TitanEngine.NOISE_GATE;
-        const bass = audio.bass < NG ? 0 : audio.bass;
-        const mid = audio.mid < NG ? 0 : audio.mid;
-        const high = audio.high < NG ? 0 : audio.high;
-        const energy = audio.energy < NG ? 0 : audio.energy;
-        const zones = {
-            front: {
-                intensity: mid * 0.8 + bass * 0.2,
-                paletteRole: 'primary',
-            },
-            back: {
-                intensity: bass * 0.6 + energy * 0.4,
-                paletteRole: 'accent',
-            },
-            left: {
-                intensity: high * 0.5 + energy * 0.5,
-                paletteRole: 'secondary',
-            },
-            right: {
-                intensity: high * 0.5 + energy * 0.5,
-                paletteRole: 'ambient',
-            },
-            ambient: {
-                intensity: energy * 0.3,
-                paletteRole: 'ambient',
-            },
-        };
-        return zones;
-    }
-    /**
-     * ═══════════════════════════════════════════════════════════════════════════
-     * 🎯 WAVE 343: OPERATION CLEAN SLATE
-     * ═══════════════════════════════════════════════════════════════════════════
-     *
-     * Calcula el movimiento de fixtures motorizados.
-     *
-     * ═══════════════════════════════════════════════════════════════════════════
-     * 🎭 WAVE 2086.1: STEREO MOVEMENT GENERATION
-     *
-     * ANTES: VMM generaba UNA posición para TODOS los movers (Borg mode).
-     * AHORA: Llamamos al VMM DOS VECES con fixtureIndex 0 (L) y 1 (R).
-     * El VMM aplica mirror/snake internamente según el vibe.
-     * Pasamos ambas posiciones como mechanicsL/R para que el Arbiter
-     * rutee cada mover a su posición correcta.
-     *
-     * El centerX/centerY global sigue siendo el promedio (para compatibilidad
-     * con single-mover setups y el spread del Arbiter).
-     * ═══════════════════════════════════════════════════════════════════════════
-     */
-    calculateMovement(audio, context, _vibeProfile) {
-        // Obtener vibe actual
-        const currentVibeId = this.vibeManager.getActiveVibe().id;
-        // Construir contexto de audio para VMM
-        // WAVE 345: Incluir beatCount para phrase detection
-        // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
-        const vmmContext = {
-            energy: context.energy, // 🔋 WAVE 935: Normalizado con AGC
-            bass: audio.bass,
-            mids: audio.mid,
-            highs: audio.high,
-            bpm: context.bpm,
-            beatPhase: audio.beatPhase,
-            beatCount: audio.beatCount || 0,
-        };
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🎭 WAVE 2086.1: STEREO GENERATION — Two calls to VMM
-        // LEFT mover = fixtureIndex 0 of 2
-        // RIGHT mover = fixtureIndex 1 of 2
-        // VMM now applies mirror/snake internally based on vibe's STEREO_CONFIG
-        // ═══════════════════════════════════════════════════════════════════════
-        const STEREO_TOTAL = 2; // L/R pair (standard stereo rig)
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🔧 WAVE 2095.1 FIX VULN-02: GEARBOX BUDGET — FEED THE SPEED LIMIT
-        //
-        // BUG ANTERIOR: generateIntent() se llamaba sin fixtureMaxSpeed (5° arg).
-        //   Default = 250 DMX/s para TODOS los fixtures. El Gearbox calculaba
-        //   amplitudes asumiendo que todo mover puede hacer 250 DMX/s.
-        //   Un mover lento (100 DMX/s) recibía targets inalcanzables.
-        //
-        // FIX: Pasar min(vibeMaxVelocity, SAFETY_CAP=400) como presupuesto.
-        //   Aquí NO conocemos el fixture concreto (el Arbiter lo asigna después),
-        //   pero sí conocemos el máximo del género + el tope del sistema.
-        //   El PhysicsDriver (VULN-01 fix) ya acota por fixture individual.
-        //   Este fix asegura que el GEARBOX no genere amplitudes de fantasía.
-        //
-        //   Chill: min(50, 400) = 50 → amplitud conservadora (correcto)
-        //   Techno: min(600, 400) = 400 → amplitud acotada al cap del sistema
-        //   Latino: min(350, 400) = 350 → amplitud natural del género
-        // ═══════════════════════════════════════════════════════════════════════
-        const SYSTEM_SAFETY_CAP_VELOCITY = 400; // Must mirror FixturePhysicsDriver.SAFETY_CAP.maxVelocity
-        const vibeMaxVelocity = getMovementPhysics(currentVibeId).maxVelocity;
-        const gearboxMaxSpeed = Math.min(vibeMaxVelocity, SYSTEM_SAFETY_CAP_VELOCITY);
-        const vmmIntentL = vibeMovementManager.generateIntent(currentVibeId, vmmContext, 0, STEREO_TOTAL, gearboxMaxSpeed);
-        const vmmIntentR = vibeMovementManager.generateIntent(currentVibeId, vmmContext, 1, STEREO_TOTAL, gearboxMaxSpeed);
-        // Convert VMM coordinates (-1..+1) to protocol coordinates (0..1)
-        const leftX = 0.5 + (vmmIntentL.x * 0.5);
-        const leftY = 0.5 + (vmmIntentL.y * 0.5);
-        const rightX = 0.5 + (vmmIntentR.x * 0.5);
-        const rightY = 0.5 + (vmmIntentR.y * 0.5);
-        // Global center = average of L/R (for single-mover fallback & spread)
-        const centerX = (leftX + rightX) / 2;
-        const centerY = (leftY + rightY) / 2;
-        // Convertir VMMMovementIntent → MovementIntent del protocolo
-        const protocolIntent = {
-            pattern: vmmIntentL.pattern,
-            speed: Math.max(0, Math.min(1, vmmIntentL.speed)),
-            amplitude: vmmIntentL.amplitude,
-            centerX: Math.max(0, Math.min(1, centerX)),
-            centerY: Math.max(0, Math.min(1, centerY)),
-            beatSync: true,
-            phaseType: vmmIntentL.phaseType,
-            // 🎭 WAVE 2086.1: Stereo coordinates for MasterArbiter routing
-            mechanicsL: {
-                pan: Math.max(0, Math.min(1, leftX)),
-                tilt: Math.max(0, Math.min(1, leftY)),
-            },
-            mechanicsR: {
-                pan: Math.max(0, Math.min(1, rightX)),
-                tilt: Math.max(0, Math.min(1, rightY)),
-            },
-        };
-        return protocolIntent;
-    }
     /**
      * Calcula los efectos activos.
      */
@@ -1717,10 +1479,3 @@ export class TitanEngine extends EventEmitter {
         console.log(`[TitanEngine 🧠] Stabilizers RESET`);
     }
 }
-/**
- * Calcula la intensidad global basada en audio y restricciones del vibe.
- */
-// WAVE 2990: NOISE GATE threshold. Energy below this is treated as silence.
-// Background hum, room noise, codec artifacts all register as ~2-4% energy.
-// Hard gate to zero prevents residual light when the room is actually silent.
-TitanEngine.NOISE_GATE = 0.05;

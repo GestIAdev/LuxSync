@@ -59,6 +59,7 @@ let titanOrchestrator = null;
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 (function installConsciousnessFilter() {
+    return; // [DEV OVERRIDE] Blackout disabled for Aether testing (WAVE 3512.2)
     const _orig = {
         log: console.log.bind(console),
         info: console.info.bind(console),
@@ -921,4 +922,15 @@ ipcMain.handle('lux:start-profiler', async () => {
     }
 });
 // ─────────────────────────────────────────────────────────────────────────────
+// ⚡ WAVE 3512.2: Aether Switch IPC bridge for DevTools console testing
+ipcMain.handle('aether:toggle-universe', (_event, universe, enabled) => {
+    if (!titanOrchestrator) {
+        console.error(`[AETHER-IPC] ❌ titanOrchestrator is NULL — initTitan() not completed yet`);
+        return { universe, enabled, error: 'TitanOrchestrator not initialized', aetherUniverses: [] };
+    }
+    titanOrchestrator.toggleAetherUniverse(universe, enabled);
+    const aetherUniverses = titanOrchestrator.getAetherUniverses();
+    console.log(`[AETHER-IPC] ✅ toggleAetherUniverse(${universe}, ${enabled}) — active: [${aetherUniverses.join(', ')}]`);
+    return { universe, enabled, aetherUniverses };
+});
 // WAVE 2098: Boot silence — module load log removed

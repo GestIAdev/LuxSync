@@ -49,6 +49,7 @@ export class AetherConfig {
    */
   public claimUniverse(universe: number): void {
     this._aetherUniverses.add(universe)
+    console.info('[AETHER] ⚡ UNIVERSE CLAIMED: ' + universe)
   }
 
   /**

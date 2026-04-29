@@ -353,7 +353,7 @@ export class FixtureMapper {
             case 'custom': {
                 // Canal custom: la key en phantomChannels es el NOMBRE del canal (no el type),
                 // para que múltiples canales custom coexistan sin colisión de key.
-                const customKey = channel.name || 'custom';
+                const customKey = (channel.customName || channel.name || '').trim() || 'custom';
                 return state.phantomChannels?.[customKey] ?? state.phantomChannels?.['custom'] ?? channel.defaultValue ?? 0;
             }
             case 'control':
@@ -365,7 +365,7 @@ export class FixtureMapper {
             case 'unknown':
             default: {
                 // Unknown channels: también usamos el nombre como key para que sean controlables
-                const unknownKey = channel.name || `unknown_${channel.index ?? 0}`;
+                const unknownKey = (channel.customName || channel.name || '').trim() || `unknown_${channel.index ?? 0}`;
                 return state.phantomChannels?.[unknownKey] ?? channel.defaultValue ?? 0;
             }
         }

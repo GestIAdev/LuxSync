@@ -1017,6 +1017,7 @@ const luxDebug = {
     /**
      * List all available API methods
      */
+    toggleAetherUniverse: (universe, enabled) => ipcRenderer.invoke('aether:toggle-universe', universe, enabled),
     help: () => {
         console.log('\n🔥 LUXDEBUG - Available Commands:');
         console.log('  window.luxDebug.testConstructor()     - Test WAVE 384 data flow');
@@ -1025,6 +1026,7 @@ const luxDebug = {
         console.log('  window.luxDebug.telemetry.stop()      - Detener captura latino 4.1');
         console.log('  window.luxDebug.telemetry.start()     - Reanudar captura latino 4.1');
         console.log('  window.luxDebug.telemetry.flush()     - Limpiar buffer latino 4.1');
+        console.log('  await window.luxDebug.toggleAetherUniverse(u, true)  - WAVE 3512.2 Aether Switch');
         console.log('  window.luxDebug.help()                - Show this help');
         console.log('');
     },

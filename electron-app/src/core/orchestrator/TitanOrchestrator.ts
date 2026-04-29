@@ -78,10 +78,28 @@ import type { IDeviceDefinition } from '../aether'
 import { NodeExtractionPipeline, SpatialRegistrar } from '../aether'
 // WAVE 3513.3: THE MIRROR — proyector Aether → FixtureState[] para Hyperion
 import { AetherUIProjector } from '../aether'
-// WAVE 3514: THE SOLDERED CABLE — adapters + FrameContext pre-allocated
-import { LiquidImpactAdapter, LiquidColorAdapter } from '../aether'
+// WAVE 3516: THE HOLISTIC MATRIX — 5 native Systems + VMMAdapter (replaces adapters)
+import {
+  ImpactSystem, ColorSystem, KineticSystem, BeamSystem, AtmosphereSystem,
+  VMMAdapter,
+} from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, ColorEntry } from '../aether'
 import type { MusicalContext as AetherMusicalCtx } from '../aether'
+import type { IIntentBus } from '../aether/intent-bus'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚛️ WAVE 3516: Cognitive Layer Hook Interface
+//
+// Contrato que Chronos (Timecode), Hephaestus (Legacy Effects) y Selene IA
+// deben implementar para inyectar intents en el IntentBus antes del Arbiter.
+// Los módulos se conectan al orquestador via setCognitiveLayer().
+// ═══════════════════════════════════════════════════════════════════════════
+export interface IAetherCognitiveLayer {
+  /** True cuando el módulo tiene intents que inyectar este frame */
+  shouldInject(ctx: FrameContext): boolean
+  /** Inyecta intents en el bus. Llamado solo si shouldInject() = true. Zero-alloc. */
+  injectIntents(ctx: FrameContext, bus: IIntentBus): void
+}
 
 // WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
 import { AduanaFilter } from '../aether/safety/AduanaFilter'
@@ -261,6 +279,9 @@ export class TitanOrchestrator {
     // 🔬 WAVE 3418: Raw input telemetry (peak y RMS del buffer crudo pre-ring-buffer)
     inputPeakAbs?: number;
     inputRMS?: number;
+    // ⚛️ WAVE 3516: Raw GodEar bands for Aether 7-band pipeline
+    rawTreble?: number;
+    ultraAir?: number;
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
@@ -297,11 +318,39 @@ export class TitanOrchestrator {
   // WAVE 3513.3: THE MIRROR — proyector estado Aether → FixtureState[] (sin alloc)
   private readonly _uiProjector        = new AetherUIProjector()
 
-  // ── WAVE 3514: THE SOLDERED CABLE — Systems + FrameContext pre-alloc ─────────────
-  // Los adapters conectan el audio del TitanEngine con el IntentBus de Aether.
-  // Se instancian UNA vez; process() se llama 44Hz — zero-alloc garantizado.
-  private readonly _impactAdapter = new LiquidImpactAdapter()
-  private readonly _colorAdapter  = new LiquidColorAdapter()
+  // ── WAVE 3516: THE HOLISTIC MATRIX — 5 Systems + VMMAdapter ──────────────────
+  // Los 5 Systems nativos de Aether procesan cada familia de nodos y escriben
+  // intents al IntentBus. Se instancian UNA vez; process() se llama 44Hz.
+  // ZERO-ALLOC garantizado — cada System pre-aloca su scratch intent.
+  private readonly _impactSystem      = new ImpactSystem()
+  private readonly _colorSystem       = new ColorSystem()
+  private readonly _kineticAdapter    = new VMMAdapter()
+  private readonly _beamSystem        = new BeamSystem()
+  private readonly _atmosphereSystem  = new AtmosphereSystem()
+
+  // ── WAVE 3516: Cognitive Layer Hooks ────────────────────────────────────────
+  // Módulos cognitivos que inyectan intents al IntentBus antes del Arbiter.
+  // null = módulo no conectado (no-op en el frame loop). Se conectan via
+  // setCognitiveLayer() cuando el módulo implementa IAetherCognitiveLayer.
+  private _chronosLayer:    IAetherCognitiveLayer | null = null
+  private _hephaestusLayer: IAetherCognitiveLayer | null = null
+  private _seleneIALayer:   IAetherCognitiveLayer | null = null
+
+  /**
+   * WAVE 3516: Conectar un módulo cognitivo al pipeline Aether.
+   * @param slot — 'chronos' | 'hephaestus' | 'selene'
+   * @param layer — implementación de IAetherCognitiveLayer (o null para desconectar)
+   */
+  public setCognitiveLayer(
+    slot: 'chronos' | 'hephaestus' | 'selene',
+    layer: IAetherCognitiveLayer | null,
+  ): void {
+    switch (slot) {
+      case 'chronos':    this._chronosLayer    = layer; break
+      case 'hephaestus': this._hephaestusLayer = layer; break
+      case 'selene':     this._seleneIALayer   = layer; break
+    }
+  }
 
   /**
    * FrameContext pre-allocado — mutado in-place cada frame.
@@ -525,6 +574,7 @@ export class TitanOrchestrator {
         beatPhase?: number; beatStrength?: number;
         kickCount?: number;
         inputPeakAbs?: number; inputRMS?: number;  // 🔬 WAVE 3418: Raw input telemetry
+        rawTreble?: number; ultraAir?: number;     // ⚛️ WAVE 3516: 7-band pipeline
       }) => {
         // WAVE 3416: Detect if active source is Omni (VirtualWire / USB / OSC).
         // These sources bypass the WebAudio IPC path entirely — processAudioFrame()
@@ -571,6 +621,9 @@ export class TitanOrchestrator {
             snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
             hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
             rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+            // ⚛️ WAVE 3516: Raw 7-band for Aether pipeline
+            rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+            ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
             workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
             workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
             workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
@@ -629,6 +682,9 @@ export class TitanOrchestrator {
           
           // Raw bass energy — WORKER ONLY
           rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
+          // ⚛️ WAVE 3516: Raw 7-band for Aether pipeline — WORKER AUTHORITATIVE
+          rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+          ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
           
           // BPM — WORKER AUTHORITATIVE (GodEarBPMTracker)
           workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
@@ -943,6 +999,9 @@ export class TitanOrchestrator {
         lowMid:           this.lastAudioData.lowMid,
         highMid:          this.lastAudioData.highMid,
         crestFactor:      this.lastAudioData.crestFactor,
+        // WAVE 3516: Raw 7-band for Aether pipeline
+        rawTreble:        this.lastAudioData.rawTreble,
+        ultraAir:         this.lastAudioData.ultraAir,
         bass: 0, mid: 0, high: 0, energy: 0, // not smoothed on frontend path
       },
       false /* omniPath */,
@@ -1434,9 +1493,9 @@ export class TitanOrchestrator {
     // Aether Matrix. Solo sobreescribe fixtures cuyos universos son "claimed".
     // Mutación in-place — cero new Object() en el hot path.
     // ═══════════════════════════════════════════════════════════════════════
-    if (this._aetherHasDevices) {
-      this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
-    }
+    // if (this._aetherHasDevices) {
+    //   this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
+    // }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
@@ -1545,37 +1604,47 @@ export class TitanOrchestrator {
     this.hal.flushToDriver(fixtureStates)
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ⚛️ WAVE 3505.4: AETHER MATRIX — V2 Agnostic Engine Pipeline
+    // ⚛️ WAVE 3516: THE HOLISTIC MATRIX — Aether V2 Full Pipeline
     //
-    // Corre DESPUÉS del pipeline legacy para no interferir con él.
-    // El _aetherBus recibe intents de los Systems en una versión futura.
-    // Por ahora el NodeArbiter arbitrará lo que tenga (vacío = paquetes default).
-    // El pipeline está listo para que cada System inyecte sus intents.
+    // 4-PHASE FRAME LOOP (zero-alloc, 44Hz):
+    //   FASE 2: Sincronización Sensorial — 7 bandas + 5 Systems → IntentBus
+    //   FASE 3: Inyección Cognitiva — Chronos/Hephaestus/Selene → IntentBus
+    //   FASE 4: Aduana y Telemetría — Arbiter → Aduana → Resolver → DMX + UIProjector
+    //
+    // (FASE 1: Ingestión Real ocurre en setFixtures() → _ingestAetherDevices())
     //
     // Zero-alloc: los buffers Uint8Array son propiedad del NodeResolver.
     // Se envían al driver por referencia directa (zero-copy al hardware).
     // ═══════════════════════════════════════════════════════════════════════
     if (this._aetherHasDevices && this.hal) {
-      // 1. Limpiar el bus de intents del frame anterior
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 2.0: Limpiar bus del frame anterior
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       this._aetherBus.clear()
 
-      // 2. WAVE 3514: THE SOLDERED CABLE — actualizar FrameContext in-place y
-      //    despachar los adapters para poblar el _aetherBus con intents reales.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 2.1: Actualizar FrameContext in-place (zero-alloc)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       {
-        // ── Audio (in-place, cero alloc) ──────────────────────────────────────
-        const a    = this._aetherCtx.audio as {
+        // ── Audio: 7 bandas GodEar + métricas globales (in-place) ────────────
+        const a = this._aetherCtx.audio as {
           subBass: number; bass: number; lowMid: number; mid: number
           highMid: number; treble: number; ultraAir: number
           energy: number; hasTransient: boolean; transientStrength: number
           bpm: number; beatPhase: number; beatCount: number
         }
-        a.subBass          = engineAudioMetrics.subBass
+        // WAVE 3516: Raw GodEar bands via SyncSmoother (EMA-smoothed, zero-alloc).
+        // subBass, lowMid, highMid, rawTreble, ultraAir = GodEar raw (post-AGC, post-EMA).
+        // bass, mid = legacy collapsed (bass+subBass*0.5+lowMid*0.4, mid+highMid*0.6).
+        // Aceptable: los Systems usan BandMixWeights que ponderan cada banda.
+        const smoothed = this.syncSmoother.currentSmoothed
+        a.subBass          = smoothed.subBass
         a.bass             = engineAudioMetrics.bass
-        a.lowMid           = engineAudioMetrics.lowMid
+        a.lowMid           = smoothed.lowMid
         a.mid              = engineAudioMetrics.mid
-        a.highMid          = engineAudioMetrics.highMid
-        a.treble           = engineAudioMetrics.high
-        a.ultraAir         = 0  // no expuesto en engineAudioMetrics; neutral
+        a.highMid          = smoothed.highMid
+        a.treble           = smoothed.rawTreble
+        a.ultraAir         = smoothed.ultraAir
         a.energy           = engineAudioMetrics.energy
         a.hasTransient     = engineAudioMetrics.isBeat
         a.transientStrength = engineAudioMetrics.kickDetected ? 1 : 0
@@ -1583,8 +1652,7 @@ export class TitanOrchestrator {
         a.beatPhase        = engineAudioMetrics.beatPhase
         a.beatCount        = engineAudioMetrics.beatCount
 
-        // ── Musical context (in-place) ────────────────────────────────────────
-        // Mapea SectionType del protocol → sección de Aether (más simple)
+        // ── Musical context (in-place) ──────────────────────────────────────
         const rawSection = context.section?.type ?? 'unknown'
         const m = this._aetherCtx.musical as {
           section: string; dropImminent: boolean
@@ -1601,17 +1669,13 @@ export class TitanOrchestrator {
         m.harmonicTension  = context.syncopation
         m.sectionElapsedMs = context.section?.duration ?? 0
 
-        // ── Vibe (in-place, palette desde intent.palette) ─────────────────────
-        // ColorEntry = { h, s, l } normalizado — HSLColor del LightingIntent ya
-        // está en 0-1, misma referencia de escala.
+        // ── Vibe (in-place, palette desde intent.palette) ───────────────────
         const v = this._aetherCtx.vibe as {
           name: string; palette: ColorEntry[]
           movementSpeed: number; intensity: number; beamExpressiveness: number
         }
-        // Reutilizar la misma array pre-alloc sobreescribiendo los elementos
         const pal = v.palette as ColorEntry[]
         if (pal.length < 4) {
-          // Primer frame — poblar la array con 4 entradas
           while (pal.length < 4) pal.push({ h: 0, s: 0, l: 0.5 })
         }
         ;(pal[0] as { h: number; s: number; l: number }).h = intent.palette.primary.h
@@ -1629,29 +1693,78 @@ export class TitanOrchestrator {
         v.name             = this.engine.getCurrentVibe()
         v.intensity        = intent.masterIntensity
         v.movementSpeed    = intent.movement.speed
+        v.beamExpressiveness = intent.movement.amplitude ?? 0.5
 
-        // ── Timestamps (in-place) ─────────────────────────────────────────────
+        // ── Timestamps (in-place) ───────────────────────────────────────────
         this._aetherCtx.nowMs      = now
         this._aetherCtx.deltaMs    = 23  // ⏱ 44Hz → ~22.7ms/frame
         this._aetherCtx.frameIndex = this.frameCount
-
-        const ctx = this._aetherCtx as FrameContext
-        // ── Dispatch Systems → _aetherBus (hot path — zero-alloc) ────────────
-        this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus)
-        this._colorAdapter.process(this._aetherGraph.getView(NodeFamily.COLOR),   ctx, this._aetherBus)
       }
 
-      // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
+      const ctx = this._aetherCtx as FrameContext
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 2.2: Dispatch 5 Systems → IntentBus (hot path — zero-alloc)
+      //
+      // Cada System itera su familia de nodos, calcula intents reactivos
+      // al audio/vibe/musical y los pushea al bus. El bus es el ÚNICO
+      // punto de escritura — los Systems no mutan estado global.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      this._impactSystem.process(
+        this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus)
+      this._colorSystem.process(
+        this._aetherGraph.getView(NodeFamily.COLOR),  ctx, this._aetherBus)
+      this._kineticAdapter.process(
+        this._aetherGraph.getView(NodeFamily.KINETIC), ctx, this._aetherBus)
+      this._beamSystem.process(
+        this._aetherGraph.getView(NodeFamily.BEAM),   ctx, this._aetherBus)
+      this._atmosphereSystem.process(
+        this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._aetherBus)
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 3: Inyección Cognitiva — Chronos / Hephaestus / Selene IA
+      //
+      // Los módulos cognitivos inyectan intents de MAYOR prioridad ANTES
+      // de que el NodeArbiter unifique las capas. Cada módulo lee el bus
+      // y/o el context, y pushea intents que sobreescriben los de Fase 2
+      // cuando ganan la arbitración por prioridad.
+      //
+      // WAVE 3516: Hook points — cada módulo se conecta aquí cuando está
+      // integrado. El IntentBus soporta prioridades (0-255): los Systems
+      // escriben a priority=10, los cognitivos a priority=50+.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      // ── CHRONOS (Timecode) ────────────────────────────────────────────
+      // Cuando Chronos está activo (show con timecode), inyecta intents
+      // de cue absolutos que sobreescriben la capa reactiva al audio.
+      // Priority: L2_MANUAL (60) — igual que un override manual del operador.
+      // ── CHRONOS (Timecode) ────────────────────────────────────────────
+      if (this._chronosLayer?.shouldInject(ctx)) {
+        this._chronosLayer.injectIntents(ctx, this._aetherBus)
+      }
+
+      // ── HEPHAESTUS (Legacy Effects Runtime) ───────────────────────────
+      if (this._hephaestusLayer?.shouldInject(ctx)) {
+        this._hephaestusLayer.injectIntents(ctx, this._aetherBus)
+      }
+
+      // ── SELENE IA (Aesthetic Intelligence) ────────────────────────────
+      if (this._seleneIALayer?.shouldInject(ctx)) {
+        this._seleneIALayer.injectIntents(ctx, this._aetherBus)
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 4.1: NodeArbiter — unifica todas las capas → ArbitratedNodeMap
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       this._aetherArbiter.setSystemIntents(this._aetherBus)
       const arbitrated = this._aetherArbiter.arbitrate()
 
-      // WAVE 3511: AduanaFilter — DarkSpin + HarmonicQuantizer + OutputGate
-      // Intercepta el ArbitratedNodeMap ANTES del NodeResolver.
-      // Aplica:
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 4.2: AduanaFilter — Safety Gate
       //   - HarmonicQuantizer: gatea cambios de rueda de color al BPM
-      //   - DarkSpinFilter: blackout durante transitos mecanicos de rueda
-      //   - OutputGate: zerifica canales AUTO si masterArbiter.isOutputEnabled()=false
-      //                  preserva canales MANUAL (override del operador)
+      //   - DarkSpinFilter: blackout durante tránsitos mecánicos de rueda
+      //   - OutputGate: zerifica canales AUTO si output deshabilitado
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       const safeArbitrated = this._aduanaFilter.filter(
         arbitrated,
         this._aetherGraph,
@@ -1660,14 +1773,25 @@ export class TitanOrchestrator {
         masterArbiter.isOutputEnabled(),
       )
 
-      // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 4.3: NodeResolver → DMX hardware (zero-copy)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       this._aetherResolver.resolve(safeArbitrated)
 
-      // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)
       for (const universe of this._aetherResolver.registeredUniverses) {
         const rawBuf = this._aetherResolver.getUniverseBuffer(universe)
         if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
       }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // FASE 4.4: AetherUIProjector — Proyectar estado → FixtureState[]
+      //
+      // DESPUÉS de que los Systems actualizaron el estado de los nodos
+      // (envelopeState, currentColor, currentPosition), el proyector lee
+      // ese estado y lo mapea a los FixtureState[] para que Hyperion lo
+      // visualice. Mutación in-place — zero-alloc.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
     }
 
     // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
@@ -1728,16 +1852,16 @@ export class TitanOrchestrator {
             active: this.hasRealAudio,
             isClipping: false
           },
-          // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
+          // 🧠 WAVE 1195 + WAVE 3516: BACKEND TELEMETRY — 7 GodEar Tactical Bands (reales)
           spectrumBands: {
             subBass: this.syncSmoother.currentSmoothed.subBass,
-            bass: bass,  // Use the already available bass from engineAudioMetrics
+            bass: bass,  // Legacy collapsed bass (bass + subBass*0.5 + lowMid*0.4)
             lowMid: this.syncSmoother.currentSmoothed.lowMid,
-            mid: mid,    // Use the already available mid from engineAudioMetrics
+            mid: mid,    // Legacy collapsed mid (mid + highMid*0.6)
             highMid: this.syncSmoother.currentSmoothed.highMid,
-            treble: high * 0.8,  // Approximate from high
-            ultraAir: high * 0.3, // Approximate ultra-high from high
-            dominant: bass > mid && bass > high ? 'bass' as const : 
+            treble: this.syncSmoother.currentSmoothed.rawTreble,   // WAVE 3516: real GodEar treble
+            ultraAir: this.syncSmoother.currentSmoothed.ultraAir, // WAVE 3516: real GodEar ultraAir
+            dominant: bass > mid && bass > high ? 'bass' as const :
                      mid > bass && mid > high ? 'mid' as const : 'treble' as const,
             flux: Math.abs((this.lastAudioData.energy || 0) - energy)
           }

@@ -28,7 +28,9 @@
 //
 // ACTIVO (bloqueado): console.info, console.debug
 // INACTIVO (libre):   console.log, console.warn, console.error
+/* [DEV OVERRIDE WAVE 3512.2] Blackout disabled for Aether testing
 ;(function(){const _n=()=>{};console.info=_n;console.debug=_n;})()
+*/
 
 import { parentPort, workerData } from 'worker_threads';
 import {

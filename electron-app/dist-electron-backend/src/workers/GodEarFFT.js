@@ -20,8 +20,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔇 WAVE 3290: GOD EAR FFT WORKER — Blackout del hilo FFT.
 // DEBUG PROBE — Comentar para auditoría del espectroscopio FFT.
-;
-(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
+/* [DEV OVERRIDE WAVE 3512.2] Blackout disabled for Aether testing
+;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+*/
 /** FFT Configuration */
 const FFT_SIZE = 4096;
 const DEFAULT_SAMPLE_RATE = 44100;
@@ -1330,6 +1331,9 @@ export function toLegacyFormat(spectrum) {
         highMid: softClip01(spectrum.bands.highMid), // side field preservado (harshness proxy)
         treble: softClip01(treble),
         subBass: softClip01(spectrum.bands.subBass),
+        // WAVE 3516: Raw 7-band preservation for Aether Matrix pipeline
+        rawTreble: softClip01(spectrum.bands.treble),
+        ultraAir: softClip01(spectrum.bands.ultraAir),
         dominantFrequency: spectrum.dominantFrequency,
         spectralCentroid: spectrum.spectral.centroid,
         harshness: softClip01(spectrum.bands.highMid), // Approximate

@@ -25,6 +25,9 @@ export interface RawAudioBands {
   lowMid?: number
   highMid?: number
   crestFactor?: number
+  // WAVE 3516: Raw GodEar bands for Aether 7-band pipeline
+  rawTreble?: number
+  ultraAir?: number
 }
 
 /**
@@ -76,6 +79,9 @@ export interface SmoothedBands {
   lowMid: number
   highMid: number
   crestFactor: number
+  // WAVE 3516: Raw GodEar bands for Aether 7-band pipeline
+  rawTreble: number
+  ultraAir: number
   /** EMA-smoothed bands for Omni path (VirtualWire/USB). */
   bass: number
   mid: number
@@ -94,6 +100,8 @@ export const DEFAULT_SMOOTHED_BANDS: Readonly<SmoothedBands> = {
   lowMid: 0,
   highMid: 0,
   crestFactor: 0,
+  rawTreble: 0,
+  ultraAir: 0,
   bass: 0,
   mid: 0,
   high: 0,

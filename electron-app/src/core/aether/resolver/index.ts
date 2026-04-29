@@ -9,3 +9,5 @@
  */
 
 export { NodeResolver } from './NodeResolver'
+// WAVE 3513.3: THE MIRROR — retroalimentación visual Aether → FixtureState[]
+export { AetherUIProjector } from './AetherUIProjector'

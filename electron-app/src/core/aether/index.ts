@@ -165,6 +165,8 @@ export type {
  */
 export { NodeArbiter } from './NodeArbiter'
 export { NodeResolver } from './resolver'
+// WAVE 3513.3: THE MIRROR — proyector Aether → FixtureState[]
+export { AetherUIProjector } from './resolver'
 
 // ---------------------------------------------------------------------------
 // INGESTION — WAVE 3507: THE SPATIAL GENESIS (F1)

@@ -76,6 +76,8 @@ import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
 import type { IDeviceDefinition } from '../aether'
 // WAVE 3513: Genesis Cut — ingestion pipeline para poblar el NodeGraph desde setFixtures()
 import { NodeExtractionPipeline, SpatialRegistrar } from '../aether'
+// WAVE 3513.3: THE MIRROR — proyector Aether → FixtureState[] para Hyperion
+import { AetherUIProjector } from '../aether'
 
 // WAVE 3511: AduanaFilter — Safety Gate (DarkSpin + Quantizer + OutputGate)
 import { AduanaFilter } from '../aether/safety/AduanaFilter'
@@ -288,6 +290,8 @@ export class TitanOrchestrator {
   // WAVE 3513: Genesis Cut — pipeline de extraccion e inyeccion espacial
   private readonly _extractionPipeline = new NodeExtractionPipeline()
   private readonly _spatialRegistrar   = new SpatialRegistrar()
+  // WAVE 3513.3: THE MIRROR — proyector estado Aether → FixtureState[] (sin alloc)
+  private readonly _uiProjector        = new AetherUIProjector()
 
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
@@ -1372,6 +1376,17 @@ export class TitanOrchestrator {
         const activeClips = hephRuntime.getStats().activeClips
         console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`)
       }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚛️ WAVE 3513.3: THE MIRROR — Proyectar estado Aether → FixtureState[]
+    //
+    // JUSTO ANTES del hot-frame para que Hyperion vea los valores de la
+    // Aether Matrix. Solo sobreescribe fixtures cuyos universos son "claimed".
+    // Mutación in-place — cero new Object() en el hot path.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this._aetherHasDevices) {
+      this._uiProjector.project(this._aetherGraph, fixtureStates, aetherConfig)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

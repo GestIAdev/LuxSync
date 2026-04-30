@@ -173,6 +173,15 @@ export class BeamSystem
     ) * vibe.beamExpressiveness
 
     view.forEach((node: IBeamNodeData) => {
+      // ── Zero-alloc cleanup: evitar valores stale del frame/nodo anterior ──
+      this._valuesDict['zoom']          = undefined as any
+      this._valuesDict['focus']         = undefined as any
+      this._valuesDict['iris']          = undefined as any
+      this._valuesDict['frost']         = undefined as any
+      this._valuesDict['gobo']          = undefined as any
+      this._valuesDict['gobo_rotation']  = undefined as any
+      this._valuesDict['prism']         = undefined as any
+      this._valuesDict['prism_rotation']= undefined as any
 
       if (node.hasZoom) {
         this._valuesDict['zoom'] = zoomTarget

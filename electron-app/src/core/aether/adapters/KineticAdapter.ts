@@ -142,6 +142,12 @@ export class VMMAdapter extends BaseSystem<IKineticNodeData> implements IAetherS
 
     // ── 4. Iterar nodos (forEach es zero-alloc — no crea array)
     nodes.forEach((node, _index) => {
+      // ── 4a. Limpiar valores stale del nodo anterior (zero-alloc)
+      this._valuesDict['rotation'] = undefined as any
+      this._valuesDict['pan']       = undefined as any
+      this._valuesDict['tilt']      = undefined as any
+      this._valuesDict['speed']     = undefined as any
+
       // Obtener intent del VMM para este nodo
       const intent = this._vmm.generateIntent(
         vibeId,

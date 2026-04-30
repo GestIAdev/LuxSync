@@ -149,6 +149,10 @@ export class AtmosphereAdapter extends BaseSystem<IAtmosphereNodeData> implement
     const energy           = audio.energy
 
     view.forEach((node) => {
+      // ── Limpiar valores stale del nodo anterior (zero-alloc)
+      this._valuesDict['level'] = undefined as any
+      this._valuesDict['speed'] = undefined as any
+
       const nodeId     = node.nodeId
       const atmosType  = node.atmosType
 

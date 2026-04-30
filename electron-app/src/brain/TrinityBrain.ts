@@ -257,6 +257,9 @@ export class TrinityBrain extends EventEmitter {
       // 🔬 WAVE 3418: Telemetría raw del buffer de entrada — peak/RMS pre-ring pre-FFT
       inputPeakAbs: analysis.inputPeakAbs,
       inputRMS: analysis.inputRMS,
+      // 🌊 WAVE 3516.1: EL 7º PASAJERO — alta frecuencia sin colapsar hacia el Orchestrator
+      rawTreble: analysis.rawTreble,
+      ultraAir:  analysis.ultraAir,
     })
 
     // Log cada ~30 frames (1 segundo)

@@ -1,19 +1,22 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌊 AETHER MATRIX — LIQUID ENGINE ADAPTER
+ * 💥 AETHER MATRIX — IMPACT ADAPTER
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 3508: THE PHOTONIC BRIDGE — Fase 2 Acoplamiento de Motores
+ * WAVE 3516.3: COLOR DECOUPLING — Extracción de responsabilidades
  *
- * RESPONSABILIDAD:
+ * RESPONSABILIDAD (SINGLE):
  * Conectar el LiquidEngineBase (LiquidEngine71/41 de hal/physics) con la
- * capa Aether. Traduce FrameContext → LiquidStereoInput → applyBands() →
- * LiquidStereoResult y distribuye las intensidades zonales como INodeIntent
- * a IMPACT nodes (dimmer) y COLOR nodes (rgb tintado por vibe.palette).
+ * capa Aether PARA NODOS IMPACT (dimmer, strobe, shutter, gobos).
+ * Traduce FrameContext → LiquidStereoInput → applyBands() → LiquidStereoResult
+ * y distribuye las intensidades zonales como INodeIntent a IMPACT nodes.
+ *
+ * NOTA: La lógica de COLOR nodes fue extraída a ColorAdapter.ts (WAVE 3516.3).
+ * Este archivo SOLO maneja fixtures de impacto (iluminación base).
  *
  * EPICENTRO DE ONDA:
  * El LiquidEngine produce 6 intensidades zonales (frontL/R, backL/R, moverL/R).
- * Estas intensidades representan "energía física" en el escenario.
  * El adapter usa la posición 3D de cada nodo para calcular su cercanía al
  * epicentro y modular la intensidad final:
  *
@@ -21,34 +24,26 @@
  *   falloff  = clamp01(1 - dist / maxRadiusM)
  *   intensity = zoneIntensity * falloff * vibe.intensity
  *
- * Si el nodo no tiene posición registrada (SpatialRegistrar aún no ejecutado),
- * falloff = 1.0 — recibe la intensidad completa sin penalización espacial.
+ * Si el nodo no tiene posición (SpatialRegistrar aún no ejecutado),
+ * falloff = 1.0 — recibe intensidad completa sin penalización.
  *
  * MAPEO ZONAL → NODO:
- * La zona de un nodo se determina por su position.x (izq/der) y position.y
- * (frente/fondo). El adapter deriva la zona semánticamente:
+ * La zona se determina por position.x (izq/der) y position.z (frente/fondo upstage/downstage).
+ * WAVE 3506.1.1: Y es altura (no participapara zoning). Z es profundidad escenario (eje principal).
  *
- *   position.y >= 0  && position.x >= 0  → frontRight / moverRight
- *   position.y >= 0  && position.x <  0  → frontLeft  / moverLeft
- *   position.y <  0  && position.x >= 0  → backRight
- *   position.y <  0  && position.x <  0  → backLeft
+ *   position.z >= 0  && position.x >= 0  → frontRight / moverRight (downstage, right)
+ *   position.z >= 0  && position.x <  0  → frontLeft  / moverLeft (downstage, left)
+ *   position.z <  0  && position.x >= 0  → backRight (upstage, right)
+ *   position.z <  0  && position.x <  0  → backLeft (upstage, left)
  *
- * Para IMPACT node: el valor de dimmer = computeBandMix × zoneIntensity × falloff
- * Para COLOR node:  el tinte viene de vibe.palette[0] escalado por zoneIntensity × falloff
+ * Para IMPACT node: dimmer = computeBandMix × zoneIntensity × falloff
  *
  * ZERO-ALLOC @ 44Hz:
- * - _liquidInput: objeto pre-allocado, campos sobrescritos in-place.
- * - _impactScratch + _impactValues: para ImpactNode intents.
- * - _colorScratch + _colorValues: para ColorNode intents.
- * - _rgbScratch: para conversión HSL → RGB sin alloc.
- * - Math.sqrt() es función nativa del motor JS — sin alloc.
+ * - _liquidInput: pre-allocado, campos sobrescritos in-place
+ * - Math.sqrt() es función nativa — sin alloc
  *
- * LAYOUT:
- * Por defecto usa liquidEngine71 (7.1). Se puede inyectar un engine
- * alternativo vía constructor para el layout 4.1 o telemetría.
- *
- * @module core/aether/adapters/LiquidEngineAdapter
- * @version WAVE 3508 — BLOOD & MUSCLE F2
+ * @module core/aether/adapters/ImpactAdapter
+ * @version WAVE 3516.3 — SINGLE RESPONSIBILITY
  */
 
 import { NodeFamily } from '../types'
@@ -68,7 +63,6 @@ import type { LiquidStereoInput, LiquidStereoResult } from '../../../hal/physics
 const INTENT_PRIORITY = 10
 
 const IMPACT_SOURCE = 'liquid-adapter-impact'
-const COLOR_SOURCE  = 'liquid-adapter-color'
 
 /**
  * Radio máximo de influencia de la onda energética (metros).
@@ -86,9 +80,9 @@ const DEFAULT_MAX_RADIUS_M = 12.0
  * Escucha el LiquidEngine y traduce sus intensidades zonales a dimmer values
  * moduladas por la distancia espacial del nodo al epicentro de la onda.
  */
-export class LiquidImpactAdapter extends BaseSystem<IImpactNodeData> implements IAetherSystem<IImpactNodeData> {
+export class ImpactAdapter extends BaseSystem<IImpactNodeData> implements IAetherSystem<IImpactNodeData> {
 
-  readonly name   = 'LiquidImpactAdapter'
+  readonly name   = 'ImpactAdapter'
   readonly family = NodeFamily.IMPACT
   readonly source: string = IMPACT_SOURCE
 
@@ -196,7 +190,8 @@ export class LiquidImpactAdapter extends BaseSystem<IImpactNodeData> implements 
       // ── 4b. Selección de zona por posición física del nodo
       //        El LiquidEngine produce intensidades zonales — elegimos la
       //        zona correcta según dónde está físicamente el fixture.
-      const zoneIntensity = selectZoneIntensity(result, px, py)
+      //        WAVE 3506.1.1: X = left/right, Z = front/back (NOT Y)
+      const zoneIntensity = selectZoneIntensity(result, px, pz)
 
       // ── 4c. Intensidad final = bandmix × falloff × zoneIntensity × vibe.intensity
       //        computeBandMix: pondera las 7 bandas según el perfil del nodo.
@@ -213,156 +208,6 @@ export class LiquidImpactAdapter extends BaseSystem<IImpactNodeData> implements 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LIQUID ENGINE ADAPTER — COLOR NODES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Adapter para ColorNodes (wash LED, PARs con color).
- * Traduce el resultado zonal del LiquidEngine a intents RGB tintados
- * por la paleta del vibe activo, modulados por distancia al epicentro.
- */
-export class LiquidColorAdapter extends BaseSystem<IColorNodeData> implements IAetherSystem<IColorNodeData> {
-
-  readonly name   = 'LiquidColorAdapter'
-  readonly family = NodeFamily.COLOR
-  readonly source: string = COLOR_SOURCE
-
-  private readonly _engine: LiquidEngineBase
-  private readonly _maxRadiusM: number
-  private readonly _epicenter = { x: 0, y: 0, z: 0 }
-
-  // Scratch de trabajo para conversión HSL → RGB
-  private readonly _rgbScratch = { r: 0, g: 0, b: 0 }
-
-  // LiquidStereoInput compartido (se recalcula igual que en LiquidImpactAdapter).
-  // En el flujo real del orquestador, ambos adapters procesan el mismo frame
-  // en secuencia → applyBands() se llama dos veces por frame.
-  // Solución arquitectónica limpia: el orquestador puede pasar el resultado
-  // externamente via injectResult(). Por ahora cada adapter es auto-contenido
-  // para mantener cero dependencia entre ellos (SOLID).
-  private readonly _liquidInput: LiquidStereoInput = {
-    bands: {
-      subBass:  0,
-      bass:     0,
-      lowMid:   0,
-      mid:      0,
-      highMid:  0,
-      treble:   0,
-      ultraAir: 0,
-    },
-    isRealSilence: false,
-    isAGCTrap:     false,
-  }
-
-  constructor(engine?: LiquidEngineBase, maxRadiusM = DEFAULT_MAX_RADIUS_M) {
-    super()
-    this._engine     = engine ?? liquidEngine71
-    this._maxRadiusM = maxRadiusM
-  }
-
-  setEpicenter(x: number, y: number, z: number): void {
-    this._epicenter.x = x
-    this._epicenter.y = y
-    this._epicenter.z = z
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // HOT-PATH — 44Hz
-  // ─────────────────────────────────────────────────────────────────────────
-
-  process(
-    nodes: INodeView<IColorNodeData>,
-    context: FrameContext,
-    bus: IIntentBus,
-  ): void {
-    const { audio, musical, vibe } = context
-
-    // ── 1. Build LiquidStereoInput in-place
-    const inp = this._liquidInput
-    const b   = inp.bands
-
-    b.subBass  = audio.subBass
-    b.bass     = audio.bass
-    b.lowMid   = audio.bass * 0.5
-    b.mid      = audio.mid
-    b.highMid  = audio.highMid
-    b.treble   = audio.presence
-    b.ultraAir = audio.air
-
-    inp.isRealSilence    = audio.energy < 0.01
-    inp.isAGCTrap        = false
-    inp.harshness        = audio.highMid
-    inp.flatness         = 0
-    inp.isKick           = audio.hasTransient && audio.bass > 0.5
-    inp.sectionType      = musical.section !== 'unknown' ? musical.section : 'drop'
-    inp.spectralCentroid = 0
-
-    // ── 2. Motor real
-    const result: LiquidStereoResult = this._engine.applyBands(inp)
-
-    // ── 3. Color base desde la paleta del vibe (palette[0] = primary color)
-    // VibeProfile.palette es ColorEntry[]. Cada ColorEntry tiene { h, s, l }.
-    // Usamos palette[0] como tinte base. Si la paleta tiene 2+ entradas,
-    // blendemos con palette[1] según la energía de la zona.
-    const palette   = vibe.palette
-    const primary   = palette[0]   // siempre existe (validado por VibeProfile)
-    const secondary = palette.length > 1 ? palette[1] : primary
-
-    // Blend entre primary y secondary según energía espectral (bass = groove)
-    const blendT = BaseSystem.clamp01(audio.bass)
-    const blendH = BaseSystem.lerp(primary.h, secondary.h, blendT)
-    const blendS = BaseSystem.lerp(primary.s, secondary.s, blendT)
-    const blendL = BaseSystem.lerp(primary.l, secondary.l, blendT)
-
-    // Convertir HSL blended → RGB scratch (cero alloc — escribe en _rgbScratch)
-    BaseSystem.hslToRgb(blendH, blendS, blendL, this._rgbScratch)
-    const baseR = this._rgbScratch.r
-    const baseG = this._rgbScratch.g
-    const baseB = this._rgbScratch.b
-
-    // ── 4. Preparar scratch invariante
-    this._intentScratch.priority = INTENT_PRIORITY
-    this._intentScratch.source   = COLOR_SOURCE
-
-    const epiX     = this._epicenter.x
-    const epiY     = this._epicenter.y
-    const epiZ     = this._epicenter.z
-    const maxR     = this._maxRadiusM
-    const vibeGain = vibe.intensity
-
-    // ── 5. Iterar nodos — color tintado por zona + distancia
-    nodes.forEach((node, _index) => {
-
-      // ── 5a. Distancia al epicentro de onda
-      const px = node.position?.x ?? 0
-      const py = node.position?.y ?? 0
-      const pz = node.position?.z ?? 0
-
-      const dx      = px - epiX
-      const dy      = py - epiY
-      const dz      = pz - epiZ
-      const dist    = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      const falloff = BaseSystem.clamp01(1 - dist / maxR)
-
-      // ── 5b. Intensidad zonal del LiquidEngine para la zona de este nodo
-      const zoneIntensity = selectZoneIntensity(result, px, py)
-
-      // ── 5c. Brightness final = energía × falloff × vibe.intensity
-      const brightness = BaseSystem.clamp01(audio.energy * falloff * zoneIntensity * vibeGain)
-
-      // ── 5d. Aplicar brightness al color base (escala RGB sin cambiar el tinte)
-      this._valuesDict['red']   = BaseSystem.clamp01(baseR * brightness)
-      this._valuesDict['green'] = BaseSystem.clamp01(baseG * brightness)
-      this._valuesDict['blue']  = BaseSystem.clamp01(baseB * brightness)
-
-      this._intentScratch.confidence = BaseSystem.clamp01(audio.energy * falloff)
-      this._intentScratch.nodeId     = node.nodeId
-      bus.push(this._intentScratch as INodeIntent)
-    })
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // PURE HELPER — SELECCIÓN DE ZONA
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -370,31 +215,36 @@ export class LiquidColorAdapter extends BaseSystem<IColorNodeData> implements IA
  * Selecciona la intensidad zonal correcta del LiquidStereoResult
  * basándose en la posición física del nodo en el escenario.
  *
- * Convención de escenario (vista desde el público):
+ * Compartido entre ImpactAdapter y ColorAdapter (que lo replica).
+ * Puro, determinista, sin allocs.
+ *
+ * WAVE 3506.1.1: COORDINATE ALIGNMENT
+ * Convención unificada Y-up (Y = altura, ShowFileV2 + Blueprint):
  *   +X = derecha del escenario, -X = izquierda
- *   +Y = frente (downstage), -Y = fondo (upstage)
+ *   +Y = altura (0 = piso, +inf = techo/truss)
+ *   +Z = frente (downstage), -Z = fondo (upstage)
  *
  * Esta función es pura, determinista y no aloca memoria.
  */
 function selectZoneIntensity(
   result: LiquidStereoResult,
   nodeX: number,
-  nodeY: number,
+  nodeZ: number,  // Z = profundidad (front/back), NO Y
 ): number {
-  const isRight   = nodeX >= 0
-  const isFront   = nodeY >= 0
-  const isMid     = Math.abs(nodeX) < 2.0  // ±2m del eje central = zona movers
+  const isRight  = nodeX >= 0
+  const isFront  = nodeZ >= 0  // Z positive = frente (downstage), Z negative = fondo (upstage)
+  const isMid    = Math.abs(nodeX) < 2.0  // ±2m del eje central = zona movers
 
   if (isMid) {
-    // Movers / cabezas móviles — zona central
+    // Movers / cabezas móviles — zona central del escenario
     return isRight ? result.moverRightIntensity : result.moverLeftIntensity
   }
 
   if (isFront) {
-    // PARs frontales / wash front
+    // PARs frontales / wash front — Z > 0
     return isRight ? result.frontRightIntensity : result.frontLeftIntensity
   }
 
-  // PARs traseros / wash back
+  // PARs traseros / wash back — Z < 0
   return isRight ? result.backRightIntensity : result.backLeftIntensity
 }

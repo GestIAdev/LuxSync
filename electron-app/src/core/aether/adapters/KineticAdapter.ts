@@ -151,23 +151,29 @@ export class VMMAdapter extends BaseSystem<IKineticNodeData> implements IAetherS
         node.maxPanSpeed,
       )
 
-      // Normalizar (-1,+1) → (0,1)
-      let pan  = (intent.x + 1) * 0.5
-      let tilt = (intent.y + 1) * 0.5
+      if (node.isContinuous) {
+        // ── Rotación continua (fan, pétalo): el eje X del VMM mapea a rotation ──
+        let rotation = (intent.x + 1) * 0.5  // -1..+1 → 0..1 (0.5 = stop)
 
-      // Espejo espacial: nodos físicamente a la izquierda del escenario (x < 0)
-      // invierten el pan para simetría visual real.
-      // El VMM maneja el phase offset — aquí solo reflejamos la geometría.
-      if ((node.position?.x ?? 0) < 0) {
-        pan = 1 - pan
+        if ((node.position?.x ?? 0) < 0) {
+          rotation = 1 - rotation  // espejo para simetría
+        }
+
+        this._valuesDict['rotation'] = BaseSystem.clamp01(rotation)
+        this._valuesDict['speed']    = BaseSystem.clamp01(intent.speed)
+      } else {
+        // ── Mover estándar (pan/tilt posicionado) ────────────────────────────
+        let pan  = (intent.x + 1) * 0.5
+        let tilt = (intent.y + 1) * 0.5
+
+        if ((node.position?.x ?? 0) < 0) {
+          pan = 1 - pan
+        }
+
+        this._valuesDict['pan']  = BaseSystem.clamp01(pan)
+        this._valuesDict['tilt'] = BaseSystem.clamp01(tilt)
+        this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed)
       }
-
-      // Clamp defensivo — el VMM puede dar valores fuera de rango en edge cases
-      this._valuesDict['pan']  = BaseSystem.clamp01(pan)
-      this._valuesDict['tilt'] = BaseSystem.clamp01(tilt)
-
-      // Speed normalizado del intent del VMM (ya es 0-1)
-      this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed)
 
       // Escribir al bus (IntentBus copia los valores — seguro reutilizar scratch)
       this._intentScratch.nodeId = node.nodeId

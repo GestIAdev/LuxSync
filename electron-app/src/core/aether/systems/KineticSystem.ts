@@ -267,43 +267,59 @@ export class KineticSystem
       }
 
       // ── 4. Gearbox budget: limitar velocidad máxima del motor ─────────────
-      // Calculamos cuánto ha cambiado la posición y lo limitamos al maxSpeed.
-      const currentPan  = node.currentPosition.pan
-      const currentTilt = node.currentPosition.tilt
+      let limitedPan: number
+      let limitedTilt: number
 
-      // maxSpeed en grados/s → convertir a unidades normalizadas por ms.
-      // Asumimos 540° de rango total de pan (convención estándar de movers).
-      // 1 unidad normalizada = 540°; velocidad en norm/ms = deg_per_s / (540 * 1000)
-      const maxPanDeltaPerMs  = node.maxPanSpeed  / (540 * 1000)
-      const maxTiltDeltaPerMs = node.maxTiltSpeed / (270 * 1000)  // tilt: 270° estándar
+      if (node.isContinuous) {
+        // Rotación continua: budget basado en maxRotationSpeed (grados/s → rev/s normalizado)
+        const currentRotation = node.currentPosition.rotation ?? 0.5
+        const maxRotDeltaPerMs = (node.maxRotationSpeed ?? 360) / (360 * 1000)
+        const maxRotDelta = maxRotDeltaPerMs * deltaMs
+        const rotDelta = pan - currentRotation
+        limitedPan = currentRotation + clampDelta(rotDelta, maxRotDelta)
+        limitedTilt = tilt  // reutilizado como speed scalar
+      } else {
+        // Mover estándar: budget pan/tilt independiente
+        const currentPan  = node.currentPosition.pan
+        const currentTilt = node.currentPosition.tilt
+        const maxPanDeltaPerMs  = node.maxPanSpeed  / (540 * 1000)
+        const maxTiltDeltaPerMs = node.maxTiltSpeed / (270 * 1000)
+        const maxPanDelta  = maxPanDeltaPerMs  * deltaMs
+        const maxTiltDelta = maxTiltDeltaPerMs * deltaMs
+        const panDelta  = pan  - currentPan
+        const tiltDelta = tilt - currentTilt
+        limitedPan  = currentPan  + clampDelta(panDelta,  maxPanDelta)
+        limitedTilt = currentTilt + clampDelta(tiltDelta, maxTiltDelta)
+      }
 
-      const maxPanDelta  = maxPanDeltaPerMs  * deltaMs
-      const maxTiltDelta = maxTiltDeltaPerMs * deltaMs
+      if (node.isContinuous) {
+        // ── Nodo de rotación continua (fan, pétalo) ──────────────────────────
+        // Usamos el valor de pan calculado como velocidad/dirección de rotación.
+        // 0.5 = stop, 0 = max CCW, 1 = max CW.
+        const rotation = limitedPan  // reutilizamos la curva del patrón
+        const speed    = limitedTilt // reutilizamos variación como speed scalar
 
-      const panDelta  = pan  - currentPan
-      const tiltDelta = tilt - currentTilt
+        node.currentPosition.rotation = rotation
 
-      // Clampear el movimiento al budget del motor
-      const limitedPan  = currentPan  + clampDelta(panDelta,  maxPanDelta)
-      const limitedTilt = currentTilt + clampDelta(tiltDelta, maxTiltDelta)
+        this._intentScratch.nodeId = node.nodeId
+        this._valuesDict['rotation'] = rotation
+        this._valuesDict['speed']    = speed
+      } else {
+        // ── Mover estándar (pan/tilt posicionado) ─────────────────────────────
+        node.currentPosition.pan  = limitedPan
+        node.currentPosition.tilt = limitedTilt
 
-      // Actualizar posición actual del nodo in-place
-      node.currentPosition.pan  = limitedPan
-      node.currentPosition.tilt = limitedTilt
+        this._intentScratch.nodeId    = node.nodeId
+        this._valuesDict['pan']  = limitedPan
+        this._valuesDict['tilt'] = limitedTilt
 
-      // ── 5. Escribir intent ─────────────────────────────────────────────────
-      this._intentScratch.nodeId    = node.nodeId
-      this._valuesDict['pan']  = limitedPan
-      this._valuesDict['tilt'] = limitedTilt
-
-      // Para motores lentos (steppers), incluir canales fine si están disponibles
-      // Esto mejora la resolución de posición para hardware que lo soporta.
-      if (node.maxPanSpeed < SLOW_MOTOR_THRESHOLD) {
-        // El canal pan_fine lleva los decimales (0-1 = 0-255 de subprecisión)
-        const panFraction = limitedPan * 255
-        this._valuesDict['pan_fine']  = (panFraction % 1)
-        const tiltFraction = limitedTilt * 255
-        this._valuesDict['tilt_fine'] = (tiltFraction % 1)
+        // Para motores lentos (steppers), incluir canales fine si están disponibles
+        if (node.maxPanSpeed < SLOW_MOTOR_THRESHOLD) {
+          const panFraction = limitedPan * 255
+          this._valuesDict['pan_fine']  = (panFraction % 1)
+          const tiltFraction = limitedTilt * 255
+          this._valuesDict['tilt_fine'] = (tiltFraction % 1)
+        }
       }
 
       bus.push(this._intentScratch as INodeIntent)

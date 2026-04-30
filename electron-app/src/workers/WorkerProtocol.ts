@@ -188,6 +188,12 @@ export interface AudioAnalysis {
   // antes del ring-buffer, AGC y FFT. Permite comparar voltaje digital SAB vs IPC.
   inputPeakAbs?: number;  // Pico absoluto máximo del incomingBuffer
   inputRMS?: number;      // RMS del incomingBuffer
+
+  // 🌊 WAVE 3516.1: EL 7º PASAJERO — bandas de alta frecuencia sin colapsar.
+  // treble (arriba) es el legacy combinado (treble + ultraAir*0.5) para consumers antiguos.
+  // rawTreble y ultraAir viajan limpios para LiquidEngine71 / Aether Matrix.
+  rawTreble?: number;     // 6-16 kHz puro (sin ultraAir mezclado)
+  ultraAir?: number;      // 16-22 kHz air digital
 }
 
 // ============================================

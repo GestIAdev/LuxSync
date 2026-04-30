@@ -296,16 +296,24 @@ export interface IKineticNodeData extends ICapabilityNode {
   readonly family: NodeFamily.KINETIC
   /** Tipo de motor físico que impulsa este nodo */
   readonly motorType: MotorType
+  /**
+   * Si true, este nodo controla rotación continua (fan, mirror ball, pétalo)
+   * en lugar de posicionamiento absoluto (pan/tilt de mover).
+   */
+  readonly isContinuous: boolean
   /** Velocidad máxima de pan (grados por segundo) */
   readonly maxPanSpeed: number
   /** Velocidad máxima de tilt (grados por segundo) */
   readonly maxTiltSpeed: number
+  /** Velocidad máxima de rotación continua (revoluciones por segundo o grados/s) */
+  readonly maxRotationSpeed?: number
   /**
    * Posición actual del motor (para physics interpolation).
    * Valores normalizados 0-1 (0 = mínimo mecánico, 1 = máximo mecánico).
+   * Para nodos continuos, `rotation` representa la posición/velocidad normalizada.
    * Mutable: actualizado por el physics layer cada frame.
    */
-  currentPosition: { pan: number; tilt: number }
+  currentPosition: { pan: number; tilt: number; rotation?: number }
   /**
    * Posición física 3D del nodo en el escenario.
    * Usada por el KineticSystem para stereo routing:

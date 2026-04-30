@@ -74,6 +74,15 @@ import type { FixtureSnapshot } from './intent/types'
 // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
 import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
 import type { IDeviceDefinition } from '../aether'
+// 🌊 WAVE 3516.2: Adapters — cableado al hot-path del frame loop
+import { LiquidImpactAdapter, VMMAdapter } from '../aether'
+// 🎨 WAVE 3516.3: ColorAdapter — extraída a su propio archivo
+import { ColorAdapter } from '../aether/adapters/ColorAdapter'
+// 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
+import { BeamAdapter } from '../aether/adapters/BeamAdapter'
+import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
+import { NodeFamily } from '../aether'
+import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
@@ -276,6 +285,38 @@ export class TitanOrchestrator {
   private readonly _aetherArbiter = new NodeArbiter()
   private readonly _aetherResolver = new NodeResolver(this._aetherGraph)
   private _aetherHasDevices = false
+  // 🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
+  private readonly _impactAdapter  = new LiquidImpactAdapter()
+  // 🎨 WAVE 3516.3: ColorAdapter — rebautizada de LiquidColorAdapter
+  private readonly _colorAdapter   = new ColorAdapter()
+  private readonly _kineticAdapter = new VMMAdapter()
+  // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
+  private readonly _beamAdapter        = new BeamAdapter()
+  private readonly _atmosphereAdapter  = new AtmosphereAdapter()
+  // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
+  private readonly _aetherAudio: AudioMetrics = {
+    subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
+    energy: 0, hasTransient: false, transientStrength: 0,
+    bpm: 0, beatPhase: 0, beatCount: 0,
+  }
+  private readonly _aetherMusical: MusicalContext = {
+    section: 'unknown', dropImminent: false, intensity: 0, tension: 0,
+  }
+  private readonly _aetherVibe: VibeProfile = {
+    name: 'idle',
+    palette: [{ h: 0, s: 0, l: 1 }],
+    movementSpeed: 0.5,
+    intensity: 0.5,
+    beamExpressiveness: 0.5,
+  }
+  private readonly _aetherCtx: FrameContext = {
+    audio:      this._aetherAudio as AudioMetrics,
+    musical:    this._aetherMusical as MusicalContext,
+    vibe:       this._aetherVibe as VibeProfile,
+    nowMs:      0,
+    deltaMs:    23,
+    frameIndex: 0,
+  }
 
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
@@ -466,6 +507,9 @@ export class TitanOrchestrator {
             // 🔬 WAVE 3418: Raw input telemetry
             inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
             inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+            // 🌊 WAVE 3516.2: El 7º Pasajero — alta frecuencia sin colapsar
+            rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+            ultraAir:  levels.ultraAir  ?? this.lastAudioData.ultraAir,
           }
           // Update audio presence detection
           //
@@ -528,6 +572,9 @@ export class TitanOrchestrator {
           // 🔬 WAVE 3418: Raw input telemetry
           inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
           inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+          // 🌊 WAVE 3516.2: El 7º Pasajero — alta frecuencia sin colapsar
+          rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+          ultraAir:  levels.ultraAir  ?? this.lastAudioData.ultraAir,
         };
         } // end isOmniActive else
       });
@@ -1431,12 +1478,76 @@ export class TitanOrchestrator {
     // Se envían al driver por referencia directa (zero-copy al hardware).
     // ═══════════════════════════════════════════════════════════════════════
     if (this._aetherHasDevices && this.hal) {
+      // ── WAVE 3516.2: Construir FrameContext in-place (cero alloc) ──────────
+      // Mutar los campos del objeto pre-allocado en lugar de crear uno nuevo.
+      // AudioMetrics: mapear bandas del SyncSmoother al vocabulario de Aether.
+      const _sm   = this.syncSmoother.currentSmoothed
+      const _a    = this._aetherAudio as AudioMetrics & Record<string, unknown>
+      _a.subBass           = _sm.subBass ?? 0
+      _a.bass              = engineAudioMetrics.bass
+      _a.mid               = engineAudioMetrics.mid
+      _a.highMid           = _sm.highMid ?? 0
+      // WAVE 3516.1: rawTreble y ultraAir del 7º Pasajero — sin colapsar
+      _a.presence          = this.lastAudioData.rawTreble  ?? (high * 0.8)
+      _a.air               = this.lastAudioData.ultraAir   ?? (high * 0.3)
+      _a.energy            = engineAudioMetrics.energy
+      _a.hasTransient      = engineAudioMetrics.isBeat
+      _a.transientStrength = engineAudioMetrics.beatConfidence
+      _a.bpm               = engineAudioMetrics.bpm
+      _a.beatPhase         = engineAudioMetrics.beatPhase
+      _a.beatCount         = engineAudioMetrics.beatCount
+
+      // MusicalContext: del contexto de Brain
+      const _m = this._aetherMusical as MusicalContext & Record<string, unknown>
+      _m.section      = context.section?.type ?? 'unknown'
+      _m.dropImminent = (context.section?.energy ?? 0) > 0.8
+      _m.intensity    = engineAudioMetrics.energy
+      _m.tension      = engineAudioMetrics.bass
+
+      // VibeProfile: del engine + paleta del intent
+      const _v = this._aetherVibe as VibeProfile & Record<string, unknown>
+      _v.name               = this.engine.getCurrentVibe()
+      _v.palette            = intent.palette.colors ?? [{ h: 0, s: 0, l: 1 }]
+      _v.movementSpeed      = 0.5
+      _v.intensity          = intent.masterIntensity ?? engineAudioMetrics.energy
+      _v.beamExpressiveness = 0.5
+
+      // nowMs y frameIndex del scope
+      ;(this._aetherCtx as Record<string, unknown>).nowMs      = now
+      ;(this._aetherCtx as Record<string, unknown>).frameIndex = this.frameCount
+
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
 
-      // 2. Systems escriben sus intents en el _aetherBus
-      //    (Los Systems se conectarán aquí en WAVE 3505.5+ a medida que se migren
-      //    los fixtures. Por ahora el bus está vacío y los nodos emiten defaultValues.)
+      // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
+      const ctx = this._aetherCtx
+      this._impactAdapter.process(
+        this._aetherGraph.getView(NodeFamily.IMPACT),
+        ctx,
+        this._aetherBus,
+      )
+      this._colorAdapter.process(
+        this._aetherGraph.getView(NodeFamily.COLOR),
+        ctx,
+        this._aetherBus,
+      )
+      this._kineticAdapter.process(
+        this._aetherGraph.getView(NodeFamily.KINETIC),
+        ctx,
+        this._aetherBus,
+      )
+      // 🔦 WAVE 3516.4: Beam — ópticas (gobos, prismas, zoom, focus)
+      this._beamAdapter.process(
+        this._aetherGraph.getView(NodeFamily.BEAM),
+        ctx,
+        this._aetherBus,
+      )
+      // 🌫️ WAVE 3516.4: Atmosphere — elementos (fog, haze, fan, spark, pyro)
+      this._atmosphereAdapter.process(
+        this._aetherGraph.getView(NodeFamily.ATMOSPHERE),
+        ctx,
+        this._aetherBus,
+      )
 
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       this._aetherArbiter.setSystemIntents(this._aetherBus)

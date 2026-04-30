@@ -395,18 +395,27 @@ export class NodeExtractionPipeline {
     const motorType = this._mapMotorType(fixtureDef.physics?.motorType)
     const maxSpeed  = fixtureDef.physics?.maxVelocity ?? 540
 
+    // Heurística: si no hay pan/tilt pero sí rotation → rotación continua (fan, pétalo)
+    const hasPanTilt = kineticChs.some(ch => ch.type === 'pan' || ch.type === 'tilt')
+    const hasRotation = kineticChs.some(ch => ch.type === 'rotation')
+    const isContinuous = !hasPanTilt && hasRotation
+
     return {
       nodeId,
       family:            NodeFamily.KINETIC,
       deviceId,
       zoneId,
-      role:              'primary',
+      role:              isContinuous ? 'percussion' : 'primary',
       channels:          this._mapChannels(kineticChs, true),
       constraints:       { ...KINETIC_CONSTRAINTS_BASE, maxSpeed },
       motorType,
-      maxPanSpeed:       maxSpeed,
-      maxTiltSpeed:      maxSpeed,
-      currentPosition:   { pan: 0.5, tilt: 0.5 },
+      isContinuous,
+      maxPanSpeed:       isContinuous ? 0 : maxSpeed,
+      maxTiltSpeed:      isContinuous ? 0 : maxSpeed,
+      maxRotationSpeed:  isContinuous ? maxSpeed : undefined,
+      currentPosition:   isContinuous
+        ? { pan: 0, tilt: 0, rotation: 0.5 }
+        : { pan: 0.5, tilt: 0.5 },
       physicalPosition:  NEUTRAL_POSITION,
       stereoIndex:       0,
       stereoTotal:       1,

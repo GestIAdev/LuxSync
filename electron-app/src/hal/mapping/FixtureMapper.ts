@@ -123,6 +123,7 @@ export interface FixtureState {
   b: number         // 0-255
   pan: number       // 0-255 (TARGET position)
   tilt: number      // 0-255 (TARGET position)
+  rotation?: number // 0-255 (CONTINUOUS rotation: 0=max CCW, 128=stop, 255=max CW)
   // 🔍 WAVE 338.2: Optics
   zoom: number      // 0-255 (0=beam, 255=wash)
   focus: number     // 0-255 (0=sharp, 255=soft)

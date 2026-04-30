@@ -142,10 +142,16 @@ export class SpatialRegistrar {
     deviceDef:     Readonly<IDeviceDefinition>,
     stagePosition: Readonly<StagePosition3D>,
   ): IDeviceDefinition {
+    // ─ WAVE 3506.1.1: COORDINATE ALIGNMENT ─────────────────────────────────
+    // Mapeo explícito sin inversiones. ShowFileV2 usa Y-up:
+    //   X: Left (-) to Right (+)
+    //   Y: Down (-) to Up (+)   [0 = floor, positive = height/truss]
+    //   Z: Back (-) to Front (+) [0 = center stage, positive = downstage]
+    // Este mapeo se copia **directamente** sin traslaciones de significado.
     const center: Position3D = {
-      x: stagePosition.x,
-      y: stagePosition.y,
-      z: stagePosition.z,
+      x: stagePosition.x,  // Ancho (izquierda/derecha)
+      y: stagePosition.y,  // Altura (piso/techo)
+      z: stagePosition.z,  // Profundidad (upstage/downstage)
     }
 
     // Contar cuántos nodos COLOR hay para calcular offsets de pétalos

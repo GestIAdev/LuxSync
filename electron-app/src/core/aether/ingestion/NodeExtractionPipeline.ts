@@ -4,6 +4,8 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 3507: THE SPATIAL GENESIS (F1)
+ * WAVE 3517.1: THE FORGE UPGRADE — Soporte completo para 5 familias,
+ *              inyección espacial desde FixtureV2, y firma dual de extract().
  *
  * Adaptador de solo lectura que traduce una FixtureDefinition legacy
  * a un IDeviceDefinition con todos sus ICapabilityNode descompuestos.
@@ -14,6 +16,12 @@
  * - Produce ICapabilityNode con state: Float64Array(4) pre-asignado.
  * - Genera DeviceId y NodeId derivados del id del fixture legacy.
  *
+ * REGLA DE ORO (Zero Functionality Loss):
+ * - FixtureDefinition legacy permanece intacto en store/disco.
+ * - Este pipeline es un traductor UNIDIRECCIONAL: legacy → Aether.
+ * - La Forja sigue trabajando con FixtureDefinition; el NodeGraph
+ *   trabaja con IDeviceDefinition. No hay mutación cruzada.
+ *
  * ALGORITMO DE DESCOMPOSICIÓN:
  *   1. Analiza los canales (FixtureChannel[]) del perfil legacy.
  *   2. Detecta la topología: single-emitter, multi-emitter (fan),
@@ -21,10 +29,12 @@
  *   3. Agrupa canales por familia semántica (COLOR, IMPACT, KINETIC, BEAM, ATMOSPHERE).
  *   4. Para aparatos multi-emitter (fans): cada pétalo recibe su propio
  *      COLOR_NODE con offsets DMX calculados.
- *   5. Retorna IDeviceDefinition lista para NodeGraph.registerDevice().
+ *   5. Inyecta Position3D desde FixtureV2 en todos los nodos.
+ *   6. Fusiona calibración de physics + calibración de show (FixtureV2.calibration).
+ *   7. Retorna IDeviceDefinition lista para NodeGraph.registerDevice().
  *
  * @module core/aether/ingestion/NodeExtractionPipeline
- * @version WAVE 3507
+ * @version WAVE 3517.1
  */
 
 import type {
@@ -63,6 +73,7 @@ import type {
   FixtureChannel,
   FixtureType,
 } from '../../../types/FixtureDefinition'
+import type { FixtureV2 } from '../../stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERNAL: CHANNEL GROUP para sub-emitters
@@ -101,11 +112,19 @@ const KINETIC_CHANNEL_TYPES = new Set<string>([
 
 const BEAM_CHANNEL_TYPES = new Set<string>([
   'gobo', 'gobo_rotation', 'prism', 'prism_rotation',
-  'focus', 'zoom', 'iris', 'frost',
+  'focus', 'zoom', 'frost',
 ])
 
+// WAVE 3517.1: ATMOSPHERE incluye custom/macro/control (canales de máquinas de efecto).
+// La detección semántica se refuerza con el fixture.type en _analyzeTopology().
 const ATMOSPHERE_CHANNEL_TYPES = new Set<string>([
   'control', 'macro', 'custom',
+])
+
+// Fixture types que por definición producen un ATMOSPHERE node aunque sus
+// canales sean 'custom' (fog output, haze pump, spark ignition, etc.).
+const ATMOSPHERE_FIXTURE_TYPES = new Set<string>([
+  'fog', 'fan', 'pyro', 'laser',
 ])
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -195,9 +214,25 @@ export class NodeExtractionPipeline {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Extrae un IDeviceDefinition a partir de un perfil de fixture legacy.
+   * WAVE 3517.1: Firma principal (blueprint 3506 §1.4).
    *
-   * @param fixtureDef       — Perfil leído de la biblioteca (.fxt / DB). NUNCA mutable.
+   * Extrae un IDeviceDefinition a partir del perfil legacy + datos del
+   * Stagebuilder. La posición 3D, la calibración show-level (panOffset,
+   * tiltInvert…) y el zoneId se leen directamente del FixtureV2.
+   *
+   * @param definition — Perfil de la Forja (.fxt / DB). NUNCA mutable.
+   * @param fixtureV2  — Instancia del Stagebuilder (posición, zona, calibración).
+   */
+  public extract(
+    definition: Readonly<FixtureDefinition>,
+    fixtureV2:  Readonly<FixtureV2>,
+  ): IDeviceDefinition
+
+  /**
+   * Firma legacy: compatible con código previo a WAVE 3517.1 que
+   * pasa los parámetros manualmente en lugar del FixtureV2.
+   *
+   * @param fixtureDef       — Perfil leído de la biblioteca (.fxt / DB).
    * @param dmxAddress       — Dirección DMX base (1–512).
    * @param universe         — Universo DMX (1-based).
    * @param zoneId           — Zona semántica ("movers-left", "front", etc.).
@@ -209,21 +244,67 @@ export class NodeExtractionPipeline {
     universe:          number,
     zoneId:            ZoneId,
     deviceIdOverride?: DeviceId,
+  ): IDeviceDefinition
+
+  // Implementación unificada
+  public extract(
+    fixtureDef:            Readonly<FixtureDefinition>,
+    dmxAddressOrFixtureV2: number | Readonly<FixtureV2>,
+    universe?:             number,
+    zoneId?:               ZoneId,
+    deviceIdOverride?:     DeviceId,
   ): IDeviceDefinition {
-    const deviceId: DeviceId = deviceIdOverride ?? (fixtureDef.id as DeviceId)
+
+    // ── Despacho de firma ────────────────────────────────────────────────
+    let resolvedAddress:  number
+    let resolvedUniverse: number
+    let resolvedZone:     ZoneId
+    let resolvedDeviceId: DeviceId
+    let resolvedPosition: Position3D | undefined
+    let v2CalibOverride:  Readonly<FixtureV2['calibration']> | undefined
+    let isVirtual:        boolean | undefined
+
+    if (typeof dmxAddressOrFixtureV2 === 'object') {
+      // ── Firma FixtureV2 (WAVE 3517.1 — recomendada) ──────────────────
+      const fv2       = dmxAddressOrFixtureV2
+      resolvedAddress  = fv2.address
+      resolvedUniverse = fv2.universe
+      resolvedZone     = fv2.zone as ZoneId
+      resolvedDeviceId = (fv2.id as DeviceId)
+      resolvedPosition = fv2.position
+      v2CalibOverride  = fv2.calibration
+      isVirtual        = fv2.isVirtual
+    } else {
+      // ── Firma legacy (compatibilidad) ─────────────────────────────────
+      resolvedAddress  = dmxAddressOrFixtureV2
+      resolvedUniverse = universe!
+      resolvedZone     = zoneId!
+      resolvedDeviceId = deviceIdOverride ?? (fixtureDef.id as DeviceId)
+      resolvedPosition = undefined
+      v2CalibOverride  = undefined
+      isVirtual        = undefined
+    }
+
     const topology = this._analyzeTopology(fixtureDef)
-    const nodes    = this._buildAllNodes(deviceId, zoneId, fixtureDef, topology)
-    const calibr   = this._buildCalibration(fixtureDef)
+    const nodes    = this._buildAllNodes(
+      resolvedDeviceId,
+      resolvedZone,
+      fixtureDef,
+      topology,
+      resolvedPosition,
+    )
+    const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
 
     return {
-      deviceId,
+      deviceId:     resolvedDeviceId,
       name:         fixtureDef.name,
       type:         fixtureDef.type,
-      dmxAddress,
-      universe,
+      dmxAddress:   resolvedAddress,
+      universe:     resolvedUniverse,
       channelCount: fixtureDef.channels.length,
       nodes:        Object.freeze(nodes),
-      calibration:  calibr,
+      calibration,
+      ...(isVirtual !== undefined && { isVirtual }),
     } satisfies IDeviceDefinition
   }
 
@@ -233,13 +314,35 @@ export class NodeExtractionPipeline {
 
   private _analyzeTopology(fixtureDef: Readonly<FixtureDefinition>): TopologyAnalysis {
     const chs = fixtureDef.channels
+    const isAtmosphereFixture = ATMOSPHERE_FIXTURE_TYPES.has(fixtureDef.type)
 
-    const colorChs      = chs.filter(ch => COLOR_CHANNEL_TYPES.has(ch.type))
-    const impactChs     = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(ch.type))
-    const kineticChs    = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(ch.type))
-    const beamChs       = chs.filter(ch => BEAM_CHANNEL_TYPES.has(ch.type))
-    const atmosphereChs = chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
+    // WAVE 3517.1: Para fixtures de atmósfera, los canales 'custom' son
+    // el medio principal de control (fog output, fan speed, spark output…).
+    // Un fixture de tipo 'fog' con un canal 'custom' llamado "Fog Output"
+    // debe producir un ATMOSPHERE node, no caer en el void.
+    // Para el resto de fixtures, 'custom' sigue siendo atmósfera si existe.
 
+    const colorChs   = chs.filter(ch => COLOR_CHANNEL_TYPES.has(ch.type))
+    const impactChs  = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(ch.type))
+    const kineticChs = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(ch.type))
+    const beamChs    = chs.filter(ch => BEAM_CHANNEL_TYPES.has(ch.type))
+
+    // Para fixtures de atmósfera: todos los canales no capturados por las
+    // otras familias se convierten en ATMOSPHERE channels.
+    // Para el resto: solo los tipos explícitamente en ATMOSPHERE_CHANNEL_TYPES.
+    const classifiedTypes = new Set([
+      ...COLOR_CHANNEL_TYPES,
+      ...IMPACT_CHANNEL_TYPES,
+      ...KINETIC_CHANNEL_TYPES,
+      ...BEAM_CHANNEL_TYPES,
+    ])
+
+    const atmosphereChs: FixtureChannel[] = isAtmosphereFixture
+      ? chs.filter(ch => !classifiedTypes.has(ch.type) || ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
+      : chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
+
+    // Para fans multi-emitter: detectar grupos de color por pétalo.
+    // Para el resto: un único grupo de color si hay canales de color.
     const colorGroups: ChannelGroup[] =
       fixtureDef.type === 'fan'
         ? this._detectFanEmitterGroups(colorChs)
@@ -307,23 +410,24 @@ export class NodeExtractionPipeline {
     zoneId:     ZoneId,
     fixtureDef: Readonly<FixtureDefinition>,
     topology:   TopologyAnalysis,
+    position?:  Position3D,
   ): ICapabilityNode[] {
     const nodes: ICapabilityNode[] = []
 
     for (const group of topology.colorGroups) {
-      nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group))
+      nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position))
     }
     if (topology.impactChannels.length > 0) {
-      nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels))
+      nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels, position))
     }
     if (topology.kineticChannels.length > 0) {
-      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels))
+      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position))
     }
     if (topology.beamChannels.length > 0) {
-      nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels))
+      nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position))
     }
     if (topology.atmosphereChannels.length > 0) {
-      nodes.push(this._buildAtmosphereNode(deviceId, zoneId, fixtureDef, topology.atmosphereChannels))
+      nodes.push(this._buildAtmosphereNode(deviceId, zoneId, fixtureDef, topology.atmosphereChannels, position))
     }
 
     return nodes
@@ -336,12 +440,13 @@ export class NodeExtractionPipeline {
     zoneId:     ZoneId,
     fixtureDef: Readonly<FixtureDefinition>,
     group:      ChannelGroup,
+    position?:  Position3D,
   ): IColorNodeData {
     const nodeId: NodeId = `${deviceId}:${group.labelSuffix}`
 
-    const channels = this._mapChannels(group.channels)
-    const mixingType  = this._detectMixingType(group.channels)
-    const colorWheel  = this._buildColorWheelDef(fixtureDef)
+    const channels   = this._mapChannels(group.channels)
+    const mixingType = this._detectMixingType(group.channels)
+    const colorWheel = this._buildColorWheelDef(fixtureDef)
 
     return {
       nodeId,
@@ -355,6 +460,7 @@ export class NodeExtractionPipeline {
       colorWheel,
       currentColor: { r: 0, g: 0, b: 0 },
       state:        new Float64Array(4),
+      ...(position !== undefined && { position }),
     } satisfies IColorNodeData
   }
 
@@ -364,21 +470,28 @@ export class NodeExtractionPipeline {
     deviceId:  DeviceId,
     zoneId:    ZoneId,
     impactChs: readonly FixtureChannel[],
+    position?: Position3D,
   ): IImpactNodeData {
     const nodeId: NodeId = `${deviceId}:impact`
+
+    // Blueprint 3506 §1.5: dimmer → role 'primary'; shutter/strobe → role 'percussion'.
+    // Si hay dimmer, el nodo principal es de dimmer (primary).
+    // Si solo hay shutter o strobe (sin dimmer), el rol es 'percussion'.
+    const hasDimmer = impactChs.some(ch => ch.type === 'dimmer')
 
     return {
       nodeId,
       family:        NodeFamily.IMPACT,
       deviceId,
       zoneId,
-      role:          'percussion',
+      role:          hasDimmer ? 'primary' : 'percussion',
       channels:      this._mapChannels(impactChs),
       constraints:   IMPACT_CONSTRAINTS,
       transferCurve: IMPACT_TRANSFER_CURVE,
       bandMix:       IMPACT_BAND_MIX,
       envelopeState: IMPACT_ENVELOPE_INIT,
       state:         new Float64Array(4),
+      ...(position !== undefined && { position }),
     } satisfies IImpactNodeData
   }
 
@@ -389,6 +502,7 @@ export class NodeExtractionPipeline {
     zoneId:     ZoneId,
     fixtureDef: Readonly<FixtureDefinition>,
     kineticChs: readonly FixtureChannel[],
+    position?:  Position3D,
   ): IKineticNodeData {
     const nodeId: NodeId = `${deviceId}:kinetic`
 
@@ -396,8 +510,8 @@ export class NodeExtractionPipeline {
     const maxSpeed  = fixtureDef.physics?.maxVelocity ?? 540
 
     // Heurística: si no hay pan/tilt pero sí rotation → rotación continua (fan, pétalo)
-    const hasPanTilt = kineticChs.some(ch => ch.type === 'pan' || ch.type === 'tilt')
-    const hasRotation = kineticChs.some(ch => ch.type === 'rotation')
+    const hasPanTilt   = kineticChs.some(ch => ch.type === 'pan' || ch.type === 'tilt')
+    const hasRotation  = kineticChs.some(ch => ch.type === 'rotation')
     const isContinuous = !hasPanTilt && hasRotation
 
     return {
@@ -416,29 +530,36 @@ export class NodeExtractionPipeline {
       currentPosition:   isContinuous
         ? { pan: 0, tilt: 0, rotation: 0.5 }
         : { pan: 0.5, tilt: 0.5 },
-      physicalPosition:  NEUTRAL_POSITION,
+      physicalPosition:  position ?? NEUTRAL_POSITION,
       stereoIndex:       0,
       stereoTotal:       1,
       state:             new Float64Array(4),
+      ...(position !== undefined && { position }),
     } satisfies IKineticNodeData
   }
 
   // ── BEAM NODE ─────────────────────────────────────────────────────────────
 
   private _buildBeamNode(
-    deviceId: DeviceId,
-    zoneId:   ZoneId,
-    beamChs:  readonly FixtureChannel[],
+    deviceId:  DeviceId,
+    zoneId:    ZoneId,
+    beamChs:   readonly FixtureChannel[],
+    position?: Position3D,
   ): IBeamNodeData {
     const nodeId: NodeId = `${deviceId}:beam`
     const types = new Set(beamChs.map(ch => ch.type))
+
+    // Blueprint 3506 §1.5: zoom/focus/iris → role 'primary'; gobo/prism → role 'decoration'.
+    // Si hay zoom, focus o iris, el nodo es primario (conformación del haz).
+    // Si solo hay gobos/prism, es decoración pura.
+    const hasBeamShaping = types.has('zoom') || types.has('focus')
 
     return {
       nodeId,
       family:           NodeFamily.BEAM,
       deviceId,
       zoneId,
-      role:             'decoration',
+      role:             hasBeamShaping ? 'primary' : 'decoration',
       channels:         this._mapChannels(beamChs),
       constraints:      BEAM_CONSTRAINTS,
       hasGobo:          types.has('gobo'),
@@ -450,6 +571,7 @@ export class NodeExtractionPipeline {
       hasFrost:         types.has('frost'),
       darkSpinState:    DARKSPIN_INIT,
       state:            new Float64Array(4),
+      ...(position !== undefined && { position }),
     } satisfies IBeamNodeData
   }
 
@@ -460,20 +582,31 @@ export class NodeExtractionPipeline {
     zoneId:        ZoneId,
     fixtureDef:    Readonly<FixtureDefinition>,
     atmosphereChs: readonly FixtureChannel[],
+    position?:     Position3D,
   ): IAtmosphereNodeData {
     const nodeId: NodeId = `${deviceId}:atmosphere`
+
+    // WAVE 3517.1: Detectar role semántico por tipo de fixture.
+    // fog/haze → 'ambient' (rellena el espacio continuamente)
+    // pyro/laser/spark → 'atmosphere' (efecto puntual dramático)
+    // fan → 'ambient' (movimiento de aire continuo)
+    const atmosType = this._mapAtmosphereType(fixtureDef.type)
+    const role = (atmosType === 'fog' || atmosType === 'haze' || atmosType === 'fan')
+      ? 'ambient'
+      : 'atmosphere'
 
     return {
       nodeId,
       family:      NodeFamily.ATMOSPHERE,
       deviceId,
       zoneId,
-      role:        'atmosphere',
+      role,
       channels:    this._mapChannels(atmosphereChs),
       constraints: ATMOSPHERE_CONSTRAINTS,
-      atmosType:   this._mapAtmosphereType(fixtureDef.type),
+      atmosType,
       safety:      ATMOSPHERE_SAFETY_INIT,
       state:       new Float64Array(4),
+      ...(position !== undefined && { position }),
     } satisfies IAtmosphereNodeData
   }
 
@@ -481,22 +614,47 @@ export class NodeExtractionPipeline {
   // PHASE 3 — CALIBRATION EXTRACTION
   // ─────────────────────────────────────────────────────────────────────────
 
-  private _buildCalibration(fixtureDef: Readonly<FixtureDefinition>): IDeviceCalibration | undefined {
+  /**
+   * Construye IDeviceCalibration fusionando dos fuentes:
+   * 1. FixtureDefinition.physics   — datos de la Forja (fixture library)
+   * 2. FixtureV2.calibration       — datos del show (CalibrationLab override)
+   *
+   * Los datos del show (FixtureV2) tienen PRECEDENCIA sobre los de la Forja.
+   * Esta es la decisión correcta: el operador que ajusta en vivo sabe más
+   * que el perfil genérico de la librería.
+   */
+  private _buildCalibration(
+    fixtureDef:    Readonly<FixtureDefinition>,
+    v2Calibration?: Readonly<FixtureV2['calibration']>,
+  ): IDeviceCalibration | undefined {
     const p = fixtureDef.physics
-    if (!p) return undefined
 
-    const calib: IDeviceCalibration = {
-      ...(p.invertPan         !== undefined && { invertPan:    p.invertPan }),
-      ...(p.invertTilt        !== undefined && { invertTilt:   p.invertTilt }),
-      ...(p.homePosition                    && {
+    // ── Datos de base (Forja / physics profile) ──────────────────────────
+    const fromPhysics: IDeviceCalibration = {
+      ...(p?.invertPan      !== undefined && { invertPan:    p.invertPan }),
+      ...(p?.invertTilt     !== undefined && { invertTilt:   p.invertTilt }),
+      ...(p?.homePosition              && {
         panOffset:  p.homePosition.pan,
         tiltOffset: p.homePosition.tilt,
       }),
-      ...(p.tiltLimits?.min   !== undefined && { tiltLimitMin: p.tiltLimits.min }),
-      ...(p.tiltLimits?.max   !== undefined && { tiltLimitMax: p.tiltLimits.max }),
+      ...(p?.tiltLimits?.min !== undefined && { tiltLimitMin: p.tiltLimits.min }),
+      ...(p?.tiltLimits?.max !== undefined && { tiltLimitMax: p.tiltLimits.max }),
     }
 
-    return Object.keys(calib).length > 0 ? calib : undefined
+    // ── Override del show (FixtureV2.calibration — CalibrationLab) ───────
+    // Los valores del show reemplazan a los del physics cuando están presentes.
+    if (v2Calibration) {
+      const merged: IDeviceCalibration = {
+        ...fromPhysics,
+        invertPan:  v2Calibration.panInvert  ?? fromPhysics.invertPan,
+        invertTilt: v2Calibration.tiltInvert ?? fromPhysics.invertTilt,
+        panOffset:  v2Calibration.panOffset  ?? fromPhysics.panOffset,
+        tiltOffset: v2Calibration.tiltOffset ?? fromPhysics.tiltOffset,
+      }
+      return Object.keys(merged).length > 0 ? merged : undefined
+    }
+
+    return Object.keys(fromPhysics).length > 0 ? fromPhysics : undefined
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -560,10 +718,11 @@ export class NodeExtractionPipeline {
 
   private _mapAtmosphereType(fixtureType: FixtureType): AtmosphereType {
     switch (fixtureType) {
-      case 'fan':   return 'fan'
-      case 'fog':   return 'fog'
-      case 'pyro':  return 'pyro'
-      default:      return 'custom'
+      case 'fan':    return 'fan'
+      case 'fog':    return 'fog'
+      case 'pyro':   return 'pyro'
+      case 'laser':  return 'spark'
+      default:       return 'custom'
     }
   }
 }

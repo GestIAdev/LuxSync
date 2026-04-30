@@ -72,7 +72,7 @@ import { FrameScheduler } from './scheduler/FrameScheduler'
 import type { FixtureSnapshot } from './intent/types'
 
 // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
-import { NodeGraph, IntentBus, NodeArbiter, NodeResolver } from '../aether'
+import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether'
 import type { IDeviceDefinition } from '../aether'
 // 🌊 WAVE 3516.2: Adapters — cableado al hot-path del frame loop
 import { LiquidImpactAdapter, VMMAdapter } from '../aether'
@@ -284,6 +284,8 @@ export class TitanOrchestrator {
   private readonly _aetherBus     = new IntentBus(4096)
   private readonly _aetherArbiter = new NodeArbiter()
   private readonly _aetherResolver = new NodeResolver(this._aetherGraph)
+  // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
+  private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   private _aetherHasDevices = false
   // 🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
   private readonly _impactAdapter  = new LiquidImpactAdapter()
@@ -328,9 +330,17 @@ export class TitanOrchestrator {
    * @param definition — IDeviceDefinition con nodes, calibración y universo DMX
    */
   public registerAetherDevice(definition: IDeviceDefinition): void {
-    this._aetherGraph.registerDevice(definition)
+    const nodeIds = this._aetherGraph.registerDevice(definition)
     this._aetherResolver.registerUniverse(definition.universe)
     this._aetherHasDevices = true
+    // ⚙️ WAVE 4518.1: Registrar nodos KINETIC en el PhysicsPostProcessor
+    // Iteramos los nodeIds devueltos por registerDevice para pre-alocar estado de inercia
+    for (const nodeId of nodeIds) {
+      const nodeData = this._aetherGraph.getNodeData(nodeId)
+      if (nodeData?.family === NodeFamily.KINETIC) {
+        this._physicsPostProcessor.registerNode(nodeId)
+      }
+    }
   }
 
   /**
@@ -1552,6 +1562,15 @@ export class TitanOrchestrator {
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       this._aetherArbiter.setSystemIntents(this._aetherBus)
       const arbitrated = this._aetherArbiter.arbitrate()
+
+      // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
+      // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
+      this._physicsPostProcessor.process(
+        arbitrated,
+        this._aetherGraph,
+        this._aetherCtx.deltaMs,
+        this._aetherCtx.vibe.name,
+      )
 
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
       this._aetherResolver.resolve(arbitrated)

@@ -164,7 +164,8 @@ export type {
  * ```
  */
 export { NodeArbiter } from './NodeArbiter'
-export { NodeResolver } from './resolver'
+export { NodeResolver, PhysicsPostProcessor } from './resolver'
+export type { IPhysicsPostProcessor, PhysicsMode } from './resolver'
 
 // ---------------------------------------------------------------------------
 // INGESTION — WAVE 3507: THE SPATIAL GENESIS (F1)

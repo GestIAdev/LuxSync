@@ -9,3 +9,5 @@
  */
 
 export { NodeResolver } from './NodeResolver'
+export { PhysicsPostProcessor } from './PhysicsPostProcessor'
+export type { IPhysicsPostProcessor, PhysicsMode } from './PhysicsPostProcessor'

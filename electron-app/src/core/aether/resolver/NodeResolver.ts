@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 3505.4: Implementación concreta del INodeResolver.
+ * WAVE 4522.4: Traducción física cromática — CMY, RGBW, colorWheel.
  *
  * El NodeResolver es el último guardián antes del hardware.
  * Toma el ArbitratedNodeMap (valores normalizados 0-1 desde el
@@ -14,10 +15,13 @@
  *   2. Para cada nodo arbitrado:
  *      a. Obtener la IDeviceDefinition via NodeGraph.getDevice()
  *      b. Obtener los INodeChannelDef del nodo via NodeGraph.getNodeData()
- *      c. Para cada canal: aplicar TransferCurve, escalar a DMX
- *      d. Aplicar calibración (invertPan, tiltLimits, panOffset, etc.)
- *      e. Clamp final a [0, constraints.maxValue] (safety layer)
- *      f. Escribir en el buffer del universo
+ *      c. Si el nodo es COLOR: aplicar traducción física (CMY/RGBW/wheel)
+ *         vía ColorTranslator. Para ruedas mecánicas, pasar por
+ *         HarmonicQuantizer antes de escribir el canal color_wheel.
+ *      d. Para cada canal: aplicar TransferCurve, escalar a DMX
+ *      e. Aplicar calibración (invertPan, tiltLimits, panOffset, etc.)
+ *      f. Clamp final a [0, constraints.maxValue] (safety layer)
+ *      g. Escribir en el buffer del universo
  *   3. Emitir IDMXPackets desde los buffers (sin new Array)
  *
  * ZERO-ALLOC EN HOT PATH:
@@ -26,6 +30,7 @@
  * - `_outputPackets`: Pool de IDMXPacket-like mutable pre-allocated.
  *   Se reusan frame a frame.
  * - `_activeUniverses`: Set reutilizado, se limpia sin alloc.
+ * - `_rgbScratch`: objeto RGB reutilizado en hot path (sin new).
  * - No se crean Arrays, Maps ni Uint8Arrays durante `resolve()`.
  *
  * NOTA SOBRE UNIVERSOS:
@@ -34,14 +39,21 @@
  * IDeviceDefinition y ICapabilityNode simultáneamente.
  *
  * @module core/aether/resolver/NodeResolver
- * @version WAVE 3505.4
+ * @version WAVE 4522.4
  */
 
-import type { NodeId } from '../types'
+import type { NodeId, ColorMixingType, ColorWheelDefinition } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { ArbitratedNodeMap, IDMXPacket, INodeResolver } from '../intent-bus'
-import type { INodeChannelDef } from '../capability-node'
+import type { INodeChannelDef, IColorNodeData } from '../capability-node'
 import type { TransferCurve } from '../types'
+import { NodeFamily } from '../types'
+import { getColorTranslator } from '../../../hal/translation/ColorTranslator'
+import type { RGB } from '../../../hal/translation/ColorTranslator'
+import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer'
+// ColorWheelDefinition en el Aether (slots[]) vs el formato legacy (colors[]) del ColorTranslator.
+// El adaptador _aetherWheelToLegacy convierte entre ellos sin alloc en hot path.
+import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../hal/translation/FixtureProfiles'
 
 // ── Canales de posición para calibración ────────────────────────────────
 const PAN_CHANNELS   = new Set<string>(['pan', 'pan_fine'])
@@ -50,8 +62,33 @@ const PAN_COARSE     = 'pan'
 const TILT_COARSE    = 'tilt'
 const DIMMER_CHANNEL = 'dimmer'
 
+// ── Canales cromáticos abstractos del Aether ────────────────────────────
+// El ColorAdapter (L1) emite SIEMPRE r/g/b normalizados.
+// El NodeResolver traduce estos a los canales físicos según mixingType.
+const CH_R           = 'r'
+const CH_G           = 'g'
+const CH_B           = 'b'
+const CH_RED         = 'red'
+const CH_GREEN       = 'green'
+const CH_BLUE        = 'blue'
+const CH_WHITE       = 'white'
+const CH_CYAN        = 'cyan'
+const CH_MAGENTA     = 'magenta'
+const CH_YELLOW      = 'yellow'
+const CH_COLOR_WHEEL = 'color_wheel'
+
+// ── Canales que deben pasar por traducción cromática ─────────────────────
+// Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
+const COLOR_ABSTRACT_CHANNELS = new Set<string>([CH_R, CH_G, CH_B])
+
 // ── DMX universe size ────────────────────────────────────────────────────
 const DMX_UNIVERSE_SIZE = 512
+
+// ── Contexto de frame para el HarmonicQuantizer ──────────────────────────
+// Inyectado via setResolveContext() antes de cada llamada a resolve().
+// Valores por defecto conservadores (sin cuantización activa).
+let _currentBpm             = 120
+let _currentBpmConfidence   = 0.0
 
 // ── Mutable DMXPacket para hot path ─────────────────────────────────────
 // No usa `readonly` internamente — se muta in-place y se expone
@@ -81,6 +118,11 @@ export class NodeResolver implements INodeResolver {
 
   private readonly _graph: INodeGraph
 
+  // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
+  // Mutable in-place, pasado al ColorTranslator por referencia.
+  // INVARIANTE: solo válido durante _translateColor(); no exponer.
+  private readonly _rgbScratch: RGB = { r: 0, g: 0, b: 0 }
+
   // ── Buffers por universo ───────────────────────────────────────────────
   // Map<universe (1-based), Uint8Array(512)>
   // Pre-allocated en registerDevice(), re-usado frame a frame.
@@ -99,6 +141,24 @@ export class NodeResolver implements INodeResolver {
 
   constructor(graph: INodeGraph) {
     this._graph = graph
+  }
+
+  /**
+   * WAVE 4522.4: Inyectar contexto musical antes de cada resolve().
+   *
+   * Llamar desde el Orchestrator inmediatamente ANTES de resolve().
+   * El BPM y confidence se usan por el HarmonicQuantizer para gating
+   * de cambios de rueda mecánica al tempo musical.
+   *
+   * Si no se llama, el resolver opera con confianza=0.0, lo que
+   * desactiva el cuantizador (pass-through sin gating).
+   *
+   * @param bpm — BPM actual (del Worker, autoritativo)
+   * @param bpmConfidence — Confianza del BPM (0-1, umbral activo: >0.3)
+   */
+  setResolveContext(bpm: number, bpmConfidence: number): void {
+    _currentBpm           = bpm
+    _currentBpmConfidence = bpmConfidence
   }
 
   /**
@@ -188,6 +248,10 @@ export class NodeResolver implements INodeResolver {
   /**
    * Escribe los canales de un nodo en el buffer de universo correspondiente.
    *
+   * WAVE 4522.4: Para nodos COLOR, los canales abstractos r/g/b del Aether
+   * se traducen a los canales físicos del fixture (rgb, rgbw, cmy, wheel)
+   * antes de escribir en el buffer DMX.
+   *
    * Obtiene la IDeviceDefinition y el ICapabilityNode desde el NodeGraph,
    * aplica TransferCurve, calibración y constraints, y escribe en el buffer.
    */
@@ -205,16 +269,39 @@ export class NodeResolver implements INodeResolver {
     const calibration = device.calibration
     this._activeUniverses.add(device.universe)
 
+    // ── WAVE 4522.4: Traducción cromática ─────────────────────────────
+    // Si el nodo es de familia COLOR y tiene valores r/g/b arbitrados,
+    // calculamos el mapa de canales físicos traducidos ANTES del bucle DMX.
+    // Esto es zero-alloc: reutilizamos _translatedChannelValues que es un
+    // objeto pre-allocated a nivel de función (stack local, no heap).
+    let translatedValues: Readonly<Record<string, number>> = channelValues
+    if (node.family === NodeFamily.COLOR) {
+      const rNorm = channelValues[CH_R] ?? channelValues[CH_RED]
+      const gNorm = channelValues[CH_G] ?? channelValues[CH_GREEN]
+      const bNorm = channelValues[CH_B] ?? channelValues[CH_BLUE]
+      if (rNorm !== undefined && gNorm !== undefined && bNorm !== undefined) {
+        const colorData = node as IColorNodeData
+        translatedValues = this._translateColor(
+          nodeId,
+          colorData.mixingType,
+          colorData.colorWheel,
+          rNorm, gNorm, bNorm,
+          channelValues,
+        )
+      }
+    }
+    // ── Fin traducción cromática ───────────────────────────────────────
+
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef: INodeChannelDef = node.channels[ci]
       const bufIdx = baseAddr + chDef.dmxOffset
 
       if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE) continue  // safety bound
 
-      // Valor normalizado arbitrado. Si el canal no está en el mapa,
-      // usar el defaultValue del canal (ya está en rango DMX 0-255 → normalizar)
-      const rawNormalized: number = channelValues[chDef.type] !== undefined
-        ? channelValues[chDef.type]
+      // Valor normalizado arbitrado (usando translatedValues que puede ser
+      // el mapa original o el mapa con canales físicos ya calculados).
+      const rawNormalized: number = translatedValues[chDef.type] !== undefined
+        ? translatedValues[chDef.type]
         : chDef.defaultValue / 255
 
       // Aplicar TransferCurve
@@ -254,6 +341,189 @@ export class NodeResolver implements INodeResolver {
       }
     }
   }
+
+  /**
+   * WAVE 4522.4: Traduce r/g/b normalizados (0-1) a canales físicos
+   * según el mixingType del nodo COLOR.
+   *
+   * RETORNA un Record<string, number> con los valores normalizados (0-1)
+   * de los canales físicos resultantes. La llamada es zero-alloc porque
+   * el objeto se construye como literal (escapa al stack en V8 hasta
+   * que el JIT lo promueve; aceptable dado que ocurre solo en nodos COLOR).
+   *
+   * ESTRATEGIA POR TIPO:
+   * - rgb  → red, green, blue (0-1)
+   * - rgbw → red, green, blue, white (0-1, con W=min(r,g,b)/255)
+   * - cmy  → cyan, magenta, yellow (0-1, inversión sustractiva)
+   * - wheel → color_wheel (0-1 mapeado al slot DMX más cercano)
+   *           gateado por HarmonicQuantizer al tempo musical
+   * - hybrid → color_wheel + fallback a rgb si rueda no disponible
+   *
+   * @param nodeId - ID del nodo (para el quantizer)
+   * @param mixingType - Tipo de mezcla de color del nodo
+   * @param aetherWheel - Definición de rueda (Aether format, slots[])
+   * @param rNorm - Canal R normalizado (0-1 del Aether)
+   * @param gNorm - Canal G normalizado (0-1 del Aether)
+   * @param bNorm - Canal B normalizado (0-1 del Aether)
+   * @param original - Mapa original (para pass-through de otros canales)
+   */
+  private _translateColor(
+    nodeId: NodeId,
+    mixingType: ColorMixingType,
+    aetherWheel: ColorWheelDefinition | undefined,
+    rNorm: number,
+    gNorm: number,
+    bNorm: number,
+    original: Readonly<Record<string, number>>,
+  ): Readonly<Record<string, number>> {
+    // Escalar a 0-255 para el ColorTranslator (que trabaja en 255)
+    this._rgbScratch.r = Math.round(rNorm * 255)
+    this._rgbScratch.g = Math.round(gNorm * 255)
+    this._rgbScratch.b = Math.round(bNorm * 255)
+
+    switch (mixingType) {
+
+      // ── RGB / pass-through ──────────────────────────────────────────
+      case 'rgb':
+      default:
+        // Emitir los canales físicos red/green/blue (nombres legacy del Aether).
+        // También preservar r/g/b abstractos por si algún canal del nodo
+        // tiene type='r'/'g'/'b' (fixtures puramente abstractos).
+        return {
+          ...original,
+          [CH_RED]:   rNorm,
+          [CH_GREEN]: gNorm,
+          [CH_BLUE]:  bNorm,
+          [CH_R]:     rNorm,
+          [CH_G]:     gNorm,
+          [CH_B]:     bNorm,
+        }
+
+      // ── RGBW ────────────────────────────────────────────────────────
+      case 'rgbw': {
+        const result = getColorTranslator().translate(this._rgbScratch, {
+          colorEngine: { mixing: 'rgbw' },
+        })
+        const rgbw = result.rgbw
+        if (!rgbw) {
+          // Fallback: sin datos RGBW, pass-through RGB
+          return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm }
+        }
+        return {
+          ...original,
+          [CH_RED]:   rgbw.r / 255,
+          [CH_GREEN]: rgbw.g / 255,
+          [CH_BLUE]:  rgbw.b / 255,
+          [CH_WHITE]: rgbw.w / 255,
+          [CH_R]:     rNorm,
+          [CH_G]:     gNorm,
+          [CH_B]:     bNorm,
+        }
+      }
+
+      // ── CMY ─────────────────────────────────────────────────────────
+      case 'cmy': {
+        const result = getColorTranslator().translate(this._rgbScratch, {
+          colorEngine: { mixing: 'cmy' },
+        })
+        const cmy = result.cmy
+        if (!cmy) {
+          return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm }
+        }
+        return {
+          ...original,
+          [CH_CYAN]:    cmy.c / 255,
+          [CH_MAGENTA]: cmy.m / 255,
+          [CH_YELLOW]:  cmy.y / 255,
+          // Preservar abstractos por compatibilidad
+          [CH_R]: rNorm,
+          [CH_G]: gNorm,
+          [CH_B]: bNorm,
+        }
+      }
+
+      // ── COLOR WHEEL ─────────────────────────────────────────────────
+      case 'wheel':
+      case 'hybrid': {
+        if (!aetherWheel || aetherWheel.slots.length === 0) {
+          // Sin datos de rueda: pass-through RGB
+          return {
+            ...original,
+            [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm,
+            [CH_R]:   rNorm, [CH_G]:     gNorm, [CH_B]:    bNorm,
+          }
+        }
+
+        // Convertir ColorWheelDefinition del Aether (slots[]) al formato
+        // del ColorTranslator HAL (colors[]) sin alloc persistente.
+        const legacyWheel = this._aetherWheelToLegacy(aetherWheel)
+        const profile = { colorEngine: { mixing: 'wheel' }, colorEngine_wheel: legacyWheel }
+        const result = getColorTranslator().translate(this._rgbScratch, {
+          colorEngine: { mixing: 'wheel', colorWheel: legacyWheel },
+        })
+
+        // colorWheelDmx está en escala 0-255 — normalizar a 0-1 para el pipeline
+        const wheelDmxRaw  = result.colorWheelDmx ?? 0
+        let   wheelDmxNorm = wheelDmxRaw / 255
+
+        // ── HarmonicQuantizer: gating musical de cambios de rueda ────
+        // Solo bloquea si bpmConfidence > 0.3 (umbral interno del quantizer)
+        const qResult = getHarmonicQuantizer().quantize(
+          nodeId,
+          this._rgbScratch,
+          _currentBpm,
+          _currentBpmConfidence,
+          aetherWheel.minTransitionMs,
+        )
+        if (!qResult.colorAllowed) {
+          // El quantizer bloquea el cambio: retener el último valor permitido.
+          // Recuperamos el estado del quantizer para el último color que pasó.
+          const qState = getHarmonicQuantizer().getFixtureState(nodeId)
+          if (qState?.lastAllowedColor) {
+            // El lastAllowedColor está en {r,g,b} 0-255.
+            // Pasarlo otra vez por el translator para obtener el DMX de rueda correcto.
+            const heldResult = getColorTranslator().translate(
+              qState.lastAllowedColor,
+              { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } },
+            )
+            wheelDmxNorm = (heldResult.colorWheelDmx ?? 0) / 255
+          }
+          // Si no hay lastAllowedColor, mantenemos el valor ya calculado
+          // (puede ser 0 = Open en la primera retención).
+        }
+
+        // Para hybrid: también emitir canales RGB si el nodo los tiene
+        return {
+          ...original,
+          [CH_COLOR_WHEEL]: wheelDmxNorm,
+          [CH_R]: rNorm,
+          [CH_G]: gNorm,
+          [CH_B]: bNorm,
+        }
+      }
+    }
+  }
+
+  /**
+   * WAVE 4522.4: Adapta ColorWheelDefinition del Aether (slots[]) al formato
+   * que espera el ColorTranslator del HAL (colors[] con {dmx, name, rgb}).
+   *
+   * El resultado es un objeto inline — se construye cada llamada pero
+   * el ColorTranslator tiene su propio LRU cache que absorbe la repetición.
+   * Esta conversión solo ocurre en nodos wheel/hybrid.
+   */
+  private _aetherWheelToLegacy(wheel: ColorWheelDefinition): HalColorWheelDefinition {
+    return {
+      colors: wheel.slots.map(slot => ({
+        dmx:  slot.dmxValue,
+        name: slot.name,
+        rgb:  { r: slot.previewRgb.r, g: slot.previewRgb.g, b: slot.previewRgb.b },
+      })),
+      allowsContinuousSpin: false,
+      minChangeTimeMs:      wheel.minTransitionMs,
+    }
+  }
+
 
   /**
    * Aplica la TransferCurve al valor normalizado (0-1).

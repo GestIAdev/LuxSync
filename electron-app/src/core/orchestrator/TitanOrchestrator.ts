@@ -1594,6 +1594,11 @@ export class TitanOrchestrator {
       )
 
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
+      // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
+      this._aetherResolver.setResolveContext(
+        engineAudioMetrics.bpm,
+        engineAudioMetrics.beatConfidence,
+      )
       this._aetherResolver.resolve(arbitrated)
 
       // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)

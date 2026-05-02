@@ -64,6 +64,14 @@ export interface ProcessedFrame {
   // Strobe
   strobeActive: boolean
   strobeIntensity: number
+
+  // WAVE 4520.2: 9-zone expansion — computed by LiquidEngineBase, passed through routeZones()
+  /** Floor — (subBass × 0.65 + lowMid × 0.35) × recoveryFactor */
+  floorIntensity: number
+  /** Ambient — slow EMA of (bass × 0.4 + mid × 0.6) blended with morphFactor */
+  ambientIntensity: number
+  /** Air — soft-compressed EMA of (treble × 0.6 + highMid × 0.4) × recoveryFactor */
+  airIntensity: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -181,6 +189,21 @@ export abstract class LiquidEngineBase {
   private lastHighMid: number = 0
   private lastMid: number = 0
 
+  // WAVE 4520.2: 9-zone EMA state
+  // Ambient: slow follower of (bass × 0.4 + mid × 0.6). Attack ~5 frames, release ~33 frames.
+  private _ambientEMA: number = 0
+  // Air: soft-compressed follower of (treble × 0.6 + highMid × 0.4). Attack ~8 frames, release ~20 frames.
+  private _airEMA: number = 0
+
+  // WAVE 4521.3: El último ProcessedFrame producido por applyBands().
+  // Expuesto para que LiquidAetherAdapter pueda consumirlo sin re-llamar al engine.
+  // Nunca es null después del primer frame procesado.
+  lastFrame: ProcessedFrame | null = null
+
+  // WAVE 4521.3: El último LiquidStereoResult producido por routeZones().
+  // Disponible tras el primer applyBands(). LiquidAetherAdapter lo consume como L0 input.
+  lastResult: LiquidStereoResult | null = null
+
   constructor(profile: ILiquidProfile = TECHNO_PROFILE, layout: LiquidLayout = '7.1') {
     this.layout = layout
     // Fusión condicional: si layout === '4.1' y el perfil tiene overrides, aplicar
@@ -276,6 +299,29 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     const acidMode = harshness > p.harshnessAcidThreshold
     const noiseMode = flatness > p.flatnessNoiseThreshold
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WAVE 4520.2: EMA UPDATES — run every frame, before silence check
+    // Updates happen unconditionally so EMA decays naturally during silence,
+    // avoiding a hard-freeze of the state when audio resumes.
+    // ═══════════════════════════════════════════════════════════════════
+    // Ambient EMA: slow follower of (bass × 0.4 + mid × 0.6)
+    // Attack alpha=0.18 (~5-6 frames), release alpha=0.03 (~33 frames)
+    const _ambMix = bands.bass * 0.40 + bands.mid * 0.60
+    if (_ambMix > this._ambientEMA) {
+      this._ambientEMA = this._ambientEMA * 0.82 + _ambMix * 0.18
+    } else {
+      this._ambientEMA = this._ambientEMA * 0.97 + _ambMix * 0.03
+    }
+    // Air EMA: soft-compressed follower of (treble × 0.6 + highMid × 0.4)
+    // Compression: 1 - e^(-x*3) — prevents ultraAir spikes from causing hysterics
+    // Attack alpha=0.12 (~8 frames), release alpha=0.05 (~20 frames)
+    const _airSignal = 1.0 - Math.exp(-(bands.treble * 0.60 + bands.highMid * 0.40) * 3.0)
+    if (_airSignal > this._airEMA) {
+      this._airEMA = this._airEMA * 0.88 + _airSignal * 0.12
+    } else {
+      this._airEMA = this._airEMA * 0.95 + _airSignal * 0.05
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // 3. SILENCE / AGC TRAP
@@ -537,6 +583,21 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     // 10. DELEGATE TO CHILD — routeZones()
     // ═══════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════
+    // WAVE 4520.2: 9-ZONE FINAL SIGNALS
+    // ═══════════════════════════════════════════════════════════════════
+    // floor: instant reaction to subBass+lowMid, gated by AGC recovery
+    const floorIntensity = Math.min(1.0, Math.max(0.0,
+      (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor
+    ))
+    // ambient: slow EMA blended with morphFactor — NOT gated by recoveryFactor
+    // (the room breathes slowly; the natural EMA decay handles recovery)
+    const ambientIntensity = Math.min(1.0, Math.max(0.0,
+      this._ambientEMA * 0.70 + morphFactor * 0.30
+    ))
+    // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
+    const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor))
+
     const frame: ProcessedFrame = {
       bands,
       morphFactor,
@@ -563,9 +624,15 @@ export abstract class LiquidEngineBase {
       moverRight,
       strobeActive: strobeResult.active,
       strobeIntensity: strobeResult.intensity,
+      floorIntensity,
+      ambientIntensity,
+      airIntensity,
     }
 
-    return this.routeZones(frame)
+    this.lastFrame = frame
+    const result = this.routeZones(frame)
+    this.lastResult = result
+    return result
   }
 
   /** Resetea todo el estado interno */
@@ -582,6 +649,8 @@ export abstract class LiquidEngineBase {
     this._strobeActive = false
     this.strobeStartTime = 0
     this.lastTreble = 0
+    this._ambientEMA = 0
+    this._airEMA = 0
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -640,9 +709,17 @@ export abstract class LiquidEngineBase {
       moverRight,
       strobeActive: false,
       strobeIntensity: 0,
+      // WAVE 4520.2: pure ambient — no audio, no floor/air reaction
+      // ambient is driven by morphFactor directly (ocean depth = ambient depth)
+      floorIntensity:   0,
+      ambientIntensity: Math.min(1.0, morphFactor * 0.60),
+      airIntensity:     0,
     }
 
-    return this.routeZones(frame)
+    this.lastFrame = frame
+    const ambResult = this.routeZones(frame)
+    this.lastResult = ambResult
+    return ambResult
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -659,6 +736,9 @@ export abstract class LiquidEngineBase {
       moverRightIntensity: 0,
       strobeActive: false,
       strobeIntensity: 0,
+      floorIntensity:   0,
+      ambientIntensity: 0,
+      airIntensity:     0,
       frontParIntensity: 0,
       backParIntensity: 0,
       moverIntensityL: 0,

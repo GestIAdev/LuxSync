@@ -82,6 +82,27 @@ export interface LiquidStereoResult {
   strobeActive: boolean
   strobeIntensity: number
 
+  // === WAVE 4520.2: 9-ZONE EXPANSION ===
+  /**
+   * Floor — SubBass + LowMid (20-500Hz): Energía rítmica pesada para uplight/uplighting.
+   * Ideal para fixtures al nivel del suelo que deben pulsar con el bombo y el sub.
+   * Señal instantánea, sin envelope — máxima reactividad al bajo.
+   */
+  floorIntensity: number
+  /**
+   * Ambient — EMA lento de (bass × 0.4 + mid × 0.6) + morphFactor.
+   * La sala "respira" sin parpadear: el ataque es moderado (~5 frames),
+   * el release es muy lento (~33 frames). morphFactor añade contexto melódico.
+   * Ideal para wash ambiental de fondo, backdrops y wash de techo.
+   */
+  ambientIntensity: number
+  /**
+   * Air — EMA suavizado de (treble × 0.6 + highMid × 0.4) con curva de compresión soft.
+   * Previene parpadeos histéricos en lásers y haze causados por el ultraAir crudo.
+   * Ataque ~8 frames, release ~20 frames. Ideal para atmospheric devices.
+   */
+  airIntensity: number
+
   // === Legacy compat (para que SeleneLux pueda hacer switch limpio) ===
   frontParIntensity: number
   backParIntensity: number
@@ -386,6 +407,18 @@ export class LiquidStereoPhysics {
     moverLeft  = Math.min(1.0, Math.max(0.0, moverLeft))
     moverRight = Math.min(1.0, Math.max(0.0, moverRight))
 
+    // ── WAVE 4520.2: 9-ZONE SIGNALS ──────────────────────────────────────────
+    // Computed here in the legacy engine (LiquidEngineBase handles these for
+    // Engine71/Engine41 via ProcessedFrame). Included for interface parity.
+    const _floorRaw = bands.subBass * 0.65 + bands.lowMid * 0.35
+    const floorOut  = Math.min(1.0, Math.max(0.0, _floorRaw * recoveryFactor))
+
+    const _ambientMix = bands.bass * 0.40 + bands.mid * 0.60
+    const _ambientEst = Math.min(1.0, Math.max(0.0, _ambientMix * 0.70 + morphFactor * 0.30))
+
+    const _airRaw    = 1.0 - Math.exp(-(bands.treble * 0.60 + bands.highMid * 0.40) * 3.0)
+    const airOut     = Math.min(1.0, Math.max(0.0, _airRaw * recoveryFactor))
+
     return {
       // 7 zonas independientes
       frontLeftIntensity: frontLeft,
@@ -396,6 +429,11 @@ export class LiquidStereoPhysics {
       moverRightIntensity: moverRight,
       strobeActive: strobeResult.active,
       strobeIntensity: strobeResult.intensity,
+
+      // WAVE 4520.2: 9-zone expansion
+      floorIntensity:   floorOut,
+      ambientIntensity: _ambientEst,
+      airIntensity:     airOut,
 
       // Legacy compat: mapeo para SeleneLux switch limpio
       frontParIntensity: Math.max(frontLeft, frontRight),
@@ -439,6 +477,9 @@ export class LiquidStereoPhysics {
       moverRightIntensity: 0,
       strobeActive: false,
       strobeIntensity: 0,
+      floorIntensity:   0,
+      ambientIntensity: 0,
+      airIntensity:     0,
       frontParIntensity: 0,
       backParIntensity: 0,
       moverIntensityL: 0,

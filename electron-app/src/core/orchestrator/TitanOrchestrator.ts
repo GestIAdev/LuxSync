@@ -81,6 +81,9 @@ import { ColorAdapter } from '../aether/adapters/ColorAdapter'
 // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
 import { BeamAdapter } from '../aether/adapters/BeamAdapter'
 import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
+// 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
+import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
+import { liquidEngine71 } from '../../hal/physics/LiquidEngine71'
 import { NodeFamily } from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
 
@@ -295,6 +298,9 @@ export class TitanOrchestrator {
   // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
   private readonly _beamAdapter        = new BeamAdapter()
   private readonly _atmosphereAdapter  = new AtmosphereAdapter()
+  // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
+  // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
+  private readonly _liquidAetherAdapter = new LiquidAetherAdapter(this._aetherGraph)
   // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
   private readonly _aetherAudio: AudioMetrics = {
     subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
@@ -1528,6 +1534,15 @@ export class TitanOrchestrator {
 
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
+
+      // ── WAVE 4521.3: L0 — LiquidAetherAdapter inyecta base energética ────
+      // El liquidEngine71 ya fue invocado por ImpactAdapter en el mismo frame
+      // (o por ColorAdapter). lastFrame y lastResult son frescos del tick actual.
+      const _liqFrame  = liquidEngine71.lastFrame
+      const _liqResult = liquidEngine71.lastResult
+      if (_liqFrame !== null && _liqResult !== null) {
+        this._liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus)
+      }
 
       // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
       const ctx = this._aetherCtx

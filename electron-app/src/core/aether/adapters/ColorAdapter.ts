@@ -41,6 +41,7 @@ import { BaseSystem, type IAetherSystem, type FrameContext } from '../systems'
 import { liquidEngine71 } from '../../../hal/physics/LiquidEngine71'
 import type { LiquidEngineBase } from '../../../hal/physics/LiquidEngineBase'
 import type { LiquidStereoInput, LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
+import { selectZoneIntensityXZ } from './zoneUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -191,7 +192,7 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
 
       // ── 5b. Intensidad zonal del LiquidEngine para la zona de este nodo
       //        WAVE 3506.1.1: X = left/right, Z = front/back (NOT Y)
-      const zoneIntensity = selectZoneIntensity(result, px, pz)
+      const zoneIntensity = selectZoneIntensityXZ(result, px, pz)
 
       // ── 5c. Brightness final = energía × falloff × zoneIntensity × vibe.intensity
       const brightness = BaseSystem.clamp01(audio.energy * falloff * zoneIntensity * vibeGain)
@@ -208,42 +209,4 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PURE HELPER — SELECCIÓN DE ZONA
-// ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Selecciona la intensidad zonal correcta del LiquidStereoResult
- * basándose en la posición física del nodo en el escenario.
- *
- * Compartido entre ColorAdapter e ImpactAdapter.
- * Puro, determinista, sin allocs.
- *
- * WAVE 3506.1.1: COORDINATE ALIGNMENT
- * Convención unificada Y-up (Y = altura, ShowFileV2 + Blueprint):
- *   +X = derecha del escenario, -X = izquierda
- *   +Y = altura (0 = piso, +inf = techo/truss)
- *   +Z = frente (downstage), -Z = fondo (upstage)
- */
-function selectZoneIntensity(
-  result: LiquidStereoResult,
-  nodeX: number,
-  nodeZ: number,  // Z = profundidad (front/back), NO Y
-): number {
-  const isRight  = nodeX >= 0
-  const isFront  = nodeZ >= 0  // Z positive = frente (downstage), Z negative = fondo (upstage)
-  const isMid    = Math.abs(nodeX) < 2.0  // ±2m del eje central = zona movers
-
-  if (isMid) {
-    // Movers / cabezas móviles — zona central del escenario
-    return isRight ? result.moverRightIntensity : result.moverLeftIntensity
-  }
-
-  if (isFront) {
-    // PARs frontales / wash front — Z > 0
-    return isRight ? result.frontRightIntensity : result.frontLeftIntensity
-  }
-
-  // PARs traseros / wash back — Z < 0
-  return isRight ? result.backRightIntensity : result.backLeftIntensity
-}

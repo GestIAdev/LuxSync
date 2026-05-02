@@ -46,6 +46,15 @@ import type {
   EnvelopeState,
 } from './types'
 
+// WAVE 4523.4: Tipos IK reutilizados por referencia directa desde el engine.
+// No se redefinen — se importan para que IKineticNodeData sea type-safe con
+// el IKFixtureProfile assembly que hará el NodeResolver en WAVE 4523.5.
+import type {
+  FixtureOrientation  as IKOrientation,
+  MechanicalLimits    as IKMechanicalLimits,
+  FixtureCalibration  as IKCalibration,
+} from '../../engine/movement/InverseKinematicsEngine'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CHANNEL DEFINITION — Átomo de un canal DMX dentro de un nodo
 // ═══════════════════════════════════════════════════════════════════════════
@@ -328,6 +337,34 @@ export interface IKineticNodeData extends ICapabilityNode {
   readonly stereoIndex: number
   /** Número total de nodos cinéticos en la secuencia stereo */
   readonly stereoTotal: number
+
+  // ── WAVE 4523.4: Datos para IKEngine (Fase C — WAVE 4523.5) ────────────────
+  // Estos campos son opcionales: si no están presentes, el NodeResolver
+  // cae en el flujo legacy (pan/tilt normalizados → DMX directo).
+  // Se populan desde ShowFileV2.FixtureV2 durante el patch time en NodeFactory.
+
+  /**
+   * Orientación de montaje del fixture.
+   * Define el tipo de instalación (ceiling/floor/truss-front/etc.) y la
+   * rotación adicional personalizada. El IKEngine lo usa para calcular
+   * el frame local del fixture a partir del que resuelve el apuntado.
+   */
+  readonly ikOrientation?: IKOrientation
+
+  /**
+   * Límites mecánicos del fixture (rangos de pan/tilt en grados).
+   * Si no está presente, el IKEngine usa defaults de industria:
+   * panRange=540°, tiltRange=270°.
+   */
+  readonly ikLimits?: IKMechanicalLimits
+
+  /**
+   * Calibración del fixture (offsets de ángulo e inversiones de eje).
+   * El IKEngine la aplica internamente al producir el resultado DMX.
+   * El NodeResolver NO debe aplicar _applyCalibration() adicional para
+   * los canales pan/tilt que provienen del IKEngine (anti-double-calibration).
+   */
+  readonly ikCalibration?: IKCalibration
 }
 
 /**

@@ -151,6 +151,10 @@ export type AetherChannelType =
   | 'pan_fine'
   | 'tilt'
   | 'tilt_fine'
+  // ── SPATIAL (IK — metros, LTP, no escalan a DMX directamente) ────────
+  | 'targetX'
+  | 'targetY'
+  | 'targetZ'
   // ── BEAM ─────────────────────────────────────────────────────────────
   | 'gobo'
   | 'gobo_rotation'

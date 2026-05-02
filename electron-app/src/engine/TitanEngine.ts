@@ -46,6 +46,7 @@ import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStra
 
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity'
+import type { SeleneLuxOutput } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
 // 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
@@ -1614,6 +1615,18 @@ export class TitanEngine extends EventEmitter {
    */
   public getCurrentIntent(): LightingIntent {
     return this.state.currentIntent
+  }
+
+  /**
+   * 🎨 WAVE 4522.3: THE COLOR-AETHER BRIDGE
+   * Expone la última paleta RGB (0-255) calculada por SeleneLux.
+   * Consumida por ColorAdapter L1 en el hot path de Aether.
+   *
+   * Retorna null si SeleneLux aún no ha generado su primer frame.
+   */
+  public getLastColorPalette(): SeleneLuxOutput['palette'] | null {
+    const output = this.nervousSystem.getLastOutput()
+    return output ? output.palette : null
   }
   
   /**

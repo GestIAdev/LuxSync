@@ -77,6 +77,7 @@ import type { IDeviceDefinition } from '../aether'
 // 🌊 WAVE 3516.2: Adapters — cableado al hot-path del frame loop
 import { LiquidImpactAdapter, VMMAdapter } from '../aether'
 // 🎨 WAVE 3516.3: ColorAdapter — extraída a su propio archivo
+// 🎨 WAVE 4522.3: Actualizado para ingesta via setIngress() (paleta RGB de SeleneLux)
 import { ColorAdapter } from '../aether/adapters/ColorAdapter'
 // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
 import { BeamAdapter } from '../aether/adapters/BeamAdapter'
@@ -1551,6 +1552,11 @@ export class TitanOrchestrator {
         ctx,
         this._aetherBus,
       )
+      // 🎨 WAVE 4522.3: Inyectar paleta RGB de SeleneLux al ColorAdapter antes de process()
+      const _colorPalette = this.engine.getLastColorPalette()
+      if (_colorPalette !== null) {
+        this._colorAdapter.setIngress(_colorPalette)
+      }
       this._colorAdapter.process(
         this._aetherGraph.getView(NodeFamily.COLOR),
         ctx,

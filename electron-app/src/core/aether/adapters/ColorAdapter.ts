@@ -1,36 +1,34 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎨 AETHER MATRIX — COLOR ADAPTER
+ * 🎨 AETHER MATRIX — COLOR ADAPTER (Capa L1)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 3516.3: THE COLOR DECOUPLING — Extracción y Renombramiento
+ * WAVE 4522.3: THE COLOR-AETHER BRIDGE (Fase A)
  *
  * RESPONSABILIDAD (SINGLE):
- * Conectar el LiquidEngineBase con nodos COLOR (wash LED, PARs tintados).
- * Traduce FrameContext → LiquidStereoInput → applyBands() → LiquidStereoResult
- * y distribuye las intensidades zonales moduladas por:
- *   - Posición espacial del nodo (falloff por distancia al epicentro)
- *   - Paleta de colors del vibe activo
- *   - Energía espectral del audio (blend entre primary/secondary)
+ * Consumir la paleta RGB de SeleneLuxOutput (fuente musical canónica) y
+ * traducirla en NodeIntents r, g, b normalizados (0-1) para nodos COLOR
+ * en la Capa L1 (priority = 10) del IIntentBus.
  *
- * NO MANEJA dimmers, strobes, gobos — esos son responsabilidad de ImpactAdapter.
- * Este adapter es puro COLOR.
+ * CONTRATO L1:
+ *   - Solo emite canales r, g, b. NUNCA dimmer, brightness, shutter ni CMY.
+ *   - Fuente de color: IColorIngress.paletteRgb (RGB 0-255 de SeleneLux).
+ *   - Mapeo zona → rol: selectColorRoleFromZone() (via zoneUtils).
+ *   - Normalización: r255 / 255, clampeado a [0, 1].
  *
- * ZERO-ALLOC @ 44Hz:
- * - _liquidInput: pre-allocado, campos sobrescritos in-place
- * - _rgbScratch: conversión HSL → RGB sin alloc
- * - _intentScratch: inyectado por BaseSystem
- * - Math.sqrt() es nativa del motor JS
+ * INVARIANTES DE DISEÑO:
+ *   - Zero allocations en hot path (todas las estructuras pre-allocated).
+ *   - Sin traducción a CMY, colorWheel ni hardware — eso es NodeResolver.
+ *   - Sin dependencia del LiquidEngine — ese es L0 (LiquidAetherAdapter).
+ *   - Sin Math.random() ni heurísticas — determinista por frame.
  *
- * ARQUITECTURA:
- * - Cada zoneIntensity se mapea según position.x (left/right) y position.z (front/back, upstage/downstage).
- *   WAVE 3506.1.1: Y es altura (no zoning). Z es profundidad del escenario (eje de interés).
- * - RGB se obtiene de vibe.palette[0] (primary color)
- * - Brightness se modula por audio.energy × falloff × zoneIntensity
- * - Opcionalmente blendea con palette[1] según bass energy (groove → secondary)
+ * INTERACCIÓN CON L0:
+ *   L0 (LiquidAetherAdapter) emite 'brightness' como modulación energética.
+ *   L1 (este adapter) emite r, g, b como paleta musical.
+ *   NodeArbiter los combina: brightness vía LTP × nodo, r/g/b vía LTP L1.
  *
  * @module core/aether/adapters/ColorAdapter
- * @version WAVE 3516.3 — DECOUPLING
+ * @version WAVE 4522.3
  */
 
 import { NodeFamily } from '../types'
@@ -38,36 +36,75 @@ import type { IColorNodeData } from '../capability-node'
 import type { INodeView } from '../node-graph'
 import type { IIntentBus, INodeIntent } from '../intent-bus'
 import { BaseSystem, type IAetherSystem, type FrameContext } from '../systems'
-import { liquidEngine71 } from '../../../hal/physics/LiquidEngine71'
-import type { LiquidEngineBase } from '../../../hal/physics/LiquidEngineBase'
-import type { LiquidStereoInput, LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
-import { selectZoneIntensityXZ } from './zoneUtils'
+import { selectColorRoleFromZone } from './zoneUtils'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERFACE PÚBLICA — Contrato de ingesta cromática
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Componente RGB normalizado (0-255, entero o float).
+ * Estructura compatible con SeleneLuxOutput.palette.*
+ */
+export interface RgbColor {
+  readonly r: number
+  readonly g: number
+  readonly b: number
+}
+
+/**
+ * Paleta cromática RGB indexada por rol.
+ * Producida por SeleneLux y pasada al ColorAdapter en cada frame.
+ *
+ * La responsabilidad de computar estos colores no pertenece a este
+ * adapter — solo los consume y mapea a intents.
+ */
+export interface IColorIngressPalette {
+  readonly primary:   RgbColor
+  readonly secondary: RgbColor
+  readonly accent:    RgbColor
+  readonly ambient:   RgbColor
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Capa L1 — tinte cromático musical. Domina sobre L0 en r/g/b. */
 const INTENT_PRIORITY = 10
-const COLOR_SOURCE = 'color-adapter'
+
+const COLOR_SOURCE = 'color-adapter-l1'
 
 /**
- * Radio máximo de influencia de la onda energética (metros).
- * Nodos más lejos reciben falloff = 0.
- * Calibrado para escenarios de club mediano (~10m de profundidad).
+ * Paleta de fallback (negro seguro) usada hasta que el orquestador
+ * llame a setIngress() por primera vez (arranque en frío, extremadamente raro).
  */
-const DEFAULT_MAX_RADIUS_M = 12.0
+const _FALLBACK_PALETTE: IColorIngressPalette = {
+  primary:   { r: 0, g: 0, b: 0 },
+  secondary: { r: 0, g: 0, b: 0 },
+  accent:    { r: 0, g: 0, b: 0 },
+  ambient:   { r: 0, g: 0, b: 0 },
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR ADAPTER
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Adapter para ColorNodes (wash LED, PARs con color).
- * Traduce el resultado zonal del LiquidEngine a intents RGB tintados
- * por la paleta del vibe activo, modulados por distancia al epicentro.
+ * Adapter L1 para nodos COLOR (wash LED, PARs tintados).
  *
- * WAVE 3516.3: Extraída de ImpactAdapter.ts como clase independiente.
- * Renombrada de LiquidColorAdapter → ColorAdapter para claridad.
+ * En cada frame recibe la paleta RGB de SeleneLux via `setIngress()` antes
+ * de llamar a `process()`. Clasifica cada nodo COLOR en un rol
+ * (primary/secondary/accent/ambient) según su zona espacial. El color RGB
+ * del rol correspondiente se normaliza y se emite como intent al IIntentBus.
+ *
+ * WAVE 4522.3: Reescrito desde sistema basado en LiquidEngine + paleta HSL
+ * hacia ingesta directa de SeleneLuxOutput.palette (RGB 0-255).
+ *
+ * PATRÓN DE INGESTA:
+ *   Antes de process(), el orquestador llama:
+ *     colorAdapter.setIngress(engine.getLastColorPalette())
+ *   Esto mantiene el contrato IAetherSystem sin modificar la firma base.
  */
 export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherSystem<IColorNodeData> {
 
@@ -75,138 +112,68 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
   readonly family = NodeFamily.COLOR
   readonly source: string = COLOR_SOURCE
 
-  private readonly _engine: LiquidEngineBase
-  private readonly _maxRadiusM: number
-  private readonly _epicenter = { x: 0, y: 0, z: 0 }
+  // Paleta activa del frame actual — actualizada via setIngress() antes de process()
+  private _ingress: IColorIngressPalette = _FALLBACK_PALETTE
 
-  // Scratch de trabajo para conversión HSL → RGB
-  private readonly _rgbScratch = { r: 0, g: 0, b: 0 }
-
-  // LiquidStereoInput pre-allocado — cero alloc en hot-path.
-  // Nota: En una arquitectura más sofisticada, ImpactAdapter y ColorAdapter
-  // compartirían el resultado de applyBands() en lugar de llamarlo dos veces.
-  // Por ahora cada uno es auto-contenido (SOLID — cero dependencia cruzada).
-  private readonly _liquidInput: LiquidStereoInput = {
-    bands: {
-      subBass:  0,
-      bass:     0,
-      lowMid:   0,
-      mid:      0,
-      highMid:  0,
-      treble:   0,
-      ultraAir: 0,
-    },
-    isRealSilence: false,
-    isAGCTrap:     false,
-  }
-
-  constructor(engine?: LiquidEngineBase, maxRadiusM = DEFAULT_MAX_RADIUS_M) {
+  constructor() {
     super()
-    this._engine     = engine ?? liquidEngine71
-    this._maxRadiusM = maxRadiusM
+    // Pre-allocar los canales cromáticos en el scratch — zero-alloc hot path
+    this._valuesDict['r'] = 0
+    this._valuesDict['g'] = 0
+    this._valuesDict['b'] = 0
   }
 
-  setEpicenter(x: number, y: number, z: number): void {
-    this._epicenter.x = x
-    this._epicenter.y = y
-    this._epicenter.z = z
+  /**
+   * Actualiza la paleta cromática para el próximo frame.
+   * Llamar antes de process() en el hot path del orquestador.
+   *
+   * @param palette - Paleta RGB 0-255 de SeleneLuxOutput
+   */
+  setIngress(palette: IColorIngressPalette): void {
+    this._ingress = palette
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HOT-PATH — 44Hz
+  // HOT-PATH — 44Hz / 60Hz
   // ─────────────────────────────────────────────────────────────────────────
 
   process(
     nodes: INodeView<IColorNodeData>,
-    context: FrameContext,
+    _context: FrameContext,
     bus: IIntentBus,
   ): void {
-    const { audio, musical, vibe } = context
+    const ingress = this._ingress
 
-    // ── 1. Build LiquidStereoInput in-place (cero alloc)
-    const inp = this._liquidInput
-    const b   = inp.bands
-
-    b.subBass  = audio.subBass
-    b.bass     = audio.bass
-    b.lowMid   = audio.bass * 0.5
-    b.mid      = audio.mid
-    b.highMid  = audio.highMid
-    b.treble   = audio.presence           // presence (4-8kHz) ≈ treble percusivo; WAVE 3516.1: rawTreble
-    b.ultraAir = audio.air                // air (12-20kHz) = ultraAir del LiquidEngine; WAVE 3516.1: pure ultraAir
-
-    inp.isRealSilence    = audio.energy < 0.01
-    inp.isAGCTrap        = false
-    inp.harshness        = audio.highMid
-    inp.flatness         = 0
-    inp.isKick           = audio.hasTransient && audio.bass > 0.5
-    inp.sectionType      = musical.section !== 'unknown' ? musical.section : 'drop'
-    inp.spectralCentroid = 0
-
-    // ── 2. Motor real
-    const result: LiquidStereoResult = this._engine.applyBands(inp)
-
-    // ── 3. Color base desde la paleta del vibe (palette[0] = primary color)
-    // VibeProfile.palette es ColorEntry[]. Cada ColorEntry tiene { h, s, l }.
-    // Usamos palette[0] como tinte base. Si la paleta tiene 2+ entradas,
-    // blendemos con palette[1] según la energía de la zona.
-    const palette   = vibe.palette
-    const primary   = palette[0]   // siempre existe (validado por VibeProfile)
-    const secondary = palette.length > 1 ? palette[1] : primary
-
-    // Blend entre primary y secondary según energía espectral (bass = groove)
-    const blendT = BaseSystem.clamp01(audio.bass)
-    const blendH = BaseSystem.lerp(primary.h, secondary.h, blendT)
-    const blendS = BaseSystem.lerp(primary.s, secondary.s, blendT)
-    const blendL = BaseSystem.lerp(primary.l, secondary.l, blendT)
-
-    // Convertir HSL blended → RGB scratch (cero alloc — escribe en _rgbScratch)
-    BaseSystem.hslToRgb(blendH, blendS, blendL, this._rgbScratch)
-    const baseR = this._rgbScratch.r
-    const baseG = this._rgbScratch.g
-    const baseB = this._rgbScratch.b
-
-    // ── 4. Preparar scratch invariante
+    // ── 1. Preparar invariantes del scratch para este frame
     this._intentScratch.priority = INTENT_PRIORITY
     this._intentScratch.source   = COLOR_SOURCE
 
-    const epiX     = this._epicenter.x
-    const epiY     = this._epicenter.y
-    const epiZ     = this._epicenter.z
-    const maxR     = this._maxRadiusM
-    const vibeGain = vibe.intensity
-
-    // ── 5. Iterar nodos — color tintado por zona + distancia
+    // ── 2. Iterar nodos COLOR — determinar rol, normalizar, empujar intent
     nodes.forEach((node, _index) => {
+      const role = selectColorRoleFromZone(node.zoneId ?? '')
+      const rgb  = ingress[role]
 
-      // ── 5a. Distancia al epicentro de onda
-      const px = node.position?.x ?? 0
-      const py = node.position?.y ?? 0
-      const pz = node.position?.z ?? 0
+      // Normalización RGB 0-255 → 0.0-1.0, clampeada
+      const rNorm = rgb.r < 0 ? 0 : rgb.r > 255 ? 1 : rgb.r / 255
+      const gNorm = rgb.g < 0 ? 0 : rgb.g > 255 ? 1 : rgb.g / 255
+      const bNorm = rgb.b < 0 ? 0 : rgb.b > 255 ? 1 : rgb.b / 255
 
-      const dx      = px - epiX
-      const dy      = py - epiY
-      const dz      = pz - epiZ
-      const dist    = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      const falloff = BaseSystem.clamp01(1 - dist / maxR)
+      // Limpiar stale values de frames anteriores antes de asignar
+      // (previene ghost channels si el adaptador cambia de familia de canales)
+      this._valuesDict['r'] = undefined as unknown as number
+      this._valuesDict['g'] = undefined as unknown as number
+      this._valuesDict['b'] = undefined as unknown as number
 
-      // ── 5b. Intensidad zonal del LiquidEngine para la zona de este nodo
-      //        WAVE 3506.1.1: X = left/right, Z = front/back (NOT Y)
-      const zoneIntensity = selectZoneIntensityXZ(result, px, pz)
+      this._valuesDict['r'] = rNorm
+      this._valuesDict['g'] = gNorm
+      this._valuesDict['b'] = bNorm
 
-      // ── 5c. Brightness final = energía × falloff × zoneIntensity × vibe.intensity
-      const brightness = BaseSystem.clamp01(audio.energy * falloff * zoneIntensity * vibeGain)
-
-      // ── 5d. Aplicar brightness al color base (escala RGB sin cambiar el tinte)
-      this._valuesDict['red']   = BaseSystem.clamp01(baseR * brightness)
-      this._valuesDict['green'] = BaseSystem.clamp01(baseG * brightness)
-      this._valuesDict['blue']  = BaseSystem.clamp01(baseB * brightness)
-
-      this._intentScratch.confidence = BaseSystem.clamp01(audio.energy * falloff)
       this._intentScratch.nodeId     = node.nodeId
+      this._intentScratch.confidence = 1.0
       bus.push(this._intentScratch as INodeIntent)
     })
   }
 }
+
 
 

@@ -163,3 +163,48 @@ export function selectZoneIntensityXZ(
 
   return isRight ? result.backRightIntensity : result.backLeftIntensity
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COLOR ROLE — Mapeo zona → rol cromático (WAVE 4522.3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Mapea el zoneId semántico de un nodo COLOR al rol cromático
+ * que debe recibir desde SeleneLuxOutput.palette.
+ *
+ * Tabla de mapeo:
+ * | zoneId                      | Rol      |
+ * |-----------------------------|----------|
+ * | frontLeft, frontRight, front| primary  |
+ * | backLeft, backRight, back   | secondary|
+ * | moverLeft, moverRight       | accent   |
+ * | ambient, air, floor         | ambient  |
+ * | (desconocido)               | ambient  |
+ *
+ * Función pura, determinista, zero-alloc.
+ *
+ * @param zoneId - ZoneId semántico del nodo (e.g. 'frontLeft', 'ambient')
+ * @returns Rol cromático: 'primary' | 'secondary' | 'accent' | 'ambient'
+ */
+export function selectColorRoleFromZone(
+  zoneId: string,
+): 'primary' | 'secondary' | 'accent' | 'ambient' {
+  switch (zoneId) {
+    case 'frontLeft':
+    case 'frontRight':
+    case 'front':
+      return 'primary'
+    case 'backLeft':
+    case 'backRight':
+    case 'back':
+      return 'secondary'
+    case 'moverLeft':
+    case 'moverRight':
+      return 'accent'
+    case 'ambient':
+    case 'air':
+    case 'floor':
+    default:
+      return 'ambient'
+  }
+}

@@ -109,6 +109,28 @@ export interface TimelineEngineState {
   lastTickMs: number
 }
 
+export interface ChronosFixtureTarget {
+  readonly fixtureId: string
+  readonly dimmer: number
+  readonly red: number
+  readonly green: number
+  readonly blue: number
+  readonly white: number
+  readonly pan: number
+  readonly tilt: number
+  readonly zoom: number
+  readonly speed: number
+  readonly colorTouched: boolean
+  readonly blendMode: 'HTP' | 'LTP' | 'ADD'
+}
+
+export interface PlaybackFrameSnapshot {
+  readonly targets: readonly ChronosFixtureTarget[]
+  readonly hasActiveVibe: boolean
+  readonly vibeId: string | null
+  readonly tickMs: number
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY REGISTRY
 // ═══════════════════════════════════════════════════════════════════════════
@@ -196,6 +218,7 @@ export class TimelineEngine {
   // ── Playback state ──
   private playing = false
   private lastTickMs = 0
+  private _lastPlaybackFrame: PlaybackFrameSnapshot | null = null
 
   // ── Effect instances (keyed by clip.id) ──
   private activeClips = new Map<string, ActiveClipState>()
@@ -336,6 +359,7 @@ export class TimelineEngine {
     const fixtureTargets: Array<{
       fixtureId: string
       dimmer: number
+      white: number
       color: { r: number; g: number; b: number }
       colorTouched: boolean  // 🎭 WAVE 2070: Did any effect explicitly send color?
       pan: number; tilt: number; zoom: number; focus: number; speed: number
@@ -348,6 +372,7 @@ export class TimelineEngine {
       fixtureTargets.push({
         fixtureId,
         dimmer: state.dimmer,
+        white: state.white,
         color: { r: state.red, g: state.green, b: state.blue },
         colorTouched: state.colorTouched,  // 🎭 WAVE 2070: Propagate flag
         pan: state.pan,
@@ -363,6 +388,32 @@ export class TimelineEngine {
         controlSources: {},
         appliedLayers: [],
       })
+    }
+
+    const playbackTargets: ChronosFixtureTarget[] = []
+    for (let i = 0; i < fixtureTargets.length; i++) {
+      const target = fixtureTargets[i]
+      playbackTargets.push({
+        fixtureId: target.fixtureId,
+        dimmer: target.dimmer,
+        red: target.color.r,
+        green: target.color.g,
+        blue: target.color.b,
+        white: target.white,
+        pan: target.pan,
+        tilt: target.tilt,
+        zoom: target.zoom,
+        speed: target.speed,
+        colorTouched: target.colorTouched,
+        blendMode: target.blendMode,
+      })
+    }
+
+    this._lastPlaybackFrame = {
+      targets: playbackTargets,
+      hasActiveVibe,
+      vibeId: this.currentPlaybackVibeId,
+      tickMs: timeMs,
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -417,6 +468,7 @@ export class TimelineEngine {
 
     this.playing = false
     this.lastTickMs = 0
+    this._lastPlaybackFrame = null
     this.project = null
     this.fxClips = []
     this.vibeClips = []
@@ -437,6 +489,14 @@ export class TimelineEngine {
       activeClipCount: this.activeClips.size,
       lastTickMs: this.lastTickMs,
     }
+  }
+
+  getLastPlaybackFrame(): PlaybackFrameSnapshot | null {
+    return this._lastPlaybackFrame
+  }
+
+  get isPlaying(): boolean {
+    return this.playing
   }
 
   // ═══════════════════════════════════════════════════════════════════════

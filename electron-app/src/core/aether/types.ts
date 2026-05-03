@@ -322,6 +322,7 @@ export type IntentSource =
   | 'chronos'
   | 'manual'
   | 'effect'
+  | 'hephaestus'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MERGE STRATEGY — Estrategia de resolución de conflictos

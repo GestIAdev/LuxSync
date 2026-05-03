@@ -64,6 +64,9 @@ export class NodeArbiter implements INodeArbiter {
   /** Effect intents (L3) */
   private _effectIntents: readonly INodeIntent[] = []
 
+  /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
+  private _hephaestusIntents: readonly INodeIntent[] = []
+
   /** Playback intents (LP — Chronos Timeline, prioridad entre L1-L3) */
   private _playbackIntents: readonly INodeIntent[] = []
 
@@ -110,6 +113,10 @@ export class NodeArbiter implements INodeArbiter {
 
   setEffectIntents(intents: readonly INodeIntent[]): void {
     this._effectIntents = intents
+  }
+
+  setHephaestusIntents(intents: readonly INodeIntent[]): void {
+    this._hephaestusIntents = intents
   }
 
   setPlaybackIntents(intents: readonly INodeIntent[]): void {
@@ -174,6 +181,11 @@ export class NodeArbiter implements INodeArbiter {
     // L3: Effect intents
     for (let i = 0; i < this._effectIntents.length; i++) {
       this._applyIntent(this._effectIntents[i])
+    }
+
+    // L3+: Hephaestus custom intents (Diamond Data direct curves)
+    for (let i = 0; i < this._hephaestusIntents.length; i++) {
+      this._applyIntent(this._hephaestusIntents[i])
     }
 
     // L2: Manual overrides (tienen prioridad sobre effects)

@@ -458,6 +458,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       backRightIntensity:  backPar,
       moverLeftIntensity:  mL,
       moverRightIntensity: mR,
+      floorIntensity:      0,
+      ambientIntensity:    0,
+      airIntensity:        0,
       strobeActive,
       strobeIntensity,
       // Legacy compat

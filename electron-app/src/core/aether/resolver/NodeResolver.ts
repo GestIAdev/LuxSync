@@ -45,7 +45,7 @@
 import type { NodeId, ColorMixingType, ColorWheelDefinition } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { ArbitratedNodeMap, IDMXPacket, INodeResolver } from '../intent-bus'
-import type { INodeChannelDef, IColorNodeData } from '../capability-node'
+import type { INodeChannelDef, IColorNodeData, IKineticNodeData } from '../capability-node'
 import type { TransferCurve } from '../types'
 import { NodeFamily } from '../types'
 import { getColorTranslator } from '../../../hal/translation/ColorTranslator'
@@ -54,6 +54,9 @@ import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer
 // ColorWheelDefinition en el Aether (slots[]) vs el formato legacy (colors[]) del ColorTranslator.
 // El adaptador _aetherWheelToLegacy convierte entre ellos sin alloc en hot path.
 import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../hal/translation/FixtureProfiles'
+import type { IDeviceCalibration } from '../device'
+import { solve, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
+import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematicsEngine'
 
 // ── Canales de posición para calibración ────────────────────────────────
 const PAN_CHANNELS   = new Set<string>(['pan', 'pan_fine'])
@@ -77,9 +80,21 @@ const CH_MAGENTA     = 'magenta'
 const CH_YELLOW      = 'yellow'
 const CH_COLOR_WHEEL = 'color_wheel'
 
+// ── Canales espaciales 3D — WAVE 4523.5 ──────────────────────────────────
+// Emitidos por KineticAdapter cuando el nodo opera en flujo IK (metros).
+const CH_TARGET_X = 'targetX'
+const CH_TARGET_Y = 'targetY'
+const CH_TARGET_Z = 'targetZ'
+
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set<string>([CH_R, CH_G, CH_B])
+
+// ── Orientación IK por defecto — ceiling mount, sin rotación custom ───────
+const DEFAULT_IK_ORIENTATION = {
+  installation: 'ceiling' as const,
+  rotation: { pitch: 0, yaw: 0, roll: 0 },
+}
 
 // ── DMX universe size ────────────────────────────────────────────────────
 const DMX_UNIVERSE_SIZE = 512
@@ -117,6 +132,12 @@ interface MutableDMXPacket {
 export class NodeResolver implements INodeResolver {
 
   private readonly _graph: INodeGraph
+
+  // ── Cache IKFixtureProfile por nodo — WAVE 4523.5 ─────────────────────
+  // Construido lazy en primer uso. Los datos de perfil IK son readonly:
+  // posición, orientación y calibración no cambian en runtime.
+  // Invalidar únicamente en re-patch (implica crear un NodeResolver nuevo).
+  private readonly _ikProfiles = new Map<NodeId, IKFixtureProfile>()
 
   // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
   // Mutable in-place, pasado al ColorTranslator por referencia.
@@ -269,6 +290,18 @@ export class NodeResolver implements INodeResolver {
     const calibration = device.calibration
     this._activeUniverses.add(device.universe)
 
+    // ── WAVE 4523.5: Flujo IK — canales espaciales (metros) ───────────────
+    // Si el nodo KINETIC contiene targetX, desviar al IKEngine en lugar del
+    // flujo legacy pan/tilt normalizado. El IKEngine aplica toda la calibración
+    // internamente → NO llamar _applyCalibration() (anti-double-calibration).
+    if (channelValues[CH_TARGET_X] !== undefined && node.family === NodeFamily.KINETIC) {
+      const kineticNode = node as IKineticNodeData
+      if (!kineticNode.isContinuous) {
+        this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration)
+      }
+      return  // nodo continuo (fan/mirrorball) ignora IK de apuntado
+    }
+
     // ── WAVE 4522.4: Traducción cromática ─────────────────────────────
     // Si el nodo es de familia COLOR y tiene valores r/g/b arbitrados,
     // calculamos el mapa de canales físicos traducidos ANTES del bucle DMX.
@@ -340,6 +373,96 @@ export class NodeResolver implements INodeResolver {
         }
       }
     }
+  }
+
+  /**
+   * WAVE 4523.5: Resuelve pan/tilt DMX para un nodo KINETIC con canales
+   * espaciales (targetX/Y/Z en metros) vía IKEngine.
+   *
+   * Escribe directamente en el buffer DMX sin TransferCurve ni
+   * _applyCalibration() — el IKEngine integra calibración en grados
+   * internamente (anti-double-calibration).
+   */
+  private _writeNodeIK(
+    node: IKineticNodeData,
+    channelValues: Readonly<Record<string, number>>,
+    baseAddr: number,
+    buf: Uint8Array,
+    calibration: IDeviceCalibration | undefined,
+  ): void {
+    const tx = channelValues[CH_TARGET_X]!
+    const ty = channelValues[CH_TARGET_Y] ?? 1.5
+    const tz = channelValues[CH_TARGET_Z] ?? 2.0
+
+    const profile      = this._getOrBuildIKProfile(node, calibration)
+    const currentPanDMX = node.currentPosition.pan * 255
+
+    const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX)
+
+    for (let ci = 0; ci < node.channels.length; ci++) {
+      const chDef  = node.channels[ci]
+      const isPan  = chDef.type === 'pan'
+      const isTilt = chDef.type === 'tilt'
+      if (!isPan && !isTilt) continue
+
+      const bufIdx = baseAddr + chDef.dmxOffset
+      if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE) continue
+
+      const dmxValue = isPan ? ikResult.pan : ikResult.tilt
+      buf[bufIdx] = dmxValue
+
+      if (chDef.is16bit) {
+        const fineIdx = bufIdx + 1
+        if (fineIdx < DMX_UNIVERSE_SIZE) {
+          buf[fineIdx] = 0  // IKEngine produce resolución 8-bit; fine byte = 0
+        }
+      }
+    }
+  }
+
+  /**
+   * WAVE 4523.5: Construye y cachea el IKFixtureProfile para un nodo KINETIC.
+   * Llamado lazy en la primera iteración del nodo — zero-alloc en steady state.
+   *
+   * Precedencia de calibración:
+   *   1. node.ikCalibration (grados, formato nativo del IKEngine) — uso directo.
+   *   2. device.calibration (DMX, formato legacy) — se extraen invert flags como
+   *      fallback; offsets se dejan a 0 (no hay conversión DMX→grados fiable).
+   */
+  private _getOrBuildIKProfile(
+    node: IKineticNodeData,
+    calibration: IDeviceCalibration | undefined,
+  ): IKFixtureProfile {
+    const cached = this._ikProfiles.get(node.nodeId)
+    if (cached !== undefined) return cached
+
+    const ori = node.ikOrientation ?? DEFAULT_IK_ORIENTATION
+    const lim = node.ikLimits
+
+    const tiltLimits =
+      lim?.tiltLimits ??
+      (calibration?.tiltLimitMin !== undefined && calibration.tiltLimitMax !== undefined
+        ? { min: calibration.tiltLimitMin, max: calibration.tiltLimitMax }
+        : undefined)
+
+    const profile = buildProfile(
+      node.deviceId,
+      node.physicalPosition,
+      ori.rotation,
+      ori.installation,
+      node.ikCalibration ?? {
+        panOffset:  0,
+        tiltOffset: 0,
+        panInvert:  calibration?.invertPan  ?? false,
+        tiltInvert: calibration?.invertTilt ?? false,
+      },
+      lim?.panRangeDeg,
+      lim?.tiltRangeDeg,
+      tiltLimits,
+    )
+
+    this._ikProfiles.set(node.nodeId, profile)
+    return profile
   }
 
   /**

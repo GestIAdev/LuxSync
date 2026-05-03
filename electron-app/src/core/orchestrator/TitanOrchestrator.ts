@@ -15,7 +15,6 @@ import { TitanEngine } from '../../engine/TitanEngine'
 import { HardwareAbstraction } from '../../hal/HardwareAbstraction'
 import { EventRouter, getEventRouter } from './EventRouter'
 import { getTrinity, TrinityOrchestrator } from '../../workers/TrinityOrchestrator'
-import type { MusicalContext } from '../protocol/MusicalContext'
 import { 
   SeleneTruth, 
   createDefaultTruth,
@@ -34,6 +33,7 @@ import {
 } from '../arbiter'
 
 // 🧨 WAVE 635: Import EffectManager para color override global
+// 🚀 WAVE 4524.3: También necesario para SCN
 import { getEffectManager } from '../effects/EffectManager'
 
 // ❤️ WAVE 1153: THE PACEMAKER - Real Beat Detection
@@ -87,6 +87,12 @@ import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
 import { liquidEngine71 } from '../../hal/physics/LiquidEngine71'
 import { NodeFamily } from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
+// 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
+import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter'
+import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
+import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
+import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
+import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
@@ -238,6 +244,8 @@ export class TitanOrchestrator {
     mid: number; 
     high: number; 
     energy: number;
+    rawTreble?: number;
+    ultraAir?: number;
     harshness?: number;
     spectralFlatness?: number;
     spectralCentroid?: number;
@@ -265,6 +273,11 @@ export class TitanOrchestrator {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
+
+  // 🚀 WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
+  // Se utiliza en el SeleneAetherAdapter para traducción de efectos L3.
+  // Por ahora inicializado como null; en el futuro el engine populate esto.
+  private lastConsciousnessOutput: any = null
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ⚡ WAVE 3504.5: PURE MATH MODULES — extracted from the monolith
@@ -302,6 +315,14 @@ export class TitanOrchestrator {
   // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
   // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
   private readonly _liquidAetherAdapter = new LiquidAetherAdapter(this._aetherGraph)
+  // 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
+  // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
+  private readonly _zoneNodeRouter: ZoneNodeRouter = new ZoneNodeRouter(this._aetherGraph)
+  private readonly _seleneAetherAdapter = new SeleneAetherAdapter(this._zoneNodeRouter)
+  private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
+  // WAVE 3521: Hephaestus Diamond Data L3+ adapter
+  private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
+  private readonly _timelineEngine = timelineEngine
   // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
   private readonly _aetherAudio: AudioMetrics = {
     subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
@@ -309,7 +330,7 @@ export class TitanOrchestrator {
     bpm: 0, beatPhase: 0, beatCount: 0,
   }
   private readonly _aetherMusical: MusicalContext = {
-    section: 'unknown', dropImminent: false, intensity: 0, tension: 0,
+    section: 'unknown', dropImminent: false, sectionIntensity: 0, harmonicTension: 0, sectionElapsedMs: 0,
   }
   private readonly _aetherVibe: VibeProfile = {
     name: 'idle',
@@ -338,6 +359,7 @@ export class TitanOrchestrator {
    */
   public registerAetherDevice(definition: IDeviceDefinition): void {
     const nodeIds = this._aetherGraph.registerDevice(definition)
+    this._chronosAetherAdapter.rebuildNodeIndex()
     this._aetherResolver.registerUniverse(definition.universe)
     this._aetherHasDevices = true
     // ⚙️ WAVE 4518.1: Registrar nodos KINETIC en el PhysicsPostProcessor
@@ -461,6 +483,7 @@ export class TitanOrchestrator {
       this.brain.on('audio-levels', (levels: {
         bass: number; mid: number; treble: number; energy: number;
         subBass?: number; lowMid?: number; highMid?: number;
+        rawTreble?: number; ultraAir?: number;
         harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
         crestFactor?: number;
         kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
@@ -1310,6 +1333,8 @@ export class TitanOrchestrator {
         // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
         const fixtureId = this.fixtures[index]?.id
         if (fixtureId && chronosFixtureIds.has(fixtureId)) continue
+        // WAVE 3521: Skip fixtures registered in Aether NodeGraph (handled by HephaestusAetherAdapter L3+)
+        if (fixtureId && this._aetherGraph.getDeviceNodes(fixtureId as import('../aether/types').DeviceId).length > 0) continue
 
         // Collect applicable outputs inline (sin crear array intermedio cuando posible)
         const directOutputs = fixtureId ? this._hephByFixtureId.get(fixtureId) : undefined
@@ -1516,22 +1541,23 @@ export class TitanOrchestrator {
 
       // MusicalContext: del contexto de Brain
       const _m = this._aetherMusical as MusicalContext & Record<string, unknown>
-      _m.section      = context.section?.type ?? 'unknown'
-      _m.dropImminent = (context.section?.energy ?? 0) > 0.8
-      _m.intensity    = engineAudioMetrics.energy
-      _m.tension      = engineAudioMetrics.bass
+      _m.section          = (context.section?.type ?? 'unknown') as MusicalContext['section']
+      _m.dropImminent     = context.energy > 0.8
+      _m.sectionIntensity = engineAudioMetrics.energy
+      _m.harmonicTension  = engineAudioMetrics.bass
+      _m.sectionElapsedMs = context.section?.duration ?? 0
 
       // VibeProfile: del engine + paleta del intent
       const _v = this._aetherVibe as VibeProfile & Record<string, unknown>
       _v.name               = this.engine.getCurrentVibe()
-      _v.palette            = intent.palette.colors ?? [{ h: 0, s: 0, l: 1 }]
+      _v.palette            = ((intent.palette as unknown as { colors?: VibeProfile['palette'] }).colors ?? [{ h: 0, s: 0, l: 1 }])
       _v.movementSpeed      = 0.5
       _v.intensity          = intent.masterIntensity ?? engineAudioMetrics.energy
       _v.beamExpressiveness = 0.5
 
       // nowMs y frameIndex del scope
-      ;(this._aetherCtx as Record<string, unknown>).nowMs      = now
-      ;(this._aetherCtx as Record<string, unknown>).frameIndex = this.frameCount
+      this._aetherCtx.nowMs = now
+      this._aetherCtx.frameIndex = this.frameCount
 
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
@@ -1579,6 +1605,38 @@ export class TitanOrchestrator {
         ctx,
         this._aetherBus,
       )
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🚀 WAVE 4524.3: L3 — Selene-Aether Adapter (Puente Cognitivo)
+      // Consume el output de Selene (effectDecision, colorDecision, physicsModifier)
+      // y lo traduce en intenciones L3 atómicas: dimmer, RGB, strobeRate.
+      // REGLA ESTRICTA: NO emite movimiento (targetX/Y/Z ni pan/tilt).
+      // ═══════════════════════════════════════════════════════════════════════
+      const consciousnessOutput = this.lastConsciousnessOutput ?? null
+      const effectOutput = getEffectManager().getCombinedOutput()
+      this._seleneAetherAdapter.ingest(
+        consciousnessOutput,
+        effectOutput,
+        ctx.deltaMs,
+        this._aetherBus,
+      )
+
+      // STEP 4.5: Playback LP bridge Chronos -> Aether
+      this._chronosAetherAdapter.ingest(
+        this._timelineEngine,
+        ctx.deltaMs,
+        this._aetherArbiter,
+      )
+
+      // STEP 5: Hephaestus L3+ Diamond Data bridge
+      // Reuses `hephOutputs` from the legacy block above (SINGLE tick per frame).
+      // The adapter only processes fixtures registered in NodeGraph (isCustomClip === true).
+      // Legacy post-HAL block still handles fixtures NOT in NodeGraph (backward compat).
+      if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
+        this._hephaestusAetherAdapter.ingest(hephOutputs, this._aetherArbiter)
+      } else {
+        this._hephaestusAetherAdapter.clear(this._aetherArbiter)
+      }
 
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       this._aetherArbiter.setSystemIntents(this._aetherBus)

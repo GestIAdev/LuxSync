@@ -51,31 +51,31 @@ import type { BandMixWeights, NodeFamily } from '../types'
 export interface AudioMetrics {
   // ── Bandas de frecuencia (0-1 normalizado) ───────────────────────────
   /** Sub-bass (20-60 Hz) — el tesoro del kick drum, el subsónico */
-  readonly subBass: number
+  subBass: number
   /** Bass (60-250 Hz) — el bajo fundamental */
-  readonly bass: number
+  bass: number
   /** Mid (250 Hz - 2 kHz) — el cuerpo armónico */
-  readonly mid: number
+  mid: number
   /** High-mid (2-6 kHz) — presencia, ataque, claridad */
-  readonly highMid: number
+  highMid: number
   /** Presence (6-12 kHz) — brillo, mordida, sibilancia */
-  readonly presence: number
+  presence: number
   /** Air (12-20 kHz) — el éter, el shimmer */
-  readonly air: number
+  air: number
 
   // ── Métricas globales ─────────────────────────────────────────────────
   /** Energía RMS global (0-1) */
-  readonly energy: number
+  energy: number
   /** ¿Hay transiente detectado en este frame? (onset detection) */
-  readonly hasTransient: boolean
+  hasTransient: boolean
   /** Fuerza del transiente (0-1). 0 si no hay transiente. */
-  readonly transientStrength: number
+  transientStrength: number
   /** BPM actual detectado por el beat tracker (0 si no detectado) */
-  readonly bpm: number
+  bpm: number
   /** Fase del beat (0-1 dentro del beat actual) */
-  readonly beatPhase: number
+  beatPhase: number
   /** Número de beats desde el inicio de la sesión (para sincronía larga) */
-  readonly beatCount: number
+  beatCount: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -94,40 +94,40 @@ export interface AudioMetrics {
  */
 export interface VibeProfile {
   /** Nombre del vibe activo (e.g. "Techno Oscuro", "Chill Ambiental") */
-  readonly name: string
+  name: string
 
   /**
    * Overrides de la Matriz de Bandas × Roles para el ImpactSystem.
    * Si null, el ImpactSystem usa los pesos por defecto del Blueprint.
    * Las claves son NodeRole; los valores son BandMixWeights parciales.
    */
-  readonly bandMatrixOverride?: Readonly<Record<string, Partial<BandMixWeights>>>
+  bandMatrixOverride?: Readonly<Record<string, Partial<BandMixWeights>>>
 
   /**
    * Paleta de colores activa (6 colores HSL para el ColorSystem).
    * Índices: 0 = primary, 1 = secondary, 2-5 = accent variants.
    */
-  readonly palette: readonly ColorEntry[]
+  palette: ColorEntry[]
 
   /**
    * Velocidad base del VMM para el KineticSystem (0-1).
    * 0 = movimiento mínimo; 1 = movimiento máximo permitido.
    */
-  readonly movementSpeed: number
+  movementSpeed: number
 
   /**
    * Intensidad base del Vibe (0-1).
    * Escala global que multiplica la energía de audio.
    * Techno = 1.0; Lounge = 0.3.
    */
-  readonly intensity: number
+  intensity: number
 
   /**
    * Factor de agresividad de efectos de beam (0-1).
    * 0 = solo valores base (zoom/focus conservador);
    * 1 = Selene IA máxima expresividad (gobos, prismas, transiciones).
    */
-  readonly beamExpressiveness: number
+  beamExpressiveness: number
 }
 
 /**
@@ -135,9 +135,9 @@ export interface VibeProfile {
  * Valores normalizados (0-1) para H, S, L.
  */
 export interface ColorEntry {
-  readonly h: number  // Hue (0-1 wrapping)
-  readonly s: number  // Saturation (0-1)
-  readonly l: number  // Lightness (0-1)
+  h: number  // Hue (0-1 wrapping)
+  s: number  // Saturation (0-1)
+  l: number  // Lightness (0-1)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -156,15 +156,15 @@ export interface ColorEntry {
  */
 export interface MusicalContext {
   /** Sección musical actual */
-  readonly section: 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'outro' | 'unknown'
+  section: 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'outro' | 'unknown'
   /** ¿Hay un drop inminente en los próximos N frames? */
-  readonly dropImminent: boolean
+  dropImminent: boolean
   /** Intensidad percibida de la sección (0-1) */
-  readonly sectionIntensity: number
+  sectionIntensity: number
   /** Nivel de tensión armónica (0-1) — chord tension, disonancia */
-  readonly harmonicTension: number
+  harmonicTension: number
   /** Tiempo desde el inicio de la sección actual (ms) */
-  readonly sectionElapsedMs: number
+  sectionElapsedMs: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -186,17 +186,17 @@ export interface MusicalContext {
  */
 export interface FrameContext {
   /** Métricas de audio del frame actual (del DSP) */
-  readonly audio: AudioMetrics
+  audio: AudioMetrics
   /** Contexto musical de alto nivel (de Selene IA / heurísticas) */
-  readonly musical: MusicalContext
+  musical: MusicalContext
   /** Perfil del Vibe activo */
-  readonly vibe: VibeProfile
+  vibe: VibeProfile
   /** Timestamp del frame actual (ms desde epoch) */
-  readonly nowMs: number
+  nowMs: number
   /** Delta de tiempo desde el frame anterior (ms) — para physics */
-  readonly deltaMs: number
+  deltaMs: number
   /** Número de frame (contador global desde inicio de sesión) */
-  readonly frameIndex: number
+  frameIndex: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

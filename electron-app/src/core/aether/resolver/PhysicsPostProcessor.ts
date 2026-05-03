@@ -80,6 +80,23 @@ const SAFETY_MAX_ACCELERATION_NORM = 900 / 255 / 540  // ≈ 0.00654 norm/s²
  */
 const SAFETY_MAX_VELOCITY_NORM = 400 / 255 / 540  // ≈ 0.00291 norm/s
 
+// ── WAVE 4523.5: Constantes para inercia espacial 3D ──────────────────
+/**
+ * Conversión deg/s → m/s para el espacio 3D del escenario.
+ * Calibrado para un escenario de 8m: a 270 deg/s → ~4 m/s de barrido lateral.
+ */
+const DEG_PER_SEC_TO_METERS_PER_SEC = 4.0 / 270
+/** Velocidad máxima de seguridad en espacio métrico [m/s] */
+const SAFETY_MAX_3D_VEL_MS  = 5.0
+/** Aceleración máxima de seguridad en espacio métrico [m/s²] */
+const SAFETY_MAX_3D_ACC_MS2 = 20.0
+/** Posición 3D inicial X por defecto — centro del escenario [m] */
+const DEFAULT_3D_X = 0.0
+/** Posición 3D inicial Y por defecto — altura de trabajo [m] */
+const DEFAULT_3D_Y = 1.5
+/** Posición 3D inicial Z por defecto — profundidad nominal [m] */
+const DEFAULT_3D_Z = 2.0
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PHYSICS MODE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,8 +177,21 @@ const SLOT_TILT_POS = 1
 const SLOT_PAN_VEL = 2
 /** Velocidad actual de tilt [norm/s] */
 const SLOT_TILT_VEL = 3
-/** Tamaño del buffer de estado por nodo */
-const STATE_SLOTS = 4
+// ── WAVE 4523.5: Slots para inercia espacial 3D ──────────────────────
+/** Posición actual X en escenario [metros] */
+const SLOT_X3D_POS = 4
+/** Posición actual Y en escenario [metros] */
+const SLOT_Y3D_POS = 5
+/** Posición actual Z en escenario [metros] */
+const SLOT_Z3D_POS = 6
+/** Velocidad actual X [m/s] */
+const SLOT_X3D_VEL = 7
+/** Velocidad actual Y [m/s] */
+const SLOT_Y3D_VEL = 8
+/** Velocidad actual Z [m/s] */
+const SLOT_Z3D_VEL = 9
+/** Tamaño del buffer de estado por nodo (4 legacy pan/tilt + 6 3D spatial) */
+const STATE_SLOTS = 10
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPLEMENTACIÓN
@@ -211,6 +241,13 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
   private _maxAccNorm  = 0  // aceleración máxima normalizada para este nodo
   private _brakeDist   = 0  // distancia de frenado actual
 
+  // ── WAVE 4523.5: Temporales para inercia espacial 3D (zero-alloc) ───
+  private _x3dTarget   = 0
+  private _y3dTarget   = 0
+  private _z3dTarget   = 0
+  private _maxVel3dMs  = 0
+  private _maxAcc3dMs2 = 0
+
   // ═════════════════════════════════════════════════════════════════════════
   // PUBLIC API
   // ═════════════════════════════════════════════════════════════════════════
@@ -251,6 +288,41 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
 
       const state = this._states.get(node.nodeId)
       if (state === undefined) return  // nodo no registrado → skip (no debería ocurrir)
+
+      // ── WAVE 4523.5: Inercia espacial 3D (canales targetX/Y/Z en metros) ──
+      if (entry['targetX'] !== undefined) {
+        const xT = entry['targetX']
+        const yT = entry['targetY']
+        const zT = entry['targetZ']
+        this._x3dTarget = isFinite(xT)        ? xT                   : state[SLOT_X3D_POS]
+        this._y3dTarget = isFinite(yT ?? NaN) ? (yT ?? DEFAULT_3D_Y) : state[SLOT_Y3D_POS]
+        this._z3dTarget = isFinite(zT ?? NaN) ? (zT ?? DEFAULT_3D_Z) : state[SLOT_Z3D_POS]
+
+        this._maxVel3dMs  = Math.min(node.maxPanSpeed * DEG_PER_SEC_TO_METERS_PER_SEC, SAFETY_MAX_3D_VEL_MS)
+        this._maxAcc3dMs2 = Math.min(this._maxVel3dMs * 4, SAFETY_MAX_3D_ACC_MS2)
+
+        if (this._mode === 'snap') {
+          const maxMove = this._maxVel3dMs * this._dt
+          const dxSnap  = this._snapFactor * (this._x3dTarget - state[SLOT_X3D_POS])
+          const dySnap  = this._snapFactor * (this._y3dTarget - state[SLOT_Y3D_POS])
+          const dzSnap  = this._snapFactor * (this._z3dTarget - state[SLOT_Z3D_POS])
+          state[SLOT_X3D_POS] += clampAbs(Math.abs(dxSnap) < JITTER_THRESHOLD ? 0 : dxSnap, maxMove)
+          state[SLOT_Y3D_POS] += clampAbs(Math.abs(dySnap) < JITTER_THRESHOLD ? 0 : dySnap, maxMove)
+          state[SLOT_Z3D_POS] += clampAbs(Math.abs(dzSnap) < JITTER_THRESHOLD ? 0 : dzSnap, maxMove)
+          state[SLOT_X3D_VEL] = 0
+          state[SLOT_Y3D_VEL] = 0
+          state[SLOT_Z3D_VEL] = 0
+        } else {
+          this._applyClassicAxis(state, SLOT_X3D_POS, SLOT_X3D_VEL, this._x3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
+          this._applyClassicAxis(state, SLOT_Y3D_POS, SLOT_Y3D_VEL, this._y3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
+          this._applyClassicAxis(state, SLOT_Z3D_POS, SLOT_Z3D_VEL, this._z3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
+        }
+
+        entry['targetX'] = state[SLOT_X3D_POS]
+        entry['targetY'] = state[SLOT_Y3D_POS]
+        entry['targetZ'] = state[SLOT_Z3D_POS]
+        return  // nodo espacial procesado — skip flujo legacy pan/tilt
+      }
 
       // Leer target del ArbitratedNodeMap
       this._panTarget  = entry['pan']  ?? 0.5
@@ -310,6 +382,12 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
     state[SLOT_TILT_POS] = 0.5
     state[SLOT_PAN_VEL]  = 0
     state[SLOT_TILT_VEL] = 0
+    state[SLOT_X3D_POS]  = DEFAULT_3D_X
+    state[SLOT_Y3D_POS]  = DEFAULT_3D_Y
+    state[SLOT_Z3D_POS]  = DEFAULT_3D_Z
+    state[SLOT_X3D_VEL]  = 0
+    state[SLOT_Y3D_VEL]  = 0
+    state[SLOT_Z3D_VEL]  = 0
     this._states.set(nodeId, state)
   }
 
@@ -319,6 +397,9 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
     for (const state of this._states.values()) {
       state[SLOT_PAN_VEL]  = 0
       state[SLOT_TILT_VEL] = 0
+      state[SLOT_X3D_VEL]  = 0
+      state[SLOT_Y3D_VEL]  = 0
+      state[SLOT_Z3D_VEL]  = 0
     }
   }
 
@@ -329,6 +410,9 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
     for (const state of this._states.values()) {
       state[SLOT_PAN_VEL]  = 0
       state[SLOT_TILT_VEL] = 0
+      state[SLOT_X3D_VEL]  = 0
+      state[SLOT_Y3D_VEL]  = 0
+      state[SLOT_Z3D_VEL]  = 0
     }
   }
 
@@ -465,6 +549,22 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
 
       const state = this._states.get(node.nodeId)
       if (state === undefined) return
+
+      if (entry['targetX'] !== undefined) {
+        const xT = isFinite(entry['targetX'])        ? entry['targetX']          : state[SLOT_X3D_POS]
+        const yT = isFinite(entry['targetY'] ?? NaN) ? (entry['targetY'] ?? DEFAULT_3D_Y) : state[SLOT_Y3D_POS]
+        const zT = isFinite(entry['targetZ'] ?? NaN) ? (entry['targetZ'] ?? DEFAULT_3D_Z) : state[SLOT_Z3D_POS]
+        state[SLOT_X3D_POS] = xT
+        state[SLOT_Y3D_POS] = yT
+        state[SLOT_Z3D_POS] = zT
+        state[SLOT_X3D_VEL] = 0
+        state[SLOT_Y3D_VEL] = 0
+        state[SLOT_Z3D_VEL] = 0
+        entry['targetX'] = xT
+        entry['targetY'] = yT
+        entry['targetZ'] = zT
+        return
+      }
 
       const panT  = isFinite(entry['pan']  ?? NaN) ? (entry['pan']  ?? 0.5) : state[SLOT_PAN_POS]
       const tiltT = isFinite(entry['tilt'] ?? NaN) ? (entry['tilt'] ?? 0.5) : state[SLOT_TILT_POS]

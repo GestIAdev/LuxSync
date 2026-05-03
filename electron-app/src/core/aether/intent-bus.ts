@@ -303,6 +303,12 @@ export interface INodeArbiter {
   setEffectIntents(intents: readonly INodeIntent[]): void
 
   /**
+   * Inyecta intents de Hephaestus custom clips (capa L3+, Diamond Data).
+   * @param intents — Intents producidos por HephaestusAetherAdapter
+   */
+  setHephaestusIntents(intents: readonly INodeIntent[]): void
+
+  /**
    * Inyecta intents de playback (capa LP, Chronos Timeline).
    * @param intents — Intents producidos por IChronosNodeBridge
    */

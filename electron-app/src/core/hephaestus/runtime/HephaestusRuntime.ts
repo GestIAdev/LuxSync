@@ -118,6 +118,12 @@ export interface HephFixtureOutput {
    */
   fine?: number
   source: 'hephaestus-runtime'
+  // WAVE 3521: Pre-DMX normalized value (0-1) for Aether adapter consumption
+  normalizedValue: number
+  // WAVE 3521: Normalized RGB (0-1 each) for Aether COLOR nodes (only for 'color' parameter)
+  normalizedRgb?: { r: number; g: number; b: number }
+  // WAVE 3521: true if the originating clip has effectType === 'heph_custom'
+  isCustomClip: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -531,14 +537,20 @@ export class HephaestusRuntime {
       }
 
       // ── Evaluate each curve at fixture-specific time ────────────
+      // WAVE 3521: isCustomClip determined once per active clip
+      const isCustomThisClip = active.clip.effectType === 'heph_custom'
       for (const [paramName, curve] of active.clip.curves) {
         if (curve.valueType === 'color') {
           const hsl = active.evaluator.getColorValue(paramName, fixtureTimeMs)
           // Intensity modulates lightness (dim the color, don't destroy hue/sat)
           const modulatedL = (hsl.l / 100) * active.intensity
           const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
+          // WAVE 3521: normalized RGB for Aether adapter (shared scratch buf)
+          this._normRgbBuf.r = rgb.r / 255
+          this._normRgbBuf.g = rgb.g / 255
+          this._normRgbBuf.b = rgb.b / 255
 
-          this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb)
+          this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip)
         } else {
           const rawValue = active.evaluator.getValue(paramName, fixtureTimeMs)
           const withIntensity = rawValue * active.intensity
@@ -547,7 +559,7 @@ export class HephaestusRuntime {
             ? scaleToDMX16(withIntensity).fine
             : undefined
 
-          this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine)
+          this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip)
         }
       }
     }
@@ -584,6 +596,8 @@ export class HephaestusRuntime {
     if (targetFixtureIds.length === 0) return
 
     // ── Evaluate each curve → scale → emit per-fixture ────────────────────
+    // WAVE 3521: isCustomClip determined once per legacy tick call
+    const isCustomThisClip = active.clip.effectType === 'heph_custom'
     for (const [paramName, curve] of active.clip.curves) {
 
       // ─── COLOR CURVE PATH ───────────────────────────────────
@@ -592,9 +606,13 @@ export class HephaestusRuntime {
         // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
         const modulatedL = (hsl.l / 100) * active.intensity
         const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
+        // WAVE 3521: normalized RGB for Aether adapter (shared scratch buf)
+        this._normRgbBuf.r = rgb.r / 255
+        this._normRgbBuf.g = rgb.g / 255
+        this._normRgbBuf.b = rgb.b / 255
 
         for (const fixtureId of targetFixtureIds) {
-          this.writeOutput(fixtureId, 'all', paramName, 0, rgb)
+          this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip)
         }
         continue
       }
@@ -608,7 +626,7 @@ export class HephaestusRuntime {
         : undefined
 
       for (const fixtureId of targetFixtureIds) {
-        this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine)
+        this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip)
       }
     }
   }
@@ -616,6 +634,9 @@ export class HephaestusRuntime {
   // ─────────────────────────────────────────────────────────────────────────
   // ⚒️ WAVE 2400: ZERO-ALLOCATION OUTPUT BUFFER
   // ─────────────────────────────────────────────────────────────────────────
+
+  // WAVE 3521: Scratch buffer for normalized RGB (zero-alloc, mutated in-place)
+  private readonly _normRgbBuf = { r: 0, g: 0, b: 0 }
 
   /** Pre-allocated output buffer */
   private outputBuffer: HephFixtureOutput[] = []
@@ -647,6 +668,9 @@ export class HephaestusRuntime {
         rgb: undefined,
         fine: undefined,
         source: 'hephaestus-runtime',
+        normalizedValue: 0,
+        normalizedRgb: undefined,
+        isCustomClip: false,
       }
     }
     this.outputCapacity = newCapacity
@@ -663,7 +687,10 @@ export class HephaestusRuntime {
     parameter: string,
     value: number,
     rgb?: { r: number; g: number; b: number },
-    fine?: number
+    fine?: number,
+    normalizedValue?: number,
+    normalizedRgb?: { r: number; g: number; b: number },
+    isCustomClip?: boolean
   ): void {
     // Auto-grow if needed (rare — only if capacity estimate was wrong)
     if (this.outputCursor >= this.outputCapacity) {
@@ -677,6 +704,9 @@ export class HephaestusRuntime {
     out.value = value
     out.rgb = rgb
     out.fine = fine
+    out.normalizedValue = normalizedValue ?? 0
+    out.normalizedRgb = normalizedRgb
+    out.isCustomClip = isCustomClip ?? false
     // out.source is always 'hephaestus-runtime' — set once at buffer creation
   }
 

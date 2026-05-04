@@ -38,12 +38,15 @@ const CATEGORY_LABEL: Record<ForgeNodeCategory, string> = {
 }
 
 const CATEGORY_ORDER: ForgeNodeCategory[] = ['input', 'process', 'logic', 'output', 'compound']
+type PaletteTab = 'primitives' | 'ingenios'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE PALETTE
 // ═══════════════════════════════════════════════════════════════════════════
 
 const NodePalette: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<PaletteTab>('primitives')
+
   // Categorías expandidas — input y process abiertas por defecto
   const [expanded, setExpanded] = useState<Set<ForgeNodeCategory>>(
     new Set(['input', 'process'])
@@ -83,70 +86,86 @@ const NodePalette: React.FC = () => {
         <span className="node-palette__title">NODE PALETTE</span>
       </div>
 
-      <div className="node-palette__categories">
-        {CATEGORY_ORDER.map((cat) => {
-          const entries = FORGE_PALETTE[cat]
-          // compound siempre se muestra (tiene el UAB de ingenios)
-          if (entries.length === 0 && cat !== 'compound') return null
-
-          const color = CATEGORY_COLOR[cat]
-          const isOpen = expanded.has(cat)
-
-          return (
-            <div key={cat} className="node-palette__category">
-              {/* Category Header */}
-              <button
-                className={`node-palette__cat-header ${isOpen ? 'open' : ''}`}
-                style={{ '--cat-color': color } as React.CSSProperties}
-                onClick={() => toggleCategory(cat)}
-                aria-expanded={isOpen}
-              >
-                <span className="node-palette__cat-indicator" />
-                <span className="node-palette__cat-label">
-                  {CATEGORY_LABEL[cat]}
-                </span>
-                <span className="node-palette__cat-count">
-                  {cat === 'compound' ? '⚙' : entries.length}
-                </span>
-                <span className="node-palette__cat-chevron">
-                  {isOpen ? '▾' : '▸'}
-                </span>
-              </button>
-
-              {/* Entries */}
-              {isOpen && (
-                <div className="node-palette__entries">
-                  {entries.map((entry) => (
-                    <div
-                      key={entry.type}
-                      className="node-palette__entry"
-                      style={{ '--cat-color': color } as React.CSSProperties}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, entry.type)}
-                      title={entry.description}
-                    >
-                      <span className="node-palette__entry-icon">{entry.icon}</span>
-                      <span className="node-palette__entry-label">{entry.label}</span>
-                    </div>
-                  ))}
-
-                  {/* COMPOUND: Librería de Ingenios vía UAB */}
-                  {cat === 'compound' && (
-                    <div className="node-palette__ingenio-browser">
-                      <UniversalAssetBrowser
-                        assetTypes={['ingenio']}
-                        compact={true}
-                        defaultViewMode="list"
-                        onDragStart={onIngenioDragStart}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <div className="node-palette__tabs" role="tablist" aria-label="Node Palette Views">
+        <button
+          className={`node-palette__tab ${activeTab === 'primitives' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'primitives'}
+          onClick={() => setActiveTab('primitives')}
+        >
+          PRIMITIVES
+        </button>
+        <button
+          className={`node-palette__tab ${activeTab === 'ingenios' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'ingenios'}
+          onClick={() => setActiveTab('ingenios')}
+        >
+          INGENIOS
+        </button>
       </div>
+
+      {activeTab === 'primitives' ? (
+        <div className="node-palette__categories">
+          {CATEGORY_ORDER.filter((cat) => cat !== 'compound').map((cat) => {
+            const entries = FORGE_PALETTE[cat]
+            if (entries.length === 0) return null
+
+            const color = CATEGORY_COLOR[cat]
+            const isOpen = expanded.has(cat)
+
+            return (
+              <div key={cat} className="node-palette__category">
+                {/* Category Header */}
+                <button
+                  className={`node-palette__cat-header ${isOpen ? 'open' : ''}`}
+                  style={{ '--cat-color': color } as React.CSSProperties}
+                  onClick={() => toggleCategory(cat)}
+                  aria-expanded={isOpen}
+                >
+                  <span className="node-palette__cat-indicator" />
+                  <span className="node-palette__cat-label">
+                    {CATEGORY_LABEL[cat]}
+                  </span>
+                  <span className="node-palette__cat-count">{entries.length}</span>
+                  <span className="node-palette__cat-chevron">
+                    {isOpen ? '▾' : '▸'}
+                  </span>
+                </button>
+
+                {/* Entries */}
+                {isOpen && (
+                  <div className="node-palette__entries">
+                    {entries.map((entry) => (
+                      <div
+                        key={entry.type}
+                        className="node-palette__entry"
+                        style={{ '--cat-color': color } as React.CSSProperties}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, entry.type)}
+                        title={entry.description}
+                      >
+                        <span className="node-palette__entry-icon">{entry.icon}</span>
+                        <span className="node-palette__entry-label">{entry.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="node-palette__ingenios-tab">
+          <UniversalAssetBrowser
+            assetTypes={['ingenio']}
+            compact={true}
+            maxHeight="100%"
+            defaultViewMode="list"
+            onDragStart={onIngenioDragStart}
+          />
+        </div>
+      )}
     </div>
   )
 }

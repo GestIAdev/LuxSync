@@ -26,12 +26,59 @@
   text-transform: uppercase;
 }
 
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+.node-palette__tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.node-palette__tab {
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.58);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.node-palette__tab:hover {
+  border-color: rgba(191, 90, 242, 0.32);
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.node-palette__tab.active {
+  background: rgba(191, 90, 242, 0.18);
+  border-color: rgba(191, 90, 242, 0.5);
+  color: #f0d2ff;
+}
+
 /* ── Categories container ────────────────────────────────────────────────── */
 .node-palette__categories {
   flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.node-palette__ingenios-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.node-palette__ingenios-tab > * {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Category section ────────────────────────────────────────────────────── */

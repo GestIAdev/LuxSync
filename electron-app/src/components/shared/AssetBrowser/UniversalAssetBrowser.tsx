@@ -52,6 +52,23 @@ export interface UniversalAssetBrowserProps {
   cardVariant?: 'grid' | 'list'
   /** Forzar un viewMode inicial (si no se especifica usa el del store) */
   initialViewMode?: ViewMode
+  /**
+   * Drag-and-drop HTML5: callback invocado cuando una card empieza a arrastrarse.
+   * Permite al parent configurar dataTransfer (e.g. fixture-type, library-fixture-id).
+   */
+  onDragStart?: (e: React.DragEvent, asset: LibraryAsset) => void
+  /**
+   * Modo compacto (e.g. uso en sidebars ~300px):
+   * - Oculta el toggle de vistas (grid/list/tree)
+   * - Oculta la TagBar
+   * - Fuerza overflow correcto en árbol
+   */
+  compact?: boolean
+  /**
+   * Alias semántico de initialViewMode para uso declarativo:
+   * defaultViewMode="tree" equivale a initialViewMode="tree"
+   */
+  defaultViewMode?: ViewMode
 }
 
 // ─── Search debounce ───────────────────────────────────────────────────────────
@@ -75,7 +92,12 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   maxHeight,
   cardVariant = 'grid',
   initialViewMode,
+  compact = false,
+  defaultViewMode,
+  onDragStart,
 }: UniversalAssetBrowserProps) {
+  // defaultViewMode es un alias de initialViewMode
+  const resolvedInitialViewMode = initialViewMode ?? defaultViewMode
 
   // ── Store selectors ──────────────────────────────────────────────────────
   const viewMode            = useAssetLibraryStore(s => s.viewMode)
@@ -102,14 +124,14 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   const debouncedSearch = useDebounce(inputValue, 200)
   useEffect(() => { setSearchQuery(debouncedSearch) }, [debouncedSearch, setSearchQuery])
 
-  // ── Apply initialViewMode once ────────────────────────────────────────────
+  // ── Apply resolvedInitialViewMode once ───────────────────────────────────
   const appliedInitialViewMode = useRef(false)
   useEffect(() => {
-    if (!appliedInitialViewMode.current && initialViewMode) {
-      setViewMode(initialViewMode)
+    if (!appliedInitialViewMode.current && resolvedInitialViewMode) {
+      setViewMode(resolvedInitialViewMode)
       appliedInitialViewMode.current = true
     }
-  }, [initialViewMode, setViewMode])
+  }, [resolvedInitialViewMode, setViewMode])
 
   // ── Force asset type filter when assetTypes prop provided ─────────────────
   useEffect(() => {
@@ -219,7 +241,7 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
-      className="universal-asset-browser"
+      className={`universal-asset-browser${compact ? ' uab-compact' : ''}`}
       style={{ maxHeight: maxHeight ?? '100%' }}
     >
       {/* ── TOOLBAR ──────────────────────────────────────────────────────── */}
@@ -241,8 +263,8 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
           )}
         </div>
 
-        {/* Type toggle */}
-        {showTypeToggle && (
+        {/* Type toggle — oculto en modo compact */}
+        {showTypeToggle && !compact && (
           <div className="uab-type-toggle">
             <button
               className={`uab-type-btn${assetTypeFilter === 'all' ? ' uab-active' : ''}`}
@@ -269,30 +291,32 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
           </div>
         )}
 
-        {/* View mode */}
-        <div className="uab-view-toggle">
-          <button
-            className={`uab-view-btn${viewMode === 'tree' ? ' uab-active' : ''}`}
-            onClick={() => setViewMode('tree')}
-            title="Vista árbol"
-          >
-            <Network size={13} />
-          </button>
-          <button
-            className={`uab-view-btn${viewMode === 'list' ? ' uab-active' : ''}`}
-            onClick={() => setViewMode('list')}
-            title="Vista lista"
-          >
-            <List size={13} />
-          </button>
-          <button
-            className={`uab-view-btn${viewMode === 'grid' ? ' uab-active' : ''}`}
-            onClick={() => setViewMode('grid')}
-            title="Vista grilla"
-          >
-            <LayoutGrid size={13} />
-          </button>
-        </div>
+        {/* View mode — oculto en modo compact */}
+        {!compact && (
+          <div className="uab-view-toggle">
+            <button
+              className={`uab-view-btn${viewMode === 'tree' ? ' uab-active' : ''}`}
+              onClick={() => setViewMode('tree')}
+              title="Vista árbol"
+            >
+              <Network size={13} />
+            </button>
+            <button
+              className={`uab-view-btn${viewMode === 'list' ? ' uab-active' : ''}`}
+              onClick={() => setViewMode('list')}
+              title="Vista lista"
+            >
+              <List size={13} />
+            </button>
+            <button
+              className={`uab-view-btn${viewMode === 'grid' ? ' uab-active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Vista grilla"
+            >
+              <LayoutGrid size={13} />
+            </button>
+          </div>
+        )}
 
         {/* Favorites */}
         <button
@@ -314,8 +338,8 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
         </button>
       </div>
 
-      {/* ── TAG BAR ───────────────────────────────────────────────────────── */}
-      {tagEntries.length > 0 && (
+      {/* ── TAG BAR — oculta en modo compact ─────────────────────────────── */}
+      {!compact && tagEntries.length > 0 && (
         <div className="uab-tag-bar">
           {tagEntries.map(([tag, count]) => (
             <button
@@ -367,6 +391,7 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
                 onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onClone={onClone}
+                onDragStart={onDragStart}
               />
             )}
 
@@ -382,6 +407,7 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
                     onToggleFavorite={toggleFavorite}
                     onDelete={asset.source === 'user' ? handleDelete : undefined}
                     onClone={onClone}
+                    onDragStart={onDragStart}
                   />
                 ))}
               </div>
@@ -399,6 +425,7 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
                     onToggleFavorite={toggleFavorite}
                     onDelete={asset.source === 'user' ? handleDelete : undefined}
                     onClone={onClone}
+                    onDragStart={onDragStart}
                   />
                 ))}
               </div>

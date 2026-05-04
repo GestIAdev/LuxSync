@@ -26,6 +26,7 @@ interface AssetTreeViewProps {
   onToggleFavorite?: (assetId: string) => void
   onDelete?: (assetId: string) => void
   onClone?: (asset: LibraryAsset) => void
+  onDragStart?: (e: React.DragEvent, asset: LibraryAsset) => void
 }
 
 // ─── Tree Branch ──────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ interface TreeBranchProps {
   onToggleFavorite?: (assetId: string) => void
   onDelete?: (assetId: string) => void
   onClone?: (asset: LibraryAsset) => void
+  onDragStart?: (e: React.DragEvent, asset: LibraryAsset) => void
 }
 
 const TreeBranch = memo(function TreeBranch({
@@ -50,6 +52,7 @@ const TreeBranch = memo(function TreeBranch({
   onToggleFavorite,
   onDelete,
   onClone,
+  onDragStart,
 }: TreeBranchProps) {
   const handleToggle = useCallback(() => {
     onToggle(node.id)
@@ -83,6 +86,7 @@ const TreeBranch = memo(function TreeBranch({
               onToggleFavorite={onToggleFavorite}
               onDelete={asset.source === 'user' ? onDelete : undefined}
               onClone={onClone}
+              onDragStart={onDragStart}
             />
           ))}
         </div>
@@ -100,6 +104,7 @@ export const AssetTreeView = memo(function AssetTreeView({
   onToggleFavorite,
   onDelete,
   onClone,
+  onDragStart,
 }: AssetTreeViewProps) {
   const expandedTreeNodes = useAssetLibraryStore(s => s.expandedTreeNodes)
   const toggleTreeNode    = useAssetLibraryStore(s => s.toggleTreeNode)
@@ -125,6 +130,7 @@ export const AssetTreeView = memo(function AssetTreeView({
           onToggleFavorite={onToggleFavorite}
           onDelete={onDelete}
           onClone={onClone}
+          onDragStart={onDragStart}
         />
       ))}
     </div>

@@ -16,6 +16,31 @@
   overflow: hidden;
 }
 
+/* ── Compact mode overrides ──────────────────────────────────────────────── */
+/* Toolbar más slim, sin wrap, sin gap extra */
+.uab-compact .uab-toolbar {
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 5px 6px;
+}
+/* Search ocupa todo el espacio libre */
+.uab-compact .uab-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* Todos los hijos del árbol con overflow correcto a ~300px */
+.uab-compact .asset-tree-view,
+.uab-compact .uab-list-view {
+  overflow-x: hidden;
+}
+.uab-compact .atv-branch-assets {
+  padding-left: 8px;
+}
+.uab-compact .ac-list-name   { width: 120px; }
+.uab-compact .ac-list-creator { display: none; }
+.uab-compact .ac-list-summary { display: none; }
+.uab-compact .ac-list .ac-tags { display: none; }
+
 /* ════════════════════════════════════════════════════════════════════════════
    TOOLBAR
    ════════════════════════════════════════════════════════════════════════════ */

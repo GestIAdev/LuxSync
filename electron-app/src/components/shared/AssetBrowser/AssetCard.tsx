@@ -24,6 +24,8 @@ export interface AssetCardProps {
   onToggleFavorite?: (assetId: string) => void
   onDelete?: (assetId: string) => void
   onClone?: (asset: LibraryAsset) => void
+  /** Drag-and-drop HTML5: si se provee, la card se vuelve draggable */
+  onDragStart?: (e: React.DragEvent, asset: LibraryAsset) => void
 }
 
 // ─── Asset type icon ──────────────────────────────────────────────────────────
@@ -68,6 +70,7 @@ export const AssetCard = memo(function AssetCard({
   onToggleFavorite,
   onDelete,
   onClone,
+  onDragStart,
 }: AssetCardProps) {
   const handleSelect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -99,6 +102,8 @@ export const AssetCard = memo(function AssetCard({
         onClick={handleSelect}
         onDoubleClick={handleSelect}
         data-asset-id={asset.id}
+        draggable={!!onDragStart}
+        onDragStart={onDragStart ? (e) => onDragStart(e, asset) : undefined}
       >
         <span className="ac-list-icon"><AssetIcon asset={asset} /></span>
         <span className="ac-list-name">{asset.name}</span>
@@ -129,6 +134,8 @@ export const AssetCard = memo(function AssetCard({
       onClick={handleSelect}
       onDoubleClick={handleSelect}
       data-asset-id={asset.id}
+      draggable={!!onDragStart}
+      onDragStart={onDragStart ? (e) => onDragStart(e, asset) : undefined}
     >
       <div className="ac-grid-header">
         <span className="ac-grid-icon-wrap"><AssetIcon asset={asset} /></span>

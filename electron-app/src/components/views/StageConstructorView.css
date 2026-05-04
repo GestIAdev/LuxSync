@@ -220,7 +220,20 @@
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  overflow-x: hidden;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* WAVE 4549.3: Contenedor del UniversalAssetBrowser en la sidebar */
+.sidebar-asset-browser {
+  flex: 1 1 auto;
+  min-height: 200px;
+  max-height: 50vh;
+  overflow: hidden;
+  border-radius: 6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

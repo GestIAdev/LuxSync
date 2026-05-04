@@ -30,6 +30,8 @@ import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixture
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
 import useKeyboardShortcuts from './StageConstructor/KeyboardShortcuts'
+import { UniversalAssetBrowser } from '../shared/AssetBrowser'
+import type { LibraryAsset } from '../../stores/assetAdapters'
 import './StageConstructorView.css'
 
 // Lazy load the heavy 3D canvas
@@ -149,126 +151,15 @@ const Loading3DFallback: React.FC = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FIXTURE LIBRARY SIDEBAR (LEFT) - With Drag Source
-// WAVE 368: Now reads real .fxt files from library!
-// WAVE 1117: DELETED Quick Templates (FixtureTemplate interface + FIXTURE_TEMPLATES array)
+// FIXTURE LIBRARY SIDEBAR (LEFT) - WAVE 4549.3
+// Reemplaza la lista plana legacy por UniversalAssetBrowser compact.
+// handleDragStart conecta el D&D de las AssetCards con StageGrid3D.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Library fixture loaded from .fxt file
-interface LibraryFixture {
-  id: string
-  name: string
-  manufacturer: string
-  type: FixtureV2['type']
-  channelCount: number
-  filePath: string
-}
-
-// WAVE 389: Props for exposing reload function
-interface FixtureLibrarySidebarProps {
-  onLoadLibraryRef?: React.MutableRefObject<(() => Promise<void>) | null>
-}
-
-const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLibraryRef }) => {
+const FixtureLibrarySidebar: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
-  const { setDraggedFixtureType, openFixtureForge } = useConstructorContext()
-  
-  // WAVE 368: Real library state
-  const [libraryFixtures, setLibraryFixtures] = useState<LibraryFixture[]>([])
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
-  const [libraryError, setLibraryError] = useState<string | null>(null)
-  
-  // WAVE 368: Load library on mount
-  useEffect(() => {
-    loadFixtureLibrary()
-  }, [])
-  
-  const loadFixtureLibrary = useCallback(async () => {
-    setIsLoadingLibrary(true)
-    setLibraryError(null)
-    
-    try {
-      if (!window.lux?.getFixtureLibrary) {
-        console.warn('[FixtureLibrarySidebar] window.lux.getFixtureLibrary not available')
-        return
-      }
-      
-      const result = await window.lux.getFixtureLibrary()
-      console.log('[FixtureLibrarySidebar] Loaded library:', result?.fixtures?.length || 0, 'fixtures')
-      
-      if (result?.success && Array.isArray(result.fixtures)) {
-        setLibraryFixtures(result.fixtures.map((def) => ({
-          id: def.id || def.name,
-          name: def.name || 'Unknown',
-          manufacturer: def.manufacturer || 'Unknown',
-          type: mapDefinitionTypeToFixtureType(def.type),
-          channelCount: def.channelCount || 0,
-          filePath: def.filePath || ''
-        })))
-      }
-    } catch (error) {
-      console.error('[FixtureLibrarySidebar] Failed to load library:', error)
-      setLibraryError('Failed to load fixture library')
-    } finally {
-      setIsLoadingLibrary(false)
-    }
-  }, [])
-  
-  // WAVE 389: Expose loadFixtureLibrary to parent via ref
-  useEffect(() => {
-    if (onLoadLibraryRef) {
-      onLoadLibraryRef.current = loadFixtureLibrary
-    }
-  }, [loadFixtureLibrary, onLoadLibraryRef])
-  
-  // WAVE 388 EXT: Delete fixture from library
-  const handleDeleteFixture = useCallback(async (filePath: string, fixtureName: string) => {
-    if (!window.confirm(`¿Eliminar "${fixtureName}" de la librería?`)) {
-      return
-    }
-    
-    try {
-      // WAVE 388.7: Pass filePath directly for precise deletion
-      const result = await window.lux?.deleteDefinition?.(filePath)
-      console.log('[Library] Delete result:', result)
-      
-      if (result?.success) {
-        console.log(`[Library] ✅ Deleted: ${result.deletedPath}`)
-        // Reload library
-        loadFixtureLibrary()
-      } else {
-        alert(`Error: ${result?.error || 'No se pudo eliminar'}`)
-      }
-    } catch (err) {
-      console.error('[Library] Delete error:', err)
-      alert('Error al eliminar fixture')
-    }
-  }, [loadFixtureLibrary])
-  
-  // WAVE 388 EXT: Edit fixture (open in Forge)
-  const handleEditFixture = useCallback(async (fixtureId: string, fixtureName: string) => {
-    // WAVE 389: Load full definition from library to edit
-    try {
-      const result = await window.lux?.getFixtureLibrary?.()
-      if (result?.success && result.fixtures) {
-        const definition = result.fixtures.find((f: any) => 
-          f.id === fixtureId || f.name === fixtureName
-        )
-        if (definition) {
-          console.log('[Library] 📝 Editing fixture:', definition.name)
-          console.log('[Library] 📝 Definition channels:', definition.channels?.length, definition.channels)
-          console.log('[Library] 📝 Definition physics:', definition.physics)
-          // Cast to FixtureDefinition - library items have all required fields
-          openFixtureForge(undefined, definition as unknown as FixtureDefinition)
-        } else {
-          console.warn('[Library] Fixture not found in library:', fixtureId)
-        }
-      }
-    } catch (err) {
-      console.error('[Library] Failed to load fixture for edit:', err)
-    }
-  }, [openFixtureForge])
+  const { setDraggedFixtureType } = useConstructorContext()
   
   const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
     e.dataTransfer.setData('fixture-type', type)
@@ -278,7 +169,7 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
     e.dataTransfer.effectAllowed = 'copy'
     setDraggedFixtureType(type)
     
-    // Create ghost image
+    // Ghost image visual al arrastrar
     const ghost = document.createElement('div')
     ghost.className = 'drag-ghost'
     ghost.innerHTML = getFixtureIcon(type)
@@ -296,10 +187,6 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
     setTimeout(() => document.body.removeChild(ghost), 0)
   }, [setDraggedFixtureType])
   
-  const handleDragEnd = useCallback(() => {
-    setDraggedFixtureType(null)
-  }, [setDraggedFixtureType])
-  
   return (
     <aside className="constructor-sidebar library-sidebar">
       <div className="sidebar-header">
@@ -308,85 +195,23 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
       </div>
       
       <div className="sidebar-content">
-        {/* WAVE 1117: DELETED "FORGE NEW FIXTURE" button - use /forge tab instead */}
-        
-        {/* User Library - Open by default, most important */}
-        <CollapsibleSection 
-          title="Your Library" 
-          defaultOpen={true} 
-          badge={libraryFixtures.length}
-          action={
-            <button 
-              className="icon-btn" 
-              title="Refresh Library"
-              onClick={loadFixtureLibrary}
-              disabled={isLoadingLibrary}
-            >
-              <RefreshCcw size={14} className={isLoadingLibrary ? 'spinning' : ''} />
-            </button>
-          }
-        >
-          {isLoadingLibrary ? (
-            <div className="empty-state small">
-              <span className="loading-spinner">⏳</span>
-              <p>Scanning library...</p>
-            </div>
-          ) : libraryError ? (
-            <div className="empty-state small error">
-              <p>{libraryError}</p>
-              <button className="retry-btn" onClick={loadFixtureLibrary}>Retry</button>
-            </div>
-          ) : libraryFixtures.length === 0 ? (
-            <div className="empty-state compact">
-              <p>No fixture definitions yet</p>
-              <span>Use the button above to create one</span>
-            </div>
-          ) : (
-            <ul className="library-fixture-list">
-              {libraryFixtures.map(libFix => (
-                <li 
-                  key={libFix.filePath || libFix.id || libFix.name}
-                  className="library-fixture-item"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, libFix.type, libFix.id)}
-                  onDragEnd={handleDragEnd}
-                  title={`${libFix.manufacturer} - ${libFix.channelCount}ch\nDrag to stage`}
-                >
-                  <span className="fixture-type-icon">{getFixtureIcon(libFix.type)}</span>
-                  <div className="fixture-info">
-                    <span className="fixture-name">{libFix.name}</span>
-                    <span className="fixture-meta">{libFix.manufacturer} · {libFix.channelCount}ch</span>
-                  </div>
-                  {/* WAVE 388 EXT: Edit & Delete buttons */}
-                  <div className="fixture-actions">
-                    <button 
-                      className="action-btn edit" 
-                      title="Editar en Forge"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        // WAVE 389: Pass both id and name for reliable lookup
-                        handleEditFixture(libFix.id, libFix.name); 
-                      }}
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button 
-                      className="action-btn delete" 
-                      title="Eliminar de librería"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        // WAVE 388.7: Pass filePath for precise deletion
-                        handleDeleteFixture(libFix.filePath, libFix.name); 
-                      }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CollapsibleSection>
+        {/* WAVE 4549.3: UniversalAssetBrowser compact reemplaza la lista plana legacy */}
+        {/* D&D: onDragStart configura el dataTransfer para que StageGrid3D reciba fixture-type + library-fixture-id */}
+        <div className="sidebar-asset-browser">
+          <UniversalAssetBrowser
+            assetTypes={['fixture']}
+            compact={true}
+            defaultViewMode="tree"
+            maxHeight="100%"
+            onDragStart={(e: React.DragEvent, asset: LibraryAsset) => {
+              const rawDef = (asset as any)._raw
+              const fixtureType = rawDef?.type
+                ? mapLibraryTypeToFixtureType(rawDef.type)
+                : 'par'
+              handleDragStart(e, fixtureType, asset.id)
+            }}
+          />
+        </div>
         
         {/* On Stage - Open by default */}
         <CollapsibleSection title="On Stage" defaultOpen={true} badge={fixtures.length}>
@@ -444,23 +269,6 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
 }
 
 // Helper: Map definition type to FixtureV2 type
-function mapDefinitionTypeToFixtureType(defType: string): FixtureV2['type'] {
-  const typeMap: Record<string, FixtureV2['type']> = {
-    'moving-head': 'moving-head',
-    'movinghead': 'moving-head',
-    'par': 'par',
-    'wash': 'wash',
-    'spot': 'moving-head',
-    'strobe': 'strobe',
-    'laser': 'laser',
-    'blinder': 'blinder',
-    'led-bar': 'par',
-    'ledbar': 'par'
-  }
-  return typeMap[defType?.toLowerCase()] || 'par'
-}
-
-// Helper: Get icon for fixture type
 function getFixtureIcon(type: string): string {
   const icons: Record<string, string> = {
     'moving-head': '🎯',
@@ -866,9 +674,6 @@ const StageConstructorView: React.FC = () => {
   // 🛡️ WAVE 2042.13.9: useShallow for stable reference
   const { setActiveTab, editFixture } = useNavigationStore(useShallow(selectStageConstructorNav))
   
-  // WAVE 389: Ref to call library reload from child component
-  const reloadLibraryRef = useRef<(() => Promise<void>) | null>(null)
-  
   // Store actions
   const updateFixture = useStageStore(state => state.updateFixture)
   const updateFixturePhysics = useStageStore(state => state.updateFixturePhysics)
@@ -942,7 +747,7 @@ const StageConstructorView: React.FC = () => {
         {/* Main Content */}
         <div className="constructor-content">
           {/* Left Sidebar - Fixture Library */}
-          <FixtureLibrarySidebar onLoadLibraryRef={reloadLibraryRef} />
+          <FixtureLibrarySidebar />
           
           {/* Center - 3D Viewport */}
           <div className="constructor-viewport">

@@ -365,7 +365,8 @@ const CrystalBox: React.FC = () => {
         <lineBasicMaterial color="#22d3ee" opacity={0.55} transparent />
       </lineSegments>
       {/* Volumen de cristal Tron — tinte azul interior, BackSide para no tapar nada */}
-      <mesh>
+      {/* raycast={() => null} → invisible al raycaster de R3F, el GhostCursor llega limpio al plano del suelo */}
+      <mesh raycast={() => null}>
         <boxGeometry args={[width, height, depth]} />
         <meshBasicMaterial
           color="#22d3ee"

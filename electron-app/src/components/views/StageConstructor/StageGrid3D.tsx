@@ -618,6 +618,8 @@ interface StageSceneProps {
   isDragging: boolean
   /** WAVE 4541: ref al que GhostCursor escribe la posición validada */
   ghostPosRef: React.MutableRefObject<Position3D | null>
+  /** WAVE 4549.4: NDC del puntero actualizado por handleDragOver (HTML5 drag congela useThree pointer) */
+  dragPointerRef: React.MutableRefObject<THREE.Vector2>
 }
 
 const StageScene = memo<StageSceneProps>(({
@@ -637,7 +639,8 @@ const StageScene = memo<StageSceneProps>(({
   showFloorGrid,
   showDropLines,
   isDragging,
-  ghostPosRef
+  ghostPosRef,
+  dragPointerRef
 }) => {
   // 🔓 WAVE 1036.2: No transformation needed - use fixtures directly
   // Full reactivity: changes in position/height/rotation are immediately visible
@@ -797,7 +800,7 @@ const StageScene = memo<StageSceneProps>(({
       )}
 
       {/* 🎯 WAVE 4541: Ghost Cursor — snap preview durante drag & drop */}
-      <GhostCursor isDragging={isDragging} ghostPosRef={ghostPosRef} />
+      <GhostCursor isDragging={isDragging} ghostPosRef={ghostPosRef} dragPointerRef={dragPointerRef} />
     </>
   )
 })
@@ -1000,11 +1003,13 @@ interface GhostCursorProps {
   isDragging: boolean
   /** Ref al que se escribe la posición validada (o null si invalid) */
   ghostPosRef: React.MutableRefObject<Position3D | null>
+  /** WAVE 4549.4: NDC del puntero durante HTML5 drag (pointer de R3F se congela con drag nativo) */
+  dragPointerRef: React.MutableRefObject<THREE.Vector2>
 }
 
 /** Vive DENTRO del Canvas — tiene acceso a useThree y useFrame */
-const GhostCursor: React.FC<GhostCursorProps> = ({ isDragging, ghostPosRef }) => {
-  const { camera, raycaster, pointer, scene } = useThree()
+const GhostCursor: React.FC<GhostCursorProps> = ({ isDragging, ghostPosRef, dragPointerRef }) => {
+  const { camera, raycaster, scene } = useThree()
   const stage = useStageStore(state => state.stage)
   const fixtures = useStageStore(selectFixtures)
 
@@ -1023,7 +1028,7 @@ const GhostCursor: React.FC<GhostCursorProps> = ({ isDragging, ghostPosRef }) =>
       return
     }
 
-    raycaster.setFromCamera(pointer, camera)
+    raycaster.setFromCamera(dragPointerRef.current, camera)
 
     // ── Prioridad 1: stacking sobre FixtureBlock ─────────────────────────
     // Construye la lista de meshes que representan los FixtureBlocks (cilindros)
@@ -1149,6 +1154,10 @@ const StageGrid3D: React.FC = () => {
   // 🎯 WAVE 4541: Ghost cursor position ref — la posición validada del ghost cursor
   // Vive aquí (fuera del Canvas) para que handleDrop la pueda leer
   const ghostPosRef = useRef<Position3D | null>(null)
+  // 🎯 WAVE 4549.4: NDC del puntero durante HTML5 drag
+  // Durante un drag nativo, el browser suprime eventos de pointer → useThree().pointer se congela.
+  // handleDragOver lo actualiza manualmente desde clientX/Y + getBoundingClientRect.
+  const dragPointerRef = useRef<THREE.Vector2>(new THREE.Vector2())
   // isDragging: true cuando hay un fixture siendo arrastrado sobre el canvas
   const [isDragging, setIsDragging] = useState(false)
 
@@ -1555,6 +1564,16 @@ const StageGrid3D: React.FC = () => {
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
+    // 🎯 WAVE 4549.4: Actualizar NDC manualmente — durante HTML5 drag el browser
+    // suprime onPointerMove, así que useThree().pointer se congela y el GhostCursor
+    // siempre apuntaría al último punto donde estaba el cursor antes del drag.
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      dragPointerRef.current.set(
+        ((e.clientX - rect.left)  / rect.width)  * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      )
+    }
   }, [])
 
   // 🎯 WAVE 4541: Activar/desactivar la bandera isDragging para el GhostCursor
@@ -1700,6 +1719,7 @@ const StageGrid3D: React.FC = () => {
           showDropLines={showDropLines}
           isDragging={isDragging}
           ghostPosRef={ghostPosRef}
+          dragPointerRef={dragPointerRef}
         />
       </Canvas>
       

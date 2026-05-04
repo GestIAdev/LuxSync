@@ -49,7 +49,7 @@ import '@xyflow/react/dist/style.css'
 
 import { useForgeGraphStore } from '../../../../stores/forgeGraphStore'
 import { ALL_PALETTE_ENTRIES } from '../palette/forgePalette'
-import type { IForgeEdge, IForgeNode } from '../../../../core/forge/types'
+import type { IForgeEdge, IForgeNode, ICompoundIngenioConfig } from '../../../../core/forge/types'
 import { FORGE_NODE_TYPE_MAP, buildNodeData } from '../nodes/forgeNodeTypeMap'
 import './NodeCanvas.css'
 
@@ -226,9 +226,6 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
       const nodeType = event.dataTransfer.getData('application/forgenode')
       if (!nodeType) return
 
-      const entry = ALL_PALETTE_ENTRIES.find((e) => e.type === nodeType)
-      if (!entry) return
-
       // Convertir coordenadas de pantalla a coordenadas del canvas
       const position = screenToFlowPosition({
         x: event.clientX,
@@ -236,7 +233,39 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
       })
 
       const newId = makeNodeId()
-      const newNode = entry.createNode(newId, position)
+      let newNode: IForgeNode
+
+      // ── Caso especial: compound_ingenio desde UAB ──────────────────────
+      if (nodeType === 'compound_ingenio') {
+        const ingenioRef  = event.dataTransfer.getData('application/ingenio-ref') || null
+        const ingenioName = event.dataTransfer.getData('application/ingenio-name') || 'Ingenio'
+        const config: ICompoundIngenioConfig = {
+          nodeType:      'compound_ingenio',
+          ingenioName,
+          ingenioRef,
+          subGraph: { version: '1.0.0', nodes: [], edges: [], meta: {
+            createdAt: new Date().toISOString(),
+            generatorWave: 'WAVE-4548.9',
+            autoMigrated: false,
+            dmxFootprint: 0,
+          }},
+          portMapping: { inputs: [], outputs: [] },
+        }
+        newNode = {
+          id: newId,
+          type:     'compound_ingenio',
+          category: 'compound',
+          label:    ingenioName,
+          uiPosition: position,
+          inputs:   [],
+          outputs:  [],
+          config,
+        }
+      } else {
+        const entry = ALL_PALETTE_ENTRIES.find((e) => e.type === nodeType)
+        if (!entry) return
+        newNode = entry.createNode(newId, position)
+      }
 
       addNode(newNode)
       // XYFlow local — añadir inmediatamente para respuesta visual instantánea

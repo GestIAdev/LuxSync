@@ -134,3 +134,13 @@
   color: rgba(255, 255, 255, 0.75);
   font-weight: 500;
 }
+
+/* ── Ingenio UAB container inside compound category ─────────────────────── */
+.node-palette__ingenio-browser {
+  margin-top: 4px;
+  border-top: 1px solid rgba(191, 90, 242, 0.15);
+  padding-top: 4px;
+  min-height: 120px;
+  max-height: 320px;
+  overflow: hidden;
+}

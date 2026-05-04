@@ -16,6 +16,8 @@
 import React, { useState, useCallback } from 'react'
 import { FORGE_PALETTE } from '../palette/forgePalette'
 import type { ForgeNodeCategory, ForgeNodeType } from '../../../../core/forge/types'
+import { UniversalAssetBrowser } from '../../../shared/AssetBrowser'
+import type { LibraryAsset } from '../../../../stores/assetAdapters'
 import './NodePalette.css'
 
 // ─── Colores por categoría (THE GLOW) ──────────────────────────────────────
@@ -67,6 +69,14 @@ const NodePalette: React.FC = () => {
     []
   )
 
+  // ── Drag de Ingenio desde UAB al canvas ──────────────────────────────────
+  const onIngenioDragStart = useCallback((e: React.DragEvent, asset: LibraryAsset) => {
+    e.dataTransfer.setData('application/forgenode', 'compound_ingenio')
+    e.dataTransfer.setData('application/ingenio-ref', asset.id)
+    e.dataTransfer.setData('application/ingenio-name', asset.name)
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
   return (
     <div className="node-palette">
       <div className="node-palette__header">
@@ -76,7 +86,8 @@ const NodePalette: React.FC = () => {
       <div className="node-palette__categories">
         {CATEGORY_ORDER.map((cat) => {
           const entries = FORGE_PALETTE[cat]
-          if (entries.length === 0) return null
+          // compound siempre se muestra (tiene el UAB de ingenios)
+          if (entries.length === 0 && cat !== 'compound') return null
 
           const color = CATEGORY_COLOR[cat]
           const isOpen = expanded.has(cat)
@@ -95,7 +106,7 @@ const NodePalette: React.FC = () => {
                   {CATEGORY_LABEL[cat]}
                 </span>
                 <span className="node-palette__cat-count">
-                  {entries.length}
+                  {cat === 'compound' ? '⚙' : entries.length}
                 </span>
                 <span className="node-palette__cat-chevron">
                   {isOpen ? '▾' : '▸'}
@@ -118,6 +129,18 @@ const NodePalette: React.FC = () => {
                       <span className="node-palette__entry-label">{entry.label}</span>
                     </div>
                   ))}
+
+                  {/* COMPOUND: Librería de Ingenios vía UAB */}
+                  {cat === 'compound' && (
+                    <div className="node-palette__ingenio-browser">
+                      <UniversalAssetBrowser
+                        assetTypes={['ingenio']}
+                        compact={true}
+                        defaultViewMode="list"
+                        onDragStart={onIngenioDragStart}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

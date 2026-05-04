@@ -24,6 +24,7 @@ import { ProcClampConfigPanel } from './panels/ProcClampConfigPanel'
 import { ProcDelayConfigPanel } from './panels/ProcDelayConfigPanel'
 import { ProcMergeConfigPanel } from './panels/ProcMergeConfigPanel'
 import { ProcCurveConfigPanel } from './panels/ProcCurveConfigPanel'
+import { LogicGateConfigPanel } from './panels/LogicGateConfigPanel'
 import { LogicThresholdConfigPanel } from './panels/LogicThresholdConfigPanel'
 import { LogicCounterConfigPanel } from './panels/LogicCounterConfigPanel'
 import { LogicSwitchConfigPanel } from './panels/LogicSwitchConfigPanel'
@@ -56,8 +57,7 @@ export const CONFIG_PANEL_MAP: Partial<Record<ForgeNodeType, AnyConfigPanel>> = 
   proc_delay:         ProcDelayConfigPanel,
   proc_merge:         ProcMergeConfigPanel,
   proc_curve:         ProcCurveConfigPanel,
-  // ── LOGIC ───────────────────────────────────────────────────────────────
-  logic_threshold:    LogicThresholdConfigPanel,
+  // ── LOGIC ───────────────────────────────────────────────────────────────  logic_gate:         LogicGateConfigPanel,  logic_threshold:    LogicThresholdConfigPanel,
   logic_counter:      LogicCounterConfigPanel,
   logic_switch:       LogicSwitchConfigPanel,
   // ── OUTPUT ──────────────────────────────────────────────────────────────

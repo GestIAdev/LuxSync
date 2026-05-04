@@ -81,6 +81,9 @@ const ForgeCanvasLayout = React.lazy(() => import('./canvas/ForgeCanvasLayout'))
 const NodePalette = React.lazy(() => import('./canvas/NodePalette'))
 const NodeCanvas = React.lazy(() => import('./canvas/NodeCanvas'))
 
+// ── WAVE 4548.10: Pack as Ingenio modal ──
+import { PackIngenioModal } from './canvas/PackIngenioModal'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES - WAVE 1112: Added 'library' tab
 // ═══════════════════════════════════════════════════════════════════════════
@@ -371,6 +374,59 @@ function deepClone<T>(value: T): T {
     return structuredClone(value)
   }
   return JSON.parse(JSON.stringify(value)) as T
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NODE GRAPH TAB — WAVE 4548.10
+// Subcomponent aislado para que los hooks de clearGraph/selectedNodeIds no
+// contaminan el árbol de renderizado del componente padre en otras pestañas.
+// ═══════════════════════════════════════════════════════════════════════════
+const NodeGraphTab: React.FC = () => {
+  const selectedNodeIds  = useForgeGraphStore((s) => s.selectedNodeIds)
+  const clearGraph       = useForgeGraphStore((s) => s.clearGraph)
+  const [showPackModal, setShowPackModal] = React.useState(false)
+
+  const handleClear = () => {
+    if (window.confirm('¿Vaciar el canvas? Esta acción elimina todos los nodos y edges.')) {
+      clearGraph()
+    }
+  }
+
+  return (
+    <div className="forge-nodegraph-panel">
+      {/* Floating action bar — Pack + Clear */}
+      <div className="forge-nodegraph-actions">
+        {selectedNodeIds.size > 0 && (
+          <button
+            className="forge-nodegraph-btn forge-nodegraph-btn--pack"
+            onClick={() => setShowPackModal(true)}
+            title="Empaquetar selección como Ingenio reutilizable"
+          >
+            📦 Pack as Ingenio ({selectedNodeIds.size})
+          </button>
+        )}
+        <button
+          className="forge-nodegraph-btn forge-nodegraph-btn--clear"
+          onClick={handleClear}
+          title="Vaciar el canvas"
+        >
+          🗑 Clear Canvas
+        </button>
+      </div>
+
+      <React.Suspense fallback={<div className="forge-canvas-loading">Loading canvas…</div>}>
+        <ForgeCanvasLayout
+          palette={<NodePalette />}
+          canvas={<NodeCanvas />}
+          inspector={<NodeInspector />}
+        />
+      </React.Suspense>
+
+      {showPackModal && (
+        <PackIngenioModal onClose={() => setShowPackModal(false)} />
+      )}
+    </div>
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1335,17 +1391,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           </div>
         )}
 
-        {/* NODE GRAPH TAB — WAVE 4548.8b */}
+        {/* NODE GRAPH TAB — WAVE 4548.8b / 4548.10 */}
         {activeTab === 'nodegraph' && (
-          <div className="forge-nodegraph-panel">
-            <React.Suspense fallback={<div className="forge-canvas-loading">Loading canvas…</div>}>
-              <ForgeCanvasLayout
-                palette={<NodePalette />}
-                canvas={<NodeCanvas />}
-                inspector={<NodeInspector />}
-              />
-            </React.Suspense>
-          </div>
+          <NodeGraphTab />
         )}
 
         {/* WHEELSMITH TAB - WAVE 1111 */}

@@ -599,6 +599,49 @@
   letter-spacing: 0.08em;
 }
 
+/* WAVE 4548.10 — Pack + Clear action bar ─────────────────────────────── */
+.forge-nodegraph-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px 5px;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.forge-nodegraph-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.forge-nodegraph-btn--pack {
+  background: rgba(191, 90, 242, 0.12);
+  border-color: rgba(191, 90, 242, 0.4);
+  color: rgba(191, 90, 242, 0.9);
+}
+.forge-nodegraph-btn--pack:hover {
+  background: rgba(191, 90, 242, 0.22);
+  box-shadow: 0 0 8px rgba(191, 90, 242, 0.2);
+}
+
+.forge-nodegraph-btn--clear {
+  background: rgba(255, 80, 80, 0.07);
+  border-color: rgba(255, 80, 80, 0.3);
+  color: rgba(255, 100, 100, 0.8);
+  margin-left: auto;
+}
+.forge-nodegraph-btn--clear:hover {
+  background: rgba(255, 80, 80, 0.15);
+  box-shadow: 0 0 8px rgba(255, 80, 80, 0.15);
+}
+
 .forge-inspector-placeholder {
   display: flex;
   align-items: center;

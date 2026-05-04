@@ -132,8 +132,14 @@ export interface IInputDmxConfig {
 
 export interface IInputAudioBandConfig {
   readonly nodeType: 'input_audio_band'
-  /** Banda de frecuencia */
-  readonly band: 'subBass' | 'bass' | 'mid' | 'highMid' | 'presence' | 'air'
+  /** Banda de frecuencia — alineada con GodEarBands (7 bandas, zero-overlap) */
+  readonly band: 'subBass' | 'bass' | 'lowMid' | 'mid' | 'highMid' | 'treble' | 'ultraAir'
+}
+
+export interface ILogicGateConfig {
+  readonly nodeType: 'logic_gate'
+  /** Umbral: si gate > threshold → señal pasa; si no → emite 0 */
+  readonly threshold: number
 }
 
 export interface IInputConstantConfig {
@@ -283,6 +289,7 @@ export type IForgeNodeConfig =
   | IProcDelayConfig
   | IProcMergeConfig
   | IProcCurveConfig
+  | ILogicGateConfig
   | ILogicThresholdConfig
   | ILogicCounterConfig
   | ILogicSwitchConfig

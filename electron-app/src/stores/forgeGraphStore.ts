@@ -91,6 +91,9 @@ export interface ForgeGraphState {
 
   /** Marca el store limpio (después de guardar) */
   markClean: () => void
+
+  /** Vacía el canvas: elimina todos los nodos y edges del grafo activo */
+  clearGraph: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -274,6 +277,21 @@ export const useForgeGraphStore = create<ForgeGraphState>((set, get) => ({
 
   markClean: () => {
     set({ isDirty: false })
+  },
+
+  clearGraph: () => {
+    const { graph } = get()
+    if (!graph) return
+    set({
+      graph: {
+        ...graph,
+        nodes: [],
+        edges: [],
+      },
+      selectedNodeIds: new Set(),
+      inspectedNodeId: null,
+      isDirty: true,
+    })
   },
 }))
 

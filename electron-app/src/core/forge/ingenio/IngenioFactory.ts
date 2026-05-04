@@ -31,10 +31,12 @@ const GENERATOR_WAVE = 'WAVE-4549.1'
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Counter global — determinista, nunca usa Math.random()
+let _ingenioCounter = 0
 function generateIngenioId(): string {
   const ts = Date.now().toString(36)
-  const rand = Math.random().toString(36).substring(2, 8)
-  return `ingenio-${ts}-${rand}`
+  const seq = (_ingenioCounter++).toString(36).padStart(4, '0')
+  return `ingenio-${ts}-${seq}`
 }
 
 function nowISO(): string {

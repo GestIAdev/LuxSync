@@ -11,10 +11,11 @@ import './ConfigPanel.css'
 const BAND_LABELS: Record<IInputAudioBandConfig['band'], string> = {
   subBass:  'Sub Bass (20–60 Hz)',
   bass:     'Bass (60–250 Hz)',
-  mid:      'Mid (250–2k Hz)',
+  lowMid:   'Low Mid (250–500 Hz)',
+  mid:      'Mid (500–2k Hz)',
   highMid:  'High Mid (2k–6k Hz)',
-  presence: 'Presence (6k–12k Hz)',
-  air:      'Air (12k–20k Hz)',
+  treble:   'Treble (6k–16k Hz)',
+  ultraAir: 'Ultra Air (16k–22k Hz)',
 }
 
 export const InputAudioBandConfigPanel: React.FC<ConfigPanelProps<IInputAudioBandConfig>> = ({

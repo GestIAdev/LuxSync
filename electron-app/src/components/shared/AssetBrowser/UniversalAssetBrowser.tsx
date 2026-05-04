@@ -100,11 +100,16 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   const resolvedInitialViewMode = initialViewMode ?? defaultViewMode
 
   // ── Store selectors ──────────────────────────────────────────────────────
+  const fixtures            = useAssetLibraryStore(s => s.fixtures)
+  const ingenios            = useAssetLibraryStore(s => s.ingenios)
   const viewMode            = useAssetLibraryStore(s => s.viewMode)
   const searchQuery         = useAssetLibraryStore(s => s.searchQuery)
   const assetTypeFilter     = useAssetLibraryStore(s => s.assetTypeFilter)
+  const sourceFilter        = useAssetLibraryStore(s => s.sourceFilter)
   const showFavoritesOnly   = useAssetLibraryStore(s => s.showFavoritesOnly)
   const activeTags          = useAssetLibraryStore(s => s.activeTags)
+  const sortBy              = useAssetLibraryStore(s => s.sortBy)
+  const sortDirection       = useAssetLibraryStore(s => s.sortDirection)
   const getFilteredAssets   = useAssetLibraryStore(s => s.getFilteredAssets)
   const getAvailableTags    = useAssetLibraryStore(s => s.getAvailableTags)
   const getTotalCount       = useAssetLibraryStore(s => s.getTotalCount)
@@ -143,13 +148,24 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   // ── Computed filtered assets ──────────────────────────────────────────────
   const filteredAssets = useMemo(() => getFilteredAssets(), [
     getFilteredAssets,
-    // Re-evaluate when relevant store state changes (trigger via store subscription)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    searchQuery, assetTypeFilter, showFavoritesOnly, activeTags, viewMode,
+    fixtures,
+    ingenios,
+    searchQuery,
+    assetTypeFilter,
+    sourceFilter,
+    showFavoritesOnly,
+    activeTags,
+    sortBy,
+    sortDirection,
   ])
 
   // ── Available tags ────────────────────────────────────────────────────────
-  const availableTags = useMemo(() => getAvailableTags(), [getAvailableTags, filteredAssets])
+  const availableTags = useMemo(() => getAvailableTags(), [
+    getAvailableTags,
+    fixtures,
+    ingenios,
+    assetTypeFilter,
+  ])
 
   // ── Tree structure (only computed when viewMode === 'tree') ───────────────
   const treeNodes = useMemo(
@@ -232,7 +248,7 @@ export const UniversalAssetBrowser = memo(function UniversalAssetBrowser({
   }, [availableTags])
 
   // ─────────────────────────────────────────────────────────────────────────
-  const totalCount    = getTotalCount()
+  const totalCount    = useMemo(() => getTotalCount(), [getTotalCount, fixtures, ingenios])
   const filteredCount = filteredAssets.length
 
   // Decide which type filter tabs to show

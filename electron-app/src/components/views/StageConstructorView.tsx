@@ -104,7 +104,17 @@ interface ConstructorContextType {
   // Zone visibility - WAVE 363
   showZones: boolean
   setShowZones: (show: boolean) => void
-  
+
+  // 🧱 WAVE 4538: Voxel view toggles
+  showCrystalBox: boolean
+  setShowCrystalBox: (v: boolean) => void
+  showFloorGrid: boolean
+  setShowFloorGrid: (v: boolean) => void
+  showDropLines: boolean
+  setShowDropLines: (v: boolean) => void
+  ghostCursorEnabled: boolean
+  setGhostCursorEnabled: (v: boolean) => void
+
   // Fixture Forge - WAVE 364
   openFixtureForge: (fixtureId?: string, existingDefinition?: FixtureDefinition) => void
 }
@@ -464,6 +474,105 @@ function getFixtureIcon(type: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🏗️ WAVE 4533: DIMENSION SLIDERS — room size (E7)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DimensionSliders: React.FC = () => {
+  const stage = useStageStore(state => state.stage)
+  const updateStageDimensions = useStageStore(state => state.updateStageDimensions)
+
+  const width = stage?.width ?? 12
+  const depth = stage?.depth ?? 8
+  const height = stage?.height ?? 6
+
+  return (
+    <div className="dimension-sliders">
+      <div className="dim-row">
+        <span className="dim-label">W</span>
+        <input
+          type="range" min="4" max="30" step="0.5"
+          value={width}
+          onChange={(e) => updateStageDimensions({ width: parseFloat(e.target.value) })}
+          title={`Stage Width: ${width}m`}
+        />
+        <span className="dim-value">{width}m</span>
+      </div>
+      <div className="dim-row">
+        <span className="dim-label">D</span>
+        <input
+          type="range" min="4" max="30" step="0.5"
+          value={depth}
+          onChange={(e) => updateStageDimensions({ depth: parseFloat(e.target.value) })}
+          title={`Stage Depth: ${depth}m`}
+        />
+        <span className="dim-value">{depth}m</span>
+      </div>
+      <div className="dim-row">
+        <span className="dim-label">H</span>
+        <input
+          type="range" min="3" max="15" step="0.5"
+          value={height}
+          onChange={(e) => updateStageDimensions({ height: parseFloat(e.target.value) })}
+          title={`Stage Height: ${height}m`}
+        />
+        <span className="dim-value">{height}m</span>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧱 WAVE 4538/4539: VOXEL VIEW TOGGLES — reemplaza HeightLayerManager + VisualizationToggles
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VoxelViewToggles: React.FC = () => {
+  const {
+    showFloorGrid, setShowFloorGrid,
+    showCrystalBox, setShowCrystalBox,
+    showDropLines, setShowDropLines,
+    ghostCursorEnabled, setGhostCursorEnabled,
+  } = useConstructorContext()
+
+  return (
+    <div className="viz-toggles">
+      <span className="viz-label">VIEW</span>
+      <button
+        className={`viz-btn ${showFloorGrid ? 'active' : ''}`}
+        onClick={() => setShowFloorGrid(!showFloorGrid)}
+        title="Toggle floor grid"
+      >
+        <span className="viz-dot" style={{ background: '#1a1a2e' }} />
+        Grid
+      </button>
+      <button
+        className={`viz-btn ${showCrystalBox ? 'active' : ''}`}
+        onClick={() => setShowCrystalBox(!showCrystalBox)}
+        title="Toggle Crystal Box (room bounds)"
+      >
+        <span className="viz-dot" style={{ background: '#22d3ee' }} />
+        Box
+      </button>
+      <button
+        className={`viz-btn ${showDropLines ? 'active' : ''}`}
+        onClick={() => setShowDropLines(!showDropLines)}
+        title="Toggle drop lines"
+      >
+        <span className="viz-dot" style={{ background: '#a855f7' }} />
+        Lines
+      </button>
+      <button
+        className={`viz-btn ${ghostCursorEnabled ? 'active' : ''}`}
+        onClick={() => setGhostCursorEnabled(!ghostCursorEnabled)}
+        title="Toggle Ghost Cursor (placement preview)"
+      >
+        <span className="viz-dot" style={{ background: '#4ade80' }} />
+        Ghost
+      </button>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TOOLBAR - WAVE 369.5: Full File System Integration
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -683,6 +792,11 @@ const ConstructorToolbar: React.FC = () => {
             <Map size={16} />
           </button>
         </div>
+
+        {/* 🏗️ WAVE 4533: Stage Dimension Sliders */}
+        <div className="tool-group">
+          <DimensionSliders />
+        </div>
       </div>
       
       <div className="toolbar-right">
@@ -758,9 +872,15 @@ const StageConstructorView: React.FC = () => {
   const updateFixture = useStageStore(state => state.updateFixture)
   const updateFixturePhysics = useStageStore(state => state.updateFixturePhysics)
   const fixtures = useStageStore(state => state.fixtures)
+
+  // 🧱 WAVE 4538: Voxel view toggles
+  const [showCrystalBox, setShowCrystalBox] = useState(true)
+  const [showFloorGrid, setShowFloorGrid] = useState(true)
+  const [showDropLines, setShowDropLines] = useState(true)
+  const [ghostCursorEnabled, setGhostCursorEnabled] = useState(true)
   
-  // Snap values per spec
-  const snapDistance = 0.5    // 0.5 metros
+  // Snap values per WAVE 4538 spec
+  const snapDistance = 0.25   // 0.25m — voxel unit
   const snapRotation = Math.PI / 12  // 15 grados
   
   // WAVE 1117: THE GREAT PURGE - Rewired to use navigation store
@@ -792,6 +912,14 @@ const StageConstructorView: React.FC = () => {
     setToolMode,
     showZones,
     setShowZones,
+    showCrystalBox,
+    setShowCrystalBox,
+    showFloorGrid,
+    setShowFloorGrid,
+    showDropLines,
+    setShowDropLines,
+    ghostCursorEnabled,
+    setGhostCursorEnabled,
     openFixtureForge
   }
   
@@ -820,6 +948,8 @@ const StageConstructorView: React.FC = () => {
             <Suspense fallback={<Loading3DFallback />}>
               <StageGrid3D />
             </Suspense>
+            {/* 🧱 WAVE 4538: Voxel View Toggles */}
+            <VoxelViewToggles />
           </div>
           
           {/* Right Sidebar - Properties / Groups (Tabbed) */}
@@ -1081,3 +1211,186 @@ const PropertiesContent: React.FC = () => {
 }
 
 export default StageConstructorView
+
+/* 🏗️ WAVE 4533 — Control Tower styles injected via JS to keep changes self-contained */
+const ctStyles = `
+  .dimension-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dim-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dim-label {
+    width: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    font-family: monospace;
+    text-transform: uppercase;
+  }
+  .dimension-sliders input[type=range] {
+    width: 90px;
+    height: 3px;
+    accent-color: #22d3ee;
+    cursor: pointer;
+  }
+  .dim-value {
+    width: 34px;
+    font-size: 10px;
+    color: #22d3ee;
+    font-family: monospace;
+    text-align: right;
+  }
+
+  .height-layer-manager {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    background: rgba(10, 10, 20, 0.92);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    pointer-events: auto;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  .hlm-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    font-family: monospace;
+  }
+  .hlm-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .hlm-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hlm-tab:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+  }
+  .hlm-tab.active {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.3);
+    color: white;
+    font-weight: 600;
+  }
+  .hlm-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .hlm-height-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255,255,255,0.1);
+  }
+  .hlm-height-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    font-family: monospace;
+    text-transform: uppercase;
+  }
+  .hlm-height-row input[type=range] {
+    width: 100px;
+    height: 3px;
+    cursor: pointer;
+    accent-color: #22d3ee;
+  }
+  .hlm-height-val {
+    width: 42px;
+    font-size: 11px;
+    font-family: monospace;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  /* 🏗️ WAVE 4536: Visualisation Toggles */
+  .viz-toggles {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: rgba(10, 10, 20, 0.92);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    z-index: 20;
+  }
+  .viz-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    font-family: monospace;
+    margin-right: 2px;
+  }
+  .viz-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 5px;
+    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .viz-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+  .viz-btn.active {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.25);
+    color: white;
+  }
+  .viz-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+`
+
+if (typeof document !== 'undefined' && !document.getElementById('wave-4533-styles')) {
+  const s = document.createElement('style')
+  s.id = 'wave-4533-styles'
+  s.textContent = ctStyles
+  document.head.appendChild(s)
+}

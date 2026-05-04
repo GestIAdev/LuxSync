@@ -26,20 +26,18 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Canvas, useThree, ThreeEvent, useFrame } from '@react-three/fiber'
 import { 
-  OrbitControls, 
+  OrthographicCamera,
+  OrbitControls,
   TransformControls, 
-  Grid, 
-  Environment,
   Html,
-  PerspectiveCamera
+  Text
 } from '@react-three/drei'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
-import { shallow } from 'zustand/shallow'
 import { useConstructorContext } from '../StageConstructorView'
-import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType } from '../../../core/stage/ShowFileV2'
-import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
-import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
+import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType, clampToCrystalBox, snapPosition } from '../../../core/stage/ShowFileV2'
+import type { FixtureV2, Position3D, FixtureZone, StageDimensions } from '../../../core/stage/ShowFileV2'
+// ZoneOverlay eliminado — WAVE 4543: zonas son metadatos puros, no recintos físicos
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -211,134 +209,260 @@ const getStereoZoneLabel = (fixture: FixtureV2): string => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FIXTURE 3D MESH
+// 🧱 WAVE 4538/4540: FIXTURE BLOCK — true 3D voxel representation
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface Fixture3DProps {
+const FIXTURE_TYPE_COLOR: Record<string, string> = {
+  'moving-head': '#a855f7',
+  'par':         '#4ade80',
+  'wash':        '#3b82f6',
+  'strobe':      '#ef4444',
+  'laser':       '#f97316',
+  'blinder':     '#fbbf24',
+}
+
+interface FixtureBlockProps {
   fixture: FixtureV2
   isSelected: boolean
   isHovered: boolean
   onSelect: (id: string, event: ThreeEvent<MouseEvent>) => void
   onHover: (id: string | null) => void
+  onDoubleClick: (id: string) => void
+  showDropLines: boolean
+  /** WAVE 4545: posición temporal durante drag del gizmo */
+  livePos?: Position3D | null
 }
 
-const Fixture3D: React.FC<Fixture3DProps> = ({ 
-  fixture, 
-  isSelected, 
+const FixtureBlock: React.FC<FixtureBlockProps> = ({
+  fixture,
+  isSelected,
   isHovered,
   onSelect,
-  onHover 
+  onHover,
+  onDoubleClick,
+  showDropLines,
+  livePos
 }) => {
-  const meshRef = useRef<THREE.Mesh>(null)
-  
-  // Determine color based on fixture type and state
-  const getColor = () => {
-    if (isSelected) return '#22d3ee' // Cyan-400 when selected
-    if (isHovered) return '#fbbf24'  // Amber-400 when hovered
-    
-    switch (fixture.type) {
-      case 'moving-head': return '#a855f7' // Purple
-      case 'par': return '#4ade80'         // Green
-      case 'wash': return '#3b82f6'        // Blue
-      case 'strobe': return '#ef4444'      // Red
-      case 'laser': return '#f97316'       // Orange
-      case 'blinder': return '#fbbf24'     // Amber
-      default: return '#6b7280'            // Gray
-    }
-  }
-  
-  // 🪜 WAVE 1036: Get fixture height for visual offset calculation
-  // This ensures y=0 means "resting on floor", not "center at floor"
-  const getFixtureHeight = (): number => {
-    switch (fixture.type) {
-      case 'moving-head': return 0.6  // cone height
-      case 'par':
-      case 'wash': return 0.3         // cylinder height
-      case 'strobe':
-      case 'blinder': return 0.2      // box height
-      default: return 0.4             // sphere diameter
-    }
-  }
-  
-  // Determine geometry based on fixture type
-  const renderGeometry = () => {
-    switch (fixture.type) {
-      case 'moving-head':
-        // Cone pointing down (like a spotlight)
-        return <coneGeometry args={[0.3, 0.6, 8]} />
-      case 'par':
-      case 'wash':
-        // Cylinder (like a can)
-        return <cylinderGeometry args={[0.2, 0.25, 0.3, 16]} />
-      case 'strobe':
-      case 'blinder':
-        // Box (rectangular light)
-        return <boxGeometry args={[0.4, 0.2, 0.3]} />
-      default:
-        // Sphere (generic)
-        return <sphereGeometry args={[0.2, 16, 16]} />
-    }
-  }
-  
-  // 🪜 WAVE 1036 FIX: Visual offset so y=0 = "floor contact"
-  const visualYOffset = getFixtureHeight() / 2
-  
+  // WAVE 4545: durante drag, usar livePos para que el HoloCrosshair sea fluido
+  const { x, y, z } = livePos ?? fixture.position
+  const typeColor = FIXTURE_TYPE_COLOR[fixture.type] ?? '#6b7280'
+  const color = isSelected ? '#22d3ee' : isHovered ? '#fbbf24' : typeColor
+  // Bloque centrado en su Y real — el fixture vive EN su posición 3D real
+  const blockY = y + 0.05    // semi-altura del cilindro (0.1 / 2)
+  const hasHeight = y > 0.01
+
+  const dropLine = useMemo(() => {
+    if (!hasHeight) return null
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, y, z),
+      new THREE.Vector3(x, 0, z),
+    ])
+    const mat = new THREE.LineBasicMaterial({ color: typeColor, opacity: 0.4, transparent: true })
+    return new THREE.Line(geo, mat)
+  }, [x, y, z, hasHeight, typeColor])
+
   return (
-    <group
-      position={[fixture.position.x, fixture.position.y, fixture.position.z]}
-      rotation={[
-        THREE.MathUtils.degToRad(fixture.rotation.pitch),
-        THREE.MathUtils.degToRad(fixture.rotation.yaw),
-        THREE.MathUtils.degToRad(fixture.rotation.roll)
-      ]}
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(fixture.id, e)
-      }}
-      onPointerOver={(e) => {
-        e.stopPropagation()
-        onHover(fixture.id)
-        document.body.style.cursor = 'pointer'
-      }}
-      onPointerOut={() => {
-        onHover(null)
-        document.body.style.cursor = 'default'
-      }}
-    >
-      {/* 🪜 WAVE 1036: Mesh offset by half-height so pivot is at BASE */}
+    <group>
+      {/* Volumen principal — cilindro 0.08r×0.1h: cabe holgado en voxel 0.25m */}
       <mesh
-        ref={meshRef}
-        position={[0, visualYOffset, 0]}
+        position={[x, blockY, z]}
+        userData={{ fixtureId: fixture.id }}
+        onClick={(e) => { e.stopPropagation(); onSelect(fixture.id, e) }}
+        onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(fixture.id) }}
+        onPointerOver={(e) => { e.stopPropagation(); onHover(fixture.id); document.body.style.cursor = 'pointer' }}
+        onPointerOut={() => { onHover(null); document.body.style.cursor = 'default' }}
       >
-        {renderGeometry()}
-        <meshStandardMaterial 
-          color={getColor()}
-          emissive={getColor()}
-          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.2}
-          metalness={0.3}
-          roughness={0.4}
-        />
+        <cylinderGeometry args={[0.08, 0.08, 0.1, 16]} />
+        <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
       </mesh>
-      
-      {/* Label on hover/select - 🌊 WAVE 1035: Stereo zone indicator */}
-      {(isHovered || isSelected) && (
+
+      {/* Selection ring — torus flotante al level del bloque */}
+      {(isSelected || isHovered) && (
+        <mesh position={[x, blockY, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.11, 0.15, 24]} />
+          <meshBasicMaterial color={color} opacity={0.9} transparent />
+        </mesh>
+      )}
+
+      {/* Label — solo visible en hover/selección para no saturar la escena */}
+      {(isSelected || isHovered) && (
         <Html
-          position={[0, visualYOffset + 0.4, 0]}
-          center
-          zIndexRange={[0, 10]} // WAVE 385.5: No bloquear modales
-          style={{
-            pointerEvents: 'none',
-            userSelect: 'none'
-          }}
+          position={[x, y + 0.4, z]}
+          zIndexRange={[0, 10]}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
-          <div className="fixture-label-3d">
+          <div className="fixture-label-25d">
             <span className="label-name">{fixture.name}</span>
-            <span className="label-address">#{fixture.address}</span>
-            <span className="label-zone">{getStereoZoneLabel(fixture)}</span>
+            <span className="label-height">{y.toFixed(2)}m</span>
           </div>
         </Html>
       )}
+
+      {/* HoloCrosshair de selección — sólo cuando está seleccionado */}
+      {isSelected && (
+        <HoloCrosshair x={x} y={y} z={z} />
+      )}
+
+      {/* Drop line hasta Y=0 + anillo en el suelo cuando está elevado */}
+      {hasHeight && dropLine && showDropLines && (
+        <>
+          <primitive object={dropLine} />
+          <mesh position={[x, 0.005, z]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.09, 0.13, 14]} />
+            <meshBasicMaterial color={typeColor} opacity={0.5} transparent />
+          </mesh>
+        </>
+      )}
     </group>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧱 WAVE 4538/4540: VOXEL FLOOR GRID — 3 capas arquitectónicas en Y=0
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VoxelFloorGrid: React.FC = () => {
+  const fineRef = useRef<THREE.GridHelper>(null)
+
+  useFrame(({ camera }) => {
+    if (fineRef.current) {
+      const zoom = (camera as THREE.OrthographicCamera).zoom ?? 60
+      fineRef.current.visible = zoom >= 40
+    }
+  })
+
+  return (
+    <group position={[0, 0, 0]}>
+      {/* Capa gruesa 5m */}
+      <gridHelper args={[200, 40, '#2a2a44', '#2a2a44']} />
+      {/* Capa media 1m */}
+      <gridHelper args={[200, 200, '#1a1a2e', '#1a1a2e']} />
+      {/* Capa fina 0.25m — oculta a zoom bajo para evitar Moiré */}
+      <primitive object={new THREE.GridHelper(200, 800, 0x12121f, 0x12121f)} ref={fineRef} />
+    </group>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧱 WAVE 4538/4540: CRYSTAL BOX — wireframe completo del volumen edificable
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CrystalBox: React.FC = () => {
+  const stage = useStageStore(state => state.stage)
+  const width  = stage?.width  ?? 12
+  const depth  = stage?.depth  ??  8
+  const height = stage?.height ??  6
+
+  const edgesGeo = useMemo(
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(width, height, depth)),
+    [width, depth, height]
+  )
+
+  return (
+    <group position={[0, height / 2, 0]}>
+      {/* Bordes níon cyan — el wireframe de alta precisión */}
+      <lineSegments geometry={edgesGeo}>
+        <lineBasicMaterial color="#22d3ee" opacity={0.55} transparent />
+      </lineSegments>
+      {/* Volumen de cristal Tron — tinte azul interior, BackSide para no tapar nada */}
+      <mesh>
+        <boxGeometry args={[width, height, depth]} />
+        <meshBasicMaterial
+          color="#22d3ee"
+          transparent
+          opacity={0.05}
+          depthWrite={false}
+          side={THREE.BackSide}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧱 WAVE 4538/4540: CRYSTAL BOX RULERS — etiquetas 3D en los 3 ejes
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CrystalBoxRulers: React.FC = () => {
+  const stage = useStageStore(state => state.stage)
+  const width = stage?.width ?? 12
+  const depth = stage?.depth ?? 8
+  const height = stage?.height ?? 6
+  const halfW = width / 2
+  const halfD = depth / 2
+
+  const [visible, setVisible] = useState(true)
+  useFrame(({ camera }) => {
+    const zoom = (camera as THREE.OrthographicCamera).zoom ?? 60
+    const shouldShow = zoom >= 28
+    if (shouldShow !== visible) setVisible(shouldShow)
+  })
+
+  // X: borde frontal del suelo (Z = +halfD), de -halfW a +halfW a 1m de paso
+  const xTicks = useMemo(() =>
+    Array.from({ length: Math.floor(width) + 1 }, (_, i) => Math.round(-halfW) + i),
+    [width, halfW]
+  )
+  // Z: borde izquierdo del suelo (X = -halfW), de -halfD a +halfD a 1m de paso
+  const zTicks = useMemo(() =>
+    Array.from({ length: Math.floor(depth) + 1 }, (_, i) => Math.round(-halfD) + i),
+    [depth, halfD]
+  )
+  // Y: arista vertical frontal-izquierda (X=-halfW, Z=+halfD), de 0 a height a 1m de paso
+  const yTicks = useMemo(() =>
+    Array.from({ length: Math.floor(height) + 1 }, (_, i) => i),
+    [height]
+  )
+
+  if (!visible) return null
+
+  return (
+    <>
+      {/* Eje X — borde frontal, color cyan. rotation Z:PI corrige espejo */}
+      {xTicks.map(x => (
+        <Text
+          key={`rx${x}`}
+          position={[x, 0.05, halfD + 0.75]}
+          fontSize={0.3}
+          color="#22d3ee"
+          fillOpacity={0.6}
+          anchorX="center"
+          anchorY="middle"
+          rotation={[-Math.PI / 2, 0, Math.PI]}
+        >
+          {`${x}m`}
+        </Text>
+      ))}
+      {/* Eje Z — borde izquierdo, color cyan. rotation Z:PI/2 orienta hacia cámara */}
+      {zTicks.map(z => (
+        <Text
+          key={`rz${z}`}
+          position={[-(halfW + 0.75), 0.05, z]}
+          fontSize={0.3}
+          color="#22d3ee"
+          fillOpacity={0.6}
+          anchorX="center"
+          anchorY="middle"
+          rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+        >
+          {`${z}m`}
+        </Text>
+      ))}
+      {/* Eje Y — arista vertical frontal-izquierda, color verde */}
+      {yTicks.map(yVal => (
+        <Text
+          key={`ry${yVal}`}
+          position={[-(halfW + 0.75), yVal, halfD + 0.1]}
+          fontSize={0.3}
+          color="#4ade80"
+          fillOpacity={0.75}
+          anchorX="right"
+          anchorY="middle"
+        >
+          {`${yVal}m`}
+        </Text>
+      ))}
+    </>
   )
 }
 
@@ -353,6 +477,8 @@ interface TransformGizmoProps {
   snapDistance: number
   snapRotation: number
   onDraggingChanged: (isDragging: boolean) => void
+  /** WAVE 4545: callback para posición temporal durante drag, via ref */
+  onDragPos: (pos: Position3D | null) => void
 }
 
 const TransformGizmo: React.FC<TransformGizmoProps> = ({ 
@@ -361,25 +487,24 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
   snapEnabled,
   snapDistance,
   snapRotation,
-  onDraggingChanged
+  onDraggingChanged,
+  onDragPos
 }) => {
   const transformRef = useRef<any>(null)
   const objectRef = useRef<THREE.Group>(null!)
   const [currentZone, setCurrentZone] = useState<FixtureZone | null>(null)
   
-  // Track zone while dragging for visual feedback
+  // Track zone while dragging — WAVE 4543: zones are pure metadata, no spatial detection
   useFrame(() => {
     if (objectRef.current && transformRef.current?.dragging) {
-      const pos = objectRef.current.position
-      const zone = getZoneAtPosition(pos.x, pos.z)
-      if (zone !== currentZone) {
-        setCurrentZone(zone)
-        // WAVE 378.5: Log removed - was running every frame
-      }
+      if (currentZone !== null) setCurrentZone(null)
     }
   })
   
-  // Handle dragging state change - WAVE 369
+  // Stage ref para clamp al Crystal Box
+  const stage = useStageStore(state => state.stage)
+
+  // Handle dragging state change - WAVE 369 + WAVE 4538 clamp
   useEffect(() => {
     const controls = transformRef.current
     if (!controls) return
@@ -387,40 +512,39 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
     const handleDraggingChanged = (event: { value: boolean }) => {
       onDraggingChanged(event.value)
       
-      // On drag end, report final position with zone
+      // On drag end: clamp al Crystal Box y reportar posición final
       if (!event.value && objectRef.current) {
         const pos = objectRef.current.position
-        const zone = getZoneAtPosition(pos.x, pos.z)
-        onPositionChange(fixture.id, {
+        const rawPos: Position3D = {
           x: Math.round(pos.x * 100) / 100,
           y: Math.round(pos.y * 100) / 100,
-          z: Math.round(pos.z * 100) / 100
-        }, zone)
+          z: Math.round(pos.z * 100) / 100,
+        }
+        // 🧱 WAVE 4538: clamp dentro del Crystal Box
+        const finalPos = stage
+          ? clampToCrystalBox(rawPos, stage as StageDimensions)
+          : rawPos
+        // Sincronizar objeto 3D con la posición clampada
+        objectRef.current.position.set(finalPos.x, finalPos.y, finalPos.z)
+        onPositionChange(fixture.id, finalPos, null)
       }
     }
     
-    controls.addEventListener('dragging-changed', handleDraggingChanged)
-    return () => controls.removeEventListener('dragging-changed', handleDraggingChanged)
-  }, [fixture.id, onPositionChange, onDraggingChanged])
-  
-  // 🪜 WAVE 1036: Hide Y axis gizmo (2D planar movement only)
-  useEffect(() => {
-    const controls = transformRef.current
-    if (!controls) return
-    
-    // THREE.TransformControls exposes gizmo.children for axis manipulation
-    // Find and hide the Y axis helper (green arrow)
-    const gizmo = (controls as any).children?.find((c: any) => c.name === 'TransformControlsGizmo')
-    if (gizmo) {
-      // The gizmo contains axis handles - Y axis is typically the second one
-      gizmo.traverse((child: any) => {
-        // Hide Y-axis translation handle by checking name/userData
-        if (child.name?.includes('Y') || child.userData?.axis === 'Y') {
-          child.visible = false
-        }
-      })
+    // WAVE 4545: objectChange se dispara cada frame durante el drag
+    const handleObjectChange = () => {
+      if (objectRef.current && transformRef.current?.dragging) {
+        const p = objectRef.current.position
+        onDragPos({ x: p.x, y: p.y, z: p.z })
+      }
     }
-  }, [])
+
+    controls.addEventListener('dragging-changed', handleDraggingChanged)
+    controls.addEventListener('objectChange', handleObjectChange)
+    return () => {
+      controls.removeEventListener('dragging-changed', handleDraggingChanged)
+      controls.removeEventListener('objectChange', handleObjectChange)
+    }
+  }, [fixture.id, onPositionChange, onDraggingChanged, onDragPos, stage])
   
   return (
     <group>
@@ -430,15 +554,15 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
         position={[fixture.position.x, fixture.position.y, fixture.position.z]}
       />
       
-      {/* 🪜 WAVE 1036: showY={false} restricts to XZ plane movement */}
+      {/* � WAVE 4538: showY={true} — movimiento libre en los 3 ejes */}
       <TransformControls
         ref={transformRef}
         object={objectRef.current || undefined}
         mode="translate"
         size={0.8}
-        translationSnap={snapEnabled ? snapDistance : null}
+        translationSnap={0.25}
         rotationSnap={snapEnabled ? snapRotation : null}
-        showY={false}
+        showY={true}
       />
       
       {/* WAVE 369: Floating zone indicator while dragging */}
@@ -462,6 +586,10 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
   )
 }
 
+// (GridFloor25D eliminado — reemplazado por VoxelFloorGrid en WAVE 4538/4540)
+// (StageOutline eliminado — reemplazado por CrystalBox en WAVE 4538/4540)
+// (VoxelGrid3D eliminado — WAVE 4544: causaba Moiré, sin valor visual)
+
 // ═══════════════════════════════════════════════════════════════════════════
 // STAGE GRID SCENE - Receives snap config as props
 // WAVE 369: Now with interaction lock for camera control isolation
@@ -477,13 +605,21 @@ interface StageSceneProps {
   showZones: boolean
   highlightedZone: FixtureZone | null
   onZoneClick: (zoneId: FixtureZone) => void
-  isBoxSelectMode: boolean  // WAVE 369: Disable camera during box select
-  onInteractionChange: (isInteracting: boolean) => void  // WAVE 369
-  selectedIdsArray: string[]  // WAVE 369.6: Array instead of Set to fix R3F reactivity
-  fixtures: FixtureV2[]  // 🔓 WAVE 1036.2: Direct fixtures for immediate reactivity
+  isBoxSelectMode: boolean
+  onInteractionChange: (isInteracting: boolean) => void
+  selectedIdsArray: string[]
+  fixtures: FixtureV2[]
+  onFixtureDoubleClick: (id: string) => void
+  showCrystalBox: boolean
+  showFloorGrid: boolean
+  showDropLines: boolean
+  /** WAVE 4541: true cuando hay algo siendo arrastrado hacia el canvas */
+  isDragging: boolean
+  /** WAVE 4541: ref al que GhostCursor escribe la posición validada */
+  ghostPosRef: React.MutableRefObject<Position3D | null>
 }
 
-const StageScene = memo<StageSceneProps>(({ 
+const StageScene = memo<StageSceneProps>(({
   snapEnabled, 
   snapDistance, 
   snapRotation,
@@ -494,7 +630,13 @@ const StageScene = memo<StageSceneProps>(({
   isBoxSelectMode,
   onInteractionChange,
   selectedIdsArray,
-  fixtures  // 🔓 WAVE 1036.2: Direct fixtures prop
+  fixtures,
+  onFixtureDoubleClick,
+  showCrystalBox,
+  showFloorGrid,
+  showDropLines,
+  isDragging,
+  ghostPosRef
 }) => {
   // 🔓 WAVE 1036.2: No transformation needed - use fixtures directly
   // Full reactivity: changes in position/height/rotation are immediately visible
@@ -512,6 +654,14 @@ const StageScene = memo<StageSceneProps>(({
   
   // WAVE 369: Gizmo interaction state
   const [isGizmoActive, setIsGizmoActive] = useState(false)
+
+  // WAVE 4545: posición temporal del gizmo durante drag — ref para evitar re-renders de escena
+  const gizmoDragPosRef = useRef<Position3D | null>(null)
+  const [gizmoDragPos, setGizmoDragPos] = useState<Position3D | null>(null)
+  const handleGizmoDragPos = useCallback((pos: Position3D | null) => {
+    gizmoDragPosRef.current = pos
+    setGizmoDragPos(pos)   // dispara re-render solo de FixtureBlock seleccionado
+  }, [])
   
   // WAVE 369: Camera disabled when gizmo active OR box select mode
   const cameraEnabled = !isGizmoActive && !isBoxSelectMode
@@ -525,7 +675,9 @@ const StageScene = memo<StageSceneProps>(({
   const handleGizmoDraggingChanged = useCallback((isDragging: boolean) => {
     setIsGizmoActive(isDragging)
     onInteractionChange(isDragging)
-  }, [onInteractionChange])
+    // WAVE 4545: al soltar, limpiar posición temporal para volver al store
+    if (!isDragging) handleGizmoDragPos(null)
+  }, [onInteractionChange, handleGizmoDragPos])
   
   // WAVE 369: Handle position change with auto-zoning
   // 🔥 WAVE 1042: Manejo de movimiento con normalización
@@ -565,42 +717,42 @@ const StageScene = memo<StageSceneProps>(({
   
   return (
     <>
-      {/* Camera */}
-      <PerspectiveCamera makeDefault position={[8, 6, 8]} fov={50} />
-      
-      {/* WAVE 369: Controls - DISABLED when gizmo active or box selecting */}
+      {/* 🏗️ WAVE 4537: Isometric orthographic camera */}
+      <OrthographicCamera
+        makeDefault
+        position={[50, 50, 50]}
+        zoom={40}
+        near={0.1}
+        far={500}
+      />
+
+      {/* 🏗️ WAVE 4537: OrbitControls — pan, zoom & free rotation, no sub-floor */}
       <OrbitControls
+        makeDefault
         enabled={cameraEnabled}
+        maxPolarAngle={Math.PI / 2 - 0.05}
+        screenSpacePanning={true}
+        minZoom={10}
+        maxZoom={300}
+        dampingFactor={0.1}
         enableDamping
-        dampingFactor={0.05}
-        minDistance={2}
-        maxDistance={30}
-        maxPolarAngle={Math.PI / 2 - 0.1} // Prevent going below floor
       />
       
-      {/* Lighting */}
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 5]} intensity={0.8} />
-      <directionalLight position={[-5, 5, -5]} intensity={0.3} color="#4080ff" />
+      {/* 🏗️ WAVE 4532: Flat-earth — single ambient light sufficient for unlit materials */}
+      <ambientLight intensity={1} />
       
-      {/* Grid - Tron style */}
-      <Grid
-        args={[100, 100]}
-        cellSize={1}
-        cellThickness={0.5}
-        cellColor="#1e293b"
-        sectionSize={5}
-        sectionThickness={1}
-        sectionColor="#334155"
-        fadeDistance={50}
-        fadeStrength={1}
-        followCamera={false}
-        infiniteGrid
-      />
-      
+      {/* 🧱 WAVE 4538: Voxel floor grid — 3 capas */}
+      {showFloorGrid && <VoxelFloorGrid />}
+
+      {/* 🧱 WAVE 4538: Crystal Box wireframe (volumen edificable) */}
+      {showCrystalBox && <CrystalBox />}
+
+      {/* 🧱 WAVE 4538: Reglas 3D — X/Z en suelo, Y en arista vertical */}
+      <CrystalBoxRulers />
+
       {/* Floor plane (for click-to-deselect) */}
-      <mesh 
-        rotation={[-Math.PI / 2, 0, 0]} 
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.01, 0]}
         onClick={handleBackgroundClick}
       >
@@ -608,33 +760,27 @@ const StageScene = memo<StageSceneProps>(({
         <meshBasicMaterial visible={false} />
       </mesh>
       
-      {/* Stage dimensions indicator */}
-      <group position={[0, 0.01, 0]}>
-        {/* Stage outline */}
-        <lineSegments>
-          <edgesGeometry args={[new THREE.BoxGeometry(12, 0.02, 8)]} />
-          <lineBasicMaterial color="#22d3ee" opacity={0.3} transparent />
-        </lineSegments>
-      </group>
+      {/* ZoneOverlay eliminado — WAVE 4543: zonas son metadatos puros */}
       
-      {/* Zone Overlay - WAVE 363 */}
-      <ZoneOverlay
-        visible={showZones}
-        highlightedZone={highlightedZone}
-        onZoneClick={onZoneClick}
-      />
-      
-      {/* Fixtures */}
-      {fixtures.map((fixture: FixtureV2) => (
-        <Fixture3D
-          key={fixture.id}
-          fixture={fixture}
-          isSelected={selectedIds.has(fixture.id)}
-          isHovered={hoveredId === fixture.id}
-          onSelect={handleSelect}
-          onHover={handleHover}
-        />
-      ))}
+      {/* 🧱 WAVE 4538: Fixtures como bloques 3D en su Y real */}
+      {fixtures.map((fixture: FixtureV2) => {
+        const isSelected = selectedIds.has(fixture.id)
+        // WAVE 4545: si este fixture está siendo arrastrado, usar su posición temporal
+        const livePos = isSelected && gizmoDragPos ? gizmoDragPos : null
+        return (
+          <FixtureBlock
+            key={fixture.id}
+            fixture={fixture}
+            isSelected={isSelected}
+            isHovered={hoveredId === fixture.id}
+            onSelect={handleSelect}
+            onHover={handleHover}
+            onDoubleClick={onFixtureDoubleClick}
+            showDropLines={showDropLines}
+            livePos={livePos}
+          />
+        )
+      })}
       
       {/* WAVE 369: Transform Gizmo - WITH SNAP + INTERACTION LOCK + AUTO-ZONE */}
       {selectedFixture && (
@@ -645,8 +791,12 @@ const StageScene = memo<StageSceneProps>(({
           snapDistance={snapDistance}
           snapRotation={snapRotation}
           onDraggingChanged={handleGizmoDraggingChanged}
+          onDragPos={handleGizmoDragPos}
         />
       )}
+
+      {/* 🎯 WAVE 4541: Ghost Cursor — snap preview durante drag & drop */}
+      <GhostCursor isDragging={isDragging} ghostPosRef={ghostPosRef} />
     </>
   )
 })
@@ -665,17 +815,342 @@ interface BoxSelectionRect {
   currentY: number
 }
 
-// WAVE 368.5: Reusable raycaster and ground plane (created once)
-const dropRaycaster = new THREE.Raycaster()
-const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // Y-up plane at y=0
-const intersectionPoint = new THREE.Vector3()
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏗️ WAVE 4534: OFFSET PANEL — precise XYZ input (E12)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface OffsetPanelProps {
+  fixtureId: string
+  onClose: () => void
+}
+
+const OffsetPanel: React.FC<OffsetPanelProps> = ({ fixtureId, onClose }) => {
+  const fixture = useStageStore(state => state.fixtures.find(f => f.id === fixtureId))
+  const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
+
+  const [x, setX] = useState(fixture?.position.x ?? 0)
+  const [y, setY] = useState(fixture?.position.y ?? 0)
+  const [z, setZ] = useState(fixture?.position.z ?? 0)
+
+  useEffect(() => {
+    if (fixture) {
+      setX(fixture.position.x)
+      setY(fixture.position.y)
+      setZ(fixture.position.z)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtureId])
+
+  if (!fixture) return null
+
+  const apply = () => {
+    updateFixturePosition(fixtureId, snapPosition({ x, y, z }))
+    onClose()
+  }
+
+  const axes = [
+    { label: 'X', value: x, set: setX },
+    { label: 'Y', value: y, set: setY },
+    { label: 'Z', value: z, set: setZ },
+  ] as { label: string; value: number; set: (v: number) => void }[]
+
+  return (
+    <div className="offset-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="offset-panel-header">
+        <span>📐 Posición exacta</span>
+        <span className="offset-fixture-name">{fixture.name}</span>
+        <button className="offset-close-btn" onClick={onClose}>✕</button>
+      </div>
+      <div className="offset-inputs">
+        {axes.map(({ label, value, set }) => (
+          <label key={label} className="offset-input-row">
+            <span className={`offset-axis offset-axis-${label.toLowerCase()}`}>{label}</span>
+            <input
+              type="number"
+              step="0.25"
+              value={value}
+              onChange={(e) => set(parseFloat(e.target.value) || 0)}
+              onKeyDown={(e) => { if (e.key === 'Enter') apply() }}
+            />
+            <span className="offset-unit">m</span>
+          </label>
+        ))}
+      </div>
+      <div className="offset-actions">
+        <button className="offset-apply-btn" onClick={apply}>Aplicar</button>
+        <button className="offset-cancel-btn" onClick={onClose}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎯 WAVE 4541: GHOST CURSOR — voxel snap preview durante drag & drop
+// Prioridad 1: Stacking (apila sobre FixtureBlock existente)
+// Prioridad 2: Floor (plano Y=0)
+// Color: verde=stack / cyan=floor / rojo=invalid
+// ═══════════════════════════════════════════════════════════════════════════
+
+type GhostMode = 'floor' | 'stack' | 'invalid'
+
+const GHOST_COLOR: Record<GhostMode, string> = {
+  floor:   '#22d3ee',
+  stack:   '#4ade80',
+  invalid: '#ef4444',
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎯 WAVE 4544: HOLO-CROSSHAIR — láseres RGB Gizmo + targets de impacto en paredes
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface HoloCrosshairProps {
+  x: number
+  y: number
+  z: number
+}
+
+const HoloCrosshair: React.FC<HoloCrosshairProps> = ({ x, y, z }) => {
+  const stage = useStageStore(state => state.stage)
+  const halfW = (stage?.width  ?? 12) / 2
+  const halfD = (stage?.depth  ??  8) / 2
+  const height = stage?.height ??  6
+
+  // Materiales Additive — efecto neón sin opacidad acumulada
+  const matY = useMemo(() => new THREE.LineBasicMaterial({
+    color: '#4ade80', opacity: 0.7, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }), [])
+  const matX = useMemo(() => new THREE.LineBasicMaterial({
+    color: '#ef4444', opacity: 0.7, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }), [])
+  const matZ = useMemo(() => new THREE.LineBasicMaterial({
+    color: '#3b82f6', opacity: 0.7, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }), [])
+
+  const matTargetY = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#4ade80', opacity: 0.8, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  }), [])
+  const matTargetX = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#ef4444', opacity: 0.8, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  }), [])
+  const matTargetZ = useMemo(() => new THREE.MeshBasicMaterial({
+    color: '#3b82f6', opacity: 0.8, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  }), [])
+
+  const { lineY, lineX, lineZ } = useMemo(() => {
+    const mk = (pts: THREE.Vector3[], mat: THREE.LineBasicMaterial) => {
+      const geo = new THREE.BufferGeometry().setFromPoints(pts)
+      return new THREE.Line(geo, mat)
+    }
+    return {
+      lineY: mk([new THREE.Vector3(x, 0, z),      new THREE.Vector3(x, height, z)], matY),
+      lineX: mk([new THREE.Vector3(-halfW, y, z),  new THREE.Vector3(halfW, y, z)], matX),
+      lineZ: mk([new THREE.Vector3(x, y, -halfD),  new THREE.Vector3(x, y, halfD)], matZ),
+    }
+  }, [x, y, z, halfW, halfD, height, matY, matX, matZ])
+
+  const ringArgs: [number, number, number] = [0.08, 0.15, 16]
+
+  return (
+    <group>
+      {/* Láser Y — verde, eje vertical */}
+      <primitive object={lineY} />
+      {/* Target suelo Y */}
+      <mesh position={[x, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]} material={matTargetY}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+      {/* Target techo Y */}
+      <mesh position={[x, height - 0.01, z]} rotation={[-Math.PI / 2, 0, 0]} material={matTargetY}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+
+      {/* Láser X — rojo, eje horizontal */}
+      <primitive object={lineX} />
+      {/* Target pared izquierda X */}
+      <mesh position={[-halfW + 0.01, y, z]} rotation={[0, Math.PI / 2, 0]} material={matTargetX}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+      {/* Target pared derecha X */}
+      <mesh position={[halfW - 0.01, y, z]} rotation={[0, Math.PI / 2, 0]} material={matTargetX}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+
+      {/* Láser Z — azul, eje profundidad */}
+      <primitive object={lineZ} />
+      {/* Target pared fondo Z */}
+      <mesh position={[x, y, -halfD + 0.01]} material={matTargetZ}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+      {/* Target pared frente Z */}
+      <mesh position={[x, y, halfD - 0.01]} material={matTargetZ}>
+        <ringGeometry args={ringArgs} />
+      </mesh>
+    </group>
+  )
+}
+
+interface GhostCursorProps {
+  /** true sólo cuando hay algo siendo arrastrado hacia el canvas */
+  isDragging: boolean
+  /** Ref al que se escribe la posición validada (o null si invalid) */
+  ghostPosRef: React.MutableRefObject<Position3D | null>
+}
+
+/** Vive DENTRO del Canvas — tiene acceso a useThree y useFrame */
+const GhostCursor: React.FC<GhostCursorProps> = ({ isDragging, ghostPosRef }) => {
+  const { camera, raycaster, pointer, scene } = useThree()
+  const stage = useStageStore(state => state.stage)
+  const fixtures = useStageStore(selectFixtures)
+
+  // Estado visible del ghost — posición centrada en el voxel (Y = base + 0.125)
+  const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
+  const [mode, setMode] = useState<GhostMode>('floor')
+
+  // Plano Y=0 reutilizable (no recrear cada frame)
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
+  const floorHit    = useMemo(() => new THREE.Vector3(), [])
+
+  useFrame(() => {  
+    if (!isDragging) {
+      ghostPosRef.current = null
+      if (ghostPos !== null) setGhostPos(null)
+      return
+    }
+
+    raycaster.setFromCamera(pointer, camera)
+
+    // ── Prioridad 1: stacking sobre FixtureBlock ─────────────────────────
+    // Construye la lista de meshes que representan los FixtureBlocks (cilindros)
+    const fixtureMeshes: THREE.Object3D[] = []
+    scene.traverse((obj) => {
+      if (obj.userData['fixtureId']) fixtureMeshes.push(obj)
+    })
+
+    let finalPos: Position3D | null = null
+    let newMode: GhostMode = 'floor'
+
+    if (fixtureMeshes.length > 0) {
+      const hits = raycaster.intersectObjects(fixtureMeshes, true)
+      if (hits.length > 0) {
+        const hit = hits[0]
+        const normal = hit.face?.normal
+        if (normal) {
+          const worldNormal = normal.clone().transformDirection(hit.object.matrixWorld)
+          const fid = hit.object.userData['fixtureId'] ||
+                      hit.object.parent?.userData['fixtureId']
+          const srcFixture = fixtures.find(f => f.id === fid)
+          const baseY = srcFixture?.position.y ?? 0
+
+          let stackX = hit.point.x
+          let stackY = baseY + 0.25   // encima del bloque (0.25m)
+          let stackZ = hit.point.z
+
+          // Ajustar X o Z según la normal (cara lateral)
+          if (Math.abs(worldNormal.y) < 0.5) {
+            // Normal horizontal → cara lateral
+            stackX += worldNormal.x * 0.25
+            stackZ += worldNormal.z * 0.25
+            stackY = baseY  // mismo nivel
+          }
+
+          finalPos = { x: stackX, y: stackY, z: stackZ }
+          newMode = 'stack'
+        }
+      }
+    }
+
+    // ── Prioridad 2: plano del suelo ─────────────────────────────────────
+    if (!finalPos) {
+      const didHit = raycaster.ray.intersectPlane(floorPlane, floorHit)
+      if (didHit) {
+        finalPos = { x: floorHit.x, y: 0, z: floorHit.z }
+        newMode = 'floor'
+      }
+    }
+
+    if (!finalPos) {
+      // Rayo paralelo al suelo o fuera de escena
+      ghostPosRef.current = null
+      if (ghostPos !== null) setGhostPos(null)
+      return
+    }
+
+    // ── Snap al grid voxel ────────────────────────────────────────────────
+    const snapped = snapPosition(finalPos)
+
+    // ── Clamp al Crystal Box ─────────────────────────────────────────────
+    if (!stage) {
+      ghostPosRef.current = null
+      if (ghostPos !== null) setGhostPos(null)
+      return
+    }
+    const clamped = clampToCrystalBox(snapped, stage as StageDimensions)
+
+    // Si el clamp cambió la posición fuera del box, marcar invalid
+    const isOutside = (
+      Math.abs(clamped.x - snapped.x) > 0.001 ||
+      Math.abs(clamped.y - snapped.y) > 0.001 ||
+      Math.abs(clamped.z - snapped.z) > 0.001
+    )
+    if (isOutside) newMode = 'invalid'
+
+    // ── Actualizar estado ────────────────────────────────────────────────
+    ghostPosRef.current = newMode === 'invalid' ? null : clamped
+
+    const displayY = clamped.y + 0.125  // centrado en el cubo visualizado
+    if (
+      !ghostPos ||
+      Math.abs(ghostPos.x - clamped.x) > 0.001 ||
+      Math.abs(ghostPos.y - displayY)  > 0.001 ||
+      Math.abs(ghostPos.z - clamped.z) > 0.001
+    ) {
+      setGhostPos(new THREE.Vector3(clamped.x, displayY, clamped.z))
+    }
+    if (newMode !== mode) setMode(newMode)
+  })
+
+  if (!isDragging || !ghostPos) return null
+
+  // La posición base real (sin el offset de display +0.05)
+  const basePos = ghostPosRef.current
+
+  return (
+    <group>
+      <mesh position={ghostPos}>
+        <boxGeometry args={[0.25, 0.25, 0.25]} />
+        <meshBasicMaterial
+          color={GHOST_COLOR[mode]}
+          wireframe
+          opacity={0.85}
+          transparent
+        />
+      </mesh>
+      {/* HoloCrosshair anclado — solo cuando posición válida */}
+      {basePos && mode !== 'invalid' && (
+        <HoloCrosshair x={basePos.x} y={basePos.y} z={basePos.z} />
+      )}
+    </group>
+  )
+}
 
 const StageGrid3D: React.FC = () => {
   // Get snap settings from parent context
-  const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode, showZones } = useConstructorContext()
+  const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode, showZones, showCrystalBox, showFloorGrid, showDropLines } = useConstructorContext()
   const addFixture = useStageStore(state => state.addFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
+  const stage = useStageStore(state => state.stage)
   
+  // 🎯 WAVE 4541: Ghost cursor position ref — la posición validada del ghost cursor
+  // Vive aquí (fuera del Canvas) para que handleDrop la pueda leer
+  const ghostPosRef = useRef<Position3D | null>(null)
+  // isDragging: true cuando hay un fixture siendo arrastrado sobre el canvas
+  const [isDragging, setIsDragging] = useState(false)
+
   // 🔓 WAVE 1036.2: FULL REACTIVITY - Direct fixture subscription
   // No memoization - we WANT to see position/height changes immediately
   const fixtures = useStageStore(state => state.fixtures)
@@ -714,6 +1189,9 @@ const StageGrid3D: React.FC = () => {
   // Zone highlight state - WAVE 363
   const [highlightedZone, setHighlightedZone] = useState<FixtureZone | null>(null)
   
+  // 🏗️ WAVE 4534: Offset panel state
+  const [offsetPanelFixtureId, setOffsetPanelFixtureId] = useState<string | null>(null)
+
   // 🪜 WAVE 1036: Context Menu state for height management
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -804,12 +1282,7 @@ const StageGrid3D: React.FC = () => {
     const newPosition = { ...fixture.position, x: -fixture.position.x }
     updateFixturePosition(contextMenu.fixtureId, newPosition)
     
-    // Auto-recalculate zone based on new position
-    const newZone = getZoneAtPosition(newPosition.x, newPosition.z)
-    if (newZone) {
-      setFixtureZone(contextMenu.fixtureId, newZone)
-    }
-    
+    // WAVE 4543: zones are pure metadata — no auto-assign on flip
     closeContextMenu()
     console.log(`[StageGrid3D] 🔄 Fixture "${fixture.name}" flipped L/R to X=${newPosition.x}`)
   }, [contextMenu, updateFixturePosition, setFixtureZone, closeContextMenu])
@@ -825,12 +1298,7 @@ const StageGrid3D: React.FC = () => {
     const newPosition = { ...fixture.position, z: -fixture.position.z }
     updateFixturePosition(contextMenu.fixtureId, newPosition)
     
-    // Auto-recalculate zone based on new position
-    const newZone = getZoneAtPosition(newPosition.x, newPosition.z)
-    if (newZone) {
-      setFixtureZone(contextMenu.fixtureId, newZone)
-    }
-    
+    // WAVE 4543: zones are pure metadata — no auto-assign on flip
     closeContextMenu()
     console.log(`[StageGrid3D] 🔄 Fixture "${fixture.name}" flipped F/B to Z=${newPosition.z}`)
   }, [contextMenu, updateFixturePosition, setFixtureZone, closeContextMenu])
@@ -859,6 +1327,19 @@ const StageGrid3D: React.FC = () => {
     openFixtureForge(contextMenu.fixtureId)
     closeContextMenu()
   }, [contextMenu, openFixtureForge, closeContextMenu])
+
+  // 🏗️ WAVE 4534 E11: ASSIGN ZONE MANUALLY
+  const assignZoneManual = useCallback((zone: FixtureZone) => {
+    if (!contextMenu) return
+    const idsToUpdate = selectedIds.size > 1 ? [...selectedIds] : [contextMenu.fixtureId]
+    idsToUpdate.forEach(id => setFixtureZone(id, zone))
+    closeContextMenu()
+  }, [contextMenu, selectedIds, setFixtureZone, closeContextMenu])
+
+  // 🏗️ WAVE 4534 E12: OPEN OFFSET PANEL
+  const handleOpenOffsetPanel = useCallback((id: string) => {
+    setOffsetPanelFixtureId(id)
+  }, [])
   
   // Handle zone click - assign zone to selected fixtures
   const handleZoneClick = useCallback((zoneId: FixtureZone) => {
@@ -966,93 +1447,53 @@ const StageGrid3D: React.FC = () => {
   }, [boxSelection, selectMultiple])
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 384: CONSTRUCTOR RESURRECTION - REAL DROP WITH FULL DATA
-  // "Cuando arrastres un foco, el objeto en memoria debe ser IDÉNTICO al de la librería"
+  // 🔥 WAVE 384 + 🎯 WAVE 4541: CONSTRUCTOR DROP — posición leída desde GhostCursor
   // ═══════════════════════════════════════════════════════════════════════════
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+    setIsDragging(false)
+
     const fixtureType = e.dataTransfer.getData('fixture-type')
     const libraryId = e.dataTransfer.getData('library-fixture-id')
-    
-    if (!fixtureType || !canvasRef.current) {
-      console.warn('[StageGrid3D] Drop failed: no fixture type or canvas ref')
+
+    if (!fixtureType) {
+      console.warn('[StageGrid3D] Drop failed: no fixture type')
       return
     }
-    
-    // Step 1: Get mouse position relative to canvas
-    const rect = canvasRef.current.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-    
-    // Step 2: Convert to Normalized Device Coordinates (-1 to +1)
-    const ndcX = (mouseX / rect.width) * 2 - 1
-    const ndcY = -(mouseY / rect.height) * 2 + 1
-    
-    let worldX = 0
-    let worldZ = 0
-    
-    // Step 3: Raycast to ground plane (if camera is available)
-    if (cameraRef.current) {
-      // Set ray from camera through mouse position
-      dropRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), cameraRef.current)
-      
-      // Intersect with ground plane (y=0)
-      const ray = dropRaycaster.ray
-      const didIntersect = ray.intersectPlane(groundPlane, intersectionPoint)
-      
-      if (didIntersect) {
-        worldX = intersectionPoint.x
-        worldZ = intersectionPoint.z
-        console.log(`[StageGrid3D] Raycast hit: (${worldX.toFixed(2)}, ${worldZ.toFixed(2)})`)
-      } else {
-        // Fallback: If ray doesn't hit plane (looking up), use projection
-        console.warn('[StageGrid3D] Raycast missed ground plane, using fallback')
-        worldX = ndcX * 8
-        worldZ = ndcY * 6
-      }
-    } else {
-      // Fallback: No camera yet (shouldn't happen, but safety first)
-      console.warn('[StageGrid3D] No camera ref, using fallback projection')
-      worldX = ndcX * 8
-      worldZ = ndcY * 6
+
+    // 🎯 WAVE 4541: Leer posición validada del GhostCursor
+    // Si el ghost está en 'invalid' (null), abortar el drop
+    const ghostPos = ghostPosRef.current
+    if (!ghostPos) {
+      console.warn('[StageGrid3D] Drop abortado: ghost en posición inválida o fuera del Crystal Box')
+      setDraggedFixtureType(null)
+      return
     }
-    
-    // Clamp to stage bounds (-6 to 6 for X, -4 to 4 for Z)
-    worldX = Math.max(-6, Math.min(6, worldX))
-    worldZ = Math.max(-4, Math.min(4, worldZ))
-    
-    // 🔥 WAVE 1042.1: DEBUG + FIX - Normalizar DESPUÉS de conocer el tipo real
-    console.log(`[StageGrid3D] 📍 Drop position: (${worldX.toFixed(2)}, ${worldZ.toFixed(2)}), fixtureType from drag: "${fixtureType}"`)
-    
+
+    console.log(`[StageGrid3D] 📍 Drop en posición ghost: (${ghostPos.x}, ${ghostPos.y}, ${ghostPos.z}) | type: "${fixtureType}"`)
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 384: LOAD FULL FIXTURE DEFINITION FROM LIBRARY
-    // "Ni un byte menos" - Esta es la resurrección del Constructor
     // ═══════════════════════════════════════════════════════════════════════
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
-    
-    // Variable para el tipo REAL (se actualiza si cargamos definición)
-    let realType = fixtureType
-    
-    // Try to load the FULL definition from library
+
     let fixtureData: Partial<FixtureV2> = {
       type: fixtureType as FixtureV2['type'],
-      position: { x: worldX, y: 0, z: worldZ },
-      zone: 'unassigned' as FixtureZone  // Placeholder, se normaliza después
+      position: ghostPos,
+      zone: 'unassigned' as FixtureZone,
     }
-    
+
     if (libraryId && window.lux?.getFixtureDefinition) {
       try {
         console.log(`[StageGrid3D] 🔥 Loading definition for "${libraryId}"...`)
         const result = await window.lux.getFixtureDefinition(libraryId)
-        
+
         if (result.success && result.definition) {
-          const def = result.definition as any  // 🔥 WAVE 1042.1: Allow access to physics field
+          const def = result.definition as any
           console.log(`[StageGrid3D] ✅ Got definition: ${def.name} (${def.channelCount}ch, physics.motor: ${def.physics?.motorType || 'none'})`)
-          
-          // INJECT ALL THE DATA! This is the key fix.
+
           fixtureData = {
             ...fixtureData,
             name: def.name,
@@ -1084,7 +1525,6 @@ const StageGrid3D: React.FC = () => {
               panInvert: def.physics?.invertPan ?? false,
               tiltInvert: def.physics?.invertTilt ?? false,
             },
-            // Store capabilities for rendering decisions
             // 🔥 WAVE 1042.1: Include full capabilities with colorEngine and colorWheel
             capabilities: {
               hasMovementChannels: def.hasMovementChannels,
@@ -1104,35 +1544,31 @@ const StageGrid3D: React.FC = () => {
     } else if (libraryId) {
       console.warn(`[StageGrid3D] ⚠️ No getFixtureDefinition API, falling back to generic`)
     }
-    
-    // 🔥 WAVE 1042.1: NORMALIZAR ZONA AL FINAL, con el tipo REAL conocido
-    const finalType = fixtureData.type || fixtureType
-    const cleanZone = normalizeZone('unassigned', worldX, worldZ, finalType)
-    fixtureData.zone = cleanZone
-    
-    console.log(`[StageGrid3D] 🎯 Zone normalization: type="${finalType}", pos=(${worldX.toFixed(2)}, ${worldZ.toFixed(2)}) → zone="${cleanZone}"`)
-    console.log(`[StageGrid3D] 📦 fixtureData BEFORE createDefaultFixture:`, JSON.stringify({
-      zone: fixtureData.zone,
-      physics: fixtureData.physics ? { motorType: fixtureData.physics.motorType } : 'undefined'
-    }))
-    
+
     const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
-    
-    console.log(`[StageGrid3D] 📦 newFixture AFTER createDefaultFixture:`, JSON.stringify({
-      zone: newFixture.zone,
-      physics: newFixture.physics ? { motorType: newFixture.physics.motorType } : 'undefined'
-    }))
-    
     addFixture(newFixture)
     setDraggedFixtureType(null)
-    
-    console.log(`[StageGrid3D] ✅ Dropped: ${newFixture.name} → Zone: ${cleanZone}`)
   }, [addFixture, setDraggedFixtureType])
-  
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
+  }, [])
+
+  // 🎯 WAVE 4541: Activar/desactivar la bandera isDragging para el GhostCursor
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('fixture-type')) {
+      setIsDragging(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Solo desactivar si el puntero sale del canvas completamente
+    if (!canvasRef.current?.contains(e.relatedTarget as Node)) {
+      setIsDragging(false)
+      ghostPosRef.current = null
+    }
   }, [])
   
   // Handler for drops from inside R3F (proper raycast)
@@ -1142,10 +1578,11 @@ const StageGrid3D: React.FC = () => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
     
+    // 🧱 WAVE 4538: Drop siempre en Y=0 (el técnico eleva con el gizmo)
     let fixtureData: Partial<FixtureV2> = {
       type: type as FixtureV2['type'],
-      position,
-      zone: 'unassigned' as FixtureZone  // Placeholder, se normaliza después
+      position: { ...position, y: 0 },
+      zone: 'unassigned' as FixtureZone,
     }
     
     // Load full definition if we have libraryId
@@ -1202,15 +1639,9 @@ const StageGrid3D: React.FC = () => {
       }
     }
     
-    // 🔥 WAVE 1042.1: NORMALIZAR ZONA AL FINAL, con el tipo REAL conocido
-    const finalType = fixtureData.type || type
-    const cleanZone = normalizeZone('unassigned', position.x, position.z, finalType)
-    fixtureData.zone = cleanZone
-    
+    // 🧱 WAVE 4538: Zone se asigna manualmente
     const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
     addFixture(newFixture)
-    
-    console.log(`[StageGrid3D] ✅ R3F Drop: ${newFixture.name} → Zone: ${cleanZone}`)
   }, [addFixture])
   
   return (
@@ -1219,6 +1650,8 @@ const StageGrid3D: React.FC = () => {
       className="stage-grid-3d viewport-container"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -1246,8 +1679,7 @@ const StageGrid3D: React.FC = () => {
         {/* WAVE 368.5: Camera Bridge - exposes camera for D&D raycasting */}
         <CameraBridge onCameraReady={handleCameraReady} />
         
-        <color attach="background" args={['#000000']} />
-        <fog attach="fog" args={['#000000', 30, 60]} />
+        <color attach="background" args={['#0a0a14']} />
         
         <StageScene 
           snapEnabled={snapEnabled}
@@ -1261,6 +1693,12 @@ const StageGrid3D: React.FC = () => {
           onInteractionChange={handleInteractionChange}
           selectedIdsArray={selectedIdsArray}
           fixtures={fixtures}
+          onFixtureDoubleClick={handleOpenOffsetPanel}
+          showCrystalBox={showCrystalBox}
+          showFloorGrid={showFloorGrid}
+          showDropLines={showDropLines}
+          isDragging={isDragging}
+          ghostPosRef={ghostPosRef}
         />
       </Canvas>
       
@@ -1307,90 +1745,77 @@ const StageGrid3D: React.FC = () => {
         </div>
       </div>
       
-      {/* 🪜 WAVE 1036: Context Menu - THE ULTIMATE MENU */}
+      {/* 🏗️ WAVE 4534: Context Menu 2.5D */}
       {contextMenu && (
-        <div 
+        <div
           className="fixture-context-menu"
           style={{
-            left: contextMenu.x,
-            top: contextMenu.y
+            // WAVE 4546: quadrant-aware positioning — el menú siempre crece hacia el centro
+            position: 'fixed',
+            ...(contextMenu.x > window.innerWidth  / 2
+              ? { right:  window.innerWidth  - contextMenu.x }
+              : { left:   contextMenu.x }),
+            ...(contextMenu.y > window.innerHeight / 2
+              ? { bottom: window.innerHeight - contextMenu.y }
+              : { top:    contextMenu.y }),
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ═══════ SECTION: HEIGHT (The Elevator) ═══════ */}
-          <div className="context-menu-title">🪜 ALTURA</div>
-          <button 
-            className="context-menu-item"
-            onClick={() => sendFixtureToHeight(0, false)}
-          >
-            <span className="icon">🟢</span>
-            <span>FLOOR</span>
-            <span className="hint">0m</span>
-          </button>
-          <button 
-            className="context-menu-item"
-            onClick={() => sendFixtureToHeight(1.5, false)}
-          >
-            <span className="icon">🟡</span>
-            <span>MID</span>
-            <span className="hint">1.5m</span>
-          </button>
-          <button 
-            className="context-menu-item"
-            onClick={() => sendFixtureToHeight(3.5, true)}
-          >
-            <span className="icon">🔴</span>
-            <span>CEILING</span>
-            <span className="hint">3.5m + ↻</span>
-          </button>
-          
-          {/* ═══════ SECTION: SMART MOVES (Teleport) ═══════ */}
+          {/* ═════ ASIGNAR ZONA ═════ */}
+          <div className="context-menu-divider" />
+          <div className="context-menu-title">📍 ASIGNAR ZONA</div>
+          {([
+            { zone: 'front',        label: 'FRONT',        icon: '🔴' },
+            { zone: 'back',         label: 'BACK',         icon: '🔵' },
+            { zone: 'center',       label: 'CENTER',       icon: '⚡' },
+            { zone: 'movers-left',  label: 'MOVER LEFT',   icon: '🏗️' },
+            { zone: 'movers-right', label: 'MOVER RIGHT',  icon: '🏗️' },
+            { zone: 'floor',        label: 'FLOOR',        icon: '⬇️' },
+            { zone: 'air',          label: 'AIR',          icon: '✨' },
+          ] as { zone: FixtureZone; label: string; icon: string }[]).map(({ zone, label, icon }) => (
+            <button
+              key={zone}
+              className="context-menu-item"
+              onClick={() => assignZoneManual(zone)}
+            >
+              <span className="icon">{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+
+          {/* ═════ FLIP ═════ */}
           <div className="context-menu-divider" />
           <div className="context-menu-title">🔄 FLIP</div>
-          <button 
-            className="context-menu-item"
-            onClick={flipLeftRight}
-          >
-            <span className="icon">↔️</span>
-            <span>FLIP L/R</span>
-            <span className="hint">x = -x</span>
+          <button className="context-menu-item" onClick={flipLeftRight}>
+            <span className="icon">↔️</span><span>FLIP L/R</span><span className="hint">x = -x</span>
           </button>
-          <button 
-            className="context-menu-item"
-            onClick={flipFrontBack}
-          >
-            <span className="icon">↕️</span>
-            <span>FLIP F/B</span>
-            <span className="hint">z = -z</span>
+          <button className="context-menu-item" onClick={flipFrontBack}>
+            <span className="icon">↕️</span><span>FLIP F/B</span><span className="hint">z = -z</span>
           </button>
-          
-          {/* ═══════ SECTION: CRUD ═══════ */}
+
+          {/* ═════ PRECISION / CRUD ═════ */}
           <div className="context-menu-divider" />
-          <button 
-            className="context-menu-item"
-            onClick={editFixture}
-          >
-            <span className="icon">✏️</span>
-            <span>EDIT</span>
-            <span className="hint">Propiedades</span>
+          <button className="context-menu-item" onClick={() => { handleOpenOffsetPanel(contextMenu.fixtureId); closeContextMenu() }}>
+            <span className="icon">📐</span><span>Posición exacta…</span>
           </button>
-          <button 
-            className="context-menu-item context-menu-danger"
-            onClick={deleteFixture}
-          >
-            <span className="icon">🗑️</span>
-            <span>DELETE</span>
-            <span className="hint">Eliminar</span>
+          <button className="context-menu-item" onClick={editFixture}>
+            <span className="icon">✏️</span><span>EDIT</span><span className="hint">Propiedades</span>
           </button>
-          
+          <button className="context-menu-item context-menu-danger" onClick={deleteFixture}>
+            <span className="icon">🗑️</span><span>DELETE</span><span className="hint">Eliminar</span>
+          </button>
+
           <div className="context-menu-divider" />
-          <button 
-            className="context-menu-item context-menu-cancel"
-            onClick={closeContextMenu}
-          >
-            ✕ Cancelar
-          </button>
+          <button className="context-menu-item context-menu-cancel" onClick={closeContextMenu}>✕ Cancelar</button>
         </div>
+      )}
+
+      {/* 🏗️ WAVE 4534: Offset Panel */}
+      {offsetPanelFixtureId && (
+        <OffsetPanel
+          fixtureId={offsetPanelFixtureId}
+          onClose={() => setOffsetPanelFixtureId(null)}
+        />
       )}
       
       <style>{`
@@ -1485,37 +1910,29 @@ const StageGrid3D: React.FC = () => {
           z-index: 100;
         }
         
-        .fixture-label-3d {
+        /* 🏗️ WAVE 4532: 2.5D permanent fixture label */
+        .fixture-label-25d {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          padding: 4px 8px;
-          background: rgba(0, 0, 0, 0.85);
-          border: 1px solid rgba(34, 211, 238, 0.5);
-          border-radius: 4px;
-          font-size: 10px;
+          padding: 2px 6px;
+          background: rgba(0, 0, 0, 0.75);
+          border-left: 2px solid rgba(34, 211, 238, 0.6);
+          border-radius: 0 3px 3px 0;
+          font-size: 9px;
           white-space: nowrap;
+          line-height: 1.3;
         }
         
         .label-name {
-          color: #22d3ee;
+          color: #e2e8f0;
           font-weight: 600;
+          font-family: monospace;
         }
         
-        .label-address {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 9px;
-        }
-        
-        /* 🌊 WAVE 1035: Stereo zone indicator */
-        .label-zone {
-          color: #a855f7;
-          font-size: 9px;
-          font-weight: 500;
-          margin-top: 2px;
-          padding: 1px 4px;
-          background: rgba(168, 85, 247, 0.2);
-          border-radius: 2px;
+        .label-height {
+          color: #94a3b8;
+          font-size: 8px;
+          font-family: monospace;
         }
         
         /* 🪜 WAVE 1036: Context Menu Styles */
@@ -1598,6 +2015,136 @@ const StageGrid3D: React.FC = () => {
         .context-menu-danger .hint {
           color: rgba(239, 68, 68, 0.6);
         }
+
+        .cm-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        /* 🏗️ WAVE 4534: Offset Panel */
+        .offset-panel {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 1100;
+          width: 260px;
+          background: rgba(10, 10, 22, 0.97);
+          border: 1px solid rgba(34, 211, 238, 0.4);
+          border-radius: 10px;
+          box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+          backdrop-filter: blur(12px);
+          padding: 0;
+          overflow: hidden;
+        }
+        .offset-panel-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 12px;
+          background: rgba(34, 211, 238, 0.08);
+          border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+          font-size: 11px;
+          font-weight: 700;
+          color: #22d3ee;
+          letter-spacing: 0.4px;
+        }
+        .offset-fixture-name {
+          margin-left: auto;
+          color: rgba(255,255,255,0.6);
+          font-size: 10px;
+          font-weight: 400;
+          font-family: monospace;
+          max-width: 90px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .offset-close-btn {
+          background: transparent;
+          border: none;
+          color: rgba(255,255,255,0.4);
+          cursor: pointer;
+          font-size: 14px;
+          padding: 0 2px;
+          line-height: 1;
+        }
+        .offset-close-btn:hover { color: white; }
+        .offset-inputs {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 12px;
+        }
+        .offset-input-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: default;
+        }
+        .offset-axis {
+          width: 14px;
+          font-size: 11px;
+          font-weight: 700;
+          font-family: monospace;
+          text-align: center;
+        }
+        .offset-axis-x { color: #ef4444; }
+        .offset-axis-y { color: #22d3ee; }
+        .offset-axis-z { color: #4ade80; }
+        .offset-input-row input[type=number] {
+          flex: 1;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 5px;
+          color: white;
+          font-size: 13px;
+          font-family: monospace;
+          padding: 5px 8px;
+          outline: none;
+          text-align: right;
+        }
+        .offset-input-row input[type=number]:focus {
+          border-color: #22d3ee;
+          background: rgba(34, 211, 238, 0.08);
+        }
+        .offset-unit {
+          width: 14px;
+          font-size: 10px;
+          color: rgba(255,255,255,0.35);
+          font-family: monospace;
+        }
+        .offset-actions {
+          display: flex;
+          gap: 8px;
+          padding: 10px 12px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .offset-apply-btn {
+          flex: 1;
+          padding: 7px 0;
+          background: rgba(34, 211, 238, 0.2);
+          border: 1px solid #22d3ee;
+          border-radius: 6px;
+          color: #22d3ee;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .offset-apply-btn:hover { background: rgba(34, 211, 238, 0.35); }
+        .offset-cancel-btn {
+          padding: 7px 14px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 6px;
+          color: rgba(255,255,255,0.5);
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .offset-cancel-btn:hover { background: rgba(255,255,255,0.08); color: white; }
       `}</style>
     </div>
   )

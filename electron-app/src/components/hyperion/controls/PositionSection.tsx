@@ -25,6 +25,7 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { useProgrammerStore } from '../../../stores/programmerStore'
 import { XYPad, RadarXY, type GhostPoint, SpatialTargetPad, type SpatialFixtureGhost, VSlider } from './controls'
 import { PatternSelector, type PatternType } from './controls'
 import { PositionIcon } from '../../icons/LuxIcons'
@@ -244,8 +245,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * XY Pad change - Direct position control
+   * WAVE 4529: Migrado a programmerStore. Sin DMX math aquí.
    */
-  const handlePositionChange = useCallback(async (newPan: number, newTilt: number) => {
+  const handlePositionChange = useCallback((newPan: number, newTilt: number) => {
     // 🛡️ WAVE 1008.3: Safety clamps (95% of physical max)
     const SAFE_PAN_MAX = 513   // 95% of 540°
     const SAFE_TILT_MAX = 256  // 95% of 270°
@@ -256,65 +258,34 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setPan(safePan)
     setTilt(safeTilt)
     onOverrideChange(true)
-    
-    try {
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔥 WAVE 2496: FORMATION MODE — Individual overrides per fixture
-      // Before: ALL fixtures got the same center position → 2 froze, 1 responded
-      // Now: Each fixture gets its individual ghost-point position (center + fan spread)
-      // Mirrors handleFanChange pattern which already worked correctly.
-      // ═══════════════════════════════════════════════════════════════════
-      if (selectedIds.length > 1) {
-        const basePanNorm = safePan / 540
-        const baseTiltNorm = safeTilt / 270
-        const spread = (fanValue / 100) * 0.3
-        
-        for (let i = 0; i < selectedIds.length; i++) {
-          const fixtureId = selectedIds[i]
-          const offsetIndex = i - (selectedIds.length - 1) / 2
-          const offsetX = selectedIds.length > 1
-            ? offsetIndex * spread / (selectedIds.length - 1)
-            : 0
-          
-          const fixturePanNorm = Math.max(0, Math.min(1, basePanNorm + offsetX))
-          const fixturePanDmx = Math.min(242, Math.round(fixturePanNorm * 255))
-          const fixtureTiltDmx = Math.min(241, Math.round(baseTiltNorm * 255))
-          
-          await window.lux?.arbiter?.setManual({
-            fixtureIds: [fixtureId],
-            controls: {
-              pan: fixturePanDmx,
-              tilt: fixtureTiltDmx,
-            },
-            channels: ['pan', 'tilt'],
-          })
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 4529: FORMATION MODE → setPositionPerFixture
+    // ═══════════════════════════════════════════════════════════════════
+    if (selectedIds.length > 1) {
+      const basePanNorm = safePan / 540
+      const baseTiltNorm = safeTilt / 270
+      const spread = (fanValue / 100) * 0.3
+
+      const positions = selectedIds.map((id, i) => {
+        const offsetIndex = i - (selectedIds.length - 1) / 2
+        const offsetX = selectedIds.length > 1
+          ? offsetIndex * spread / (selectedIds.length - 1)
+          : 0
+        const fixturePanNorm = Math.max(0, Math.min(1, basePanNorm + offsetX))
+        return {
+          fixtureId: id,
+          pan: fixturePanNorm * 540,
+          tilt: baseTiltNorm * 270,
         }
-        
-        console.log(`[Position] 🎯 FORMATION: ${selectedIds.length} fixtures, fan=${fanValue}%, center P${safePan}/T${safeTilt}`)
-      } else {
-        // Single fixture: direct position
-        const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
-        const tiltDmx = Math.min(241, Math.round((safeTilt / 270) * 255))
-        
-        await window.lux?.arbiter?.setManual({
-          fixtureIds: selectedIds,
-          controls: {
-            pan: panDmx,
-            tilt: tiltDmx,
-          },
-          channels: ['pan', 'tilt'],
-        })
-        
-        if (activePattern !== 'static') {
-          console.log(`[Position] 🕹️ RE-ANCHOR: Pattern ${activePattern} now orbits P${panDmx}/T${tiltDmx}`)
-        } else {
-          console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
-        }
-      }
-    } catch (err) {
-      console.error('[Position] Error:', err)
+      })
+
+      useProgrammerStore.getState().setPositionPerFixture(positions)
+    } else {
+      // Single fixture — pan/tilt en grados
+      useProgrammerStore.getState().setPosition(safePan, safeTilt)
     }
-  }, [selectedIds, activePattern, onOverrideChange, fanValue])
+  }, [selectedIds, onOverrideChange, fanValue])
   
   /**
    * Pattern change - Procedural movement
@@ -397,44 +368,30 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * WAVE 430.5: Fan control change
-   * Spreads fixtures in a fan pattern around the center of gravity
+   * WAVE 4529: Migrado a programmerStore. Sin DMX math aquí.
    */
-  const handleFanChange = useCallback(async (newFanValue: number) => {
+  const handleFanChange = useCallback((newFanValue: number) => {
     setFanValue(newFanValue)
     onOverrideChange(true)
     
-    // Calculate individual positions with fan spread
     const basePanNorm = pan / 540
     const baseTiltNorm = tilt / 270
     const spread = (newFanValue / 100) * 0.3
-    
-    // Send individual positions to each fixture
-    for (let i = 0; i < selectedIds.length; i++) {
-      const fixtureId = selectedIds[i]
+
+    const positions = selectedIds.map((id, i) => {
       const offsetIndex = i - (selectedIds.length - 1) / 2
       const offsetX = selectedIds.length > 1 
         ? offsetIndex * spread / (selectedIds.length - 1)
         : 0
-      
       const fixturePanNorm = Math.max(0, Math.min(1, basePanNorm + offsetX))
-      const fixturePan = Math.round(fixturePanNorm * 540)
-      const fixtureTilt = Math.round(baseTiltNorm * 270)
-      
-      try {
-        await window.lux?.arbiter?.setManual({
-          fixtureIds: [fixtureId],
-          controls: {
-            pan: Math.round((fixturePan / 540) * 255),
-            tilt: Math.round((fixtureTilt / 270) * 255),
-          },
-          channels: ['pan', 'tilt'],
-        })
-      } catch (err) {
-        console.error(`[Position] Fan error for ${fixtureId}:`, err)
+      return {
+        fixtureId: id,
+        pan: fixturePanNorm * 540,
+        tilt: baseTiltNorm * 270,
       }
-    }
-    
-    console.log(`[Position] 🌀 Fan spread: ${newFanValue}% for ${selectedIds.length} fixtures`)
+    })
+
+    useProgrammerStore.getState().setPositionPerFixture(positions)
   }, [pan, tilt, selectedIds, onOverrideChange])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -521,8 +478,6 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * 
    * 👻 WAVE 2042.21: GHOST HANDOFF
    * Antes de soltar, le decimos a la IA: "Tu nuevo Home es aquí"
-   * Así el fixture no salta a una posición random, sino que Selene
-   * empieza a modificarlo sutilmente desde donde el operador lo dejó.
    */
   const handleRelease = useCallback(async () => {
     // 1. UI state reset — 'none' so no button is highlighted
@@ -534,6 +489,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setPan(270)   // Center of 0-540° range
     setTilt(135)  // Center of 0-270° range
     
+    // WAVE 4529: Liberar posición vía programmerStore
+    useProgrammerStore.getState().releasePosition()
+
     // 🎯 WAVE 2613: Release spatial target if active
     if (isSpatialMode) {
       setSpatialReachability({})
@@ -545,20 +503,14 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     }
     
     try {
-      // Step 1: Destroy pattern in backend
+      // Destroy pattern in backend (patrones siguen vía legacy IPC)
       await window.lux?.arbiter?.setManualFixturePattern({
         fixtureIds: selectedIds,
         pattern: null,
         speed: 0,
         amplitude: 0,
       })
-      
-      // Step 2: Release ALL manual overrides - total amnesty
-      // Backend also purges activePatterns + fixtureOrigins (WAVE 2070.3)
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-      })
-      console.log(`[Position] 🔓 RELEASE: Pattern destroyed + overrides cleared + radar reset for ${selectedIds.length} fixtures`)
+      console.log(`[Position] 🔓 RELEASE: Pattern destroyed + position released for ${selectedIds.length} fixtures`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }

@@ -48,7 +48,9 @@ import {
   createFixtureGroup,
   DEFAULT_PHYSICS_PROFILES,
   normalizeZone,
-  validateShowFileDeep
+  validateShowFileDeep,
+  snapPosition,
+  clampToCrystalBox,
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
 
@@ -102,6 +104,7 @@ interface StageStoreState {
   
   /** Visual settings */
   visuals: StageVisuals | null
+
 }
 
 interface StageStoreActions {
@@ -306,7 +309,7 @@ export const useStageStore = create<StageStore>()(
     stage: null,
     visuals: null,
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
     // INTERNAL HELPERS
     // ═══════════════════════════════════════════════════════════════════════
     
@@ -331,11 +334,21 @@ export const useStageStore = create<StageStore>()(
           groups: [],
           scenes: [],
           stage: null,
-          visuals: null
+          visuals: null,
         })
         return
       }
-      
+
+      // 🧱 WAVE 4538: Snap migration — alinear posiciones al grid de 0.25m
+      for (const fixture of showFile.fixtures) {
+        fixture.position = snapPosition(fixture.position)
+      }
+
+      // 🧱 WAVE 4538: Forzar gridSize a 0.25 (backward compat con shows antiguos)
+      if (showFile.stage && showFile.stage.gridSize !== 0.25) {
+        showFile.stage.gridSize = 0.25
+      }
+
       // 🔥 WAVE 1042.2: Create NEW array reference for Zustand shallow comparison
       // Without this, React components with shallow selectors won't re-render
       set({
@@ -343,7 +356,7 @@ export const useStageStore = create<StageStore>()(
         groups: showFile.groups,
         scenes: showFile.scenes,
         stage: showFile.stage,
-        visuals: showFile.visuals
+        visuals: showFile.visuals,
       })
     },
     
@@ -598,7 +611,10 @@ export const useStageStore = create<StageStore>()(
     },
     
     updateFixturePosition: (id, position) => {
-      get().updateFixture(id, { position })
+      const { stage } = get()
+      // 🧱 WAVE 4538: Snap + clamp al Crystal Box antes de persistir
+      const snapped = stage ? clampToCrystalBox(position, stage) : snapPosition(position)
+      get().updateFixture(id, { position: snapped })
     },
     
     updateFixtureRotation: (id, rotation) => {
@@ -866,6 +882,7 @@ export const useStageStore = create<StageStore>()(
       get()._syncDerivedState()
       get()._setDirty()
     },
+    
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔒 WAVE 2100: FILE LOCK ACTIONS

@@ -16,6 +16,7 @@
 import React, { useCallback, useState, useMemo } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
+import { useProgrammerStore } from '../../../stores/programmerStore'
 import { BeamIcon } from '../../icons/LuxIcons'
 
 export interface BeamSectionProps {
@@ -73,95 +74,75 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   // HANDLERS - Connect to Arbiter
   // ═══════════════════════════════════════════════════════════════════════
   
-  /**
-   * Send beam values to Arbiter
-   */
-  const sendBeamValues = useCallback(async (values: Record<string, number>, channels: string[]) => {
-    onOverrideChange(true)
-    
-    try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: values,
-        channels,
-      })
-    } catch (err) {
-      console.error('[Beam] Error:', err)
-    }
-  }, [selectedIds, onOverrideChange])
-  
+  // ─── WAVE 4529: Beam handlers → programmerStore ─────────────────────────
+
   /**
    * Gobo change (stepped wheel)
    */
-  const handleGoboChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGoboChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     setGobo(value)
-    await sendBeamValues({ gobo: value }, ['gobo'])
-    console.log(`[Beam] 🎭 Gobo → ${value}`)
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('gobo', value)
+  }, [onOverrideChange])
   
   /**
    * Gobo step click (direct selection)
    */
-  const handleGoboStep = useCallback(async (stepValue: number) => {
+  const handleGoboStep = useCallback((stepValue: number) => {
     setGobo(stepValue)
-    await sendBeamValues({ gobo: stepValue }, ['gobo'])
-    console.log(`[Beam] 🎭 Gobo step → ${stepValue}`)
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('gobo', stepValue)
+  }, [onOverrideChange])
   
   /**
    * Prism direct control (0=off, 122-255=active+speed)
    */
-  const handlePrismChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePrismChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     setPrismValue(value)
-    await sendBeamValues({ prism: value }, ['prism'])
-    console.log(`[Beam] 💎 Prism → ${value} ${value === 0 ? '(OFF)' : value < 122 ? '(pattern)' : '(active+speed)'}`)
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('prism', value)
+  }, [onOverrideChange])
   
   /**
    * Focus change
    */
-  const handleFocusChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFocusChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     setFocus(value)
-    await sendBeamValues({ focus: value }, ['focus'])
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('focus', value)
+  }, [onOverrideChange])
   
   /**
    * Zoom change
    */
-  const handleZoomChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     setZoom(value)
-    await sendBeamValues({ zoom: value }, ['zoom'])
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('zoom', value)
+  }, [onOverrideChange])
   
   /**
    * Iris change
    */
-  const handleIrisChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIrisChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     setIris(value)
-    await sendBeamValues({ iris: value }, ['iris'])
-  }, [sendBeamValues])
+    onOverrideChange(true)
+    useProgrammerStore.getState().setBeam('iris', value)
+  }, [onOverrideChange])
   
   /**
    * Release all beam controls back to AI
+   * WAVE 4529: Vía programmerStore.
    */
-  const handleRelease = useCallback(async () => {
+  const handleRelease = useCallback(() => {
     onOverrideChange(false)
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-        channels: ['gobo', 'prism', 'focus', 'zoom', 'iris'],
-      })
-      console.log(`[Beam] 🔓 Released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Beam] Release error:', err)
-    }
-  }, [selectedIds, onOverrideChange])
+    useProgrammerStore.getState().releaseBeam()
+  }, [onOverrideChange])
   
   // Find closest gobo step for display
   const currentGoboStep = GOBO_STEPS.reduce((prev, curr) => 

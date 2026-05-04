@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎛️ CHRONOS LIVE RACK — WAVE 2046.2: EL INJERTO
  * 
- * Contenedor adaptador que aloja TheProgrammerContent dentro de Chronos.
+ * Contenedor adaptador que aloja TheProgrammer dentro de Chronos.
  * 
  * PROBLEMA: TheProgrammer vive en StageSidebar con dimensiones fijas
  * (min/max-width: 450px, height: 100%, border-left). Chronos tiene un
@@ -23,7 +23,7 @@
  */
 
 import React, { useState, useCallback, memo } from 'react'
-import { TheProgrammerContent } from '../../../components/hyperion/controls/TheProgrammerContent'
+import { TheProgrammer } from '../../../components/hyperion/controls/TheProgrammer'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import './ChronosLiveRack.css'
 
@@ -100,7 +100,7 @@ export const ChronosLiveRack: React.FC<ChronosLiveRackProps> = memo(({
 
       {/* PROGRAMMER CONTENT — scoped override via parent class */}
       <div className="rack-body">
-        <TheProgrammerContent />
+        <TheProgrammer />
       </div>
     </div>
   )

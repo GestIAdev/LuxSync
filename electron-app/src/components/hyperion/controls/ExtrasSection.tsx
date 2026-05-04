@@ -21,6 +21,7 @@ import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useLibraryStore } from '../../../stores/libraryStore'
+import { useProgrammerStore } from '../../../stores/programmerStore'
 import { ControlsIcon } from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -365,9 +366,9 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   // ═══════════════════════════════════════════════════════════════════
   
   /**
-   * Send a phantom channel value to Arbiter
+   * Send a phantom channel value to the store (WAVE 4529)
    */
-  const handleChannelChange = useCallback(async (channelIndex: number, value: number, channelType: string, channelLabel: string) => {
+  const handleChannelChange = useCallback((channelIndex: number, value: number, channelType: string, channelLabel: string) => {
     // WAVE 3502: Mark this channel as operator-programmed so hydration resets don't clobber it
     operatorSetRef.current.add(channelIndex)
     
@@ -380,49 +381,22 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
     onOverrideChange(true)
     
     // WAVE 3503: For 'custom'/'unknown' channels, key by NAME not by type.
-    // Multiple custom channels share the same type string — sending controls[type]
-    // collapses all 20 channels into one key. The Arbiter phantom lookup (PATH 1)
-    // already uses channel.name as the key, so we match that here.
     const isNameKeyed = channelType === 'custom' || channelType === 'unknown'
-    const controlsPayload = isNameKeyed
-      ? { phantomChannels: { [channelLabel]: value } }
-      : { [channelType]: value }
-    const channelsPayload = isNameKeyed ? [channelLabel] : [channelType]
+    const channelKey = isNameKeyed ? channelLabel : channelType
     
-    try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: controlsPayload,
-        channels: channelsPayload,
-        source: 'ui_programmer_extras',
-      })
-    } catch (err) {
-      console.error('[Extras] Channel send error:', err)
-    }
-  }, [selectedIds, onOverrideChange])
+    useProgrammerStore.getState().setExtra(channelKey, value)
+  }, [onOverrideChange])
   
   /**
    * Release all phantom channels back to AI
+   * WAVE 4529: Vía programmerStore.
    */
-  const handleRelease = useCallback(async () => {
+  const handleRelease = useCallback(() => {
     // WAVE 3502: On explicit release, clear the operator set so defaults can take over
     operatorSetRef.current.clear()
     onOverrideChange(false)
-    
-    const channelKeys = phantomChannels.map(ch =>
-      (ch.type === 'custom' || ch.type === 'unknown') ? ch.label : ch.type
-    )
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-        channels: channelKeys,
-      })
-      console.log(`[Extras] 🔓 Phantom channels released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Extras] Release error:', err)
-    }
-  }, [selectedIds, phantomChannels, onOverrideChange])
+    useProgrammerStore.getState().releaseExtras()
+  }, [onOverrideChange])
   
   // ═══════════════════════════════════════════════════════════════════
   // FORMAT HELPERS

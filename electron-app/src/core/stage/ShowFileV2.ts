@@ -20,6 +20,74 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🏗️ WAVE 4527: HEIGHT LAYERS (DEPRECATED — WAVE 4538)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated WAVE 4538: Voxel paradigm replaces height layers.
+ * Kept for backward compatibility with show files created before WAVE 4538.
+ * The runtime ignores this — fixture.position.y is the single source of truth.
+ */
+export interface HeightLayer {
+  /** Unique identifier (e.g., 'floor', 'truss-low') */
+  id: string
+  /** Display name */
+  name: string
+  /** Height in meters above the stage floor */
+  height: number
+  /** Color for visualization (hex) */
+  color: string
+  /** Whether this layer is the default active layer for new fixtures */
+  isDefault: boolean
+}
+
+/**
+ * @deprecated WAVE 4538: Voxel paradigm replaces height layers.
+ * Kept for backward compatibility — not used in runtime.
+ */
+export const DEFAULT_HEIGHT_LAYERS: HeightLayer[] = [
+  { id: 'floor',      name: 'Floor',       height: 0, color: '#22c55e', isDefault: false },
+  { id: 'truss-low',  name: 'Truss Low',   height: 3, color: '#eab308', isDefault: false },
+  { id: 'truss-high', name: 'Truss High',  height: 5, color: '#ef4444', isDefault: true  },
+  { id: 'ceiling',    name: 'Ceiling',     height: 8, color: '#a855f7', isDefault: false },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧱 WAVE 4538: VOXEL UTILS — Minecraft Paradigm
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Unidad mínima de posicionamiento: 0.25m³. Toda coordenada es múltiplo de esto. */
+export const VOXEL_SIZE = 0.25
+
+/** Redondea un valor al voxel más cercano (múltiplo de 0.25) */
+export function snapToVoxel(value: number): number {
+  return Math.round(value / VOXEL_SIZE) * VOXEL_SIZE
+}
+
+/** Aplica snapToVoxel a las 3 coordenadas. Fuerza Y >= 0 (no hay subsuelo). */
+export function snapPosition(pos: Position3D): Position3D {
+  return {
+    x: snapToVoxel(pos.x),
+    y: Math.max(0, snapToVoxel(pos.y)),
+    z: snapToVoxel(pos.z),
+  }
+}
+
+/** Clampea una posición dentro del Crystal Box (los límites de la sala) */
+export function clampToCrystalBox(
+  pos: Position3D,
+  stage: StageDimensions
+): Position3D {
+  const halfW = stage.width / 2
+  const halfD = stage.depth / 2
+  return {
+    x: Math.max(-halfW, Math.min(halfW, snapToVoxel(pos.x))),
+    y: Math.max(0, Math.min(stage.height, snapToVoxel(pos.y))),
+    z: Math.max(-halfD, Math.min(halfD, snapToVoxel(pos.z))),
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TYPES: PHYSICS & SAFETY
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -596,6 +664,9 @@ export interface FixtureV2 {
   /** Zone for grouping and routing */
   zone: FixtureZone
   
+  /** 🏗️ WAVE 4527: Height layer assignment */
+  layerId?: string
+  
   // ═══════════════════════════════════════════════════════════════════════
   // METADATA
   // ═══════════════════════════════════════════════════════════════════════
@@ -902,7 +973,7 @@ export interface ShowFileV2 {
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Schema version for migration (2.0.0 = initial V2, 2.1.0+ = incremental patches) */
-  schemaVersion: '2.0.0' | '2.1.0'
+  schemaVersion: '2.0.0' | '2.1.0' | '2.2.0'
   
   /** Show name */
   name: string
@@ -928,6 +999,9 @@ export interface ShowFileV2 {
   
   /** Visualization settings */
   visuals: StageVisuals
+  
+  /** 🏗️ WAVE 4527: Height layers for 2.5D stage constructor */
+  heightLayers?: HeightLayer[]
   
   // ═══════════════════════════════════════════════════════════════════════
   // FIXTURES
@@ -988,8 +1062,8 @@ export function createEmptyShowFile(name: string = 'New Show'): ShowFileV2 {
     stage: {
       width: 12,
       depth: 8,
-      height: 5,
-      gridSize: 0.5
+      height: 6,
+      gridSize: 0.25
     },
     
     visuals: {

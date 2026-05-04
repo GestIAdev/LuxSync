@@ -518,13 +518,6 @@ declare global {
       /** Set Grand Master intensity (0-1) */
       setGrandMaster: (value: number) => Promise<void>
 
-      /** 🔒 WAVE 3270: Set per-fixture inhibit limit (proportional ceiling) */
-      setInhibitLimit: (fixtureIds: string[], value: number) => Promise<{ success: boolean; value?: number }>
-      /** 🔒 WAVE 3270: Clear per-fixture inhibit limits */
-      clearInhibitLimit: (fixtureIds: string[]) => Promise<{ success: boolean }>
-      /** 🔒 WAVE 3270: Get all active inhibit limits */
-      getInhibitLimits: () => Promise<{ inhibitLimits: Record<string, number> }>
-      
       /** 
        * 🎛️ WAVE 375.3: Set manual override for fixtures
        */
@@ -672,6 +665,69 @@ declare global {
           focus: number | null
         }
       }>
+    }
+
+    // ============================================
+    // ⚡ WAVE 4529: AETHER PROGRAMMER API (L2 NodeArbiter direct)
+    // ============================================
+    aether: {
+      /**
+       * Batch de overrides manuales → NodeArbiter L2.
+       * Valores en `channels` normalizados 0-1.
+       */
+      setManualOverrides: (payloads: Array<{
+        nodeId: string
+        channels: Record<string, number>
+      }>) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * Limpia overrides de los nodeIds especificados.
+       */
+      clearManualOverrides: (nodeIds: string[]) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * UNLOCK ALL — limpia todo el L2 del NodeArbiter.
+       */
+      clearAllManualOverrides: () => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4531: Inhibit limit — cap post-arbitraje sobre canal dimmer.
+       * @param nodeIds  Array de nodeIds Aether (ej: ['fix-01:impact'])
+       * @param limit    Cap 0-1. 1.0 = sin límite. 0.0 = oscuro total.
+       */
+      setInhibitLimit: (nodeIds: string[], limit: number) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
+       */
+      clearInhibitLimit: (nodeIds: string[]) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
+       * Stub hacia MasterArbiter legacy.
+       */
+      setManualPattern: (args: {
+        fixtureIds: string[]
+        pattern: string | null
+        speed: number
+        amplitude: number
+      }) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * E12 WAVE 4531: Apply spatial IK target para fixtures.
+       * Stub hacia MasterArbiter legacy.
+       */
+      applySpatialTarget: (args: {
+        target: { x: number; y: number; z: number }
+        fixtureIds: string[]
+        fanMode?: 'converge' | 'line' | 'circle'
+        fanAmplitude?: number
+      }) => Promise<{ success: boolean; results?: Record<string, unknown>; error?: string }>
+
+      /**
+       * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.
+       */
+      releaseSpatialTarget: (args: { fixtureIds: string[] }) => Promise<{ success: boolean; error?: string }>
     }
     
     // ============================================

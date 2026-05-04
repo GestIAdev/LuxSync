@@ -61,6 +61,14 @@ export class NodeArbiter implements INodeArbiter {
   /** Manual overrides (L2): nodeId → { channel: value } */
   private readonly _manualOverrides = new Map<NodeId, Readonly<Record<string, number>>>()
 
+  /**
+   * Inhibit limits (L2.5 — post-arbitraje, pre-retorno):
+   * nodeId → cap 0-1 aplicado al canal `dimmer` del nodo.
+   * Semánticamente: Grand Master per-fixture. No afecta L4 (blackout).
+   * WAVE 4531: Opción B — el cap vive aquí, no en el bridge ni en el store.
+   */
+  private readonly _inhibitLimits = new Map<NodeId, number>()
+
   /** Effect intents (L3) */
   private _effectIntents: readonly INodeIntent[] = []
 
@@ -213,6 +221,20 @@ export class NodeArbiter implements INodeArbiter {
       }
     }
 
+    // 4. WAVE 4531: Aplicar inhibit limits (L2.5, post-arbitraje).
+    // Cap sobre el canal 'dimmer' del nodo registrado.
+    // Se aplica DESPUÉS del Grand Master, ANTES de retornar.
+    // L4 (blackout) ya colapsa todo antes de llegar aquí — irrelevante.
+    if (this._inhibitLimits.size > 0) {
+      for (const [nodeId, limit] of this._inhibitLimits) {
+        const record = this._result.get(nodeId)
+        if (record && 'dimmer' in record) {
+          const capped = record['dimmer'] * limit
+          record['dimmer'] = capped < 0 ? 0 : capped > 1 ? 1 : capped
+        }
+      }
+    }
+
     return this._result as ArbitratedNodeMap
   }
 
@@ -248,6 +270,52 @@ export class NodeArbiter implements INodeArbiter {
         record[channel] = incoming
       }
     }
+  }
+
+  /**
+   * WAVE 4529: Limpia TODOS los overrides manuales (L2) de golpe.
+   * Equivalente semántico a "UNLOCK ALL" global.
+   * Usado por AetherIPCHandlers cuando el Programmer libera todos los fixtures.
+   */
+  clearAllManualOverrides(): void {
+    this._manualOverrides.clear()
+  }
+
+  /**
+   * WAVE 4529: Lista los nodeIds que tienen overrides manuales activos.
+   * Útil para debug/telemetría.
+   */
+  getManualOverrideNodeIds(): readonly string[] {
+    return [...this._manualOverrides.keys()]
+  }
+
+  // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────
+
+  /**
+   * WAVE 4531: Registra un inhibit limit (cap 0-1) sobre el canal `dimmer`
+   * del nodo indicado. El cap se aplica post-arbitraje, antes de retornar
+   * el resultado — sin alterar ninguna capa. L4 (blackout) sigue ganando.
+   *
+   * @param nodeId  NodeId en formato Aether (ej: 'fix-01:impact')
+   * @param limit   Valor 0-1. 1.0 = sin límite. 0.0 = oscuro total.
+   */
+  setInhibitLimit(nodeId: NodeId, limit: number): void {
+    const clamped = limit < 0 ? 0 : limit > 1 ? 1 : limit
+    this._inhibitLimits.set(nodeId, clamped)
+  }
+
+  /**
+   * WAVE 4531: Elimina el inhibit limit de un nodo concreto.
+   */
+  clearInhibitLimit(nodeId: NodeId): void {
+    this._inhibitLimits.delete(nodeId)
+  }
+
+  /**
+   * WAVE 4531: Elimina TODOS los inhibit limits.
+   */
+  clearAllInhibitLimits(): void {
+    this._inhibitLimits.clear()
   }
 
   /**

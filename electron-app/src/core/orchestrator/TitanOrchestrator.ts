@@ -373,6 +373,14 @@ export class TitanOrchestrator {
   }
 
   /**
+   * WAVE 4529: Expone el NodeArbiter interno para que AetherIPCHandlers
+   * pueda inyectar overrides manuales L2 desde el Programmer UI.
+   */
+  public getAetherArbiter(): NodeArbiter {
+    return this._aetherArbiter
+  }
+
+  /**
    * Retira un dispositivo del Motor Agnostico Aether.
    *
    * @param deviceId — ID del dispositivo a retirar

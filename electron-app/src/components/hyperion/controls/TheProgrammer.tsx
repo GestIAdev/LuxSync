@@ -7,12 +7,15 @@
  * - CONTROLS: Intensity, Color, Position, Beam (Accordion)
  * - GROUPS: System + User groups con auto-switch
  * 
- * Conecta directamente al MasterArbiter via window.lux.arbiter
+ * WAVE 4529: Migrado a Aether L2 via programmerStore + ProgrammerAetherBridge.
+ * Los handlers ahora son síncronos — el bridge vuelca a 44Hz.
  */
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
+import { useProgrammerStore } from '../../../stores/programmerStore'
+import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
@@ -45,19 +48,43 @@ export const TheProgrammer: React.FC = () => {
   // Hardware info
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
+  // WAVE 4529: Store centralizado
+  const {
+    setDimmer, releaseDimmer,
+    setStrobe, releaseStrobe,
+    setLimit, releaseLimit,
+    setColor, releaseColor,
+    releaseAll,
+    syncSelection,
+    displayDimmer: currentDimmer,
+    displayStrobe: currentStrobe,
+    displayLimit: currentLimit,
+    displayColor: currentColor,
+    fixtureOverrides,
+  } = useProgrammerStore()
+
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
   
-  // Track which channels have manual overrides
-  const [overrideState, setOverrideState] = useState<OverrideState>({
-    dimmer: false,
-    strobe: false,
-    color: false,
-    position: false,
-    beam: false,
-    extras: false,
-  })
-  
+  // Track which channels have manual overrides (derivado del store)
+  const overrideState: OverrideState = useMemo(() => {
+    if (selectedIds.length === 0) {
+      return { dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false }
+    }
+    // Basta con que al menos un fixture activo tenga override en la familia
+    let dimmer = false, strobe = false, color = false, position = false, beam = false, extras = false
+    for (const id of selectedIds) {
+      const ov = fixtureOverrides.get(id)
+      if (!ov) continue
+      if (ov.dimmer !== null || ov.strobe !== null) dimmer = strobe = true
+      if (ov.red !== null || ov.green !== null || ov.blue !== null) color = true
+      if (ov.pan !== null || ov.tilt !== null) position = true
+      if (ov.gobo !== null || ov.prism !== null || ov.focus !== null || ov.zoom !== null || ov.iris !== null) beam = true
+      if (ov.extras.size > 0) extras = true
+    }
+    return { dimmer, strobe, color, position, beam, extras }
+  }, [selectedIds, fixtureOverrides])
+
   // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
   const [activeSection, setActiveSection] = useState<string>('intensity')
   
@@ -71,13 +98,6 @@ export const TheProgrammer: React.FC = () => {
     setActiveTab('controls')
   }, [])
   
-  // Current values (for display)
-  const [currentDimmer, setCurrentDimmer] = useState(100)
-  const [currentStrobe, setCurrentStrobe] = useState(0)
-  const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
-  // 🔒 WAVE 3270: Inhibit limit
-  const [currentLimit, setCurrentLimit] = useState(100)
-  
   // Get fixture info
   const selectedFixtures = useMemo(() => {
     const fixtures = hardware?.fixtures || []
@@ -90,8 +110,6 @@ export const TheProgrammer: React.FC = () => {
   const hasColorFixtures = useMemo(() => {
     return selectedFixtures.some((f: any) => {
       const type = f?.type?.toLowerCase() || ''
-      // PARs, Washes, LEDs have color
-      // Moving heads, Spots, Beams also have color (CMY or RGB)
       return type.includes('rgb') || 
              type.includes('wash') || 
              type.includes('par') || 
@@ -101,203 +119,97 @@ export const TheProgrammer: React.FC = () => {
              type.includes('beam')
     })
   }, [selectedFixtures])
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // HANDLERS - Conectan al MasterArbiter
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  /**
-   * Set dimmer value for selected fixtures
-   */
-  const handleDimmerChange = useCallback(async (value: number) => {
-    if (selectedIds.length === 0) return
-    
-    setCurrentDimmer(value)
-    setOverrideState(prev => ({ ...prev, dimmer: true }))
-    
-    try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: { dimmer: Math.round(value * 2.55) }, // 0-100 -> 0-255
-        channels: ['dimmer'],
-        source: 'ui_programmer',
-      })
-      console.log(`[Programmer] 💡 Dimmer → ${value}% for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Dimmer error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * Release dimmer back to AI
-   */
-  const handleDimmerRelease = useCallback(async () => {
-    if (selectedIds.length === 0) return
-    
-    setOverrideState(prev => ({ ...prev, dimmer: false }))
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-        channels: ['dimmer'],
-      })
-      console.log(`[Programmer] 🔓 Dimmer released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Dimmer release error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * ⚡ WAVE 2494: Set strobe value for selected fixtures
-   */
-  const handleStrobeChange = useCallback(async (value: number) => {
-    if (selectedIds.length === 0) return
-    
-    setCurrentStrobe(value)
-    setOverrideState(prev => ({ ...prev, strobe: true }))
-    
-    try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: { strobe: Math.round(value * 2.55) }, // 0-100 -> 0-255
-        channels: ['strobe'],
-        source: 'ui_programmer',
-      })
-      console.log(`[Programmer] ⚡ Strobe → ${value}% for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Strobe error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * ⚡ WAVE 2494: Release strobe back to AI
-   */
-  const handleStrobeRelease = useCallback(async () => {
-    if (selectedIds.length === 0) return
-    
-    setCurrentStrobe(0)
-    setOverrideState(prev => ({ ...prev, strobe: false }))
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-        channels: ['strobe'],
-      })
-      console.log(`[Programmer] 🔓 Strobe released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Strobe release error:', err)
-    }
-  }, [selectedIds])
 
-  /**
-   * 🔒 WAVE 3270: Set inhibit limit for selected fixtures
-   */
-  const handleLimitChange = useCallback(async (value: number) => {
-    if (selectedIds.length === 0) return
-    setCurrentLimit(value)
-    try {
-      await window.lux?.arbiter?.setInhibitLimit(selectedIds, value / 100)
-    } catch (err) {
-      console.error('[Programmer] Limit error:', err)
-    }
-  }, [selectedIds])
-
-  /**
-   * 🔒 WAVE 3270: Release inhibit limit (restore full power)
-   */
-  const handleLimitRelease = useCallback(async () => {
-    if (selectedIds.length === 0) return
-    setCurrentLimit(100)
-    try {
-      await window.lux?.arbiter?.clearInhibitLimit(selectedIds)
-    } catch (err) {
-      console.error('[Programmer] Limit release error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * Set color for selected fixtures
-   */
-  const handleColorChange = useCallback(async (r: number, g: number, b: number) => {
-    if (selectedIds.length === 0) return
-    
-    setCurrentColor({ r, g, b })
-    setOverrideState(prev => ({ ...prev, color: true }))
-    
-    try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: { red: r, green: g, blue: b }, // ✅ Nombres completos que espera el Arbiter
-        channels: ['red', 'green', 'blue'],
-        source: 'ui_programmer',
-      })
-      console.log(`[Programmer] 🎨 Color → RGB(${r},${g},${b}) for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Color error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * Release color back to AI
-   */
-  const handleColorRelease = useCallback(async () => {
-    if (selectedIds.length === 0) return
-    
-    setOverrideState(prev => ({ ...prev, color: false }))
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-        channels: ['red', 'green', 'blue'],
-      })
-      console.log(`[Programmer] 🔓 Color released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Color release error:', err)
-    }
-  }, [selectedIds])
-  
-  /**
-   * UNLOCK ALL - Release all manual overrides for selection
-   */
-  const handleUnlockAll = useCallback(async () => {
-    if (selectedIds.length === 0) return
-    
-    setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
-    
-    try {
-      await window.lux?.arbiter?.clearManual({
-        fixtureIds: selectedIds,
-      })
-      console.log(`[Programmer] 🔓 All overrides released for ${selectedIds.length} fixtures`)
-    } catch (err) {
-      console.error('[Programmer] Unlock all error:', err)
-    }
-  }, [selectedIds])
-  
-  // Reset override state when selection changes
+  // ─── WAVE 4529: Iniciar el bridge una sola vez ───────────────────────────
   useEffect(() => {
-    setOverrideState({ dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false })
-  }, [selectedIds.length])
+    ProgrammerAetherBridge.start()
+    // El bridge es un singleton — no lo detenemos al desmontar este componente
+    // porque otros componentes (PositionSection, BeamSection, etc.) también lo usan
+  }, [])
+
+  // ─── WAVE 4529: Sincronizar selección con el store ───────────────────────
+  useEffect(() => {
+    syncSelection(selectedIds)
+  }, [selectedIds, syncSelection])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // HANDLERS — ahora síncronos, el bridge vuelca a 44Hz
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleDimmerChange = useCallback((value: number) => {
+    if (selectedIds.length === 0) return
+    setDimmer(value)
+  }, [selectedIds.length, setDimmer])
+  
+  const handleDimmerRelease = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseDimmer()
+  }, [selectedIds.length, releaseDimmer])
+  
+  const handleStrobeChange = useCallback((value: number) => {
+    if (selectedIds.length === 0) return
+    setStrobe(value)
+  }, [selectedIds.length, setStrobe])
+  
+  const handleStrobeRelease = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseStrobe()
+  }, [selectedIds.length, releaseStrobe])
+
+  const handleLimitChange = useCallback((value: number) => {
+    if (selectedIds.length === 0) return
+    // WAVE 4531: El store persiste el displayLimit para la UI.
+    // El NodeArbiter recibe el cap real vía IPC dedicado (Opción B).
+    setLimit(value)
+    const nodeIds = selectedIds.map(id => `${id}:impact`)
+    const limitNorm = Math.max(0, Math.min(100, value)) / 100
+    window.lux?.aether?.setInhibitLimit(nodeIds, limitNorm)
+  }, [selectedIds, setLimit])
+
+  const handleLimitRelease = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseLimit()
+    const nodeIds = selectedIds.map(id => `${id}:impact`)
+    window.lux?.aether?.clearInhibitLimit(nodeIds)
+  }, [selectedIds, releaseLimit])
+  
+  const handleColorChange = useCallback((r: number, g: number, b: number) => {
+    if (selectedIds.length === 0) return
+    setColor(r, g, b)
+  }, [selectedIds.length, setColor])
+  
+  const handleColorRelease = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseColor()
+  }, [selectedIds.length, releaseColor])
+  
+  const handleUnlockAll = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseAll()
+    // WAVE 4531: También limpiar inhibit limits del NodeArbiter
+    const nodeIds = selectedIds.map(id => `${id}:impact`)
+    window.lux?.aether?.clearInhibitLimit(nodeIds)
+  }, [selectedIds, releaseAll])
   
   /**
-   * Handler for position override changes
+   * Handler for position override changes (informativo — derivado del store)
    */
-  const handlePositionOverrideChange = useCallback((hasOverride: boolean) => {
-    setOverrideState(prev => ({ ...prev, position: hasOverride }))
+  const handlePositionOverrideChange = useCallback((_hasOverride: boolean) => {
+    // No-op: overrideState es derivado del store, no necesita setState externo
   }, [])
   
   /**
-   * Handler for beam override changes
+   * Handler for beam override changes (informativo)
    */
-  const handleBeamOverrideChange = useCallback((hasOverride: boolean) => {
-    setOverrideState(prev => ({ ...prev, beam: hasOverride }))
+  const handleBeamOverrideChange = useCallback((_hasOverride: boolean) => {
+    // No-op: overrideState es derivado del store
   }, [])
   
   /**
-   * Handler for extras (phantom channels) override changes
+   * Handler for extras (phantom channels) override changes (informativo)
    */
-  const handleExtrasOverrideChange = useCallback((hasOverride: boolean) => {
-    setOverrideState(prev => ({ ...prev, extras: hasOverride }))
+  const handleExtrasOverrideChange = useCallback((_hasOverride: boolean) => {
+    // No-op: overrideState es derivado del store
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════

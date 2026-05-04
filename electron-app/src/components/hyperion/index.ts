@@ -26,7 +26,7 @@ export * from './shared'
 // CONTROLS — PRESERVED (TheCommander)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { TheProgrammer, TheProgrammerContent, GroupsPanel } from './controls'
+export { TheProgrammer, GroupsPanel } from './controls'
 export { StageSidebar } from './controls/sidebar'
 export { SceneBrowser } from './controls/sidebar/SceneBrowser'
 

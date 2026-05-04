@@ -6,7 +6,7 @@
  * 
  * WAVE 432.5 Changes:
  * - 3 tabs unificadas (eliminada duplicación)
- * - CONTROLS: TheProgrammerContent SIN tabs internas
+ * - CONTROLS: TheProgrammer (componente unificado post-WAVE-4529)
  * - GROUPS: GroupsPanel con auto-switch
  * - SCENES: SceneBrowser
  * - Iconos custom LuxIcons
@@ -16,7 +16,7 @@
 import React, { useMemo, useState, useCallback } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
-import { TheProgrammerContent, GroupsPanel } from '../index'
+import { TheProgrammer, GroupsPanel } from '../index'
 import { SceneBrowser } from './SceneBrowser'
 import { ControlsIcon, GroupIcon, ScenesIcon } from '../../../icons/LuxIcons'
 import './StageSidebar.css'
@@ -99,7 +99,7 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
         {/* WAVE 2051: IMMORTALITY — Keep all tabs mounted, toggle visibility
             Scene player must stay alive when switching tabs (audio/clock persist) */}
         <div style={{ display: activeTab === 'controls' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-          <TheProgrammerContent />
+          <TheProgrammer />
         </div>
         <div style={{ display: activeTab === 'groups' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
           <GroupsPanel onSwitchToControls={handleSwitchToControls} />

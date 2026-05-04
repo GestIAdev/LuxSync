@@ -9,7 +9,6 @@
  */
 
 export { TheProgrammer, default } from './TheProgrammer'
-export { TheProgrammerContent } from './TheProgrammerContent'
 export { GroupsPanel } from './GroupsPanel'
 export { IntensitySection } from './IntensitySection'
 export { ColorSection } from './ColorSection'

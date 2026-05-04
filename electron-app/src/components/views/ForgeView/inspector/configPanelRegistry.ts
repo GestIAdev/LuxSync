@@ -28,6 +28,7 @@ import { LogicGateConfigPanel } from './panels/LogicGateConfigPanel'
 import { LogicThresholdConfigPanel } from './panels/LogicThresholdConfigPanel'
 import { LogicCounterConfigPanel } from './panels/LogicCounterConfigPanel'
 import { LogicSwitchConfigPanel } from './panels/LogicSwitchConfigPanel'
+import { CompoundIngenioConfigPanel } from './panels/CompoundIngenioConfigPanel'
 
 // ── Tipo del prop que todos los paneles de config aceptan ────────────────
 
@@ -57,11 +58,15 @@ export const CONFIG_PANEL_MAP: Partial<Record<ForgeNodeType, AnyConfigPanel>> = 
   proc_delay:         ProcDelayConfigPanel,
   proc_merge:         ProcMergeConfigPanel,
   proc_curve:         ProcCurveConfigPanel,
-  // ── LOGIC ───────────────────────────────────────────────────────────────  logic_gate:         LogicGateConfigPanel,  logic_threshold:    LogicThresholdConfigPanel,
+  // ── LOGIC ───────────────────────────────────────────────────────────────
+  logic_gate:         LogicGateConfigPanel,
+  logic_threshold:    LogicThresholdConfigPanel,
   logic_counter:      LogicCounterConfigPanel,
   logic_switch:       LogicSwitchConfigPanel,
   // ── OUTPUT ──────────────────────────────────────────────────────────────
   output_dmx:         OutputDmxConfigPanel,
+  // ── COMPOUND ────────────────────────────────────────────────────────────
+  compound_ingenio:   CompoundIngenioConfigPanel,
 }
 
 /**

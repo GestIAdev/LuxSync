@@ -120,3 +120,35 @@
   font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* Read-only summary blocks */
+.cp-readonly-note {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 2px solid rgba(0, 243, 255, 0.55);
+  border-radius: 5px;
+  padding: 8px;
+}
+
+.cp-summary-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+
+.cp-summary-value {
+  color: #00f3ff;
+  font-weight: 600;
+}

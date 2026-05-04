@@ -53,6 +53,7 @@ export const PackIngenioModal: React.FC<PackIngenioModalProps> = ({ onClose }) =
   const [name,     setName]     = useState('')
   const [author,   setAuthor]   = useState('User')
   const [category, setCategory] = useState<IngenioCategory>('utility')
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [tagsRaw,  setTagsRaw]  = useState('')
   const [status,   setStatus]   = useState<'idle' | 'saving' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -62,6 +63,8 @@ export const PackIngenioModal: React.FC<PackIngenioModalProps> = ({ onClose }) =
   const selectedEdges = (graph?.edges ?? []).filter(
     (e) => selectedIds.has(e.sourceNode) && selectedIds.has(e.targetNode)
   )
+  const selectedCategoryLabel =
+    CATEGORY_OPTIONS.find((opt) => opt.value === category)?.label ?? category
 
   const canSave = name.trim().length > 0 && selectedNodes.length > 0
 
@@ -168,15 +171,41 @@ export const PackIngenioModal: React.FC<PackIngenioModalProps> = ({ onClose }) =
           />
 
           <label className="pack-modal__label">Category</label>
-          <select
-            className="pack-modal__select"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as IngenioCategory)}
-          >
-            {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div className="pack-modal__select-wrap">
+            <button
+              type="button"
+              className="pack-modal__category-trigger"
+              aria-haspopup="listbox"
+              aria-expanded={isCategoryOpen}
+              onClick={() => setIsCategoryOpen((prev) => !prev)}
+            >
+              <span className="pack-modal__category-label">{selectedCategoryLabel}</span>
+              <span className="pack-modal__category-caret">▾</span>
+            </button>
+
+            {isCategoryOpen && (
+              <div className="pack-modal__category-list" role="listbox" aria-label="Category">
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="option"
+                    aria-selected={opt.value === category}
+                    className={[
+                      'pack-modal__category-item',
+                      opt.value === category ? 'pack-modal__category-item--active' : '',
+                    ].join(' ').trim()}
+                    onClick={() => {
+                      setCategory(opt.value)
+                      setIsCategoryOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <label className="pack-modal__label">Tags <span className="pack-modal__hint">(comma-separated)</span></label>
           <input

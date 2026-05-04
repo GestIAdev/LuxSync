@@ -29,6 +29,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
+  Panel,
+  SelectionMode,
   Background,
   BackgroundVariant,
   Controls,
@@ -211,6 +213,26 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
     [setSelection]
   )
 
+  // ── Ctrl/Cmd + A -> seleccionar todos los nodos del canvas ─────────────
+  useEffect(() => {
+    if (readOnly) return
+
+    const onGlobalKeyDown = (event: KeyboardEvent) => {
+      const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a'
+      if (!isSelectAll) return
+
+      event.preventDefault()
+      const allNodeIds = (forgeNodes ?? []).map((n) => n.id)
+
+      setRfNodes((prev) => prev.map((n) => ({ ...n, selected: true })))
+      setSelection(allNodeIds)
+      useForgeGraphStore.getState().inspectNode(allNodeIds[0] ?? null)
+    }
+
+    window.addEventListener('keydown', onGlobalKeyDown)
+    return () => window.removeEventListener('keydown', onGlobalKeyDown)
+  }, [forgeNodes, readOnly, setSelection])
+
   // ── DragOver — necesario para que onDrop funcione ───────────────────────
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -287,6 +309,10 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
         onEdgesDelete={onEdgesDelete}
         onSelectionChange={onSelectionChange}
         nodeTypes={FORGE_NODE_TYPE_MAP}
+        elementsSelectable={true}
+        selectionMode={SelectionMode.Partial}
+        selectionKeyCode="Shift"
+        multiSelectionKeyCode={['Control', 'Meta']}
         deleteKeyCode={['Delete', 'Backspace']}
         proOptions={{ hideAttribution: true }}
         fitView
@@ -313,6 +339,15 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
           maskColor="rgba(10,10,15,0.75)"
           style={{ bottom: 12, right: 12 }}
         />
+        <Panel position="bottom-center">
+          <div className="node-canvas__hints" role="note" aria-label="Canvas shortcuts">
+            <span className="node-canvas__hint-chip">Shift + Arrastrar: Lazo</span>
+            <span className="node-canvas__hint-sep">|</span>
+            <span className="node-canvas__hint-chip">Ctrl/Cmd + Clic: Multiple</span>
+            <span className="node-canvas__hint-sep">|</span>
+            <span className="node-canvas__hint-chip">Ctrl/Cmd + A: Todo</span>
+          </div>
+        </Panel>
       </ReactFlow>
     </div>
   )

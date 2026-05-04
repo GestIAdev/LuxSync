@@ -18,6 +18,9 @@ import { FORGE_PALETTE } from '../palette/forgePalette'
 import type { ForgeNodeCategory, ForgeNodeType } from '../../../../core/forge/types'
 import { UniversalAssetBrowser } from '../../../shared/AssetBrowser'
 import type { LibraryAsset } from '../../../../stores/assetAdapters'
+import { IngenioFactory } from '../../../../core/forge/ingenio/IngenioFactory'
+import type { IIngenioDefinition } from '../../../../core/forge/ingenio/types'
+import { useAssetLibraryStore } from '../../../../stores/assetLibraryStore'
 import './NodePalette.css'
 
 // ─── Colores por categoría (THE GLOW) ──────────────────────────────────────
@@ -46,6 +49,7 @@ type PaletteTab = 'primitives' | 'ingenios'
 
 const NodePalette: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PaletteTab>('primitives')
+  const ingestIngenios = useAssetLibraryStore((s) => s.ingestIngenios)
 
   // Categorías expandidas — input y process abiertas por defecto
   const [expanded, setExpanded] = useState<Set<ForgeNodeCategory>>(
@@ -79,6 +83,41 @@ const NodePalette: React.FC = () => {
     e.dataTransfer.setData('application/ingenio-name', asset.name)
     e.dataTransfer.effectAllowed = 'move'
   }, [])
+
+  const onIngenioClone = useCallback(async (asset: LibraryAsset) => {
+    if (asset.type !== 'ingenio') return
+
+    const source = asset._raw as IIngenioDefinition
+    const cloneName = `${source.name} copy`
+    const clone = IngenioFactory.fromSubGraph(
+      cloneName,
+      source.category,
+      source.subGraph,
+      source.exposedPorts,
+      source.portMapping,
+      {
+        author: source.author,
+        description: source.description,
+        tags: source.tags,
+        icon: source.icon,
+        accentColor: source.accentColor,
+      }
+    )
+
+    const saveResult = await window.lux.ingenio.saveUser(clone)
+    if (!saveResult.success) {
+      console.error('[NodePalette] Failed to clone ingenio:', saveResult.error)
+      return
+    }
+
+    const listResult = await window.lux.ingenio.listAll()
+    if (!listResult.success) {
+      console.error('[NodePalette] Failed to refresh ingenio list after clone')
+      return
+    }
+
+    ingestIngenios(listResult.systemIngenios ?? [], listResult.userIngenios ?? [])
+  }, [ingestIngenios])
 
   return (
     <div className="node-palette">
@@ -161,8 +200,9 @@ const NodePalette: React.FC = () => {
             assetTypes={['ingenio']}
             compact={true}
             maxHeight="100%"
-            defaultViewMode="list"
+            defaultViewMode="grid"
             onDragStart={onIngenioDragStart}
+            onClone={onIngenioClone}
           />
         </div>
       )}

@@ -78,3 +78,31 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
 }
+
+/* ── Shortcuts hint bar ────────────────────────────────────────────────── */
+.node-canvas__hints {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  background: rgba(8, 10, 18, 0.62);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(191, 90, 242, 0.08);
+}
+
+.node-canvas__hint-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(0, 243, 255, 0.86);
+  white-space: nowrap;
+}
+
+.node-canvas__hint-sep {
+  font-size: 10px;
+  color: rgba(191, 90, 242, 0.55);
+}

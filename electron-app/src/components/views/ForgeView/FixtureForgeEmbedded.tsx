@@ -52,7 +52,8 @@ import {
 import { FixturePreview3D } from '../../shared/PhysicsTuner/FixturePreview3D'
 import { PhysicsTuner } from '../../shared/PhysicsTuner/PhysicsTuner'
 import { WheelSmithEmbedded } from './WheelSmithEmbedded'
-import { LibraryTab } from './LibraryTab'
+import { UniversalAssetBrowser } from '../../shared/AssetBrowser'
+import type { LibraryAsset } from '../../../stores/assetAdapters'
 import { 
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
@@ -365,6 +366,13 @@ function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category.toUpperCase()] || ''
 }
 
+function deepClone<T>(value: T): T {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value)
+  }
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -387,6 +395,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   } = useLibraryStore(useShallow(selectFixtureForge))
   const { targetFixtureId, clearTargetFixture } = useNavigationStore(useShallow(selectFixtureForgeNav))
   const { reconcileFixturesWithProfile } = useStageStore()
+  const loadForgeGraph = useForgeGraphStore((s) => s.loadGraph)
+  const unloadForgeGraph = useForgeGraphStore((s) => s.unloadGraph)
+  const forgeGraphDirty = useForgeGraphStore((s) => s.isDirty)
   
   // ═══════════════════════════════════════════════════════════════════════
   // STATE
@@ -400,6 +411,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
   // WAVE 4548.8c: read the current forge graph to gate Simple Mode
   const forgeGraph = useForgeGraphStore(s => s.graph)
+  const simpleModeCompatible = isSimpleCompatible(forgeGraph)
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
   const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
   
@@ -424,6 +436,25 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [isFormValid, setIsFormValid] = useState(false)
   const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  const createBlankForgeGraph = useCallback((dmxFootprint: number) => {
+    return NodeGraphBuilder.fromChannels([], {
+      autoMigrated: false,
+      dmxFootprint,
+    })
+  }, [])
+
+  const hydrateForgeGraph = useCallback((def: FixtureDefinition) => {
+    const fixtureWithGraph = def as FixtureDefinition & {
+      nodeGraph?: ReturnType<typeof NodeGraphBuilder.fromChannels>
+    }
+
+    const graph = fixtureWithGraph.nodeGraph
+      ? deepClone(fixtureWithGraph.nodeGraph)
+      : createBlankForgeGraph(def.channels?.length ?? 0)
+
+    loadForgeGraph(graph, def.id || 'unsaved-fixture', !fixtureWithGraph.nodeGraph)
+  }, [createBlankForgeGraph, loadForgeGraph])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 1112: Load fixture from navigation target
@@ -450,12 +481,52 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
   }, [targetFixtureId])
 
+  useEffect(() => {
+    return () => {
+      unloadForgeGraph()
+    }
+  }, [unloadForgeGraph])
+
+  // WAVE 4548.8d: Mode toggle controls real tab routing
+  const handleForgeModeChange = useCallback((mode: ForgeEditMode) => {
+    if (mode === 'advanced') {
+      setForgeEditMode('advanced')
+      setActiveTab('nodegraph')
+      return
+    }
+
+    if (simpleModeCompatible) {
+      setForgeEditMode('simple')
+      setActiveTab('channels')
+      return
+    }
+
+    // Si el grafo no es compatible con SIMPLE, mantener ADVANCED
+    setForgeEditMode('advanced')
+    setActiveTab('nodegraph')
+  }, [simpleModeCompatible])
+
+  // WAVE 4548.8d: Reverse sync when user clicks tabs directly
+  const handleTabClick = useCallback((tabId: ForgeTabId) => {
+    setActiveTab(tabId)
+
+    if (tabId === 'nodegraph') {
+      setForgeEditMode('advanced')
+      return
+    }
+
+    if (tabId === 'channels' && simpleModeCompatible) {
+      setForgeEditMode('simple')
+    }
+  }, [simpleModeCompatible])
+
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 1112: Load fixture into editor
   // ═══════════════════════════════════════════════════════════════════════
   
   const loadFixtureIntoEditor = useCallback((def: FixtureDefinition) => {
     setFixture(def)
+    hydrateForgeGraph(def)
     setTotalChannels(def.channels.length)
     
     // Load color engine from capabilities
@@ -505,7 +576,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 },
       })
     }
-  }, [])
+  }, [hydrateForgeGraph])
 
   // ═══════════════════════════════════════════════════════════════════════
   // VALIDATION
@@ -613,11 +684,24 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
    * Build the complete FixtureDefinition with wheels included
    */
   const buildCompleteFixture = useCallback((): FixtureDefinition => {
+    const fixtureWithGraph = fixture as FixtureDefinition & {
+      nodeGraph?: typeof forgeGraph
+    }
+    const hasPersistedNodeGraph = !!fixtureWithGraph.nodeGraph
+    const hasGraphTopology = !!forgeGraph && (forgeGraph.nodes.length > 0 || forgeGraph.edges.length > 0)
+    const shouldPersistNodeGraph = hasPersistedNodeGraph || forgeGraphDirty || hasGraphTopology
+
+    // WAVE 4548.8e: Snapshot deep-cloned graph to preserve config fidelity
+    const graphSnapshot = shouldPersistNodeGraph && forgeGraph
+      ? deepClone(forgeGraph)
+      : (hasPersistedNodeGraph ? deepClone(fixtureWithGraph.nodeGraph) : undefined)
+
     // WAVE 4548.3: Sync channels[] from nodeGraph before building
-    const syncedChannels = (fixture as any).nodeGraph
-      ? NodeGraphBuilder.toChannels((fixture as any).nodeGraph)
+    const syncedChannels = shouldPersistNodeGraph && graphSnapshot
+      ? NodeGraphBuilder.toChannels(graphSnapshot)
       : fixture.channels
-    return {
+
+    const builtFixture = {
       ...fixture,
       channels: syncedChannels,
       // WAVE 1116.4: Include PHYSICS at root level for JSON export!
@@ -655,13 +739,19 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         hasStrobe: syncedChannels.some(ch => ch.type === 'strobe'),
         hasDimmer: syncedChannels.some(ch => ch.type === 'dimmer'),
       },
+    } as FixtureDefinition & { nodeGraph?: unknown }
+
+    if (shouldPersistNodeGraph && graphSnapshot) {
+      builtFixture.nodeGraph = graphSnapshot
     }
-  }, [fixture, physics, wheelColors, colorEngine])
+
+    return builtFixture
+  }, [fixture, physics, wheelColors, colorEngine, wheelMinChangeTimeMs, forgeGraph, forgeGraphDirty])
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
-    const completeFixture = buildCompleteFixture()
+    const completeFixture = deepClone(buildCompleteFixture())
     
     // 🔥 WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
     // When system→user clone happens, fixtures in the show still point to the old system ID.
@@ -743,7 +833,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile])
 
   const handleExportJSON = useCallback(() => {
-    const completeFixture = buildCompleteFixture()
+    const completeFixture = deepClone(buildCompleteFixture())
     const blob = new Blob([JSON.stringify(completeFixture, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -765,7 +855,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   }, [loadFixtureIntoEditor, isSystemFixture])
   
   const handleNewFromScratch = useCallback(() => {
-    setFixture(FixtureFactory.createEmpty())
+    const emptyFixture = FixtureFactory.createEmpty()
+    setFixture(emptyFixture)
+    hydrateForgeGraph(emptyFixture)
     setTotalChannels(8)
     setWheelColors([])
     setColorEngine('rgb')
@@ -773,7 +865,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     setEditingSource('new')
     setOriginalFixtureId(null)
     setActiveTab('general')
-  }, [])
+  }, [hydrateForgeGraph])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER
@@ -830,7 +922,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           <button
             key={tab.id}
             className={`forge-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
           >
             {tab.icon}
             <span>{tab.label}</span>
@@ -841,11 +933,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           <ForgeModeSwitcher
             mode={forgeEditMode}
             graph={forgeGraph}
-            onModeChange={setForgeEditMode}
-            onJumpToCanvas={() => {
-              setForgeEditMode('advanced')
-              setActiveTab('nodegraph')
-            }}
+            onModeChange={handleForgeModeChange}
           />
         )}
       </nav>
@@ -855,12 +943,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="forge-main-content embedded">
         
-        {/* LIBRARY TAB - WAVE 1112 */}
+        {/* LIBRARY TAB — WAVE 4549.2: Universal Asset Browser */}
         {activeTab === 'library' && (
-          <LibraryTab
-            onSelectFixture={handleSelectFromLibrary}
-            onNewFromScratch={handleNewFromScratch}
-            selectedFixtureId={originalFixtureId}
+          <UniversalAssetBrowser
+            assetTypes={['fixture']}
+            onSelect={(asset: LibraryAsset) => {
+              handleSelectFromLibrary(asset._raw as import('../../../types/FixtureDefinition').FixtureDefinition)
+            }}
+            selectedAssetId={originalFixtureId ?? null}
+            maxHeight="100%"
           />
         )}
         

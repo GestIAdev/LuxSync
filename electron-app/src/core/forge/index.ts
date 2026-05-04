@@ -64,3 +64,15 @@ export { DEFAULT_FORGE_FRAME_CONTEXT } from './compiler/types'
 export { ForgeNodeEvaluator } from './evaluator/ForgeNodeEvaluator'
 export { OPCODE_TABLE } from './evaluator/opcodes'
 export type { OpcodeFn } from './evaluator/opcodes'
+
+// ── Ingenio Ecosystem (WAVE 4549.1) ─────────────────────────────────────
+export { IngenioFactory } from './ingenio/IngenioFactory'
+export type {
+  IngenioId,
+  IngenioSchemaVersion,
+  IngenioCategory,
+  IExposedPort,
+  IIngenioPortMapping,
+  IIngenioMeta,
+  IIngenioDefinition,
+} from './ingenio/types'

@@ -12,6 +12,7 @@
 
 import type React from 'react'
 import type { ForgeNodeType, IForgeNodeConfig } from '../../../../core/forge/types'
+import { InputDmxConfigPanel } from './panels/InputDmxConfigPanel'
 import { LfoConfigPanel } from './panels/LfoConfigPanel'
 import { MathConfigPanel } from './panels/MathConfigPanel'
 import { OutputDmxConfigPanel } from './panels/OutputDmxConfigPanel'
@@ -33,6 +34,7 @@ type AnyConfigPanel = React.FC<ConfigPanelProps<any>>
 // ── Registry ────────────────────────────────────────────────────────────
 
 export const CONFIG_PANEL_MAP: Partial<Record<ForgeNodeType, AnyConfigPanel>> = {
+  input_dmx:        InputDmxConfigPanel,
   proc_lfo:         LfoConfigPanel,
   proc_smooth:      SmoothConfigPanel,
   proc_math:        MathConfigPanel,
@@ -44,5 +46,9 @@ export const CONFIG_PANEL_MAP: Partial<Record<ForgeNodeType, AnyConfigPanel>> = 
  * Devuelve el panel de configuración para un ForgeNodeType, o null si no hay.
  */
 export function getConfigPanel(type: ForgeNodeType): AnyConfigPanel | null {
-  return CONFIG_PANEL_MAP[type] ?? null
+  const panel = CONFIG_PANEL_MAP[type] ?? null
+  if (!panel) {
+    console.warn(`[NodeInspector] No dedicated config panel registered for node type: ${type}`)
+  }
+  return panel
 }

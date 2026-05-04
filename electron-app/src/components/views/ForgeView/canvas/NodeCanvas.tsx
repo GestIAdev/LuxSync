@@ -107,7 +107,6 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
   const removeNodeFromStore = useForgeGraphStore((s) => s.removeNode)
   const removeEdgeFromStore = useForgeGraphStore((s) => s.removeEdge)
   const setSelection = useForgeGraphStore((s) => s.setSelection)
-  const inspectNode = useForgeGraphStore((s) => s.inspectNode)
 
   // ── Local XYFlow state (DERIVADO del store) ──────────────────────────────
   const [rfNodes, setRfNodes] = useState<XYNode[]>(() =>
@@ -202,17 +201,14 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
 
   // ── Selection ───────────────────────────────────────────────────────────
   const onSelectionChange = useCallback(
-    ({ nodes }: { nodes: XYNode[]; edges: XYEdge[] }) => {
+    ({ nodes }: { nodes: XYNode[] }) => {
       const ids = nodes.map((n) => n.id)
       setSelection(ids)
-      // Si exactamente un nodo seleccionado → abrir inspector
-      if (ids.length === 1) {
-        inspectNode(ids[0])
-      } else if (ids.length === 0) {
-        inspectNode(null)
-      }
+
+      const selectedId = nodes.length > 0 ? nodes[0].id : null
+      useForgeGraphStore.getState().inspectNode(selectedId)
     },
-    [setSelection, inspectNode]
+    [setSelection]
   )
 
   // ── DragOver — necesario para que onDrop funcione ───────────────────────

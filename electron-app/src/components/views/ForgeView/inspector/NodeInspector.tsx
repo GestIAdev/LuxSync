@@ -22,7 +22,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { Trash2, Copy, X as IconX } from 'lucide-react'
-import { useForgeGraphStore } from '../../../../stores/forgeGraphStore'
+import { useForgeGraphStore, useInspectedNode } from '../../../../stores/forgeGraphStore'
 import type { IForgeNodeConfig, IForgeNode, ForgeNodeType } from '../../../../core/forge/types'
 import { getCategoryColor } from '../nodes/nodeColors'
 import { getNodeIcon } from '../nodes/nodeIcons'
@@ -69,6 +69,31 @@ const InspectorPortList: React.FC<{ node: IForgeNode }> = ({ node }) => {
           <span className="ni-port__type">{p.dataType}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+const GenericConfigFallbackPanel: React.FC<{ config: IForgeNodeConfig }> = ({ config }) => {
+  const entries = Object.entries(config ?? {})
+
+  return (
+    <div className="ni-generic-config">
+      <p className="ni-generic-config__notice">
+        No dedicated panel yet for this node type. Showing raw config snapshot.
+      </p>
+
+      {entries.length === 0 ? (
+        <p className="ni-generic-config__empty">This node has no config fields.</p>
+      ) : (
+        <div className="ni-generic-config__list">
+          {entries.map(([key, value]) => (
+            <div className="ni-generic-config__row" key={key}>
+              <span className="ni-generic-config__key">{key}</span>
+              <span className="ni-generic-config__value">{String(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -203,12 +228,14 @@ const NodeInspectorInner: React.FC<{ node: IForgeNode }> = ({ node }) => {
       </div>
 
       {/* Config Panel */}
-      {ConfigPanel && (
-        <div className="ni-section">
-          <div className="ni-section__title">PARAMETERS</div>
+      <div className="ni-section">
+        <div className="ni-section__title">PARAMETERS</div>
+        {ConfigPanel ? (
           <ConfigPanel config={configDraft} onChange={handleConfigChange} />
-        </div>
-      )}
+        ) : (
+          <GenericConfigFallbackPanel config={configDraft} />
+        )}
+      </div>
 
       {/* Ports */}
       <InspectorPortList node={node} />
@@ -237,12 +264,7 @@ const NodeInspectorInner: React.FC<{ node: IForgeNode }> = ({ node }) => {
  * Renderiza un placeholder si no hay nodo inspeccionado.
  */
 export const NodeInspector: React.FC = () => {
-  const node = useForgeGraphStore(
-    useShallow((s) => {
-      if (!s.inspectedNodeId || !s.graph) return null
-      return s.graph.nodes.find((n) => n.id === s.inspectedNodeId) ?? null
-    })
-  )
+  const node = useInspectedNode()
 
   if (!node) {
     return (

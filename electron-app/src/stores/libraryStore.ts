@@ -73,16 +73,43 @@ export interface LibraryState {
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
+function deepClone<T>(value: T): T {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value)
+  }
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
+function hydrateNodeGraphFromJson(rawNodeGraph: any): any {
+  const graph = deepClone(rawNodeGraph)
+  if (!graph || !Array.isArray(graph.nodes)) return graph
+
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node: any) => ({
+      ...node,
+      // WAVE 4548.8e: JSON is source of truth, preserve incoming config exactly.
+      config:
+        node && Object.prototype.hasOwnProperty.call(node, 'config')
+          ? deepClone(node.config)
+          : {},
+    })),
+  }
+}
+
 /**
  * Convert raw fixture from IPC to LibraryFixture.
  * WAVE 4548.3: Hydrates nodeGraph from channels[] if not already present.
  */
 function normalizeFixture(raw: any, source: FixtureSource): LibraryFixture {
   const channels = raw.channels || []
-  // WAVE 4548.3: Hydration — generate nodeGraph from legacy channels[] if absent
-  const nodeGraph = raw.nodeGraph ?? (
-    channels.length > 0 ? NodeGraphBuilder.fromChannels(channels) : undefined
-  )
+  // WAVE 4548.8e: If JSON already contains nodeGraph, preserve it as absolute source of truth.
+  // Only generate from channels[] when nodeGraph is truly absent.
+  const hasIncomingNodeGraph = raw.nodeGraph && typeof raw.nodeGraph === 'object'
+  const nodeGraph = hasIncomingNodeGraph
+    ? hydrateNodeGraphFromJson(raw.nodeGraph)
+    : (channels.length > 0 ? NodeGraphBuilder.fromChannels(channels) : undefined)
+
   return {
     id: raw.id || raw.name?.replace(/\s+/g, '_').toLowerCase() || `${source}-${Date.now()}`,
     name: raw.name || 'Unknown Fixture',

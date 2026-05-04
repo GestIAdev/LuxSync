@@ -242,7 +242,11 @@ export interface ICompoundIngenioConfig {
   readonly nodeType: 'compound_ingenio'
   /** Nombre del INGENIO (e.g. "Fan Speed Controller", "Mirror Ball Sequence") */
   readonly ingenioName: string
-  /** Sub-graph completo empaquetado como IForgeNodeGraph recursivo */
+  /** WAVE 4549.1: Referencia al Ingenio en la librería (null si es inline/legacy) */
+  readonly ingenioRef: string | null
+  /** WAVE 4549.1: Versión del Ingenio referenciado al momento de instanciación */
+  readonly ingenioVersion?: string
+  /** Sub-graph completo empaquetado como IForgeNodeGraph recursivo (inline cache para export) */
   readonly subGraph: IForgeNodeGraph
   /** Mapeo de puertos expuestos del INGENIO a nodos internos del sub-graph */
   readonly portMapping: {

@@ -31,7 +31,7 @@ import './ForgeModeSwitcher.css'
 
 export type ForgeEditMode = 'simple' | 'advanced'
 
-export type SimpleModeStatus = 'editable' | 'readonly' | 'unavailable'
+export type SimpleModeStatus = 'editable' | 'readonly'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // isSimpleCompatible
@@ -74,29 +74,27 @@ interface ForgeModeSwitcherProps {
   mode: ForgeEditMode
   graph: IForgeNodeGraph | null
   onModeChange: (mode: ForgeEditMode) => void
-  /** Callback para saltar al tab NODE GRAPH */
-  onJumpToCanvas: () => void
 }
 
 export const ForgeModeSwitcher: React.FC<ForgeModeSwitcherProps> = ({
   mode,
   graph,
   onModeChange,
-  onJumpToCanvas,
 }) => {
   const status = getSimpleModeStatus(graph)
+  const simpleEnabled = status === 'editable'
 
   const handleToggle = useCallback(
     (target: ForgeEditMode) => {
       if (target === mode) return
-      if (target === 'simple' && status === 'unavailable') return
+      if (target === 'simple' && !simpleEnabled) return
       onModeChange(target)
     },
-    [mode, status, onModeChange]
+    [mode, simpleEnabled, onModeChange]
   )
 
   return (
-    <div className="fms-wrapper" title={
+    <div className={`fms-wrapper fms-wrapper--${mode}`} title={
       status !== 'editable'
         ? 'Simple Mode is read-only: this fixture uses advanced node logic'
         : undefined
@@ -104,7 +102,7 @@ export const ForgeModeSwitcher: React.FC<ForgeModeSwitcherProps> = ({
       <button
         className={`fms-btn${mode === 'simple' ? ' fms-btn--active' : ''}`}
         onClick={() => handleToggle('simple')}
-        disabled={status === 'unavailable'}
+        disabled={!simpleEnabled}
       >
         SIMPLE
       </button>

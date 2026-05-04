@@ -262,7 +262,14 @@ export const useForgeGraphStore = create<ForgeGraphState>((set, get) => ({
   },
 
   inspectNode: (nodeId) => {
-    set({ inspectedNodeId: nodeId })
+    if (nodeId === null) {
+      set({ inspectedNodeId: null })
+      return
+    }
+
+    const { graph } = get()
+    const exists = graph?.nodes.some((n) => n.id === nodeId) ?? false
+    set({ inspectedNodeId: exists ? nodeId : null })
   },
 
   markClean: () => {
@@ -278,7 +285,7 @@ export const useForgeGraphStore = create<ForgeGraphState>((set, get) => ({
 export function useInspectedNode() {
   return useForgeGraphStore(
     useShallow((s) => {
-      if (!s.inspectedNodeId || !s.graph) return null
+      if (!s.inspectedNodeId || !s.graph || !Array.isArray(s.graph.nodes)) return null
       return s.graph.nodes.find((n) => n.id === s.inspectedNodeId) ?? null
     })
   )

@@ -489,6 +489,38 @@ declare global {
        *  Returns an unsubscribe function. */
       onProfileUpdated: (callback: (fixture: FixtureDefinition) => void) => () => void
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 4549.2: INGENIO IPC BRIDGE
+    // ═══════════════════════════════════════════════════════════════════════════
+    ingenio: {
+      /** List ALL ingenios: system (factory, read-only) + user (writable) */
+      listAll: () => Promise<{
+        success: boolean
+        systemIngenios: any[]
+        userIngenios: any[]
+        paths: { system: string; user: string }
+        error?: string
+      }>
+      /** Get a single ingenio by ID */
+      getById: (ingenioId: string) => Promise<{
+        success: boolean
+        ingenio?: any
+        error?: string
+      }>
+      /** Save an ingenio to userData/ingenios/user/ */
+      saveUser: (ingenio: any) => Promise<{
+        success: boolean
+        filePath?: string
+        error?: string
+      }>
+      /** Delete an ingenio from userData/ingenios/user/ (system is immutable) */
+      deleteUser: (ingenioId: string) => Promise<{
+        success: boolean
+        deletedPath?: string
+        error?: string
+      }>
+    }
     
     // 🎭 WAVE 26: Show Management - PURGED WAVE 365
     // Legacy methods removed. Use lux.stage.* API instead

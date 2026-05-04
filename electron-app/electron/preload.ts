@@ -862,6 +862,42 @@ const luxApi = {
   // ============================================
   // ⚡ WAVE 27: FIXTURES OBJECT
   // ============================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 4549.2: INGENIO IPC BRIDGE
+  // Gestiona archivos .luxingenio en userData/ingenios/{system,user}/
+  // ═══════════════════════════════════════════════════════════════════════════
+  ingenio: {
+    /** List ALL ingenios: system (read-only factory) + user (writable) */
+    listAll: (): Promise<{
+      success: boolean
+      systemIngenios: any[]
+      userIngenios: any[]
+      paths: { system: string; user: string }
+      error?: string
+    }> => ipcRenderer.invoke('lux:ingenio:list-all'),
+
+    /** Get a single ingenio by ID */
+    getById: (ingenioId: string): Promise<{
+      success: boolean
+      ingenio?: any
+      error?: string
+    }> => ipcRenderer.invoke('lux:ingenio:get-by-id', ingenioId),
+
+    /** Save an ingenio to the user library (userData/ingenios/user/) */
+    saveUser: (ingenio: any): Promise<{
+      success: boolean
+      filePath?: string
+      error?: string
+    }> => ipcRenderer.invoke('lux:ingenio:save-user', ingenio),
+
+    /** Delete an ingenio from the user library (system ingenios are immutable) */
+    deleteUser: (ingenioId: string): Promise<{
+      success: boolean
+      deletedPath?: string
+      error?: string
+    }> => ipcRenderer.invoke('lux:ingenio:delete-user', ingenioId),
+  },
+
   fixtures: {
     saveDefinition: (definition: any) =>
       ipcRenderer.invoke('lux:save-fixture-definition', definition),

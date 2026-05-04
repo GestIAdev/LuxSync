@@ -67,6 +67,10 @@ import { useStageStore } from '../../../stores/stageStore'
 import { useShallow } from 'zustand/react/shallow'
 import { useLibraryStore, selectFixtureForge } from '../../../stores/libraryStore'
 import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navigationStore'
+import { useForgeGraphStore } from '../../../stores/forgeGraphStore'
+// WAVE 4548.8c: Inspector + Mode Switcher
+import { NodeInspector } from './inspector/NodeInspector'
+import { ForgeModeSwitcher, SimpleModeLockBanner, isSimpleCompatible, type ForgeEditMode } from './canvas/ForgeModeSwitcher'
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
@@ -392,6 +396,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [physics, setPhysics] = useState<PhysicsProfile>(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
   const [totalChannels, setTotalChannels] = useState<number>(8)
   const [activeTab, setActiveTab] = useState<ForgeTabId>('library')  // WAVE 1112: Start at library
+  const [forgeEditMode, setForgeEditMode] = useState<ForgeEditMode>('simple') // WAVE 4548.8c
+
+  // WAVE 4548.8c: read the current forge graph to gate Simple Mode
+  const forgeGraph = useForgeGraphStore(s => s.graph)
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
   const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
   
@@ -828,6 +836,18 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             <span>{tab.label}</span>
           </button>
         ))}
+        {/* WAVE 4548.8c: Mode toggle — only visible on nodegraph / channels tabs */}
+        {(activeTab === 'nodegraph' || activeTab === 'channels') && (
+          <ForgeModeSwitcher
+            mode={forgeEditMode}
+            graph={forgeGraph}
+            onModeChange={setForgeEditMode}
+            onJumpToCanvas={() => {
+              setForgeEditMode('advanced')
+              setActiveTab('nodegraph')
+            }}
+          />
+        )}
       </nav>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -1048,6 +1068,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {/* CHANNEL RACK TAB */}
         {activeTab === 'channels' && (
           <div className="forge-channels-layout">
+            {/* WAVE 4548.8c: Lock banner when graph is too complex for Simple Mode */}
+            {!isSimpleCompatible(forgeGraph) && (
+              <SimpleModeLockBanner
+                onJumpToCanvas={() => {
+                  setForgeEditMode('advanced')
+                  setActiveTab('nodegraph')
+                }}
+              />
+            )}
             {/* Function Palette - Left Sidebar */}
             <aside className="function-foundry">
               <h3>Drag Functions</h3>
@@ -1222,11 +1251,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               <ForgeCanvasLayout
                 palette={<NodePalette />}
                 canvas={<NodeCanvas />}
-                inspector={
-                  <div className="forge-inspector-placeholder">
-                    <span>Select a node to inspect</span>
-                  </div>
-                }
+                inspector={<NodeInspector />}
               />
             </React.Suspense>
           </div>

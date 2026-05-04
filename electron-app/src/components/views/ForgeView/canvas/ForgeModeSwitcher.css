@@ -1,0 +1,91 @@
+/*
+ * ForgeModeSwitcher — CSS — WAVE 4548.8c
+ */
+
+.fms-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.fms-btn {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.fms-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.fms-btn:not(:last-child) {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fms-btn--active {
+  background: rgba(0, 243, 255, 0.15);
+  color: #00f3ff;
+}
+
+.fms-btn:hover:not(:disabled):not(.fms-btn--active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Lock Banner ──────────────────────────────────────────────── */
+
+.fms-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.25);
+  border-radius: 6px;
+  margin: 12px;
+}
+
+.fms-lock-banner__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.fms-lock-banner__text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.fms-lock-banner__btn {
+  background: rgba(0, 243, 255, 0.12);
+  border: 1px solid rgba(0, 243, 255, 0.35);
+  border-radius: 4px;
+  color: #00f3ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+
+.fms-lock-banner__btn:hover {
+  background: rgba(0, 243, 255, 0.22);
+}

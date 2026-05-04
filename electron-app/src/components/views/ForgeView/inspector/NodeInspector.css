@@ -1,0 +1,235 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * NODE INSPECTOR — CSS — WAVE 4548.8c
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+.node-inspector {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.node-inspector--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+.ni-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid;
+  position: sticky;
+  top: 0;
+  background: rgba(10, 10, 15, 0.95);
+  backdrop-filter: blur(4px);
+  z-index: 1;
+}
+
+.ni-header__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ni-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ni-header__type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ni-header__category {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ni-close {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  transition: color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+
+.ni-close:hover {
+  color: #ff2d55;
+  background: rgba(255, 45, 85, 0.1);
+}
+
+/* ── Sections ───────────────────────────────────────────────── */
+
+.ni-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.ni-section__title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 8px;
+}
+
+/* ── Label input ─────────────────────────────────────────────── */
+
+.ni-label-input {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #e8e8f0;
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+
+.ni-label-input:focus {
+  border-color: rgba(0, 243, 255, 0.55);
+}
+
+/* ── Port list ───────────────────────────────────────────────── */
+
+.ni-port {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.ni-port__arrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.ni-port__arrow--in {
+  background: rgba(0, 243, 255, 0.15);
+  color: #00f3ff;
+}
+
+.ni-port__arrow--out {
+  background: rgba(57, 255, 20, 0.15);
+  color: #39ff14;
+}
+
+.ni-port__name {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  flex: 1;
+}
+
+.ni-port__type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+}
+
+/* ── Actions ──────────────────────────────────────────────────── */
+
+.ni-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: auto;
+}
+
+.ni-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.12s, color 0.12s;
+}
+
+.ni-btn--secondary {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+}
+
+.ni-btn--secondary:hover {
+  background: rgba(255,255,255,0.08);
+  color: #e8e8f0;
+}
+
+.ni-btn--danger {
+  background: rgba(255, 45, 85, 0.08);
+  border-color: rgba(255, 45, 85, 0.3);
+  color: #ff2d55;
+}
+
+.ni-btn--danger:hover {
+  background: rgba(255, 45, 85, 0.18);
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+
+.ni-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  opacity: 0.4;
+}
+
+.ni-empty__icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.ni-empty__text {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}

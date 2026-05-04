@@ -50,6 +50,7 @@ import '@xyflow/react/dist/style.css'
 import { useForgeGraphStore } from '../../../../stores/forgeGraphStore'
 import { ALL_PALETTE_ENTRIES } from '../palette/forgePalette'
 import type { IForgeEdge, IForgeNode } from '../../../../core/forge/types'
+import { FORGE_NODE_TYPE_MAP, buildNodeData } from '../nodes/forgeNodeTypeMap'
 import './NodeCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -59,13 +60,9 @@ import './NodeCanvas.css'
 function forgeNodeToXY(node: IForgeNode): XYNode {
   return {
     id: node.id,
-    type: 'default',
+    type: node.type,   // mapea al custom node component via FORGE_NODE_TYPE_MAP
     position: { x: node.uiPosition.x, y: node.uiPosition.y },
-    data: {
-      label: node.label ?? node.type,
-      forgeType: node.type,
-      forgeCategory: node.category,
-    },
+    data: buildNodeData(node),
   }
 }
 
@@ -264,6 +261,7 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
         onSelectionChange={onSelectionChange}
+        nodeTypes={FORGE_NODE_TYPE_MAP}
         deleteKeyCode={['Delete', 'Backspace']}
         proOptions={{ hideAttribution: true }}
         fitView

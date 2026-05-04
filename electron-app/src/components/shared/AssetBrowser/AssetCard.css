@@ -105,6 +105,14 @@
 .ac-action-btn:hover    { background: rgba(255,255,255,0.1); color: #fff; }
 .ac-action-btn.ac-danger { color: #ef4444; border-color: rgba(239,68,68,0.25); }
 .ac-action-btn.ac-danger:hover { background: rgba(239,68,68,0.12); }
+.ac-action-btn--list {
+  padding: 1px 6px;
+  min-width: 22px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ════════════════════════════════════════════════════════════════════════════
    LIST VARIANT

@@ -115,6 +115,24 @@ export const AssetCard = memo(function AssetCard({
             ? <Lock size={11} className="ac-source-icon ac-system" />
             : <User size={11} className="ac-source-icon ac-user" />
           }
+          {asset.source === 'user' && onClone && (
+            <button
+              className="ac-action-btn ac-action-btn--list"
+              onClick={handleClone}
+              title="Clonar"
+            >
+              Clone
+            </button>
+          )}
+          {asset.source === 'user' && onDelete && (
+            <button
+              className="ac-action-btn ac-action-btn--list ac-danger"
+              onClick={handleDelete}
+              title="Eliminar"
+            >
+              ✕
+            </button>
+          )}
           <button
             className={`ac-fav-btn${asset.isFavorite ? ' ac-fav-active' : ''}`}
             onClick={handleFavorite}

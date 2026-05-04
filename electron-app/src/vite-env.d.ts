@@ -514,6 +514,16 @@ declare global {
           activeOverrides?: Record<string, unknown>
         }
       }>
+
+      /** Sync fixtures + stage bounds from StageStore to backend */
+      setFixtures: (
+        fixtures: any[],
+        stageBounds?: { width?: number; height?: number; depth?: number },
+      ) => Promise<{
+        success: boolean
+        fixtureCount: number
+        message: string
+      }>
       
       /** Set Grand Master intensity (0-1) */
       setGrandMaster: (value: number) => Promise<void>

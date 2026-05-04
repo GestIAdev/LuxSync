@@ -125,6 +125,19 @@ const ZONE_MAP: Readonly<Record<string, string>> = {
 // Static DMX output placeholder (512 zeros) — no new Array(512).fill(0) per truth frame
 const DMX_OUTPUT_ZEROS: readonly number[] = Object.freeze(new Array(512).fill(0))
 
+type StageBoundsInput = {
+  width: number
+  height: number
+  depth: number
+}
+
+const DEFAULT_AETHER_STAGE_BOUNDS = {
+  width: 8,
+  height: 4,
+  depth: 2,
+  centerY: 1.5,
+}
+
 /**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
@@ -339,10 +352,17 @@ export class TitanOrchestrator {
     intensity: 0.5,
     beamExpressiveness: 0.5,
   }
+  private readonly _aetherStageBounds = {
+    width: DEFAULT_AETHER_STAGE_BOUNDS.width,
+    height: DEFAULT_AETHER_STAGE_BOUNDS.height,
+    depth: DEFAULT_AETHER_STAGE_BOUNDS.depth,
+    centerY: DEFAULT_AETHER_STAGE_BOUNDS.centerY,
+  }
   private readonly _aetherCtx: FrameContext = {
     audio:      this._aetherAudio as AudioMetrics,
     musical:    this._aetherMusical as MusicalContext,
     vibe:       this._aetherVibe as VibeProfile,
+    stageBounds: this._aetherStageBounds,
     nowMs:      0,
     deltaMs:    23,
     frameIndex: 0,
@@ -2306,13 +2326,15 @@ export class TitanOrchestrator {
    * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setFixtures(fixtures: any[]): void {
+  setFixtures(fixtures: any[], stageBounds?: StageBoundsInput): void {
     // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
     this.fixtures = fixtures.map(f => ({
       ...f,
       dmxAddress: f.dmxAddress || f.address,  // Ensure dmxAddress exists regardless of format
       isVirtual: f.isVirtual ?? false,  // 🛡️ WAVE 3110: Normalize virtual flag
     }))
+
+    this._updateAetherStageBounds(stageBounds)
     
     // 🔥 WAVE 2183: GHOST EXORCISM — Invalidate HAL profile caches on fixture sync
     // When the Forge renames/edits a profile, reconcileFixturesWithProfile updates the
@@ -2358,6 +2380,35 @@ export class TitanOrchestrator {
       }
     }
     // WAVE 2098: Boot silence
+  }
+
+  private _updateAetherStageBounds(stageBounds?: StageBoundsInput): void {
+    const bounds = this._aetherStageBounds
+
+    if (stageBounds) {
+      if (Number.isFinite(stageBounds.width) && stageBounds.width > 0) {
+        bounds.width = stageBounds.width
+      }
+      if (Number.isFinite(stageBounds.height) && stageBounds.height > 0) {
+        bounds.height = stageBounds.height
+      }
+      if (Number.isFinite(stageBounds.depth) && stageBounds.depth > 0) {
+        bounds.depth = stageBounds.depth
+      }
+    }
+
+    let sumY = 0
+    let count = 0
+    for (const fixture of this.fixtures) {
+      const y = fixture?.position?.y
+      if (typeof y === 'number' && Number.isFinite(y)) {
+        sumY += y
+        count++
+      }
+    }
+
+    const avgY = count > 0 ? (sumY / count) : bounds.height * 0.5
+    bounds.centerY = Math.max(0, Math.min(bounds.height, avgY))
   }
 
   /**

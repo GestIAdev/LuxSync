@@ -59,13 +59,17 @@ const IPC_READY_TIMEOUT_MS = 5000
  * 🔥 WAVE 2241: Include channelCount + profileId so Forge profile edits
  * (channel additions, type changes, defaults) always trigger a backend resync.
  */
-const generateFixturesHash = (fixtureList: any[]): string => {
+const generateSyncHash = (fixtureList: any[], stageBounds: { width?: number; height?: number; depth?: number } | null | undefined): string => {
   if (!fixtureList || fixtureList.length === 0) return 'empty'
+
+  const stageHash = stageBounds
+    ? `${stageBounds.width ?? 0}:${stageBounds.height ?? 0}:${stageBounds.depth ?? 0}`
+    : '0:0:0'
   
   return fixtureList
     .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`)
     .sort()
-    .join('|')
+    .join('|') + `|stage:${stageHash}`
 }
 
 /**
@@ -73,7 +77,11 @@ const generateFixturesHash = (fixtureList: any[]): string => {
  * 🔧 WAVE 406: Blindado contra fallos - retry logic + invalidación de hash
  * Now includes hasMovementChannels for proper mover detection
  */
-const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.MutableRefObject<string>) => {
+const syncToBackend = async (
+  fixtureList: any[],
+  stageBounds: { width?: number; height?: number; depth?: number } | null | undefined,
+  lastSyncedHashRef: React.MutableRefObject<string>,
+) => {
   const lux = (window as any).lux
   
   if (!lux?.arbiter?.setFixtures) {
@@ -118,12 +126,12 @@ const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.Mutabl
     // 📡 WAVE 2770: THE BLACK BOX — Store Sync Monitor
     // Log every setFixtures invocation with fixture count, hash, and timestamp.
     // This reveals if TitanSyncBridge re-fires and wipes state unexpectedly.
-    const syncHash = generateFixturesHash(arbiterFixtures)
+    const syncHash = generateSyncHash(arbiterFixtures, stageBounds)
     console.log(
       `[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${syncHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`
     )
 
-    const result = await lux.arbiter.setFixtures(arbiterFixtures)
+    const result = await lux.arbiter.setFixtures(arbiterFixtures, stageBounds)
     // 🔧 WAVE 406: Log de éxito visual
     console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`)
   } catch (err) {
@@ -185,10 +193,10 @@ export const TitanSyncBridge: React.FC = () => {
       console.log('[TitanSyncBridge] 🔗 Subscribing to StageStore...')
       
       unsubscribeStore = useStageStore.subscribe(
-        (state) => state.fixtures,
-        (fixtures) => {
+        (state) => ({ fixtures: state.fixtures, stage: state.stage }),
+        ({ fixtures, stage }) => {
           // Generate hash to detect actual content changes
-          const currentHash = generateFixturesHash(fixtures)
+          const currentHash = generateSyncHash(fixtures, stage)
           
           // Skip if no actual change
           if (currentHash === lastSyncedHashRef.current) {
@@ -205,7 +213,7 @@ export const TitanSyncBridge: React.FC = () => {
             if (!isMounted) return
             lastSyncedHashRef.current = currentHash
             console.log(`[TitanSyncBridge] 🔄 Syncing ${fixtures.length} fixtures...`)
-            syncToBackend(fixtures, lastSyncedHashRef)
+            syncToBackend(fixtures, stage, lastSyncedHashRef)
           }, SYNC_DEBOUNCE_MS) // WAVE 406: 200ms (era 500ms)
         },
         { fireImmediately: true } // Sync on mount if fixtures already exist

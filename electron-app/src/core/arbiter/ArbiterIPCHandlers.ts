@@ -931,7 +931,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
    */
   ipcMain.handle('lux:arbiter:setFixtures', (
     _event,
-    { fixtures }: { fixtures: any[] }
+    { fixtures, stageBounds }: { fixtures: any[]; stageBounds?: { width: number; height: number; depth: number } }
   ) => {
     // Update MasterArbiter (for arbitration)
     masterArbiter.setFixtures(fixtures)
@@ -939,7 +939,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // WAVE 380 FIX: ALSO update TitanOrchestrator (for the render loop)
     // Without this, the orchestrator loop runs with 0 fixtures!
     const orchestrator = getTitanOrchestrator()
-    orchestrator.setFixtures(fixtures)
+    orchestrator.setFixtures(fixtures, stageBounds)
     
     return { 
       success: true, 

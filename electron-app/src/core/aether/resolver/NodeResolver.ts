@@ -86,6 +86,8 @@ const CH_TARGET_X = 'targetX'
 const CH_TARGET_Y = 'targetY'
 const CH_TARGET_Z = 'targetZ'
 
+const IK_WARN_INTERVAL_FRAMES = 44
+
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set<string>([CH_R, CH_G, CH_B])
@@ -138,6 +140,9 @@ export class NodeResolver implements INodeResolver {
   // posición, orientación y calibración no cambian en runtime.
   // Invalidar únicamente en re-patch (implica crear un NodeResolver nuevo).
   private readonly _ikProfiles = new Map<NodeId, IKFixtureProfile>()
+  private readonly _ikReachability = new Map<NodeId, boolean>()
+  private readonly _ikLastWarnFrame = new Map<NodeId, number>()
+  private _resolveFrameIndex = 0
 
   // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
   // Mutable in-place, pasado al ColorTranslator por referencia.
@@ -236,6 +241,8 @@ export class NodeResolver implements INodeResolver {
    * @returns Array de IDMXPacket, uno por universo activo
    */
   resolve(arbitrated: ArbitratedNodeMap): readonly IDMXPacket[] {
+    this._resolveFrameIndex++
+
     // 1. Zero-fill y marcar universos como inactivos
     this._activeUniverses.clear()
     for (const [, buf] of this._universeBuffers) {
@@ -398,6 +405,18 @@ export class NodeResolver implements INodeResolver {
     const currentPanDMX = node.currentPosition.pan * 255
 
     const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX)
+    const reachable = ikResult.reachable !== false
+    this._ikReachability.set(node.nodeId, reachable)
+
+    if (!reachable) {
+      const lastWarnFrame = this._ikLastWarnFrame.get(node.nodeId) ?? -IK_WARN_INTERVAL_FRAMES
+      if ((this._resolveFrameIndex - lastWarnFrame) >= IK_WARN_INTERVAL_FRAMES) {
+        this._ikLastWarnFrame.set(node.nodeId, this._resolveFrameIndex)
+        console.warn(
+          `[NodeResolver] IK unreachable | node=${String(node.nodeId)} device=${String(node.deviceId)} target=(${tx.toFixed(2)},${ty.toFixed(2)},${tz.toFixed(2)})`,
+        )
+      }
+    }
 
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef  = node.channels[ci]
@@ -418,6 +437,14 @@ export class NodeResolver implements INodeResolver {
         }
       }
     }
+  }
+
+  /**
+   * WAVE 4547.1: Telemetría de alcance IK para futura visualización Ghost Ray.
+   * true=alcanzable, false=fuera de rango, undefined=nodo aún no resuelto.
+   */
+  getKineticReachability(nodeId: NodeId): boolean | undefined {
+    return this._ikReachability.get(nodeId)
   }
 
   /**

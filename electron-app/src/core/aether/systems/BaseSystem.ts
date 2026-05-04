@@ -191,6 +191,13 @@ export interface FrameContext {
   musical: MusicalContext
   /** Perfil del Vibe activo */
   vibe: VibeProfile
+  /** Límites espaciales activos del Crystal Box (metros). */
+  stageBounds?: {
+    width: number
+    height: number
+    depth: number
+    centerY: number
+  }
   /** Timestamp del frame actual (ms desde epoch) */
   nowMs: number
   /** Delta de tiempo desde el frame anterior (ms) — para physics */

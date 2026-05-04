@@ -1097,8 +1097,10 @@ const luxApi = {
      * Sync fixtures from stageStore to backend MasterArbiter
      * Called by TitanSyncBridge when patch changes
      */
-    setFixtures: (fixtures: any[]) =>
-      ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures }),
+    setFixtures: (
+      fixtures: any[],
+      stageBounds?: { width?: number; height?: number; depth?: number },
+    ) => ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures, stageBounds }),
 
     // ============================================
     // 🎯 WAVE 2613: SPATIAL IK TARGET

@@ -17,16 +17,14 @@
  *
  * PROYECCIÓN HOLOGRÁFICA:
  * El VMM produce coordenadas abstractas (x,y) ∈ [-1,+1] sobre un plano
- * normalizado. Este adapter las mapea linealmente a un plano virtual
- * posicionado en el espacio 3D del escenario:
+ * normalizado. Este adapter las mapea linealmente al Crystal Box activo
+ * del StageConstructor (inyectado en FrameContext.stageBounds):
  *
- *   TargetX = x × (STAGE_WIDTH  / 2)            (metros, eje horizontal)
- *   TargetY = STAGE_CENTER_Y + y × (STAGE_HEIGHT / 2)  (metros, eje vertical)
- *   TargetZ = STAGE_DEPTH                         (metros, profundidad fija)
+ *   TargetX = x × (width  / 2)                  (metros, eje horizontal)
+ *   TargetY = centerY + y × (height / 2)        (metros, eje vertical)
+ *   TargetZ = depth / 2                          (metros, plano frontal)
  *
- * Los parámetros del plano son constantes del show con defaults razonables
- * para sala estándar de 8×4m. Una futura UI de StageConstructor los expondrá
- * como configuración por show.
+ * Los targets se clampean siempre a los límites físicos del escenario.
  *
  * ESTEREO:
  * El VMM ya aplica mirror/snake/phase vía stereoIndex. Este adapter NO invierte
@@ -68,20 +66,19 @@ const INTENT_PRIORITY = 10
 const INTENT_SOURCE = 'kinetic-adapter'
 
 /**
- * Plano virtual de proyección holográfica.
- *
- * El VMM emite (x,y) ∈ [-1,+1] sobre un plano normalizado abstracto.
- * Estos parámetros lo posicionan en el espacio 3D del escenario.
- * Defaults para sala estándar de club/evento (8×4m, truss a 4m).
+ * Fallback determinista si aún no llega stageBounds por IPC.
+ * Se usa solo como red de seguridad de arranque.
  */
-const STAGE_WIDTH    = 8.0  // metros — ancho útil del plano virtual
-const STAGE_HEIGHT   = 4.0  // metros — alto útil del plano virtual
-const STAGE_DEPTH    = 2.0  // metros — profundidad fija (Z constante del plano)
-const STAGE_CENTER_Y = 1.5  // metros — altura del centro del plano sobre el suelo
+const DEFAULT_STAGE_BOUNDS = {
+  width: 8.0,
+  height: 4.0,
+  depth: 2.0,
+  centerY: 1.5,
+} as const
 
-/** Precomputed half-ranges para evitar división en el hot-path */
-const HALF_STAGE_WIDTH  = STAGE_WIDTH  / 2   // 4.0
-const HALF_STAGE_HEIGHT = STAGE_HEIGHT / 2   // 2.0
+function clamp(value: number, min: number, max: number): number {
+  return value < min ? min : (value > max ? max : value)
+}
 
 /**
  * Mapa de VibeProfile.name → VMM vibeId.
@@ -162,6 +159,18 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
     bus: IIntentBus,
   ): void {
     const { audio, vibe } = context
+    const stageBounds = context.stageBounds ?? DEFAULT_STAGE_BOUNDS
+
+    const width   = stageBounds.width  > 0 ? stageBounds.width  : DEFAULT_STAGE_BOUNDS.width
+    const height  = stageBounds.height > 0 ? stageBounds.height : DEFAULT_STAGE_BOUNDS.height
+    const depth   = stageBounds.depth  > 0 ? stageBounds.depth  : DEFAULT_STAGE_BOUNDS.depth
+    const centerY = Number.isFinite(stageBounds.centerY)
+      ? clamp(stageBounds.centerY, 0, height)
+      : height * 0.5
+
+    const halfW = width * 0.5
+    const halfH = height * 0.5
+    const halfD = depth * 0.5
 
     // ── 1. Resolver vibeId → VMM vibeId (lookup O(1), sin alloc)
     const vibeId = VIBE_ID_MAP[vibe.name] ?? FALLBACK_VIBE_ID
@@ -223,17 +232,21 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         // El VMM ya aplica mirror/snake/phase vía stereoIndex.
         // Solo necesitamos la proyección lineal al plano virtual.
         //
-        //   TargetX = x × (STAGE_WIDTH  / 2)
-        //   TargetY = STAGE_CENTER_Y + y × (STAGE_HEIGHT / 2)
-        //   TargetZ = STAGE_DEPTH  (plano virtual a profundidad fija)
+        //   TargetX = x × (width / 2)
+        //   TargetY = centerY + y × (height / 2)
+        //   TargetZ = depth / 2  (plano frontal)
         //
         // Nota de signo en Y: el VMM emite y > 0 como "arriba" y y < 0
         // como "abajo" (perspectiva de pantalla). El IK usa Y positivo
         // hacia arriba (eje mundo estándar). La proyección es directa.
 
-        const targetX = intent.x * HALF_STAGE_WIDTH
-        const targetY = STAGE_CENTER_Y + intent.y * HALF_STAGE_HEIGHT
-        const targetZ = STAGE_DEPTH
+        const projectedX = intent.x * halfW
+        const projectedY = centerY + intent.y * halfH
+        const projectedZ = halfD
+
+        const targetX = clamp(projectedX, -halfW, halfW)
+        const targetY = clamp(projectedY, 0, height)
+        const targetZ = clamp(projectedZ, -halfD, halfD)
 
         this._valuesDict['targetX'] = targetX
         this._valuesDict['targetY'] = targetY

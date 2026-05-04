@@ -74,6 +74,10 @@ import type { FixtureSnapshot } from './intent/types'
 // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
 import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether'
 import type { IDeviceDefinition } from '../aether'
+// WAVE 4548.6: Forge Evaluator — compiled graphs for zero-alloc DMX
+import { ForgeGraphCompiler } from '../forge/compiler/ForgeGraphCompiler'
+import type { ForgeFrameContext, MutableForgeFrameContext } from '../forge/compiler/types'
+import type { IForgeNodeGraph } from '../forge/types'
 // 🌊 WAVE 3516.2: Adapters — cableado al hot-path del frame loop
 import { LiquidImpactAdapter, VMMAdapter } from '../aether'
 // 🎨 WAVE 3516.3: ColorAdapter — extraída a su propio archivo
@@ -312,26 +316,26 @@ export class TitanOrchestrator {
   // ═══════════════════════════════════════════════════════════════════════════
   private readonly _aetherGraph   = new NodeGraph()
   private readonly _aetherBus     = new IntentBus(4096)
-  private readonly _aetherArbiter = new NodeArbiter()
-  private readonly _aetherResolver = new NodeResolver(this._aetherGraph)
+  private _aetherArbiter: NodeArbiter | null = null
+  private _aetherResolver: NodeResolver | null = null
   // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   private _aetherHasDevices = false
   // 🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
   private readonly _impactAdapter  = new LiquidImpactAdapter()
   // 🎨 WAVE 3516.3: ColorAdapter — rebautizada de LiquidColorAdapter
-  private readonly _colorAdapter   = new ColorAdapter()
-  private readonly _kineticAdapter = new VMMAdapter()
+  private _colorAdapter: ColorAdapter | null = null
+  private _kineticAdapter: InstanceType<typeof VMMAdapter> | null = null
   // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
-  private readonly _beamAdapter        = new BeamAdapter()
-  private readonly _atmosphereAdapter  = new AtmosphereAdapter()
+  private _beamAdapter: BeamAdapter | null = null
+  private _atmosphereAdapter: AtmosphereAdapter | null = null
   // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
   // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
-  private readonly _liquidAetherAdapter = new LiquidAetherAdapter(this._aetherGraph)
+  private _liquidAetherAdapter: LiquidAetherAdapter | null = null
   // 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
   // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
-  private readonly _zoneNodeRouter: ZoneNodeRouter = new ZoneNodeRouter(this._aetherGraph)
-  private readonly _seleneAetherAdapter = new SeleneAetherAdapter(this._zoneNodeRouter)
+  private _zoneNodeRouter: ZoneNodeRouter | null = null
+  private _seleneAetherAdapter: SeleneAetherAdapter | null = null
   private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
   // WAVE 3521: Hephaestus Diamond Data L3+ adapter
   private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
@@ -368,6 +372,19 @@ export class TitanOrchestrator {
     frameIndex: 0,
   }
 
+  // WAVE 4548.6: Pre-allocated ForgeFrameContext — mutable in-place, zero alloc
+  private readonly _forgeAudioBands = new Float64Array(6)
+  private readonly _forgeFrameCtx: MutableForgeFrameContext = {
+    timeMs: 0,
+    deltaMs: 23,
+    bpm: 120,
+    bpmConfidence: 0,
+    isBeat: false,
+    energy: 0,
+    audioBands: this._forgeAudioBands,
+    frameIndex: 0,
+  }
+
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
    *
@@ -376,11 +393,20 @@ export class TitanOrchestrator {
    * El pipeline legacy mantiene el control de todos los demás fixtures.
    *
    * @param definition — IDeviceDefinition con nodes, calibración y universo DMX
+   * @param forgeGraph — WAVE 4548.6: Optional ForgeNodeGraph for zero-alloc evaluation
    */
-  public registerAetherDevice(definition: IDeviceDefinition): void {
+  public registerAetherDevice(definition: IDeviceDefinition, forgeGraph?: IForgeNodeGraph): void {
+    this._ensureAetherMatrixInitialized()
+
+    const resolver = this._aetherResolver
+    if (!resolver) {
+      this.log('Error', '[Aether] Lazy-init failure: NodeResolver unavailable')
+      return
+    }
+
     const nodeIds = this._aetherGraph.registerDevice(definition)
     this._chronosAetherAdapter.rebuildNodeIndex()
-    this._aetherResolver.registerUniverse(definition.universe)
+    resolver.registerUniverse(definition.universe)
     this._aetherHasDevices = true
     // ⚙️ WAVE 4518.1: Registrar nodos KINETIC en el PhysicsPostProcessor
     // Iteramos los nodeIds devueltos por registerDevice para pre-alocar estado de inercia
@@ -390,6 +416,18 @@ export class TitanOrchestrator {
         this._physicsPostProcessor.registerNode(nodeId)
       }
     }
+
+    // WAVE 4548.6: Compile ForgeNodeGraph at patch time for zero-alloc evaluation
+    if (forgeGraph && forgeGraph.nodes.length > 0) {
+      try {
+        const compiled = ForgeGraphCompiler.compile(forgeGraph, definition.deviceId)
+        resolver.registerForgeGraph(definition.deviceId, compiled)
+        this.log('Info', `[Forge] Compiled graph for device ${definition.deviceId}: ${forgeGraph.nodes.length} nodes, ${compiled.program.length} instructions`)
+      } catch (err) {
+        this.log('Error', `[Forge] Failed to compile graph for device ${definition.deviceId}: ${err}`)
+        // Fallback: legacy flow will handle this device
+      }
+    }
   }
 
   /**
@@ -397,6 +435,10 @@ export class TitanOrchestrator {
    * pueda inyectar overrides manuales L2 desde el Programmer UI.
    */
   public getAetherArbiter(): NodeArbiter {
+    this._ensureAetherMatrixInitialized()
+    if (!this._aetherArbiter) {
+      throw new Error('Aether Matrix initialization failed: NodeArbiter unavailable')
+    }
     return this._aetherArbiter
   }
 
@@ -409,6 +451,34 @@ export class TitanOrchestrator {
     this._aetherGraph.unregisterDevice(deviceId as import('../aether/types').DeviceId)
     // _aetherHasDevices permanece true si hay otros devices registrados
     // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+  }
+
+  private _ensureAetherMatrixInitialized(): void {
+    if (
+      this._aetherArbiter &&
+      this._aetherResolver &&
+      this._colorAdapter &&
+      this._kineticAdapter &&
+      this._beamAdapter &&
+      this._atmosphereAdapter &&
+      this._liquidAetherAdapter &&
+      this._seleneAetherAdapter
+    ) {
+      return
+    }
+
+    this._aetherArbiter = this._aetherArbiter ?? new NodeArbiter()
+    this._aetherResolver = this._aetherResolver ?? new NodeResolver(this._aetherGraph)
+    this._colorAdapter = this._colorAdapter ?? new ColorAdapter()
+    this._kineticAdapter = this._kineticAdapter ?? new VMMAdapter()
+    this._beamAdapter = this._beamAdapter ?? new BeamAdapter()
+    this._atmosphereAdapter = this._atmosphereAdapter ?? new AtmosphereAdapter()
+    this._liquidAetherAdapter = this._liquidAetherAdapter ?? new LiquidAetherAdapter(this._aetherGraph)
+
+    if (!this._zoneNodeRouter) {
+      this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph)
+    }
+    this._seleneAetherAdapter = this._seleneAetherAdapter ?? new SeleneAetherAdapter(this._zoneNodeRouter)
   }
   
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
@@ -1548,6 +1618,27 @@ export class TitanOrchestrator {
     // Se envían al driver por referencia directa (zero-copy al hardware).
     // ═══════════════════════════════════════════════════════════════════════
     if (this._aetherHasDevices && this.hal) {
+      const aetherArbiter = this._aetherArbiter
+      const aetherResolver = this._aetherResolver
+      const colorAdapter = this._colorAdapter
+      const kineticAdapter = this._kineticAdapter
+      const beamAdapter = this._beamAdapter
+      const atmosphereAdapter = this._atmosphereAdapter
+      const liquidAetherAdapter = this._liquidAetherAdapter
+      const seleneAetherAdapter = this._seleneAetherAdapter
+
+      if (
+        !aetherArbiter ||
+        !aetherResolver ||
+        !colorAdapter ||
+        !kineticAdapter ||
+        !beamAdapter ||
+        !atmosphereAdapter ||
+        !liquidAetherAdapter ||
+        !seleneAetherAdapter
+      ) {
+        // Lazy-init safety guard: si la matriz no existe todavía, salimos sin tocar el pipeline legacy.
+      } else {
       // ── WAVE 3516.2: Construir FrameContext in-place (cero alloc) ──────────
       // Mutar los campos del objeto pre-allocado en lugar de crear uno nuevo.
       // AudioMetrics: mapear bandas del SyncSmoother al vocabulario de Aether.
@@ -1596,7 +1687,7 @@ export class TitanOrchestrator {
       const _liqFrame  = liquidEngine71.lastFrame
       const _liqResult = liquidEngine71.lastResult
       if (_liqFrame !== null && _liqResult !== null) {
-        this._liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus)
+        liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus)
       }
 
       // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
@@ -1609,26 +1700,26 @@ export class TitanOrchestrator {
       // 🎨 WAVE 4522.3: Inyectar paleta RGB de SeleneLux al ColorAdapter antes de process()
       const _colorPalette = this.engine.getLastColorPalette()
       if (_colorPalette !== null) {
-        this._colorAdapter.setIngress(_colorPalette)
+        colorAdapter.setIngress(_colorPalette)
       }
-      this._colorAdapter.process(
+      colorAdapter.process(
         this._aetherGraph.getView(NodeFamily.COLOR),
         ctx,
         this._aetherBus,
       )
-      this._kineticAdapter.process(
+      kineticAdapter.process(
         this._aetherGraph.getView(NodeFamily.KINETIC),
         ctx,
         this._aetherBus,
       )
       // 🔦 WAVE 3516.4: Beam — ópticas (gobos, prismas, zoom, focus)
-      this._beamAdapter.process(
+      beamAdapter.process(
         this._aetherGraph.getView(NodeFamily.BEAM),
         ctx,
         this._aetherBus,
       )
       // 🌫️ WAVE 3516.4: Atmosphere — elementos (fog, haze, fan, spark, pyro)
-      this._atmosphereAdapter.process(
+      atmosphereAdapter.process(
         this._aetherGraph.getView(NodeFamily.ATMOSPHERE),
         ctx,
         this._aetherBus,
@@ -1642,7 +1733,7 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const consciousnessOutput = this.lastConsciousnessOutput ?? null
       const effectOutput = getEffectManager().getCombinedOutput()
-      this._seleneAetherAdapter.ingest(
+      seleneAetherAdapter.ingest(
         consciousnessOutput,
         effectOutput,
         ctx.deltaMs,
@@ -1653,7 +1744,7 @@ export class TitanOrchestrator {
       this._chronosAetherAdapter.ingest(
         this._timelineEngine,
         ctx.deltaMs,
-        this._aetherArbiter,
+        aetherArbiter,
       )
 
       // STEP 5: Hephaestus L3+ Diamond Data bridge
@@ -1661,14 +1752,14 @@ export class TitanOrchestrator {
       // The adapter only processes fixtures registered in NodeGraph (isCustomClip === true).
       // Legacy post-HAL block still handles fixtures NOT in NodeGraph (backward compat).
       if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
-        this._hephaestusAetherAdapter.ingest(hephOutputs, this._aetherArbiter)
+        this._hephaestusAetherAdapter.ingest(hephOutputs, aetherArbiter)
       } else {
-        this._hephaestusAetherAdapter.clear(this._aetherArbiter)
+        this._hephaestusAetherAdapter.clear(aetherArbiter)
       }
 
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
-      this._aetherArbiter.setSystemIntents(this._aetherBus)
-      const arbitrated = this._aetherArbiter.arbitrate()
+      aetherArbiter.setSystemIntents(this._aetherBus)
+      const arbitrated = aetherArbiter.arbitrate()
 
       // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
       // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
@@ -1681,16 +1772,36 @@ export class TitanOrchestrator {
 
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
       // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
-      this._aetherResolver.setResolveContext(
+      aetherResolver.setResolveContext(
         engineAudioMetrics.bpm,
         engineAudioMetrics.beatConfidence,
       )
-      this._aetherResolver.resolve(arbitrated)
+
+      // WAVE 4548.6: Populate ForgeFrameContext in-place (zero-alloc)
+      const _fCtx = this._forgeFrameCtx
+      _fCtx.timeMs         = now
+      _fCtx.deltaMs        = this._aetherCtx.deltaMs
+      _fCtx.bpm            = engineAudioMetrics.bpm
+      _fCtx.bpmConfidence  = engineAudioMetrics.beatConfidence
+      _fCtx.isBeat         = engineAudioMetrics.isBeat
+      _fCtx.energy         = engineAudioMetrics.energy
+      _fCtx.frameIndex     = this.frameCount
+      // Audio bands: write directly into pre-allocated Float64Array
+      this._forgeAudioBands[0] = _a.subBass as number
+      this._forgeAudioBands[1] = _a.bass as number
+      this._forgeAudioBands[2] = _a.mid as number
+      this._forgeAudioBands[3] = _a.highMid as number
+      this._forgeAudioBands[4] = _a.presence as number
+      this._forgeAudioBands[5] = _a.air as number
+      aetherResolver.setForgeFrameContext(this._forgeFrameCtx)
+
+      aetherResolver.resolve(arbitrated)
 
       // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)
-      for (const universe of this._aetherResolver.registeredUniverses) {
-        const rawBuf = this._aetherResolver.getUniverseBuffer(universe)
+      for (const universe of aetherResolver.registeredUniverses) {
+        const rawBuf = aetherResolver.getUniverseBuffer(universe)
         if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
+      }
       }
     }
 

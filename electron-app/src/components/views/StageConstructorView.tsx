@@ -522,7 +522,8 @@ const DimensionSliders: React.FC = () => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧱 WAVE 4538/4539: VOXEL VIEW TOGGLES — reemplaza HeightLayerManager + VisualizationToggles
+// 🧱 WAVE 4538/4539 + WAVE 4547.3: VOXEL VIEW TOGGLES
+// HeightLayerManager/VisualizationToggles (2.5D) fueron purgados.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const VoxelViewToggles: React.FC = () => {

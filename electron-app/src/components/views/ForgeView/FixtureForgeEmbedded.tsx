@@ -29,7 +29,8 @@ import {
   Server, 
   Factory, 
   Save, 
-  Download, 
+  Download,
+  Share2,
   Upload,
   Eye,
   EyeOff,
@@ -59,7 +60,8 @@ import {
   MotorType,
   InstallationOrientation
 } from '../../../core/stage/ShowFileV2'
-import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, DerivedCapabilities } from '../../../types/FixtureDefinition'
+import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, deriveCapabilitiesUnified, DerivedCapabilities } from '../../../types/FixtureDefinition'
+import { NodeGraphBuilder } from '../../../core/forge/NodeGraphBuilder'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -69,11 +71,16 @@ import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navig
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
 
+// ── WAVE 4548.8b: NODE GRAPH UI (lazy-loaded — solo se carga en /forge) ──
+const ForgeCanvasLayout = React.lazy(() => import('./canvas/ForgeCanvasLayout'))
+const NodePalette = React.lazy(() => import('./canvas/NodePalette'))
+const NodeCanvas = React.lazy(() => import('./canvas/NodeCanvas'))
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES - WAVE 1112: Added 'library' tab
 // ═══════════════════════════════════════════════════════════════════════════
 
-type ForgeTabId = 'library' | 'general' | 'channels' | 'wheelsmith' | 'physics' | 'export'
+type ForgeTabId = 'library' | 'general' | 'nodegraph' | 'channels' | 'wheelsmith' | 'physics' | 'export'
 
 interface FixtureForgeEmbeddedProps {
   onSave: (
@@ -90,12 +97,13 @@ interface FixtureForgeEmbeddedProps {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const TAB_CONFIG: { id: ForgeTabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'library', label: 'LIBRARY', icon: <BookOpen size={16} /> },
-  { id: 'general', label: 'GENERAL', icon: <Settings size={16} /> },
-  { id: 'channels', label: 'CHANNEL RACK', icon: <Server size={16} /> },
-  { id: 'wheelsmith', label: 'WHEELSMITH', icon: <Palette size={16} /> },
-  { id: 'physics', label: 'PHYSICS ENGINE', icon: <Cpu size={16} /> },
-  { id: 'export', label: 'EXPORT', icon: <Download size={16} /> },
+  { id: 'library',   label: 'LIBRARY',       icon: <BookOpen size={16} /> },
+  { id: 'general',   label: 'GENERAL',       icon: <Settings size={16} /> },
+  { id: 'nodegraph', label: 'NODE GRAPH',    icon: <Share2 size={16} /> },
+  { id: 'channels',  label: 'CHANNEL RACK',  icon: <Server size={16} /> },
+  { id: 'wheelsmith',label: 'WHEELSMITH',    icon: <Palette size={16} /> },
+  { id: 'physics',   label: 'PHYSICS ENGINE',icon: <Cpu size={16} /> },
+  { id: 'export',    label: 'EXPORT',        icon: <Download size={16} /> },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -597,8 +605,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
    * Build the complete FixtureDefinition with wheels included
    */
   const buildCompleteFixture = useCallback((): FixtureDefinition => {
+    // WAVE 4548.3: Sync channels[] from nodeGraph before building
+    const syncedChannels = (fixture as any).nodeGraph
+      ? NodeGraphBuilder.toChannels((fixture as any).nodeGraph)
+      : fixture.channels
     return {
       ...fixture,
+      channels: syncedChannels,
       // WAVE 1116.4: Include PHYSICS at root level for JSON export!
       // 🛡️ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt frozen to false in physics.
       // The actual invert values live in fixture.calibration (set by CalibrationView).
@@ -625,14 +638,14 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           allowsContinuousSpin: false,
           minChangeTimeMs: wheelMinChangeTimeMs,
         } : undefined,
-        hasPan: fixture.channels.some(ch => ch.type === 'pan'),
-        hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
-        hasColorMixing: fixture.channels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
-        hasColorWheel: fixture.channels.some(ch => ch.type === 'color_wheel'),
-        hasGobo: fixture.channels.some(ch => ch.type === 'gobo'),
-        hasPrism: fixture.channels.some(ch => ch.type === 'prism'),
-        hasStrobe: fixture.channels.some(ch => ch.type === 'strobe'),
-        hasDimmer: fixture.channels.some(ch => ch.type === 'dimmer'),
+        hasPan: syncedChannels.some(ch => ch.type === 'pan'),
+        hasTilt: syncedChannels.some(ch => ch.type === 'tilt'),
+        hasColorMixing: syncedChannels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
+        hasColorWheel: syncedChannels.some(ch => ch.type === 'color_wheel'),
+        hasGobo: syncedChannels.some(ch => ch.type === 'gobo'),
+        hasPrism: syncedChannels.some(ch => ch.type === 'prism'),
+        hasStrobe: syncedChannels.some(ch => ch.type === 'strobe'),
+        hasDimmer: syncedChannels.some(ch => ch.type === 'dimmer'),
       },
     }
   }, [fixture, physics, wheelColors, colorEngine])
@@ -918,7 +931,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               </div>
               
               {(() => {
-                const caps = deriveCapabilities(fixture.channels)
+                const caps = deriveCapabilitiesUnified(fixture)
                 return (
                   <div className="capabilities-matrix">
                     {CAPABILITY_BADGES.map(badge => {
@@ -1199,6 +1212,23 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 </Suspense>
               </div>
             )}
+          </div>
+        )}
+
+        {/* NODE GRAPH TAB — WAVE 4548.8b */}
+        {activeTab === 'nodegraph' && (
+          <div className="forge-nodegraph-panel">
+            <React.Suspense fallback={<div className="forge-canvas-loading">Loading canvas…</div>}>
+              <ForgeCanvasLayout
+                palette={<NodePalette />}
+                canvas={<NodeCanvas />}
+                inspector={
+                  <div className="forge-inspector-placeholder">
+                    <span>Select a node to inspect</span>
+                  </div>
+                }
+              />
+            </React.Suspense>
           </div>
         )}
 

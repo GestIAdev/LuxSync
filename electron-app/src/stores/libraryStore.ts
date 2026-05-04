@@ -21,6 +21,8 @@
 
 import { create } from 'zustand'
 import { FixtureDefinition } from '../types/FixtureDefinition'
+import type { FixtureDefinitionV2 } from '../core/forge/types'
+import { NodeGraphBuilder } from '../core/forge/NodeGraphBuilder'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -28,7 +30,7 @@ import { FixtureDefinition } from '../types/FixtureDefinition'
 
 export type FixtureSource = 'system' | 'user'
 
-export interface LibraryFixture extends FixtureDefinition {
+export interface LibraryFixture extends FixtureDefinitionV2 {
   source: FixtureSource
   filePath?: string
 }
@@ -72,18 +74,25 @@ export interface LibraryState {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Convert raw fixture from IPC to LibraryFixture
+ * Convert raw fixture from IPC to LibraryFixture.
+ * WAVE 4548.3: Hydrates nodeGraph from channels[] if not already present.
  */
 function normalizeFixture(raw: any, source: FixtureSource): LibraryFixture {
+  const channels = raw.channels || []
+  // WAVE 4548.3: Hydration — generate nodeGraph from legacy channels[] if absent
+  const nodeGraph = raw.nodeGraph ?? (
+    channels.length > 0 ? NodeGraphBuilder.fromChannels(channels) : undefined
+  )
   return {
     id: raw.id || raw.name?.replace(/\s+/g, '_').toLowerCase() || `${source}-${Date.now()}`,
     name: raw.name || 'Unknown Fixture',
     manufacturer: raw.manufacturer || 'Unknown',
     type: raw.type || 'Generic',
-    channels: raw.channels || [],
+    channels,
     capabilities: raw.capabilities || {},
     physics: raw.physics || null,
     wheels: raw.wheels || null,
+    nodeGraph,
     source,
     filePath: raw.filePath,
   }

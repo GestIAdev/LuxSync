@@ -42,7 +42,7 @@
  * @version WAVE 4522.4
  */
 
-import type { NodeId, ColorMixingType, ColorWheelDefinition } from '../types'
+import type { NodeId, DeviceId, ColorMixingType, ColorWheelDefinition } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { ArbitratedNodeMap, IDMXPacket, INodeResolver } from '../intent-bus'
 import type { INodeChannelDef, IColorNodeData, IKineticNodeData } from '../capability-node'
@@ -57,6 +57,10 @@ import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../h
 import type { IDeviceCalibration } from '../device'
 import { solve, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
 import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematicsEngine'
+// WAVE 4548.6: Forge Node Evaluator bypass
+import type { CompiledForgeGraph, ForgeFrameContext } from '../../forge/compiler/types'
+import { DEFAULT_FORGE_FRAME_CONTEXT } from '../../forge/compiler/types'
+import { ForgeNodeEvaluator } from '../../forge/evaluator/ForgeNodeEvaluator'
 
 // ── Canales de posición para calibración ────────────────────────────────
 const PAN_CHANNELS   = new Set<string>(['pan', 'pan_fine'])
@@ -165,6 +169,12 @@ export class NodeResolver implements INodeResolver {
   // Map<universe, MutableDMXPacket> — solo los paquetes del frame actual
   private readonly _framePackets = new Map<number, MutableDMXPacket>()
 
+  // ── WAVE 4548.6: Forge compiled graphs por device ──────────────────
+  // Si un device tiene un CompiledForgeGraph, _writeNode() delega
+  // completamente al ForgeNodeEvaluator — bypass total del flujo legacy.
+  private readonly _forgeGraphs = new Map<DeviceId, CompiledForgeGraph>()
+  private _forgeFrameContext: ForgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT
+
   constructor(graph: INodeGraph) {
     this._graph = graph
   }
@@ -209,6 +219,36 @@ export class NodeResolver implements INodeResolver {
    */
   get registeredUniverses(): IterableIterator<number> {
     return this._universeBuffers.keys()
+  }
+
+  // ── WAVE 4548.6: Forge Graph Registration ──────────────────────────────
+
+  /**
+   * Registra un grafo Forge compilado para un device.
+   * PATCH TIME — llamar cuando se registra un Device que tiene
+   * FixtureDefinitionV2.nodeGraph.
+   *
+   * Cuando presente, el Forge evaluator REEMPLAZA el flujo legacy
+   * de channel iteration + TransferCurve + calibration para ese device.
+   */
+  registerForgeGraph(deviceId: DeviceId, compiled: CompiledForgeGraph): void {
+    this._forgeGraphs.set(deviceId, compiled)
+  }
+
+  /**
+   * Retira el grafo Forge compilado de un device.
+   * El device volverá al flujo legacy en el próximo frame.
+   */
+  unregisterForgeGraph(deviceId: DeviceId): void {
+    this._forgeGraphs.delete(deviceId)
+  }
+
+  /**
+   * Inyecta el contexto de frame para el Forge evaluator.
+   * Llamar desde el Orchestrator junto con setResolveContext().
+   */
+  setForgeFrameContext(ctx: ForgeFrameContext): void {
+    this._forgeFrameContext = ctx
   }
 
   /**
@@ -294,6 +334,23 @@ export class NodeResolver implements INodeResolver {
     if (!buf) return   // universe no registrado — ignorar silenciosamente
 
     const baseAddr = device.dmxAddress - 1  // convertir a 0-indexed
+
+    // ═══ WAVE 4548.6: FORGE EVALUATOR BYPASS ═══
+    // Si este device tiene un grafo Forge compilado,
+    // delegar COMPLETAMENTE al ForgeNodeEvaluator.
+    const compiled = this._forgeGraphs.get(node.deviceId)
+    if (compiled) {
+      ForgeNodeEvaluator.evaluate(
+        compiled,
+        channelValues,
+        this._forgeFrameContext,
+        buf,
+        baseAddr,
+      )
+      this._activeUniverses.add(device.universe)
+      return  // BYPASS: no ejecutar flujo legacy
+    }
+
     const calibration = device.calibration
     this._activeUniverses.add(device.universe)
 

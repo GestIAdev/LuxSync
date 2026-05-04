@@ -1,0 +1,131 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎛️  NODE PALETTE — WAVE 4548.8b
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Sidebar izquierda con nodos arrastrables agrupados por categoría.
+ * Implementa el protocolo drag-and-drop nativo de @xyflow/react:
+ *   onDragStart → setea `application/forgenode` en dataTransfer
+ *
+ * El canvas (NodeCanvas.tsx) recibe el drop y llama a addNode.
+ *
+ * @module components/views/ForgeView/canvas/NodePalette
+ * @version WAVE 4548.8b
+ */
+
+import React, { useState, useCallback } from 'react'
+import { FORGE_PALETTE } from '../palette/forgePalette'
+import type { ForgeNodeCategory, ForgeNodeType } from '../../../../core/forge/types'
+import './NodePalette.css'
+
+// ─── Colores por categoría (THE GLOW) ──────────────────────────────────────
+const CATEGORY_COLOR: Record<ForgeNodeCategory, string> = {
+  input:    '#00f3ff',
+  process:  '#39ff14',
+  logic:    '#ffb800',
+  output:   '#ff2d55',
+  compound: '#bf5af2',
+}
+
+const CATEGORY_LABEL: Record<ForgeNodeCategory, string> = {
+  input:    'INPUT',
+  process:  'PROCESS',
+  logic:    'LOGIC',
+  output:   'OUTPUT',
+  compound: 'COMPOUND',
+}
+
+const CATEGORY_ORDER: ForgeNodeCategory[] = ['input', 'process', 'logic', 'output', 'compound']
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NODE PALETTE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NodePalette: React.FC = () => {
+  // Categorías expandidas — input y process abiertas por defecto
+  const [expanded, setExpanded] = useState<Set<ForgeNodeCategory>>(
+    new Set(['input', 'process'])
+  )
+
+  const toggleCategory = useCallback((cat: ForgeNodeCategory) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(cat)) {
+        next.delete(cat)
+      } else {
+        next.add(cat)
+      }
+      return next
+    })
+  }, [])
+
+  const onDragStart = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, nodeType: ForgeNodeType) => {
+      event.dataTransfer.setData('application/forgenode', nodeType)
+      event.dataTransfer.effectAllowed = 'move'
+    },
+    []
+  )
+
+  return (
+    <div className="node-palette">
+      <div className="node-palette__header">
+        <span className="node-palette__title">NODE PALETTE</span>
+      </div>
+
+      <div className="node-palette__categories">
+        {CATEGORY_ORDER.map((cat) => {
+          const entries = FORGE_PALETTE[cat]
+          if (entries.length === 0) return null
+
+          const color = CATEGORY_COLOR[cat]
+          const isOpen = expanded.has(cat)
+
+          return (
+            <div key={cat} className="node-palette__category">
+              {/* Category Header */}
+              <button
+                className={`node-palette__cat-header ${isOpen ? 'open' : ''}`}
+                style={{ '--cat-color': color } as React.CSSProperties}
+                onClick={() => toggleCategory(cat)}
+                aria-expanded={isOpen}
+              >
+                <span className="node-palette__cat-indicator" />
+                <span className="node-palette__cat-label">
+                  {CATEGORY_LABEL[cat]}
+                </span>
+                <span className="node-palette__cat-count">
+                  {entries.length}
+                </span>
+                <span className="node-palette__cat-chevron">
+                  {isOpen ? '▾' : '▸'}
+                </span>
+              </button>
+
+              {/* Entries */}
+              {isOpen && (
+                <div className="node-palette__entries">
+                  {entries.map((entry) => (
+                    <div
+                      key={entry.type}
+                      className="node-palette__entry"
+                      style={{ '--cat-color': color } as React.CSSProperties}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, entry.type)}
+                      title={entry.description}
+                    >
+                      <span className="node-palette__entry-icon">{entry.icon}</span>
+                      <span className="node-palette__entry-label">{entry.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default NodePalette

@@ -1215,15 +1215,6 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {/* CHANNEL RACK TAB */}
         {activeTab === 'channels' && (
           <div className="forge-channels-layout">
-            {/* WAVE 4548.8c: Lock banner when graph is too complex for Simple Mode */}
-            {!isSimpleCompatible(forgeGraph) && (
-              <SimpleModeLockBanner
-                onJumpToCanvas={() => {
-                  setForgeEditMode('advanced')
-                  setActiveTab('nodegraph')
-                }}
-              />
-            )}
             {/* Function Palette - Left Sidebar */}
             <aside className="function-foundry">
               <h3>Drag Functions</h3>
@@ -1386,6 +1377,18 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     isStressTesting={isStressTesting}
                   />
                 </Suspense>
+              </div>
+            )}
+
+            {/* WAVE 4548.14: Read-only overlay (fuera del flujo del grid) */}
+            {!isSimpleCompatible(forgeGraph) && (
+              <div className="forge-channels-overlay" role="alert" aria-live="polite">
+                <SimpleModeLockBanner
+                  onJumpToCanvas={() => {
+                    setForgeEditMode('advanced')
+                    setActiveTab('nodegraph')
+                  }}
+                />
               </div>
             )}
           </div>

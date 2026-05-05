@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ForgeGraphCompiler } from '../ForgeGraphCompiler'
-import type { IForgeEdge, IForgeNode, IForgeNodeGraph, IForgePort } from '../../types'
+import type { ICompoundIngenioConfig, IForgeEdge, IForgeNode, IForgeNodeGraph, IForgePort } from '../../types'
 
 function inPort(id: string): IForgePort {
   return { id, label: id, dataType: 'normalized', direction: 'in', defaultValue: 0, required: true }
@@ -139,5 +139,165 @@ describe('ForgeGraphCompiler', () => {
     expect(compiled.wireBuffer.length).toBe(8)
     expect(compiled.totalStateSlots).toBe(1)
     expect(compiled.stateBuffer.length).toBe(1)
+  })
+
+  it('WAVE 4552 — Inlining: compound_ingenio se aplana en instrucciones primitivas', () => {
+    // Sub-graph del Ingenio: input_constant -> proc_smooth -> output_dmx
+    const subInput: IForgeNode = {
+      id: 'sub-const',
+      type: 'input_constant',
+      category: 'input',
+      inputs: [],
+      outputs: [outPort('value')],
+      config: { nodeType: 'input_constant', value: 0.75 },
+      uiPosition: { x: 0, y: 0 },
+      label: 'ConstInSub',
+    }
+    const subSmooth: IForgeNode = {
+      id: 'sub-smooth',
+      type: 'proc_smooth',
+      category: 'process',
+      inputs: [inPort('value')],
+      outputs: [outPort('value')],
+      config: { nodeType: 'proc_smooth', attackMs: 50, releaseMs: 50 },
+      uiPosition: { x: 150, y: 0 },
+      label: 'SmoothInSub',
+    }
+    const subOutput: IForgeNode = {
+      id: 'sub-out',
+      type: 'output_dmx',
+      category: 'output',
+      inputs: [inPort('value')],
+      outputs: [],
+      config: { nodeType: 'output_dmx', channelType: 'dimmer', dmxOffset: 0, defaultDmxValue: 0 },
+      uiPosition: { x: 300, y: 0 },
+      label: 'DmxOutInSub',
+    }
+    const subGraph: IForgeNodeGraph = {
+      version: '1.0.0',
+      nodes: [subInput, subSmooth, subOutput],
+      edges: [
+        edge('se1', 'sub-const', 'value', 'sub-smooth', 'value'),
+        edge('se2', 'sub-smooth', 'value', 'sub-out', 'value'),
+      ],
+      meta: {
+        createdAt: '2026-05-05T00:00:00.000Z',
+        generatorWave: 'WAVE-4552-test',
+        autoMigrated: false,
+        dmxFootprint: 1,
+      },
+    }
+
+    // El compound node en el grafo principal. No hay puertos externos expuestos
+    // porque la logica es totalmente auto-contenida (no necesita portMapping).
+    const ingenioConfig: ICompoundIngenioConfig = {
+      nodeType: 'compound_ingenio',
+      ingenioName: 'TestIngenio',
+      ingenioRef: null,
+      subGraph,
+      portMapping: { inputs: [], outputs: [] },
+    }
+    const compoundNode: IForgeNode = {
+      id: 'ing-1',
+      type: 'compound_ingenio',
+      category: 'compound',
+      inputs: [],
+      outputs: [],
+      config: ingenioConfig,
+      uiPosition: { x: 0, y: 0 },
+      label: 'TestIngenio',
+    }
+
+    const parentGraph = graph([compoundNode], [])
+    const compiled = ForgeGraphCompiler.compile(parentGraph, 'fixture-inline-test')
+
+    // El programa compilado debe tener 3 instrucciones (6=const, 9=smooth, 23=output_dmx)
+    // No debe haber ninguna instruccion con opcode 0 (compound_ingenio / noop)
+    expect(compiled.program.length).toBe(3)
+    expect(compiled.program.map((i) => i.opcode)).toEqual([6, 9, 23])
+    // El smooth tiene 1 slot de estado
+    expect(compiled.totalStateSlots).toBe(1)
+    // Hay 1 output DMX en la salida
+    expect(compiled.outputs.length).toBe(1)
+    expect(compiled.outputs[0].dmxOffset).toBe(0)
+  })
+
+  it('WAVE 4552 — Inlining anidado: Ingenio dentro de Ingenio se aplana completamente', () => {
+    // Nivel 2 (mas profundo): input_constant -> output_dmx
+    const deepConst: IForgeNode = {
+      id: 'deep-const',
+      type: 'input_constant',
+      category: 'input',
+      inputs: [],
+      outputs: [outPort('value')],
+      config: { nodeType: 'input_constant', value: 0.5 },
+      uiPosition: { x: 0, y: 0 },
+    }
+    const deepOut: IForgeNode = {
+      id: 'deep-out',
+      type: 'output_dmx',
+      category: 'output',
+      inputs: [inPort('value')],
+      outputs: [],
+      config: { nodeType: 'output_dmx', channelType: 'dimmer', dmxOffset: 2, defaultDmxValue: 0 },
+      uiPosition: { x: 200, y: 0 },
+    }
+    const deepGraph: IForgeNodeGraph = {
+      version: '1.0.0',
+      nodes: [deepConst, deepOut],
+      edges: [edge('de1', 'deep-const', 'value', 'deep-out', 'value')],
+      meta: { createdAt: '2026-05-05T00:00:00.000Z', generatorWave: 'WAVE-4552-nested', autoMigrated: false, dmxFootprint: 1 },
+    }
+
+    // Nivel 1: un compound que contiene el deep compound
+    const innerCompoundConfig: ICompoundIngenioConfig = {
+      nodeType: 'compound_ingenio',
+      ingenioName: 'InnerIngenio',
+      ingenioRef: null,
+      subGraph: deepGraph,
+      portMapping: { inputs: [], outputs: [] },
+    }
+    const innerCompound: IForgeNode = {
+      id: 'ing-inner',
+      type: 'compound_ingenio',
+      category: 'compound',
+      inputs: [],
+      outputs: [],
+      config: innerCompoundConfig,
+      uiPosition: { x: 0, y: 0 },
+    }
+    const level1Graph: IForgeNodeGraph = {
+      version: '1.0.0',
+      nodes: [innerCompound],
+      edges: [],
+      meta: { createdAt: '2026-05-05T00:00:00.000Z', generatorWave: 'WAVE-4552-nested-l1', autoMigrated: false, dmxFootprint: 1 },
+    }
+
+    // Nivel 0 (raiz): compound que contiene el nivel 1
+    const outerCompoundConfig: ICompoundIngenioConfig = {
+      nodeType: 'compound_ingenio',
+      ingenioName: 'OuterIngenio',
+      ingenioRef: null,
+      subGraph: level1Graph,
+      portMapping: { inputs: [], outputs: [] },
+    }
+    const outerCompound: IForgeNode = {
+      id: 'ing-outer',
+      type: 'compound_ingenio',
+      category: 'compound',
+      inputs: [],
+      outputs: [],
+      config: outerCompoundConfig,
+      uiPosition: { x: 0, y: 0 },
+    }
+
+    const rootGraph = graph([outerCompound], [])
+    const compiled = ForgeGraphCompiler.compile(rootGraph, 'fixture-nested-inline')
+
+    // Debe tener exactamente 2 instrucciones primitivas al final (input_constant + output_dmx)
+    expect(compiled.program.length).toBe(2)
+    // Ningun opcode 0 (compound noop) debe sobrevivir
+    expect(compiled.program.every((i) => i.opcode !== 0)).toBe(true)
+    expect(compiled.outputs.length).toBe(1)
   })
 })

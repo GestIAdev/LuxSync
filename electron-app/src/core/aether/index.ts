@@ -220,3 +220,9 @@ export {
  * ```
  */
 export { VMMAdapter, LiquidImpactAdapter, LiquidColorAdapter } from './adapters'
+
+// ---------------------------------------------------------------------------
+// EGRESS — WAVE 4557: LA ADUANA AETHER (Safety Middleware)
+// ---------------------------------------------------------------------------
+
+export { AetherSafetyMiddleware } from './egress'

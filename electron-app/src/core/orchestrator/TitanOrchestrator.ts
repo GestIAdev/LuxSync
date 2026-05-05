@@ -96,6 +96,8 @@ import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter'
 import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
 import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
 import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
+// 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
+import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
@@ -372,6 +374,9 @@ export class TitanOrchestrator {
     frameIndex: 0,
   }
 
+  // 🛂 WAVE 4557: Aether Safety Middleware — velocity clamp, airbag, DarkSpin, output gate, throttle
+  private readonly _aetherSafety = new AetherSafetyMiddleware()
+
   // WAVE 4548.6: Pre-allocated ForgeFrameContext — mutable in-place, zero alloc
   private readonly _forgeAudioBands = new Float64Array(6)
   private readonly _forgeFrameCtx: MutableForgeFrameContext = {
@@ -414,8 +419,15 @@ export class TitanOrchestrator {
       const nodeData = this._aetherGraph.getNodeData(nodeId)
       if (nodeData?.family === NodeFamily.KINETIC) {
         this._physicsPostProcessor.registerNode(nodeId)
+        // 🛂 WAVE 4557: Pre-allocate kinetic state in safety middleware
+        this._aetherSafety.registerKineticNode(nodeId)
       }
     }
+
+    // 🛂 WAVE 4557: Register device in safety middleware for virtual/throttle tracking
+    this._aetherSafety.registerDevice(
+      definition.deviceId, definition.universe, definition.isVirtual ?? false,
+    )
 
     // WAVE 4548.6: Compile ForgeNodeGraph at patch time for zero-alloc evaluation
     if (forgeGraph && forgeGraph.nodes.length > 0) {
@@ -468,7 +480,11 @@ export class TitanOrchestrator {
     }
 
     this._aetherArbiter = this._aetherArbiter ?? new NodeArbiter()
-    this._aetherResolver = this._aetherResolver ?? new NodeResolver(this._aetherGraph)
+    if (!this._aetherResolver) {
+      this._aetherResolver = new NodeResolver(this._aetherGraph)
+      // 🛂 WAVE 4557: Wire safety middleware into resolver
+      this._aetherResolver.setSafetyMiddleware(this._aetherSafety)
+    }
     this._colorAdapter = this._colorAdapter ?? new ColorAdapter()
     this._kineticAdapter = this._kineticAdapter ?? new VMMAdapter()
     this._beamAdapter = this._beamAdapter ?? new BeamAdapter()
@@ -1770,7 +1786,23 @@ export class TitanOrchestrator {
         this._aetherCtx.vibe.name,
       )
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🛂 WAVE 4557: AETHER SAFETY MIDDLEWARE — LA ADUANA AETHER
+      //
+      // FASE 0: PRE-RESOLVE  — Output gate + virtual filter (muta ArbitratedNodeMap)
+      // FASE 1: INTRA-RESOLVE — Velocity clamp, airbag, DarkSpin (called by NodeResolver)
+      // FASE 2: POST-RESOLVE  — Throttle + virtual skip before sendUniverseRaw
+      // ═══════════════════════════════════════════════════════════════════════
+      const aetherSafety = this._aetherSafety
+
+      // FASE 0: Set frame context + apply output gate
+      aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name)
+      aetherSafety.setOutputEnabled(masterArbiter.isOutputEnabled())
+      aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds())
+      aetherSafety.applyOutputGate(arbitrated as Map<string, Record<string, number>>)
+
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
+      // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
       // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
       aetherResolver.setResolveContext(
         engineAudioMetrics.bpm,
@@ -1797,10 +1829,23 @@ export class TitanOrchestrator {
 
       aetherResolver.resolve(arbitrated)
 
-      // 5. Enviar al driver DMX directamente (zero-copy — usa los buffers del Resolver)
+      // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
       for (const universe of aetherResolver.registeredUniverses) {
+        // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
+        if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
         if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
+      }
+
+      // 🛂 WAVE 4557: Safety telemetry (~1Hz)
+      if (this.frameCount % 44 === 0) {
+        const tel = aetherSafety.consumeTelemetry()
+        if (tel.velocityClamps > 0 || tel.airbagHits > 0 || tel.aduanaBlocks > 0 || tel.darkSpinActive > 0) {
+          console.log(
+            `[AetherAduana 🛂] VelClamp:${tel.velocityClamps} Airbag:${tel.airbagHits} ` +
+            `DarkSpin:${tel.darkSpinActive} AduanaGate:${tel.aduanaBlocks}`,
+          )
+        }
       }
       }
     }

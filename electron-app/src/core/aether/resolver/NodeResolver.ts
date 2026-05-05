@@ -61,6 +61,8 @@ import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematic
 import type { CompiledForgeGraph, ForgeFrameContext } from '../../forge/compiler/types'
 import { DEFAULT_FORGE_FRAME_CONTEXT } from '../../forge/compiler/types'
 import { ForgeNodeEvaluator } from '../../forge/evaluator/ForgeNodeEvaluator'
+// 🛂 WAVE 4557: Aether Safety Middleware — velocity clamp, airbag, DarkSpin
+import type { AetherSafetyMiddleware } from '../egress/AetherSafetyMiddleware'
 
 // ── Canales de posición para calibración ────────────────────────────────
 const PAN_CHANNELS   = new Set<string>(['pan', 'pan_fine'])
@@ -175,8 +177,19 @@ export class NodeResolver implements INodeResolver {
   private readonly _forgeGraphs = new Map<DeviceId, CompiledForgeGraph>()
   private _forgeFrameContext: ForgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT
 
+  // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
+  private _safetyMiddleware: AetherSafetyMiddleware | null = null
+
   constructor(graph: INodeGraph) {
     this._graph = graph
+  }
+
+  /**
+   * WAVE 4557: Inyecta el AetherSafetyMiddleware.
+   * Llamar en patch-time, antes del primer frame.
+   */
+  setSafetyMiddleware(middleware: AetherSafetyMiddleware): void {
+    this._safetyMiddleware = middleware
   }
 
   /**
@@ -347,6 +360,22 @@ export class NodeResolver implements INodeResolver {
         buf,
         baseAddr,
       )
+
+      // ★ WAVE 4557: Post-Forge Safety Sweep — airbag + velocity clamp
+      // The Forge evaluator bypasses ALL safety logic. Apply critical
+      // protections on the buffer AFTER evaluation for kinetic outputs.
+      if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
+        for (let oi = 0; oi < compiled.outputs.length; oi++) {
+          const output = compiled.outputs[oi]
+          const idx = baseAddr + output.dmxOffset
+          if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+          // We don't have channelName on CompiledOutput — use dmxOffset
+          // heuristic: first 2 kinetic outputs are typically pan, tilt.
+          // For safety, apply airbag to ALL kinetic channel outputs.
+          buf[idx] = this._safetyMiddleware.applyAirbag(buf[idx], oi === 0)
+        }
+      }
+
       this._activeUniverses.add(device.universe)
       return  // BYPASS: no ejecutar flujo legacy
     }
@@ -418,6 +447,17 @@ export class NodeResolver implements INodeResolver {
         dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration)
       }
 
+      // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path
+      if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
+        if (PAN_CHANNELS.has(chDef.type) && chDef.type === PAN_COARSE) {
+          dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, true, dmxValue)
+          dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, true)
+        } else if (TILT_CHANNELS.has(chDef.type) && chDef.type === TILT_COARSE) {
+          dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue)
+          dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, false)
+        }
+      }
+
       // Clamp final de seguridad
       if (dmxValue < 0)   dmxValue = 0
       if (dmxValue > 255) dmxValue = 255
@@ -475,6 +515,16 @@ export class NodeResolver implements INodeResolver {
       }
     }
 
+    // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
+    let safePan  = ikResult.pan
+    let safeTilt = ikResult.tilt
+    const sm = this._safetyMiddleware
+    if (sm) {
+      const clamped = sm.clampKineticVelocity(node.nodeId, safePan, safeTilt)
+      safePan  = sm.applyAirbag(clamped.pan, true)
+      safeTilt = sm.applyAirbag(clamped.tilt, false)
+    }
+
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef  = node.channels[ci]
       const isPan  = chDef.type === 'pan'
@@ -484,7 +534,7 @@ export class NodeResolver implements INodeResolver {
       const bufIdx = baseAddr + chDef.dmxOffset
       if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE) continue
 
-      const dmxValue = isPan ? ikResult.pan : ikResult.tilt
+      const dmxValue = isPan ? safePan : safeTilt
       buf[bufIdx] = dmxValue
 
       if (chDef.is16bit) {
@@ -697,6 +747,26 @@ export class NodeResolver implements INodeResolver {
           }
           // Si no hay lastAllowedColor, mantenemos el valor ya calculado
           // (puede ser 0 = Open en la primera retención).
+        }
+
+        // ★ WAVE 4557: DarkSpin — transit blackout via AetherSafetyMiddleware
+        // If the color wheel value changed, force dimmer=0 during mechanical transit.
+        // Applied AFTER HarmonicQuantizer (which decides IF the change occurs).
+        if (this._safetyMiddleware && aetherWheel.minTransitionMs > 0) {
+          const wheelDmxForDarkSpin = Math.round(wheelDmxNorm * 255)
+          const inBlackout = this._safetyMiddleware.checkDarkSpin(
+            nodeId,
+            wheelDmxForDarkSpin,
+            aetherWheel.minTransitionMs,
+          )
+          if (inBlackout) {
+            return {
+              ...original,
+              [CH_COLOR_WHEEL]: wheelDmxNorm,
+              [CH_R]: rNorm, [CH_G]: gNorm, [CH_B]: bNorm,
+              [DIMMER_CHANNEL]: 0,  // ★ BLACKOUT: hide mechanical crystal transit
+            }
+          }
         }
 
         // Para hybrid: también emitir canales RGB si el nodo los tiene

@@ -14,14 +14,15 @@
  *   5. Edge Wiring → Uint32Array of [src, dst] pairs
  *   6. Input/Output Map extraction
  *
- * NOTA: compound_ingenio inlining is deferred to a future iteration.
- * This v1 assumes a flat graph with no compound nodes.
+ * WAVE 4552: compound_ingenio inlining is NOW implemented via _inlineCompoundNodes().
+ * Flat graphs with no compound nodes are passed through unchanged (zero overhead).
  *
  * @module core/forge/compiler/ForgeGraphCompiler
- * @version WAVE 4548.6
+ * @version WAVE 4552
  */
 
-import type { IForgeNodeGraph, IForgeNode, ForgeNodeId, ForgeNodeType } from '../types'
+import type { IForgeNodeGraph, IForgeNode, IForgeEdge, ForgeNodeId, ForgeNodeType } from '../types'
+import type { ICompoundIngenioConfig } from '../types'
 import type {
   IInputDmxConfig,
   IInputAudioBandConfig,
@@ -70,7 +71,7 @@ const OPCODE_MAP: Record<ForgeNodeType, number> = {
   logic_or:         21,
   logic_counter:    22,
   output_dmx:       23,
-  compound_ingenio:  0,  // noop — not supported in v1
+  compound_ingenio:  0,  // WAVE 4552: never emitted — inlined at patch time by _inlineCompoundNodes()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -266,14 +267,17 @@ export class ForgeGraphCompiler {
    * @returns CompiledForgeGraph listo para ForgeNodeEvaluator.evaluate()
    */
   static compile(graph: IForgeNodeGraph, fixtureId: string): CompiledForgeGraph {
+    // ── 0. Inline all compound_ingenio nodes (WAVE 4552) ──────────────
+    const flatGraph = ForgeGraphCompiler._inlineCompoundNodes(graph)
+
     // ── 1. Build node index for O(1) lookups ──────────────────────────
     const nodeMap = new Map<ForgeNodeId, IForgeNode>()
-    for (const node of graph.nodes) {
+    for (const node of flatGraph.nodes) {
       nodeMap.set(node.id, node)
     }
 
     // ── 2. Topological Sort (Kahn's Algorithm) ────────────────────────
-    const executionOrder = ForgeGraphCompiler._topologicalSort(graph, nodeMap)
+    const executionOrder = ForgeGraphCompiler._topologicalSort(flatGraph, nodeMap)
 
     // ── 3. Wire Allocation ────────────────────────────────────────────
     const { wireBuffer, portIndexMap, totalWireSlots } =
@@ -285,7 +289,7 @@ export class ForgeGraphCompiler {
 
     // ── 5. Build Edge Wiring ──────────────────────────────────────────
     const { edgeWiring, edgeCount } =
-      ForgeGraphCompiler._buildEdgeWiring(graph, portIndexMap)
+      ForgeGraphCompiler._buildEdgeWiring(flatGraph, portIndexMap)
 
     // ── 6. Build Program ──────────────────────────────────────────────
     const program = ForgeGraphCompiler._buildProgram(
@@ -389,6 +393,149 @@ export class ForgeGraphCompiler {
       energyInputIndex,
       timeInputIndex,
       outputs,
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRIVATE — Inline compound_ingenio nodes (WAVE 4552)
+  //
+  // Transforms a graph that may contain compound_ingenio nodes into a
+  // fully flat graph of primitive nodes. This is PATCH TIME ONLY.
+  //
+  // Algorithm (iterative, handles arbitrary nesting depth):
+  //   While any compound_ingenio nodes exist in the working graph:
+  //     For each compound node:
+  //       1. Prefix all internal node/port/edge IDs with the compound node's ID
+  //       2. Build a translation map: exposedPortId -> internal wireKey
+  //       3. Redirect all external edges that connect to the compound node
+  //          to their corresponding internal port via the portMapping
+  //       4. Remove the compound node and its external edges
+  //       5. Insert the (now-prefixed) internal nodes and edges
+  //   Result: a flat IForgeNodeGraph with only primitive nodes
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private static _inlineCompoundNodes(graph: IForgeNodeGraph): IForgeNodeGraph {
+    // Fast path: no compound nodes -> return as-is (zero overhead)
+    if (!graph.nodes.some((n) => n.type === 'compound_ingenio')) return graph
+
+    // Iterative expansion to handle nested Ingenios
+    let workNodes: IForgeNode[] = [...graph.nodes]
+    let workEdges: IForgeEdge[] = [...graph.edges]
+
+    let hasCompound = true
+    let safetyLimit = 32 // max nesting depth guard
+
+    while (hasCompound && safetyLimit-- > 0) {
+      hasCompound = false
+      const nextNodes: IForgeNode[] = []
+      const nextEdges: IForgeEdge[] = []
+      // Edges to keep (not connected to any compound node)
+      const removedNodeIds = new Set<string>()
+
+      for (const node of workNodes) {
+        if (node.type !== 'compound_ingenio') {
+          nextNodes.push(node)
+          continue
+        }
+
+        hasCompound = true
+        removedNodeIds.add(node.id)
+        const cfg = node.config as ICompoundIngenioConfig
+        const prefix = node.id
+        const sub = cfg.subGraph
+
+        // Step 1: Clone internal nodes with prefixed IDs
+        for (const internalNode of sub.nodes) {
+          const prefixedId = `${prefix}__${internalNode.id}`
+          nextNodes.push({
+            ...internalNode,
+            id: prefixedId,
+            inputs: internalNode.inputs.map((p) => ({ ...p, id: `${prefix}__${p.id}` })),
+            outputs: internalNode.outputs.map((p) => ({ ...p, id: `${prefix}__${p.id}` })),
+          })
+        }
+
+        // Step 2: Clone internal edges with prefixed IDs
+        for (const internalEdge of sub.edges) {
+          nextEdges.push({
+            id: `${prefix}__${internalEdge.id}`,
+            sourceNode: `${prefix}__${internalEdge.sourceNode}`,
+            sourcePort: `${prefix}__${internalEdge.sourcePort}`,
+            targetNode: `${prefix}__${internalEdge.targetNode}`,
+            targetPort: `${prefix}__${internalEdge.targetPort}`,
+          })
+        }
+
+        // Step 3: Build exposed-port -> prefixed-internal-port maps
+        // input map: exposedPortId -> { internalNodeId (prefixed), internalPortId (prefixed) }
+        const exposedInputMap = new Map<string, { nodeId: string; portId: string }>()
+        for (const mapping of cfg.portMapping.inputs) {
+          exposedInputMap.set(mapping.exposedPortId, {
+            nodeId: `${prefix}__${mapping.internalNodeId}`,
+            portId: `${prefix}__${mapping.internalPortId}`,
+          })
+        }
+        const exposedOutputMap = new Map<string, { nodeId: string; portId: string }>()
+        for (const mapping of cfg.portMapping.outputs) {
+          exposedOutputMap.set(mapping.exposedPortId, {
+            nodeId: `${prefix}__${mapping.internalNodeId}`,
+            portId: `${prefix}__${mapping.internalPortId}`,
+          })
+        }
+
+        // Step 4: Redirect external edges that point TO or FROM this compound node
+        // These edges are NOT kept in nextEdges — they get translated
+        for (const edge of workEdges) {
+          if (edge.targetNode === node.id) {
+            // External edge -> compound INPUT port -> rewire to internal node
+            const internal = exposedInputMap.get(edge.targetPort)
+            if (internal) {
+              nextEdges.push({
+                id: `${prefix}__redirect_in__${edge.id}`,
+                sourceNode: edge.sourceNode,
+                sourcePort: edge.sourcePort,
+                targetNode: internal.nodeId,
+                targetPort: internal.portId,
+              })
+            }
+            // If no mapping found: the edge connected to an unbound port -> silently drop
+          } else if (edge.sourceNode === node.id) {
+            // compound OUTPUT port -> external node -> rewire from internal node
+            const internal = exposedOutputMap.get(edge.sourcePort)
+            if (internal) {
+              nextEdges.push({
+                id: `${prefix}__redirect_out__${edge.id}`,
+                sourceNode: internal.nodeId,
+                sourcePort: internal.portId,
+                targetNode: edge.targetNode,
+                targetPort: edge.targetPort,
+              })
+            }
+          }
+          // Edges unrelated to this compound node are handled below
+        }
+      }
+
+      // Keep edges that do NOT touch any removed (compound) node
+      for (const edge of workEdges) {
+        if (!removedNodeIds.has(edge.sourceNode) && !removedNodeIds.has(edge.targetNode)) {
+          nextEdges.push(edge)
+        }
+      }
+
+      workNodes = nextNodes
+      workEdges = nextEdges
+    }
+
+    if (safetyLimit <= 0) {
+      console.error('[ForgeGraphCompiler] _inlineCompoundNodes: max nesting depth (32) exceeded. Possible circular Ingenio reference. Compilation may be incomplete.')
+    }
+
+    return {
+      version: graph.version,
+      nodes: workNodes,
+      edges: workEdges,
+      meta: graph.meta,
     }
   }
 

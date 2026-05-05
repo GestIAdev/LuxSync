@@ -86,7 +86,7 @@ interface KineticsCathedralProps {
 
 export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose }) => {
   // ── Stores ─────────────────────────────────────────────────────────────
-  const selectedIds = useSelectionStore(s => Array.from(s.selectedIds))
+  const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
   const stageFixtures = useStageStore(s => s.fixtures)
   const stageFromStore = useStageStore(s => s.stage)
   const hardware = useHardware()

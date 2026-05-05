@@ -119,6 +119,12 @@ interface ProgrammerActions {
   /** Release posición */
   releasePosition: () => void
 
+  /** Set velocidad cinemática (percent 0-100) → normalizado 0-1 → L2 KINETIC 44Hz */
+  setKineticSpeed: (percent: number) => void
+
+  /** Release velocidad cinemática */
+  releaseKineticSpeed: () => void
+
   /** Set beam channel (channel key, value 0-255) */
   setBeam: (channel: 'gobo' | 'prism' | 'focus' | 'zoom' | 'iris', value: number) => void
 
@@ -354,6 +360,33 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         for (const id of state.activeFixtureIds) {
           const ov = next.get(id)
           if (ov) next.set(id, { ...ov, pan: null, tilt: null, speed: null })
+        }
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('KINETIC')
+        return { fixtureOverrides: next, dirtyFamilies: dirty }
+      })
+    },
+
+    setKineticSpeed: (percent) => {
+      const normalized = clamp01(percent / 100)
+      set(state => {
+        const next = new Map(state.fixtureOverrides)
+        for (const id of state.activeFixtureIds) {
+          const ov = next.get(id) ?? createEmptyOverrides()
+          next.set(id, { ...ov, speed: normalized })
+        }
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('KINETIC')
+        return { fixtureOverrides: next, dirtyFamilies: dirty }
+      })
+    },
+
+    releaseKineticSpeed: () => {
+      set(state => {
+        const next = new Map(state.fixtureOverrides)
+        for (const id of state.activeFixtureIds) {
+          const ov = next.get(id)
+          if (ov) next.set(id, { ...ov, speed: null })
         }
         const dirty = new Set(state.dirtyFamilies)
         dirty.add('KINETIC')

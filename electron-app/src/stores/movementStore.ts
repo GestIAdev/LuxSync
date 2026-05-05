@@ -20,6 +20,7 @@
  */
 
 import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import { generateSeed } from '../engine/movement/ChaosHash'
 import type { Target3D, IKResult, SpatialFanMode } from '../engine/movement/InverseKinematicsEngine'
 
@@ -67,6 +68,11 @@ interface MovementState {
 
   // ── UI ──────────────────────────────────────────────────────────────────
   isCalibrating: boolean
+
+  // ── Lock feedback (superior motor eviction) ─────────────────────────────
+  /** Fixtures cuyo canal KINETIC está siendo controlado por un motor superior (Chronos/Selene).
+   *  Rellena el KineticsBridge al detectar que la respuesta IPC indica ownership externo. */
+  lockedFixtureIds: ReadonlySet<string>
 }
 
 interface MovementActions {
@@ -95,6 +101,9 @@ interface MovementActions {
 
   // UI
   setIsCalibrating: (v: boolean) => void
+
+  /** Marca fixtures como bloqueados por motor superior */
+  setLockedFixtures: (ids: ReadonlySet<string>) => void
 
   /** Hidratar desde respuesta del backend (selection change) */
   hydrateFromBackend: (state: {
@@ -129,13 +138,14 @@ const DEFAULTS: MovementState = {
   chaosAmount: 0,
   chaosSeed: generateSeed(),
   isCalibrating: false,
+  lockedFixtureIds: new Set(),
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const useMovementStore = create<MovementState & MovementActions>((set) => ({
+export const useMovementStore = create<MovementState & MovementActions>()(subscribeWithSelector((set) => ({
   ...DEFAULTS,
 
   setPanTilt: (pan, tilt) => set({ pan, tilt }),
@@ -158,6 +168,8 @@ export const useMovementStore = create<MovementState & MovementActions>((set) =>
 
   setIsCalibrating: (isCalibrating) => set({ isCalibrating }),
 
+  setLockedFixtures: (lockedFixtureIds) => set({ lockedFixtureIds }),
+
   hydrateFromBackend: ({ pan, tilt, pattern, speed, amplitude }) => {
     const uiPattern = pattern === 'hold' ? 'static' : (pattern ?? 'none')
     set({
@@ -170,4 +182,4 @@ export const useMovementStore = create<MovementState & MovementActions>((set) =>
   },
 
   resetToDefaults: () => set({ ...DEFAULTS, chaosSeed: generateSeed() }),
-}))
+})))

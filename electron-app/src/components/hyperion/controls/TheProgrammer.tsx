@@ -16,6 +16,7 @@ import { useSelectionStore, useSelectedArray } from '../../../stores/selectionSt
 import { useHardware } from '../../../stores/truthStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
+import { KineticsBridge } from '../../../bridges/KineticsBridge'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
@@ -123,8 +124,8 @@ export const TheProgrammer: React.FC = () => {
   // ─── WAVE 4529: Iniciar el bridge una sola vez ───────────────────────────
   useEffect(() => {
     ProgrammerAetherBridge.start()
-    // El bridge es un singleton — no lo detenemos al desmontar este componente
-    // porque otros componentes (PositionSection, BeamSection, etc.) también lo usan
+    KineticsBridge.start()
+    // Los bridges son singletons — no se detienen al desmontar
   }, [])
 
   // ─── WAVE 4529: Sincronizar selección con el store ───────────────────────

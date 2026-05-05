@@ -10,12 +10,14 @@ import React, { useMemo, useCallback } from 'react'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
+import { useMovementStore } from '../../../stores/movementStore'
 
 export const CathedralFooter: React.FC = () => {
   const stageFixtures = useStageStore(s => s.fixtures)
   const selectedIds = useSelectionStore(s => s.selectedIds)
   const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
   const activeFixtureIds = useProgrammerStore(s => s.activeFixtureIds)
+  const lockedFixtureIds = useMovementStore(s => s.lockedFixtureIds)
 
   // Agrupar fixtures por zona/tipo para chips rápidos
   const groupChips = useMemo(() => {
@@ -54,6 +56,14 @@ export const CathedralFooter: React.FC = () => {
     useProgrammerStore.getState().releasePosition()
   }, [])
 
+  // Fixtures bloqueados por motor superior (Chronos/Selene L0/L1 evicción)
+  const externalLockCount = useMemo(() => {
+    let count = 0
+    for (const id of activeFixtureIds) {
+      if (lockedFixtureIds.has(id)) count++
+    }
+    return count
+  }, [lockedFixtureIds, activeFixtureIds])
   return (
     <div className="cathedral-footer">
       {/* Groups quickbar */}
@@ -76,7 +86,7 @@ export const CathedralFooter: React.FC = () => {
         </div>
       </div>
 
-      {/* Lock status */}
+      {/* Lock status — L2 programmer overrides */}
       {lockedCount > 0 && (
         <div className="cathedral-footer__locks">
           <span className="cathedral-footer__lock-icon">🔒</span>
@@ -90,6 +100,16 @@ export const CathedralFooter: React.FC = () => {
           >
             🔓 UNLOCK ALL
           </button>
+        </div>
+      )}
+
+      {/* Lock status — Motor superior evicción (Chronos/Selene) */}
+      {externalLockCount > 0 && (
+        <div className="cathedral-footer__locks cathedral-footer__locks--external">
+          <span className="cathedral-footer__lock-icon">⛔</span>
+          <span className="cathedral-footer__lock-text">
+            MOTOR OVERRIDE: {externalLockCount} fixture{externalLockCount !== 1 ? 's' : ''} bajo control superior
+          </span>
         </div>
       )}
     </div>

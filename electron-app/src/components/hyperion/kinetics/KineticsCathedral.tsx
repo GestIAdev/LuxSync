@@ -30,7 +30,7 @@
  * @version WAVE 4561
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 
 import { useMovementStore, type RadarMode, type PatternType } from '../../../stores/movementStore'
@@ -46,7 +46,7 @@ import { PatternArsenal } from './PatternArsenal'
 import { ChaosOrderSlider } from './ChaosOrderSlider'
 import { PositionReadout } from './PositionReadout'
 import { CathedralFooter } from './CathedralFooter'
-import type { Target3D, IKResult } from '../../../engine/movement/InverseKinematicsEngine'
+import type { Target3D } from '../../../engine/movement/InverseKinematicsEngine'
 
 import './KineticsCathedral.css'
 
@@ -120,7 +120,6 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
 
   const {
     setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude,
-    setSpatialReachability, setSpatialSubTargets,
     setRadarModeOverride, setActivePattern, setPatternSpeed, setPatternAmplitude,
     setChaosAmount, reseed, hydrateFromBackend, resetToDefaults,
   } = useMovementStore(useShallow(s => ({
@@ -128,8 +127,6 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     setSpatialTarget: s.setSpatialTarget,
     setSpatialFanMode: s.setSpatialFanMode,
     setSpatialFanAmplitude: s.setSpatialFanAmplitude,
-    setSpatialReachability: s.setSpatialReachability,
-    setSpatialSubTargets: s.setSpatialSubTargets,
     setRadarModeOverride: s.setRadarModeOverride,
     setActivePattern: s.setActivePattern,
     setPatternSpeed: s.setPatternSpeed,
@@ -139,15 +136,6 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     hydrateFromBackend: s.hydrateFromBackend,
     resetToDefaults: s.resetToDefaults,
   })))
-
-  // ── Refs (para handlers de drag — sin re-render) ──────────────────────
-  const spatialTargetRef = useRef<Target3D>(spatialTarget)
-  const spatialFanModeRef = useRef(spatialFanMode)
-  const spatialFanAmplitudeRef = useRef(spatialFanAmplitude)
-
-  useEffect(() => { spatialTargetRef.current = spatialTarget }, [spatialTarget])
-  useEffect(() => { spatialFanModeRef.current = spatialFanMode }, [spatialFanMode])
-  useEffect(() => { spatialFanAmplitudeRef.current = spatialFanAmplitude }, [spatialFanAmplitude])
 
   // ── Adiabatic Detection ────────────────────────────────────────────────
   const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
@@ -230,79 +218,42 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   }, [selectedIds, fanValue, setPanTilt])
 
   /** Spatial target drag */
-  const handleTargetChange = useCallback(async (newTarget: Target3D) => {
+  const handleTargetChange = useCallback((newTarget: Target3D) => {
+    // KineticsBridge suscribe spatialTarget y despacha window.lux.aether.applySpatialTarget
+    // con debounce — sólo actualizamos el store aquí.
     setSpatialTarget(newTarget)
-    spatialTargetRef.current = newTarget
-    try {
-      const result = await window.lux?.arbiter?.applySpatialTarget({
-        target: newTarget,
-        fixtureIds: selectedIds,
-        fanMode: spatialFanModeRef.current,
-        fanAmplitude: spatialFanAmplitudeRef.current,
-      })
-      if (result?.success && result.results) {
-        setSpatialReachability(result.results as Record<string, IKResult>)
-        const subs: Record<string, Target3D> = {}
-        for (const [id, r] of Object.entries(result.results)) {
-          if ((r as any).subTarget) subs[id] = (r as any).subTarget
-        }
-        setSpatialSubTargets(subs)
-      }
-    } catch {
-      // Non-critical — reachability display degrades gracefully
-    }
-  }, [selectedIds, setSpatialTarget, setSpatialReachability, setSpatialSubTargets])
+  }, [setSpatialTarget])
 
-  /** Pattern change */
-  const handlePatternChange = useCallback(async (pattern: PatternType) => {
+  /** Pattern change — KineticsBridge suscribe activePattern y despacha setManualFixturePattern */
+  const handlePatternChange = useCallback((pattern: PatternType) => {
     setActivePattern(pattern)
-    const enginePattern = (pattern === 'none' || pattern === 'static') ? 'hold' : pattern
-    try {
-      await window.lux?.arbiter?.setManualFixturePattern({
-        fixtureIds: selectedIds,
-        pattern: enginePattern,
-        speed: patternSpeed,
-        amplitude: patternAmplitude,
-      })
-    } catch {
-      // Non-critical
-    }
-  }, [selectedIds, patternSpeed, patternAmplitude, setActivePattern])
+    // Speed → programmerStore via KineticsBridge (44Hz pipeline)
+    useProgrammerStore.getState().setKineticSpeed(patternSpeed)
+  }, [patternSpeed, setActivePattern])
 
-  /** Speed fader */
-  const handleSpeedChange = useCallback(async (speed: number) => {
+  /** Speed fader — KineticsBridge suscribe patternSpeed y despacha pattern+speed */
+  const handleSpeedChange = useCallback((speed: number) => {
     setPatternSpeed(speed)
-    if (activePattern !== 'none' && activePattern !== 'static') {
-      try {
-        await window.lux?.arbiter?.setManualFixturePattern({
-          fixtureIds: selectedIds,
-          pattern: activePattern,
-          speed,
-          amplitude: patternAmplitude,
-        })
-      } catch { /* non-critical */ }
-    }
-  }, [activePattern, selectedIds, patternAmplitude, setPatternSpeed])
+    // L2 NodeArbiter:speed channel — fluye vía 44Hz ProgrammerAetherBridge
+    useProgrammerStore.getState().setKineticSpeed(speed)
+  }, [setPatternSpeed])
 
-  /** Amplitude fader */
-  const handleAmplitudeChange = useCallback(async (amplitude: number) => {
+  /** Amplitude fader — KineticsBridge suscribe patternAmplitude y despacha setManualFixturePattern */
+  const handleAmplitudeChange = useCallback((amplitude: number) => {
     setPatternAmplitude(amplitude)
-    if (activePattern !== 'none' && activePattern !== 'static') {
-      try {
-        await window.lux?.arbiter?.setManualFixturePattern({
-          fixtureIds: selectedIds,
-          pattern: activePattern,
-          speed: patternSpeed,
-          amplitude,
-        })
-      } catch { /* non-critical */ }
-    }
-  }, [activePattern, selectedIds, patternSpeed, setPatternAmplitude])
+  }, [setPatternAmplitude])
 
   // ── IK readout values ──────────────────────────────────────────────────
   const firstReachability = selectedIds.length > 0 ? spatialReachability[selectedIds[0]] : undefined
   const ikPanDeg = firstReachability ? (firstReachability as any).pan : undefined
   const ikTiltDeg = firstReachability ? (firstReachability as any).tilt : undefined
+
+  // ── Lock feedback — ¿algún fixture seleccionado bajo control superior? ───
+  const lockedFixtureIds = useMovementStore(s => s.lockedFixtureIds)
+  const anyLocked = useMemo(
+    () => selectedIds.some(id => lockedFixtureIds.has(id)),
+    [selectedIds, lockedFixtureIds],
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -385,12 +336,14 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
                 value={patternSpeed}
                 onChange={handleSpeedChange}
                 color="#FF8C00"
+                disabled={anyLocked}
               />
               <TacticalFader
                 label="AMP"
                 value={patternAmplitude}
                 onChange={handleAmplitudeChange}
                 color="#FF00E5"
+                disabled={anyLocked}
               />
             </div>
           </div>

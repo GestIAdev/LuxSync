@@ -71,15 +71,24 @@ export const CathedralFooter: React.FC = () => {
         <span className="cathedral-footer__groups-label">GROUPS:</span>
         <div className="cathedral-footer__chips">
           {groupChips.map(({ label, ids }) => {
-            const isActive = ids.every(id => selectedIds.has(id))
+            const selCount = ids.filter(id => selectedIds.has(id)).length
+            const isActive = selCount === ids.length && ids.length > 0
+            const isPartial = selCount > 0 && selCount < ids.length
             return (
               <button
                 key={label}
-                className={`cathedral-footer__chip ${isActive ? 'cathedral-footer__chip--active' : ''}`}
+                className={[
+                  'cathedral-footer__chip',
+                  isActive  ? 'cathedral-footer__chip--active'  : '',
+                  isPartial ? 'cathedral-footer__chip--partial' : '',
+                ].join(' ')}
                 onClick={() => handleGroupClick(ids)}
-                title={`${label} (${ids.length})`}
+                title={`${label}: ${selCount}/${ids.length} seleccionados`}
               >
-                {label} <span className="cathedral-footer__chip-count">({ids.length})</span>
+                {label}{' '}
+                <span className="cathedral-footer__chip-count">
+                  {selCount > 0 ? `${selCount}/${ids.length}` : ids.length}
+                </span>
               </button>
             )
           })}

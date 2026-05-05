@@ -65,7 +65,15 @@ export const KinRadarViewport: React.FC = () => {
     return selectedIds.flatMap(id => {
       const sf = stageFixtures.find(f => f.id === id)
       if (!sf) return []
-      return [{ id: sf.id, name: sf.name, position: (sf as any).position }]
+      const t = (sf.type ?? '').toLowerCase()
+      const isMoving = t === 'moving-head' || t === 'moving_head' || t === 'spot'
+        || t === 'beam' || t === 'scanner' || t === 'wash'
+      return [{
+        id: sf.id,
+        name: sf.name,
+        position: (sf as any).position,
+        fixtureType: isMoving ? ('moving' as const) : ('static' as const),
+      }]
     })
   }, [selectedIds, stageFixtures, radarMode])
 
@@ -136,6 +144,7 @@ export const KinRadarViewport: React.FC = () => {
           stage={stage}
           reachability={spatialReachability}
           subTargets={spatialSubTargets}
+          fanMode={spatialFanMode}
           fixtures={fixtureGhosts}
         />
       </div>

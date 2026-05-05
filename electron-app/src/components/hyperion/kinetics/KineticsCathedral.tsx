@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 
 import { useMovementStore, type RadarMode, type PatternType } from '../../../stores/movementStore'
+import type { SpatialFanMode } from '../../../engine/movement/InverseKinematicsEngine'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
@@ -43,14 +44,17 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   const hardware = useHardware()
 
   const {
-    // Spatial (para pasar al KinRadarViewport via store — Cathedral solo necesita radarModeOverride)
+    // Spatial
     radarModeOverride,
+    spatialFanMode, spatialFanAmplitude,
     // Pattern
     activePattern, patternSpeed, patternAmplitude,
     // Chaos
     chaosAmount, chaosSeed,
   } = useMovementStore(useShallow(s => ({
     radarModeOverride: s.radarModeOverride,
+    spatialFanMode: s.spatialFanMode,
+    spatialFanAmplitude: s.spatialFanAmplitude,
     activePattern: s.activePattern,
     patternSpeed: s.patternSpeed,
     patternAmplitude: s.patternAmplitude,
@@ -61,6 +65,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   const {
     setRadarModeOverride, setActivePattern, setPatternSpeed, setPatternAmplitude,
     setChaosAmount, reseed, hydrateFromBackend, resetToDefaults,
+    setSpatialFanMode, setSpatialFanAmplitude,
   } = useMovementStore(useShallow(s => ({
     setRadarModeOverride: s.setRadarModeOverride,
     setActivePattern: s.setActivePattern,
@@ -70,6 +75,8 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     reseed: s.reseed,
     hydrateFromBackend: s.hydrateFromBackend,
     resetToDefaults: s.resetToDefaults,
+    setSpatialFanMode: s.setSpatialFanMode,
+    setSpatialFanAmplitude: s.setSpatialFanAmplitude,
   })))
 
   // ── Adiabatic Detection (para el mode-bar indicator) ─────────────────
@@ -197,6 +204,59 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
               {radarModeOverride === null ? `AUTO → ${radarMode.toUpperCase()}` : `↑ MANUAL`}
             </span>
           </div>
+
+          {/* ── SPATIAL FAN CONTROLS (solo en modo 3D con múltiples fixtures) ── */}
+          {radarMode === 'spatial' && selectedIds.length > 1 && (
+            <div className="kinetics-cathedral__fan-controls">
+              <div className="kc-fan-header">
+                <span className="kc-fan-label">FAN MODE</span>
+                <span className="kc-fan-mode-indicator">{spatialFanMode.toUpperCase()}</span>
+              </div>
+              <div className="kc-fan-mode-row">
+                <button
+                  className={`kc-fan-btn${spatialFanMode === 'converge' ? ' kc-fan-btn--active' : ''}`}
+                  onClick={() => setSpatialFanMode('converge' as SpatialFanMode)}
+                  title="Convergente — todos apuntan al mismo punto"
+                  disabled={anyLocked}
+                >
+                  <span className="kc-fan-btn-icon">⊙</span>
+                  <span className="kc-fan-btn-label">CONV</span>
+                </button>
+                <button
+                  className={`kc-fan-btn${spatialFanMode === 'line' ? ' kc-fan-btn--active' : ''}`}
+                  onClick={() => setSpatialFanMode('line' as SpatialFanMode)}
+                  title="Lineal — abanico en línea recta"
+                  disabled={anyLocked}
+                >
+                  <span className="kc-fan-btn-icon">═</span>
+                  <span className="kc-fan-btn-label">LINE</span>
+                </button>
+                <button
+                  className={`kc-fan-btn${spatialFanMode === 'circle' ? ' kc-fan-btn--active' : ''}`}
+                  onClick={() => setSpatialFanMode('circle' as SpatialFanMode)}
+                  title="Circular — dispersión en circunferencia"
+                  disabled={anyLocked}
+                >
+                  <span className="kc-fan-btn-icon">◎</span>
+                  <span className="kc-fan-btn-label">CIRC</span>
+                </button>
+              </div>
+              {spatialFanMode !== 'converge' && (
+                <div className="kc-fan-amplitude">
+                  <span className="kc-fan-amplitude-label">SPREAD</span>
+                  <input
+                    type="range"
+                    className="kc-fan-amplitude-slider"
+                    min={0} max={10} step={0.1}
+                    value={spatialFanAmplitude}
+                    onChange={e => setSpatialFanAmplitude(parseFloat(e.target.value))}
+                    disabled={anyLocked}
+                  />
+                  <span className="kc-fan-amplitude-value">{spatialFanAmplitude.toFixed(1)}m</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── FADERS — SPEED + AMP (sin radar, vive en el viewport principal) ── */}
           <div className="kinetics-cathedral__faders-row">

@@ -291,6 +291,33 @@
   opacity: 0.6;
 }
 
+/* Moving Head — neón + halo */
+.ortho-radar__ghost--moving {
+  border-color: var(--ghost-color, var(--kc-cyan));
+  color: var(--ghost-color, var(--kc-cyan));
+  opacity: 1;
+  filter: drop-shadow(0 0 5px var(--ghost-color, var(--kc-cyan)));
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+}
+
+/* Fixture estático (PAR / Foco fijo) — atenuado sin halo */
+.ortho-radar__ghost--static {
+  border-color: var(--ghost-color, #888888);
+  color: var(--ghost-color, #888888);
+  opacity: 0.35;
+  filter: none;
+  font-size: 7px;
+}
+
+.ortho-radar__ghost--moving.ortho-radar__ghost--unreachable {
+  border-color: var(--kc-red);
+  color: var(--kc-red);
+  filter: drop-shadow(0 0 5px var(--kc-red));
+  opacity: 0.85;
+}
+
 /* Height slider */
 .ortho-radar__height-slider {
   display: flex;
@@ -329,6 +356,122 @@
   font-size: 8px;
   color: var(--kc-text-dim);
   padding: 0 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FAN CONTROLS (WAVE 4565 — FASE 2)
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.kinetics-cathedral__fan-controls {
+  padding: 8px 12px;
+  border-top: 1px solid var(--kc-border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kc-fan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kc-fan-label {
+  font-family: var(--kc-font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--kc-text-dim);
+}
+
+.kc-fan-mode-indicator {
+  font-family: var(--kc-font-mono);
+  font-size: 9px;
+  color: var(--kc-cyan);
+  opacity: 0.7;
+}
+
+.kc-fan-mode-row {
+  display: flex;
+  gap: 6px;
+}
+
+.kc-fan-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--kc-border);
+  color: var(--kc-text-dim);
+  padding: 10px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-family: var(--kc-font-mono);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.kc-fan-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--kc-border-bright);
+  color: var(--kc-text);
+}
+
+.kc-fan-btn--active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--kc-cyan);
+  color: var(--kc-cyan);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.25);
+}
+
+.kc-fan-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.kc-fan-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.kc-fan-btn-label {
+  font-family: var(--kc-font-display);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+}
+
+.kc-fan-amplitude {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kc-fan-amplitude-label {
+  font-family: var(--kc-font-display);
+  font-size: 9px;
+  color: var(--kc-text-dim);
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.kc-fan-amplitude-slider {
+  flex: 1;
+  accent-color: var(--kc-cyan);
+  cursor: pointer;
+}
+
+.kc-fan-amplitude-slider:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.kc-fan-amplitude-value {
+  font-family: var(--kc-font-mono);
+  font-size: 11px;
+  color: var(--kc-cyan);
+  min-width: 36px;
+  text-align: right;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -691,8 +834,15 @@
   color: var(--kc-cyan);
 }
 
+/* FASE 3: Selección parcial — algunos fixtures del grupo activos */
+.cathedral-footer__chip--partial {
+  background: rgba(255, 140, 0, 0.08);
+  border-color: var(--kc-orange, #FF8C00);
+  color: var(--kc-orange, #FF8C00);
+}
+
 .cathedral-footer__chip-count {
-  opacity: 0.5;
+  opacity: 0.7;
   font-size: 11px;      /* 8px → 11px */
 }
 

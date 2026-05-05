@@ -98,6 +98,8 @@ import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
 import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
 // 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
+// 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
+import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
 import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
@@ -323,7 +325,9 @@ export class TitanOrchestrator {
   // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   private _aetherHasDevices = false
-  // 🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
+  // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
+  private readonly _aetherUIProjector = new AetherUIProjector()
+  // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
   private readonly _impactAdapter  = new LiquidImpactAdapter()
   // 🎨 WAVE 3516.3: ColorAdapter — rebautizada de LiquidColorAdapter
   private _colorAdapter: ColorAdapter | null = null
@@ -525,10 +529,11 @@ export class TitanOrchestrator {
   private static readonly TRUTH_BROADCAST_DIVIDER = 6
 
   // ⚡ WAVE 3050: HOT FRAME BROADCAST DIVIDER
-  // Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 22Hz.
-  // Halves Structured Clone overhead (~132 KB/seg saved) without visible UI degradation.
+  // Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 44Hz.
+  // ⚡ WAVE 4559: Overclock — subido de 2 (22Hz) a 1 (44Hz).
+  // Strobe y flash ahora llegan sin frame-skip al canvas 2D.
   // transientStore + RenderWorker interpolates between frames anyway.
-  private static readonly HOT_FRAME_DIVIDER = 2
+  private static readonly HOT_FRAME_DIVIDER = 1
 
   // ⚡ WAVE 2464: PEAK HOLD — Captura el pico de intensidad del frame skipeado.
   // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
@@ -1571,8 +1576,15 @@ export class TitanOrchestrator {
       }
     }
 
-    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
+    // 🎭 WAVE 4559: THE MIRROR — Proyectar estado Aether → FixtureState[] para UI
+    // Corre ANTES del hot-frame broadcast: la UI ve datos Aether en el mismo tick.
+    if (this._aetherHasDevices) {
+      this._aetherUIProjector.project(fixtureStates, this._aetherGraph)
+    }
+
+    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ────────────────────────
     // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+    // ⚡ WAVE 4559: Overclock → 44Hz. Strobe y flash sin frame-skip al canvas.
     // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
     if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
       // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
@@ -1583,10 +1595,10 @@ export class TitanOrchestrator {
         onBeat: engineAudioMetrics.isBeat,
         beatConfidence: engineAudioMetrics.beatConfidence,
         bpm: engineAudioMetrics.bpm,
-        // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
+        // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (44Hz)
         // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
         // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
-        // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
+        // Ahora viajan a 44Hz — el smoothstep del frontend interpola a 60fps.
         bass,
         mid,
         high,

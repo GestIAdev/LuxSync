@@ -24,7 +24,7 @@
 
 import type { NodeGraph } from '../NodeGraph'
 import { NodeFamily } from '../types'
-import type { IKineticNodeData } from '../capability-node'
+import type { IKineticNodeData, IImpactNodeData, IColorNodeData } from '../capability-node'
 import type { FixtureState } from '../../../hal/mapping/FixtureMapper'
 
 /** Conversión de valor normalizado 0-1 a rango DMX 0-255 */
@@ -44,7 +44,9 @@ export class AetherUIProjector {
   project(fixtures: FixtureState[], graph: NodeGraph): void {
     for (const fixture of fixtures) {
       // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
-      const deviceId = fixture.fixtureId ?? fixture.name
+      // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
+      // (population: FixtureMapper.buildInitialState → fixtureId: fixture.id ?? fallback)
+      const deviceId = fixture.fixtureId
       if (!deviceId) continue
 
       const nodeIds = graph.getDeviceNodes(deviceId)
@@ -68,7 +70,26 @@ export class AetherUIProjector {
             }
             break
           }
-          // Futuro: COLOR, IMPACT, BEAM pueden proyectarse aquí.
+          case NodeFamily.COLOR: {
+            // currentColor vive en rango 0-1 (gestionado por ColorSystem)
+            const cn = node as IColorNodeData
+            fixture.r = toDmx(cn.currentColor.r)
+            fixture.g = toDmx(cn.currentColor.g)
+            fixture.b = toDmx(cn.currentColor.b)
+            break
+          }
+          case NodeFamily.IMPACT: {
+            // state[1] = current value (0-1 normalizado post-physics)
+            const imp = node as IImpactNodeData
+            fixture.dimmer = toDmx(imp.state[1])
+            break
+          }
+          case NodeFamily.BEAM: {
+            // Zoom y focus los resuelve el NodeResolver directamente al FixtureState.
+            // state[1] es escalar — no discrimina entre zoom y focus en el mismo nodo.
+            // El pipeline AetherSafetyMiddleware → FixtureMapper ya los propaga.
+            break
+          }
           default:
             break
         }

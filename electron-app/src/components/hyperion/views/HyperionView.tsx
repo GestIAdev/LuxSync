@@ -23,6 +23,7 @@ import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/type
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
 import { StageSidebar } from '../controls/sidebar/StageSidebar'
+import { KineticsCathedral } from '../kinetics'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -101,6 +102,10 @@ export function HyperionView({
   // 🌊 WAVE 2432: Omni-Liquid Layout switch (4.1 / 7.1)
   const liquidLayout = useControlStore(state => state.liquidLayout)
   const setLiquidLayout = useControlStore(state => state.setLiquidLayout)
+
+  // 🏛️ WAVE 4561: Kinetics Cathedral sidebar mode
+  const sidebarMode = useControlStore(state => state.sidebarMode)
+  const setSidebarMode = useControlStore(state => state.setSidebarMode)
 
   // ── Derived State ─────────────────────────────────────────────────────────
   const fixtureCount = useMemo(() => fixtures.length, [fixtures])
@@ -218,6 +223,16 @@ export function HyperionView({
                 3D
               </button>
             </div>
+
+            {/* 🏛️ WAVE 4561: KINETICS toggle */}
+            <button
+              className={`hyperion-view-toggle__btn ${sidebarMode === 'kinetics' ? 'active' : ''}`}
+              onClick={() => setSidebarMode(sidebarMode === 'kinetics' ? 'controls' : 'kinetics')}
+              title="Kinetics Cathedral — Movement Control"
+              style={{ marginLeft: 8 }}
+            >
+              ⊕ KIN
+            </button>
 
             {/* Selection Info (si hay selección) */}
             {selectedCount > 0 && (
@@ -406,8 +421,11 @@ export function HyperionView({
         {/* ═══════════════════════════════════════════════════════════════════
          * SIDEBAR — The Commander (Controles)
          * ═══════════════════════════════════════════════════════════════════ */}
-        <div className="hyperion-sidebar-container">
-          <StageSidebar />
+        <div className={`hyperion-sidebar-container${sidebarMode === 'kinetics' ? ' cathedral-expanded' : ''}`}>
+          {sidebarMode === 'controls'
+            ? <StageSidebar />
+            : <KineticsCathedral onClose={() => setSidebarMode('controls')} />
+          }
         </div>
       </div>
     </div>

@@ -200,6 +200,20 @@ export interface ControlState {
   
   /** Reset a valores por defecto */
   reset: () => void
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏛️ WAVE 4561: SIDEBAR MODE — KINETICS CATHEDRAL
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Modo de la sidebar en HyperionView.
+   * 'controls' = StageSidebar (TheProgrammer normal)
+   * 'kinetics' = KineticsCathedral (panel cinemático full-height)
+   */
+  sidebarMode: 'controls' | 'kinetics'
+
+  /** Cambiar el modo de la sidebar */
+  setSidebarMode: (mode: 'controls' | 'kinetics') => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -240,6 +254,8 @@ const DEFAULT_STATE = {
   // 🌊 WAVE 2432: Omni-Liquid always active, default 4.1 layout
   useLiquidStereo: true,
   liquidLayout: '4.1' as '4.1' | '7.1',
+  // 🏛️ WAVE 4561: Sidebar mode — empieza en controls (normal)
+  sidebarMode: 'controls' as 'controls' | 'kinetics',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -416,6 +432,15 @@ export const useControlStore = create<ControlState>()(
       reset: () => {
         console.log('[ControlStore] 🔄 Reset to defaults')
         set(DEFAULT_STATE)
+      },
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 🏛️ WAVE 4561: SIDEBAR MODE — KINETICS CATHEDRAL
+      // ═══════════════════════════════════════════════════════════════════
+
+      setSidebarMode: (mode) => {
+        console.log(`[ControlStore] 🏛️ Sidebar mode: ${mode}`)
+        set({ sidebarMode: mode })
       },
     }),
     {

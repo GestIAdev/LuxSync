@@ -24,6 +24,7 @@ import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
 import { StageSidebar } from '../controls/sidebar/StageSidebar'
 import { KineticsCathedral } from '../kinetics'
+import { KinRadarViewport } from '../kinetics/KinRadarViewport'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -379,27 +380,40 @@ export function HyperionView({
            * ═══════════════════════════════════════════════════════════════════ */}
           {!isEmpty && (
             <>
+              {/* ── WAVE 4564: KIN mode → Radar Gigante reemplaza el canvas ─── */}
+              {sidebarMode === 'kinetics' && (
+                <div className="hyperion-canvas-container hyperion-canvas-container--kin-radar">
+                  <KinRadarViewport />
+                </div>
+              )}
+
+              {/* ── Canvas 2D (siempre montado, CSS-oculto cuando KIN activo o en 3D) ── */}
               <div
                 className="hyperion-canvas-container"
-                style={viewMode !== '2D' ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+                style={(viewMode !== '2D' || sidebarMode === 'kinetics')
+                  ? { visibility: 'hidden', pointerEvents: 'none' }
+                  : undefined}
               >
                 <TacticalCanvas 
                   quality={qualityMode}
                   showGrid={true}
                   showZoneLabels={true}
-                  isVisible={viewMode === '2D'}
+                  isVisible={viewMode === '2D' && sidebarMode !== 'kinetics'}
                 />
               </div>
+              {/* ── Canvas 3D (siempre montado, CSS-oculto cuando KIN activo o en 2D) ── */}
               <div
                 className="hyperion-canvas-container"
-                style={viewMode !== '3D' ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+                style={(viewMode !== '3D' || sidebarMode === 'kinetics')
+                  ? { visibility: 'hidden', pointerEvents: 'none' }
+                  : undefined}
               >
                 <VisualizerCanvas
                   quality={qualityMode}
                   showFloorGrid={true}
                   showTruss={true}
                   showBeams={true}
-                  isVisible={viewMode === '3D'}
+                  isVisible={viewMode === '3D' && sidebarMode !== 'kinetics'}
                 />
               </div>
             </>
@@ -407,7 +421,7 @@ export function HyperionView({
 
           {/* Mode Badge */}
           <div className="hyperion-mode-badge">
-            {viewMode === '2D' ? 'TACTICAL' : 'VISUALIZER'}
+            {sidebarMode === 'kinetics' ? 'KIN RADAR' : viewMode === '2D' ? 'TACTICAL' : 'VISUALIZER'}
           </div>
 
           {/* Fixture Count Badge */}

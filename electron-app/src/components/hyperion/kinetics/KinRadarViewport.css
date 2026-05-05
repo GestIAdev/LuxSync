@@ -1,0 +1,150 @@
+/**
+ * 🎯 KIN RADAR VIEWPORT CSS — WAVE 4564: THE RADAR RELOCATION
+ *
+ * El Radar Gigante ocupa el Main Viewport entero cuando el modo KIN está activo.
+ * OrthoRadar se estira al 100% del área disponible — sin límite de aspect-ratio.
+ */
+
+/* ── Contenedor raíz — llena el viewport ──────────────────────────────────── */
+
+.kin-radar-viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #050810;
+  z-index: 1;
+
+  /* Escaneo de fondo sutil */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 240, 255, 0.008) 2px,
+    rgba(0, 240, 255, 0.008) 4px
+  );
+}
+
+/* ── Header strip — label + readout numérico ─────────────────────────────── */
+
+.kin-radar-viewport__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.12);
+  background: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  backdrop-filter: blur(4px);
+}
+
+.kin-radar-viewport__label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #00F0FF;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+  flex-shrink: 0;
+}
+
+/* PositionReadout heredado — desacopla internamente sus clases */
+.kin-radar-viewport__header .position-readout {
+  background: transparent;
+  border-top: none;
+  padding: 0;
+  flex: 1;
+}
+
+/* ── Radar área — crece al máximo ────────────────────────────────────────── */
+
+.kin-radar-viewport__radar {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hace que OrthoRadar ocupe todo el espacio disponible */
+.kin-radar-viewport__radar .ortho-radar {
+  flex: 1;
+  min-height: 0;
+}
+
+/* El grid interior también crece */
+.kin-radar-viewport__radar .ortho-radar__inner {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Grid gigante — rompe el aspect-ratio 4/3 fijo para llenar el viewport */
+.kin-radar-viewport__radar .ortho-radar__grid {
+  flex: 1;
+  aspect-ratio: unset;    /* override del 4/3 de sidebar */
+  min-height: 0;
+  height: 100%;
+}
+
+/* Height slider lateral — crece con el grid */
+.kin-radar-viewport__radar .ortho-radar__height-slider {
+  height: 100%;
+  flex: 0 0 40px;         /* un poco más ancho para el viewport grande */
+}
+
+.kin-radar-viewport__radar .ortho-radar__height-input {
+  flex: 1;
+  height: 100%;
+}
+
+/* Target cursor y ghosts se escalan levemente */
+.kin-radar-viewport__radar .ortho-radar__target-symbol {
+  font-size: 24px;        /* más grande en la vista gigante */
+}
+
+.kin-radar-viewport__radar .ortho-radar__ghost {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+/* Labels de eje más visibles */
+.kin-radar-viewport__radar .ortho-radar__axis-labels {
+  font-size: 10px;
+  padding: 0 4px;
+  color: rgba(0, 240, 255, 0.45);
+}
+
+.kin-radar-viewport__radar .ortho-radar__height-label {
+  font-size: 9px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.kin-radar-viewport__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.kin-radar-viewport__empty-icon {
+  font-size: 64px;
+  color: rgba(0, 240, 255, 0.15);
+  text-shadow: 0 0 30px rgba(0, 240, 255, 0.08);
+}
+
+.kin-radar-viewport__empty-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.2);
+  text-align: center;
+  max-width: 360px;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+}

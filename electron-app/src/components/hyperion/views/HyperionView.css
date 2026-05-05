@@ -453,7 +453,12 @@
   align-items: center;
   justify-content: center;
 }
-
+/* KIN RADAR: el radar ocupa el viewport entero, sin centering override */
+.hyperion-canvas-container--kin-radar {
+  z-index: 2;           /* por encima de los canvas 2D/3D (hidden) */
+  align-items: stretch; /* KinRadarViewport.css maneja el layout interno */
+  justify-content: stretch;
+}
 .hyperion-canvas-container canvas {
   display: block;
   max-width: 100%;
@@ -748,4 +753,10 @@
 
   /* Glow izquierdo sutil — separa sidebar del viewport */
   box-shadow: -2px 0 20px rgba(0, 240, 255, 0.04);
+}
+
+/* KIN mode — Cathedral expanded: sidebar lightly narrowed, radar takes the rest */
+.hyperion-sidebar-container.cathedral-expanded {
+  width: 380px;         /* da más espacio al Radar Viewport gigante */
+  overflow-y: auto;     /* faders + arsenal + footer pueden scrollear */
 }

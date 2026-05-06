@@ -592,7 +592,7 @@ export function migrateV2ToLatest(show: ShowFileV2): { show: ShowFileV2; applied
   const appliedPatches: string[] = []
   
   // Fast path: already at latest
-  if (show.schemaVersion === LATEST_V2_VERSION && V2_PATCHES.length === 0) {
+  if (show.schemaVersion === LATEST_V2_VERSION) {
     return { show, appliedPatches }
   }
 
@@ -623,8 +623,8 @@ export function migrateV2ToLatest(show: ShowFileV2): { show: ShowFileV2; applied
 export function autoMigrate(data: unknown): MigrationResult {
   const version = getSchemaVersion(data)
   
-  if (version === '2.0.0') {
-    // Already V2 — run through incremental patches (CW-10)
+  if (version?.startsWith('2.')) {
+    // Already V2.x — run through incremental patches (CW-10 / WAVE 4573)
     const { show: patched, appliedPatches } = migrateV2ToLatest(data as ShowFileV2)
     return {
       success: true,

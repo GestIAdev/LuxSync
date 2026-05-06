@@ -2537,9 +2537,18 @@ export class TitanOrchestrator {
     
     // 🔥 WAVE 339.6: Register movers in PhysicsDriver
     // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
+    //
+    // 🚨 WAVE 4575-B: IK DUALITY GATE
+    // isPlaced=false → Classic Pan/Tilt domain. Spatial enrichment (IK) MUST be skipped.
+    // Feeding 3D IK parameters to a 2D fixture causes incorrect DMX output on real hardware.
+    // isPlaced=true (or undefined, legacy) → Full IK path in HAL PhysicsDriver.
     let moverCount = 0
     for (const fixture of fixtures) {
       if (fixture.hasMovementChannels) {
+        // 🚨 WAVE 4575-B: Skip IK registration for Classic (2D) domain fixtures
+        if (fixture.isPlaced === false) {
+          continue
+        }
         // Register in HAL's physics driver
         if (this.hal) {
           // 🧭 WAVE 4573 Phase 5c: Read from fixture.orientation (root) — not installationType (legacy)

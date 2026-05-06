@@ -29,12 +29,13 @@ import * as THREE from 'three'
 
 import { useAudioStore } from '../../../../stores/audioStore'
 import { useSelectionStore, selectVisualizerActions } from '../../../../stores/selectionStore'
+import { useStageStore, selectStageDimensions } from '../../../../stores/stageStore'
 import { useFixture3DData } from './useFixture3DData'
 import { HyperionMovingHead3D, HyperionPar3D } from './fixtures'
 import { NeonFloor, HyperionTruss } from './environment'
 import { NeonBloom } from './postprocessing'
 import { QUALITY_PRESETS, type QualityMode } from '../../shared/types'
-import type { DEFAULT_STAGE_CONFIG, StageConfig3D, Visualizer3DMetrics } from './types'
+import type { StageConfig3D, Visualizer3DMetrics } from './types'
 
 import './VisualizerCanvas.css'
 
@@ -42,13 +43,12 @@ import './VisualizerCanvas.css'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Default stage dimensions */
-const STAGE_WIDTH = 12
-const STAGE_DEPTH = 8
-const TRUSS_HEIGHT = 5
+/** Fallback stage dimensions (used when show file has no stage data) */
+const DEFAULT_STAGE_WIDTH = 12
+const DEFAULT_STAGE_DEPTH = 8
+const DEFAULT_TRUSS_HEIGHT = 5
 
-/** Camera defaults */
-const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 4, 10]
+/** Camera: fallback position — overridden per-scene via stageConfig diagonal */
 const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 2, 0]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -72,6 +72,15 @@ interface VisualizerCanvasProps {
   isVisible?: boolean
   /** Clase CSS adicional */
   className?: string
+}
+
+/** Dimensiones resueltas del stage para la escena 3D. */
+interface ResolvedStageConfig {
+  width: number
+  depth: number
+  trussHeight: number
+  /** Distancia de cámara calculada desde la diagonal del escenario */
+  cameraDistance: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -198,6 +207,7 @@ const Scene: React.FC<{
   showFloorGrid: boolean
   showTruss: boolean
   showBeams: boolean
+  stageConfig: ResolvedStageConfig
   onSelect: (id: string, shift: boolean, ctrl: boolean) => void
   onMetrics?: (metrics: Visualizer3DMetrics) => void
 }> = ({
@@ -205,14 +215,24 @@ const Scene: React.FC<{
   showFloorGrid,
   showTruss,
   showBeams,
+  stageConfig,
   onSelect,
   onMetrics,
 }) => {
   const [beatIntensity, setBeatIntensity] = useState(0)
   const qualitySettings = QUALITY_PRESETS[quality]
 
-  // Get fixture data from stores
-  const { movingHeads, pars, strobes, count: fixtureCount } = useFixture3DData()
+  // Get fixture data from stores, wiring real stage dimensions
+  const { movingHeads, pars, strobes, count: fixtureCount } = useFixture3DData({
+    stageConfig: {
+      width: stageConfig.width,
+      depth: stageConfig.depth,
+      trussHeight: stageConfig.trussHeight,
+      showFloor: showFloorGrid,
+      showTruss,
+      floorColor: '#080810',
+    },
+  })
 
   return (
     <>
@@ -234,15 +254,15 @@ const Scene: React.FC<{
        * ═══════════════════════════════════════════════════════════════════ */}
       <PerspectiveCamera 
         makeDefault 
-        position={DEFAULT_CAMERA_POSITION}
+        position={[0, stageConfig.trussHeight * 0.8, stageConfig.cameraDistance]}
         fov={50}
         near={0.1}
-        far={100}
+        far={Math.max(100, stageConfig.cameraDistance * 4)}
       />
       <OrbitControls
         target={DEFAULT_CAMERA_TARGET}
         minDistance={3}
-        maxDistance={25}
+        maxDistance={stageConfig.cameraDistance * 2.5}
         minPolarAngle={0.1}
         maxPolarAngle={Math.PI / 2 - 0.1}
         enableDamping
@@ -266,17 +286,17 @@ const Scene: React.FC<{
        * ENVIRONMENT
        * ═══════════════════════════════════════════════════════════════════ */}
       <NeonFloor
-        width={STAGE_WIDTH}
-        depth={STAGE_DEPTH}
+        width={stageConfig.width}
+        depth={stageConfig.depth}
         showGrid={showFloorGrid}
         beatIntensity={beatIntensity}
       />
       
       {showTruss && (
         <HyperionTruss
-          width={STAGE_WIDTH}
-          depth={STAGE_DEPTH}
-          height={TRUSS_HEIGHT}
+          width={stageConfig.width}
+          depth={stageConfig.depth}
+          height={stageConfig.trussHeight}
           showGlow={quality === 'HQ'}
         />
       )}
@@ -354,6 +374,23 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   isVisible = true,
   className = '',
 }) => {
+  // ── Stage Dimensions (from show file) ─────────────────────────────────────
+  // 🏗️ WAVE 4575-B: Dynamic stage config from stageStore — no more hardcoded 12×8
+  const stageDims = useStageStore(selectStageDimensions)
+  const stageConfig = useMemo<ResolvedStageConfig>(() => {
+    const w = stageDims?.width ?? DEFAULT_STAGE_WIDTH
+    const d = stageDims?.depth ?? DEFAULT_STAGE_DEPTH
+    const h = stageDims?.height ?? DEFAULT_TRUSS_HEIGHT
+    // Camera pulled back to diagonal × 0.8 so full stage always fits in FOV=50
+    const diag = Math.sqrt(w * w + d * d)
+    return {
+      width: w,
+      depth: d,
+      trussHeight: h,
+      cameraDistance: Math.max(10, diag * 0.8),
+    }
+  }, [stageDims])
+
   // ── Selection Handling ────────────────────────────────────────────────────
   // 🛡️ WAVE 2042.13.8: useShallow for stable reference
   const { toggleSelection, select, selectMultiple, deselectAll } = useSelectionStore(useShallow(selectVisualizerActions))
@@ -397,9 +434,6 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           stencil: false,
           depth: true,
           // 🔧 WAVE 2204: Kill LQ red tint
-          // ACESFilmicToneMapping (default de Three.js) añade tinte cálido/rojo.
-          // NoToneMapping = colores lineales puros. EffectComposer (HQ) hace su propia gestión.
-          // En LQ sin EffectComposer, NoToneMapping = colores limpios sin contaminación.
           toneMapping: THREE.NoToneMapping,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
@@ -411,11 +445,26 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
             showFloorGrid={showFloorGrid}
             showTruss={showTruss}
             showBeams={showBeams}
+            stageConfig={stageConfig}
             onSelect={handleFixtureSelect}
             onMetrics={onMetricsUpdate}
           />
         </Suspense>
       </Canvas>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+       * WAVE 4575-B: METRICS HUD — Stage dimensions overlay
+       * HTML over canvas — zero GPU cost. Shows real stage math to operator.
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="visualizer-stage-hud">
+        <span className="visualizer-stage-hud__label">STAGE</span>
+        <span className="visualizer-stage-hud__value">
+          {stageConfig.width}m × {stageConfig.depth}m
+        </span>
+        <span className="visualizer-stage-hud__sep">|</span>
+        <span className="visualizer-stage-hud__label">TRUSS</span>
+        <span className="visualizer-stage-hud__value">{stageConfig.trussHeight}m</span>
+      </div>
 
       {/* Quality Badge */}
       <div className={`visualizer-quality-badge ${quality.toLowerCase()}`}>

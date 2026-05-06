@@ -213,13 +213,13 @@ describe('🔄 TEST 2: THE MIGRATION - Legacy V1 to V2', () => {
     const result = autoMigrate(LEGACY_CONFIG_V1)
     const fixtures = result.showFile!.fixtures
     
-    // Legacy "left" should become "stage-left"
+    // Legacy "left" should become canonical "movers-left"
     const fixture1 = fixtures.find(f => f.id === 'fix_001')
-    expect(fixture1?.zone).toBe('stage-left')
+    expect(fixture1?.zone).toBe('movers-left')
     
-    // Legacy "right" should become "stage-right"
+    // Legacy "right" should become canonical "movers-right"
     const fixture2 = fixtures.find(f => f.id === 'fix_002')
-    expect(fixture2?.zone).toBe('stage-right')
+    expect(fixture2?.zone).toBe('movers-right')
   })
   
   it('should generate rotation data for each fixture', () => {
@@ -552,7 +552,7 @@ describe('⚡ TEST 5: EDGE CASES & VALIDATION', () => {
     
     expect(result.success).toBe(true)
     expect(result.showFile!.name).toBe(v2Show.name) // Same show returned
-    expect(result.showFile!.schemaVersion).toBe('2.0.0')
+    expect(result.showFile!.schemaVersion).toBe('2.2.0')
   })
   
   it('should handle invalid data structure', () => {
@@ -600,6 +600,16 @@ describe('⚡ TEST 5: EDGE CASES & VALIDATION', () => {
     // @ts-expect-error - Intentional: testing validation with invalid data
     const invalidShow: ShowFileV2 = { random: 'data' }
     expect(validateShowFile(invalidShow)).toBe(false)
+  })
+
+  it('should accept ShowFileV2 schemaVersion 2.2.0 during validation', () => {
+    const show = createEmptyShowFile('Valid 2.2.0')
+    const showV22: ShowFileV2 = {
+      ...show,
+      schemaVersion: '2.2.0',
+    }
+
+    expect(validateShowFile(showV22)).toBe(true)
   })
   
   it('should return null from parseLegacyScenes for invalid JSON', () => {

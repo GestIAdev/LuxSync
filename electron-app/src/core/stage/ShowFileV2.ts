@@ -1197,8 +1197,12 @@ export function validateShowFileDeep(data: unknown): ShowFileValidationResult {
 
   const show = data as Record<string, unknown>
 
-  if (show.schemaVersion !== '2.0.0' && show.schemaVersion !== '2.1.0') {
-    errors.push(`Invalid schemaVersion: expected '2.0.0' or '2.1.0', got '${show.schemaVersion}'`)
+  if (
+    show.schemaVersion !== '2.0.0' &&
+    show.schemaVersion !== '2.1.0' &&
+    show.schemaVersion !== '2.2.0'
+  ) {
+    errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', or '2.2.0', got '${show.schemaVersion}'`)
   }
   if (typeof show.name !== 'string' || show.name.trim() === '') {
     errors.push(`Invalid or empty show name: '${show.name}'`)

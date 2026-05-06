@@ -52,8 +52,8 @@ function TagChips({ tags, limit }: { tags: readonly string[]; limit: number }) {
   const extra = tags.length - shown.length
   return (
     <div className="ac-tags">
-      {shown.map(tag => (
-        <span key={tag} className="ac-tag">{tag}</span>
+      {shown.map((tag, index) => (
+        <span key={`${tag}-${index}`} className="ac-tag">{tag}</span>
       ))}
       {extra > 0 && <span className="ac-tag ac-tag-extra">+{extra}</span>}
     </div>

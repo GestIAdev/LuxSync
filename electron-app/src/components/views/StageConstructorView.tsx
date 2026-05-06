@@ -20,7 +20,7 @@
  * @version 369.5.0
  */
 
-import React, { Suspense, lazy, useState, useCallback, useEffect, createContext, useContext, useRef } from 'react'
+import React, { Suspense, lazy, useState, useCallback, useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -31,6 +31,7 @@ const StageCanvas2D = lazyComponent(() => import('./StageConstructor/StageCanvas
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile, InstallationOrientation } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
+import { ConstructorContext, useConstructorContext } from './StageConstructor/StageConstructorContext'
 import useKeyboardShortcuts from './StageConstructor/KeyboardShortcuts'
 import { UniversalAssetBrowser } from '../shared/AssetBrowser'
 import type { LibraryAsset } from '../../stores/assetAdapters'
@@ -84,55 +85,6 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       </div>
     </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSTRUCTOR CONTEXT - Shared state between components
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface ConstructorContextType {
-  // Snap settings
-  snapEnabled: boolean
-  setSnapEnabled: (enabled: boolean) => void
-  snapDistance: number  // meters
-  snapRotation: number  // radians
-  
-  // Drag state
-  draggedFixtureType: string | null
-  setDraggedFixtureType: (type: string | null) => void
-  
-  // Tool mode
-  toolMode: 'select' | 'boxSelect'
-  setToolMode: (mode: 'select' | 'boxSelect') => void
-  
-  // Zone visibility - WAVE 363
-  showZones: boolean
-  setShowZones: (show: boolean) => void
-
-  // 🧱 WAVE 4538: Voxel view toggles
-  showCrystalBox: boolean
-  setShowCrystalBox: (v: boolean) => void
-  showFloorGrid: boolean
-  setShowFloorGrid: (v: boolean) => void
-  showDropLines: boolean
-  setShowDropLines: (v: boolean) => void
-  ghostCursorEnabled: boolean
-  setGhostCursorEnabled: (v: boolean) => void
-
-  // Fixture Forge - WAVE 364
-  openFixtureForge: (fixtureId?: string, existingDefinition?: FixtureDefinition) => void
-
-  // 🗺️ WAVE 4574: 3D/2D view mode
-  viewMode: '3d' | '2d'
-  setViewMode: (mode: '3d' | '2d') => void
-}
-
-const ConstructorContext = createContext<ConstructorContextType | null>(null)
-
-export const useConstructorContext = () => {
-  const ctx = useContext(ConstructorContext)
-  if (!ctx) throw new Error('useConstructorContext must be used within StageConstructorView')
-  return ctx
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

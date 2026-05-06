@@ -34,7 +34,7 @@ import {
 } from '@react-three/drei'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
-import { useConstructorContext } from '../StageConstructorView'
+import { useConstructorContext } from './StageConstructorContext'
 import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType, clampToCrystalBox, snapPosition } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D, FixtureZone, StageDimensions, InstallationOrientation } from '../../../core/stage/ShowFileV2'
 // ZoneOverlay eliminado — WAVE 4543: zonas son metadatos puros, no recintos físicos

@@ -988,3 +988,133 @@
 .sidebar-tab-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 4574: 3D/2D VIEW MODE TOGGLE & STAGE CANVAS 2D
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Toolbar toggle group */
+.view-mode-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.view-mode-toggle .tool-btn {
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+/* ─── StageCanvas2D container ───────────────────────────────────────────── */
+
+.stage-canvas-2d-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: rgb(8, 10, 18);
+  overflow: hidden;
+}
+
+/* Legend bar above SVG */
+.sc2d-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sc2d-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+.sc2d-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sc2d-legend-sep {
+  flex: 1;
+  min-width: 16px;
+}
+
+.sc2d-legend-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.28);
+  white-space: nowrap;
+}
+
+/* SVG canvas — fills remaining height */
+.sc2d-svg {
+  flex: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Unplaced tray at the bottom */
+.sc2d-tray {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(251, 191, 36, 0.05);
+  border-top: 1px solid rgba(251, 191, 36, 0.15);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sc2d-tray-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(251, 191, 36, 0.7);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sc2d-tray-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sc2d-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  cursor: grab;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.65);
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.sc2d-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fff;
+}
+
+.sc2d-chip:active {
+  cursor: grabbing;
+}
+
+

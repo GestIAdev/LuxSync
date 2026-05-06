@@ -106,6 +106,7 @@ export function useFixtureData(): TacticalFixture[] {
   
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const stageFixtures = useStageStore(state => state.fixtures)
+  const stageDimensions = useStageStore(state => state.stage)
   
   // 🛡️ WAVE 2042.13.8: Consolidated selector with useShallow
   const {
@@ -229,10 +230,15 @@ export function useFixtureData(): TacticalFixture[] {
 
         // 🎯 Spatial Truth: project 3D→2D when explicitly placed
         if (stageFixture?.isPlaced === true && stageFixture.position) {
-          const CANVAS_SCALE = 1 / 12  // 12m stage → 1.0 canvas unit
-          fixture.x = stageFixture.position.x * CANVAS_SCALE
-          // Z: +Z=front=bottom of 2D canvas (inverted so audience is at bottom)
-          fixture.y = -stageFixture.position.z * CANVAS_SCALE + layout.y
+          // 🏗️ WAVE 4573-C M2: use real stage dimensions, not hardcoded 12m
+          const stageW = stageDimensions?.width ?? 12
+          const stageD = stageDimensions?.depth ?? 8
+          const MARGIN = 0.05  // 5% safety margin — fixtures stay inside canvas
+          const rawX = stageFixture.position.x / stageW
+          // Z→Y inversion: +Z is front = bottom of 2D canvas
+          const rawY = -stageFixture.position.z / stageD
+          fixture.x = Math.max(-(0.5 - MARGIN), Math.min(0.5 - MARGIN, rawX))
+          fixture.y = Math.max(-(0.5 - MARGIN), Math.min(0.5 - MARGIN, rawY))
           return
         }
         
@@ -259,6 +265,7 @@ export function useFixtureData(): TacticalFixture[] {
     return classified
   }, [
     stageFixtures,
+    stageDimensions,
     runtimeStateMap,
     overrides,
     globalMode,

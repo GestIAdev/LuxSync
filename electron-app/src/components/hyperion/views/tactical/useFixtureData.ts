@@ -208,6 +208,9 @@ export function useFixtureData(): TacticalFixture[] {
     }
 
     // Second pass: compute screen positions based on zone layout
+    // 🏗️ WAVE 4573: SPATIAL TRUTH — if fixture is placed, project Position3D →2D.
+    // Projection: X maps to X (canvas space), Z maps to Y inverted (front=bottom).
+    // Unplaced fixtures fall back to ZONE_LAYOUT_2D as before.
     const byZone = new Map<CanonicalZone, number[]>()
     classified.forEach((f, i) => {
       const arr = byZone.get(f.zone) || []
@@ -222,6 +225,16 @@ export function useFixtureData(): TacticalFixture[] {
 
       indices.forEach((globalIdx, localIdx) => {
         const fixture = classified[globalIdx]
+        const stageFixture = fixtureArray[globalIdx]
+
+        // 🎯 Spatial Truth: project 3D→2D when explicitly placed
+        if (stageFixture?.isPlaced === true && stageFixture.position) {
+          const CANVAS_SCALE = 1 / 12  // 12m stage → 1.0 canvas unit
+          fixture.x = stageFixture.position.x * CANVAS_SCALE
+          // Z: +Z=front=bottom of 2D canvas (inverted so audience is at bottom)
+          fixture.y = -stageFixture.position.z * CANVAS_SCALE + layout.y
+          return
+        }
         
         if (isVertical && layout.fixedX !== undefined) {
           // Side-mounted: fixed X, spread Y
@@ -234,11 +247,10 @@ export function useFixtureData(): TacticalFixture[] {
           fixture.y = layout.y
           
           // 🚦 WAVE 2042.16: TRAFFIC CONTROL - Type-based Y offset
-          // Separate movers (back) from PARs (front) visually
           if (fixture.type === 'moving') {
-            fixture.y -= 0.06  // Movers higher (back of stage)
+            fixture.y -= 0.06
           } else if (fixture.type === 'par' || fixture.type === 'wash') {
-            fixture.y += 0.06  // PARs/Wash lower (front of stage)
+            fixture.y += 0.06
           }
         }
       })

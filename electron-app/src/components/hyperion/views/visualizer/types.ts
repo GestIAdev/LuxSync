@@ -10,6 +10,7 @@
 
 import * as THREE from 'three'
 import type { CanonicalZone } from '../../shared/ZoneLayoutEngine'
+import type { InstallationOrientation, Rotation3D } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE 3D DATA — What the 3D renderer needs
@@ -76,6 +77,26 @@ export interface Fixture3DData {
   
   /** ¿Tiene override manual activo? */
   hasOverride: boolean
+
+  // ─ SPATIAL TRUTH (WAVE 4573) ───────────────────────────────────────
+
+  /**
+   * Physical installation orientation — determines base quaternion in visualizer.
+   * Propagated from FixtureV2.orientation (root-level after WAVE 4573).
+   */
+  orientation: InstallationOrientation
+
+  /**
+   * Custom mounting rotation from FixtureV2.rotation.
+   * Applied on top of the MOUNT_QUATERNIONS base for fine-tuned aiming.
+   */
+  baseRotation: Rotation3D
+
+  /**
+   * True → fixture has real Position3D from StageBuilder.
+   * False/undefined → guerrilla fixture, use zone layout fallback.
+   */
+  isPlaced: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

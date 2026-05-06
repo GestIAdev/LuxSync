@@ -18,11 +18,24 @@
  * @updated WAVE 2212 — Halo Resurrection
  */
 
-import React, { useRef } from 'react'
+import React, { useRef, useMemo } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getTransientFixture } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
+import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
+
+// 🏗️ WAVE 4573: MOUNT_QUATERNIONS shared across all PAR instances.
+// Defined at module scope (static, single allocation).
+const MOUNT_QUATERNIONS: Record<InstallationOrientation, THREE.Quaternion> = (() => {
+  const ceiling    = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))
+  const floor      = new THREE.Quaternion()
+  const trussFront = ceiling.clone()
+  const trussBack  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, Math.PI, 0))
+  const wallLeft   = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))
+  const wallRight  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0,  Math.PI / 2))
+  return { 'ceiling': ceiling, 'floor': floor, 'truss-front': trussFront, 'truss-back': trussBack, 'wall-left': wallLeft, 'wall-right': wallRight }
+})()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -58,6 +71,25 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   const pointLightRef = useRef<THREE.PointLight>(null)
 
   const { id, selected, hasOverride } = fixture
+
+  // 🏗️ WAVE 4573: Composite base quaternion = mount orientation + user rotation offset
+  const baseQuat = useMemo(() => {
+    const mountQ = MOUNT_QUATERNIONS[(fixture.orientation ?? 'ceiling') as InstallationOrientation] ?? MOUNT_QUATERNIONS['ceiling']
+    const br = fixture.baseRotation
+    if (!br || (br.pitch === 0 && br.yaw === 0 && br.roll === 0)) return mountQ.clone()
+    const offsetQ = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(br.pitch ?? 0),
+        THREE.MathUtils.degToRad(br.yaw   ?? 0),
+        THREE.MathUtils.degToRad(br.roll  ?? 0),
+      )
+    )
+    return mountQ.clone().multiply(offsetQ)
+  }, [fixture.orientation, fixture.baseRotation])
+
+  // 👻 WAVE 4573: Ghost mode when fixture not placed in StageBuilder
+  const isPlaced = fixture.isPlaced !== false
+  const ghostOpacity = isPlaced ? 1.0 : 0.4
 
   // Reusable THREE.Color for useFrame (no allocations per frame)
   const liveColor = useRef(new THREE.Color())
@@ -140,6 +172,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     <group
       ref={groupRef}
       position={[fixture.x, fixture.y, fixture.z]}
+      quaternion={baseQuat}
       onClick={handleClick}
       userData={{ fixtureId: id }}
     >
@@ -150,6 +183,8 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
           color={selected ? NEON_CYAN : (hasOverride ? '#FF00E5' : '#1a1a2e')}
           metalness={0.8}
           roughness={0.2}
+          transparent={!isPlaced}
+          opacity={ghostOpacity}
         />
       </mesh>
 

@@ -16,11 +16,12 @@
  * @updated WAVE 2204 — HDR Bloom Resurrection
  */
 
-import React, { useRef } from 'react'
+import React, { useRef, useMemo } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getTransientFixture, getVibeGeneration } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
+import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -65,7 +66,9 @@ const NEON_CYAN = '#00F0FF'
  *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
  *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
  */
-const TILT_REST_ANGLE = Math.PI * 0.25  // 45° forward from vertical
+// 🏗️ WAVE 4573: TILT_REST_ANGLE set to 0. Base orientation now handled by MOUNT_QUATERNIONS
+// so tilt=0.5 (center DMX) should point straight out relative to the fixture's mount direction.
+const TILT_REST_ANGLE = 0
 
 /**
  * � WAVE 2088.12: VIBE-AWARE BEAM CONE
@@ -81,7 +84,7 @@ const TILT_REST_ANGLE = Math.PI * 0.25  // 45° forward from vertical
  * This makes techno look like a laser cutting through smoke,
  * and chill look like a warm wash flooding the stage.
  */
-const BEAM_RADIUS_MIN = 0.03   // Tight beam (techno sable láser)
+const BEAM_RADIUS_MIN = 0.08   // WAVE 4573: Increased 0.03→0.08 for LQ visibility (16cm diam)
 const BEAM_RADIUS_MAX = 0.45   // Wide wash (chill baño de luz)
 const ZOOM_SMOOTH = 0.15       // Slower than pan/tilt — zoom transitions should feel organic
 
@@ -102,6 +105,26 @@ const VISUAL_SMOOTH = 0.35
 // Quaternion axes (allocated once, shared across instances)
 const PAN_AXIS = new THREE.Vector3(0, 1, 0)
 const TILT_AXIS = new THREE.Vector3(1, 0, 0)
+
+// 🏗️ WAVE 4573: MOUNT_QUATERNIONS — static quaternion per installation orientation.
+// Defines how the fixture body is rotated based on how it's physically mounted.
+// Three.js uses right-hand rule, Y axis up.
+const MOUNT_QUATERNIONS: Record<InstallationOrientation, THREE.Quaternion> = (() => {
+  const ceiling  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))     // Hanging: flip head down
+  const floor    = new THREE.Quaternion()                                                    // Standing: identity
+  const trussFront = ceiling.clone()                                                         // Same as ceiling
+  const trussBack  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, Math.PI, 0))  // Ceiling, rotated 180° Y
+  const wallLeft   = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))  // Wall left: tilt 90°
+  const wallRight  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0,  Math.PI / 2))  // Wall right: tilt -90°
+  return {
+    'ceiling':    ceiling,
+    'floor':      floor,
+    'truss-front': trussFront,
+    'truss-back':  trussBack,
+    'wall-left':   wallLeft,
+    'wall-right':  wallRight,
+  }
+})()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -141,6 +164,11 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const yokeQuat = useRef(new THREE.Quaternion())
   const headQuat = useRef(new THREE.Quaternion())
 
+  // 🛡️ WAVE 4573 Phase 2: GRACE PERIOD — ~500ms tolerance on null transient state
+  const nullFrameCountRef = useRef(0)
+  const lastValidStateRef = useRef<{ dimmer: number; pan: number; tilt: number } | null>(null)
+  const NULL_GRACE_FRAMES = 30  // ~500ms at 60fps
+
   // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 2088.9: DIRECT STORE ACCESS — THE REAL FIX
   //
@@ -156,6 +184,28 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   //
   // This is the canonical R3F pattern for high-frequency data.
   // ═══════════════════════════════════════════════════════════════════════
+  // 🏗️ WAVE 4573: Composite base quaternion = mount orientation + custom user rotation.
+  // Computed once per fixture; changes on orientation or baseRotation change (rare).
+  const baseQuat = useMemo(() => {
+    const mountQ = MOUNT_QUATERNIONS[(fixture.orientation ?? 'ceiling') as InstallationOrientation] ?? MOUNT_QUATERNIONS['ceiling']
+    const br = fixture.baseRotation
+    if (!br || (br.pitch === 0 && br.yaw === 0 && br.roll === 0)) {
+      return mountQ.clone()
+    }
+    const offsetQ = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(br.pitch ?? 0),
+        THREE.MathUtils.degToRad(br.yaw   ?? 0),
+        THREE.MathUtils.degToRad(br.roll  ?? 0),
+      )
+    )
+    return mountQ.clone().multiply(offsetQ)
+  }, [fixture.orientation, fixture.baseRotation])
+
+  // 👻 WAVE 4573: Ghost mode for unplaced fixtures
+  const isPlaced = fixture.isPlaced !== false
+  const ghostOpacity = isPlaced ? 1.0 : 0.4
+
   const fixtureId = fixture.id
 
   // Static values from props (don't need 60fps updates)
@@ -192,22 +242,33 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
       smoothPan.current = null  // Forces snap on next smoothing block
     }
 
-    // 🪞 WAVE 3260 Fix E: ANTI-ZOMBIE — No fixture state → kill the light
-    // Before: fell back to stale React props from mount → zombie fixtures
-    // Now: no data = no light. The 3D mirror must reflect reality.
+    // 🪞 WAVE 3260 Fix E / WAVE 4573: ANTI-ZOMBIE WITH GRACE PERIOD
+    // If fixture state is null for < NULL_GRACE_FRAMES, hold last known values.
+    // This covers boot transients and vibe transitions — avoids flickering beams.
     if (!fixtureState) {
-      if (beamMeshRef.current) beamMeshRef.current.visible = false
-      if (lensMaterialRef.current) lensMaterialRef.current.color.setScalar(0)
-      return
+      nullFrameCountRef.current++
+      if (nullFrameCountRef.current > NULL_GRACE_FRAMES || lastValidStateRef.current === null) {
+        if (beamMeshRef.current) beamMeshRef.current.visible = false
+        if (lensMaterialRef.current) lensMaterialRef.current.color.setScalar(0)
+        return
+      }
+      // Within grace period: fall through with last known values
+    } else {
+      nullFrameCountRef.current = 0
+      lastValidStateRef.current = {
+        dimmer: fixtureState.dimmer ?? 0,
+        pan: fixtureState.physicalPan ?? fixtureState.pan ?? 0.5,
+        tilt: fixtureState.physicalTilt ?? fixtureState.tilt ?? 0.5,
+      }
     }
 
-    const livePan = fixtureState.physicalPan ?? fixtureState.pan ?? 0.5
-    const liveTilt = fixtureState.physicalTilt ?? fixtureState.tilt ?? 0.5
-    const liveIntensity = fixtureState.dimmer ?? 0
+    // Use live state or grace-period fallback
+    const stateSource = fixtureState ?? lastValidStateRef.current!
+    const livePan = stateSource.physicalPan ?? (stateSource as any).pan ?? 0.5
+    const liveTilt = stateSource.physicalTilt ?? (stateSource as any).tilt ?? 0.5
+    const liveIntensity = stateSource.dimmer ?? 0
 
     // 🔦 WAVE 2088.12: Live zoom from store (0-255 DMX) → normalized 0-1
-    // Zoom is sent as raw DMX 0-255 from TitanOrchestrator.
-    // 0 = beam (tight), 255 = wash (wide)
     const rawZoom = fixtureState?.zoom ?? 127
     const liveZoom = rawZoom / 255  // Normalize to 0-1
 
@@ -300,16 +361,20 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     <group 
       ref={groupRef} 
       position={[fixture.x, fixture.y, fixture.z]}
+      quaternion={baseQuat}
       onClick={handleClick}
       userData={{ fixtureId: id }}
     >
       {/* BASE */}
       <mesh position={[0, 0.15, 0]}>
         <cylinderGeometry args={[0.12, 0.15, 0.08, 16]} />
+        {/* 👻 WAVE 4573: Ghost opacity when fixture not placed (isPlaced=false) */}
         <meshStandardMaterial
           color={selected ? NEON_CYAN : '#0a0a14'}
           metalness={0.9}
           roughness={0.1}
+          transparent={!isPlaced}
+          opacity={ghostOpacity}
         />
       </mesh>
 
@@ -317,11 +382,11 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
       <group ref={yokeRef} position={[0, 0.08, 0]}>
         <mesh position={[-0.10, -0.08, 0]}>
           <boxGeometry args={[0.015, 0.2, 0.03]} />
-          <meshStandardMaterial color="#12122a" metalness={0.85} roughness={0.15} />
+          <meshStandardMaterial color="#12122a" metalness={0.85} roughness={0.15} transparent={!isPlaced} opacity={ghostOpacity} />
         </mesh>
         <mesh position={[0.10, -0.08, 0]}>
           <boxGeometry args={[0.015, 0.2, 0.03]} />
-          <meshStandardMaterial color="#12122a" metalness={0.85} roughness={0.15} />
+          <meshStandardMaterial color="#12122a" metalness={0.85} roughness={0.15} transparent={!isPlaced} opacity={ghostOpacity} />
         </mesh>
 
         {/* HEAD — Tilt rotation */}
@@ -332,6 +397,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
               color={hasOverride ? '#FF00E5' : '#0a0a0a'}
               metalness={0.9}
               roughness={0.2}
+              transparent={!isPlaced}
+              opacity={ghostOpacity}
             />
           </mesh>
 
@@ -347,10 +414,9 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
           </mesh>
 
           {/* Beam — 🔦 WAVE 2088.12: Dynamic cone width via scale.x/z
-              Base geometry radius=1.0, height=3.5. useFrame scales X/Z
-              to match zoom: tight laser (techno) → wide wash (chill).
-              Opacity controlled by useFrame based on dimmer. */}
-          {showBeam && (
+              WAVE 4573: clippingPlanes={[]} overrides the global Y=0 clip plane
+              so floor fixtures don't lose their beam tips. */}
+          {showBeam && (fixture.isPlaced !== false) && (
             <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]}>
               <coneGeometry args={[1.0, 3.5, 16, 1, true]} />
               <meshBasicMaterial
@@ -361,6 +427,7 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
+                clippingPlanes={[]}
               />
             </mesh>
           )}

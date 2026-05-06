@@ -21,6 +21,7 @@ import {
 } from '../../shared/ZoneLayoutEngine'
 import type { Fixture3DData, StageConfig3D } from './types'
 import type { FixtureState } from '../../../../core/protocol/SeleneProtocol'
+import type { InstallationOrientation, Rotation3D } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -238,6 +239,10 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           focus,
           selected: selectedIds.has(fixture.id),
           hasOverride: override !== undefined,
+          // 🏗️ WAVE 4573: Spatial Truth fields
+          orientation: (fixture.orientation ?? 'ceiling') as InstallationOrientation,
+          baseRotation: fixture.rotation ?? { pitch: -45, yaw: 0, roll: 0 },
+          isPlaced: fixture.isPlaced === true,
         })
       })
     }

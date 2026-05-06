@@ -9,7 +9,11 @@
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useStageStore } from '../../../stores/stageStore'
-import type { FixtureV2, InstallationOrientation, CanonicalZone } from '../../../core/stage/ShowFileV2'
+import {
+  createDefaultFixture,
+  mapLibraryTypeToFixtureType,
+} from '../../../core/stage/ShowFileV2'
+import type { FixtureV2, InstallationOrientation, CanonicalZone, FixtureZone } from '../../../core/stage/ShowFileV2'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -142,11 +146,12 @@ function FixtureGlyph({ type, color, size = 16 }: { type: string; color: string;
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const StageCanvas2D: React.FC = () => {
-  const fixtures = useStageStore(state => state.fixtures)
+  const fixtures     = useStageStore(state => state.fixtures)
   const updateFixture = useStageStore(state => state.updateFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
-  const stageWidth  = useStageStore(state => state.stage?.width  ?? 12)
-  const stageDepth  = useStageStore(state => state.stage?.depth  ?? 10)
+  const addFixture    = useStageStore(state => state.addFixture)
+  const stageWidth    = useStageStore(state => state.stage?.width  ?? 12)
+  const stageDepth    = useStageStore(state => state.stage?.depth  ?? 10)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -304,19 +309,84 @@ const StageCanvas2D: React.FC = () => {
       return
     }
 
-    // ── Path B: fixture type drag from Library sidebar ────────────────────────
-    // Library drag only carries type metadata; actual fixture creation is not
-    // StageCanvas2D's responsibility. Bubble a custom event for the parent layer.
-    const raw = e.dataTransfer.getData('application/fixture-type') ||
-                e.dataTransfer.getData('text/plain')
-    if (!raw) return
+    // ── Path B: Library sidebar drag (fixture-type + library-fixture-id) ───────
+    // Same pipeline as StageGrid3D.handleDrop — create the fixture directly
+    // in the store. No bubbling event, no ghost, no dependency on 3D canvas.
+    const fixtureType = e.dataTransfer.getData('fixture-type')
+    if (!fixtureType) return
 
-    const dropEvent = new CustomEvent('stagecanvas2d:drop', {
-      bubbles: true,
-      detail: { x: xm, y: ORIENTATION_HEIGHT['ceiling'], z: zm, zone, raw }
-    })
-    svg.dispatchEvent(dropEvent)
-  }, [fromSVG, toFraction, fixtures, updateFixture, setFixtureZone])
+    const libraryId  = e.dataTransfer.getData('library-fixture-id')
+    const yHeight    = ORIENTATION_HEIGHT['ceiling']
+    const newId      = `fixture-${Date.now()}`
+    const nextAddr   = useStageStore.getState().fixtures.length * 8 + 1
+    const mappedType = mapLibraryTypeToFixtureType(fixtureType) as FixtureV2['type']
+
+    // Infer orientation from drop height (always ceiling for 2D drops, can be
+    // overridden later in Properties panel)
+    const orientation: InstallationOrientation = 'ceiling'
+
+    let partialData: Partial<FixtureV2> = {
+      type: mappedType,
+      position: { x: xm, y: yHeight, z: zm },
+      zone: zone as FixtureZone,
+      orientation,
+      isPlaced: true,
+    }
+
+    // If a library definition is available, load it async (same as 3D)
+    const finalize = async () => {
+      if (libraryId && (window as any).lux?.getFixtureDefinition) {
+        try {
+          const result = await (window as any).lux.getFixtureDefinition(libraryId)
+          if (result.success && result.definition) {
+            const def = result.definition as any
+            partialData = {
+              ...partialData,
+              name: def.name,
+              model: def.name,
+              manufacturer: def.manufacturer,
+              type: mapLibraryTypeToFixtureType(def.type) as FixtureV2['type'],
+              channelCount: def.channelCount,
+              profileId: libraryId,
+              definitionPath: def.filePath,
+              channels: def.channels,
+              physics: def.physics ? {
+                motorType: def.physics.motorType || 'unknown',
+                maxAcceleration: def.physics.maxAcceleration || 2000,
+                maxVelocity: def.physics.maxVelocity || 400,
+                safetyCap: def.physics.safetyCap ?? true,
+                invertPan: false,
+                invertTilt: false,
+                swapPanTilt: def.physics.swapPanTilt ?? false,
+                homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
+                tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 },
+              } : undefined,
+              calibration: {
+                panOffset: 0, tiltOffset: 0,
+                panInvert: def.physics?.invertPan ?? false,
+                tiltInvert: def.physics?.invertTilt ?? false,
+              },
+              capabilities: {
+                hasMovementChannels: def.hasMovementChannels,
+                has16bitMovement: def.has16bitMovement,
+                hasColorMixing: def.hasColorMixing,
+                hasColorWheel: def.hasColorWheel,
+                colorEngine: def.capabilities?.colorEngine,
+                colorWheel: def.capabilities?.colorWheel,
+              },
+            }
+          }
+        } catch (err) {
+          console.warn('[StageCanvas2D] Could not load definition for', libraryId, err)
+        }
+      }
+      const newFixture = createDefaultFixture(newId, nextAddr, partialData)
+      addFixture(newFixture)
+      // Zone is embedded in partialData above; normalizeZone runs inside setFixtureZone
+      setFixtureZone(newId, zone as FixtureZone)
+    }
+    finalize()
+  }, [fromSVG, toFraction, fixtures, updateFixture, setFixtureZone, addFixture])
 
   // ── Tick marks ────────────────────────────────────────────────────────────
   const ticks = useMemo(() => {

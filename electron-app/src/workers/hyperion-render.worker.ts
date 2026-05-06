@@ -73,7 +73,7 @@ let dpr = 1
 // Render options
 let quality: QualityMode = 'HQ'
 let showGrid = true
-let showZoneLabels = true
+let showZoneLabels = false
 
 // ── Scaffold (structural, rarely changes) ─────────────────────────────────
 let scaffoldFixtures: WorkerFixtureScaffold[] = []

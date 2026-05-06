@@ -9,12 +9,13 @@
  * AHORA: Fuente única de verdad. Importada por ambos componentes.
  *
  * Notación Three.js (right-hand rule, Y arriba):
- *   - ceiling   : R_X(π)  — cabeza cuelga hacia abajo (beam apunta -Y)
- *   - floor     : identidad — pie en el suelo (beam apunta +Y)
+ *   - Los modelos de Hyperion tienen eje de emisión local en -Y.
+ *   - ceiling   : identidad — foco colgado apunta al suelo (-Y global)
+ *   - floor     : R_X(π) — foco de piso apunta al techo (+Y global)
  *   - truss-front: igual que ceiling
- *   - truss-back : R_X(π) · R_Y(π) — techo, orientado hacia atrás del truss
- *   - wall-left  : R_Z(-π/2) — pared izquierda, rota 90° en Z
- *   - wall-right : R_Z(+π/2) — pared derecha, rota -90° en Z
+ *   - truss-back : R_Y(π) — mismo vector vertical, invertido en yaw
+ *   - wall-left  : R_Z(+π/2) — pared izquierda, haz hacia +X (centro)
+ *   - wall-right : R_Z(-π/2) — pared derecha, haz hacia -X (centro)
  *
  * @module components/hyperion/views/visualizer/utils/mountQuaternion
  * @version WAVE 4573
@@ -35,24 +36,23 @@ import type { InstallationOrientation } from '../../../../../core/stage/ShowFile
  * Estos valores son PUROS MATEMÁTICOS — verificados por Suite B (mountQuaternion.test.ts).
  */
 export const MOUNT_QUATERNIONS: Readonly<Record<InstallationOrientation, THREE.Quaternion>> = (() => {
-  // Techo: fixture cuelga. El beam apunta hacia -Y por defecto (sin pan/tilt),
-  // lo que requiere girar 180° en X para invertir la dirección natural.
-  const ceiling = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))
+  // Ceiling: los modelos ya emiten en -Y local, así que no hay rotación extra.
+  const ceiling = new THREE.Quaternion()
 
-  // Suelo: fixture de pie. Sin rotación adicional — identidad.
-  const floor = new THREE.Quaternion()
+  // Floor: invertimos el eje de emisión para que el haz suba hacia +Y.
+  const floor = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))
 
   // Truss frontal: mismo montaje que techo (cuelga del truss frontal)
   const trussFront = ceiling.clone()
 
-  // Truss trasero: techo rotado 180° en Y (el fixture mira hacia atrás del escenario)
-  const trussBack = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, Math.PI, 0))
+  // Truss trasero: mismo vector vertical, pero yaw invertido 180°.
+  const trussBack = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0))
 
-  // Pared izquierda: fixture montado en la pared izquierda, apunta al centro del escenario
-  const wallLeft = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))
+  // Pared izquierda: haz hacia +X (centro del escenario)
+  const wallLeft = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
 
-  // Pared derecha: fixture montado en la pared derecha, apunta al centro del escenario
-  const wallRight = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
+  // Pared derecha: haz hacia -X (centro del escenario)
+  const wallRight = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))
 
   return {
     'ceiling':    ceiling,

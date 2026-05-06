@@ -31,6 +31,7 @@ import React, {
 } from 'react'
 import { useAudioStore } from '../../../../stores/audioStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
+import { useStageStore, selectStageDimensions } from '../../../../stores/stageStore'
 import { useFixtureData } from './useFixtureData'
 import { getTransientTruth } from '../../../../stores/transientStore'
 import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
@@ -95,6 +96,24 @@ export interface TacticalCanvasProps {
 // ═══════════════════════════════════════════════════════════════════════════
 
 import RenderWorkerConstructor from '../../../../workers/hyperion-render.worker?worker'
+
+interface RulerTick {
+  value: number
+  percent: number
+}
+
+function buildRulerTicks(sizeMeters: number): RulerTick[] {
+  const safeSize = Number.isFinite(sizeMeters) && sizeMeters > 0 ? sizeMeters : 1
+  const step = safeSize <= 12 ? 1 : safeSize <= 30 ? 2 : 5
+  const ticks: RulerTick[] = []
+  for (let v = 0; v <= safeSize; v += step) {
+    ticks.push({ value: v, percent: (v / safeSize) * 100 })
+  }
+  if (ticks[ticks.length - 1]?.value !== safeSize) {
+    ticks.push({ value: safeSize, percent: 100 })
+  }
+  return ticks
+}
 
 function createRenderWorker(): Worker {
   return new RenderWorkerConstructor()
@@ -171,7 +190,7 @@ function packFrameData(
 export const TacticalCanvas = memo(function TacticalCanvas({
   quality = 'HQ',
   showGrid = true,
-  showZoneLabels = true,
+  showZoneLabels = false,
   onFixtureSelect,
   onSelectionChange,
   isVisible = true,
@@ -231,6 +250,12 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
   const toggleSelection = useSelectionStore(state => state.toggleSelection)
   const deselectAll = useSelectionStore(state => state.deselectAll)
+  const stageDims = useStageStore(selectStageDimensions)
+
+  const stageWidthMeters = stageDims?.width ?? 12
+  const stageDepthMeters = stageDims?.depth ?? 8
+  const rulerTicksX = useMemo(() => buildRulerTicks(stageWidthMeters), [stageWidthMeters])
+  const rulerTicksY = useMemo(() => buildRulerTicks(stageDepthMeters), [stageDepthMeters])
 
   // ── Fixture Data (structural scaffold) ──────────────────────────────────
   
@@ -746,6 +771,31 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       />
+
+      <div className="tactical-rulers" aria-hidden="true">
+        <div className="tactical-ruler tactical-ruler--top">
+          {rulerTicksX.map((tick) => (
+            <div
+              key={`x-${tick.value}`}
+              className="tactical-ruler-tick tactical-ruler-tick--x"
+              style={{ left: `${tick.percent}%` }}
+            >
+              <span className="tactical-ruler-label">{tick.value}m</span>
+            </div>
+          ))}
+        </div>
+        <div className="tactical-ruler tactical-ruler--left">
+          {rulerTicksY.map((tick) => (
+            <div
+              key={`y-${tick.value}`}
+              className="tactical-ruler-tick tactical-ruler-tick--y"
+              style={{ top: `${tick.percent}%` }}
+            >
+              <span className="tactical-ruler-label">{tick.value}m</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Tooltip Overlay */}
       <div className="tactical-canvas-overlay">

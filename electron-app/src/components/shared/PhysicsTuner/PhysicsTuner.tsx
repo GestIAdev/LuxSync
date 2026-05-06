@@ -18,7 +18,6 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { 
   PhysicsProfile, 
   MotorType, 
-  InstallationOrientation,
   DEFAULT_PHYSICS_PROFILES 
 } from '../../../core/stage/ShowFileV2'
 import { 
@@ -89,15 +88,6 @@ const MOTOR_TYPE_INFO: Record<MotorType, {
     recommendedAccel: 2000
   }
 }
-
-const ORIENTATION_OPTIONS: { value: InstallationOrientation; label: string; icon: string }[] = [
-  { value: 'ceiling', label: 'Ceiling (hanging)', icon: '⬇️' },
-  { value: 'floor', label: 'Floor (pointing up)', icon: '⬆️' },
-  { value: 'wall-left', label: 'Left Wall', icon: '➡️' },
-  { value: 'wall-right', label: 'Right Wall', icon: '⬅️' },
-  { value: 'truss-front', label: 'Front Truss', icon: '🎪' },
-  { value: 'truss-back', label: 'Back Truss', icon: '🏗️' }
-]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
@@ -355,7 +345,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
           onClick={() => toggleSection('limits')}
         >
           <RotateCcw size={18} />
-          <span>Orientation & Limits</span>
+          <span>Safety Limits</span>
           <ChevronDown 
             size={16} 
             className={expandedSection === 'limits' ? 'expanded' : ''} 
@@ -364,22 +354,6 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
         
         {expandedSection === 'limits' && (
           <div className="section-content">
-            {/* Installation Orientation */}
-            <div className="select-group">
-              <label>Installation</label>
-              <select
-                value={physics.orientation ?? 'ceiling'}
-                onChange={(e) => updatePhysics('orientation', e.target.value as InstallationOrientation)}
-                className="physics-select"
-              >
-                {ORIENTATION_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.icon} {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
             {/* Invert toggles */}
             {/* 🛡️ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt DEPRECATED here.
                 The real master is FixtureV2.calibration.panInvert/tiltInvert,

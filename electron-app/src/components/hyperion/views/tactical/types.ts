@@ -143,7 +143,7 @@ export interface TacticalCanvasOptions {
 export const DEFAULT_TACTICAL_OPTIONS: TacticalCanvasOptions = {
   quality: 'HQ',
   showGrid: true,
-  showZoneLabels: true,
+  showZoneLabels: false,
   showReferenceLines: true,
   showStereoDivision: true,
   targetFPS: 60,

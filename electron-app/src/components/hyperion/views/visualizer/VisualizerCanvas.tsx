@@ -79,6 +79,7 @@ interface ResolvedStageConfig {
   width: number
   depth: number
   trussHeight: number
+  gridSize: number
   /** Distancia de cámara calculada desde la diagonal del escenario */
   cameraDistance: number
 }
@@ -381,12 +382,14 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     const w = stageDims?.width ?? DEFAULT_STAGE_WIDTH
     const d = stageDims?.depth ?? DEFAULT_STAGE_DEPTH
     const h = stageDims?.height ?? DEFAULT_TRUSS_HEIGHT
+    const g = stageDims?.gridSize ?? 1
     // Camera pulled back to diagonal × 0.8 so full stage always fits in FOV=50
     const diag = Math.sqrt(w * w + d * d)
     return {
       width: w,
       depth: d,
       trussHeight: h,
+      gridSize: g,
       cameraDistance: Math.max(10, diag * 0.8),
     }
   }, [stageDims])
@@ -461,6 +464,17 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
         <span className="visualizer-stage-hud__value">
           {stageConfig.width}m × {stageConfig.depth}m
         </span>
+        <span className="visualizer-stage-hud__sep">|</span>
+        <span className="visualizer-stage-hud__label">BOUNDS</span>
+        <span className="visualizer-stage-hud__value">
+          X {(-stageConfig.width / 2).toFixed(1)}..{(stageConfig.width / 2).toFixed(1)}m
+        </span>
+        <span className="visualizer-stage-hud__value">
+          Z {(-stageConfig.depth / 2).toFixed(1)}..{(stageConfig.depth / 2).toFixed(1)}m
+        </span>
+        <span className="visualizer-stage-hud__sep">|</span>
+        <span className="visualizer-stage-hud__label">GRID</span>
+        <span className="visualizer-stage-hud__value">{stageConfig.gridSize}m</span>
         <span className="visualizer-stage-hud__sep">|</span>
         <span className="visualizer-stage-hud__label">TRUSS</span>
         <span className="visualizer-stage-hud__value">{stageConfig.trussHeight}m</span>

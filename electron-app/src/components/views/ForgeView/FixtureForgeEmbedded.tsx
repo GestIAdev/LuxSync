@@ -58,8 +58,7 @@ import {
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
   FixtureV2,
-  MotorType,
-  InstallationOrientation
+  MotorType
 } from '../../../core/stage/ShowFileV2'
 import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, deriveCapabilitiesUnified, DerivedCapabilities } from '../../../types/FixtureDefinition'
 import { NodeGraphBuilder } from '../../../core/forge/NodeGraphBuilder'
@@ -1166,11 +1165,6 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     <span className="engine-icon">⚡</span>
                     <span className="engine-label">ACCEL</span>
                     <span className="engine-value">{fixture.physics?.maxAcceleration || '—'}</span>
-                  </div>
-                  <div className="engine-badge" title="Installation Orientation">
-                    <span className="engine-icon">📍</span>
-                    <span className="engine-label">MOUNT</span>
-                    <span className="engine-value">{((fixture as any).orientation || fixture.physics?.orientation || '—').toString().toUpperCase()}</span>
                   </div>
                 </div>
               </div>

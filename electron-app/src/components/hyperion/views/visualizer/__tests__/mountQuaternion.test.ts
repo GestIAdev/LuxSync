@@ -21,7 +21,7 @@
 import { describe, test, expect } from 'vitest'
 import * as THREE from 'three'
 import { MOUNT_QUATERNIONS, getMountQuaternion } from '../utils/mountQuaternion'
-import type { InstallationOrientation } from '../../../../core/stage/ShowFileV2'
+import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS matemáticos
@@ -76,25 +76,22 @@ function rotateVector(v: THREE.Vector3, q: THREE.Quaternion): THREE.Vector3 {
 
 describe('Suite B §1 — Corrección matemática de MOUNT_QUATERNIONS', () => {
 
-  test('"ceiling": el vector local +Y apunta globalmente hacia -Y (beam cuelga hacia abajo)', () => {
-    // Un fixture en el techo: su "haz" sale hacia abajo (-Y global).
-    // La rotación de 180° en X transforma +Y → -Y.
-    const localUp = new THREE.Vector3(0, 1, 0)
-    const result = rotateVector(localUp, MOUNT_QUATERNIONS['ceiling'])
+  test('"ceiling": el vector local -Y se conserva en -Y global (haz hacia suelo)', () => {
+    const localBeamAxis = new THREE.Vector3(0, -1, 0)
+    const result = rotateVector(localBeamAxis, MOUNT_QUATERNIONS['ceiling'])
 
     expect(result.x).toBeCloseTo(0, PRECISION)
-    expect(result.y).toBeCloseTo(-1, PRECISION)  // +Y → -Y
+    expect(result.y).toBeCloseTo(-1, PRECISION)
     expect(result.z).toBeCloseTo(0, PRECISION)
   })
 
-  test('"floor": es la rotación identidad — fixture de pie sin rotación adicional', () => {
-    expect(isIdentity(MOUNT_QUATERNIONS['floor'])).toBe(true)
+  test('"ceiling": es la rotación identidad para el eje local auditado', () => {
+    expect(isIdentity(MOUNT_QUATERNIONS['ceiling'])).toBe(true)
   })
 
-  test('"floor": el vector local +Y sigue apuntando globalmente hacia +Y (beam apunta arriba)', () => {
-    // Un PAR en el suelo apunta hacia arriba — identidad.
-    const localUp = new THREE.Vector3(0, 1, 0)
-    const result = rotateVector(localUp, MOUNT_QUATERNIONS['floor'])
+  test('"floor": invierte el vector local -Y hacia +Y (haz arriba)', () => {
+    const localBeamAxis = new THREE.Vector3(0, -1, 0)
+    const result = rotateVector(localBeamAxis, MOUNT_QUATERNIONS['floor'])
 
     expect(result.y).toBeCloseTo(1, PRECISION)
   })
@@ -110,39 +107,33 @@ describe('Suite B §1 — Corrección matemática de MOUNT_QUATERNIONS', () => {
     expect(q_trussFront.w).toBeCloseTo(q_ceiling.w, PRECISION)
   })
 
-  test('"wall-left": el vector local +X apunta globalmente hacia +Y (fixture sale de la pared izquierda)', () => {
-    // Wall left = R_Z(-π/2): rota el eje X local hacia +Y global.
-    // Un fixture en la pared izquierda: su "delante" apunta hacia el centro del escenario (+X → +Y rotado).
-    // Verificamos que la rotación Z(-90°) transforma +Y local → +X global (el haz sale horizontal).
-    const localUp = new THREE.Vector3(0, 1, 0)
-    const result = rotateVector(localUp, MOUNT_QUATERNIONS['wall-left'])
+  test('"wall-left": lleva el eje de haz local -Y hacia +X (centro del stage)', () => {
+    const localBeamAxis = new THREE.Vector3(0, -1, 0)
+    const result = rotateVector(localBeamAxis, MOUNT_QUATERNIONS['wall-left'])
 
-    // R_Z(-π/2): Y → X
     expect(result.x).toBeCloseTo(1, PRECISION)
     expect(result.y).toBeCloseTo(0, PRECISION)
     expect(result.z).toBeCloseTo(0, PRECISION)
   })
 
-  test('"wall-right": el vector local +Y apunta globalmente hacia -X (pared derecha, inverso de wall-left)', () => {
-    // R_Z(+π/2): Y → -X
-    const localUp = new THREE.Vector3(0, 1, 0)
-    const result = rotateVector(localUp, MOUNT_QUATERNIONS['wall-right'])
+  test('"wall-right": lleva el eje de haz local -Y hacia -X (centro del stage)', () => {
+    const localBeamAxis = new THREE.Vector3(0, -1, 0)
+    const result = rotateVector(localBeamAxis, MOUNT_QUATERNIONS['wall-right'])
 
     expect(result.x).toBeCloseTo(-1, PRECISION)
     expect(result.y).toBeCloseTo(0, PRECISION)
     expect(result.z).toBeCloseTo(0, PRECISION)
   })
 
-  test('"truss-back": el vector local +Y apunta hacia -Y conservando orientación trasera', () => {
-    // R_X(π) · R_Y(π): beam cuelga hacia abajo (-Y) como en ceiling.
-    const localUp = new THREE.Vector3(0, 1, 0)
-    const result = rotateVector(localUp, MOUNT_QUATERNIONS['truss-back'])
+  test('"truss-back": conserva haz en -Y y añade yaw de 180°', () => {
+    const localBeamAxis = new THREE.Vector3(0, -1, 0)
+    const result = rotateVector(localBeamAxis, MOUNT_QUATERNIONS['truss-back'])
 
     expect(result.y).toBeCloseTo(-1, PRECISION)
   })
 
-  test('"ceiling": ángulo de rotación es 180° (π radianes)', () => {
-    const { angleDeg } = getAxisAngle(MOUNT_QUATERNIONS['ceiling'])
+  test('"floor": ángulo de rotación es 180° (π radianes)', () => {
+    const { angleDeg } = getAxisAngle(MOUNT_QUATERNIONS['floor'])
     expect(angleDeg).toBeCloseTo(180, 2)
   })
 

@@ -397,7 +397,7 @@ export function HyperionView({
                 <TacticalCanvas 
                   quality={qualityMode}
                   showGrid={true}
-                  showZoneLabels={true}
+                  showZoneLabels={false}
                   isVisible={viewMode === '2D' && sidebarMode !== 'kinetics'}
                 />
               </div>

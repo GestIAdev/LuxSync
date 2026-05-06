@@ -36,7 +36,7 @@ import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
 import { useConstructorContext } from '../StageConstructorView'
 import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType, clampToCrystalBox, snapPosition } from '../../../core/stage/ShowFileV2'
-import type { FixtureV2, Position3D, FixtureZone, StageDimensions } from '../../../core/stage/ShowFileV2'
+import type { FixtureV2, Position3D, FixtureZone, StageDimensions, InstallationOrientation } from '../../../core/stage/ShowFileV2'
 // ZoneOverlay eliminado — WAVE 4543: zonas son metadatos puros, no recintos físicos
 import * as THREE from 'three'
 
@@ -1257,22 +1257,21 @@ const StageGrid3D: React.FC = () => {
     const newPosition = { ...fixture.position, y: height }
     updateFixturePosition(contextMenu.fixtureId, newPosition)
     
-    // If going to ceiling, auto-invert tilt
-    if (invertTilt && fixture.physics) {
+    // 🏗️ WAVE 4573: Set orientation on root (not physics) + calibration tiltInvert
+    if (invertTilt) {
       updateFixture(contextMenu.fixtureId, {
-        physics: {
-          ...fixture.physics,
-          invertTilt: true,
-          orientation: 'ceiling' as const
+        orientation: 'ceiling' as InstallationOrientation,
+        calibration: {
+          ...(fixture.calibration || { panOffset: 0, tiltOffset: 0, panInvert: false, tiltInvert: false }),
+          tiltInvert: true,
         }
       })
-    } else if (height === 0 && fixture.physics) {
-      // Reset tilt inversion when going to floor
+    } else if (height === 0) {
       updateFixture(contextMenu.fixtureId, {
-        physics: {
-          ...fixture.physics,
-          invertTilt: false,
-          orientation: 'floor' as const
+        orientation: 'floor' as InstallationOrientation,
+        calibration: {
+          ...(fixture.calibration || { panOffset: 0, tiltOffset: 0, panInvert: false, tiltInvert: false }),
+          tiltInvert: false,
         }
       })
     }
@@ -1489,10 +1488,21 @@ const StageGrid3D: React.FC = () => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
 
+    // 🏗️ WAVE 4573: Auto-orientation heuristic based on drop Y/X position
+    const stageW = stage?.width ?? 12
+    const inferOrientation = (pos: Position3D): InstallationOrientation => {
+      if (pos.y <= 0.3) return 'floor'
+      if (pos.x < -(stageW * 0.35)) return 'wall-left'
+      if (pos.x > (stageW * 0.35)) return 'wall-right'
+      return 'ceiling'
+    }
+
     let fixtureData: Partial<FixtureV2> = {
       type: fixtureType as FixtureV2['type'],
       position: ghostPos,
       zone: 'unassigned' as FixtureZone,
+      orientation: inferOrientation(ghostPos),
+      isPlaced: true,
     }
 
     if (libraryId && window.lux?.getFixtureDefinition) {
@@ -1516,12 +1526,12 @@ const StageGrid3D: React.FC = () => {
             // 🔥 WAVE 384: Store channels inline for persistence
             channels: def.channels,
             // 🔥 WAVE 1042.1: COPY PHYSICS FROM DEFINITION!
+            // 🏗️ WAVE 4573: orientation removed from physics — set on root instead
             physics: def.physics ? {
               motorType: def.physics.motorType || 'unknown',
               maxAcceleration: def.physics.maxAcceleration || 2000,
               maxVelocity: def.physics.maxVelocity || 400,
               safetyCap: def.physics.safetyCap ?? true,
-              orientation: def.physics.orientation || 'floor',
               invertPan: false,  // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               invertTilt: false, // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               swapPanTilt: def.physics.swapPanTilt ?? false,
@@ -1558,7 +1568,7 @@ const StageGrid3D: React.FC = () => {
     const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
     addFixture(newFixture)
     setDraggedFixtureType(null)
-  }, [addFixture, setDraggedFixtureType])
+  }, [addFixture, setDraggedFixtureType, stage])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -1599,10 +1609,13 @@ const StageGrid3D: React.FC = () => {
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
     
     // 🧱 WAVE 4538: Drop siempre en Y=0 (el técnico eleva con el gizmo)
+    // 🏗️ WAVE 4573: isPlaced=true + auto-orientation
     let fixtureData: Partial<FixtureV2> = {
       type: type as FixtureV2['type'],
       position: { ...position, y: 0 },
       zone: 'unassigned' as FixtureZone,
+      orientation: 'floor' as InstallationOrientation,  // Y=0 → floor by default
+      isPlaced: true,
     }
     
     // Load full definition if we have libraryId
@@ -1622,14 +1635,12 @@ const StageGrid3D: React.FC = () => {
             definitionPath: def.filePath,
             channels: def.channels,
             // 🔥 WAVE 1042.1: COPY PHYSICS FROM DEFINITION (R3F drop)
+            // 🏗️ WAVE 4573: orientation removed from physics — set on root
             physics: def.physics ? {
               motorType: (def.physics.motorType || 'unknown') as MotorType,
               maxAcceleration: def.physics.maxAcceleration || 2000,
               maxVelocity: def.physics.maxVelocity || 400,
               safetyCap: def.physics.safetyCap ?? true,
-              orientation: (['ceiling', 'floor', 'wall-left', 'wall-right', 'truss-front', 'truss-back'].includes(def.physics.orientation || '') 
-                ? def.physics.orientation 
-                : 'floor') as 'ceiling' | 'floor' | 'wall-left' | 'wall-right' | 'truss-front' | 'truss-back',
               invertPan: false,  // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               invertTilt: false, // 🛡️ WAVE 2093.2 (CW-AUDIT-4): Frozen — use calibration instead
               swapPanTilt: def.physics.swapPanTilt ?? false,

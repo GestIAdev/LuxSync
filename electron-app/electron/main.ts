@@ -89,6 +89,8 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 //
 // DEBUG PROBE — Comentar este bloque para restaurar salida cruda de consola.
 // ─────────────────────────────────────────────────────────────────────────────
+// 🔓 WAVE 4571: BLACKOUT DISABLED — Logs fluyen sin filtro
+/*
 ;(function installConsciousnessFilter() {
   const _orig = {
     log:   console.log.bind(console),
@@ -154,7 +156,8 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
   console.warn  = _filter(_orig.warn)
   // error siempre pasa — son fallos reales que hay que saber
   console.error = _orig.error
-})()
+})
+*/
 // ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
 // ═══════════════════════════════════════════════════════════════════════════

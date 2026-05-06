@@ -19,7 +19,6 @@ import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
-import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
 import { ExtrasSection } from './ExtrasSection'
 import { GroupsPanel } from './GroupsPanel'
@@ -36,7 +35,6 @@ interface OverrideState {
   dimmer: boolean
   strobe: boolean
   color: boolean
-  position: boolean
   beam: boolean
   extras: boolean
 }
@@ -70,20 +68,19 @@ export const TheProgrammer: React.FC = () => {
   // Track which channels have manual overrides (derivado del store)
   const overrideState: OverrideState = useMemo(() => {
     if (selectedIds.length === 0) {
-      return { dimmer: false, strobe: false, color: false, position: false, beam: false, extras: false }
+      return { dimmer: false, strobe: false, color: false, beam: false, extras: false }
     }
     // Basta con que al menos un fixture activo tenga override en la familia
-    let dimmer = false, strobe = false, color = false, position = false, beam = false, extras = false
+    let dimmer = false, strobe = false, color = false, beam = false, extras = false
     for (const id of selectedIds) {
       const ov = fixtureOverrides.get(id)
       if (!ov) continue
       if (ov.dimmer !== null || ov.strobe !== null) dimmer = strobe = true
       if (ov.red !== null || ov.green !== null || ov.blue !== null) color = true
-      if (ov.pan !== null || ov.tilt !== null) position = true
       if (ov.gobo !== null || ov.prism !== null || ov.focus !== null || ov.zoom !== null || ov.iris !== null) beam = true
       if (ov.extras.size > 0) extras = true
     }
-    return { dimmer, strobe, color, position, beam, extras }
+    return { dimmer, strobe, color, beam, extras }
   }, [selectedIds, fixtureOverrides])
 
   // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
@@ -191,13 +188,6 @@ export const TheProgrammer: React.FC = () => {
     const nodeIds = selectedIds.map(id => `${id}:impact`)
     window.lux?.aether?.clearInhibitLimit(nodeIds)
   }, [selectedIds, releaseAll])
-  
-  /**
-   * Handler for position override changes (informativo — derivado del store)
-   */
-  const handlePositionOverrideChange = useCallback((_hasOverride: boolean) => {
-    // No-op: overrideState es derivado del store, no necesita setState externo
-  }, [])
   
   /**
    * Handler for beam override changes (informativo)
@@ -315,14 +305,6 @@ export const TheProgrammer: React.FC = () => {
             />
           )}
           
-          {/* POSITION SECTION (solo para moving heads) */}
-          <PositionSection
-            hasOverride={overrideState.position}
-            isExpanded={activeSection === 'position'}
-            onToggle={() => toggleSection('position')}
-            onOverrideChange={handlePositionOverrideChange}
-          />
-          
           {/* BEAM SECTION (solo para fixtures con óptica) */}
           <BeamSection
             hasOverride={overrideState.beam}
@@ -340,7 +322,7 @@ export const TheProgrammer: React.FC = () => {
           />
           
           {/* OVERRIDE INDICATOR */}
-          {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.position || overrideState.beam || overrideState.extras) && (
+          {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (
             <div className="override-indicator">
               <span className="override-dot" />
               MANUAL CONTROL ACTIVE

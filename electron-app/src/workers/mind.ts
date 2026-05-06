@@ -17,7 +17,8 @@
 const DEBUG_VERBOSE = false;
 
 // 🔇 OPERACIÓN BLACKOUT — Node worker_threads console hijack (RESTAURAR: comentar bloque)
-;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
+// 🔓 WAVE 4571: BLACKOUT DISABLED — Logs fluyen sin filtro
+// ;(function(){const _n=()=>{};console.log=_n;console.info=_n;console.debug=_n;console.warn=_n;console.error=_n;})()
 
 import { parentPort, workerData } from 'worker_threads';
 import {

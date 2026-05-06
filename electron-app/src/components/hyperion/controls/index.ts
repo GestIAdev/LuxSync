@@ -12,7 +12,6 @@ export { TheProgrammer, default } from './TheProgrammer'
 export { GroupsPanel } from './GroupsPanel'
 export { IntensitySection } from './IntensitySection'
 export { ColorSection } from './ColorSection'
-export { PositionSection } from './PositionSection'
 export { BeamSection } from './BeamSection'
 
 // Sub-components

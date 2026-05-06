@@ -136,8 +136,13 @@ export interface PhysicsProfile {
   /** Enable safety cap (clamps all movements) */
   safetyCap: boolean
   
-  /** Physical installation orientation */
-  orientation: InstallationOrientation
+  /** 
+   * @deprecated WAVE 4573: Moved to FixtureV2.orientation (root-level).
+   * orientation is a STAGE property (how/where mounted), not a motor property.
+   * This field is kept for backward-compatible file loading but IGNORED by the runtime.
+   * Read from FixtureV2.orientation instead.
+   */
+  orientation?: InstallationOrientation
   
   /** 
    * Invert pan direction (for fixtures mounted backwards)
@@ -180,7 +185,6 @@ export const DEFAULT_PHYSICS_PROFILES: Record<MotorType, PhysicsProfile> = {
     maxAcceleration: 4000,
     maxVelocity: 800,
     safetyCap: false,
-    orientation: 'ceiling',
     invertPan: false,
     invertTilt: false,
     swapPanTilt: false,
@@ -192,7 +196,6 @@ export const DEFAULT_PHYSICS_PROFILES: Record<MotorType, PhysicsProfile> = {
     maxAcceleration: 2500,
     maxVelocity: 600,
     safetyCap: true,
-    orientation: 'ceiling',
     invertPan: false,
     invertTilt: false,
     swapPanTilt: false,
@@ -204,7 +207,6 @@ export const DEFAULT_PHYSICS_PROFILES: Record<MotorType, PhysicsProfile> = {
     maxAcceleration: 1500,  // 🛡️ THE LIFE INSURANCE - Low acceleration for cheap motors
     maxVelocity: 400,
     safetyCap: true,
-    orientation: 'ceiling',
     invertPan: false,
     invertTilt: false,
     swapPanTilt: false,
@@ -216,7 +218,6 @@ export const DEFAULT_PHYSICS_PROFILES: Record<MotorType, PhysicsProfile> = {
     maxAcceleration: 2000,  // Conservative default
     maxVelocity: 500,
     safetyCap: true,
-    orientation: 'ceiling',
     invertPan: false,
     invertTilt: false,
     swapPanTilt: false,
@@ -657,6 +658,22 @@ export interface FixtureV2 {
   
   /** Base rotation (how the fixture is mounted) */
   rotation: Rotation3D
+  
+  /**
+   * 🏗️ WAVE 4573: ORIENTATION DECOUPLING
+   * Physical installation orientation — a STAGE property (how/where mounted),
+   * NOT a motor property. Determines base quaternion in 3D visualizer and IK solver.
+   * Default: 'ceiling' (most common: hanging from truss).
+   */
+  orientation: InstallationOrientation
+  
+  /**
+   * 🏃 WAVE 4573: GUERRILLA MODE FLAG
+   * True when the user has explicitly placed this fixture in the 3D StageBuilder.
+   * False/undefined = "guerrilla" fixture, added via quick-add without 3D coordinates.
+   * When false, the visualizer uses zone layout fallback and IK is skipped.
+   */
+  isPlaced?: boolean
   
   /** Physics and safety profile */
   physics: PhysicsProfile
@@ -1116,6 +1133,8 @@ export function createDefaultFixture(
     profileId: options.profileId || 'generic-dimmer',
     position: options.position || { x: 0, y: 3, z: 0 },
     rotation: options.rotation || { pitch: -45, yaw: 0, roll: 0 },
+    orientation: options.orientation || 'ceiling',
+    isPlaced: options.isPlaced,
     physics: options.physics || { ...DEFAULT_PHYSICS_PROFILES['unknown'] },
     zone: options.zone || 'unassigned',
     enabled: true,

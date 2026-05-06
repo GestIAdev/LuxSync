@@ -368,7 +368,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             <div className="select-group">
               <label>Installation</label>
               <select
-                value={physics.orientation}
+                value={physics.orientation ?? 'ceiling'}
                 onChange={(e) => updatePhysics('orientation', e.target.value as InstallationOrientation)}
                 className="physics-select"
               >

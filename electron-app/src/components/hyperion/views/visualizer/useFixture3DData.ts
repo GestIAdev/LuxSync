@@ -112,6 +112,12 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   // this is a one-time snapshot, not a subscription.
   // ═══════════════════════════════════════════════════════════════════════
   
+  // 🔍 WAVE 4573 Phase 0: Expose stageStore fixture IDs for ID mismatch diagnostics
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    (window as any).__luxDebug = (window as any).__luxDebug || {}
+    ;(window as any).__luxDebug.stageFixtureIds = fixtures.map(f => f.id)
+  }
+
   // ── Stage Dimensions ──────────────────────────────────────────────────────
   const halfWidth = options.stageConfig?.width 
     ? options.stageConfig.width / 2 

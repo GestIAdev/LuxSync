@@ -16,6 +16,8 @@
  * @version WAVE 1016 - "GOD EAR: BECAUSE WE DESERVE TO HEAR LIKE GODS"
  */
 
+// 🔓 WAVE 4571: BLACKOUT DISABLED — Logs fluyen sin filtro (hasta que silenciemos en lotes)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 1: TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════

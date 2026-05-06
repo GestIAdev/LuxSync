@@ -89,6 +89,23 @@ export function injectTransientTruth(truth: SeleneTruth): void {
       const f = fixtures[i]
       if (f?.id) fixtureIndex.set(f.id, f)
     }
+
+    // 🔍 WAVE 4573 Phase 0: ID MISMATCH DIAGNOSTIC
+    // Detect if stageStore fixture IDs are present in the truth fixture index.
+    // If not, getTransientFixture() will return null → beams invisible.
+    if (process.env.NODE_ENV !== 'production') {
+      const stageIds: string[] = (window as any).__luxDebug?.stageFixtureIds ?? []
+      if (stageIds.length > 0) {
+        const missingIds = stageIds.filter((id: string) => !fixtureIndex.has(id))
+        if (missingIds.length > 0) {
+          console.warn(
+            `[transientStore] ⚠️ ID MISMATCH: ${missingIds.length}/${stageIds.length} stageStore IDs not found in truth:`,
+            missingIds,
+            '| truth IDs:', Array.from(fixtureIndex.keys()).slice(0, 10)
+          )
+        }
+      }
+    }
   }
 }
 

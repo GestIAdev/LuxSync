@@ -1170,7 +1170,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   <div className="engine-badge" title="Installation Orientation">
                     <span className="engine-icon">📍</span>
                     <span className="engine-label">MOUNT</span>
-                    <span className="engine-value">{fixture.physics?.orientation?.toUpperCase() || '—'}</span>
+                    <span className="engine-value">{((fixture as any).orientation || fixture.physics?.orientation || '—').toString().toUpperCase()}</span>
                   </div>
                 </div>
               </div>

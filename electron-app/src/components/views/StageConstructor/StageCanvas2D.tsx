@@ -9,6 +9,7 @@
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useStageStore } from '../../../stores/stageStore'
+import { useSelectionStore } from '../../../stores/selectionStore'
 import {
   createDefaultFixture,
   mapLibraryTypeToFixtureType,
@@ -152,6 +153,7 @@ const StageCanvas2D: React.FC = () => {
   const addFixture    = useStageStore(state => state.addFixture)
   const stageWidth    = useStageStore(state => state.stage?.width  ?? 12)
   const stageDepth    = useStageStore(state => state.stage?.depth  ?? 10)
+  const selectFixture = useSelectionStore(state => state.select)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -257,7 +259,7 @@ const StageCanvas2D: React.FC = () => {
 
     updateFixture(drag.fixtureId, {
       position: { x: xm, y: yHeight, z: zm },
-      isPlaced: true,
+      isPlaced: false,   // permanece en el universo 2D
     })
     setFixtureZone(drag.fixtureId, zone as any)
     setDrag(null)
@@ -303,7 +305,7 @@ const StageCanvas2D: React.FC = () => {
       const yHeight = ORIENTATION_HEIGHT[f?.orientation ?? 'ceiling'] ?? 3.0
       updateFixture(fixtureId, {
         position: { x: xm, y: yHeight, z: zm },
-        isPlaced: true,
+        isPlaced: false,   // tray → canvas 2D: sigue siendo universo unplaced
       })
       setFixtureZone(fixtureId, zone)
       return
@@ -330,7 +332,7 @@ const StageCanvas2D: React.FC = () => {
       position: { x: xm, y: yHeight, z: zm },
       zone: zone as FixtureZone,
       orientation,
-      isPlaced: true,
+      isPlaced: false,   // 2D ≡ unplaced — 3D ≡ placed
     }
 
     // If a library definition is available, load it async (same as 3D)
@@ -402,8 +404,8 @@ const StageCanvas2D: React.FC = () => {
     return marks
   }, [stageWidth, stageDepth, toSVG, MARGIN])
 
-  // ── Placed fixtures ───────────────────────────────────────────────────────
-  const placed = fixtures.filter(f => f.isPlaced)
+  // ── Unplaced fixtures — vista 2D es el reino de isPlaced=false (pan-tilt clásico)
+  const placed = fixtures.filter(f => !f.isPlaced)
 
   const GLYPH = 26 // px — tamaño de glyph base, suficiente para ser clickeable/draggable
 
@@ -430,6 +432,7 @@ const StageCanvas2D: React.FC = () => {
         onMouseMove={onSVGMouseMove}
         onMouseUp={onSVGMouseUp}
         onMouseLeave={() => { setDrag(null); setDropTarget(null) }}
+        onClick={() => useSelectionStore.getState().deselectAll()}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
@@ -588,6 +591,7 @@ const StageCanvas2D: React.FC = () => {
               key={f.id}
               transform={`translate(${px - GLYPH / 2}, ${py - GLYPH / 2})`}
               style={{ cursor: 'grab' }}
+              onClick={(e) => { e.stopPropagation(); selectFixture(f.id, 'replace') }}
               onMouseDown={(e) => onFixtureSVGMouseDown(e, f.id)}
             >
               {/* Selection/hover halo */}
@@ -667,12 +671,23 @@ const StageCanvas2D: React.FC = () => {
 }
 
 // ─── Unplaced Tray ────────────────────────────────────────────────────────────
-// Fixtures not yet placed — shown below the canvas as draggable chips.
-// User drags them onto the SVG to position them.
+// Fixtures sin posici\u00f3n asignada en el canvas (cero centinela o null).
+// Una vez que el usuario arrastra del tray al SVG, obtienen coordenadas
+// reales y desaparecen del tray (siguen visibles en el canvas SVG).
 
 const UnplacedTray: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
-  const unplaced = fixtures.filter(f => !f.isPlaced)
+  // "sin posici\u00f3n en canvas" = !isPlaced + sin coordenadas reales asignadas
+  // Un drop en el canvas 2D siempre asigna X/Z distinto de 0/0, salvo que el
+  // usuario droppee exactamente en el centro absoluto del escenario (raro).
+  // Se usa el centinela guerrilla: y===3 && x===0 && z===0 como proxy.
+  const unplaced = fixtures.filter(f => {
+    if (f.isPlaced) return false           // va al 3D
+    const p = f.position
+    if (!p) return true                    // no tiene posici\u00f3n en absoluto
+    const isSentinel = p.x === 0 && p.z === 0 && p.y === 3
+    return isSentinel                      // centinela guerrilla = sin posicionar
+  })
 
   if (unplaced.length === 0) return null
 

@@ -766,8 +766,8 @@ const StageScene = memo<StageSceneProps>(({
       
       {/* ZoneOverlay eliminado — WAVE 4543: zonas son metadatos puros */}
       
-      {/* 🧱 WAVE 4538: Fixtures como bloques 3D en su Y real */}
-      {fixtures.map((fixture: FixtureV2) => {
+      {/* 🧱 WAVE 4538: Fixtures como bloques 3D en su Y real — solo isPlaced=true */}
+      {fixtures.filter((f: FixtureV2) => f.isPlaced).map((fixture: FixtureV2) => {
         const isSelected = selectedIds.has(fixture.id)
         // WAVE 4545: si este fixture está siendo arrastrado, usar su posición temporal
         const livePos = isSelected && gizmoDragPos ? gizmoDragPos : null
@@ -1337,22 +1337,6 @@ const StageGrid3D: React.FC = () => {
     closeContextMenu()
   }, [contextMenu, openFixtureForge, closeContextMenu])
 
-  // 🏗️ WAVE 4534 E11: ASSIGN ZONE MANUALLY
-  const assignZoneManual = useCallback((zone: FixtureZone) => {
-    if (!contextMenu) return
-    const idsToUpdate = selectedIds.size > 1 ? [...selectedIds] : [contextMenu.fixtureId]
-    idsToUpdate.forEach(id => setFixtureZone(id, zone))
-    closeContextMenu()
-  }, [contextMenu, selectedIds, setFixtureZone, closeContextMenu])
-
-  // 🧭 WAVE 4573 Phase 4a: ASSIGN ORIENTATION MANUALLY
-  const assignOrientation = useCallback((orientation: InstallationOrientation) => {
-    if (!contextMenu) return
-    const idsToUpdate = selectedIds.size > 1 ? [...selectedIds] : [contextMenu.fixtureId]
-    idsToUpdate.forEach(id => updateFixture(id, { orientation }))
-    closeContextMenu()
-  }, [contextMenu, selectedIds, updateFixture, closeContextMenu])
-
   // 🏗️ WAVE 4534 E12: OPEN OFFSET PANEL
   const handleOpenOffsetPanel = useCallback((id: string) => {
     setOffsetPanelFixtureId(id)
@@ -1801,49 +1785,6 @@ const StageGrid3D: React.FC = () => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ═════ ASIGNAR ZONA ═════ */}
-          <div className="context-menu-divider" />
-          <div className="context-menu-title">📍 ASIGNAR ZONA</div>
-          {([
-            { zone: 'front',        label: 'FRONT',        icon: '🔴' },
-            { zone: 'back',         label: 'BACK',         icon: '🔵' },
-            { zone: 'center',       label: 'CENTER',       icon: '⚡' },
-            { zone: 'movers-left',  label: 'MOVER LEFT',   icon: '🏗️' },
-            { zone: 'movers-right', label: 'MOVER RIGHT',  icon: '🏗️' },
-            { zone: 'floor',        label: 'FLOOR',        icon: '⬇️' },
-            { zone: 'air',          label: 'AIR',          icon: '✨' },
-          ] as { zone: FixtureZone; label: string; icon: string }[]).map(({ zone, label, icon }) => (
-            <button
-              key={zone}
-              className="context-menu-item"
-              onClick={() => assignZoneManual(zone)}
-            >
-              <span className="icon">{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-
-          {/* ═════ ORIENTACIÓN ═════ */}
-          <div className="context-menu-divider" />
-          <div className="context-menu-title">🧭 ORIENTACIÓN</div>
-          {([
-            { o: 'ceiling',     label: 'Ceiling (Truss)',  icon: '⬇️' },
-            { o: 'floor',       label: 'Floor (Standing)', icon: '⬆️' },
-            { o: 'wall-left',   label: 'Wall Left',        icon: '➡️' },
-            { o: 'wall-right',  label: 'Wall Right',       icon: '⬅️' },
-            { o: 'truss-front', label: 'Truss Front',      icon: '🔛' },
-            { o: 'truss-back',  label: 'Truss Back',       icon: '🔙' },
-          ] as { o: InstallationOrientation; label: string; icon: string }[]).map(({ o, label, icon }) => (
-            <button
-              key={o}
-              className="context-menu-item"
-              onClick={() => assignOrientation(o)}
-            >
-              <span className="icon">{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-
           {/* ═════ FLIP ═════ */}
           <div className="context-menu-divider" />
           <div className="context-menu-title">🔄 FLIP</div>

@@ -25,7 +25,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useNavigationStore, selectStageConstructorNav } from '../../stores/navigationStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil, LayoutGrid, Box as Box3D } from 'lucide-react'
+import { lazy as lazyComponent } from 'react'
+const StageCanvas2D = lazyComponent(() => import('./StageConstructor/StageCanvas2D'))
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile, InstallationOrientation } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
@@ -119,6 +121,10 @@ interface ConstructorContextType {
 
   // Fixture Forge - WAVE 364
   openFixtureForge: (fixtureId?: string, existingDefinition?: FixtureDefinition) => void
+
+  // 🗺️ WAVE 4574: 3D/2D view mode
+  viewMode: '3d' | '2d'
+  setViewMode: (mode: '3d' | '2d') => void
 }
 
 const ConstructorContext = createContext<ConstructorContextType | null>(null)
@@ -159,49 +165,12 @@ const Loading3DFallback: React.FC = () => (
 const FixtureLibrarySidebar: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
-  const addFixture = useStageStore(state => state.addFixture)
   const { setDraggedFixtureType } = useConstructorContext()
 
-  // ⚡ WAVE 4573 Phase 4b: GUERRILLA QUICK-ADD
-  // Crea el fixture sin posición real (isPlaced=false) para configurarlo luego.
-  const handleQuickAdd = useCallback((asset: LibraryAsset) => {
-    const rawDef = (asset as any)._raw
-    const fixtureType = rawDef?.type ? mapLibraryTypeToFixtureType(rawDef.type) : 'par'
-    const fixtureId = `fixture-${Date.now()}`
-    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
-    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
-      type: fixtureType as FixtureV2['type'],
-      name: rawDef?.name ?? fixtureType,
-      model: rawDef?.name ?? fixtureType,
-      manufacturer: rawDef?.manufacturer ?? 'Unknown',
-      profileId: asset.id ?? 'generic-dimmer',
-      position: { x: 0, y: 3, z: 0 },          // Guerrilla sentinel — no real 3D position
-      isPlaced: false,                            // 🚨 CRITICAL: engine skips IK for this fixture
-      orientation: 'ceiling' as InstallationOrientation,
-      zone: 'unassigned' as FixtureZone,
-      channelCount: rawDef?.channelCount ?? 1,
-      channels: rawDef?.channels,
-      physics: rawDef?.physics ? {
-        motorType: rawDef.physics.motorType || 'unknown',
-        maxAcceleration: rawDef.physics.maxAcceleration || 2000,
-        maxVelocity: rawDef.physics.maxVelocity || 400,
-        safetyCap: rawDef.physics.safetyCap ?? true,
-        invertPan: false,
-        invertTilt: false,
-        swapPanTilt: rawDef.physics.swapPanTilt ?? false,
-        homePosition: rawDef.physics.homePosition || { pan: 127, tilt: 127 },
-        tiltLimits: rawDef.physics.tiltLimits || { min: 0, max: 270 },
-      } : undefined,
-      capabilities: rawDef ? {
-        hasMovementChannels: rawDef.hasMovementChannels ?? false,
-        has16bitMovement: rawDef.has16bitMovement ?? false,
-        hasColorMixing: rawDef.hasColorMixing ?? false,
-        hasColorWheel: rawDef.hasColorWheel ?? false,
-      } : undefined,
-    })
-    addFixture(newFixture)
-    console.log(`[StageConstructorView] ⚡ Guerrilla Quick-Add "${newFixture.name}" — no 3D position (isPlaced=false)`)
-  }, [addFixture])
+  // WAVE 4574-C: Guerrilla Quick-Add EXTIRPADO.
+  // Click en librería ya NO crea fixtures. Solo D&D.
+  // 3D viewport = placed (IK motor espacial).
+  // 2D viewport = unplaced (pan-tilt clásico, sin posición 3D).
   
   const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
     e.dataTransfer.setData('fixture-type', type)
@@ -245,7 +214,6 @@ const FixtureLibrarySidebar: React.FC = () => {
             compact={true}
             defaultViewMode="tree"
             maxHeight="100%"
-            onSelect={handleQuickAdd}
             onDragStart={(e: React.DragEvent, asset: LibraryAsset) => {
               const rawDef = (asset as any)._raw
               const fixtureType = rawDef?.type
@@ -436,7 +404,7 @@ const ConstructorToolbar: React.FC = () => {
   const newShow = useStageStore(state => state.newShow)
   const loadShowFile = useStageStore(state => state.loadShowFile)
   
-  const { snapEnabled, setSnapEnabled, toolMode, setToolMode, showZones, setShowZones } = useConstructorContext()
+  const { snapEnabled, setSnapEnabled, toolMode, setToolMode, showZones, setShowZones, viewMode, setViewMode } = useConstructorContext()
   
   // WAVE 369.5: Editable title state
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -649,6 +617,26 @@ const ConstructorToolbar: React.FC = () => {
         <div className="tool-group">
           <DimensionSliders />
         </div>
+
+        {/* 🗺️ WAVE 4574: 3D / 2D view mode toggle */}
+        <div className="tool-group view-mode-toggle">
+          <button
+            className={`tool-btn ${viewMode === '3d' ? 'active' : ''}`}
+            title="3D Orbit View"
+            onClick={() => setViewMode('3d')}
+          >
+            <Box size={15} />
+            <span style={{ fontSize: 11 }}>3D</span>
+          </button>
+          <button
+            className={`tool-btn ${viewMode === '2d' ? 'active' : ''}`}
+            title="2D Top-Down View"
+            onClick={() => setViewMode('2d')}
+          >
+            <LayoutGrid size={15} />
+            <span style={{ fontSize: 11 }}>2D</span>
+          </button>
+        </div>
       </div>
       
       <div className="toolbar-right">
@@ -712,6 +700,8 @@ const StageConstructorView: React.FC = () => {
   const [showZones, setShowZones] = useState(true)  // Default ON
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('properties')
   const [showGroupCreateModal, setShowGroupCreateModal] = useState(false)
+  // 🗺️ WAVE 4574: 2D top-down view toggle
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d')
   
   // WAVE 1117: DELETED - Forge modal state removed, now uses /forge view
   // 🛡️ WAVE 2042.13.9: useShallow for stable reference
@@ -769,7 +759,9 @@ const StageConstructorView: React.FC = () => {
     setShowDropLines,
     ghostCursorEnabled,
     setGhostCursorEnabled,
-    openFixtureForge
+    openFixtureForge,
+    viewMode,
+    setViewMode
   }
   
   // WAVE 363 - Keyboard shortcuts
@@ -792,13 +784,21 @@ const StageConstructorView: React.FC = () => {
           {/* Left Sidebar - Fixture Library */}
           <FixtureLibrarySidebar />
           
-          {/* Center - 3D Viewport */}
+          {/* Center - 3D / 2D Viewport */}
           <div className="constructor-viewport">
-            <Suspense fallback={<Loading3DFallback />}>
-              <StageGrid3D />
-            </Suspense>
-            {/* 🧱 WAVE 4538: Voxel View Toggles */}
-            <VoxelViewToggles />
+            {viewMode === '3d' ? (
+              <>
+                <Suspense fallback={<Loading3DFallback />}>
+                  <StageGrid3D />
+                </Suspense>
+                {/* 🧱 WAVE 4538: Voxel View Toggles */}
+                <VoxelViewToggles />
+              </>
+            ) : (
+              <Suspense fallback={<Loading3DFallback />}>
+                <StageCanvas2D />
+              </Suspense>
+            )}
           </div>
           
           {/* Right Sidebar - Properties / Groups (Tabbed) */}
@@ -819,6 +819,7 @@ const StageConstructorView: React.FC = () => {
                 <Users size={14} />
                 <span>Groups</span>
               </button>
+
             </div>
             
             {/* Tab Content */}
@@ -839,10 +840,21 @@ const StageConstructorView: React.FC = () => {
   )
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 4574: GUERRILLA PANEL REMOVED — replaced by StageCanvas2D (2D top-down)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// (GuerrillaContent, GuerrillaToggleBtn removed — see StageCanvas2D component)
+
+
+
+
+
 // Extracted Properties content for tabs
 const PropertiesContent: React.FC = () => {
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
+  const updateFixture = useStageStore(state => state.updateFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   const { openFixtureForge } = useConstructorContext()
   
@@ -894,6 +906,15 @@ const PropertiesContent: React.FC = () => {
     { value: 'ambient',       label: '🌫️ AMBIENT (House)' },
     { value: 'unassigned',    label: '❓ UNASSIGNED' }
   ]
+
+  const ORIENTATIONS: { value: InstallationOrientation; label: string; icon: string }[] = [
+    { value: 'ceiling',     label: 'Ceiling (Truss)',   icon: '⬇️' },
+    { value: 'floor',       label: 'Floor (Standing)',  icon: '⬆️' },
+    { value: 'wall-left',   label: 'Wall Left',         icon: '➡️' },
+    { value: 'wall-right',  label: 'Wall Right',        icon: '⬅️' },
+    { value: 'truss-front', label: 'Truss Front',       icon: '🔛' },
+    { value: 'truss-back',  label: 'Truss Back',        icon: '🔙' },
+  ]
   
   // 🔥 WAVE 1041.2: REACTIVE TRUTH - Detect invalid zones
   const isValidZone = (zone?: string) => {
@@ -933,6 +954,24 @@ const PropertiesContent: React.FC = () => {
             <option value="" disabled>-- Seleccionar Zona --</option>
             {ZONES_V2.map(z => (
               <option key={z.value} value={z.value}>{z.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Orientation selector for multi-select */}
+        <div className="property-group" style={{ marginTop: 8 }}>
+          <label>Asignar Orientación a Lote</label>
+          <select
+            className="zone-select"
+            onChange={(e) => {
+              const o = e.target.value as InstallationOrientation
+              if (o) selectedIds.forEach(id => updateFixture(id, { orientation: o }))
+            }}
+            defaultValue=""
+          >
+            <option value="" disabled>-- Seleccionar Orientación --</option>
+            {ORIENTATIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
             ))}
           </select>
         </div>
@@ -995,6 +1034,20 @@ const PropertiesContent: React.FC = () => {
           )}
           {ZONES_V2.map(z => (
             <option key={z.value} value={z.value}>{z.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Orientation Selector - WAVE 4573-C M1a */}
+      <div className="property-group">
+        <label>Orientación</label>
+        <select
+          className="zone-select"
+          value={selectedFixture.orientation ?? 'ceiling'}
+          onChange={(e) => updateFixture(selectedFixture.id, { orientation: e.target.value as InstallationOrientation })}
+        >
+          {ORIENTATIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
           ))}
         </select>
       </div>

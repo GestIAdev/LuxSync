@@ -88,6 +88,40 @@
   transition: all 0.15s;
 }
 
+/* ── Sub-tabs [KINETICS | FIXTURE MATRIX] ── */
+
+.kinetics-cathedral__sub-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--kc-border);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.kc-sub-tab {
+  flex: 1;
+  height: 32px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.kc-sub-tab:hover {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.kc-sub-tab--active {
+  color: var(--kc-cyan);
+  border-bottom-color: var(--kc-cyan);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
 .kinetics-cathedral__close-btn:hover {
   border-color: var(--kc-cyan);
   color: var(--kc-cyan);

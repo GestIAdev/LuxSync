@@ -1,0 +1,116 @@
+/**
+ * 🎚️ HORIZONTAL FADER CSS — WAVE 4568
+ * 44px total height — ahorra 232px vs TacticalFader vertical (280px)
+ */
+
+.h-fader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  user-select: none;
+  touch-action: none;
+}
+
+.h-fader--disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+/* ── Label ── */
+
+.h-fader__label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--fader-color, #FF8C00);
+  text-shadow: 0 0 8px var(--fader-color, #FF8C00);
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+}
+
+/* ── Track ── */
+
+.h-fader__track {
+  flex: 1;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  position: relative;
+  cursor: ew-resize;
+  overflow: visible;
+}
+
+.h-fader__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    var(--fader-color, #FF8C00) 0%,
+    rgba(255, 255, 255, 0.15) 100%
+  );
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.h-fader__thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 22px;
+  background: var(--fader-color, #FF8C00);
+  box-shadow: 0 0 6px var(--fader-color, #FF8C00);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ── Readout ── */
+
+.h-fader__readout {
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
+}
+
+.h-fader__value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--fader-color, #FF8C00);
+  text-shadow: 0 0 6px var(--fader-color, #FF8C00);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.h-fader__value:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.h-fader__input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--fader-color, #FF8C00);
+  border-radius: 2px;
+  color: var(--fader-color, #FF8C00);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: right;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.h-fader__input::-webkit-outer-spin-button,
+.h-fader__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}

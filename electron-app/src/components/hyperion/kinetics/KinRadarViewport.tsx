@@ -1,40 +1,88 @@
 /**
- * 🎯 KIN RADAR VIEWPORT — WAVE 4564: THE RADAR RELOCATION
+ * 🎯 KIN RADAR VIEWPORT — WAVE 4567: THE TRINITY ROUTER
  *
- * Radar gigante que ocupa el Main Viewport de Hyperion cuando el modo KIN
- * está activo. Consume directamente movementStore y selectionStore —
- * idéntico al OrthoRadar dentro de KineticsCathedral pero sin la limitación
- * de sidebar (ocupa 100% del área de lienzo central).
+ * Router puro que evalúa el estado (selectedIds + radarMode + movingHeadCount)
+ * y monta UNO de los tres componentes de control clásicos en el Main Viewport:
  *
- * No duplica lógica: la misma Cathedral sidebar sigue manejando los controles.
- * Este componente solo es el "gran ojo" del escenario.
+ *  ┌───────────────────────────────────────────────┐
+ *  │  0 moving heads (vacío/solo estáticos)      → EmptyState      │
+ *  │  1 moving head  + mode classic              → XYPad            │
+ *  │  N moving heads + mode classic              → RadarXY          │
+ *  │  N moving heads + mode spatial              → SpatialTargetPad │
+ *  └───────────────────────────────────────────────┘
+ *
+ * Los tres componentes ya son relative-sized (100% width, aspect-ratio).
+ * Los overrides de max-height y font-scaling viven en KinRadarViewport.css.
  *
  * @module components/hyperion/kinetics/KinRadarViewport
- * @version WAVE 4564
+ * @version WAVE 4567
  */
 
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useMovementStore } from '../../../stores/movementStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
+import { useHardware } from '../../../stores/truthStore'
 import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
-import { OrthoRadar, type RadarFixtureGhost } from './OrthoRadar'
+
+import { XYPad } from '../controls/controls/XYPad'
+import { RadarXY } from '../controls/controls/RadarXY'
+import { SpatialTargetPad, type SpatialFixtureGhost } from '../controls/controls/SpatialTargetPad'
 import { PositionReadout } from './PositionReadout'
+import type { StageDimensions } from '../../../core/stage/ShowFileV2'
+import type { Target3D } from '../../../engine/movement/InverseKinematicsEngine'
 import './KinRadarViewport.css'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isMovingHead(type: string): boolean {
+  const t = type.toLowerCase()
+  return t === 'moving-head' || t === 'moving_head' || t === 'spot'
+    || t === 'beam' || t === 'scanner' || t === 'wash'
+}
+
+type RadarKey = 'xypad' | 'radarxy' | 'spatial' | 'empty' | 'static-warning'
+
+function resolveRadarComponent(
+  selectedCount: number,
+  movingHeadCount: number,
+  radarMode: 'classic' | 'spatial',
+): RadarKey {
+  if (selectedCount === 0) return 'empty'
+  if (movingHeadCount === 0) return 'static-warning'
+  if (radarMode === 'spatial') return 'spatial'
+  if (movingHeadCount === 1) return 'xypad'
+  return 'radarxy'
+}
+
+const RADAR_LABELS: Record<RadarKey, string> = {
+  xypad:          '⊕ XY PAD — CLASSIC 1:1',
+  radarxy:        '⊕ RADAR XY — FORMACIÓN',
+  spatial:        '⊕ SPATIAL 3D — IK TARGET',
+  empty:          '⊕ KIN RADAR',
+  'static-warning': '⊕ KIN RADAR — NO MOVING HEADS',
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const KinRadarViewport: React.FC = () => {
-  // ── Stores ──────────────────────────────────────────────────────────────
+  // ── Stores ────────────────────────────────────────────────────────────────
   const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
   const stageFixtures = useStageStore(s => s.fixtures)
   const stageFromStore = useStageStore(s => s.stage)
+  const hardware = useHardware()
 
   const {
     pan, tilt, fanValue,
     spatialTarget, spatialFanMode, spatialFanAmplitude,
     spatialReachability, spatialSubTargets,
-    radarModeOverride,
+    radarModeOverride, isCalibrating,
   } = useMovementStore(useShallow(s => ({
     pan: s.pan,
     tilt: s.tilt,
@@ -45,45 +93,94 @@ export const KinRadarViewport: React.FC = () => {
     spatialReachability: s.spatialReachability,
     spatialSubTargets: s.spatialSubTargets,
     radarModeOverride: s.radarModeOverride,
+    isCalibrating: s.isCalibrating,
   })))
 
-  const { setPanTilt, setSpatialTarget } = useMovementStore(useShallow(s => ({
-    setPanTilt: s.setPanTilt,
-    setSpatialTarget: s.setSpatialTarget,
-  })))
+  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude } =
+    useMovementStore(useShallow(s => ({
+      setPanTilt: s.setPanTilt,
+      setSpatialTarget: s.setSpatialTarget,
+      setSpatialFanMode: s.setSpatialFanMode,
+      setSpatialFanAmplitude: s.setSpatialFanAmplitude,
+    })))
 
-  // ── Derived ──────────────────────────────────────────────────────────────
-  const stage = useMemo(
-    () => stageFromStore ?? { width: 12, depth: 10, height: 6, gridSize: 1 },
-    [stageFromStore],
-  )
+  // ── Derived: clasificar fixtures seleccionados ────────────────────────────
+  const { movingHeadIds, staticIds, stageForPad } = useMemo(() => {
+    const hwFixtures = hardware?.fixtures ?? []
+    const moving: string[] = []
+    const statics: string[] = []
+
+    for (const id of selectedIds) {
+      const hf = hwFixtures.find((x: { id: string }) => x.id === id)
+        ?? stageFixtures.find(f => f.id === id)
+      const moving_ = isMovingHead(hf?.type ?? '')
+      if (moving_) moving.push(id)
+      else statics.push(id)
+    }
+
+    const stage: StageDimensions = stageFromStore ?? {
+      width: 12, depth: 10, height: 6, gridSize: 1,
+    }
+
+    return { movingHeadIds: moving, staticIds: statics, stageForPad: stage }
+  }, [selectedIds, hardware?.fixtures, stageFixtures, stageFromStore])
 
   const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
+  const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length, radarMode)
 
-  const fixtureGhosts = useMemo((): RadarFixtureGhost[] => {
-    if (radarMode !== 'spatial') return []
+  // ── Ghost points para RadarXY (classic multi) ─────────────────────────────
+  const ghostPoints = useMemo(() => {
+    if (radarKey !== 'radarxy') return []
+    const SAFE_PAN_MAX = 513
+    const SAFE_TILT_MAX = 256
+    // Si hay sub-targets de fan, cada ghost tiene su propia pos derivada del pan/tilt actual
+    // RadarXY solo muestra posición como offset de fan
+    return movingHeadIds.map((id, i) => {
+      const off = i - (movingHeadIds.length - 1) / 2
+      const spread = (fanValue / 100) * 0.3
+      const offsetX = movingHeadIds.length > 1 ? off * spread / (movingHeadIds.length - 1) : 0
+      const gPan = Math.max(0, Math.min(1, pan / SAFE_PAN_MAX + offsetX))
+      const gTilt = pan / SAFE_PAN_MAX  // simplificado: mismo tilt
+      return {
+        id,
+        x: gPan,
+        y: tilt / SAFE_TILT_MAX,
+        label: `F${i + 1}`,
+      }
+    })
+  }, [radarKey, movingHeadIds, pan, tilt, fanValue])
+
+  // ── Spatial fixture ghosts para SpatialTargetPad ──────────────────────────
+  const spatialGhosts = useMemo((): SpatialFixtureGhost[] => {
+    if (radarKey !== 'spatial') return []
     return selectedIds.flatMap(id => {
       const sf = stageFixtures.find(f => f.id === id)
-      if (!sf) return []
-      const t = (sf.type ?? '').toLowerCase()
-      const isMoving = t === 'moving-head' || t === 'moving_head' || t === 'spot'
-        || t === 'beam' || t === 'scanner' || t === 'wash'
+      if (!sf || !(sf as any).position) return []
       return [{
         id: sf.id,
         name: sf.name,
         position: (sf as any).position,
-        fixtureType: isMoving ? ('moving' as const) : ('static' as const),
+        displayColor: isMovingHead(sf.type ?? '') ? '#00F0FF' : '#886644',
       }]
     })
-  }, [selectedIds, stageFixtures, radarMode])
+  }, [radarKey, selectedIds, stageFixtures])
 
-  // IK readout del primer fixture seleccionado
-  const firstReachability = selectedIds.length > 0 ? spatialReachability[selectedIds[0]] : undefined
-  const ikPanDeg = firstReachability ? (firstReachability as any).pan : undefined
+  // ── IK readout ────────────────────────────────────────────────────────────
+  const firstReachability = movingHeadIds.length > 0 ? spatialReachability[movingHeadIds[0]] : undefined
+  const ikPanDeg  = firstReachability ? (firstReachability as any).pan  : undefined
   const ikTiltDeg = firstReachability ? (firstReachability as any).tilt : undefined
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Dismissable static-warning banner ────────────────────────────────────
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+  // Reset al cambiar selección
+  const lastSelKey = useMemo(() => selectedIds.join(','), [selectedIds])
+  const prevSelKey = React.useRef(lastSelKey)
+  if (prevSelKey.current !== lastSelKey) {
+    prevSelKey.current = lastSelKey
+    if (bannerDismissed) setBannerDismissed(false)
+  }
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handlePanTiltChange = useCallback((newPan: number, newTilt: number) => {
     const SAFE_PAN = 513
     const SAFE_TILT = 256
@@ -91,27 +188,30 @@ export const KinRadarViewport: React.FC = () => {
     const st = Math.max(0, Math.min(SAFE_TILT, newTilt))
     setPanTilt(sp, st)
 
-    if (selectedIds.length > 1) {
+    if (movingHeadIds.length > 1) {
       const basePanNorm = sp / 540
-      const baseTiltNorm = st / 270
       const spread = (fanValue / 100) * 0.3
-      const positions = selectedIds.map((id, i) => {
-        const off = i - (selectedIds.length - 1) / 2
-        const offsetX = selectedIds.length > 1 ? off * spread / (selectedIds.length - 1) : 0
+      const positions = movingHeadIds.map((id, i) => {
+        const off = i - (movingHeadIds.length - 1) / 2
+        const offsetX = off * spread / (movingHeadIds.length - 1)
         return {
           fixtureId: id,
           pan: Math.max(0, Math.min(1, basePanNorm + offsetX)) * 540,
-          tilt: baseTiltNorm * 270,
+          tilt: st,
         }
       })
       useProgrammerStore.getState().setPositionPerFixture(positions)
     } else {
       useProgrammerStore.getState().setPosition(sp, st)
     }
-  }, [selectedIds, fanValue, setPanTilt])
+  }, [movingHeadIds, fanValue, setPanTilt])
 
-  const handleTargetChange = useCallback((newTarget: import('../../../engine/movement/InverseKinematicsEngine').Target3D) => {
-    setSpatialTarget(newTarget)
+  const handleCenter = useCallback(() => {
+    handlePanTiltChange(256, 128)
+  }, [handlePanTiltChange])
+
+  const handleTargetChange = useCallback((t: Target3D) => {
+    setSpatialTarget(t)
   }, [setSpatialTarget])
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -120,7 +220,7 @@ export const KinRadarViewport: React.FC = () => {
       {/* ── Header strip ── */}
       <div className="kin-radar-viewport__header">
         <span className="kin-radar-viewport__label">
-          ⊕ KIN RADAR — {radarMode === 'spatial' ? 'SPATIAL 3D' : 'CLASSIC PAN/TILT'}
+          {RADAR_LABELS[radarKey]}
         </span>
         <PositionReadout
           mode={radarMode}
@@ -132,32 +232,89 @@ export const KinRadarViewport: React.FC = () => {
         />
       </div>
 
-      {/* ── Radar gigante ── */}
-      <div className="kin-radar-viewport__radar">
-        <OrthoRadar
-          mode={radarMode}
-          pan={pan}
-          tilt={tilt}
-          onPanTiltChange={handlePanTiltChange}
-          target={spatialTarget}
-          onTargetChange={handleTargetChange}
-          stage={stage}
-          reachability={spatialReachability}
-          subTargets={spatialSubTargets}
-          fanMode={spatialFanMode}
-          fixtures={fixtureGhosts}
-        />
-      </div>
-
-      {/* ── Empty state cuando no hay fixtures seleccionados ── */}
-      {selectedIds.length === 0 && (
-        <div className="kin-radar-viewport__empty">
-          <div className="kin-radar-viewport__empty-icon">⊕</div>
-          <div className="kin-radar-viewport__empty-text">
-            Selecciona fixtures en la sidebar KIN para activar el radar
-          </div>
+      {/* ── Banner: fixtures estáticos en selección mixta ── */}
+      {staticIds.length > 0 && movingHeadIds.length > 0 && !bannerDismissed && (
+        <div className="kin-radar-viewport__static-banner">
+          <span className="kin-radar-viewport__static-banner-text">
+            ⚠ {staticIds.length} fixture{staticIds.length !== 1 ? 's' : ''} estático
+            {staticIds.length !== 1 ? 's' : ''} ignorado{staticIds.length !== 1 ? 's' : ''} —
+            controlando {movingHeadIds.length} moving head{movingHeadIds.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            className="kin-radar-viewport__static-banner-dismiss"
+            onClick={() => setBannerDismissed(true)}
+          >×</button>
         </div>
       )}
+
+      {/* ── Canvas — el radar que corresponde ── */}
+      <div className="kin-radar-viewport__canvas">
+
+        {/* 1 moving head, classic */}
+        {radarKey === 'xypad' && (
+          <XYPad
+            pan={pan}
+            tilt={tilt}
+            onChange={handlePanTiltChange}
+            onCenter={handleCenter}
+            disabled={isCalibrating}
+          />
+        )}
+
+        {/* N moving heads, classic */}
+        {radarKey === 'radarxy' && (
+          <RadarXY
+            pan={pan}
+            tilt={tilt}
+            onChange={handlePanTiltChange}
+            onCenter={handleCenter}
+            isCalibrating={isCalibrating}
+            isGroupMode
+            ghostPoints={ghostPoints}
+            fixtureCount={movingHeadIds.length}
+          />
+        )}
+
+        {/* Spatial IK target pad */}
+        {radarKey === 'spatial' && (
+          <SpatialTargetPad
+            target={spatialTarget}
+            onChange={handleTargetChange}
+            fixtures={spatialGhosts}
+            stage={stageForPad}
+            disabled={isCalibrating}
+            reachabilityMap={spatialReachability}
+            fanMode={spatialFanMode}
+            onFanModeChange={setSpatialFanMode}
+            fanAmplitude={spatialFanAmplitude}
+            onFanAmplitudeChange={setSpatialFanAmplitude}
+            subTargets={spatialSubTargets}
+          />
+        )}
+
+        {/* 0 fixtures seleccionados */}
+        {radarKey === 'empty' && (
+          <div className="kin-radar-viewport__empty">
+            <div className="kin-radar-viewport__empty-icon">⊕</div>
+            <div className="kin-radar-viewport__empty-text">
+              Selecciona fixtures en la sidebar KIN para activar el radar
+            </div>
+          </div>
+        )}
+
+        {/* Selección sin moving heads */}
+        {radarKey === 'static-warning' && (
+          <div className="kin-radar-viewport__empty">
+            <div className="kin-radar-viewport__empty-icon">⚠</div>
+            <div className="kin-radar-viewport__empty-text">
+              No hay moving heads en la selección.<br />
+              Los fixtures estáticos no tienen control de posición.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
+
+

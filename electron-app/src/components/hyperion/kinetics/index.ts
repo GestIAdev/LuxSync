@@ -1,12 +1,11 @@
 /**
- * 🏛️ KINETICS CATHEDRAL — Barrel export (WAVE 4561)
+ * 🏛️ KINETICS CATHEDRAL — Barrel export (WAVE 4568)
  */
 
 export { KineticsCathedral } from './KineticsCathedral'
-export { OrthoRadar } from './OrthoRadar'
-export { TacticalFader } from './TacticalFader'
+export { HorizontalFader } from './HorizontalFader'
+export { FixtureMatrix } from './FixtureMatrix'
 export { PatternArsenal } from './PatternArsenal'
 export { ChaosOrderSlider } from './ChaosOrderSlider'
 export { PositionReadout } from './PositionReadout'
 export { CathedralFooter } from './CathedralFooter'
-export type { RadarFixtureGhost, OrthoRadarProps } from './OrthoRadar'

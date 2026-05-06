@@ -1,0 +1,221 @@
+/**
+ * 🔲 FIXTURE MATRIX CSS — WAVE 4568
+ * Grid denso de chips para selección de fixtures en la Cathedral sidebar
+ */
+
+/* ── Contenedor raíz ── */
+
+.fixture-matrix {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fixture-matrix--empty {
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0.4;
+}
+
+.fixture-matrix__empty-icon {
+  font-size: 40px;
+  color: rgba(0, 240, 255, 0.3);
+}
+
+.fixture-matrix__empty-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Toolbar ── */
+
+.fixture-matrix__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.fixture-matrix__tool-btn {
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  border-radius: 2px;
+  color: rgba(0, 240, 255, 0.7);
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.fixture-matrix__tool-btn:hover {
+  background: rgba(0, 240, 255, 0.14);
+  color: #00F0FF;
+}
+
+.fixture-matrix__tool-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.fixture-matrix__tool-btn--clear {
+  border-color: rgba(255, 60, 60, 0.25);
+  color: rgba(255, 80, 80, 0.6);
+}
+
+.fixture-matrix__tool-btn--clear:hover:not(:disabled) {
+  background: rgba(255, 60, 60, 0.1);
+  color: rgba(255, 80, 80, 1);
+}
+
+.fixture-matrix__sel-count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.06em;
+}
+
+/* ── Grupos ── */
+
+.fixture-matrix__groups {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fixture-matrix__group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.fixture-matrix__group-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+}
+
+.fixture-matrix__group-label--moving {
+  color: rgba(0, 240, 255, 0.5);
+}
+
+.fixture-matrix__group-select {
+  background: none;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: color 0.12s;
+}
+
+.fixture-matrix__group-select:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Grid de chips ── */
+
+.fixture-matrix__chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 4px;
+}
+
+/* ── Chip base ── */
+
+.fixture-matrix__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 38px;
+  padding: 4px 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  overflow: hidden;
+}
+
+.fixture-matrix__chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Moving head seleccionado */
+.fixture-matrix__chip--moving {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.15);
+}
+
+.fixture-matrix__chip--moving:hover {
+  background: rgba(0, 240, 255, 0.16);
+  border-color: rgba(0, 240, 255, 0.7);
+}
+
+/* Fixture estático seleccionado */
+.fixture-matrix__chip--static {
+  background: rgba(255, 140, 0, 0.1);
+  border-color: rgba(255, 140, 0, 0.4);
+}
+
+.fixture-matrix__chip--static:hover {
+  background: rgba(255, 140, 0, 0.16);
+  border-color: rgba(255, 140, 0, 0.6);
+}
+
+/* ── Chip internals ── */
+
+.fixture-matrix__chip-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixture-matrix__chip--moving .fixture-matrix__chip-name {
+  color: rgba(0, 240, 255, 0.9);
+}
+
+.fixture-matrix__chip--static .fixture-matrix__chip-name {
+  color: rgba(255, 140, 0, 0.85);
+}
+
+.fixture-matrix__chip-warn {
+  color: rgba(255, 165, 0, 0.9);
+  font-size: 7px;
+}
+
+.fixture-matrix__chip-addr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.2);
+}

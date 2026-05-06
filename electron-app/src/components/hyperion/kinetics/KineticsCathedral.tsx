@@ -15,7 +15,7 @@
  * @version WAVE 4564
  */
 
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 
 import { useMovementStore, type RadarMode, type PatternType } from '../../../stores/movementStore'
@@ -25,7 +25,8 @@ import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
 
-import { TacticalFader } from './TacticalFader'
+import { HorizontalFader } from './HorizontalFader'
+import { FixtureMatrix } from './FixtureMatrix'
 import { PatternArsenal } from './PatternArsenal'
 import { ChaosOrderSlider } from './ChaosOrderSlider'
 import { CathedralFooter } from './CathedralFooter'
@@ -145,6 +146,9 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     [selectedIds, lockedFixtureIds],
   )
 
+  // ── Sub-tab state — NOT persisted ────────────────────────────────────────
+  const [cathedralTab, setCathedralTab] = useState<'kinetics' | 'matrix'>('kinetics')
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -157,13 +161,35 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
       {/* ── HEADER ── */}
       <div className="kinetics-cathedral__header">
         <span className="kinetics-cathedral__title">⊕ KINETICS CATHEDRAL</span>
-        <span className="kinetics-cathedral__wave">WAVE 4561</span>
+        <span className="kinetics-cathedral__wave">WAVE 4568</span>
         {onClose && (
           <button className="kinetics-cathedral__close-btn" onClick={onClose} title="Volver a CONTROLS">
             ✕
           </button>
         )}
       </div>
+
+      {/* ── SUB-TABS ── */}
+      <div className="kinetics-cathedral__sub-tabs">
+        <button
+          className={`kc-sub-tab${cathedralTab === 'kinetics' ? ' kc-sub-tab--active' : ''}`}
+          onClick={() => setCathedralTab('kinetics')}
+        >
+          KINETICS
+        </button>
+        <button
+          className={`kc-sub-tab${cathedralTab === 'matrix' ? ' kc-sub-tab--active' : ''}`}
+          onClick={() => setCathedralTab('matrix')}
+        >
+          FIXTURE MATRIX
+        </button>
+      </div>
+
+      {/* ── FIXTURE MATRIX TAB ── */}
+      {cathedralTab === 'matrix' && <FixtureMatrix />}
+
+      {/* ── KINETICS TAB ── */}
+      {cathedralTab === 'kinetics' && (<>
 
       {/* ── EMPTY / NO MOVING HEADS STATES ── */}
       {noSelection && (
@@ -258,16 +284,16 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             </div>
           )}
 
-          {/* ── FADERS — SPEED + AMP (sin radar, vive en el viewport principal) ── */}
+          {/* ── FADERS — SPEED + AMP ── */}
           <div className="kinetics-cathedral__faders-row">
-            <TacticalFader
+            <HorizontalFader
               label="SPEED"
               value={patternSpeed}
               onChange={handleSpeedChange}
               color="#FF8C00"
               disabled={anyLocked}
             />
-            <TacticalFader
+            <HorizontalFader
               label="AMP"
               value={patternAmplitude}
               onChange={handleAmplitudeChange}
@@ -292,8 +318,10 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
         </>
       )}
 
-      {/* ── FOOTER (siempre visible para acceso a grupos) ── */}
+      {/* ── FOOTER (siempre visible en tab kinetics) ── */}
       <CathedralFooter />
+
+      </>)} {/* fin kinetics tab */}
     </div>
   )
 }

@@ -1,36 +1,43 @@
 /**
- * 🎚️ TACTICAL FADER — Vertical precision fader (WAVE 4561)
+ * 🎚️ HORIZONTAL FADER — WAVE 4568: ZERO-SCROLL LAYOUT
  *
- * Faders verticales masivos para Speed (naranja) y Amplitude (magenta).
- * Drag + scroll wheel. RAF throttled para no saturar el bridge.
- * Valor 0-100% real — la Aduana de Aether clampea en hardware.
+ * Fader horizontal de 44px de altura para reemplazar los TacticalFaders
+ * verticales (280px) en KineticsCathedral. Ahorra 232px → layout sin scroll.
+ *
+ * • Drag horizontal: pointer capture, RAF throttle ~33fps
+ * • Wheel: { passive: false } via useNonPassiveWheel — sin warning de Chrome
+ * • Click en readout: edición numérica directa
+ *
+ * Props idénticas a TacticalFader para reemplazabilidad 1:1.
+ *
+ * @module components/hyperion/kinetics/HorizontalFader
+ * @version WAVE 4568
  */
 
 import React, { useRef, useCallback, useEffect, useState } from 'react'
+import { useNonPassiveWheel } from '../../../hooks/useNonPassiveWheel'
+import './HorizontalFader.css'
 
-interface TacticalFaderProps {
+interface HorizontalFaderProps {
   label: string
   value: number            // 0-100
   onChange: (v: number) => void
-  color?: string           // CSS color
-  unit?: string            // e.g. '%'
+  color?: string
+  unit?: string
   disabled?: boolean
-  showInput?: boolean
 }
 
-export const TacticalFader: React.FC<TacticalFaderProps> = ({
+export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
   label,
   value,
   onChange,
   color = '#FF8C00',
   unit = '%',
   disabled = false,
-  showInput = true,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
   const rafId = useRef<number>(0)
-  const pendingValue = useRef(value)
   const [editMode, setEditMode] = useState(false)
   const [inputText, setInputText] = useState(String(Math.round(value)))
 
@@ -38,16 +45,15 @@ export const TacticalFader: React.FC<TacticalFaderProps> = ({
 
   const commitValue = useCallback((v: number) => {
     const clamped = clamp(v)
-    pendingValue.current = clamped
     cancelAnimationFrame(rafId.current)
     rafId.current = requestAnimationFrame(() => onChange(clamped))
   }, [onChange])
 
-  const posToValue = useCallback((clientY: number): number => {
+  const posToValue = useCallback((clientX: number): number => {
     const el = trackRef.current
     if (!el) return value
     const rect = el.getBoundingClientRect()
-    const rel = 1 - (clientY - rect.top) / rect.height
+    const rel = (clientX - rect.left) / rect.width
     return clamp(rel * 100)
   }, [value])
 
@@ -55,24 +61,27 @@ export const TacticalFader: React.FC<TacticalFaderProps> = ({
     if (disabled) return
     isDragging.current = true
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    commitValue(posToValue(e.clientY))
+    commitValue(posToValue(e.clientX))
   }, [disabled, commitValue, posToValue])
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return
-    commitValue(posToValue(e.clientY))
+    commitValue(posToValue(e.clientX))
   }, [commitValue, posToValue])
 
   const onPointerUp = useCallback(() => {
     isDragging.current = false
   }, [])
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
+  // Non-passive wheel — sin warning de Chrome
+  const handleWheel = useCallback((e: WheelEvent) => {
     if (disabled) return
     e.preventDefault()
     const step = e.shiftKey ? 5 : 1
     commitValue(value + (e.deltaY < 0 ? step : -step))
   }, [disabled, value, commitValue])
+
+  useNonPassiveWheel(trackRef, handleWheel)
 
   const handleInputCommit = useCallback(() => {
     const n = parseInt(inputText, 10)
@@ -84,59 +93,51 @@ export const TacticalFader: React.FC<TacticalFaderProps> = ({
     if (!editMode) setInputText(String(Math.round(value)))
   }, [value, editMode])
 
-  // Cleanup RAF on unmount
   useEffect(() => () => cancelAnimationFrame(rafId.current), [])
 
   const fillPct = Math.max(0, Math.min(100, value))
 
   return (
-    <div className={`tactical-fader ${disabled ? 'tactical-fader--disabled' : ''}`} style={{ '--fader-color': color } as React.CSSProperties}>
-      <div className="tactical-fader__label">{label}</div>
+    <div
+      className={`h-fader${disabled ? ' h-fader--disabled' : ''}`}
+      style={{ '--fader-color': color } as React.CSSProperties}
+    >
+      <span className="h-fader__label">{label}</span>
 
       <div
         ref={trackRef}
-        className="tactical-fader__track"
+        className="h-fader__track"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onWheel={onWheel}
       >
-        <div
-          className="tactical-fader__fill"
-          style={{ height: `${fillPct}%` }}
-        />
-        <div
-          className="tactical-fader__thumb"
-          style={{ bottom: `${fillPct}%` }}
-        />
+        <div className="h-fader__fill" style={{ width: `${fillPct}%` }} />
+        <div className="h-fader__thumb" style={{ left: `${fillPct}%` }} />
       </div>
 
-      {showInput && (
-        <div className="tactical-fader__readout">
-          {editMode ? (
-            <input
-              className="tactical-fader__input"
-              type="number"
-              min={0}
-              max={100}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onBlur={handleInputCommit}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleInputCommit() }}
-              autoFocus
-            />
-          ) : (
-            <span
-              className="tactical-fader__value"
-              onClick={() => !disabled && setEditMode(true)}
-              title="Click para editar"
-            >
-              {Math.round(value)}{unit}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="h-fader__readout">
+        {editMode ? (
+          <input
+            className="h-fader__input"
+            type="number"
+            min={0} max={100}
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onBlur={handleInputCommit}
+            onKeyDown={e => { if (e.key === 'Enter') handleInputCommit() }}
+            autoFocus
+          />
+        ) : (
+          <span
+            className="h-fader__value"
+            onClick={() => !disabled && setEditMode(true)}
+            title="Click para editar"
+          >
+            {Math.round(value)}{unit}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

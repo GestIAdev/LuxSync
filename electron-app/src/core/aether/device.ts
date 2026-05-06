@@ -133,4 +133,16 @@ export interface IDeviceDefinition {
    * Usado para visualización 3D sin hardware conectado.
    */
   readonly isVirtual?: boolean
+  /**
+   * 🧭 WAVE 4573: Orientación de instalación del fixture en el espacio 3D.
+   * Leída desde FixtureV2.orientation (root) — no desde physics.orientation.
+   * Usada por el IK engine para calcular la inversión de tilt.
+   */
+  readonly orientation?: string
+  /**
+   * ⚡ WAVE 4573: Flag de posicionamiento 3D.
+   * false = modo Guerrilla (Quick-Add sin posición real).
+   * El SpatialRegistrar omite la inyección de coordenadas IK cuando es false.
+   */
+  readonly isPlaced?: boolean
 }

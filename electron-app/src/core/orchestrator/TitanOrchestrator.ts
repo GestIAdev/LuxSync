@@ -2542,7 +2542,10 @@ export class TitanOrchestrator {
       if (fixture.hasMovementChannels) {
         // Register in HAL's physics driver
         if (this.hal) {
-          this.hal.registerMover(fixture.id, fixture.installationType || 'ceiling')
+          // 🧭 WAVE 4573 Phase 5c: Read from fixture.orientation (root) — not installationType (legacy)
+          // installationType was the old field; orientation is the canonical WAVE 4573 source of truth.
+          const installOrientation = fixture.orientation || fixture.installationType || 'ceiling'
+          this.hal.registerMover(fixture.id, installOrientation)
           moverCount++
         }
       }

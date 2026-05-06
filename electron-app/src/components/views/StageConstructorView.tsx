@@ -27,7 +27,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useNavigationStore, selectStageConstructorNav } from '../../stores/navigationStore'
 import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
-import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
+import type { FixtureV2, FixtureZone, PhysicsProfile, InstallationOrientation } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
 import useKeyboardShortcuts from './StageConstructor/KeyboardShortcuts'
 import { UniversalAssetBrowser } from '../shared/AssetBrowser'
@@ -159,7 +159,49 @@ const Loading3DFallback: React.FC = () => (
 const FixtureLibrarySidebar: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
+  const addFixture = useStageStore(state => state.addFixture)
   const { setDraggedFixtureType } = useConstructorContext()
+
+  // ⚡ WAVE 4573 Phase 4b: GUERRILLA QUICK-ADD
+  // Crea el fixture sin posición real (isPlaced=false) para configurarlo luego.
+  const handleQuickAdd = useCallback((asset: LibraryAsset) => {
+    const rawDef = (asset as any)._raw
+    const fixtureType = rawDef?.type ? mapLibraryTypeToFixtureType(rawDef.type) : 'par'
+    const fixtureId = `fixture-${Date.now()}`
+    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
+    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
+      type: fixtureType as FixtureV2['type'],
+      name: rawDef?.name ?? fixtureType,
+      model: rawDef?.name ?? fixtureType,
+      manufacturer: rawDef?.manufacturer ?? 'Unknown',
+      profileId: asset.id ?? 'generic-dimmer',
+      position: { x: 0, y: 3, z: 0 },          // Guerrilla sentinel — no real 3D position
+      isPlaced: false,                            // 🚨 CRITICAL: engine skips IK for this fixture
+      orientation: 'ceiling' as InstallationOrientation,
+      zone: 'unassigned' as FixtureZone,
+      channelCount: rawDef?.channelCount ?? 1,
+      channels: rawDef?.channels,
+      physics: rawDef?.physics ? {
+        motorType: rawDef.physics.motorType || 'unknown',
+        maxAcceleration: rawDef.physics.maxAcceleration || 2000,
+        maxVelocity: rawDef.physics.maxVelocity || 400,
+        safetyCap: rawDef.physics.safetyCap ?? true,
+        invertPan: false,
+        invertTilt: false,
+        swapPanTilt: rawDef.physics.swapPanTilt ?? false,
+        homePosition: rawDef.physics.homePosition || { pan: 127, tilt: 127 },
+        tiltLimits: rawDef.physics.tiltLimits || { min: 0, max: 270 },
+      } : undefined,
+      capabilities: rawDef ? {
+        hasMovementChannels: rawDef.hasMovementChannels ?? false,
+        has16bitMovement: rawDef.has16bitMovement ?? false,
+        hasColorMixing: rawDef.hasColorMixing ?? false,
+        hasColorWheel: rawDef.hasColorWheel ?? false,
+      } : undefined,
+    })
+    addFixture(newFixture)
+    console.log(`[StageConstructorView] ⚡ Guerrilla Quick-Add "${newFixture.name}" — no 3D position (isPlaced=false)`)
+  }, [addFixture])
   
   const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
     e.dataTransfer.setData('fixture-type', type)
@@ -203,6 +245,7 @@ const FixtureLibrarySidebar: React.FC = () => {
             compact={true}
             defaultViewMode="tree"
             maxHeight="100%"
+            onSelect={handleQuickAdd}
             onDragStart={(e: React.DragEvent, asset: LibraryAsset) => {
               const rawDef = (asset as any)._raw
               const fixtureType = rawDef?.type

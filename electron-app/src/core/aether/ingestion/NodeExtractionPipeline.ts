@@ -256,17 +256,19 @@ export class NodeExtractionPipeline {
   ): IDeviceDefinition {
 
     // ── Despacho de firma ────────────────────────────────────────────────
-    let resolvedAddress:  number
-    let resolvedUniverse: number
-    let resolvedZone:     ZoneId
-    let resolvedDeviceId: DeviceId
-    let resolvedPosition: Position3D | undefined
-    let v2CalibOverride:  Readonly<FixtureV2['calibration']> | undefined
-    let isVirtual:        boolean | undefined
+    let resolvedAddress:     number
+    let resolvedUniverse:    number
+    let resolvedZone:        ZoneId
+    let resolvedDeviceId:    DeviceId
+    let resolvedPosition:    Position3D | undefined
+    let v2CalibOverride:     Readonly<FixtureV2['calibration']> | undefined
+    let isVirtual:           boolean | undefined
+    let resolvedOrientation: string | undefined
+    let resolvedIsPlaced:    boolean | undefined
 
     if (typeof dmxAddressOrFixtureV2 === 'object') {
       // ── Firma FixtureV2 (WAVE 3517.1 — recomendada) ──────────────────
-      const fv2       = dmxAddressOrFixtureV2
+      const fv2        = dmxAddressOrFixtureV2
       resolvedAddress  = fv2.address
       resolvedUniverse = fv2.universe
       resolvedZone     = fv2.zone as ZoneId
@@ -274,15 +276,20 @@ export class NodeExtractionPipeline {
       resolvedPosition = fv2.position
       v2CalibOverride  = fv2.calibration
       isVirtual        = fv2.isVirtual
+      // 🧭 WAVE 4573 Phase 5b: Read orientation from root (not physics.orientation)
+      resolvedOrientation = fv2.orientation
+      resolvedIsPlaced    = fv2.isPlaced
     } else {
       // ── Firma legacy (compatibilidad) ─────────────────────────────────
-      resolvedAddress  = dmxAddressOrFixtureV2
-      resolvedUniverse = universe!
-      resolvedZone     = zoneId!
-      resolvedDeviceId = deviceIdOverride ?? (fixtureDef.id as DeviceId)
-      resolvedPosition = undefined
-      v2CalibOverride  = undefined
-      isVirtual        = undefined
+      resolvedAddress     = dmxAddressOrFixtureV2
+      resolvedUniverse    = universe!
+      resolvedZone        = zoneId!
+      resolvedDeviceId    = deviceIdOverride ?? (fixtureDef.id as DeviceId)
+      resolvedPosition    = undefined
+      v2CalibOverride     = undefined
+      isVirtual           = undefined
+      resolvedOrientation = undefined
+      resolvedIsPlaced    = undefined
     }
 
     const topology = this._analyzeTopology(fixtureDef)
@@ -304,7 +311,9 @@ export class NodeExtractionPipeline {
       channelCount: fixtureDef.channels.length,
       nodes:        Object.freeze(nodes),
       calibration,
-      ...(isVirtual !== undefined && { isVirtual }),
+      ...(isVirtual              !== undefined && { isVirtual }),
+      ...(resolvedOrientation   !== undefined && { orientation: resolvedOrientation }),
+      ...(resolvedIsPlaced      !== undefined && { isPlaced: resolvedIsPlaced }),
     } satisfies IDeviceDefinition
   }
 

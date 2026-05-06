@@ -1345,6 +1345,14 @@ const StageGrid3D: React.FC = () => {
     closeContextMenu()
   }, [contextMenu, selectedIds, setFixtureZone, closeContextMenu])
 
+  // 🧭 WAVE 4573 Phase 4a: ASSIGN ORIENTATION MANUALLY
+  const assignOrientation = useCallback((orientation: InstallationOrientation) => {
+    if (!contextMenu) return
+    const idsToUpdate = selectedIds.size > 1 ? [...selectedIds] : [contextMenu.fixtureId]
+    idsToUpdate.forEach(id => updateFixture(id, { orientation }))
+    closeContextMenu()
+  }, [contextMenu, selectedIds, updateFixture, closeContextMenu])
+
   // 🏗️ WAVE 4534 E12: OPEN OFFSET PANEL
   const handleOpenOffsetPanel = useCallback((id: string) => {
     setOffsetPanelFixtureId(id)
@@ -1809,6 +1817,27 @@ const StageGrid3D: React.FC = () => {
               key={zone}
               className="context-menu-item"
               onClick={() => assignZoneManual(zone)}
+            >
+              <span className="icon">{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+
+          {/* ═════ ORIENTACIÓN ═════ */}
+          <div className="context-menu-divider" />
+          <div className="context-menu-title">🧭 ORIENTACIÓN</div>
+          {([
+            { o: 'ceiling',     label: 'Ceiling (Truss)',  icon: '⬇️' },
+            { o: 'floor',       label: 'Floor (Standing)', icon: '⬆️' },
+            { o: 'wall-left',   label: 'Wall Left',        icon: '➡️' },
+            { o: 'wall-right',  label: 'Wall Right',       icon: '⬅️' },
+            { o: 'truss-front', label: 'Truss Front',      icon: '🔛' },
+            { o: 'truss-back',  label: 'Truss Back',       icon: '🔙' },
+          ] as { o: InstallationOrientation; label: string; icon: string }[]).map(({ o, label, icon }) => (
+            <button
+              key={o}
+              className="context-menu-item"
+              onClick={() => assignOrientation(o)}
             >
               <span className="icon">{icon}</span>
               <span>{label}</span>

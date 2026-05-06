@@ -226,7 +226,16 @@ export class SpatialRegistrar implements ISpatialRegistrar {
     deviceDef:     Readonly<IDeviceDefinition>,
     stagePosition: Readonly<StagePosition3D>,
     target:        IAetherRegistrationTarget,
+    isPlaced?:     boolean,
   ): void {
+    // 🚨 WAVE 4573 Phase 5a: GUERRILLA BYPASS
+    // Fixtures added via Quick-Add have isPlaced=false — no real 3D position.
+    // Spatial enrichment would inject invalid coordinates into the IK engine.
+    // Register the raw device definition for Classic Pan/Tilt mode instead.
+    if (isPlaced === false) {
+      target.registerAetherDevice(deviceDef as IDeviceDefinition)
+      return
+    }
     const enriched = this._enrichWithSpatialData(deviceDef, stagePosition)
     target.registerAetherDevice(enriched)
   }

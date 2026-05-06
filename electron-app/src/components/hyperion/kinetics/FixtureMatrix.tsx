@@ -1,25 +1,27 @@
 /**
- * 🔲 FIXTURE MATRIX — WAVE 4569
+ * 🔲 FIXTURE MATRIX — WAVE 4570
  *
  * Grid denso de chips para activar/desactivar MOVING HEADS en la Cathedral.
  * Los fixtures estáticos (pares, cegadoras, strobos) están excluidos — esta
  * vista es la Catedral de los Movers.
  *
- * Tres estados visuales por chip:
- *   • Sin selección: gris apagado
- *   • Moving head seleccionado: cyan activo
+ * Jerarquía de agrupación (en orden de prioridad):
+ *   1. Groups del show (si tienen movers) — ej. "Mover Left", "Mover Right"
+ *   2. Zone canónica del fixture — ej. "movers-left", "movers-right", "air"
+ *   3. Tipo de fixture — SPOTS, BEAMS, WASH, SCANNERS…
  *
- * Organización: grupos por tipo (SPOTS, BEAMS, WASH, SCANNERS…).
  * Header de grupo con botones +ALL/-ALL para disparos rápidos por zona.
  *
  * @module components/hyperion/kinetics/FixtureMatrix
- * @version WAVE 4569
+ * @version WAVE 4570
  */
 
 import React, { useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { normalizeZone, ZONE_LABELS } from '../../../core/stage/ShowFileV2'
+import type { FixtureV2, FixtureGroup as ShowFixtureGroup } from '../../../core/stage/ShowFileV2'
 import './FixtureMatrix.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,17 +40,104 @@ function typeLabel(type: string): string {
   if (t.includes('beam'))    return 'BEAMS'
   if (t.includes('wash'))    return 'WASH'
   if (t.includes('scanner')) return 'SCANNERS'
-  if (t.includes('moving'))  return 'MOVING'
-  if (t.includes('par'))     return 'PARS'
-  if (t.includes('led'))     return 'LED'
-  if (t.includes('strobe'))  return 'STROBES'
-  return type.toUpperCase() || 'OTROS'
+  if (t.includes('moving'))  return 'MOVERS'
+  return type.toUpperCase() || 'MOVERS'
 }
 
-interface FixtureGroup {
+interface MatrixGroup {
   label: string
-  isMoving: boolean
+  key: string
   fixtures: Array<{ id: string; name: string; address?: number }>
+}
+
+function buildGroupsFromShowGroups(
+  moverIds: Set<string>,
+  stageFixtures: FixtureV2[],
+  showGroups: ShowFixtureGroup[],
+): MatrixGroup[] | null {
+  // Solo usamos show groups que contengan al menos 1 mover
+  const relevant = showGroups.filter(g => g.fixtureIds.some(id => moverIds.has(id)))
+  if (relevant.length === 0) return null
+
+  const result: MatrixGroup[] = []
+  const covered = new Set<string>()
+
+  for (const g of relevant) {
+    const fixtures = g.fixtureIds
+      .filter(id => moverIds.has(id))
+      .map(id => {
+        const sf = stageFixtures.find(f => f.id === id)
+        covered.add(id)
+        return {
+          id,
+          name: sf?.name ?? id,
+          address: (sf as any)?.address,
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    if (fixtures.length > 0) {
+      result.push({ label: g.name.toUpperCase(), key: g.id, fixtures })
+    }
+  }
+
+  // Fixtures movers que no caben en ningún grupo → grupo OTROS
+  const uncovered = Array.from(moverIds)
+    .filter(id => !covered.has(id))
+    .map(id => {
+      const sf = stageFixtures.find(f => f.id === id)
+      return { id, name: sf?.name ?? id, address: (sf as any)?.address }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (uncovered.length > 0) {
+    result.push({ label: 'OTROS', key: '__otros__', fixtures: uncovered })
+  }
+
+  return result
+}
+
+function buildGroupsByZone(
+  moverFixtures: FixtureV2[],
+): MatrixGroup[] {
+  const map = new Map<string, MatrixGroup>()
+
+  for (const sf of moverFixtures) {
+    const zone = normalizeZone((sf as any).zone as string | undefined ?? undefined)
+    // Solo movers relevantes: movers-left, movers-right, air, center, unassigned, front, back
+    const label = zone === 'unassigned'
+      ? typeLabel(sf.type ?? '')
+      : ZONE_LABELS[zone].replace(/^[^\s]+ /, '')  // strip emoji prefix
+
+    const key = zone === 'unassigned' ? `type_${typeLabel(sf.type ?? '')}` : zone
+
+    if (!map.has(key)) {
+      map.set(key, { label: label.toUpperCase(), key, fixtures: [] })
+    }
+    map.get(key)!.fixtures.push({
+      id: sf.id,
+      name: sf.name,
+      address: (sf as any).address,
+    })
+  }
+
+  const groups = Array.from(map.values())
+  // movers-left / movers-right primero, luego air/center, luego resto
+  const PRIORITY: Record<string, number> = {
+    'movers-left': 0, 'movers-right': 1, 'air': 2, 'center': 3,
+    'front': 4, 'back': 5, 'floor': 6, 'ambient': 7,
+  }
+  groups.sort((a, b) => {
+    const pa = PRIORITY[a.key] ?? 10
+    const pb = PRIORITY[b.key] ?? 10
+    if (pa !== pb) return pa - pb
+    return a.label.localeCompare(b.label)
+  })
+  for (const g of groups) {
+    g.fixtures.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  return groups
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,6 +154,7 @@ export const FixtureMatrix: React.FC = () => {
     })),
   )
   const stageFixtures = useStageStore(s => s.fixtures)
+  const showGroups = useStageStore(s => s.groups)
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
@@ -74,46 +164,29 @@ export const FixtureMatrix: React.FC = () => {
     [stageFixtures],
   )
 
-  // Agrupar movers por tipo
-  const groups = useMemo((): FixtureGroup[] => {
-    const map = new Map<string, FixtureGroup>()
+  const moverIds = useMemo(() => new Set(moverFixtures.map(f => f.id)), [moverFixtures])
 
-    for (const sf of moverFixtures) {
-      const label = typeLabel(sf.type ?? '')
+  // Agrupación: show groups → zones → type (orden de prioridad)
+  const groups = useMemo((): MatrixGroup[] => {
+    if (moverFixtures.length === 0) return []
 
-      if (!map.has(label)) {
-        map.set(label, { label, isMoving: true, fixtures: [] })
-      }
-      map.get(label)!.fixtures.push({
-        id: sf.id,
-        name: sf.name,
-        address: (sf as any).address ?? undefined,
-      })
-    }
+    // Intento 1: grupos del show
+    const fromShowGroups = buildGroupsFromShowGroups(moverIds, stageFixtures, (showGroups as ShowFixtureGroup[]) ?? [])
+    if (fromShowGroups && fromShowGroups.length > 1) return fromShowGroups
 
-    const groups = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
-    for (const g of groups) {
-      g.fixtures.sort((a, b) => a.name.localeCompare(b.name))
-    }
+    // Intento 2: zonas canónicas
+    return buildGroupsByZone(stageFixtures.filter(f => moverIds.has(f.id)))
+  }, [moverFixtures, moverIds, stageFixtures, showGroups])
 
-    return groups
-  }, [moverFixtures])
-
-  const handleChipClick = useCallback((id: string, e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey || e.shiftKey) {
-      toggleSelection(id)
-    } else {
-      // Click simple: toggle sin perder la selección existente
-      toggleSelection(id)
-    }
+  const handleChipClick = useCallback((id: string) => {
+    toggleSelection(id)
   }, [toggleSelection])
 
-  const handleSelectGroup = useCallback((group: FixtureGroup, e: React.MouseEvent) => {
+  const handleSelectGroup = useCallback((group: MatrixGroup, e: React.MouseEvent) => {
     e.stopPropagation()
     const ids = group.fixtures.map(f => f.id)
     const allSelected = ids.every(id => selectedSet.has(id))
     if (allSelected) {
-      // Si todos ya están seleccionados, deseleccionar el grupo
       for (const id of ids) {
         if (selectedSet.has(id)) toggleSelection(id)
       }
@@ -158,10 +231,10 @@ export const FixtureMatrix: React.FC = () => {
       {/* Grupos */}
       <div className="fixture-matrix__groups">
         {groups.map(group => (
-          <div key={group.label} className="fixture-matrix__group">
+          <div key={group.key} className="fixture-matrix__group">
             <div className="fixture-matrix__group-header">
-              <span className={`fixture-matrix__group-label${group.isMoving ? ' fixture-matrix__group-label--moving' : ''}`}>
-                {group.isMoving ? '⊕' : '◈'} {group.label}
+              <span className="fixture-matrix__group-label fixture-matrix__group-label--moving">
+                ⊕ {group.label}
               </span>
               <button
                 className="fixture-matrix__group-select"
@@ -182,7 +255,7 @@ export const FixtureMatrix: React.FC = () => {
                       'fixture-matrix__chip',
                       sel ? 'fixture-matrix__chip--moving' : '',
                     ].filter(Boolean).join(' ')}
-                    onClick={e => handleChipClick(f.id, e)}
+                    onClick={() => handleChipClick(f.id)}
                     title={`${f.name}${f.address != null ? ` — DMX ${f.address}` : ''}`}
                   >
                     <span className="fixture-matrix__chip-name">

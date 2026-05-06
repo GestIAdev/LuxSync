@@ -64,15 +64,18 @@
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+  align-items: stretch;
+  justify-content: stretch;
   box-sizing: border-box;
 }
 
+/* Todos los hijos directos llenan el canvas */
 .kin-radar-viewport__canvas > * {
-  max-width: min(100%, 800px);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   width: 100%;
 }
 
@@ -81,32 +84,50 @@
 /* RadarXY sidebar usa max-height: 180px — aquí lo liberamos */
 .kin-radar-viewport__canvas .radar-xy {
   max-height: none;
-  aspect-ratio: 4 / 3;
+  height: 100%;
+  aspect-ratio: unset;
   max-width: 100%;
 }
 
-/* SpatialTargetPad sidebar usa max-height: 220px — aquí lo liberamos */
-.kin-radar-viewport__canvas .spatial-target-pad,
-.kin-radar-viewport__canvas [class*="spatial-pad"] {
+/* SpatialTargetPad — toda la cadena de altura debe expandirse para no hacer overflow */
+.kin-radar-viewport__canvas .spatial-pad-container {
   max-height: none;
-  max-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-/* SVG/canvas interno del SpatialTargetPad no puede forzar scroll */
-.kin-radar-viewport__canvas .spatial-target-pad svg,
-.kin-radar-viewport__canvas .spatial-target-pad canvas {
+.kin-radar-viewport__canvas .spatial-pad-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kin-radar-viewport__canvas .spatial-pad-grid {
+  max-height: none;
+  height: 100%;
+  aspect-ratio: unset;
+}
+
+/* SVG interno: no puede forzar scroll */
+.kin-radar-viewport__canvas .spatial-beam-svg {
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
 }
 
-/* XYPad — que ocupe bien */
+/* XYPad — aspecto cuadrado centrado */
 .kin-radar-viewport__canvas .xy-pad {
   max-height: none;
+  height: 100%;
   aspect-ratio: 1 / 1;
   max-width: min(100%, 600px);
   align-self: center;
+  margin: auto;
 }
 
 /* ── Font scaling adaptativo para el viewport grande ────────────────────── */

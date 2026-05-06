@@ -32,7 +32,7 @@ import { RadarXY } from '../controls/controls/RadarXY'
 import { SpatialTargetPad, type SpatialFixtureGhost } from '../controls/controls/SpatialTargetPad'
 import { PositionReadout } from './PositionReadout'
 import type { StageDimensions } from '../../../core/stage/ShowFileV2'
-import type { Target3D } from '../../../engine/movement/InverseKinematicsEngine'
+import type { Target3D, SpatialFanMode } from '../../../engine/movement/InverseKinematicsEngine'
 import './KinRadarViewport.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,12 +96,14 @@ export const KinRadarViewport: React.FC = () => {
     isCalibrating: s.isCalibrating,
   })))
 
-  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude } =
+  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude, setSpatialSubTargets, setSpatialReachability } =
     useMovementStore(useShallow(s => ({
       setPanTilt: s.setPanTilt,
       setSpatialTarget: s.setSpatialTarget,
       setSpatialFanMode: s.setSpatialFanMode,
       setSpatialFanAmplitude: s.setSpatialFanAmplitude,
+      setSpatialSubTargets: s.setSpatialSubTargets,
+      setSpatialReachability: s.setSpatialReachability,
     })))
 
   // ── Derived: clasificar fixtures seleccionados ────────────────────────────
@@ -210,9 +212,53 @@ export const KinRadarViewport: React.FC = () => {
     handlePanTiltChange(256, 128)
   }, [handlePanTiltChange])
 
+  // ── IPC helper: dispara applySpatialTarget y escribe subTargets + reachability ──
+  const applySpatialFanIPC = useCallback(async (
+    target: Target3D,
+    fanMode: string,
+    fanAmplitude: number,
+    fixtureIds: string[],
+  ) => {
+    if (fixtureIds.length === 0) return
+    try {
+      const result = await (window as any).lux?.arbiter?.applySpatialTarget({
+        target,
+        fixtureIds,
+        fanMode,
+        fanAmplitude,
+      })
+      if (result?.success && result.results) {
+        const subs: Record<string, Target3D> = {}
+        for (const [id, r] of Object.entries(result.results)) {
+          const res = r as any
+          if (res.subTarget) subs[id] = res.subTarget as Target3D
+        }
+        setSpatialSubTargets(subs)
+        setSpatialReachability(result.results as any)
+      }
+    } catch {
+      // IPC failure silenciosa: el pad sigue funcionando sin sub-targets
+    }
+  }, [setSpatialSubTargets, setSpatialReachability])
+
   const handleTargetChange = useCallback((t: Target3D) => {
     setSpatialTarget(t)
-  }, [setSpatialTarget])
+    applySpatialFanIPC(t, spatialFanMode, spatialFanAmplitude, movingHeadIds)
+  }, [setSpatialTarget, applySpatialFanIPC, spatialFanMode, spatialFanAmplitude, movingHeadIds])
+
+  const handleFanModeChange = useCallback((mode: SpatialFanMode) => {
+    setSpatialFanMode(mode)
+    if (spatialTarget) {
+      applySpatialFanIPC(spatialTarget, mode, spatialFanAmplitude, movingHeadIds)
+    }
+  }, [setSpatialFanMode, applySpatialFanIPC, spatialTarget, spatialFanAmplitude, movingHeadIds])
+
+  const handleFanAmplitudeChange = useCallback((amp: number) => {
+    setSpatialFanAmplitude(amp)
+    if (spatialTarget) {
+      applySpatialFanIPC(spatialTarget, spatialFanMode, amp, movingHeadIds)
+    }
+  }, [setSpatialFanAmplitude, applySpatialFanIPC, spatialTarget, spatialFanMode, movingHeadIds])
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -285,9 +331,9 @@ export const KinRadarViewport: React.FC = () => {
             disabled={isCalibrating}
             reachabilityMap={spatialReachability}
             fanMode={spatialFanMode}
-            onFanModeChange={setSpatialFanMode}
+            onFanModeChange={handleFanModeChange}
             fanAmplitude={spatialFanAmplitude}
-            onFanAmplitudeChange={setSpatialFanAmplitude}
+            onFanAmplitudeChange={handleFanAmplitudeChange}
             subTargets={spatialSubTargets}
           />
         )}

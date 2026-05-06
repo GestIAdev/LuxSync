@@ -24,18 +24,10 @@ import * as THREE from 'three'
 import { getTransientFixture } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
 import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
+import { MOUNT_QUATERNIONS } from '../utils/mountQuaternion'
 
-// 🏗️ WAVE 4573: MOUNT_QUATERNIONS shared across all PAR instances.
-// Defined at module scope (static, single allocation).
-const MOUNT_QUATERNIONS: Record<InstallationOrientation, THREE.Quaternion> = (() => {
-  const ceiling    = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))
-  const floor      = new THREE.Quaternion()
-  const trussFront = ceiling.clone()
-  const trussBack  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, Math.PI, 0))
-  const wallLeft   = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))
-  const wallRight  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0,  Math.PI / 2))
-  return { 'ceiling': ceiling, 'floor': floor, 'truss-front': trussFront, 'truss-back': trussBack, 'wall-left': wallLeft, 'wall-right': wallRight }
-})()
+// 🏗️ WAVE 4573: MOUNT_QUATERNIONS — imported from shared utils/mountQuaternion.ts
+// Single source of truth (shared with HyperionMovingHead3D and tests).
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS

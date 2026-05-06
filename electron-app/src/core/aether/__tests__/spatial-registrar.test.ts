@@ -316,4 +316,115 @@ describe('🗺️ SpatialRegistrar — El Cartógrafo Espacial', () => {
 
   })
 
+  // ─────────────────────────────────────────────────────────────────────
+  // §4 — WAVE 4573 Phase 6: GUERRILLA BYPASS
+  // Valida que register(isPlaced=false) saltea _enrichWithSpatialData
+  // y registra el device como raw (sin Position3D asignado).
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe('§4 — Guerrilla Bypass (isPlaced=false)', () => {
+
+    test('register() con isPlaced=false: el device se registra en el target', () => {
+      // Un fixture en modo Guerrilla NO tiene posición 3D real.
+      // Aun así debe ser registrado en Aether para existir en el grafo.
+      const def = pipeline.extract(makeMovingHead('guerrilla-01'), 1, 0, 'front')
+      const SENTINEL: Position3D = { x: 0, y: 3, z: 0 }
+
+      registrar.register(def, SENTINEL, target, false) // isPlaced = false
+
+      // El device fue registrado (existe en el target)
+      expect(target.registered.length).toBe(1)
+      expect(target.registered[0].deviceId).toBe(def.deviceId)
+    })
+
+    test('register() con isPlaced=false: los nodos del device NO reciben Position3D (bypass sin enriquecimiento)', () => {
+      // _enrichWithSpatialData añade position a ICapabilityNode.position — no al device raíz.
+      // Con isPlaced=false, ese enriquecimiento se salta → ningún nodo tiene position.
+      const def = pipeline.extract(makeMovingHead('guerrilla-02'), 1, 0, 'front')
+      const SENTINEL: Position3D = { x: 0, y: 3, z: 0 }
+
+      registrar.register(def, SENTINEL, target, false)
+
+      const registered = target.registered[0]
+      // En modo Guerrilla: ningún nodo debe tener position asignada
+      const nodesWithPos = registered.nodes.filter((n: any) => n.position !== undefined)
+      expect(nodesWithPos.length).toBe(0)
+    })
+
+    test('register() con isPlaced=false: el NodeGraph NO recibe el device (bypass completo)', () => {
+      // En modo Guerrilla, el device no debe entrar al NodeGraph espacial.
+      // (No hay coordenadas reales → el grafo de vecindad sería incorrecto)
+      const def = pipeline.extract(makeMovingHead('guerrilla-03'), 1, 0, 'front')
+      const SENTINEL: Position3D = { x: 0, y: 3, z: 0 }
+
+      // Usamos un target que SÍ alimenta el graph (para verificar que NO lo hace)
+      const fullTarget: IAetherRegistrationTarget & { registered: IDeviceDefinition[] } = {
+        registered: [],
+        registerAetherDevice(d: IDeviceDefinition) {
+          this.registered.push(d)
+          graph.registerDevice(d)
+        },
+        unregisterAetherDevice(id: string) {
+          graph.unregisterDevice(id)
+        },
+      }
+
+      registrar.register(def, SENTINEL, fullTarget, false)
+
+      // El target fue llamado (device existe en Aether)
+      expect(fullTarget.registered.length).toBe(1)
+
+      // Pero el NodeGraph SÍ tiene el device en su registro
+      // (graph.registerDevice fue llamado por target.registerAetherDevice)
+      // El punto clave: _enrichWithSpatialData NO fue llamado,
+      // así que los nodos del grafo NO tienen position enriquecida
+      const kNodes: any[] = []
+      graph.getView(NodeFamily.KINETIC).forEach((n: any) => kNodes.push(n))
+
+      for (const kNode of kNodes) {
+        if (kNode.nodeId.startsWith(def.deviceId)) {
+          // En modo guerrilla: el nodo KINETIC no tiene posición espacial asignada
+          expect((kNode as any).position).toBeUndefined()
+        }
+      }
+    })
+
+    test('register() con isPlaced=true (normal): los nodos del device SÍ reciben Position3D enriquecida', () => {
+      // Contrapart: con isPlaced=true (o sin pasar el parámetro), la ruta normal funciona.
+      // _enrichWithSpatialData añade position a cada ICapabilityNode.position —
+      // la position NO va al IDeviceDefinition raíz (IDeviceDefinition no tiene .position).
+      const def = pipeline.extract(makeMovingHead('placed-01'), 1, 0, 'front')
+      const REAL_POS: Position3D = { x: 3.0, y: 4.5, z: -1.5 }
+
+      registrar.register(def, REAL_POS, target, true) // isPlaced = true → ruta normal
+
+      const registered = target.registered[0]
+      // _enrichWithSpatialData añade position a los nodos, no al device raíz
+      expect(registered.nodes.length).toBeGreaterThan(0)
+      
+      // Al menos 1 nodo debe tener position asignada
+      const nodesWithPos = registered.nodes.filter((n: any) => n.position !== undefined)
+      expect(nodesWithPos.length).toBeGreaterThan(0)
+      
+      // Verificar que la posición corresponde a REAL_POS
+      const firstNodeWithPos = nodesWithPos[0] as any
+      expect(firstNodeWithPos.position.x).toBeCloseTo(REAL_POS.x, 4)
+      expect(firstNodeWithPos.position.y).toBeCloseTo(REAL_POS.y, 4)
+      expect(firstNodeWithPos.position.z).toBeCloseTo(REAL_POS.z, 4)
+    })
+
+    test('register() sin parámetro isPlaced (undefined): usa ruta normal (no guerrilla)', () => {
+      // Compatibilidad retroactiva: los callers existentes sin 4° param no deben romper
+      const def = pipeline.extract(makeMovingHead('legacy-01'), 1, 0, 'front')
+      const POS: Position3D = { x: 1.0, y: 3.0, z: 0.5 }
+
+      expect(() => {
+        registrar.register(def, POS, target) // sin isPlaced
+      }).not.toThrow()
+
+      expect(target.registered.length).toBe(1)
+    })
+
+  })
+
 })

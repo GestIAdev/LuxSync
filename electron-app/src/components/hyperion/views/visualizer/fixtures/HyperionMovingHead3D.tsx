@@ -22,6 +22,7 @@ import * as THREE from 'three'
 import { getTransientFixture, getVibeGeneration } from '../../../../../stores/transientStore'
 import type { Fixture3DData } from '../types'
 import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
+import { MOUNT_QUATERNIONS } from '../utils/mountQuaternion'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -106,25 +107,8 @@ const VISUAL_SMOOTH = 0.35
 const PAN_AXIS = new THREE.Vector3(0, 1, 0)
 const TILT_AXIS = new THREE.Vector3(1, 0, 0)
 
-// 🏗️ WAVE 4573: MOUNT_QUATERNIONS — static quaternion per installation orientation.
-// Defines how the fixture body is rotated based on how it's physically mounted.
-// Three.js uses right-hand rule, Y axis up.
-const MOUNT_QUATERNIONS: Record<InstallationOrientation, THREE.Quaternion> = (() => {
-  const ceiling  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))     // Hanging: flip head down
-  const floor    = new THREE.Quaternion()                                                    // Standing: identity
-  const trussFront = ceiling.clone()                                                         // Same as ceiling
-  const trussBack  = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, Math.PI, 0))  // Ceiling, rotated 180° Y
-  const wallLeft   = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2))  // Wall left: tilt 90°
-  const wallRight  = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0,  Math.PI / 2))  // Wall right: tilt -90°
-  return {
-    'ceiling':    ceiling,
-    'floor':      floor,
-    'truss-front': trussFront,
-    'truss-back':  trussBack,
-    'wall-left':   wallLeft,
-    'wall-right':  wallRight,
-  }
-})()
+// 🏗️ WAVE 4573: MOUNT_QUATERNIONS — imported from shared utils/mountQuaternion.ts
+// Single source of truth (shared with HyperionPar3D and tests).
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

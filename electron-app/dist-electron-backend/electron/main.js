@@ -26,6 +26,8 @@ const bytenode = require('bytenode');
 import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '../src/core/orchestrator';
 // Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
 import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter';
+// ⚡ WAVE 4529: Aether Programmer IPC Handlers
+import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers';
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
@@ -437,6 +439,8 @@ async function initTitan() {
     // Note: Using registerArbiterHandlers from arbiter module (more complete)
     // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
     registerArbiterHandlers(masterArbiter);
+    // ⚡ WAVE 4529: Aether Programmer IPC Handlers (L2 overrides via NodeArbiter)
+    registerAetherIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier IPC
     // ═══════════════════════════════════════════════════════════════════════════

@@ -62,10 +62,13 @@
 .kin-radar-viewport__canvas {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  box-sizing: border-box;
 }
 
 .kin-radar-viewport__canvas > * {
@@ -87,6 +90,15 @@
 .kin-radar-viewport__canvas [class*="spatial-pad"] {
   max-height: none;
   max-width: 100%;
+  overflow: hidden;
+}
+
+/* SVG/canvas interno del SpatialTargetPad no puede forzar scroll */
+.kin-radar-viewport__canvas .spatial-target-pad svg,
+.kin-radar-viewport__canvas .spatial-target-pad canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* XYPad — que ocupe bien */

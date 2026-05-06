@@ -174,6 +174,7 @@ export class TimelineEngine {
         // ── Playback state ──
         this.playing = false;
         this.lastTickMs = 0;
+        this._lastPlaybackFrame = null;
         // ── Effect instances (keyed by clip.id) ──
         this.activeClips = new Map();
         // ── Last active set for cleanup ──
@@ -283,6 +284,7 @@ export class TimelineEngine {
             fixtureTargets.push({
                 fixtureId,
                 dimmer: state.dimmer,
+                white: state.white,
                 color: { r: state.red, g: state.green, b: state.blue },
                 colorTouched: state.colorTouched, // 🎭 WAVE 2070: Propagate flag
                 pan: state.pan,
@@ -299,6 +301,30 @@ export class TimelineEngine {
                 appliedLayers: [],
             });
         }
+        const playbackTargets = [];
+        for (let i = 0; i < fixtureTargets.length; i++) {
+            const target = fixtureTargets[i];
+            playbackTargets.push({
+                fixtureId: target.fixtureId,
+                dimmer: target.dimmer,
+                red: target.color.r,
+                green: target.color.g,
+                blue: target.color.b,
+                white: target.white,
+                pan: target.pan,
+                tilt: target.tilt,
+                zoom: target.zoom,
+                speed: target.speed,
+                colorTouched: target.colorTouched,
+                blendMode: target.blendMode,
+            });
+        }
+        this._lastPlaybackFrame = {
+            targets: playbackTargets,
+            hasActiveVibe,
+            vibeId: this.currentPlaybackVibeId,
+            tickMs: timeMs,
+        };
         // ═══════════════════════════════════════════════════════════════════════
         // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY
         //
@@ -342,6 +368,7 @@ export class TimelineEngine {
         this._zoneCache.clear();
         this.playing = false;
         this.lastTickMs = 0;
+        this._lastPlaybackFrame = null;
         this.project = null;
         this.fxClips = [];
         this.vibeClips = [];
@@ -359,6 +386,12 @@ export class TimelineEngine {
             activeClipCount: this.activeClips.size,
             lastTickMs: this.lastTickMs,
         };
+    }
+    getLastPlaybackFrame() {
+        return this._lastPlaybackFrame;
+    }
+    get isPlaying() {
+        return this.playing;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: PROCESS A SINGLE CLIP

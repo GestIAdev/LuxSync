@@ -634,6 +634,20 @@ const luxApi = {
     // ============================================
     // ⚡ WAVE 27: FIXTURES OBJECT
     // ============================================
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 4549.2: INGENIO IPC BRIDGE
+    // Gestiona archivos .luxingenio en userData/ingenios/{system,user}/
+    // ═══════════════════════════════════════════════════════════════════════════
+    ingenio: {
+        /** List ALL ingenios: system (read-only factory) + user (writable) */
+        listAll: () => ipcRenderer.invoke('lux:ingenio:list-all'),
+        /** Get a single ingenio by ID */
+        getById: (ingenioId) => ipcRenderer.invoke('lux:ingenio:get-by-id', ingenioId),
+        /** Save an ingenio to the user library (userData/ingenios/user/) */
+        saveUser: (ingenio) => ipcRenderer.invoke('lux:ingenio:save-user', ingenio),
+        /** Delete an ingenio from the user library (system ingenios are immutable) */
+        deleteUser: (ingenioId) => ipcRenderer.invoke('lux:ingenio:delete-user', ingenioId),
+    },
     fixtures: {
         saveDefinition: (definition) => ipcRenderer.invoke('lux:save-fixture-definition', definition),
         // WAVE 388 EXT: Delete fixture from library
@@ -666,12 +680,6 @@ const luxApi = {
         setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMasterSpeed', { value }),
         /** 🎚️ WAVE 2472: Get Grand Master Speed */
         getGrandMasterSpeed: () => ipcRenderer.invoke('lux:arbiter:getGrandMasterSpeed'),
-        /** 🔒 WAVE 3270: Set per-fixture inhibit limit (0-1 proportional ceiling) */
-        setInhibitLimit: (fixtureIds, value) => ipcRenderer.invoke('lux:arbiter:setInhibitLimit', { fixtureIds, value }),
-        /** 🔒 WAVE 3270: Clear per-fixture inhibit limits (restore full power) */
-        clearInhibitLimit: (fixtureIds) => ipcRenderer.invoke('lux:arbiter:clearInhibitLimit', { fixtureIds }),
-        /** 🔒 WAVE 3270: Get all active inhibit limits */
-        getInhibitLimits: () => ipcRenderer.invoke('lux:arbiter:getInhibitLimits'),
         /**
          * 🎛️ WAVE 375.3: Set manual override for fixtures
          * @param fixtureIds - Array of fixture IDs to override
@@ -802,7 +810,7 @@ const luxApi = {
          * Sync fixtures from stageStore to backend MasterArbiter
          * Called by TitanSyncBridge when patch changes
          */
-        setFixtures: (fixtures) => ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures }),
+        setFixtures: (fixtures, stageBounds) => ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures, stageBounds }),
         // ============================================
         // 🎯 WAVE 2613: SPATIAL IK TARGET
         // ============================================
@@ -816,6 +824,51 @@ const luxApi = {
          * Release spatial target control — return fixtures to AI/mechanical control.
          */
         releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:arbiter:releaseSpatialTarget', args),
+    },
+    // ============================================
+    // ⚡ WAVE 4529: AETHER PROGRAMMER API
+    // Bridge directo al NodeArbiter L2 — valores normalizados 0-1
+    // ============================================
+    aether: {
+        /**
+         * Envía batch de overrides manuales al NodeArbiter L2.
+         * Llamado por el ProgrammerAetherBridge a 44Hz.
+         * Los valores en `channels` deben estar normalizados (0-1).
+         */
+        setManualOverrides: (payloads) => ipcRenderer.invoke('lux:aether:setManualOverrides', payloads),
+        /**
+         * Limpia los overrides manuales de los nodeIds especificados.
+         * Llamado cuando una familia queda sin canales activos.
+         */
+        clearManualOverrides: (nodeIds) => ipcRenderer.invoke('lux:aether:clearManualOverrides', nodeIds),
+        /**
+         * UNLOCK ALL global — limpia TODO el L2 del NodeArbiter.
+         * L0/L1/L3/LP fluyen sin impedimento.
+         */
+        clearAllManualOverrides: () => ipcRenderer.invoke('lux:aether:clearAllManualOverrides'),
+        /**
+         * WAVE 4531: Registra un inhibit limit (cap 0-1 sobre dimmer) para un
+         * array de nodeIds. Semánticamente: Grand Master per-fixture en el Arbiter.
+         */
+        setInhibitLimit: (nodeIds, limit) => ipcRenderer.invoke('lux:aether:setInhibitLimit', { nodeIds, limit }),
+        /**
+         * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
+         */
+        clearInhibitLimit: (nodeIds) => ipcRenderer.invoke('lux:aether:clearInhibitLimit', nodeIds),
+        /**
+         * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
+         * Stub → MasterArbiter legacy hasta que Aether tenga KineticEngine proprio.
+         */
+        setManualPattern: (args) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
+        /**
+         * E12 WAVE 4531: IK solve y apply spatial target para fixtures.
+         * Stub → MasterArbiter legacy hasta que Aether tenga IK Resolver propio.
+         */
+        applySpatialTarget: (args) => ipcRenderer.invoke('lux:aether:applySpatialTarget', args),
+        /**
+         * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.
+         */
+        releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

@@ -262,6 +262,15 @@ export class LiquidStereoPhysics {
         backRight = Math.min(1.0, Math.max(0.0, backRight));
         moverLeft = Math.min(1.0, Math.max(0.0, moverLeft));
         moverRight = Math.min(1.0, Math.max(0.0, moverRight));
+        // ── WAVE 4520.2: 9-ZONE SIGNALS ──────────────────────────────────────────
+        // Computed here in the legacy engine (LiquidEngineBase handles these for
+        // Engine71/Engine41 via ProcessedFrame). Included for interface parity.
+        const _floorRaw = bands.subBass * 0.65 + bands.lowMid * 0.35;
+        const floorOut = Math.min(1.0, Math.max(0.0, _floorRaw * recoveryFactor));
+        const _ambientMix = bands.bass * 0.40 + bands.mid * 0.60;
+        const _ambientEst = Math.min(1.0, Math.max(0.0, _ambientMix * 0.70 + morphFactor * 0.30));
+        const _airRaw = 1.0 - Math.exp(-(bands.treble * 0.60 + bands.highMid * 0.40) * 3.0);
+        const airOut = Math.min(1.0, Math.max(0.0, _airRaw * recoveryFactor));
         return {
             // 7 zonas independientes
             frontLeftIntensity: frontLeft,
@@ -272,6 +281,10 @@ export class LiquidStereoPhysics {
             moverRightIntensity: moverRight,
             strobeActive: strobeResult.active,
             strobeIntensity: strobeResult.intensity,
+            // WAVE 4520.2: 9-zone expansion
+            floorIntensity: floorOut,
+            ambientIntensity: _ambientEst,
+            airIntensity: airOut,
             // Legacy compat: mapeo para SeleneLux switch limpio
             frontParIntensity: Math.max(frontLeft, frontRight),
             backParIntensity: Math.max(backLeft, backRight),
@@ -311,6 +324,9 @@ export class LiquidStereoPhysics {
             moverRightIntensity: 0,
             strobeActive: false,
             strobeIntensity: 0,
+            floorIntensity: 0,
+            ambientIntensity: 0,
+            airIntensity: 0,
             frontParIntensity: 0,
             backParIntensity: 0,
             moverIntensityL: 0,

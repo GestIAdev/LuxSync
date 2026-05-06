@@ -58,27 +58,6 @@ export function registerArbiterHandlers(masterArbiter) {
         return { grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
     });
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔒 WAVE 3270: INHIBIT LIMIT — Per-fixture proportional ceiling
-    // Scales dimmer output proportionally. AI dynamics preserved, just scaled.
-    // ═══════════════════════════════════════════════════════════════════════
-    ipcMain.handle('lux:arbiter:setInhibitLimit', (_event, { fixtureIds, value }) => {
-        if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
-            return { success: false, error: 'Invalid fixtureIds' };
-        }
-        masterArbiter.setInhibitLimit(fixtureIds, value);
-        return { success: true, value: Math.max(0, Math.min(1, value)) };
-    });
-    ipcMain.handle('lux:arbiter:clearInhibitLimit', (_event, { fixtureIds }) => {
-        if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
-            return { success: false, error: 'Invalid fixtureIds' };
-        }
-        masterArbiter.clearInhibitLimit(fixtureIds);
-        return { success: true };
-    });
-    ipcMain.handle('lux:arbiter:getInhibitLimits', () => {
-        return { inhibitLimits: Object.fromEntries(masterArbiter.getInhibitLimits()) };
-    });
-    // ═══════════════════════════════════════════════════════════════════════
     // PATTERN ENGINE
     // ═══════════════════════════════════════════════════════════════════════
     /**
@@ -725,13 +704,13 @@ export function registerArbiterHandlers(masterArbiter) {
      * Called by TitanSyncBridge when patch changes
      * WAVE 380: Now also updates TitanOrchestrator.fixtures for the render loop
      */
-    ipcMain.handle('lux:arbiter:setFixtures', (_event, { fixtures }) => {
+    ipcMain.handle('lux:arbiter:setFixtures', (_event, { fixtures, stageBounds }) => {
         // Update MasterArbiter (for arbitration)
         masterArbiter.setFixtures(fixtures);
         // WAVE 380 FIX: ALSO update TitanOrchestrator (for the render loop)
         // Without this, the orchestrator loop runs with 0 fixtures!
         const orchestrator = getTitanOrchestrator();
-        orchestrator.setFixtures(fixtures);
+        orchestrator.setFixtures(fixtures, stageBounds);
         return {
             success: true,
             fixtureCount: fixtures.length,

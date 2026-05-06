@@ -205,10 +205,9 @@
 
 .kinetics-cathedral__faders-row {
   display: flex;
-  gap: 20px;
-  padding: 12px 20px 8px;
-  justify-content: center;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--kc-border);
 }

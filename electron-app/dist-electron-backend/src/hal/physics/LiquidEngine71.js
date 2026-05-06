@@ -62,7 +62,7 @@ export class LiquidEngine71 extends LiquidEngineBase {
         super(profile, '7.1');
     }
     routeZones(frame) {
-        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, } = frame;
+        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, } = frame;
         // ─────────────────────────────────────────────────────────────────
         // WAVE 2468 + 2470: BIFURCACIÓN ESPACIAL POR PERFIL
         //
@@ -160,6 +160,10 @@ export class LiquidEngine71 extends LiquidEngineBase {
                 moverRightIntensity: chillMoverR,
                 strobeActive: false, // El océano no hace strobe
                 strobeIntensity: 0,
+                // WAVE 4520.2: chill path — floor=0 (no sub energy), ambient/air from frame
+                floorIntensity: 0,
+                ambientIntensity: ambientIntensity,
+                airIntensity: 0, // No audio-reactive air in chill; haze driven by ambientIntensity
                 // Legacy compat
                 frontParIntensity: Math.max(chillFrontL, chillFrontR),
                 backParIntensity: Math.max(chillBackL, chillBackR),
@@ -186,6 +190,10 @@ export class LiquidEngine71 extends LiquidEngineBase {
             moverRightIntensity: outMoverR,
             strobeActive,
             strobeIntensity,
+            // WAVE 4520.2: 9-zone passthrough from ProcessedFrame
+            floorIntensity,
+            ambientIntensity,
+            airIntensity,
             // Legacy compat
             frontParIntensity: Math.max(frontLeft, frontRight),
             backParIntensity: Math.max(backLeft, backRight),

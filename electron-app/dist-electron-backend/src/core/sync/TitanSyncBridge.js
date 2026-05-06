@@ -53,20 +53,23 @@ const IPC_READY_TIMEOUT_MS = 5000;
  * 🔥 WAVE 2241: Include channelCount + profileId so Forge profile edits
  * (channel additions, type changes, defaults) always trigger a backend resync.
  */
-const generateFixturesHash = (fixtureList) => {
+const generateSyncHash = (fixtureList, stageBounds) => {
     if (!fixtureList || fixtureList.length === 0)
         return 'empty';
+    const stageHash = stageBounds
+        ? `${stageBounds.width ?? 0}:${stageBounds.height ?? 0}:${stageBounds.depth ?? 0}`
+        : '0:0:0';
     return fixtureList
         .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`)
         .sort()
-        .join('|');
+        .join('|') + `|stage:${stageHash}`;
 };
 /**
  * 🩸 WAVE 382: Sync fixtures to backend via IPC
  * 🔧 WAVE 406: Blindado contra fallos - retry logic + invalidación de hash
  * Now includes hasMovementChannels for proper mover detection
  */
-const syncToBackend = async (fixtureList, lastSyncedHashRef) => {
+const syncToBackend = async (fixtureList, stageBounds, lastSyncedHashRef) => {
     const lux = window.lux;
     if (!lux?.arbiter?.setFixtures) {
         console.warn('[TitanSyncBridge] ⚠️ Lost connection to Backend during sync!');
@@ -107,9 +110,9 @@ const syncToBackend = async (fixtureList, lastSyncedHashRef) => {
         // 📡 WAVE 2770: THE BLACK BOX — Store Sync Monitor
         // Log every setFixtures invocation with fixture count, hash, and timestamp.
         // This reveals if TitanSyncBridge re-fires and wipes state unexpectedly.
-        const syncHash = generateFixturesHash(arbiterFixtures);
+        const syncHash = generateSyncHash(arbiterFixtures, stageBounds);
         console.log(`[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${syncHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`);
-        const result = await lux.arbiter.setFixtures(arbiterFixtures);
+        const result = await lux.arbiter.setFixtures(arbiterFixtures, stageBounds);
         // 🔧 WAVE 406: Log de éxito visual
         console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`);
     }
@@ -163,9 +166,9 @@ export const TitanSyncBridge = () => {
             }
             // 🔧 WAVE 406: Suscribirse SOLO cuando el backend está listo
             console.log('[TitanSyncBridge] 🔗 Subscribing to StageStore...');
-            unsubscribeStore = useStageStore.subscribe((state) => state.fixtures, (fixtures) => {
+            unsubscribeStore = useStageStore.subscribe((state) => ({ fixtures: state.fixtures, stage: state.stage }), ({ fixtures, stage }) => {
                 // Generate hash to detect actual content changes
-                const currentHash = generateFixturesHash(fixtures);
+                const currentHash = generateSyncHash(fixtures, stage);
                 // Skip if no actual change
                 if (currentHash === lastSyncedHashRef.current) {
                     return;
@@ -180,7 +183,7 @@ export const TitanSyncBridge = () => {
                         return;
                     lastSyncedHashRef.current = currentHash;
                     console.log(`[TitanSyncBridge] 🔄 Syncing ${fixtures.length} fixtures...`);
-                    syncToBackend(fixtures, lastSyncedHashRef);
+                    syncToBackend(fixtures, stage, lastSyncedHashRef);
                 }, SYNC_DEBOUNCE_MS); // WAVE 406: 200ms (era 500ms)
             }, { fireImmediately: true } // Sync on mount if fixtures already exist
             );

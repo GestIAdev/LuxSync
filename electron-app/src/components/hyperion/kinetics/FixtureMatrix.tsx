@@ -1,18 +1,19 @@
 /**
- * 🔲 FIXTURE MATRIX — WAVE 4568
+ * 🔲 FIXTURE MATRIX — WAVE 4569
  *
- * Grid denso de chips para activar/desactivar fixtures sin salir de la
- * Cathedral. Elimina el flujo de 4 clicks + 2 cambios de contexto.
+ * Grid denso de chips para activar/desactivar MOVING HEADS en la Cathedral.
+ * Los fixtures estáticos (pares, cegadoras, strobos) están excluidos — esta
+ * vista es la Catedral de los Movers.
  *
  * Tres estados visuales por chip:
  *   • Sin selección: gris apagado
  *   • Moving head seleccionado: cyan activo
- *   • Fixture estático seleccionado: naranja + icono ⚠ (no tiene IK)
  *
- * Organización: grupos por tipo (moving heads primero, luego estáticos).
+ * Organización: grupos por tipo (SPOTS, BEAMS, WASH, SCANNERS…).
+ * Header de grupo con botones +ALL/-ALL para disparos rápidos por zona.
  *
  * @module components/hyperion/kinetics/FixtureMatrix
- * @version WAVE 4568
+ * @version WAVE 4569
  */
 
 import React, { useMemo, useCallback } from 'react'
@@ -67,38 +68,36 @@ export const FixtureMatrix: React.FC = () => {
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
-  // Agrupar fixtures por tipo — moving heads primero
+  // Solo moving heads — estáticos excluidos de esta vista
+  const moverFixtures = useMemo(
+    () => stageFixtures.filter(f => isMovingHead(f.type ?? '')),
+    [stageFixtures],
+  )
+
+  // Agrupar movers por tipo
   const groups = useMemo((): FixtureGroup[] => {
     const map = new Map<string, FixtureGroup>()
 
-    for (const sf of stageFixtures) {
-      const moving = isMovingHead(sf.type ?? '')
+    for (const sf of moverFixtures) {
       const label = typeLabel(sf.type ?? '')
-      const key = `${moving ? '0' : '1'}_${label}` // moving primero
 
-      if (!map.has(key)) {
-        map.set(key, { label, isMoving: moving, fixtures: [] })
+      if (!map.has(label)) {
+        map.set(label, { label, isMoving: true, fixtures: [] })
       }
-      map.get(key)!.fixtures.push({
+      map.get(label)!.fixtures.push({
         id: sf.id,
         name: sf.name,
         address: (sf as any).address ?? undefined,
       })
     }
 
-    // Sort de grupos: moving heads primero, luego estáticos; dentro de cada
-    // grupo por nombre
-    const groups = Array.from(map.values()).sort((a, b) => {
-      if (a.isMoving !== b.isMoving) return a.isMoving ? -1 : 1
-      return a.label.localeCompare(b.label)
-    })
-
+    const groups = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
     for (const g of groups) {
       g.fixtures.sort((a, b) => a.name.localeCompare(b.name))
     }
 
     return groups
-  }, [stageFixtures])
+  }, [moverFixtures])
 
   const handleChipClick = useCallback((id: string, e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -123,11 +122,11 @@ export const FixtureMatrix: React.FC = () => {
     }
   }, [selectedSet, selectMultiple, toggleSelection])
 
-  if (stageFixtures.length === 0) {
+  if (moverFixtures.length === 0) {
     return (
       <div className="fixture-matrix fixture-matrix--empty">
-        <span className="fixture-matrix__empty-icon">◈</span>
-        <span className="fixture-matrix__empty-text">No hay fixtures en el show</span>
+        <span className="fixture-matrix__empty-icon">⊕</span>
+        <span className="fixture-matrix__empty-text">No hay moving heads en el show</span>
       </div>
     )
   }
@@ -138,23 +137,10 @@ export const FixtureMatrix: React.FC = () => {
       <div className="fixture-matrix__toolbar">
         <button
           className="fixture-matrix__tool-btn"
-          onClick={() => {
-            const allIds = stageFixtures.map(f => f.id)
-            const allMovingIds = stageFixtures
-              .filter(f => isMovingHead(f.type ?? ''))
-              .map(f => f.id)
-            selectMultiple(allMovingIds, 'replace')
-          }}
+          onClick={() => selectMultiple(moverFixtures.map(f => f.id), 'replace')}
           title="Seleccionar todos los moving heads"
         >
-          MOVING ×ALL
-        </button>
-        <button
-          className="fixture-matrix__tool-btn"
-          onClick={() => selectMultiple(stageFixtures.map(f => f.id), 'replace')}
-          title="Seleccionar todos"
-        >
-          ALL
+          ALL MOVERS
         </button>
         <button
           className="fixture-matrix__tool-btn fixture-matrix__tool-btn--clear"
@@ -165,7 +151,7 @@ export const FixtureMatrix: React.FC = () => {
           CLR
         </button>
         <span className="fixture-matrix__sel-count">
-          {selectedIds.length}/{stageFixtures.length}
+          {selectedIds.length}/{moverFixtures.length}
         </span>
       </div>
 
@@ -189,20 +175,17 @@ export const FixtureMatrix: React.FC = () => {
             <div className="fixture-matrix__chips">
               {group.fixtures.map(f => {
                 const sel = selectedSet.has(f.id)
-                const moving = group.isMoving
                 return (
                   <button
                     key={f.id}
                     className={[
                       'fixture-matrix__chip',
-                      sel && moving ? 'fixture-matrix__chip--moving' : '',
-                      sel && !moving ? 'fixture-matrix__chip--static' : '',
+                      sel ? 'fixture-matrix__chip--moving' : '',
                     ].filter(Boolean).join(' ')}
                     onClick={e => handleChipClick(f.id, e)}
-                    title={`${f.name}${f.address != null ? ` — DMX ${f.address}` : ''}${!moving ? ' ⚠ Sin IK' : ''}`}
+                    title={`${f.name}${f.address != null ? ` — DMX ${f.address}` : ''}`}
                   >
                     <span className="fixture-matrix__chip-name">
-                      {!moving && sel && <span className="fixture-matrix__chip-warn">⚠ </span>}
                       {f.name.length > 8 ? f.name.slice(0, 7) + '…' : f.name}
                     </span>
                     {f.address != null && (

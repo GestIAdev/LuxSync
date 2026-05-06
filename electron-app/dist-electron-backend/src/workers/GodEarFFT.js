@@ -1334,6 +1334,10 @@ export function toLegacyFormat(spectrum) {
         spectralCentroid: spectrum.spectral.centroid,
         harshness: softClip01(spectrum.bands.highMid), // Approximate
         spectralFlatness: spectrum.spectral.flatness,
+        // WAVE 3516.1: El 7º Pasajero — bandas crudas que viajan sin mezcla legacy.
+        // treble legacy (arriba) conserva su suma con ultraAir*0.5 para no romper consumers.
+        rawTreble: softClip01(spectrum.bands.treble),
+        ultraAir: softClip01(spectrum.bands.ultraAir),
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════════

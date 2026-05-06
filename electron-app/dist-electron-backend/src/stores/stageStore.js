@@ -30,7 +30,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useShallow } from 'zustand/shallow';
-import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep } from '../core/stage/ShowFileV2';
+import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep, snapPosition, clampToCrystalBox, } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (DETERMINISTIC, NOT RANDOM)
@@ -105,7 +105,7 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     scenes: [],
     stage: null,
     visuals: null,
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
     // INTERNAL HELPERS
     // ═══════════════════════════════════════════════════════════════════════
     _setDirty: () => {
@@ -127,9 +127,17 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
                 groups: [],
                 scenes: [],
                 stage: null,
-                visuals: null
+                visuals: null,
             });
             return;
+        }
+        // 🧱 WAVE 4538: Snap migration — alinear posiciones al grid de 0.25m
+        for (const fixture of showFile.fixtures) {
+            fixture.position = snapPosition(fixture.position);
+        }
+        // 🧱 WAVE 4538: Forzar gridSize a 0.25 (backward compat con shows antiguos)
+        if (showFile.stage && showFile.stage.gridSize !== 0.25) {
+            showFile.stage.gridSize = 0.25;
         }
         // 🔥 WAVE 1042.2: Create NEW array reference for Zustand shallow comparison
         // Without this, React components with shallow selectors won't re-render
@@ -138,7 +146,7 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             groups: showFile.groups,
             scenes: showFile.scenes,
             stage: showFile.stage,
-            visuals: showFile.visuals
+            visuals: showFile.visuals,
         });
     },
     // ═══════════════════════════════════════════════════════════════════════
@@ -364,7 +372,10 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         get()._setDirty();
     },
     updateFixturePosition: (id, position) => {
-        get().updateFixture(id, { position });
+        const { stage } = get();
+        // 🧱 WAVE 4538: Snap + clamp al Crystal Box antes de persistir
+        const snapped = stage ? clampToCrystalBox(position, stage) : snapPosition(position);
+        get().updateFixture(id, { position: snapped });
     },
     updateFixtureRotation: (id, rotation) => {
         get().updateFixture(id, { rotation });

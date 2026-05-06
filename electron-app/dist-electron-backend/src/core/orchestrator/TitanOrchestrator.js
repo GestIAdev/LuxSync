@@ -18,6 +18,7 @@ import { createDefaultCognitive } from '../protocol/SeleneProtocol';
 // 🎭 WAVE 374: Import MasterArbiter
 import { masterArbiter } from '../arbiter';
 // 🧨 WAVE 635: Import EffectManager para color override global
+// 🚀 WAVE 4524.3: También necesario para SCN
 import { getEffectManager } from '../effects/EffectManager';
 // ❤️ WAVE 1153: THE PACEMAKER - Real Beat Detection
 import { BeatDetector } from '../../engine/audio/BeatDetector';
@@ -30,6 +31,36 @@ import { OSCNexusProvider } from '../audio/OSCNexusProvider';
 // WAVE 3402: Native audio providers
 import { VirtualWireProvider } from '../audio/VirtualWireProvider';
 import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider';
+// ⚡ WAVE 3504.5: Extracted math + scheduling modules
+import { SyncSmoother } from './metrics/SyncSmoother';
+import { IntentComposer } from './intent/IntentComposer';
+import { FrameScheduler } from './scheduler/FrameScheduler';
+// ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
+import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether';
+// WAVE 4548.6: Forge Evaluator — compiled graphs for zero-alloc DMX
+import { ForgeGraphCompiler } from '../forge/compiler/ForgeGraphCompiler';
+// 🌊 WAVE 3516.2: Adapters — cableado al hot-path del frame loop
+import { LiquidImpactAdapter, VMMAdapter } from '../aether';
+// 🎨 WAVE 3516.3: ColorAdapter — extraída a su propio archivo
+// 🎨 WAVE 4522.3: Actualizado para ingesta via setIngress() (paleta RGB de SeleneLux)
+import { ColorAdapter } from '../aether/adapters/ColorAdapter';
+// 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
+import { BeamAdapter } from '../aether/adapters/BeamAdapter';
+import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter';
+// 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
+import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter';
+import { liquidEngine71 } from '../../hal/physics/LiquidEngine71';
+import { NodeFamily } from '../aether';
+// 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
+import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter';
+import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router';
+import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter';
+import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter';
+// 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
+import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware';
+// 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
+import { AetherUIProjector } from '../aether/resolver/AetherUIProjector';
+import { timelineEngine } from '../engine/TimelineEngine';
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver';
 // 🧹 WAVE 2227: VMM singleton para cleanup en stop()
@@ -56,10 +87,110 @@ const ZONE_MAP = {
 };
 // Static DMX output placeholder (512 zeros) — no new Array(512).fill(0) per truth frame
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
+const DEFAULT_AETHER_STAGE_BOUNDS = {
+    width: 8,
+    height: 4,
+    depth: 2,
+    centerY: 1.5,
+};
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
 export class TitanOrchestrator {
+    /**
+     * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
+     *
+     * Llama esto en patch time para que el dispositivo sea procesado por el
+     * pipeline V2. El NodeGraph y NodeResolver se configuran automáticamente.
+     * El pipeline legacy mantiene el control de todos los demás fixtures.
+     *
+     * @param definition — IDeviceDefinition con nodes, calibración y universo DMX
+     * @param forgeGraph — WAVE 4548.6: Optional ForgeNodeGraph for zero-alloc evaluation
+     */
+    registerAetherDevice(definition, forgeGraph) {
+        this._ensureAetherMatrixInitialized();
+        const resolver = this._aetherResolver;
+        if (!resolver) {
+            this.log('Error', '[Aether] Lazy-init failure: NodeResolver unavailable');
+            return;
+        }
+        const nodeIds = this._aetherGraph.registerDevice(definition);
+        this._chronosAetherAdapter.rebuildNodeIndex();
+        resolver.registerUniverse(definition.universe);
+        this._aetherHasDevices = true;
+        // ⚙️ WAVE 4518.1: Registrar nodos KINETIC en el PhysicsPostProcessor
+        // Iteramos los nodeIds devueltos por registerDevice para pre-alocar estado de inercia
+        for (const nodeId of nodeIds) {
+            const nodeData = this._aetherGraph.getNodeData(nodeId);
+            if (nodeData?.family === NodeFamily.KINETIC) {
+                this._physicsPostProcessor.registerNode(nodeId);
+                // 🛂 WAVE 4557: Pre-allocate kinetic state in safety middleware
+                this._aetherSafety.registerKineticNode(nodeId);
+            }
+        }
+        // 🛂 WAVE 4557: Register device in safety middleware for virtual/throttle tracking
+        this._aetherSafety.registerDevice(definition.deviceId, definition.universe, definition.isVirtual ?? false);
+        // WAVE 4548.6: Compile ForgeNodeGraph at patch time for zero-alloc evaluation
+        if (forgeGraph && forgeGraph.nodes.length > 0) {
+            try {
+                const compiled = ForgeGraphCompiler.compile(forgeGraph, definition.deviceId);
+                resolver.registerForgeGraph(definition.deviceId, compiled);
+                this.log('Info', `[Forge] Compiled graph for device ${definition.deviceId}: ${forgeGraph.nodes.length} nodes, ${compiled.program.length} instructions`);
+            }
+            catch (err) {
+                this.log('Error', `[Forge] Failed to compile graph for device ${definition.deviceId}: ${err}`);
+                // Fallback: legacy flow will handle this device
+            }
+        }
+    }
+    /**
+     * WAVE 4529: Expone el NodeArbiter interno para que AetherIPCHandlers
+     * pueda inyectar overrides manuales L2 desde el Programmer UI.
+     */
+    getAetherArbiter() {
+        this._ensureAetherMatrixInitialized();
+        if (!this._aetherArbiter) {
+            throw new Error('Aether Matrix initialization failed: NodeArbiter unavailable');
+        }
+        return this._aetherArbiter;
+    }
+    /**
+     * Retira un dispositivo del Motor Agnostico Aether.
+     *
+     * @param deviceId — ID del dispositivo a retirar
+     */
+    unregisterAetherDevice(deviceId) {
+        this._aetherGraph.unregisterDevice(deviceId);
+        // _aetherHasDevices permanece true si hay otros devices registrados
+        // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+    }
+    _ensureAetherMatrixInitialized() {
+        if (this._aetherArbiter &&
+            this._aetherResolver &&
+            this._colorAdapter &&
+            this._kineticAdapter &&
+            this._beamAdapter &&
+            this._atmosphereAdapter &&
+            this._liquidAetherAdapter &&
+            this._seleneAetherAdapter) {
+            return;
+        }
+        this._aetherArbiter = this._aetherArbiter ?? new NodeArbiter();
+        if (!this._aetherResolver) {
+            this._aetherResolver = new NodeResolver(this._aetherGraph);
+            // 🛂 WAVE 4557: Wire safety middleware into resolver
+            this._aetherResolver.setSafetyMiddleware(this._aetherSafety);
+        }
+        this._colorAdapter = this._colorAdapter ?? new ColorAdapter();
+        this._kineticAdapter = this._kineticAdapter ?? new VMMAdapter();
+        this._beamAdapter = this._beamAdapter ?? new BeamAdapter();
+        this._atmosphereAdapter = this._atmosphereAdapter ?? new AtmosphereAdapter();
+        this._liquidAetherAdapter = this._liquidAetherAdapter ?? new LiquidAetherAdapter(this._aetherGraph);
+        if (!this._zoneNodeRouter) {
+            this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph);
+        }
+        this._seleneAetherAdapter = this._seleneAetherAdapter ?? new SeleneAetherAdapter(this._zoneNodeRouter);
+    }
     constructor(config = {}) {
         this.brain = null;
         this.engine = null;
@@ -81,17 +212,13 @@ export class TitanOrchestrator {
         this.FREEWHEEL_TIMEOUT_FRAMES = 125; // ~5s a 25fps
         this.isInitialized = false;
         this.isRunning = false;
-        this.mainLoopInterval = null;
         this.cardiogramaInterval = null;
         this.frameCount = 0;
         // ═══════════════════════════════════════════════════════════════════════════
-        // 🔒 WAVE 2211: ASYNC STAMPEDE GUARD
-        // setInterval fires every Xms regardless of whether the previous
-        // processFrame() has finished. Since processFrame() is async (await engine.update()),
-        // overlapping calls corrupt shared state (HAL dt, arbiter positions, physics).
-        // This flag ensures only ONE processFrame() runs at a time.
+        // ⚡ WAVE 3504.5: FRAME SCHEDULER — replaces bare setInterval + isProcessingFrame
+        // The Stampede Guard now lives inside FrameScheduler (WAVE 2211 contract kept).
         // ═══════════════════════════════════════════════════════════════════════════
-        this.isProcessingFrame = false;
+        this.scheduler = new FrameScheduler(23, () => this.processFrame());
         // ═══════════════════════════════════════════════════════════════════════════
         // 🔧 DMX TIMING — Frame-drop protection for physical DMX timing
         // DMX512 spec: 1 frame = ~25ms (Break 88µs + MAB 8µs + 512ch × 44µs).
@@ -139,40 +266,100 @@ export class TitanOrchestrator {
             bass: 0, mid: 0, high: 0, energy: 0
         };
         this.hasRealAudio = false;
+        // 🚀 WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
+        // Se utiliza en el SeleneAetherAdapter para traducción de efectos L3.
+        // Por ahora inicializado como null; en el futuro el engine populate esto.
+        this.lastConsciousnessOutput = null;
         // ═══════════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
-        // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
+        // ⚡ WAVE 3504.5: PURE MATH MODULES — extracted from the monolith
+        // SyncSmoother:   EMA filter bank + syncopation estimator + freewheel chain
+        // IntentComposer: CombinedEffectOutput → per-fixture EffectIntentMap
         // ═══════════════════════════════════════════════════════════════════════════
-        this.EMA_ALPHA_FAST = 0.25; // Para métricas reactivas (harshness, transients)
-        this.EMA_ALPHA_SLOW = 0.08; // Para contexto ambiental (centroid, flatness)
-        this.smoothedMetrics = {
-            harshness: 0,
-            spectralFlatness: 0.5,
-            spectralCentroid: 2000,
-            subBass: 0,
-            lowMid: 0,
-            highMid: 0,
-            crestFactor: 0, // 💥 WAVE 2347: Relación pico/RMS espectral (kicks vs rolling bass)
-            // WAVE 3422: Core bands para el path Omni (VirtualWire/USB).
-            // En el path frontend (WebAudio IPC) estos campos no se usan — el frontend
-            // envía bass/mid/high a 60fps y ya trae su propio suavizado.
-            // En el path Omni el Worker es única autoridad pero a ~10fps con gaps entre
-            // frames. Sin EMA, bass oscila entre 0 y el valor real en cada frame vacío.
-            bass: 0,
-            mid: 0,
-            high: 0,
-            energy: 0,
+        this.syncSmoother = new SyncSmoother();
+        this.intentComposer = new IntentComposer();
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ⚛️ WAVE 3505.4: AETHER MATRIX — Agnostic Engine V2 Pipeline
+        //
+        // Este pipeline corre EN PARALELO con el pipeline legacy (masterArbiter → HAL).
+        // Los devices registrados en NodeGraph son procesados por Systems → Arbiter →
+        // Resolver y sus paquetes DMX son enviados directamente via HAL.sendUniverseRaw().
+        //
+        // ACTIVACIÓN: registerAetherDevice() activa automaticamente el pipeline.
+        // Si _aetherNodeGraph está vacío, el bloque Aether en processFrame() es no-op.
+        // ═══════════════════════════════════════════════════════════════════════════
+        this._aetherGraph = new NodeGraph();
+        this._aetherBus = new IntentBus(4096);
+        this._aetherArbiter = null;
+        this._aetherResolver = null;
+        // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
+        this._physicsPostProcessor = new PhysicsPostProcessor();
+        this._aetherHasDevices = false;
+        // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
+        this._aetherUIProjector = new AetherUIProjector();
+        // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
+        this._impactAdapter = new LiquidImpactAdapter();
+        // 🎨 WAVE 3516.3: ColorAdapter — rebautizada de LiquidColorAdapter
+        this._colorAdapter = null;
+        this._kineticAdapter = null;
+        // 🔦🌫️ WAVE 3516.4: Optic & Elemental Bridges
+        this._beamAdapter = null;
+        this._atmosphereAdapter = null;
+        // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
+        // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
+        this._liquidAetherAdapter = null;
+        // 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
+        // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
+        this._zoneNodeRouter = null;
+        this._seleneAetherAdapter = null;
+        this._chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph);
+        // WAVE 3521: Hephaestus Diamond Data L3+ adapter
+        this._hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph);
+        this._timelineEngine = timelineEngine;
+        // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
+        this._aetherAudio = {
+            subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
+            energy: 0, hasTransient: false, transientStrength: 0,
+            bpm: 0, beatPhase: 0, beatCount: 0,
         };
-        // ═══════════════════════════════════════════════════════════════════════════
-        // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Main-thread syncopation estimator
-        // Since BETA worker no longer has beatPhase (Pacemaker is in main thread),
-        // syncopation must be estimated HERE using Pacemaker's real beatPhase.
-        // Uses same algorithm as SimpleRhythmDetector but with real phase data.
-        // ═══════════════════════════════════════════════════════════════════════════
-        this.syncopationPhaseHistory = [];
-        this.smoothedSyncopation = 0.35; // Neutral default (same as Worker)
-        this.SYNC_HISTORY_SIZE = 32;
-        this.SYNC_EMA_ALPHA = 0.08; // Same smoothing factor as Worker
+        this._aetherMusical = {
+            section: 'unknown', dropImminent: false, sectionIntensity: 0, harmonicTension: 0, sectionElapsedMs: 0,
+        };
+        this._aetherVibe = {
+            name: 'idle',
+            palette: [{ h: 0, s: 0, l: 1 }],
+            movementSpeed: 0.5,
+            intensity: 0.5,
+            beamExpressiveness: 0.5,
+        };
+        this._aetherStageBounds = {
+            width: DEFAULT_AETHER_STAGE_BOUNDS.width,
+            height: DEFAULT_AETHER_STAGE_BOUNDS.height,
+            depth: DEFAULT_AETHER_STAGE_BOUNDS.depth,
+            centerY: DEFAULT_AETHER_STAGE_BOUNDS.centerY,
+        };
+        this._aetherCtx = {
+            audio: this._aetherAudio,
+            musical: this._aetherMusical,
+            vibe: this._aetherVibe,
+            stageBounds: this._aetherStageBounds,
+            nowMs: 0,
+            deltaMs: 23,
+            frameIndex: 0,
+        };
+        // 🛂 WAVE 4557: Aether Safety Middleware — velocity clamp, airbag, DarkSpin, output gate, throttle
+        this._aetherSafety = new AetherSafetyMiddleware();
+        // WAVE 4548.6: Pre-allocated ForgeFrameContext — mutable in-place, zero alloc
+        this._forgeAudioBands = new Float64Array(6);
+        this._forgeFrameCtx = {
+            timeMs: 0,
+            deltaMs: 23,
+            bpm: 120,
+            bpmConfidence: 0,
+            isBeat: false,
+            energy: 0,
+            audioBands: this._forgeAudioBands,
+            frameIndex: 0,
+        };
         // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
         // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
         // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
@@ -275,23 +462,22 @@ export class TitanOrchestrator {
                 if (isOmniActive) {
                     // Omni path: Worker = SOLE AUTHORITY for all bands + timestamp
                     //
-                    // WAVE 3422 — EMA anti-parpadeo para bandas principales:
-                    // El Worker emite frames a ~10fps con VW, pero el SAB tiene gaps entre
-                    // entregas. Frames "vacíos" (bass≈0) se intercalan con frames reales.
-                    // Sin suavizado, bass oscila 0 ↔ 0.18 en cada ciclo → parpadeo visible.
-                    // Alpha 0.35: reacciona en ~3 frames (~210ms) — suficientemente rápido
-                    // para que los kicks se sientan pero elimina el flip a cero entre frames.
-                    const OMNI_EMA = 0.35;
-                    this.smoothedMetrics.bass = (1 - OMNI_EMA) * this.smoothedMetrics.bass + OMNI_EMA * levels.bass;
-                    this.smoothedMetrics.mid = (1 - OMNI_EMA) * this.smoothedMetrics.mid + OMNI_EMA * levels.mid;
-                    this.smoothedMetrics.high = (1 - OMNI_EMA) * this.smoothedMetrics.high + OMNI_EMA * levels.treble;
-                    this.smoothedMetrics.energy = (1 - OMNI_EMA) * this.smoothedMetrics.energy + OMNI_EMA * levels.energy;
+                    // WAVE 3422 — EMA anti-parpadeo para bandas principales.
+                    // WAVE 3504.5: delegated to SyncSmoother.smooth(raw, omniPath=true).
+                    // SyncSmoother holds its own EMA state — no smoothedMetrics field here.
+                    const smoothedOmni = this.syncSmoother.smooth({
+                        bass: levels.bass, mid: levels.mid, high: levels.treble,
+                        energy: levels.energy,
+                        harshness: levels.harshness, spectralFlatness: levels.spectralFlatness,
+                        spectralCentroid: levels.spectralCentroid, subBass: levels.subBass,
+                        lowMid: levels.lowMid, highMid: levels.highMid, crestFactor: levels.crestFactor,
+                    }, true /* omniPath */);
                     this.lastAudioData = {
                         ...this.lastAudioData,
-                        bass: this.smoothedMetrics.bass,
-                        mid: this.smoothedMetrics.mid,
-                        high: this.smoothedMetrics.high,
-                        energy: this.smoothedMetrics.energy,
+                        bass: smoothedOmni.bass,
+                        mid: smoothedOmni.mid,
+                        high: smoothedOmni.high,
+                        energy: smoothedOmni.energy,
                         subBass: levels.subBass ?? this.lastAudioData.subBass,
                         lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
                         highMid: levels.highMid ?? this.lastAudioData.highMid,
@@ -312,6 +498,9 @@ export class TitanOrchestrator {
                         // 🔬 WAVE 3418: Raw input telemetry
                         inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
                         inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+                        // 🌊 WAVE 3516.2: El 7º Pasajero — alta frecuencia sin colapsar
+                        rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+                        ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
                     };
                     // Update audio presence detection
                     //
@@ -372,6 +561,9 @@ export class TitanOrchestrator {
                         // 🔬 WAVE 3418: Raw input telemetry
                         inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
                         inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
+                        // 🌊 WAVE 3516.2: El 7º Pasajero — alta frecuencia sin colapsar
+                        rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
+                        ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
                     };
                 } // end isOmniActive else
             });
@@ -443,11 +635,8 @@ export class TitanOrchestrator {
             return;
         }
         this.isRunning = true;
-        this.mainLoopInterval = setInterval(() => {
-            this.processFrame();
-        }, 23); // ⚡ WAVE 2510: 44fps — feeds RenderWorker hot-frames at Nyquist-safe rate
-        // Strobes up to 22Hz resolvable. DMX dispatch is hardware-adaptive:
-        // Enttec Pro/Art-Net @ 44Hz, generic USB @ 30Hz (separate from tick rate)
+        // ⚡ WAVE 3504.5: 44 Hz interval + Stampede Guard delegated to FrameScheduler
+        this.scheduler.start();
         // ─────────────────────────────────────────────────────────────────
         // 🫀 OPERACIÓN CARDIOGRAMA — Event Loop Lag Monitor (Main Thread)
         // Detecta GC Stop-The-World pauses y saturación del event loop.
@@ -514,10 +703,8 @@ export class TitanOrchestrator {
         // Paso 3: Dar tiempo al chip FTDI para drenar los bytes al cable RS-485
         await new Promise(resolve => setTimeout(resolve, 30));
         // Paso 4: Ahora sí podemos matar el loop sin dejar zombis
-        if (this.mainLoopInterval) {
-            clearInterval(this.mainLoopInterval);
-            this.mainLoopInterval = null;
-        }
+        // WAVE 3504.5: scheduler encapsulates the interval and stampede guard
+        await this.scheduler.stop();
         if (this.cardiogramaInterval) {
             clearInterval(this.cardiogramaInterval);
             this.cardiogramaInterval = null;
@@ -555,1024 +742,1074 @@ export class TitanOrchestrator {
     }
     /**
      * Process a single frame of the Brain -> Engine -> HAL pipeline
-     */
-    /**
      * 🎬 PROCESAR FRAME: El latido del universo
      * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
-     * 🔒 WAVE 2211: ASYNC STAMPEDE GUARD — prevents overlapping processFrame() calls
+     * 🔒 WAVE 2211: Stampede guard delegated to FrameScheduler (WAVE 3504.5)
      */
     async processFrame() {
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔒 WAVE 2211: STAMPEDE GUARD
-        // setInterval(16) doesn't wait for async completion. If engine.update()
-        // takes >16ms, multiple processFrame() calls stack up, corrupting:
-        //   - HAL.measurePhysicsDeltaTime() (dt becomes ~0ms for the interloper)
-        //   - FixturePhysicsDriver positions (two frames writing simultaneously)
-        //   - MasterArbiter state (two arbitrate() calls with different intents)
-        // Result: erratic movement, "chill acting like rock", position jumps.
-        // FIX: Skip frame if previous is still processing. No data loss —
-        //   the NEXT interval will pick up with correct dt measurement.
+        // 🔒 WAVE 2211: STAMPEDE GUARD (now in FrameScheduler._onInterval())
+        // The FrameScheduler skips ticks if the previous async processFrame()
+        // is still running. Contract preserved — guard moved to the scheduler.
         // ═══════════════════════════════════════════════════════════════════════
-        if (this.isProcessingFrame)
+        if (!this.brain || !this.engine || !this.hal)
             return;
-        this.isProcessingFrame = true;
-        try {
-            if (!this.brain || !this.engine || !this.hal)
-                return;
-            this.frameCount++;
-            // WAVE 255: No more auto-rotation, system stays in selected vibe
-            // Vibe changes only via IPC lux:setVibe
-            const shouldLog = this.frameCount % 30 === 0; // Log every ~1 second
-            // � WAVE 671.5: Silenced heartbeat spam (every 5s)
-            // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
-            // const shouldHeartbeat = this.frameCount % 150 === 0
-            // if (shouldHeartbeat) {
-            //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
-            //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
-            // }
-            // 1. Brain produces MusicalContext
-            const context = this.brain.getCurrentContext();
-            // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
-            // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
-            // ⚡ WAVE 3050: UNIFIED FRAME TIMESTAMP — one syscall per frame, not 9
-            //
-            // WAVE 3423: Omni sources (VW/USB) usan threshold extendido de 2000ms.
-            // VW entrega ~10fps pero el SAB puede tener gaps de 200-400ms durante
-            // silencios largos (intro, pausa entre drops). Con 500ms el staleness
-            // se dispara en cualquier intro silenciosa y mata las luces en plena música.
-            const now = Date.now();
-            const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus();
-            const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null;
-            const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
-            const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false;
-            const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.AUDIO_STALENESS_THRESHOLD_MS;
-            if (this.hasRealAudio && (now - this.lastAudioTimestamp) > effectiveStalenessThreshold) {
-                if (shouldLog) {
-                    console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`);
-                }
-                this.hasRealAudio = false;
-                // Reset lastAudioData para no mentir con datos viejos
-                // 🎛️ WAVE 661: Incluir reset de textura espectral
-                // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
-                // 🔥 WAVE 1162.2: Incluir reset de rawBassEnergy
-                this.lastAudioData = {
-                    bass: 0, mid: 0, high: 0, energy: 0,
-                    harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
-                    subBass: undefined, lowMid: undefined, highMid: undefined,
-                    kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
-                    rawBassEnergy: undefined, // 🔥 WAVE 1162.2: Reset también el bypass
-                    // 🔥 WAVE 2213: PRESERVAR MEMORIA DEL WORKER DURANTE EL SILENCIO
-                    // Sin esto: workerBpm → undefined → zombie BeatDetector → 200 BPM hardcodeado
-                    workerBpm: this.lastAudioData.workerBpm,
-                    workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
-                    workerOnBeat: false, // Es silencio, no hay beat activo
-                    workerBeatPhase: this.lastAudioData.workerBeatPhase,
-                    workerBeatStrength: 0,
-                    workerKickCount: this.lastAudioData.workerKickCount,
-                };
+        this.frameCount++;
+        // WAVE 255: No more auto-rotation, system stays in selected vibe
+        // Vibe changes only via IPC lux:setVibe
+        const shouldLog = this.frameCount % 30 === 0; // Log every ~1 second
+        // � WAVE 671.5: Silenced heartbeat spam (every 5s)
+        // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
+        // const shouldHeartbeat = this.frameCount % 150 === 0
+        // if (shouldHeartbeat) {
+        //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
+        //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
+        // }
+        // 1. Brain produces MusicalContext
+        const context = this.brain.getCurrentContext();
+        // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
+        // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
+        // ⚡ WAVE 3050: UNIFIED FRAME TIMESTAMP — one syscall per frame, not 9
+        //
+        // WAVE 3423: Omni sources (VW/USB) usan threshold extendido de 2000ms.
+        // VW entrega ~10fps pero el SAB puede tener gaps de 200-400ms durante
+        // silencios largos (intro, pausa entre drops). Con 500ms el staleness
+        // se dispara en cualquier intro silenciosa y mata las luces en plena música.
+        const now = Date.now();
+        const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus();
+        const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null;
+        const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
+        const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false;
+        const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.AUDIO_STALENESS_THRESHOLD_MS;
+        if (this.hasRealAudio && (now - this.lastAudioTimestamp) > effectiveStalenessThreshold) {
+            if (shouldLog) {
+                console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`);
             }
-            // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
-            let bass, mid, high, energy;
-            if (this.hasRealAudio) {
-                bass = this.lastAudioData.bass * this.inputGain;
-                mid = this.lastAudioData.mid * this.inputGain;
-                high = this.lastAudioData.high * this.inputGain;
-                energy = this.lastAudioData.energy * this.inputGain;
+            this.hasRealAudio = false;
+            // Reset lastAudioData para no mentir con datos viejos
+            // 🎛️ WAVE 661: Incluir reset de textura espectral
+            // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
+            // 🔥 WAVE 1162.2: Incluir reset de rawBassEnergy
+            this.lastAudioData = {
+                bass: 0, mid: 0, high: 0, energy: 0,
+                harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
+                subBass: undefined, lowMid: undefined, highMid: undefined,
+                kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
+                rawBassEnergy: undefined, // 🔥 WAVE 1162.2: Reset también el bypass
+                // 🔥 WAVE 2213: PRESERVAR MEMORIA DEL WORKER DURANTE EL SILENCIO
+                // Sin esto: workerBpm → undefined → zombie BeatDetector → 200 BPM hardcodeado
+                workerBpm: this.lastAudioData.workerBpm,
+                workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+                workerOnBeat: false, // Es silencio, no hay beat activo
+                workerBeatPhase: this.lastAudioData.workerBeatPhase,
+                workerBeatStrength: 0,
+                workerKickCount: this.lastAudioData.workerKickCount,
+            };
+        }
+        // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
+        let bass, mid, high, energy;
+        if (this.hasRealAudio) {
+            bass = this.lastAudioData.bass * this.inputGain;
+            mid = this.lastAudioData.mid * this.inputGain;
+            high = this.lastAudioData.high * this.inputGain;
+            energy = this.lastAudioData.energy * this.inputGain;
+        }
+        else {
+            // Silence - system in standby
+            bass = 0;
+            mid = 0;
+            high = 0;
+            energy = 0;
+        }
+        // ⚡ WAVE 3504.5: Delegated to SyncSmoother — apply EMA to all FFT metrics
+        // Frontend (WebAudio path): omniPath=false (bass/mid/high/energy untouched)
+        // Worker (Omni path): already smoothed in brain.on('audio-levels') handler
+        this.syncSmoother.smooth({
+            harshness: this.lastAudioData.harshness,
+            spectralFlatness: this.lastAudioData.spectralFlatness,
+            spectralCentroid: this.lastAudioData.spectralCentroid,
+            subBass: this.lastAudioData.subBass,
+            lowMid: this.lastAudioData.lowMid,
+            highMid: this.lastAudioData.highMid,
+            crestFactor: this.lastAudioData.crestFactor,
+            bass: 0, mid: 0, high: 0, energy: 0, // not smoothed on frontend path
+        }, false /* omniPath */);
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
+        // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
+        // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
+        // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
+        // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
+        // ═══════════════════════════════════════════════════════════════════════════
+        let beatState = {
+            bpm: 120,
+            phase: 0,
+            beatCount: 0,
+            onBeat: false,
+            confidence: 0,
+            kickDetected: false,
+            snareDetected: false,
+            hihatDetected: false,
+            // PLL defaults
+            pllPhase: 0,
+            pllOnBeat: false,
+            predictedNextBeatTime: 0,
+            phaseError: 0,
+            pllLocked: false,
+        };
+        // 🔥 WAVE 2112: Worker BPM — the source of truth
+        const workerBpm = this.lastAudioData.workerBpm ?? 0;
+        const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0;
+        const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
+        const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0;
+        if (this.beatDetector && this.hasRealAudio) {
+            // 🔥 WAVE 2112 + WAVE 2179: WORKER BPM → PLL
+            // Worker con señal → setBpm() = lock real (PLL anclado a la verdad física)
+            // Worker sordo pero memoria reciente → freewheelAt() = inercia correcta
+            // Worker sordo Y memoria expirada → PLL cae al Pacemaker interno (120 default)
+            // PunkArchytect doctrine: Worker = Oídos (honesto). Cerebro = Memoria (inerte).
+            // ═══════════════════════════════════════════════════════════════════════
+            if (workerBpm > 0 && workerConfidence > 0.2) {
+                // 🔥 Worker activo: lock real + actualizar memoria
+                this.beatDetector.setBpm(workerBpm);
+                this.lastStableWorkerBpm = workerBpm;
+                this.lastStableWorkerBpmFrame = this.frameCount;
             }
             else {
-                // Silence - system in standby
-                bass = 0;
-                mid = 0;
-                high = 0;
-                energy = 0;
-            }
-            // ═══════════════════════════════════════════════════════════════════════════
-            // 🌊 WAVE 1011.5: THE DAM - Apply EMA smoothing to FFT metrics
-            // Esto elimina el parpadeo causado por picos/caídas bruscas del FFT crudo
-            // Bass/Mid/Treble ya están normalizados por AGC - NO los tocamos
-            // ═══════════════════════════════════════════════════════════════════════════
-            this.applyEMASmoothing();
-            // ═══════════════════════════════════════════════════════════════════════════
-            // 🔥 WAVE 2112: THE RESURRECTION — Worker BPM + PLL Flywheel
-            // GodEarBPMTracker in Worker is the BPM AUTHORITY (fresh FFT every ~21ms).
-            // Pacemaker is DEMOTED to PLL/Flywheel only — no more kick detection here.
-            // The old process() was broken: rawBassEnergy arrived at 10fps via IPC,
-            // but process() ran at 60fps → same frozen value 6x → transient=0 → BPM chaos.
-            // ═══════════════════════════════════════════════════════════════════════════
-            let beatState = {
-                bpm: 120,
-                phase: 0,
-                beatCount: 0,
-                onBeat: false,
-                confidence: 0,
-                kickDetected: false,
-                snareDetected: false,
-                hihatDetected: false,
-                // PLL defaults
-                pllPhase: 0,
-                pllOnBeat: false,
-                predictedNextBeatTime: 0,
-                phaseError: 0,
-                pllLocked: false,
-            };
-            // 🔥 WAVE 2112: Worker BPM — the source of truth
-            const workerBpm = this.lastAudioData.workerBpm ?? 0;
-            const workerConfidence = this.lastAudioData.workerBpmConfidence ?? 0;
-            const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
-            const workerBeatPhase = this.lastAudioData.workerBeatPhase ?? 0;
-            if (this.beatDetector && this.hasRealAudio) {
-                // 🔥 WAVE 2112 + WAVE 2179: WORKER BPM → PLL
-                // Worker con señal → setBpm() = lock real (PLL anclado a la verdad física)
-                // Worker sordo pero memoria reciente → freewheelAt() = inercia correcta
-                // Worker sordo Y memoria expirada → PLL cae al Pacemaker interno (120 default)
-                // PunkArchytect doctrine: Worker = Oídos (honesto). Cerebro = Memoria (inerte).
-                // ═══════════════════════════════════════════════════════════════════════
-                if (workerBpm > 0 && workerConfidence > 0.2) {
-                    // 🔥 Worker activo: lock real + actualizar memoria
-                    this.beatDetector.setBpm(workerBpm);
-                    this.lastStableWorkerBpm = workerBpm;
-                    this.lastStableWorkerBpmFrame = this.frameCount;
+                // 🔥 WAVE 2179: Worker sordo → ¿tenemos memoria reciente?
+                const framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
+                if (this.lastStableWorkerBpm > 0 && framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES) {
+                    // FREEWHEEL: PLL gira en la frecuencia real, no en 120 BPM
+                    this.beatDetector.freewheelAt(this.lastStableWorkerBpm);
                 }
-                else {
-                    // 🔥 WAVE 2179: Worker sordo → ¿tenemos memoria reciente?
-                    const framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
-                    if (this.lastStableWorkerBpm > 0 && framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES) {
-                        // FREEWHEEL: PLL gira en la frecuencia real, no en 120 BPM
-                        this.beatDetector.freewheelAt(this.lastStableWorkerBpm);
-                    }
-                    // Si el timeout expiró → sin freewheelAt(), PLL se suelta al Pacemaker interno
-                }
-                // PLL Flywheel: advances phase continuously for smooth beat prediction
-                beatState = this.beatDetector.tick(now); // ⚡ WAVE 3050: unified timestamp
-                // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
-                if (workerOnBeat) {
-                    beatState.onBeat = true;
-                    beatState.kickDetected = true;
-                }
-                if (this.frameCount % 60 === 0) {
-                    const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
-                    const syncInfo = this.smoothedSyncopation.toFixed(2);
-                    const _framesSinceLog = this.frameCount - this.lastStableWorkerBpmFrame;
-                    const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
-                        ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
-                        : '';
-                    const rawEnergy = (this.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
-                    const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
-                    // 🔬 WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
-                    const inputPeak = (this.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
-                    const inputRms = (this.lastAudioData.inputRMS ?? 0).toFixed(5);
-                    console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | 🔬in_peak=${inputPeak} in_rms=${inputRms}`);
-                }
+                // Si el timeout expiró → sin freewheelAt(), PLL se suelta al Pacemaker interno
             }
-            else if (this.beatDetector) {
-                // WAVE 2090.3: THE FLYWHEEL - tick even without audio
-                // The metronome keeps spinning on inertia (freewheel mode)
-                beatState = this.beatDetector.tick(now); // ⚡ WAVE 3050: unified timestamp
+            // PLL Flywheel: advances phase continuously for smooth beat prediction
+            beatState = this.beatDetector.tick(now); // ⚡ WAVE 3050: unified timestamp
+            // Override onBeat with Worker's real detection (PLL can predict, but Worker detects)
+            if (workerOnBeat) {
+                beatState.onBeat = true;
+                beatState.kickDetected = true;
             }
-            // ═══════════════════════════════════════════════════════════════════════════
-            //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
-            // ═══════════════════════════════════════════════════════════════════════════
-            // 🔥 rBPM INJECTION — cadena de prioridad con freewheel memory (WAVE 2179)
-            // ═══════════════════════════════════════════════════════════════════════════
-            // Priority chain:
-            //   1. Worker activo (conf > 0.2)         → BPM del Worker (verdad física)
-            //   2. Worker sordo + memoria reciente    → último BPM estable (inercia)
-            //   3. Sin memoria / timeout expirado     → Pacemaker interno (último recurso)
-            // ═══════════════════════════════════════════════════════════════════════════
-            const _framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
-            const hasFreewheelMemory = this.lastStableWorkerBpm > 0 && _framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES;
-            if (workerBpm > 0 && workerConfidence > 0.2) {
-                // Priority 1: Worker activo
-                context.bpm = workerBpm;
-                context.beatPhase = beatState.pllLocked
-                    ? (beatState.pllPhase ?? beatState.phase)
-                    : workerBeatPhase;
-                context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
-            }
-            else if (hasFreewheelMemory) {
-                // 🔥 WAVE 2179: Priority 2 — FREEWHEEL MEMORY
-                // Las luces no se enteran del break. El show continúa en el BPM real.
-                context.bpm = this.lastStableWorkerBpm;
-                context.beatPhase = beatState.pllPhase ?? beatState.phase;
-                context.syncopation = this.estimateSyncopation(context.beatPhase, bass, mid);
-            }
-            else if (beatState.bpm > 0 && beatState.confidence > 0) {
-                // Priority 3: Pacemaker interno (cuando no hay ningún recuerdo del Worker)
-                context.bpm = beatState.bpm;
-                context.beatPhase = beatState.pllPhase ?? beatState.phase;
-                context.syncopation = this.estimateSyncopation(beatState.pllPhase ?? beatState.phase, bass, mid);
-            }
-            // For TitanEngine
-            // 🎛️ WAVE 661: Incluir textura espectral
-            // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
-            // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
-            // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
-            const engineAudioMetrics = {
-                bass, // Ya normalizado por AGC - INTOCABLE
-                mid, // Ya normalizado por AGC - INTOCABLE
-                high, // Ya normalizado por AGC - INTOCABLE
-                energy, // Ya normalizado por AGC - INTOCABLE
-                // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
-                beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
-                // 🛡️ WAVE 2512 FIX 3: IBeat Silence Guard
-                // PLL onBeat only propagates as isBeat if the PLL is locked (has real evidence).
-                // Redundancy layer: FIX 1 already silences beatState.onBeat in freewheel,
-                // but this guard ensures the merge logic itself is architecturally correct.
-                isBeat: workerOnBeat || (beatState.pllLocked && beatState.onBeat),
-                // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
-                // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
-                // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
-                beatCount: this.lastAudioData.workerKickCount ?? beatState.beatCount,
-                bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
-                beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
-                // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
-                harshness: this.smoothedMetrics.harshness,
-                spectralFlatness: this.smoothedMetrics.spectralFlatness,
-                spectralCentroid: this.smoothedMetrics.spectralCentroid,
-                // 💥 WAVE 2352: crestFactor RAW para physics engines - los transitorios de kick NO se suavizan
-                // El EMA destruye el pico que diferencia un bombo de un rolling bass
-                crestFactor: this.lastAudioData.crestFactor ?? this.smoothedMetrics.crestFactor,
-                // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
-                subBass: this.smoothedMetrics.subBass,
-                lowMid: this.smoothedMetrics.lowMid,
-                highMid: this.smoothedMetrics.highMid,
-                // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
-                // 🛡️ WAVE 2512 FIX 2: Kick Signal Veto in Freewheel
-                // kickDetected only fires if Worker directly detected OR PLL has a real lock.
-                // Prevents phantom Pacemaker kicks from polluting physics engines (LiquidEngineBase isKick).
-                kickDetected: workerOnBeat || (beatState.pllLocked && this.lastAudioData.kickDetected),
-                snareDetected: this.lastAudioData.snareDetected,
-                hihatDetected: this.lastAudioData.hihatDetected,
-                // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction
-                isPLLBeat: beatState.pllOnBeat,
-            };
-            // For HAL
-            // 🎵 WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
-            // BEFORE: HAL calculated its own fake beatPhase from hardcoded 120 BPM
-            // → optics pulsed at constant 2Hz regardless of actual music tempo
-            // → chill-lounge got rock-speed focus punches
-            // AFTER: Real PLL phase flows from Worker → Pacemaker → here → HAL
-            const halBeatPhase = beatState.pllLocked
-                ? (beatState.pllPhase ?? beatState.phase)
-                : workerBeatPhase;
-            const halBpm = workerBpm > 0 ? workerBpm : beatState.bpm;
-            const halAudioMetrics = {
-                rawBass: bass,
-                rawMid: mid,
-                rawTreble: high,
-                energy,
-                isRealSilence: false,
-                isAGCTrap: false,
-                beatPhase: halBeatPhase,
-                bpm: halBpm,
-                // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — Propagar bpmConfidence al HAL
-                // para que HarmonicQuantizer funcione universalmente en translateColorToWheel()
-                bpmConfidence: this.lastAudioData?.workerBpmConfidence ?? 0,
-            };
-            // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
-            const intent = await this.engine.update(context, engineAudioMetrics);
-            // ═══════════════════════════════════════════════════════════════════════════
-            // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
-            // Instead of sending intent directly to HAL, we now:
-            // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
-            // 2. Arbiter merges all layers (manual overrides, effects, blackout)
-            // 3. Send arbitrated result to HAL
-            // ═══════════════════════════════════════════════════════════════════════════
-            // Feed Layer 0: AI Intent
-            const titanLayer = {
-                intent,
-                timestamp: now, // ⚡ WAVE 3050: unified timestamp
-                vibeId: this.engine.getCurrentVibe(),
-                frameNumber: this.frameCount,
-            };
-            masterArbiter.setTitanIntent(titanLayer);
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectIntents injection
-            //
-            // BEFORE: Effects mutated fixtureStates AFTER HAL.renderFromTarget().
-            //   → Dual pipeline bug: UI saw effects, DMX didn't (ghost effect).
-            //
-            // NOW: EffectManager produces CombinedEffectOutput (pure function).
-            //   → Orchestrator resolves zones → fixture IDs → EffectIntentMap.
-            //   → Arbiter consumes intents as Layer 3 during arbitrate().
-            //   → HAL.renderFromTarget() sends the COMPLETE target to DMX.
-            //   → Single Source of Truth. No post-HAL mutation. Zero ghosts.
-            // ═══════════════════════════════════════════════════════════════════════
-            const effectManager = getEffectManager();
-            const effectOutput = effectManager.getCombinedOutput();
-            // Chronos protection: fixtures being painted by Chronos are off-limits
-            const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
-            if (effectOutput.hasActiveEffects) {
-                // WAVE 3190: Reutilizar buffer pre-asignado — cero new Map() por frame con effects activos
-                this._effectIntentBuf.clear();
-                const intentMap = this._effectIntentBuf;
-                // ── ZONE OVERRIDES (pinceles finos) ──────────────────────────────
-                if (effectOutput.zoneOverrides) {
-                    // WAVE 3190: for...in en lugar de Object.keys() — cero alloc de array intermedio
-                    for (const zoneId in effectOutput.zoneOverrides) {
-                        if (!Object.prototype.hasOwnProperty.call(effectOutput.zoneOverrides, zoneId))
-                            continue;
-                        const zoneData = effectOutput.zoneOverrides[zoneId];
-                        const fixtureIds = masterArbiter.getFixtureIdsByZone(zoneId);
-                        for (const fixtureId of fixtureIds) {
-                            // Skip Chronos-protected fixtures
-                            if (chronosFixtureIds.has(fixtureId))
-                                continue;
-                            // Build the effect intent for this fixture
-                            const fixtureIntent = {
-                                mixBus: effectOutput.mixBus || 'htp',
-                                globalComposition: effectOutput.globalComposition ?? 1,
-                                overrideMoverShield: effectOutput.overrideMoverShield,
-                            };
-                            // Color: HSL → RGB conversion
-                            if (zoneData.color) {
-                                const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
-                                fixtureIntent.color = rgb;
-                            }
-                            // Dimmer: convert 0-1 → 0-255
-                            if (zoneData.dimmer !== undefined) {
-                                fixtureIntent.dimmer = Math.round(zoneData.dimmer * 255);
-                            }
-                            // White/Amber: convert 0-1 → 0-255
-                            if (zoneData.white !== undefined) {
-                                fixtureIntent.white = Math.round(zoneData.white * 255);
-                            }
-                            else if (effectOutput.mixBus === 'global') {
-                                // 🛡️ WAVE 993: THE IRON CURTAIN — unspecified channels die under global bus
-                                fixtureIntent.white = 0;
-                            }
-                            if (zoneData.amber !== undefined) {
-                                fixtureIntent.amber = Math.round(zoneData.amber * 255);
-                            }
-                            else if (effectOutput.mixBus === 'global') {
-                                fixtureIntent.amber = 0;
-                            }
-                            // Movement: preserve original format for MasterArbiter
-                            if (zoneData.movement) {
-                                fixtureIntent.movement = {
-                                    pan: zoneData.movement.pan !== undefined
-                                        ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.pan * 255) : Math.round((zoneData.movement.pan - 0.5) * 255))
-                                        : undefined,
-                                    tilt: zoneData.movement.tilt !== undefined
-                                        ? (zoneData.movement.isAbsolute ? Math.round(zoneData.movement.tilt * 255) : Math.round((zoneData.movement.tilt - 0.5) * 255))
-                                        : undefined,
-                                    isAbsolute: zoneData.movement.isAbsolute,
-                                };
-                            }
-                            // Merge: if fixture already has an intent (from another zone), keep highest priority
-                            const existing = intentMap.get(fixtureId);
-                            if (existing) {
-                                // HTP merge for dimmer, LTP for color (last zone wins)
-                                if (fixtureIntent.dimmer !== undefined && existing.dimmer !== undefined) {
-                                    fixtureIntent.dimmer = Math.max(fixtureIntent.dimmer, existing.dimmer);
-                                }
-                            }
-                            intentMap.set(fixtureId, fixtureIntent);
-                        }
-                    }
-                }
-                // ── GLOBAL BROCHA GORDA (legacy: one color for all affected fixtures) ──
-                if (!effectOutput.zoneOverrides && effectOutput.dimmerOverride !== undefined) {
-                    // Determine affected fixture IDs
-                    const zones = effectOutput.zones || [];
-                    const globalComp = effectOutput.globalComposition ?? 0;
-                    // Color: use colorOverride or default dorado
-                    let color = { r: 255, g: 200, b: 80 }; // Default dorado (SolarFlare legacy)
-                    if (effectOutput.colorOverride) {
-                        color = this.hslToRgb(effectOutput.colorOverride.h, effectOutput.colorOverride.s, effectOutput.colorOverride.l);
-                    }
-                    for (let i = 0; i < this.fixtures.length; i++) {
-                        const fixture = this.fixtures[i];
-                        if (!fixture?.id)
-                            continue;
-                        if (chronosFixtureIds.has(fixture.id))
-                            continue;
-                        // Check if this fixture should be affected
-                        let shouldApply = false;
-                        if (globalComp > 0) {
-                            shouldApply = true; // globalComposition affects ALL fixtures
-                        }
-                        else if (zones.length > 0) {
-                            const fixtureZone = (fixture.zone || '').toLowerCase();
-                            const positionX = fixture.position?.x ?? 0;
-                            for (const zone of zones) {
-                                if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
-                                    shouldApply = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!shouldApply)
-                            continue;
-                        intentMap.set(fixture.id, {
-                            dimmer: Math.round(effectOutput.dimmerOverride * 255),
-                            color,
-                            mixBus: effectOutput.mixBus || 'htp',
-                            globalComposition: globalComp,
-                            overrideMoverShield: effectOutput.overrideMoverShield,
-                        });
-                    }
-                }
-                // ── MOVEMENT OVERRIDE (global fallback for all movers) ──
-                // 🚫 WAVE 2900: CHRONOS SELECTIVE SEAL — La IA tiene prohibido emitir movimiento.
-                // movementOverride proviene de Core Effects procedurales (IA/Selene).
-                // El movimiento de movers es exclusivo del usuario (Hephaestus/XY pad/manual override).
-                // Este bloque queda desactivado permanentemente.
-                // if (effectOutput.movementOverride) { ... }
-                // ═══════════════════════════════════════════════════════════════════
-                // 🎵 WAVE 2672→2720: HARMONIC QUANTIZER — MIGRADO AL HAL
-                // La cuantización armónica ahora vive en HAL.translateColorToWheel()
-                // (LA LEY UNIVERSAL DEL PÉNDULO). Toda orden de color dirigida a un
-                // fixture mecánico es cuantizada en HAL, sin importar la fuente:
-                // Titan, Chronos, Timeline, UI Manual — TODOS son gateados.
-                // El bloque de cuantización por efecto en Titan ya no es necesario.
-                // ═══════════════════════════════════════════════════════════════════
-                // Inject intents into the Arbiter BEFORE arbitration
-                masterArbiter.setEffectIntents(intentMap);
-                // Throttled telemetry
-                if (this.frameCount % 60 === 0 && intentMap.size > 0) {
-                    console.log(`[TitanOrchestrator 🎯] WAVE 2662: ${intentMap.size} effect intents injected | mixBus=${effectOutput.mixBus} | globalComp=${(effectOutput.globalComposition ?? 0).toFixed(2)}`);
-                }
-            }
-            // Arbitrate all layers (this merges manual overrides, effects, blackout)
-            const arbitratedTarget = masterArbiter.arbitrate();
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
-            // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
-            // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
-            // ═══════════════════════════════════════════════════════════════════════
-            try {
-                const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1';
-                if (traceEnabled) {
-                    const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10);
-                    const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60;
-                    if (this.frameCount % every === 0) {
-                        const traceFixtureId = process?.env?.LUXSYNC_TRACE_FIXTURE_ID
-                            ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
-                            : undefined;
-                        // const traced = traceFixtureId
-                        //   ? arbitratedTarget.fixtures.find(f => f.fixtureId === traceFixtureId)
-                        //   : null
-                        // 🔎 TRACE CP2 DISABLED: Remove this for now; keeping CP3 + CP4 for final mile forensics
-                    }
-                }
-            }
-            catch {
-                // never block the render loop
-            }
-            // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
-            // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
-            this.warlogHeartbeatFrame++;
-            if (this.warlogHeartbeatFrame >= 240) {
-                this.warlogHeartbeatFrame = 0;
-                const currentVibe = this.engine.getCurrentVibe();
-                const brainEnabled = this.useBrain;
-                const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT';
-                const bpm = context.bpm || 120;
-                // Emit heartbeat log
-                this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
-                    audioActive: this.hasRealAudio,
-                    bpm,
-                    vibe: currentVibe,
-                    brainEnabled,
-                    fixtureCount: this.fixtures.length,
-                });
-            }
-            // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
-            // 4. HAL renders arbitrated target -> produces fixture states
-            // Now using the new renderFromTarget method that accepts FinalLightingTarget
-            // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
-            // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
-            // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
-            const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
-            // ═══════════════════════════════════════════════════════════════════════
-            // � WAVE 2662: POST-HAL MUTATION ELIMINATED
-            //
-            // BEFORE (WAVE 635 → 993 → 2065): ~500 lines of zone overrides, brocha gorda,
-            // stereo movement, movement override — all mutating fixtureStates post-HAL.
-            // This was the root cause of ghost effects (WAVE 2660): UI got the mutation,
-            // DMX didn't (conditional re-send gated behind Hephaestus).
-            //
-            // NOW: Effects are injected as EffectIntents BEFORE arbitrate().
-            // The Arbiter produces a FinalLightingTarget that ALREADY includes effects.
-            // HAL.renderFromTarget() sends the COMPLETE truth to DMX.
-            // Single Source of Truth. Zero ghosts. Clean cascade.
-            //
-            // The only post-HAL mutation that remains is Hephaestus (.lfx clips),
-            // which has its own legitimate re-send path.
-            // ═══════════════════════════════════════════════════════════════════════
-            // Chronos telemetry (post-HAL, for diagnostics only)
-            const isChronosPlaying = masterArbiter.isPlaybackActive();
-            if (isChronosPlaying && this.frameCount % 300 === 1) {
-                const f0 = fixtureStates[0];
-                console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
-                    `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`);
-            }
-            // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
-            // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
-            const shouldLogToTactical = this.frameCount % 240 === 0;
-            if (shouldLogToTactical && this.hasRealAudio) {
-                const avgDimmer = fixtureStates.length > 0
-                    ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
-                    : 0;
-                const movers = fixtureStates.filter(f => f.zone.includes('MOVING'));
-                const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0;
-                const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS');
-                const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0;
-                // Send to Tactical Log
-                this.log('Visual', `🎨 P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
-                    bass, mid, high, energy,
-                    avgDimmer: avgDimmer.toFixed(0),
-                    paletteStrategy: intent.palette.strategy
-                });
-            }
-            // ═══════════════════════════════════════════════════════════════════════════
-            // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
-            // Evaluate all active .lfx clips and merge their outputs with DMX
-            // 
-            // MERGE STRATEGY:
-            //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
-            //   - Color (RGB): LTP (Hephaestus overwrites if present)
-            //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
-            //   - Strobe: Additive (sum clamped to max)
-            //
-            // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
-            // ═══════════════════════════════════════════════════════════════════════════
-            const hephRuntime = getHephaestusRuntime();
-            const hephOutputs = hephRuntime.tick(now); // ⚡ WAVE 3050: unified timestamp
-            // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
-            // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
-            // The engine runs but its output never reaches fixtures.
-            if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
-                // WAVE 3190: Reutilizar buffers pre-asignados — cero new Map() por frame
-                // 🎯 WAVE 2544.3: Separate outputs into two buckets:
-                //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
-                //   - zone bucket: output targets a zone string (tickWithPhase legacy path)
-                this._hephByFixtureId.clear();
-                this._hephByZone.clear();
-                // Limpiar arrays del pool reutilizados el frame anterior
-                for (const arr of this._hephOutputPool.values())
-                    arr.length = 0;
-                for (const output of hephOutputs) {
-                    // If fixtureId looks like a real fixture ID (not 'zone:xxx'), use fixture bucket
-                    if (output.fixtureId && !output.fixtureId.startsWith('zone:')) {
-                        let arr = this._hephByFixtureId.get(output.fixtureId);
-                        if (!arr) {
-                            // Reusar del pool o crear uno nuevo (solo en el primer clip para esta fixture)
-                            arr = this._hephOutputPool.get(output.fixtureId);
-                            if (!arr) {
-                                arr = [];
-                                this._hephOutputPool.set(output.fixtureId, arr);
-                            }
-                            this._hephByFixtureId.set(output.fixtureId, arr);
-                        }
-                        arr.push(output);
-                    }
-                    else {
-                        const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
-                        let arr = this._hephByZone.get(zoneKey);
-                        if (!arr) {
-                            arr = this._hephOutputPool.get(`zone:${zoneKey}`);
-                            if (!arr) {
-                                arr = [];
-                                this._hephOutputPool.set(`zone:${zoneKey}`, arr);
-                            }
-                            this._hephByZone.set(zoneKey, arr);
-                        }
-                        arr.push(output);
-                    }
-                }
-                // WAVE 3190: Mutation in-place — cero map()+spread() por frame
-                // Apply Hephaestus outputs to fixtures mutando f directamente.
-                // fixtureStates son objetos propios del HAL por frame — son seguros de mutar.
-                for (let index = 0; index < fixtureStates.length; index++) {
-                    const f = fixtureStates[index];
-                    // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
-                    const fixtureId = this.fixtures[index]?.id;
-                    if (fixtureId && chronosFixtureIds.has(fixtureId))
-                        continue;
-                    // Collect applicable outputs inline (sin crear array intermedio cuando posible)
-                    const directOutputs = fixtureId ? this._hephByFixtureId.get(fixtureId) : undefined;
-                    const allOutputs = this._hephByZone.get('all');
-                    // Chequear si hay algo que aplicar antes de iterar zonas
-                    const fixtureZone = (f.zone || '').toLowerCase();
-                    const positionX = this.fixtures[index]?.position?.x ?? 0;
-                    let hasAny = !!(directOutputs?.length) || !!(allOutputs?.length);
-                    if (!hasAny) {
-                        for (const [zoneKey] of this._hephByZone) {
-                            if (zoneKey === 'all')
-                                continue;
-                            if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
-                                hasAny = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!hasAny)
-                        continue;
-                    // ⚒️ WAVE 2030.21: THE TRANSLATOR — mutar f in-place
-                    // Values arrive PRE-SCALED from HephaestusRuntime. Zero scaling here.
-                    const applyOutputs = (outputs) => {
-                        for (const output of outputs) {
-                            switch (output.parameter) {
-                                case 'intensity':
-                                    f.dimmer = Math.max(f.dimmer, output.value);
-                                    break;
-                                case 'strobe':
-                                    f.strobe = Math.min(255, (f.strobe || 0) + output.value);
-                                    break;
-                                case 'pan':
-                                    f.pan = output.value;
-                                    if (output.fine !== undefined)
-                                        f.panFine = output.fine;
-                                    break;
-                                case 'tilt':
-                                    f.tilt = output.value;
-                                    if (output.fine !== undefined)
-                                        f.tiltFine = output.fine;
-                                    break;
-                                case 'color':
-                                    if (output.rgb) {
-                                        f.r = output.rgb.r;
-                                        f.g = output.rgb.g;
-                                        f.b = output.rgb.b;
-                                    }
-                                    break;
-                                case 'white':
-                                    f.white = output.value;
-                                    break;
-                                case 'amber':
-                                    f.amber = output.value;
-                                    break;
-                                case 'zoom':
-                                    f.zoom = output.value;
-                                    break;
-                                case 'focus':
-                                    f.focus = output.value;
-                                    break;
-                                case 'iris':
-                                    f.iris = output.value;
-                                    break;
-                                case 'gobo1':
-                                    f.gobo = output.value;
-                                    break;
-                                case 'gobo2':
-                                    f.gobo2 = output.value;
-                                    break;
-                                case 'prism':
-                                    f.prism = output.value;
-                                    break;
-                                // speed/width/direction/globalComp: engine-internal — no DMX channel
-                            }
-                        }
-                    };
-                    if (directOutputs)
-                        applyOutputs(directOutputs);
-                    if (allOutputs)
-                        applyOutputs(allOutputs);
-                    // Check zone-specific outputs (old zone-string path)
-                    // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support
-                    for (const [zoneKey, outputs] of this._hephByZone) {
-                        if (zoneKey === 'all')
-                            continue;
-                        if (this.fixtureMatchesZoneStereo(fixtureZone, zoneKey, positionX)) {
-                            applyOutputs(outputs);
-                        }
-                    }
-                }
-                // Throttled debug log
-                if (this.frameCount % 60 === 0) {
-                    const activeClips = hephRuntime.getStats().activeClips;
-                    console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
-                }
-            }
-            // ═══════════════════════════════════════════════════════════════════════════
-            // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
-            //
-            // WAVE 3050 introdujo un regression: sendStatesWithPhysics() mutaba los
-            // objetos fixtureStates IN-PLACE con la Aduana (zerificando dimmer/r/g/b
-            // cuando outputEnabled=false) ANTES de que el hot-frame los leyera.
-            // Resultado: HyperionView siempre negro con output OFF.
-            //
-            // Fix arquitectónico correcto:
-            //   1. applyPhysicsOnly()  → physicalPan/Tilt actualizados, SIN Aduana
-            //   2. Hot-frame + Truth   → UI lee valores reales del engine
-            //   3. flushToDriver()     → Aduana + DMX (puede zerificar, pero ya no importa)
-            //
-            // De esta forma el preview siempre refleja la realidad del engine,
-            // y la Aduana sigue siendo el único gate para el hardware físico.
-            // ═══════════════════════════════════════════════════════════════════════════
-            // ⚡ WAVE 3070: applyPhysicsOnly() eliminado — renderFromTarget() ya corrió
-            // la física (translateDMX + calibrationOffsets) internamente. Llamarlo aquí
-            // era doble-física: el mover se simulaba dos veces por frame, duplicando la
-            // velocidad aparente y produciendo jitter esquizofrénico en la UI.
-            // El pipeline correcto es: renderFromTarget (física+cálculo) → broadcast UI
-            // → flushToDriver (Aduana+send). Sin pasos intermedios redundantes.
-            // ═══════════════════════════════════════════════════════════════════════
-            // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (22Hz) + Full Truth (~7Hz)
-            //
-            // Hot Frame: Every HOT_FRAME_DIVIDER ticks (22Hz). Carries fixture dynamic data.
-            //   → Frontend → RenderWorker → HyperionView preview.
-            //   → Lightweight: fixtures array + beat + frame number.
-            //
-            // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz).
-            //   → Full SeleneTruth. Feeds React stores, HUD, audio meters, etc.
-            //
-            // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
-            // full truth at full rate (44fps) since Cinema needs complete data.
-            //
-            // ⚡ WAVE 3065: Broadcast happens BEFORE flushToDriver() so the Aduana
-            // never pollutes the UI data with DMX gate zeros.
-            // ═══════════════════════════════════════════════════════════════════════
-            // 👻 Chronos bypass check
-            const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false;
-            const shouldBroadcastFullTruth = chronosPlaying || (this.frameCount % TitanOrchestrator.TRUTH_BROADCAST_DIVIDER === 0);
-            // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
-            if (!chronosPlaying) {
-                for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
-                    const _f = fixtureStates[_pi];
-                    const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
-                    const _prev = this.peakHoldMap.get(_id) ?? 0;
-                    if (_f.dimmer > _prev)
-                        this.peakHoldMap.set(_id, _f.dimmer);
-                }
-            }
-            // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (22Hz) ────────────────────────
-            // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
-            // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
-            if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
-                // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
-                const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
-                const hotFrame = {
-                    frameNumber: this.frameCount,
-                    timestamp: now, // ⚡ WAVE 3050: unified timestamp
-                    onBeat: engineAudioMetrics.isBeat,
-                    beatConfidence: engineAudioMetrics.beatConfidence,
-                    bpm: engineAudioMetrics.bpm,
-                    // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (22Hz)
-                    // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
-                    // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
-                    // Ahora viajan a 22Hz — el smoothstep del frontend interpola a 60fps.
-                    bass,
-                    mid,
-                    high,
-                    energy,
-                    // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
-                    ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
-                    activeAudioSource: matrixStatus?.activeSource ?? null,
-                    fixtures: fixtureStates.map((f, i) => {
-                        const originalFixture = this.fixtures[i];
-                        const realId = originalFixture?.id || `fix_${i}`;
-                        return {
-                            id: realId,
-                            dimmer: f.dimmer / 255,
-                            r: Math.round(f.r),
-                            g: Math.round(f.g),
-                            b: Math.round(f.b),
-                            white: Math.round(f.white ?? 0),
-                            amber: Math.round(f.amber ?? 0),
-                            pan: f.pan / 255,
-                            tilt: f.tilt / 255,
-                            zoom: f.zoom,
-                            focus: f.focus,
-                            physicalPan: (f.physicalPan ?? f.pan) / 255,
-                            physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
-                            panVelocity: f.panVelocity ?? 0,
-                            tiltVelocity: f.tiltVelocity ?? 0,
-                        };
-                    })
-                };
-                this.onHotFrame(hotFrame);
-            }
-            // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
-            this.hal.flushToDriver(fixtureStates);
-            // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
-            // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.
-            // El broadcast UI siempre recibe los valores reales del engine.
-            // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) ────────
-            if (this.onBroadcast && shouldBroadcastFullTruth) {
-                const currentVibe = this.engine.getCurrentVibe();
-                // Build a valid SeleneTruth structure
-                const truth = {
-                    system: {
-                        frameNumber: this.frameCount,
-                        timestamp: now, // ⚡ WAVE 3050: unified timestamp
-                        deltaTime: 23,
-                        targetFPS: 44,
-                        actualFPS: 44,
-                        mode: this.mode === 'auto' ? 'selene' : 'manual',
-                        vibe: currentVibe,
-                        brainStatus: 'peaceful',
-                        uptime: this.frameCount * 23,
-                        titanEnabled: true,
-                        sessionId: 'titan-2.0',
-                        version: '2.0.0',
-                        performance: {
-                            audioProcessingMs: 0,
-                            brainProcessingMs: 0,
-                            colorEngineMs: 0,
-                            dmxOutputMs: 0,
-                            totalFrameMs: 0
-                        }
-                    },
-                    sensory: {
-                        audio: {
-                            energy,
-                            peak: energy,
-                            average: energy * 0.8,
-                            bass,
-                            mid,
-                            high,
-                            spectralCentroid: 0,
-                            spectralFlux: 0,
-                            zeroCrossingRate: 0
-                        },
-                        fft: this.EMPTY_FFT_BUFFER,
-                        beat: {
-                            onBeat: engineAudioMetrics.isBeat,
-                            confidence: engineAudioMetrics.beatConfidence,
-                            bpm: engineAudioMetrics.bpm, // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
-                            beatPhase: engineAudioMetrics.beatPhase, // 🕰️ WAVE 2090.3: PLL-driven phase
-                            barPhase: 0,
-                            timeSinceLastBeat: 0
-                        },
-                        input: {
-                            gain: this.inputGain,
-                            device: 'Microphone',
-                            active: this.hasRealAudio,
-                            isClipping: false
-                        },
-                        // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
-                        spectrumBands: {
-                            subBass: this.smoothedMetrics.subBass,
-                            bass: bass, // Use the already available bass from engineAudioMetrics
-                            lowMid: this.smoothedMetrics.lowMid,
-                            mid: mid, // Use the already available mid from engineAudioMetrics
-                            highMid: this.smoothedMetrics.highMid,
-                            treble: high * 0.8, // Approximate from high
-                            ultraAir: high * 0.3, // Approximate ultra-high from high
-                            dominant: bass > mid && bass > high ? 'bass' :
-                                mid > bass && mid > high ? 'mid' : 'treble',
-                            flux: Math.abs((this.lastAudioData.energy || 0) - energy)
-                        }
-                    },
-                    // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
-                    // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
-                    // 🔌 WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
-                    consciousness: {
-                        ...createDefaultCognitive(),
-                        stableEmotion: this.engine.getStableEmotion(),
-                        thermalTemperature: this.engine.getThermalTemperature(),
-                        ai: this.engine.getConsciousnessTelemetry(),
-                        // 🔌 WAVE 1175: Vibe activo REAL (no el default 'idle')
-                        vibe: {
-                            active: currentVibe,
-                            transitioning: false // TODO: implementar transición real
-                        }
-                    },
-                    // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
-                    // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
-                    // el contexto que ya obtuvimos de brain.getCurrentContext()
-                    context: {
-                        key: context.key,
-                        mode: context.mode,
-                        bpm: context.bpm,
-                        beatPhase: context.beatPhase,
-                        syncopation: context.syncopation,
-                        section: context.section,
-                        energy: context.energy,
-                        mood: context.mood,
-                        genre: context.genre,
-                        confidence: context.confidence,
-                        timestamp: context.timestamp
-                    },
-                    intent: {
-                        palette: intent.palette,
-                        masterIntensity: intent.masterIntensity,
-                        zones: intent.zones,
-                        movement: intent.movement,
-                        effects: intent.effects,
-                        source: 'procedural',
-                        timestamp: now // ⚡ WAVE 3050: unified timestamp
-                    },
-                    hardware: {
-                        dmx: {
-                            connected: true,
-                            driver: 'none',
-                            universe: 0, // 🔥 WAVE 1219: ArtNet 0-indexed
-                            frameRate: 30,
-                            port: null
-                        },
-                        dmxOutput: DMX_OUTPUT_ZEROS,
-                        fixturesActive: fixtureStates.reduce((count, f) => count + (f.dimmer > 0 ? 1 : 0), 0),
-                        fixturesTotal: fixtureStates.length,
-                        // Map HAL FixtureState to Protocol FixtureState
-                        // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
-                        // WAVE 256.7: Map zone names for StageSimulator2 compatibility
-                        fixtures: fixtureStates.map((f, i) => {
-                            // \ud83d\udd27 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
-                            // \u26a1 WAVE 3050: ZONE_MAP is now a module-level constant (was per-fixture per-frame)
-                            const mappedZone = ZONE_MAP[f.zone] || f.zone || 'center';
-                            // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
-                            // This is critical for runtimeStateMap matching in StageSimulator2
-                            const originalFixture = this.fixtures[i];
-                            const realId = originalFixture?.id || `fix_${i}`;
-                            // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
-                            // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
-                            // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
-                            // 👻 WAVE 2540.7: Skip peak hold during Chronos — every frame is broadcast,
-                            // no skipped frames means no peaks to accumulate.
-                            let broadcastDimmer;
-                            if (chronosPlaying) {
-                                broadcastDimmer = f.dimmer;
-                            }
-                            else {
-                                const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
-                                broadcastDimmer = Math.max(f.dimmer, peakDimmer);
-                                this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
-                            }
-                            return {
-                                id: realId,
-                                name: f.name,
-                                type: f.type,
-                                zone: mappedZone,
-                                dmxAddress: f.dmxAddress,
-                                universe: f.universe,
-                                dimmer: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
-                                intensity: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
-                                color: {
-                                    r: Math.round(f.r), // Keep 0-255 for RGB
-                                    g: Math.round(f.g),
-                                    b: Math.round(f.b)
-                                },
-                                pan: f.pan / 255, // Normalize 0-255 → 0-1
-                                tilt: f.tilt / 255, // Normalize 0-255 → 0-1
-                                // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
-                                zoom: f.zoom, // 0-255 DMX
-                                focus: f.focus, // 0-255 DMX
-                                // ⚒️ WAVE 2030.22g: Extended LED channels
-                                white: f.white ?? 0, // 0-255 DMX
-                                amber: f.amber ?? 0, // 0-255 DMX
-                                // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
-                                physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 → 0-1
-                                physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
-                                panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
-                                tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
-                                online: true,
-                                active: f.dimmer > 0,
-                                // 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — Robust profileId cascade
-                                // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
-                                // NEVER let profileId be undefined — the ExtrasSection IPC depends on it
-                                profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
-                            };
-                        })
-                    },
-                    timestamp: now // ⚡ WAVE 3050: unified timestamp
-                };
-                this.onBroadcast(truth);
-                // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
-                // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
-                // Log cada 2 segundos (60 frames @ 30fps)
-                // if (this.frameCount % 60 === 0) {
-                //   console.log(
-                //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
-                //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
-                //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
-                //   )
-                // }
-            }
-            // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
-            // Log every second
-            // if (shouldLog && this.config.debug) {
-            //   const currentVibe = this.engine.getCurrentVibe()
-            //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
-            // }
-            // WAVE 3401: OSC State Publisher -- broadcast current state every 3 frames (~12Hz)
-            // Low-frequency broadcast avoids flooding the network while keeping external
-            // VJ/lighting software in sync with LuxSync's musical analysis.
-            if (this.oscProvider && this.frameCount % 3 === 0) {
-                const currentVibe = this.engine?.getCurrentVibe() ?? 'idle';
-                this.oscProvider.publishState({
-                    vibe: currentVibe,
-                    energy,
-                    bpm: context.bpm,
-                    onBeat: beatState.onBeat,
-                    section: context.section?.type ?? 'unknown',
-                    bands: [
-                        bass,
-                        this.smoothedMetrics.subBass ?? 0,
-                        this.smoothedMetrics.lowMid ?? 0,
-                        mid,
-                        this.smoothedMetrics.highMid ?? 0,
-                        high,
-                        this.smoothedMetrics.spectralCentroid ?? 0,
-                    ]
-                });
+            if (this.frameCount % 60 === 0) {
+                const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
+                const syncInfo = this.syncSmoother.currentSyncopation.toFixed(2);
+                const _framesSinceLog = this.frameCount - this.lastStableWorkerBpmFrame;
+                const freewheelTag = (!beatState.pllLocked && this.lastStableWorkerBpm > 0 && _framesSinceLog <= this.FREEWHEEL_TIMEOUT_FRAMES)
+                    ? ` [mem=${this.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
+                    : '';
+                const rawEnergy = (this.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
+                const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
+                // 🔬 WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
+                const inputPeak = (this.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
+                const inputRms = (this.lastAudioData.inputRMS ?? 0).toFixed(5);
+                console.log(`[TitanOrchestrator] 🎧 WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | 🔬in_peak=${inputPeak} in_rms=${inputRms}`);
             }
         }
-        finally {
-            // 🔒 WAVE 2211: ALWAYS release the guard, even if processFrame() throws
-            this.isProcessingFrame = false;
+        else if (this.beatDetector) {
+            // WAVE 2090.3: THE FLYWHEEL - tick even without audio
+            // The metronome keeps spinning on inertia (freewheel mode)
+            beatState = this.beatDetector.tick(now); // ⚡ WAVE 3050: unified timestamp
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        //  WAVE 2112: BRIDGE REVERSED — Worker no longer needs SET_BPM
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔥 rBPM INJECTION — cadena de prioridad con freewheel memory (WAVE 2179)
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Priority chain:
+        //   1. Worker activo (conf > 0.2)         → BPM del Worker (verdad física)
+        //   2. Worker sordo + memoria reciente    → último BPM estable (inercia)
+        //   3. Sin memoria / timeout expirado     → Pacemaker interno (último recurso)
+        // ═══════════════════════════════════════════════════════════════════════════
+        const _framesSinceStable = this.frameCount - this.lastStableWorkerBpmFrame;
+        const hasFreewheelMemory = this.lastStableWorkerBpm > 0 && _framesSinceStable <= this.FREEWHEEL_TIMEOUT_FRAMES;
+        if (workerBpm > 0 && workerConfidence > 0.2) {
+            // Priority 1: Worker activo
+            context.bpm = workerBpm;
+            context.beatPhase = beatState.pllLocked
+                ? (beatState.pllPhase ?? beatState.phase)
+                : workerBeatPhase;
+            context.syncopation = this.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid);
+        }
+        else if (hasFreewheelMemory) {
+            // 🔥 WAVE 2179: Priority 2 — FREEWHEEL MEMORY
+            // Las luces no se enteran del break. El show continúa en el BPM real.
+            context.bpm = this.lastStableWorkerBpm;
+            context.beatPhase = beatState.pllPhase ?? beatState.phase;
+            context.syncopation = this.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid);
+        }
+        else if (beatState.bpm > 0 && beatState.confidence > 0) {
+            // Priority 3: Pacemaker interno (cuando no hay ningún recuerdo del Worker)
+            context.bpm = beatState.bpm;
+            context.beatPhase = beatState.pllPhase ?? beatState.phase;
+            context.syncopation = this.syncSmoother.estimateSyncopation(beatState.pllPhase ?? beatState.phase, bass, mid);
+        }
+        // For TitanEngine
+        // 🎛️ WAVE 661: Incluir textura espectral
+        // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
+        // ❤️ WAVE 1153: beatPhase/isBeat/beatCount FROM REAL PACEMAKER
+        // � WAVE 2112: THE RESURRECTION — Worker BPM + PLL phase + Worker transients
+        const engineAudioMetrics = {
+            bass, // Ya normalizado por AGC - INTOCABLE
+            mid, // Ya normalizado por AGC - INTOCABLE
+            high, // Ya normalizado por AGC - INTOCABLE
+            energy, // Ya normalizado por AGC - INTOCABLE
+            // 🔥 WAVE 2112: BPM from Worker (authority), phase from PLL (smooth prediction)
+            beatPhase: beatState.pllLocked ? (beatState.pllPhase ?? beatState.phase) : workerBeatPhase,
+            // 🛡️ WAVE 2512 FIX 3: IBeat Silence Guard
+            // PLL onBeat only propagates as isBeat if the PLL is locked (has real evidence).
+            // Redundancy layer: FIX 1 already silences beatState.onBeat in freewheel,
+            // but this guard ensures the merge logic itself is architecturally correct.
+            isBeat: workerOnBeat || (beatState.pllLocked && beatState.onBeat),
+            // 🥁 WAVE 2213: beatCount RECONNECTED — Worker kickCount is the real monotonic counter.
+            // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
+            // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
+            beatCount: this.lastAudioData.workerKickCount ?? beatState.beatCount,
+            bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
+            beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
+            // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS (WAVE 3504.5: via SyncSmoother)
+            harshness: this.syncSmoother.currentSmoothed.harshness,
+            spectralFlatness: this.syncSmoother.currentSmoothed.spectralFlatness,
+            spectralCentroid: this.syncSmoother.currentSmoothed.spectralCentroid,
+            // 💥 WAVE 2352: crestFactor RAW para physics engines - los transitorios de kick NO se suavizan
+            // El EMA destruye el pico que diferencia un bombo de un rolling bass
+            crestFactor: this.lastAudioData.crestFactor ?? this.syncSmoother.currentSmoothed.crestFactor,
+            // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
+            subBass: this.syncSmoother.currentSmoothed.subBass,
+            lowMid: this.syncSmoother.currentSmoothed.lowMid,
+            highMid: this.syncSmoother.currentSmoothed.highMid,
+            // 🔥 WAVE 2112: Transients from Worker (fresh FFT) — Pacemaker no longer detects kicks
+            // 🛡️ WAVE 2512 FIX 2: Kick Signal Veto in Freewheel
+            // kickDetected only fires if Worker directly detected OR PLL has a real lock.
+            // Prevents phantom Pacemaker kicks from polluting physics engines (LiquidEngineBase isKick).
+            kickDetected: workerOnBeat || (beatState.pllLocked && this.lastAudioData.kickDetected),
+            snareDetected: this.lastAudioData.snareDetected,
+            hihatDetected: this.lastAudioData.hihatDetected,
+            // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME — PLL beat prediction
+            isPLLBeat: beatState.pllOnBeat,
+        };
+        // For HAL
+        // 🎵 WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
+        // BEFORE: HAL calculated its own fake beatPhase from hardcoded 120 BPM
+        // → optics pulsed at constant 2Hz regardless of actual music tempo
+        // → chill-lounge got rock-speed focus punches
+        // AFTER: Real PLL phase flows from Worker → Pacemaker → here → HAL
+        const halBeatPhase = beatState.pllLocked
+            ? (beatState.pllPhase ?? beatState.phase)
+            : workerBeatPhase;
+        const halBpm = workerBpm > 0 ? workerBpm : beatState.bpm;
+        const halAudioMetrics = {
+            rawBass: bass,
+            rawMid: mid,
+            rawTreble: high,
+            energy,
+            isRealSilence: false,
+            isAGCTrap: false,
+            beatPhase: halBeatPhase,
+            bpm: halBpm,
+            // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — Propagar bpmConfidence al HAL
+            // para que HarmonicQuantizer funcione universalmente en translateColorToWheel()
+            bpmConfidence: this.lastAudioData?.workerBpmConfidence ?? 0,
+        };
+        // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
+        const intent = await this.engine.update(context, engineAudioMetrics);
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
+        // Instead of sending intent directly to HAL, we now:
+        // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
+        // 2. Arbiter merges all layers (manual overrides, effects, blackout)
+        // 3. Send arbitrated result to HAL
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Feed Layer 0: AI Intent
+        const titanLayer = {
+            intent,
+            timestamp: now, // ⚡ WAVE 3050: unified timestamp
+            vibeId: this.engine.getCurrentVibe(),
+            frameNumber: this.frameCount,
+        };
+        masterArbiter.setTitanIntent(titanLayer);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectIntents injection
+        //
+        // BEFORE: Effects mutated fixtureStates AFTER HAL.renderFromTarget().
+        //   → Dual pipeline bug: UI saw effects, DMX didn't (ghost effect).
+        //
+        // NOW: EffectManager produces CombinedEffectOutput (pure function).
+        //   → Orchestrator resolves zones → fixture IDs → EffectIntentMap.
+        //   → Arbiter consumes intents as Layer 3 during arbitrate().
+        //   → HAL.renderFromTarget() sends the COMPLETE target to DMX.
+        //   → Single Source of Truth. No post-HAL mutation. Zero ghosts.
+        // ═══════════════════════════════════════════════════════════════════════
+        const effectManager = getEffectManager();
+        const effectOutput = effectManager.getCombinedOutput();
+        // Chronos protection: fixtures being painted by Chronos are off-limits
+        const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
+        if (effectOutput.hasActiveEffects) {
+            // ⚡ WAVE 3504.5: Delegated to IntentComposer (pure module extracted from monolith)
+            // Pre-allocated _effectIntentBuf passed as outMap → zero new Map() per frame.
+            this._effectIntentBuf.clear();
+            const { intentMap } = this.intentComposer.compose(effectOutput, this.fixtures, chronosFixtureIds, this._effectIntentBuf);
+            // Inject intents into the Arbiter BEFORE arbitration
+            masterArbiter.setEffectIntents(intentMap);
+            // Throttled telemetry
+            if (this.frameCount % 60 === 0 && intentMap.size > 0) {
+                console.log(`[TitanOrchestrator 🎯] WAVE 2662: ${intentMap.size} effect intents injected | mixBus=${effectOutput.mixBus} | globalComp=${(effectOutput.globalComposition ?? 0).toFixed(2)}`);
+            }
+        }
+        // Arbitrate all layers (this merges manual overrides, effects, blackout)
+        const arbitratedTarget = masterArbiter.arbitrate();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
+        // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
+        // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+            const traceEnabled = String(process?.env?.LUXSYNC_TRACE_DMX ?? '') === '1';
+            if (traceEnabled) {
+                const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10);
+                const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60;
+                if (this.frameCount % every === 0) {
+                    const traceFixtureId = process?.env?.LUXSYNC_TRACE_FIXTURE_ID
+                        ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
+                        : undefined;
+                    // const traced = traceFixtureId
+                    //   ? arbitratedTarget.fixtures.find(f => f.fixtureId === traceFixtureId)
+                    //   : null
+                    // 🔎 TRACE CP2 DISABLED: Remove this for now; keeping CP3 + CP4 for final mile forensics
+                }
+            }
+        }
+        catch {
+            // never block the render loop
+        }
+        // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
+        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+        this.warlogHeartbeatFrame++;
+        if (this.warlogHeartbeatFrame >= 240) {
+            this.warlogHeartbeatFrame = 0;
+            const currentVibe = this.engine.getCurrentVibe();
+            const brainEnabled = this.useBrain;
+            const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT';
+            const bpm = context.bpm || 120;
+            // Emit heartbeat log
+            this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
+                audioActive: this.hasRealAudio,
+                bpm,
+                vibe: currentVibe,
+                brainEnabled,
+                fixtureCount: this.fixtures.length,
+            });
+        }
+        // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
+        // 4. HAL renders arbitrated target -> produces fixture states
+        // Now using the new renderFromTarget method that accepts FinalLightingTarget
+        // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
+        // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
+        // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
+        const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
+        // ═══════════════════════════════════════════════════════════════════════
+        // � WAVE 2662: POST-HAL MUTATION ELIMINATED
+        //
+        // BEFORE (WAVE 635 → 993 → 2065): ~500 lines of zone overrides, brocha gorda,
+        // stereo movement, movement override — all mutating fixtureStates post-HAL.
+        // This was the root cause of ghost effects (WAVE 2660): UI got the mutation,
+        // DMX didn't (conditional re-send gated behind Hephaestus).
+        //
+        // NOW: Effects are injected as EffectIntents BEFORE arbitrate().
+        // The Arbiter produces a FinalLightingTarget that ALREADY includes effects.
+        // HAL.renderFromTarget() sends the COMPLETE truth to DMX.
+        // Single Source of Truth. Zero ghosts. Clean cascade.
+        //
+        // The only post-HAL mutation that remains is Hephaestus (.lfx clips),
+        // which has its own legitimate re-send path.
+        // ═══════════════════════════════════════════════════════════════════════
+        // Chronos telemetry (post-HAL, for diagnostics only)
+        const isChronosPlaying = masterArbiter.isPlaybackActive();
+        if (isChronosPlaying && this.frameCount % 300 === 1) {
+            const f0 = fixtureStates[0];
+            console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
+                `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`);
+        }
+        // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
+        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+        const shouldLogToTactical = this.frameCount % 240 === 0;
+        if (shouldLogToTactical && this.hasRealAudio) {
+            const avgDimmer = fixtureStates.length > 0
+                ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
+                : 0;
+            const movers = fixtureStates.filter(f => f.zone.includes('MOVING'));
+            const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0;
+            const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS');
+            const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0;
+            // Send to Tactical Log
+            this.log('Visual', `🎨 P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
+                bass, mid, high, energy,
+                avgDimmer: avgDimmer.toFixed(0),
+                paletteStrategy: intent.palette.strategy
+            });
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
+        // Evaluate all active .lfx clips and merge their outputs with DMX
+        // 
+        // MERGE STRATEGY:
+        //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
+        //   - Color (RGB): LTP (Hephaestus overwrites if present)
+        //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
+        //   - Strobe: Additive (sum clamped to max)
+        //
+        // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const hephRuntime = getHephaestusRuntime();
+        const hephOutputs = hephRuntime.tick(now); // ⚡ WAVE 3050: unified timestamp
+        // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — Hephaestus DMX Gate
+        // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
+        // The engine runs but its output never reaches fixtures.
+        if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
+            // WAVE 3190: Reutilizar buffers pre-asignados — cero new Map() por frame
+            // 🎯 WAVE 2544.3: Separate outputs into two buckets:
+            //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
+            //   - zone bucket: output targets a zone string (tickWithPhase legacy path)
+            this._hephByFixtureId.clear();
+            this._hephByZone.clear();
+            // Limpiar arrays del pool reutilizados el frame anterior
+            for (const arr of this._hephOutputPool.values())
+                arr.length = 0;
+            for (const output of hephOutputs) {
+                // If fixtureId looks like a real fixture ID (not 'zone:xxx'), use fixture bucket
+                if (output.fixtureId && !output.fixtureId.startsWith('zone:')) {
+                    let arr = this._hephByFixtureId.get(output.fixtureId);
+                    if (!arr) {
+                        // Reusar del pool o crear uno nuevo (solo en el primer clip para esta fixture)
+                        arr = this._hephOutputPool.get(output.fixtureId);
+                        if (!arr) {
+                            arr = [];
+                            this._hephOutputPool.set(output.fixtureId, arr);
+                        }
+                        this._hephByFixtureId.set(output.fixtureId, arr);
+                    }
+                    arr.push(output);
+                }
+                else {
+                    const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
+                    let arr = this._hephByZone.get(zoneKey);
+                    if (!arr) {
+                        arr = this._hephOutputPool.get(`zone:${zoneKey}`);
+                        if (!arr) {
+                            arr = [];
+                            this._hephOutputPool.set(`zone:${zoneKey}`, arr);
+                        }
+                        this._hephByZone.set(zoneKey, arr);
+                    }
+                    arr.push(output);
+                }
+            }
+            // WAVE 3190: Mutation in-place — cero map()+spread() por frame
+            // Apply Hephaestus outputs to fixtures mutando f directamente.
+            // fixtureStates son objetos propios del HAL por frame — son seguros de mutar.
+            for (let index = 0; index < fixtureStates.length; index++) {
+                const f = fixtureStates[index];
+                // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+                const fixtureId = this.fixtures[index]?.id;
+                if (fixtureId && chronosFixtureIds.has(fixtureId))
+                    continue;
+                // WAVE 3521: Skip fixtures registered in Aether NodeGraph (handled by HephaestusAetherAdapter L3+)
+                if (fixtureId && this._aetherGraph.getDeviceNodes(fixtureId).length > 0)
+                    continue;
+                // Collect applicable outputs inline (sin crear array intermedio cuando posible)
+                const directOutputs = fixtureId ? this._hephByFixtureId.get(fixtureId) : undefined;
+                const allOutputs = this._hephByZone.get('all');
+                // Chequear si hay algo que aplicar antes de iterar zonas
+                const fixtureZone = (f.zone || '').toLowerCase();
+                const positionX = this.fixtures[index]?.position?.x ?? 0;
+                let hasAny = !!(directOutputs?.length) || !!(allOutputs?.length);
+                if (!hasAny) {
+                    for (const [zoneKey] of this._hephByZone) {
+                        if (zoneKey === 'all')
+                            continue;
+                        if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) {
+                            hasAny = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasAny)
+                    continue;
+                // ⚒️ WAVE 2030.21: THE TRANSLATOR — mutar f in-place
+                // Values arrive PRE-SCALED from HephaestusRuntime. Zero scaling here.
+                const applyOutputs = (outputs) => {
+                    for (const output of outputs) {
+                        switch (output.parameter) {
+                            case 'intensity':
+                                f.dimmer = Math.max(f.dimmer, output.value);
+                                break;
+                            case 'strobe':
+                                f.strobe = Math.min(255, (f.strobe || 0) + output.value);
+                                break;
+                            case 'pan':
+                                f.pan = output.value;
+                                if (output.fine !== undefined)
+                                    f.panFine = output.fine;
+                                break;
+                            case 'tilt':
+                                f.tilt = output.value;
+                                if (output.fine !== undefined)
+                                    f.tiltFine = output.fine;
+                                break;
+                            case 'color':
+                                if (output.rgb) {
+                                    f.r = output.rgb.r;
+                                    f.g = output.rgb.g;
+                                    f.b = output.rgb.b;
+                                }
+                                break;
+                            case 'white':
+                                f.white = output.value;
+                                break;
+                            case 'amber':
+                                f.amber = output.value;
+                                break;
+                            case 'zoom':
+                                f.zoom = output.value;
+                                break;
+                            case 'focus':
+                                f.focus = output.value;
+                                break;
+                            case 'iris':
+                                f.iris = output.value;
+                                break;
+                            case 'gobo1':
+                                f.gobo = output.value;
+                                break;
+                            case 'gobo2':
+                                f.gobo2 = output.value;
+                                break;
+                            case 'prism':
+                                f.prism = output.value;
+                                break;
+                            // speed/width/direction/globalComp: engine-internal — no DMX channel
+                        }
+                    }
+                };
+                if (directOutputs)
+                    applyOutputs(directOutputs);
+                if (allOutputs)
+                    applyOutputs(allOutputs);
+                // Check zone-specific outputs (old zone-string path)
+                // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support
+                for (const [zoneKey, outputs] of this._hephByZone) {
+                    if (zoneKey === 'all')
+                        continue;
+                    if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) {
+                        applyOutputs(outputs);
+                    }
+                }
+            }
+            // Throttled debug log
+            if (this.frameCount % 60 === 0) {
+                const activeClips = hephRuntime.getStats().activeClips;
+                console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ⚡ WAVE 3065: PHYSICS-FIRST, UI-BEFORE-ADUANA
+        //
+        // WAVE 3050 introdujo un regression: sendStatesWithPhysics() mutaba los
+        // objetos fixtureStates IN-PLACE con la Aduana (zerificando dimmer/r/g/b
+        // cuando outputEnabled=false) ANTES de que el hot-frame los leyera.
+        // Resultado: HyperionView siempre negro con output OFF.
+        //
+        // Fix arquitectónico correcto:
+        //   1. applyPhysicsOnly()  → physicalPan/Tilt actualizados, SIN Aduana
+        //   2. Hot-frame + Truth   → UI lee valores reales del engine
+        //   3. flushToDriver()     → Aduana + DMX (puede zerificar, pero ya no importa)
+        //
+        // De esta forma el preview siempre refleja la realidad del engine,
+        // y la Aduana sigue siendo el único gate para el hardware físico.
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ⚡ WAVE 3070: applyPhysicsOnly() eliminado — renderFromTarget() ya corrió
+        // la física (translateDMX + calibrationOffsets) internamente. Llamarlo aquí
+        // era doble-física: el mover se simulaba dos veces por frame, duplicando la
+        // velocidad aparente y produciendo jitter esquizofrénico en la UI.
+        // El pipeline correcto es: renderFromTarget (física+cálculo) → broadcast UI
+        // → flushToDriver (Aduana+send). Sin pasos intermedios redundantes.
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⚡ WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (22Hz) + Full Truth (~7Hz)
+        //
+        // Hot Frame: Every HOT_FRAME_DIVIDER ticks (22Hz). Carries fixture dynamic data.
+        //   → Frontend → RenderWorker → HyperionView preview.
+        //   → Lightweight: fixtures array + beat + frame number.
+        //
+        // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz).
+        //   → Full SeleneTruth. Feeds React stores, HUD, audio meters, etc.
+        //
+        // 👻 WAVE 2540.7: CHRONOS BYPASS — During Chronos playback, broadcast
+        // full truth at full rate (44fps) since Cinema needs complete data.
+        //
+        // ⚡ WAVE 3065: Broadcast happens BEFORE flushToDriver() so the Aduana
+        // never pollutes the UI data with DMX gate zeros.
+        // ═══════════════════════════════════════════════════════════════════════
+        // 👻 Chronos bypass check
+        const chronosPlaying = this.engine?.isChronosPlaybackActive() ?? false;
+        const shouldBroadcastFullTruth = chronosPlaying || (this.frameCount % TitanOrchestrator.TRUTH_BROADCAST_DIVIDER === 0);
+        // ⚡ WAVE 2464: PEAK HOLD — Acumula picos entre full truth broadcasts
+        if (!chronosPlaying) {
+            for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
+                const _f = fixtureStates[_pi];
+                const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
+                const _prev = this.peakHoldMap.get(_id) ?? 0;
+                if (_f.dimmer > _prev)
+                    this.peakHoldMap.set(_id, _f.dimmer);
+            }
+        }
+        // 🎭 WAVE 4559: THE MIRROR — Proyectar estado Aether → FixtureState[] para UI
+        // Corre ANTES del hot-frame broadcast: la UI ve datos Aether en el mismo tick.
+        if (this._aetherHasDevices) {
+            this._aetherUIProjector.project(fixtureStates, this._aetherGraph);
+        }
+        // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ────────────────────────
+        // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+        // ⚡ WAVE 4559: Overclock → 44Hz. Strobe y flash sin frame-skip al canvas.
+        // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
+        if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
+            // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
+            const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
+            const hotFrame = {
+                frameNumber: this.frameCount,
+                timestamp: now, // ⚡ WAVE 3050: unified timestamp
+                onBeat: engineAudioMetrics.isBeat,
+                beatConfidence: engineAudioMetrics.beatConfidence,
+                bpm: engineAudioMetrics.bpm,
+                // 🎵 WAVE 3250: UNLEASH THE SPECTRUM — Audio bands en hot-frame (44Hz)
+                // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
+                // AudioSpectrumTitan leía el MISMO valor 8-9 frames seguidos → escalones.
+                // Ahora viajan a 44Hz — el smoothstep del frontend interpola a 60fps.
+                bass,
+                mid,
+                high,
+                energy,
+                // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
+                ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
+                activeAudioSource: matrixStatus?.activeSource ?? null,
+                fixtures: fixtureStates.map((f, i) => {
+                    const originalFixture = this.fixtures[i];
+                    const realId = originalFixture?.id || `fix_${i}`;
+                    return {
+                        id: realId,
+                        dimmer: f.dimmer / 255,
+                        r: Math.round(f.r),
+                        g: Math.round(f.g),
+                        b: Math.round(f.b),
+                        white: Math.round(f.white ?? 0),
+                        amber: Math.round(f.amber ?? 0),
+                        pan: f.pan / 255,
+                        tilt: f.tilt / 255,
+                        zoom: f.zoom,
+                        focus: f.focus,
+                        physicalPan: (f.physicalPan ?? f.pan) / 255,
+                        physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
+                        panVelocity: f.panVelocity ?? 0,
+                        tiltVelocity: f.tiltVelocity ?? 0,
+                    };
+                })
+            };
+            this.onHotFrame(hotFrame);
+        }
+        // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
+        this.hal.flushToDriver(fixtureStates);
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⚛️ WAVE 3505.4: AETHER MATRIX — V2 Agnostic Engine Pipeline
+        //
+        // Corre DESPUÉS del pipeline legacy para no interferir con él.
+        // El _aetherBus recibe intents de los Systems en una versión futura.
+        // Por ahora el NodeArbiter arbitrará lo que tenga (vacío = paquetes default).
+        // El pipeline está listo para que cada System inyecte sus intents.
+        //
+        // Zero-alloc: los buffers Uint8Array son propiedad del NodeResolver.
+        // Se envían al driver por referencia directa (zero-copy al hardware).
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this._aetherHasDevices && this.hal) {
+            const aetherArbiter = this._aetherArbiter;
+            const aetherResolver = this._aetherResolver;
+            const colorAdapter = this._colorAdapter;
+            const kineticAdapter = this._kineticAdapter;
+            const beamAdapter = this._beamAdapter;
+            const atmosphereAdapter = this._atmosphereAdapter;
+            const liquidAetherAdapter = this._liquidAetherAdapter;
+            const seleneAetherAdapter = this._seleneAetherAdapter;
+            if (!aetherArbiter ||
+                !aetherResolver ||
+                !colorAdapter ||
+                !kineticAdapter ||
+                !beamAdapter ||
+                !atmosphereAdapter ||
+                !liquidAetherAdapter ||
+                !seleneAetherAdapter) {
+                // Lazy-init safety guard: si la matriz no existe todavía, salimos sin tocar el pipeline legacy.
+            }
+            else {
+                // ── WAVE 3516.2: Construir FrameContext in-place (cero alloc) ──────────
+                // Mutar los campos del objeto pre-allocado en lugar de crear uno nuevo.
+                // AudioMetrics: mapear bandas del SyncSmoother al vocabulario de Aether.
+                const _sm = this.syncSmoother.currentSmoothed;
+                const _a = this._aetherAudio;
+                _a.subBass = _sm.subBass ?? 0;
+                _a.bass = engineAudioMetrics.bass;
+                _a.mid = engineAudioMetrics.mid;
+                _a.highMid = _sm.highMid ?? 0;
+                // WAVE 3516.1: rawTreble y ultraAir del 7º Pasajero — sin colapsar
+                _a.presence = this.lastAudioData.rawTreble ?? (high * 0.8);
+                _a.air = this.lastAudioData.ultraAir ?? (high * 0.3);
+                _a.energy = engineAudioMetrics.energy;
+                _a.hasTransient = engineAudioMetrics.isBeat;
+                _a.transientStrength = engineAudioMetrics.beatConfidence;
+                _a.bpm = engineAudioMetrics.bpm;
+                _a.beatPhase = engineAudioMetrics.beatPhase;
+                _a.beatCount = engineAudioMetrics.beatCount;
+                // MusicalContext: del contexto de Brain
+                const _m = this._aetherMusical;
+                _m.section = (context.section?.type ?? 'unknown');
+                _m.dropImminent = context.energy > 0.8;
+                _m.sectionIntensity = engineAudioMetrics.energy;
+                _m.harmonicTension = engineAudioMetrics.bass;
+                _m.sectionElapsedMs = context.section?.duration ?? 0;
+                // VibeProfile: del engine + paleta del intent
+                const _v = this._aetherVibe;
+                _v.name = this.engine.getCurrentVibe();
+                _v.palette = (intent.palette.colors ?? [{ h: 0, s: 0, l: 1 }]);
+                _v.movementSpeed = 0.5;
+                _v.intensity = intent.masterIntensity ?? engineAudioMetrics.energy;
+                _v.beamExpressiveness = 0.5;
+                // nowMs y frameIndex del scope
+                this._aetherCtx.nowMs = now;
+                this._aetherCtx.frameIndex = this.frameCount;
+                // 1. Limpiar el bus de intents del frame anterior
+                this._aetherBus.clear();
+                // ── WAVE 4521.3: L0 — LiquidAetherAdapter inyecta base energética ────
+                // El liquidEngine71 ya fue invocado por ImpactAdapter en el mismo frame
+                // (o por ColorAdapter). lastFrame y lastResult son frescos del tick actual.
+                const _liqFrame = liquidEngine71.lastFrame;
+                const _liqResult = liquidEngine71.lastResult;
+                if (_liqFrame !== null && _liqResult !== null) {
+                    liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
+                }
+                // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
+                const ctx = this._aetherCtx;
+                this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus);
+                // 🎨 WAVE 4522.3: Inyectar paleta RGB de SeleneLux al ColorAdapter antes de process()
+                const _colorPalette = this.engine.getLastColorPalette();
+                if (_colorPalette !== null) {
+                    colorAdapter.setIngress(_colorPalette);
+                }
+                colorAdapter.process(this._aetherGraph.getView(NodeFamily.COLOR), ctx, this._aetherBus);
+                kineticAdapter.process(this._aetherGraph.getView(NodeFamily.KINETIC), ctx, this._aetherBus);
+                // 🔦 WAVE 3516.4: Beam — ópticas (gobos, prismas, zoom, focus)
+                beamAdapter.process(this._aetherGraph.getView(NodeFamily.BEAM), ctx, this._aetherBus);
+                // 🌫️ WAVE 3516.4: Atmosphere — elementos (fog, haze, fan, spark, pyro)
+                atmosphereAdapter.process(this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._aetherBus);
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🚀 WAVE 4524.3: L3 — Selene-Aether Adapter (Puente Cognitivo)
+                // Consume el output de Selene (effectDecision, colorDecision, physicsModifier)
+                // y lo traduce en intenciones L3 atómicas: dimmer, RGB, strobeRate.
+                // REGLA ESTRICTA: NO emite movimiento (targetX/Y/Z ni pan/tilt).
+                // ═══════════════════════════════════════════════════════════════════════
+                const consciousnessOutput = this.lastConsciousnessOutput ?? null;
+                const effectOutput = getEffectManager().getCombinedOutput();
+                seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._aetherBus);
+                // STEP 4.5: Playback LP bridge Chronos -> Aether
+                this._chronosAetherAdapter.ingest(this._timelineEngine, ctx.deltaMs, aetherArbiter);
+                // STEP 5: Hephaestus L3+ Diamond Data bridge
+                // Reuses `hephOutputs` from the legacy block above (SINGLE tick per frame).
+                // The adapter only processes fixtures registered in NodeGraph (isCustomClip === true).
+                // Legacy post-HAL block still handles fixtures NOT in NodeGraph (backward compat).
+                if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
+                    this._hephaestusAetherAdapter.ingest(hephOutputs, aetherArbiter);
+                }
+                else {
+                    this._hephaestusAetherAdapter.clear(aetherArbiter);
+                }
+                // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
+                aetherArbiter.setSystemIntents(this._aetherBus);
+                const arbitrated = aetherArbiter.arbitrate();
+                // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
+                // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
+                this._physicsPostProcessor.process(arbitrated, this._aetherGraph, this._aetherCtx.deltaMs, this._aetherCtx.vibe.name);
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🛂 WAVE 4557: AETHER SAFETY MIDDLEWARE — LA ADUANA AETHER
+                //
+                // FASE 0: PRE-RESOLVE  — Output gate + virtual filter (muta ArbitratedNodeMap)
+                // FASE 1: INTRA-RESOLVE — Velocity clamp, airbag, DarkSpin (called by NodeResolver)
+                // FASE 2: POST-RESOLVE  — Throttle + virtual skip before sendUniverseRaw
+                // ═══════════════════════════════════════════════════════════════════════
+                const aetherSafety = this._aetherSafety;
+                // FASE 0: Set frame context + apply output gate
+                aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name);
+                aetherSafety.setOutputEnabled(masterArbiter.isOutputEnabled());
+                aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds());
+                aetherSafety.applyOutputGate(arbitrated);
+                // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
+                // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
+                // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
+                aetherResolver.setResolveContext(engineAudioMetrics.bpm, engineAudioMetrics.beatConfidence);
+                // WAVE 4548.6: Populate ForgeFrameContext in-place (zero-alloc)
+                const _fCtx = this._forgeFrameCtx;
+                _fCtx.timeMs = now;
+                _fCtx.deltaMs = this._aetherCtx.deltaMs;
+                _fCtx.bpm = engineAudioMetrics.bpm;
+                _fCtx.bpmConfidence = engineAudioMetrics.beatConfidence;
+                _fCtx.isBeat = engineAudioMetrics.isBeat;
+                _fCtx.energy = engineAudioMetrics.energy;
+                _fCtx.frameIndex = this.frameCount;
+                // Audio bands: write directly into pre-allocated Float64Array
+                this._forgeAudioBands[0] = _a.subBass;
+                this._forgeAudioBands[1] = _a.bass;
+                this._forgeAudioBands[2] = _a.mid;
+                this._forgeAudioBands[3] = _a.highMid;
+                this._forgeAudioBands[4] = _a.presence;
+                this._forgeAudioBands[5] = _a.air;
+                aetherResolver.setForgeFrameContext(this._forgeFrameCtx);
+                aetherResolver.resolve(arbitrated);
+                // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
+                for (const universe of aetherResolver.registeredUniverses) {
+                    // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
+                    if (!aetherSafety.shouldSendUniverse(universe))
+                        continue;
+                    const rawBuf = aetherResolver.getUniverseBuffer(universe);
+                    if (rawBuf)
+                        this.hal.sendUniverseRaw(universe, rawBuf);
+                }
+                // 🛂 WAVE 4557: Safety telemetry (~1Hz)
+                if (this.frameCount % 44 === 0) {
+                    const tel = aetherSafety.consumeTelemetry();
+                    if (tel.velocityClamps > 0 || tel.airbagHits > 0 || tel.aduanaBlocks > 0 || tel.darkSpinActive > 0) {
+                        console.log(`[AetherAduana 🛂] VelClamp:${tel.velocityClamps} Airbag:${tel.airbagHits} ` +
+                            `DarkSpin:${tel.darkSpinActive} AduanaGate:${tel.aduanaBlocks}`);
+                    }
+                }
+            }
+        }
+        // 🧹 WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
+        // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÚNICO gate.
+        // El broadcast UI siempre recibe los valores reales del engine.
+        // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) ────────
+        if (this.onBroadcast && shouldBroadcastFullTruth) {
+            const currentVibe = this.engine.getCurrentVibe();
+            // Build a valid SeleneTruth structure
+            const truth = {
+                system: {
+                    frameNumber: this.frameCount,
+                    timestamp: now, // ⚡ WAVE 3050: unified timestamp
+                    deltaTime: 23,
+                    targetFPS: 44,
+                    actualFPS: 44,
+                    mode: this.mode === 'auto' ? 'selene' : 'manual',
+                    vibe: currentVibe,
+                    brainStatus: 'peaceful',
+                    uptime: this.frameCount * 23,
+                    titanEnabled: true,
+                    sessionId: 'titan-2.0',
+                    version: '2.0.0',
+                    performance: {
+                        audioProcessingMs: 0,
+                        brainProcessingMs: 0,
+                        colorEngineMs: 0,
+                        dmxOutputMs: 0,
+                        totalFrameMs: 0
+                    }
+                },
+                sensory: {
+                    audio: {
+                        energy,
+                        peak: energy,
+                        average: energy * 0.8,
+                        bass,
+                        mid,
+                        high,
+                        spectralCentroid: 0,
+                        spectralFlux: 0,
+                        zeroCrossingRate: 0
+                    },
+                    fft: this.EMPTY_FFT_BUFFER,
+                    beat: {
+                        onBeat: engineAudioMetrics.isBeat,
+                        confidence: engineAudioMetrics.beatConfidence,
+                        bpm: engineAudioMetrics.bpm, // 🕰️ WAVE 2090.3: Pacemaker PLL BPM
+                        beatPhase: engineAudioMetrics.beatPhase, // 🕰️ WAVE 2090.3: PLL-driven phase
+                        barPhase: 0,
+                        timeSinceLastBeat: 0
+                    },
+                    input: {
+                        gain: this.inputGain,
+                        device: 'Microphone',
+                        active: this.hasRealAudio,
+                        isClipping: false
+                    },
+                    // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
+                    spectrumBands: {
+                        subBass: this.syncSmoother.currentSmoothed.subBass,
+                        bass: bass, // Use the already available bass from engineAudioMetrics
+                        lowMid: this.syncSmoother.currentSmoothed.lowMid,
+                        mid: mid, // Use the already available mid from engineAudioMetrics
+                        highMid: this.syncSmoother.currentSmoothed.highMid,
+                        treble: high * 0.8, // Approximate from high
+                        ultraAir: high * 0.3, // Approximate ultra-high from high
+                        dominant: bass > mid && bass > high ? 'bass' :
+                            mid > bass && mid > high ? 'mid' : 'treble',
+                        flux: Math.abs((this.lastAudioData.energy || 0) - energy)
+                    }
+                },
+                // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
+                // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
+                // 🔌 WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
+                consciousness: {
+                    ...createDefaultCognitive(),
+                    stableEmotion: this.engine.getStableEmotion(),
+                    thermalTemperature: this.engine.getThermalTemperature(),
+                    ai: this.engine.getConsciousnessTelemetry(),
+                    // 🔌 WAVE 1175: Vibe activo REAL (no el default 'idle')
+                    vibe: {
+                        active: currentVibe,
+                        transitioning: false // TODO: implementar transición real
+                    }
+                },
+                // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
+                // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
+                // el contexto que ya obtuvimos de brain.getCurrentContext()
+                context: {
+                    key: context.key,
+                    mode: context.mode,
+                    bpm: context.bpm,
+                    beatPhase: context.beatPhase,
+                    syncopation: context.syncopation,
+                    section: context.section,
+                    energy: context.energy,
+                    mood: context.mood,
+                    genre: context.genre,
+                    confidence: context.confidence,
+                    timestamp: context.timestamp
+                },
+                intent: {
+                    palette: intent.palette,
+                    masterIntensity: intent.masterIntensity,
+                    zones: intent.zones,
+                    movement: intent.movement,
+                    effects: intent.effects,
+                    source: 'procedural',
+                    timestamp: now // ⚡ WAVE 3050: unified timestamp
+                },
+                hardware: {
+                    dmx: {
+                        connected: true,
+                        driver: 'none',
+                        universe: 0, // 🔥 WAVE 1219: ArtNet 0-indexed
+                        frameRate: 30,
+                        port: null
+                    },
+                    dmxOutput: DMX_OUTPUT_ZEROS,
+                    fixturesActive: fixtureStates.reduce((count, f) => count + (f.dimmer > 0 ? 1 : 0), 0),
+                    fixturesTotal: fixtureStates.length,
+                    // Map HAL FixtureState to Protocol FixtureState
+                    // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
+                    // WAVE 256.7: Map zone names for StageSimulator2 compatibility
+                    fixtures: fixtureStates.map((f, i) => {
+                        // \ud83d\udd27 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
+                        // \u26a1 WAVE 3050: ZONE_MAP is now a module-level constant (was per-fixture per-frame)
+                        const mappedZone = ZONE_MAP[f.zone] || f.zone || 'center';
+                        // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
+                        // This is critical for runtimeStateMap matching in StageSimulator2
+                        const originalFixture = this.fixtures[i];
+                        const realId = originalFixture?.id || `fix_${i}`;
+                        // ⚡ WAVE 2464: PEAK HOLD — Usa el pico acumulado en el frame skipeado.
+                        // Si el fixture brilló al máximo en el frame que el throttle saltó, aquí
+                        // mandamos ese pico al canvas. Después de leerlo: reset a 0 para el ciclo.
+                        // 👻 WAVE 2540.7: Skip peak hold during Chronos — every frame is broadcast,
+                        // no skipped frames means no peaks to accumulate.
+                        let broadcastDimmer;
+                        if (chronosPlaying) {
+                            broadcastDimmer = f.dimmer;
+                        }
+                        else {
+                            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
+                            broadcastDimmer = Math.max(f.dimmer, peakDimmer);
+                            this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
+                        }
+                        return {
+                            id: realId,
+                            name: f.name,
+                            type: f.type,
+                            zone: mappedZone,
+                            dmxAddress: f.dmxAddress,
+                            universe: f.universe,
+                            dimmer: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
+                            intensity: broadcastDimmer / 255, // Normalize 0-255 → 0-1 (con peak hold)
+                            color: {
+                                r: Math.round(f.r), // Keep 0-255 for RGB
+                                g: Math.round(f.g),
+                                b: Math.round(f.b)
+                            },
+                            pan: f.pan / 255, // Normalize 0-255 → 0-1
+                            tilt: f.tilt / 255, // Normalize 0-255 → 0-1
+                            // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
+                            zoom: f.zoom, // 0-255 DMX
+                            focus: f.focus, // 0-255 DMX
+                            // ⚒️ WAVE 2030.22g: Extended LED channels
+                            white: f.white ?? 0, // 0-255 DMX
+                            amber: f.amber ?? 0, // 0-255 DMX
+                            // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
+                            physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 → 0-1
+                            physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
+                            panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
+                            tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
+                            online: true,
+                            active: f.dimmer > 0,
+                            // 🔥 WAVE 2084.6: THE PHANTOM DATA LINK — Robust profileId cascade
+                            // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
+                            // NEVER let profileId be undefined — the ExtrasSection IPC depends on it
+                            profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
+                        };
+                    })
+                },
+                timestamp: now // ⚡ WAVE 3050: unified timestamp
+            };
+            this.onBroadcast(truth);
+            // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
+            // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
+            // Log cada 2 segundos (60 frames @ 30fps)
+            // if (this.frameCount % 60 === 0) {
+            //   console.log(
+            //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
+            //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
+            //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
+            //   )
+            // }
+        }
+        // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
+        // Log every second
+        // if (shouldLog && this.config.debug) {
+        //   const currentVibe = this.engine.getCurrentVibe()
+        //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
+        // }
+        // WAVE 3401: OSC State Publisher -- broadcast current state every 3 frames (~12Hz)
+        // Low-frequency broadcast avoids flooding the network while keeping external
+        // VJ/lighting software in sync with LuxSync's musical analysis.
+        if (this.oscProvider && this.frameCount % 3 === 0) {
+            const currentVibe = this.engine?.getCurrentVibe() ?? 'idle';
+            this.oscProvider.publishState({
+                vibe: currentVibe,
+                energy,
+                bpm: context.bpm,
+                onBeat: beatState.onBeat,
+                section: context.section?.type ?? 'unknown',
+                bands: [
+                    bass,
+                    this.syncSmoother.currentSmoothed.subBass ?? 0,
+                    this.syncSmoother.currentSmoothed.lowMid ?? 0,
+                    mid,
+                    this.syncSmoother.currentSmoothed.highMid ?? 0,
+                    high,
+                    this.syncSmoother.currentSmoothed.spectralCentroid ?? 0,
+                ]
+            });
         }
     }
     /**
@@ -1923,13 +2160,14 @@ export class TitanOrchestrator {
      * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setFixtures(fixtures) {
+    setFixtures(fixtures, stageBounds) {
         // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
         this.fixtures = fixtures.map(f => ({
             ...f,
             dmxAddress: f.dmxAddress || f.address, // Ensure dmxAddress exists regardless of format
             isVirtual: f.isVirtual ?? false, // 🛡️ WAVE 3110: Normalize virtual flag
         }));
+        this._updateAetherStageBounds(stageBounds);
         // 🔥 WAVE 2183: GHOST EXORCISM — Invalidate HAL profile caches on fixture sync
         // When the Forge renames/edits a profile, reconcileFixturesWithProfile updates the
         // stageStore, TitanSyncBridge re-sends fixtures here, and HAL must drop its stale cache.
@@ -1973,6 +2211,31 @@ export class TitanOrchestrator {
         }
         // WAVE 2098: Boot silence
     }
+    _updateAetherStageBounds(stageBounds) {
+        const bounds = this._aetherStageBounds;
+        if (stageBounds) {
+            if (Number.isFinite(stageBounds.width) && stageBounds.width > 0) {
+                bounds.width = stageBounds.width;
+            }
+            if (Number.isFinite(stageBounds.height) && stageBounds.height > 0) {
+                bounds.height = stageBounds.height;
+            }
+            if (Number.isFinite(stageBounds.depth) && stageBounds.depth > 0) {
+                bounds.depth = stageBounds.depth;
+            }
+        }
+        let sumY = 0;
+        let count = 0;
+        for (const fixture of this.fixtures) {
+            const y = fixture?.position?.y;
+            if (typeof y === 'number' && Number.isFinite(y)) {
+                sumY += y;
+                count++;
+            }
+        }
+        const avgY = count > 0 ? (sumY / count) : bounds.height * 0.5;
+        bounds.centerY = Math.max(0, Math.min(bounds.height, avgY));
+    }
     /**
      * WAVE 252: Get current fixtures count
      */
@@ -1991,152 +2254,16 @@ export class TitanOrchestrator {
             fixturesCount: this.fixtures.length,
         };
     }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎨 WAVE 692.2: HSL to RGB conversion for effect colors
-    // ═══════════════════════════════════════════════════════════════════════════
-    hslToRgb(h, s, l) {
-        // h: 0-360, s: 0-100, l: 0-100
-        const hNorm = h / 360;
-        const sNorm = s / 100;
-        const lNorm = l / 100;
-        let r, g, b;
-        if (sNorm === 0) {
-            r = g = b = lNorm;
-        }
-        else {
-            const hue2rgb = (p, q, t) => {
-                if (t < 0)
-                    t += 1;
-                if (t > 1)
-                    t -= 1;
-                if (t < 1 / 6)
-                    return p + (q - p) * 6 * t;
-                if (t < 1 / 2)
-                    return q;
-                if (t < 2 / 3)
-                    return p + (q - p) * (2 / 3 - t) * 6;
-                return p;
-            };
-            const q = lNorm < 0.5
-                ? lNorm * (1 + sNorm)
-                : lNorm + sNorm - lNorm * sNorm;
-            const p = 2 * lNorm - q;
-            r = hue2rgb(p, q, hNorm + 1 / 3);
-            g = hue2rgb(p, q, hNorm);
-            b = hue2rgb(p, q, hNorm - 1 / 3);
-        }
-        return {
-            r: Math.round(r * 255),
-            g: Math.round(g * 255),
-            b: Math.round(b * 255),
-        };
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🗺️ WAVE 2543.5: Single zone matcher — ZoneMapper handles stereo detection internally
-    // fixtureMatchesZone (no-position) eliminated — always pass positionX for correctness
-    // ═══════════════════════════════════════════════════════════════════════════
-    fixtureMatchesZoneStereo(fixtureZone, targetZone, positionX) {
-        return zoneMapperMatch(fixtureZone, targetZone, positionX);
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
-    // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
-    // 
-    // EMA Formula: smoothed = (1 - alpha) * smoothed + alpha * raw
-    // - ALPHA_FAST (0.25): Reacciona en ~4 frames (~133ms) - para harshness/guitarras
-    // - ALPHA_SLOW (0.08): Reacciona en ~12 frames (~400ms) - para contexto/ambiente
-    // ═══════════════════════════════════════════════════════════════════════════
-    applyEMASmoothing() {
-        const raw = this.lastAudioData;
-        // Harshness: FAST - queremos que responda a guitarras distorsionadas
-        if (typeof raw.harshness === 'number') {
-            this.smoothedMetrics.harshness =
-                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.harshness +
-                    this.EMA_ALPHA_FAST * raw.harshness;
-        }
-        // SpectralFlatness: SLOW - contexto ambiental, no debería saltar
-        if (typeof raw.spectralFlatness === 'number') {
-            this.smoothedMetrics.spectralFlatness =
-                (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralFlatness +
-                    this.EMA_ALPHA_SLOW * raw.spectralFlatness;
-        }
-        // SpectralCentroid: SLOW - el "brillo" tonal es contexto, no evento
-        if (typeof raw.spectralCentroid === 'number') {
-            this.smoothedMetrics.spectralCentroid =
-                (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralCentroid +
-                    this.EMA_ALPHA_SLOW * raw.spectralCentroid;
-        }
-        // SubBass: FAST - kicks profundos deben sentirse
-        if (typeof raw.subBass === 'number') {
-            this.smoothedMetrics.subBass =
-                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.subBass +
-                    this.EMA_ALPHA_FAST * raw.subBass;
-        }
-        // LowMid: FAST - presencia de guitarras/voces
-        if (typeof raw.lowMid === 'number') {
-            this.smoothedMetrics.lowMid =
-                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.lowMid +
-                    this.EMA_ALPHA_FAST * raw.lowMid;
-        }
-        // HighMid: FAST - claridad/ataque
-        if (typeof raw.highMid === 'number') {
-            this.smoothedMetrics.highMid =
-                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid +
-                    this.EMA_ALPHA_FAST * raw.highMid;
-        }
-        // 💥 WAVE 2347: CrestFactor: FAST - los transients de kick son eventos, deben sentirse
-        if (typeof raw.crestFactor === 'number') {
-            this.smoothedMetrics.crestFactor =
-                (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.crestFactor +
-                    this.EMA_ALPHA_FAST * raw.crestFactor;
-        }
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🩸 WAVE 2094: PACEMAKER TRANSPLANT — Syncopation estimator
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Mirror of SimpleRhythmDetector algorithm but using REAL beatPhase
-    // from Pacemaker instead of the dead beatPhase=0 from Worker.
-    //
-    // Syncopation = ratio of off-beat energy to total energy.
-    // On-beat: phase < 0.25 || phase > 0.75 (50% window around beat)
-    // Off-beat: everything else (the "and" of the beat)
-    // High syncopation = energy concentrated off-beat (funk, breakbeat)
-    // Low syncopation = energy on-beat (four-on-floor techno)
-    // ═══════════════════════════════════════════════════════════════════════════
-    estimateSyncopation(beatPhase, bass, mid) {
-        const energy = bass + mid * 0.5;
-        this.syncopationPhaseHistory.push({ phase: beatPhase, energy });
-        if (this.syncopationPhaseHistory.length > this.SYNC_HISTORY_SIZE) {
-            this.syncopationPhaseHistory.shift();
-        }
-        let onBeatEnergy = 0;
-        let offBeatEnergy = 0;
-        for (const frame of this.syncopationPhaseHistory) {
-            const isOnBeat = frame.phase < 0.25 || frame.phase > 0.75;
-            if (isOnBeat) {
-                onBeatEnergy += frame.energy;
-            }
-            else {
-                offBeatEnergy += frame.energy;
-            }
-        }
-        const totalEnergy = onBeatEnergy + offBeatEnergy;
-        const instantSync = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
-        // EMA smoothing — same alpha as Worker for behavioral parity
-        this.smoothedSyncopation =
-            (this.SYNC_EMA_ALPHA * instantSync) +
-                ((1 - this.SYNC_EMA_ALPHA) * this.smoothedSyncopation);
-        return this.smoothedSyncopation;
-    }
 }
 // ⚡ WAVE 2510: Full truth broadcast divider
 // At 44Hz tick, send full SeleneTruth every TRUTH_BROADCAST_DIVIDER ticks (~7Hz)
 TitanOrchestrator.TRUTH_BROADCAST_DIVIDER = 6;
 // ⚡ WAVE 3050: HOT FRAME BROADCAST DIVIDER
-// Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 22Hz.
-// Halves Structured Clone overhead (~132 KB/seg saved) without visible UI degradation.
+// Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 44Hz.
+// ⚡ WAVE 4559: Overclock — subido de 2 (22Hz) a 1 (44Hz).
+// Strobe y flash ahora llegan sin frame-skip al canvas 2D.
 // transientStore + RenderWorker interpolates between frames anyway.
-TitanOrchestrator.HOT_FRAME_DIVIDER = 2;
+TitanOrchestrator.HOT_FRAME_DIVIDER = 1;
 // Singleton instance
 let orchestratorInstance = null;
 /**

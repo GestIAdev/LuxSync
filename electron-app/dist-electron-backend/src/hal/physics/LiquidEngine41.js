@@ -28,7 +28,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
         super(profile, '4.1');
     }
     routeZones(frame) {
-        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, isKickEdge, } = frame;
+        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, isKickEdge, floorIntensity, ambientIntensity, airIntensity, } = frame;
         let frontPar;
         let backPar;
         let outMoverL;
@@ -81,6 +81,10 @@ export class LiquidEngine41 extends LiquidEngineBase {
             moverRightIntensity: outMoverR,
             strobeActive,
             strobeIntensity,
+            // WAVE 4520.2: 9-zone passthrough from ProcessedFrame
+            floorIntensity,
+            ambientIntensity,
+            airIntensity,
             // Legacy compat
             frontParIntensity: frontPar,
             backParIntensity: backPar,

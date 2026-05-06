@@ -1131,6 +1131,134 @@ function setupFixtureHandlers(deps) {
             return { success: false, error: String(err) };
         }
     });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 4549.2: INGENIO IPC BRIDGE
+    // Gestiona archivos .luxingenio en userData/ingenios/{system,user}/
+    // ═══════════════════════════════════════════════════════════════════════════
+    /** Helper: resolve ingenio paths */
+    function getIngenioPaths() {
+        const { app } = require('electron');
+        const path = require('path');
+        const userDataPath = app.getPath('userData');
+        return {
+            system: path.join(userDataPath, 'ingenios', 'system'),
+            user: path.join(userDataPath, 'ingenios', 'user'),
+        };
+    }
+    /** Read all .luxingenio files from a folder, returns parsed array */
+    async function scanIngeniFolder(folderPath, source) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const items = [];
+        if (!fs.existsSync(folderPath))
+            return items;
+        for (const file of fs.readdirSync(folderPath)) {
+            if (!file.endsWith('.luxingenio'))
+                continue;
+            try {
+                const raw = fs.readFileSync(path.join(folderPath, file), 'utf-8');
+                const parsed = JSON.parse(raw);
+                items.push({ ...parsed, _source: source, _filePath: path.join(folderPath, file) });
+            }
+            catch {
+                // Corrupt file — skip silently
+            }
+        }
+        return items;
+    }
+    /**
+     * List ALL ingenios: system (factory, read-only) + user (writable)
+     */
+    ipcMain.handle('lux:ingenio:list-all', async () => {
+        try {
+            const fs = await import('fs');
+            const paths = getIngenioPaths();
+            if (!fs.existsSync(paths.system))
+                fs.mkdirSync(paths.system, { recursive: true });
+            if (!fs.existsSync(paths.user))
+                fs.mkdirSync(paths.user, { recursive: true });
+            const systemIngenios = await scanIngeniFolder(paths.system, 'system');
+            const userIngenios = await scanIngeniFolder(paths.user, 'user');
+            return { success: true, systemIngenios, userIngenios, paths };
+        }
+        catch (err) {
+            console.error('[Ingenio IPC] ❌ list-all failed:', err);
+            return { success: false, systemIngenios: [], userIngenios: [], error: String(err) };
+        }
+    });
+    /**
+     * Get a single ingenio by ID (searches system then user)
+     */
+    ipcMain.handle('lux:ingenio:get-by-id', async (_event, ingenioId) => {
+        try {
+            const paths = getIngenioPaths();
+            const [systemList, userList] = await Promise.all([
+                scanIngeniFolder(paths.system, 'system'),
+                scanIngeniFolder(paths.user, 'user'),
+            ]);
+            const found = [...userList, ...systemList].find((i) => i.id === ingenioId);
+            if (!found)
+                return { success: false, error: `Ingenio "${ingenioId}" not found` };
+            return { success: true, ingenio: found };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * Save an ingenio to userData/ingenios/user/
+     * Validates that the payload has the required IIngenioDefinition structure.
+     */
+    ipcMain.handle('lux:ingenio:save-user', async (_event, ingenio) => {
+        try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const paths = getIngenioPaths();
+            if (!fs.existsSync(paths.user))
+                fs.mkdirSync(paths.user, { recursive: true });
+            if (!ingenio?.id || typeof ingenio.id !== 'string') {
+                return { success: false, error: 'Ingenio must have a string id field' };
+            }
+            if (!ingenio.name || !ingenio.version) {
+                return { success: false, error: 'Ingenio must have name and version fields' };
+            }
+            // Check if file already exists (update-in-place)
+            const existing = (await scanIngeniFolder(paths.user, 'user')).find((i) => i.id === ingenio.id);
+            const safeSlug = ingenio.id.replace(/[^a-z0-9_-]/gi, '_').substring(0, 60);
+            const filePath = existing?._filePath ?? path.join(paths.user, `${safeSlug}.luxingenio`);
+            // Strip internal runtime fields before persisting
+            const { _source: _s, _filePath: _fp, ...toSave } = ingenio;
+            toSave.meta = { ...toSave.meta, updatedAt: new Date().toISOString() };
+            fs.writeFileSync(filePath, JSON.stringify(toSave, null, 2), 'utf-8');
+            console.log(`[Ingenio IPC] 💾 Saved: ${filePath}`);
+            return { success: true, filePath };
+        }
+        catch (err) {
+            console.error('[Ingenio IPC] ❌ save-user failed:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * Delete an ingenio from userData/ingenios/user/ (system ingenios are immutable)
+     */
+    ipcMain.handle('lux:ingenio:delete-user', async (_event, ingenioId) => {
+        try {
+            const fs = await import('fs');
+            const paths = getIngenioPaths();
+            const userList = await scanIngeniFolder(paths.user, 'user');
+            const target = userList.find((i) => i.id === ingenioId);
+            if (!target)
+                return { success: false, error: `Ingenio "${ingenioId}" not found in user library` };
+            fs.unlinkSync(target._filePath);
+            console.log(`[Ingenio IPC] 🗑️ Deleted: ${target._filePath}`);
+            return { success: true, deletedPath: target._filePath };
+        }
+        catch (err) {
+            console.error('[Ingenio IPC] ❌ delete-user failed:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    // ─────────────────────────────────────────────────────────────────────────
     /**
      * Get DMX connection status for Live Probe
      * WAVE 1115 FIX: Check BOTH UniversalDMX (USB) and ArtNet

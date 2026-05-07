@@ -40,11 +40,6 @@ const VIBE_REV_LIMITS: Record<string, { pan: number; tilt: number }> = {
 const KS_LAST_PAN = 0, KS_LAST_TILT = 1, KS_LAST_TIME = 2, KS_INIT = 3
 const KS_SLOTS = 4
 
-// ── Output gate: channels that center instead of zero ────────────────────
-const SAFE_CENTER_CHANNELS = new Set<string>([
-  'pan', 'tilt', 'pan_fine', 'tilt_fine', 'targetX', 'targetY', 'targetZ',
-])
-
 // ── DarkSpin state per-node ──────────────────────────────────────────────
 interface DarkSpinNodeState {
   lastStableWheelDmx: number
@@ -143,18 +138,9 @@ export class AetherSafetyMiddleware {
 
   applyOutputGate(arbitrated: Map<NodeId, Record<string, number>>): void {
     if (this._outputEnabled) return
-    for (const [nodeId, channels] of arbitrated) {
+    for (const nodeId of arbitrated.keys()) {
       if (this._manualNodeIds.has(nodeId)) continue
       this._aduanaBlocks++
-      const keys = Object.keys(channels)
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i]
-        if (SAFE_CENTER_CHANNELS.has(k)) {
-          channels[k] = k === 'targetX' ? 0 : k === 'targetY' ? 1.5 : k === 'targetZ' ? 2.0 : 0.5
-        } else {
-          channels[k] = 0
-        }
-      }
     }
   }
 

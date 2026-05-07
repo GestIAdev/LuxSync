@@ -332,6 +332,8 @@ export class TitanOrchestrator {
   private _aetherHasDevices = false
   // ⚡ WAVE 4594: Stateless extraction pipeline — lazy-init, reutilizado en cada resync
   private _aetherPipeline: NodeExtractionPipeline | null = null
+  // ⚡ WAVE 4599: Physical blackout buffers per universe (zero-alloc in hot-path)
+  private readonly _aetherBlackoutBuffers = new Map<number, Uint8Array>()
   // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
   private readonly _aetherUIProjector = new AetherUIProjector()
   // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
@@ -1867,7 +1869,15 @@ export class TitanOrchestrator {
         // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
-        if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
+        if (!rawBuf) continue
+
+        // ⚡ WAVE 4599: Output gate is strictly physical.
+        // Virtual pipeline and UI projection stay fully alive.
+        if (this._outputEnabled) {
+          this.hal.sendUniverseRaw(universe, rawBuf)
+        } else {
+          this.hal.sendUniverseRaw(universe, this._getAetherBlackoutBuffer(universe))
+        }
       }
 
       // 🛂 WAVE 4557: Safety telemetry (~1Hz)
@@ -2849,6 +2859,17 @@ export class TitanOrchestrator {
   private _normalizeAetherZone(zone: unknown): string {
     if (typeof zone !== 'string' || zone.length === 0) return 'unassigned'
     return zone
+  }
+
+  private _getAetherBlackoutBuffer(universe: number): Uint8Array {
+    let buffer = this._aetherBlackoutBuffers.get(universe)
+    if (!buffer) {
+      buffer = new Uint8Array(512)
+      this._aetherBlackoutBuffers.set(universe, buffer)
+    } else {
+      buffer.fill(0)
+    }
+    return buffer
   }
 
   private _updateAetherStageBounds(stageBounds?: StageBoundsInput): void {

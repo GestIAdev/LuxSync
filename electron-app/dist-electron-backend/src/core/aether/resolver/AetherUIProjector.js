@@ -18,8 +18,11 @@
  * - Solo muta campos legacy in-place; nunca crea objetos nuevos.
  * - Si un fixture no tiene nodos Aether, se salta silenciosamente.
  *
+ * WAVE 4613 FIX: COLOR r/g/b y KINETIC pan/tilt ahora leen del ArbitratedNodeMap
+ * y de currentPosition actualizado por el IK engine respectivamente.
+ *
  * @module core/aether/resolver/AetherUIProjector
- * @version WAVE 3513.3.2 — KINETIC EXPANSION
+ * @version WAVE 4613 — COLOR + KINETIC FIX
  */
 import { NodeFamily } from '../types';
 /** Conversión de valor normalizado 0-1 a rango DMX 0-255 */
@@ -32,8 +35,12 @@ export class AetherUIProjector {
      * Proyecta el estado Aether sobre el array legacy de FixtureState.
      *
      * ZERO-ALLOC: solo lectura del graph + mutación in-place de fixtures.
+     *
+     * @param fixtures      Array mutable de FixtureState (mutado in-place)
+     * @param graph         NodeGraph para leer pan/tilt y color de los nodos
+     * @param arbitrated    ArbitratedNodeMap post-arbitraje — fuente de verdad para dimmers
      */
-    project(fixtures, graph) {
+    project(fixtures, graph, arbitrated) {
         for (const fixture of fixtures) {
             // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
             // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
@@ -64,22 +71,28 @@ export class AetherUIProjector {
                         break;
                     }
                     case NodeFamily.COLOR: {
-                        // currentColor vive en rango 0-1 (gestionado por ColorSystem)
-                        const cn = node;
-                        fixture.r = toDmx(cn.currentColor.r);
-                        fixture.g = toDmx(cn.currentColor.g);
-                        fixture.b = toDmx(cn.currentColor.b);
+                        // WAVE 4613: Leer r/g/b del ArbitratedNodeMap (post-arbitraje real).
+                        // currentColor NO se actualiza en el pipeline actual: ColorAdapter emite
+                        // intents r/g/b al bus pero nunca escribe de vuelta al nodo.
+                        // El patrón es idéntico al fix de IMPACT (WAVE 4612).
+                        const colorChannels = arbitrated.get(nodeId);
+                        fixture.r = toDmx(colorChannels?.['r'] ?? 0);
+                        fixture.g = toDmx(colorChannels?.['g'] ?? 0);
+                        fixture.b = toDmx(colorChannels?.['b'] ?? 0);
                         break;
                     }
                     case NodeFamily.IMPACT: {
-                        // state[1] = current value (0-1 normalizado post-physics)
-                        const imp = node;
-                        fixture.dimmer = toDmx(imp.state[1]);
+                        // WAVE 4612: Leer dimmer del ArbitratedNodeMap (post-arbitraje real).
+                        // state[1] NO se usa porque nadie lo escribe en el pipeline actual:
+                        // el PhysicsPostProcessor solo procesa KINETIC, y el arbiter
+                        // solo retorna el mapa sin escribir de vuelta al NodeGraph.
+                        const arbitratedChannels = arbitrated.get(nodeId);
+                        const dimmerNorm = arbitratedChannels?.['dimmer'] ?? 0;
+                        fixture.dimmer = toDmx(dimmerNorm);
                         break;
                     }
                     case NodeFamily.BEAM: {
                         // Zoom y focus los resuelve el NodeResolver directamente al FixtureState.
-                        // state[1] es escalar — no discrimina entre zoom y focus en el mismo nodo.
                         // El pipeline AetherSafetyMiddleware → FixtureMapper ya los propaga.
                         break;
                     }

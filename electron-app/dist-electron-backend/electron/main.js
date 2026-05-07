@@ -47,6 +47,7 @@ import { EffectsEngine } from '../src/engine/color/EffectsEngine';
 import { latinoEngine41Telemetry } from '../src/hal/physics';
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { fxtParser } from '../src/core/library/FXTParser';
+import { setRuntimeFixtureLibrary } from '../src/core/library/RuntimeFixtureLibrary';
 // 👻 WAVE 2005.3: Phantom Worker for audio analysis
 import { getPhantomWorker, destroyPhantomWorker } from './workers/PhantomWorkerManager';
 import { setupChronosIPCHandlers, cleanupChronosIPC } from './ipc/ChronosIPCHandlers';
@@ -193,6 +194,7 @@ async function rescanAllLibraries() {
         }
     }
     fixtureLibrary = mergedLibrary;
+    setRuntimeFixtureLibrary(mergedLibrary);
     return fixtureLibrary;
 }
 function resetZoneCounters() {
@@ -448,7 +450,10 @@ async function initTitan() {
         getPatchedFixtures: () => patchedFixtures,
         setPatchedFixtures: (fixtures) => { patchedFixtures = fixtures; },
         getFixtureLibrary: () => fixtureLibrary,
-        setFixtureLibrary: (library) => { fixtureLibrary = library; },
+        setFixtureLibrary: (library) => {
+            fixtureLibrary = library;
+            setRuntimeFixtureLibrary(library);
+        },
         // WAVE 390.5: Rescan ALL libraries (factory + custom)
         rescanAllLibraries,
         // WAVE 1115: Library paths (resolved by PATHFINDER)

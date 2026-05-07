@@ -40,6 +40,7 @@ import { selectZoneFromResult, computeEpicenterFalloff } from './zoneUtils';
 const L0_PRIORITY = 0;
 /** Source string para telemetría */
 const SOURCE = 'liquid-aether-l0';
+const PHOTON_TRACER_EVERY_FRAMES = 20;
 /** Radio máximo de influencia de la onda energética (metros). */
 const DEFAULT_MAX_RADIUS_M = 12.0;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,18 @@ const DEFAULT_MAX_RADIUS_M = 12.0;
 /** Clamp inline [0, 1]. Sin alloc. */
 function clamp01(v) {
     return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+function average9Zones(result) {
+    const avg = (result.frontLeftIntensity +
+        result.frontRightIntensity +
+        result.backLeftIntensity +
+        result.backRightIntensity +
+        result.moverLeftIntensity +
+        result.moverRightIntensity +
+        result.floorIntensity +
+        result.ambientIntensity +
+        result.airIntensity) / 9;
+    return clamp01(avg);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // LIQUID AETHER ADAPTER
@@ -69,6 +82,7 @@ export class LiquidAetherAdapter {
     constructor(_nodeGraph, epicenter = { x: 0, y: 0, z: 0 }, maxRadiusM = DEFAULT_MAX_RADIUS_M) {
         this._nodeGraph = _nodeGraph;
         this.name = 'LiquidAetherAdapter';
+        this._photonTracerFrame = 0;
         this._epicenter = { x: epicenter.x, y: epicenter.y, z: epicenter.z };
         this._maxRadiusM = maxRadiusM;
         // ── IMPACT scratch
@@ -118,6 +132,7 @@ export class LiquidAetherAdapter {
      * @param bus    - IIntentBus donde inyectar los intents L0
      */
     ingest(frame, result, bus) {
+        this._photonTracerFrame++;
         // 1. Intensidades de dimmer para todos los IMPACT nodes por zona
         this._routeImpactNodes(result, bus);
         // 2. Señal de strobe — solo si está activa en el frame
@@ -144,16 +159,20 @@ export class LiquidAetherAdapter {
         const impactNodes = this._nodeGraph.getView(NodeFamily.IMPACT);
         const epicenter = this._epicenter;
         const maxR = this._maxRadiusM;
-        impactNodes.forEach((node) => {
+        impactNodes.forEach((node, index) => {
             // ── Zero-alloc stale cleanup ──────────────────────────────────
             this._impactValues['dimmer'] = undefined;
             // ── Intensidad zonal por zoneId semántico del nodo ────────────
-            const zoneIntensity = selectZoneFromResult(result, node.zoneId);
+            const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId);
             // ── Falloff por distancia al epicentro de la onda ─────────────
             const falloff = computeEpicenterFalloff(node, epicenter, maxR);
             // ── Intent L0 ─────────────────────────────────────────────────
             this._impactValues['dimmer'] = clamp01(zoneIntensity * falloff);
             this._impactScratch.nodeId = node.nodeId;
+            if (index === 0 && this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
+                const dmx = Math.round(this._impactValues['dimmer'] * 255);
+                console.log(`[TRACER-1 INGEST] Fixture 0 -> Liquid Dimmer: ${dmx}`);
+            }
             bus.push(this._impactScratch);
         });
     }
@@ -204,7 +223,7 @@ export class LiquidAetherAdapter {
             // ── Zero-alloc stale cleanup ──────────────────────────────────
             this._colorValues['brightness'] = undefined;
             // ── Intensidad zonal + falloff ────────────────────────────────
-            const zoneIntensity = selectZoneFromResult(result, node.zoneId);
+            const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId);
             const falloff = computeEpicenterFalloff(node, epicenter, maxR);
             // ── Intent L0 — solo brightness, no tinte ─────────────────────
             this._colorValues['brightness'] = clamp01(moodIntensity * zoneIntensity * falloff);
@@ -229,5 +248,27 @@ export class LiquidAetherAdapter {
         this._epicenter.x = x;
         this._epicenter.y = y;
         this._epicenter.z = z;
+    }
+    _selectReactiveZoneIntensity(result, zoneId) {
+        switch ((zoneId || '').toLowerCase()) {
+            case 'unassigned':
+            case 'center':
+            case 'mid':
+                return average9Zones(result);
+            case 'front':
+                return clamp01((result.frontLeftIntensity + result.frontRightIntensity) * 0.5);
+            case 'back':
+                return clamp01((result.backLeftIntensity + result.backRightIntensity) * 0.5);
+            case 'left':
+                return clamp01((result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3);
+            case 'right':
+                return clamp01((result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3);
+            case 'movers-left':
+                return result.moverLeftIntensity;
+            case 'movers-right':
+                return result.moverRightIntensity;
+            default:
+                return selectZoneFromResult(result, zoneId);
+        }
     }
 }

@@ -23,6 +23,7 @@ import { AUDIO_BAND_INDEX } from '../compiler/ForgeGraphCompiler';
 // DMX CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 const DMX_UNIVERSE_SIZE = 512;
+const PHOTON_TRACER_EVERY_FRAMES = 20;
 // ═══════════════════════════════════════════════════════════════════════════
 // FORGE NODE EVALUATOR
 // ═══════════════════════════════════════════════════════════════════════════
@@ -40,6 +41,7 @@ export class ForgeNodeEvaluator {
      * @param baseAddr   — Dirección DMX base del device (0-indexed)
      */
     static evaluate(compiled, values, ctx, dmxBuffer, baseAddr) {
+        ForgeNodeEvaluator._photonTracerFrame++;
         const wire = compiled.wireBuffer;
         const state = compiled.stateBuffer;
         // ══════════════════════════════════════════════════════════════════
@@ -103,6 +105,7 @@ export class ForgeNodeEvaluator {
         // ══════════════════════════════════════════════════════════════════
         const outputs = compiled.outputs;
         const outputLen = outputs.length;
+        const tracerInDimmer = values?.dimmer;
         for (let o = 0; o < outputLen; o++) {
             const out = outputs[o];
             let normalized = wire[out.wireIndex];
@@ -126,5 +129,12 @@ export class ForgeNodeEvaluator {
                 dmxBuffer[bufIdx] = Math.round(normalized * 255);
             }
         }
+        if (baseAddr === 0 &&
+            ForgeNodeEvaluator._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
+            const tracerOut = dmxBuffer[baseAddr];
+            const tracerIn = typeof tracerInDimmer === 'number' ? Math.round(tracerInDimmer * 255) : 'n/a';
+            console.log(`[TRACER-3 EVALUATOR] Fixture 0 -> IN: ${tracerIn} | OUT: ${tracerOut}`);
+        }
     }
 }
+ForgeNodeEvaluator._photonTracerFrame = 0;

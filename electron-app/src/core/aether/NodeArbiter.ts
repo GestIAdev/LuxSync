@@ -44,6 +44,7 @@ import type {
 // Solo los canales de intensidad aplican HTP.
 // El resto usa LTP (la capa más alta dicta el valor final).
 const HTP_CHANNELS = new Set<string>(['dimmer', 'strobe', 'shutter'])
+const PHOTON_TRACER_EVERY_FRAMES = 20
 
 /**
  * NodeArbiter — Implementación zero-alloc del árbitro multicapa.
@@ -100,6 +101,7 @@ export class NodeArbiter implements INodeArbiter {
    */
   private readonly _resultPool: Record<string, number>[] = []
   private _poolCursor = 0
+  private _photonTracerFrame = 0
 
   // ── INodeArbiter API ──────────────────────────────────────────────────
 
@@ -153,6 +155,8 @@ export class NodeArbiter implements INodeArbiter {
    * @returns Mapa inmutable de valores finales por nodo/canal (0-1)
    */
   arbitrate(): ArbitratedNodeMap {
+    this._photonTracerFrame++
+
     // 1. Reset pool cursor — los objetos del pool se reusan
     this._poolCursor = 0
     // Limpiar el mapa de resultado anterior
@@ -232,6 +236,15 @@ export class NodeArbiter implements INodeArbiter {
           const capped = record['dimmer'] * limit
           record['dimmer'] = capped < 0 ? 0 : capped > 1 ? 1 : capped
         }
+      }
+    }
+
+    if (this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
+      for (const [nodeId, record] of this._result) {
+        if (typeof record['dimmer'] !== 'number') continue
+        const dmx = Math.round(record['dimmer'] * 255)
+        console.log(`[TRACER-2 ARBITER] Fixture 0 -> Arbitrated Dimmer: ${dmx} (node=${String(nodeId)})`)
+        break
       }
     }
 

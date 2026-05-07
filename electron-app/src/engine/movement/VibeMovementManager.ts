@@ -867,13 +867,15 @@ export class VibeMovementManager {
       ? 0.01 + (this.manualSpeedOverride / 100) * 0.49
       : config.baseFrequency
     
-    // Debug log cada ~1 segundo
-    if (this.frameCount % 60 === 0) {
+    // Debug log cada ~1 segundo — solo en la primera llamada real del frame.
+    // Aether puede pedir múltiples intents en el mismo frame (uno por nodo),
+    // así que `fixtureIndex === 0` no basta para evitar spam.
+    if (!isSameFrame && this.frameCount % 60 === 0 && fixtureIndex === 0) {
       const panDeg = Math.round(stereoPosition.x * 270)
       const tiltDeg = Math.round(stereoPosition.y * 135)
       const manualTag = this.hasAnyOverride() ? ' [MANUAL]' : ''
       const transitionTag = this.isTransitioning ? ' [LERP]' : ''
-      const stereoTag = stereoConfig.type !== 'sync' ? ` [${stereoConfig.type.toUpperCase()} F${fixtureIndex}/${totalFixtures}]` : ''
+      const stereoTag = stereoConfig.type !== 'sync' ? ` [${stereoConfig.type.toUpperCase()} ×${totalFixtures}]` : ''
       const phaseDeg = Math.round((this.phaseAccumulator % (2 * Math.PI)) * 180 / Math.PI)
       console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag}${stereoTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`)
     }

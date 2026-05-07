@@ -78,6 +78,8 @@ export class ArbitrationDirector extends EventEmitter {
         this.grandMaster = 1.0;
         this.inhibitLimits = new Map();
         // ── Output Gate (WAVE 1132) ────────────────────────────────────────────────
+        // ⚡ WAVE 4612: Revertido. Arrancar en SAFE MODE (ARMED=false). La UI no
+        // depende de este flag — el hot-frame se emite antes del output gate.
         this._outputEnabled = false;
         this._lastOutputGateChange = null;
         // ── Grand Master Speed (WAVE 2495) ────────────────────────────────────────

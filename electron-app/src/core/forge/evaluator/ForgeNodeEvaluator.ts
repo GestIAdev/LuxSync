@@ -27,12 +27,14 @@ import { AUDIO_BAND_INDEX } from '../compiler/ForgeGraphCompiler'
 // ═══════════════════════════════════════════════════════════════════════════
 
 const DMX_UNIVERSE_SIZE = 512
+const PHOTON_TRACER_EVERY_FRAMES = 20
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FORGE NODE EVALUATOR
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ForgeNodeEvaluator {
+  private static _photonTracerFrame = 0
 
   /**
    * Evalúa el grafo compilado de un fixture en un frame.
@@ -53,6 +55,8 @@ export class ForgeNodeEvaluator {
     dmxBuffer: Uint8Array,
     baseAddr: number,
   ): void {
+    ForgeNodeEvaluator._photonTracerFrame++
+
     const wire  = compiled.wireBuffer
     const state = compiled.stateBuffer
 
@@ -124,6 +128,7 @@ export class ForgeNodeEvaluator {
 
     const outputs = compiled.outputs
     const outputLen = outputs.length
+    const tracerInDimmer = values?.dimmer
     for (let o = 0; o < outputLen; o++) {
       const out = outputs[o]
       let normalized = wire[out.wireIndex]
@@ -145,6 +150,15 @@ export class ForgeNodeEvaluator {
       } else {
         dmxBuffer[bufIdx] = Math.round(normalized * 255)
       }
+    }
+
+    if (
+      baseAddr === 0 &&
+      ForgeNodeEvaluator._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0
+    ) {
+      const tracerOut = dmxBuffer[baseAddr]
+      const tracerIn = typeof tracerInDimmer === 'number' ? Math.round(tracerInDimmer * 255) : 'n/a'
+      console.log(`[TRACER-3 EVALUATOR] Fixture 0 -> IN: ${tracerIn} | OUT: ${tracerOut}`)
     }
   }
 }

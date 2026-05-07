@@ -46,7 +46,7 @@
  */
 import { NodeFamily } from '../types';
 import { BaseSystem } from '../systems';
-import { VibeMovementManager, } from '../../../engine/movement/VibeMovementManager';
+import { vibeMovementManager, } from '../../../engine/movement/VibeMovementManager';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +111,7 @@ export class KineticAdapter extends BaseSystem {
         this.name = 'KineticAdapter';
         this.family = NodeFamily.KINETIC;
         this.source = INTENT_SOURCE;
+        this._vmm = vibeMovementManager;
         /**
          * Puente de audio pre-allocado.
          * Sus campos se sobrescriben in-place en el hot-path — nunca se crea
@@ -125,7 +126,6 @@ export class KineticAdapter extends BaseSystem {
             beatPhase: 0,
             beatCount: 0,
         };
-        this._vmm = new VibeMovementManager();
     }
     // ─────────────────────────────────────────────────────────────────────────
     // HOT-PATH — 44Hz

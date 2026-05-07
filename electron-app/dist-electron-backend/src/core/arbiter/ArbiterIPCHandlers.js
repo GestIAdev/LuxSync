@@ -595,10 +595,18 @@ export function registerArbiterHandlers(masterArbiter) {
         else {
             masterArbiter.setOutputEnabled(enabled);
         }
+        const orchestrator = getTitanOrchestrator();
+        orchestrator.setOutputEnabled(enabled);
+        console.log('[TRACER-GATE IPC-ACK]', {
+            enabled,
+            label: sanitizedLabel,
+            masterOutputEnabled: masterArbiter.isOutputEnabled(),
+            orchestratorOutputEnabled: orchestrator.isOutputEnabled(),
+        });
         return {
             success: true,
-            outputEnabled: masterArbiter.isOutputEnabled(),
-            state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+            outputEnabled: orchestrator.isOutputEnabled(),
+            state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
         };
     });
     /**
@@ -615,6 +623,8 @@ export function registerArbiterHandlers(masterArbiter) {
             // ignore
         }
         const result = masterArbiter.toggleOutput();
+        const orchestrator = getTitanOrchestrator();
+        orchestrator.setOutputEnabled(result);
         // If tagged API exists, stamp the origin label for forensics
         try {
             const anyArbiter = masterArbiter;
@@ -630,17 +640,18 @@ export function registerArbiterHandlers(masterArbiter) {
         }
         return {
             success: true,
-            outputEnabled: result,
-            state: result ? 'LIVE' : 'ARMED'
+            outputEnabled: orchestrator.isOutputEnabled(),
+            state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
         };
     });
     /**
      * Get output enabled state
      */
     ipcMain.handle('lux:arbiter:getOutputEnabled', () => {
+        const orchestrator = getTitanOrchestrator();
         return {
-            outputEnabled: masterArbiter.isOutputEnabled(),
-            state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+            outputEnabled: orchestrator.isOutputEnabled(),
+            state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
         };
     });
     // ═══════════════════════════════════════════════════════════════════════

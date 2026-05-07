@@ -72,6 +72,8 @@ const CH_COLOR_WHEEL = 'color_wheel';
 const CH_TARGET_X = 'targetX';
 const CH_TARGET_Y = 'targetY';
 const CH_TARGET_Z = 'targetZ';
+const SHUTTER_CHANNEL = 'shutter';
+const STROBE_CHANNEL = 'strobe';
 const IK_WARN_INTERVAL_FRAMES = 44;
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
@@ -83,6 +85,7 @@ const DEFAULT_IK_ORIENTATION = {
 };
 // ── DMX universe size ────────────────────────────────────────────────────
 const DMX_UNIVERSE_SIZE = 512;
+const PHOTON_TRACER_EVERY_FRAMES = 20;
 // ── Contexto de frame para el HarmonicQuantizer ──────────────────────────
 // Inyectado via setResolveContext() antes de cada llamada a resolve().
 // Valores por defecto conservadores (sin cuantización activa).
@@ -137,6 +140,11 @@ export class NodeResolver {
         this._forgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT;
         // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
         this._safetyMiddleware = null;
+        // WAVE 4614: Caché de últimos targets IK reales (pre-gate) por nodo KINETIC.
+        // El applyOutputGate corrompe targetX→0/targetY→1.5/targetZ→2.0 antes del resolve.
+        // Este caché preserva el target real del VMM para que _writeNodeIK calcule
+        // currentPosition correctamente incluso cuando el output está bloqueado.
+        this._lastKineticTargets = new Map();
         this._graph = graph;
     }
     /**
@@ -245,10 +253,31 @@ export class NodeResolver {
         for (const [, buf] of this._universeBuffers) {
             buf.fill(0);
         }
+        // ★ TRACER-3.0: Diagnóstico del mapa arbitrado vs NodeGraph
+        if (this._resolveFrameIndex % 20 === 0) {
+            let knownCount = 0;
+            let unknownCount = 0;
+            let firstUnknown = '';
+            for (const [nid] of arbitrated) {
+                if (this._graph.getNodeData(nid)) {
+                    knownCount++;
+                }
+                else {
+                    unknownCount++;
+                    if (!firstUnknown)
+                        firstUnknown = String(nid);
+                }
+            }
+            console.log(`[TRACER-3.0 RESOLVE] resolveFrame=${this._resolveFrameIndex} arbitratedSize=${arbitrated.size} ` +
+                `knownInGraph=${knownCount} unknownInGraph=${unknownCount} ` +
+                `registeredUniverses=${[...this._universeBuffers.keys()].join(',')} ` +
+                `firstUnknown=${firstUnknown || 'none'}`);
+        }
         // 2. Para cada nodo arbitrado, escribir en el buffer del universo
         for (const [nodeId, channelValues] of arbitrated) {
             this._writeNode(nodeId, channelValues);
         }
+        this._traceFirstDeviceDmxBytes();
         // 3. Ensamblar los packets de salida desde los buffers activos
         this._framePackets.clear();
         for (const universe of this._activeUniverses) {
@@ -263,6 +292,76 @@ export class NodeResolver {
         }
         // Retornar como Array readonly (sin new Array — reutiliza la misma ref)
         return Array.from(this._framePackets.values());
+    }
+    _traceFirstDeviceDmxBytes() {
+        if (this._resolveFrameIndex % PHOTON_TRACER_EVERY_FRAMES !== 0)
+            return;
+        let probeNode = this._graph.getView(NodeFamily.IMPACT).count > 0
+            ? this._graph.getView(NodeFamily.IMPACT).get(0)
+            : this._graph.getView(NodeFamily.COLOR).count > 0
+                ? this._graph.getView(NodeFamily.COLOR).get(0)
+                : this._graph.getView(NodeFamily.KINETIC).count > 0
+                    ? this._graph.getView(NodeFamily.KINETIC).get(0)
+                    : this._graph.getView(NodeFamily.BEAM).count > 0
+                        ? this._graph.getView(NodeFamily.BEAM).get(0)
+                        : this._graph.getView(NodeFamily.ATMOSPHERE).count > 0
+                            ? this._graph.getView(NodeFamily.ATMOSPHERE).get(0)
+                            : undefined;
+        if (!probeNode)
+            return;
+        this._traceProbeDeviceLayout(probeNode.deviceId);
+        const device = this._graph.getDevice(probeNode.deviceId);
+        if (!device)
+            return;
+        const buf = this._universeBuffers.get(device.universe);
+        if (!buf)
+            return;
+        const baseAddr = device.dmxAddress - 1;
+        // ★ TRACER-4 META: loguear qué nodo estamos probeando y si entró en _writeNode
+        console.log(`[TRACER-4-META] resolveFrame=${this._resolveFrameIndex} probeNode=${String(probeNode.nodeId)} deviceId=${String(probeNode.deviceId)} ` +
+            `universe=${device.universe} dmxAddr=${device.dmxAddress} baseAddr=${baseAddr} ` +
+            `wasActive=${this._activeUniverses.has(device.universe)} channels=${probeNode.channels.length}`);
+        let dimmerByte = null;
+        let shutterByte = null;
+        for (let ci = 0; ci < probeNode.channels.length; ci++) {
+            const channel = probeNode.channels[ci];
+            const idx = baseAddr + channel.dmxOffset;
+            if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                continue;
+            if (channel.type === DIMMER_CHANNEL && dimmerByte === null) {
+                dimmerByte = buf[idx];
+            }
+            if (channel.type === SHUTTER_CHANNEL && shutterByte === null) {
+                shutterByte = buf[idx];
+            }
+        }
+        if (dimmerByte !== null || shutterByte !== null) {
+            console.log(`[TRACER-4 RESOLVER] Fixture 0 -> DMX Dimmer Byte: ${dimmerByte ?? 'n/a'} | Shutter: ${shutterByte ?? 'n/a'}`);
+        }
+    }
+    _traceProbeDeviceLayout(deviceId) {
+        const families = [
+            NodeFamily.IMPACT,
+            NodeFamily.COLOR,
+            NodeFamily.KINETIC,
+            NodeFamily.BEAM,
+            NodeFamily.ATMOSPHERE,
+        ];
+        const parts = [];
+        for (let fi = 0; fi < families.length; fi++) {
+            const family = families[fi];
+            const view = this._graph.getView(family);
+            for (let ni = 0; ni < view.count; ni++) {
+                const node = view.get(ni);
+                if (node.deviceId !== deviceId)
+                    continue;
+                const channelMap = node.channels
+                    .map(channel => `${channel.type}@${channel.dmxOffset}`)
+                    .join(',');
+                parts.push(`${String(node.nodeId)}[${channelMap}]`);
+            }
+        }
+        console.log(`[TRACER-3.2 LAYOUT] resolveFrame=${this._resolveFrameIndex} deviceId=${String(deviceId)} nodes=${parts.join(' | ') || 'none'}`);
     }
     // ── Internos ──────────────────────────────────────────────────────────
     /**
@@ -286,6 +385,12 @@ export class NodeResolver {
         if (!buf)
             return; // universe no registrado — ignorar silenciosamente
         const baseAddr = device.dmxAddress - 1; // convertir a 0-indexed
+        const _t36probe = this._resolveFrameIndex % 20 === 0
+            ? this._graph.getView(NodeFamily.IMPACT).count > 0
+                ? this._graph.getView(NodeFamily.IMPACT).get(0)
+                : undefined
+            : undefined;
+        const _t36watchDeviceId = _t36probe?.deviceId;
         // ═══ WAVE 4548.6: FORGE EVALUATOR BYPASS ═══
         // Si este device tiene un grafo Forge compilado,
         // delegar COMPLETAMENTE al ForgeNodeEvaluator.
@@ -339,6 +444,7 @@ export class NodeResolver {
             }
         }
         // ── Fin traducción cromática ───────────────────────────────────────
+        // [TRACER-3.5 WRITE_NODE] — silenciado WAVE 4612
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
             const bufIdx = baseAddr + chDef.dmxOffset;
@@ -348,7 +454,8 @@ export class NodeResolver {
             // el mapa original o el mapa con canales físicos ya calculados).
             const rawNormalized = translatedValues[chDef.type] !== undefined
                 ? translatedValues[chDef.type]
-                : chDef.defaultValue / 255;
+                : this._getDefaultNormalizedValue(node, chDef);
+            // [TRACER-3.5-CH] — silenciado WAVE 4612
             // Aplicar TransferCurve
             let normalized = this._applyTransferCurve(rawNormalized, chDef, node.constraints.transferCurve);
             // Clamp al rango válido del constraint
@@ -375,12 +482,27 @@ export class NodeResolver {
                     dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, false);
                 }
             }
+            // WAVE 4614: Write-back currentPosition for classic pan/tilt path (UIProjector reads it).
+            // Only update when output is live — if gated off, channels[pan/tilt] may be zeroed
+            // by applyOutputGate and would corrupt currentPosition with a false safe-center value.
+            if (node.family === NodeFamily.KINETIC && (!this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled())) {
+                const kn = node;
+                if (chDef.type === PAN_COARSE) {
+                    kn.currentPosition.pan = dmxValue / 255;
+                }
+                else if (chDef.type === TILT_COARSE) {
+                    kn.currentPosition.tilt = dmxValue / 255;
+                }
+            }
             // Clamp final de seguridad
             if (dmxValue < 0)
                 dmxValue = 0;
             if (dmxValue > 255)
                 dmxValue = 255;
+            const prevValue = buf[bufIdx];
             buf[bufIdx] = dmxValue;
+            // [TRACER-3.6 SLOT-WRITE] — silenciado WAVE 4612
+            // [TRACER-3.5-WRITE] — silenciado WAVE 4612
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {
                 const fineIdx = bufIdx + 1;
@@ -404,14 +526,53 @@ export class NodeResolver {
      * internamente (anti-double-calibration).
      */
     _writeNodeIK(node, channelValues, baseAddr, buf, calibration) {
-        const tx = channelValues[CH_TARGET_X];
-        const ty = channelValues[CH_TARGET_Y] ?? 1.5;
-        const tz = channelValues[CH_TARGET_Z] ?? 2.0;
+        const outputEnabled = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
+        // WAVE 4614: Desacoplar el target real del target gateado.
+        // applyOutputGate pone targetX=0/targetY=1.5/targetZ=2.0 cuando output=false.
+        // Usamos el último target real cacheado para calcular currentPosition correctamente.
+        // El write a DMX usa el channelValues recibido (ya gateado) — safe por diseño.
+        const rawTx = channelValues[CH_TARGET_X];
+        const rawTy = channelValues[CH_TARGET_Y] ?? 1.5;
+        const rawTz = channelValues[CH_TARGET_Z] ?? 2.0;
+        let tx;
+        let ty;
+        let tz;
+        if (outputEnabled) {
+            // Output activo: el target es real — actualizar caché
+            this._lastKineticTargets.set(node.nodeId, [rawTx, rawTy, rawTz]);
+            tx = rawTx;
+            ty = rawTy;
+            tz = rawTz;
+        }
+        else {
+            // Output bloqueado: applyOutputGate aplastó los canales con safe-center.
+            // Usar el último target real para que currentPosition refleje la posición
+            // real del VMM (el UI projector la leerá en el siguiente frame).
+            const cached = this._lastKineticTargets.get(node.nodeId);
+            if (cached !== undefined) {
+                ;
+                [tx, ty, tz] = cached;
+            }
+            else {
+                // Sin caché aún: usar el raw (safe-center) como fallback inicial
+                tx = rawTx;
+                ty = rawTy;
+                tz = rawTz;
+            }
+        }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
         const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX);
         const reachable = ikResult.reachable !== false;
         this._ikReachability.set(node.nodeId, reachable);
+        // ⚡ SNIPER-IK (WAVE 4614): Trazar entrada + salida del IK engine
+        if (this._resolveFrameIndex % 60 === 0) {
+            console.log(`[SNIPER-IK] node=${String(node.nodeId)} ` +
+                `raw=(${rawTx.toFixed(2)},${rawTy.toFixed(2)},${rawTz.toFixed(2)}) ` +
+                `tgt=(${tx.toFixed(2)},${ty.toFixed(2)},${tz.toFixed(2)}) ` +
+                `outputEnabled=${outputEnabled} reachable=${reachable} pan=${ikResult.pan} tilt=${ikResult.tilt} ` +
+                `prevPanDMX=${currentPanDMX.toFixed(1)}`);
+        }
         if (!reachable) {
             const lastWarnFrame = this._ikLastWarnFrame.get(node.nodeId) ?? -IK_WARN_INTERVAL_FRAMES;
             if ((this._resolveFrameIndex - lastWarnFrame) >= IK_WARN_INTERVAL_FRAMES) {
@@ -428,6 +589,18 @@ export class NodeResolver {
             safePan = sm.applyAirbag(clamped.pan, true);
             safeTilt = sm.applyAirbag(clamped.tilt, false);
         }
+        // WAVE 4613 + 4614: Actualizar currentPosition con el resultado IK.
+        // El target usado para el cálculo ya es el real (pre-gate del caché),
+        // por lo que el write-back es correcto incluso con output=false.
+        // El UIProjector lo leerá en el siguiente frame.
+        node.currentPosition.pan = safePan / 255;
+        node.currentPosition.tilt = safeTilt / 255;
+        // WAVE 4614: Cuando output=false, NO escribir a buf DMX.
+        // El applyOutputGate ya bloqueó la transmisión al hardware (shouldSendUniverse
+        // sigue enviando pero applyOutputGate aplastó el mapa; no obstante, para
+        // garantizar cero-movimiento-hardware, no escribimos en el buf si está gateado).
+        if (!outputEnabled)
+            return;
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
             const isPan = chDef.type === 'pan';
@@ -453,6 +626,18 @@ export class NodeResolver {
      */
     getKineticReachability(nodeId) {
         return this._ikReachability.get(nodeId);
+    }
+    _getDefaultNormalizedValue(node, chDef) {
+        if (chDef.type === SHUTTER_CHANNEL) {
+            return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255;
+        }
+        if (chDef.type === STROBE_CHANNEL && node.family === NodeFamily.IMPACT) {
+            const hasDedicatedShutter = node.channels.some(channel => channel.type === SHUTTER_CHANNEL);
+            if (!hasDedicatedShutter) {
+                return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255;
+            }
+        }
+        return chDef.defaultValue / 255;
     }
     /**
      * WAVE 4523.5: Construye y cachea el IKFixtureProfile para un nodo KINETIC.

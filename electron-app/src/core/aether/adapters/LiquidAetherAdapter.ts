@@ -39,7 +39,7 @@ import type { IIntentBus, INodeIntent } from '../intent-bus'
 import type { ProcessedFrame } from '../../../hal/physics/LiquidEngineBase'
 import type { LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
 import type { INodeGraph } from '../node-graph'
-import { selectZoneFromResult, computeEpicenterFalloff } from './zoneUtils'
+import { selectZoneFromResult, computeEpicenterFalloff, normalizeZoneId } from './zoneUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES
@@ -50,6 +50,7 @@ const L0_PRIORITY = 0
 
 /** Source string para telemetría */
 const SOURCE = 'liquid-aether-l0'
+const PHOTON_TRACER_EVERY_FRAMES = 20
 
 /** Radio máximo de influencia de la onda energética (metros). */
 const DEFAULT_MAX_RADIUS_M = 12.0
@@ -135,6 +136,8 @@ export class LiquidAetherAdapter {
     source: string
   }
 
+  private _photonTracerFrame = 0
+
   constructor(
     private readonly _nodeGraph: INodeGraph,
     epicenter: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
@@ -194,6 +197,8 @@ export class LiquidAetherAdapter {
    * @param bus    - IIntentBus donde inyectar los intents L0
    */
   ingest(frame: ProcessedFrame, result: LiquidStereoResult, bus: IIntentBus): void {
+    this._photonTracerFrame++
+
     // 1. Intensidades de dimmer para todos los IMPACT nodes por zona
     this._routeImpactNodes(result, bus)
 
@@ -227,7 +232,7 @@ export class LiquidAetherAdapter {
     const epicenter = this._epicenter
     const maxR      = this._maxRadiusM
 
-    impactNodes.forEach((node) => {
+    impactNodes.forEach((node, index) => {
       // ── Zero-alloc stale cleanup ──────────────────────────────────
       this._impactValues['dimmer'] = undefined as unknown as number
 
@@ -240,6 +245,12 @@ export class LiquidAetherAdapter {
       // ── Intent L0 ─────────────────────────────────────────────────
       this._impactValues['dimmer'] = clamp01(zoneIntensity * falloff)
       this._impactScratch.nodeId   = node.nodeId
+
+      if (index === 0 && this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
+        const dmx = Math.round(this._impactValues['dimmer'] * 255)
+        console.log(`[TRACER-1 INGEST] Fixture 0 -> Liquid Dimmer: ${dmx}`)
+      }
+
       bus.push(this._impactScratch as INodeIntent)
     })
   }
@@ -335,7 +346,7 @@ export class LiquidAetherAdapter {
   }
 
   private _selectReactiveZoneIntensity(result: LiquidStereoResult, zoneId: string): number {
-    switch ((zoneId || '').toLowerCase()) {
+    switch (normalizeZoneId(zoneId)) {
       case 'unassigned':
       case 'center':
       case 'mid':
@@ -348,6 +359,14 @@ export class LiquidAetherAdapter {
         return clamp01((result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3)
       case 'right':
         return clamp01((result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3)
+      case 'front-left':
+        return result.frontLeftIntensity
+      case 'front-right':
+        return result.frontRightIntensity
+      case 'back-left':
+        return result.backLeftIntensity
+      case 'back-right':
+        return result.backRightIntensity
       case 'movers-left':
         return result.moverLeftIntensity
       case 'movers-right':

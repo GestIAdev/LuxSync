@@ -122,6 +122,7 @@ export class AetherSafetyMiddleware {
   }
 
   setOutputEnabled(enabled: boolean): void { this._outputEnabled = enabled }
+  isOutputEnabled(): boolean { return this._outputEnabled }
 
   setManualNodeIds(nodeIds: readonly string[]): void {
     this._manualNodeIds.clear()
@@ -138,7 +139,12 @@ export class AetherSafetyMiddleware {
 
   applyOutputGate(arbitrated: Map<NodeId, Record<string, number>>): void {
     if (this._outputEnabled) return
-    for (const nodeId of arbitrated.keys()) {
+
+    // WAVE 4616: PRE-VIS RESCUE
+    // No mutar canales pre-resolve. El cálculo (IK/currentPosition) debe permanecer
+    // íntegro para UI aunque output esté desarmado. El bloqueo real de salida
+    // se aplica en el write final al buffer DMX dentro del resolver.
+    for (const [nodeId] of arbitrated) {
       if (this._manualNodeIds.has(nodeId)) continue
       this._aduanaBlocks++
     }

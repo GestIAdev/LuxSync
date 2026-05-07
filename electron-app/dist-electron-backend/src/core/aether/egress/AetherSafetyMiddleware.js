@@ -107,6 +107,7 @@ export class AetherSafetyMiddleware {
         }
     }
     setOutputEnabled(enabled) { this._outputEnabled = enabled; }
+    isOutputEnabled() { return this._outputEnabled; }
     setManualNodeIds(nodeIds) {
         this._manualNodeIds.clear();
         for (let i = 0; i < nodeIds.length; i++)

@@ -52,6 +52,7 @@ import type { IIntentBus, INodeIntent } from '../intent-bus'
 import { BaseSystem, type IAetherSystem, type FrameContext } from '../systems'
 import {
   VibeMovementManager,
+  vibeMovementManager,
   type AudioContext as VmmAudioContext,
 } from '../../../engine/movement/VibeMovementManager'
 
@@ -127,7 +128,7 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
   readonly family = NodeFamily.KINETIC
   readonly source: string = INTENT_SOURCE
 
-  private readonly _vmm: VibeMovementManager
+  private readonly _vmm: VibeMovementManager = vibeMovementManager
 
   /**
    * Puente de audio pre-allocado.
@@ -146,7 +147,6 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
 
   constructor() {
     super()
-    this._vmm = new VibeMovementManager()
   }
 
   // ─────────────────────────────────────────────────────────────────────────

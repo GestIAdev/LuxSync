@@ -164,6 +164,8 @@ export class ArbitrationDirector extends EventEmitter {
   private inhibitLimits: Map<string, number> = new Map()
 
   // ── Output Gate (WAVE 1132) ────────────────────────────────────────────────
+  // ⚡ WAVE 4612: Revertido. Arrancar en SAFE MODE (ARMED=false). La UI no
+  // depende de este flag — el hot-frame se emite antes del output gate.
   private _outputEnabled: boolean = false
   private _lastOutputGateChange: {
     enabled: boolean; atMs: number; label?: string; stack?: string

@@ -140,46 +140,52 @@ export function injectHotFrame(hotFrame: any): void {
   if (hotFixtures && existingFixtures && transientRef.current.hardware) {
     let activeCount = 0
 
-    for (let i = 0; i < hotFixtures.length; i++) {
-      const hot = hotFixtures[i]
-      // Match by index (fixtures arrive in same order from TitanOrchestrator)
-      const existing = existingFixtures[i]
+    // ⚡ WAVE 4610-B: ID-first merge — never patch by array index alone.
+    // Build a Map from the existing base truth so any ordering difference
+    // between the full-truth array and the hot-frame array is irrelevant.
+    // O(N) construction, O(1) lookup — no regression on the hot path.
+    const existingById: Map<string, any> = new Map()
+    for (const f of existingFixtures) {
+      if (f?.id) existingById.set(f.id, f)
+    }
 
-      if (existing && existing.id === hot.id) {
-        // ── Patch ONLY dynamic fields onto existing fixture object ──
-        // Cast to mutable: transientStore is the low-level injection point
-        // where readonly physics fields ARE legitimately updated from IPC data.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mutable = existing as any
-        mutable.dimmer = hot.dimmer
-        mutable.intensity = hot.dimmer  // intensity mirrors dimmer
-        mutable.pan = hot.pan
-        mutable.tilt = hot.tilt
-        mutable.zoom = hot.zoom
-        mutable.focus = hot.focus
-        mutable.physicalPan = hot.physicalPan
-        mutable.physicalTilt = hot.physicalTilt
-        mutable.panVelocity = hot.panVelocity
-        mutable.tiltVelocity = hot.tiltVelocity
-        mutable.active = hot.dimmer > 0
+    for (const hot of hotFixtures) {
+      if (!hot?.id) continue
 
-        // ── White/Amber: propagate at 22Hz (not just 7Hz from SeleneTruth) ──
-        mutable.white = hot.white ?? 0
-        mutable.amber = hot.amber ?? 0
+      const existing = existingById.get(hot.id)
+      if (!existing) continue
 
-        // ── Color: deep merge into existing color object ──
-        if (existing.color) {
-          existing.color.r = hot.r
-          existing.color.g = hot.g
-          existing.color.b = hot.b
-        } else {
-          existing.color = { r: hot.r, g: hot.g, b: hot.b }
-        }
+      // ── Patch ONLY dynamic fields onto existing fixture object ──
+      // Cast to mutable: transientStore is the low-level injection point
+      // where readonly physics fields ARE legitimately updated from IPC data.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mutable = existing as any
+      mutable.dimmer = hot.dimmer
+      mutable.intensity = hot.dimmer  // intensity mirrors dimmer
+      mutable.pan = hot.pan
+      mutable.tilt = hot.tilt
+      mutable.zoom = hot.zoom
+      mutable.focus = hot.focus
+      mutable.physicalPan = hot.physicalPan
+      mutable.physicalTilt = hot.physicalTilt
+      mutable.panVelocity = hot.panVelocity
+      mutable.tiltVelocity = hot.tiltVelocity
+      mutable.active = hot.dimmer > 0
 
-        if (hot.dimmer > 0) activeCount++
+      // ── White/Amber: propagate at 22Hz (not just 7Hz from SeleneTruth) ──
+      mutable.white = hot.white ?? 0
+      mutable.amber = hot.amber ?? 0
+
+      // ── Color: deep merge into existing color object ──
+      if (existing.color) {
+        existing.color.r = hot.r
+        existing.color.g = hot.g
+        existing.color.b = hot.b
+      } else {
+        existing.color = { r: hot.r, g: hot.g, b: hot.b }
       }
-      // If IDs don't match (shouldn't happen, but defensive):
-      // skip — don't corrupt existing fixture with wrong data
+
+      if (hot.dimmer > 0) activeCount++
     }
 
     transientRef.current.hardware.fixturesActive = activeCount

@@ -74,6 +74,7 @@ import type {
   FixtureType,
 } from '../../../types/FixtureDefinition'
 import type { FixtureV2 } from '../../stage/ShowFileV2'
+import { normalizeZoneId } from '../adapters/zoneUtils'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERNAL: CHANNEL GROUP para sub-emitters
@@ -196,6 +197,47 @@ const ATMOSPHERE_CONSTRAINTS: INodeConstraints = {
   maxValue:        255,
 }
 
+const CHANNEL_PRIORITY_BY_TYPE: Readonly<Record<string, number>> = Object.freeze({
+  pan: 90,
+  pan_fine: 89,
+  tilt: 88,
+  tilt_fine: 87,
+  rotation: 86,
+  speed: 85,
+  dimmer: 80,
+  shutter: 79,
+  strobe: 78,
+  color_wheel: 70,
+  gobo: 69,
+  gobo_rotation: 68,
+  prism: 67,
+  prism_rotation: 66,
+  focus: 65,
+  zoom: 64,
+  frost: 63,
+  red: 50,
+  green: 49,
+  blue: 48,
+  white: 47,
+  amber: 46,
+  uv: 45,
+  cyan: 44,
+  magenta: 43,
+  yellow: 42,
+  control: 20,
+  macro: 19,
+  custom: 18,
+  unknown: 0,
+})
+
+const FAMILY_PRIORITY: Readonly<Record<NodeFamily, number>> = Object.freeze({
+  [NodeFamily.KINETIC]: 5,
+  [NodeFamily.IMPACT]: 4,
+  [NodeFamily.BEAM]: 3,
+  [NodeFamily.COLOR]: 2,
+  [NodeFamily.ATMOSPHERE]: 1,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE EXTRACTION PIPELINE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -270,7 +312,7 @@ export class NodeExtractionPipeline {
       const fv2        = dmxAddressOrFixtureV2
       resolvedAddress  = fv2.address
       resolvedUniverse = fv2.universe
-      resolvedZone     = fv2.zone as ZoneId
+      resolvedZone     = normalizeZoneId(fv2.zone) as ZoneId
       resolvedDeviceId = (fv2.id as DeviceId)
       resolvedPosition = fv2.position
       v2CalibOverride  = fv2.calibration
@@ -282,7 +324,7 @@ export class NodeExtractionPipeline {
       // ── Firma legacy (compatibilidad) ─────────────────────────────────
       resolvedAddress     = dmxAddressOrFixtureV2
       resolvedUniverse    = universe!
-      resolvedZone        = zoneId!
+      resolvedZone        = normalizeZoneId(zoneId!) as ZoneId
       resolvedDeviceId    = deviceIdOverride ?? (fixtureDef.id as DeviceId)
       resolvedPosition    = undefined
       v2CalibOverride     = undefined
@@ -292,12 +334,15 @@ export class NodeExtractionPipeline {
     }
 
     const topology = this._analyzeTopology(fixtureDef)
-    const nodes    = this._buildAllNodes(
+    const nodes    = this._sanitizeOverlappingChannels(
       resolvedDeviceId,
-      resolvedZone,
-      fixtureDef,
-      topology,
-      resolvedPosition,
+      this._buildAllNodes(
+        resolvedDeviceId,
+        resolvedZone,
+        fixtureDef,
+        topology,
+        resolvedPosition,
+      ),
     )
     const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
 
@@ -439,6 +484,80 @@ export class NodeExtractionPipeline {
     }
 
     return nodes
+  }
+
+  private _sanitizeOverlappingChannels(
+    deviceId: DeviceId,
+    nodes: ICapabilityNode[],
+  ): ICapabilityNode[] {
+    type Candidate = {
+      node: ICapabilityNode
+      nodeIndex: number
+      channel: INodeChannelDef
+      score: number
+    }
+
+    const byOffset = new Map<number, Candidate[]>()
+
+    for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+      const node = nodes[nodeIndex]
+      for (let channelIndex = 0; channelIndex < node.channels.length; channelIndex++) {
+        const channel = node.channels[channelIndex]
+        const score = this._getChannelPriority(node.family, channel.type)
+        const list = byOffset.get(channel.dmxOffset)
+        const candidate: Candidate = { node, nodeIndex, channel, score }
+        if (list) {
+          list.push(candidate)
+        } else {
+          byOffset.set(channel.dmxOffset, [candidate])
+        }
+      }
+    }
+
+    const winners = new Map<number, Candidate>()
+    const collisionLogs: string[] = []
+
+    for (const [offset, candidates] of byOffset) {
+      let winner = candidates[0]
+      for (let i = 1; i < candidates.length; i++) {
+        const current = candidates[i]
+        if (
+          current.score > winner.score ||
+          (current.score === winner.score && current.nodeIndex > winner.nodeIndex)
+        ) {
+          winner = current
+        }
+      }
+      winners.set(offset, winner)
+
+      if (candidates.length > 1) {
+        collisionLogs.push(
+          `offset=${offset} winner=${String(winner.node.nodeId)}:${winner.channel.type} ` +
+          `candidates=${candidates.map(candidate => `${String(candidate.node.nodeId)}:${candidate.channel.type}`).join(',')}`,
+        )
+      }
+    }
+
+    if (collisionLogs.length > 0) {
+      console.warn(
+        `[NodeExtractionPipeline] ⚠️ DMX offset collision sanitized for ${String(deviceId)} | ${collisionLogs.join(' | ')}`,
+      )
+    }
+
+    const sanitized = nodes
+      .map(node => {
+        const nextChannels = node.channels.filter(channel => winners.get(channel.dmxOffset)?.channel === channel)
+        return { ...node, channels: nextChannels } as ICapabilityNode
+      })
+      .filter(node => node.channels.length > 0)
+
+    return sanitized
+  }
+
+  private _getChannelPriority(family: NodeFamily, channelType: string): number {
+    const typePriority = CHANNEL_PRIORITY_BY_TYPE[channelType] ?? 0
+    const familyPriority = FAMILY_PRIORITY[family] ?? 0
+    return typePriority * 10 + familyPriority
   }
 
   // ── COLOR NODE ────────────────────────────────────────────────────────────

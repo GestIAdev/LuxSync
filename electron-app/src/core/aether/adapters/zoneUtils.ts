@@ -23,6 +23,25 @@
 import type { LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
 import type { ICapabilityNode } from '../capability-node'
 
+/**
+ * Normaliza zoneId a kebab-case canónico para unificar Legacy camelCase y Aether.
+ * Ejemplos: moversLeft -> movers-left, frontLeft -> front-left.
+ */
+export function normalizeZoneId(zoneId: string | null | undefined): string {
+  if (!zoneId) return 'unassigned'
+  const normalized = String(zoneId)
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .toLowerCase()
+
+  // Alias legacy -> canónicos
+  if (normalized === 'mover-left') return 'movers-left'
+  if (normalized === 'mover-right') return 'movers-right'
+  return normalized || 'unassigned'
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EPICENTER FALLOFF
 // ═══════════════════════════════════════════════════════════════════════════
@@ -96,14 +115,14 @@ export function selectZoneFromResult(
   result: LiquidStereoResult,
   nodeZone: string,
 ): number {
-  switch (nodeZone) {
+  switch (normalizeZoneId(nodeZone)) {
     // ── 6 zonas clásicas ──────────────────────────────────────────────
-    case 'frontLeft':   return result.frontLeftIntensity
-    case 'frontRight':  return result.frontRightIntensity
-    case 'backLeft':    return result.backLeftIntensity
-    case 'backRight':   return result.backRightIntensity
-    case 'moverLeft':   return result.moverLeftIntensity
-    case 'moverRight':  return result.moverRightIntensity
+    case 'front-left':   return result.frontLeftIntensity
+    case 'front-right':  return result.frontRightIntensity
+    case 'back-left':    return result.backLeftIntensity
+    case 'back-right':   return result.backRightIntensity
+    case 'movers-left':  return result.moverLeftIntensity
+    case 'movers-right': return result.moverRightIntensity
     // ── 3 zonas WAVE 4520.2 ───────────────────────────────────────────
     case 'floor':       return result.floorIntensity
     case 'ambient':     return result.ambientIntensity
@@ -189,17 +208,19 @@ export function selectZoneIntensityXZ(
 export function selectColorRoleFromZone(
   zoneId: string,
 ): 'primary' | 'secondary' | 'accent' | 'ambient' {
-  switch (zoneId) {
-    case 'frontLeft':
-    case 'frontRight':
+  switch (normalizeZoneId(zoneId)) {
+    case 'front-left':
+    case 'front-right':
     case 'front':
       return 'primary'
-    case 'backLeft':
-    case 'backRight':
+    case 'back-left':
+    case 'back-right':
     case 'back':
+    case 'left':
+    case 'right':
       return 'secondary'
-    case 'moverLeft':
-    case 'moverRight':
+    case 'movers-left':
+    case 'movers-right':
       return 'accent'
     case 'ambient':
     case 'air':

@@ -80,6 +80,31 @@ function makeRgbPar(): FixtureDefinition {
   }
 }
 
+/** Fixture roto: dimmer y red comparten el mismo slot físico */
+function makeOverlappingRgbMover(): FixtureDefinition {
+  return {
+    id: 'broken-overlap-004',
+    name: 'Broken RGB Mover',
+    manufacturer: 'PunkFactory',
+    type: 'moving-head',
+    channels: [
+      ch(1, 'dimmer', 'Dimmer'),
+      ch(1, 'red', 'Red'),
+      ch(2, 'green', 'Green'),
+      ch(3, 'blue', 'Blue'),
+      ch(4, 'white', 'White'),
+      ch(5, 'strobe', 'Strobe'),
+      ch(6, 'amber', 'Amber'),
+    ],
+    capabilities: {
+      hasDimmer: true,
+      hasColorMixing: true,
+      colorEngine: 'rgbw',
+      hasStrobe: true,
+    },
+  }
+}
+
 /** Fixture fog machine: solo custom output channel */
 function makeFogMachine(): FixtureDefinition {
   return {
@@ -249,6 +274,24 @@ describe('⚗️ NodeExtractionPipeline — La Forja', () => {
       expect(allTypes).toContain('red')
       expect(allTypes).toContain('green')
       expect(allTypes).toContain('blue')
+    })
+
+    test('Canales solapados en el mismo offset se sanean con prioridad semántica', () => {
+      const result = pipeline.extract(makeOverlappingRgbMover(), 49, 0, 'back')
+
+      const impact = result.nodes.find(node => node.family === NodeFamily.IMPACT)
+      const color = result.nodes.find(node => node.family === NodeFamily.COLOR)
+
+      expect(impact).toBeDefined()
+      expect(color).toBeDefined()
+
+      const impactDimmer = impact!.channels.find(channel => channel.type === 'dimmer')
+      const colorRed = color!.channels.find(channel => channel.type === 'red')
+      const colorGreen = color!.channels.find(channel => channel.type === 'green')
+
+      expect(impactDimmer?.dmxOffset).toBe(0)
+      expect(colorRed).toBeUndefined()
+      expect(colorGreen?.dmxOffset).toBe(1)
     })
 
   })

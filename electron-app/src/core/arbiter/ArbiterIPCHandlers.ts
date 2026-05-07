@@ -794,6 +794,12 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
     const orchestrator = getTitanOrchestrator()
     orchestrator.setOutputEnabled(enabled)
+      console.log('[TRACER-GATE IPC-ACK]', {
+        enabled,
+        label: sanitizedLabel,
+        masterOutputEnabled: masterArbiter.isOutputEnabled(),
+        orchestratorOutputEnabled: orchestrator.isOutputEnabled(),
+      })
     return { 
       success: true, 
       outputEnabled: orchestrator.isOutputEnabled(),

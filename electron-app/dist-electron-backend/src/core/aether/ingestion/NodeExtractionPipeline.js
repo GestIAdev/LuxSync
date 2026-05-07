@@ -68,9 +68,8 @@ const ATMOSPHERE_FIXTURE_TYPES = new Set([
 // CONSTRAINT & CURVE DEFAULTS
 // ═══════════════════════════════════════════════════════════════════════════
 const IMPACT_TRANSFER_CURVE = {
-    type: 'exponential',
-    exponent: 2.5,
-    noiseGate: 0.02,
+    type: 'linear',
+    noiseGate: 0.0,
 };
 const IMPACT_BAND_MIX = {
     subBass: 0.80,
@@ -122,6 +121,45 @@ const ATMOSPHERE_CONSTRAINTS = {
     minChangeTimeMs: 0,
     maxValue: 255,
 };
+const CHANNEL_PRIORITY_BY_TYPE = Object.freeze({
+    pan: 90,
+    pan_fine: 89,
+    tilt: 88,
+    tilt_fine: 87,
+    rotation: 86,
+    speed: 85,
+    dimmer: 80,
+    shutter: 79,
+    strobe: 78,
+    color_wheel: 70,
+    gobo: 69,
+    gobo_rotation: 68,
+    prism: 67,
+    prism_rotation: 66,
+    focus: 65,
+    zoom: 64,
+    frost: 63,
+    red: 50,
+    green: 49,
+    blue: 48,
+    white: 47,
+    amber: 46,
+    uv: 45,
+    cyan: 44,
+    magenta: 43,
+    yellow: 42,
+    control: 20,
+    macro: 19,
+    custom: 18,
+    unknown: 0,
+});
+const FAMILY_PRIORITY = Object.freeze({
+    [NodeFamily.KINETIC]: 5,
+    [NodeFamily.IMPACT]: 4,
+    [NodeFamily.BEAM]: 3,
+    [NodeFamily.COLOR]: 2,
+    [NodeFamily.ATMOSPHERE]: 1,
+});
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE EXTRACTION PIPELINE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -171,7 +209,7 @@ export class NodeExtractionPipeline {
             resolvedIsPlaced = undefined;
         }
         const topology = this._analyzeTopology(fixtureDef);
-        const nodes = this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition);
+        const nodes = this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition));
         const calibration = this._buildCalibration(fixtureDef, v2CalibOverride);
         return {
             deviceId: resolvedDeviceId,
@@ -198,10 +236,10 @@ export class NodeExtractionPipeline {
         // Un fixture de tipo 'fog' con un canal 'custom' llamado "Fog Output"
         // debe producir un ATMOSPHERE node, no caer en el void.
         // Para el resto de fixtures, 'custom' sigue siendo atmósfera si existe.
-        const colorChs = chs.filter(ch => COLOR_CHANNEL_TYPES.has(ch.type));
-        const impactChs = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(ch.type));
-        const kineticChs = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(ch.type));
-        const beamChs = chs.filter(ch => BEAM_CHANNEL_TYPES.has(ch.type));
+        const colorChs = chs.filter(ch => COLOR_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)));
+        const impactChs = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)));
+        const kineticChs = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)));
+        const beamChs = chs.filter(ch => BEAM_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)));
         // Para fixtures de atmósfera: todos los canales no capturados por las
         // otras familias se convierten en ATMOSPHERE channels.
         // Para el resto: solo los tipos explícitamente en ATMOSPHERE_CHANNEL_TYPES.
@@ -212,8 +250,8 @@ export class NodeExtractionPipeline {
             ...BEAM_CHANNEL_TYPES,
         ]);
         const atmosphereChs = isAtmosphereFixture
-            ? chs.filter(ch => !classifiedTypes.has(ch.type) || ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
-            : chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(ch.type));
+            ? chs.filter(ch => !classifiedTypes.has(this._normalizeChannelType(ch.type)) || ATMOSPHERE_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
+            : chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)));
         // Para fans multi-emitter: detectar grupos de color por pétalo.
         // Para el resto: un único grupo de color si hay canales de color.
         const colorGroups = fixtureDef.type === 'fan'
@@ -293,6 +331,56 @@ export class NodeExtractionPipeline {
         }
         return nodes;
     }
+    _sanitizeOverlappingChannels(deviceId, nodes) {
+        const byOffset = new Map();
+        for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+            const node = nodes[nodeIndex];
+            for (let channelIndex = 0; channelIndex < node.channels.length; channelIndex++) {
+                const channel = node.channels[channelIndex];
+                const score = this._getChannelPriority(node.family, channel.type);
+                const list = byOffset.get(channel.dmxOffset);
+                const candidate = { node, nodeIndex, channel, score };
+                if (list) {
+                    list.push(candidate);
+                }
+                else {
+                    byOffset.set(channel.dmxOffset, [candidate]);
+                }
+            }
+        }
+        const winners = new Map();
+        const collisionLogs = [];
+        for (const [offset, candidates] of byOffset) {
+            let winner = candidates[0];
+            for (let i = 1; i < candidates.length; i++) {
+                const current = candidates[i];
+                if (current.score > winner.score ||
+                    (current.score === winner.score && current.nodeIndex > winner.nodeIndex)) {
+                    winner = current;
+                }
+            }
+            winners.set(offset, winner);
+            if (candidates.length > 1) {
+                collisionLogs.push(`offset=${offset} winner=${String(winner.node.nodeId)}:${winner.channel.type} ` +
+                    `candidates=${candidates.map(candidate => `${String(candidate.node.nodeId)}:${candidate.channel.type}`).join(',')}`);
+            }
+        }
+        if (collisionLogs.length > 0) {
+            console.warn(`[NodeExtractionPipeline] ⚠️ DMX offset collision sanitized for ${String(deviceId)} | ${collisionLogs.join(' | ')}`);
+        }
+        const sanitized = nodes
+            .map(node => {
+            const nextChannels = node.channels.filter(channel => winners.get(channel.dmxOffset)?.channel === channel);
+            return { ...node, channels: nextChannels };
+        })
+            .filter(node => node.channels.length > 0);
+        return sanitized;
+    }
+    _getChannelPriority(family, channelType) {
+        const typePriority = CHANNEL_PRIORITY_BY_TYPE[channelType] ?? 0;
+        const familyPriority = FAMILY_PRIORITY[family] ?? 0;
+        return typePriority * 10 + familyPriority;
+    }
     // ── COLOR NODE ────────────────────────────────────────────────────────────
     _buildColorNode(deviceId, zoneId, fixtureDef, group, position) {
         const nodeId = `${deviceId}:${group.labelSuffix}`;
@@ -320,7 +408,7 @@ export class NodeExtractionPipeline {
         // Blueprint 3506 §1.5: dimmer → role 'primary'; shutter/strobe → role 'percussion'.
         // Si hay dimmer, el nodo principal es de dimmer (primary).
         // Si solo hay shutter o strobe (sin dimmer), el rol es 'percussion'.
-        const hasDimmer = impactChs.some(ch => ch.type === 'dimmer');
+        const hasDimmer = impactChs.some(ch => this._normalizeChannelType(ch.type) === 'dimmer');
         return {
             nodeId,
             family: NodeFamily.IMPACT,
@@ -469,12 +557,17 @@ export class NodeExtractionPipeline {
      */
     _mapChannels(channels, kinetic = false) {
         return channels.map(ch => ({
-            type: ch.type,
+            type: this._normalizeChannelType(ch.type),
             dmxOffset: ch.index - 1, // FixtureChannel.index es 1-based
-            defaultValue: ch.defaultValue ?? (kinetic && (ch.type === 'pan' || ch.type === 'tilt') ? 128 : 0),
+            defaultValue: ch.defaultValue ?? (kinetic && (this._normalizeChannelType(ch.type) === 'pan' || this._normalizeChannelType(ch.type) === 'tilt') ? 128 :
+                (this._normalizeChannelType(ch.type) === 'shutter' || this._normalizeChannelType(ch.type) === 'strobe') ? 255 :
+                    0),
             is16bit: ch.is16bit ?? false,
             customName: ch.customName,
         }));
+    }
+    _normalizeChannelType(type) {
+        return typeof type === 'string' ? type.toLowerCase() : 'unknown';
     }
     _detectMixingType(channels) {
         const t = new Set(channels.map(ch => ch.type));

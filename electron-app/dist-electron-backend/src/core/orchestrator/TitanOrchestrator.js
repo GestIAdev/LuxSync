@@ -60,6 +60,9 @@ import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdap
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware';
 // 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector';
+// ⚡ WAVE 4594: THE AETHER AWAKENING — NodeExtractionPipeline for fixture→NodeGraph injection
+import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline';
+import { resolveRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary';
 import { timelineEngine } from '../engine/TimelineEngine';
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver';
@@ -180,6 +183,10 @@ export class TitanOrchestrator {
             this._aetherResolver = new NodeResolver(this._aetherGraph);
             // 🛂 WAVE 4557: Wire safety middleware into resolver
             this._aetherResolver.setSafetyMiddleware(this._aetherSafety);
+            // ⚡ WAVE 4611: Registrar universo 0 por defecto para que registeredUniverses
+            // nunca sea vacío antes del primer _syncFixturesToAether.
+            // Si los fixtures declaran otro universo, se añade dinámicamente en registerAetherDevice.
+            this._aetherResolver.registerUniverse(0);
         }
         this._colorAdapter = this._colorAdapter ?? new ColorAdapter();
         this._kineticAdapter = this._kineticAdapter ?? new VMMAdapter();
@@ -294,6 +301,8 @@ export class TitanOrchestrator {
         // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
         this._physicsPostProcessor = new PhysicsPostProcessor();
         this._aetherHasDevices = false;
+        // ⚡ WAVE 4594: Stateless extraction pipeline — lazy-init, reutilizado en cada resync
+        this._aetherPipeline = null;
         // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
         this._aetherUIProjector = new AetherUIProjector();
         // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
@@ -386,6 +395,8 @@ export class TitanOrchestrator {
         // El siguiente broadcast manda el PICO, no el valor actual.
         // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
         this.peakHoldMap = new Map(); // fixtureId → peak dimmer (0-255)
+        // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clásico)
+        this._outputEnabled = false;
         /**
          * WAVE 257: Set callback for sending logs to frontend (Tactical Log)
          */
@@ -406,6 +417,7 @@ export class TitanOrchestrator {
             ...config,
         };
         this.eventRouter = getEventRouter();
+        this._outputEnabled = masterArbiter.isOutputEnabled();
         // WAVE 2098: Boot silence
     }
     /**
@@ -1020,44 +1032,38 @@ export class TitanOrchestrator {
         // 2. Arbiter merges all layers (manual overrides, effects, blackout)
         // 3. Send arbitrated result to HAL
         // ═══════════════════════════════════════════════════════════════════════════
-        // Feed Layer 0: AI Intent
-        const titanLayer = {
-            intent,
-            timestamp: now, // ⚡ WAVE 3050: unified timestamp
-            vibeId: this.engine.getCurrentVibe(),
-            frameNumber: this.frameCount,
-        };
-        masterArbiter.setTitanIntent(titanLayer);
         // ═══════════════════════════════════════════════════════════════════════
-        // 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectIntents injection
-        //
-        // BEFORE: Effects mutated fixtureStates AFTER HAL.renderFromTarget().
-        //   → Dual pipeline bug: UI saw effects, DMX didn't (ghost effect).
-        //
-        // NOW: EffectManager produces CombinedEffectOutput (pure function).
-        //   → Orchestrator resolves zones → fixture IDs → EffectIntentMap.
-        //   → Arbiter consumes intents as Layer 3 during arbitrate().
-        //   → HAL.renderFromTarget() sends the COMPLETE target to DMX.
-        //   → Single Source of Truth. No post-HAL mutation. Zero ghosts.
+        // 🪓 WAVE-4592: LEGACY ARBITER BYPASS — ArbitrationDirector disconnected.
+        // masterArbiter.setTitanIntent / setEffectIntents / arbitrate() NO longer
+        // drive DMX or UI. Aether pipeline is the single source of truth.
+        // Legacy block kept (commented) for safe rollback during validation phase.
         // ═══════════════════════════════════════════════════════════════════════
+        // // Feed Layer 0: AI Intent
+        // const titanLayer: Layer0_Titan = {
+        //   intent,
+        //   timestamp: now,
+        //   vibeId: this.engine.getCurrentVibe(),
+        //   frameNumber: this.frameCount,
+        // }
+        // masterArbiter.setTitanIntent(titanLayer)
+        // // EffectIntents → legacy arbiter (WAVE 2662 path) — bypassed
         const effectManager = getEffectManager();
         const effectOutput = effectManager.getCombinedOutput();
         // Chronos protection: fixtures being painted by Chronos are off-limits
-        const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds();
-        if (effectOutput.hasActiveEffects) {
-            // ⚡ WAVE 3504.5: Delegated to IntentComposer (pure module extracted from monolith)
-            // Pre-allocated _effectIntentBuf passed as outMap → zero new Map() per frame.
-            this._effectIntentBuf.clear();
-            const { intentMap } = this.intentComposer.compose(effectOutput, this.fixtures, chronosFixtureIds, this._effectIntentBuf);
-            // Inject intents into the Arbiter BEFORE arbitration
-            masterArbiter.setEffectIntents(intentMap);
-            // Throttled telemetry
-            if (this.frameCount % 60 === 0 && intentMap.size > 0) {
-                console.log(`[TitanOrchestrator 🎯] WAVE 2662: ${intentMap.size} effect intents injected | mixBus=${effectOutput.mixBus} | globalComp=${(effectOutput.globalComposition ?? 0).toFixed(2)}`);
-            }
-        }
-        // Arbitrate all layers (this merges manual overrides, effects, blackout)
-        const arbitratedTarget = masterArbiter.arbitrate();
+        const playbackFrame = this._timelineEngine.getLastPlaybackFrame();
+        const chronosFixtureIds = new Set((playbackFrame?.targets ?? []).map(t => t.fixtureId));
+        // if (effectOutput.hasActiveEffects) {
+        //   this._effectIntentBuf.clear()
+        //   const { intentMap } = this.intentComposer.compose(
+        //     effectOutput,
+        //     this.fixtures as import('./intent/types').FixtureSnapshot[],
+        //     chronosFixtureIds,
+        //     this._effectIntentBuf,
+        //   )
+        //   masterArbiter.setEffectIntents(intentMap)
+        // }
+        // // Arbitrate all layers — BYPASSED
+        // const arbitratedTarget = masterArbiter.arbitrate()
         // ═══════════════════════════════════════════════════════════════════════
         // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
         // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
@@ -1101,12 +1107,31 @@ export class TitanOrchestrator {
             });
         }
         // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
-        // 4. HAL renders arbitrated target -> produces fixture states
-        // Now using the new renderFromTarget method that accepts FinalLightingTarget
-        // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
-        // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
-        // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
-        const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌉 WAVE-4592: AETHER UI REROUTE — Opción B (placeholder array)
+        // fixtureStates se inicializa desde this.fixtures con valores default puros.
+        // AetherUIProjector.project() lo rellena con la verdad Aether cada frame.
+        // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
+        // ═══════════════════════════════════════════════════════════════════════
+        const fixtureStates = this.fixtures.map(fix => ({
+            dmxAddress: fix.dmxAddress,
+            universe: fix.universe,
+            name: fix.name,
+            zone: fix.zone ?? 'center',
+            type: fix.type ?? 'generic',
+            isVirtual: fix.isVirtual,
+            dimmer: 0,
+            r: 0, g: 0, b: 0,
+            pan: 128,
+            tilt: 128,
+            zoom: 128,
+            focus: 128,
+            channels: fix.channels,
+            profileId: fix.profileId,
+            fixtureId: fix.id,
+            hasColorWheel: fix.hasColorWheel,
+            hasColorMixing: fix.hasColorMixing,
+        }));
         // ═══════════════════════════════════════════════════════════════════════
         // � WAVE 2662: POST-HAL MUTATION ELIMINATED
         //
@@ -1124,7 +1149,7 @@ export class TitanOrchestrator {
         // which has its own legitimate re-send path.
         // ═══════════════════════════════════════════════════════════════════════
         // Chronos telemetry (post-HAL, for diagnostics only)
-        const isChronosPlaying = masterArbiter.isPlaybackActive();
+        const isChronosPlaying = this._timelineEngine.isPlaying;
         if (isChronosPlaying && this.frameCount % 300 === 1) {
             const f0 = fixtureStates[0];
             console.log(`[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
@@ -1362,16 +1387,10 @@ export class TitanOrchestrator {
                     this.peakHoldMap.set(_id, _f.dimmer);
             }
         }
-        // 🎭 WAVE 4559: THE MIRROR — Proyectar estado Aether → FixtureState[] para UI
-        // Corre ANTES del hot-frame broadcast: la UI ve datos Aether en el mismo tick.
-        if (this._aetherHasDevices) {
-            this._aetherUIProjector.project(fixtureStates, this._aetherGraph);
-        }
-        // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ────────────────────────
-        // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
-        // ⚡ WAVE 4559: Overclock → 44Hz. Strobe y flash sin frame-skip al canvas.
-        // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
-        if (this.onHotFrame && (chronosPlaying || this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER === 0)) {
+        const emitHotFrame = () => {
+            if (!this.onHotFrame || (!chronosPlaying && this.frameCount % TitanOrchestrator.HOT_FRAME_DIVIDER !== 0)) {
+                return;
+            }
             // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
             const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
             const hotFrame = {
@@ -1413,10 +1432,40 @@ export class TitanOrchestrator {
                     };
                 })
             };
+            // ⚡ SNIPER-3: Payload del hot-frame justo antes de emitirlo a la UI
+            // WAVE 4614: Reporta fixture [0] (PAR) + primer moving head (KINETIC)
+            if (this.frameCount % 60 === 0) {
+                const _s3f0 = hotFrame.fixtures[0];
+                // Buscar el primer fixture que tenga pan != 0.5019... (i.e. un moving head real)
+                const _s3kinetic = hotFrame.fixtures.find((f) => {
+                    const p = f?.pan;
+                    return p !== undefined && Math.abs(p - 0.5019607843137255) > 0.001;
+                }) ?? hotFrame.fixtures.find((f) => {
+                    // Si todos están en 0.5019, buscar por índice: moving heads son los últimos
+                    return f?.pan !== undefined;
+                });
+                const _s3mh = hotFrame.fixtures.length > 4 ? hotFrame.fixtures[4] : null;
+                console.log(`[SNIPER-3 HOT-FRAME] frame=${hotFrame.frameNumber} fixtures=${hotFrame.fixtures.length} ` +
+                    `[0].id=${_s3f0?.id ?? 'none'} [0].dimmer=${_s3f0?.dimmer ?? 'n/a'} ` +
+                    `[0].r=${_s3f0?.r} [0].g=${_s3f0?.g} [0].b=${_s3f0?.b} ` +
+                    `[0].pan=${_s3f0?.pan} [0].tilt=${_s3f0?.tilt}`);
+                if (_s3mh) {
+                    console.log(`[SNIPER-3B MOVER] frame=${hotFrame.frameNumber} ` +
+                        `[4].id=${_s3mh.id} [4].pan=${_s3mh.pan} [4].tilt=${_s3mh.tilt} [4].dimmer=${_s3mh.dimmer}`);
+                }
+            }
             this.onHotFrame(hotFrame);
+        };
+        // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ────────────────────────
+        // ⚡ WAVE 3050: Throttled from 44Hz → 22Hz. DMX stays at 44Hz.
+        // ⚡ WAVE 4559: Overclock → 44Hz. Strobe y flash sin frame-skip al canvas.
+        // ⚡ WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
+        if (!this._aetherHasDevices) {
+            emitHotFrame();
         }
-        // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
-        this.hal.flushToDriver(fixtureStates);
+        // ⚡ WAVE-4592: flushToDriver() ELIMINADO — la Aduana y el send DMX
+        // son responsabilidad exclusiva del bloque Aether (aetherSafety + sendUniverseRaw).
+        // this.hal.flushToDriver(fixtureStates)  ← DISCONNECTED WAVE-4592
         // ═══════════════════════════════════════════════════════════════════════
         // ⚛️ WAVE 3505.4: AETHER MATRIX — V2 Agnostic Engine Pipeline
         //
@@ -1493,6 +1542,14 @@ export class TitanOrchestrator {
                 if (_liqFrame !== null && _liqResult !== null) {
                     liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
                 }
+                // ⚡ SNIPER-1: Estado del bus L0 tras LiquidAetherAdapter
+                if (this.frameCount % 60 === 0) {
+                    const _s1all = this._aetherBus.getAll();
+                    const _s1first = _s1all.length > 0 ? _s1all[0] : null;
+                    console.log(`[SNIPER-1 LIQUID] frame=${this.frameCount} busIntents=${_s1all.length} ` +
+                        `firstNode=${_s1first ? String(_s1first.nodeId) : 'none'} ` +
+                        `firstDimmer=${_s1first?.values?.['dimmer'] ?? 'n/a'}`);
+                }
                 // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
                 const ctx = this._aetherCtx;
                 this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus);
@@ -1531,9 +1588,27 @@ export class TitanOrchestrator {
                 // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 const arbitrated = aetherArbiter.arbitrate();
+                // ⚡ SNIPER-2: Primer nodo del ArbitratedNodeMap tras arbitrate()
+                if (this.frameCount % 60 === 0) {
+                    const _s2first = arbitrated.entries().next();
+                    if (!_s2first.done) {
+                        const [_s2nid, _s2ch] = _s2first.value;
+                        console.log(`[SNIPER-2 ARBITER] frame=${this.frameCount} arbitratedSize=${arbitrated.size} ` +
+                            `node=${_s2nid} dimmer=${_s2ch['dimmer']} channels=${Object.keys(_s2ch).join(',')}`);
+                    }
+                    else {
+                        console.log(`[SNIPER-2 ARBITER] frame=${this.frameCount} mapa VACIO — arbitratedSize=0`);
+                    }
+                }
                 // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
                 this._physicsPostProcessor.process(arbitrated, this._aetherGraph, this._aetherCtx.deltaMs, this._aetherCtx.vibe.name);
+                // 🎭 WAVE 4605: UI must mirror the CURRENT Aether frame, not the previous one.
+                // Project after adapters + arbiter + physics, but still before the output gate,
+                // so Hyperion sees live engine truth even when DMX output is blocked.
+                // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
+                this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated);
+                emitHotFrame();
                 // ═══════════════════════════════════════════════════════════════════════
                 // 🛂 WAVE 4557: AETHER SAFETY MIDDLEWARE — LA ADUANA AETHER
                 //
@@ -1544,9 +1619,31 @@ export class TitanOrchestrator {
                 const aetherSafety = this._aetherSafety;
                 // FASE 0: Set frame context + apply output gate
                 aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name);
-                aetherSafety.setOutputEnabled(masterArbiter.isOutputEnabled());
+                aetherSafety.setOutputEnabled(this._outputEnabled);
                 aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds());
+                // ★ TRACER-2.5-A: Estado del mapa ANTES de applyOutputGate
+                if (this.frameCount % 20 === 0) {
+                    const _t25entry = arbitrated.entries().next();
+                    if (!_t25entry.done) {
+                        const [_t25nid, _t25ch] = _t25entry.value;
+                        console.log(`[TRACER-2.5-A PRE-GATE] frame=${this.frameCount} | outputEnabled=${this._outputEnabled} | node=${_t25nid} | dimmer=${_t25ch['dimmer']} | keys=${Object.keys(_t25ch).join(',')}`);
+                    }
+                    else {
+                        console.log(`[TRACER-2.5-A PRE-GATE] frame=${this.frameCount} | arbitrated map VACÍO — nodeCount=${arbitrated.size}`);
+                    }
+                }
                 aetherSafety.applyOutputGate(arbitrated);
+                // ★ TRACER-2.5-B: Estado del mapa DESPUÉS de applyOutputGate
+                if (this.frameCount % 20 === 0) {
+                    const _t25Bentry = arbitrated.entries().next();
+                    if (!_t25Bentry.done) {
+                        const [_t25Bnid, _t25Bch] = _t25Bentry.value;
+                        console.log(`[TRACER-2.5-B POST-GATE] frame=${this.frameCount} | node=${_t25Bnid} | dimmer=${_t25Bch['dimmer']} | keys=${Object.keys(_t25Bch).join(',')}`);
+                    }
+                    else {
+                        console.log(`[TRACER-2.5-B POST-GATE] frame=${this.frameCount} | arbitrated map VACÍO`);
+                    }
+                }
                 // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
                 // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
                 // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
@@ -2222,6 +2319,294 @@ export class TitanOrchestrator {
             }
         }
         // WAVE 2098: Boot silence
+        // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
+        this._syncFixturesToAether(this.fixtures);
+    }
+    /**
+     * ⚡ WAVE 4594: THE AETHER AWAKENING — Aether Patch Bridge
+     *
+     * Sincroniza la lista completa de fixtures con el NodeGraph de Aether.
+     * Full-resync strategy: unregister all → re-register all.
+     * Llamado exclusivamente desde setFixtures() — nunca desde el hot-path (44Hz).
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _syncFixturesToAether(fixtures) {
+        // 1. Lazy-init del pipeline (stateless, reutilizado en cada sync)
+        if (!this._aetherPipeline) {
+            this._aetherPipeline = new NodeExtractionPipeline();
+        }
+        const pipeline = this._aetherPipeline;
+        // 2. Unregistrar todos los devices actualmente en el NodeGraph (resync limpio)
+        const existingIds = [...this._aetherGraph.getDeviceIds()];
+        for (const deviceId of existingIds) {
+            this._aetherGraph.unregisterDevice(deviceId);
+        }
+        this._aetherHasDevices = false;
+        // 3. Registrar cada fixture como un Device Aether
+        let registered = 0;
+        for (const fixture of fixtures) {
+            if (!fixture.id) {
+                continue;
+            }
+            try {
+                let definition = this._resolveFixtureDefinitionForAether(fixture);
+                // ⚡ WAVE 4610-B Acción A: si la resolución falla o devuelve channels vacíos,
+                // construir una definición mínima con un canal dimmer sintético siempre que
+                // el fixture tenga profileId u otro identificador estructural válido.
+                // Esto evita descartar fixtures válidos que lleguen sin perfil en runtime.
+                if (!definition || definition.channels.length === 0) {
+                    const profileId = this._resolveFixtureProfileId(fixture);
+                    if (!profileId && !fixture.profileId && !fixture.id) {
+                        continue;
+                    }
+                    const minimalDimmerChannel = {
+                        index: 1,
+                        name: 'Dimmer',
+                        // ⚡ WAVE 4610-B Acción B: el type ya pasa por _normalizeFixtureChannelType
+                        // que aplica toLowerCase(), pero el canal sintético se crea directamente
+                        // con el literal normalizado para evitar cualquier riesgo de mismatch.
+                        type: 'dimmer',
+                        defaultValue: 0,
+                        is16bit: false,
+                    };
+                    definition = {
+                        id: profileId ?? fixture.id,
+                        name: fixture.name ?? fixture.id ?? 'Unknown Fixture',
+                        manufacturer: fixture.manufacturer ?? 'Unknown',
+                        type: this._normalizeFixtureType(fixture.type),
+                        channels: [minimalDimmerChannel],
+                        physics: fixture.physics,
+                        capabilities: fixture.capabilities,
+                        wheels: fixture.wheels,
+                    };
+                    console.warn(`[TitanOrchestrator] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
+                }
+                const fixtureV2 = this._buildFixtureV2ForAether(fixture, definition);
+                const deviceDef = pipeline.extract(definition, fixtureV2);
+                // ⚡ WAVE 4610-B Acción C: pasar forgeGraph si el fixture lo trae
+                // (serializado desde ForgeView o cargado desde show file).
+                const forgeGraph = fixture.forgeGraph ?? undefined;
+                this.registerAetherDevice(deviceDef, forgeGraph);
+                registered++;
+            }
+            catch (err) {
+                console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err);
+            }
+        }
+        if (registered > 0) {
+            console.log(`[TitanOrchestrator] ⚡ WAVE 4594: Aether NodeGraph synced — ${registered}/${fixtures.length} fixtures registered`);
+        }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _resolveFixtureDefinitionForAether(fixture) {
+        const profileId = this._resolveFixtureProfileId(fixture);
+        const runtimeDefinition = resolveRuntimeFixtureDefinition([
+            profileId,
+            fixture.profileId,
+            fixture.definitionId,
+            fixture.fixtureDefId,
+            fixture.definitionPath,
+            fixture.model,
+            fixture.name,
+        ]);
+        if (runtimeDefinition) {
+            return this._normalizeFixtureDefinitionForAether(runtimeDefinition, fixture, profileId);
+        }
+        if (Array.isArray(fixture.channels) && fixture.channels.length > 0) {
+            return this._normalizeFixtureDefinitionForAether({
+                id: profileId ?? fixture.id,
+                name: fixture.name ?? fixture.id ?? 'Unknown Fixture',
+                manufacturer: fixture.manufacturer ?? 'Unknown',
+                type: this._normalizeFixtureType(fixture.type),
+                channels: fixture.channels,
+                physics: fixture.physics,
+                capabilities: fixture.capabilities,
+                wheels: fixture.wheels,
+            }, fixture, profileId);
+        }
+        return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _normalizeFixtureDefinitionForAether(definition, fixture, profileId) {
+        const rawChannels = Array.isArray(definition.channels) && definition.channels.length > 0
+            ? definition.channels
+            : Array.isArray(fixture.channels) ? fixture.channels : [];
+        const channels = rawChannels
+            .filter((channel) => channel)
+            .map((channel, idx) => {
+            const type = this._normalizeFixtureChannelType(channel.type, channel.name ?? channel.customName);
+            return {
+                index: this._normalizeFixtureChannelIndex(channel.index, idx + 1),
+                name: channel.name ?? channel.customName ?? type,
+                type,
+                defaultValue: this._resolveAetherChannelDefaultValue(type, channel.defaultValue),
+                is16bit: channel.is16bit === true,
+                ...(channel.customName ? { customName: channel.customName } : {}),
+                ...(channel.continuousRotation === true ? { continuousRotation: true } : {}),
+            };
+        });
+        return {
+            ...definition,
+            id: profileId ?? definition.id ?? fixture.id,
+            name: definition.name ?? fixture.name ?? profileId ?? fixture.id ?? 'Unknown Fixture',
+            manufacturer: definition.manufacturer ?? fixture.manufacturer ?? 'Unknown',
+            type: this._normalizeFixtureType(definition.type ?? fixture.type),
+            channels,
+            physics: definition.physics ?? fixture.physics,
+            capabilities: definition.capabilities ?? fixture.capabilities,
+            wheels: definition.wheels ?? fixture.wheels,
+        };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _buildFixtureV2ForAether(fixture, definition) {
+        const profileId = this._resolveFixtureProfileId(fixture) ?? definition.id;
+        return {
+            id: fixture.id,
+            name: fixture.name ?? definition.name ?? fixture.id,
+            model: fixture.model ?? definition.name ?? fixture.name ?? fixture.id,
+            manufacturer: fixture.manufacturer ?? definition.manufacturer ?? 'Unknown',
+            type: this._normalizeFixtureType(fixture.type ?? definition.type),
+            address: fixture.dmxAddress ?? fixture.address ?? 1,
+            universe: fixture.universe ?? 0,
+            channelCount: definition.channels.length,
+            profileId,
+            position: fixture.position ?? { x: 0, y: 0, z: 0 },
+            rotation: fixture.rotation ?? { x: 0, y: 0, z: 0 },
+            orientation: fixture.orientation ?? fixture.installationType ?? 'ceiling',
+            isPlaced: fixture.isPlaced,
+            physics: fixture.physics ?? {
+                motorType: 'stepper',
+                maxAcceleration: 0,
+                safetyCap: false,
+            },
+            zone: this._normalizeAetherZone(fixture.zone),
+            definitionPath: fixture.definitionPath,
+            enabled: fixture.enabled ?? true,
+            isVirtual: fixture.isVirtual ?? false,
+            channels: definition.channels,
+            capabilities: fixture.capabilities ?? definition.capabilities,
+            calibration: fixture.calibration,
+        };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _resolveFixtureProfileId(fixture) {
+        const rawProfileId = fixture.profileId || fixture.definitionId || fixture.fixtureDefId || fixture.id;
+        return typeof rawProfileId === 'string' && rawProfileId.length > 0 ? rawProfileId : null;
+    }
+    _normalizeFixtureChannelIndex(rawIndex, fallback) {
+        if (typeof rawIndex === 'number' && Number.isFinite(rawIndex)) {
+            return rawIndex > 0 ? Math.trunc(rawIndex) : fallback;
+        }
+        if (typeof rawIndex === 'string') {
+            const parsed = Number.parseInt(rawIndex, 10);
+            if (Number.isFinite(parsed) && parsed > 0) {
+                return parsed;
+            }
+        }
+        return fallback;
+    }
+    _normalizeFixtureChannelType(type, name) {
+        const normalized = typeof type === 'string' ? type.toLowerCase() : this._inferFixtureChannelTypeFromName(name);
+        switch (normalized) {
+            case 'dimmer':
+            case 'strobe':
+            case 'shutter':
+            case 'red':
+            case 'green':
+            case 'blue':
+            case 'white':
+            case 'amber':
+            case 'uv':
+            case 'cyan':
+            case 'magenta':
+            case 'yellow':
+            case 'color_wheel':
+            case 'pan':
+            case 'pan_fine':
+            case 'tilt':
+            case 'tilt_fine':
+            case 'gobo':
+            case 'gobo_rotation':
+            case 'prism':
+            case 'prism_rotation':
+            case 'focus':
+            case 'zoom':
+            case 'frost':
+            case 'speed':
+            case 'macro':
+            case 'control':
+            case 'rotation':
+            case 'custom':
+                return normalized;
+            default:
+                return 'unknown';
+        }
+    }
+    _inferFixtureChannelTypeFromName(name) {
+        if (typeof name !== 'string')
+            return 'unknown';
+        const normalizedName = name.toLowerCase();
+        if (normalizedName.includes('dimmer') || normalizedName.includes('intensity'))
+            return 'dimmer';
+        if (normalizedName.includes('shutter'))
+            return 'shutter';
+        if (normalizedName.includes('strobe'))
+            return 'strobe';
+        if (normalizedName.includes('pan'))
+            return 'pan';
+        if (normalizedName.includes('tilt'))
+            return 'tilt';
+        if (normalizedName === 'red' || normalizedName.includes(' red'))
+            return 'red';
+        if (normalizedName === 'green' || normalizedName.includes(' green'))
+            return 'green';
+        if (normalizedName === 'blue' || normalizedName.includes(' blue'))
+            return 'blue';
+        if (normalizedName === 'white' || normalizedName.includes(' white'))
+            return 'white';
+        return 'unknown';
+    }
+    _resolveAetherChannelDefaultValue(type, value) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            if (value < 0)
+                return 0;
+            if (value > 255)
+                return 255;
+            return Math.round(value);
+        }
+        if (type === 'pan' || type === 'tilt')
+            return 128;
+        if (type === 'shutter' || type === 'strobe')
+            return 255;
+        return 0;
+    }
+    _normalizeFixtureType(type) {
+        switch (typeof type === 'string' ? type.toLowerCase() : 'generic') {
+            case 'moving-head':
+            case 'scanner':
+            case 'par':
+            case 'bar':
+            case 'wash':
+            case 'strobe':
+            case 'effect':
+            case 'laser':
+            case 'blinder':
+            case 'fan':
+            case 'fog':
+            case 'mirror-ball':
+            case 'pyro':
+            case 'generic':
+                return (typeof type === 'string' ? type.toLowerCase() : 'generic');
+            case 'spot':
+                return 'moving-head';
+            default:
+                return 'generic';
+        }
+    }
+    _normalizeAetherZone(zone) {
+        if (typeof zone !== 'string' || zone.length === 0)
+            return 'unassigned';
+        return zone;
     }
     _updateAetherStageBounds(stageBounds) {
         const bounds = this._aetherStageBounds;
@@ -2247,6 +2632,30 @@ export class TitanOrchestrator {
         }
         const avgY = count > 0 ? (sumY / count) : bounds.height * 0.5;
         bounds.centerY = Math.max(0, Math.min(bounds.height, avgY));
+    }
+    /**
+     * WAVE 4590: Output gate canonical state for Aether pipeline.
+     */
+    setOutputEnabled(enabled) {
+        const nextEnabled = !!enabled;
+        const changed = this._outputEnabled !== nextEnabled;
+        this._outputEnabled = nextEnabled;
+        if (changed) {
+            console.log(`[TRACER-GATE ORCH] frame=${this.frameCount} | outputEnabled=${this._outputEnabled}`);
+        }
+    }
+    /**
+     * WAVE 4590: Read current output gate state consumed by AetherSafety.
+     */
+    isOutputEnabled() {
+        return this._outputEnabled;
+    }
+    /**
+     * WAVE 4590: Toggle output gate canonical state.
+     */
+    toggleOutputEnabled() {
+        this._outputEnabled = !this._outputEnabled;
+        return this._outputEnabled;
     }
     /**
      * WAVE 252: Get current fixtures count

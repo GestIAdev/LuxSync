@@ -63,6 +63,21 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 
+function average9Zones(result: LiquidStereoResult): number {
+  const avg = (
+    result.frontLeftIntensity +
+    result.frontRightIntensity +
+    result.backLeftIntensity +
+    result.backRightIntensity +
+    result.moverLeftIntensity +
+    result.moverRightIntensity +
+    result.floorIntensity +
+    result.ambientIntensity +
+    result.airIntensity
+  ) / 9
+  return clamp01(avg)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LIQUID AETHER ADAPTER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,7 +232,7 @@ export class LiquidAetherAdapter {
       this._impactValues['dimmer'] = undefined as unknown as number
 
       // ── Intensidad zonal por zoneId semántico del nodo ────────────
-      const zoneIntensity = selectZoneFromResult(result, node.zoneId)
+      const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId)
 
       // ── Falloff por distancia al epicentro de la onda ─────────────
       const falloff = computeEpicenterFalloff(node, epicenter, maxR)
@@ -289,7 +304,7 @@ export class LiquidAetherAdapter {
       this._colorValues['brightness'] = undefined as unknown as number
 
       // ── Intensidad zonal + falloff ────────────────────────────────
-      const zoneIntensity = selectZoneFromResult(result, node.zoneId)
+      const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId)
       const falloff       = computeEpicenterFalloff(node, epicenter, maxR)
 
       // ── Intent L0 — solo brightness, no tinte ─────────────────────
@@ -317,5 +332,28 @@ export class LiquidAetherAdapter {
     this._epicenter.x = x
     this._epicenter.y = y
     this._epicenter.z = z
+  }
+
+  private _selectReactiveZoneIntensity(result: LiquidStereoResult, zoneId: string): number {
+    switch ((zoneId || '').toLowerCase()) {
+      case 'unassigned':
+      case 'center':
+      case 'mid':
+        return average9Zones(result)
+      case 'front':
+        return clamp01((result.frontLeftIntensity + result.frontRightIntensity) * 0.5)
+      case 'back':
+        return clamp01((result.backLeftIntensity + result.backRightIntensity) * 0.5)
+      case 'left':
+        return clamp01((result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3)
+      case 'right':
+        return clamp01((result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3)
+      case 'movers-left':
+        return result.moverLeftIntensity
+      case 'movers-right':
+        return result.moverRightIntensity
+      default:
+        return selectZoneFromResult(result, zoneId)
+    }
   }
 }

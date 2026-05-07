@@ -102,6 +102,9 @@ import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
 // ⚡ WAVE 4594: THE AETHER AWAKENING — NodeExtractionPipeline for fixture→NodeGraph injection
 import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
+import { getRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary'
+import type { FixtureDefinition, FixtureChannel, FixtureType } from '../../types/FixtureDefinition'
+import type { FixtureV2 } from '../stage/ShowFileV2'
 import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
@@ -2580,8 +2583,6 @@ export class TitanOrchestrator {
     // WAVE 2098: Boot silence
     // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
     this._syncFixturesToAether(this.fixtures)
-    // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
-    this._syncFixturesToAether(this.fixtures)
   }
 
   /**
@@ -2609,16 +2610,17 @@ export class TitanOrchestrator {
     // 3. Registrar cada fixture como un Device Aether
     let registered = 0
     for (const fixture of fixtures) {
-      if (!fixture.id || !Array.isArray(fixture.channels) || fixture.channels.length === 0) {
+      if (!fixture.id) {
         continue
       }
       try {
-        const dmxAddress = fixture.dmxAddress ?? fixture.address ?? 1
-        const universe   = fixture.universe ?? 0
-        const zone       = fixture.zone || 'unassigned'
+        const definition = this._resolveFixtureDefinitionForAether(fixture)
+        if (!definition || definition.channels.length === 0) {
+          continue
+        }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const deviceDef = pipeline.extract(fixture as any, dmxAddress, universe, zone, fixture.id)
+        const fixtureV2 = this._buildFixtureV2ForAether(fixture, definition)
+        const deviceDef = pipeline.extract(definition, fixtureV2)
         this.registerAetherDevice(deviceDef)
         registered++
       } catch (err) {
@@ -2629,6 +2631,186 @@ export class TitanOrchestrator {
     if (registered > 0) {
       console.log(`[TitanOrchestrator] ⚡ WAVE 4594: Aether NodeGraph synced — ${registered}/${fixtures.length} fixtures registered`)
     }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _resolveFixtureDefinitionForAether(fixture: any): FixtureDefinition | null {
+    const profileId = this._resolveFixtureProfileId(fixture)
+    const runtimeDefinition = profileId ? getRuntimeFixtureDefinition(profileId) : undefined
+
+    if (runtimeDefinition) {
+      return this._normalizeFixtureDefinitionForAether(runtimeDefinition, fixture, profileId)
+    }
+
+    if (Array.isArray(fixture.channels) && fixture.channels.length > 0) {
+      return this._normalizeFixtureDefinitionForAether({
+        id: profileId ?? fixture.id,
+        name: fixture.name ?? fixture.id ?? 'Unknown Fixture',
+        manufacturer: fixture.manufacturer ?? 'Unknown',
+        type: this._normalizeFixtureType(fixture.type),
+        channels: fixture.channels,
+        physics: fixture.physics,
+        capabilities: fixture.capabilities,
+        wheels: fixture.wheels,
+      } as FixtureDefinition, fixture, profileId)
+    }
+
+    return null
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _normalizeFixtureDefinitionForAether(
+    definition: FixtureDefinition,
+    fixture: any,
+    profileId: string | null,
+  ): FixtureDefinition {
+    const rawChannels = Array.isArray(definition.channels) && definition.channels.length > 0
+      ? definition.channels
+      : Array.isArray(fixture.channels) ? fixture.channels : []
+
+    const channels: FixtureChannel[] = rawChannels
+      .filter((channel: any) => channel && typeof channel.index === 'number')
+      .map((channel: any) => {
+        const type = this._normalizeFixtureChannelType(channel.type)
+        return {
+          index: channel.index > 0 ? channel.index : 1,
+          name: channel.name ?? channel.customName ?? type,
+          type,
+          defaultValue: this._resolveAetherChannelDefaultValue(type, channel.defaultValue),
+          is16bit: channel.is16bit === true,
+          ...(channel.customName ? { customName: channel.customName } : {}),
+          ...(channel.continuousRotation === true ? { continuousRotation: true } : {}),
+        }
+      })
+
+    return {
+      ...definition,
+      id: profileId ?? definition.id ?? fixture.id,
+      name: definition.name ?? fixture.name ?? profileId ?? fixture.id ?? 'Unknown Fixture',
+      manufacturer: definition.manufacturer ?? fixture.manufacturer ?? 'Unknown',
+      type: this._normalizeFixtureType(definition.type ?? fixture.type),
+      channels,
+      physics: definition.physics ?? fixture.physics,
+      capabilities: definition.capabilities ?? fixture.capabilities,
+      wheels: definition.wheels ?? fixture.wheels,
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _buildFixtureV2ForAether(fixture: any, definition: FixtureDefinition): FixtureV2 {
+    const profileId = this._resolveFixtureProfileId(fixture) ?? definition.id
+    return {
+      id: fixture.id,
+      name: fixture.name ?? definition.name ?? fixture.id,
+      model: fixture.model ?? definition.name ?? fixture.name ?? fixture.id,
+      manufacturer: fixture.manufacturer ?? definition.manufacturer ?? 'Unknown',
+      type: this._normalizeFixtureType(fixture.type ?? definition.type),
+      address: fixture.dmxAddress ?? fixture.address ?? 1,
+      universe: fixture.universe ?? 0,
+      channelCount: definition.channels.length,
+      profileId,
+      position: fixture.position ?? { x: 0, y: 0, z: 0 },
+      rotation: fixture.rotation ?? { x: 0, y: 0, z: 0 },
+      orientation: fixture.orientation ?? fixture.installationType ?? 'ceiling',
+      isPlaced: fixture.isPlaced,
+      physics: fixture.physics ?? {
+        motorType: 'stepper',
+        maxAcceleration: 0,
+        safetyCap: false,
+      },
+      zone: this._normalizeAetherZone(fixture.zone),
+      definitionPath: fixture.definitionPath,
+      enabled: fixture.enabled ?? true,
+      isVirtual: fixture.isVirtual ?? false,
+      channels: definition.channels,
+      capabilities: fixture.capabilities ?? definition.capabilities,
+      calibration: fixture.calibration,
+    } as FixtureV2
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _resolveFixtureProfileId(fixture: any): string | null {
+    const rawProfileId = fixture.profileId || fixture.definitionId || fixture.fixtureDefId || fixture.id
+    return typeof rawProfileId === 'string' && rawProfileId.length > 0 ? rawProfileId : null
+  }
+
+  private _normalizeFixtureChannelType(type: unknown): FixtureChannel['type'] {
+    const normalized = typeof type === 'string' ? type.toLowerCase() : 'unknown'
+    switch (normalized) {
+      case 'dimmer':
+      case 'strobe':
+      case 'shutter':
+      case 'red':
+      case 'green':
+      case 'blue':
+      case 'white':
+      case 'amber':
+      case 'uv':
+      case 'cyan':
+      case 'magenta':
+      case 'yellow':
+      case 'color_wheel':
+      case 'pan':
+      case 'pan_fine':
+      case 'tilt':
+      case 'tilt_fine':
+      case 'gobo':
+      case 'gobo_rotation':
+      case 'prism':
+      case 'prism_rotation':
+      case 'focus':
+      case 'zoom':
+      case 'frost':
+      case 'speed':
+      case 'macro':
+      case 'control':
+      case 'rotation':
+      case 'custom':
+        return normalized
+      default:
+        return 'unknown'
+    }
+  }
+
+  private _resolveAetherChannelDefaultValue(type: FixtureChannel['type'], value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value < 0) return 0
+      if (value > 255) return 255
+      return Math.round(value)
+    }
+
+    if (type === 'pan' || type === 'tilt') return 128
+    if (type === 'shutter' || type === 'strobe') return 255
+    return 0
+  }
+
+  private _normalizeFixtureType(type: unknown): FixtureType {
+    switch (typeof type === 'string' ? type.toLowerCase() : 'generic') {
+      case 'moving-head':
+      case 'scanner':
+      case 'par':
+      case 'bar':
+      case 'wash':
+      case 'strobe':
+      case 'effect':
+      case 'laser':
+      case 'blinder':
+      case 'fan':
+      case 'fog':
+      case 'mirror-ball':
+      case 'pyro':
+      case 'generic':
+        return (typeof type === 'string' ? type.toLowerCase() : 'generic') as FixtureType
+      case 'spot':
+        return 'moving-head'
+      default:
+        return 'generic'
+    }
+  }
+
+  private _normalizeAetherZone(zone: unknown): string {
+    if (typeof zone !== 'string' || zone.length === 0) return 'unassigned'
+    return zone
   }
 
   private _updateAetherStageBounds(stageBounds?: StageBoundsInput): void {

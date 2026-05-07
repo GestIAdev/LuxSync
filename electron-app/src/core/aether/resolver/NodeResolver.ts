@@ -91,6 +91,8 @@ const CH_COLOR_WHEEL = 'color_wheel'
 const CH_TARGET_X = 'targetX'
 const CH_TARGET_Y = 'targetY'
 const CH_TARGET_Z = 'targetZ'
+const SHUTTER_CHANNEL = 'shutter'
+const STROBE_CHANNEL = 'strobe'
 
 const IK_WARN_INTERVAL_FRAMES = 44
 
@@ -428,7 +430,7 @@ export class NodeResolver implements INodeResolver {
       // el mapa original o el mapa con canales físicos ya calculados).
       const rawNormalized: number = translatedValues[chDef.type] !== undefined
         ? translatedValues[chDef.type]
-        : chDef.defaultValue / 255
+        : this._getDefaultNormalizedValue(node, chDef)
 
       // Aplicar TransferCurve
       let normalized = this._applyTransferCurve(rawNormalized, chDef, node.constraints.transferCurve)
@@ -552,6 +554,24 @@ export class NodeResolver implements INodeResolver {
    */
   getKineticReachability(nodeId: NodeId): boolean | undefined {
     return this._ikReachability.get(nodeId)
+  }
+
+  private _getDefaultNormalizedValue(
+    node: { family: NodeFamily; channels: readonly INodeChannelDef[] },
+    chDef: INodeChannelDef,
+  ): number {
+    if (chDef.type === SHUTTER_CHANNEL) {
+      return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255
+    }
+
+    if (chDef.type === STROBE_CHANNEL && node.family === NodeFamily.IMPACT) {
+      const hasDedicatedShutter = node.channels.some(channel => channel.type === SHUTTER_CHANNEL)
+      if (!hasDedicatedShutter) {
+        return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255
+      }
+    }
+
+    return chDef.defaultValue / 255
   }
 
   /**

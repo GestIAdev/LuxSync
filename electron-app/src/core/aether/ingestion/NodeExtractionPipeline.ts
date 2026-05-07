@@ -331,10 +331,10 @@ export class NodeExtractionPipeline {
     // debe producir un ATMOSPHERE node, no caer en el void.
     // Para el resto de fixtures, 'custom' sigue siendo atmósfera si existe.
 
-    const colorChs   = chs.filter(ch => COLOR_CHANNEL_TYPES.has(ch.type))
-    const impactChs  = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(ch.type))
-    const kineticChs = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(ch.type))
-    const beamChs    = chs.filter(ch => BEAM_CHANNEL_TYPES.has(ch.type))
+    const colorChs   = chs.filter(ch => COLOR_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
+    const impactChs  = chs.filter(ch => IMPACT_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
+    const kineticChs = chs.filter(ch => KINETIC_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
+    const beamChs    = chs.filter(ch => BEAM_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
 
     // Para fixtures de atmósfera: todos los canales no capturados por las
     // otras familias se convierten en ATMOSPHERE channels.
@@ -347,8 +347,8 @@ export class NodeExtractionPipeline {
     ])
 
     const atmosphereChs: FixtureChannel[] = isAtmosphereFixture
-      ? chs.filter(ch => !classifiedTypes.has(ch.type) || ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
-      : chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(ch.type))
+      ? chs.filter(ch => !classifiedTypes.has(this._normalizeChannelType(ch.type)) || ATMOSPHERE_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
+      : chs.filter(ch => ATMOSPHERE_CHANNEL_TYPES.has(this._normalizeChannelType(ch.type)))
 
     // Para fans multi-emitter: detectar grupos de color por pétalo.
     // Para el resto: un único grupo de color si hay canales de color.
@@ -486,7 +486,7 @@ export class NodeExtractionPipeline {
     // Blueprint 3506 §1.5: dimmer → role 'primary'; shutter/strobe → role 'percussion'.
     // Si hay dimmer, el nodo principal es de dimmer (primary).
     // Si solo hay shutter o strobe (sin dimmer), el rol es 'percussion'.
-    const hasDimmer = impactChs.some(ch => ch.type === 'dimmer')
+    const hasDimmer = impactChs.some(ch => this._normalizeChannelType(ch.type) === 'dimmer')
 
     return {
       nodeId,
@@ -679,14 +679,20 @@ export class NodeExtractionPipeline {
     kinetic = false,
   ): INodeChannelDef[] {
     return channels.map(ch => ({
-      type:         ch.type as AetherChannelType,
+      type:         this._normalizeChannelType(ch.type) as AetherChannelType,
       dmxOffset:    ch.index - 1,   // FixtureChannel.index es 1-based
       defaultValue: ch.defaultValue ?? (
-        kinetic && (ch.type === 'pan' || ch.type === 'tilt') ? 128 : 0
+        kinetic && (this._normalizeChannelType(ch.type) === 'pan' || this._normalizeChannelType(ch.type) === 'tilt') ? 128 :
+        (this._normalizeChannelType(ch.type) === 'shutter' || this._normalizeChannelType(ch.type) === 'strobe') ? 255 :
+        0
       ),
       is16bit:    ch.is16bit  ?? false,
       customName: ch.customName,
     }))
+  }
+
+  private _normalizeChannelType(type: string): string {
+    return typeof type === 'string' ? type.toLowerCase() : 'unknown'
   }
 
   private _detectMixingType(channels: readonly FixtureChannel[]): ColorMixingType {

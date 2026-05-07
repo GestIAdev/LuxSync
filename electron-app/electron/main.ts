@@ -56,6 +56,7 @@ import { EffectsEngine } from '../src/engine/color/EffectsEngine'
 import { latinoEngine41Telemetry } from '../src/hal/physics'
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
+import { setRuntimeFixtureLibrary } from '../src/core/library/RuntimeFixtureLibrary'
 
 // 👻 WAVE 2005.3: Phantom Worker for audio analysis
 import { getPhantomWorker, destroyPhantomWorker } from './workers/PhantomWorkerManager'
@@ -276,6 +277,7 @@ async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
   }
   
   fixtureLibrary = mergedLibrary
+  setRuntimeFixtureLibrary(mergedLibrary as import('../src/core/library/RuntimeFixtureLibrary').RuntimeFixtureDefinition[])
   
   return fixtureLibrary
 }
@@ -556,7 +558,10 @@ async function initTitan(): Promise<void> {
     getPatchedFixtures: () => patchedFixtures,
     setPatchedFixtures: (fixtures: PatchedFixture[]) => { patchedFixtures = fixtures },
     getFixtureLibrary: () => fixtureLibrary,
-    setFixtureLibrary: (library: FixtureLibraryItem[]) => { fixtureLibrary = library },
+    setFixtureLibrary: (library: FixtureLibraryItem[]) => {
+      fixtureLibrary = library
+      setRuntimeFixtureLibrary(library as import('../src/core/library/RuntimeFixtureLibrary').RuntimeFixtureDefinition[])
+    },
     // WAVE 390.5: Rescan ALL libraries (factory + custom)
     rescanAllLibraries,
     // WAVE 1115: Library paths (resolved by PATHFINDER)

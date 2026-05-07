@@ -34,6 +34,9 @@ export type PatternType = 'none' | 'static' | 'circle' | 'eight' | 'sweep' | 'to
 /** Modo del radar: classic (grados) vs spatial (IK 3D) */
 export type RadarMode = 'spatial' | 'classic'
 
+/** Sub-tab persistida de la Cathedral */
+export type CathedralTab = 'kinetics' | 'matrix'
+
 /** Override manual del modo — null = autodetección adiabática */
 export type RadarModeOverride = RadarMode | null
 
@@ -56,6 +59,7 @@ interface MovementState {
 
   // ── Radar mode ──────────────────────────────────────────────────────────
   radarModeOverride: RadarModeOverride
+  cathedralTab: CathedralTab
 
   // ── Pattern + dynamics ──────────────────────────────────────────────────
   activePattern: PatternType
@@ -73,6 +77,9 @@ interface MovementState {
   /** Fixtures cuyo canal KINETIC está siendo controlado por un motor superior (Chronos/Selene).
    *  Rellena el KineticsBridge al detectar que la respuesta IPC indica ownership externo. */
   lockedFixtureIds: ReadonlySet<string>
+
+  /** Fixtures con MANUAL OVERRIDE activo (bloquea reemplazo visual por telemetría entrante) */
+  manualOverrideFixtureIds: ReadonlySet<string>
 }
 
 interface MovementActions {
@@ -89,6 +96,7 @@ interface MovementActions {
 
   // Radar mode
   setRadarModeOverride: (m: RadarModeOverride) => void
+  setCathedralTab: (tab: CathedralTab) => void
 
   // Pattern
   setActivePattern: (p: PatternType) => void
@@ -104,6 +112,9 @@ interface MovementActions {
 
   /** Marca fixtures como bloqueados por motor superior */
   setLockedFixtures: (ids: ReadonlySet<string>) => void
+
+  /** Activa/desactiva MANUAL OVERRIDE para un conjunto de fixtures */
+  setManualOverrideForFixtures: (fixtureIds: string[], enabled: boolean) => void
 
   /** Hidratar desde respuesta del backend (selection change) */
   hydrateFromBackend: (state: {
@@ -132,6 +143,7 @@ const DEFAULTS: MovementState = {
   spatialReachability: {},
   spatialSubTargets: {},
   radarModeOverride: null,
+  cathedralTab: 'kinetics',
   activePattern: 'none',
   patternSpeed: 50,
   patternAmplitude: 50,
@@ -139,6 +151,7 @@ const DEFAULTS: MovementState = {
   chaosSeed: generateSeed(),
   isCalibrating: false,
   lockedFixtureIds: new Set(),
+  manualOverrideFixtureIds: new Set(),
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,6 +171,7 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
   setSpatialSubTargets: (spatialSubTargets) => set({ spatialSubTargets }),
 
   setRadarModeOverride: (radarModeOverride) => set({ radarModeOverride }),
+  setCathedralTab: (cathedralTab) => set({ cathedralTab }),
 
   setActivePattern: (activePattern) => set({ activePattern }),
   setPatternSpeed: (patternSpeed) => set({ patternSpeed }),
@@ -169,6 +183,15 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
   setIsCalibrating: (isCalibrating) => set({ isCalibrating }),
 
   setLockedFixtures: (lockedFixtureIds) => set({ lockedFixtureIds }),
+
+  setManualOverrideForFixtures: (fixtureIds, enabled) => set((state) => {
+    const next = new Set(state.manualOverrideFixtureIds)
+    for (const id of fixtureIds) {
+      if (enabled) next.add(id)
+      else next.delete(id)
+    }
+    return { manualOverrideFixtureIds: next }
+  }),
 
   hydrateFromBackend: ({ pan, tilt, pattern, speed, amplitude }) => {
     const uiPattern = pattern === 'hold' ? 'static' : (pattern ?? 'none')

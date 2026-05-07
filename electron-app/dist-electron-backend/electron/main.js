@@ -60,69 +60,90 @@ let effectsEngine = null;
 let titanOrchestrator = null;
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-(function installConsciousnessFilter() {
-    const _orig = {
-        log: console.log.bind(console),
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console),
-        debug: console.debug.bind(console),
-    };
-    // Prefijos autorizados — cualquier log que empiece con uno de estos PASA
-    const WHITELIST = [
-        // Selene IA — narrativa de consciencia
-        '[SeleneTitanConscious',
-        '[DecisionMaker',
-        '[EffectRepository',
-        '[EffectManager',
-        '[GatlingRaid',
-        '[GLOBAL_COOLDOWN',
-        // Coreógrafo / Movimiento
-        '[CHOREO',
-        '[VibeMovementManager',
-        // Lifecycle — arranque del sistema y vibes
-        '[TitanOrchestrator',
-        '[UniversalDMX',
-        '[VIBE',
-        '[LuxSync',
-        // Native audio subsystem — LIFT LOG BLACKOUT (WAVE 3403.2)
-        '[NativeAudio',
-        '[VirtualWire',
-        '[WASAPI',
-        '[OmniInput',
-        // 🔬 WAVE 3418: Raw peak telemetry — SAB vs LegacyBridge voltage comparison
-        '[🔬 PEAK-SAB]',
-        '[🔬 PEAK-IPC]',
-        '[🔬 BPM-TELEMETRY]',
-        // WAVE 3433-A: Forensic audit logs
-        '[MATH AUDIT]',
-        '[ZOMBIE RADAR]',
-        // 🥁 BPM Tracker diagnostics (WAVE 3411 lift)
-        '[🥁 INTERVAL BPM]',
-        '[DEMBOW CEILING',
-        // 🔍 WAVE-DIAG: Color pipeline diagnostics (EL1140 / movers)
-        '[🔍 COLOR-DIAG]',
-        '[🔍 ARBITER-DIAG]',
-        '[🐟 BABEL FISH]',
-        // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
-        // hibernados — son ruido de ticker, no eventos de conciencia.
-        // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.
-    ];
-    function _allowed(args) {
-        if (typeof args[0] !== 'string')
-            return false;
-        const msg = args[0];
-        return WHITELIST.some(prefix => msg.startsWith(prefix));
-    }
-    const _filter = (orig) => (...args) => { if (_allowed(args))
-        orig(...args); };
-    console.log = _filter(_orig.log);
-    console.info = _filter(_orig.info);
-    console.debug = _filter(_orig.debug);
-    console.warn = _filter(_orig.warn);
-    // error siempre pasa — son fallos reales que hay que saber
-    console.error = _orig.error;
-})();
+// ═══════════════════════════════════════════════════════════════════════════
+// 👁️ WAVE 3290: OJO DEL HURACÁN — White-list Logging (CONCIENCIA SELECTIVA)
+// ═══════════════════════════════════════════════════════════════════════════
+// Política de visibilidad por prefijo. Solo hablan los módulos autorizados.
+//
+// WHITELIST:
+//   Selene IA:    [SeleneTitanConscious], [DecisionMaker], [EffectRepository]
+//   Coreógrafo:  [CHOREO], [GatlingRaid], [SimpleSectionTracker]
+//   Lifecycle:   [TitanOrchestrator], [UniversalDMX], [DMX-Worker], [GLOBAL_COOLDOWN]
+//
+// SILENCIO ABSOLUTO: [SENSE], [SENSES], [GodEar], [BabelFish], [AGC],
+//                    [INTERVAL], [IPC], [AGC TRUST], [Harmony], [FUZZY]
+//
+// DEBUG PROBE — Comentar este bloque para restaurar salida cruda de consola.
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔓 WAVE 4571: BLACKOUT DISABLED — Logs fluyen sin filtro
+/*
+;(function installConsciousnessFilter() {
+  const _orig = {
+    log:   console.log.bind(console),
+    info:  console.info.bind(console),
+    warn:  console.warn.bind(console),
+    error: console.error.bind(console),
+    debug: console.debug.bind(console),
+  }
+
+  // Prefijos autorizados — cualquier log que empiece con uno de estos PASA
+  const WHITELIST: string[] = [
+    // Selene IA — narrativa de consciencia
+    '[SeleneTitanConscious',
+    '[DecisionMaker',
+    '[EffectRepository',
+    '[EffectManager',
+    '[GatlingRaid',
+    '[GLOBAL_COOLDOWN',
+    // Coreógrafo / Movimiento
+    '[CHOREO',
+    '[VibeMovementManager',
+    // Lifecycle — arranque del sistema y vibes
+    '[TitanOrchestrator',
+    '[UniversalDMX',
+    '[VIBE',
+    '[LuxSync',
+    // Native audio subsystem — LIFT LOG BLACKOUT (WAVE 3403.2)
+    '[NativeAudio',
+    '[VirtualWire',
+    '[WASAPI',
+    '[OmniInput',
+    // 🔬 WAVE 3418: Raw peak telemetry — SAB vs LegacyBridge voltage comparison
+    '[🔬 PEAK-SAB]',
+    '[🔬 PEAK-IPC]',
+    '[🔬 BPM-TELEMETRY]',
+    // WAVE 3433-A: Forensic audit logs
+    '[MATH AUDIT]',
+    '[ZOMBIE RADAR]',
+    // 🥁 BPM Tracker diagnostics (WAVE 3411 lift)
+    '[🥁 INTERVAL BPM]',
+    '[DEMBOW CEILING',
+    // 🔍 WAVE-DIAG: Color pipeline diagnostics (EL1140 / movers)
+    '[🔍 COLOR-DIAG]',
+    '[🔍 ARBITER-DIAG]',
+    '[🐟 BABEL FISH]',
+    // Noto: [SimpleSectionTracker], [HuntEngine], [DNA_ANALYZER], [DMX-Worker]
+    // hibernados — son ruido de ticker, no eventos de conciencia.
+    // DEBUG PROBE — Añadir aquí si se necesitan para auditoría.
+  ]
+
+  function _allowed(args: unknown[]): boolean {
+    if (typeof args[0] !== 'string') return false
+    const msg = args[0]
+    return WHITELIST.some(prefix => msg.startsWith(prefix))
+  }
+
+  const _filter = (orig: (...a: unknown[]) => void) =>
+    (...args: unknown[]) => { if (_allowed(args)) orig(...args) }
+
+  console.log   = _filter(_orig.log)
+  console.info  = _filter(_orig.info)
+  console.debug = _filter(_orig.debug)
+  console.warn  = _filter(_orig.warn)
+  // error siempre pasa — son fallos reales que hay que saber
+  console.error = _orig.error
+})
+*/
 // ─────────────────────────────────────────────────────────────────────────────
 // Populated after Two-Gate validation. Dev mode defaults to FULL_SUITE.
 // ═══════════════════════════════════════════════════════════════════════════

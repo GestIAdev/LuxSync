@@ -230,15 +230,18 @@ export function useFixtureData(): TacticalFixture[] {
 
         // 🎯 Spatial Truth: project 3D→2D when explicitly placed
         if (stageFixture?.isPlaced === true && stageFixture.position) {
-          // 🏗️ WAVE 4573-C M2: use real stage dimensions, not hardcoded 12m
+          // 🏗️ WAVE 4576 M2: Corrected projection math
+          // Worker renders at fx = fixture.x * canvasWidth, so x must be in [0,1].
+          // position.x ∈ [-stageW/2, +stageW/2] → normalize to [-0.5,+0.5] → shift to [0,1]
+          // position.z: +Z = front/audience = bottom of canvas (y=1), -Z = back/upstage = top (y=0)
+          //   → NO negation: rawY = +z/stageD maps front→high y (bottom) correctly.
           const stageW = stageDimensions?.width ?? 12
           const stageD = stageDimensions?.depth ?? 8
           const MARGIN = 0.05  // 5% safety margin — fixtures stay inside canvas
-          const rawX = stageFixture.position.x / stageW
-          // Z→Y inversion: +Z is front = bottom of 2D canvas
-          const rawY = -stageFixture.position.z / stageD
-          fixture.x = Math.max(-(0.5 - MARGIN), Math.min(0.5 - MARGIN, rawX))
-          fixture.y = Math.max(-(0.5 - MARGIN), Math.min(0.5 - MARGIN, rawY))
+          const rawX = stageFixture.position.x / stageW        // [-0.5, +0.5]
+          const rawY = stageFixture.position.z / stageD         // [-0.5, +0.5], +Z → high y
+          fixture.x = Math.max(MARGIN, Math.min(1 - MARGIN, rawX + 0.5))
+          fixture.y = Math.max(MARGIN, Math.min(1 - MARGIN, rawY + 0.5))
           return
         }
         

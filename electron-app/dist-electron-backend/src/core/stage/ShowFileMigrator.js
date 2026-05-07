@@ -168,6 +168,8 @@ export function migrateConfigV1ToV2(configV1, scenes = [], showName = 'Migrated 
             profileId: oldFix.filePath || 'generic',
             position: generateMigrationPosition(zone, indexInZone),
             rotation: generateMigrationRotation(zone),
+            orientation: (zone === 'floor' ? 'floor' : 'ceiling'),
+            isPlaced: false,
             physics,
             zone,
             definitionPath: oldFix.filePath,
@@ -362,9 +364,49 @@ const V2_PATCHES = [
             }
         }
     },
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏗️ WAVE 4573: ORIENTATION DECOUPLING
+    //
+    // BEFORE: orientation lived inside PhysicsProfile (a motor property).
+    //         A ceiling-mounted fixture and a floor-mounted fixture with the
+    //         same motor had different PhysicsProfiles — conceptually wrong.
+    // AFTER:  orientation is a root-level FixtureV2 property (a stage property).
+    //         PhysicsProfile.orientation is deprecated (kept for file compat).
+    //         New field FixtureV2.isPlaced indicates explicit 3D placement.
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+        fromVersion: '2.1.0',
+        toVersion: '2.2.0',
+        description: 'WAVE 4573: Promote physics.orientation → FixtureV2.orientation + add isPlaced flag',
+        apply: (show) => {
+            const fixtures = show.fixtures;
+            for (const f of fixtures) {
+                const physics = f.physics;
+                // ── Promote orientation to root ──
+                if (f.orientation === undefined || f.orientation === null) {
+                    if (physics?.orientation) {
+                        f.orientation = physics.orientation;
+                    }
+                    else {
+                        // Heuristic: infer from Y position
+                        const pos = f.position;
+                        f.orientation = ((pos?.y ?? 3) > 2 ? 'ceiling' : 'floor');
+                    }
+                }
+                // ── Set isPlaced flag ──
+                // Existing fixtures that survived to 2.1.0 were placed in the 3D builder.
+                // Only the sentinel position {0, 3, 0} suggests an unplaced fixture.
+                if (f.isPlaced === undefined) {
+                    const pos = f.position;
+                    const isSentinel = pos?.x === 0 && pos?.y === 3 && pos?.z === 0;
+                    f.isPlaced = !isSentinel;
+                }
+            }
+        }
+    },
 ];
 /** Current latest V2 schema version */
-export const LATEST_V2_VERSION = '2.1.0';
+export const LATEST_V2_VERSION = '2.2.0';
 /**
  * Migrate a V2 show file through all incremental patches to latest.
  *
@@ -377,7 +419,7 @@ export const LATEST_V2_VERSION = '2.1.0';
 export function migrateV2ToLatest(show) {
     const appliedPatches = [];
     // Fast path: already at latest
-    if (show.schemaVersion === LATEST_V2_VERSION && V2_PATCHES.length === 0) {
+    if (show.schemaVersion === LATEST_V2_VERSION) {
         return { show, appliedPatches };
     }
     // Work on a shallow clone to avoid mutating the original
@@ -402,8 +444,8 @@ export function migrateV2ToLatest(show) {
  */
 export function autoMigrate(data) {
     const version = getSchemaVersion(data);
-    if (version === '2.0.0') {
-        // Already V2 — run through incremental patches (CW-10)
+    if (version?.startsWith('2.')) {
+        // Already V2.x — run through incremental patches (CW-10 / WAVE 4573)
         const { show: patched, appliedPatches } = migrateV2ToLatest(data);
         return {
             success: true,

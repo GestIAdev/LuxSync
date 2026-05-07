@@ -12,7 +12,7 @@
 export const DEFAULT_TACTICAL_OPTIONS = {
     quality: 'HQ',
     showGrid: true,
-    showZoneLabels: true,
+    showZoneLabels: false,
     showReferenceLines: true,
     showStereoDivision: true,
     targetFPS: 60,

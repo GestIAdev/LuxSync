@@ -157,7 +157,14 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
         let y: number
         let z: number
 
-        if (layout.vertical && layout.fixedX !== undefined) {
+        // 🏗️ WAVE 4576 M3: Spatial Truth — use authored 3D position for placed fixtures.
+        // isPlaced=true means the user explicitly positioned this fixture in StageGrid3D.
+        // Fall through to zone-layout only for unplaced (algorithmically distributed) fixtures.
+        if (fixture.isPlaced === true && fixture.position) {
+          x = fixture.position.x
+          y = fixture.position.y
+          z = fixture.position.z
+        } else if (layout.vertical && layout.fixedX !== undefined) {
           // Vertical column (movers-left, movers-right)
           x = layout.fixedX * halfWidth
           y = distributeInRange(index, total, trussHeight * 0.5, trussHeight * 0.9)

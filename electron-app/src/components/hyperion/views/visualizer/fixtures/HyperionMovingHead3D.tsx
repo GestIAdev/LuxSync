@@ -20,6 +20,8 @@ import React, { useRef, useMemo } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getTransientFixture, getVibeGeneration } from '../../../../../stores/transientStore'
+import { useProgrammerStore } from '../../../../../stores/programmerStore'
+import { useMovementStore } from '../../../../../stores/movementStore'
 import type { Fixture3DData } from '../types'
 import type { InstallationOrientation } from '../../../../../core/stage/ShowFileV2'
 import { MOUNT_QUATERNIONS } from '../utils/mountQuaternion'
@@ -67,9 +69,10 @@ const NEON_CYAN = '#00F0FF'
  *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
  *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
  */
-// 🏗️ WAVE 4573: TILT_REST_ANGLE set to 0. Base orientation now handled by MOUNT_QUATERNIONS
-// so tilt=0.5 (center DMX) should point straight out relative to the fixture's mount direction.
-const TILT_REST_ANGLE = 0
+// WAVE 4579 M3: Restaurado a +45°. El comentario de WAVE 2088.11 describe correctamente
+// la física: tilt=0.5 → 45° forward from vertical → pan sweeps son visibles en suelo.
+// WAVE 4578-B aplicó -Math.PI/4 por error (compensaba un drift que no existe en este eje).
+const TILT_REST_ANGLE = Math.PI / 4
 
 /**
  * � WAVE 2088.12: VIBE-AWARE BEAM CONE
@@ -248,9 +251,23 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
     // Use live state or grace-period fallback
     const stateSource = fixtureState ?? lastValidStateRef.current!
-    const livePan = stateSource.physicalPan ?? (stateSource as any).pan ?? 0.5
-    const liveTilt = stateSource.physicalTilt ?? (stateSource as any).tilt ?? 0.5
+    let livePan = stateSource.physicalPan ?? (stateSource as any).pan ?? 0.5
+    let liveTilt = stateSource.physicalTilt ?? (stateSource as any).tilt ?? 0.5
     const liveIntensity = stateSource.dimmer ?? 0
+
+    // WAVE 4578-B: MANUAL OVERRIDE visual lock.
+    // If fixture is marked as manual override and we have L2 pan/tilt values,
+    // ignore incoming transient pan/tilt to avoid overwrite jitter from LiquidEngine.
+    const movementState = useMovementStore.getState()
+    if (movementState.manualOverrideFixtureIds.has(fixtureId)) {
+      const ov = useProgrammerStore.getState().fixtureOverrides.get(fixtureId)
+      if (ov?.pan !== null && ov?.pan !== undefined) {
+        livePan = ov.pan
+      }
+      if (ov?.tilt !== null && ov?.tilt !== undefined) {
+        liveTilt = ov.tilt
+      }
+    }
 
     // 🔦 WAVE 2088.12: Live zoom from store (0-255 DMX) → normalized 0-1
     const rawZoom = fixtureState?.zoom ?? 127

@@ -147,19 +147,21 @@ function FixtureGlyph({ type, color, size = 16 }: { type: string; color: string;
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const StageCanvas2D: React.FC = () => {
-  const fixtures     = useStageStore(state => state.fixtures)
-  const updateFixture = useStageStore(state => state.updateFixture)
+  const fixtures      = useStageStore(state => state.fixtures)
+  const updateFixture  = useStageStore(state => state.updateFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
-  const addFixture    = useStageStore(state => state.addFixture)
-  const stageWidth    = useStageStore(state => state.stage?.width  ?? 12)
-  const stageDepth    = useStageStore(state => state.stage?.depth  ?? 10)
-  const selectFixture = useSelectionStore(state => state.select)
+  const addFixture     = useStageStore(state => state.addFixture)
+  const removeFixture  = useStageStore(state => state.removeFixture)  // 🗑️ WAVE 4576 M4
+  const stageWidth     = useStageStore(state => state.stage?.width  ?? 12)
+  const stageDepth     = useStageStore(state => state.stage?.depth  ?? 10)
+  const selectFixture  = useSelectionStore(state => state.select)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 })
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dropTarget, setDropTarget] = useState<{ x: number; z: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fixtureId: string } | null>(null)  // 🗑️ WAVE 4576 M4
 
   // Fit canvas to container
   useEffect(() => {
@@ -407,10 +409,21 @@ const StageCanvas2D: React.FC = () => {
   // ── Unplaced fixtures — vista 2D es el reino de isPlaced=false (pan-tilt clásico)
   const placed = fixtures.filter(f => !f.isPlaced)
 
+  // 🗑️ WAVE 4576 M4: Delete selected fixtures via keyboard
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault()
+      const { selectedIds } = useSelectionStore.getState()
+      selectedIds.forEach((id: string) => removeFixture(id))
+      useSelectionStore.getState().deselectAll()
+    }
+    if (e.key === 'Escape') setContextMenu(null)
+  }, [removeFixture])
+
   const GLYPH = 26 // px — tamaño de glyph base, suficiente para ser clickeable/draggable
 
   return (
-    <div ref={containerRef} className="stage-canvas-2d-container">
+    <div ref={containerRef} className="stage-canvas-2d-container" tabIndex={0} onKeyDown={handleKeyDown}>
       {/* Legend bar */}
       <div className="sc2d-legend">
         <span className="sc2d-legend-item"><span className="sc2d-dot" style={{background:'#ef4444'}} />Front</span>
@@ -593,6 +606,7 @@ const StageCanvas2D: React.FC = () => {
               style={{ cursor: 'grab' }}
               onClick={(e) => { e.stopPropagation(); selectFixture(f.id, 'replace') }}
               onMouseDown={(e) => onFixtureSVGMouseDown(e, f.id)}
+              onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, fixtureId: f.id }) }}
             >
               {/* Selection/hover halo */}
               <circle
@@ -663,6 +677,26 @@ const StageCanvas2D: React.FC = () => {
           </g>
         )}
       </svg>
+
+      {/* 🗑️ WAVE 4576 M4: Context menu — right-click on a fixture to delete */}
+      {contextMenu && (
+        <div
+          className="sc2d-context-menu"
+          style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          <button
+            className="sc2d-context-item sc2d-context-delete"
+            onClick={() => {
+              removeFixture(contextMenu.fixtureId)
+              useSelectionStore.getState().deselectAll()
+              setContextMenu(null)
+            }}
+          >
+            🗑 Remove fixture
+          </button>
+        </div>
+      )}
 
       {/* Unplaced fixtures tray */}
       <UnplacedTray />

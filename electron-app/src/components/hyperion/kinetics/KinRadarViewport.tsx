@@ -96,14 +96,12 @@ export const KinRadarViewport: React.FC = () => {
     isCalibrating: s.isCalibrating,
   })))
 
-  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude, setSpatialSubTargets, setSpatialReachability } =
+  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude } =
     useMovementStore(useShallow(s => ({
       setPanTilt: s.setPanTilt,
       setSpatialTarget: s.setSpatialTarget,
       setSpatialFanMode: s.setSpatialFanMode,
       setSpatialFanAmplitude: s.setSpatialFanAmplitude,
-      setSpatialSubTargets: s.setSpatialSubTargets,
-      setSpatialReachability: s.setSpatialReachability,
     })))
 
   // ── Derived: clasificar fixtures seleccionados ────────────────────────────
@@ -212,53 +210,19 @@ export const KinRadarViewport: React.FC = () => {
     handlePanTiltChange(256, 128)
   }, [handlePanTiltChange])
 
-  // ── IPC helper: dispara applySpatialTarget y escribe subTargets + reachability ──
-  const applySpatialFanIPC = useCallback(async (
-    target: Target3D,
-    fanMode: string,
-    fanAmplitude: number,
-    fixtureIds: string[],
-  ) => {
-    if (fixtureIds.length === 0) return
-    try {
-      const result = await (window as any).lux?.arbiter?.applySpatialTarget({
-        target,
-        fixtureIds,
-        fanMode,
-        fanAmplitude,
-      })
-      if (result?.success && result.results) {
-        const subs: Record<string, Target3D> = {}
-        for (const [id, r] of Object.entries(result.results)) {
-          const res = r as any
-          if (res.subTarget) subs[id] = res.subTarget as Target3D
-        }
-        setSpatialSubTargets(subs)
-        setSpatialReachability(result.results as any)
-      }
-    } catch {
-      // IPC failure silenciosa: el pad sigue funcionando sin sub-targets
-    }
-  }, [setSpatialSubTargets, setSpatialReachability])
-
   const handleTargetChange = useCallback((t: Target3D) => {
+    // WAVE 4578-B: un solo carril de salida.
+    // KineticsBridge observa movementStore y despacha a Aether.
     setSpatialTarget(t)
-    applySpatialFanIPC(t, spatialFanMode, spatialFanAmplitude, movingHeadIds)
-  }, [setSpatialTarget, applySpatialFanIPC, spatialFanMode, spatialFanAmplitude, movingHeadIds])
+  }, [setSpatialTarget])
 
   const handleFanModeChange = useCallback((mode: SpatialFanMode) => {
     setSpatialFanMode(mode)
-    if (spatialTarget) {
-      applySpatialFanIPC(spatialTarget, mode, spatialFanAmplitude, movingHeadIds)
-    }
-  }, [setSpatialFanMode, applySpatialFanIPC, spatialTarget, spatialFanAmplitude, movingHeadIds])
+  }, [setSpatialFanMode])
 
   const handleFanAmplitudeChange = useCallback((amp: number) => {
     setSpatialFanAmplitude(amp)
-    if (spatialTarget) {
-      applySpatialFanIPC(spatialTarget, spatialFanMode, amp, movingHeadIds)
-    }
-  }, [setSpatialFanAmplitude, applySpatialFanIPC, spatialTarget, spatialFanMode, movingHeadIds])
+  }, [setSpatialFanAmplitude])
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

@@ -15,7 +15,7 @@
  * @version WAVE 4564
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 
 import { useMovementStore, type RadarMode, type PatternType } from '../../../stores/movementStore'
@@ -29,7 +29,6 @@ import { HorizontalFader } from './HorizontalFader'
 import { FixtureMatrix } from './FixtureMatrix'
 import { PatternArsenal } from './PatternArsenal'
 import { ChaosOrderSlider } from './ChaosOrderSlider'
-import { CathedralFooter } from './CathedralFooter'
 import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
 
 import './KineticsCathedral.css'
@@ -47,6 +46,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   const {
     // Spatial
     radarModeOverride,
+    cathedralTab,
     spatialFanMode, spatialFanAmplitude,
     // Pattern
     activePattern, patternSpeed, patternAmplitude,
@@ -54,6 +54,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     chaosAmount, chaosSeed,
   } = useMovementStore(useShallow(s => ({
     radarModeOverride: s.radarModeOverride,
+    cathedralTab: s.cathedralTab,
     spatialFanMode: s.spatialFanMode,
     spatialFanAmplitude: s.spatialFanAmplitude,
     activePattern: s.activePattern,
@@ -65,7 +66,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
 
   const {
     setRadarModeOverride, setActivePattern, setPatternSpeed, setPatternAmplitude,
-    setChaosAmount, reseed, hydrateFromBackend, resetToDefaults,
+    setChaosAmount, reseed, hydrateFromBackend, setCathedralTab,
     setSpatialFanMode, setSpatialFanAmplitude,
   } = useMovementStore(useShallow(s => ({
     setRadarModeOverride: s.setRadarModeOverride,
@@ -75,7 +76,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     setChaosAmount: s.setChaosAmount,
     reseed: s.reseed,
     hydrateFromBackend: s.hydrateFromBackend,
-    resetToDefaults: s.resetToDefaults,
+    setCathedralTab: s.setCathedralTab,
     setSpatialFanMode: s.setSpatialFanMode,
     setSpatialFanAmplitude: s.setSpatialFanAmplitude,
   })))
@@ -97,15 +98,22 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   useEffect(() => {
     let mounted = true
     const hydrate = async () => {
-      if (selectedIds.length === 0) {
-        resetToDefaults()
-        return
-      }
+      if (selectedIds.length === 0) return
       try {
         const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
         if (!mounted) return
         if (result?.success && result?.state) {
-          hydrateFromBackend(result.state)
+          // Preservar posiciones de fixtures con override activo de pan/tilt
+          // para evitar amnesia al cambiar selección (WAVE 4579 M2)
+          const progOverrides = useProgrammerStore.getState().fixtureOverrides
+          const filteredState = { ...result.state }
+          for (const id of selectedIds) {
+            const ov = progOverrides.get(id)
+            if (ov?.pan !== null || ov?.tilt !== null) {
+              delete filteredState[id]
+            }
+          }
+          hydrateFromBackend(filteredState)
         }
       } catch {
         // fallback: keep current state
@@ -146,8 +154,18 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     [selectedIds, lockedFixtureIds],
   )
 
-  // ── Sub-tab state — NOT persisted ────────────────────────────────────────
-  const [cathedralTab, setCathedralTab] = useState<'kinetics' | 'matrix'>('kinetics')
+  // ── Kinetic overrides activos (para mostrar botón Unlock) ────────────────
+  const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
+  const hasKineticOverride = useMemo(() => {
+    return selectedIds.some(id => {
+      const ov = fixtureOverrides.get(id)
+      return ov?.pan !== null || ov?.tilt !== null
+    })
+  }, [selectedIds, fixtureOverrides])
+
+  const handleUnlockKinetics = useCallback(() => {
+    useProgrammerStore.getState().releasePosition()
+  }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -226,6 +244,13 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
               onClick={() => setRadarModeOverride('spatial')}
               title="Fuerza modo IK 3D espacial"
             >3D</button>
+            {hasKineticOverride && (
+              <button
+                className="kc-mode-btn kc-mode-btn--unlock"
+                onClick={handleUnlockKinetics}
+                title="Liberar control PAN/TILT → AI controla"
+              >🔓 UNLOCK</button>
+            )}
             <span className="kc-mode-indicator">
               {radarModeOverride === null ? `AUTO → ${radarMode.toUpperCase()}` : `↑ MANUAL`}
             </span>
@@ -317,9 +342,6 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
           />
         </>
       )}
-
-      {/* ── FOOTER (siempre visible en tab kinetics) ── */}
-      <CathedralFooter />
 
       </>)} {/* fin kinetics tab */}
     </div>

@@ -142,6 +142,8 @@ export class NodeExtractionPipeline {
         let resolvedPosition;
         let v2CalibOverride;
         let isVirtual;
+        let resolvedOrientation;
+        let resolvedIsPlaced;
         if (typeof dmxAddressOrFixtureV2 === 'object') {
             // ── Firma FixtureV2 (WAVE 3517.1 — recomendada) ──────────────────
             const fv2 = dmxAddressOrFixtureV2;
@@ -152,6 +154,9 @@ export class NodeExtractionPipeline {
             resolvedPosition = fv2.position;
             v2CalibOverride = fv2.calibration;
             isVirtual = fv2.isVirtual;
+            // 🧭 WAVE 4573 Phase 5b: Read orientation from root (not physics.orientation)
+            resolvedOrientation = fv2.orientation;
+            resolvedIsPlaced = fv2.isPlaced;
         }
         else {
             // ── Firma legacy (compatibilidad) ─────────────────────────────────
@@ -162,6 +167,8 @@ export class NodeExtractionPipeline {
             resolvedPosition = undefined;
             v2CalibOverride = undefined;
             isVirtual = undefined;
+            resolvedOrientation = undefined;
+            resolvedIsPlaced = undefined;
         }
         const topology = this._analyzeTopology(fixtureDef);
         const nodes = this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition);
@@ -176,6 +183,8 @@ export class NodeExtractionPipeline {
             nodes: Object.freeze(nodes),
             calibration,
             ...(isVirtual !== undefined && { isVirtual }),
+            ...(resolvedOrientation !== undefined && { orientation: resolvedOrientation }),
+            ...(resolvedIsPlaced !== undefined && { isPlaced: resolvedIsPlaced }),
         };
     }
     // ─────────────────────────────────────────────────────────────────────────

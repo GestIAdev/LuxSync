@@ -101,7 +101,11 @@ class KineticsBridgeClass {
       (spatialTarget) => {
         const ids = getSelectedIds()
         if (ids.length === 0) return
-        const { spatialFanMode, spatialFanAmplitude } = useMovementStore.getState()
+        // M1 FIX WAVE 4579: Si TODOS los fixtures están en manual override, el canal
+        // spatial compite con el override del programmerStore y gana vía IKEngine.
+        // En ese caso, el bridge NO despacha — el ProgrammerAetherBridge maneja el pan/tilt.
+        const { manualOverrideFixtureIds, spatialFanMode, spatialFanAmplitude } = useMovementStore.getState()
+        if (ids.length > 0 && ids.every(id => manualOverrideFixtureIds.has(id))) return
         this._scheduleSpatialFlush(spatialTarget, ids, spatialFanMode, spatialFanAmplitude)
       },
       { equalityFn: (a, b) =>
@@ -115,7 +119,8 @@ class KineticsBridgeClass {
       ({ spatialFanMode, spatialFanAmplitude }) => {
         const ids = getSelectedIds()
         if (ids.length === 0) return
-        const { spatialTarget } = useMovementStore.getState()
+        const { manualOverrideFixtureIds, spatialTarget } = useMovementStore.getState()
+        if (ids.length > 0 && ids.every(id => manualOverrideFixtureIds.has(id))) return
         this._scheduleSpatialFlush(spatialTarget, ids, spatialFanMode, spatialFanAmplitude)
       },
       { equalityFn: (a, b) =>
@@ -215,10 +220,16 @@ class KineticsBridgeClass {
 
         // Actualizar reachability en movementStore con los resultados IK
         const reachability: Record<string, import('../engine/movement/InverseKinematicsEngine').IKResult> = {}
+        const subTargets: Record<string, import('../engine/movement/InverseKinematicsEngine').Target3D> = {}
         for (const [id, res] of Object.entries(result.results)) {
-          reachability[id] = res as import('../engine/movement/InverseKinematicsEngine').IKResult
+          const ik = res as import('../engine/movement/InverseKinematicsEngine').IKResult & { subTarget?: import('../engine/movement/InverseKinematicsEngine').Target3D }
+          reachability[id] = ik
+          if (ik.subTarget) {
+            subTargets[id] = ik.subTarget
+          }
         }
         useMovementStore.getState().setSpatialReachability(reachability)
+        useMovementStore.getState().setSpatialSubTargets(subTargets)
       }
     } catch (err) {
       console.error('[KineticsBridge] applySpatialTarget error:', err)

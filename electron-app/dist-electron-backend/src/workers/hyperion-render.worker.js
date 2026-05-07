@@ -45,7 +45,7 @@ let dpr = 1;
 // Render options
 let quality = 'HQ';
 let showGrid = true;
-let showZoneLabels = true;
+let showZoneLabels = false;
 // ── Scaffold (structural, rarely changes) ─────────────────────────────────
 let scaffoldFixtures = [];
 let zoneCounts = new Map();

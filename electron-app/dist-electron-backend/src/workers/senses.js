@@ -27,8 +27,8 @@
 //
 // ACTIVO (bloqueado): console.info, console.debug
 // INACTIVO (libre):   console.log, console.warn, console.error
-;
-(function () { const _n = () => { }; console.info = _n; console.debug = _n; })();
+// 🔓 WAVE 4571: BLACKOUT DISABLED — Logs fluyen sin filtro
+// ;(function(){const _n=()=>{};console.info=_n;console.debug=_n;})()
 import { parentPort, workerData } from 'worker_threads';
 import { MessageType, MessagePriority, createMessage, DEFAULT_CONFIG, } from './WorkerProtocol';
 import { SharedRingBufferReader } from '../core/audio/SharedRingBuffer';

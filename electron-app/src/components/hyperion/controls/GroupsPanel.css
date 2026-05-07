@@ -135,8 +135,13 @@
 }
 
 /* User group - delete button */
+.user-group-card {
+  position: relative;
+}
+
 .group-btn.user-group {
   padding-right: 24px;
+  width: 100%;
 }
 
 .group-delete-btn {
@@ -160,7 +165,7 @@
   transition: all 0.15s ease;
 }
 
-.group-btn.user-group:hover .group-delete-btn {
+.user-group-card:hover .group-delete-btn {
   opacity: 1;
 }
 

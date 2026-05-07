@@ -1117,4 +1117,45 @@
   cursor: grabbing;
 }
 
+/* ── WAVE 4576 M4: Context menu ─────────────────────────────────────────── */
 
+.sc2d-context-menu {
+  background: rgb(18, 20, 32);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  min-width: 148px;
+  padding: 4px 0;
+}
+
+.sc2d-context-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sc2d-context-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.sc2d-context-delete {
+  color: #f87171;
+}
+
+.sc2d-context-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+/* Stage canvas container must be focusable for keyboard delete */
+.stage-canvas-2d-container:focus {
+  outline: none;
+}

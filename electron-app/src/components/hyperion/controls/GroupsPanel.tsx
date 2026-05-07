@@ -206,22 +206,28 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({ onSwitchToControls }) 
         ) : (
           <div className="groups-grid">
             {userGroups.map(group => (
-              <button
+              <div
                 key={group.id}
-                className={`group-btn user-group ${isGroupActive(group.fixtureIds) ? 'active' : ''}`}
+                className="user-group-card"
                 style={{ '--group-color': group.color || '#00FFFF' } as React.CSSProperties}
-                onClick={() => handleGroupClick(group.fixtureIds)}
               >
-                <span className="group-name">{group.name}</span>
-                <span className="group-count">({group.fixtureIds.length})</span>
                 <button
+                  type="button"
+                  className={`group-btn user-group ${isGroupActive(group.fixtureIds) ? 'active' : ''}`}
+                  onClick={() => handleGroupClick(group.fixtureIds)}
+                >
+                  <span className="group-name">{group.name}</span>
+                  <span className="group-count">({group.fixtureIds.length})</span>
+                </button>
+                <button
+                  type="button"
                   className="group-delete-btn"
                   onClick={(e) => handleDeleteGroup(e, group.id)}
                   title="Delete group"
                 >
                   ×
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}

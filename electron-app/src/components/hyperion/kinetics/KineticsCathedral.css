@@ -191,6 +191,17 @@
   box-shadow: var(--kc-glow-cyan);
 }
 
+.kc-mode-btn--unlock {
+  border-color: rgba(255, 160, 0, 0.6);
+  color: rgba(255, 200, 80, 0.95);
+}
+
+.kc-mode-btn--unlock:hover {
+  background: rgba(255, 160, 0, 0.15);
+  border-color: rgba(255, 160, 0, 0.9);
+  box-shadow: 0 0 6px rgba(255, 160, 0, 0.45);
+}
+
 .kc-mode-indicator {
   margin-left: auto;
   font-size: 9px;

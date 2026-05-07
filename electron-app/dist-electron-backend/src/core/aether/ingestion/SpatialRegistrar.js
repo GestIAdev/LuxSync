@@ -81,7 +81,15 @@ export class SpatialRegistrar {
      * @param stagePosition   — Posición 3D real del fixture en el Stagebuilder (metros).
      * @param target          — Orquestador donde se registra el Device final.
      */
-    register(deviceDef, stagePosition, target) {
+    register(deviceDef, stagePosition, target, isPlaced) {
+        // 🚨 WAVE 4573 Phase 5a: GUERRILLA BYPASS
+        // Fixtures added via Quick-Add have isPlaced=false — no real 3D position.
+        // Spatial enrichment would inject invalid coordinates into the IK engine.
+        // Register the raw device definition for Classic Pan/Tilt mode instead.
+        if (isPlaced === false) {
+            target.registerAetherDevice(deviceDef);
+            return;
+        }
         const enriched = this._enrichWithSpatialData(deviceDef, stagePosition);
         target.registerAetherDevice(enriched);
     }

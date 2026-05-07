@@ -64,7 +64,6 @@ export const DEFAULT_PHYSICS_PROFILES = {
         maxAcceleration: 4000,
         maxVelocity: 800,
         safetyCap: false,
-        orientation: 'ceiling',
         invertPan: false,
         invertTilt: false,
         swapPanTilt: false,
@@ -76,7 +75,6 @@ export const DEFAULT_PHYSICS_PROFILES = {
         maxAcceleration: 2500,
         maxVelocity: 600,
         safetyCap: true,
-        orientation: 'ceiling',
         invertPan: false,
         invertTilt: false,
         swapPanTilt: false,
@@ -88,7 +86,6 @@ export const DEFAULT_PHYSICS_PROFILES = {
         maxAcceleration: 1500, // 🛡️ THE LIFE INSURANCE - Low acceleration for cheap motors
         maxVelocity: 400,
         safetyCap: true,
-        orientation: 'ceiling',
         invertPan: false,
         invertTilt: false,
         swapPanTilt: false,
@@ -100,7 +97,6 @@ export const DEFAULT_PHYSICS_PROFILES = {
         maxAcceleration: 2000, // Conservative default
         maxVelocity: 500,
         safetyCap: true,
-        orientation: 'ceiling',
         invertPan: false,
         invertTilt: false,
         swapPanTilt: false,
@@ -393,6 +389,8 @@ export function createDefaultFixture(id, address, options = {}) {
         profileId: options.profileId || 'generic-dimmer',
         position: options.position || { x: 0, y: 3, z: 0 },
         rotation: options.rotation || { pitch: -45, yaw: 0, roll: 0 },
+        orientation: options.orientation || 'ceiling',
+        isPlaced: options.isPlaced,
         physics: options.physics || { ...DEFAULT_PHYSICS_PROFILES['unknown'] },
         zone: options.zone || 'unassigned',
         enabled: true,
@@ -433,8 +431,10 @@ export function validateShowFileDeep(data) {
         return { valid: false, errors: ['Data is null or not an object'], warnings };
     }
     const show = data;
-    if (show.schemaVersion !== '2.0.0' && show.schemaVersion !== '2.1.0') {
-        errors.push(`Invalid schemaVersion: expected '2.0.0' or '2.1.0', got '${show.schemaVersion}'`);
+    if (show.schemaVersion !== '2.0.0' &&
+        show.schemaVersion !== '2.1.0' &&
+        show.schemaVersion !== '2.2.0') {
+        errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', or '2.2.0', got '${show.schemaVersion}'`);
     }
     if (typeof show.name !== 'string' || show.name.trim() === '') {
         errors.push(`Invalid or empty show name: '${show.name}'`);

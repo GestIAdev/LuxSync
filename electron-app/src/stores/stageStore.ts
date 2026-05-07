@@ -365,7 +365,10 @@ export const useStageStore = create<StageStore>()(
     // ═══════════════════════════════════════════════════════════════════════
     
     loadShowFile: async (filePath) => {
-      set({ isLoading: true, lastError: null, fileLockWarning: null })
+      // 🛡️ WAVE 4576 M1: Flush derived state before load — prevents sum bug
+      // Old fixtures must not survive into the new show's lifecycle
+      set({ isLoading: true, lastError: null, fileLockWarning: null,
+        fixtures: [], groups: [], scenes: [], stage: null, visuals: null })
       
       try {
         // ═══════════════════════════════════════════════════════════════════
@@ -459,11 +462,18 @@ export const useStageStore = create<StageStore>()(
     
     newShow: (name) => {
       const show = createEmptyShowFile(name)
+      // 🛡️ WAVE 4576 M1: Explicit derived-state flush — ensures zero carryover from prior show
       set({
         showFile: show,
         showFilePath: null,
         isDirty: true,
-        lastError: null
+        isLoading: false,
+        lastError: null,
+        fixtures: [],
+        groups: [],
+        scenes: [],
+        stage: null,
+        visuals: null,
       })
       get()._syncDerivedState()
     },

@@ -97,9 +97,9 @@ const syncToBackend = async (fixtureList, stageBounds, lastSyncedHashRef) => {
             hasColorWheel: f.hasColorWheel || Boolean(f.capabilities?.hasColorWheel) || false,
             hasColorMixing: f.hasColorMixing || Boolean(f.capabilities?.hasColorMixing) || false,
             profileId: f.profileId || f.id, // Use fixture ID as default profile ID
-            // 🔧 WAVE 2221: Pass orientation from Forge physics → backend installationType
-            // Without this, TitanOrchestrator always falls back to 'ceiling'
-            installationType: f.physics?.orientation || 'ceiling',
+            // 🔧 WAVE 2221 / 🏗️ WAVE 4573: Orientation decoupled to FixtureV2 root.
+            // Read root-level first, fall back to deprecated physics.orientation for old files.
+            installationType: f.orientation || f.physics?.orientation || 'ceiling',
             position: f.position,
             rotation: f.rotation,
             // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagate to backend

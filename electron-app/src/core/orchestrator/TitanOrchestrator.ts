@@ -102,7 +102,7 @@ import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
 // ⚡ WAVE 4594: THE AETHER AWAKENING — NodeExtractionPipeline for fixture→NodeGraph injection
 import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
-import { getRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary'
+import { resolveRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary'
 import type { FixtureDefinition, FixtureChannel, FixtureType } from '../../types/FixtureDefinition'
 import type { FixtureV2 } from '../stage/ShowFileV2'
 import { timelineEngine } from '../engine/TimelineEngine'
@@ -2636,7 +2636,15 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _resolveFixtureDefinitionForAether(fixture: any): FixtureDefinition | null {
     const profileId = this._resolveFixtureProfileId(fixture)
-    const runtimeDefinition = profileId ? getRuntimeFixtureDefinition(profileId) : undefined
+    const runtimeDefinition = resolveRuntimeFixtureDefinition([
+      profileId,
+      fixture.profileId,
+      fixture.definitionId,
+      fixture.fixtureDefId,
+      fixture.definitionPath,
+      fixture.model,
+      fixture.name,
+    ])
 
     if (runtimeDefinition) {
       return this._normalizeFixtureDefinitionForAether(runtimeDefinition, fixture, profileId)
@@ -2669,11 +2677,11 @@ export class TitanOrchestrator {
       : Array.isArray(fixture.channels) ? fixture.channels : []
 
     const channels: FixtureChannel[] = rawChannels
-      .filter((channel: any) => channel && typeof channel.index === 'number')
-      .map((channel: any) => {
-        const type = this._normalizeFixtureChannelType(channel.type)
+      .filter((channel: any) => channel)
+      .map((channel: any, idx: number) => {
+        const type = this._normalizeFixtureChannelType(channel.type, channel.name ?? channel.customName)
         return {
-          index: channel.index > 0 ? channel.index : 1,
+          index: this._normalizeFixtureChannelIndex(channel.index, idx + 1),
           name: channel.name ?? channel.customName ?? type,
           type,
           defaultValue: this._resolveAetherChannelDefaultValue(type, channel.defaultValue),
@@ -2734,8 +2742,23 @@ export class TitanOrchestrator {
     return typeof rawProfileId === 'string' && rawProfileId.length > 0 ? rawProfileId : null
   }
 
-  private _normalizeFixtureChannelType(type: unknown): FixtureChannel['type'] {
-    const normalized = typeof type === 'string' ? type.toLowerCase() : 'unknown'
+  private _normalizeFixtureChannelIndex(rawIndex: unknown, fallback: number): number {
+    if (typeof rawIndex === 'number' && Number.isFinite(rawIndex)) {
+      return rawIndex > 0 ? Math.trunc(rawIndex) : fallback
+    }
+
+    if (typeof rawIndex === 'string') {
+      const parsed = Number.parseInt(rawIndex, 10)
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed
+      }
+    }
+
+    return fallback
+  }
+
+  private _normalizeFixtureChannelType(type: unknown, name?: unknown): FixtureChannel['type'] {
+    const normalized = typeof type === 'string' ? type.toLowerCase() : this._inferFixtureChannelTypeFromName(name)
     switch (normalized) {
       case 'dimmer':
       case 'strobe':
@@ -2770,6 +2793,21 @@ export class TitanOrchestrator {
       default:
         return 'unknown'
     }
+  }
+
+  private _inferFixtureChannelTypeFromName(name: unknown): string {
+    if (typeof name !== 'string') return 'unknown'
+    const normalizedName = name.toLowerCase()
+    if (normalizedName.includes('dimmer') || normalizedName.includes('intensity')) return 'dimmer'
+    if (normalizedName.includes('shutter')) return 'shutter'
+    if (normalizedName.includes('strobe')) return 'strobe'
+    if (normalizedName.includes('pan')) return 'pan'
+    if (normalizedName.includes('tilt')) return 'tilt'
+    if (normalizedName === 'red' || normalizedName.includes(' red')) return 'red'
+    if (normalizedName === 'green' || normalizedName.includes(' green')) return 'green'
+    if (normalizedName === 'blue' || normalizedName.includes(' blue')) return 'blue'
+    if (normalizedName === 'white' || normalizedName.includes(' white')) return 'white'
+    return 'unknown'
   }
 
   private _resolveAetherChannelDefaultValue(type: FixtureChannel['type'], value: unknown): number {

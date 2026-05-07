@@ -174,8 +174,12 @@ function drawBeam(
   // Only movers get beams
   if (type === 'par' || type === 'wash' || intensity < 0.03) return
 
-  // Pan angle: 0→ -45°, 0.5→ 0°, 1→ +45°
-  const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
+  // Pan angle: 0→ +45°, 0.5→ 0°, 1→ -45°
+  // WAVE 4620-B: Invertido el signo para alinear el radar 2D con el visualizador 3D.
+  // En 3D, pan=0 → yoke gira -135° → beam apunta derecha (+X) desde vista top-down.
+  // En 2D era pan=0 → angle=-81° → beam apuntaba izquierda. Mirror invertido.
+  // Con el mapRange invertido, pan=0 → +81° → endX = x + sin(81°)·L → beam apunta derecha.
+  const panAngle = mapRange(physicalPan, 0, 1, Math.PI * 0.45, -Math.PI * 0.45)
 
   // Tilt affects throw length: parabolic (max at 0.5)
   const tiltFactor = 1 - Math.abs(physicalTilt - 0.5) * 2

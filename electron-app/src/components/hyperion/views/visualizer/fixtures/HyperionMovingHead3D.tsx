@@ -69,10 +69,13 @@ const NEON_CYAN = '#00F0FF'
  *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
  *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
  */
-// WAVE 4579 M3: Restaurado a +45°. El comentario de WAVE 2088.11 describe correctamente
-// la física: tilt=0.5 → 45° forward from vertical → pan sweeps son visibles en suelo.
-// WAVE 4578-B aplicó -Math.PI/4 por error (compensaba un drift que no existe en este eje).
-const TILT_REST_ANGLE = Math.PI / 4
+// WAVE 4620-B: Ajustado de π/4 (45°) a π/3 (60°) para que el beam apunte más hacia el
+// suelo tras eliminar el baseRotation=-45° en WAVE 4619. Con el cuerpo del fixture
+// ahora paralelo al techo (ceiling=identity), TILT_REST_ANGLE=60° hace que tilt=0.5
+// proyecte el haz a ~tan(60°)·H ≈ 5m del suelo → pan sweeps claramente visibles.
+// En contraste, 45° proyectaba el haz hacia el costado del escenario, reduciendo
+// la visibilidad en la vista top-down a medida que el cono se alejaba de la cámara.
+const TILT_REST_ANGLE = Math.PI / 3
 
 /**
  * � WAVE 2088.12: VIBE-AWARE BEAM CONE
@@ -416,9 +419,13 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
           {/* Beam — 🔦 WAVE 2088.12: Dynamic cone width via scale.x/z
               WAVE 4573: clippingPlanes={[]} overrides the global Y=0 clip plane
-              so floor fixtures don't lose their beam tips. */}
+              so floor fixtures don't lose their beam tips.
+              WAVE 4620-B: rotation={[Math.PI,0,0]} alinea el cono al eje óptico del lente.
+              La coneGeometry estándar tiene el apex en +Y. Con rotación π en X, el apex
+              queda hacia -Y (suelo/distancia) y la base ancha junto al lente (+Y local
+              del mesh = -0.08 en el head). El haz sale por el cristal correctamente. */}
           {showBeam && (fixture.isPlaced !== false) && (
-            <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]}>
+            <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]} rotation={[Math.PI, 0, 0]}>
               <coneGeometry args={[1.0, 3.5, 16, 1, true]} />
               <meshBasicMaterial
                 ref={beamMaterialRef}

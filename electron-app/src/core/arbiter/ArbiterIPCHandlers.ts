@@ -792,10 +792,12 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     } else {
       masterArbiter.setOutputEnabled(enabled)
     }
+    const orchestrator = getTitanOrchestrator()
+    orchestrator.setOutputEnabled(enabled)
     return { 
       success: true, 
-      outputEnabled: masterArbiter.isOutputEnabled(),
-      state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+      outputEnabled: orchestrator.isOutputEnabled(),
+      state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
     }
   })
   
@@ -812,6 +814,8 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       // ignore
     }
     const result = masterArbiter.toggleOutput()
+    const orchestrator = getTitanOrchestrator()
+    orchestrator.setOutputEnabled(result)
 
     // If tagged API exists, stamp the origin label for forensics
     try {
@@ -834,8 +838,8 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
 
     return { 
       success: true, 
-      outputEnabled: result,
-      state: result ? 'LIVE' : 'ARMED'
+      outputEnabled: orchestrator.isOutputEnabled(),
+      state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
     }
   })
   
@@ -843,9 +847,10 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
    * Get output enabled state
    */
   ipcMain.handle('lux:arbiter:getOutputEnabled', () => {
+    const orchestrator = getTitanOrchestrator()
     return { 
-      outputEnabled: masterArbiter.isOutputEnabled(),
-      state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+      outputEnabled: orchestrator.isOutputEnabled(),
+      state: orchestrator.isOutputEnabled() ? 'LIVE' : 'ARMED'
     }
   })
   

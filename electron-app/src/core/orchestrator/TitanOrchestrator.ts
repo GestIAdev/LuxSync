@@ -542,6 +542,8 @@ export class TitanOrchestrator {
   // El siguiente broadcast manda el PICO, no el valor actual.
   // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
   private peakHoldMap: Map<string, number> = new Map()  // fixtureId → peak dimmer (0-255)
+  // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clásico)
+  private _outputEnabled = false
 
   constructor(config: TitanConfig = {}) {
     this.config = {
@@ -552,6 +554,7 @@ export class TitanOrchestrator {
     }
     
     this.eventRouter = getEventRouter()
+    this._outputEnabled = masterArbiter.isOutputEnabled()
     // WAVE 2098: Boot silence
   }
 
@@ -1264,7 +1267,10 @@ export class TitanOrchestrator {
     const effectOutput = effectManager.getCombinedOutput()
     
     // Chronos protection: fixtures being painted by Chronos are off-limits
-    const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds()
+    const playbackFrame = this._timelineEngine.getLastPlaybackFrame()
+    const chronosFixtureIds = new Set<string>(
+      (playbackFrame?.targets ?? []).map(t => t.fixtureId)
+    )
     
     if (effectOutput.hasActiveEffects) {
       // ⚡ WAVE 3504.5: Delegated to IntentComposer (pure module extracted from monolith)
@@ -1363,7 +1369,7 @@ export class TitanOrchestrator {
     // ═══════════════════════════════════════════════════════════════════════
     
     // Chronos telemetry (post-HAL, for diagnostics only)
-    const isChronosPlaying = masterArbiter.isPlaybackActive()
+    const isChronosPlaying = this._timelineEngine.isPlaying
     if (isChronosPlaying && this.frameCount % 300 === 1) {
       const f0 = fixtureStates[0]
       console.log(
@@ -1809,7 +1815,7 @@ export class TitanOrchestrator {
 
       // FASE 0: Set frame context + apply output gate
       aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name)
-      aetherSafety.setOutputEnabled(masterArbiter.isOutputEnabled())
+      aetherSafety.setOutputEnabled(this._outputEnabled)
       aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds())
       aetherSafety.applyOutputGate(arbitrated as Map<string, Record<string, number>>)
 
@@ -2589,6 +2595,28 @@ export class TitanOrchestrator {
 
     const avgY = count > 0 ? (sumY / count) : bounds.height * 0.5
     bounds.centerY = Math.max(0, Math.min(bounds.height, avgY))
+  }
+
+  /**
+   * WAVE 4590: Output gate canonical state for Aether pipeline.
+   */
+  setOutputEnabled(enabled: boolean): void {
+    this._outputEnabled = !!enabled
+  }
+
+  /**
+   * WAVE 4590: Read current output gate state consumed by AetherSafety.
+   */
+  isOutputEnabled(): boolean {
+    return this._outputEnabled
+  }
+
+  /**
+   * WAVE 4590: Toggle output gate canonical state.
+   */
+  toggleOutputEnabled(): boolean {
+    this._outputEnabled = !this._outputEnabled
+    return this._outputEnabled
   }
 
   /**

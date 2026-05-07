@@ -1242,58 +1242,45 @@ export class TitanOrchestrator {
     // 3. Send arbitrated result to HAL
     // ═══════════════════════════════════════════════════════════════════════════
     
-    // Feed Layer 0: AI Intent
-    const titanLayer: Layer0_Titan = {
-      intent,
-      timestamp: now, // ⚡ WAVE 3050: unified timestamp
-      vibeId: this.engine.getCurrentVibe(),
-      frameNumber: this.frameCount,
-    }
-    masterArbiter.setTitanIntent(titanLayer)
-    
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2662: EL ÁRBITRO ABSOLUTO — EffectIntents injection
-    //
-    // BEFORE: Effects mutated fixtureStates AFTER HAL.renderFromTarget().
-    //   → Dual pipeline bug: UI saw effects, DMX didn't (ghost effect).
-    //
-    // NOW: EffectManager produces CombinedEffectOutput (pure function).
-    //   → Orchestrator resolves zones → fixture IDs → EffectIntentMap.
-    //   → Arbiter consumes intents as Layer 3 during arbitrate().
-    //   → HAL.renderFromTarget() sends the COMPLETE target to DMX.
-    //   → Single Source of Truth. No post-HAL mutation. Zero ghosts.
+    // 🪓 WAVE-4592: LEGACY ARBITER BYPASS — ArbitrationDirector disconnected.
+    // masterArbiter.setTitanIntent / setEffectIntents / arbitrate() NO longer
+    // drive DMX or UI. Aether pipeline is the single source of truth.
+    // Legacy block kept (commented) for safe rollback during validation phase.
     // ═══════════════════════════════════════════════════════════════════════
+
+    // // Feed Layer 0: AI Intent
+    // const titanLayer: Layer0_Titan = {
+    //   intent,
+    //   timestamp: now,
+    //   vibeId: this.engine.getCurrentVibe(),
+    //   frameNumber: this.frameCount,
+    // }
+    // masterArbiter.setTitanIntent(titanLayer)
+
+    // // EffectIntents → legacy arbiter (WAVE 2662 path) — bypassed
     const effectManager = getEffectManager()
     const effectOutput = effectManager.getCombinedOutput()
-    
+
     // Chronos protection: fixtures being painted by Chronos are off-limits
     const playbackFrame = this._timelineEngine.getLastPlaybackFrame()
     const chronosFixtureIds = new Set<string>(
       (playbackFrame?.targets ?? []).map(t => t.fixtureId)
     )
-    
-    if (effectOutput.hasActiveEffects) {
-      // ⚡ WAVE 3504.5: Delegated to IntentComposer (pure module extracted from monolith)
-      // Pre-allocated _effectIntentBuf passed as outMap → zero new Map() per frame.
-      this._effectIntentBuf.clear()
-      const { intentMap } = this.intentComposer.compose(
-        effectOutput,
-        this.fixtures as import('./intent/types').FixtureSnapshot[],
-        chronosFixtureIds,
-        this._effectIntentBuf,
-      )
 
-      // Inject intents into the Arbiter BEFORE arbitration
-      masterArbiter.setEffectIntents(intentMap)
-      
-      // Throttled telemetry
-      if (this.frameCount % 60 === 0 && intentMap.size > 0) {
-        console.log(`[TitanOrchestrator 🎯] WAVE 2662: ${intentMap.size} effect intents injected | mixBus=${effectOutput.mixBus} | globalComp=${(effectOutput.globalComposition ?? 0).toFixed(2)}`)
-      }
-    }
-    
-    // Arbitrate all layers (this merges manual overrides, effects, blackout)
-    const arbitratedTarget = masterArbiter.arbitrate()
+    // if (effectOutput.hasActiveEffects) {
+    //   this._effectIntentBuf.clear()
+    //   const { intentMap } = this.intentComposer.compose(
+    //     effectOutput,
+    //     this.fixtures as import('./intent/types').FixtureSnapshot[],
+    //     chronosFixtureIds,
+    //     this._effectIntentBuf,
+    //   )
+    //   masterArbiter.setEffectIntents(intentMap)
+    // }
+
+    // // Arbitrate all layers — BYPASSED
+    // const arbitratedTarget = masterArbiter.arbitrate()
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
@@ -1344,12 +1331,32 @@ export class TitanOrchestrator {
     
     // WAVE 380: Debug - verify fixtures are present in loop (WAVE 2098: silenced)
     
-    // 4. HAL renders arbitrated target -> produces fixture states
-    // Now using the new renderFromTarget method that accepts FinalLightingTarget
-    // 🔧 DMX TIMING: isProcessingFrame (WAVE 2211) garantiza que este bloque
-    // no se ejecuta en paralelo. El intervalo de 40ms da ~13ms de margen
-    // sobre el frame DMX512 físico (~27ms), eliminando el corrupting de Break/MAB.
-    const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌉 WAVE-4592: AETHER UI REROUTE — Opción B (placeholder array)
+    // fixtureStates se inicializa desde this.fixtures con valores default puros.
+    // AetherUIProjector.project() lo rellena con la verdad Aether cada frame.
+    // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
+    // ═══════════════════════════════════════════════════════════════════════
+    const fixtureStates: import('../../hal/mapping/FixtureMapper').FixtureState[] =
+      this.fixtures.map(fix => ({
+        dmxAddress: fix.dmxAddress,
+        universe:   fix.universe,
+        name:       fix.name,
+        zone:       fix.zone   ?? 'center',
+        type:       fix.type   ?? 'generic',
+        isVirtual:  fix.isVirtual,
+        dimmer: 0,
+        r: 0, g: 0, b: 0,
+        pan:    128,
+        tilt:   128,
+        zoom:   128,
+        focus:  128,
+        channels:   fix.channels,
+        profileId:  fix.profileId,
+        fixtureId:  fix.id,
+        hasColorWheel:  fix.hasColorWheel,
+        hasColorMixing: fix.hasColorMixing,
+      }))
     
     // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 2662: POST-HAL MUTATION ELIMINATED
@@ -1637,8 +1644,9 @@ export class TitanOrchestrator {
       this.onHotFrame(hotFrame)
     }
 
-    // ⚡ STEP 3: DMX Aduana + hardware flush — DESPUÉS del broadcast UI
-    this.hal.flushToDriver(fixtureStates)
+    // ⚡ WAVE-4592: flushToDriver() ELIMINADO — la Aduana y el send DMX
+    // son responsabilidad exclusiva del bloque Aether (aetherSafety + sendUniverseRaw).
+    // this.hal.flushToDriver(fixtureStates)  ← DISCONNECTED WAVE-4592
 
     // ═══════════════════════════════════════════════════════════════════════
     // ⚛️ WAVE 3505.4: AETHER MATRIX — V2 Agnostic Engine Pipeline

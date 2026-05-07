@@ -132,9 +132,8 @@ const ATMOSPHERE_FIXTURE_TYPES = new Set<string>([
 // ═══════════════════════════════════════════════════════════════════════════
 
 const IMPACT_TRANSFER_CURVE: TransferCurve = {
-  type:      'exponential',
-  exponent:  2.5,
-  noiseGate: 0.02,
+  type:      'linear',
+  noiseGate: 0.0,
 }
 
 const IMPACT_BAND_MIX: BandMixWeights = {

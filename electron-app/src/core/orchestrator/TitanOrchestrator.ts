@@ -100,6 +100,8 @@ import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdap
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 // 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
+// ⚡ WAVE 4594: THE AETHER AWAKENING — NodeExtractionPipeline for fixture→NodeGraph injection
+import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
 import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
@@ -325,6 +327,8 @@ export class TitanOrchestrator {
   // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   private _aetherHasDevices = false
+  // ⚡ WAVE 4594: Stateless extraction pipeline — lazy-init, reutilizado en cada resync
+  private _aetherPipeline: NodeExtractionPipeline | null = null
   // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
   private readonly _aetherUIProjector = new AetherUIProjector()
   // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
@@ -2574,6 +2578,57 @@ export class TitanOrchestrator {
       }
     }
     // WAVE 2098: Boot silence
+    // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
+    this._syncFixturesToAether(this.fixtures)
+    // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
+    this._syncFixturesToAether(this.fixtures)
+  }
+
+  /**
+   * ⚡ WAVE 4594: THE AETHER AWAKENING — Aether Patch Bridge
+   *
+   * Sincroniza la lista completa de fixtures con el NodeGraph de Aether.
+   * Full-resync strategy: unregister all → re-register all.
+   * Llamado exclusivamente desde setFixtures() — nunca desde el hot-path (44Hz).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _syncFixturesToAether(fixtures: any[]): void {
+    // 1. Lazy-init del pipeline (stateless, reutilizado en cada sync)
+    if (!this._aetherPipeline) {
+      this._aetherPipeline = new NodeExtractionPipeline()
+    }
+    const pipeline = this._aetherPipeline
+
+    // 2. Unregistrar todos los devices actualmente en el NodeGraph (resync limpio)
+    const existingIds = [...this._aetherGraph.getDeviceIds()]
+    for (const deviceId of existingIds) {
+      this._aetherGraph.unregisterDevice(deviceId)
+    }
+    this._aetherHasDevices = false
+
+    // 3. Registrar cada fixture como un Device Aether
+    let registered = 0
+    for (const fixture of fixtures) {
+      if (!fixture.id || !Array.isArray(fixture.channels) || fixture.channels.length === 0) {
+        continue
+      }
+      try {
+        const dmxAddress = fixture.dmxAddress ?? fixture.address ?? 1
+        const universe   = fixture.universe ?? 0
+        const zone       = fixture.zone || 'unassigned'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const deviceDef = pipeline.extract(fixture as any, dmxAddress, universe, zone, fixture.id)
+        this.registerAetherDevice(deviceDef)
+        registered++
+      } catch (err) {
+        console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err)
+      }
+    }
+
+    if (registered > 0) {
+      console.log(`[TitanOrchestrator] ⚡ WAVE 4594: Aether NodeGraph synced — ${registered}/${fixtures.length} fixtures registered`)
+    }
   }
 
   private _updateAetherStageBounds(stageBounds?: StageBoundsInput): void {

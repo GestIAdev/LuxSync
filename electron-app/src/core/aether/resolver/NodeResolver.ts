@@ -108,6 +108,7 @@ const DEFAULT_IK_ORIENTATION = {
 
 // ── DMX universe size ────────────────────────────────────────────────────
 const DMX_UNIVERSE_SIZE = 512
+const PHOTON_TRACER_EVERY_FRAMES = 20
 
 // ── Contexto de frame para el HarmonicQuantizer ──────────────────────────
 // Inyectado via setResolveContext() antes de cada llamada a resolve().
@@ -304,10 +305,33 @@ export class NodeResolver implements INodeResolver {
       buf.fill(0)
     }
 
+    // ★ TRACER-3.0: Diagnóstico del mapa arbitrado vs NodeGraph
+    if (this._resolveFrameIndex % 20 === 0) {
+      let knownCount = 0
+      let unknownCount = 0
+      let firstUnknown = ''
+      for (const [nid] of arbitrated) {
+        if (this._graph.getNodeData(nid)) {
+          knownCount++
+        } else {
+          unknownCount++
+          if (!firstUnknown) firstUnknown = String(nid)
+        }
+      }
+      console.log(
+        `[TRACER-3.0 RESOLVE] arbitratedSize=${arbitrated.size} ` +
+        `knownInGraph=${knownCount} unknownInGraph=${unknownCount} ` +
+        `registeredUniverses=${[...this._universeBuffers.keys()].join(',')} ` +
+        `firstUnknown=${firstUnknown || 'none'}`,
+      )
+    }
+
     // 2. Para cada nodo arbitrado, escribir en el buffer del universo
     for (const [nodeId, channelValues] of arbitrated) {
       this._writeNode(nodeId, channelValues)
     }
+
+    this._traceFirstDeviceDmxBytes()
 
     // 3. Ensamblar los packets de salida desde los buffers activos
     this._framePackets.clear()
@@ -324,6 +348,61 @@ export class NodeResolver implements INodeResolver {
 
     // Retornar como Array readonly (sin new Array — reutiliza la misma ref)
     return Array.from(this._framePackets.values()) as readonly IDMXPacket[]
+  }
+
+  private _traceFirstDeviceDmxBytes(): void {
+    if (this._resolveFrameIndex % PHOTON_TRACER_EVERY_FRAMES !== 0) return
+
+    let probeNode = this._graph.getView(NodeFamily.IMPACT).count > 0
+      ? this._graph.getView(NodeFamily.IMPACT).get(0)
+      : this._graph.getView(NodeFamily.COLOR).count > 0
+        ? this._graph.getView(NodeFamily.COLOR).get(0)
+        : this._graph.getView(NodeFamily.KINETIC).count > 0
+          ? this._graph.getView(NodeFamily.KINETIC).get(0)
+          : this._graph.getView(NodeFamily.BEAM).count > 0
+            ? this._graph.getView(NodeFamily.BEAM).get(0)
+            : this._graph.getView(NodeFamily.ATMOSPHERE).count > 0
+              ? this._graph.getView(NodeFamily.ATMOSPHERE).get(0)
+              : undefined
+
+    if (!probeNode) return
+
+    const device = this._graph.getDevice(probeNode.deviceId)
+    if (!device) return
+
+    const buf = this._universeBuffers.get(device.universe)
+    if (!buf) return
+
+    const baseAddr = device.dmxAddress - 1
+
+    // ★ TRACER-4 META: loguear qué nodo estamos probeando y si entró en _writeNode
+    console.log(
+      `[TRACER-4-META] probeNode=${String(probeNode.nodeId)} deviceId=${String(probeNode.deviceId)} ` +
+      `universe=${device.universe} dmxAddr=${device.dmxAddress} baseAddr=${baseAddr} ` +
+      `wasActive=${this._activeUniverses.has(device.universe)} channels=${probeNode.channels.length}`,
+    )
+
+    let dimmerByte: number | null = null
+    let shutterByte: number | null = null
+
+    for (let ci = 0; ci < probeNode.channels.length; ci++) {
+      const channel = probeNode.channels[ci]
+      const idx = baseAddr + channel.dmxOffset
+      if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+
+      if (channel.type === DIMMER_CHANNEL && dimmerByte === null) {
+        dimmerByte = buf[idx]
+      }
+      if (channel.type === SHUTTER_CHANNEL && shutterByte === null) {
+        shutterByte = buf[idx]
+      }
+    }
+
+    if (dimmerByte !== null || shutterByte !== null) {
+      console.log(
+        `[TRACER-4 RESOLVER] Fixture 0 -> DMX Dimmer Byte: ${dimmerByte ?? 'n/a'} | Shutter: ${shutterByte ?? 'n/a'}`,
+      )
+    }
   }
 
   // ── Internos ──────────────────────────────────────────────────────────
@@ -420,6 +499,21 @@ export class NodeResolver implements INodeResolver {
     }
     // ── Fin traducción cromática ───────────────────────────────────────
 
+    // ★ TRACER-3.5: Dump completo del nodo antes del bucle DMX (solo IMPACT, solo primer hit cada 20 frames)
+    if (node.family === NodeFamily.IMPACT && this._resolveFrameIndex % 20 === 0) {
+      const _t35dimmer = translatedValues['dimmer']
+      const _t35maxDmx = node.constraints.maxValue
+      const _t35buf0   = buf[baseAddr] // primer byte del device antes de escribir
+      console.log(
+        `[TRACER-3.5 WRITE_NODE] node=${String(node.nodeId)} | ` +
+        `dimmerRaw=${_t35dimmer} | ` +
+        `constraint.maxValue=${_t35maxDmx} | ` +
+        `transferCurve=${JSON.stringify(node.constraints.transferCurve)} | ` +
+        `baseAddr=${baseAddr} | buf[baseAddr]=${_t35buf0} | ` +
+        `allKeys=${Object.keys(translatedValues).join(',')}`
+      )
+    }
+
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef: INodeChannelDef = node.channels[ci]
       const bufIdx = baseAddr + chDef.dmxOffset
@@ -431,6 +525,12 @@ export class NodeResolver implements INodeResolver {
       const rawNormalized: number = translatedValues[chDef.type] !== undefined
         ? translatedValues[chDef.type]
         : this._getDefaultNormalizedValue(node, chDef)
+
+      // ★ TRACER-3.5-CH: Log por canal en el primer IMPACT node
+      if (node.family === NodeFamily.IMPACT && this._resolveFrameIndex % 20 === 0) {
+        const _raw = translatedValues[chDef.type]
+        console.log(`[TRACER-3.5-CH] ch=${chDef.type} dmxOffset=${chDef.dmxOffset} rawNorm=${_raw} default=${chDef.defaultValue} is16bit=${chDef.is16bit}`)
+      }
 
       // Aplicar TransferCurve
       let normalized = this._applyTransferCurve(rawNormalized, chDef, node.constraints.transferCurve)
@@ -465,6 +565,13 @@ export class NodeResolver implements INodeResolver {
       if (dmxValue > 255) dmxValue = 255
 
       buf[bufIdx] = dmxValue
+
+      // ★ TRACER-3.5-WRITE: Loggear el valor final escrito en buffer para canal dimmer del 1er IMPACT node
+      if (node.family === NodeFamily.IMPACT && chDef.type === DIMMER_CHANNEL && this._resolveFrameIndex % 20 === 0) {
+        console.log(
+          `[TRACER-3.5-WRITE] IMPACT dimmer → rawNorm=${rawNormalized.toFixed(4)} afterCurve=${normalized.toFixed(4)} dmxFinal=${dmxValue} bufIdx=${bufIdx}`,
+        )
+      }
 
       // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
       if (chDef.is16bit) {

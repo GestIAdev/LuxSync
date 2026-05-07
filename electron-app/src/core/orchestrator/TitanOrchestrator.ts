@@ -332,8 +332,6 @@ export class TitanOrchestrator {
   private _aetherHasDevices = false
   // ⚡ WAVE 4594: Stateless extraction pipeline — lazy-init, reutilizado en cada resync
   private _aetherPipeline: NodeExtractionPipeline | null = null
-  // ⚡ WAVE 4599: Physical blackout buffers per universe (zero-alloc in hot-path)
-  private readonly _aetherBlackoutBuffers = new Map<number, Uint8Array>()
   // � WAVE 4559: THE MIRROR — instancia única, zero-alloc projection cada frame
   private readonly _aetherUIProjector = new AetherUIProjector()
   // �🌊 WAVE 3516.2: Adapters — instanciados una vez, reutilizados cada frame
@@ -1834,7 +1832,30 @@ export class TitanOrchestrator {
       aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name)
       aetherSafety.setOutputEnabled(this._outputEnabled)
       aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds())
+
+      // ★ TRACER-2.5-A: Estado del mapa ANTES de applyOutputGate
+      if (this.frameCount % 20 === 0) {
+        const _t25entry = arbitrated.entries().next()
+        if (!_t25entry.done) {
+          const [_t25nid, _t25ch] = _t25entry.value
+          console.log(`[TRACER-2.5-A PRE-GATE] outputEnabled=${this._outputEnabled} | node=${_t25nid} | dimmer=${_t25ch['dimmer']} | keys=${Object.keys(_t25ch).join(',')}`)
+        } else {
+          console.log(`[TRACER-2.5-A PRE-GATE] arbitrated map VACÍO — nodeCount=${arbitrated.size}`)
+        }
+      }
+
       aetherSafety.applyOutputGate(arbitrated as Map<string, Record<string, number>>)
+
+      // ★ TRACER-2.5-B: Estado del mapa DESPUÉS de applyOutputGate
+      if (this.frameCount % 20 === 0) {
+        const _t25Bentry = arbitrated.entries().next()
+        if (!_t25Bentry.done) {
+          const [_t25Bnid, _t25Bch] = _t25Bentry.value
+          console.log(`[TRACER-2.5-B POST-GATE] node=${_t25Bnid} | dimmer=${_t25Bch['dimmer']} | keys=${Object.keys(_t25Bch).join(',')}`)
+        } else {
+          console.log(`[TRACER-2.5-B POST-GATE] arbitrated map VACÍO`)
+        }
+      }
 
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
       // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
@@ -1869,15 +1890,7 @@ export class TitanOrchestrator {
         // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
-        if (!rawBuf) continue
-
-        // ⚡ WAVE 4599: Output gate is strictly physical.
-        // Virtual pipeline and UI projection stay fully alive.
-        if (this._outputEnabled) {
-          this.hal.sendUniverseRaw(universe, rawBuf)
-        } else {
-          this.hal.sendUniverseRaw(universe, this._getAetherBlackoutBuffer(universe))
-        }
+        if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
       }
 
       // 🛂 WAVE 4557: Safety telemetry (~1Hz)
@@ -2859,17 +2872,6 @@ export class TitanOrchestrator {
   private _normalizeAetherZone(zone: unknown): string {
     if (typeof zone !== 'string' || zone.length === 0) return 'unassigned'
     return zone
-  }
-
-  private _getAetherBlackoutBuffer(universe: number): Uint8Array {
-    let buffer = this._aetherBlackoutBuffers.get(universe)
-    if (!buffer) {
-      buffer = new Uint8Array(512)
-      this._aetherBlackoutBuffers.set(universe, buffer)
-    } else {
-      buffer.fill(0)
-    }
-    return buffer
   }
 
   private _updateAetherStageBounds(stageBounds?: StageBoundsInput): void {

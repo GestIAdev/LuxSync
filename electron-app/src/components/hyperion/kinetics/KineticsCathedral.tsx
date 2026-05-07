@@ -164,7 +164,9 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   }, [selectedIds, fixtureOverrides])
 
   const handleUnlockKinetics = useCallback(() => {
-    useProgrammerStore.getState().releasePosition()
+    // WAVE-4592 INCISIÓN 5: releaseAll para limpiar todas las familias de nodos,
+    // no solo KINETIC — señal limpia al NodeArbiter sin ambigüedad.
+    useProgrammerStore.getState().releaseAll()
   }, [])
 
   // ─────────────────────────────────────────────────────────────────────────

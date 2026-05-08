@@ -76,13 +76,8 @@ const SHUTTER_CHANNEL = 'shutter';
 const STROBE_CHANNEL = 'strobe';
 const IK_WARN_INTERVAL_FRAMES = 44;
 const MATH_TELEMETRY_EVERY_FRAMES = 30;
-// ── WAVE 4619 M2: FK Bridge constants ────────────────────────────────────
-// Used by _forwardKinematicsBridge to convert normalized pan/tilt → spatial target.
-const FK_DEG_TO_RAD = Math.PI / 180;
-const FK_DEFAULT_PAN_RANGE_DEG = 540;
-const FK_DEFAULT_TILT_RANGE_DEG = 270;
-/** Maximum raycast distance (meters) — clamps distant/parallel beams */
-const FK_MAX_RAY_DISTANCE = 30;
+const IK_DEFAULT_PAN_RANGE_DEG = 540;
+const IK_DEFAULT_TILT_RANGE_DEG = 270;
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set([CH_R, CH_G, CH_B]);
@@ -341,26 +336,22 @@ export class NodeResolver {
         const calibration = device.calibration;
         if (writeToDmx)
             this._activeUniverses.add(device.universe);
-        // ── WAVE 4617-B M1: EL GATEKEEPER DE HIERRO ────────────────────────────
-        // La decisión IK vs Classic se basa en el flag estructural isPlaced del
-        // Device, NO en la presencia/ausencia de canales espaciales (targetX).
+        let invertClassicKineticAxes = false;
+        // ── WAVE 4631: SPLIT-BRAIN GATEKEEPER DETERMINISTA ─────────────────────
+        // La ruta KINETIC se decide SOLO por la presencia de targetX en los valores
+        // arbitrados del frame. No depende de flags estructurales del fixture.
         //
-        //   isPlaced === true  + KINETIC + !isContinuous → SIEMPRE ruta IK
-        //   isPlaced !== true  → SIEMPRE ruta clásica (ignora canales espaciales)
-        //
-        // Esto previene colisiones cuando un adapter legacy emite solo pan/tilt
-        // para un fixture que debería ir por IK, o cuando un override manual
-        // inyecta canales espaciales en un fixture guerrilla sin posición real.
+        //   targetX presente   + !isContinuous → RUTA ESPACIAL (IK puro)
+        //   targetX ausente    o isContinuous  → RUTA CLÁSICA (pan/tilt directo)
         if (node.family === NodeFamily.KINETIC) {
             const kineticNode = node;
-            if (!kineticNode.isContinuous && device.isPlaced === true) {
-                // Fixture posicionado → ruta IK siempre.
-                // Si targetX no está presente (e.g. override manual con solo pan/tilt),
-                // _writeNodeIK usa defaults seguros (centro del escenario).
+            const hasSpatialTarget = channelValues[CH_TARGET_X] !== undefined;
+            if (!kineticNode.isContinuous && hasSpatialTarget) {
                 this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx);
                 return;
             }
-            // isContinuous (fan/mirrorball) o isPlaced !== true → classic path
+            invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode);
+            // isContinuous (fan/mirrorball) o sin targetX → classic path
         }
         // ── WAVE 4522.4: Traducción cromática ─────────────────────────────
         // Si el nodo es de familia COLOR y tiene valores r/g/b arbitrados,
@@ -386,7 +377,7 @@ export class NodeResolver {
                 continue; // safety bound
             // Valor normalizado arbitrado (usando translatedValues que puede ser
             // el mapa original o el mapa con canales físicos ya calculados).
-            const rawNormalized = translatedValues[chDef.type] !== undefined
+            let rawNormalized = translatedValues[chDef.type] !== undefined
                 ? translatedValues[chDef.type]
                 : this._getDefaultNormalizedValue(node, chDef);
             // Telemetría legacy removida.
@@ -404,6 +395,11 @@ export class NodeResolver {
             // Aplicar calibración específica de canal
             if (calibration) {
                 dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration);
+            }
+            // WAVE 4639/4640: invertir orientación clásica en dominio DMX
+            // y solo sobre tilt para no espejar eje horizontal.
+            if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
+                dmxValue = 255 - dmxValue;
             }
             // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path
             if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
@@ -459,35 +455,13 @@ export class NodeResolver {
      * internamente (anti-double-calibration).
      */
     _writeNodeIK(node, channelValues, baseAddr, buf, calibration, writeToDmx) {
-        const hasTargetX = channelValues[CH_TARGET_X] !== undefined;
-        // WAVE 4619 M2: FK BRIDGE — Si targetX no está presente pero pan/tilt sí,
-        // usar Forward Kinematics para derivar un target espacial sintético.
-        let tx;
-        let ty;
-        let tz;
-        const panNormForTelemetry = channelValues['pan'] ?? node.currentPosition.pan;
-        const tiltNormForTelemetry = channelValues['tilt'] ?? node.currentPosition.tilt;
-        const panRangeDegForTelemetry = node.ikLimits?.panRangeDeg ?? FK_DEFAULT_PAN_RANGE_DEG;
-        const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG;
-        const vmmPanDeg = (panNormForTelemetry - 0.5) * panRangeDegForTelemetry;
-        const vmmTiltDeg = (tiltNormForTelemetry - 0.5) * tiltRangeDegForTelemetry;
-        if (channelValues[CH_TARGET_X] !== undefined) {
-            // Flujo normal: canales espaciales presentes (KineticAdapter / override manual)
-            tx = channelValues[CH_TARGET_X];
-            ty = channelValues[CH_TARGET_Y] ?? 1.5;
-            tz = channelValues[CH_TARGET_Z] ?? 2.0;
-        }
-        else {
-            // FK Bridge: convertir pan/tilt normalizados → target 3D
-            const panNorm = panNormForTelemetry;
-            const tiltNorm = tiltNormForTelemetry;
-            const fkTarget = this._forwardKinematicsBridge(node, panNorm, tiltNorm);
-            tx = fkTarget.x;
-            ty = fkTarget.y;
-            tz = fkTarget.z;
-        }
+        const tx = channelValues[CH_TARGET_X];
+        if (tx === undefined)
+            return;
+        const ty = channelValues[CH_TARGET_Y] ?? 1.5;
+        const tz = channelValues[CH_TARGET_Z] ?? 2.0;
         if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-            console.log(`[MATH-INPUT] id: ${String(node.deviceId)} | VMM-Grados: ${vmmPanDeg.toFixed(2)}/${vmmTiltDeg.toFixed(2)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`);
+            console.log(`[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`);
         }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
@@ -540,147 +514,27 @@ export class NodeResolver {
         }
     }
     /**
-     * WAVE 4619 M2: FORWARD KINEMATICS BRIDGE
-     *
-     * Converts normalized pan/tilt (0-1) into a world-space Target3D by:
-     *   1. Mapping normalized values to angular degrees from mechanical center
-     *   2. Building a local-frame direction vector from those angles
-     *   3. Rotating the direction vector into world-space using mount orientation
-     *   4. Raycasting from the fixture position along that direction
-     *   5. Intersecting with the stage floor (Y = 0)
-     *
-     * If the beam is parallel to or pointing away from the floor, the result is
-     * clamped to FK_MAX_RAY_DISTANCE along the ray direction.
-     *
-     * ZERO-ALLOC: all calculations use local variables on the stack.
-     */
-    _forwardKinematicsBridge(node, panNorm, tiltNorm) {
-        // ── 1. Normalized (0-1) → degrees from mechanical center ──────────────
-        // Pan: 0.5 = center (0°), 0 = -panRange/2, 1 = +panRange/2
-        // Tilt: 0.5 = center (0° = horizontal), 0 = -tiltRange/2, 1 = +tiltRange/2
-        const panRangeDeg = node.ikLimits?.panRangeDeg ?? FK_DEFAULT_PAN_RANGE_DEG;
-        const tiltRangeDeg = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG;
-        const panDeg = (panNorm - 0.5) * panRangeDeg;
-        const tiltDeg = (tiltNorm - 0.5) * tiltRangeDeg;
-        // ── 2. Build local direction vector from pan/tilt angles ──────────────
-        // WAVE 4620-B: Convención del IK engine (InverseKinematicsEngine.ts):
-        //   panDeg  = atan2(local.x, local.z)   → pan gira en el plano XZ
-        //   tiltDeg = atan2(-local.y, horizDist) → tilt es elevación en Y
-        //
-        // El Y local es INDEPENDIENTE del pan (no se modula con cosPan).
-        // La dirección del beam en el frame local del IK es:
-        //   local.x = sin(pan) * cos(tilt)
-        //   local.y = -sin(tilt)            ← independiente del pan
-        //   local.z = cos(pan) * cos(tilt)
-        const panRad = panDeg * FK_DEG_TO_RAD;
-        const tiltRad = tiltDeg * FK_DEG_TO_RAD;
-        const cosPan = Math.cos(panRad);
-        const sinPan = Math.sin(panRad);
-        const cosTilt = Math.cos(tiltRad);
-        const sinTilt = Math.sin(tiltRad);
-        const localDirX = sinPan * cosTilt;
-        const localDirY = -sinTilt; // ← WAVE 4620-B: sin factor cosPan
-        // WAVE 4628 M2: negación de localDirZ para alinear la convención del FK con el IK engine.
-        // El IK engine (InverseKinematicsEngine) define el eje óptico local en -Z (hacia adelante
-        // en el frame local del fixture). Con mounting pitch=-90°, R_X(-90°) rota -Z → +Y global.
-        // Para que el beam apunte al SUELO (worldDirY < 0), necesitamos worldDirZ negativo antes
-        // de la rotación de pitch. Negando localDirZ: tras R_X(-90°),
-        //   worldDirY = -localDirZ * sin(-90°) = +localDirZ_negado * (-1) < 0 ✓
-        // Sin esta negación: tiltNorm=0.5 → localDirZ=+1 → worldDirY=+1 (arriba) → fallback Y≈5.5
-        // Con esta negación: tiltNorm=0.5 → localDirZ=-1 → worldDirY=-1 (abajo) → intersección Y=0
-        const localDirZ = -(cosPan * cosTilt);
-        // ── 3. Rotate from local frame to world frame ─────────────────────────
-        // WAVE 4620-B: La inversa exacta de rotateToLocalFrame (IKEngine).
-        //
-        // rotateToLocalFrame aplica: M = R_Z(-roll) · R_X(-pitch) · R_Y(-yaw)
-        // Su inversa (local→world) es: M⁻¹ = R_Y(yaw) · R_X(pitch) · R_Z(roll)
-        //
-        // Matrices de rotación ACTIVAS (no transpuestas):
-        //   R_Z(θ): x'= x·cosθ - y·sinθ,  y'= x·sinθ + y·cosθ
-        //   R_X(θ): y'= y·cosθ - z·sinθ,  z'= y·sinθ + z·cosθ
-        //   R_Y(θ): x'= x·cosθ + z·sinθ,  z'=-x·sinθ + z·cosθ
-        //
-        // Orden de aplicación: Roll(Z) → Pitch(X) → Yaw(Y)
-        const orient = node.ikOrientation ?? DEFAULT_IK_ORIENTATION;
-        const mountPitchDeg = orient.installation === 'ceiling' ? -90
-            : orient.installation === 'floor' ? 90
-                : orient.installation === 'truss-front' ? -90
-                    : orient.installation === 'truss-back' ? -90
-                        : orient.installation === 'wall-left' ? 0
-                            : orient.installation === 'wall-right' ? 0
-                                : -90;
-        const mountYawDeg = orient.installation === 'truss-back' ? 180
-            : orient.installation === 'wall-left' ? 90
-                : orient.installation === 'wall-right' ? -90
-                    : 0;
-        const totalPitchRad = (mountPitchDeg + orient.rotation.pitch) * FK_DEG_TO_RAD;
-        const totalYawRad = (mountYawDeg + orient.rotation.yaw) * FK_DEG_TO_RAD;
-        const totalRollRad = orient.rotation.roll * FK_DEG_TO_RAD;
-        // Step 1: Roll (Z axis) — R_Z(roll)
-        const cr = Math.cos(totalRollRad);
-        const sr = Math.sin(totalRollRad);
-        const afterRollX = localDirX * cr - localDirY * sr; // WAVE 4620-B: -sr (activa)
-        const afterRollY = localDirX * sr + localDirY * cr; // WAVE 4620-B: +sr (activa)
-        const afterRollZ = localDirZ;
-        // Step 2: Pitch (X axis) — R_X(pitch)
-        const cp = Math.cos(totalPitchRad);
-        const sp = Math.sin(totalPitchRad);
-        const afterPitchX = afterRollX;
-        const afterPitchY = afterRollY * cp - afterRollZ * sp; // WAVE 4620-B: -sp (activa)
-        const afterPitchZ = afterRollY * sp + afterRollZ * cp; // WAVE 4620-B: +sp (activa)
-        // Step 3: Yaw (Y axis) — R_Y(yaw)
-        const cy = Math.cos(totalYawRad);
-        const sy = Math.sin(totalYawRad);
-        const worldDirX = afterPitchX * cy + afterPitchZ * sy; // WAVE 4620-B: +sy (activa)
-        const worldDirY = afterPitchY;
-        const worldDirZ = -afterPitchX * sy + afterPitchZ * cy; // WAVE 4620-B: -sy (activa)
-        // ── 4. Raycast: origin = fixture position, direction = worldDir ────────
-        const originX = node.physicalPosition.x;
-        const originY = node.physicalPosition.y;
-        const originZ = node.physicalPosition.z;
-        // ── 5. Intersect with floor plane (Y = 0) ────────────────────────────
-        // Ray: P(t) = origin + t * dir
-        // Floor: P.y = 0 → t = (0 - originY) / worldDirY = -originY / worldDirY
-        //
-        // WAVE 4629 M1: FK_MAX_RAY_DISTANCE is intentionally NOT applied here.
-        // Telemetría confirmó Target Y=4.9 porque t >> 30 (haz casi horizontal
-        // desde fixture a 4.9m de altura). Al eliminar el clamp de distancia,
-        // cualquier rayo descendente (worldDirY < -0.001) intersecta Y=0 sin
-        // importar la distancia horizontal resultante. El punto puede estar
-        // "fuera" del escenario físico — la luz se pierde, pero el motor IK se
-        // mueve hacia un target estable en Y=0, evitando la parálisis.
-        if (worldDirY < -0.001) {
-            const t = -originY / worldDirY;
-            if (t > 0) {
-                const floorX = originX + worldDirX * t;
-                const floorZ = originZ + worldDirZ * t;
-                if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-                    console.log(`[FK-FLOOR] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
-                        `t=${t.toFixed(2)} → floor=(${floorX.toFixed(3)},0,${floorZ.toFixed(3)})`);
-                }
-                return { x: floorX, y: 0, z: floorZ };
-            }
-        }
-        // Beam is parallel to floor or pointing upward — no floor intersection.
-        // Project along the ray to a clamped distance. This is a graceful fallback
-        // for edge cases (e.g. extreme tilt angles pointing upward or horizontal).
-        const range = Math.min(FK_MAX_RAY_DISTANCE, originY > 0 ? originY * 2 : 5);
-        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-            console.log(`[FK-FALLBACK] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
-                `originY=${originY.toFixed(3)} range=${range.toFixed(2)} — no floor intersection`);
-        }
-        return {
-            x: originX + worldDirX * range,
-            y: Math.max(0, originY + worldDirY * range),
-            z: originZ + worldDirZ * range,
-        };
-    }
-    /**
      * WAVE 4547.1: Telemetría de alcance IK para futura visualización Ghost Ray.
      * true=alcanzable, false=fuera de rango, undefined=nodo aún no resuelto.
      */
     getKineticReachability(nodeId) {
         return this._ikReachability.get(nodeId);
+    }
+    /**
+     * WAVE 4637: Orientation awareness solo para la ruta clásica KINETIC.
+     * IK NO pasa por este camino para evitar doble negación.
+     */
+    _shouldInvertClassicKineticAxes(deviceOrientation, node) {
+        const orientation = deviceOrientation?.toLowerCase().trim();
+        if (orientation?.includes('ceiling') || orientation?.startsWith('truss')) {
+            return true;
+        }
+        const installation = node.ikOrientation?.installation;
+        if (installation === 'ceiling' || installation === 'truss-front' || installation === 'truss-back') {
+            return true;
+        }
+        const pitch = node.ikOrientation?.rotation?.pitch;
+        return Number.isFinite(pitch) && Math.abs(Math.abs(pitch) - 180) < 0.001;
     }
     _getDefaultNormalizedValue(node, chDef) {
         if (chDef.type === SHUTTER_CHANNEL) {

@@ -2318,20 +2318,7 @@ export class TitanOrchestrator {
                     };
                     console.warn(`[TitanOrchestrator] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
                 }
-                // WAVE 4627: Enderezado forzoso temporal para fixtures en ceiling.
-                // El show puede traer pitch legacy (-45). Para la prueba analítica,
-                // Aether recibe pitch=0 cuando la orientación es de techo.
-                const fixtureOrientation = fixture.orientation ?? fixture.installationType ?? 'ceiling';
-                const fixtureForAether = fixtureOrientation === 'ceiling'
-                    ? {
-                        ...fixture,
-                        rotation: {
-                            ...(fixture.rotation ?? { x: 0, y: 0, z: 0 }),
-                            pitch: 0,
-                        },
-                    }
-                    : fixture;
-                const fixtureV2 = this._buildFixtureV2ForAether(fixtureForAether, definition);
+                const fixtureV2 = this._buildFixtureV2ForAether(fixture, definition);
                 const deviceDef = pipeline.extract(definition, fixtureV2);
                 // ⚡ WAVE 4610-B Acción C: pasar forgeGraph si el fixture lo trae
                 // (serializado desde ForgeView o cargado desde show file).

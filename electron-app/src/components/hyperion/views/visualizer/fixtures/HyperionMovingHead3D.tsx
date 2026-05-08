@@ -69,16 +69,9 @@ const NEON_CYAN = '#00F0FF'
  *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
  *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
  */
-// WAVE 4628 M1: TILT_REST_ANGLE = Math.PI/2 (90°).
-// Con ceiling=identity (modelo emite en -Y local), +90° en eje X rota el vector
-// de emisión local [0,-1,0] hasta [0,0,-1] (hacia el frente del escenario).
-// Esto alinea el visualizador con las matemáticas del FK Bridge:
-//   tilt=0.5 (centro DMX) → beam apunta al frente-suelo (~45° de inclinación visual)
-// El TILT_REST_ANGLE ya NO se usa como compensación del ghost pitch de -45° (eliminado
-// en WAVE 4619), sino únicamente como ángulo de reposo estético del cabezal.
-// ANTES: π/3 (60°) → worldDirY positivo → FK target Y≈5.5 (arriba del fixture)
-// AHORA: π/2 (90°) → vector local [0,0,-1] → FK target cruza Y=0 correctamente.
-const TILT_REST_ANGLE = Math.PI / 2
+// WAVE 4642: reposo físico real en visualizador.
+// En ceiling, DMX center (tilt=0.5) debe apuntar vertical al suelo.
+const TILT_REST_ANGLE = 0
 
 /**
  * � WAVE 2088.12: VIBE-AWARE BEAM CONE

@@ -151,6 +151,54 @@ const DEFAULT_AETHER_STAGE_BOUNDS = {
 }
 
 /**
+ * 🌊 WAVE 2432 AUTO-DETECT: Detecta el layout requerido (4.1 o 7.1) basado en los fixtures del show
+ * 
+ * Si el show tiene PAR fixtures (zona 'front' o 'back') con split L/R (algunos x<0, otros x>0),
+ * retorna '7.1' para usar LiquidEngine71. De lo contrario, retorna '4.1' para rigs compactos.
+ * 
+ * @param fixtures - Array de fixtures del show (FixtureV2)
+ * @returns '4.1' o '7.1'
+ */
+function detectLiquidLayoutFromFixtures(fixtures: any[]): '4.1' | '7.1' {
+  // Buscar PAR fixtures con zona 'front' o 'back' que tengan split L/R
+  const frontBackPars = fixtures.filter(f => 
+    (f.zone === 'front' || f.zone === 'back') && 
+    (f.type === 'par' || f.model?.toLowerCase?.().includes('par') || f.name?.toLowerCase?.().includes('par'))
+  )
+  
+  if (frontBackPars.length < 2) {
+    // Menos de 2 fixtures → no hay espacio para split L/R
+    return '4.1'
+  }
+  
+  // Verificar si hay al menos un fixture con x < 0 y otro con x > 0 en la MISMA zona
+  const byZone: { [key: string]: number[] } = {}
+  for (const f of frontBackPars) {
+    const zone = f.zone
+    if (!byZone[zone]) byZone[zone] = []
+    
+    const x = f.position?.x ?? 0
+    byZone[zone].push(x)
+  }
+  
+  // Si alguna zona tiene al menos un x<-0.1 y otro x>0.1, necesita 7.1 stereo
+  for (const zone in byZone) {
+    const positions = byZone[zone]
+    const hasLeft = positions.some(x => x < -0.1)
+    const hasRight = positions.some(x => x > 0.1)
+    
+    if (hasLeft && hasRight) {
+      // Split L/R detectado → necesita LiquidEngine71
+      console.log(`[TitanOrchestrator] 🌊 AUTO-DETECT: Zone '${zone}' has L/R split → Layout: 7.1`)
+      return '7.1'
+    }
+  }
+  
+  // Sin split real → 4.1
+  return '4.1'
+}
+
+/**
  * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
  */
 export interface ForceStrikeConfig {
@@ -299,6 +347,7 @@ export class TitanOrchestrator {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
+  private currentLiquidLayout: '4.1' | '7.1' = '4.1'
 
   // 🚀 WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
   // Se utiliza en el SeleneAetherAdapter para traducción de efectos L3.
@@ -325,6 +374,9 @@ export class TitanOrchestrator {
   // ═══════════════════════════════════════════════════════════════════════════
   private readonly _aetherGraph   = new NodeGraph()
   private readonly _aetherBus     = new IntentBus(4096)
+  // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
+  // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures × 3 familias).
+  private readonly _seleneBus     = new IntentBus(512)
   private _aetherArbiter: NodeArbiter | null = null
   private _aetherResolver: NodeResolver | null = null
   // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
@@ -451,6 +503,8 @@ export class TitanOrchestrator {
         // Fallback: legacy flow will handle this device
       }
     }
+
+    this._refreshAetherMoverShieldMap()
   }
 
   /**
@@ -474,6 +528,7 @@ export class TitanOrchestrator {
     this._aetherGraph.unregisterDevice(deviceId as import('../aether/types').DeviceId)
     // _aetherHasDevices permanece true si hay otros devices registrados
     // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+    this._refreshAetherMoverShieldMap()
   }
 
   private _ensureAetherMatrixInitialized(): void {
@@ -490,7 +545,12 @@ export class TitanOrchestrator {
       return
     }
 
-    this._aetherArbiter = this._aetherArbiter ?? new NodeArbiter()
+    if (!this._aetherArbiter) {
+      this._aetherArbiter = new NodeArbiter()
+      // WAVE 4663 PASO 1: Conectar el bus L1 de Selene al Arbiter.
+      // El bus es una referencia fija — se limpia y rellena cada frame.
+      this._aetherArbiter.setSeleneBus(this._seleneBus)
+    }
     if (!this._aetherResolver) {
       this._aetherResolver = new NodeResolver(this._aetherGraph)
       // 🛂 WAVE 4557: Wire safety middleware into resolver
@@ -506,10 +566,45 @@ export class TitanOrchestrator {
     this._atmosphereAdapter = this._atmosphereAdapter ?? new AtmosphereAdapter()
     this._liquidAetherAdapter = this._liquidAetherAdapter ?? new LiquidAetherAdapter(this._aetherGraph)
 
+    // ZoneNodeRouter se construye en _syncFixturesToAether() después de que todos
+    // los devices estén en el NodeGraph. Aquí solo hacemos lazy-init de emergencia
+    // (primera llamada a getAetherArbiter() o registerAetherDevice() antes de sync).
+    // En ese caso el router queda con caché vacío y se reconstruirá post-sync.
     if (!this._zoneNodeRouter) {
       this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph)
     }
     this._seleneAetherAdapter = this._seleneAetherAdapter ?? new SeleneAetherAdapter(this._zoneNodeRouter)
+  }
+
+  /**
+   * WAVE 4670: Precálculo patch-time del Mover Shield para L1.
+   * Marca como protegidos los nodos COLOR que pertenezcan a devices con
+   * nodo KINETIC absoluto (mover) y mezcla de color con rueda física.
+   */
+  private _refreshAetherMoverShieldMap(): void {
+    const arbiter = this._aetherArbiter
+    if (!arbiter) {
+      return
+    }
+
+    const moverDeviceIds = new Set<string>()
+    const kineticView = this._aetherGraph.getView(NodeFamily.KINETIC)
+    kineticView.forEach((node) => {
+      if (!node.isContinuous) {
+        moverDeviceIds.add(node.deviceId)
+      }
+    })
+
+    const protectedColorNodes: string[] = []
+    const colorView = this._aetherGraph.getView(NodeFamily.COLOR)
+    colorView.forEach((node) => {
+      const hasPhysicalWheel = node.colorWheel !== undefined || node.mixingType === 'wheel' || node.mixingType === 'hybrid'
+      if (hasPhysicalWheel && moverDeviceIds.has(node.deviceId)) {
+        protectedColorNodes.push(node.nodeId)
+      }
+    })
+
+    arbiter.setMoverShieldNodeIds(protectedColorNodes)
   }
   
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
@@ -1735,6 +1830,10 @@ export class TitanOrchestrator {
 
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
+      // WAVE 4663 PASO 2: Limpiar el bus L1 de Selene (Silence Rule).
+      // Si hasActiveEffects=false en este frame, Selene no empuja nada
+      // → bus queda vacío → L1 es no-op → L0 (Liquid/VMM) retoma control.
+      this._seleneBus.clear()
 
       // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
       // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
@@ -1795,11 +1894,13 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const consciousnessOutput = this.lastConsciousnessOutput ?? null
       const effectOutput = getEffectManager().getCombinedOutput()
+      // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
+      // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
       seleneAetherAdapter.ingest(
         consciousnessOutput,
         effectOutput,
         ctx.deltaMs,
-        this._aetherBus,
+        this._seleneBus,
       )
 
       // STEP 4.5: Playback LP bridge Chronos -> Aether
@@ -1899,11 +2000,10 @@ export class TitanOrchestrator {
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
         if (!rawBuf) continue
 
-        // WAVE 4656.1: Smart Blackout.
-        // Se apaga solo intensidad (dimmer/shutter/strobe/RGBW),
-        // preservando canales cinemáticos para seguridad mecánica.
+        // WAVE 4666: Hard blackout total para garantizar apagado real.
+        // Blackout global = todos los canales a 0, sin excepciones.
         const egressBuf = blackoutActive
-          ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
+          ? aetherResolver.getHardBlackoutUniverseBuffer(universe)
           : rawBuf
         this.hal.sendUniverseRaw(universe, egressBuf)
       }
@@ -2325,11 +2425,16 @@ export class TitanOrchestrator {
    * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
    */
   setLiquidLayout(mode: '4.1' | '7.1'): void {
+    this.currentLiquidLayout = mode
     if (this.engine) {
       this.engine.setLiquidLayout(mode)
     }
     console.log(`[TitanOrchestrator] 🌊 Layout: ${mode}`)
     this.log('Physics', `🌊 Layout switched to ${mode}`)
+  }
+
+  getLiquidLayout(): '4.1' | '7.1' {
+    return this.currentLiquidLayout
   }
   
   /**
@@ -2553,7 +2658,7 @@ export class TitanOrchestrator {
    * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setFixtures(fixtures: any[], stageBounds?: StageBoundsInput): void {
+  setFixtures(fixtures: any[], stageBounds?: StageBoundsInput): '4.1' | '7.1' {
     // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
     this.fixtures = fixtures.map(f => ({
       ...f,
@@ -2594,6 +2699,11 @@ export class TitanOrchestrator {
       position: f.position,  // 🔧 WAVE 1055: CRITICAL FOR STEREO ROUTING
     })))
     
+    // 🌊 WAVE 2432 AUTO-DETECT: Detectar y auto-setear el layout basado en PAR fixtures
+    // Si el show tiene PAR stereo (L/R), usa LiquidEngine71. De lo contrario, 4.1.
+    const detectedLayout = detectLiquidLayoutFromFixtures(this.fixtures)
+    this.setLiquidLayout(detectedLayout)
+    
     // 🔥 WAVE 339.6: Register movers in PhysicsDriver
     // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
     //
@@ -2621,6 +2731,8 @@ export class TitanOrchestrator {
     // WAVE 2098: Boot silence
     // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
     this._syncFixturesToAether(this.fixtures)
+
+    return detectedLayout
   }
 
   /**
@@ -2701,6 +2813,13 @@ export class TitanOrchestrator {
         console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err)
       }
     }
+
+    // WAVE 4663 FIX: Reconstruir ZoneNodeRouter y SeleneAetherAdapter DESPUÉS de que
+    // todos los fixtures están en el NodeGraph. El router cachea zone→nodeIds en
+    // construcción; si se construye antes de registrar fixtures, el caché queda
+    // vacío y Selene no puede emitir intents → efectos invisibles en la UI.
+    this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph)
+    this._seleneAetherAdapter = new SeleneAetherAdapter(this._zoneNodeRouter)
 
     void registered
   }

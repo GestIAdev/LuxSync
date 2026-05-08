@@ -97,13 +97,8 @@ const STROBE_CHANNEL = 'strobe'
 const IK_WARN_INTERVAL_FRAMES = 44
 const MATH_TELEMETRY_EVERY_FRAMES = 30
 
-// ── WAVE 4619 M2: FK Bridge constants ────────────────────────────────────
-// Used by _forwardKinematicsBridge to convert normalized pan/tilt → spatial target.
-const FK_DEG_TO_RAD = Math.PI / 180
-const FK_DEFAULT_PAN_RANGE_DEG  = 540
-const FK_DEFAULT_TILT_RANGE_DEG = 270
-/** Maximum raycast distance (meters) — clamps distant/parallel beams */
-const FK_MAX_RAY_DISTANCE = 30
+const IK_DEFAULT_PAN_RANGE_DEG  = 540
+const IK_DEFAULT_TILT_RANGE_DEG = 270
 
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
@@ -556,8 +551,8 @@ export class NodeResolver implements INodeResolver {
 
     const panNormForTelemetry = channelValues['pan'] ?? node.currentPosition.pan
     const tiltNormForTelemetry = channelValues['tilt'] ?? node.currentPosition.tilt
-    const panRangeDegForTelemetry = node.ikLimits?.panRangeDeg ?? FK_DEFAULT_PAN_RANGE_DEG
-    const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG
+    const panRangeDegForTelemetry = node.ikLimits?.panRangeDeg ?? IK_DEFAULT_PAN_RANGE_DEG
+    const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? IK_DEFAULT_TILT_RANGE_DEG
     const vmmPanDeg = (panNormForTelemetry - 0.5) * panRangeDegForTelemetry
     const vmmTiltDeg = (tiltNormForTelemetry - 0.5) * tiltRangeDegForTelemetry
 
@@ -626,163 +621,6 @@ export class NodeResolver implements INodeResolver {
           buf[fineIdx] = 0  // IKEngine produce resolución 8-bit; fine byte = 0
         }
       }
-    }
-  }
-
-  /**
-   * WAVE 4619 M2: FORWARD KINEMATICS BRIDGE
-   *
-   * Converts normalized pan/tilt (0-1) into a world-space Target3D by:
-   *   1. Mapping normalized values to angular degrees from mechanical center
-   *   2. Building a local-frame direction vector from those angles
-   *   3. Rotating the direction vector into world-space using mount orientation
-   *   4. Raycasting from the fixture position along that direction
-   *   5. Intersecting with the stage floor (Y = 0)
-   *
-   * If the beam is parallel to or pointing away from the floor, the result is
-   * clamped to FK_MAX_RAY_DISTANCE along the ray direction.
-   *
-   * ZERO-ALLOC: all calculations use local variables on the stack.
-   */
-  private _forwardKinematicsBridge(
-    node: IKineticNodeData,
-    panNorm: number,
-    tiltNorm: number,
-  ): { x: number; y: number; z: number } {
-    // ── 1. Normalized (0-1) → degrees from mechanical center ──────────────
-    // Pan: 0.5 = center (0°), 0 = -panRange/2, 1 = +panRange/2
-    // Tilt: 0.5 = center (0° = horizontal), 0 = -tiltRange/2, 1 = +tiltRange/2
-    const panRangeDeg  = node.ikLimits?.panRangeDeg  ?? FK_DEFAULT_PAN_RANGE_DEG
-    const tiltRangeDeg = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG
-
-    const panDeg  = (panNorm  - 0.5) * panRangeDeg
-    const tiltDeg = (tiltNorm - 0.5) * tiltRangeDeg
-
-    // ── 2. Build local direction vector from pan/tilt angles ──────────────
-    // WAVE 4620-B: Convención del IK engine (InverseKinematicsEngine.ts):
-    //   panDeg  = atan2(local.x, local.z)   → pan gira en el plano XZ
-    //   tiltDeg = atan2(-local.y, horizDist) → tilt es elevación en Y
-    //
-    // El Y local es INDEPENDIENTE del pan (no se modula con cosPan).
-    // La dirección del beam en el frame local del IK es:
-    //   local.x = sin(pan) * cos(tilt)
-    //   local.y = -sin(tilt)            ← independiente del pan
-    //   local.z = cos(pan) * cos(tilt)
-    const panRad  = panDeg  * FK_DEG_TO_RAD
-    const tiltRad = tiltDeg * FK_DEG_TO_RAD
-
-    const cosPan  = Math.cos(panRad)
-    const sinPan  = Math.sin(panRad)
-    const cosTilt = Math.cos(tiltRad)
-    const sinTilt = Math.sin(tiltRad)
-
-    const localDirX = sinPan * cosTilt
-    const localDirY = -sinTilt            // ← WAVE 4620-B: sin factor cosPan
-    // WAVE 4628 M2: negación de localDirZ para alinear la convención del FK con el IK engine.
-    // El IK engine (InverseKinematicsEngine) define el eje óptico local en -Z (hacia adelante
-    // en el frame local del fixture). Con mounting pitch=-90°, R_X(-90°) rota -Z → +Y global.
-    // Para que el beam apunte al SUELO (worldDirY < 0), necesitamos worldDirZ negativo antes
-    // de la rotación de pitch. Negando localDirZ: tras R_X(-90°),
-    //   worldDirY = -localDirZ * sin(-90°) = +localDirZ_negado * (-1) < 0 ✓
-    // Sin esta negación: tiltNorm=0.5 → localDirZ=+1 → worldDirY=+1 (arriba) → fallback Y≈5.5
-    // Con esta negación: tiltNorm=0.5 → localDirZ=-1 → worldDirY=-1 (abajo) → intersección Y=0
-    const localDirZ = -(cosPan * cosTilt)
-
-    // ── 3. Rotate from local frame to world frame ─────────────────────────
-    // WAVE 4620-B: La inversa exacta de rotateToLocalFrame (IKEngine).
-    //
-    // rotateToLocalFrame aplica: M = R_Z(-roll) · R_X(-pitch) · R_Y(-yaw)
-    // Su inversa (local→world) es: M⁻¹ = R_Y(yaw) · R_X(pitch) · R_Z(roll)
-    //
-    // Matrices de rotación ACTIVAS (no transpuestas):
-    //   R_Z(θ): x'= x·cosθ - y·sinθ,  y'= x·sinθ + y·cosθ
-    //   R_X(θ): y'= y·cosθ - z·sinθ,  z'= y·sinθ + z·cosθ
-    //   R_Y(θ): x'= x·cosθ + z·sinθ,  z'=-x·sinθ + z·cosθ
-    //
-    // Orden de aplicación: Roll(Z) → Pitch(X) → Yaw(Y)
-    const orient = node.ikOrientation ?? DEFAULT_IK_ORIENTATION
-    const mountPitchDeg = orient.installation === 'ceiling' ? -90
-      : orient.installation === 'floor' ? 90
-      : orient.installation === 'truss-front' ? -90
-      : orient.installation === 'truss-back' ? -90
-      : orient.installation === 'wall-left' ? 0
-      : orient.installation === 'wall-right' ? 0
-      : -90
-    const mountYawDeg = orient.installation === 'truss-back' ? 180
-      : orient.installation === 'wall-left' ? 90
-      : orient.installation === 'wall-right' ? -90
-      : 0
-
-    const totalPitchRad = (mountPitchDeg + orient.rotation.pitch) * FK_DEG_TO_RAD
-    const totalYawRad   = (mountYawDeg   + orient.rotation.yaw)   * FK_DEG_TO_RAD
-    const totalRollRad  = orient.rotation.roll * FK_DEG_TO_RAD
-
-    // Step 1: Roll (Z axis) — R_Z(roll)
-    const cr = Math.cos(totalRollRad)
-    const sr = Math.sin(totalRollRad)
-    const afterRollX = localDirX * cr - localDirY * sr   // WAVE 4620-B: -sr (activa)
-    const afterRollY = localDirX * sr + localDirY * cr   // WAVE 4620-B: +sr (activa)
-    const afterRollZ = localDirZ
-
-    // Step 2: Pitch (X axis) — R_X(pitch)
-    const cp = Math.cos(totalPitchRad)
-    const sp = Math.sin(totalPitchRad)
-    const afterPitchX = afterRollX
-    const afterPitchY = afterRollY * cp - afterRollZ * sp   // WAVE 4620-B: -sp (activa)
-    const afterPitchZ = afterRollY * sp + afterRollZ * cp   // WAVE 4620-B: +sp (activa)
-
-    // Step 3: Yaw (Y axis) — R_Y(yaw)
-    const cy = Math.cos(totalYawRad)
-    const sy = Math.sin(totalYawRad)
-    const worldDirX = afterPitchX * cy + afterPitchZ * sy   // WAVE 4620-B: +sy (activa)
-    const worldDirY = afterPitchY
-    const worldDirZ = -afterPitchX * sy + afterPitchZ * cy  // WAVE 4620-B: -sy (activa)
-
-    // ── 4. Raycast: origin = fixture position, direction = worldDir ────────
-    const originX = node.physicalPosition.x
-    const originY = node.physicalPosition.y
-    const originZ = node.physicalPosition.z
-
-    // ── 5. Intersect with floor plane (Y = 0) ────────────────────────────
-    // Ray: P(t) = origin + t * dir
-    // Floor: P.y = 0 → t = (0 - originY) / worldDirY = -originY / worldDirY
-    //
-    // WAVE 4629 M1: FK_MAX_RAY_DISTANCE is intentionally NOT applied here.
-    // Telemetría confirmó Target Y=4.9 porque t >> 30 (haz casi horizontal
-    // desde fixture a 4.9m de altura). Al eliminar el clamp de distancia,
-    // cualquier rayo descendente (worldDirY < -0.001) intersecta Y=0 sin
-    // importar la distancia horizontal resultante. El punto puede estar
-    // "fuera" del escenario físico — la luz se pierde, pero el motor IK se
-    // mueve hacia un target estable en Y=0, evitando la parálisis.
-    if (worldDirY < -0.001) {
-      const t = -originY / worldDirY
-      if (t > 0) {
-        const floorX = originX + worldDirX * t
-        const floorZ = originZ + worldDirZ * t
-        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-          console.log(
-            `[FK-FLOOR] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
-            `t=${t.toFixed(2)} → floor=(${floorX.toFixed(3)},0,${floorZ.toFixed(3)})`,
-          )
-        }
-        return { x: floorX, y: 0, z: floorZ }
-      }
-    }
-
-    // Beam is parallel to floor or pointing upward — no floor intersection.
-    // Project along the ray to a clamped distance. This is a graceful fallback
-    // for edge cases (e.g. extreme tilt angles pointing upward or horizontal).
-    const range = Math.min(FK_MAX_RAY_DISTANCE, originY > 0 ? originY * 2 : 5)
-    if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-      console.log(
-        `[FK-FALLBACK] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
-        `originY=${originY.toFixed(3)} range=${range.toFixed(2)} — no floor intersection`,
-      )
-    }
-    return {
-      x: originX + worldDirX * range,
-      y: Math.max(0, originY + worldDirY * range),
-      z: originZ + worldDirZ * range,
     }
   }
 

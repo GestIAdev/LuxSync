@@ -1,35 +1,23 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚡ AETHER MATRIX — KINETIC ADAPTER (HOLOGRAPHIC PROJECTION)
+ * ⚡ AETHER MATRIX — KINETIC ADAPTER (CLASSIC PIPE)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 4523.4: THE HOLOGRAPHIC ADAPTER — Fase A
+ * WAVE 4632: SPLIT-BRAIN Fase 3 — VMM → L0 clásico
  *
  * RESPONSABILIDAD:
- * Sustituye al VMMAdapter. En lugar de emitir canales abstractos `pan`/`tilt`
- * (0-1), proyecta la salida del VibeMovementManager en un plano virtual 3D y
- * emite canales espaciales `targetX`, `targetY`, `targetZ` en metros.
+ * Sustituye al VMMAdapter y emite intención cinemática clásica directa:
+ * `pan`, `tilt`, `speed` normalizados (0-1) al IntentBus L0.
  *
  * FILOSOFÍA:
- * Aether ya no piensa en "pan/tilt normalizados". Piensa en puntos del espacio
- * real. La traducción a ángulos físicos (DMX) ocurre exclusivamente en el
- * NodeResolver via IKEngine (WAVE 4523.5+).
+ * En Split-Brain, el flujo automático (VMM) pertenece a la ruta clásica.
+ * El flujo espacial (targetX/Y/Z) queda reservado para overrides manuales L2.
  *
- * PROYECCIÓN HOLOGRÁFICA:
- * El VMM produce coordenadas abstractas (x,y) ∈ [-1,+1] sobre un plano
- * normalizado. Este adapter las mapea linealmente al Crystal Box activo
- * del StageConstructor (inyectado en FrameContext.stageBounds):
- *
- *   TargetX = x × (width  / 2)                  (metros, eje horizontal)
- *   TargetY = centerY + y × (height / 2)        (metros, eje vertical)
- *   TargetZ = depth / 2                          (metros, plano frontal)
- *
- * Los targets se clampean siempre a los límites físicos del escenario.
- *
- * ESTEREO:
- * El VMM ya aplica mirror/snake/phase vía stereoIndex. Este adapter NO invierte
- * ningún eje — la geometría estéreo emerge del VMM directamente en los valores
- * (x,y) que ya vienen por-nodo. La proyección holográfica es puramente lineal.
+ * MAPPING:
+ * El VMM entrega `intent.x`/`intent.y` en [-1,+1]. Se mapean linealmente a
+ * normalizados [0,1] para canales pan/tilt:
+ *   pan  = (x + 1) / 2
+ *   tilt = (y + 1) / 2
  *
  * NODOS CONTINUOS (fan, mirror ball):
  * Para `isContinuous === true`, el IK no aplica (no hay un "target 3D" para
@@ -42,7 +30,7 @@
  * - La proyección holográfica usa solo aritmética de stack.
  *
  * @module core/aether/adapters/KineticAdapter
- * @version WAVE 4523.4 — THE HOLOGRAPHIC ADAPTER
+ * @version WAVE 4632 — CLASSIC PIPE
  */
 
 import { NodeFamily } from '../types'
@@ -113,14 +101,8 @@ const FALLBACK_VIBE_ID = 'techno-club'
 /**
  * Adapter L0 (priority=10) para nodos KINETIC.
  *
- * Reemplaza al VMMAdapter de WAVE 3508. En lugar de emitir `pan`/`tilt`
- * normalizados, proyecta la salida del VMM al plano virtual 3D y emite
- * `targetX`, `targetY`, `targetZ` en metros.
- *
- * El NodeArbiter trata estos canales con política LTP (última prioridad
- * más alta gana), exactamente igual que cualquier otro canal del bus.
- * El NodeResolver (WAVE 4523.5+) intercepta los canales espaciales y
- * los desvía al IKEngine para obtener pan/tilt DMX por fixture.
+ * Emite exclusivamente canales clásicos `pan`, `tilt` y `speed`.
+ * No genera ni inyecta targetX/Y/Z.
  */
 export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAetherSystem<IKineticNodeData> {
 
@@ -159,18 +141,6 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
     bus: IIntentBus,
   ): void {
     const { audio, vibe } = context
-    const stageBounds = context.stageBounds ?? DEFAULT_STAGE_BOUNDS
-
-    const width   = stageBounds.width  > 0 ? stageBounds.width  : DEFAULT_STAGE_BOUNDS.width
-    const height  = stageBounds.height > 0 ? stageBounds.height : DEFAULT_STAGE_BOUNDS.height
-    const depth   = stageBounds.depth  > 0 ? stageBounds.depth  : DEFAULT_STAGE_BOUNDS.depth
-    const centerY = Number.isFinite(stageBounds.centerY)
-      ? clamp(stageBounds.centerY, 0, height)
-      : height * 0.5
-
-    const halfW = width * 0.5
-    const halfH = height * 0.5
-    const halfD = depth * 0.5
 
     // ── 1. Resolver vibeId → VMM vibeId (lookup O(1), sin alloc)
     const vibeId = VIBE_ID_MAP[vibe.name] ?? FALLBACK_VIBE_ID
@@ -195,11 +165,13 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
 
       // ── 4a. Limpiar slots del scratch del nodo anterior ────────────────
       // Solo los canales que este adapter puede escribir.
-      // Canales espaciales (flujo IK):
+      // Canales espaciales legacy se limpian explícitamente para evitar fugas.
       this._valuesDict['targetX'] = undefined as any
       this._valuesDict['targetY'] = undefined as any
       this._valuesDict['targetZ'] = undefined as any
-      // Canales legacy (flujo continuo):
+      // Canales clásicos/continuos.
+      this._valuesDict['pan']      = undefined as any
+      this._valuesDict['tilt']     = undefined as any
       this._valuesDict['rotation'] = undefined as any
       this._valuesDict['speed']    = undefined as any
 
@@ -227,30 +199,9 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         this._valuesDict['speed']    = BaseSystem.clamp01(intent.speed)
 
       } else {
-        // ── FLUJO IK: proyección holográfica → canales espaciales ───────
-        //
-        // El VMM ya aplica mirror/snake/phase vía stereoIndex.
-        // Solo necesitamos la proyección lineal al plano virtual.
-        //
-        //   TargetX = x × (width / 2)
-        //   TargetY = centerY + y × (height / 2)
-        //   TargetZ = depth / 2  (plano frontal)
-        //
-        // Nota de signo en Y: el VMM emite y > 0 como "arriba" y y < 0
-        // como "abajo" (perspectiva de pantalla). El IK usa Y positivo
-        // hacia arriba (eje mundo estándar). La proyección es directa.
-
-        const projectedX = intent.x * halfW
-        const projectedY = centerY + intent.y * halfH
-        const projectedZ = halfD
-
-        const targetX = clamp(projectedX, -halfW, halfW)
-        const targetY = clamp(projectedY, 0, height)
-        const targetZ = clamp(projectedZ, -halfD, halfD)
-
-        this._valuesDict['targetX'] = targetX
-        this._valuesDict['targetY'] = targetY
-        this._valuesDict['targetZ'] = targetZ
+        // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
+        this._valuesDict['pan']     = BaseSystem.clamp01((intent.x + 1) * 0.5)
+        this._valuesDict['tilt']    = BaseSystem.clamp01((intent.y + 1) * 0.5)
         this._valuesDict['speed']   = BaseSystem.clamp01(intent.speed)
       }
 

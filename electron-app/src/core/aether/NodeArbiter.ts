@@ -326,6 +326,29 @@ export class NodeArbiter implements INodeArbiter {
     this._inhibitLimits.clear()
   }
 
+  // ── L2 Read API (WAVE 4653) ───────────────────────────────────────────
+
+  /**
+   * WAVE 4653: Devuelve los overrides manuales L2 actuales para los
+   * nodeIds especificados. Cada nodeId tiene formato "<fixtureId>:<familyLabel>".
+   *
+   * El retorno es un objeto plano serializable (apto para IPC):
+   *   { [nodeId]: Record<string, number> | null }
+   * null significa que el nodo no tiene overrides activos en L2.
+   *
+   * @param nodeIds  Array de nodeIds a consultar
+   */
+  getManualOverridesForNodes(
+    nodeIds: readonly string[],
+  ): Record<string, Record<string, number> | null> {
+    const result: Record<string, Record<string, number> | null> = {}
+    for (const nodeId of nodeIds) {
+      const overrides = this._manualOverrides.get(nodeId)
+      result[nodeId] = overrides != null ? { ...overrides } : null
+    }
+    return result
+  }
+
   /**
    * Obtiene un Record del pool o crea uno nuevo si el pool está agotado.
    *

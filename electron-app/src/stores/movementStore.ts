@@ -125,6 +125,13 @@ interface MovementActions {
     amplitude: number | null
   }) => void
 
+  /** WAVE 4653: Hidratar pan/tilt/speed desde snapshot L2 (NodeArbiter). */
+  hydrateFromL2: (state: {
+    pan: number | null
+    tilt: number | null
+    speed: number | null
+  }) => void
+
   /** Reset completo a defaults cuando no hay selección */
   resetToDefaults: () => void
 }
@@ -201,6 +208,14 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
       activePattern: uiPattern as PatternType,
       patternSpeed: speed ?? 50,
       patternAmplitude: amplitude ?? 50,
+    })
+  },
+
+  hydrateFromL2: ({ pan, tilt, speed }) => {
+    set({
+      pan: pan !== null ? Math.max(0, Math.min(540, pan * 540)) : 270,
+      tilt: tilt !== null ? Math.max(0, Math.min(270, tilt * 270)) : 135,
+      patternSpeed: speed !== null ? Math.max(0, Math.min(100, speed * 100)) : 50,
     })
   },
 

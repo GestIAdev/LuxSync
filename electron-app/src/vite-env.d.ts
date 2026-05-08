@@ -785,6 +785,15 @@ declare global {
        * WAVE 4652: Set grand master speed (0.1-2.0).
        */
       setGrandMasterSpeed: (value: number) => Promise<{ success: boolean; grandMasterSpeed?: number; error?: string }>
+
+      /**
+       * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
+       */
+      getL2State: (nodeIds: string[]) => Promise<{
+        success: boolean
+        overrides?: Record<string, Record<string, number> | null>
+        error?: string
+      }>
     }
     
     // ============================================

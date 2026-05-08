@@ -357,4 +357,33 @@ export function registerAetherIPCHandlers(): void {
       }
     }
   )
+
+  // ── R1: L2 State Reader (WAVE 4653) ─────────────────────────────────────
+
+  /**
+   * R1: Devuelve los overrides manuales L2 activos para los nodeIds pedidos.
+   *
+   * La UI lo llama al seleccionar fixtures para hidratar los sliders con el
+   * estado real del arbiter en lugar de usar defaults engañosos.
+   *
+   * Payload: { nodeIds: string[] }
+   * Retorno: { success, overrides: { [nodeId]: Record<string,number> | null } }
+   */
+  ipcMain.handle(
+    'lux:aether:getL2State',
+    (_event, { nodeIds }: { nodeIds: string[] }) => {
+      if (!Array.isArray(nodeIds)) {
+        return { success: false, error: 'nodeIds must be an array' }
+      }
+      try {
+        const overrides = getTitanOrchestrator()
+          .getAetherArbiter()
+          .getManualOverridesForNodes(nodeIds)
+        return { success: true, overrides }
+      } catch (err) {
+        console.error('[AetherIPC] getL2State error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
 }

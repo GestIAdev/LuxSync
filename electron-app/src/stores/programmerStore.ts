@@ -90,6 +90,15 @@ interface ProgrammerActions {
   /** Sincroniza la selección activa. Limpia overrides de fixtures deseleccionados. */
   syncSelection: (fixtureIds: string[]) => void
 
+  /**
+   * WAVE 4653: Hidrata estado local desde snapshot L2 del NodeArbiter.
+   * No marca dirty flags: solo refleja estado ya existente en backend.
+   */
+  hydrateFromL2: (
+    fixtureIds: string[],
+    overridesByNodeId: Record<string, Record<string, number> | null>,
+  ) => void
+
   /** Set dimmer para todos los fixtures activos (value 0-100%) */
   setDimmer: (percent: number) => void
 
@@ -149,6 +158,9 @@ interface ProgrammerActions {
 
   /** El bridge llama esto tras hacer flush de las dirty families */
   consumeDirty: () => void
+
+  /** Limpia solo las familias enviadas con éxito (evita borrar cambios nuevos). */
+  consumeDirtyFamilies: (families: ProgrammerFamily[]) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,6 +197,11 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 
+function getNorm(channels: Record<string, number> | null | undefined, key: string): number | null {
+  const value = channels?.[key]
+  return typeof value === 'number' ? clamp01(value) : null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,6 +229,79 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
           }
         }
         return { activeFixtureIds: fixtureIds, fixtureOverrides: next }
+      })
+    },
+
+    hydrateFromL2: (fixtureIds, overridesByNodeId) => {
+      set(state => {
+        // Guard de carrera: no hidratar si la selección cambió en paralelo.
+        if (state.activeFixtureIds.join(',') !== fixtureIds.join(',')) {
+          return {}
+        }
+
+        const next = new Map(state.fixtureOverrides)
+
+        for (const fixtureId of fixtureIds) {
+          const base = next.get(fixtureId) ?? createEmptyOverrides()
+
+          const impact = overridesByNodeId[`${fixtureId}:impact`]
+          const color = overridesByNodeId[`${fixtureId}:color`]
+          const kinetic = overridesByNodeId[`${fixtureId}:kinetic`]
+          const beam = overridesByNodeId[`${fixtureId}:beam`]
+          const extras = overridesByNodeId[`${fixtureId}:atmosphere`]
+
+          next.set(fixtureId, {
+            ...base,
+            dimmer: getNorm(impact, 'dimmer'),
+            strobe: getNorm(impact, 'strobe'),
+            shutter: getNorm(impact, 'shutter'),
+
+            red: getNorm(color, 'red'),
+            green: getNorm(color, 'green'),
+            blue: getNorm(color, 'blue'),
+            white: getNorm(color, 'white'),
+            amber: getNorm(color, 'amber'),
+
+            pan: getNorm(kinetic, 'pan'),
+            tilt: getNorm(kinetic, 'tilt'),
+            speed: getNorm(kinetic, 'speed'),
+            targetX: getNorm(kinetic, 'targetX'),
+            targetY: getNorm(kinetic, 'targetY'),
+            targetZ: getNorm(kinetic, 'targetZ'),
+
+            gobo: getNorm(beam, 'gobo'),
+            prism: getNorm(beam, 'prism'),
+            focus: getNorm(beam, 'focus'),
+            zoom: getNorm(beam, 'zoom'),
+            iris: getNorm(beam, 'iris'),
+
+            extras: new Map(
+              Object.entries(extras ?? {}).map(([k, v]) => [k, clamp01(v)]),
+            ),
+          })
+        }
+
+        const firstFixture = fixtureIds[0]
+        const firstOv = firstFixture ? next.get(firstFixture) : null
+
+        const displayDimmer = firstOv?.dimmer !== null && firstOv?.dimmer !== undefined
+          ? Math.round(firstOv.dimmer * 100)
+          : 100
+        const displayStrobe = firstOv?.strobe !== null && firstOv?.strobe !== undefined
+          ? Math.round(firstOv.strobe * 100)
+          : 0
+        const displayColor = {
+          r: firstOv?.red !== null && firstOv?.red !== undefined ? Math.round(firstOv.red * 255) : 255,
+          g: firstOv?.green !== null && firstOv?.green !== undefined ? Math.round(firstOv.green * 255) : 255,
+          b: firstOv?.blue !== null && firstOv?.blue !== undefined ? Math.round(firstOv.blue * 255) : 255,
+        }
+
+        return {
+          fixtureOverrides: next,
+          displayDimmer,
+          displayStrobe,
+          displayColor,
+        }
       })
     },
 
@@ -530,6 +620,16 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
 
     consumeDirty: () => {
       set({ dirtyFamilies: new Set() })
+    },
+
+    consumeDirtyFamilies: (families) => {
+      set(state => {
+        const next = new Set(state.dirtyFamilies)
+        for (const family of families) {
+          next.delete(family)
+        }
+        return { dirtyFamilies: next }
+      })
     },
   }))
 )

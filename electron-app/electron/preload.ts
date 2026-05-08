@@ -1250,6 +1250,12 @@ const luxApi = {
      */
     setGrandMasterSpeed: (value: number) =>
       ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
+
+    /**
+     * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
+     */
+    getL2State: (nodeIds: string[]) =>
+      ipcRenderer.invoke('lux:aether:getL2State', { nodeIds }),
   },
 
   // ============================================

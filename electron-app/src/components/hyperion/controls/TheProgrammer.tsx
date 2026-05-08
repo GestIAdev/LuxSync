@@ -15,6 +15,7 @@ import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
+import { useMovementStore } from '../../../stores/movementStore'
 import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
 import { IntensitySection } from './IntensitySection'
@@ -55,12 +56,14 @@ export const TheProgrammer: React.FC = () => {
     setColor, releaseColor,
     releaseAll,
     syncSelection,
+    hydrateFromL2,
     displayDimmer: currentDimmer,
     displayStrobe: currentStrobe,
     displayLimit: currentLimit,
     displayColor: currentColor,
     fixtureOverrides,
   } = useProgrammerStore()
+  const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
 
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
@@ -127,8 +130,54 @@ export const TheProgrammer: React.FC = () => {
 
   // ─── WAVE 4529: Sincronizar selección con el store ───────────────────────
   useEffect(() => {
-    syncSelection(selectedIds)
-  }, [selectedIds, syncSelection])
+    const fixtureIds = [...selectedIds]
+    syncSelection(fixtureIds)
+
+    if (fixtureIds.length === 0) {
+      hydrateMovementFromL2({ pan: null, tilt: null, speed: null })
+      return
+    }
+
+    let cancelled = false
+    const expectedSelectionKey = fixtureIds.join(',')
+
+    const hydrate = async () => {
+      try {
+        const nodeIds: string[] = []
+        for (const fixtureId of fixtureIds) {
+          nodeIds.push(
+            `${fixtureId}:impact`,
+            `${fixtureId}:color`,
+            `${fixtureId}:kinetic`,
+            `${fixtureId}:beam`,
+            `${fixtureId}:atmosphere`,
+          )
+        }
+
+        const result = await window.lux?.aether?.getL2State(nodeIds)
+        if (cancelled || !result?.success || !result.overrides) return
+
+        // Guard de carrera: evita hidratar selección vieja.
+        const liveSelectionKey = useProgrammerStore.getState().activeFixtureIds.join(',')
+        if (liveSelectionKey !== expectedSelectionKey) return
+
+        hydrateFromL2(fixtureIds, result.overrides)
+
+        const firstFixtureId = fixtureIds[0]
+        const kinetic = result.overrides[`${firstFixtureId}:kinetic`]
+        hydrateMovementFromL2({
+          pan: typeof kinetic?.pan === 'number' ? kinetic.pan : null,
+          tilt: typeof kinetic?.tilt === 'number' ? kinetic.tilt : null,
+          speed: typeof kinetic?.speed === 'number' ? kinetic.speed : null,
+        })
+      } catch (err) {
+        console.error('[TheProgrammer] L2 hydration error:', err)
+      }
+    }
+
+    hydrate()
+    return () => { cancelled = true }
+  }, [selectedIds.join(','), syncSelection, hydrateFromL2, hydrateMovementFromL2])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS — ahora síncronos, el bridge vuelca a 44Hz

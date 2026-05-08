@@ -24,12 +24,16 @@ Archivos clave:
 Archivos clave:
 - `src/core/aether/AetherIPCHandlers.ts`
 
-## 3) Estado y Feedback UI (hidratación completa)
+## 3) Estado y Feedback UI (hidratación completa) [WAVE 4653 OK - Truth Mirror]
 
-- [ ] Diseñar contrato de estado L2 desde NodeArbiter para hidratar UI completa (impact/color/kinetic/beam/extras).
-- [ ] Implementar endpoint de lectura de estado en Aether IPC.
-- [ ] Conectar TheProgrammer + Kinetics a ese estado unificado.
-- [ ] Eliminar defaults engañosos al re-seleccionar fixtures (color/beam/pattern).
+- [x] Diseñar contrato de estado L2 desde NodeArbiter para hidratar UI completa (impact/color/kinetic/beam/extras).  
+  → `NodeArbiter.getManualOverridesForNodes(nodeIds)`
+- [x] Implementar endpoint de lectura de estado en Aether IPC.  
+  → `lux:aether:getL2State`
+- [x] Conectar TheProgrammer + Kinetics a ese estado unificado.  
+  → `TheProgrammer` hidrata `programmerStore` + `movementStore` desde snapshot L2.
+- [x] Eliminar defaults engañosos al re-seleccionar fixtures (color/beam/pattern).  
+  → `hydrateFromL2` usa estado real del L2 al cambiar selección.
 
 Archivos clave:
 - `src/stores/movementStore.ts`
@@ -37,11 +41,14 @@ Archivos clave:
 - `src/components/hyperion/controls/TheProgrammer.tsx`
 - `src/components/hyperion/kinetics/KineticsCathedral.tsx`
 
-## 4) Robustez del puente L2 (no perder cambios)
+## 4) Robustez del puente L2 (no perder cambios) [WAVE 4653 OK - Promise Glue]
 
-- [ ] Mover `consumeDirty()` a confirmación de éxito IPC (o cola con retry).
-- [ ] Añadir reintento/backoff para fallos IPC temporales.
-- [ ] Garantizar orden de flush por familia para evitar condiciones de carrera.
+- [x] Mover `consumeDirty()` a confirmación de éxito IPC (o cola con retry).  
+  → `ProgrammerAetherBridge` limpia dirty solo en `Promise.all(...).then(...)`.
+- [x] Añadir reintento/backoff para fallos IPC temporales.  
+  → si IPC falla, dirty flags persisten y el tick 44Hz reintenta automáticamente.
+- [x] Garantizar orden de flush por familia para evitar condiciones de carrera.  
+  → limpieza selectiva por snapshot (`consumeDirtyFamilies`) evita borrar cambios nuevos.
 - [ ] Añadir métricas/log de dropped updates.
 
 Archivos clave:

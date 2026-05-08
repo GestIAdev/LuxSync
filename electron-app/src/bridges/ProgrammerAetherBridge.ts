@@ -148,7 +148,7 @@ class ProgrammerAetherBridgeClass {
   /**
    * Tick de 44Hz.
    * Lee dirty flags, construye payloads para las familias sucias,
-   * envía vía window.lux.aether y consume los flags.
+    * envía vía window.lux.aether y consume los flags SOLO al confirmar éxito.
    */
   private _flush(): void {
     const state = useProgrammerStore.getState()
@@ -184,20 +184,32 @@ class ProgrammerAetherBridgeClass {
       }
     }
 
-    // Consume dirty ANTES del IPC (fire-and-forget: no esperamos respuesta)
-    state.consumeDirty()
+    const requests: Array<Promise<unknown>> = []
 
     if (setPayloads.length > 0) {
-      aether.setManualOverrides(setPayloads).catch((err: unknown) => {
-        console.error('[ProgrammerAetherBridge] setManualOverrides error:', err)
-      })
+      requests.push(aether.setManualOverrides(setPayloads))
     }
 
     if (clearNodeIds.length > 0) {
-      aether.clearManualOverrides(clearNodeIds).catch((err: unknown) => {
-        console.error('[ProgrammerAetherBridge] clearManualOverrides error:', err)
-      })
+      requests.push(aether.clearManualOverrides(clearNodeIds))
     }
+
+    // Nada que enviar: limpiar el snapshot para no dejar dirty zombie.
+    if (requests.length === 0) {
+      state.consumeDirtyFamilies(Array.from(dirtySnapshot))
+      return
+    }
+
+    Promise.all(requests)
+      .then(() => {
+        // Limpia solo las familias del snapshot enviado con éxito.
+        useProgrammerStore
+          .getState()
+          .consumeDirtyFamilies(Array.from(dirtySnapshot))
+      })
+      .catch((err: unknown) => {
+        console.error('[ProgrammerAetherBridge] IPC flush error (will retry next tick):', err)
+      })
   }
 }
 

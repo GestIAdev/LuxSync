@@ -574,10 +574,41 @@ const V2_PATCHES: V2Patch[] = [
       }
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧹 WAVE 4643: CEILING MOVERS LEGACY BASE PITCH NORMALIZATION
+  //
+  // BEFORE: Algunos shows legacy quedaron con rotation.pitch = -45 en movers
+  //         de techo por heurísticas históricas de layout/render.
+  // AFTER:  En movers ceiling, el reposo base debe ser neutro (pitch=0).
+  //         Solo se corrige el patrón legacy (-45 exacto). PARs quedan intactos.
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    fromVersion: '2.2.0',
+    toVersion: '2.3.0',
+    description: 'WAVE 4643: Normalize legacy -45 pitch for ceiling moving-head fixtures',
+    apply: (show) => {
+      const fixtures = show.fixtures as Array<Record<string, unknown>>
+
+      for (const f of fixtures) {
+        const type = String(f.type ?? '').toLowerCase().trim()
+        const orientation = String(f.orientation ?? '').toLowerCase().trim()
+        if (type !== 'moving-head' || orientation !== 'ceiling') continue
+
+        const rotation = f.rotation as Record<string, unknown> | undefined
+        if (!rotation || typeof rotation !== 'object') continue
+
+        const pitch = rotation.pitch
+        if (typeof pitch === 'number' && Number.isFinite(pitch) && Math.abs(pitch + 45) < 0.0001) {
+          rotation.pitch = 0
+        }
+      }
+    }
+  },
 ]
 
 /** Current latest V2 schema version */
-export const LATEST_V2_VERSION = '2.2.0'
+export const LATEST_V2_VERSION = '2.3.0'
 
 /**
  * Migrate a V2 show file through all incremental patches to latest.

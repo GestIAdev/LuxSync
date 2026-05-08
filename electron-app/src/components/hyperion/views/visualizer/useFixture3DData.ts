@@ -227,11 +227,23 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
 
         // ── Create THREE.Color ──────────────────────────────────────────────
         const color = new THREE.Color(r / 255, g / 255, b / 255)
+        const resolvedType = resolveFixtureType(fixture.type)
+        const orientation = (fixture.orientation ?? 'ceiling') as InstallationOrientation
+
+        // WAVE 4643: guardia visual para shows legacy con movers ceiling
+        // que quedaron con pitch base -45 por migraciones viejas.
+        const authoredRotation = fixture.rotation ?? { pitch: 0, yaw: 0, roll: 0 }
+        const baseRotation: Rotation3D =
+          resolvedType === 'moving-head'
+            && orientation === 'ceiling'
+            && Math.abs((authoredRotation.pitch ?? 0) + 45) < 0.0001
+            ? { ...authoredRotation, pitch: 0 }
+            : authoredRotation
 
         result.push({
           id: fixture.id,
           name: fixture.name || `Fixture ${fixture.address}`,
-          type: resolveFixtureType(fixture.type),
+          type: resolvedType,
           zone,
           x,
           y,
@@ -247,8 +259,8 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           selected: selectedIds.has(fixture.id),
           hasOverride: override !== undefined,
           // 🏗️ WAVE 4573: Spatial Truth fields
-          orientation: (fixture.orientation ?? 'ceiling') as InstallationOrientation,
-          baseRotation: fixture.rotation ?? { pitch: 0, yaw: 0, roll: 0 },
+          orientation,
+          baseRotation,
           isPlaced: fixture.isPlaced === true,
         })
       })

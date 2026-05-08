@@ -32,7 +32,6 @@ import type { ShowFileV2, FixtureV2 } from '../ShowFileV2'
 function makeShowV21(fixtures: any[]): ShowFileV2 {
   return {
     schemaVersion: '2.1.0',
-    version: '2.0.0',
     name: 'Test Show',
     description: '',
     createdAt: '2024-01-01T00:00:00.000Z',
@@ -42,8 +41,7 @@ function makeShowV21(fixtures: any[]): ShowFileV2 {
     groups: [],
     dmx: { driver: 'virtual', port: '', universes: [0], frameRate: 40 },
     audio: { source: 'microphone', deviceId: '', deviceName: '', sensitivity: 1, inputGain: 1 },
-    meta: { authorName: 'Test', tags: [], lastSavedBy: 'test' },
-  }
+  } as unknown as ShowFileV2
 }
 
 /** Fixture mínimo v2.1 con orientación dentro de physics (campo legacy deprecado) */
@@ -110,7 +108,7 @@ describe('Suite A §1 — Promoción physics.orientation → FixtureV2.orientati
 
     const { show: migrated, appliedPatches } = migrateV2ToLatest(show)
 
-    expect(appliedPatches).toHaveLength(1)
+    expect(appliedPatches).toHaveLength(2)
     expect(appliedPatches[0]).toContain('4573')
 
     const fixture = migrated.fixtures[0]
@@ -264,29 +262,54 @@ describe('Suite A §3 — isPlaced flag (fixtures legacy migrados)', () => {
 
 describe('Suite A §4 — Idempotencia de migrateV2ToLatest', () => {
 
-  test('show ya en versión 2.2.0 (LATEST) → cero patches aplicados', () => {
-    const show = makeShowV21([]) // lo ponemos en 2.2.0 manualmente
-    ;(show as any).schemaVersion = '2.2.0'
+  test('show ya en versión 2.3.0 (LATEST) → cero patches aplicados', () => {
+    const show = makeShowV21([]) // lo ponemos en 2.3.0 manualmente
+    ;(show as any).schemaVersion = '2.3.0'
 
     const { appliedPatches } = migrateV2ToLatest(show)
     expect(appliedPatches).toHaveLength(0)
   })
 
-  test('LATEST_V2_VERSION es "2.2.0"', () => {
-    expect(LATEST_V2_VERSION).toBe('2.2.0')
+  test('LATEST_V2_VERSION es "2.3.0"', () => {
+    expect(LATEST_V2_VERSION).toBe('2.3.0')
   })
 
-  test('show en 2.0.0 pasa por ambos parches: 2.0.0→2.1.0 y 2.1.0→2.2.0', () => {
+  test('show en 2.0.0 pasa por tres parches: 2.0.0→2.1.0→2.2.0→2.3.0', () => {
     const show = makeShowV21([makeFixtureNoOrientation('fix-v200', 4.0)])
     ;(show as any).schemaVersion = '2.0.0'
 
     const { show: migrated, appliedPatches } = migrateV2ToLatest(show)
 
-    expect(appliedPatches).toHaveLength(2)
-    expect(migrated.schemaVersion).toBe('2.2.0')
+    expect(appliedPatches).toHaveLength(3)
+    expect(migrated.schemaVersion).toBe('2.3.0')
     // El fixture debe tener orientation asignada al final
     expect(migrated.fixtures[0].orientation).toBeDefined()
     expect(migrated.fixtures[0].isPlaced).toBeDefined()
+  })
+
+  test('parche 2.2→2.3 normaliza pitch -45 solo en moving-head ceiling', () => {
+    const show = makeShowV21([
+      {
+        ...makeFixtureNoOrientation('mh-ceil', 4.0),
+        type: 'moving-head',
+        orientation: 'ceiling',
+        rotation: { pitch: -45, yaw: 0, roll: 0 },
+      },
+      {
+        ...makeFixtureNoOrientation('par-ceil', 4.0),
+        type: 'par',
+        orientation: 'ceiling',
+        rotation: { pitch: -45, yaw: 0, roll: 0 },
+      },
+    ])
+    ;(show as any).schemaVersion = '2.2.0'
+
+    const { show: migrated, appliedPatches } = migrateV2ToLatest(show)
+
+    expect(appliedPatches).toHaveLength(1)
+    expect(migrated.schemaVersion).toBe('2.3.0')
+    expect(migrated.fixtures[0].rotation.pitch).toBe(0)
+    expect(migrated.fixtures[1].rotation.pitch).toBe(-45)
   })
 
 })

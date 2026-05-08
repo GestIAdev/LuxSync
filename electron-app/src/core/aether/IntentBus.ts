@@ -491,6 +491,15 @@ export class IntentBus implements IIntentBus {
   }
 
   /**
+   * WAVE 4663 — Accede a un intent por índice sin allocar.
+   * Zero-alloc: retorna directamente el slot pre-allocated.
+   * Solo válido para índices 0 <= i < count.
+   */
+  getAt(index: number): INodeIntent {
+    return this._slots[index]
+  }
+
+  /**
    * Retorna TODOS los intents del frame. Solo para debug/telemetría.
    *
    * SÍ alloca (crea un array nuevo). NO usar en el hot path.

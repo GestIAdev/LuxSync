@@ -42,8 +42,15 @@ export class NodeArbiter {
         // ── Estado por frame ──────────────────────────────────────────────────
         /** Bus de intents de los Systems (L0) */
         this._systemBus = null;
-        /** Overrides Selene IA (L1) */
+        /** Overrides Selene IA (L1) — array legacy */
         this._seleneOverrides = [];
+        /**
+         * WAVE 4663 — Bus dedicado de Selene (L1).
+         * Se actualiza cada frame por TitanOrchestrator antes de arbitrate().
+         * Cuando count === 0 (Silence Rule), la capa L1 es un no-op completo
+         * y la capa L0 (Liquid/VMM) retoma el control instantáneamente.
+         */
+        this._seleneBus = null;
         /** Manual overrides (L2): nodeId → { channel: value } */
         this._manualOverrides = new Map();
         /**
@@ -85,6 +92,14 @@ export class NodeArbiter {
     }
     setSeleneOverrides(intents) {
         this._seleneOverrides = intents;
+    }
+    /**
+     * WAVE 4663 — Registra el bus de L1 de Selene.
+     * Llamado una vez durante la inicialización del motor.
+     * El bus se limpia y rellena cada frame antes de arbitrate().
+     */
+    setSeleneBus(bus) {
+        this._seleneBus = bus;
     }
     setManualOverride(nodeId, channels) {
         this._manualOverrides.set(nodeId, channels);
@@ -142,8 +157,19 @@ export class NodeArbiter {
             }
         }
         // L1: Selene IA overrides
-        for (let i = 0; i < this._seleneOverrides.length; i++) {
-            this._applyIntent(this._seleneOverrides[i]);
+        // WAVE 4663: bus dedicado (zero-alloc). Si count=0 (Silence Rule) → no-op total.
+        // L0 (Liquid/VMM) retoma el control en el mismo frame en que Selene calla.
+        if (this._seleneBus !== null) {
+            const count = this._seleneBus.count;
+            for (let i = 0; i < count; i++) {
+                this._applyIntent(this._seleneBus.getAt(i));
+            }
+        }
+        else {
+            // Fallback legacy: array de overrides pre-WAVE-4663
+            for (let i = 0; i < this._seleneOverrides.length; i++) {
+                this._applyIntent(this._seleneOverrides[i]);
+            }
         }
         // LP: Playback (Chronos Timeline) — entre L1 y L3
         for (let i = 0; i < this._playbackIntents.length; i++) {
@@ -165,9 +191,26 @@ export class NodeArbiter {
                 record = this._acquireRecord();
                 this._result.set(nodeId, record);
             }
-            // Manual override: escritura directa, sin merge
+            // WAVE 4661 PASO 1 — escritura directa + órbita relativa.
+            // Canales estándar (pan, tilt, dimmer…): LTP normal.
+            // Canales orbit (pan_base, tilt_base): en lugar de sobrescribir,
+            //   suman la desviación del LFO de L0 respecto al centro (0.5).
+            //   resultado = clamp01(base + (L0 - 0.5))
+            //   → el patrón gira siempre alrededor del punto exacto del radar.
             for (const key in channels) {
-                record[key] = channels[key];
+                if (key === 'pan_base') {
+                    const l0 = record['pan'] !== undefined ? record['pan'] : 0.5;
+                    const v = channels[key] + (l0 - 0.5);
+                    record['pan'] = v < 0 ? 0 : v > 1 ? 1 : v;
+                }
+                else if (key === 'tilt_base') {
+                    const l0 = record['tilt'] !== undefined ? record['tilt'] : 0.5;
+                    const v = channels[key] + (l0 - 0.5);
+                    record['tilt'] = v < 0 ? 0 : v > 1 ? 1 : v;
+                }
+                else {
+                    record[key] = channels[key];
+                }
             }
         }
         // 3. Aplicar Grand Master sobre canales HTP

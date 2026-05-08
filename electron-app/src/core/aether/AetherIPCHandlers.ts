@@ -244,6 +244,7 @@ export function registerAetherIPCHandlers(): void {
           outputEnabled: orchestrator.isOutputEnabled(),
           blackoutActive: arbiter.isBlackoutActive(),
           grandMaster: arbiter.getGrandMaster(),
+          grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier(),
         }
       } catch (err) {
         console.error('[AetherIPC] getControlState error:', err)
@@ -282,8 +283,12 @@ export function registerAetherIPCHandlers(): void {
     'lux:aether:setGrandMasterSpeed',
     (_event, { value }: { value: number }) => {
       try {
-        masterArbiter.setGrandMasterSpeed(value)
-        return { success: true, grandMasterSpeed: value }
+        const clamped = value < 0.1 ? 0.1 : value > 2.0 ? 2.0 : value
+        // Aether kinetic flow consumes VMM in hot-path. This is the canonical speed control.
+        vibeMovementManager.setGlobalSpeedMultiplier(clamped)
+        // Compat temporal con rutas legacy aún conectadas al ArbitrationDirector.
+        masterArbiter.setGrandMasterSpeed(clamped)
+        return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
       } catch (err) {
         console.error('[AetherIPC] setGrandMasterSpeed error:', err)
         return { success: false, error: String(err) }
@@ -319,8 +324,10 @@ export function registerAetherIPCHandlers(): void {
       try {
         if (pattern === null || pattern === 'static' || pattern === 'hold') {
           masterArbiter.clearPattern(fixtureIds)
-          // WAVE 4659: limpiar también el VMM para que KineticAdapter vea null
+          // WAVE 4659 + 4661: limpiar también speed/amplitude/pattern en VMM
           vibeMovementManager.setManualPattern(null)
+          vibeMovementManager.setManualSpeed(null)
+          vibeMovementManager.setManualAmplitude(null)
           return { success: true }
         }
 
@@ -339,8 +346,11 @@ export function registerAetherIPCHandlers(): void {
           size: sizeNorm,
           center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
         })
-        // WAVE 4659: V3 — propagar patrón al VMM para que KineticAdapter lo use en Aether  
+        // WAVE 4659 + 4661: propagar patrón, speed y amplitude al VMM
+        // para que KineticAdapter los use en el hot-path Aether.
         vibeMovementManager.setManualPattern(pattern)
+        vibeMovementManager.setManualSpeed(speed)       // 0-100 → VMM escala a Hz internamente
+        vibeMovementManager.setManualAmplitude(amplitude) // 0-100 → VMM escala a [0.05, 1.0]
         return { success: true, pattern }
       } catch (err) {
         console.error('[AetherIPC] setManualPattern error:', err)

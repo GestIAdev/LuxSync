@@ -1,0 +1,2166 @@
+{
+  "schemaVersion": "2.3.0",
+  "name": "6testNUEVO.v2",
+  "description": "",
+  "createdAt": "2026-05-06T20:18:37.580Z",
+  "modifiedAt": "2026-05-08T06:02:42.909Z",
+  "createdWith": "1.0.0",
+  "stage": {
+    "width": 12,
+    "depth": 8,
+    "height": 6,
+    "gridSize": 0.25
+  },
+  "visuals": {
+    "showGrid": true,
+    "showBeams": true,
+    "showZoneLabels": true,
+    "showFixtureNames": false,
+    "backgroundColor": "#0a0a12"
+  },
+  "fixtures": [
+    {
+      "id": "fixture-1778098893527",
+      "name": "7 grande",
+      "model": "7 grande",
+      "manufacturer": "big dipper",
+      "type": "par",
+      "address": 49,
+      "universe": 0,
+      "channelCount": 8,
+      "profileId": "user-1776551819488-ul7dn8822",
+      "position": {
+        "x": -1.25,
+        "y": 6,
+        "z": -1.75
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "floor",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-quality",
+        "maxAcceleration": 2500,
+        "maxVelocity": 600,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1776551819488-ul7dn8822.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 1,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 2,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 4,
+          "name": "White",
+          "type": "white",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Amber",
+          "type": "amber",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "unknown",
+          "type": "unknown",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false,
+        "colorEngine": "rgbw"
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098900942",
+      "name": "7 grande",
+      "model": "7 grande",
+      "manufacturer": "big dipper",
+      "type": "par",
+      "address": 57,
+      "universe": 0,
+      "channelCount": 8,
+      "profileId": "user-1776551819488-ul7dn8822",
+      "position": {
+        "x": -1.25,
+        "y": 6,
+        "z": 1.25
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "floor",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-quality",
+        "maxAcceleration": 2500,
+        "maxVelocity": 600,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1776551819488-ul7dn8822.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 1,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 2,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 4,
+          "name": "White",
+          "type": "white",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Amber",
+          "type": "amber",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "unknown",
+          "type": "unknown",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false,
+        "colorEngine": "rgbw"
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098937109",
+      "name": "7 grande",
+      "model": "7 grande",
+      "manufacturer": "big dipper",
+      "type": "par",
+      "address": 65,
+      "universe": 0,
+      "channelCount": 8,
+      "profileId": "user-1776551819488-ul7dn8822",
+      "position": {
+        "x": 1.25,
+        "y": 6,
+        "z": -1.75
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "floor",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-quality",
+        "maxAcceleration": 2500,
+        "maxVelocity": 600,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "back",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1776551819488-ul7dn8822.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 1,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 2,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 4,
+          "name": "White",
+          "type": "white",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Amber",
+          "type": "amber",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "unknown",
+          "type": "unknown",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false,
+        "colorEngine": "rgbw"
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098942165",
+      "name": "7 grande",
+      "model": "7 grande",
+      "manufacturer": "big dipper",
+      "type": "par",
+      "address": 73,
+      "universe": 0,
+      "channelCount": 8,
+      "profileId": "user-1776551819488-ul7dn8822",
+      "position": {
+        "x": 1.25,
+        "y": 6,
+        "z": 1.25
+      },
+      "rotation": {
+        "pitch": -45,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "floor",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-quality",
+        "maxAcceleration": 2500,
+        "maxVelocity": 600,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 20,
+          "max": 200
+        }
+      },
+      "zone": "front",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1776551819488-ul7dn8822.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 1,
+          "name": "Red",
+          "type": "red",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 2,
+          "name": "Green",
+          "type": "green",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Blue",
+          "type": "blue",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 4,
+          "name": "White",
+          "type": "white",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Amber",
+          "type": "amber",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "unknown",
+          "type": "unknown",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": false,
+        "has16bitMovement": false,
+        "hasColorMixing": true,
+        "hasColorWheel": false,
+        "colorEngine": "rgbw"
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098981365",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 81,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": -5.25,
+        "y": 6,
+        "z": -1.75
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098987590",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 89,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": -5.25,
+        "y": 6,
+        "z": 1.25
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778098998853",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 97,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": 5.25,
+        "y": 6,
+        "z": -1.75
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778099003797",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 105,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": 5.25,
+        "y": 6,
+        "z": 1.25
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778099032397",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 113,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": 0.25,
+        "y": 6,
+        "z": -1.75
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-right",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    },
+    {
+      "id": "fixture-1778099037840",
+      "name": "EL 1140 TESTING",
+      "model": "EL 1140 TESTING",
+      "manufacturer": "Chino",
+      "type": "moving-head",
+      "address": 121,
+      "universe": 0,
+      "channelCount": 10,
+      "profileId": "user-1770473024494-gooaf830g",
+      "position": {
+        "x": -0.25,
+        "y": 6,
+        "z": 1.25
+      },
+      "rotation": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0
+      },
+      "orientation": "ceiling",
+      "isPlaced": true,
+      "physics": {
+        "motorType": "stepper-cheap",
+        "maxAcceleration": 900,
+        "maxVelocity": 400,
+        "safetyCap": true,
+        "invertPan": false,
+        "invertTilt": false,
+        "swapPanTilt": false,
+        "homePosition": {
+          "pan": 127,
+          "tilt": 127
+        },
+        "tiltLimits": {
+          "min": 10,
+          "max": 245
+        }
+      },
+      "zone": "movers-left",
+      "enabled": true,
+      "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770473024494-gooaf830g.json",
+      "channels": [
+        {
+          "index": 0,
+          "name": "Pan",
+          "type": "pan",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 1,
+          "name": "Tilt",
+          "type": "tilt",
+          "is16bit": false,
+          "defaultValue": 127
+        },
+        {
+          "index": 2,
+          "name": "Speed",
+          "type": "speed",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 3,
+          "name": "Dimmer",
+          "type": "dimmer",
+          "is16bit": false,
+          "defaultValue": 255
+        },
+        {
+          "index": 4,
+          "name": "Shutter/Strobe",
+          "type": "strobe",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 5,
+          "name": "Color Wheel",
+          "type": "color_wheel",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 6,
+          "name": "Gobo Pattern",
+          "type": "gobo",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 7,
+          "name": "Prism + Speed",
+          "type": "prism",
+          "is16bit": false,
+          "defaultValue": 0
+        },
+        {
+          "index": 8,
+          "name": "Focus",
+          "type": "focus",
+          "is16bit": false,
+          "defaultValue": 128
+        },
+        {
+          "index": 9,
+          "name": "Control",
+          "type": "control",
+          "is16bit": false,
+          "defaultValue": 0
+        }
+      ],
+      "calibration": {
+        "panOffset": 0,
+        "tiltOffset": 0,
+        "panInvert": false,
+        "tiltInvert": false
+      },
+      "capabilities": {
+        "hasMovementChannels": true,
+        "has16bitMovement": false,
+        "hasColorMixing": false,
+        "hasColorWheel": true,
+        "colorEngine": "wheel",
+        "colorWheel": {
+          "colors": [
+            {
+              "dmx": 0,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "ab2aced9-7a47-48a5-938d-2d4874d939d6"
+            },
+            {
+              "dmx": 10,
+              "name": "Pink",
+              "rgb": {
+                "r": 255,
+                "g": 105,
+                "b": 180
+              },
+              "_key": "f0549dae-f7c1-4c37-853e-a93ad67406e8"
+            },
+            {
+              "dmx": 20,
+              "name": "Cyan",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "99493dec-f208-48e0-ac10-5240ba6111dd"
+            },
+            {
+              "dmx": 30,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "c2838fea-0309-4cf9-af0f-b9d87a83fbb9"
+            },
+            {
+              "dmx": 40,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "4ddf8b67-f70a-4628-a1d0-80bc003b3d5b"
+            },
+            {
+              "dmx": 50,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "a8988fe0-b596-40be-90f4-c239758edabc"
+            },
+            {
+              "dmx": 60,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "1620b3e7-ee81-4164-bec1-d1e03d9a61a3"
+            },
+            {
+              "dmx": 70,
+              "name": "Orange",
+              "rgb": {
+                "r": 255,
+                "g": 128,
+                "b": 0
+              },
+              "_key": "9497f111-8326-48e1-bfa7-3e20178598d9"
+            },
+            {
+              "dmx": 80,
+              "name": "Magenta",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "cddbc362-9207-47d7-9c31-e7fd02a9628a"
+            },
+            {
+              "dmx": 90,
+              "name": "Green",
+              "rgb": {
+                "r": 0,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "b01bb727-c4f2-4389-a3a7-4b971f6c65cb"
+            },
+            {
+              "dmx": 100,
+              "name": "Blue",
+              "rgb": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+              },
+              "_key": "616722a4-8cad-4646-98bf-a8242283fad2"
+            },
+            {
+              "dmx": 110,
+              "name": "Yellow",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 0
+              },
+              "_key": "fcbad5e9-5e7c-487d-8fbc-0a7593eee787"
+            },
+            {
+              "dmx": 120,
+              "name": "Red",
+              "rgb": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+              },
+              "_key": "5f451f9f-030b-4e87-91e3-4360a63ed6b5"
+            },
+            {
+              "dmx": 130,
+              "name": "White",
+              "rgb": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              },
+              "_key": "f3de4c7d-d5c1-46c9-8d12-146db4af8ec5"
+            }
+          ],
+          "allowsContinuousSpin": false,
+          "minChangeTimeMs": 500
+        }
+      },
+      "isVirtual": true
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-mouifdov-1",
+      "name": "movers",
+      "fixtureIds": [
+        "fixture-1778099003797",
+        "fixture-1778098998853",
+        "fixture-1778099037840",
+        "fixture-1778099032397",
+        "fixture-1778098987590",
+        "fixture-1778098981365"
+      ],
+      "color": "#f97316",
+      "isSystem": false,
+      "order": 0
+    }
+  ],
+  "scenes": [],
+  "dmx": {
+    "driver": "virtual",
+    "port": "",
+    "universes": [
+      0
+    ],
+    "frameRate": 40
+  },
+  "audio": {
+    "source": "simulation",
+    "sensitivity": 0.7,
+    "inputGain": 1
+  },
+  "defaultVibe": "techno-club",
+  "seleneMode": "idle"
+}

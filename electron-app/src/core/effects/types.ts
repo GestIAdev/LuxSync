@@ -227,6 +227,8 @@ export interface EffectFrameOutput {
       white?: number
       /** Amber override específico (0-1) */
       amber?: number
+      /** Strobe rate específico (Hz) — WAVE 4664 */
+      strobeRate?: number
       /**
        * 🎚️ WAVE 780: BLEND MODE
        * - 'replace': LTP - El efecto manda (ducking para efectos espaciales)
@@ -556,6 +558,8 @@ export interface CombinedEffectOutput {
       white?: number
       /** Amber para esta zona (0-1) */
       amber?: number
+      /** Strobe rate específico (Hz) — WAVE 4664 */
+      strobeRate?: number
       /**
        * 🎚️ WAVE 780: BLEND MODE (heredado del efecto de mayor prioridad)
        */

@@ -138,8 +138,8 @@ export class SeleneAetherAdapter {
     source: L3_SOURCE,
   }
 
-  /** Scratch para canales COLOR (r, g, b) */
-  private readonly _colorValues: Record<string, number> = { r: 0, g: 0, b: 0 }
+  /** Scratch para canales COLOR (r, g, b, white, amber) */
+  private readonly _colorValues: Record<string, number> = { r: 0, g: 0, b: 0, white: 0, amber: 0 }
   private readonly _colorScratch = {
     nodeId: '' as NodeId,
     values: null as unknown as Record<string, number>,
@@ -250,6 +250,11 @@ export class SeleneAetherAdapter {
     if (output.amberOverride !== undefined) {
       this._emitAmber('all' as EffectZone, clamp01(output.amberOverride), composition, bus)
     }
+
+    // strobeRate → IMPACT nodes zona 'all' (canal 'strobeRate' para fixtures con shutter)
+    if (output.strobeRate !== undefined && output.strobeRate > 0) {
+      this._emitStrobe('all' as EffectZone, clamp01(output.strobeRate), composition, bus)
+    }
   }
 
   /**
@@ -286,6 +291,11 @@ export class SeleneAetherAdapter {
       // amber → COLOR nodes de esta zona
       if (override.amber !== undefined) {
         this._emitAmber(zone, clamp01(override.amber), composition, bus)
+      }
+
+      // strobeRate → IMPACT nodes de esta zona
+      if (override.strobeRate !== undefined && override.strobeRate > 0) {
+        this._emitStrobe(zone, clamp01(override.strobeRate), composition, bus)
       }
 
       // ❌ override.movement → DESCARTADO (Regla L3: movimiento ≡ KineticAdapter)
@@ -372,6 +382,16 @@ export class SeleneAetherAdapter {
     }
   }
 
+  /** Limpia keys residuales del color scratch para evitar contaminación cruzada */
+  private _clearColorScratch(): void {
+    const v = this._colorValues
+    delete (v as Record<string, number>)['r']
+    delete (v as Record<string, number>)['g']
+    delete (v as Record<string, number>)['b']
+    delete (v as Record<string, number>)['white']
+    delete (v as Record<string, number>)['amber']
+  }
+
   /**
    * Emite un intent de color RGB a todos los nodos COLOR de una zona.
    */
@@ -386,6 +406,7 @@ export class SeleneAetherAdapter {
     const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR)
     if (nodeIds.length === 0) return
 
+    this._clearColorScratch()
     const scratch = this._colorScratch
     const vals    = this._colorValues
 
@@ -412,6 +433,7 @@ export class SeleneAetherAdapter {
     const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR)
     if (nodeIds.length === 0) return
 
+    this._clearColorScratch()
     const scratch = this._colorScratch
     const vals    = this._colorValues
 
@@ -436,10 +458,37 @@ export class SeleneAetherAdapter {
     const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR)
     if (nodeIds.length === 0) return
 
+    this._clearColorScratch()
     const scratch = this._colorScratch
     const vals    = this._colorValues
 
     vals.amber          = amber
+    scratch.confidence  = confidence
+
+    for (let i = 0; i < nodeIds.length; i++) {
+      scratch.nodeId = nodeIds[i]
+      bus.push(scratch as unknown as INodeIntent)
+    }
+  }
+
+  /**
+   * Emite un intent de strobeRate a todos los nodos IMPACT de una zona.
+   * Usado cuando CombinedEffectOutput trae strobeRate > 0 (PASO 3 WAVE 4664).
+   */
+  private _emitStrobe(
+    zone: EffectZone,
+    strobeRate: number,
+    confidence: number,
+    bus: IIntentBus,
+  ): void {
+    const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.IMPACT)
+    if (nodeIds.length === 0) return
+
+    const scratch = this._strobeScratch
+    const vals    = this._strobeValues
+
+    vals.strobeRate     = strobeRate
+    vals.shutter        = 1.0
     scratch.confidence  = confidence
 
     for (let i = 0; i < nodeIds.length; i++) {

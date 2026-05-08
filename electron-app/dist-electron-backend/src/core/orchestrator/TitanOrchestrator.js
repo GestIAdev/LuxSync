@@ -96,6 +96,46 @@ const DEFAULT_AETHER_STAGE_BOUNDS = {
     centerY: 1.5,
 };
 /**
+ * 🌊 WAVE 2432 AUTO-DETECT: Detecta el layout requerido (4.1 o 7.1) basado en los fixtures del show
+ *
+ * Si el show tiene PAR fixtures (zona 'front' o 'back') con split L/R (algunos x<0, otros x>0),
+ * retorna '7.1' para usar LiquidEngine71. De lo contrario, retorna '4.1' para rigs compactos.
+ *
+ * @param fixtures - Array de fixtures del show (FixtureV2)
+ * @returns '4.1' o '7.1'
+ */
+function detectLiquidLayoutFromFixtures(fixtures) {
+    // Buscar PAR fixtures con zona 'front' o 'back' que tengan split L/R
+    const frontBackPars = fixtures.filter(f => (f.zone === 'front' || f.zone === 'back') &&
+        (f.type === 'par' || f.model?.toLowerCase?.().includes('par') || f.name?.toLowerCase?.().includes('par')));
+    if (frontBackPars.length < 2) {
+        // Menos de 2 fixtures → no hay espacio para split L/R
+        return '4.1';
+    }
+    // Verificar si hay al menos un fixture con x < 0 y otro con x > 0 en la MISMA zona
+    const byZone = {};
+    for (const f of frontBackPars) {
+        const zone = f.zone;
+        if (!byZone[zone])
+            byZone[zone] = [];
+        const x = f.position?.x ?? 0;
+        byZone[zone].push(x);
+    }
+    // Si alguna zona tiene al menos un x<-0.1 y otro x>0.1, necesita 7.1 stereo
+    for (const zone in byZone) {
+        const positions = byZone[zone];
+        const hasLeft = positions.some(x => x < -0.1);
+        const hasRight = positions.some(x => x > 0.1);
+        if (hasLeft && hasRight) {
+            // Split L/R detectado → necesita LiquidEngine71
+            console.log(`[TitanOrchestrator] 🌊 AUTO-DETECT: Zone '${zone}' has L/R split → Layout: 7.1`);
+            return '7.1';
+        }
+    }
+    // Sin split real → 4.1
+    return '4.1';
+}
+/**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
 export class TitanOrchestrator {
@@ -177,7 +217,12 @@ export class TitanOrchestrator {
             this._seleneAetherAdapter) {
             return;
         }
-        this._aetherArbiter = this._aetherArbiter ?? new NodeArbiter();
+        if (!this._aetherArbiter) {
+            this._aetherArbiter = new NodeArbiter();
+            // WAVE 4663 PASO 1: Conectar el bus L1 de Selene al Arbiter.
+            // El bus es una referencia fija — se limpia y rellena cada frame.
+            this._aetherArbiter.setSeleneBus(this._seleneBus);
+        }
         if (!this._aetherResolver) {
             this._aetherResolver = new NodeResolver(this._aetherGraph);
             // 🛂 WAVE 4557: Wire safety middleware into resolver
@@ -192,6 +237,10 @@ export class TitanOrchestrator {
         this._beamAdapter = this._beamAdapter ?? new BeamAdapter();
         this._atmosphereAdapter = this._atmosphereAdapter ?? new AtmosphereAdapter();
         this._liquidAetherAdapter = this._liquidAetherAdapter ?? new LiquidAetherAdapter(this._aetherGraph);
+        // ZoneNodeRouter se construye en _syncFixturesToAether() después de que todos
+        // los devices estén en el NodeGraph. Aquí solo hacemos lazy-init de emergencia
+        // (primera llamada a getAetherArbiter() o registerAetherDevice() antes de sync).
+        // En ese caso el router queda con caché vacío y se reconstruirá post-sync.
         if (!this._zoneNodeRouter) {
             this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph);
         }
@@ -296,6 +345,9 @@ export class TitanOrchestrator {
         // ═══════════════════════════════════════════════════════════════════════════
         this._aetherGraph = new NodeGraph();
         this._aetherBus = new IntentBus(4096);
+        // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
+        // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures × 3 familias).
+        this._seleneBus = new IntentBus(512);
         this._aetherArbiter = null;
         this._aetherResolver = null;
         // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
@@ -1512,6 +1564,10 @@ export class TitanOrchestrator {
                 this._aetherCtx.frameIndex = this.frameCount;
                 // 1. Limpiar el bus de intents del frame anterior
                 this._aetherBus.clear();
+                // WAVE 4663 PASO 2: Limpiar el bus L1 de Selene (Silence Rule).
+                // Si hasActiveEffects=false en este frame, Selene no empuja nada
+                // → bus queda vacío → L1 es no-op → L0 (Liquid/VMM) retoma control.
+                this._seleneBus.clear();
                 // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
                 // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
                 const _activeEngine = this.engine?.getActiveLiquidEngine();
@@ -1548,7 +1604,9 @@ export class TitanOrchestrator {
                 // ═══════════════════════════════════════════════════════════════════════
                 const consciousnessOutput = this.lastConsciousnessOutput ?? null;
                 const effectOutput = getEffectManager().getCombinedOutput();
-                seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._aetherBus);
+                // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
+                // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
+                seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._seleneBus);
                 // STEP 4.5: Playback LP bridge Chronos -> Aether
                 this._chronosAetherAdapter.ingest(this._timelineEngine, ctx.deltaMs, aetherArbiter);
                 // STEP 5: Hephaestus L3+ Diamond Data bridge
@@ -1625,8 +1683,7 @@ export class TitanOrchestrator {
                     if (!rawBuf)
                         continue;
                     // WAVE 4656.1: Smart Blackout.
-                    // Se apaga solo intensidad (dimmer/shutter/strobe/RGBW),
-                    // preservando canales cinemáticos para seguridad mecánica.
+                    // Se fuerza solo dimmer a 0, preservando movimiento y cinemática.
                     const egressBuf = blackoutActive
                         ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
                         : rawBuf;
@@ -2251,6 +2308,10 @@ export class TitanOrchestrator {
             // ═══════════════════════════════════════════════════════════════════════
             position: f.position, // 🔧 WAVE 1055: CRITICAL FOR STEREO ROUTING
         })));
+        // 🌊 WAVE 2432 AUTO-DETECT: Detectar y auto-setear el layout basado en PAR fixtures
+        // Si el show tiene PAR stereo (L/R), usa LiquidEngine71. De lo contrario, 4.1.
+        const detectedLayout = detectLiquidLayoutFromFixtures(this.fixtures);
+        this.setLiquidLayout(detectedLayout);
         // 🔥 WAVE 339.6: Register movers in PhysicsDriver
         // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
         //
@@ -2350,6 +2411,12 @@ export class TitanOrchestrator {
                 console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err);
             }
         }
+        // WAVE 4663 FIX: Reconstruir ZoneNodeRouter y SeleneAetherAdapter DESPUÉS de que
+        // todos los fixtures están en el NodeGraph. El router cachea zone→nodeIds en
+        // construcción; si se construye antes de registrar fixtures, el caché queda
+        // vacío y Selene no puede emitir intents → efectos invisibles en la UI.
+        this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph);
+        this._seleneAetherAdapter = new SeleneAetherAdapter(this._zoneNodeRouter);
         void registered;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

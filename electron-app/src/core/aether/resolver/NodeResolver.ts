@@ -103,6 +103,23 @@ const MATH_TELEMETRY_EVERY_FRAMES = 30
 const IK_DEFAULT_PAN_RANGE_DEG  = 540
 const IK_DEFAULT_TILT_RANGE_DEG = 270
 
+function sanitizeNormalizedValue(value: number | undefined, fallback = 0): number {
+  return value !== undefined && Number.isFinite(value) ? value : fallback
+}
+
+function sanitizeDmxByte(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  if (value < 0) {
+    return 0
+  }
+  if (value > 255) {
+    return 255
+  }
+  return value
+}
+
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set<string>([CH_R, CH_G, CH_B])
@@ -597,6 +614,7 @@ export class NodeResolver implements INodeResolver {
       let rawNormalized: number = translatedValues[chDef.type] !== undefined
         ? translatedValues[chDef.type]
         : this._getDefaultNormalizedValue(node, chDef)
+      rawNormalized = sanitizeNormalizedValue(rawNormalized)
 
       // Telemetría legacy removida.
 
@@ -610,27 +628,27 @@ export class NodeResolver implements INodeResolver {
       if (normalized < 0) normalized = 0
 
       // Escalar a DMX: [0, 255]
-      let dmxValue = Math.round(normalized * 255)
+      let dmxValue = sanitizeDmxByte(Math.round(normalized * 255))
 
       // Aplicar calibración específica de canal
       if (calibration) {
-        dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration)
+        dmxValue = sanitizeDmxByte(this._applyCalibration(dmxValue, chDef.type, calibration))
       }
 
       // WAVE 4639: La inversión por orientación en ruta clásica se aplica
       // en dominio DMX final para respetar offsets/límites y corregir pivote.
       if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
-        dmxValue = 255 - dmxValue
+        dmxValue = sanitizeDmxByte(255 - dmxValue)
       }
 
       // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path
       if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
         if (PAN_CHANNELS.has(chDef.type) && chDef.type === PAN_COARSE) {
-          dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, true, dmxValue)
-          dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, true)
+          dmxValue = sanitizeDmxByte(this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, true, dmxValue))
+          dmxValue = sanitizeDmxByte(this._safetyMiddleware.applyAirbag(dmxValue, true))
         } else if (TILT_CHANNELS.has(chDef.type) && chDef.type === TILT_COARSE) {
-          dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue)
-          dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, false)
+          dmxValue = sanitizeDmxByte(this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue))
+          dmxValue = sanitizeDmxByte(this._safetyMiddleware.applyAirbag(dmxValue, false))
         }
       }
 
@@ -646,8 +664,7 @@ export class NodeResolver implements INodeResolver {
       }
 
       // Clamp final de seguridad
-      if (dmxValue < 0)   dmxValue = 0
-      if (dmxValue > 255) dmxValue = 255
+      dmxValue = sanitizeDmxByte(dmxValue)
 
       if (!writeToDmx) continue
 
@@ -660,11 +677,12 @@ export class NodeResolver implements INodeResolver {
         const fineIdx = bufIdx + 1
         if (fineIdx < DMX_UNIVERSE_SIZE) {
           const raw16 = Math.round(normalized * 65535)
-          buf[fineIdx] = raw16 & 0xFF  // byte fine (LSB)
+          const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0
+          buf[fineIdx] = safeRaw16 & 0xFF  // byte fine (LSB)
           // El byte coarse (MSB) ya fue escrito como (raw16 >> 8) arriba,
           // pero nuestro `dmxValue` ya redondeó al byte coarse.
           // Corregir el coarse para coherencia 16-bit:
-          buf[bufIdx] = (raw16 >> 8) & 0xFF
+          buf[bufIdx] = (safeRaw16 >> 8) & 0xFF
         }
       }
     }
@@ -686,10 +704,11 @@ export class NodeResolver implements INodeResolver {
     calibration: IDeviceCalibration | undefined,
     writeToDmx: boolean,
   ): void {
-    const tx = channelValues[CH_TARGET_X]
-    if (tx === undefined) return
-    const ty = channelValues[CH_TARGET_Y] ?? 1.5
-    const tz = channelValues[CH_TARGET_Z] ?? 2.0
+    const txRaw = channelValues[CH_TARGET_X]
+    if (!Number.isFinite(txRaw)) return
+    const tx = txRaw
+    const ty = sanitizeNormalizedValue(channelValues[CH_TARGET_Y], 1.5)
+    const tz = sanitizeNormalizedValue(channelValues[CH_TARGET_Z], 2.0)
 
     if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
       console.log(
@@ -715,8 +734,8 @@ export class NodeResolver implements INodeResolver {
     }
 
     // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
-    let safePan  = ikResult.pan
-    let safeTilt = ikResult.tilt
+    let safePan  = sanitizeDmxByte(ikResult.pan)
+    let safeTilt = sanitizeDmxByte(ikResult.tilt)
     const sm = this._safetyMiddleware
     if (sm) {
       const clamped = sm.clampKineticVelocity(node.nodeId, safePan, safeTilt)
@@ -887,9 +906,12 @@ export class NodeResolver implements INodeResolver {
     original: Readonly<Record<string, number>>,
   ): Readonly<Record<string, number>> {
     // Escalar a 0-255 para el ColorTranslator (que trabaja en 255)
-    this._rgbScratch.r = Math.round(rNorm * 255)
-    this._rgbScratch.g = Math.round(gNorm * 255)
-    this._rgbScratch.b = Math.round(bNorm * 255)
+    const safeR = sanitizeNormalizedValue(rNorm)
+    const safeG = sanitizeNormalizedValue(gNorm)
+    const safeB = sanitizeNormalizedValue(bNorm)
+    this._rgbScratch.r = sanitizeDmxByte(Math.round(safeR * 255))
+    this._rgbScratch.g = sanitizeDmxByte(Math.round(safeG * 255))
+    this._rgbScratch.b = sanitizeDmxByte(Math.round(safeB * 255))
 
     switch (mixingType) {
 
@@ -901,12 +923,12 @@ export class NodeResolver implements INodeResolver {
         // tiene type='r'/'g'/'b' (fixtures puramente abstractos).
         return {
           ...original,
-          [CH_RED]:   rNorm,
-          [CH_GREEN]: gNorm,
-          [CH_BLUE]:  bNorm,
-          [CH_R]:     rNorm,
-          [CH_G]:     gNorm,
-          [CH_B]:     bNorm,
+          [CH_RED]:   safeR,
+          [CH_GREEN]: safeG,
+          [CH_BLUE]:  safeB,
+          [CH_R]:     safeR,
+          [CH_G]:     safeG,
+          [CH_B]:     safeB,
         }
 
       // ── RGBW ────────────────────────────────────────────────────────
@@ -917,7 +939,7 @@ export class NodeResolver implements INodeResolver {
         const rgbw = result.rgbw
         if (!rgbw) {
           // Fallback: sin datos RGBW, pass-through RGB
-          return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm }
+          return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB }
         }
         return {
           ...original,
@@ -925,9 +947,9 @@ export class NodeResolver implements INodeResolver {
           [CH_GREEN]: rgbw.g / 255,
           [CH_BLUE]:  rgbw.b / 255,
           [CH_WHITE]: rgbw.w / 255,
-          [CH_R]:     rNorm,
-          [CH_G]:     gNorm,
-          [CH_B]:     bNorm,
+          [CH_R]:     safeR,
+          [CH_G]:     safeG,
+          [CH_B]:     safeB,
         }
       }
 
@@ -938,7 +960,7 @@ export class NodeResolver implements INodeResolver {
         })
         const cmy = result.cmy
         if (!cmy) {
-          return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm }
+          return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB }
         }
         return {
           ...original,
@@ -946,9 +968,9 @@ export class NodeResolver implements INodeResolver {
           [CH_MAGENTA]: cmy.m / 255,
           [CH_YELLOW]:  cmy.y / 255,
           // Preservar abstractos por compatibilidad
-          [CH_R]: rNorm,
-          [CH_G]: gNorm,
-          [CH_B]: bNorm,
+          [CH_R]: safeR,
+          [CH_G]: safeG,
+          [CH_B]: safeB,
         }
       }
 
@@ -959,8 +981,8 @@ export class NodeResolver implements INodeResolver {
           // Sin datos de rueda: pass-through RGB
           return {
             ...original,
-            [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm,
-            [CH_R]:   rNorm, [CH_G]:     gNorm, [CH_B]:    bNorm,
+            [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB,
+            [CH_R]:   safeR, [CH_G]:     safeG, [CH_B]:    safeB,
           }
         }
 
@@ -1016,7 +1038,7 @@ export class NodeResolver implements INodeResolver {
             return {
               ...original,
               [CH_COLOR_WHEEL]: wheelDmxNorm,
-              [CH_R]: rNorm, [CH_G]: gNorm, [CH_B]: bNorm,
+              [CH_R]: safeR, [CH_G]: safeG, [CH_B]: safeB,
               [DIMMER_CHANNEL]: 0,  // ★ BLACKOUT: hide mechanical crystal transit
             }
           }
@@ -1026,9 +1048,9 @@ export class NodeResolver implements INodeResolver {
         return {
           ...original,
           [CH_COLOR_WHEEL]: wheelDmxNorm,
-          [CH_R]: rNorm,
-          [CH_G]: gNorm,
-          [CH_B]: bNorm,
+          [CH_R]: safeR,
+          [CH_G]: safeG,
+          [CH_B]: safeB,
         }
       }
     }

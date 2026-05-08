@@ -10,10 +10,10 @@
  * - Zoom: Spot to flood
  * - Iris: Control beam diameter (optional)
  * 
- * Connected to MasterArbiter via window.lux.arbiter.setManual()
+ * Connected to Aether L2 via programmerStore + ProgrammerAetherBridge
  */
 
-import React, { useCallback, useState, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
@@ -47,21 +47,51 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   // 🛡️ WAVE 2042.13.13: Fixed - Use stable hook
   const selectedIds = useSelectedArray()
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
-  
-  // Local state
-  const [gobo, setGobo] = useState(0)           // 0-255
-  const [prismValue, setPrismValue] = useState(0)  // 0=off, 122-255=active+speed
-  const [focus, setFocus] = useState(128)       // 0-255
-  const [zoom, setZoom] = useState(128)         // 0-255
-  const [iris, setIris] = useState(255)         // 0-255 (255 = open)
+  const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
+
+  const clamp255 = useCallback((v: number) => Math.max(0, Math.min(255, Math.round(v))), [])
+  const denorm255 = useCallback((v: number | null, fallback: number) => {
+    if (v === null || v === undefined) return fallback
+    return clamp255(v * 255)
+  }, [clamp255])
+
+  const firstSelectedId = selectedIds[0]
+  const firstOverride = firstSelectedId ? fixtureOverrides.get(firstSelectedId) : null
+
+  // Valores de UI derivados del estado real hidratado (L2 snapshot + cambios locales).
+  const gobo = denorm255(firstOverride?.gobo ?? null, 0)
+  const prismValue = denorm255(firstOverride?.prism ?? null, 0)
+  const focus = denorm255(firstOverride?.focus ?? null, 128)
+  const zoom = denorm255(firstOverride?.zoom ?? null, 128)
+  const iris = denorm255(firstOverride?.iris ?? null, 255)
   
   // Check if selected fixtures have beam capabilities
   const hasBeamFixtures = useMemo(() => {
     const fixtures = hardware?.fixtures || []
     return selectedIds.some(id => {
-      const fixture = fixtures.find((f: { id: string }) => f.id === id)
+      const fixture = fixtures.find((f: { id: string }) => f.id === id) as
+        | { type?: string; channels?: Array<{ type?: string }> }
+        | undefined
+
+      const channelTypes = new Set(
+        (fixture?.channels ?? [])
+          .map(ch => (ch?.type ?? '').toLowerCase())
+          .filter(Boolean),
+      )
+
+      const hasBeamChannels =
+        channelTypes.has('gobo') ||
+        channelTypes.has('gobo_rotation') ||
+        channelTypes.has('prism') ||
+        channelTypes.has('prism_rotation') ||
+        channelTypes.has('focus') ||
+        channelTypes.has('zoom') ||
+        channelTypes.has('iris') ||
+        channelTypes.has('frost')
+
+      if (hasBeamChannels) return true
+
       const type = fixture?.type?.toLowerCase() || ''
-      // Moving heads, spots, and beams typically have these features
       return type.includes('moving') || type.includes('spot') || 
              type.includes('beam') || type.includes('profile')
     })
@@ -81,7 +111,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    */
   const handleGoboChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setGobo(value)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('gobo', value)
   }, [onOverrideChange])
@@ -90,7 +119,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    * Gobo step click (direct selection)
    */
   const handleGoboStep = useCallback((stepValue: number) => {
-    setGobo(stepValue)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('gobo', stepValue)
   }, [onOverrideChange])
@@ -100,7 +128,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    */
   const handlePrismChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setPrismValue(value)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('prism', value)
   }, [onOverrideChange])
@@ -110,7 +137,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    */
   const handleFocusChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setFocus(value)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('focus', value)
   }, [onOverrideChange])
@@ -120,7 +146,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    */
   const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setZoom(value)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('zoom', value)
   }, [onOverrideChange])
@@ -130,7 +155,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
    */
   const handleIrisChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    setIris(value)
     onOverrideChange(true)
     useProgrammerStore.getState().setBeam('iris', value)
   }, [onOverrideChange])

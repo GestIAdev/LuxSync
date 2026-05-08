@@ -554,6 +554,7 @@ declare global {
       ) => Promise<{
         success: boolean
         fixtureCount: number
+        liquidLayout?: '4.1' | '7.1'
         message: string
       }>
       
@@ -789,6 +790,7 @@ declare global {
         outputEnabled?: boolean
         blackoutActive?: boolean
         grandMaster?: number
+        grandMasterSpeed?: number
         error?: string
       }>
 

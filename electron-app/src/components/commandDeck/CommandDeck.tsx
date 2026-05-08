@@ -69,10 +69,14 @@ export const CommandDeck: React.FC = () => {
         if (response) {
           const rawGM = response.grandMaster ?? 1.0
           const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
+          const rawGMS = response.grandMasterSpeed
+          const safeGMS = typeof rawGMS === 'number'
+            ? Math.max(0.1, Math.min(2.0, rawGMS))
+            : undefined
           
           setArbiterStatus(prev => ({
             grandMaster: Math.max(0, Math.min(1, safeGM)),
-            grandMasterSpeed: prev.grandMasterSpeed,
+            grandMasterSpeed: safeGMS ?? prev.grandMasterSpeed,
           }))
           
           const backendOutputEnabled = response.outputEnabled ?? false

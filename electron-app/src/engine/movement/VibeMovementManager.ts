@@ -720,7 +720,16 @@ export class VibeMovementManager {
       const beatsPerSecond = this.smoothedBPM / 60
       const phasePerBeat = (2 * Math.PI) / patternPeriod  // radians per beat
       const chillSedationFactor = vibeId === 'chill-lounge' ? 0.80 : 1.0
-      const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier * chillSedationFactor
+      // WAVE 4661 PASO 4: manualSpeedOverride (0-100) escala el LFO
+      // multiplicativamente con globalSpeedMultiplier (GrandMaster).
+      //   slider=0  → 0.5× (mitad de velocidad)
+      //   slider=50 → 1.0× (velocidad nominal, centro del fader)
+      //   slider=100 → 2.0× (doble velocidad)
+      // Sumatorio con GM: efectivo = GM × manualFactor
+      const manualSpeedFactor = this.manualSpeedOverride !== null
+        ? Math.pow(2, (this.manualSpeedOverride - 50) / 50)
+        : 1.0
+      const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier * manualSpeedFactor * chillSedationFactor
       this.phaseAccumulator += phaseDelta
     }
     

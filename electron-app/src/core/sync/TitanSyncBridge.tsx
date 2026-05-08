@@ -39,6 +39,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useStageStore } from '../../stores/stageStore'
+import { useControlStore } from '../../stores/controlStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -136,6 +137,12 @@ const syncToBackend = async (
     )
 
     const result = await lux.arbiter.setFixtures(arbiterFixtures, stageBounds)
+    if (result?.liquidLayout === '4.1' || result?.liquidLayout === '7.1') {
+      const currentLayout = useControlStore.getState().liquidLayout
+      if (currentLayout !== result.liquidLayout) {
+        useControlStore.getState().setLiquidLayout(result.liquidLayout)
+      }
+    }
     // 🔧 WAVE 406: Log de éxito visual
     console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`)
   } catch (err) {

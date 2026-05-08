@@ -76,15 +76,6 @@ const SHUTTER_CHANNEL = 'shutter';
 const STROBE_CHANNEL = 'strobe';
 const SOFT_BLACKOUT_INTENSITY_CHANNELS = new Set([
     DIMMER_CHANNEL,
-    SHUTTER_CHANNEL,
-    STROBE_CHANNEL,
-    CH_R,
-    CH_G,
-    CH_B,
-    CH_RED,
-    CH_GREEN,
-    CH_BLUE,
-    CH_WHITE,
 ]);
 const IK_WARN_INTERVAL_FRAMES = 44;
 const MATH_TELEMETRY_EVERY_FRAMES = 30;
@@ -206,8 +197,8 @@ export class NodeResolver {
      * WAVE 4656.1: Smart Blackout por universo.
      *
      * Copia el buffer resuelto del universo y fuerza a 0 únicamente los
-     * canales de intensidad (dimmer/shutter/strobe/RGBW), preservando los
-     * canales cinemáticos para seguridad mecánica.
+      * canales de dimmer, preservando movimiento y el resto del estado
+      * fotométrico/cinemático para seguridad mecánica.
      */
     getSoftBlackoutUniverseBuffer(universe, source) {
         let out = this._softBlackoutBuffers.get(universe);

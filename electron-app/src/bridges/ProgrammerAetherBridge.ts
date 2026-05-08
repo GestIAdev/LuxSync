@@ -47,7 +47,8 @@ const FAMILY_LABEL: Record<ProgrammerFamily, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Extrae los canales activos (non-null) de la familia IMPACT */
-function extractImpact(ov: ProgrammerOverrides): Record<string, number> | null {
+function extractImpact(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov) return null
   const ch: Record<string, number> = {}
   if (ov.dimmer  !== null) ch['dimmer']  = ov.dimmer
   if (ov.strobe  !== null) ch['strobe']  = ov.strobe
@@ -56,7 +57,8 @@ function extractImpact(ov: ProgrammerOverrides): Record<string, number> | null {
 }
 
 /** Extrae los canales activos de la familia COLOR */
-function extractColor(ov: ProgrammerOverrides): Record<string, number> | null {
+function extractColor(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov) return null
   const ch: Record<string, number> = {}
   if (ov.red   !== null) {
     ch['red'] = ov.red
@@ -76,7 +78,8 @@ function extractColor(ov: ProgrammerOverrides): Record<string, number> | null {
 }
 
 /** Extrae los canales activos de la familia KINETIC */
-function extractKinetic(ov: ProgrammerOverrides): Record<string, number> | null {
+function extractKinetic(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov) return null
   const ch: Record<string, number> = {}
   const hasSpatialTarget = ov.targetX !== null && ov.targetY !== null && ov.targetZ !== null
   if (hasSpatialTarget) {
@@ -92,7 +95,8 @@ function extractKinetic(ov: ProgrammerOverrides): Record<string, number> | null 
 }
 
 /** Extrae los canales activos de la familia BEAM */
-function extractBeam(ov: ProgrammerOverrides): Record<string, number> | null {
+function extractBeam(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov) return null
   const ch: Record<string, number> = {}
   if (ov.gobo  !== null) ch['gobo']  = ov.gobo
   if (ov.prism !== null) ch['prism'] = ov.prism
@@ -103,8 +107,8 @@ function extractBeam(ov: ProgrammerOverrides): Record<string, number> | null {
 }
 
 /** Extrae los canales activos de la familia EXTRAS (phantom channels) */
-function extractExtras(ov: ProgrammerOverrides): Record<string, number> | null {
-  if (ov.extras.size === 0) return null
+function extractExtras(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov || ov.extras.size === 0) return null
   const ch: Record<string, number> = {}
   ov.extras.forEach((value, key) => { ch[key] = value })
   return ch
@@ -112,7 +116,7 @@ function extractExtras(ov: ProgrammerOverrides): Record<string, number> | null {
 
 const FAMILY_EXTRACTOR: Record<
   ProgrammerFamily,
-  (ov: ProgrammerOverrides) => Record<string, number> | null
+  (ov: ProgrammerOverrides | undefined) => Record<string, number> | null
 > = {
   IMPACT:  extractImpact,
   COLOR:   extractColor,

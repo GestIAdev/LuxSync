@@ -224,6 +224,13 @@ export interface IIntentBus {
    */
   getAll(): readonly INodeIntent[]
 
+  /**
+   * WAVE 4663 — Accede a un intent por índice sin allocar.
+   * Para usar en hot-path en lugar de getAll().
+   * Solo válido para índices 0 <= i < count.
+   */
+  getAt(index: number): INodeIntent
+
   /** Número de intents escritos en el frame actual */
   readonly count: number
 

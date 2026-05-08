@@ -51,6 +51,10 @@ const MOVER_SHIELD_BLOCKED_CHANNELS = new Set<string>([
 ])
 const PHOTON_TRACER_EVERY_FRAMES = 20
 
+function isFiniteChannelValue(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value)
+}
+
 /**
  * NodeArbiter — Implementación zero-alloc del árbitro multicapa.
  */
@@ -264,7 +268,7 @@ export class NodeArbiter implements INodeArbiter {
       }
 
       const manualDimmer = channels['dimmer']
-      if (Number.isFinite(manualDimmer)) {
+      if (isFiniteChannelValue(manualDimmer)) {
         const clamped = manualDimmer < 0 ? 0 : manualDimmer > 1 ? 1 : manualDimmer
         this._manualDimmerLocks.set(nodeId, clamped)
       }
@@ -276,16 +280,21 @@ export class NodeArbiter implements INodeArbiter {
       //   resultado = clamp01(base + (L0 - 0.5))
       //   → el patrón gira siempre alrededor del punto exacto del radar.
       for (const key in channels) {
+        const incoming = channels[key]
+        if (!isFiniteChannelValue(incoming)) {
+          continue
+        }
+
         if (key === 'pan_base') {
-          const l0 = record['pan'] !== undefined ? record['pan'] : 0.5
-          const v  = channels[key] + (l0 - 0.5)
+          const l0 = isFiniteChannelValue(record['pan']) ? record['pan'] : 0.5
+          const v  = incoming + (l0 - 0.5)
           record['pan'] = v < 0 ? 0 : v > 1 ? 1 : v
         } else if (key === 'tilt_base') {
-          const l0 = record['tilt'] !== undefined ? record['tilt'] : 0.5
-          const v  = channels[key] + (l0 - 0.5)
+          const l0 = isFiniteChannelValue(record['tilt']) ? record['tilt'] : 0.5
+          const v  = incoming + (l0 - 0.5)
           record['tilt'] = v < 0 ? 0 : v > 1 ? 1 : v
         } else {
-          record[key] = channels[key]
+          record[key] = incoming
         }
       }
     }
@@ -361,6 +370,9 @@ export class NodeArbiter implements INodeArbiter {
       }
 
       const incoming = values[channel]
+      if (!isFiniteChannelValue(incoming)) {
+        continue
+      }
 
       if (HTP_CHANNELS.has(channel)) {
         // HTP: el valor más alto gana independientemente de la capa

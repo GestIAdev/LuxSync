@@ -250,6 +250,26 @@ const FAMILY_PRIORITY: Readonly<Record<NodeFamily, number>> = Object.freeze({
  */
 export class NodeExtractionPipeline {
 
+  /**
+   * Convierte zonas mono front/back a sub-zonas estéreo cuando hay posición X.
+   * Esto evita colapsar intensidades L/R en adapters que promedian zonas compuestas.
+   */
+  private _resolveStereoAwareZone(zoneRaw: string, position?: Position3D): ZoneId {
+    const normalized = normalizeZoneId(zoneRaw)
+    const x = position?.x
+
+    if ((normalized === 'front' || normalized === 'back') && typeof x === 'number' && !Number.isNaN(x)) {
+      if (x < -0.1) {
+        return (normalized === 'front' ? 'front-left' : 'back-left') as ZoneId
+      }
+      if (x > 0.1) {
+        return (normalized === 'front' ? 'front-right' : 'back-right') as ZoneId
+      }
+    }
+
+    return normalized as ZoneId
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // PUBLIC API
   // ─────────────────────────────────────────────────────────────────────────
@@ -316,7 +336,7 @@ export class NodeExtractionPipeline {
       }
       resolvedAddress  = fv2.address
       resolvedUniverse = fv2.universe
-      resolvedZone     = normalizeZoneId(fv2.zone) as ZoneId
+      resolvedZone     = this._resolveStereoAwareZone(fv2.zone, fv2.position)
       resolvedDeviceId = (fv2.id as DeviceId)
       resolvedPosition = fv2.position
       v2CalibOverride  = fv2.calibration

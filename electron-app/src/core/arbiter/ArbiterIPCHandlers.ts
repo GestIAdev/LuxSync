@@ -950,11 +950,12 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // WAVE 380 FIX: ALSO update TitanOrchestrator (for the render loop)
     // Without this, the orchestrator loop runs with 0 fixtures!
     const orchestrator = getTitanOrchestrator()
-    orchestrator.setFixtures(fixtures, stageBounds)
+    const liquidLayout = orchestrator.setFixtures(fixtures, stageBounds)
     
     return { 
       success: true, 
       fixtureCount: fixtures.length,
+      liquidLayout,
       message: `Arbiter + Orchestrator synced with ${fixtures.length} fixtures`
     }
   })

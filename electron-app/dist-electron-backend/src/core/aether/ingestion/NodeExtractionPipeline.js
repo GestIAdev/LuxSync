@@ -37,6 +37,7 @@
  * @version WAVE 3517.1
  */
 import { NodeFamily } from '../types';
+import { normalizeZoneId } from '../adapters/zoneUtils';
 // ═══════════════════════════════════════════════════════════════════════════
 // CHANNEL CLASSIFICATION SETS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -187,7 +188,7 @@ export class NodeExtractionPipeline {
             const fv2 = dmxAddressOrFixtureV2;
             resolvedAddress = fv2.address;
             resolvedUniverse = fv2.universe;
-            resolvedZone = fv2.zone;
+            resolvedZone = normalizeZoneId(fv2.zone);
             resolvedDeviceId = fv2.id;
             resolvedPosition = fv2.position;
             v2CalibOverride = fv2.calibration;
@@ -200,7 +201,7 @@ export class NodeExtractionPipeline {
             // ── Firma legacy (compatibilidad) ─────────────────────────────────
             resolvedAddress = dmxAddressOrFixtureV2;
             resolvedUniverse = universe;
-            resolvedZone = zoneId;
+            resolvedZone = normalizeZoneId(zoneId);
             resolvedDeviceId = deviceIdOverride ?? fixtureDef.id;
             resolvedPosition = undefined;
             v2CalibOverride = undefined;

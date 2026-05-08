@@ -247,8 +247,7 @@ export class LiquidAetherAdapter {
       this._impactScratch.nodeId   = node.nodeId
 
       if (index === 0 && this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-        const dmx = Math.round(this._impactValues['dimmer'] * 255)
-        console.log(`[TRACER-1 INGEST] Fixture 0 -> Liquid Dimmer: ${dmx}`)
+        // Silencio operacional WAVE 4627: sin telemetría legacy en ingest.
       }
 
       bus.push(this._impactScratch as INodeIntent)

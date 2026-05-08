@@ -1432,28 +1432,6 @@ export class TitanOrchestrator {
                     };
                 })
             };
-            // ⚡ SNIPER-3: Payload del hot-frame justo antes de emitirlo a la UI
-            // WAVE 4614: Reporta fixture [0] (PAR) + primer moving head (KINETIC)
-            if (this.frameCount % 60 === 0) {
-                const _s3f0 = hotFrame.fixtures[0];
-                // Buscar el primer fixture que tenga pan != 0.5019... (i.e. un moving head real)
-                const _s3kinetic = hotFrame.fixtures.find((f) => {
-                    const p = f?.pan;
-                    return p !== undefined && Math.abs(p - 0.5019607843137255) > 0.001;
-                }) ?? hotFrame.fixtures.find((f) => {
-                    // Si todos están en 0.5019, buscar por índice: moving heads son los últimos
-                    return f?.pan !== undefined;
-                });
-                const _s3mh = hotFrame.fixtures.length > 4 ? hotFrame.fixtures[4] : null;
-                console.log(`[SNIPER-3 HOT-FRAME] frame=${hotFrame.frameNumber} fixtures=${hotFrame.fixtures.length} ` +
-                    `[0].id=${_s3f0?.id ?? 'none'} [0].dimmer=${_s3f0?.dimmer ?? 'n/a'} ` +
-                    `[0].r=${_s3f0?.r} [0].g=${_s3f0?.g} [0].b=${_s3f0?.b} ` +
-                    `[0].pan=${_s3f0?.pan} [0].tilt=${_s3f0?.tilt}`);
-                if (_s3mh) {
-                    console.log(`[SNIPER-3B MOVER] frame=${hotFrame.frameNumber} ` +
-                        `[4].id=${_s3mh.id} [4].pan=${_s3mh.pan} [4].tilt=${_s3mh.tilt} [4].dimmer=${_s3mh.dimmer}`);
-                }
-            }
             this.onHotFrame(hotFrame);
         };
         // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ────────────────────────
@@ -1542,14 +1520,6 @@ export class TitanOrchestrator {
                 if (_liqFrame !== null && _liqResult !== null) {
                     liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
                 }
-                // ⚡ SNIPER-1: Estado del bus L0 tras LiquidAetherAdapter
-                if (this.frameCount % 60 === 0) {
-                    const _s1all = this._aetherBus.getAll();
-                    const _s1first = _s1all.length > 0 ? _s1all[0] : null;
-                    console.log(`[SNIPER-1 LIQUID] frame=${this.frameCount} busIntents=${_s1all.length} ` +
-                        `firstNode=${_s1first ? String(_s1first.nodeId) : 'none'} ` +
-                        `firstDimmer=${_s1first?.values?.['dimmer'] ?? 'n/a'}`);
-                }
                 // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
                 const ctx = this._aetherCtx;
                 this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus);
@@ -1588,27 +1558,9 @@ export class TitanOrchestrator {
                 // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 const arbitrated = aetherArbiter.arbitrate();
-                // ⚡ SNIPER-2: Primer nodo del ArbitratedNodeMap tras arbitrate()
-                if (this.frameCount % 60 === 0) {
-                    const _s2first = arbitrated.entries().next();
-                    if (!_s2first.done) {
-                        const [_s2nid, _s2ch] = _s2first.value;
-                        console.log(`[SNIPER-2 ARBITER] frame=${this.frameCount} arbitratedSize=${arbitrated.size} ` +
-                            `node=${_s2nid} dimmer=${_s2ch['dimmer']} channels=${Object.keys(_s2ch).join(',')}`);
-                    }
-                    else {
-                        console.log(`[SNIPER-2 ARBITER] frame=${this.frameCount} mapa VACIO — arbitratedSize=0`);
-                    }
-                }
                 // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
                 this._physicsPostProcessor.process(arbitrated, this._aetherGraph, this._aetherCtx.deltaMs, this._aetherCtx.vibe.name);
-                // 🎭 WAVE 4605: UI must mirror the CURRENT Aether frame, not the previous one.
-                // Project after adapters + arbiter + physics, but still before the output gate,
-                // so Hyperion sees live engine truth even when DMX output is blocked.
-                // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
-                this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated);
-                emitHotFrame();
                 // ═══════════════════════════════════════════════════════════════════════
                 // 🛂 WAVE 4557: AETHER SAFETY MIDDLEWARE — LA ADUANA AETHER
                 //
@@ -1621,29 +1573,7 @@ export class TitanOrchestrator {
                 aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name);
                 aetherSafety.setOutputEnabled(this._outputEnabled);
                 aetherSafety.setManualNodeIds(aetherArbiter.getManualOverrideNodeIds());
-                // ★ TRACER-2.5-A: Estado del mapa ANTES de applyOutputGate
-                if (this.frameCount % 20 === 0) {
-                    const _t25entry = arbitrated.entries().next();
-                    if (!_t25entry.done) {
-                        const [_t25nid, _t25ch] = _t25entry.value;
-                        console.log(`[TRACER-2.5-A PRE-GATE] frame=${this.frameCount} | outputEnabled=${this._outputEnabled} | node=${_t25nid} | dimmer=${_t25ch['dimmer']} | keys=${Object.keys(_t25ch).join(',')}`);
-                    }
-                    else {
-                        console.log(`[TRACER-2.5-A PRE-GATE] frame=${this.frameCount} | arbitrated map VACÍO — nodeCount=${arbitrated.size}`);
-                    }
-                }
                 aetherSafety.applyOutputGate(arbitrated);
-                // ★ TRACER-2.5-B: Estado del mapa DESPUÉS de applyOutputGate
-                if (this.frameCount % 20 === 0) {
-                    const _t25Bentry = arbitrated.entries().next();
-                    if (!_t25Bentry.done) {
-                        const [_t25Bnid, _t25Bch] = _t25Bentry.value;
-                        console.log(`[TRACER-2.5-B POST-GATE] frame=${this.frameCount} | node=${_t25Bnid} | dimmer=${_t25Bch['dimmer']} | keys=${Object.keys(_t25Bch).join(',')}`);
-                    }
-                    else {
-                        console.log(`[TRACER-2.5-B POST-GATE] frame=${this.frameCount} | arbitrated map VACÍO`);
-                    }
-                }
                 // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
                 // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
                 // 🎨 WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
@@ -1666,6 +1596,13 @@ export class TitanOrchestrator {
                 this._forgeAudioBands[5] = _a.air;
                 aetherResolver.setForgeFrameContext(this._forgeFrameCtx);
                 aetherResolver.resolve(arbitrated);
+                // 🎭 WAVE 4617-B M4: UI projection AFTER resolve — zero frame lag.
+                // NodeResolver.resolve() actualiza currentPosition con el IK result
+                // del frame actual. project() + emitHotFrame() ahora leen frame N,
+                // no frame N-1, eliminando el desfase de ~23ms del ordenamiento previo.
+                // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
+                this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated);
+                emitHotFrame();
                 // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
                 for (const universe of aetherResolver.registeredUniverses) {
                     // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
@@ -2381,7 +2318,20 @@ export class TitanOrchestrator {
                     };
                     console.warn(`[TitanOrchestrator] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
                 }
-                const fixtureV2 = this._buildFixtureV2ForAether(fixture, definition);
+                // WAVE 4627: Enderezado forzoso temporal para fixtures en ceiling.
+                // El show puede traer pitch legacy (-45). Para la prueba analítica,
+                // Aether recibe pitch=0 cuando la orientación es de techo.
+                const fixtureOrientation = fixture.orientation ?? fixture.installationType ?? 'ceiling';
+                const fixtureForAether = fixtureOrientation === 'ceiling'
+                    ? {
+                        ...fixture,
+                        rotation: {
+                            ...(fixture.rotation ?? { x: 0, y: 0, z: 0 }),
+                            pitch: 0,
+                        },
+                    }
+                    : fixture;
+                const fixtureV2 = this._buildFixtureV2ForAether(fixtureForAether, definition);
                 const deviceDef = pipeline.extract(definition, fixtureV2);
                 // ⚡ WAVE 4610-B Acción C: pasar forgeGraph si el fixture lo trae
                 // (serializado desde ForgeView o cargado desde show file).
@@ -2393,9 +2343,7 @@ export class TitanOrchestrator {
                 console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err);
             }
         }
-        if (registered > 0) {
-            console.log(`[TitanOrchestrator] ⚡ WAVE 4594: Aether NodeGraph synced — ${registered}/${fixtures.length} fixtures registered`);
-        }
+        void registered;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _resolveFixtureDefinitionForAether(fixture) {
@@ -2473,7 +2421,11 @@ export class TitanOrchestrator {
             position: fixture.position ?? { x: 0, y: 0, z: 0 },
             rotation: fixture.rotation ?? { x: 0, y: 0, z: 0 },
             orientation: fixture.orientation ?? fixture.installationType ?? 'ceiling',
-            isPlaced: fixture.isPlaced,
+            // WAVE 4626: usar ?? en lugar de || para que isPlaced=true no sea anulado.
+            // || evalua false como falsy — fixture.isPlaced=true seguiría correcto,
+            // pero si llega undefined (campo ausente), ?? cae a false correctamente
+            // y si llega false (guerrilla mode) también preserva false. Sin regressions.
+            isPlaced: fixture.isPlaced ?? false,
             physics: fixture.physics ?? {
                 motorType: 'stepper',
                 maxAcceleration: 0,
@@ -2610,6 +2562,9 @@ export class TitanOrchestrator {
     }
     _updateAetherStageBounds(stageBounds) {
         const bounds = this._aetherStageBounds;
+        // WAVE 4622-A Mission 2: STAGE BOUNDS AUDIT — verify propagation to PhysicsPostProcessor
+        console.log(`[STAGE-BOUNDS] input=(${stageBounds?.width?.toFixed(2) ?? 'N/A'},${stageBounds?.height?.toFixed(2) ?? 'N/A'},${stageBounds?.depth?.toFixed(2) ?? 'N/A'}) ` +
+            `current=(${bounds.width.toFixed(2)},${bounds.height.toFixed(2)},${bounds.depth.toFixed(2)})`);
         if (stageBounds) {
             if (Number.isFinite(stageBounds.width) && stageBounds.width > 0) {
                 bounds.width = stageBounds.width;
@@ -2632,17 +2587,16 @@ export class TitanOrchestrator {
         }
         const avgY = count > 0 ? (sumY / count) : bounds.height * 0.5;
         bounds.centerY = Math.max(0, Math.min(bounds.height, avgY));
+        // WAVE 4617-B M3: Propagar dimensiones al PhysicsPostProcessor para que
+        // la inercia espacial escale proporcionalmente al escenario real.
+        this._physicsPostProcessor.setStageBounds(bounds.width, bounds.height, bounds.depth);
     }
     /**
      * WAVE 4590: Output gate canonical state for Aether pipeline.
      */
     setOutputEnabled(enabled) {
         const nextEnabled = !!enabled;
-        const changed = this._outputEnabled !== nextEnabled;
         this._outputEnabled = nextEnabled;
-        if (changed) {
-            console.log(`[TRACER-GATE ORCH] frame=${this.frameCount} | outputEnabled=${this._outputEnabled}`);
-        }
     }
     /**
      * WAVE 4590: Read current output gate state consumed by AetherSafety.

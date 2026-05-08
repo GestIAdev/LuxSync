@@ -80,16 +80,25 @@ const SAFETY_MAX_ACCELERATION_NORM = 900 / 255 / 540  // ≈ 0.00654 norm/s²
  */
 const SAFETY_MAX_VELOCITY_NORM = 400 / 255 / 540  // ≈ 0.00291 norm/s
 
-// ── WAVE 4523.5: Constantes para inercia espacial 3D ──────────────────
+// ── WAVE 4617-B M3: Inercia espacial 3D parametrizada por escenario ─────
 /**
- * Conversión deg/s → m/s para el espacio 3D del escenario.
- * Calibrado para un escenario de 8m: a 270 deg/s → ~4 m/s de barrido lateral.
+ * Factor de conversión: grados → radianes.
+ * Usado para derivar la velocidad lineal máxima a partir de la velocidad
+ * angular del motor y la escala del escenario.
+ *
+ * maxVelLinear = motorSpeed(deg/s) * DEG_TO_RAD * stageHalf(m)
+ *
+ * Esto escala correctamente: un escenario de 16m produce el doble de
+ * velocidad lineal que uno de 8m para el mismo motor, reflejando que
+ * el motor necesita barrer más metros por segundo en un espacio grande.
  */
-const DEG_PER_SEC_TO_METERS_PER_SEC = 4.0 / 270
-/** Velocidad máxima de seguridad en espacio métrico [m/s] */
-const SAFETY_MAX_3D_VEL_MS  = 5.0
-/** Aceleración máxima de seguridad en espacio métrico [m/s²] */
-const SAFETY_MAX_3D_ACC_MS2 = 20.0
+const DEG_TO_RAD = Math.PI / 180
+/** Velocidad máxima de seguridad base en espacio métrico [m/s] */
+const SAFETY_MAX_3D_VEL_BASE_MS = 5.0
+/** Aceleración máxima de seguridad base en espacio métrico [m/s²] */
+const SAFETY_MAX_3D_ACC_BASE_MS2 = 20.0
+/** Escala de referencia del escenario (diagonal del default 8×4m) */
+const REF_STAGE_DIAG = Math.sqrt(8 * 8 + 4 * 4)  // ≈ 8.94m
 /** Posición 3D inicial X por defecto — centro del escenario [m] */
 const DEFAULT_3D_X = 0.0
 /** Posición 3D inicial Y por defecto — altura de trabajo [m] */
@@ -163,6 +172,12 @@ export interface IPhysicsPostProcessor {
    * CLASSIC: rampa suave con física de aceleración/frenado.
    */
   setPhysicsMode(mode: PhysicsMode, snapFactor?: number): void
+
+  /**
+   * WAVE 4617-B M3: Actualiza las dimensiones del escenario para escalar
+   * la inercia espacial proporcionalmente al espacio real.
+   */
+  setStageBounds(width: number, height: number, depth: number): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -240,13 +255,20 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
   private _maxVelNorm  = 0  // velocidad máxima normalizada para este nodo
   private _maxAccNorm  = 0  // aceleración máxima normalizada para este nodo
   private _brakeDist   = 0  // distancia de frenado actual
+  private _telemetryFrame = 0  // WAVE 4621-A: throttle para sondas
 
-  // ── WAVE 4523.5: Temporales para inercia espacial 3D (zero-alloc) ───
+  // ── WAVE 4617-B M3: Stage bounds + temporales 3D (zero-alloc) ────────
+  private _stageHalfW  = 4.0   // half width  (meters)
+  private _stageHalfH  = 2.0   // half height (meters)
+  private _stageHalfD  = 1.0   // half depth  (meters)
+  private _stageDiag   = REF_STAGE_DIAG
   private _x3dTarget   = 0
   private _y3dTarget   = 0
   private _z3dTarget   = 0
-  private _maxVel3dMs  = 0
-  private _maxAcc3dMs2 = 0
+  private _maxVelX3d   = 0
+  private _maxVelY3d   = 0
+  private _maxVelZ3d   = 0
+  private _maxAcc3d    = 0
 
   // ═════════════════════════════════════════════════════════════════════════
   // PUBLIC API
@@ -289,8 +311,15 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
       const state = this._states.get(node.nodeId)
       if (state === undefined) return  // nodo no registrado → skip (no debería ocurrir)
 
-      // ── WAVE 4523.5: Inercia espacial 3D (canales targetX/Y/Z en metros) ──
-      if (entry['targetX'] !== undefined) {
+      // ── WAVE 4617-B M1+M3: Inercia espacial 3D parametrizada por escenario ──
+      // La decisión de procesar en modo 3D depende de:
+      //   1. El device está posicionado (isPlaced === true)
+      //   2. Existen canales espaciales targetX en el ArbitratedNodeMap
+      // Esto es consistente con el Gatekeeper de Hierro del NodeResolver.
+      const device3d = entry['targetX'] !== undefined
+        ? nodeGraph.getDevice(node.deviceId)
+        : undefined
+      if (device3d?.isPlaced === true && entry['targetX'] !== undefined) {
         const xT = entry['targetX']
         const yT = entry['targetY']
         const zT = entry['targetZ']
@@ -298,24 +327,56 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
         this._y3dTarget = isFinite(yT ?? NaN) ? (yT ?? DEFAULT_3D_Y) : state[SLOT_Y3D_POS]
         this._z3dTarget = isFinite(zT ?? NaN) ? (zT ?? DEFAULT_3D_Z) : state[SLOT_Z3D_POS]
 
-        this._maxVel3dMs  = Math.min(node.maxPanSpeed * DEG_PER_SEC_TO_METERS_PER_SEC, SAFETY_MAX_3D_VEL_MS)
-        this._maxAcc3dMs2 = Math.min(this._maxVel3dMs * 4, SAFETY_MAX_3D_ACC_MS2)
+        // WAVE 4617-B M3: Derivar límites de velocidad por eje a partir de
+        // la velocidad angular del motor y la escala real del escenario.
+        //
+        //   maxVelLinear = motorAngularSpeed * DEG_TO_RAD * stageHalfDimension
+        //
+        // Esto reemplaza el factor fijo 4.0/270 que asumía un escenario de 8m.
+        // Un escenario grande produce límites lineales más altos (correcto:
+        // el motor barre más metros por segundo en un espacio grande).
+        //
+        // El safety cap escala con la diagonal del escenario vs la referencia
+        // (8×4m) para no estrangular escenarios grandes.
+        const stageScale = this._stageDiag / REF_STAGE_DIAG
+        const safetyMaxVel = SAFETY_MAX_3D_VEL_BASE_MS * Math.max(1.0, stageScale)
+        const safetyMaxAcc = SAFETY_MAX_3D_ACC_BASE_MS2 * Math.max(1.0, stageScale)
+
+        this._maxVelX3d = Math.min(node.maxPanSpeed  * DEG_TO_RAD * this._stageHalfW, safetyMaxVel)
+        this._maxVelY3d = Math.min(node.maxTiltSpeed * DEG_TO_RAD * this._stageHalfH, safetyMaxVel)
+        this._maxVelZ3d = Math.min(node.maxPanSpeed  * DEG_TO_RAD * this._stageHalfD, safetyMaxVel)
+        this._maxAcc3d  = Math.min(Math.max(this._maxVelX3d, this._maxVelY3d) * 4, safetyMaxAcc)
+
+        // WAVE 4621-A: TELEMETRY — Spatial 3D physics limits (cada 60 frames)
+        if ((++this._telemetryFrame % 60) === 0) {
+          console.log(
+            `[PHYSICS-3D] node=${String(node.nodeId)} mode=${this._mode} ` +
+            `stageHalf=(${this._stageHalfW.toFixed(2)},${this._stageHalfH.toFixed(2)},${this._stageHalfD.toFixed(2)}) ` +
+            `diag=${this._stageDiag.toFixed(2)} stageScale=${stageScale.toFixed(2)} ` +
+            `motorSpeeds=(pan=${node.maxPanSpeed},tilt=${node.maxTiltSpeed}) ` +
+            `maxVel3D=(${this._maxVelX3d.toFixed(4)},${this._maxVelY3d.toFixed(4)},${this._maxVelZ3d.toFixed(4)}) ` +
+            `maxAcc3D=${this._maxAcc3d.toFixed(4)} dt=${this._dt.toFixed(4)} ` +
+            `target=(${this._x3dTarget.toFixed(2)},${this._y3dTarget.toFixed(2)},${this._z3dTarget.toFixed(2)})`,
+          )
+        }
 
         if (this._mode === 'snap') {
-          const maxMove = this._maxVel3dMs * this._dt
           const dxSnap  = this._snapFactor * (this._x3dTarget - state[SLOT_X3D_POS])
           const dySnap  = this._snapFactor * (this._y3dTarget - state[SLOT_Y3D_POS])
           const dzSnap  = this._snapFactor * (this._z3dTarget - state[SLOT_Z3D_POS])
-          state[SLOT_X3D_POS] += clampAbs(Math.abs(dxSnap) < JITTER_THRESHOLD ? 0 : dxSnap, maxMove)
-          state[SLOT_Y3D_POS] += clampAbs(Math.abs(dySnap) < JITTER_THRESHOLD ? 0 : dySnap, maxMove)
-          state[SLOT_Z3D_POS] += clampAbs(Math.abs(dzSnap) < JITTER_THRESHOLD ? 0 : dzSnap, maxMove)
+          const maxMoveX = this._maxVelX3d * this._dt
+          const maxMoveY = this._maxVelY3d * this._dt
+          const maxMoveZ = this._maxVelZ3d * this._dt
+          state[SLOT_X3D_POS] += clampAbs(Math.abs(dxSnap) < JITTER_THRESHOLD ? 0 : dxSnap, maxMoveX)
+          state[SLOT_Y3D_POS] += clampAbs(Math.abs(dySnap) < JITTER_THRESHOLD ? 0 : dySnap, maxMoveY)
+          state[SLOT_Z3D_POS] += clampAbs(Math.abs(dzSnap) < JITTER_THRESHOLD ? 0 : dzSnap, maxMoveZ)
           state[SLOT_X3D_VEL] = 0
           state[SLOT_Y3D_VEL] = 0
           state[SLOT_Z3D_VEL] = 0
         } else {
-          this._applyClassicAxis(state, SLOT_X3D_POS, SLOT_X3D_VEL, this._x3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
-          this._applyClassicAxis(state, SLOT_Y3D_POS, SLOT_Y3D_VEL, this._y3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
-          this._applyClassicAxis(state, SLOT_Z3D_POS, SLOT_Z3D_VEL, this._z3dTarget, this._maxVel3dMs, this._maxAcc3dMs2)
+          this._applyClassicAxis(state, SLOT_X3D_POS, SLOT_X3D_VEL, this._x3dTarget, this._maxVelX3d, this._maxAcc3d)
+          this._applyClassicAxis(state, SLOT_Y3D_POS, SLOT_Y3D_VEL, this._y3dTarget, this._maxVelY3d, this._maxAcc3d)
+          this._applyClassicAxis(state, SLOT_Z3D_POS, SLOT_Z3D_VEL, this._z3dTarget, this._maxVelZ3d, this._maxAcc3d)
         }
 
         entry['targetX'] = state[SLOT_X3D_POS]
@@ -351,6 +412,16 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
         node.maxPanSpeed * DEG_PER_SEC_TO_NORM_PER_SEC * 4,
         SAFETY_MAX_ACCELERATION_NORM,
       )
+
+      // WAVE 4621-A: TELEMETRY — Legacy pan/tilt physics limits (cada 60 frames)
+      if ((++this._telemetryFrame % 60) === 0) {
+        console.log(
+          `[PHYSICS-LEGACY] node=${String(node.nodeId)} mode=${this._mode} ` +
+          `panTarget=${this._panTarget.toFixed(4)} tiltTarget=${this._tiltTarget.toFixed(4)} ` +
+          `maxVelNorm=${this._maxVelNorm.toFixed(6)} maxAccNorm=${this._maxAccNorm.toFixed(6)} ` +
+          `dt=${this._dt.toFixed(4)} panPos=${state[SLOT_PAN_POS].toFixed(4)} tiltPos=${state[SLOT_TILT_POS].toFixed(4)}`,
+        )
+      }
 
       if (this._mode === 'snap') {
         this._applySnap(state)
@@ -401,6 +472,18 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
       state[SLOT_Y3D_VEL]  = 0
       state[SLOT_Z3D_VEL]  = 0
     }
+  }
+
+  /**
+   * WAVE 4617-B M3: Actualiza las dimensiones del escenario para escalar
+   * la inercia espacial proporcionalmente.
+   * Llamar cuando cambie el stageConfig (setFixtures, stage resize).
+   */
+  setStageBounds(width: number, height: number, depth: number): void {
+    this._stageHalfW = width  > 0 ? width  * 0.5 : 4.0
+    this._stageHalfH = height > 0 ? height * 0.5 : 2.0
+    this._stageHalfD = depth  > 0 ? depth  * 0.5 : 1.0
+    this._stageDiag  = Math.sqrt(width * width + height * height) || REF_STAGE_DIAG
   }
 
   setPhysicsMode(mode: PhysicsMode, snapFactor = 0.5): void {
@@ -550,7 +633,11 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
       const state = this._states.get(node.nodeId)
       if (state === undefined) return
 
-      if (entry['targetX'] !== undefined) {
+      // WAVE 4617-B M1: Consistent isPlaced guard in teleport path
+      const teleportDevice = entry['targetX'] !== undefined
+        ? nodeGraph.getDevice(node.deviceId)
+        : undefined
+      if (teleportDevice?.isPlaced === true && entry['targetX'] !== undefined) {
         const xT = isFinite(entry['targetX'])        ? entry['targetX']          : state[SLOT_X3D_POS]
         const yT = isFinite(entry['targetY'] ?? NaN) ? (entry['targetY'] ?? DEFAULT_3D_Y) : state[SLOT_Y3D_POS]
         const zT = isFinite(entry['targetZ'] ?? NaN) ? (entry['targetZ'] ?? DEFAULT_3D_Z) : state[SLOT_Z3D_POS]

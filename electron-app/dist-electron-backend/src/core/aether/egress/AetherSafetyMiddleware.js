@@ -34,10 +34,6 @@ const VIBE_REV_LIMITS = {
 // ── Kinetic state Float32Array slots ─────────────────────────────────────
 const KS_LAST_PAN = 0, KS_LAST_TILT = 1, KS_LAST_TIME = 2, KS_INIT = 3;
 const KS_SLOTS = 4;
-// ── Output gate: channels that center instead of zero ────────────────────
-const SAFE_CENTER_CHANNELS = new Set([
-    'pan', 'tilt', 'pan_fine', 'tilt_fine', 'targetX', 'targetY', 'targetZ',
-]);
 // ── Throttle defaults ────────────────────────────────────────────────────
 const THROTTLE_OPEN_DMX_MS = 33; // ~30Hz
 // ═══════════════════════════════════════════════════════════════════════════
@@ -123,20 +119,14 @@ export class AetherSafetyMiddleware {
     applyOutputGate(arbitrated) {
         if (this._outputEnabled)
             return;
-        for (const [nodeId, channels] of arbitrated) {
+        // WAVE 4616: PRE-VIS RESCUE
+        // No mutar canales pre-resolve. El cálculo (IK/currentPosition) debe permanecer
+        // íntegro para UI aunque output esté desarmado. El bloqueo real de salida
+        // se aplica en el write final al buffer DMX dentro del resolver.
+        for (const [nodeId] of arbitrated) {
             if (this._manualNodeIds.has(nodeId))
                 continue;
             this._aduanaBlocks++;
-            const keys = Object.keys(channels);
-            for (let i = 0; i < keys.length; i++) {
-                const k = keys[i];
-                if (SAFE_CENTER_CHANNELS.has(k)) {
-                    channels[k] = k === 'targetX' ? 0 : k === 'targetY' ? 1.5 : k === 'targetZ' ? 2.0 : 0.5;
-                }
-                else {
-                    channels[k] = 0;
-                }
-            }
         }
     }
     // ═════════════════════════════════════════════════════════════════════════

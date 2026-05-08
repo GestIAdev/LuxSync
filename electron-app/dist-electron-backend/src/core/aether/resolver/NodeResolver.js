@@ -75,6 +75,14 @@ const CH_TARGET_Z = 'targetZ';
 const SHUTTER_CHANNEL = 'shutter';
 const STROBE_CHANNEL = 'strobe';
 const IK_WARN_INTERVAL_FRAMES = 44;
+const MATH_TELEMETRY_EVERY_FRAMES = 30;
+// ── WAVE 4619 M2: FK Bridge constants ────────────────────────────────────
+// Used by _forwardKinematicsBridge to convert normalized pan/tilt → spatial target.
+const FK_DEG_TO_RAD = Math.PI / 180;
+const FK_DEFAULT_PAN_RANGE_DEG = 540;
+const FK_DEFAULT_TILT_RANGE_DEG = 270;
+/** Maximum raycast distance (meters) — clamps distant/parallel beams */
+const FK_MAX_RAY_DISTANCE = 30;
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set([CH_R, CH_G, CH_B]);
@@ -140,11 +148,6 @@ export class NodeResolver {
         this._forgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT;
         // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
         this._safetyMiddleware = null;
-        // WAVE 4614: Caché de últimos targets IK reales (pre-gate) por nodo KINETIC.
-        // El applyOutputGate corrompe targetX→0/targetY→1.5/targetZ→2.0 antes del resolve.
-        // Este caché preserva el target real del VMM para que _writeNodeIK calcule
-        // currentPosition correctamente incluso cuando el output está bloqueado.
-        this._lastKineticTargets = new Map();
         this._graph = graph;
     }
     /**
@@ -253,26 +256,6 @@ export class NodeResolver {
         for (const [, buf] of this._universeBuffers) {
             buf.fill(0);
         }
-        // ★ TRACER-3.0: Diagnóstico del mapa arbitrado vs NodeGraph
-        if (this._resolveFrameIndex % 20 === 0) {
-            let knownCount = 0;
-            let unknownCount = 0;
-            let firstUnknown = '';
-            for (const [nid] of arbitrated) {
-                if (this._graph.getNodeData(nid)) {
-                    knownCount++;
-                }
-                else {
-                    unknownCount++;
-                    if (!firstUnknown)
-                        firstUnknown = String(nid);
-                }
-            }
-            console.log(`[TRACER-3.0 RESOLVE] resolveFrame=${this._resolveFrameIndex} arbitratedSize=${arbitrated.size} ` +
-                `knownInGraph=${knownCount} unknownInGraph=${unknownCount} ` +
-                `registeredUniverses=${[...this._universeBuffers.keys()].join(',')} ` +
-                `firstUnknown=${firstUnknown || 'none'}`);
-        }
         // 2. Para cada nodo arbitrado, escribir en el buffer del universo
         for (const [nodeId, channelValues] of arbitrated) {
             this._writeNode(nodeId, channelValues);
@@ -296,72 +279,9 @@ export class NodeResolver {
     _traceFirstDeviceDmxBytes() {
         if (this._resolveFrameIndex % PHOTON_TRACER_EVERY_FRAMES !== 0)
             return;
-        let probeNode = this._graph.getView(NodeFamily.IMPACT).count > 0
-            ? this._graph.getView(NodeFamily.IMPACT).get(0)
-            : this._graph.getView(NodeFamily.COLOR).count > 0
-                ? this._graph.getView(NodeFamily.COLOR).get(0)
-                : this._graph.getView(NodeFamily.KINETIC).count > 0
-                    ? this._graph.getView(NodeFamily.KINETIC).get(0)
-                    : this._graph.getView(NodeFamily.BEAM).count > 0
-                        ? this._graph.getView(NodeFamily.BEAM).get(0)
-                        : this._graph.getView(NodeFamily.ATMOSPHERE).count > 0
-                            ? this._graph.getView(NodeFamily.ATMOSPHERE).get(0)
-                            : undefined;
-        if (!probeNode)
-            return;
-        this._traceProbeDeviceLayout(probeNode.deviceId);
-        const device = this._graph.getDevice(probeNode.deviceId);
-        if (!device)
-            return;
-        const buf = this._universeBuffers.get(device.universe);
-        if (!buf)
-            return;
-        const baseAddr = device.dmxAddress - 1;
-        // ★ TRACER-4 META: loguear qué nodo estamos probeando y si entró en _writeNode
-        console.log(`[TRACER-4-META] resolveFrame=${this._resolveFrameIndex} probeNode=${String(probeNode.nodeId)} deviceId=${String(probeNode.deviceId)} ` +
-            `universe=${device.universe} dmxAddr=${device.dmxAddress} baseAddr=${baseAddr} ` +
-            `wasActive=${this._activeUniverses.has(device.universe)} channels=${probeNode.channels.length}`);
-        let dimmerByte = null;
-        let shutterByte = null;
-        for (let ci = 0; ci < probeNode.channels.length; ci++) {
-            const channel = probeNode.channels[ci];
-            const idx = baseAddr + channel.dmxOffset;
-            if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
-                continue;
-            if (channel.type === DIMMER_CHANNEL && dimmerByte === null) {
-                dimmerByte = buf[idx];
-            }
-            if (channel.type === SHUTTER_CHANNEL && shutterByte === null) {
-                shutterByte = buf[idx];
-            }
-        }
-        if (dimmerByte !== null || shutterByte !== null) {
-            console.log(`[TRACER-4 RESOLVER] Fixture 0 -> DMX Dimmer Byte: ${dimmerByte ?? 'n/a'} | Shutter: ${shutterByte ?? 'n/a'}`);
-        }
     }
     _traceProbeDeviceLayout(deviceId) {
-        const families = [
-            NodeFamily.IMPACT,
-            NodeFamily.COLOR,
-            NodeFamily.KINETIC,
-            NodeFamily.BEAM,
-            NodeFamily.ATMOSPHERE,
-        ];
-        const parts = [];
-        for (let fi = 0; fi < families.length; fi++) {
-            const family = families[fi];
-            const view = this._graph.getView(family);
-            for (let ni = 0; ni < view.count; ni++) {
-                const node = view.get(ni);
-                if (node.deviceId !== deviceId)
-                    continue;
-                const channelMap = node.channels
-                    .map(channel => `${channel.type}@${channel.dmxOffset}`)
-                    .join(',');
-                parts.push(`${String(node.nodeId)}[${channelMap}]`);
-            }
-        }
-        console.log(`[TRACER-3.2 LAYOUT] resolveFrame=${this._resolveFrameIndex} deviceId=${String(deviceId)} nodes=${parts.join(' | ') || 'none'}`);
+        void deviceId;
     }
     // ── Internos ──────────────────────────────────────────────────────────
     /**
@@ -384,6 +304,7 @@ export class NodeResolver {
         const buf = this._universeBuffers.get(device.universe);
         if (!buf)
             return; // universe no registrado — ignorar silenciosamente
+        const writeToDmx = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
         const baseAddr = device.dmxAddress - 1; // convertir a 0-indexed
         const _t36probe = this._resolveFrameIndex % 20 === 0
             ? this._graph.getView(NodeFamily.IMPACT).count > 0
@@ -396,6 +317,8 @@ export class NodeResolver {
         // delegar COMPLETAMENTE al ForgeNodeEvaluator.
         const compiled = this._forgeGraphs.get(node.deviceId);
         if (compiled) {
+            if (!writeToDmx)
+                return;
             ForgeNodeEvaluator.evaluate(compiled, channelValues, this._forgeFrameContext, buf, baseAddr);
             // ★ WAVE 4557: Post-Forge Safety Sweep — airbag + velocity clamp
             // The Forge evaluator bypasses ALL safety logic. Apply critical
@@ -416,17 +339,28 @@ export class NodeResolver {
             return; // BYPASS: no ejecutar flujo legacy
         }
         const calibration = device.calibration;
-        this._activeUniverses.add(device.universe);
-        // ── WAVE 4523.5: Flujo IK — canales espaciales (metros) ───────────────
-        // Si el nodo KINETIC contiene targetX, desviar al IKEngine en lugar del
-        // flujo legacy pan/tilt normalizado. El IKEngine aplica toda la calibración
-        // internamente → NO llamar _applyCalibration() (anti-double-calibration).
-        if (channelValues[CH_TARGET_X] !== undefined && node.family === NodeFamily.KINETIC) {
+        if (writeToDmx)
+            this._activeUniverses.add(device.universe);
+        // ── WAVE 4617-B M1: EL GATEKEEPER DE HIERRO ────────────────────────────
+        // La decisión IK vs Classic se basa en el flag estructural isPlaced del
+        // Device, NO en la presencia/ausencia de canales espaciales (targetX).
+        //
+        //   isPlaced === true  + KINETIC + !isContinuous → SIEMPRE ruta IK
+        //   isPlaced !== true  → SIEMPRE ruta clásica (ignora canales espaciales)
+        //
+        // Esto previene colisiones cuando un adapter legacy emite solo pan/tilt
+        // para un fixture que debería ir por IK, o cuando un override manual
+        // inyecta canales espaciales en un fixture guerrilla sin posición real.
+        if (node.family === NodeFamily.KINETIC) {
             const kineticNode = node;
-            if (!kineticNode.isContinuous) {
-                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration);
+            if (!kineticNode.isContinuous && device.isPlaced === true) {
+                // Fixture posicionado → ruta IK siempre.
+                // Si targetX no está presente (e.g. override manual con solo pan/tilt),
+                // _writeNodeIK usa defaults seguros (centro del escenario).
+                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx);
+                return;
             }
-            return; // nodo continuo (fan/mirrorball) ignora IK de apuntado
+            // isContinuous (fan/mirrorball) o isPlaced !== true → classic path
         }
         // ── WAVE 4522.4: Traducción cromática ─────────────────────────────
         // Si el nodo es de familia COLOR y tiene valores r/g/b arbitrados,
@@ -444,7 +378,7 @@ export class NodeResolver {
             }
         }
         // ── Fin traducción cromática ───────────────────────────────────────
-        // [TRACER-3.5 WRITE_NODE] — silenciado WAVE 4612
+        // Telemetría legacy removida.
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
             const bufIdx = baseAddr + chDef.dmxOffset;
@@ -455,7 +389,7 @@ export class NodeResolver {
             const rawNormalized = translatedValues[chDef.type] !== undefined
                 ? translatedValues[chDef.type]
                 : this._getDefaultNormalizedValue(node, chDef);
-            // [TRACER-3.5-CH] — silenciado WAVE 4612
+            // Telemetría legacy removida.
             // Aplicar TransferCurve
             let normalized = this._applyTransferCurve(rawNormalized, chDef, node.constraints.transferCurve);
             // Clamp al rango válido del constraint
@@ -482,10 +416,9 @@ export class NodeResolver {
                     dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, false);
                 }
             }
-            // WAVE 4614: Write-back currentPosition for classic pan/tilt path (UIProjector reads it).
-            // Only update when output is live — if gated off, channels[pan/tilt] may be zeroed
-            // by applyOutputGate and would corrupt currentPosition with a false safe-center value.
-            if (node.family === NodeFamily.KINETIC && (!this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled())) {
+            // WAVE 4616: Pre-Vis rescue — currentPosition siempre debe actualizarse
+            // con la matemática real aunque output esté desarmado.
+            if (node.family === NodeFamily.KINETIC) {
                 const kn = node;
                 if (chDef.type === PAN_COARSE) {
                     kn.currentPosition.pan = dmxValue / 255;
@@ -499,10 +432,10 @@ export class NodeResolver {
                 dmxValue = 0;
             if (dmxValue > 255)
                 dmxValue = 255;
-            const prevValue = buf[bufIdx];
+            if (!writeToDmx)
+                continue;
             buf[bufIdx] = dmxValue;
-            // [TRACER-3.6 SLOT-WRITE] — silenciado WAVE 4612
-            // [TRACER-3.5-WRITE] — silenciado WAVE 4612
+            // Telemetría legacy removida.
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {
                 const fineIdx = bufIdx + 1;
@@ -525,54 +458,42 @@ export class NodeResolver {
      * _applyCalibration() — el IKEngine integra calibración en grados
      * internamente (anti-double-calibration).
      */
-    _writeNodeIK(node, channelValues, baseAddr, buf, calibration) {
-        const outputEnabled = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
-        // WAVE 4614: Desacoplar el target real del target gateado.
-        // applyOutputGate pone targetX=0/targetY=1.5/targetZ=2.0 cuando output=false.
-        // Usamos el último target real cacheado para calcular currentPosition correctamente.
-        // El write a DMX usa el channelValues recibido (ya gateado) — safe por diseño.
-        const rawTx = channelValues[CH_TARGET_X];
-        const rawTy = channelValues[CH_TARGET_Y] ?? 1.5;
-        const rawTz = channelValues[CH_TARGET_Z] ?? 2.0;
+    _writeNodeIK(node, channelValues, baseAddr, buf, calibration, writeToDmx) {
+        const hasTargetX = channelValues[CH_TARGET_X] !== undefined;
+        // WAVE 4619 M2: FK BRIDGE — Si targetX no está presente pero pan/tilt sí,
+        // usar Forward Kinematics para derivar un target espacial sintético.
         let tx;
         let ty;
         let tz;
-        if (outputEnabled) {
-            // Output activo: el target es real — actualizar caché
-            this._lastKineticTargets.set(node.nodeId, [rawTx, rawTy, rawTz]);
-            tx = rawTx;
-            ty = rawTy;
-            tz = rawTz;
+        const panNormForTelemetry = channelValues['pan'] ?? node.currentPosition.pan;
+        const tiltNormForTelemetry = channelValues['tilt'] ?? node.currentPosition.tilt;
+        const panRangeDegForTelemetry = node.ikLimits?.panRangeDeg ?? FK_DEFAULT_PAN_RANGE_DEG;
+        const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG;
+        const vmmPanDeg = (panNormForTelemetry - 0.5) * panRangeDegForTelemetry;
+        const vmmTiltDeg = (tiltNormForTelemetry - 0.5) * tiltRangeDegForTelemetry;
+        if (channelValues[CH_TARGET_X] !== undefined) {
+            // Flujo normal: canales espaciales presentes (KineticAdapter / override manual)
+            tx = channelValues[CH_TARGET_X];
+            ty = channelValues[CH_TARGET_Y] ?? 1.5;
+            tz = channelValues[CH_TARGET_Z] ?? 2.0;
         }
         else {
-            // Output bloqueado: applyOutputGate aplastó los canales con safe-center.
-            // Usar el último target real para que currentPosition refleje la posición
-            // real del VMM (el UI projector la leerá en el siguiente frame).
-            const cached = this._lastKineticTargets.get(node.nodeId);
-            if (cached !== undefined) {
-                ;
-                [tx, ty, tz] = cached;
-            }
-            else {
-                // Sin caché aún: usar el raw (safe-center) como fallback inicial
-                tx = rawTx;
-                ty = rawTy;
-                tz = rawTz;
-            }
+            // FK Bridge: convertir pan/tilt normalizados → target 3D
+            const panNorm = panNormForTelemetry;
+            const tiltNorm = tiltNormForTelemetry;
+            const fkTarget = this._forwardKinematicsBridge(node, panNorm, tiltNorm);
+            tx = fkTarget.x;
+            ty = fkTarget.y;
+            tz = fkTarget.z;
+        }
+        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+            console.log(`[MATH-INPUT] id: ${String(node.deviceId)} | VMM-Grados: ${vmmPanDeg.toFixed(2)}/${vmmTiltDeg.toFixed(2)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`);
         }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
         const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX);
         const reachable = ikResult.reachable !== false;
         this._ikReachability.set(node.nodeId, reachable);
-        // ⚡ SNIPER-IK (WAVE 4614): Trazar entrada + salida del IK engine
-        if (this._resolveFrameIndex % 60 === 0) {
-            console.log(`[SNIPER-IK] node=${String(node.nodeId)} ` +
-                `raw=(${rawTx.toFixed(2)},${rawTy.toFixed(2)},${rawTz.toFixed(2)}) ` +
-                `tgt=(${tx.toFixed(2)},${ty.toFixed(2)},${tz.toFixed(2)}) ` +
-                `outputEnabled=${outputEnabled} reachable=${reachable} pan=${ikResult.pan} tilt=${ikResult.tilt} ` +
-                `prevPanDMX=${currentPanDMX.toFixed(1)}`);
-        }
         if (!reachable) {
             const lastWarnFrame = this._ikLastWarnFrame.get(node.nodeId) ?? -IK_WARN_INTERVAL_FRAMES;
             if ((this._resolveFrameIndex - lastWarnFrame) >= IK_WARN_INTERVAL_FRAMES) {
@@ -589,17 +510,15 @@ export class NodeResolver {
             safePan = sm.applyAirbag(clamped.pan, true);
             safeTilt = sm.applyAirbag(clamped.tilt, false);
         }
-        // WAVE 4613 + 4614: Actualizar currentPosition con el resultado IK.
-        // El target usado para el cálculo ya es el real (pre-gate del caché),
-        // por lo que el write-back es correcto incluso con output=false.
-        // El UIProjector lo leerá en el siguiente frame.
+        // WAVE 4616: Pre-Vis rescue — siempre actualizar currentPosition con el
+        // resultado matemático real, aunque la salida física esté desarmada.
         node.currentPosition.pan = safePan / 255;
         node.currentPosition.tilt = safeTilt / 255;
-        // WAVE 4614: Cuando output=false, NO escribir a buf DMX.
-        // El applyOutputGate ya bloqueó la transmisión al hardware (shouldSendUniverse
-        // sigue enviando pero applyOutputGate aplastó el mapa; no obstante, para
-        // garantizar cero-movimiento-hardware, no escribimos en el buf si está gateado).
-        if (!outputEnabled)
+        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+            console.log(`[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`);
+        }
+        // WAVE 4616: Gate final absoluto en el write DMX.
+        if (!writeToDmx)
             return;
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
@@ -619,6 +538,142 @@ export class NodeResolver {
                 }
             }
         }
+    }
+    /**
+     * WAVE 4619 M2: FORWARD KINEMATICS BRIDGE
+     *
+     * Converts normalized pan/tilt (0-1) into a world-space Target3D by:
+     *   1. Mapping normalized values to angular degrees from mechanical center
+     *   2. Building a local-frame direction vector from those angles
+     *   3. Rotating the direction vector into world-space using mount orientation
+     *   4. Raycasting from the fixture position along that direction
+     *   5. Intersecting with the stage floor (Y = 0)
+     *
+     * If the beam is parallel to or pointing away from the floor, the result is
+     * clamped to FK_MAX_RAY_DISTANCE along the ray direction.
+     *
+     * ZERO-ALLOC: all calculations use local variables on the stack.
+     */
+    _forwardKinematicsBridge(node, panNorm, tiltNorm) {
+        // ── 1. Normalized (0-1) → degrees from mechanical center ──────────────
+        // Pan: 0.5 = center (0°), 0 = -panRange/2, 1 = +panRange/2
+        // Tilt: 0.5 = center (0° = horizontal), 0 = -tiltRange/2, 1 = +tiltRange/2
+        const panRangeDeg = node.ikLimits?.panRangeDeg ?? FK_DEFAULT_PAN_RANGE_DEG;
+        const tiltRangeDeg = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG;
+        const panDeg = (panNorm - 0.5) * panRangeDeg;
+        const tiltDeg = (tiltNorm - 0.5) * tiltRangeDeg;
+        // ── 2. Build local direction vector from pan/tilt angles ──────────────
+        // WAVE 4620-B: Convención del IK engine (InverseKinematicsEngine.ts):
+        //   panDeg  = atan2(local.x, local.z)   → pan gira en el plano XZ
+        //   tiltDeg = atan2(-local.y, horizDist) → tilt es elevación en Y
+        //
+        // El Y local es INDEPENDIENTE del pan (no se modula con cosPan).
+        // La dirección del beam en el frame local del IK es:
+        //   local.x = sin(pan) * cos(tilt)
+        //   local.y = -sin(tilt)            ← independiente del pan
+        //   local.z = cos(pan) * cos(tilt)
+        const panRad = panDeg * FK_DEG_TO_RAD;
+        const tiltRad = tiltDeg * FK_DEG_TO_RAD;
+        const cosPan = Math.cos(panRad);
+        const sinPan = Math.sin(panRad);
+        const cosTilt = Math.cos(tiltRad);
+        const sinTilt = Math.sin(tiltRad);
+        const localDirX = sinPan * cosTilt;
+        const localDirY = -sinTilt; // ← WAVE 4620-B: sin factor cosPan
+        // WAVE 4628 M2: negación de localDirZ para alinear la convención del FK con el IK engine.
+        // El IK engine (InverseKinematicsEngine) define el eje óptico local en -Z (hacia adelante
+        // en el frame local del fixture). Con mounting pitch=-90°, R_X(-90°) rota -Z → +Y global.
+        // Para que el beam apunte al SUELO (worldDirY < 0), necesitamos worldDirZ negativo antes
+        // de la rotación de pitch. Negando localDirZ: tras R_X(-90°),
+        //   worldDirY = -localDirZ * sin(-90°) = +localDirZ_negado * (-1) < 0 ✓
+        // Sin esta negación: tiltNorm=0.5 → localDirZ=+1 → worldDirY=+1 (arriba) → fallback Y≈5.5
+        // Con esta negación: tiltNorm=0.5 → localDirZ=-1 → worldDirY=-1 (abajo) → intersección Y=0
+        const localDirZ = -(cosPan * cosTilt);
+        // ── 3. Rotate from local frame to world frame ─────────────────────────
+        // WAVE 4620-B: La inversa exacta de rotateToLocalFrame (IKEngine).
+        //
+        // rotateToLocalFrame aplica: M = R_Z(-roll) · R_X(-pitch) · R_Y(-yaw)
+        // Su inversa (local→world) es: M⁻¹ = R_Y(yaw) · R_X(pitch) · R_Z(roll)
+        //
+        // Matrices de rotación ACTIVAS (no transpuestas):
+        //   R_Z(θ): x'= x·cosθ - y·sinθ,  y'= x·sinθ + y·cosθ
+        //   R_X(θ): y'= y·cosθ - z·sinθ,  z'= y·sinθ + z·cosθ
+        //   R_Y(θ): x'= x·cosθ + z·sinθ,  z'=-x·sinθ + z·cosθ
+        //
+        // Orden de aplicación: Roll(Z) → Pitch(X) → Yaw(Y)
+        const orient = node.ikOrientation ?? DEFAULT_IK_ORIENTATION;
+        const mountPitchDeg = orient.installation === 'ceiling' ? -90
+            : orient.installation === 'floor' ? 90
+                : orient.installation === 'truss-front' ? -90
+                    : orient.installation === 'truss-back' ? -90
+                        : orient.installation === 'wall-left' ? 0
+                            : orient.installation === 'wall-right' ? 0
+                                : -90;
+        const mountYawDeg = orient.installation === 'truss-back' ? 180
+            : orient.installation === 'wall-left' ? 90
+                : orient.installation === 'wall-right' ? -90
+                    : 0;
+        const totalPitchRad = (mountPitchDeg + orient.rotation.pitch) * FK_DEG_TO_RAD;
+        const totalYawRad = (mountYawDeg + orient.rotation.yaw) * FK_DEG_TO_RAD;
+        const totalRollRad = orient.rotation.roll * FK_DEG_TO_RAD;
+        // Step 1: Roll (Z axis) — R_Z(roll)
+        const cr = Math.cos(totalRollRad);
+        const sr = Math.sin(totalRollRad);
+        const afterRollX = localDirX * cr - localDirY * sr; // WAVE 4620-B: -sr (activa)
+        const afterRollY = localDirX * sr + localDirY * cr; // WAVE 4620-B: +sr (activa)
+        const afterRollZ = localDirZ;
+        // Step 2: Pitch (X axis) — R_X(pitch)
+        const cp = Math.cos(totalPitchRad);
+        const sp = Math.sin(totalPitchRad);
+        const afterPitchX = afterRollX;
+        const afterPitchY = afterRollY * cp - afterRollZ * sp; // WAVE 4620-B: -sp (activa)
+        const afterPitchZ = afterRollY * sp + afterRollZ * cp; // WAVE 4620-B: +sp (activa)
+        // Step 3: Yaw (Y axis) — R_Y(yaw)
+        const cy = Math.cos(totalYawRad);
+        const sy = Math.sin(totalYawRad);
+        const worldDirX = afterPitchX * cy + afterPitchZ * sy; // WAVE 4620-B: +sy (activa)
+        const worldDirY = afterPitchY;
+        const worldDirZ = -afterPitchX * sy + afterPitchZ * cy; // WAVE 4620-B: -sy (activa)
+        // ── 4. Raycast: origin = fixture position, direction = worldDir ────────
+        const originX = node.physicalPosition.x;
+        const originY = node.physicalPosition.y;
+        const originZ = node.physicalPosition.z;
+        // ── 5. Intersect with floor plane (Y = 0) ────────────────────────────
+        // Ray: P(t) = origin + t * dir
+        // Floor: P.y = 0 → t = (0 - originY) / worldDirY = -originY / worldDirY
+        //
+        // WAVE 4629 M1: FK_MAX_RAY_DISTANCE is intentionally NOT applied here.
+        // Telemetría confirmó Target Y=4.9 porque t >> 30 (haz casi horizontal
+        // desde fixture a 4.9m de altura). Al eliminar el clamp de distancia,
+        // cualquier rayo descendente (worldDirY < -0.001) intersecta Y=0 sin
+        // importar la distancia horizontal resultante. El punto puede estar
+        // "fuera" del escenario físico — la luz se pierde, pero el motor IK se
+        // mueve hacia un target estable en Y=0, evitando la parálisis.
+        if (worldDirY < -0.001) {
+            const t = -originY / worldDirY;
+            if (t > 0) {
+                const floorX = originX + worldDirX * t;
+                const floorZ = originZ + worldDirZ * t;
+                if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+                    console.log(`[FK-FLOOR] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
+                        `t=${t.toFixed(2)} → floor=(${floorX.toFixed(3)},0,${floorZ.toFixed(3)})`);
+                }
+                return { x: floorX, y: 0, z: floorZ };
+            }
+        }
+        // Beam is parallel to floor or pointing upward — no floor intersection.
+        // Project along the ray to a clamped distance. This is a graceful fallback
+        // for edge cases (e.g. extreme tilt angles pointing upward or horizontal).
+        const range = Math.min(FK_MAX_RAY_DISTANCE, originY > 0 ? originY * 2 : 5);
+        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+            console.log(`[FK-FALLBACK] worldDir=(${worldDirX.toFixed(3)},${worldDirY.toFixed(3)},${worldDirZ.toFixed(3)}) ` +
+                `originY=${originY.toFixed(3)} range=${range.toFixed(2)} — no floor intersection`);
+        }
+        return {
+            x: originX + worldDirX * range,
+            y: Math.max(0, originY + worldDirY * range),
+            z: originZ + worldDirZ * range,
+        };
     }
     /**
      * WAVE 4547.1: Telemetría de alcance IK para futura visualización Ghost Ray.

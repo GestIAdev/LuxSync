@@ -69,13 +69,16 @@ const NEON_CYAN = '#00F0FF'
  *   - tilt=0.0 → tiltAngle = +45° + 50.6° = +95.6° → beam nearly horizontal (back)
  *   - tilt=1.0 → tiltAngle = +45° - 50.6° = -5.6° → beam nearly vertical (down)
  */
-// WAVE 4620-B: Ajustado de π/4 (45°) a π/3 (60°) para que el beam apunte más hacia el
-// suelo tras eliminar el baseRotation=-45° en WAVE 4619. Con el cuerpo del fixture
-// ahora paralelo al techo (ceiling=identity), TILT_REST_ANGLE=60° hace que tilt=0.5
-// proyecte el haz a ~tan(60°)·H ≈ 5m del suelo → pan sweeps claramente visibles.
-// En contraste, 45° proyectaba el haz hacia el costado del escenario, reduciendo
-// la visibilidad en la vista top-down a medida que el cono se alejaba de la cámara.
-const TILT_REST_ANGLE = Math.PI / 3
+// WAVE 4628 M1: TILT_REST_ANGLE = Math.PI/2 (90°).
+// Con ceiling=identity (modelo emite en -Y local), +90° en eje X rota el vector
+// de emisión local [0,-1,0] hasta [0,0,-1] (hacia el frente del escenario).
+// Esto alinea el visualizador con las matemáticas del FK Bridge:
+//   tilt=0.5 (centro DMX) → beam apunta al frente-suelo (~45° de inclinación visual)
+// El TILT_REST_ANGLE ya NO se usa como compensación del ghost pitch de -45° (eliminado
+// en WAVE 4619), sino únicamente como ángulo de reposo estético del cabezal.
+// ANTES: π/3 (60°) → worldDirY positivo → FK target Y≈5.5 (arriba del fixture)
+// AHORA: π/2 (90°) → vector local [0,0,-1] → FK target cruza Y=0 correctamente.
+const TILT_REST_ANGLE = Math.PI / 2
 
 /**
  * � WAVE 2088.12: VIBE-AWARE BEAM CONE
@@ -420,13 +423,16 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
           {/* Beam — 🔦 WAVE 2088.12: Dynamic cone width via scale.x/z
               WAVE 4573: clippingPlanes={[]} overrides the global Y=0 clip plane
               so floor fixtures don't lose their beam tips.
-              WAVE 4620-B: rotation={[Math.PI,0,0]} alinea el cono al eje óptico del lente.
-              La coneGeometry estándar tiene el apex en +Y. Con rotación π en X, el apex
-              queda hacia -Y (suelo/distancia) y la base ancha junto al lente (+Y local
-              del mesh = -0.08 en el head). El haz sale por el cristal correctamente. */}
+              WAVE 4628 M3: CONO PROFESIONAL — radiusTop=0.01 (punta en lente),
+              radiusBottom=1.0 (base geométrica, escalada por scale.x/z en runtime).
+              La lente está en Y_local ≈ -0.08 del headRef. El centro del cilindro
+              se coloca en Y = -(3.5/2 + 0.08) = -1.83, de modo que:
+                Top  (radiusTop=0.01)  queda en Y = -1.83 + 1.75 = -0.08  → lente ✓
+                Bot  (radiusBottom)    queda en Y = -1.83 - 1.75 = -3.58  → suelo ✓
+              scale.x/z en runtime escala ambos radios proporcionalmente. */}
           {showBeam && (fixture.isPlaced !== false) && (
-            <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[1.0, 3.5, 16, 1, true]} />
+            <mesh ref={beamMeshRef} position={[0, -3.5 / 2 - 0.08, 0]} rotation={[0, 0, 0]}>
+              <cylinderGeometry args={[0.01, 1.0, 3.5, 16, 1, true]} />
               <meshBasicMaterial
                 ref={beamMaterialRef}
                 color={fixture.color}

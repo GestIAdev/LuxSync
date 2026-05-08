@@ -194,13 +194,7 @@ export class NodeArbiter {
             }
         }
         if (this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-            for (const [nodeId, record] of this._result) {
-                if (typeof record['dimmer'] !== 'number')
-                    continue;
-                const dmx = Math.round(record['dimmer'] * 255);
-                console.log(`[TRACER-2 ARBITER] Fixture 0 -> Arbitrated Dimmer: ${dmx} (node=${String(nodeId)})`);
-                break;
-            }
+            // Silencio operacional WAVE 4627: sin telemetría legacy en el Arbiter.
         }
         return this._result;
     }

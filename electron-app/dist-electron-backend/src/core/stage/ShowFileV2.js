@@ -388,7 +388,7 @@ export function createDefaultFixture(id, address, options = {}) {
         channelCount: options.channelCount || 1,
         profileId: options.profileId || 'generic-dimmer',
         position: options.position || { x: 0, y: 3, z: 0 },
-        rotation: options.rotation || { pitch: -45, yaw: 0, roll: 0 },
+        rotation: options.rotation || { pitch: 0, yaw: 0, roll: 0 },
         orientation: options.orientation || 'ceiling',
         isPlaced: options.isPlaced,
         physics: options.physics || { ...DEFAULT_PHYSICS_PROFILES['unknown'] },

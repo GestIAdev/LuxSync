@@ -32,7 +32,7 @@
  * @version WAVE 4521.2
  */
 import { NodeFamily } from '../types';
-import { selectZoneFromResult, computeEpicenterFalloff } from './zoneUtils';
+import { selectZoneFromResult, computeEpicenterFalloff, normalizeZoneId } from './zoneUtils';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,8 +170,7 @@ export class LiquidAetherAdapter {
             this._impactValues['dimmer'] = clamp01(zoneIntensity * falloff);
             this._impactScratch.nodeId = node.nodeId;
             if (index === 0 && this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-                const dmx = Math.round(this._impactValues['dimmer'] * 255);
-                console.log(`[TRACER-1 INGEST] Fixture 0 -> Liquid Dimmer: ${dmx}`);
+                // Silencio operacional WAVE 4627: sin telemetría legacy en ingest.
             }
             bus.push(this._impactScratch);
         });
@@ -250,7 +249,7 @@ export class LiquidAetherAdapter {
         this._epicenter.z = z;
     }
     _selectReactiveZoneIntensity(result, zoneId) {
-        switch ((zoneId || '').toLowerCase()) {
+        switch (normalizeZoneId(zoneId)) {
             case 'unassigned':
             case 'center':
             case 'mid':
@@ -263,6 +262,14 @@ export class LiquidAetherAdapter {
                 return clamp01((result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3);
             case 'right':
                 return clamp01((result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3);
+            case 'front-left':
+                return result.frontLeftIntensity;
+            case 'front-right':
+                return result.frontRightIntensity;
+            case 'back-left':
+                return result.backLeftIntensity;
+            case 'back-right':
+                return result.backRightIntensity;
             case 'movers-left':
                 return result.moverLeftIntensity;
             case 'movers-right':

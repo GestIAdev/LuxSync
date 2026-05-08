@@ -104,6 +104,10 @@ const syncToBackend = async (fixtureList, stageBounds, lastSyncedHashRef) => {
             rotation: f.rotation,
             // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagate to backend
             isVirtual: f.isVirtual ?? false,
+            // WAVE 4626: isPlaced MUST propagate — omission here was the Silent Drop
+            // TitanOrchestrator._buildFixtureV2ForAether reads fixture.isPlaced
+            // If absent, undefined || false = false, killing IK for all placed fixtures
+            isPlaced: f.isPlaced,
         };
     });
     try {

@@ -248,7 +248,7 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           hasOverride: override !== undefined,
           // 🏗️ WAVE 4573: Spatial Truth fields
           orientation: (fixture.orientation ?? 'ceiling') as InstallationOrientation,
-          baseRotation: fixture.rotation ?? { pitch: -45, yaw: 0, roll: 0 },
+          baseRotation: fixture.rotation ?? { pitch: 0, yaw: 0, roll: 0 },
           isPlaced: fixture.isPlaced === true,
         })
       })

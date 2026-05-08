@@ -994,8 +994,8 @@ const luxApi = {
     /** Toggle blackout state */
     toggleBlackout: () => ipcRenderer.invoke('lux:arbiter:toggleBlackout'),
     
-    /** Set blackout state */
-    setBlackout: (active: boolean) => ipcRenderer.invoke('lux:arbiter:blackout', active),
+    /** Set blackout state — WAVE 4633-OMEGA: redirigido a lux:aether:setBlackout (fuente de verdad única) */
+    setBlackout: (active: boolean) => ipcRenderer.invoke('lux:aether:setBlackout', { active }),
     
     // ============================================
     // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL

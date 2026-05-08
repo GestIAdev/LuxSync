@@ -2000,10 +2000,11 @@ export class TitanOrchestrator {
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
         if (!rawBuf) continue
 
-        // WAVE 4666: Hard blackout total para garantizar apagado real.
-        // Blackout global = todos los canales a 0, sin excepciones.
+        // WAVE 4633-OMEGA: Smart blackout semántico.
+        // Solo canales de emisión (dimmer/color) van a 0. Pan/tilt/speed conservan
+        // sus valores para proteger la mecánica de los movers.
         const egressBuf = blackoutActive
-          ? aetherResolver.getHardBlackoutUniverseBuffer(universe)
+          ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
           : rawBuf
         this.hal.sendUniverseRaw(universe, egressBuf)
       }

@@ -408,6 +408,7 @@ export class NodeResolver implements INodeResolver {
 
     const calibration = device.calibration
     if (writeToDmx) this._activeUniverses.add(device.universe)
+    let invertClassicKineticAxes = false
 
     // ── WAVE 4631: SPLIT-BRAIN GATEKEEPER DETERMINISTA ─────────────────────
     // La ruta KINETIC se decide SOLO por la presencia de targetX en los valores
@@ -422,6 +423,7 @@ export class NodeResolver implements INodeResolver {
         this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx)
         return
       }
+      invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode)
       // isContinuous (fan/mirrorball) o sin targetX → classic path
     }
 
@@ -458,9 +460,15 @@ export class NodeResolver implements INodeResolver {
 
       // Valor normalizado arbitrado (usando translatedValues que puede ser
       // el mapa original o el mapa con canales físicos ya calculados).
-      const rawNormalized: number = translatedValues[chDef.type] !== undefined
+      let rawNormalized: number = translatedValues[chDef.type] !== undefined
         ? translatedValues[chDef.type]
         : this._getDefaultNormalizedValue(node, chDef)
+
+      if (invertClassicKineticAxes) {
+        if (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) {
+          rawNormalized = 1 - rawNormalized
+        }
+      }
 
       // Telemetría legacy removida.
 
@@ -623,6 +631,28 @@ export class NodeResolver implements INodeResolver {
    */
   getKineticReachability(nodeId: NodeId): boolean | undefined {
     return this._ikReachability.get(nodeId)
+  }
+
+  /**
+   * WAVE 4637: Orientation awareness solo para la ruta clásica KINETIC.
+   * IK NO pasa por este camino para evitar doble negación.
+   */
+  private _shouldInvertClassicKineticAxes(
+    deviceOrientation: string | undefined,
+    node: IKineticNodeData,
+  ): boolean {
+    const orientation = deviceOrientation?.toLowerCase().trim()
+    if (orientation === 'ceiling' || orientation === 'truss-front' || orientation === 'truss-back') {
+      return true
+    }
+
+    const installation = node.ikOrientation?.installation
+    if (installation === 'ceiling' || installation === 'truss-front' || installation === 'truss-back') {
+      return true
+    }
+
+    const pitch = node.ikOrientation?.rotation?.pitch
+    return Number.isFinite(pitch) && Math.abs(Math.abs(pitch as number) - 180) < 0.001
   }
 
   private _getDefaultNormalizedValue(

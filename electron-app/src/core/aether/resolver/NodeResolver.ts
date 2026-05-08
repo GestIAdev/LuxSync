@@ -464,12 +464,6 @@ export class NodeResolver implements INodeResolver {
         ? translatedValues[chDef.type]
         : this._getDefaultNormalizedValue(node, chDef)
 
-      if (invertClassicKineticAxes) {
-        if (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) {
-          rawNormalized = 1 - rawNormalized
-        }
-      }
-
       // Telemetría legacy removida.
 
       // Aplicar TransferCurve
@@ -487,6 +481,12 @@ export class NodeResolver implements INodeResolver {
       // Aplicar calibración específica de canal
       if (calibration) {
         dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration)
+      }
+
+      // WAVE 4639: La inversión por orientación en ruta clásica se aplica
+      // en dominio DMX final para respetar offsets/límites y corregir pivote.
+      if (invertClassicKineticAxes && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE)) {
+        dmxValue = 255 - dmxValue
       }
 
       // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path

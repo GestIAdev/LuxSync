@@ -642,7 +642,7 @@ export class NodeResolver implements INodeResolver {
     node: IKineticNodeData,
   ): boolean {
     const orientation = deviceOrientation?.toLowerCase().trim()
-    if (orientation === 'ceiling' || orientation === 'truss-front' || orientation === 'truss-back') {
+    if (orientation?.includes('ceiling') || orientation?.startsWith('truss')) {
       return true
     }
 

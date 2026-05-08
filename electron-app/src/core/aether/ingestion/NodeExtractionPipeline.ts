@@ -310,6 +310,10 @@ export class NodeExtractionPipeline {
     if (typeof dmxAddressOrFixtureV2 === 'object') {
       // ── Firma FixtureV2 (WAVE 3517.1 — recomendada) ──────────────────
       const fv2        = dmxAddressOrFixtureV2
+      const legacyFv2  = fv2 as FixtureV2 & {
+        installationType?: string
+        physics?: { orientation?: string }
+      }
       resolvedAddress  = fv2.address
       resolvedUniverse = fv2.universe
       resolvedZone     = normalizeZoneId(fv2.zone) as ZoneId
@@ -317,8 +321,11 @@ export class NodeExtractionPipeline {
       resolvedPosition = fv2.position
       v2CalibOverride  = fv2.calibration
       isVirtual        = fv2.isVirtual
-      // 🧭 WAVE 4573 Phase 5b: Read orientation from root (not physics.orientation)
+      // 🧭 WAVE 4573: orientación canónica en root. Compat legacy:
+      // installationType (v1/v2 temprano) y physics.orientation (deprecated).
       resolvedOrientation = fv2.orientation
+        ?? legacyFv2.installationType
+        ?? legacyFv2.physics?.orientation
       resolvedIsPlaced    = fv2.isPlaced
     } else {
       // ── Firma legacy (compatibilidad) ─────────────────────────────────

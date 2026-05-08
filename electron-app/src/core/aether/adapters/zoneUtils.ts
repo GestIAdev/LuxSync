@@ -127,18 +127,23 @@ export function selectZoneFromResult(
     case 'floor':       return result.floorIntensity
     case 'ambient':     return result.ambientIntensity
     case 'air':         return result.airIntensity
-    // ── Fallback: energía promedio clásica ────────────────────────────
-    default: {
-      const avg = (
-        result.frontLeftIntensity  +
-        result.frontRightIntensity +
-        result.backLeftIntensity   +
-        result.backRightIntensity  +
-        result.moverLeftIntensity  +
-        result.moverRightIntensity
-      ) / 6
-      return avg < 0 ? 0 : avg > 1 ? 1 : avg
-    }
+    // ── Zonas compuestas (WAVE 4655: fuente única de verdad) ────────────
+    case 'front':
+      return (result.frontLeftIntensity + result.frontRightIntensity) * 0.5
+    case 'back':
+      return (result.backLeftIntensity + result.backRightIntensity) * 0.5
+    case 'left':
+      return (result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3
+    case 'right':
+      return (result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3
+    // ── Zonas no asignadas / centrales → ambient sin inventar energía ────
+    case 'unassigned':
+    case 'center':
+    case 'mid':
+      return result.ambientIntensity
+    // ── Zona desconocida → 0 explícito, sin promedios residuales ─────────
+    default:
+      return 0
   }
 }
 

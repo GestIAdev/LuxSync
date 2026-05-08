@@ -990,7 +990,7 @@ export interface ShowFileV2 {
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Schema version for migration (2.0.0 = initial V2, 2.1.0+ = incremental patches) */
-  schemaVersion: '2.0.0' | '2.1.0' | '2.2.0'
+  schemaVersion: '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0'
   
   /** Show name */
   name: string
@@ -1200,9 +1200,10 @@ export function validateShowFileDeep(data: unknown): ShowFileValidationResult {
   if (
     show.schemaVersion !== '2.0.0' &&
     show.schemaVersion !== '2.1.0' &&
-    show.schemaVersion !== '2.2.0'
+    show.schemaVersion !== '2.2.0' &&
+    show.schemaVersion !== '2.3.0'
   ) {
-    errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', or '2.2.0', got '${show.schemaVersion}'`)
+    errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', '2.2.0', or '2.3.0', got '${show.schemaVersion}'`)
   }
   if (typeof show.name !== 'string' || show.name.trim() === '') {
     errors.push(`Invalid or empty show name: '${show.name}'`)

@@ -755,8 +755,9 @@
   box-shadow: -2px 0 20px rgba(0, 240, 255, 0.04);
 }
 
-/* KIN mode — Cathedral expanded: sidebar lightly narrowed, radar takes the rest */
+/* KIN mode — Cathedral expanded: radar integrado en sidebar, más ancho para el centro de mando */
+/* KIN mode — Cathedral expanded: mismo ancho que StageSidebar */
 .hyperion-sidebar-container.cathedral-expanded {
-  width: 380px;         /* da más espacio al Radar Viewport gigante */
-  overflow-y: auto;     /* faders + arsenal + footer pueden scrollear */
+  width: 450px;
+  overflow-y: auto;
 }

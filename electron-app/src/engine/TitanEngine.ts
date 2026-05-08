@@ -46,6 +46,7 @@ import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStra
 
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity'
+import type { LiquidEngineBase } from '../hal/physics/LiquidEngineBase'
 import type { SeleneLuxOutput } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
@@ -1283,6 +1284,10 @@ export class TitanEngine extends EventEmitter {
   public setLiquidLayout(mode: '4.1' | '7.1'): void {
     this.nervousSystem.setLiquidLayout(mode);
     console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
+  }
+
+  public getActiveLiquidEngine(): LiquidEngineBase {
+    return this.nervousSystem.getLastActiveLiquidEngine()
   }
 
   /**

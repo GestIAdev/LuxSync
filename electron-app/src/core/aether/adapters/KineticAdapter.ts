@@ -176,12 +176,17 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       this._valuesDict['speed']    = undefined as any
 
       // ── 4b. Obtener intención 2D del VMM para este nodo ───────────────
+      // 🎭 WAVE 4645: Left/Right phase asymmetry
+      // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
+      const phaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0
+
       const intent = this._vmm.generateIntent(
         vibeId,
         va,
         node.stereoIndex,
         node.stereoTotal,
         node.maxPanSpeed,
+        phaseOffset,
       )
 
       if (node.isContinuous) {

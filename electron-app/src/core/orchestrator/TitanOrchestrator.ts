@@ -88,7 +88,6 @@ import { BeamAdapter } from '../aether/adapters/BeamAdapter'
 import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
 // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
 import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
-import { liquidEngine71 } from '../../hal/physics/LiquidEngine71'
 import { NodeFamily } from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
 // 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
@@ -1736,11 +1735,11 @@ export class TitanOrchestrator {
       // 1. Limpiar el bus de intents del frame anterior
       this._aetherBus.clear()
 
-      // ── WAVE 4521.3: L0 — LiquidAetherAdapter inyecta base energética ────
-      // El liquidEngine71 ya fue invocado por ImpactAdapter en el mismo frame
-      // (o por ColorAdapter). lastFrame y lastResult son frescos del tick actual.
-      const _liqFrame  = liquidEngine71.lastFrame
-      const _liqResult = liquidEngine71.lastResult
+      // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
+      // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
+      const _activeEngine = this.engine?.getActiveLiquidEngine()
+      const _liqFrame  = _activeEngine?.lastFrame ?? null
+      const _liqResult = _activeEngine?.lastResult ?? null
       if (_liqFrame !== null && _liqResult !== null) {
         liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus)
       }
@@ -1751,6 +1750,7 @@ export class TitanOrchestrator {
         this._aetherGraph.getView(NodeFamily.IMPACT),
         ctx,
         this._aetherBus,
+        _liqResult ?? undefined,  // F1+F2: result del engine activo — fuente única de dimmer
       )
       // 🎨 WAVE 4522.3: Inyectar paleta RGB de SeleneLux al ColorAdapter antes de process()
       const _colorPalette = this.engine.getLastColorPalette()
@@ -1878,11 +1878,27 @@ export class TitanOrchestrator {
       emitHotFrame()
 
       // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
+      // WAVE 4656: Output gate final en orquestador (source of truth Aether).
+      const outputEnabled = this._outputEnabled
+      const blackoutActive = aetherArbiter.isBlackoutActive()
+      const blackoutBuffer = blackoutActive ? new Uint8Array(512) : null
+      this.hal.setAetherOutputGateState(outputEnabled, blackoutActive)
+
       for (const universe of aetherResolver.registeredUniverses) {
+        // ARM/PREP: no enviar DMX al hardware.
+        if (!outputEnabled) continue
+
         // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
-        if (rawBuf) this.hal.sendUniverseRaw(universe, rawBuf)
+        if (!rawBuf) continue
+
+        // BLACKOUT físico: volcar buffer en cero inmediatamente.
+        if (blackoutBuffer) {
+          this.hal.sendUniverseRaw(universe, blackoutBuffer)
+        } else {
+          this.hal.sendUniverseRaw(universe, rawBuf)
+        }
       }
 
       // 🛂 WAVE 4557: Safety telemetry (~1Hz)

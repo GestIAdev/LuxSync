@@ -27,6 +27,7 @@ import './CommandDeck.css'
 export const CommandDeck: React.FC = () => {
   // 🛡️ WAVE 2042.13.8: Primitive selector (stable)
   const blackout = useEffectsStore(selectBlackout)
+  const setBlackout = useEffectsStore(state => state.setBlackout)
   
   // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
   const aiEnabled = useControlStore(selectAIEnabled)
@@ -43,11 +44,9 @@ export const CommandDeck: React.FC = () => {
   
   // Arbiter status state
   const [arbiterStatus, setArbiterStatus] = useState<{
-    hasManualOverrides: boolean
     grandMaster: number
     grandMasterSpeed: number
   }>({
-    hasManualOverrides: false,
     grandMaster: 1.0,
     grandMasterSpeed: 1.0
   })
@@ -63,57 +62,37 @@ export const CommandDeck: React.FC = () => {
   }, [powerState, systemArmed, setSystemArmed])
   
   useEffect(() => {
-    // Initial fetch - includes outputEnabled state
+    // WAVE 4656: Hydration desde Aether (sin status legacy del arbiter clásico).
     const fetchStatus = async () => {
       try {
-        const response = await window.lux?.arbiter?.status()
+        const response = await window.lux?.aether?.getControlState?.()
         if (response) {
-          // 🛡️ WAVE 420: Anti-nuke protection
-          const rawGM = (response as any).grandMaster ?? response.status?.grandMaster ?? 1.0
+          const rawGM = response.grandMaster ?? 1.0
           const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
           
-          setArbiterStatus({
-            hasManualOverrides: response.status?.hasManualOverrides ?? false,
+          setArbiterStatus(prev => ({
             grandMaster: Math.max(0, Math.min(1, safeGM)),
-            grandMasterSpeed: (response as any).grandMasterSpeed ?? 1.0
-          })
+            grandMasterSpeed: prev.grandMasterSpeed,
+          }))
           
-          // 🚦 WAVE 1132: Sync outputEnabled from backend
-          const backendOutputEnabled = response.status?.outputEnabled ?? false
+          const backendOutputEnabled = response.outputEnabled ?? false
+          const backendBlackout = response.blackoutActive ?? false
           setOutputEnabled(backendOutputEnabled)
+          setBlackout(backendBlackout)
         }
       } catch (err) {
-        // Silent fail - arbiter might not be ready
+        // Silent fail - aether might not be ready
       }
     }
     
     fetchStatus()
     
-    // Subscribe to changes
-    const unsubscribe = window.lux?.arbiter?.onStatusChange?.((status: any) => {
-      const rawGM = status.grandMaster ?? 1.0
-      const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
-      
-      setArbiterStatus({
-        hasManualOverrides: status.hasManualOverrides ?? false,
-        grandMaster: Math.max(0, Math.min(1, safeGM)),
-        grandMasterSpeed: status.grandMasterSpeed ?? arbiterStatus.grandMasterSpeed
-      })
-      
-      // 🚦 WAVE 1132: Sync outputEnabled from backend events
-      if (status.outputEnabled !== undefined) {
-        setOutputEnabled(status.outputEnabled)
-      }
-    })
-    
-    // Fallback: poll if subscription not available
-    const interval = !unsubscribe ? setInterval(fetchStatus, 200) : undefined
+    const interval = setInterval(fetchStatus, 250)
     
     return () => {
-      unsubscribe?.()
-      if (interval) clearInterval(interval)
+      clearInterval(interval)
     }
-  }, [setOutputEnabled])
+  }, [setBlackout, setOutputEnabled])
   
   // Grand Master change handler
   const handleGrandMasterChange = useCallback(async (value: number) => {
@@ -166,13 +145,7 @@ export const CommandDeck: React.FC = () => {
       // If disarming, also close the DMX gate (safety)
       if (!willBeArmed && outputEnabled) {
         try {
-          // 🔎 WAVE 2122.2: tag gate changes when possible
-          const arb = window.lux?.arbiter as any
-          if (arb?.setOutputEnabledTagged) {
-            await arb.setOutputEnabledTagged(false, 'CommandDeck:disarmSafety')
-          } else {
-            await window.lux?.arbiter?.setOutputEnabled?.(false, 'CommandDeck:disarmSafety')
-          }
+          await window.lux?.aether?.setOutputEnabled(false)
           setOutputEnabled(false)
           console.log('[CommandDeck] ⚛️ Safety: DMX gate closed on disarm')
         } catch (e) {
@@ -191,15 +164,11 @@ export const CommandDeck: React.FC = () => {
     const newState = !outputEnabled
     
     try {
-      // 🚦 Send to backend arbiter
-      const arb = window.lux?.arbiter as any
-      const result = arb?.setOutputEnabledTagged
-        ? await arb.setOutputEnabledTagged(newState, 'CommandDeck:GO')
-        : await window.lux?.arbiter?.setOutputEnabled?.(newState, 'CommandDeck:GO')
+      const result = await window.lux?.aether?.setOutputEnabled(newState)
       
       if (result?.success) {
         // Update local store to match backend
-        setOutputEnabled(newState)
+        setOutputEnabled(result.outputEnabled ?? newState)
         console.log(`[CommandDeck] 🚦 DMX Gate ${newState ? '🟢 OPEN' : '🔴 CLOSED'} - DMX ${newState ? 'flowing' : 'blocked'}`)
       } else {
         console.error('[CommandDeck] Failed to set output enabled:', result)

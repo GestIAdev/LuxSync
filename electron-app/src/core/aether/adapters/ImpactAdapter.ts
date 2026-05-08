@@ -54,7 +54,7 @@ import { BaseSystem, type IAetherSystem, type FrameContext } from '../systems'
 import { liquidEngine71 } from '../../../hal/physics/LiquidEngine71'
 import type { LiquidEngineBase } from '../../../hal/physics/LiquidEngineBase'
 import type { LiquidStereoInput, LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
-import { selectZoneIntensityXZ } from './zoneUtils'
+import { selectZoneFromResult } from './zoneUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -137,6 +137,7 @@ export class ImpactAdapter extends BaseSystem<IImpactNodeData> implements IAethe
     nodes: INodeView<IImpactNodeData>,
     context: FrameContext,
     bus: IIntentBus,
+    liquidResult?: LiquidStereoResult,
   ): void {
     const { audio, musical, vibe } = context
 
@@ -160,47 +161,28 @@ export class ImpactAdapter extends BaseSystem<IImpactNodeData> implements IAethe
     inp.sectionType      = musical.section !== 'unknown' ? musical.section : 'drop'
     inp.spectralCentroid = 0                // no disponible en AudioMetrics base
 
-    // ── 2. Ejecutar el motor real de física — ESTA ES LA ÚNICA LLAMADA AL ENGINE
-    const result: LiquidStereoResult = this._engine.applyBands(inp)
+    // ── 2. Usar result pre-computado si está disponible; si no, calcular con el motor interno
+    const result: LiquidStereoResult = liquidResult ?? this._engine.applyBands(inp)
 
     // ── 3. Preparar scratch invariante para este frame
     this._intentScratch.priority   = INTENT_PRIORITY
     this._intentScratch.source     = IMPACT_SOURCE
 
-    const epiX = this._epicenter.x
-    const epiY = this._epicenter.y
-    const epiZ = this._epicenter.z
-    const maxR = this._maxRadiusM
     const globalVibe = vibe.intensity
 
-    // ── 4. Iterar nodos — distribuir intensidad por posición espacial
+    // ── 4. Iterar nodos — intensidad zonal uniforme por zona semántica (WAVE 4655 F3)
     nodes.forEach((node, _index) => {
 
-      // ── 4a. Cálculo de distancia al epicentro de la onda energética
-      //        (La fórmula que el blueprint exige que sea explícita)
-      const px = node.position?.x ?? 0
-      const py = node.position?.y ?? 0
-      const pz = node.position?.z ?? 0
+      // ── 4a. Zona semántica → intensidad directa del motor líquido
+      //        Todos los fixtures de la misma zona reciben exactamente el mismo valor.
+      //        Sin falloff espacial. Sin bandMix individual.
+      const zoneIntensity = selectZoneFromResult(result, node.zoneId ?? '')
 
-      const dx = px - epiX
-      const dy = py - epiY
-      const dz = pz - epiZ
-      const dist    = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      const falloff = BaseSystem.clamp01(1 - dist / maxR)
+      // ── 4b. Intensidad final = zoneIntensity × vibe.intensity
+      const intentDimmer  = BaseSystem.clamp01(zoneIntensity * globalVibe)
 
-      // ── 4b. Selección de zona por posición física del nodo
-      //        El LiquidEngine produce intensidades zonales — elegimos la
-      //        zona correcta según dónde está físicamente el fixture.
-      //        WAVE 3506.1.1: X = left/right, Z = front/back (NOT Y)
-      const zoneIntensity = selectZoneIntensityXZ(result, px, pz)
-
-      // ── 4c. Intensidad final = bandmix × falloff × zoneIntensity × vibe.intensity
-      //        computeBandMix: pondera las 7 bandas según el perfil del nodo.
-      const bandEnergy    = BaseSystem.computeBandMix(audio, node.bandMix)
-      const intentDimmer  = BaseSystem.clamp01(bandEnergy * falloff * zoneIntensity * globalVibe)
-
-      this._intentScratch.confidence       = BaseSystem.clamp01(audio.energy * falloff)
-      this._valuesDict['dimmer']           = intentDimmer
+      this._intentScratch.confidence  = audio.energy
+      this._valuesDict['dimmer']      = intentDimmer
 
       this._intentScratch.nodeId = node.nodeId
       bus.push(this._intentScratch as INodeIntent)

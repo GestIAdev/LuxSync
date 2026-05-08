@@ -14,7 +14,7 @@
  * @updated WAVE 2205 — Static Grid: Zero beat reactivity
  */
 
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -101,6 +101,18 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
       polygonOffsetUnits: -1,
     })
   }, [primaryColor])
+
+  useEffect(() => {
+    return () => {
+      gridGeometry.dispose()
+    }
+  }, [gridGeometry])
+
+  useEffect(() => {
+    return () => {
+      gridMaterial.dispose()
+    }
+  }, [gridMaterial])
 
   // 🔧 WAVE 2205: Grid es completamente estático. Sin useFrame. Sin modulación.
   //    Opacidad y color fijos en el material.

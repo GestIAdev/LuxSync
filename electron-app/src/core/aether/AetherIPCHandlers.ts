@@ -209,6 +209,48 @@ export function registerAetherIPCHandlers(): void {
   )
 
   /**
+   * G1b: Set output gate global (ARM/LIVE) para pipeline Aether.
+   * Payload: enabled boolean
+   */
+  ipcMain.handle(
+    'lux:aether:setOutputEnabled',
+    (_event, { enabled }: { enabled: boolean }) => {
+      try {
+        const orchestrator = getTitanOrchestrator()
+        orchestrator.setOutputEnabled(!!enabled)
+        // Compat temporal con rutas legacy todavía vivas.
+        masterArbiter.setOutputEnabled(!!enabled)
+        return { success: true, outputEnabled: orchestrator.isOutputEnabled() }
+      } catch (err) {
+        console.error('[AetherIPC] setOutputEnabled error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * G1c: Read control gate state para hidratación de CommandDeck.
+   */
+  ipcMain.handle(
+    'lux:aether:getControlState',
+    () => {
+      try {
+        const orchestrator = getTitanOrchestrator()
+        const arbiter = orchestrator.getAetherArbiter()
+        return {
+          success: true,
+          outputEnabled: orchestrator.isOutputEnabled(),
+          blackoutActive: arbiter.isBlackoutActive(),
+          grandMaster: arbiter.getGrandMaster(),
+        }
+      } catch (err) {
+        console.error('[AetherIPC] getControlState error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
    * G2: Set grand master dimmer global (0-1).
    * Escribe en NodeArbiter Y en masterArbiter.
    * Payload: value (0-1)

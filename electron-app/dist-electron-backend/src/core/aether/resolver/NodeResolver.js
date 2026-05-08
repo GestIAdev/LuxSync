@@ -396,8 +396,8 @@ export class NodeResolver {
             if (calibration) {
                 dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration);
             }
-            // WAVE 4639/4640: invertir orientación clásica en dominio DMX
-            // y solo sobre tilt para no espejar eje horizontal.
+            // WAVE 4639: La inversión por orientación en ruta clásica se aplica
+            // en dominio DMX final para respetar offsets/límites y corregir pivote.
             if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
                 dmxValue = 255 - dmxValue;
             }

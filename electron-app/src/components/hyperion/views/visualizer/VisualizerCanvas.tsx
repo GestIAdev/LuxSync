@@ -375,6 +375,44 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   isVisible = true,
   className = '',
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isDocumentVisible, setIsDocumentVisible] = useState(() => {
+    if (typeof document === 'undefined') return true
+    return document.visibilityState === 'visible'
+  })
+  const [isInViewport, setIsInViewport] = useState(true)
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === 'visible')
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        setIsInViewport(Boolean(entry?.isIntersecting && entry.intersectionRatio > 0))
+      },
+      { threshold: 0.01 }
+    )
+
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  const shouldRender = isVisible && isDocumentVisible && isInViewport
+
   // ── Stage Dimensions (from show file) ─────────────────────────────────────
   // 🏗️ WAVE 4575-B: Dynamic stage config from stageStore — no more hardcoded 12×8
   const stageDims = useStageStore(selectStageDimensions)
@@ -423,13 +461,14 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
 
   return (
     <div 
+      ref={containerRef}
       className={`visualizer-canvas ${className}`}
       onClick={handleCanvasClick}
     >
       <Canvas
         shadows={qualitySettings.shadows}
         dpr={[1, qualitySettings.maxDPR]}
-        frameloop={isVisible ? 'always' : 'never'}
+        frameloop={shouldRender ? 'always' : 'never'}
         gl={{
           antialias: quality === 'HQ',
           alpha: false,

@@ -96,6 +96,7 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   const fixtures = useStageStore(state => state.fixtures)
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const overrides = useOverrideStore(state => state.overrides)
+  const colorPoolRef = useRef(new Map<string, THREE.Color>())
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 2236: THE DECOUPLING — No reactive hardware subscription
@@ -146,12 +147,14 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   // ── Transform to Fixture3DData ────────────────────────────────────────────
   const fixture3DData = useMemo<Fixture3DData[]>(() => {
     const result: Fixture3DData[] = []
+    const activeIds = new Set<string>()
 
     for (const [zone, zoneFixtures] of fixturesByZone) {
       const layout = ZONE_LAYOUT_3D[zone]
       const total = zoneFixtures.length
 
       zoneFixtures.forEach((fixture, index) => {
+        activeIds.add(fixture.id)
         // ── Position calculation ────────────────────────────────────────────
         let x: number
         let y: number
@@ -225,8 +228,13 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
         const zoom = fixtureState?.zoom ?? 0.5
         const focus = fixtureState?.focus ?? 0.5
 
-        // ── Create THREE.Color ──────────────────────────────────────────────
-        const color = new THREE.Color(r / 255, g / 255, b / 255)
+        // Reuse THREE.Color instances per fixture to avoid GC churn on memo rebuilds.
+        let color = colorPoolRef.current.get(fixture.id)
+        if (!color) {
+          color = new THREE.Color()
+          colorPoolRef.current.set(fixture.id, color)
+        }
+        color.setRGB(r / 255, g / 255, b / 255)
         const resolvedType = resolveFixtureType(fixture.type)
         const orientation = (fixture.orientation ?? 'ceiling') as InstallationOrientation
 
@@ -264,6 +272,12 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           isPlaced: fixture.isPlaced === true,
         })
       })
+    }
+
+    for (const id of colorPoolRef.current.keys()) {
+      if (!activeIds.has(id)) {
+        colorPoolRef.current.delete(id)
+      }
     }
 
     return result

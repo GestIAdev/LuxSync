@@ -1238,6 +1238,18 @@ const luxApi = {
       ipcRenderer.invoke('lux:aether:setBlackout', { active }),
 
     /**
+     * WAVE 4656: Set output gate global (ARM/LIVE) en pipeline Aether.
+     */
+    setOutputEnabled: (enabled: boolean) =>
+      ipcRenderer.invoke('lux:aether:setOutputEnabled', { enabled }),
+
+    /**
+     * WAVE 4656: Estado de control para hidratar CommandDeck.
+     */
+    getControlState: () =>
+      ipcRenderer.invoke('lux:aether:getControlState'),
+
+    /**
      * WAVE 4652: Set grand master dimmer global (0-1).
      * Reemplaza window.lux.arbiter.setGrandMaster.
      */

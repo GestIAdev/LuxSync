@@ -163,36 +163,39 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   //   useFrame was interpolating between STALE prop values — creating
   //   jerky, stuttering movement that didn't match the patterns.
   //
-  // NOW: We read physicalPan DIRECTLY from the Zustand store inside
-  //   useFrame using getState(). This gives us the LATEST value at 60fps,
-  //   completely bypassing React's render cycle. The store updates at
-  //   60fps from IPC, and now the 3D render reads at 60fps too.
+  // NOW: Dynamic pan/tilt come from transientStore inside useFrame, while
+  //   manual-override ownership is resolved via reactive selectors outside
+  //   the hot loop. This avoids per-frame getState() snapshots.
   //
   // This is the canonical R3F pattern for high-frequency data.
   // ═══════════════════════════════════════════════════════════════════════
   // 🏗️ WAVE 4573: Composite base quaternion = mount orientation + custom user rotation.
-  // Computed once per fixture; changes on orientation or baseRotation change (rare).
+  // Depend on primitive angles to avoid recompute churn when baseRotation object identity changes.
+  const basePitch = fixture.baseRotation?.pitch ?? 0
+  const baseYaw = fixture.baseRotation?.yaw ?? 0
+  const baseRoll = fixture.baseRotation?.roll ?? 0
   const baseQuat = useMemo(() => {
     const mountQ = MOUNT_QUATERNIONS[(fixture.orientation ?? 'ceiling') as InstallationOrientation] ?? MOUNT_QUATERNIONS['ceiling']
-    const br = fixture.baseRotation
-    if (!br || (br.pitch === 0 && br.yaw === 0 && br.roll === 0)) {
+    if (basePitch === 0 && baseYaw === 0 && baseRoll === 0) {
       return mountQ.clone()
     }
     const offsetQ = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
-        THREE.MathUtils.degToRad(br.pitch ?? 0),
-        THREE.MathUtils.degToRad(br.yaw   ?? 0),
-        THREE.MathUtils.degToRad(br.roll  ?? 0),
+        THREE.MathUtils.degToRad(basePitch),
+        THREE.MathUtils.degToRad(baseYaw),
+        THREE.MathUtils.degToRad(baseRoll),
       )
     )
     return mountQ.clone().multiply(offsetQ)
-  }, [fixture.orientation, fixture.baseRotation])
+  }, [fixture.orientation, basePitch, baseYaw, baseRoll])
 
   // 👻 WAVE 4573: Ghost mode for unplaced fixtures
   const isPlaced = fixture.isPlaced !== false
   const ghostOpacity = isPlaced ? 1.0 : 0.4
 
   const fixtureId = fixture.id
+  const hasManualOverride = useMovementStore(state => state.manualOverrideFixtureIds.has(fixtureId))
+  const fixtureOverride = useProgrammerStore(state => state.fixtureOverrides.get(fixtureId) ?? null)
 
   // Static values from props (don't need 60fps updates)
   const { id, selected, hasOverride } = fixture
@@ -257,14 +260,12 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     // WAVE 4578-B: MANUAL OVERRIDE visual lock.
     // If fixture is marked as manual override and we have L2 pan/tilt values,
     // ignore incoming transient pan/tilt to avoid overwrite jitter from LiquidEngine.
-    const movementState = useMovementStore.getState()
-    if (movementState.manualOverrideFixtureIds.has(fixtureId)) {
-      const ov = useProgrammerStore.getState().fixtureOverrides.get(fixtureId)
-      if (ov?.pan !== null && ov?.pan !== undefined) {
-        livePan = ov.pan
+    if (hasManualOverride && fixtureOverride) {
+      if (fixtureOverride.pan !== null && fixtureOverride.pan !== undefined) {
+        livePan = fixtureOverride.pan
       }
-      if (ov?.tilt !== null && ov?.tilt !== undefined) {
-        liveTilt = ov.tilt
+      if (fixtureOverride.tilt !== null && fixtureOverride.tilt !== undefined) {
+        liveTilt = fixtureOverride.tilt
       }
     }
 

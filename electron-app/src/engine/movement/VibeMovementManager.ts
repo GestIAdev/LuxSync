@@ -10,7 +10,8 @@
  *   throttling (fixed in WAVE 2211). This is the TRUE engine, restored and enhanced.
  * 
  *   GEOMETRY FIXES applied on top of restoration:
- *   1. amplitudeScale calibrated: techno=0.40, latina=0.35, rock=0.45 (540° Pan safe)
+ *   1. amplitudeScale split into panScale/tiltScale (WAVE 4645) for asymmetric hardware ranges
+ *      techno=(0.40,0.70), latina=(0.35,0.65), rock=(0.45,0.65)
  *   2. diamond rewritten: was sin/cos (circle), now linear interpolation between
  *      cardinal vertices (0,1)→(1,0)→(0,-1)→(-1,0) — true rhombus
  *   3. ballyhoo fixtureOffset purified: was scaling amplitude per fixture (asymmetric)
@@ -81,8 +82,10 @@ export interface AudioContext {
 
 /** Configuracion de vibe */
 interface VibeConfig {
-  /** Escala de amplitud final (1.0 = full range) */
-  amplitudeScale: number
+  /** Escala de amplitud Pan (1.0 = full range de 540°) */
+  panScale: number
+  /** Escala de amplitud Tilt (1.0 = full range de 270°) */
+  tiltScale: number
   /** Frecuencia base en Hz */
   baseFrequency: number
   /** Patrones disponibles para este vibe (SOLO de la Docena Dorada) */
@@ -125,7 +128,8 @@ type GoldenPattern =
 const VIBE_CONFIG: Record<string, VibeConfig> = {
   // TECHNO: Geometria dura, cortes precisos
   'techno-club': {
-    amplitudeScale: 0.70,  // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.55 → 0.70. ~350° Pan en 540° movers. 7 capas de seguridad + Gearbox protegen.
+     panScale: 0.80,
+     tiltScale: 0.75,
     baseFrequency: 0.25,
     patterns: ['scan_x', 'square', 'diamond', 'botstep'],
     homeOnSilence: false,
@@ -133,7 +137,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   
   // LATINO: Curvas, fluidez, caderas
   'fiesta-latina': {
-    amplitudeScale: 0.65,  // 🔥 WAVE 2472 SANGRE LATINA: 0.35 → 0.65. Las caderas no mienten.
+     panScale: 0.85,
+     tiltScale: 0.70,
     baseFrequency: 0.15,
     patterns: ['figure8', 'wave_y', 'ballyhoo'],
     homeOnSilence: false,
@@ -141,7 +146,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   
   // POP-ROCK: Simetria, majestuosidad, estadio
   'pop-rock': {
-    amplitudeScale: 0.45,  // 🔧 WAVE 2213 FÉNIX: 0.80 → 0.45. Barridos medios de estadio, servo-safe.
+     panScale: 0.75,
+    tiltScale: 0.65,  // 🎭 WAVE 4645: ~176° Tilt — crowd-wash vertical drama
     baseFrequency: 0.20,
     patterns: ['circle_big', 'cancan', 'dual_sweep'],
     homeOnSilence: true,
@@ -151,7 +157,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   // 🌊 WAVE 2470 MODO DERIVA: amplitudeScale 0.50→0.12. Recorrido mínimo.
   // Los patrones existen, pero apenas son perceptibles. Es poesía en movimiento.
   'chill-lounge': {
-    amplitudeScale: 0.12,
+     panScale: 0.70,
+     tiltScale: 0.70,
     baseFrequency: 0.04,
     patterns: ['drift', 'sway', 'breath'],
     homeOnSilence: false,  // Flotar eternamente. Nunca volver a casa.
@@ -159,7 +166,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   
   // IDLE: Minimo
   'idle': {
-    amplitudeScale: 0.1,
+    panScale: 0.10,  // 🎭 WAVE 4645: near-static
+    tiltScale: 0.15, // 🎭 WAVE 4645: subtle vertical pulse
     baseFrequency: 0.05,
     patterns: ['breath'],
     homeOnSilence: true,
@@ -629,7 +637,9 @@ export class VibeMovementManager {
     fixtureIndex: number = 0,
     totalFixtures: number = 1,
     /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). Defaults to 250 if not provided. */
-    fixtureMaxSpeed: number = 250
+    fixtureMaxSpeed: number = 250,
+    /** 🎭 WAVE 4645: Phase offset (rad) for left/right asymmetry */
+    phaseOffset: number = 0
   ): MovementIntent {
     // ═══════════════════════════════════════════════════════════════════════
     // 🎭 WAVE 2086.1: FRAME-ONCE GUARD
@@ -714,7 +724,7 @@ export class VibeMovementManager {
       this.phaseAccumulator += phaseDelta
     }
     
-    const phase = this.phaseAccumulator
+    const phase = this.phaseAccumulator + phaseOffset
     
     // PATTERN EXECUTION
     const patternFn = PATTERNS[patternName as GoldenPattern]
@@ -727,8 +737,15 @@ export class VibeMovementManager {
     
     // THE GEARBOX - Dynamic Amplitude Scaling
     // 🔥 WAVE 2088.10: Use smoothedBPM for stable gearbox calculations
-    const effectiveAmplitude = this.calculateEffectiveAmplitude(
-      config.amplitudeScale,
+    const effectivePanAmplitude = this.calculateEffectiveAmplitude(
+      config.panScale,
+      this.smoothedBPM,
+      patternPeriod,
+      audio.energy,
+      fixtureMaxSpeed
+    )
+    const effectiveTiltAmplitude = this.calculateEffectiveAmplitude(
+      config.tiltScale,
       this.smoothedBPM,
       patternPeriod,
       audio.energy,
@@ -757,15 +774,16 @@ export class VibeMovementManager {
     // Clamp final: el envelope escala entre 0.85 y 1.0
     const clampedEnvelope = Math.max(0.85, Math.min(1.0, phraseEnvelope))
     
-    const finalAmplitude = effectiveAmplitude * clampedEnvelope
+    const finalPanAmplitude = effectivePanAmplitude * clampedEnvelope
+    const finalTiltAmplitude = effectiveTiltAmplitude * clampedEnvelope
     
     // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
     // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
-    // 🔧 WAVE 2233: -0.35 → -0.20. Con amplitudeScale 0.70, -0.35 empujaba tilt contra límite inferior.
+    // 🔧 WAVE 2233: -0.35 → -0.20. Con tiltScale 0.70, -0.20 points toward dancefloor.
     const tiltOffset = vibeId === 'techno-club' ? -0.20 : 0
     const position = {
-      x: Math.max(-1, Math.min(1, rawPosition.x * finalAmplitude)),
-      y: Math.max(-1, Math.min(1, (rawPosition.y * finalAmplitude) + tiltOffset)),
+      x: Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude)),
+      y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
     }
     
     // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
@@ -891,7 +909,7 @@ export class VibeMovementManager {
       y: stereoPosition.y,
       pattern: patternName,
       speed: effectiveFrequency,
-      amplitude: effectiveAmplitude,
+      amplitude: effectivePanAmplitude,
       phaseType,
       _frequency: effectiveFrequency,
       _phrase: Math.floor(this.barCount / 8),

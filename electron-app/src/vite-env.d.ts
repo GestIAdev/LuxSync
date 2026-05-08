@@ -777,6 +777,22 @@ declare global {
       setBlackout: (active: boolean) => Promise<{ success: boolean; blackoutActive?: boolean; error?: string }>
 
       /**
+       * WAVE 4656: Set output gate global (ARM/LIVE) para egress Aether.
+       */
+      setOutputEnabled: (enabled: boolean) => Promise<{ success: boolean; outputEnabled?: boolean; error?: string }>
+
+      /**
+       * WAVE 4656: Estado de control para hidratar CommandDeck sin legacy.
+       */
+      getControlState: () => Promise<{
+        success: boolean
+        outputEnabled?: boolean
+        blackoutActive?: boolean
+        grandMaster?: number
+        error?: string
+      }>
+
+      /**
        * WAVE 4652: Set grand master dimmer global (0-1).
        */
       setGrandMaster: (value: number) => Promise<{ success: boolean; grandMaster?: number; error?: string }>

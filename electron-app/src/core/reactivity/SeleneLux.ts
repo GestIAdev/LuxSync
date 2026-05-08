@@ -56,6 +56,7 @@ import {
   // 🌊 WAVE 2434: TELEMETRY ENGINE — swap in/out de liquidEngine41
   latinoEngine41Telemetry,
 } from '../../hal/physics';
+import type { LiquidEngineBase } from '../../hal/physics/LiquidEngineBase'
 
 import type { GodEarBands } from '../../workers/GodEarFFT';
 
@@ -394,6 +395,7 @@ export class SeleneLux {
   // 🌊 WAVE 2429 → WAVE 2432: Layout mode for Omni-Liquid routing
   // 'legacy' = DEPRECATED (backwards compat only), '4.1' = LiquidEngine41, '7.1' = LiquidEngine71
   private liquidLayout: 'legacy' | '4.1' | '7.1' = '4.1';
+  private _lastActiveLiquidEngine: LiquidEngineBase = liquidEngine71
   
   // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
   private liquidStereoOverrides: {
@@ -470,6 +472,10 @@ export class SeleneLux {
       latinoEngine41Telemetry.setTelemetryEnabled(true)
     }
     console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
+  }
+
+  public getLastActiveLiquidEngine(): LiquidEngineBase {
+    return this._lastActiveLiquidEngine
   }
 
   /**
@@ -629,6 +635,7 @@ export class SeleneLux {
       const liquidEngine = (this.liquidLayout === '7.1' || isChill)
         ? liquidEngine71
         : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
+      this._lastActiveLiquidEngine = liquidEngine
       const liquidResult = liquidEngine.applyBands(liquidInput);
       
       isStrobeActive = liquidResult.strobeActive;

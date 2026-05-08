@@ -59,15 +59,16 @@ const JITTER_THRESHOLD = 0.0005;
 const DEG_PER_SEC_TO_NORM_PER_SEC = 1 / 540;
 /**
  * Aceleración máxima de seguridad en espacio normalizado/s².
- * Equivale al SAFETY_CAP del FixturePhysicsDriver (900 DMX/s² ≈ 900/255/540 norm/s²).
- * Usamos el tope físico más agresivo permitido.
+ * En WAVE 4636 liberamos la ruta clásica: este cap ya no se deriva de DMX/255/540,
+ * porque el dominio aquí ya es normalizado [0..1].
  */
-const SAFETY_MAX_ACCELERATION_NORM = 900 / 255 / 540; // ≈ 0.00654 norm/s²
+const SAFETY_MAX_ACCELERATION_NORM = 20.0;
 /**
  * Velocidad máxima de seguridad en espacio normalizado/s.
- * Equivale a 400 DMX/s → 400/255/540 ≈ 0.00291 norm/s.
+ * En WAVE 4636 liberamos la ruta clásica: permitimos barridos rápidos en
+ * espacio normalizado sin el cap microscópico heredado de DMX.
  */
-const SAFETY_MAX_VELOCITY_NORM = 400 / 255 / 540; // ≈ 0.00291 norm/s
+const SAFETY_MAX_VELOCITY_NORM = 5.0;
 // ── WAVE 4617-B M3: Inercia espacial 3D parametrizada por escenario ─────
 /**
  * Factor de conversión: grados → radianes.
@@ -296,13 +297,6 @@ export class PhysicsPostProcessor {
             // Usamos maxPanSpeed como proxy para aceleración si no hay dato explícito
             // (el FixturePhysicsDriver hace lo mismo con el physicsProfile)
             node.maxPanSpeed * DEG_PER_SEC_TO_NORM_PER_SEC * 4, SAFETY_MAX_ACCELERATION_NORM);
-            // WAVE 4621-A: TELEMETRY — Legacy pan/tilt physics limits (cada 60 frames)
-            if ((++this._telemetryFrame % 60) === 0) {
-                console.log(`[PHYSICS-LEGACY] node=${String(node.nodeId)} mode=${this._mode} ` +
-                    `panTarget=${this._panTarget.toFixed(4)} tiltTarget=${this._tiltTarget.toFixed(4)} ` +
-                    `maxVelNorm=${this._maxVelNorm.toFixed(6)} maxAccNorm=${this._maxAccNorm.toFixed(6)} ` +
-                    `dt=${this._dt.toFixed(4)} panPos=${state[SLOT_PAN_POS].toFixed(4)} tiltPos=${state[SLOT_TILT_POS].toFixed(4)}`);
-            }
             if (this._mode === 'snap') {
                 this._applySnap(state);
             }

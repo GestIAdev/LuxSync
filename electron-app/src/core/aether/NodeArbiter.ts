@@ -137,8 +137,16 @@ export class NodeArbiter implements INodeArbiter {
     this._blackout = active
   }
 
+  isBlackoutActive(): boolean {
+    return this._blackout
+  }
+
   setGrandMaster(value: number): void {
     this._grandMaster = value < 0 ? 0 : value > 1 ? 1 : value
+  }
+
+  getGrandMaster(): number {
+    return this._grandMaster
   }
 
   /**

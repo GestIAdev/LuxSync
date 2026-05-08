@@ -39,7 +39,7 @@ import type { IIntentBus, INodeIntent } from '../intent-bus'
 import type { ProcessedFrame } from '../../../hal/physics/LiquidEngineBase'
 import type { LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
 import type { INodeGraph } from '../node-graph'
-import { selectZoneFromResult, computeEpicenterFalloff, normalizeZoneId } from './zoneUtils'
+import { selectZoneFromResult } from './zoneUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES
@@ -50,7 +50,6 @@ const L0_PRIORITY = 0
 
 /** Source string para telemetría */
 const SOURCE = 'liquid-aether-l0'
-const PHOTON_TRACER_EVERY_FRAMES = 20
 
 /** Radio máximo de influencia de la onda energética (metros). */
 const DEFAULT_MAX_RADIUS_M = 12.0
@@ -62,21 +61,6 @@ const DEFAULT_MAX_RADIUS_M = 12.0
 /** Clamp inline [0, 1]. Sin alloc. */
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v
-}
-
-function average9Zones(result: LiquidStereoResult): number {
-  const avg = (
-    result.frontLeftIntensity +
-    result.frontRightIntensity +
-    result.backLeftIntensity +
-    result.backRightIntensity +
-    result.moverLeftIntensity +
-    result.moverRightIntensity +
-    result.floorIntensity +
-    result.ambientIntensity +
-    result.airIntensity
-  ) / 9
-  return clamp01(avg)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,18 +87,6 @@ export class LiquidAetherAdapter {
   // ── Epicentro de onda — mutable solo en patch-time ───────────────────
   private readonly _epicenter: { x: number; y: number; z: number }
   private readonly _maxRadiusM: number
-
-  // ── Pre-allocated scratch IMPACT ─────────────────────────────────────
-  // Un único objeto reutilizado en todos los push de IMPACT nodes.
-  // bus.push() copia el contenido antes de retornar — es seguro reutilizarlo.
-  private readonly _impactValues: Record<string, number>
-  private readonly _impactScratch: {
-    nodeId: string
-    values: Record<string, number>
-    priority: number
-    confidence: number
-    source: string
-  }
 
   // ── Pre-allocated scratch STROBE ─────────────────────────────────────
   private readonly _strobeValues: Record<string, number>
@@ -145,16 +117,6 @@ export class LiquidAetherAdapter {
   ) {
     this._epicenter  = { x: epicenter.x, y: epicenter.y, z: epicenter.z }
     this._maxRadiusM = maxRadiusM
-
-    // ── IMPACT scratch
-    this._impactValues  = { dimmer: 0 }
-    this._impactScratch = {
-      nodeId:     '',
-      values:     this._impactValues,
-      priority:   L0_PRIORITY,
-      confidence: 1.0,
-      source:     SOURCE,
-    }
 
     // ── STROBE scratch
     this._strobeValues  = { shutter: 0, strobeRate: 0 }
@@ -199,60 +161,18 @@ export class LiquidAetherAdapter {
   ingest(frame: ProcessedFrame, result: LiquidStereoResult, bus: IIntentBus): void {
     this._photonTracerFrame++
 
-    // 1. Intensidades de dimmer para todos los IMPACT nodes por zona
-    this._routeImpactNodes(result, bus)
-
-    // 2. Señal de strobe — solo si está activa en el frame
+    // 1. Señal de strobe — solo si está activa en el frame
     if (result.strobeActive) {
       this._routeStrobeNodes(result, bus)
     }
 
-    // 3. Intensidad de mood para COLOR nodes (brightness, sin tocar RGB)
+    // 2. Intensidad de mood para COLOR nodes (brightness, sin tocar RGB)
     this._routeMoodToColorIntensity(result, frame, bus)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // SUBRUTAS DE ENRUTAMIENTO
   // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Enruta las intensidades zonales al canal `dimmer` de todos los
-   * IMPACT nodes.
-   *
-   * Por cada nodo:
-   *   1. Selecciona la intensidad de su zona mediante selectZoneFromResult
-   *      usando el zoneId semántico del nodo.
-   *   2. Aplica falloff por distancia al epicentro.
-   *   3. Empuja el intent L0 al bus.
-   */
-  private _routeImpactNodes(result: LiquidStereoResult, bus: IIntentBus): void {
-    const impactNodes: INodeView<IImpactNodeData> =
-      this._nodeGraph.getView(NodeFamily.IMPACT)
-
-    const epicenter = this._epicenter
-    const maxR      = this._maxRadiusM
-
-    impactNodes.forEach((node, index) => {
-      // ── Zero-alloc stale cleanup ──────────────────────────────────
-      this._impactValues['dimmer'] = undefined as unknown as number
-
-      // ── Intensidad zonal por zoneId semántico del nodo ────────────
-      const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId)
-
-      // ── Falloff por distancia al epicentro de la onda ─────────────
-      const falloff = computeEpicenterFalloff(node, epicenter, maxR)
-
-      // ── Intent L0 ─────────────────────────────────────────────────
-      this._impactValues['dimmer'] = clamp01(zoneIntensity * falloff)
-      this._impactScratch.nodeId   = node.nodeId
-
-      if (index === 0 && this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-        // Silencio operacional WAVE 4627: sin telemetría legacy en ingest.
-      }
-
-      bus.push(this._impactScratch as INodeIntent)
-    })
-  }
 
   /**
    * Enruta la señal de strobe a los IMPACT nodes que poseen canal `shutter`.
@@ -295,7 +215,7 @@ export class LiquidAetherAdapter {
    * para combinarlo con el color de ColorAdapter.
    *
    * mood = clamp01(morphFactor × recoveryFactor)
-   * final_brightness = clamp01(mood × zoneIntensity × falloff)
+   * final_brightness = clamp01(mood × zoneIntensity)
    */
   private _routeMoodToColorIntensity(
     result: LiquidStereoResult,
@@ -306,19 +226,16 @@ export class LiquidAetherAdapter {
       this._nodeGraph.getView(NodeFamily.COLOR)
 
     const moodIntensity = clamp01(frame.morphFactor * frame.recoveryFactor)
-    const epicenter     = this._epicenter
-    const maxR          = this._maxRadiusM
 
     colorNodes.forEach((node) => {
-      // ── Zero-alloc stale cleanup ──────────────────────────────────
+      // ── Zero-alloc stale cleanup ────────────────────────────
       this._colorValues['brightness'] = undefined as unknown as number
 
-      // ── Intensidad zonal + falloff ────────────────────────────────
-      const zoneIntensity = this._selectReactiveZoneIntensity(result, node.zoneId)
-      const falloff       = computeEpicenterFalloff(node, epicenter, maxR)
+      // ── Intensidad zonal — uniforme por zona semántica, sin falloff (F3) ────
+      const zoneIntensity = selectZoneFromResult(result, node.zoneId)
 
-      // ── Intent L0 — solo brightness, no tinte ─────────────────────
-      this._colorValues['brightness'] = clamp01(moodIntensity * zoneIntensity * falloff)
+      // ── Intent L0 — solo brightness, no tinte ─────────────────
+      this._colorValues['brightness'] = clamp01(moodIntensity * zoneIntensity)
       this._colorScratch.nodeId       = node.nodeId
       bus.push(this._colorScratch as INodeIntent)
     })
@@ -344,34 +261,4 @@ export class LiquidAetherAdapter {
     this._epicenter.z = z
   }
 
-  private _selectReactiveZoneIntensity(result: LiquidStereoResult, zoneId: string): number {
-    switch (normalizeZoneId(zoneId)) {
-      case 'unassigned':
-      case 'center':
-      case 'mid':
-        return average9Zones(result)
-      case 'front':
-        return clamp01((result.frontLeftIntensity + result.frontRightIntensity) * 0.5)
-      case 'back':
-        return clamp01((result.backLeftIntensity + result.backRightIntensity) * 0.5)
-      case 'left':
-        return clamp01((result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3)
-      case 'right':
-        return clamp01((result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3)
-      case 'front-left':
-        return result.frontLeftIntensity
-      case 'front-right':
-        return result.frontRightIntensity
-      case 'back-left':
-        return result.backLeftIntensity
-      case 'back-right':
-        return result.backRightIntensity
-      case 'movers-left':
-        return result.moverLeftIntensity
-      case 'movers-right':
-        return result.moverRightIntensity
-      default:
-        return selectZoneFromResult(result, zoneId)
-    }
-  }
 }

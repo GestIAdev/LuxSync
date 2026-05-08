@@ -485,7 +485,7 @@ export class NodeResolver implements INodeResolver {
 
       // WAVE 4639: La inversión por orientación en ruta clásica se aplica
       // en dominio DMX final para respetar offsets/límites y corregir pivote.
-      if (invertClassicKineticAxes && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE)) {
+      if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
         dmxValue = 255 - dmxValue
       }
 

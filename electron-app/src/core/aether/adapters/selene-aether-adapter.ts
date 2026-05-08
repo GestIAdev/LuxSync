@@ -108,6 +108,27 @@ function hslToRgbInto(
 /** Buffer temporal para conversiones HSL→RGB (reutilizado, zero-alloc) */
 const _rgbBuffer = { r: 0, g: 0, b: 0 }
 
+type ColorInput = {
+  h?: number
+  s?: number
+  l?: number
+  isHSL?: boolean
+  red?: number
+  green?: number
+  blue?: number
+  r?: number
+  g?: number
+  b?: number
+}
+
+function isHslColor(color: ColorInput): color is { h: number; s: number; l: number } {
+  return color.isHSL === true || (
+    typeof color.h === 'number' &&
+    typeof color.s === 'number' &&
+    typeof color.l === 'number'
+  )
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE AETHER ADAPTER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -138,8 +159,8 @@ export class SeleneAetherAdapter {
     source: L3_SOURCE,
   }
 
-  /** Scratch para canales COLOR (r, g, b, white, amber) */
-  private readonly _colorValues: Record<string, number> = { r: 0, g: 0, b: 0, white: 0, amber: 0 }
+  /** Scratch para canales COLOR (red, green, blue, white, amber) */
+  private readonly _colorValues: Record<string, number> = { red: 0, green: 0, blue: 0, white: 0, amber: 0 }
   private readonly _colorScratch = {
     nodeId: '' as NodeId,
     values: null as unknown as Record<string, number>,
@@ -234,11 +255,9 @@ export class SeleneAetherAdapter {
       this._emitImpact('all' as EffectZone, clamp01(output.dimmerOverride), composition, bus)
     }
 
-    // colorOverride HSL → COLOR nodes zona 'all'
+    // colorOverride HSL/RGB → COLOR nodes zona 'all'
     if (output.colorOverride) {
-      const c = output.colorOverride
-      hslToRgbInto(c.h, c.s, c.l, _rgbBuffer)
-      this._emitColor('all' as EffectZone, _rgbBuffer.r, _rgbBuffer.g, _rgbBuffer.b, composition, bus)
+      this._emitColor('all' as EffectZone, output.colorOverride as ColorInput, composition, bus)
     }
 
     // whiteOverride → COLOR nodes zona 'all' (canal 'white')
@@ -271,16 +290,17 @@ export class SeleneAetherAdapter {
     for (const zoneId in zoneOverrides) {
       const override = zoneOverrides[zoneId]
       const zone = zoneId as EffectZone
+      // blendMode/priority/metadatos viejos se ignoran: la mezcla ya la decide el Arbiter.
+      void override.blendMode
 
       // dimmer → IMPACT nodes de esta zona
       if (override.dimmer !== undefined) {
         this._emitImpact(zone, clamp01(override.dimmer), composition, bus)
       }
 
-      // color HSL → COLOR nodes de esta zona
+      // color HSL/RGB → COLOR nodes de esta zona
       if (override.color) {
-        hslToRgbInto(override.color.h, override.color.s, override.color.l, _rgbBuffer)
-        this._emitColor(zone, _rgbBuffer.r, _rgbBuffer.g, _rgbBuffer.b, composition, bus)
+        this._emitColor(zone, override.color as ColorInput, composition, bus)
       }
 
       // white → COLOR nodes de esta zona
@@ -385,9 +405,9 @@ export class SeleneAetherAdapter {
   /** Limpia keys residuales del color scratch para evitar contaminación cruzada */
   private _clearColorScratch(): void {
     const v = this._colorValues
-    delete (v as Record<string, number>)['r']
-    delete (v as Record<string, number>)['g']
-    delete (v as Record<string, number>)['b']
+    delete (v as Record<string, number>)['red']
+    delete (v as Record<string, number>)['green']
+    delete (v as Record<string, number>)['blue']
     delete (v as Record<string, number>)['white']
     delete (v as Record<string, number>)['amber']
   }
@@ -397,22 +417,25 @@ export class SeleneAetherAdapter {
    */
   private _emitColor(
     zone: EffectZone,
-    r: number,
-    g: number,
-    b: number,
+    color: ColorInput,
     confidence: number,
     bus: IIntentBus,
   ): void {
     const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR)
     if (nodeIds.length === 0) return
 
+    if (isHslColor(color)) {
+      hslToRgbInto(color.h, color.s, color.l, _rgbBuffer)
+      color = _rgbBuffer
+    }
+
     this._clearColorScratch()
     const scratch = this._colorScratch
     const vals    = this._colorValues
 
-    vals.r              = r
-    vals.g              = g
-    vals.b              = b
+    vals.red            = color.red ?? color.r ?? 0
+    vals.green          = color.green ?? color.g ?? 0
+    vals.blue           = color.blue ?? color.b ?? 0
     scratch.confidence  = confidence
 
     for (let i = 0; i < nodeIds.length; i++) {

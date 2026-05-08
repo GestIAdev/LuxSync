@@ -104,11 +104,36 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
     expect(dimmerIntent!.priority).toBe(300)
     expect(dimmerIntent!.source).toBe('effect')
 
-    expect(colorIntent!.values['r']).toBeCloseTo(1, 6)
-    expect(colorIntent!.values['g']).toBeCloseTo(0, 6)
-    expect(colorIntent!.values['b']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['red']).toBeCloseTo(1, 6)
+    expect(colorIntent!.values['green']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['blue']).toBeCloseTo(0, 6)
     expect(colorIntent!.priority).toBe(300)
     expect(colorIntent!.source).toBe('effect')
+  })
+
+  test('Test 1b — blendMode se ignora y HSL se traduce también en zoneOverrides', () => {
+    const { router } = makeRouterMock()
+    const { bus, captured } = makeCaptureBus()
+    const adapter = new SeleneAetherAdapter(router)
+
+    const effect = makeEffectOutput({
+      globalComposition: 1,
+      zoneOverrides: {
+        front: {
+          color: { h: 120, s: 100, l: 50 },
+          blendMode: 'replace',
+        },
+      },
+    })
+
+    adapter.ingest(null, effect, 16, bus)
+
+    const colorIntent = captured.find((i) => i.nodeId === 'color-front-1')
+    expect(colorIntent).toBeDefined()
+    expect(colorIntent!.values['red']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['green']).toBeCloseTo(1, 6)
+    expect(colorIntent!.values['blue']).toBeCloseTo(0, 6)
+    expect((colorIntent!.values as Record<string, number>)['blendMode']).toBeUndefined()
   })
 
   test('Test 2 — Gate de composición: globalComposition<0.01 hace early-exit', () => {

@@ -16,14 +16,14 @@
  *   lux:aether:clearAllManualOverrides — Reset global L2
  *
  * @module core/aether/AetherIPCHandlers
- * @version WAVE 4651
+ * @version WAVE 4652
  */
 
 import { ipcMain } from 'electron'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
-// WAVE 4651: masterArbiter es el delegado temporal para pattern engine e IK solver
-// hasta que NodeArbiter implemente KineticEngine e IKResolver propios.
-// La RUTA de IPC ya es nativa Aether — el engine cinematico sigue en master.
+// WAVE 4651: masterArbiter delegado temporal para pattern engine e IK solver.
+// WAVE 4652: masterArbiter compartido para blackout/grandmaster mientras el HAL
+// sigue leyendo de el. Ambos pipelines reciben la misma senal en paralelo.
 import { masterArbiter } from '../arbiter'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +176,72 @@ export function registerAetherIPCHandlers(): void {
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearInhibitLimit error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  // ── G1/G2: Blackout + GrandMaster globales (WAVE 4652) ─────────────────────
+  // Atacan NodeArbiter (pipeline Aether) Y masterArbiter (pipeline legacy + HAL)
+  // de forma simultanea. Cuando el HAL migre al pipeline Aether, se elimina
+  // la llamada a masterArbiter de aqui.
+
+  /**
+   * G1: Set blackout global.
+   * Escribe en NodeArbiter L4 Y en masterArbiter (HAL legacy).
+   * Payload: active boolean
+   * Devuelve: { success, blackoutActive }
+   */
+  ipcMain.handle(
+    'lux:aether:setBlackout',
+    (_event, { active }: { active: boolean }) => {
+      try {
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        arbiter.setBlackout(active)
+        // WAVE 4652: espejo al pipeline legacy hasta que HAL migre a Aether
+        masterArbiter.setBlackout(active)
+        return { success: true, blackoutActive: active }
+      } catch (err) {
+        console.error('[AetherIPC] setBlackout error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * G2: Set grand master dimmer global (0-1).
+   * Escribe en NodeArbiter Y en masterArbiter.
+   * Payload: value (0-1)
+   */
+  ipcMain.handle(
+    'lux:aether:setGrandMaster',
+    (_event, { value }: { value: number }) => {
+      try {
+        const clamped = value < 0 ? 0 : value > 1 ? 1 : value
+        getTitanOrchestrator().getAetherArbiter().setGrandMaster(clamped)
+        // WAVE 4652: espejo al pipeline legacy
+        masterArbiter.setGrandMaster(clamped)
+        return { success: true, grandMaster: clamped }
+      } catch (err) {
+        console.error('[AetherIPC] setGrandMaster error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * G3: Set grand master speed (0.1-2.0) — escala velocidad AI global.
+   * Delegado a masterArbiter (controla el VMM legacy).
+   * Payload: value (0.1-2.0)
+   */
+  ipcMain.handle(
+    'lux:aether:setGrandMasterSpeed',
+    (_event, { value }: { value: number }) => {
+      try {
+        masterArbiter.setGrandMasterSpeed(value)
+        return { success: true, grandMasterSpeed: value }
+      } catch (err) {
+        console.error('[AetherIPC] setGrandMasterSpeed error:', err)
         return { success: false, error: String(err) }
       }
     }

@@ -234,11 +234,11 @@ export function useMidiLearn() {
       switch (arbAction) {
         case 'blackout':
           if (msg.type !== 'note_on') return
-          // 🔴 WAVE 3304: Absolute setter — lee estado actual del store, envía opuesto
+          // 🔴 WAVE 4652: Ruta Aether — NodeArbiter L4 + HAL legacy en paralelo
           {
             const currentBlackout = useEffectsStore.getState().blackout
             const targetState = !currentBlackout
-            window.lux.arbiter.setBlackout(targetState)
+            window.lux.aether.setBlackout(targetState)
               .then((result: { success?: boolean; blackoutActive?: boolean }) => {
                 if (result?.success) {
                   useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetState)
@@ -250,7 +250,7 @@ export function useMidiLearn() {
           return
         case 'grand-master':
           if (msg.type !== 'cc') return
-          window.lux.arbiter.setGrandMaster(msg.value / 127)
+          window.lux.aether.setGrandMaster(msg.value / 127)
           console.log(`[MidiLearn] 🎛️ ARBITER: Grand Master → ${(msg.value / 127 * 100).toFixed(0)}%`)
           return
         case 'kill-effects':

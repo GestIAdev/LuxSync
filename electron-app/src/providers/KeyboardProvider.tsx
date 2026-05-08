@@ -35,12 +35,12 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
     return tagName === 'input' || tagName === 'textarea' || target.isContentEditable
   }, [])
 
-  // 🔴 WAVE 3304: Absolute blackout setter — lee estado actual, envía opuesto
+  // 🔴 WAVE 4652: Ruta Aether — NodeArbiter L4 + HAL legacy en paralelo
   const handleBlackoutToggle = useCallback(() => {
     const currentBlackout = useEffectsStore.getState().blackout
     const targetState = !currentBlackout
 
-    window.lux?.arbiter?.setBlackout(targetState)
+    window.lux?.aether?.setBlackout(targetState)
       .then((result: { success?: boolean; blackoutActive?: boolean }) => {
         if (result?.success) {
           setBlackout(result.blackoutActive ?? targetState)
@@ -54,9 +54,9 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
       })
   }, [setBlackout])
 
-  // 🔴 WAVE 3304: ESC = release absoluto, siempre false
+  // 🔴 WAVE 4652: ESC = release absoluto, siempre false
   const handleBlackoutRelease = useCallback(() => {
-    window.lux?.arbiter?.setBlackout(false)
+    window.lux?.aether?.setBlackout(false)
       .then((result: { success?: boolean; blackoutActive?: boolean }) => {
         if (result?.success) {
           setBlackout(result.blackoutActive ?? false)

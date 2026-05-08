@@ -118,7 +118,8 @@ export const CommandDeck: React.FC = () => {
   // Grand Master change handler
   const handleGrandMasterChange = useCallback(async (value: number) => {
     try {
-      await window.lux?.arbiter?.setGrandMaster(value)
+      // WAVE 4652: Ruta Aether — NodeArbiter + masterArbiter en paralelo
+      await window.lux?.aether?.setGrandMaster(value)
       setArbiterStatus(prev => ({ ...prev, grandMaster: value }))
     } catch (err) {
       console.error('[CommandDeck] Grand Master error:', err)
@@ -128,7 +129,8 @@ export const CommandDeck: React.FC = () => {
   // 🎚️ WAVE 2472: Grand Master Speed handler (AI only)
   const handleGrandMasterSpeedChange = useCallback(async (value: number) => {
     try {
-      await (window.lux?.arbiter as any)?.setGrandMasterSpeed(value)
+      // WAVE 4652: Ruta Aether
+      await window.lux?.aether?.setGrandMasterSpeed(value)
       setArbiterStatus(prev => ({ ...prev, grandMasterSpeed: value }))
     } catch (err) {
       console.error('[CommandDeck] Grand Master Speed error:', err)

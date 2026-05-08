@@ -770,6 +770,21 @@ declare global {
        * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.
        */
       releaseSpatialTarget: (args: { fixtureIds: string[] }) => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
+       */
+      setBlackout: (active: boolean) => Promise<{ success: boolean; blackoutActive?: boolean; error?: string }>
+
+      /**
+       * WAVE 4652: Set grand master dimmer global (0-1).
+       */
+      setGrandMaster: (value: number) => Promise<{ success: boolean; grandMaster?: number; error?: string }>
+
+      /**
+       * WAVE 4652: Set grand master speed (0.1-2.0).
+       */
+      setGrandMasterSpeed: (value: number) => Promise<{ success: boolean; grandMasterSpeed?: number; error?: string }>
     }
     
     // ============================================

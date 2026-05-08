@@ -1229,6 +1229,27 @@ const luxApi = {
      */
     releaseSpatialTarget: (args: { fixtureIds: string[] }) =>
       ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
+
+    /**
+     * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
+     * Reemplaza window.lux.arbiter.setBlackout.
+     */
+    setBlackout: (active: boolean) =>
+      ipcRenderer.invoke('lux:aether:setBlackout', { active }),
+
+    /**
+     * WAVE 4652: Set grand master dimmer global (0-1).
+     * Reemplaza window.lux.arbiter.setGrandMaster.
+     */
+    setGrandMaster: (value: number) =>
+      ipcRenderer.invoke('lux:aether:setGrandMaster', { value }),
+
+    /**
+     * WAVE 4652: Set grand master speed (0.1-2.0).
+     * Reemplaza window.lux.arbiter.setGrandMasterSpeed.
+     */
+    setGrandMasterSpeed: (value: number) =>
+      ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
   },
 
   // ============================================

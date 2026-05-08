@@ -22,8 +22,8 @@ export const BlackoutButton: React.FC = () => {
   const handleBlackout = useCallback(() => {
     const targetState = !blackout
     
-    // 🔴 WAVE 3304: Absolute setter — sin toggle, sin optimismo, sin deadlock
-    window.lux?.arbiter?.setBlackout(targetState)
+    // 🔴 WAVE 4652: Ruta Aether — NodeArbiter L4 + HAL legacy en paralelo
+    window.lux?.aether?.setBlackout(targetState)
       .then((result: { success?: boolean; blackoutActive?: boolean }) => {
         if (result?.success) {
           setBlackout(result.blackoutActive ?? targetState)

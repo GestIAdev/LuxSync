@@ -7,7 +7,7 @@
  *
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ movementStore.activePattern / patternSpeed / patternAmplitude           │
- * │   → window.lux.arbiter.setManualFixturePattern()  (MasterArbiter L2)   │
+ * │   → window.lux.aether.setManualPattern()  (Aether IPC E11 — WAVE 4651) │
  * │                                                                         │
  * │ movementStore.spatialTarget (RadarMode=spatial)                         │
  * │   → window.lux.aether.applySpatialTarget()  (IK resolver E12)          │
@@ -168,15 +168,16 @@ class KineticsBridgeClass {
 
     const enginePattern = toEnginePattern(activePattern)
 
+    // WAVE 4651: ruta 100% Aether — sin tocar window.lux.arbiter
     try {
-      await window.lux?.arbiter?.setManualFixturePattern({
+      await window.lux?.aether?.setManualPattern({
         fixtureIds,
         pattern: enginePattern,
         speed: patternSpeed,
         amplitude: patternAmplitude,
       })
     } catch (err) {
-      console.error('[KineticsBridge] setManualFixturePattern error:', err)
+      console.error('[KineticsBridge] setManualPattern error:', err)
     }
   }
 

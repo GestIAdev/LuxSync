@@ -29,6 +29,7 @@ import { HorizontalFader } from './HorizontalFader'
 import { FixtureMatrix } from './FixtureMatrix'
 import { PatternArsenal } from './PatternArsenal'
 import { ChaosOrderSlider } from './ChaosOrderSlider'
+import { KinRadarViewport } from './KinRadarViewport'
 import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
 
 import './KineticsCathedral.css'
@@ -164,10 +165,22 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   }, [selectedIds, fixtureOverrides])
 
   const handleUnlockKinetics = useCallback(() => {
-    // WAVE-4592 INCISIÓN 5: releaseAll para limpiar todas las familias de nodos,
-    // no solo KINETIC — señal limpia al NodeArbiter sin ambigüedad.
+    // WAVE 4651: Unlock en dos capas, un solo frame coherente:
+    // 1) NodeArbiter L2: limpia speed/pan/tilt/color de todas las familias
     useProgrammerStore.getState().releaseAll()
-  }, [])
+    // 2) Pattern engine (masterArbiter via ruta Aether): clear del patron activo
+    //    para que las cabezas vuelvan al control IA sin patron fantasma residual
+    if (selectedIds.length > 0) {
+      void window.lux?.aether?.setManualPattern({
+        fixtureIds: selectedIds,
+        pattern: null,
+        speed: 50,
+        amplitude: 50,
+      })
+    }
+    // 3) UI inmediata: resetear pattern en store sin esperar hidratacion del backend
+    useMovementStore.getState().setActivePattern('none')
+  }, [selectedIds])
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -232,11 +245,6 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
           {/* Mode bar */}
           <div className="kinetics-cathedral__mode-bar">
             <button
-              className={`kc-mode-btn ${radarModeOverride === null ? 'kc-mode-btn--active' : ''}`}
-              onClick={() => setRadarModeOverride(null)}
-              title="Auto-detect (Adiabatic Detection)"
-            >AUTO</button>
-            <button
               className={`kc-mode-btn ${radarModeOverride === 'classic' ? 'kc-mode-btn--active' : ''}`}
               onClick={() => setRadarModeOverride('classic')}
               title="Fuerza modo grados PAN/TILT"
@@ -256,6 +264,11 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             <span className="kc-mode-indicator">
               {radarModeOverride === null ? `AUTO → ${radarMode.toUpperCase()}` : `↑ MANUAL`}
             </span>
+          </div>
+
+          {/* ── RADAR EMBED ── WAVE 4647: centro de mando integrado en la Cathedral ── */}
+          <div className="kinetics-cathedral__radar-embed">
+            <KinRadarViewport />
           </div>
 
           {/* ── SPATIAL FAN CONTROLS (solo en modo 3D con múltiples fixtures) ── */}

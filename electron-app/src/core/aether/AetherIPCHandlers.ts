@@ -16,11 +16,14 @@
  *   lux:aether:clearAllManualOverrides — Reset global L2
  *
  * @module core/aether/AetherIPCHandlers
- * @version WAVE 4529
+ * @version WAVE 4651
  */
 
 import { ipcMain } from 'electron'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
+// WAVE 4651: masterArbiter es el delegado temporal para pattern engine e IK solver
+// hasta que NodeArbiter implemente KineticEngine e IKResolver propios.
+// La RUTA de IPC ya es nativa Aether — el engine cinematico sigue en master.
 import { masterArbiter } from '../arbiter'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,16 +181,17 @@ export function registerAetherIPCHandlers(): void {
     }
   )
 
-  // ── E11/E12: Stubs kinetic + spatial (WAVE 4531) ──────────────────────────
-  // El sistema Aether no tiene aún un KineticEngine manual ni un IK Resolver
-  // propios. Estos handlers delegan al MasterArbiter legacy hasta que Aether
-  // implemente esas capacidades nativas.
+  // ── E11/E12: Kinetic pattern engine + IK spatial solver (WAVE 4651) ─────────
+  // El NodeArbiter opera sobre canales abstractos (pan, tilt, speed...).
+  // La logica de pattern (timing matematico, anchor, sweep) y la resolucion
+  // IK (giroscopio de cables, calibracion, pan range) viven en el ArbitrationDirector.
+  // WAVE 4651: la RUTA IPC es 100% Aether. El engine de movimiento fisico
+  // permanece en masterArbiter como motor compartido hasta WAVE 4700 (KineticSystem Aether).
 
   /**
    * E11: Set manual kinetic pattern para fixtures.
-   * Stub → masterArbiter.setPattern() / clearPattern().
-   * Normalización speed/amplitude equivalente al handler legacy.
-   *
+   * Ruta: lux:aether:setManualPattern (Aether IPC)
+   * Engine: masterArbiter.setPattern() — motor cinematico compartido.
    * Payload: { fixtureIds, pattern, speed (0-100), amplitude (0-100) }
    */
   ipcMain.handle(
@@ -203,18 +207,18 @@ export function registerAetherIPCHandlers(): void {
       }
 
       try {
-        if (pattern === null || pattern === 'static') {
+        if (pattern === null || pattern === 'static' || pattern === 'hold') {
           masterArbiter.clearPattern(fixtureIds)
           return { success: true }
         }
 
-        // Normalización speed: 0.05-0.5 Hz (igual que legacy WAVE 2652)
+        // Normalizacion speed: 0.05-0.5 Hz (rango WAVE 2652, constante fija)
         const SPEED_MIN = 0.05
         const SPEED_MAX = 0.5
         const speedNorm = SPEED_MIN + (speed / 100) * (SPEED_MAX - SPEED_MIN)
         const sizeNorm = (amplitude / 100) * 1.0
 
-        // Snapshot posición actual del primer fixture como anchor
+        // Anchor: posicion actual del primer fixture como centro del patron
         const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0])
 
         masterArbiter.setPattern(fixtureIds, {
@@ -233,8 +237,8 @@ export function registerAetherIPCHandlers(): void {
 
   /**
    * E12: Apply spatial target (IK solve) para fixtures.
-   * Stub → masterArbiter.applySpatialTarget().
-   *
+   * Ruta: lux:aether:applySpatialTarget (Aether IPC)
+   * Engine: masterArbiter.applySpatialTarget() — IK resolver compartido.
    * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude? }
    */
   ipcMain.handle(
@@ -267,8 +271,9 @@ export function registerAetherIPCHandlers(): void {
   )
 
   /**
-   * E12: Release spatial target — devuelve fixtures al control AI/mecánico.
-   * Stub → masterArbiter.releaseSpatialTarget().
+   * E12: Release spatial target — devuelve fixtures al control AI.
+   * Ruta: lux:aether:releaseSpatialTarget (Aether IPC)
+   * Engine: masterArbiter.releaseSpatialTarget() — IK release compartido.
    */
   ipcMain.handle(
     'lux:aether:releaseSpatialTarget',

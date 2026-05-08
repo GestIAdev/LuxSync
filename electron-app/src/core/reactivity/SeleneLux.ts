@@ -396,6 +396,7 @@ export class SeleneLux {
   // 'legacy' = DEPRECATED (backwards compat only), '4.1' = LiquidEngine41, '7.1' = LiquidEngine71
   private liquidLayout: 'legacy' | '4.1' | '7.1' = '4.1';
   private _lastActiveLiquidEngine: LiquidEngineBase = liquidEngine71
+  private _lastLoggedEngine: string = ''
   
   // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
   private liquidStereoOverrides: {
@@ -636,6 +637,12 @@ export class SeleneLux {
         ? liquidEngine71
         : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
       this._lastActiveLiquidEngine = liquidEngine
+      // 🩺 WAVE 4655-DIAG: log engine switch (once per change, not every frame)
+      const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === latinoEngine41Telemetry ? '41T' : '41');
+      if (engineName !== this._lastLoggedEngine) {
+        console.log(`[SeleneLux 🌊] ENGINE: ${engineName} | layout=${this.liquidLayout} | vibe=${vibeContext.activeVibe} | chill=${isChill}`);
+        this._lastLoggedEngine = engineName;
+      }
       const liquidResult = liquidEngine.applyBands(liquidInput);
       
       isStrobeActive = liquidResult.strobeActive;

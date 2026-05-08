@@ -25,6 +25,8 @@ import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 // WAVE 4652: masterArbiter compartido para blackout/grandmaster mientras el HAL
 // sigue leyendo de el. Ambos pipelines reciben la misma senal en paralelo.
 import { masterArbiter } from '../arbiter'
+// WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -317,6 +319,8 @@ export function registerAetherIPCHandlers(): void {
       try {
         if (pattern === null || pattern === 'static' || pattern === 'hold') {
           masterArbiter.clearPattern(fixtureIds)
+          // WAVE 4659: limpiar también el VMM para que KineticAdapter vea null
+          vibeMovementManager.setManualPattern(null)
           return { success: true }
         }
 
@@ -335,6 +339,8 @@ export function registerAetherIPCHandlers(): void {
           size: sizeNorm,
           center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
         })
+        // WAVE 4659: V3 — propagar patrón al VMM para que KineticAdapter lo use en Aether  
+        vibeMovementManager.setManualPattern(pattern)
         return { success: true, pattern }
       } catch (err) {
         console.error('[AetherIPC] setManualPattern error:', err)

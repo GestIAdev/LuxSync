@@ -19,6 +19,7 @@
  * @module core/aether/adapters/zoneUtils
  * @version WAVE 4521.2
  */
+import { normalizeZone } from '../../stage/ShowFileV2';
 /**
  * Normaliza zoneId a kebab-case canónico para unificar Legacy camelCase y Aether.
  * Ejemplos: moversLeft -> movers-left, frontLeft -> front-left.
@@ -32,11 +33,67 @@ export function normalizeZoneId(zoneId) {
         .replace(/[\s_]+/g, '-')
         .replace(/-+/g, '-')
         .toLowerCase();
+    // Legacy aliases (ShowFile V1/V2) -> canonical zones.
+    // This keeps reactive routing stable across migrated and non-migrated shows.
+    switch (normalized) {
+        case 'front-pars':
+        case 'frontpars':
+        case 'ceiling-front':
+            return 'front';
+        case 'back-pars':
+        case 'backpars':
+        case 'ceiling-back':
+            return 'back';
+        case 'floor-pars':
+        case 'floorpars':
+            return 'floor';
+        case 'floor-front':
+            return 'front';
+        case 'floor-back':
+            return 'back';
+        case 'moving-left':
+        case 'movingleft':
+        case 'stage-left':
+            return 'movers-left';
+        case 'moving-right':
+        case 'movingright':
+        case 'stage-right':
+            return 'movers-right';
+        case 'strobes':
+        case 'stage-center':
+        case 'ceiling-center':
+            return 'center';
+        case 'lasers':
+            return 'air';
+        case 'truss-1':
+        case 'truss-2':
+        case 'truss-3':
+            return 'back';
+        case 'custom':
+            return 'unassigned';
+        case 'frontleft':
+            return 'front-left';
+        case 'frontright':
+            return 'front-right';
+        case 'backleft':
+            return 'back-left';
+        case 'backright':
+            return 'back-right';
+        case 'moverleft':
+            return 'movers-left';
+        case 'moverright':
+            return 'movers-right';
+    }
     // Alias legacy -> canónicos
     if (normalized === 'mover-left')
         return 'movers-left';
     if (normalized === 'mover-right')
         return 'movers-right';
+    // Fallback canónico: reutilizar el normalizador único de ShowFileV2
+    // para cubrir variantes legacy no contempladas en este adapter.
+    const canonical = normalizeZone(normalized);
+    if (canonical !== 'unassigned')
+        return canonical;
     return normalized || 'unassigned';
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,16 +171,23 @@ export function selectZoneFromResult(result, nodeZone) {
         case 'floor': return result.floorIntensity;
         case 'ambient': return result.ambientIntensity;
         case 'air': return result.airIntensity;
-        // ── Fallback: energía promedio clásica ────────────────────────────
-        default: {
-            const avg = (result.frontLeftIntensity +
-                result.frontRightIntensity +
-                result.backLeftIntensity +
-                result.backRightIntensity +
-                result.moverLeftIntensity +
-                result.moverRightIntensity) / 6;
-            return avg < 0 ? 0 : avg > 1 ? 1 : avg;
-        }
+        // ── Zonas compuestas (WAVE 4655: fuente única de verdad) ────────────
+        case 'front':
+            return (result.frontLeftIntensity + result.frontRightIntensity) * 0.5;
+        case 'back':
+            return (result.backLeftIntensity + result.backRightIntensity) * 0.5;
+        case 'left':
+            return (result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3;
+        case 'right':
+            return (result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3;
+        // ── Zonas no asignadas / centrales → ambient sin inventar energía ────
+        case 'unassigned':
+        case 'center':
+        case 'mid':
+            return result.ambientIntensity;
+        // ── Zona desconocida → 0 explícito, sin promedios residuales ─────────
+        default:
+            return 0;
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -170,7 +234,8 @@ export function selectZoneIntensityXZ(result, nodeX, nodeZ) {
  * |-----------------------------|----------|
  * | frontLeft, frontRight, front| primary  |
  * | backLeft, backRight, back   | secondary|
- * | moverLeft, moverRight       | accent   |
+ * | movers-left                 | secondary|
+ * | movers-right                | ambient  |
  * | ambient, air, floor         | ambient  |
  * | (desconocido)               | ambient  |
  *
@@ -191,9 +256,11 @@ export function selectColorRoleFromZone(zoneId) {
         case 'left':
         case 'right':
             return 'secondary';
+        // WAVE 4659 alignment: movers consumen secondary/ambient (stereo mecánico)
         case 'movers-left':
+            return 'secondary';
         case 'movers-right':
-            return 'accent';
+            return 'ambient';
         case 'ambient':
         case 'air':
         case 'floor':

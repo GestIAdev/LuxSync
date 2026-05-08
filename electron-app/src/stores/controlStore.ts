@@ -323,6 +323,7 @@ export const useControlStore = create<ControlState>()(
       },
       
       setSystemArmed: (armed) => {
+        if (get().systemArmed === armed) return
         const state = armed ? 'ARMED' : 'COLD'
         console.log(`[ControlStore] ⚛️ System ARM explicitly set: ${state}`)
         set({ systemArmed: armed })
@@ -340,6 +341,7 @@ export const useControlStore = create<ControlState>()(
       },
       
       setOutputEnabled: (enabled) => {
+        if (get().outputEnabled === enabled) return
         const state = enabled ? 'LIVE' : 'ARMED'
         console.log(`[ControlStore] 🚦 Output explicitly set: ${state}`)
         set({ outputEnabled: enabled })

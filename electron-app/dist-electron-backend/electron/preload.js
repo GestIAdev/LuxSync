@@ -869,6 +869,33 @@ const luxApi = {
          * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.
          */
         releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
+        /**
+         * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
+         * Reemplaza window.lux.arbiter.setBlackout.
+         */
+        setBlackout: (active) => ipcRenderer.invoke('lux:aether:setBlackout', { active }),
+        /**
+         * WAVE 4656: Set output gate global (ARM/LIVE) en pipeline Aether.
+         */
+        setOutputEnabled: (enabled) => ipcRenderer.invoke('lux:aether:setOutputEnabled', { enabled }),
+        /**
+         * WAVE 4656: Estado de control para hidratar CommandDeck.
+         */
+        getControlState: () => ipcRenderer.invoke('lux:aether:getControlState'),
+        /**
+         * WAVE 4652: Set grand master dimmer global (0-1).
+         * Reemplaza window.lux.arbiter.setGrandMaster.
+         */
+        setGrandMaster: (value) => ipcRenderer.invoke('lux:aether:setGrandMaster', { value }),
+        /**
+         * WAVE 4652: Set grand master speed (0.1-2.0).
+         * Reemplaza window.lux.arbiter.setGrandMasterSpeed.
+         */
+        setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
+        /**
+         * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
+         */
+        getL2State: (nodeIds) => ipcRenderer.invoke('lux:aether:getL2State', { nodeIds }),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

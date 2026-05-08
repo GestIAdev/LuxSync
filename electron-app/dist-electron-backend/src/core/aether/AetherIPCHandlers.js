@@ -16,11 +16,16 @@
  *   lux:aether:clearAllManualOverrides — Reset global L2
  *
  * @module core/aether/AetherIPCHandlers
- * @version WAVE 4529
+ * @version WAVE 4652
  */
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
+// WAVE 4651: masterArbiter delegado temporal para pattern engine e IK solver.
+// WAVE 4652: masterArbiter compartido para blackout/grandmaster mientras el HAL
+// sigue leyendo de el. Ambos pipelines reciben la misma senal en paralelo.
 import { masterArbiter } from '../arbiter';
+// WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,15 +147,108 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
-    // ── E11/E12: Stubs kinetic + spatial (WAVE 4531) ──────────────────────────
-    // El sistema Aether no tiene aún un KineticEngine manual ni un IK Resolver
-    // propios. Estos handlers delegan al MasterArbiter legacy hasta que Aether
-    // implemente esas capacidades nativas.
+    // ── G1/G2: Blackout + GrandMaster globales (WAVE 4652) ─────────────────────
+    // Atacan NodeArbiter (pipeline Aether) Y masterArbiter (pipeline legacy + HAL)
+    // de forma simultanea. Cuando el HAL migre al pipeline Aether, se elimina
+    // la llamada a masterArbiter de aqui.
+    /**
+     * G1: Set blackout global.
+     * Escribe en NodeArbiter L4 Y en masterArbiter (HAL legacy).
+     * Payload: active boolean
+     * Devuelve: { success, blackoutActive }
+     */
+    ipcMain.handle('lux:aether:setBlackout', (_event, { active }) => {
+        try {
+            const arbiter = getTitanOrchestrator().getAetherArbiter();
+            arbiter.setBlackout(active);
+            // WAVE 4652: espejo al pipeline legacy hasta que HAL migre a Aether
+            masterArbiter.setBlackout(active);
+            return { success: true, blackoutActive: active };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setBlackout error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * G1b: Set output gate global (ARM/LIVE) para pipeline Aether.
+     * Payload: enabled boolean
+     */
+    ipcMain.handle('lux:aether:setOutputEnabled', (_event, { enabled }) => {
+        try {
+            const orchestrator = getTitanOrchestrator();
+            orchestrator.setOutputEnabled(!!enabled);
+            // Compat temporal con rutas legacy todavía vivas.
+            masterArbiter.setOutputEnabled(!!enabled);
+            return { success: true, outputEnabled: orchestrator.isOutputEnabled() };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setOutputEnabled error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * G1c: Read control gate state para hidratación de CommandDeck.
+     */
+    ipcMain.handle('lux:aether:getControlState', () => {
+        try {
+            const orchestrator = getTitanOrchestrator();
+            const arbiter = orchestrator.getAetherArbiter();
+            return {
+                success: true,
+                outputEnabled: orchestrator.isOutputEnabled(),
+                blackoutActive: arbiter.isBlackoutActive(),
+                grandMaster: arbiter.getGrandMaster(),
+            };
+        }
+        catch (err) {
+            console.error('[AetherIPC] getControlState error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * G2: Set grand master dimmer global (0-1).
+     * Escribe en NodeArbiter Y en masterArbiter.
+     * Payload: value (0-1)
+     */
+    ipcMain.handle('lux:aether:setGrandMaster', (_event, { value }) => {
+        try {
+            const clamped = value < 0 ? 0 : value > 1 ? 1 : value;
+            getTitanOrchestrator().getAetherArbiter().setGrandMaster(clamped);
+            // WAVE 4652: espejo al pipeline legacy
+            masterArbiter.setGrandMaster(clamped);
+            return { success: true, grandMaster: clamped };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setGrandMaster error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * G3: Set grand master speed (0.1-2.0) — escala velocidad AI global.
+     * Delegado a masterArbiter (controla el VMM legacy).
+     * Payload: value (0.1-2.0)
+     */
+    ipcMain.handle('lux:aether:setGrandMasterSpeed', (_event, { value }) => {
+        try {
+            masterArbiter.setGrandMasterSpeed(value);
+            return { success: true, grandMasterSpeed: value };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setGrandMasterSpeed error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    // ── E11/E12: Kinetic pattern engine + IK spatial solver (WAVE 4651) ─────────
+    // El NodeArbiter opera sobre canales abstractos (pan, tilt, speed...).
+    // La logica de pattern (timing matematico, anchor, sweep) y la resolucion
+    // IK (giroscopio de cables, calibracion, pan range) viven en el ArbitrationDirector.
+    // WAVE 4651: la RUTA IPC es 100% Aether. El engine de movimiento fisico
+    // permanece en masterArbiter como motor compartido hasta WAVE 4700 (KineticSystem Aether).
     /**
      * E11: Set manual kinetic pattern para fixtures.
-     * Stub → masterArbiter.setPattern() / clearPattern().
-     * Normalización speed/amplitude equivalente al handler legacy.
-     *
+     * Ruta: lux:aether:setManualPattern (Aether IPC)
+     * Engine: masterArbiter.setPattern() — motor cinematico compartido.
      * Payload: { fixtureIds, pattern, speed (0-100), amplitude (0-100) }
      */
     ipcMain.handle('lux:aether:setManualPattern', (_event, { fixtureIds, pattern, speed, amplitude }) => {
@@ -158,16 +256,18 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
         try {
-            if (pattern === null || pattern === 'static') {
+            if (pattern === null || pattern === 'static' || pattern === 'hold') {
                 masterArbiter.clearPattern(fixtureIds);
+                // WAVE 4659: limpiar también el VMM para que KineticAdapter vea null
+                vibeMovementManager.setManualPattern(null);
                 return { success: true };
             }
-            // Normalización speed: 0.05-0.5 Hz (igual que legacy WAVE 2652)
+            // Normalizacion speed: 0.05-0.5 Hz (rango WAVE 2652, constante fija)
             const SPEED_MIN = 0.05;
             const SPEED_MAX = 0.5;
             const speedNorm = SPEED_MIN + (speed / 100) * (SPEED_MAX - SPEED_MIN);
             const sizeNorm = (amplitude / 100) * 1.0;
-            // Snapshot posición actual del primer fixture como anchor
+            // Anchor: posicion actual del primer fixture como centro del patron
             const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0]);
             masterArbiter.setPattern(fixtureIds, {
                 type: pattern,
@@ -175,6 +275,8 @@ export function registerAetherIPCHandlers() {
                 size: sizeNorm,
                 center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
             });
+            // WAVE 4659: V3 — propagar patrón al VMM para que KineticAdapter lo use en Aether  
+            vibeMovementManager.setManualPattern(pattern);
             return { success: true, pattern };
         }
         catch (err) {
@@ -184,8 +286,8 @@ export function registerAetherIPCHandlers() {
     });
     /**
      * E12: Apply spatial target (IK solve) para fixtures.
-     * Stub → masterArbiter.applySpatialTarget().
-     *
+     * Ruta: lux:aether:applySpatialTarget (Aether IPC)
+     * Engine: masterArbiter.applySpatialTarget() — IK resolver compartido.
      * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude? }
      */
     ipcMain.handle('lux:aether:applySpatialTarget', (_event, { target, fixtureIds, fanMode, fanAmplitude }) => {
@@ -204,8 +306,9 @@ export function registerAetherIPCHandlers() {
         }
     });
     /**
-     * E12: Release spatial target — devuelve fixtures al control AI/mecánico.
-     * Stub → masterArbiter.releaseSpatialTarget().
+     * E12: Release spatial target — devuelve fixtures al control AI.
+     * Ruta: lux:aether:releaseSpatialTarget (Aether IPC)
+     * Engine: masterArbiter.releaseSpatialTarget() — IK release compartido.
      */
     ipcMain.handle('lux:aether:releaseSpatialTarget', (_event, { fixtureIds }) => {
         if (!Array.isArray(fixtureIds)) {
@@ -217,6 +320,31 @@ export function registerAetherIPCHandlers() {
         }
         catch (err) {
             console.error('[AetherIPC] releaseSpatialTarget error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    // ── R1: L2 State Reader (WAVE 4653) ─────────────────────────────────────
+    /**
+     * R1: Devuelve los overrides manuales L2 activos para los nodeIds pedidos.
+     *
+     * La UI lo llama al seleccionar fixtures para hidratar los sliders con el
+     * estado real del arbiter en lugar de usar defaults engañosos.
+     *
+     * Payload: { nodeIds: string[] }
+     * Retorno: { success, overrides: { [nodeId]: Record<string,number> | null } }
+     */
+    ipcMain.handle('lux:aether:getL2State', (_event, { nodeIds }) => {
+        if (!Array.isArray(nodeIds)) {
+            return { success: false, error: 'nodeIds must be an array' };
+        }
+        try {
+            const overrides = getTitanOrchestrator()
+                .getAetherArbiter()
+                .getManualOverridesForNodes(nodeIds);
+            return { success: true, overrides };
+        }
+        catch (err) {
+            console.error('[AetherIPC] getL2State error:', err);
             return { success: false, error: String(err) };
         }
     });

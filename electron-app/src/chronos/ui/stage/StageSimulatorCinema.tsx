@@ -40,11 +40,6 @@ export const StagePreview = memo(function StagePreview({
 }: StagePreviewProps) {
   const [liquidLayout, setLiquidLayout] = useState<LiquidLayout>('4.1')
 
-  // Sincronizar layout con el engine al montar
-  useEffect(() => {
-    window.lux?.setLiquidLayout('4.1')
-  }, [])
-
   const handleLayoutToggle = useCallback(() => {
     const newMode: LiquidLayout = liquidLayout === '4.1' ? '7.1' : '4.1'
     setLiquidLayout(newMode)

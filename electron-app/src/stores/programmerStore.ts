@@ -202,6 +202,17 @@ function getNorm(channels: Record<string, number> | null | undefined, key: strin
   return typeof value === 'number' ? clamp01(value) : null
 }
 
+function getNormAny(
+  channels: Record<string, number> | null | undefined,
+  keys: string[],
+): number | null {
+  for (const key of keys) {
+    const value = channels?.[key]
+    if (typeof value === 'number') return clamp01(value)
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,9 +267,9 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             strobe: getNorm(impact, 'strobe'),
             shutter: getNorm(impact, 'shutter'),
 
-            red: getNorm(color, 'red'),
-            green: getNorm(color, 'green'),
-            blue: getNorm(color, 'blue'),
+            red: getNormAny(color, ['red', 'r']),
+            green: getNormAny(color, ['green', 'g']),
+            blue: getNormAny(color, ['blue', 'b']),
             white: getNorm(color, 'white'),
             amber: getNorm(color, 'amber'),
 
@@ -399,7 +410,16 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         const next = new Map(state.fixtureOverrides)
         for (const id of state.activeFixtureIds) {
           const ov = next.get(id) ?? createEmptyOverrides()
-          next.set(id, { ...ov, red: nr, green: ng, blue: nb })
+          // Forzar actualización RGB completa y limpiar canales auxiliares
+          // para evitar contaminación de presets por overrides previos RGBW/Amber.
+          next.set(id, {
+            ...ov,
+            red: nr,
+            green: ng,
+            blue: nb,
+            white: 0,
+            amber: 0,
+          })
         }
         const dirty = new Set(state.dirtyFamilies)
         dirty.add('COLOR')

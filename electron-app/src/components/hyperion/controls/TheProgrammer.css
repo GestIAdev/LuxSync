@@ -394,18 +394,40 @@
 
 .color-preview-container {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 12px;
   padding: 12px 16px;
 }
 
-.color-preview {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
+.color-preview-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 170px;
+}
+
+.color-preview-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color-preview-swatch:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.45);
+}
+
+.native-color-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .color-values {
@@ -416,6 +438,85 @@
   font-family: monospace;
   color: rgba(255, 255, 255, 0.6);
   flex: 1;
+}
+
+.hue-strip-wrap {
+  padding: 0 16px 10px 16px;
+}
+
+.hue-strip-wrap.floating {
+  display: flex;
+  flex: 1;
+  min-width: 180px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 255, 255, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(0, 255, 255, 0.06), rgba(0, 0, 0, 0.2));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.hue-strip-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.hue-strip {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  appearance: none;
+  cursor: pointer;
+  background: linear-gradient(
+    90deg,
+    #ff0000 0%,
+    #ff7a00 15%,
+    #ffee00 30%,
+    #13ff00 45%,
+    #00eaff 60%,
+    #0040ff 75%,
+    #b000ff 90%,
+    #ff0000 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hue-strip::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: #121212;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+}
+
+.hue-strip::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: #121212;
+}
+
+@media (max-width: 560px) {
+  .color-preview-container {
+    flex-direction: column;
+  }
+
+  .color-preview-main {
+    min-width: 0;
+  }
+
+  .hue-strip-wrap.floating {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .rgb-sliders {

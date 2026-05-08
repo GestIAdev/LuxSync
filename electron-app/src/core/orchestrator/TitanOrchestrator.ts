@@ -206,6 +206,7 @@ export class TitanOrchestrator {
   private isRunning = false
   private cardiogramaInterval: NodeJS.Timeout | null = null
   private frameCount = 0
+  private _lastLoggedEngine: string = ''
   
   // ═══════════════════════════════════════════════════════════════════════════
   // ⚡ WAVE 3504.5: FRAME SCHEDULER — replaces bare setInterval + isProcessingFrame
@@ -1738,6 +1739,12 @@ export class TitanOrchestrator {
       // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
       // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
       const _activeEngine = this.engine?.getActiveLiquidEngine()
+      // 🩺 WAVE 4655-DIAG: log engine read (throttled)
+      const _engineName = (_activeEngine as { constructor?: { name?: string } })?.constructor?.name ?? 'none'
+      if (this._lastLoggedEngine !== _engineName) {
+        console.log(`[TitanOrchestrator 🌊] AETHER-ENGINE: ${_engineName} | frame=${this.frameCount}`)
+        this._lastLoggedEngine = _engineName
+      }
       const _liqFrame  = _activeEngine?.lastFrame ?? null
       const _liqResult = _activeEngine?.lastResult ?? null
       if (_liqFrame !== null && _liqResult !== null) {
@@ -1881,7 +1888,6 @@ export class TitanOrchestrator {
       // WAVE 4656: Output gate final en orquestador (source of truth Aether).
       const outputEnabled = this._outputEnabled
       const blackoutActive = aetherArbiter.isBlackoutActive()
-      const blackoutBuffer = blackoutActive ? new Uint8Array(512) : null
       this.hal.setAetherOutputGateState(outputEnabled, blackoutActive)
 
       for (const universe of aetherResolver.registeredUniverses) {
@@ -1893,12 +1899,13 @@ export class TitanOrchestrator {
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
         if (!rawBuf) continue
 
-        // BLACKOUT físico: volcar buffer en cero inmediatamente.
-        if (blackoutBuffer) {
-          this.hal.sendUniverseRaw(universe, blackoutBuffer)
-        } else {
-          this.hal.sendUniverseRaw(universe, rawBuf)
-        }
+        // WAVE 4656.1: Smart Blackout.
+        // Se apaga solo intensidad (dimmer/shutter/strobe/RGBW),
+        // preservando canales cinemáticos para seguridad mecánica.
+        const egressBuf = blackoutActive
+          ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
+          : rawBuf
+        this.hal.sendUniverseRaw(universe, egressBuf)
       }
 
       // 🛂 WAVE 4557: Safety telemetry (~1Hz)

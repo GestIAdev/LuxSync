@@ -19,7 +19,7 @@
  * - L2: Manual overrides (MIDI, OSC, UI faders)
  * - L3: Effect intents (LiveFXEngine)
  * - LP: Playback intents (Chronos Timeline)
- * - L4: Blackout (siempre gana)
+ * - L4: Blackout (state flag; el gate final se aplica en egress)
  *
  * ZERO-ALLOC EN HOT PATH:
  * - `_result` es un Map pre-existente que se muta in-place cada frame.
@@ -61,7 +61,7 @@ export class NodeArbiter {
         this._playbackIntents = [];
         /** Grand Master (0-1) — multiplica todos los canales HTP */
         this._grandMaster = 1.0;
-        /** Blackout flag (L4) — colapsa toda salida a 0 */
+        /** Blackout flag (L4) — se aplica en egress selectivo de intensidad */
         this._blackout = false;
         // ── Buffers de salida pre-allocated ───────────────────────────────────
         /**
@@ -104,8 +104,14 @@ export class NodeArbiter {
     setBlackout(active) {
         this._blackout = active;
     }
+    isBlackoutActive() {
+        return this._blackout;
+    }
     setGrandMaster(value) {
         this._grandMaster = value < 0 ? 0 : value > 1 ? 1 : value;
+    }
+    getGrandMaster() {
+        return this._grandMaster;
     }
     /**
      * Ejecuta el arbitraje para el frame actual.
@@ -115,8 +121,7 @@ export class NodeArbiter {
      * 2. Recoger todos los intents de todas las capas en el _result
      * 3. Para cada canal de cada nodo, aplicar la estrategia de merge
      * 4. Aplicar Grand Master sobre canales HTP
-     * 5. Si blackout → colapsar todos los canales HTP a 0
-     * 6. Retornar el _result como ArbitratedNodeMap (sin copiar)
+    * 5. Retornar el _result como ArbitratedNodeMap (sin copiar)
      *
      * @returns Mapa inmutable de valores finales por nodo/canal (0-1)
      */
@@ -126,11 +131,6 @@ export class NodeArbiter {
         this._poolCursor = 0;
         // Limpiar el mapa de resultado anterior
         this._result.clear();
-        // Blackout global: retornar mapa vacío — el NodeResolver
-        // escribe los defaultValues de cada canal cuando no hay entrada
-        if (this._blackout) {
-            return this._result;
-        }
         // 2. Recolectar intents en orden ascendente de prioridad de capa.
         //    El orden de escritura garantiza que las capas superiores
         //    sobreescriban a las inferiores en el merge LTP.
@@ -183,7 +183,7 @@ export class NodeArbiter {
         // 4. WAVE 4531: Aplicar inhibit limits (L2.5, post-arbitraje).
         // Cap sobre el canal 'dimmer' del nodo registrado.
         // Se aplica DESPUÉS del Grand Master, ANTES de retornar.
-        // L4 (blackout) ya colapsa todo antes de llegar aquí — irrelevante.
+        // El blackout se aplica en egress selectivo, no en el arbitraje.
         if (this._inhibitLimits.size > 0) {
             for (const [nodeId, limit] of this._inhibitLimits) {
                 const record = this._result.get(nodeId);
@@ -248,7 +248,7 @@ export class NodeArbiter {
     /**
      * WAVE 4531: Registra un inhibit limit (cap 0-1) sobre el canal `dimmer`
      * del nodo indicado. El cap se aplica post-arbitraje, antes de retornar
-     * el resultado — sin alterar ninguna capa. L4 (blackout) sigue ganando.
+    * el resultado — sin alterar ninguna capa.
      *
      * @param nodeId  NodeId en formato Aether (ej: 'fix-01:impact')
      * @param limit   Valor 0-1. 1.0 = sin límite. 0.0 = oscuro total.
@@ -268,6 +268,25 @@ export class NodeArbiter {
      */
     clearAllInhibitLimits() {
         this._inhibitLimits.clear();
+    }
+    // ── L2 Read API (WAVE 4653) ───────────────────────────────────────────
+    /**
+     * WAVE 4653: Devuelve los overrides manuales L2 actuales para los
+     * nodeIds especificados. Cada nodeId tiene formato "<fixtureId>:<familyLabel>".
+     *
+     * El retorno es un objeto plano serializable (apto para IPC):
+     *   { [nodeId]: Record<string, number> | null }
+     * null significa que el nodo no tiene overrides activos en L2.
+     *
+     * @param nodeIds  Array de nodeIds a consultar
+     */
+    getManualOverridesForNodes(nodeIds) {
+        const result = {};
+        for (const nodeId of nodeIds) {
+            const overrides = this._manualOverrides.get(nodeId);
+            result[nodeId] = overrides != null ? { ...overrides } : null;
+        }
+        return result;
     }
     /**
      * Obtiene un Record del pool o crea uno nuevo si el pool está agotado.

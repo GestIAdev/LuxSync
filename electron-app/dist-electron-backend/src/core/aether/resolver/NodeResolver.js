@@ -74,6 +74,18 @@ const CH_TARGET_Y = 'targetY';
 const CH_TARGET_Z = 'targetZ';
 const SHUTTER_CHANNEL = 'shutter';
 const STROBE_CHANNEL = 'strobe';
+const SOFT_BLACKOUT_INTENSITY_CHANNELS = new Set([
+    DIMMER_CHANNEL,
+    SHUTTER_CHANNEL,
+    STROBE_CHANNEL,
+    CH_R,
+    CH_G,
+    CH_B,
+    CH_RED,
+    CH_GREEN,
+    CH_BLUE,
+    CH_WHITE,
+]);
 const IK_WARN_INTERVAL_FRAMES = 44;
 const MATH_TELEMETRY_EVERY_FRAMES = 30;
 const IK_DEFAULT_PAN_RANGE_DEG = 540;
@@ -136,6 +148,12 @@ export class NodeResolver {
         this._packetPool = [];
         // Map<universe, MutableDMXPacket> — solo los paquetes del frame actual
         this._framePackets = new Map();
+        // ── Smart Blackout (WAVE 4656.1) ────────────────────────────────────
+        // Máscara por universo de canales de intensidad que deben ir a 0
+        // durante blackout blando (sin tocar pan/tilt/speed/rotation).
+        this._softBlackoutMasks = new Map();
+        // Buffers de salida pre-alloc para blackout por universo.
+        this._softBlackoutBuffers = new Map();
         // ── WAVE 4548.6: Forge compiled graphs por device ──────────────────
         // Si un device tiene un CompiledForgeGraph, _writeNode() delega
         // completamente al ForgeNodeEvaluator — bypass total del flujo legacy.
@@ -183,6 +201,27 @@ export class NodeResolver {
      */
     getUniverseBuffer(universe) {
         return this._universeBuffers.get(universe);
+    }
+    /**
+     * WAVE 4656.1: Smart Blackout por universo.
+     *
+     * Copia el buffer resuelto del universo y fuerza a 0 únicamente los
+     * canales de intensidad (dimmer/shutter/strobe/RGBW), preservando los
+     * canales cinemáticos para seguridad mecánica.
+     */
+    getSoftBlackoutUniverseBuffer(universe, source) {
+        let out = this._softBlackoutBuffers.get(universe);
+        if (!out) {
+            out = new Uint8Array(DMX_UNIVERSE_SIZE);
+            this._softBlackoutBuffers.set(universe, out);
+        }
+        out.set(source);
+        const mask = this._getOrBuildSoftBlackoutMask(universe);
+        for (let i = 0; i < DMX_UNIVERSE_SIZE; i++) {
+            if (mask[i] === 1)
+                out[i] = 0;
+        }
+        return out;
     }
     /**
      * Lista de universos actualmente registrados (por registerUniverse()).
@@ -237,6 +276,9 @@ export class NodeResolver {
             channels: new Array(DMX_UNIVERSE_SIZE).fill(0),
         };
         this._packetPool.push(packet);
+        // Si el universo se registra/rearma, reconstruir máscara en siguiente uso.
+        this._softBlackoutMasks.delete(universe);
+        this._softBlackoutBuffers.delete(universe);
     }
     /**
      * Resuelve el ArbitratedNodeMap a DMXPackets listos para el driver.
@@ -277,6 +319,45 @@ export class NodeResolver {
     }
     _traceProbeDeviceLayout(deviceId) {
         void deviceId;
+    }
+    _getOrBuildSoftBlackoutMask(universe) {
+        const cached = this._softBlackoutMasks.get(universe);
+        if (cached)
+            return cached;
+        const mask = new Uint8Array(DMX_UNIVERSE_SIZE);
+        const families = [
+            NodeFamily.IMPACT,
+            NodeFamily.COLOR,
+            NodeFamily.KINETIC,
+            NodeFamily.BEAM,
+            NodeFamily.ATMOSPHERE,
+        ];
+        for (let fi = 0; fi < families.length; fi++) {
+            const view = this._graph.getView(families[fi]);
+            view.forEach((node) => {
+                const device = this._graph.getDevice(node.deviceId);
+                if (!device || device.universe !== universe)
+                    return;
+                const baseAddr = device.dmxAddress - 1;
+                for (let ci = 0; ci < node.channels.length; ci++) {
+                    const chDef = node.channels[ci];
+                    if (!SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type))
+                        continue;
+                    const idx = baseAddr + chDef.dmxOffset;
+                    if (idx >= 0 && idx < DMX_UNIVERSE_SIZE) {
+                        mask[idx] = 1;
+                    }
+                    if (chDef.is16bit) {
+                        const fineIdx = idx + 1;
+                        if (fineIdx >= 0 && fineIdx < DMX_UNIVERSE_SIZE) {
+                            mask[fineIdx] = 1;
+                        }
+                    }
+                }
+            });
+        }
+        this._softBlackoutMasks.set(universe, mask);
+        return mask;
     }
     // ── Internos ──────────────────────────────────────────────────────────
     /**

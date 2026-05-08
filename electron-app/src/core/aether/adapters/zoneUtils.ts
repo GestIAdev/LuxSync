@@ -21,6 +21,7 @@
  */
 
 import type { LiquidStereoResult } from '../../../hal/physics/LiquidStereoPhysics'
+import { normalizeZone } from '../../stage/ShowFileV2'
 import type { ICapabilityNode } from '../capability-node'
 
 /**
@@ -36,9 +37,67 @@ export function normalizeZoneId(zoneId: string | null | undefined): string {
     .replace(/-+/g, '-')
     .toLowerCase()
 
+  // Legacy aliases (ShowFile V1/V2) -> canonical zones.
+  // This keeps reactive routing stable across migrated and non-migrated shows.
+  switch (normalized) {
+    case 'front-pars':
+    case 'frontpars':
+    case 'ceiling-front':
+      return 'front'
+    case 'back-pars':
+    case 'backpars':
+    case 'ceiling-back':
+      return 'back'
+    case 'floor-pars':
+    case 'floorpars':
+      return 'floor'
+    case 'floor-front':
+      return 'front'
+    case 'floor-back':
+      return 'back'
+    case 'moving-left':
+    case 'movingleft':
+    case 'stage-left':
+      return 'movers-left'
+    case 'moving-right':
+    case 'movingright':
+    case 'stage-right':
+      return 'movers-right'
+    case 'strobes':
+    case 'stage-center':
+    case 'ceiling-center':
+      return 'center'
+    case 'lasers':
+      return 'air'
+    case 'truss-1':
+    case 'truss-2':
+    case 'truss-3':
+      return 'back'
+    case 'custom':
+      return 'unassigned'
+    case 'frontleft':
+      return 'front-left'
+    case 'frontright':
+      return 'front-right'
+    case 'backleft':
+      return 'back-left'
+    case 'backright':
+      return 'back-right'
+    case 'moverleft':
+      return 'movers-left'
+    case 'moverright':
+      return 'movers-right'
+  }
+
   // Alias legacy -> canónicos
   if (normalized === 'mover-left') return 'movers-left'
   if (normalized === 'mover-right') return 'movers-right'
+
+  // Fallback canónico: reutilizar el normalizador único de ShowFileV2
+  // para cubrir variantes legacy no contempladas en este adapter.
+  const canonical = normalizeZone(normalized)
+  if (canonical !== 'unassigned') return canonical
+
   return normalized || 'unassigned'
 }
 
@@ -201,7 +260,8 @@ export function selectZoneIntensityXZ(
  * |-----------------------------|----------|
  * | frontLeft, frontRight, front| primary  |
  * | backLeft, backRight, back   | secondary|
- * | moverLeft, moverRight       | accent   |
+ * | movers-left                 | secondary|
+ * | movers-right                | ambient  |
  * | ambient, air, floor         | ambient  |
  * | (desconocido)               | ambient  |
  *
@@ -224,9 +284,11 @@ export function selectColorRoleFromZone(
     case 'left':
     case 'right':
       return 'secondary'
+    // WAVE 4659 alignment: movers consumen secondary/ambient (stereo mecánico)
     case 'movers-left':
+      return 'secondary'
     case 'movers-right':
-      return 'accent'
+      return 'ambient'
     case 'ambient':
     case 'air':
     case 'floor':

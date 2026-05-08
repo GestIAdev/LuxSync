@@ -983,6 +983,9 @@ export class TitanEngine extends EventEmitter {
         this.nervousSystem.setLiquidLayout(mode);
         console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
     }
+    getActiveLiquidEngine() {
+        return this.nervousSystem.getLastActiveLiquidEngine();
+    }
     /**
      * 🌊 WAVE 2432: HOT-SWAP — Profile change on vibe switch
      */

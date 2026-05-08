@@ -95,6 +95,8 @@ export class SeleneLux {
         // 🌊 WAVE 2429 → WAVE 2432: Layout mode for Omni-Liquid routing
         // 'legacy' = DEPRECATED (backwards compat only), '4.1' = LiquidEngine41, '7.1' = LiquidEngine71
         this.liquidLayout = '4.1';
+        this._lastActiveLiquidEngine = liquidEngine71;
+        this._lastLoggedEngine = '';
         // 🌊 WAVE 2401: Overrides de intensidad calculados por LiquidStereoPhysics
         this.liquidStereoOverrides = null;
         /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */
@@ -158,6 +160,9 @@ export class SeleneLux {
             latinoEngine41Telemetry.setTelemetryEnabled(true);
         }
         console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
+    }
+    getLastActiveLiquidEngine() {
+        return this._lastActiveLiquidEngine;
     }
     /**
      * 🌊 WAVE 2432: HOT-SWAP PROFILE — Cambia el perfil del motor activo
@@ -287,6 +292,13 @@ export class SeleneLux {
             const liquidEngine = (this.liquidLayout === '7.1' || isChill)
                 ? liquidEngine71
                 : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
+            this._lastActiveLiquidEngine = liquidEngine;
+            // 🩺 WAVE 4655-DIAG: log engine switch (once per change, not every frame)
+            const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === latinoEngine41Telemetry ? '41T' : '41');
+            if (engineName !== this._lastLoggedEngine) {
+                console.log(`[SeleneLux 🌊] ENGINE: ${engineName} | layout=${this.liquidLayout} | vibe=${vibeContext.activeVibe} | chill=${isChill}`);
+                this._lastLoggedEngine = engineName;
+            }
             const liquidResult = liquidEngine.applyBands(liquidInput);
             isStrobeActive = liquidResult.strobeActive;
             physicsApplied = 'liquid-stereo';

@@ -49,7 +49,6 @@ import { BeamAdapter } from '../aether/adapters/BeamAdapter';
 import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter';
 // 🌊 WAVE 4521.3: LiquidAetherAdapter — Capa L0 del IntentBus
 import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter';
-import { liquidEngine71 } from '../../hal/physics/LiquidEngine71';
 import { NodeFamily } from '../aether';
 // 🚀 WAVE 4524.3: Selene-Aether Adapter — Puente Cognitivo L3
 import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter';
@@ -221,6 +220,7 @@ export class TitanOrchestrator {
         this.isRunning = false;
         this.cardiogramaInterval = null;
         this.frameCount = 0;
+        this._lastLoggedEngine = '';
         // ═══════════════════════════════════════════════════════════════════════════
         // ⚡ WAVE 3504.5: FRAME SCHEDULER — replaces bare setInterval + isProcessingFrame
         // The Stampede Guard now lives inside FrameScheduler (WAVE 2211 contract kept).
@@ -1512,17 +1512,23 @@ export class TitanOrchestrator {
                 this._aetherCtx.frameIndex = this.frameCount;
                 // 1. Limpiar el bus de intents del frame anterior
                 this._aetherBus.clear();
-                // ── WAVE 4521.3: L0 — LiquidAetherAdapter inyecta base energética ────
-                // El liquidEngine71 ya fue invocado por ImpactAdapter en el mismo frame
-                // (o por ColorAdapter). lastFrame y lastResult son frescos del tick actual.
-                const _liqFrame = liquidEngine71.lastFrame;
-                const _liqResult = liquidEngine71.lastResult;
+                // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
+                // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
+                const _activeEngine = this.engine?.getActiveLiquidEngine();
+                // 🩺 WAVE 4655-DIAG: log engine read (throttled)
+                const _engineName = _activeEngine?.constructor?.name ?? 'none';
+                if (this._lastLoggedEngine !== _engineName) {
+                    console.log(`[TitanOrchestrator 🌊] AETHER-ENGINE: ${_engineName} | frame=${this.frameCount}`);
+                    this._lastLoggedEngine = _engineName;
+                }
+                const _liqFrame = _activeEngine?.lastFrame ?? null;
+                const _liqResult = _activeEngine?.lastResult ?? null;
                 if (_liqFrame !== null && _liqResult !== null) {
                     liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
                 }
                 // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
                 const ctx = this._aetherCtx;
-                this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus);
+                this._impactAdapter.process(this._aetherGraph.getView(NodeFamily.IMPACT), ctx, this._aetherBus, _liqResult ?? undefined);
                 // 🎨 WAVE 4522.3: Inyectar paleta RGB de SeleneLux al ColorAdapter antes de process()
                 const _colorPalette = this.engine.getLastColorPalette();
                 if (_colorPalette !== null) {
@@ -1604,13 +1610,27 @@ export class TitanOrchestrator {
                 this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated);
                 emitHotFrame();
                 // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
+                // WAVE 4656: Output gate final en orquestador (source of truth Aether).
+                const outputEnabled = this._outputEnabled;
+                const blackoutActive = aetherArbiter.isBlackoutActive();
+                this.hal.setAetherOutputGateState(outputEnabled, blackoutActive);
                 for (const universe of aetherResolver.registeredUniverses) {
+                    // ARM/PREP: no enviar DMX al hardware.
+                    if (!outputEnabled)
+                        continue;
                     // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
                     if (!aetherSafety.shouldSendUniverse(universe))
                         continue;
                     const rawBuf = aetherResolver.getUniverseBuffer(universe);
-                    if (rawBuf)
-                        this.hal.sendUniverseRaw(universe, rawBuf);
+                    if (!rawBuf)
+                        continue;
+                    // WAVE 4656.1: Smart Blackout.
+                    // Se apaga solo intensidad (dimmer/shutter/strobe/RGBW),
+                    // preservando canales cinemáticos para seguridad mecánica.
+                    const egressBuf = blackoutActive
+                        ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
+                        : rawBuf;
+                    this.hal.sendUniverseRaw(universe, egressBuf);
                 }
                 // 🛂 WAVE 4557: Safety telemetry (~1Hz)
                 if (this.frameCount % 44 === 0) {

@@ -58,9 +58,18 @@ function extractImpact(ov: ProgrammerOverrides): Record<string, number> | null {
 /** Extrae los canales activos de la familia COLOR */
 function extractColor(ov: ProgrammerOverrides): Record<string, number> | null {
   const ch: Record<string, number> = {}
-  if (ov.red   !== null) ch['red']   = ov.red
-  if (ov.green !== null) ch['green'] = ov.green
-  if (ov.blue  !== null) ch['blue']  = ov.blue
+  if (ov.red   !== null) {
+    ch['red'] = ov.red
+    ch['r'] = ov.red
+  }
+  if (ov.green !== null) {
+    ch['green'] = ov.green
+    ch['g'] = ov.green
+  }
+  if (ov.blue  !== null) {
+    ch['blue'] = ov.blue
+    ch['b'] = ov.blue
+  }
   if (ov.white !== null) ch['white'] = ov.white
   if (ov.amber !== null) ch['amber'] = ov.amber
   return Object.keys(ch).length > 0 ? ch : null

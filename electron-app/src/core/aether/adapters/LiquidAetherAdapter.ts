@@ -158,16 +158,10 @@ export class LiquidAetherAdapter {
    * @param result - LiquidStereoResult con las 9 intensidades zonales
    * @param bus    - IIntentBus donde inyectar los intents L0
    */
-  ingest(frame: ProcessedFrame, result: LiquidStereoResult, bus: IIntentBus): void {
+  ingest(_frame: ProcessedFrame, _result: LiquidStereoResult, _bus: IIntentBus): void {
     this._photonTracerFrame++
-
-    // 1. Señal de strobe — solo si está activa en el frame
-    if (result.strobeActive) {
-      this._routeStrobeNodes(result, bus)
-    }
-
-    // 2. Intensidad de mood para COLOR nodes (brightness, sin tocar RGB)
-    this._routeMoodToColorIntensity(result, frame, bus)
+    // WAVE 4656.3: LiquidEngine queda aislado de color/shutter/strobe en Aether.
+    // L0 ya no inyecta ni strobe ni brightness; solo se conserva para compatibilidad de wiring.
   }
 
   // ─────────────────────────────────────────────────────────────────────────

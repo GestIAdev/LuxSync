@@ -42,8 +42,8 @@ import { getHarmonicQuantizer } from './translation/HarmonicQuantizer';
 // 🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver';
 import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
-// � WAVE 2228: DMX ADUANA — Import arbiter for output gate enforcement at HAL level
-import { masterArbiter, ControlLayer } from '../core/arbiter';
+// � WAVE 2228: DMX ADUANA — ControlLayer enum para sources legacy
+import { ControlLayer } from '../core/arbiter';
 // ═══════════════════════════════════════════════════════════════════════════
 // HARDWARE ABSTRACTION CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -83,6 +83,9 @@ export class HardwareAbstraction {
         this._el1140LastLog = 0; // WAVE-DIAG: EL1140 diagnostic throttle
         // 🔬 WAVE 3040: COLOR CHANGE DETECTOR — color anterior por fixture
         this._colorSnapshot = new Map(); // fixtureId → último RGB enviado
+        // WAVE 4656: Estado de compuerta Aether (inyectado por TitanOrchestrator).
+        this._aetherOutputEnabled = false;
+        this._aetherBlackoutActive = false;
         // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
         this.lastPhysicsFrameTime = 0;
         // (BPM fields declared above — WAVE 2720)
@@ -1403,6 +1406,13 @@ export class HardwareAbstraction {
             return false;
         return this.driver.sendUniverse(universe, data);
     }
+    /**
+     * WAVE 4656: Estado de salida canónico del pipeline Aether.
+     */
+    setAetherOutputGateState(outputEnabled, blackoutActive) {
+        this._aetherOutputEnabled = !!outputEnabled;
+        this._aetherBlackoutActive = !!blackoutActive;
+    }
     /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
      * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
     sendStatesWithPhysics(states) {
@@ -1434,7 +1444,7 @@ export class HardwareAbstraction {
         // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
         // Physics always runs. The Aduana is the sole gate.
         // ═══════════════════════════════════════════════════════════════════════════
-        const outputEnabled = masterArbiter.isOutputEnabled();
+        const outputEnabled = this._aetherOutputEnabled;
         // 🔬 WAVE 2960 v3: PRE-ADUANA SNAPSHOT — captura dimmer ANTES de que la Aduana lo modifique.
         // Así sabemos si el dimmer=0 viene del Arbiter o lo impone la Aduana.
         // Solo frame 181 y cada 5 segundos (rate-limit por clave 'pre-aduana:fid').
@@ -1481,8 +1491,8 @@ export class HardwareAbstraction {
         // que cada fixture llega con un valor sospechoso. Cero spam en consola.
         if (this.framesRendered > 180) {
             try {
-                const outputIsEnabled = masterArbiter.isOutputEnabled();
-                const globalBlackout = masterArbiter.isBlackoutActive();
+                const outputIsEnabled = this._aetherOutputEnabled;
+                const globalBlackout = this._aetherBlackoutActive;
                 // 🔬 WAVE 2960 v3: ADUANA TRAP — loguear SIEMPRE (con o sin outputEnabled)
                 // cuando un fixture tiene dimmer=0 post-Aduana. Así capturamos si el problema
                 // es la Aduana (ARMED) o algo más profundo (LIVE pero con ceros).

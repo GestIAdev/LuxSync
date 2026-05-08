@@ -69,16 +69,17 @@ const DEG_PER_SEC_TO_NORM_PER_SEC = 1 / 540
 
 /**
  * Aceleración máxima de seguridad en espacio normalizado/s².
- * Equivale al SAFETY_CAP del FixturePhysicsDriver (900 DMX/s² ≈ 900/255/540 norm/s²).
- * Usamos el tope físico más agresivo permitido.
+ * En WAVE 4636 liberamos la ruta clásica: este cap ya no se deriva de DMX/255/540,
+ * porque el dominio aquí ya es normalizado [0..1].
  */
-const SAFETY_MAX_ACCELERATION_NORM = 900 / 255 / 540  // ≈ 0.00654 norm/s²
+const SAFETY_MAX_ACCELERATION_NORM = 20.0
 
 /**
  * Velocidad máxima de seguridad en espacio normalizado/s.
- * Equivale a 400 DMX/s → 400/255/540 ≈ 0.00291 norm/s.
+ * En WAVE 4636 liberamos la ruta clásica: permitimos barridos rápidos en
+ * espacio normalizado sin el cap microscópico heredado de DMX.
  */
-const SAFETY_MAX_VELOCITY_NORM = 400 / 255 / 540  // ≈ 0.00291 norm/s
+const SAFETY_MAX_VELOCITY_NORM = 5.0
 
 // ── WAVE 4617-B M3: Inercia espacial 3D parametrizada por escenario ─────
 /**

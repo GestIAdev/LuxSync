@@ -148,6 +148,7 @@ export class HardwareAbstraction {
   // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal
   private harmonicQuantizer = getHarmonicQuantizer()
   private profileCache = new Map<string, FixtureProfile | null>()
+  private readonly _lastUniverseBuffers = new Map<number, Uint8Array>()
   
   // 🎵 WAVE 2672: BPM cache per frame (set in renderFromTarget, read in translateColorToWheel)
   private currentFrameBpm = 0
@@ -1770,7 +1771,24 @@ export class HardwareAbstraction {
    */
   public sendUniverseRaw(universe: number, data: Uint8Array): boolean {
     if (!this.driver.isConnected) return false
-    return this.driver.sendUniverse(universe, data)
+
+    const previousBuffer = this._lastUniverseBuffers.get(universe)
+    if (previousBuffer && previousBuffer.length === data.length) {
+      let identical = true
+      for (let i = 0; i < data.length; i++) {
+        if (previousBuffer[i] !== data[i]) {
+          identical = false
+          break
+        }
+      }
+      if (identical) return true
+    }
+
+    const sent = this.driver.sendUniverse(universe, data)
+    if (sent) {
+      this._lastUniverseBuffers.set(universe, new Uint8Array(data))
+    }
+    return sent
   }
 
   /**

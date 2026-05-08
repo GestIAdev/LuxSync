@@ -95,15 +95,6 @@ const SHUTTER_CHANNEL = 'shutter'
 const STROBE_CHANNEL = 'strobe'
 const SOFT_BLACKOUT_INTENSITY_CHANNELS = new Set<string>([
   DIMMER_CHANNEL,
-  SHUTTER_CHANNEL,
-  STROBE_CHANNEL,
-  CH_R,
-  CH_G,
-  CH_B,
-  CH_RED,
-  CH_GREEN,
-  CH_BLUE,
-  CH_WHITE,
 ])
 
 const IK_WARN_INTERVAL_FRAMES = 44
@@ -196,6 +187,8 @@ export class NodeResolver implements INodeResolver {
   private readonly _softBlackoutMasks = new Map<number, Uint8Array>()
   // Buffers de salida pre-alloc para blackout por universo.
   private readonly _softBlackoutBuffers = new Map<number, Uint8Array>()
+  // Buffers de blackout duro (todos los canales a 0) por universo.
+  private readonly _hardBlackoutBuffers = new Map<number, Uint8Array>()
 
   // ── WAVE 4548.6: Forge compiled graphs por device ──────────────────
   // Si un device tiene un CompiledForgeGraph, _writeNode() delega
@@ -256,8 +249,8 @@ export class NodeResolver implements INodeResolver {
    * WAVE 4656.1: Smart Blackout por universo.
    *
    * Copia el buffer resuelto del universo y fuerza a 0 únicamente los
-   * canales de intensidad (dimmer/shutter/strobe/RGBW), preservando los
-   * canales cinemáticos para seguridad mecánica.
+    * canales de dimmer, preservando movimiento y el resto del estado
+    * fotométrico/cinemático para seguridad mecánica.
    */
   getSoftBlackoutUniverseBuffer(universe: number, source: Uint8Array): Uint8Array {
     let out = this._softBlackoutBuffers.get(universe)
@@ -273,6 +266,20 @@ export class NodeResolver implements INodeResolver {
       if (mask[i] === 1) out[i] = 0
     }
 
+    return out
+  }
+
+  /**
+   * WAVE 4666: Hard blackout por universo.
+   *
+   * Retorna un buffer pre-allocated de 512 canales en 0 para blackout total.
+   */
+  getHardBlackoutUniverseBuffer(universe: number): Uint8Array {
+    let out = this._hardBlackoutBuffers.get(universe)
+    if (!out) {
+      out = new Uint8Array(DMX_UNIVERSE_SIZE)
+      this._hardBlackoutBuffers.set(universe, out)
+    }
     return out
   }
 
@@ -339,6 +346,7 @@ export class NodeResolver implements INodeResolver {
     // Si el universo se registra/rearma, reconstruir máscara en siguiente uso.
     this._softBlackoutMasks.delete(universe)
     this._softBlackoutBuffers.delete(universe)
+    this._hardBlackoutBuffers.delete(universe)
   }
 
   /**
@@ -479,15 +487,52 @@ export class NodeResolver implements INodeResolver {
       // ★ WAVE 4557: Post-Forge Safety Sweep — airbag + velocity clamp
       // The Forge evaluator bypasses ALL safety logic. Apply critical
       // protections on the buffer AFTER evaluation for kinetic outputs.
-      if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
-        for (let oi = 0; oi < compiled.outputs.length; oi++) {
-          const output = compiled.outputs[oi]
-          const idx = baseAddr + output.dmxOffset
+      const sm = this._safetyMiddleware
+      if (sm && node.family === NodeFamily.KINETIC) {
+        for (let ci = 0; ci < node.channels.length; ci++) {
+          const chDef = node.channels[ci]
+          const idx = baseAddr + chDef.dmxOffset
           if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
-          // We don't have channelName on CompiledOutput — use dmxOffset
-          // heuristic: first 2 kinetic outputs are typically pan, tilt.
-          // For safety, apply airbag to ALL kinetic channel outputs.
-          buf[idx] = this._safetyMiddleware.applyAirbag(buf[idx], oi === 0)
+
+          if (chDef.type === PAN_COARSE) {
+            buf[idx] = sm.clampKineticSingleAxis(node.nodeId, true, buf[idx])
+            buf[idx] = sm.applyAirbag(buf[idx], true)
+          } else if (chDef.type === TILT_COARSE) {
+            buf[idx] = sm.clampKineticSingleAxis(node.nodeId, false, buf[idx])
+            buf[idx] = sm.applyAirbag(buf[idx], false)
+          }
+        }
+      }
+
+      if (sm && node.family === NodeFamily.COLOR) {
+        let wheelDmx: number | undefined
+        let wheelTransitMs = 0
+        const colorNode = node as IColorNodeData
+
+        for (let ci = 0; ci < node.channels.length; ci++) {
+          const chDef = node.channels[ci]
+          if (chDef.type !== CH_COLOR_WHEEL) continue
+
+          const idx = baseAddr + chDef.dmxOffset
+          if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+
+          wheelDmx = buf[idx]
+          wheelTransitMs = colorNode.colorWheel?.minTransitionMs ?? 0
+          break
+        }
+
+        if (wheelDmx !== undefined && wheelTransitMs > 0) {
+          const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs)
+          if (inBlackout) {
+            for (let ci = 0; ci < node.channels.length; ci++) {
+              const chDef = node.channels[ci]
+              if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL) continue
+
+              const idx = baseAddr + chDef.dmxOffset
+              if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+              buf[idx] = 0
+            }
+          }
         }
       }
 

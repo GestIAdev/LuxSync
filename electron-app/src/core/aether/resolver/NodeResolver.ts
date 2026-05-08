@@ -414,26 +414,20 @@ export class NodeResolver implements INodeResolver {
     const calibration = device.calibration
     if (writeToDmx) this._activeUniverses.add(device.universe)
 
-    // ── WAVE 4617-B M1: EL GATEKEEPER DE HIERRO ────────────────────────────
-    // La decisión IK vs Classic se basa en el flag estructural isPlaced del
-    // Device, NO en la presencia/ausencia de canales espaciales (targetX).
+    // ── WAVE 4631: SPLIT-BRAIN GATEKEEPER DETERMINISTA ─────────────────────
+    // La ruta KINETIC se decide SOLO por la presencia de targetX en los valores
+    // arbitrados del frame. No depende de flags estructurales del fixture.
     //
-    //   isPlaced === true  + KINETIC + !isContinuous → SIEMPRE ruta IK
-    //   isPlaced !== true  → SIEMPRE ruta clásica (ignora canales espaciales)
-    //
-    // Esto previene colisiones cuando un adapter legacy emite solo pan/tilt
-    // para un fixture que debería ir por IK, o cuando un override manual
-    // inyecta canales espaciales en un fixture guerrilla sin posición real.
+    //   targetX presente   + !isContinuous → RUTA ESPACIAL (IK puro)
+    //   targetX ausente    o isContinuous  → RUTA CLÁSICA (pan/tilt directo)
     if (node.family === NodeFamily.KINETIC) {
       const kineticNode = node as IKineticNodeData
-      if (!kineticNode.isContinuous && device.isPlaced === true) {
-        // Fixture posicionado → ruta IK siempre.
-        // Si targetX no está presente (e.g. override manual con solo pan/tilt),
-        // _writeNodeIK usa defaults seguros (centro del escenario).
+      const hasSpatialTarget = channelValues[CH_TARGET_X] !== undefined
+      if (!kineticNode.isContinuous && hasSpatialTarget) {
         this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx)
         return
       }
-      // isContinuous (fan/mirrorball) o isPlaced !== true → classic path
+      // isContinuous (fan/mirrorball) o sin targetX → classic path
     }
 
     // ── WAVE 4522.4: Traducción cromática ─────────────────────────────
@@ -555,13 +549,10 @@ export class NodeResolver implements INodeResolver {
     calibration: IDeviceCalibration | undefined,
     writeToDmx: boolean,
   ): void {
-    const hasTargetX = channelValues[CH_TARGET_X] !== undefined
-
-    // WAVE 4619 M2: FK BRIDGE — Si targetX no está presente pero pan/tilt sí,
-    // usar Forward Kinematics para derivar un target espacial sintético.
-    let tx: number
-    let ty: number
-    let tz: number
+    const tx = channelValues[CH_TARGET_X]
+    if (tx === undefined) return
+    const ty = channelValues[CH_TARGET_Y] ?? 1.5
+    const tz = channelValues[CH_TARGET_Z] ?? 2.0
 
     const panNormForTelemetry = channelValues['pan'] ?? node.currentPosition.pan
     const tiltNormForTelemetry = channelValues['tilt'] ?? node.currentPosition.tilt
@@ -569,21 +560,6 @@ export class NodeResolver implements INodeResolver {
     const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? FK_DEFAULT_TILT_RANGE_DEG
     const vmmPanDeg = (panNormForTelemetry - 0.5) * panRangeDegForTelemetry
     const vmmTiltDeg = (tiltNormForTelemetry - 0.5) * tiltRangeDegForTelemetry
-
-    if (channelValues[CH_TARGET_X] !== undefined) {
-      // Flujo normal: canales espaciales presentes (KineticAdapter / override manual)
-      tx = channelValues[CH_TARGET_X]
-      ty = channelValues[CH_TARGET_Y] ?? 1.5
-      tz = channelValues[CH_TARGET_Z] ?? 2.0
-    } else {
-      // FK Bridge: convertir pan/tilt normalizados → target 3D
-      const panNorm  = panNormForTelemetry
-      const tiltNorm = tiltNormForTelemetry
-      const fkTarget = this._forwardKinematicsBridge(node, panNorm, tiltNorm)
-      tx = fkTarget.x
-      ty = fkTarget.y
-      tz = fkTarget.z
-    }
 
     if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
       console.log(

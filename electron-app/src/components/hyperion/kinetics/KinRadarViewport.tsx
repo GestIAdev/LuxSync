@@ -96,12 +96,13 @@ export const KinRadarViewport: React.FC = () => {
     isCalibrating: s.isCalibrating,
   })))
 
-  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude } =
+  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude, setManualOverrideForFixtures } =
     useMovementStore(useShallow(s => ({
       setPanTilt: s.setPanTilt,
       setSpatialTarget: s.setSpatialTarget,
       setSpatialFanMode: s.setSpatialFanMode,
       setSpatialFanAmplitude: s.setSpatialFanAmplitude,
+      setManualOverrideForFixtures: s.setManualOverrideForFixtures,
     })))
 
   // ── Derived: clasificar fixtures seleccionados ────────────────────────────
@@ -212,9 +213,14 @@ export const KinRadarViewport: React.FC = () => {
 
   const handleTargetChange = useCallback((t: Target3D) => {
     // WAVE 4578-B: un solo carril de salida.
-    // KineticsBridge observa movementStore y despacha a Aether.
+    // movementStore conserva estado visual; programmerStore emite targetX/Y/Z
+    // por la familia KINETIC vía ProgrammerAetherBridge.
+    // Marcamos manual override para que KineticsBridge no despache la ruta
+    // espacial legacy en paralelo.
+    setManualOverrideForFixtures(movingHeadIds, true)
     setSpatialTarget(t)
-  }, [setSpatialTarget])
+    useProgrammerStore.getState().setSpatialPosition(t)
+  }, [movingHeadIds, setManualOverrideForFixtures, setSpatialTarget])
 
   const handleFanModeChange = useCallback((mode: SpatialFanMode) => {
     setSpatialFanMode(mode)

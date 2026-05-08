@@ -69,8 +69,15 @@ function extractColor(ov: ProgrammerOverrides): Record<string, number> | null {
 /** Extrae los canales activos de la familia KINETIC */
 function extractKinetic(ov: ProgrammerOverrides): Record<string, number> | null {
   const ch: Record<string, number> = {}
-  if (ov.pan   !== null) ch['pan']   = ov.pan
-  if (ov.tilt  !== null) ch['tilt']  = ov.tilt
+  const hasSpatialTarget = ov.targetX !== null && ov.targetY !== null && ov.targetZ !== null
+  if (hasSpatialTarget) {
+    ch['targetX'] = ov.targetX!
+    ch['targetY'] = ov.targetY!
+    ch['targetZ'] = ov.targetZ!
+  } else {
+    if (ov.pan   !== null) ch['pan']   = ov.pan
+    if (ov.tilt  !== null) ch['tilt']  = ov.tilt
+  }
   if (ov.speed !== null) ch['speed'] = ov.speed
   return Object.keys(ch).length > 0 ? ch : null
 }

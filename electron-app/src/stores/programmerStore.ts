@@ -19,6 +19,7 @@
 
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import type { Target3D } from '../engine/movement/InverseKinematicsEngine'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -49,6 +50,9 @@ export interface ProgrammerOverrides {
   pan: number | null    // 0-1 (0-540° → /540)
   tilt: number | null   // 0-1 (0-270° → /270)
   speed: number | null
+  targetX: number | null
+  targetY: number | null
+  targetZ: number | null
 
   // BEAM family
   gobo: number | null
@@ -113,6 +117,9 @@ interface ProgrammerActions {
   /** Set posición pan/tilt (pan 0-540°, tilt 0-270°) */
   setPosition: (pan: number, tilt: number) => void
 
+  /** Set target espacial en metros para KINETIC (ruta IK pura) */
+  setSpatialPosition: (target: Target3D) => void
+
   /** Set posición individual por fixture (para formation mode) */
   setPositionPerFixture: (positions: Array<{ fixtureId: string; pan: number; tilt: number }>) => void
 
@@ -162,6 +169,9 @@ function createEmptyOverrides(): ProgrammerOverrides {
     pan: null,
     tilt: null,
     speed: null,
+    targetX: null,
+    targetY: null,
+    targetZ: null,
     gobo: null,
     prism: null,
     focus: null,
@@ -329,7 +339,34 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         const next = new Map(state.fixtureOverrides)
         for (const id of state.activeFixtureIds) {
           const ov = next.get(id) ?? createEmptyOverrides()
-          next.set(id, { ...ov, pan: normPan, tilt: normTilt })
+          next.set(id, {
+            ...ov,
+            pan: normPan,
+            tilt: normTilt,
+            targetX: null,
+            targetY: null,
+            targetZ: null,
+          })
+        }
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('KINETIC')
+        return { fixtureOverrides: next, dirtyFamilies: dirty }
+      })
+    },
+
+    setSpatialPosition: (target) => {
+      set(state => {
+        const next = new Map(state.fixtureOverrides)
+        for (const id of state.activeFixtureIds) {
+          const ov = next.get(id) ?? createEmptyOverrides()
+          next.set(id, {
+            ...ov,
+            pan: null,
+            tilt: null,
+            targetX: target.x,
+            targetY: target.y,
+            targetZ: target.z,
+          })
         }
         const dirty = new Set(state.dirtyFamilies)
         dirty.add('KINETIC')
@@ -346,6 +383,9 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             ...ov,
             pan: clamp01(pan / 540),
             tilt: clamp01(tilt / 270),
+            targetX: null,
+            targetY: null,
+            targetZ: null,
           })
         }
         const dirty = new Set(state.dirtyFamilies)
@@ -359,7 +399,15 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         const next = new Map(state.fixtureOverrides)
         for (const id of state.activeFixtureIds) {
           const ov = next.get(id)
-          if (ov) next.set(id, { ...ov, pan: null, tilt: null, speed: null })
+          if (ov) next.set(id, {
+            ...ov,
+            pan: null,
+            tilt: null,
+            speed: null,
+            targetX: null,
+            targetY: null,
+            targetZ: null,
+          })
         }
         const dirty = new Set(state.dirtyFamilies)
         dirty.add('KINETIC')

@@ -32,6 +32,7 @@ import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixture
 import type { FixtureV2, FixtureZone, PhysicsProfile, InstallationOrientation } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
 import { ConstructorContext, useConstructorContext } from './StageConstructor/StageConstructorContext'
+import type { ConstructorContextType } from './StageConstructor/StageConstructorContext'
 import useKeyboardShortcuts from './StageConstructor/KeyboardShortcuts'
 import { UniversalAssetBrowser } from '../shared/AssetBrowser'
 import type { LibraryAsset } from '../../stores/assetAdapters'

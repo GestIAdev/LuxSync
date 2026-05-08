@@ -549,16 +549,9 @@ export class NodeResolver implements INodeResolver {
     const ty = channelValues[CH_TARGET_Y] ?? 1.5
     const tz = channelValues[CH_TARGET_Z] ?? 2.0
 
-    const panNormForTelemetry = channelValues['pan'] ?? node.currentPosition.pan
-    const tiltNormForTelemetry = channelValues['tilt'] ?? node.currentPosition.tilt
-    const panRangeDegForTelemetry = node.ikLimits?.panRangeDeg ?? IK_DEFAULT_PAN_RANGE_DEG
-    const tiltRangeDegForTelemetry = node.ikLimits?.tiltRangeDeg ?? IK_DEFAULT_TILT_RANGE_DEG
-    const vmmPanDeg = (panNormForTelemetry - 0.5) * panRangeDegForTelemetry
-    const vmmTiltDeg = (tiltNormForTelemetry - 0.5) * tiltRangeDegForTelemetry
-
     if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
       console.log(
-        `[MATH-INPUT] id: ${String(node.deviceId)} | VMM-Grados: ${vmmPanDeg.toFixed(2)}/${vmmTiltDeg.toFixed(2)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`,
+        `[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`,
       )
     }
 

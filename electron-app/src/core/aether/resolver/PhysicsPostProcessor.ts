@@ -413,16 +413,6 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
         SAFETY_MAX_ACCELERATION_NORM,
       )
 
-      // WAVE 4621-A: TELEMETRY — Legacy pan/tilt physics limits (cada 60 frames)
-      if ((++this._telemetryFrame % 60) === 0) {
-        console.log(
-          `[PHYSICS-LEGACY] node=${String(node.nodeId)} mode=${this._mode} ` +
-          `panTarget=${this._panTarget.toFixed(4)} tiltTarget=${this._tiltTarget.toFixed(4)} ` +
-          `maxVelNorm=${this._maxVelNorm.toFixed(6)} maxAccNorm=${this._maxAccNorm.toFixed(6)} ` +
-          `dt=${this._dt.toFixed(4)} panPos=${state[SLOT_PAN_POS].toFixed(4)} tiltPos=${state[SLOT_TILT_POS].toFixed(4)}`,
-        )
-      }
-
       if (this._mode === 'snap') {
         this._applySnap(state)
       } else {

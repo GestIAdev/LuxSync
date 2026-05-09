@@ -104,30 +104,29 @@ export class AetherUIProjector {
                         const brightnessNorm = hasImpactDimmer
                             ? 1.0
                             : (colorChannels?.['brightness'] ?? 1.0);
-                        const projectedR = toDmx((colorChannels?.['r'] ?? 0) * brightnessNorm);
-                        const projectedG = toDmx((colorChannels?.['g'] ?? 0) * brightnessNorm);
-                        const projectedB = toDmx((colorChannels?.['b'] ?? 0) * brightnessNorm);
+                        const rNorm = colorChannels?.['r'] ?? colorChannels?.['red'] ?? 0;
+                        const gNorm = colorChannels?.['g'] ?? colorChannels?.['green'] ?? 0;
+                        const bNorm = colorChannels?.['b'] ?? colorChannels?.['blue'] ?? 0;
+                        const projectedR = toDmx(rNorm * brightnessNorm);
+                        const projectedG = toDmx(gNorm * brightnessNorm);
+                        const projectedB = toDmx(bNorm * brightnessNorm);
                         // 🌊 WAVE 4696 M1: Zone-aware color routing.
                         // Atmospheric zones (ambient, air, flash) → additive blending.
                         //   These nodes exist in a perceptual layer independent of rhythmic
                         //   fixtures. They must NEVER be discarded by luminance comparison
                         //   against front/back/mover nodes (Tungsten wash-color / beam-color).
-                        // Rhythmic zones → luminance-dominant selection (WAVE 4695):
-                        //   the emitter with higher total lumen output paints the fixture;
-                        //   an inactive node (lum=0) can never displace an active one.
+                        // Rhythmic zones → channel-wise max blend:
+                        //   conserva aportes válidos de color aunque su luminancia total sea menor,
+                        //   evitando silencios cromáticos en efectos espaciales (Corazon/Oro/Tidal).
                         if (isAtmosphericZone(colorNode.zoneId)) {
                             fixture.r = Math.min(255, fixture.r + projectedR);
                             fixture.g = Math.min(255, fixture.g + projectedG);
                             fixture.b = Math.min(255, fixture.b + projectedB);
                         }
                         else {
-                            const newLum = projectedR + projectedG + projectedB;
-                            const currLum = fixture.r + fixture.g + fixture.b;
-                            if (newLum > currLum) {
-                                fixture.r = projectedR;
-                                fixture.g = projectedG;
-                                fixture.b = projectedB;
-                            }
+                            fixture.r = Math.max(fixture.r, projectedR);
+                            fixture.g = Math.max(fixture.g, projectedG);
+                            fixture.b = Math.max(fixture.b, projectedB);
                         }
                         break;
                     }

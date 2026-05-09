@@ -300,6 +300,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       moverLeft, moverRight,
       strobeActive, strobeIntensity,
       acidMode, noiseMode,
+      floorIntensity, ambientIntensity, airIntensity,
       bands,
       morphFactor,
       isBreakdown,
@@ -458,9 +459,11 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       backRightIntensity:  backPar,
       moverLeftIntensity:  mL,
       moverRightIntensity: mR,
-      floorIntensity:      0,
-      ambientIntensity:    0,
-      airIntensity:        0,
+      // WAVE 4702: Atmospheric Bridge — 4.1 también transporta zonas 9-zone.
+      // Misma física de Base (incluye Disco Gate 3.5 + umbral 0.15 en ambient).
+      floorIntensity,
+      ambientIntensity,
+      airIntensity,
       strobeActive,
       strobeIntensity,
       // Legacy compat

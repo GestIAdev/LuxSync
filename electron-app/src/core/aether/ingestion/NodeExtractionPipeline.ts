@@ -914,13 +914,13 @@ export class NodeExtractionPipeline {
     const p = fixtureDef.physics
 
     // ── Datos de base (Forja / physics profile) ──────────────────────────
+    // 🌊 WAVE 4684: homePosition (pan/tilt DMX 0-255) NUNCA se mapea a panOffset/tiltOffset.
+    // panOffset y tiltOffset son ángulos en GRADOS para el IK engine.
+    // Mapear homePosition.pan=127 como tiltOffset=127° provocaría que el fixture
+    // apuntara 127° fuera del vertical en reposo — el bug de "mirando al frente".
     const fromPhysics: IDeviceCalibration = {
-      ...(p?.invertPan      !== undefined && { invertPan:    p.invertPan }),
-      ...(p?.invertTilt     !== undefined && { invertTilt:   p.invertTilt }),
-      ...(p?.homePosition              && {
-        panOffset:  p.homePosition.pan,
-        tiltOffset: p.homePosition.tilt,
-      }),
+      ...(p?.invertPan  !== undefined && { invertPan:  p.invertPan }),
+      ...(p?.invertTilt !== undefined && { invertTilt: p.invertTilt }),
       ...(p?.tiltLimits?.min !== undefined && { tiltLimitMin: p.tiltLimits.min }),
       ...(p?.tiltLimits?.max !== undefined && { tiltLimitMax: p.tiltLimits.max }),
     }

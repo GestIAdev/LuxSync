@@ -231,6 +231,10 @@ export const POPROCK_PROFILE = {
     morphCeiling: 0.60, // Chorus rock al 60% de mid → morph pleno
     kickEdgeMinInterval: 50, // MUY corto — double bass drumming (blast beats 200+ BPM)
     kickVetoFrames: 0, // CERO — el bombo NO puede silenciar la guitarra
+    // WAVE 4686: Ambient viscosity — Pop/Rock organic
+    // Viscoso musical: resonancia de parche real entre golpes
+    ambientAttackMs: 250,
+    ambientReleaseMs: 900,
     // ═══════════════════════════════════════════════════════════════
     // WAVE 2439 — ESTRATEGIA DE ENRUTAMIENTO 4.1
     //

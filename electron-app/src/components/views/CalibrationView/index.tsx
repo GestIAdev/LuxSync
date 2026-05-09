@@ -339,45 +339,33 @@ const CalibrationView: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Send position to fixture via Arbiter (bypasses gate with priority)
+   * Send position to fixture via Aether pipeline (WAVE 4680).
+   * Valores normalizados 0-1; NodeArbiter aplica L2 KINETIC con inmunidad
+   * al Smart Gate cuando outputEnabled=false (Move-in-Black).
    */
   const sendPosition = useCallback(async (newPan: number, newTilt: number) => {
     if (!activeFixtureId) return
-    
+
     // Safety clamps
     const safePan = Math.max(0, Math.min(SAFE_PAN_MAX, newPan))
     const safeTilt = Math.max(0, Math.min(SAFE_TILT_MAX, newTilt))
-    
+
     setPan(safePan)
     setTilt(safeTilt)
-    
-    // Convert to DMX (0-255)
-    const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
-    const tiltDmx = Math.min(241, Math.round((safeTilt / 270) * 255))
-    
-    console.log(`[CalibrationLab] 🎯 Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
-    
-    try {
-      // 🔥 PRIORITY LAYER: Use setManual with speed=0 for instant response
-      const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
-      if (!arbiter?.setManual) {
-        console.warn('[CalibrationLab] ⚠️ arbiter.setManual unavailable (bridge missing?)')
-        return
-      }
 
-      // 🔥 WAVE 2232: SPEED DEMON PURGE — Eliminado speed:0 que mataba
-      // la interpolación del FixturePhysicsDriver. DMX speed 0 = velocidad
-      // máxima sin interpolar = stepper motor en espasmo.
-      // Sin speed en el override, mergeChannelForFixture cae al defaultValue
-      // del fixture (~128 = velocidad moderada con interpolación suave).
-      await arbiter.setManual({
-        fixtureIds: [activeFixtureId],
-        controls: {
-          pan: panDmx,
-          tilt: tiltDmx,
+    // WAVE 4680: Normalizar 0-1 para pipeline Aether (igual que KineticsBridge)
+    const panNorm  = Math.max(0, Math.min(1, safePan / SAFE_PAN_MAX))
+    const tiltNorm = Math.max(0, Math.min(1, safeTilt / SAFE_TILT_MAX))
+
+    console.log(`[CalibrationLab] 🎯 Pan: ${safePan}° (norm ${panNorm.toFixed(3)}) Tilt: ${safeTilt}° (norm ${tiltNorm.toFixed(3)})`)
+
+    try {
+      await window.lux?.aether?.setManualOverrides([
+        {
+          nodeId: `${activeFixtureId}:kinetic`,
+          channels: { pan: panNorm, tilt: tiltNorm },
         },
-        channels: ['pan', 'tilt'],
-      })
+      ])
     } catch (err) {
       console.error('[CalibrationLab] Position error:', err)
     }
@@ -422,58 +410,36 @@ const CalibrationView: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Send DMX via Arbiter Override Lock — NUNCA directo al driver.
-   * El Arbiter aplica Override Lock sobre el canal para que el HAL
-   * no lo sobrescriba a 30Hz con el estado base.
-   * - Nativos (dimmer, pan, tilt...): controls.{tipo}
-   * - Phantoms (unknown, custom, frost...): controls.phantomChannels.{tipo}
+   * Send DMX via Aether pipeline (WAVE 4680).
+   * Valores normalizados 0-1; NodeArbiter L2 aplica el override con inmunidad
+   * al Smart Gate cuando outputEnabled=false.
    */
   const sendDMX = useCallback(async (channelIndex: number, value: number) => {
     if (!activeFixtureId) return
-    
+
     const channelInfo = channels[channelIndex]
     const channelType = channelInfo?.type || 'unknown'
-    
+
     // Update local state (concurrent — only this channel changes)
     setChannelValues(prev => ({ ...prev, [channelIndex]: value }))
-    
-    console.log(`[CalibrationLab] 🔬 CH${channelIndex + 1} (${channelType}) = ${value}`)
-    
+
+    // WAVE 4680: Normalizar 0-1 para pipeline Aether
+    const normValue = Math.max(0, Math.min(1, value / 255))
+    console.log(`[CalibrationLab] 🔬 CH${channelIndex + 1} (${channelType}) = ${value} (norm ${normValue.toFixed(3)})`)
+
+    // Mapear channelType a familia Aether para el nodeId
+    let family = 'beam'
+    if (['pan', 'tilt', 'speed'].includes(channelType)) family = 'kinetic'
+    else if (['dimmer', 'strobe', 'shutter'].includes(channelType)) family = 'impact'
+    else if (['red', 'green', 'blue', 'white', 'amber', 'uv', 'color_wheel'].includes(channelType)) family = 'color'
+
     try {
-      const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
-      if (!arbiter?.setManual) {
-        console.warn('[CalibrationLab] ⚠️ arbiter.setManual not available')
-        return
-      }
-      
-      // Canales que el Arbiter resuelve directamente via getManualChannelValue
-      const NATIVE_CHANNELS = new Set([
-        'dimmer', 'red', 'green', 'blue', 'white', 'amber', 'uv',
-        'pan', 'tilt', 'zoom', 'focus', 'speed', 'strobe', 'gobo', 'color_wheel',
+      await window.lux?.aether?.setManualOverrides([
+        {
+          nodeId: `${activeFixtureId}:${family}`,
+          channels: { [channelType]: normValue },
+        },
       ])
-      
-      if (NATIVE_CHANNELS.has(channelType)) {
-        // Canal nativo → controls.{tipo} directo
-        await arbiter.setManual({
-          fixtureIds: [activeFixtureId],
-          controls: { [channelType]: value },
-          channels: [channelType],
-        })
-      } else {
-        // Canal phantom (unknown, custom, frost, rotation, control, etc.)
-        // → controls.phantomChannels.{key} para que el Arbiter lo pase al HAL.
-        // Para custom/unknown usamos el NOMBRE del canal como key, no el tipo,
-        // evitando colisiones cuando hay múltiples canales del mismo tipo.
-        const phantomKey =
-          (channelType === 'custom' || channelType === 'unknown')
-            ? (channelInfo?.name || `unknown_${channelIndex}`)
-            : channelType
-        await arbiter.setManual({
-          fixtureIds: [activeFixtureId],
-          controls: { phantomChannels: { [phantomKey]: value } },
-          channels: [channelType],
-        })
-      }
     } catch (err) {
       console.error('[CalibrationLab] DMX send error:', err)
     }

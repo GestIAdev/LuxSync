@@ -52,11 +52,11 @@ const DEFAULT_CONFIG = {
 // WAVE 3473: Ola lateral izquierda → derecha (offsets absolutos por zona)
 const ZONE_PHASE_OFFSETS = [
     ['movers-left', 0.0],
-    ['frontL', 0.0],
-    ['backL', 0.0],
+    ['front-left', 0.0],
+    ['back-left', 0.0],
     ['center', 0.5],
-    ['frontR', 1.0],
-    ['backR', 1.0],
+    ['front-right', 1.0],
+    ['back-right', 1.0],
     ['movers-right', 1.0],
 ];
 // ═══════════════════════════════════════════════════════════════════════════

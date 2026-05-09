@@ -308,6 +308,14 @@ export class NodeResolver implements INodeResolver {
     return this._universeBuffers.keys()
   }
 
+  /**
+   * WAVE 4680: Universos que tienen al menos un nodo no bloqueado este frame.
+   * Útil para el egress loop cuando outputEnabled=false (Smart Gate).
+   */
+  get activeUniverses(): IterableIterator<number> {
+    return this._activeUniverses.values()
+  }
+
   // ── WAVE 4548.6: Forge Graph Registration ──────────────────────────────
 
   /**
@@ -476,7 +484,14 @@ export class NodeResolver implements INodeResolver {
 
     const buf = this._universeBuffers.get(device.universe)
     if (!buf) return   // universe no registrado — ignorar silenciosamente
-    const writeToDmx = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()
+
+    // WAVE 4680: Smart Gate — bloqueo selectivo por familia + bypass manual.
+    // gateOpen     → todo pasa normalmente.
+    // !gateOpen    → solo KINETIC y nodos L2 (manual) escriben al buffer.
+    //                IMPACT/COLOR/BEAM/ATMOSPHERE se bloquean (buffer ya en 0).
+    const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()
+    const isManualNode = this._safetyMiddleware ? this._safetyMiddleware.isManualNode(nodeId) : false
+    const nodeBlocked = !gateOpen && !isManualNode && node.family !== NodeFamily.KINETIC
 
     const baseAddr = device.dmxAddress - 1  // convertir a 0-indexed
     const _t36probe = this._resolveFrameIndex % 20 === 0
@@ -491,7 +506,7 @@ export class NodeResolver implements INodeResolver {
     // delegar COMPLETAMENTE al ForgeNodeEvaluator.
     const compiled = this._forgeGraphs.get(node.deviceId)
     if (compiled) {
-      if (!writeToDmx) return
+      if (nodeBlocked) return
 
       ForgeNodeEvaluator.evaluate(
         compiled,
@@ -558,7 +573,7 @@ export class NodeResolver implements INodeResolver {
     }
 
     const calibration = device.calibration
-    if (writeToDmx) this._activeUniverses.add(device.universe)
+    if (!nodeBlocked) this._activeUniverses.add(device.universe)
     let invertClassicKineticAxes = false
 
     // ── WAVE 4631: SPLIT-BRAIN GATEKEEPER DETERMINISTA ─────────────────────
@@ -571,7 +586,7 @@ export class NodeResolver implements INodeResolver {
       const kineticNode = node as IKineticNodeData
       const hasSpatialTarget = channelValues[CH_TARGET_X] !== undefined
       if (!kineticNode.isContinuous && hasSpatialTarget) {
-        this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx)
+        this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked)
         return
       }
       invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode)
@@ -666,7 +681,16 @@ export class NodeResolver implements INodeResolver {
       // Clamp final de seguridad
       dmxValue = sanitizeDmxByte(dmxValue)
 
-      if (!writeToDmx) continue
+      // 🔬 WAVE 4682: Strobe Ghost diagnostic
+      if (chDef.type === STROBE_CHANNEL && dmxValue > 0) {
+        const arbStrobe = translatedValues[STROBE_CHANNEL]
+        console.log(
+          `[StrobeGhost 🔎] nodeId=${nodeId} type=${chDef.type} ` +
+          `dmxOut=${dmxValue} arbValue=${arbStrobe} defaultRaw=${chDef.defaultValue}`,
+        )
+      }
+
+      if (nodeBlocked) continue
 
       buf[bufIdx] = dmxValue
 
@@ -702,7 +726,7 @@ export class NodeResolver implements INodeResolver {
     baseAddr: number,
     buf: Uint8Array,
     calibration: IDeviceCalibration | undefined,
-    writeToDmx: boolean,
+    nodeWriteEnabled: boolean,
   ): void {
     const txRaw = channelValues[CH_TARGET_X]
     if (!Number.isFinite(txRaw)) return
@@ -755,7 +779,7 @@ export class NodeResolver implements INodeResolver {
     }
 
     // WAVE 4616: Gate final absoluto en el write DMX.
-    if (!writeToDmx) return
+    if (!nodeWriteEnabled) return
 
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef  = node.channels[ci]
@@ -809,20 +833,12 @@ export class NodeResolver implements INodeResolver {
   }
 
   private _getDefaultNormalizedValue(
-    node: { family: NodeFamily; channels: readonly INodeChannelDef[] },
+    _node: { family: NodeFamily; channels: readonly INodeChannelDef[] },
     chDef: INodeChannelDef,
   ): number {
-    if (chDef.type === SHUTTER_CHANNEL) {
-      return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255
-    }
-
-    if (chDef.type === STROBE_CHANNEL && node.family === NodeFamily.IMPACT) {
-      const hasDedicatedShutter = node.channels.some(channel => channel.type === SHUTTER_CHANNEL)
-      if (!hasDedicatedShutter) {
-        return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255
-      }
-    }
-
+    // WAVE 4682: _mapChannels ya defaulteó undefined→255 para shutter/strobe.
+    // El fallback destructivo `(>0 ? dv : 255)` fue eliminado — ignoraba
+    // defaultValue:0 explícito del fixture JSON y forzaba 255 (Open/strobe).
     return chDef.defaultValue / 255
   }
 

@@ -223,6 +223,7 @@ export class OroSolido extends BaseEffect {
                     blendMode: 'replace',
                 },
             },
+            overrideMoverShield: true,
         };
     }
     isFinished() {

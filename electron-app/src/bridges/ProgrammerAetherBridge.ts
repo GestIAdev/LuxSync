@@ -42,6 +42,8 @@ const FAMILY_LABEL: Record<ProgrammerFamily, string> = {
   EXTRAS:  'atmosphere',
 }
 
+const ALL_FAMILY_LABELS: readonly string[] = Object.freeze(Object.values(FAMILY_LABEL))
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CHANNEL EXTRACTOR — Construye channels Record<string, number> por familia
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,6 +134,7 @@ const FAMILY_EXTRACTOR: Record<
 class ProgrammerAetherBridgeClass {
   private _intervalId: ReturnType<typeof setInterval> | null = null
   private _started = false
+  private _lastActiveFixtureIds = new Set<string>()
 
   /**
    * Inicia el puente. Sólo puede llamarse una vez.
@@ -155,6 +158,7 @@ class ProgrammerAetherBridgeClass {
       this._intervalId = null
     }
     this._started = false
+    this._lastActiveFixtureIds.clear()
     console.log('[ProgrammerAetherBridge] Detenido')
   }
 
@@ -167,7 +171,17 @@ class ProgrammerAetherBridgeClass {
     const state = useProgrammerStore.getState()
     const { fixtureOverrides, dirtyFamilies, activeFixtureIds } = state
 
-    if (dirtyFamilies.size === 0) return
+    const activeSet = new Set(activeFixtureIds)
+    const removedFixtureIds: string[] = []
+    for (const fixtureId of this._lastActiveFixtureIds) {
+      if (!activeSet.has(fixtureId)) {
+        removedFixtureIds.push(fixtureId)
+      }
+    }
+
+    if (dirtyFamilies.size === 0 && removedFixtureIds.length === 0) {
+      return
+    }
 
     const aether = window.lux?.aether
     if (!aether) {
@@ -179,6 +193,15 @@ class ProgrammerAetherBridgeClass {
     const dirtySnapshot = new Set(dirtyFamilies)
     const setPayloads: Array<{ nodeId: string; channels: Record<string, number> }> = []
     const clearNodeIds: string[] = []
+
+    // Limpieza dura de L2 para fixtures deseleccionados.
+    // Evita overrides zombies en backend cuando la UI deja de incluirlos
+    // en activeFixtureIds.
+    for (const fixtureId of removedFixtureIds) {
+      for (const familyLabel of ALL_FAMILY_LABELS) {
+        clearNodeIds.push(`${fixtureId}:${familyLabel}`)
+      }
+    }
 
     for (const fixtureId of activeFixtureIds) {
       const ov = fixtureOverrides.get(fixtureId)
@@ -210,6 +233,7 @@ class ProgrammerAetherBridgeClass {
     // Nada que enviar: limpiar el snapshot para no dejar dirty zombie.
     if (requests.length === 0) {
       state.consumeDirtyFamilies(Array.from(dirtySnapshot))
+      this._lastActiveFixtureIds = activeSet
       return
     }
 
@@ -219,6 +243,7 @@ class ProgrammerAetherBridgeClass {
         useProgrammerStore
           .getState()
           .consumeDirtyFamilies(Array.from(dirtySnapshot))
+        this._lastActiveFixtureIds = activeSet
       })
       .catch((err: unknown) => {
         console.error('[ProgrammerAetherBridge] IPC flush error (will retry next tick):', err)

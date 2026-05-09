@@ -6,9 +6,9 @@
   "channels": [
     {
       "index": 0,
-      "name": "X axis",
-      "type": "custom",
-      "defaultValue": 0,
+      "name": "Pan",
+      "type": "pan",
+      "defaultValue": 127,
       "is16bit": false
     },
     {
@@ -27,8 +27,8 @@
     },
     {
       "index": 3,
-      "name": "Golden Strobe",
-      "type": "custom",
+      "name": "Strobe",
+      "type": "strobe",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -90,29 +90,29 @@
     },
     {
       "index": 12,
-      "name": "beam red",
-      "type": "custom",
+      "name": "Red",
+      "type": "red",
       "defaultValue": 0,
       "is16bit": false
     },
     {
       "index": 13,
-      "name": "beam green",
-      "type": "custom",
+      "name": "Green",
+      "type": "green",
       "defaultValue": 0,
       "is16bit": false
     },
     {
       "index": 14,
-      "name": "beam blue",
-      "type": "custom",
+      "name": "Blue",
+      "type": "blue",
       "defaultValue": 0,
       "is16bit": false
     },
     {
       "index": 15,
-      "name": "beam white",
-      "type": "custom",
+      "name": "White",
+      "type": "white",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -147,13 +147,13 @@
   ],
   "capabilities": {
     "colorEngine": "rgbw",
-    "hasPan": false,
+    "hasPan": true,
     "hasTilt": false,
-    "hasColorMixing": false,
+    "hasColorMixing": true,
     "hasColorWheel": false,
     "hasGobo": false,
     "hasPrism": false,
-    "hasStrobe": false,
+    "hasStrobe": true,
     "hasDimmer": false
   },
   "physics": {
@@ -176,5 +176,5 @@
   },
   "source": "user",
   "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1775343513755-71zc1qeo4.json",
-  "savedAt": "2026-04-25T18:00:08.605Z"
+  "savedAt": "2026-05-09T00:21:21.829Z"
 }

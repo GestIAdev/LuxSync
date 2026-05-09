@@ -363,13 +363,19 @@ export class NodeExtractionPipeline {
     const topology = this._analyzeTopology(fixtureDef)
     const nodes    = this._sanitizeOverlappingChannels(
       resolvedDeviceId,
-      this._buildAllNodes(
-        resolvedDeviceId,
-        resolvedZone,
-        fixtureDef,
-        topology,
-        resolvedPosition,
-      ),
+      fixtureDef.name === 'Tungsten'
+        ? this._buildTungstenBypassNodes(
+          resolvedDeviceId,
+          fixtureDef,
+          resolvedPosition,
+        )
+        : this._buildAllNodes(
+          resolvedDeviceId,
+          resolvedZone,
+          fixtureDef,
+          topology,
+          resolvedPosition,
+        ),
     )
     const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
 
@@ -484,6 +490,108 @@ export class NodeExtractionPipeline {
   // ─────────────────────────────────────────────────────────────────────────
   // PHASE 2 — NODE CONSTRUCTION
   // ─────────────────────────────────────────────────────────────────────────
+
+  // [INYECCIÓN WAVE 4683] - BYPASS TUNGSTEN (Zonas independientes para LiquidEngine)
+  private _buildTungstenBypassNodes(
+    deviceId: DeviceId,
+    fixtureDef: Readonly<FixtureDefinition>,
+    position?: Position3D,
+  ): ICapabilityNode[] {
+    const mkChannel = (
+      dmxOffset: number,
+      type: AetherChannelType,
+      defaultValue: number,
+      fallbackName: string,
+    ): FixtureChannel => {
+      const source = fixtureDef.channels.find(ch => (ch.index - 1) === dmxOffset)
+      return {
+        index: dmxOffset + 1,
+        name: source?.name ?? fallbackName,
+        type: type as FixtureChannel['type'],
+        defaultValue: defaultValue,
+        is16bit: source?.is16bit ?? false,
+        ...(source?.customName !== undefined && { customName: source.customName }),
+      }
+    }
+
+    // [INYECCIÓN WAVE 4683.4] - BYPASS TUNGSTEN (KILL PAN + COLOR SELENE)
+
+    // 1. ROTOR: pan asesinado con 'custom' (VMM ciego, clavado en 127) + speed manual
+    const tungstenRotorChannels: FixtureChannel[] = [
+      mkChannel(0, 'custom', 127, 'Pan Kill'),
+      mkChannel(1, 'speed',    0, 'Rotor Speed'),
+    ]
+
+    // 2. WASH: Baño RGB -> IMPACT/front (atrapa el color PRIMARY de Selene)
+    const tungstenWashChannels: FixtureChannel[] = [
+      mkChannel(7,  'dimmer', 0, 'Staining Dim'),
+      mkChannel(9,  'red',    0, 'Wash Red'),
+      mkChannel(10, 'green',  0, 'Wash Green'),
+      mkChannel(11, 'blue',   0, 'Wash Blue'),
+    ]
+
+    // 3. BEAM: Cañón RGBW -> IMPACT/back (atrapa el color ACCENT de Selene)
+    const tungstenBeamChannels: FixtureChannel[] = [
+      mkChannel(12, 'red',   0, 'Red'),
+      mkChannel(13, 'green', 0, 'Green'),
+      mkChannel(14, 'blue',  0, 'Blue'),
+      mkChannel(15, 'white', 0, 'White'),
+    ]
+
+    // 4. LOS 3 DORADOS: dormidos en flash hasta el PAD MIDI
+    const tungstenPetalLeftChannels: FixtureChannel[] = [
+      mkChannel(4, 'dimmer', 0, 'Petal Left Dimmer'),
+    ]
+
+    const tungstenPetalCenterChannels: FixtureChannel[] = [
+      mkChannel(5, 'dimmer', 0, 'Petal Center Dimmer'),
+    ]
+
+    const tungstenPetalRightChannels: FixtureChannel[] = [
+      mkChannel(6, 'dimmer', 0, 'Petal Right Dimmer'),
+    ]
+
+    // 5. MASTER GOLDEN + STROBE: botón Nuke
+    const tungstenGoldenMasterChannels: FixtureChannel[] = [
+      mkChannel(2, 'dimmer', 0, 'Golden Master Dimmer'),
+      mkChannel(3, 'strobe', 0, 'Golden Strobe'),
+    ]
+
+    const impactNode = (
+      nodeSuffix: string,
+      zoneId: ZoneId,
+      channels: readonly FixtureChannel[],
+    ): IImpactNodeData => ({
+      nodeId: `${deviceId}:${nodeSuffix}`,
+      family: NodeFamily.IMPACT,
+      deviceId,
+      zoneId,
+      role: channels.some(ch => this._normalizeChannelType(ch.type) === 'dimmer') ? 'primary' : 'percussion',
+      channels: this._mapChannels(channels),
+      constraints: IMPACT_CONSTRAINTS,
+      transferCurve: IMPACT_TRANSFER_CURVE,
+      bandMix: IMPACT_BAND_MIX,
+      envelopeState: IMPACT_ENVELOPE_INIT,
+      state: new Float64Array(4),
+      ...(position !== undefined && { position }),
+    })
+
+    return [
+      this._buildAtmosphereNode(
+        deviceId,
+        normalizeZoneId('unassigned') as ZoneId,
+        fixtureDef,
+        tungstenRotorChannels,
+        position,
+      ),
+      impactNode('wash',         normalizeZoneId('front') as ZoneId,  tungstenWashChannels),
+      impactNode('beam',         normalizeZoneId('back') as ZoneId,   tungstenBeamChannels),
+      impactNode('petal-l',      normalizeZoneId('flash') as ZoneId,  tungstenPetalLeftChannels),
+      impactNode('petal-c',      normalizeZoneId('flash') as ZoneId,  tungstenPetalCenterChannels),
+      impactNode('petal-r',      normalizeZoneId('flash') as ZoneId,  tungstenPetalRightChannels),
+      impactNode('golden-master',normalizeZoneId('flash') as ZoneId,  tungstenGoldenMasterChannels),
+    ]
+  }
 
   private _buildAllNodes(
     deviceId:   DeviceId,

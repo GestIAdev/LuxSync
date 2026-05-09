@@ -16,6 +16,7 @@
  * @module core/aether/adapters/helpers/zone-node-router
  * @version WAVE 4524.3
  */
+import { normalizeZoneId } from '../zoneUtils';
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPLEMENTACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,6 +34,89 @@
  *   Todo O(1), cero allocations.
  */
 export class ZoneNodeRouter {
+    /**
+     * Normaliza aliases legacy/stereo de efectos a la zona canónica del grafo.
+     * Mantiene compatibilidad con EffectZone ('frontL', 'backR', etc.).
+     */
+    _canonicalizeZone(zone) {
+        const normalized = normalizeZoneId(zone);
+        if (normalized === 'front-l' || normalized === 'frontl')
+            return 'front-left';
+        if (normalized === 'front-r' || normalized === 'frontr')
+            return 'front-right';
+        if (normalized === 'back-l' || normalized === 'backl')
+            return 'back-left';
+        if (normalized === 'back-r' || normalized === 'backr')
+            return 'back-right';
+        if (normalized === 'floor-l' || normalized === 'floorl')
+            return 'floor-left';
+        if (normalized === 'floor-r' || normalized === 'floorr')
+            return 'floor-right';
+        return normalized;
+    }
+    /** Une varias zonas en una sola zona agregada (patch-time, no hot-path). */
+    _mergeZones(target, sources) {
+        const mergedByFamily = new Map();
+        for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+            const familyKey = family;
+            const merged = [];
+            for (let i = 0; i < sources.length; i++) {
+                const sourceMap = this._zoneCache.get(sources[i]);
+                const nodes = sourceMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
+                for (let j = 0; j < nodes.length; j++) {
+                    const nodeId = nodes[j];
+                    if (!merged.includes(nodeId)) {
+                        merged.push(nodeId);
+                    }
+                }
+            }
+            mergedByFamily.set(familyKey, Object.freeze(merged));
+        }
+        this._zoneCache.set(target, mergedByFamily);
+    }
+    /** Garantiza que exista el contenedor zone->family en cache. */
+    _ensureZoneMap(zone) {
+        const existing = this._zoneCache.get(zone);
+        if (existing) {
+            return existing;
+        }
+        const created = new Map();
+        for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+            created.set(family, ZoneNodeRouter.EMPTY_NODE_ARRAY);
+        }
+        this._zoneCache.set(zone, created);
+        return created;
+    }
+    /**
+     * Une nodos de una zona raw del grafo a una zona canónica del router.
+     * Se usa para absorber nombres legacy (frontL, FRONT_LEFT, etc.) sin perder señal.
+     */
+    _appendNodesToZone(targetZone, family, incoming) {
+        if (incoming.length === 0) {
+            return;
+        }
+        const zoneMap = this._ensureZoneMap(targetZone);
+        const current = zoneMap.get(family) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
+        if (current.length === 0) {
+            const copy = [];
+            for (let i = 0; i < incoming.length; i++) {
+                copy.push(incoming[i]);
+            }
+            zoneMap.set(family, Object.freeze(copy));
+            return;
+        }
+        const merged = [];
+        for (let i = 0; i < current.length; i++) {
+            merged.push(current[i]);
+        }
+        for (let i = 0; i < incoming.length; i++) {
+            const nodeId = incoming[i];
+            if (!merged.includes(nodeId)) {
+                merged.push(nodeId);
+            }
+        }
+        zoneMap.set(family, Object.freeze(merged));
+    }
     // ─────────────────────────────────────────────────────────────────────────
     constructor(nodeGraph) {
         this._zoneCache = new Map();
@@ -45,10 +129,25 @@ export class ZoneNodeRouter {
         const canonicalZones = [
             'front',
             'back',
+            'center',
+            'floor',
+            'front-left',
+            'front-right',
+            'back-left',
+            'back-right',
+            'floor-left',
+            'floor-right',
+            'all-movers',
             'movers',
             'movers-left',
             'movers-right',
             'pars',
+            'all-pars',
+            'all-left',
+            'all-right',
+            'ambient',
+            'air',
+            'unassigned',
             'all',
         ];
         // Para cada zona canónica
@@ -66,6 +165,81 @@ export class ZoneNodeRouter {
             }
             this._zoneCache.set(zone, familyMap);
         }
+        // Absorber TODAS las zonas activas reales del graph (incluye legacy aliases).
+        // Esto evita zonas mudas en shows parcialmente migrados.
+        const activeZones = nodeGraph.snapshot().activeZones;
+        for (let z = 0; z < activeZones.length; z++) {
+            const rawZone = String(activeZones[z]);
+            const canonical = this._canonicalizeZone(rawZone);
+            for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+                const familyKey = family;
+                const view = nodeGraph.getView(familyKey);
+                const nodesInRawZone = view.byZone(rawZone);
+                this._appendNodesToZone(canonical, familyKey, nodesInRawZone);
+            }
+        }
+        // Alias compuesto: all-movers = union determinista movers-left + movers-right.
+        // Se precalcula en patch-time para evitar fallback accidental a 'all'.
+        {
+            const leftMap = this._zoneCache.get('movers-left');
+            const rightMap = this._zoneCache.get('movers-right');
+            if (leftMap || rightMap) {
+                const allMoversMap = new Map();
+                for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+                    const familyKey = family;
+                    const left = leftMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
+                    const right = rightMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
+                    if (left.length === 0) {
+                        allMoversMap.set(familyKey, right);
+                        continue;
+                    }
+                    if (right.length === 0) {
+                        allMoversMap.set(familyKey, left);
+                        continue;
+                    }
+                    const merged = [];
+                    for (let i = 0; i < left.length; i++) {
+                        merged.push(left[i]);
+                    }
+                    for (let i = 0; i < right.length; i++) {
+                        const nodeId = right[i];
+                        if (!merged.includes(nodeId)) {
+                            merged.push(nodeId);
+                        }
+                    }
+                    allMoversMap.set(familyKey, Object.freeze(merged));
+                }
+                this._zoneCache.set('all-movers', allMoversMap);
+            }
+        }
+        // Agregados estéreo: front/back/floor deben incluir sus subzonas L/R.
+        this._mergeZones('front', ['front', 'front-left', 'front-right']);
+        this._mergeZones('back', ['back', 'back-left', 'back-right']);
+        this._mergeZones('floor', ['floor', 'floor-left', 'floor-right']);
+        // Grupos auxiliares usados por algunos efectos legacy/cinemáticos.
+        this._mergeZones('all-pars', [
+            'front',
+            'back',
+            'floor',
+            'front-left',
+            'front-right',
+            'back-left',
+            'back-right',
+            'floor-left',
+            'floor-right',
+        ]);
+        this._mergeZones('all-left', [
+            'movers-left',
+            'front-left',
+            'back-left',
+            'floor-left',
+        ]);
+        this._mergeZones('all-right', [
+            'movers-right',
+            'front-right',
+            'back-right',
+            'floor-right',
+        ]);
         // ───────────────────────────────────────────────────────────────────────
         // FASE 2: Construir la zona "all"
         //
@@ -91,20 +265,35 @@ export class ZoneNodeRouter {
      * Zero-alloc — retorna referencias compartidas.
      */
     resolve(zone, family) {
+        const requestedZone = normalizeZoneId(zone);
+        const canonicalZone = this._canonicalizeZone(zone);
         // Intentar lookup directo
-        const familyMap = this._zoneCache.get(zone);
+        const familyMap = this._zoneCache.get(canonicalZone);
         if (familyMap) {
             const nodeIds = familyMap.get(family);
             if (nodeIds && nodeIds.length > 0) {
                 return nodeIds;
             }
         }
-        // Si la zona no existe o no tiene nodos de esta familia, fallback a 'all'
-        const allFamilyMap = this._zoneCache.get(ZoneNodeRouter.ZONE_ALL);
-        if (allFamilyMap) {
-            const allNodeIds = allFamilyMap.get(family);
-            if (allNodeIds && allNodeIds.length > 0) {
-                return allNodeIds;
+        // Alias de compatibilidad: movers => all-movers si movers está vacío.
+        if (requestedZone === 'movers') {
+            const moversFamilyMap = this._zoneCache.get('all-movers');
+            if (moversFamilyMap) {
+                const moverNodeIds = moversFamilyMap.get(family);
+                if (moverNodeIds && moverNodeIds.length > 0) {
+                    return moverNodeIds;
+                }
+            }
+        }
+        // Solo la zona explícita 'all' expande a todo el universo.
+        // Evita aplanar espacialidad cuando una zona está vacía o no existe.
+        if (canonicalZone === ZoneNodeRouter.ZONE_ALL) {
+            const allFamilyMap = this._zoneCache.get(ZoneNodeRouter.ZONE_ALL);
+            if (allFamilyMap) {
+                const allNodeIds = allFamilyMap.get(family);
+                if (allNodeIds && allNodeIds.length > 0) {
+                    return allNodeIds;
+                }
             }
         }
         // Ultimo recurso: retornar array vacío compartido

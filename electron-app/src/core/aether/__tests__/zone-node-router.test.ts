@@ -36,22 +36,62 @@ function makeView(zoneMap: Record<string, readonly NodeId[]>, allNodeIds: readon
 }
 
 function makeNodeGraph(): INodeGraph {
-  const colorFront = Object.freeze(['color-front-1', 'color-front-2'] as const)
-  const colorAll = Object.freeze(['color-front-1', 'color-front-2', 'color-back-1'] as const)
+  const colorFrontLeft = Object.freeze(['color-front-left-1'] as const)
+  const colorFrontRight = Object.freeze(['color-front-right-1'] as const)
+  const colorBackLeft = Object.freeze(['color-back-left-1'] as const)
+  const colorBackRight = Object.freeze(['color-back-right-1'] as const)
+  const colorMoversLeft = Object.freeze(['color-mover-left-1'] as const)
+  const colorMoversRight = Object.freeze(['color-mover-right-1'] as const)
+  const colorAll = Object.freeze([
+    'color-front-left-1',
+    'color-front-right-1',
+    'color-back-left-1',
+    'color-back-right-1',
+  ] as const)
 
-  const impactFront = Object.freeze(['impact-front-1'] as const)
-  const impactAll = Object.freeze(['impact-front-1', 'impact-back-1'] as const)
+  const impactFrontLeft = Object.freeze(['impact-front-left-1'] as const)
+  const impactFrontRight = Object.freeze(['impact-front-right-1'] as const)
+  const impactMoversLeft = Object.freeze(['impact-mover-left-1'] as const)
+  const impactMoversRight = Object.freeze(['impact-mover-right-1'] as const)
+  const impactAll = Object.freeze([
+    'impact-front-left-1',
+    'impact-front-right-1',
+    'impact-back-left-1',
+    'impact-back-right-1',
+  ] as const)
 
-  const kineticFront = Object.freeze(['kinetic-front-1'] as const)
-  const kineticAll = Object.freeze(['kinetic-front-1'] as const)
+  const kineticFrontLeft = Object.freeze(['kinetic-front-left-1'] as const)
+  const kineticFrontRight = Object.freeze(['kinetic-front-right-1'] as const)
+  const kineticAll = Object.freeze(['kinetic-front-left-1', 'kinetic-front-right-1'] as const)
 
-  const beamFront = Object.freeze(['beam-front-1'] as const)
-  const beamAll = Object.freeze(['beam-front-1'] as const)
+  const beamFrontLeft = Object.freeze(['beam-front-left-1'] as const)
+  const beamFrontRight = Object.freeze(['beam-front-right-1'] as const)
+  const beamAll = Object.freeze(['beam-front-left-1', 'beam-front-right-1'] as const)
 
-  const colorView = makeView({ front: colorFront, all: colorAll }, colorAll)
-  const impactView = makeView({ front: impactFront, all: impactAll }, impactAll)
-  const kineticView = makeView({ front: kineticFront, all: kineticAll }, kineticAll)
-  const beamView = makeView({ front: beamFront, all: beamAll }, beamAll)
+  const colorView = makeView(
+    {
+      'front-left': colorFrontLeft,
+      'front-right': colorFrontRight,
+      'back-left': colorBackLeft,
+      'back-right': colorBackRight,
+      'movers-left': colorMoversLeft,
+      'movers-right': colorMoversRight,
+      all: colorAll,
+    },
+    colorAll,
+  )
+  const impactView = makeView(
+    {
+      'front-left': impactFrontLeft,
+      'front-right': impactFrontRight,
+      'movers-left': impactMoversLeft,
+      'movers-right': impactMoversRight,
+      all: impactAll,
+    },
+    impactAll,
+  )
+  const kineticView = makeView({ 'front-left': kineticFrontLeft, 'front-right': kineticFrontRight, all: kineticAll }, kineticAll)
+  const beamView = makeView({ 'front-left': beamFrontLeft, 'front-right': beamFrontRight, all: beamAll }, beamAll)
 
   return {
     getView(family: NodeFamily): INodeView<any> {
@@ -96,12 +136,12 @@ function makeNodeGraph(): INodeGraph {
 }
 
 describe('ZoneNodeRouter — WAVE 4524.4', () => {
-  test('Test 1 — Expansión correcta: zona front devuelve NodeIds exactos esperados', () => {
+  test('Test 1 — front agrega front-left + front-right (estéreo)', () => {
     const graph = makeNodeGraph()
     const router = new ZoneNodeRouter(graph)
 
     const frontColorNodes = router.resolve('front' as EffectZone, NodeFamily.COLOR)
-    expect(frontColorNodes).toEqual(['color-front-1', 'color-front-2'])
+    expect(frontColorNodes).toEqual(['color-front-left-1', 'color-front-right-1'])
   })
 
   test('Test 2 — Filtrado de familia: all+COLOR excluye IMPACT/KINETIC', () => {
@@ -109,9 +149,9 @@ describe('ZoneNodeRouter — WAVE 4524.4', () => {
     const router = new ZoneNodeRouter(graph)
 
     const allColorNodes = router.resolve('all' as EffectZone, NodeFamily.COLOR)
-    expect(allColorNodes).toEqual(['color-front-1', 'color-front-2', 'color-back-1'])
+    expect(allColorNodes).toEqual(['color-front-left-1', 'color-front-right-1', 'color-back-left-1', 'color-back-right-1'])
     expect(allColorNodes).not.toContain('impact-front-1')
-    expect(allColorNodes).not.toContain('kinetic-front-1')
+    expect(allColorNodes).not.toContain('kinetic-front-left-1')
   })
 
   test('Test 3 — Inmutabilidad/Zero-Alloc: misma referencia en llamadas sucesivas', () => {
@@ -122,5 +162,33 @@ describe('ZoneNodeRouter — WAVE 4524.4', () => {
     const second = router.resolve('front' as EffectZone, NodeFamily.COLOR)
 
     expect(second).toBe(first)
+  })
+
+  test('Test 4 — all-movers resuelve unión movers-left+movers-right sin fallback a all', () => {
+    const graph = makeNodeGraph()
+    const router = new ZoneNodeRouter(graph)
+
+    const allMoversColor = router.resolve('all-movers' as EffectZone, NodeFamily.COLOR)
+    expect(allMoversColor).toEqual(['color-mover-left-1', 'color-mover-right-1'])
+    expect(allMoversColor).not.toContain('color-front-left-1')
+
+    const again = router.resolve('all-movers' as EffectZone, NodeFamily.COLOR)
+    expect(again).toBe(allMoversColor)
+  })
+
+  test('Test 5 — Alias frontL se normaliza a front-left', () => {
+    const graph = makeNodeGraph()
+    const router = new ZoneNodeRouter(graph)
+
+    const nodes = router.resolve('frontL' as EffectZone, NodeFamily.COLOR)
+    expect(nodes).toEqual(['color-front-left-1'])
+  })
+
+  test('Test 6 — Zona desconocida no cae a all (evita flood global)', () => {
+    const graph = makeNodeGraph()
+    const router = new ZoneNodeRouter(graph)
+
+    const nodes = router.resolve('totally-unknown-zone' as EffectZone, NodeFamily.COLOR)
+    expect(nodes).toEqual([])
   })
 })

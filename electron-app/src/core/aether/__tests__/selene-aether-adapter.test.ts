@@ -45,6 +45,8 @@ function makeRouterMock(): { router: IZoneNodeRouter; resolve: ReturnType<typeof
     if (zone === 'all' && family === NodeFamily.COLOR) return ['color-1']
     if (zone === 'front' && family === NodeFamily.IMPACT) return ['impact-front-1']
     if (zone === 'front' && family === NodeFamily.COLOR) return ['color-front-1']
+    if (zone === 'ambient' && family === NodeFamily.COLOR) return ['color-ambient-1']
+    if (zone === 'air' && family === NodeFamily.COLOR) return ['color-air-1']
     return []
   })
 
@@ -107,6 +109,9 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
     expect(colorIntent!.values['red']).toBeCloseTo(1, 6)
     expect(colorIntent!.values['green']).toBeCloseTo(0, 6)
     expect(colorIntent!.values['blue']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['r']).toBeCloseTo(1, 6)
+    expect(colorIntent!.values['g']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['b']).toBeCloseTo(0, 6)
     expect(colorIntent!.priority).toBe(300)
     expect(colorIntent!.source).toBe('effect')
   })
@@ -133,7 +138,38 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
     expect(colorIntent!.values['red']).toBeCloseTo(0, 6)
     expect(colorIntent!.values['green']).toBeCloseTo(1, 6)
     expect(colorIntent!.values['blue']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['r']).toBeCloseTo(0, 6)
+    expect(colorIntent!.values['g']).toBeCloseTo(1, 6)
+    expect(colorIntent!.values['b']).toBeCloseTo(0, 6)
     expect((colorIntent!.values as Record<string, number>)['blendMode']).toBeUndefined()
+  })
+
+  test('Test 1c — WAVE 4684: colorOverride global inyecta color específico en ambient y air', () => {
+    const { router } = makeRouterMock()
+    const { bus, captured } = makeCaptureBus()
+    const adapter = new SeleneAetherAdapter(router)
+
+    const effect = makeEffectOutput({
+      colorOverride: { h: 200, s: 80, l: 60 },
+      globalComposition: 1,
+    })
+
+    adapter.ingest(null, effect, 16, bus)
+
+    const allColor = captured.find((i) => i.nodeId === 'color-1')
+    const ambientColor = captured.find((i) => i.nodeId === 'color-ambient-1')
+    const airColor = captured.find((i) => i.nodeId === 'color-air-1')
+
+    expect(allColor).toBeDefined()
+    expect(ambientColor).toBeDefined()
+    expect(airColor).toBeDefined()
+
+    const allBlue = allColor!.values['blue']
+    const ambientBlue = ambientColor!.values['blue']
+    const airBlue = airColor!.values['blue']
+
+    expect(ambientBlue).toBeLessThan(allBlue)
+    expect(airBlue).toBeLessThan(allBlue)
   })
 
   test('Test 2 — Gate de composición: globalComposition<0.01 hace early-exit', () => {
@@ -151,6 +187,31 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
 
     expect(pushSpy).not.toHaveBeenCalled()
     expect(resolve).not.toHaveBeenCalled()
+  })
+
+  test('Test 2b — globalComposition undefined no bloquea color/impact válidos', () => {
+    const { router } = makeRouterMock()
+    const { bus, captured } = makeCaptureBus()
+    const adapter = new SeleneAetherAdapter(router)
+
+    const effect = makeEffectOutput({
+      globalComposition: undefined,
+      dimmerOverride: 0.8,
+      colorOverride: { h: 350, s: 90, l: 50 },
+    })
+
+    adapter.ingest(null, effect, 16, bus)
+
+    const dimmerIntent = captured.find((i) => i.nodeId === 'impact-1')
+    const colorIntent = captured.find((i) => i.nodeId === 'color-1')
+
+    expect(dimmerIntent).toBeDefined()
+    expect(dimmerIntent!.values['dimmer']).toBeCloseTo(0.8, 6)
+    expect(colorIntent).toBeDefined()
+    expect(colorIntent!.values['red']).toBeGreaterThan(0)
+    expect(colorIntent!.values['blue']).toBeGreaterThan(0)
+    expect(colorIntent!.values['r']).toBeGreaterThan(0)
+    expect(colorIntent!.values['b']).toBeGreaterThan(0)
   })
 
   test('Test 3 — El muro de movimiento: ignora movement y nunca emite target/pan/tilt', () => {

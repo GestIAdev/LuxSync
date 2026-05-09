@@ -33,7 +33,15 @@
 // Solo los canales de intensidad aplican HTP.
 // El resto usa LTP (la capa más alta dicta el valor final).
 const HTP_CHANNELS = new Set(['dimmer', 'strobe', 'shutter']);
+const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
+    'r', 'g', 'b',
+    'red', 'green', 'blue',
+    'white', 'amber',
+]);
 const PHOTON_TRACER_EVERY_FRAMES = 20;
+function isFiniteChannelValue(value) {
+    return value !== undefined && Number.isFinite(value);
+}
 /**
  * NodeArbiter — Implementación zero-alloc del árbitro multicapa.
  */
@@ -53,6 +61,18 @@ export class NodeArbiter {
         this._seleneBus = null;
         /** Manual overrides (L2): nodeId → { channel: value } */
         this._manualOverrides = new Map();
+        /** WAVE 4670: Mapa de nodos COLOR protegidos por Mover Shield en L1 */
+        this._moverShieldNodeIds = new Set();
+        /**
+         * Pasaporte diplomático por frame para la capa Selene (L1).
+         * Cuando está activo, los canales de color NO son bloqueados por Mover Shield.
+         */
+        this._seleneOverrideMoverShield = false;
+        /**
+         * WAVE 4670: Lock de dimmer manual explícito (L2) por frame.
+         * Si el operador toca dimmer, ese valor se vuelve piso HTP del canal.
+         */
+        this._manualDimmerLocks = new Map();
         /**
          * Inhibit limits (L2.5 — post-arbitraje, pre-retorno):
          * nodeId → cap 0-1 aplicado al canal `dimmer` del nodo.
@@ -104,6 +124,24 @@ export class NodeArbiter {
     setManualOverride(nodeId, channels) {
         this._manualOverrides.set(nodeId, channels);
     }
+    /**
+     * WAVE 4670: Inyecta el set de nodos COLOR de movers con rueda física.
+     * Se calcula en patch time desde TitanOrchestrator; costo 0 en hot-path.
+     */
+    setMoverShieldNodeIds(nodeIds) {
+        this._moverShieldNodeIds.clear();
+        for (let i = 0; i < nodeIds.length; i++) {
+            this._moverShieldNodeIds.add(nodeIds[i]);
+        }
+    }
+    /**
+     * WAVE 4675: Permite a efectos diplomáticos de Selene colorear movers
+     * con rueda física en ventanas controladas (DarkSpin + HarmonicQuantizer
+     * siguen siendo la barrera mecánica real en resolver/egress).
+     */
+    setSeleneOverrideMoverShield(active) {
+        this._seleneOverrideMoverShield = active;
+    }
     clearManualOverride(nodeId) {
         this._manualOverrides.delete(nodeId);
     }
@@ -153,7 +191,7 @@ export class NodeArbiter {
         if (this._systemBus) {
             const all = this._systemBus.getAll();
             for (let i = 0; i < all.length; i++) {
-                this._applyIntent(all[i]);
+                this._applyIntent(all[i], false);
             }
         }
         // L1: Selene IA overrides
@@ -162,34 +200,40 @@ export class NodeArbiter {
         if (this._seleneBus !== null) {
             const count = this._seleneBus.count;
             for (let i = 0; i < count; i++) {
-                this._applyIntent(this._seleneBus.getAt(i));
+                this._applyIntent(this._seleneBus.getAt(i), true);
             }
         }
         else {
             // Fallback legacy: array de overrides pre-WAVE-4663
             for (let i = 0; i < this._seleneOverrides.length; i++) {
-                this._applyIntent(this._seleneOverrides[i]);
+                this._applyIntent(this._seleneOverrides[i], true);
             }
         }
         // LP: Playback (Chronos Timeline) — entre L1 y L3
         for (let i = 0; i < this._playbackIntents.length; i++) {
-            this._applyIntent(this._playbackIntents[i]);
+            this._applyIntent(this._playbackIntents[i], false);
         }
         // L3: Effect intents
         for (let i = 0; i < this._effectIntents.length; i++) {
-            this._applyIntent(this._effectIntents[i]);
+            this._applyIntent(this._effectIntents[i], false);
         }
         // L3+: Hephaestus custom intents (Diamond Data direct curves)
         for (let i = 0; i < this._hephaestusIntents.length; i++) {
-            this._applyIntent(this._hephaestusIntents[i]);
+            this._applyIntent(this._hephaestusIntents[i], false);
         }
         // L2: Manual overrides (tienen prioridad sobre effects)
         // Se aplican directamente sobre el _result, sin pasar por _applyIntent
+        this._manualDimmerLocks.clear();
         for (const [nodeId, channels] of this._manualOverrides) {
             let record = this._result.get(nodeId);
             if (!record) {
                 record = this._acquireRecord();
                 this._result.set(nodeId, record);
+            }
+            const manualDimmer = channels['dimmer'];
+            if (isFiniteChannelValue(manualDimmer)) {
+                const clamped = manualDimmer < 0 ? 0 : manualDimmer > 1 ? 1 : manualDimmer;
+                this._manualDimmerLocks.set(nodeId, clamped);
             }
             // WAVE 4661 PASO 1 — escritura directa + órbita relativa.
             // Canales estándar (pan, tilt, dimmer…): LTP normal.
@@ -198,18 +242,37 @@ export class NodeArbiter {
             //   resultado = clamp01(base + (L0 - 0.5))
             //   → el patrón gira siempre alrededor del punto exacto del radar.
             for (const key in channels) {
+                const incoming = channels[key];
+                if (!isFiniteChannelValue(incoming)) {
+                    continue;
+                }
                 if (key === 'pan_base') {
-                    const l0 = record['pan'] !== undefined ? record['pan'] : 0.5;
-                    const v = channels[key] + (l0 - 0.5);
+                    const l0 = isFiniteChannelValue(record['pan']) ? record['pan'] : 0.5;
+                    const v = incoming + (l0 - 0.5);
                     record['pan'] = v < 0 ? 0 : v > 1 ? 1 : v;
                 }
                 else if (key === 'tilt_base') {
-                    const l0 = record['tilt'] !== undefined ? record['tilt'] : 0.5;
-                    const v = channels[key] + (l0 - 0.5);
+                    const l0 = isFiniteChannelValue(record['tilt']) ? record['tilt'] : 0.5;
+                    const v = incoming + (l0 - 0.5);
                     record['tilt'] = v < 0 ? 0 : v > 1 ? 1 : v;
                 }
                 else {
-                    record[key] = channels[key];
+                    record[key] = incoming;
+                }
+            }
+        }
+        // WAVE 4670: DIMMER AUTO-TAKE (ley del operador).
+        // Si L2 tiene dimmer explícito, ese valor fija el piso HTP del canal
+        // para impedir que capas inferiores lo apaguen durante el frame.
+        if (this._manualDimmerLocks.size > 0) {
+            for (const [nodeId, lockValue] of this._manualDimmerLocks) {
+                const record = this._result.get(nodeId);
+                if (!record) {
+                    continue;
+                }
+                const current = record['dimmer'];
+                if (current === undefined || current < lockValue) {
+                    record['dimmer'] = lockValue;
                 }
             }
         }
@@ -248,15 +311,24 @@ export class NodeArbiter {
      * ZERO-ALLOC: accede al Record pre-allocated del pool si el nodo
      * no existe aún en el _result.
      */
-    _applyIntent(intent) {
+    _applyIntent(intent, isSeleneLayer) {
         let record = this._result.get(intent.nodeId);
         if (!record) {
             record = this._acquireRecord();
             this._result.set(intent.nodeId, record);
         }
         const values = intent.values;
+        const shieldedColorNode = isSeleneLayer &&
+            !this._seleneOverrideMoverShield &&
+            this._moverShieldNodeIds.has(intent.nodeId);
         for (const channel in values) {
+            if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
+                continue;
+            }
             const incoming = values[channel];
+            if (!isFiniteChannelValue(incoming)) {
+                continue;
+            }
             if (HTP_CHANNELS.has(channel)) {
                 // HTP: el valor más alto gana independientemente de la capa
                 const current = record[channel];

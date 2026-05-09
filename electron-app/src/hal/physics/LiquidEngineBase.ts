@@ -305,13 +305,16 @@ export abstract class LiquidEngineBase {
     // Updates happen unconditionally so EMA decays naturally during silence,
     // avoiding a hard-freeze of the state when audio resumes.
     // ═══════════════════════════════════════════════════════════════════
-    // Ambient EMA: slow follower of (bass × 0.4 + mid × 0.6)
-    // Attack alpha=0.18 (~5-6 frames), release alpha=0.03 (~33 frames)
+    // WAVE 4684: Ambient EMA — profile-configurable viscosity.
+    // Attack/Release time constants in ms → alpha = 1000/(ms×44).
+    // Default: attack ~800ms (gentle rise), release ~10000ms (ultra-slow lung).
+    const _ambAttackAlpha = Math.min(1.0, 1000 / ((p.ambientAttackMs ?? 800) * 44))
+    const _ambReleaseAlpha = Math.min(1.0, 1000 / ((p.ambientReleaseMs ?? 10000) * 44))
     const _ambMix = bands.bass * 0.40 + bands.mid * 0.60
     if (_ambMix > this._ambientEMA) {
-      this._ambientEMA = this._ambientEMA * 0.82 + _ambMix * 0.18
+      this._ambientEMA = this._ambientEMA * (1 - _ambAttackAlpha) + _ambMix * _ambAttackAlpha
     } else {
-      this._ambientEMA = this._ambientEMA * 0.97 + _ambMix * 0.03
+      this._ambientEMA = this._ambientEMA * (1 - _ambReleaseAlpha) + _ambMix * _ambReleaseAlpha
     }
     // Air EMA: soft-compressed follower of (treble × 0.6 + highMid × 0.4)
     // Compression: 1 - e^(-x*3) — prevents ultraAir spikes from causing hysterics
@@ -590,10 +593,11 @@ export abstract class LiquidEngineBase {
     const floorIntensity = Math.min(1.0, Math.max(0.0,
       (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor
     ))
-    // ambient: slow EMA blended with morphFactor — NOT gated by recoveryFactor
-    // (the room breathes slowly; the natural EMA decay handles recovery)
+    // ambient: slow EMA with morph-shaped gain — NOT gated by recoveryFactor.
+    // Evita baseline fijo por morph (que puede petrificar la cola en silencio).
+    const ambientMorphGain = 0.82 + morphFactor * 0.18
     const ambientIntensity = Math.min(1.0, Math.max(0.0,
-      this._ambientEMA * 0.70 + morphFactor * 0.30
+      this._ambientEMA * ambientMorphGain
     ))
     // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
     const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor))
@@ -632,6 +636,10 @@ export abstract class LiquidEngineBase {
     this.lastFrame = frame
     const result = this.routeZones(frame)
     this.lastResult = result
+    // 🩺 WAVE 4686 TEMP TRACE 1 — L0 RAW
+    if (result.ambientIntensity > 0 || result.airIntensity > 0) {
+      console.log(`[L0 RAW 📡] amb:${result.ambientIntensity.toFixed(3)} air:${result.airIntensity.toFixed(3)} floor:${result.floorIntensity?.toFixed(3) ?? '?'}`)
+    }
     return result
   }
 

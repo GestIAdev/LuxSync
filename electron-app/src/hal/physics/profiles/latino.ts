@@ -277,6 +277,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
   kickEdgeMinInterval: 60,   // MÁS corto que techno (80) — el dembow es rápido
   kickVetoFrames: 0,         // CERO — la síncopa 3-3-2 no puede aguantar vetos
 
+  // WAVE 4686: Ambient viscosity — Latino fiesta
+  // Elástico musical: el tumbao respira entre golpes del dembow
+  ambientAttackMs: 200,
+  ambientReleaseMs: 800,
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()
   //

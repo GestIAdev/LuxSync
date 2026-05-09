@@ -109,6 +109,13 @@ export class AetherSafetyMiddleware {
         for (let i = 0; i < nodeIds.length; i++)
             this._manualNodeIds.add(nodeIds[i]);
     }
+    /**
+     * WAVE 4680: Verifica si un nodo tiene override manual (L2) activo.
+     * Los nodos manuales tienen inmunidad diplomática ante el Soft Blackout.
+     */
+    isManualNode(nodeId) {
+        return this._manualNodeIds.has(nodeId);
+    }
     onVibeChange() {
         for (const state of this._kineticState.values())
             state[KS_INIT] = 0;

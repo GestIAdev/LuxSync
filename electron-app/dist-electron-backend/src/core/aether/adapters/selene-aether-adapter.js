@@ -105,6 +105,11 @@ function hslToRgbInto(h, s, l, out) {
 }
 /** Buffer temporal para conversiones HSL→RGB (reutilizado, zero-alloc) */
 const _rgbBuffer = { r: 0, g: 0, b: 0 };
+function isHslColor(color) {
+    return color.isHSL === true || (typeof color.h === 'number' &&
+        typeof color.s === 'number' &&
+        typeof color.l === 'number');
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE AETHER ADAPTER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -130,8 +135,17 @@ export class SeleneAetherAdapter {
             confidence: 1.0,
             source: L3_SOURCE,
         };
-        /** Scratch para canales COLOR (r, g, b) */
-        this._colorValues = { r: 0, g: 0, b: 0 };
+        /** Scratch para canales COLOR (aliases duales rgb + red/green/blue + white/amber) */
+        this._colorValues = {
+            r: 0,
+            g: 0,
+            b: 0,
+            red: 0,
+            green: 0,
+            blue: 0,
+            white: 0,
+            amber: 0,
+        };
         this._colorScratch = {
             nodeId: '',
             values: null,
@@ -175,8 +189,11 @@ export class SeleneAetherAdapter {
             return;
         }
         // ── Gate 2: Composición global mínima ────────────────────────────────
-        const composition = effectOutput.globalComposition ?? 0;
-        if (composition < MIN_GLOBAL_COMPOSITION) {
+        // Si globalComposition no viene (effects legacy), asumimos opacidad total
+        // para no silenciar color/zoneOverrides válidos.
+        const composition = effectOutput.globalComposition ?? 1;
+        if (effectOutput.globalComposition !== undefined &&
+            composition < MIN_GLOBAL_COMPOSITION) {
             return;
         }
         // ── Fase 1: Overrides globales (zona 'all') ───────────────────────────
@@ -204,11 +221,15 @@ export class SeleneAetherAdapter {
         if (output.dimmerOverride !== undefined) {
             this._emitImpact('all', clamp01(output.dimmerOverride), composition, bus);
         }
-        // colorOverride HSL → COLOR nodes zona 'all'
+        // colorOverride HSL/RGB → COLOR nodes zona 'all'
         if (output.colorOverride) {
-            const c = output.colorOverride;
-            hslToRgbInto(c.h, c.s, c.l, _rgbBuffer);
-            this._emitColor('all', _rgbBuffer.r, _rgbBuffer.g, _rgbBuffer.b, composition, bus);
+            this._emitColor('all', output.colorOverride, composition, bus);
+            // 🌊 WAVE 4684: Omni-Zone Awakening — ambient/air get their own color character.
+            // Zone-specific intents override the 'all' color via LTP in the Arbiter.
+            const ambColor = this._deriveAmbientColor(output.colorOverride);
+            this._emitColor('ambient', ambColor, composition, bus);
+            const airColor = this._deriveAirColor(output.colorOverride);
+            this._emitColor('air', airColor, composition, bus);
         }
         // whiteOverride → COLOR nodes zona 'all' (canal 'white')
         if (output.whiteOverride !== undefined) {
@@ -218,6 +239,50 @@ export class SeleneAetherAdapter {
         if (output.amberOverride !== undefined) {
             this._emitAmber('all', clamp01(output.amberOverride), composition, bus);
         }
+        // strobeRate → IMPACT nodes zona 'all' (canal 'strobeRate' para fixtures con shutter)
+        if (output.strobeRate !== undefined && output.strobeRate > 0) {
+            this._emitStrobe('all', clamp01(output.strobeRate), composition, bus);
+        }
+    }
+    /**
+     * Derive a soft wash color for the ambient zone from the primary color.
+     * Same hue, reduced saturation (×0.6) and lightness (×0.5).
+     */
+    _deriveAmbientColor(base) {
+        if (isHslColor(base)) {
+            return {
+                h: base.h,
+                s: Math.min(100, base.s * 0.6),
+                l: Math.min(100, base.l * 0.5),
+                isHSL: true,
+            };
+        }
+        // RGB fallback: dim by 50%
+        return {
+            r: (base.r ?? base.red ?? 0) * 0.5,
+            g: (base.g ?? base.green ?? 0) * 0.5,
+            b: (base.b ?? base.blue ?? 0) * 0.5,
+        };
+    }
+    /**
+     * Derive an accent color for the air/haze zone from the primary color.
+     * Hue shifted +30°, reduced saturation (×0.7) and lightness (×0.55).
+     */
+    _deriveAirColor(base) {
+        if (isHslColor(base)) {
+            return {
+                h: (base.h + 30) % 360,
+                s: Math.min(100, base.s * 0.7),
+                l: Math.min(100, base.l * 0.55),
+                isHSL: true,
+            };
+        }
+        // RGB fallback: same color but dimmed
+        return {
+            r: (base.r ?? base.red ?? 0) * 0.55,
+            g: (base.g ?? base.green ?? 0) * 0.55,
+            b: (base.b ?? base.blue ?? 0) * 0.55,
+        };
     }
     /**
      * Emite los overrides específicos por zona.
@@ -229,14 +294,15 @@ export class SeleneAetherAdapter {
         for (const zoneId in zoneOverrides) {
             const override = zoneOverrides[zoneId];
             const zone = zoneId;
+            // blendMode/priority/metadatos viejos se ignoran: la mezcla ya la decide el Arbiter.
+            void override.blendMode;
             // dimmer → IMPACT nodes de esta zona
             if (override.dimmer !== undefined) {
                 this._emitImpact(zone, clamp01(override.dimmer), composition, bus);
             }
-            // color HSL → COLOR nodes de esta zona
+            // color HSL/RGB → COLOR nodes de esta zona
             if (override.color) {
-                hslToRgbInto(override.color.h, override.color.s, override.color.l, _rgbBuffer);
-                this._emitColor(zone, _rgbBuffer.r, _rgbBuffer.g, _rgbBuffer.b, composition, bus);
+                this._emitColor(zone, override.color, composition, bus);
             }
             // white → COLOR nodes de esta zona
             if (override.white !== undefined) {
@@ -245,6 +311,10 @@ export class SeleneAetherAdapter {
             // amber → COLOR nodes de esta zona
             if (override.amber !== undefined) {
                 this._emitAmber(zone, clamp01(override.amber), composition, bus);
+            }
+            // strobeRate → IMPACT nodes de esta zona
+            if (override.strobeRate !== undefined && override.strobeRate > 0) {
+                this._emitStrobe(zone, clamp01(override.strobeRate), composition, bus);
             }
             // ❌ override.movement → DESCARTADO (Regla L3: movimiento ≡ KineticAdapter)
         }
@@ -308,18 +378,42 @@ export class SeleneAetherAdapter {
             bus.push(scratch);
         }
     }
+    /** Limpia keys residuales del color scratch para evitar contaminación cruzada */
+    _clearColorScratch() {
+        const v = this._colorValues;
+        delete v['r'];
+        delete v['g'];
+        delete v['b'];
+        delete v['red'];
+        delete v['green'];
+        delete v['blue'];
+        delete v['white'];
+        delete v['amber'];
+    }
     /**
      * Emite un intent de color RGB a todos los nodos COLOR de una zona.
      */
-    _emitColor(zone, r, g, b, confidence, bus) {
+    _emitColor(zone, color, confidence, bus) {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR);
         if (nodeIds.length === 0)
             return;
+        if (isHslColor(color)) {
+            hslToRgbInto(color.h, color.s, color.l, _rgbBuffer);
+            color = _rgbBuffer;
+        }
+        this._clearColorScratch();
         const scratch = this._colorScratch;
         const vals = this._colorValues;
+        const r = color.red ?? color.r ?? 0;
+        const g = color.green ?? color.g ?? 0;
+        const b = color.blue ?? color.b ?? 0;
+        // Compat dual: algunos paths consumen r/g/b y otros red/green/blue.
         vals.r = r;
         vals.g = g;
         vals.b = b;
+        vals.red = r;
+        vals.green = g;
+        vals.blue = b;
         scratch.confidence = confidence;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
@@ -333,6 +427,7 @@ export class SeleneAetherAdapter {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR);
         if (nodeIds.length === 0)
             return;
+        this._clearColorScratch();
         const scratch = this._colorScratch;
         const vals = this._colorValues;
         vals.white = white;
@@ -349,9 +444,28 @@ export class SeleneAetherAdapter {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR);
         if (nodeIds.length === 0)
             return;
+        this._clearColorScratch();
         const scratch = this._colorScratch;
         const vals = this._colorValues;
         vals.amber = amber;
+        scratch.confidence = confidence;
+        for (let i = 0; i < nodeIds.length; i++) {
+            scratch.nodeId = nodeIds[i];
+            bus.push(scratch);
+        }
+    }
+    /**
+     * Emite un intent de strobeRate a todos los nodos IMPACT de una zona.
+     * Usado cuando CombinedEffectOutput trae strobeRate > 0 (PASO 3 WAVE 4664).
+     */
+    _emitStrobe(zone, strobeRate, confidence, bus) {
+        const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.IMPACT);
+        if (nodeIds.length === 0)
+            return;
+        const scratch = this._strobeScratch;
+        const vals = this._strobeValues;
+        vals.strobeRate = strobeRate;
+        vals.shutter = 1.0;
         scratch.confidence = confidence;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];

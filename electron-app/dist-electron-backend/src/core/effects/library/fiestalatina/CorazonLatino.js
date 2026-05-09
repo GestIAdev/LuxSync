@@ -293,6 +293,7 @@ export class CorazonLatino extends BaseEffect {
             // 🔥 WAVE 740: zones derivado de zoneOverrides
             zones: Object.keys(zoneOverrides),
             intensity: this.heartIntensity,
+            overrideMoverShield: true,
             // 🔥 WAVE 740: Legacy DEPRECATED
             dimmerOverride: undefined,
             colorOverride: undefined,

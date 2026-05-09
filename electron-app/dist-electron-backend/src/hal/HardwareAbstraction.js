@@ -67,6 +67,7 @@ export class HardwareAbstraction {
         // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal
         this.harmonicQuantizer = getHarmonicQuantizer();
         this.profileCache = new Map();
+        this._lastUniverseBuffers = new Map();
         // 🎵 WAVE 2672: BPM cache per frame (set in renderFromTarget, read in translateColorToWheel)
         this.currentFrameBpm = 0;
         this.currentFrameBpmConfidence = 0;
@@ -1404,7 +1405,35 @@ export class HardwareAbstraction {
     sendUniverseRaw(universe, data) {
         if (!this.driver.isConnected)
             return false;
-        return this.driver.sendUniverse(universe, data);
+        const previousBuffer = this._lastUniverseBuffers.get(universe);
+        if (previousBuffer && previousBuffer.length === data.length) {
+            let identical = true;
+            for (let i = 0; i < data.length; i++) {
+                if (previousBuffer[i] !== data[i]) {
+                    identical = false;
+                    break;
+                }
+            }
+            if (identical)
+                return true;
+        }
+        const sent = this.driver.sendUniverse(universe, data);
+        if (sent) {
+            this._lastUniverseBuffers.set(universe, new Uint8Array(data));
+        }
+        return sent;
+    }
+    /**
+     * WAVE 4681: Flush Aether egress — llama driver.sendAll() para empujar todos los
+     * buffers de universo escritos en este frame al worker DMX via UPDATE_BUFFER IPC.
+     * DEBE llamarse UNA VEZ al final del egress loop de TitanOrchestrator, después de
+     * todos los sendUniverseRaw() del frame. Sin esto, setUniverse() escribe en buffer
+     * pero el worker nunca recibe el UPDATE_BUFFER → "no data yet".
+     */
+    flushAetherEgress() {
+        if (this.driver.sendAll) {
+            void this.driver.sendAll();
+        }
     }
     /**
      * WAVE 4656: Estado de salida canónico del pipeline Aether.

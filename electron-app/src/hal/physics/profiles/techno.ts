@@ -229,4 +229,9 @@ export const TECHNO_PROFILE: ILiquidProfile = {
 
   kickEdgeMinInterval: 80,
   kickVetoFrames: 0,    // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
+
+  // WAVE 4686: Ambient viscosity — Techno industrial
+  // Viscoso pero musical: respira entre compases (~1s release)
+  ambientAttackMs: 300,
+  ambientReleaseMs: 1000,
 }

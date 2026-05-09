@@ -171,6 +171,9 @@ export function selectZoneFromResult(result, nodeZone) {
         case 'floor': return result.floorIntensity;
         case 'ambient': return result.ambientIntensity;
         case 'air': return result.airIntensity;
+        // ── Flash / Strobe trigger (WAVE 4688: Golden Strobe Link) ──────────
+        case 'flash':
+            return result.strobeActive ? (result.strobeIntensity || 1.0) : 0;
         // ── Zonas compuestas (WAVE 4655: fuente única de verdad) ────────────
         case 'front':
             return (result.frontLeftIntensity + result.frontRightIntensity) * 0.5;

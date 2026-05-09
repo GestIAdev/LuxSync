@@ -108,6 +108,16 @@ export class LiquidAetherAdapter {
     source: string
   }
 
+  // ── Pre-allocated scratch IMPACT (WAVE 4687) ─────────────────────────
+  private readonly _impactValues: Record<string, number>
+  private readonly _impactScratch: {
+    nodeId: string
+    values: Record<string, number>
+    priority: number
+    confidence: number
+    source: string
+  }
+
   private _photonTracerFrame = 0
 
   constructor(
@@ -137,6 +147,16 @@ export class LiquidAetherAdapter {
       confidence: 1.0,
       source:     SOURCE,
     }
+
+    // ── IMPACT scratch (WAVE 4687: dimmer-only L0 resurrection)
+    this._impactValues  = { dimmer: 0 }
+    this._impactScratch = {
+      nodeId:     '',
+      values:     this._impactValues,
+      priority:   L0_PRIORITY,
+      confidence: 1.0,
+      source:     SOURCE,
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -158,10 +178,55 @@ export class LiquidAetherAdapter {
    * @param result - LiquidStereoResult con las 9 intensidades zonales
    * @param bus    - IIntentBus donde inyectar los intents L0
    */
-  ingest(_frame: ProcessedFrame, _result: LiquidStereoResult, _bus: IIntentBus): void {
+  ingest(_frame: ProcessedFrame, result: LiquidStereoResult, bus: IIntentBus): void {
     this._photonTracerFrame++
-    // WAVE 4656.3: LiquidEngine queda aislado de color/shutter/strobe en Aether.
-    // L0 ya no inyecta ni strobe ni brightness; solo se conserva para compatibilidad de wiring.
+
+    // 🌊 WAVE 4689: UNIVERSAL INTENSITY ROUTING
+    // IMPACT:
+    // - con dimmer físico: publicar dimmer
+    // - sin dimmer físico (RGB/W puro): publicar brightness virtual
+    // COLOR:
+    // - publicar brightness (atenuación nativa para cruce con color de Selene)
+
+    const impactNodes: INodeView<IImpactNodeData> =
+      this._nodeGraph.getView(NodeFamily.IMPACT)
+
+    impactNodes.forEach((node) => {
+      const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''))
+      if (zoneIntensity <= 0.005) return
+
+      const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer')
+
+      // limpiar scratch previo (zero-alloc, anti-stale)
+      this._impactValues['dimmer'] = undefined as unknown as number
+      this._impactValues['brightness'] = undefined as unknown as number
+
+      if (hasPhysicalDimmer) {
+        this._impactValues['dimmer'] = zoneIntensity
+      } else {
+        // Fallback universal para nodos sin dimmer físico.
+        // `brightness` es la señal canónica de atenuación de color en Aether.
+        this._impactValues['brightness'] = zoneIntensity
+        // Compat forward: si aparece soporte de dimmer virtual aguas abajo,
+        // este valor ya viaja en el intent.
+        this._impactValues['dimmer'] = zoneIntensity
+      }
+
+      this._impactScratch.nodeId = node.nodeId
+      bus.push(this._impactScratch as INodeIntent)
+    })
+
+    const colorNodes: INodeView<IColorNodeData> =
+      this._nodeGraph.getView(NodeFamily.COLOR)
+
+    colorNodes.forEach((node) => {
+      const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''))
+      if (zoneIntensity <= 0.005) return
+
+      this._colorValues['brightness'] = zoneIntensity
+      this._colorScratch.nodeId = node.nodeId
+      bus.push(this._colorScratch as INodeIntent)
+    })
   }
 
   // ─────────────────────────────────────────────────────────────────────────

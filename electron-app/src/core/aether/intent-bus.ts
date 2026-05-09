@@ -286,6 +286,13 @@ export interface INodeArbiter {
   setSeleneOverrides(intents: readonly INodeIntent[]): void
 
   /**
+   * WAVE 4675: Pasaporte diplomático para Selene (L1).
+   * Si está activo, la capa Selene puede colorear nodos protegidos
+   * por Mover Shield durante el frame actual.
+   */
+  setSeleneOverrideMoverShield(active: boolean): void
+
+  /**
    * Establece un override manual sobre un nodo (capa L2).
    * Solo los canales especificados en `channels` se overridean;
    * los demás pasan through a capas inferiores.

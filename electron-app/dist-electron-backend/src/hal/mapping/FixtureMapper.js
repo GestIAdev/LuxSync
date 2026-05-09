@@ -143,13 +143,9 @@ export class FixtureMapper {
             }
             // Apply active effects
             finalState = this.applyActiveEffects(finalState, timestamp);
-            // Apply blackout (overrides everything)
-            if (this.blackoutActive) {
-                finalState.dimmer = 0;
-                finalState.r = 0;
-                finalState.g = 0;
-                finalState.b = 0;
-            }
+            // WAVE 4633-OMEGA: Blackout legacy eliminado.
+            // El único blackout semántico vive en Aether (NodeArbiter → NodeResolver egress).
+            // Los movers reciben sus canales de posición intactos para preservar la vida mecánica.
             return finalState;
         });
     }

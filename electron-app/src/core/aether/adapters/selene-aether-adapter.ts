@@ -159,8 +159,17 @@ export class SeleneAetherAdapter {
     source: L3_SOURCE,
   }
 
-  /** Scratch para canales COLOR (red, green, blue, white, amber) */
-  private readonly _colorValues: Record<string, number> = { red: 0, green: 0, blue: 0, white: 0, amber: 0 }
+  /** Scratch para canales COLOR (aliases duales rgb + red/green/blue + white/amber) */
+  private readonly _colorValues: Record<string, number> = {
+    r: 0,
+    g: 0,
+    b: 0,
+    red: 0,
+    green: 0,
+    blue: 0,
+    white: 0,
+    amber: 0,
+  }
   private readonly _colorScratch = {
     nodeId: '' as NodeId,
     values: null as unknown as Record<string, number>,
@@ -216,8 +225,13 @@ export class SeleneAetherAdapter {
     }
 
     // ── Gate 2: Composición global mínima ────────────────────────────────
-    const composition = effectOutput.globalComposition ?? 0
-    if (composition < MIN_GLOBAL_COMPOSITION) {
+    // Si globalComposition no viene (effects legacy), asumimos opacidad total
+    // para no silenciar color/zoneOverrides válidos.
+    const composition = effectOutput.globalComposition ?? 1
+    if (
+      effectOutput.globalComposition !== undefined &&
+      composition < MIN_GLOBAL_COMPOSITION
+    ) {
       return
     }
 
@@ -258,6 +272,7 @@ export class SeleneAetherAdapter {
     // colorOverride HSL/RGB → COLOR nodes zona 'all'
     if (output.colorOverride) {
       this._emitColor('all' as EffectZone, output.colorOverride as ColorInput, composition, bus)
+      this._emitOmniZoneColors(output.colorOverride as ColorInput, composition, bus)
     }
 
     // whiteOverride → COLOR nodes zona 'all' (canal 'white')
@@ -273,6 +288,61 @@ export class SeleneAetherAdapter {
     // strobeRate → IMPACT nodes zona 'all' (canal 'strobeRate' para fixtures con shutter)
     if (output.strobeRate !== undefined && output.strobeRate > 0) {
       this._emitStrobe('all' as EffectZone, clamp01(output.strobeRate), composition, bus)
+    }
+  }
+
+  /**
+   * WAVE 4684: Inyección nativa de color para zonas ambientales.
+   * Se emiten intents explícitos para `ambient` y `air` para que no dependan
+   * del fallback de `all` y tengan carácter cromático propio.
+   */
+  private _emitOmniZoneColors(base: ColorInput, composition: number, bus: IIntentBus): void {
+    const ambColor = this._deriveAmbientColor(base)
+    this._emitColor('ambient' as EffectZone, ambColor, composition, bus)
+
+    const airColor = this._deriveAirColor(base)
+    this._emitColor('air' as EffectZone, airColor, composition, bus)
+  }
+
+  /**
+   * Derive a soft wash color for the ambient zone from the primary color.
+   * Same hue, reduced saturation (×0.6) and lightness (×0.5).
+   */
+  private _deriveAmbientColor(base: ColorInput): ColorInput {
+    if (isHslColor(base)) {
+      return {
+        h: base.h,
+        s: Math.min(100, base.s * 0.58),
+        l: Math.min(100, base.l * 0.62),
+        isHSL: true,
+      }
+    }
+    // RGB fallback: warm wash, no blackout.
+    return {
+      r: (base.r ?? base.red ?? 0) * 0.62,
+      g: (base.g ?? base.green ?? 0) * 0.62,
+      b: (base.b ?? base.blue ?? 0) * 0.62,
+    }
+  }
+
+  /**
+   * Derive an accent color for the air/haze zone from the primary color.
+   * Hue shifted +30°, reduced saturation (×0.7) and lightness (×0.55).
+   */
+  private _deriveAirColor(base: ColorInput): ColorInput {
+    if (isHslColor(base)) {
+      return {
+        h: (base.h + 22) % 360,
+        s: Math.min(100, base.s * 0.72),
+        l: Math.min(100, base.l * 0.66),
+        isHSL: true,
+      }
+    }
+    // RGB fallback: same color but dimmed
+    return {
+      r: (base.r ?? base.red ?? 0) * 0.66,
+      g: (base.g ?? base.green ?? 0) * 0.66,
+      b: (base.b ?? base.blue ?? 0) * 0.66,
     }
   }
 
@@ -405,6 +475,9 @@ export class SeleneAetherAdapter {
   /** Limpia keys residuales del color scratch para evitar contaminación cruzada */
   private _clearColorScratch(): void {
     const v = this._colorValues
+    delete (v as Record<string, number>)['r']
+    delete (v as Record<string, number>)['g']
+    delete (v as Record<string, number>)['b']
     delete (v as Record<string, number>)['red']
     delete (v as Record<string, number>)['green']
     delete (v as Record<string, number>)['blue']
@@ -433,9 +506,17 @@ export class SeleneAetherAdapter {
     const scratch = this._colorScratch
     const vals    = this._colorValues
 
-    vals.red            = color.red ?? color.r ?? 0
-    vals.green          = color.green ?? color.g ?? 0
-    vals.blue           = color.blue ?? color.b ?? 0
+    const r = color.red ?? color.r ?? 0
+    const g = color.green ?? color.g ?? 0
+    const b = color.blue ?? color.b ?? 0
+
+    // Compat dual: algunos paths consumen r/g/b y otros red/green/blue.
+    vals.r              = r
+    vals.g              = g
+    vals.b              = b
+    vals.red            = r
+    vals.green          = g
+    vals.blue           = b
     scratch.confidence  = confidence
 
     for (let i = 0; i < nodeIds.length; i++) {

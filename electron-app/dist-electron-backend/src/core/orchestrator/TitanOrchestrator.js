@@ -184,6 +184,7 @@ export class TitanOrchestrator {
                 // Fallback: legacy flow will handle this device
             }
         }
+        this._refreshAetherMoverShieldMap();
     }
     /**
      * WAVE 4529: Expone el NodeArbiter interno para que AetherIPCHandlers
@@ -205,6 +206,7 @@ export class TitanOrchestrator {
         this._aetherGraph.unregisterDevice(deviceId);
         // _aetherHasDevices permanece true si hay otros devices registrados
         // (optimización: NodeGraph.size o similar podría comprobarlo, but it's fine)
+        this._refreshAetherMoverShieldMap();
     }
     _ensureAetherMatrixInitialized() {
         if (this._aetherArbiter &&
@@ -245,6 +247,33 @@ export class TitanOrchestrator {
             this._zoneNodeRouter = new ZoneNodeRouter(this._aetherGraph);
         }
         this._seleneAetherAdapter = this._seleneAetherAdapter ?? new SeleneAetherAdapter(this._zoneNodeRouter);
+    }
+    /**
+     * WAVE 4670: Precálculo patch-time del Mover Shield para L1.
+     * Marca como protegidos los nodos COLOR que pertenezcan a devices con
+     * nodo KINETIC absoluto (mover) y mezcla de color con rueda física.
+     */
+    _refreshAetherMoverShieldMap() {
+        const arbiter = this._aetherArbiter;
+        if (!arbiter) {
+            return;
+        }
+        const moverDeviceIds = new Set();
+        const kineticView = this._aetherGraph.getView(NodeFamily.KINETIC);
+        kineticView.forEach((node) => {
+            if (!node.isContinuous) {
+                moverDeviceIds.add(node.deviceId);
+            }
+        });
+        const protectedColorNodes = [];
+        const colorView = this._aetherGraph.getView(NodeFamily.COLOR);
+        colorView.forEach((node) => {
+            const hasPhysicalWheel = node.colorWheel !== undefined || node.mixingType === 'wheel' || node.mixingType === 'hybrid';
+            if (hasPhysicalWheel && moverDeviceIds.has(node.deviceId)) {
+                protectedColorNodes.push(node.nodeId);
+            }
+        });
+        arbiter.setMoverShieldNodeIds(protectedColorNodes);
     }
     constructor(config = {}) {
         this.brain = null;
@@ -322,6 +351,7 @@ export class TitanOrchestrator {
             bass: 0, mid: 0, high: 0, energy: 0
         };
         this.hasRealAudio = false;
+        this.currentLiquidLayout = '4.1';
         // 🚀 WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
         // Se utiliza en el SeleneAetherAdapter para traducción de efectos L3.
         // Por ahora inicializado como null; en el futuro el engine populate esto.
@@ -1580,6 +1610,10 @@ export class TitanOrchestrator {
                 const _liqFrame = _activeEngine?.lastFrame ?? null;
                 const _liqResult = _activeEngine?.lastResult ?? null;
                 if (_liqFrame !== null && _liqResult !== null) {
+                    // 🩺 WAVE 4686 TEMP TRACE 2 — ADAPTER PUB
+                    if (_liqResult.ambientIntensity > 0 || _liqResult.airIntensity > 0) {
+                        console.log(`[ADAPTER PUB 📤] amb:${_liqResult.ambientIntensity.toFixed(3)} air:${_liqResult.airIntensity.toFixed(3)} → liquidAetherAdapter.ingest()`);
+                    }
                     liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
                 }
                 // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────
@@ -1604,6 +1638,7 @@ export class TitanOrchestrator {
                 // ═══════════════════════════════════════════════════════════════════════
                 const consciousnessOutput = this.lastConsciousnessOutput ?? null;
                 const effectOutput = getEffectManager().getCombinedOutput();
+                aetherArbiter.setSeleneOverrideMoverShield(effectOutput.overrideMoverShield === true);
                 // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
                 // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
                 seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._seleneBus);
@@ -1665,30 +1700,50 @@ export class TitanOrchestrator {
                 // del frame actual. project() + emitHotFrame() ahora leen frame N,
                 // no frame N-1, eliminando el desfase de ~23ms del ordenamiento previo.
                 // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
-                this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated);
+                // 🚨 WAVE 4634: blackoutActive se lee ANTES de project() para sincronizar
+                // la UI con el apagón real del DMX (zero desfase visual).
+                const blackoutActive = aetherArbiter.isBlackoutActive();
+                this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive);
                 emitHotFrame();
                 // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
                 // WAVE 4656: Output gate final en orquestador (source of truth Aether).
+                // WAVE 4681: Keepalive — siempre iteramos registeredUniverses para mantener
+                // el link DMX vivo. NodeResolver ya tiene los buffers correctos:
+                //   - outputEnabled=true  → valores reales del engine
+                //   - outputEnabled=false → KINETIC/manual pasan; IMPACT/COLOR/BEAM/ATMO = 0
+                // El hardware NECESITA recibir el paquete (aunque sea todo ceros) para no
+                // reportar "no data yet". El Smart Gate (WAVE 4680) vive en _writeNode.
                 const outputEnabled = this._outputEnabled;
-                const blackoutActive = aetherArbiter.isBlackoutActive();
                 this.hal.setAetherOutputGateState(outputEnabled, blackoutActive);
                 for (const universe of aetherResolver.registeredUniverses) {
-                    // ARM/PREP: no enviar DMX al hardware.
-                    if (!outputEnabled)
-                        continue;
                     // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
                     if (!aetherSafety.shouldSendUniverse(universe))
                         continue;
                     const rawBuf = aetherResolver.getUniverseBuffer(universe);
                     if (!rawBuf)
                         continue;
-                    // WAVE 4656.1: Smart Blackout.
-                    // Se fuerza solo dimmer a 0, preservando movimiento y cinemática.
+                    // WAVE 4633-OMEGA: Smart blackout semántico.
+                    // Solo canales de emisión (dimmer/color) van a 0. Pan/tilt/speed conservan
+                    // sus valores para proteger la mecánica de los movers.
                     const egressBuf = blackoutActive
                         ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
                         : rawBuf;
                     this.hal.sendUniverseRaw(universe, egressBuf);
+                    // 🔬 WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
+                    if (this.frameCount % 300 === 0) {
+                        let byteSum = 0;
+                        for (let _bi = 0; _bi < egressBuf.length; _bi++)
+                            byteSum += egressBuf[_bi];
+                        console.log(`[Egress 📤] Universe ${universe} → HAL. ` +
+                            `Suma bytes: ${byteSum} | ` +
+                            `outputEnabled: ${outputEnabled} | ` +
+                            `blackout: ${blackoutActive}`);
+                    }
                 }
+                // 🚀 WAVE 4681: Flush — empuja todos los buffers de universo al worker DMX
+                // via UPDATE_BUFFER IPC (sendAll). Sin esto, setUniverse() escribe en buffer
+                // pero el worker nunca recibe datos → "no data yet" perpetuo.
+                this.hal.flushAetherEgress();
                 // 🛂 WAVE 4557: Safety telemetry (~1Hz)
                 if (this.frameCount % 44 === 0) {
                     const tel = aetherSafety.consumeTelemetry();
@@ -2073,11 +2128,15 @@ export class TitanOrchestrator {
      * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
      */
     setLiquidLayout(mode) {
+        this.currentLiquidLayout = mode;
         if (this.engine) {
             this.engine.setLiquidLayout(mode);
         }
         console.log(`[TitanOrchestrator] 🌊 Layout: ${mode}`);
         this.log('Physics', `🌊 Layout switched to ${mode}`);
+    }
+    getLiquidLayout() {
+        return this.currentLiquidLayout;
     }
     /**
      * 🧬 WAVE 560: Get consciousness state
@@ -2339,6 +2398,7 @@ export class TitanOrchestrator {
         // WAVE 2098: Boot silence
         // ⚡ WAVE 4594: THE AETHER AWAKENING — inject all fixtures into Aether NodeGraph
         this._syncFixturesToAether(this.fixtures);
+        return detectedLayout;
     }
     /**
      * ⚡ WAVE 4594: THE AETHER AWAKENING — Aether Patch Bridge
@@ -2406,9 +2466,15 @@ export class TitanOrchestrator {
                 const forgeGraph = fixture.forgeGraph ?? undefined;
                 this.registerAetherDevice(deviceDef, forgeGraph);
                 registered++;
+                // 🔦 WAVE 4674 PASO 3: Log de registro por fixture — PARs y estáticos incluidos.
+                // Muestra nodeIds generados para verificar que color/impact siempre aparecen.
+                const nodeIds = deviceDef.nodes.map(n => `${String(n.nodeId)}(${n.family})`).join(', ');
+                console.log(`[TitanOrchestrator] ✅ WAVE 4674: Fixture "${fixture.id}" (${fixture.type ?? '?'}) ` +
+                    `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`);
             }
             catch (err) {
-                console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err);
+                console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync SKIPPED fixture "${fixture.id}" ` +
+                    `(type="${fixture.type ?? '?'}", name="${fixture.name ?? '?'}"):`, err);
             }
         }
         // WAVE 4663 FIX: Reconstruir ZoneNodeRouter y SeleneAetherAdapter DESPUÉS de que
@@ -2467,13 +2533,27 @@ export class TitanOrchestrator {
                 ...(channel.continuousRotation === true ? { continuousRotation: true } : {}),
             };
         });
+        // 🧮 WAVE 4674 PASO 2: FIX COLISIÓN DMX — Detectar índices duplicados.
+        // Si tras la normalización dos o más canales tienen el mismo index (e.g. todos
+        // index=1 porque el perfil almacenó los índices como 0-based sin conversión),
+        // NodeExtractionPipeline los traduciría todos a dmxOffset=0 → colisión masiva.
+        // Solución: si los índices no son todos únicos, reasignar en orden posicional (1-based).
+        const indexSet = new Set(channels.map(ch => ch.index));
+        const hasDuplicateIndices = indexSet.size < channels.length;
+        if (hasDuplicateIndices) {
+            console.warn(`[TitanOrchestrator] ⚠️ WAVE 4674: fixture "${fixture.id ?? profileId}" tiene índices de canal duplicados ` +
+                `(${channels.map(c => c.index).join(',')}) — reasignando posicionalmente (1-based) para evitar colisión DMX.`);
+        }
+        const finalChannels = hasDuplicateIndices
+            ? channels.map((ch, i) => ({ ...ch, index: i + 1 }))
+            : channels;
         return {
             ...definition,
             id: profileId ?? definition.id ?? fixture.id,
             name: definition.name ?? fixture.name ?? profileId ?? fixture.id ?? 'Unknown Fixture',
             manufacturer: definition.manufacturer ?? fixture.manufacturer ?? 'Unknown',
             type: this._normalizeFixtureType(definition.type ?? fixture.type),
-            channels,
+            channels: finalChannels,
             physics: definition.physics ?? fixture.physics,
             capabilities: definition.capabilities ?? fixture.capabilities,
             wheels: definition.wheels ?? fixture.wheels,

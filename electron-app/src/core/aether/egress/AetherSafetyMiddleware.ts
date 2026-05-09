@@ -129,6 +129,14 @@ export class AetherSafetyMiddleware {
     for (let i = 0; i < nodeIds.length; i++) this._manualNodeIds.add(nodeIds[i])
   }
 
+  /**
+   * WAVE 4680: Verifica si un nodo tiene override manual (L2) activo.
+   * Los nodos manuales tienen inmunidad diplomática ante el Soft Blackout.
+   */
+  isManualNode(nodeId: NodeId): boolean {
+    return this._manualNodeIds.has(nodeId)
+  }
+
   onVibeChange(): void {
     for (const state of this._kineticState.values()) state[KS_INIT] = 0
   }
@@ -144,6 +152,10 @@ export class AetherSafetyMiddleware {
     // No mutar canales pre-resolve. El cálculo (IK/currentPosition) debe permanecer
     // íntegro para UI aunque output esté desarmado. El bloqueo real de salida
     // se aplica en el write final al buffer DMX dentro del resolver.
+    //
+    // 🛂 WAVE 4690: ADUANA 7.1 — No existe whitelist de zonas.
+    // El gate es family-based (bloquea todo non-KINETIC). ambient/air no son
+    // discriminadas; pasan o se bloquean exactamente igual que front/back/center.
     for (const [nodeId] of arbitrated) {
       if (this._manualNodeIds.has(nodeId)) continue
       this._aduanaBlocks++

@@ -209,6 +209,18 @@ export interface ILiquidProfile {
   readonly kickVetoFrames: number
 
   // ═══════════════════════════════════════════════════════════════
+  // WAVE 4684: AMBIENT VISCOSITY — EMA time constants for the
+  // ambient zone "giant lung" behavior. Attack = gentle rise,
+  // Release = ultra-slow decay (milliseconds). At 44Hz:
+  //   alpha = 1000 / (ms × 44). Default attack 800ms, release 10000ms.
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Attack time constant for ambient EMA (ms). Lower = faster rise. */
+  readonly ambientAttackMs?: number
+  /** Release/decay time constant for ambient EMA (ms). Higher = slower fall. */
+  readonly ambientReleaseMs?: number
+
+  // ═══════════════════════════════════════════════════════════════
   // WAVE 2435: OVERRIDES DE LAYOUT 4.1
   //
   // Cuando un perfil 7.1 corre en layout 4.1, routeZones() compacta

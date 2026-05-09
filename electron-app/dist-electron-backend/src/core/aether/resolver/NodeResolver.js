@@ -81,6 +81,21 @@ const IK_WARN_INTERVAL_FRAMES = 44;
 const MATH_TELEMETRY_EVERY_FRAMES = 30;
 const IK_DEFAULT_PAN_RANGE_DEG = 540;
 const IK_DEFAULT_TILT_RANGE_DEG = 270;
+function sanitizeNormalizedValue(value, fallback = 0) {
+    return value !== undefined && Number.isFinite(value) ? value : fallback;
+}
+function sanitizeDmxByte(value) {
+    if (!Number.isFinite(value)) {
+        return 0;
+    }
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 255) {
+        return 255;
+    }
+    return value;
+}
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set([CH_R, CH_G, CH_B]);
@@ -145,6 +160,8 @@ export class NodeResolver {
         this._softBlackoutMasks = new Map();
         // Buffers de salida pre-alloc para blackout por universo.
         this._softBlackoutBuffers = new Map();
+        // Buffers de blackout duro (todos los canales a 0) por universo.
+        this._hardBlackoutBuffers = new Map();
         // ── WAVE 4548.6: Forge compiled graphs por device ──────────────────
         // Si un device tiene un CompiledForgeGraph, _writeNode() delega
         // completamente al ForgeNodeEvaluator — bypass total del flujo legacy.
@@ -215,11 +232,31 @@ export class NodeResolver {
         return out;
     }
     /**
+     * WAVE 4666: Hard blackout por universo.
+     *
+     * Retorna un buffer pre-allocated de 512 canales en 0 para blackout total.
+     */
+    getHardBlackoutUniverseBuffer(universe) {
+        let out = this._hardBlackoutBuffers.get(universe);
+        if (!out) {
+            out = new Uint8Array(DMX_UNIVERSE_SIZE);
+            this._hardBlackoutBuffers.set(universe, out);
+        }
+        return out;
+    }
+    /**
      * Lista de universos actualmente registrados (por registerUniverse()).
      * Útil para iterar en el Orchestrator sin crear un Array nuevo.
      */
     get registeredUniverses() {
         return this._universeBuffers.keys();
+    }
+    /**
+     * WAVE 4680: Universos que tienen al menos un nodo no bloqueado este frame.
+     * Útil para el egress loop cuando outputEnabled=false (Smart Gate).
+     */
+    get activeUniverses() {
+        return this._activeUniverses.values();
     }
     // ── WAVE 4548.6: Forge Graph Registration ──────────────────────────────
     /**
@@ -270,6 +307,7 @@ export class NodeResolver {
         // Si el universo se registra/rearma, reconstruir máscara en siguiente uso.
         this._softBlackoutMasks.delete(universe);
         this._softBlackoutBuffers.delete(universe);
+        this._hardBlackoutBuffers.delete(universe);
     }
     /**
      * Resuelve el ArbitratedNodeMap a DMXPackets listos para el driver.
@@ -371,7 +409,13 @@ export class NodeResolver {
         const buf = this._universeBuffers.get(device.universe);
         if (!buf)
             return; // universe no registrado — ignorar silenciosamente
-        const writeToDmx = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
+        // WAVE 4680: Smart Gate — bloqueo selectivo por familia + bypass manual.
+        // gateOpen     → todo pasa normalmente.
+        // !gateOpen    → solo KINETIC y nodos L2 (manual) escriben al buffer.
+        //                IMPACT/COLOR/BEAM/ATMOSPHERE se bloquean (buffer ya en 0).
+        const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
+        const isManualNode = this._safetyMiddleware ? this._safetyMiddleware.isManualNode(nodeId) : false;
+        const nodeBlocked = !gateOpen && !isManualNode && node.family !== NodeFamily.KINETIC;
         const baseAddr = device.dmxAddress - 1; // convertir a 0-indexed
         const _t36probe = this._resolveFrameIndex % 20 === 0
             ? this._graph.getView(NodeFamily.IMPACT).count > 0
@@ -384,29 +428,64 @@ export class NodeResolver {
         // delegar COMPLETAMENTE al ForgeNodeEvaluator.
         const compiled = this._forgeGraphs.get(node.deviceId);
         if (compiled) {
-            if (!writeToDmx)
+            if (nodeBlocked)
                 return;
             ForgeNodeEvaluator.evaluate(compiled, channelValues, this._forgeFrameContext, buf, baseAddr);
             // ★ WAVE 4557: Post-Forge Safety Sweep — airbag + velocity clamp
             // The Forge evaluator bypasses ALL safety logic. Apply critical
             // protections on the buffer AFTER evaluation for kinetic outputs.
-            if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
-                for (let oi = 0; oi < compiled.outputs.length; oi++) {
-                    const output = compiled.outputs[oi];
-                    const idx = baseAddr + output.dmxOffset;
+            const sm = this._safetyMiddleware;
+            if (sm && node.family === NodeFamily.KINETIC) {
+                for (let ci = 0; ci < node.channels.length; ci++) {
+                    const chDef = node.channels[ci];
+                    const idx = baseAddr + chDef.dmxOffset;
                     if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
                         continue;
-                    // We don't have channelName on CompiledOutput — use dmxOffset
-                    // heuristic: first 2 kinetic outputs are typically pan, tilt.
-                    // For safety, apply airbag to ALL kinetic channel outputs.
-                    buf[idx] = this._safetyMiddleware.applyAirbag(buf[idx], oi === 0);
+                    if (chDef.type === PAN_COARSE) {
+                        buf[idx] = sm.clampKineticSingleAxis(node.nodeId, true, buf[idx]);
+                        buf[idx] = sm.applyAirbag(buf[idx], true);
+                    }
+                    else if (chDef.type === TILT_COARSE) {
+                        buf[idx] = sm.clampKineticSingleAxis(node.nodeId, false, buf[idx]);
+                        buf[idx] = sm.applyAirbag(buf[idx], false);
+                    }
+                }
+            }
+            if (sm && node.family === NodeFamily.COLOR) {
+                let wheelDmx;
+                let wheelTransitMs = 0;
+                const colorNode = node;
+                for (let ci = 0; ci < node.channels.length; ci++) {
+                    const chDef = node.channels[ci];
+                    if (chDef.type !== CH_COLOR_WHEEL)
+                        continue;
+                    const idx = baseAddr + chDef.dmxOffset;
+                    if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                        continue;
+                    wheelDmx = buf[idx];
+                    wheelTransitMs = colorNode.colorWheel?.minTransitionMs ?? 0;
+                    break;
+                }
+                if (wheelDmx !== undefined && wheelTransitMs > 0) {
+                    const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs);
+                    if (inBlackout) {
+                        for (let ci = 0; ci < node.channels.length; ci++) {
+                            const chDef = node.channels[ci];
+                            if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL)
+                                continue;
+                            const idx = baseAddr + chDef.dmxOffset;
+                            if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                                continue;
+                            buf[idx] = 0;
+                        }
+                    }
                 }
             }
             this._activeUniverses.add(device.universe);
             return; // BYPASS: no ejecutar flujo legacy
         }
         const calibration = device.calibration;
-        if (writeToDmx)
+        if (!nodeBlocked)
             this._activeUniverses.add(device.universe);
         let invertClassicKineticAxes = false;
         // ── WAVE 4631: SPLIT-BRAIN GATEKEEPER DETERMINISTA ─────────────────────
@@ -419,7 +498,7 @@ export class NodeResolver {
             const kineticNode = node;
             const hasSpatialTarget = channelValues[CH_TARGET_X] !== undefined;
             if (!kineticNode.isContinuous && hasSpatialTarget) {
-                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, writeToDmx);
+                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked);
                 return;
             }
             invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode);
@@ -452,6 +531,7 @@ export class NodeResolver {
             let rawNormalized = translatedValues[chDef.type] !== undefined
                 ? translatedValues[chDef.type]
                 : this._getDefaultNormalizedValue(node, chDef);
+            rawNormalized = sanitizeNormalizedValue(rawNormalized);
             // Telemetría legacy removida.
             // Aplicar TransferCurve
             let normalized = this._applyTransferCurve(rawNormalized, chDef, node.constraints.transferCurve);
@@ -463,25 +543,25 @@ export class NodeResolver {
             if (normalized < 0)
                 normalized = 0;
             // Escalar a DMX: [0, 255]
-            let dmxValue = Math.round(normalized * 255);
+            let dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
             // Aplicar calibración específica de canal
             if (calibration) {
-                dmxValue = this._applyCalibration(dmxValue, chDef.type, calibration);
+                dmxValue = sanitizeDmxByte(this._applyCalibration(dmxValue, chDef.type, calibration));
             }
             // WAVE 4639: La inversión por orientación en ruta clásica se aplica
             // en dominio DMX final para respetar offsets/límites y corregir pivote.
             if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
-                dmxValue = 255 - dmxValue;
+                dmxValue = sanitizeDmxByte(255 - dmxValue);
             }
             // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path
             if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
                 if (PAN_CHANNELS.has(chDef.type) && chDef.type === PAN_COARSE) {
-                    dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, true, dmxValue);
-                    dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, true);
+                    dmxValue = sanitizeDmxByte(this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, true, dmxValue));
+                    dmxValue = sanitizeDmxByte(this._safetyMiddleware.applyAirbag(dmxValue, true));
                 }
                 else if (TILT_CHANNELS.has(chDef.type) && chDef.type === TILT_COARSE) {
-                    dmxValue = this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue);
-                    dmxValue = this._safetyMiddleware.applyAirbag(dmxValue, false);
+                    dmxValue = sanitizeDmxByte(this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue));
+                    dmxValue = sanitizeDmxByte(this._safetyMiddleware.applyAirbag(dmxValue, false));
                 }
             }
             // WAVE 4616: Pre-Vis rescue — currentPosition siempre debe actualizarse
@@ -496,11 +576,14 @@ export class NodeResolver {
                 }
             }
             // Clamp final de seguridad
-            if (dmxValue < 0)
-                dmxValue = 0;
-            if (dmxValue > 255)
-                dmxValue = 255;
-            if (!writeToDmx)
+            dmxValue = sanitizeDmxByte(dmxValue);
+            // 🔬 WAVE 4682: Strobe Ghost diagnostic
+            if (chDef.type === STROBE_CHANNEL && dmxValue > 0) {
+                const arbStrobe = translatedValues[STROBE_CHANNEL];
+                console.log(`[StrobeGhost 🔎] nodeId=${nodeId} type=${chDef.type} ` +
+                    `dmxOut=${dmxValue} arbValue=${arbStrobe} defaultRaw=${chDef.defaultValue}`);
+            }
+            if (nodeBlocked)
                 continue;
             buf[bufIdx] = dmxValue;
             // Telemetría legacy removida.
@@ -509,11 +592,12 @@ export class NodeResolver {
                 const fineIdx = bufIdx + 1;
                 if (fineIdx < DMX_UNIVERSE_SIZE) {
                     const raw16 = Math.round(normalized * 65535);
-                    buf[fineIdx] = raw16 & 0xFF; // byte fine (LSB)
+                    const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0;
+                    buf[fineIdx] = safeRaw16 & 0xFF; // byte fine (LSB)
                     // El byte coarse (MSB) ya fue escrito como (raw16 >> 8) arriba,
                     // pero nuestro `dmxValue` ya redondeó al byte coarse.
                     // Corregir el coarse para coherencia 16-bit:
-                    buf[bufIdx] = (raw16 >> 8) & 0xFF;
+                    buf[bufIdx] = (safeRaw16 >> 8) & 0xFF;
                 }
             }
         }
@@ -526,12 +610,13 @@ export class NodeResolver {
      * _applyCalibration() — el IKEngine integra calibración en grados
      * internamente (anti-double-calibration).
      */
-    _writeNodeIK(node, channelValues, baseAddr, buf, calibration, writeToDmx) {
-        const tx = channelValues[CH_TARGET_X];
-        if (tx === undefined)
+    _writeNodeIK(node, channelValues, baseAddr, buf, calibration, nodeWriteEnabled) {
+        const txRaw = channelValues[CH_TARGET_X];
+        if (!Number.isFinite(txRaw))
             return;
-        const ty = channelValues[CH_TARGET_Y] ?? 1.5;
-        const tz = channelValues[CH_TARGET_Z] ?? 2.0;
+        const tx = txRaw;
+        const ty = sanitizeNormalizedValue(channelValues[CH_TARGET_Y], 1.5);
+        const tz = sanitizeNormalizedValue(channelValues[CH_TARGET_Z], 2.0);
         if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
             console.log(`[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`);
         }
@@ -548,8 +633,8 @@ export class NodeResolver {
             }
         }
         // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
-        let safePan = ikResult.pan;
-        let safeTilt = ikResult.tilt;
+        let safePan = sanitizeDmxByte(ikResult.pan);
+        let safeTilt = sanitizeDmxByte(ikResult.tilt);
         const sm = this._safetyMiddleware;
         if (sm) {
             const clamped = sm.clampKineticVelocity(node.nodeId, safePan, safeTilt);
@@ -564,7 +649,7 @@ export class NodeResolver {
             console.log(`[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`);
         }
         // WAVE 4616: Gate final absoluto en el write DMX.
-        if (!writeToDmx)
+        if (!nodeWriteEnabled)
             return;
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
@@ -608,16 +693,10 @@ export class NodeResolver {
         const pitch = node.ikOrientation?.rotation?.pitch;
         return Number.isFinite(pitch) && Math.abs(Math.abs(pitch) - 180) < 0.001;
     }
-    _getDefaultNormalizedValue(node, chDef) {
-        if (chDef.type === SHUTTER_CHANNEL) {
-            return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255;
-        }
-        if (chDef.type === STROBE_CHANNEL && node.family === NodeFamily.IMPACT) {
-            const hasDedicatedShutter = node.channels.some(channel => channel.type === SHUTTER_CHANNEL);
-            if (!hasDedicatedShutter) {
-                return (chDef.defaultValue > 0 ? chDef.defaultValue : 255) / 255;
-            }
-        }
+    _getDefaultNormalizedValue(_node, chDef) {
+        // WAVE 4682: _mapChannels ya defaulteó undefined→255 para shutter/strobe.
+        // El fallback destructivo `(>0 ? dv : 255)` fue eliminado — ignoraba
+        // defaultValue:0 explícito del fixture JSON y forzaba 255 (Open/strobe).
         return chDef.defaultValue / 255;
     }
     /**
@@ -675,9 +754,12 @@ export class NodeResolver {
      */
     _translateColor(nodeId, mixingType, aetherWheel, rNorm, gNorm, bNorm, original) {
         // Escalar a 0-255 para el ColorTranslator (que trabaja en 255)
-        this._rgbScratch.r = Math.round(rNorm * 255);
-        this._rgbScratch.g = Math.round(gNorm * 255);
-        this._rgbScratch.b = Math.round(bNorm * 255);
+        const safeR = sanitizeNormalizedValue(rNorm);
+        const safeG = sanitizeNormalizedValue(gNorm);
+        const safeB = sanitizeNormalizedValue(bNorm);
+        this._rgbScratch.r = sanitizeDmxByte(Math.round(safeR * 255));
+        this._rgbScratch.g = sanitizeDmxByte(Math.round(safeG * 255));
+        this._rgbScratch.b = sanitizeDmxByte(Math.round(safeB * 255));
         switch (mixingType) {
             // ── RGB / pass-through ──────────────────────────────────────────
             case 'rgb':
@@ -687,12 +769,12 @@ export class NodeResolver {
                 // tiene type='r'/'g'/'b' (fixtures puramente abstractos).
                 return {
                     ...original,
-                    [CH_RED]: rNorm,
-                    [CH_GREEN]: gNorm,
-                    [CH_BLUE]: bNorm,
-                    [CH_R]: rNorm,
-                    [CH_G]: gNorm,
-                    [CH_B]: bNorm,
+                    [CH_RED]: safeR,
+                    [CH_GREEN]: safeG,
+                    [CH_BLUE]: safeB,
+                    [CH_R]: safeR,
+                    [CH_G]: safeG,
+                    [CH_B]: safeB,
                 };
             // ── RGBW ────────────────────────────────────────────────────────
             case 'rgbw': {
@@ -702,7 +784,7 @@ export class NodeResolver {
                 const rgbw = result.rgbw;
                 if (!rgbw) {
                     // Fallback: sin datos RGBW, pass-through RGB
-                    return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm };
+                    return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB };
                 }
                 return {
                     ...original,
@@ -710,9 +792,9 @@ export class NodeResolver {
                     [CH_GREEN]: rgbw.g / 255,
                     [CH_BLUE]: rgbw.b / 255,
                     [CH_WHITE]: rgbw.w / 255,
-                    [CH_R]: rNorm,
-                    [CH_G]: gNorm,
-                    [CH_B]: bNorm,
+                    [CH_R]: safeR,
+                    [CH_G]: safeG,
+                    [CH_B]: safeB,
                 };
             }
             // ── CMY ─────────────────────────────────────────────────────────
@@ -722,7 +804,7 @@ export class NodeResolver {
                 });
                 const cmy = result.cmy;
                 if (!cmy) {
-                    return { ...original, [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm };
+                    return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB };
                 }
                 return {
                     ...original,
@@ -730,9 +812,9 @@ export class NodeResolver {
                     [CH_MAGENTA]: cmy.m / 255,
                     [CH_YELLOW]: cmy.y / 255,
                     // Preservar abstractos por compatibilidad
-                    [CH_R]: rNorm,
-                    [CH_G]: gNorm,
-                    [CH_B]: bNorm,
+                    [CH_R]: safeR,
+                    [CH_G]: safeG,
+                    [CH_B]: safeB,
                 };
             }
             // ── COLOR WHEEL ─────────────────────────────────────────────────
@@ -742,8 +824,8 @@ export class NodeResolver {
                     // Sin datos de rueda: pass-through RGB
                     return {
                         ...original,
-                        [CH_RED]: rNorm, [CH_GREEN]: gNorm, [CH_BLUE]: bNorm,
-                        [CH_R]: rNorm, [CH_G]: gNorm, [CH_B]: bNorm,
+                        [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB,
+                        [CH_R]: safeR, [CH_G]: safeG, [CH_B]: safeB,
                     };
                 }
                 // Convertir ColorWheelDefinition del Aether (slots[]) al formato
@@ -782,7 +864,7 @@ export class NodeResolver {
                         return {
                             ...original,
                             [CH_COLOR_WHEEL]: wheelDmxNorm,
-                            [CH_R]: rNorm, [CH_G]: gNorm, [CH_B]: bNorm,
+                            [CH_R]: safeR, [CH_G]: safeG, [CH_B]: safeB,
                             [DIMMER_CHANNEL]: 0, // ★ BLACKOUT: hide mechanical crystal transit
                         };
                     }
@@ -791,9 +873,9 @@ export class NodeResolver {
                 return {
                     ...original,
                     [CH_COLOR_WHEEL]: wheelDmxNorm,
-                    [CH_R]: rNorm,
-                    [CH_G]: gNorm,
-                    [CH_B]: bNorm,
+                    [CH_R]: safeR,
+                    [CH_G]: safeG,
+                    [CH_B]: safeB,
                 };
             }
         }

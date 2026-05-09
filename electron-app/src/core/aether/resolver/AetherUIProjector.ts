@@ -48,8 +48,11 @@ export class AetherUIProjector {
    * @param fixtures      Array mutable de FixtureState (mutado in-place)
    * @param graph         NodeGraph para leer pan/tilt y color de los nodos
    * @param arbitrated    ArbitratedNodeMap post-arbitraje — fuente de verdad para dimmers
+   * @param blackoutActive Si es true, todos los canales emisores se fuerzan a 0 en la UI.
+   *                       Pan/tilt/rotación se conservan para que la UI siga mostrando
+   *                       la orientación mecánica aunque el fixture esté oscuro.
    */
-  project(fixtures: FixtureState[], graph: NodeGraph, arbitrated: ArbitratedNodeMap): void {
+  project(fixtures: FixtureState[], graph: NodeGraph, arbitrated: ArbitratedNodeMap, blackoutActive: boolean = false): void {
     for (const fixture of fixtures) {
       // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
       // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
@@ -83,10 +86,21 @@ export class AetherUIProjector {
             // currentColor NO se actualiza en el pipeline actual: ColorAdapter emite
             // intents r/g/b al bus pero nunca escribe de vuelta al nodo.
             // El patrón es idéntico al fix de IMPACT (WAVE 4612).
+            //
+            // 🌊 WAVE 4690: brightness (intensidad virtual L0) actúa como master dimmer
+            // para fixtures RGB sin canal físico de dimmer. Se aplica como escala
+            // sobre r/g/b y se refleja en fixture.dimmer para que la UI preview
+            // muestre intensidad proporcional.
             const colorChannels = arbitrated.get(nodeId)
-            fixture.r = toDmx(colorChannels?.['r'] ?? 0)
-            fixture.g = toDmx(colorChannels?.['g'] ?? 0)
-            fixture.b = toDmx(colorChannels?.['b'] ?? 0)
+            const brightnessNorm = colorChannels?.['brightness'] ?? 1.0
+            fixture.r = toDmx((colorChannels?.['r'] ?? 0) * brightnessNorm)
+            fixture.g = toDmx((colorChannels?.['g'] ?? 0) * brightnessNorm)
+            fixture.b = toDmx((colorChannels?.['b'] ?? 0) * brightnessNorm)
+            fixture.dimmer = toDmx(colorChannels?.['dimmer'] ?? brightnessNorm)
+            // 🩺 WAVE 4690 TEMP TRACE 3b — UI RENDER (COLOR)
+            if ((node as any).zoneId === 'ambient' || (node as any).zoneId === 'air') {
+              console.log(`[UI RENDER 🎨 COLOR] nodeId=${nodeId} zone=${(node as any).zoneId ?? '?'} brightness=${brightnessNorm.toFixed(3)} r=${fixture.r} g=${fixture.g} b=${fixture.b}`)
+            }
             break
           }
           case NodeFamily.IMPACT: {
@@ -94,9 +108,16 @@ export class AetherUIProjector {
             // state[1] NO se usa porque nadie lo escribe en el pipeline actual:
             // el PhysicsPostProcessor solo procesa KINETIC, y el arbiter
             // solo retorna el mapa sin escribir de vuelta al NodeGraph.
+            //
+            // 🌊 WAVE 4690: Fallback a brightness para nodos IMPACT sin dimmer físico
+            // (parches universales de fixtures RGB-only clasificados como IMPACT).
             const arbitratedChannels = arbitrated.get(nodeId)
-            const dimmerNorm = arbitratedChannels?.['dimmer'] ?? 0
+            const dimmerNorm = arbitratedChannels?.['dimmer'] ?? arbitratedChannels?.['brightness'] ?? 0
             fixture.dimmer = toDmx(dimmerNorm)
+            // 🩺 WAVE 4686 TEMP TRACE 3 — UI RENDER (IMPACT)
+            if ((node as any).zoneId === 'ambient' || (node as any).zoneId === 'air') {
+              console.log(`[UI RENDER 🎨 IMPACT] nodeId=${nodeId} zone=${(node as any).zoneId ?? '?'} dimmer=${dimmerNorm.toFixed(3)}`)
+            }
             break
           }
           case NodeFamily.BEAM: {
@@ -107,6 +128,22 @@ export class AetherUIProjector {
           default:
             break
         }
+      }
+
+      // 🚨 WAVE 4634: BLACKOUT UI SYNC — Apagón visual del hot-frame.
+      // Si blackout está activo, forzamos a 0 todos los canales emisores de luz
+      // en la UI. Pan, tilt y rotación se conservan para que la interfaz siga
+      // mostrando la orientación mecánica aunque el fixture esté oscuro.
+      if (blackoutActive) {
+        fixture.dimmer = 0
+        fixture.r = 0
+        fixture.g = 0
+        fixture.b = 0
+        if (fixture.white !== undefined) fixture.white = 0
+        if (fixture.amber !== undefined) fixture.amber = 0
+        if (fixture.uv !== undefined) fixture.uv = 0
+        if (fixture.shutter !== undefined) fixture.shutter = 0
+        if (fixture.strobe !== undefined) fixture.strobe = 0
       }
     }
   }

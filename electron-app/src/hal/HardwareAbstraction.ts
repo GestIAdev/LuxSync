@@ -1792,6 +1792,19 @@ export class HardwareAbstraction {
   }
 
   /**
+   * WAVE 4681: Flush Aether egress — llama driver.sendAll() para empujar todos los
+   * buffers de universo escritos en este frame al worker DMX via UPDATE_BUFFER IPC.
+   * DEBE llamarse UNA VEZ al final del egress loop de TitanOrchestrator, después de
+   * todos los sendUniverseRaw() del frame. Sin esto, setUniverse() escribe en buffer
+   * pero el worker nunca recibe el UPDATE_BUFFER → "no data yet".
+   */
+  public flushAetherEgress(): void {
+    if (this.driver.sendAll) {
+      void this.driver.sendAll()
+    }
+  }
+
+  /**
    * WAVE 4656: Estado de salida canónico del pipeline Aether.
    */
   public setAetherOutputGateState(outputEnabled: boolean, blackoutActive: boolean): void {

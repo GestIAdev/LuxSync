@@ -43,7 +43,7 @@ import type {
 // ── Canales con estrategia HTP ──────────────────────────────────────────
 // Solo los canales de intensidad aplican HTP.
 // El resto usa LTP (la capa más alta dicta el valor final).
-const HTP_CHANNELS = new Set<string>(['dimmer', 'strobe', 'shutter'])
+const HTP_CHANNELS = new Set<string>(['dimmer', 'brightness', 'strobe', 'shutter'])
 const MOVER_SHIELD_BLOCKED_CHANNELS = new Set<string>([
   'r', 'g', 'b',
   'red', 'green', 'blue',
@@ -81,6 +81,12 @@ export class NodeArbiter implements INodeArbiter {
 
   /** WAVE 4670: Mapa de nodos COLOR protegidos por Mover Shield en L1 */
   private readonly _moverShieldNodeIds = new Set<NodeId>()
+
+  /**
+   * Pasaporte diplomático por frame para la capa Selene (L1).
+   * Cuando está activo, los canales de color NO son bloqueados por Mover Shield.
+   */
+  private _seleneOverrideMoverShield = false
 
   /**
    * WAVE 4670: Lock de dimmer manual explícito (L2) por frame.
@@ -161,6 +167,15 @@ export class NodeArbiter implements INodeArbiter {
     for (let i = 0; i < nodeIds.length; i++) {
       this._moverShieldNodeIds.add(nodeIds[i])
     }
+  }
+
+  /**
+   * WAVE 4675: Permite a efectos diplomáticos de Selene colorear movers
+   * con rueda física en ventanas controladas (DarkSpin + HarmonicQuantizer
+   * siguen siendo la barrera mecánica real en resolver/egress).
+   */
+  setSeleneOverrideMoverShield(active: boolean): void {
+    this._seleneOverrideMoverShield = active
   }
 
   clearManualOverride(nodeId: NodeId): void {
@@ -341,7 +356,13 @@ export class NodeArbiter implements INodeArbiter {
     }
 
     if (this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-      // Silencio operacional WAVE 4627: sin telemetría legacy en el Arbiter.
+      // 🩺 WAVE 4690: ARBITER TRACE — dump nodes with intensity channels.
+      for (const [nodeId, record] of this._result) {
+        const dimmer = record['dimmer'] ?? record['brightness']
+        if (dimmer !== undefined && dimmer > 0.005) {
+          console.log(`[ARBITER TRACE ⚖️] Node: ${nodeId} FinalDimmer/Brightness: ${dimmer.toFixed(3)}`)
+        }
+      }
     }
 
     return this._result as ArbitratedNodeMap
@@ -363,7 +384,10 @@ export class NodeArbiter implements INodeArbiter {
     }
 
     const values = intent.values
-    const shieldedColorNode = isSeleneLayer && this._moverShieldNodeIds.has(intent.nodeId)
+    const shieldedColorNode =
+      isSeleneLayer &&
+      !this._seleneOverrideMoverShield &&
+      this._moverShieldNodeIds.has(intent.nodeId)
     for (const channel in values) {
       if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
         continue

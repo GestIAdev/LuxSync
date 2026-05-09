@@ -288,6 +288,11 @@ export const CHILL_PROFILE: ILiquidProfile = {
   kickEdgeMinInterval: 999999,  // INFINITO — jamás detecta un kick edge
   kickVetoFrames: 0,             // CERO — el pulso no silencia la Voz del Mar
 
+  // WAVE 4686: Ambient viscosity — Chill Oceanic
+  // Viscoso pero musical: bioluminiscencia que respira entre frases (~1.2s)
+  ambientAttackMs: 400,
+  ambientReleaseMs: 1200,
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2439 — ESTRATEGIA DE ENRUTAMIENTO 4.1
   //

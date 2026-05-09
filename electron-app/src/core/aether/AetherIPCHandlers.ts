@@ -64,6 +64,8 @@ export function registerAetherIPCHandlers(): void {
       }
 
       try {
+        // 🔬 WAVE 4681: Log de supervivencia — confirma que el canal IPC llega al backend.
+        console.log('[Aether IPC] 📥 Recibidos overrides manuales:', payloads.length)
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         for (const { nodeId, channels } of payloads) {
           if (typeof nodeId === 'string' && nodeId.length > 0 && channels && typeof channels === 'object') {

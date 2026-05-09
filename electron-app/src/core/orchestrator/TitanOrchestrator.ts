@@ -1847,6 +1847,10 @@ export class TitanOrchestrator {
       const _liqFrame  = _activeEngine?.lastFrame ?? null
       const _liqResult = _activeEngine?.lastResult ?? null
       if (_liqFrame !== null && _liqResult !== null) {
+        // 🩺 WAVE 4686 TEMP TRACE 2 — ADAPTER PUB
+        if (_liqResult.ambientIntensity > 0 || _liqResult.airIntensity > 0) {
+          console.log(`[ADAPTER PUB 📤] amb:${_liqResult.ambientIntensity.toFixed(3)} air:${_liqResult.airIntensity.toFixed(3)} → liquidAetherAdapter.ingest()`)
+        }
         liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus)
       }
 
@@ -1894,6 +1898,7 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const consciousnessOutput = this.lastConsciousnessOutput ?? null
       const effectOutput = getEffectManager().getCombinedOutput()
+      aetherArbiter.setSeleneOverrideMoverShield(effectOutput.overrideMoverShield === true)
       // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
       // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
       seleneAetherAdapter.ingest(
@@ -1982,19 +1987,24 @@ export class TitanOrchestrator {
       // del frame actual. project() + emitHotFrame() ahora leen frame N,
       // no frame N-1, eliminando el desfase de ~23ms del ordenamiento previo.
       // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
-      this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated)
+      // 🚨 WAVE 4634: blackoutActive se lee ANTES de project() para sincronizar
+      // la UI con el apagón real del DMX (zero desfase visual).
+      const blackoutActive = aetherArbiter.isBlackoutActive()
+      this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive)
       emitHotFrame()
 
       // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
       // WAVE 4656: Output gate final en orquestador (source of truth Aether).
+      // WAVE 4681: Keepalive — siempre iteramos registeredUniverses para mantener
+      // el link DMX vivo. NodeResolver ya tiene los buffers correctos:
+      //   - outputEnabled=true  → valores reales del engine
+      //   - outputEnabled=false → KINETIC/manual pasan; IMPACT/COLOR/BEAM/ATMO = 0
+      // El hardware NECESITA recibir el paquete (aunque sea todo ceros) para no
+      // reportar "no data yet". El Smart Gate (WAVE 4680) vive en _writeNode.
       const outputEnabled = this._outputEnabled
-      const blackoutActive = aetherArbiter.isBlackoutActive()
       this.hal.setAetherOutputGateState(outputEnabled, blackoutActive)
 
       for (const universe of aetherResolver.registeredUniverses) {
-        // ARM/PREP: no enviar DMX al hardware.
-        if (!outputEnabled) continue
-
         // 🛂 WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
@@ -2007,7 +2017,24 @@ export class TitanOrchestrator {
           ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
           : rawBuf
         this.hal.sendUniverseRaw(universe, egressBuf)
+
+        // 🔬 WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
+        if (this.frameCount % 300 === 0) {
+          let byteSum = 0
+          for (let _bi = 0; _bi < egressBuf.length; _bi++) byteSum += egressBuf[_bi]
+          console.log(
+            `[Egress 📤] Universe ${universe} → HAL. ` +
+            `Suma bytes: ${byteSum} | ` +
+            `outputEnabled: ${outputEnabled} | ` +
+            `blackout: ${blackoutActive}`,
+          )
+        }
       }
+
+      // 🚀 WAVE 4681: Flush — empuja todos los buffers de universo al worker DMX
+      // via UPDATE_BUFFER IPC (sendAll). Sin esto, setUniverse() escribe en buffer
+      // pero el worker nunca recibe datos → "no data yet" perpetuo.
+      this.hal.flushAetherEgress()
 
       // 🛂 WAVE 4557: Safety telemetry (~1Hz)
       if (this.frameCount % 44 === 0) {
@@ -2810,8 +2837,19 @@ export class TitanOrchestrator {
           fixture.forgeGraph ?? undefined
         this.registerAetherDevice(deviceDef, forgeGraph)
         registered++
+
+        // 🔦 WAVE 4674 PASO 3: Log de registro por fixture — PARs y estáticos incluidos.
+        // Muestra nodeIds generados para verificar que color/impact siempre aparecen.
+        const nodeIds = deviceDef.nodes.map(n => `${String(n.nodeId)}(${n.family})`).join(', ')
+        console.log(
+          `[TitanOrchestrator] ✅ WAVE 4674: Fixture "${fixture.id}" (${fixture.type ?? '?'}) ` +
+          `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`,
+        )
       } catch (err) {
-        console.warn(`[TitanOrchestrator] ⚡ WAVE 4594: Aether sync skipped fixture "${fixture.id}":`, err)
+        console.warn(
+          `[TitanOrchestrator] ⚡ WAVE 4594: Aether sync SKIPPED fixture "${fixture.id}" ` +
+          `(type="${fixture.type ?? '?'}", name="${fixture.name ?? '?'}"):`, err,
+        )
       }
     }
 
@@ -2883,13 +2921,30 @@ export class TitanOrchestrator {
         }
       })
 
+    // 🧮 WAVE 4674 PASO 2: FIX COLISIÓN DMX — Detectar índices duplicados.
+    // Si tras la normalización dos o más canales tienen el mismo index (e.g. todos
+    // index=1 porque el perfil almacenó los índices como 0-based sin conversión),
+    // NodeExtractionPipeline los traduciría todos a dmxOffset=0 → colisión masiva.
+    // Solución: si los índices no son todos únicos, reasignar en orden posicional (1-based).
+    const indexSet = new Set(channels.map(ch => ch.index))
+    const hasDuplicateIndices = indexSet.size < channels.length
+    if (hasDuplicateIndices) {
+      console.warn(
+        `[TitanOrchestrator] ⚠️ WAVE 4674: fixture "${fixture.id ?? profileId}" tiene índices de canal duplicados ` +
+        `(${channels.map(c => c.index).join(',')}) — reasignando posicionalmente (1-based) para evitar colisión DMX.`,
+      )
+    }
+    const finalChannels = hasDuplicateIndices
+      ? channels.map((ch, i) => ({ ...ch, index: i + 1 }))
+      : channels
+
     return {
       ...definition,
       id: profileId ?? definition.id ?? fixture.id,
       name: definition.name ?? fixture.name ?? profileId ?? fixture.id ?? 'Unknown Fixture',
       manufacturer: definition.manufacturer ?? fixture.manufacturer ?? 'Unknown',
       type: this._normalizeFixtureType(definition.type ?? fixture.type),
-      channels,
+      channels: finalChannels,
       physics: definition.physics ?? fixture.physics,
       capabilities: definition.capabilities ?? fixture.capabilities,
       wheels: definition.wheels ?? fixture.wheels,

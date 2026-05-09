@@ -260,6 +260,18 @@ export class AetherSafetyMiddleware {
     // FASE 1b: DarkSpin — Transit Blackout
     // ═════════════════════════════════════════════════════════════════════════
     /**
+     * WAVE 4685: Returns all NodeIds currently in active wheel transit.
+     * Used by NodeResolver for cross-node DarkSpin sweep (COLOR→IMPACT dimmer kill).
+     */
+    getDarkSpinTransitNodeIds() {
+        const out = [];
+        for (const [nodeId, s] of this._darkSpinState) {
+            if (s.inTransit)
+                out.push(nodeId);
+        }
+        return out;
+    }
+    /**
      * Returns true if dimmer must be forced to 0 (transit blackout active).
      * Woodstock-compliant: uses this._nowMs (performance.now()-based).
      */

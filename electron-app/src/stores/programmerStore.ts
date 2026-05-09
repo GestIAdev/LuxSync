@@ -231,16 +231,7 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     // ── SELECTION ──
 
     syncSelection: (fixtureIds) => {
-      set(state => {
-        const next = new Map(state.fixtureOverrides)
-        // Eliminar overrides de fixtures que ya no están seleccionados
-        for (const id of next.keys()) {
-          if (!fixtureIds.includes(id)) {
-            next.delete(id)
-          }
-        }
-        return { activeFixtureIds: fixtureIds, fixtureOverrides: next }
-      })
+      set({ activeFixtureIds: fixtureIds })
     },
 
     hydrateFromL2: (fixtureIds, overridesByNodeId) => {
@@ -617,9 +608,9 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     releaseAll: () => {
       set(state => {
         const next = new Map<string, ProgrammerOverrides>()
-        // Para los fixtures activos, guardar entradas vacías para que el bridge
-        // sepa que debe limpiar sus nodeIds en el Arbiter
-        for (const id of state.activeFixtureIds) {
+        // RELEASE ALL es global: limpia todos los overrides persistidos,
+        // incluidos fixtures fuera de la selección actual.
+        for (const id of state.fixtureOverrides.keys()) {
           next.set(id, createEmptyOverrides())
         }
         const allFamilies: Set<ProgrammerFamily> = new Set([

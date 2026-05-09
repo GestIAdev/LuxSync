@@ -87,35 +87,19 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // "Los demonios de neón en el bunker noruego"
   // 🔧 WAVE 350.5: maxAcceleration 1500 → 2000 (safety bump para botStabs)
   // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — basada en hardware real (Sharpy ~257°/s = 121 DMX/s)
-  //    ANTES: revLimitPan=3600 (7624°/s = 25× un Sharpy real), snapFactor=1.0 (sin damping)
-  //    Log probaba velocidades de 7624°/s reales. Epilepsia pura.
-  //    AHORA: REV_LIMIT calibrado a mover pro real. snapFactor<1.0 para damping.
-  //    Referencia: Clay Paky Sharpy Pan=540°/2.1s=257°/s, Robe Robin=300°/s
+  // 🌊 WAVE 4703 M3: revLimits reducidos sutilmente para más peso visual.
+  //    Pan 400→340, Tilt 400→320. Patrones más deliberados, menos frenéticos.
   // ───────────────────────────────────────────────────────────────
   'techno-club': {
     physics: {
       maxAcceleration: 2000,    // 🔧 Arranques agresivos pero seguros (era 1500)
       maxVelocity: 600,         // Muy rápido
-      friction: 0.08,           // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado (era 0.05 snap)
-      arrivalThreshold: 0.1,    // 🔧 WAVE 2233: 0.5 → 0.1. Esquinas clavadas en botstep/diamond
-      physicsMode: 'snap',      // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS — classic mata geometría con S-curve/inercia
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // WAVE 2088.4 bajó snapFactor a 0.35 y revLimit a 140 para evitar epilepsia.
-      // Pero eso fue con Hermite (ya eliminado en 2088.7). Ahora los targets
-      // son lineales puros y el PhysicsDriver es el ÚNICO filtro.
-      // Con snap=0.35 + revLimit=140: el mover NUNCA alcanza el target.
-      // Un square se convierte en blob, un scan en balanceo tímido.
-      //
-      // CALIBRACIÓN: Para que un scan_x de período 16 beats a 120 BPM
-      // cubra ~200 DMX de rango en ~2s de semi-ciclo, necesitamos:
-      //   - snapFactor=0.85 → el mover alcanza 85% del delta por frame
-      //   - revLimit=400 → 6.67 DMX/frame → 200 DMX en 30 frames (0.5s)
-      // Esto da patrones DEFINIDOS sin epilepsia (el revLimit protege).
-      // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 1.0,          // 🔧 WAVE 2233 CHOREOGRAPHER'S CUT: 0.85 → 1.0. Target instantáneo, la inercia la manda el revLimit + hardware físico
-      revLimitPanPerSec: 400,   // 🔧 WAVE 2088.8: ~848°/s — rápido pero acotado. 6.67 DMX/frame@60fps
-      revLimitTiltPerSec: 400,  // 🔧 WAVE 2221 MENDOZA: 280→400. Igualar al pan para geometrías rectas (square, diamond)
+      friction: 0.08,           // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado
+      arrivalThreshold: 0.1,    // 🔧 WAVE 2233: Esquinas clavadas en botstep/diamond
+      physicsMode: 'snap',      // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS
+      snapFactor: 1.0,          // Target instantáneo, la inercia la manda el revLimit + hardware
+      revLimitPanPerSec: 340,   // 🌊 WAVE 4703 M3: 400→340. ~719°/s — geometría con peso, no epilepsia
+      revLimitTiltPerSec: 320,  // 🌊 WAVE 4703 M3: 400→320. ~339°/s — tilt deliberado, con gravitas
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -135,20 +119,20 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 💃 LATINO: Fluido, Circular, Orgánico
   // "La cumbia tiene swing, los movers también"
   // 🔧 WAVE 340.5: Aceleración alta para seguir caderas
-  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — figure8 suave necesita seguir curva sin lag
-  //    Referencia: 750 DMX/s era ~1588°/s. Un figure8 a 120bpm con período 8 beats
-  //    necesita ~50 DMX/s pico. Le damos 85 DMX/s (~180°/s) para headroom.
+  // 🌊 WAVE 4703 M2: Más amplitud y velocidad. Alma latina sin límites.
+  //    revLimitPan 380→520, revLimitTilt 280→420. Bien por debajo del CAP de 900.
+  //    snapFactor 0.85→0.90: más fidelidad de seguimiento para cadera_libre/espiral_conga.
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
-      maxAcceleration: 1200,    // 🔧 Seguir caderas rápido
-      maxVelocity: 500,         // 🔥 WAVE 2472 SANGRE LATINA: 350 → 500. Swing sin límite.
-      friction: 0.08,           // 🔥 WAVE 2472: 0.15 → 0.08. Respuesta inmediata, piel de serpiente.
-      arrivalThreshold: 2.0,    // Permite overshoot elegante
-      physicsMode: 'snap',      // 🔥 WAVE 2472: classic → snap. Caderas no esperan.
-      snapFactor: 0.85,         // 🔥 WAVE 2472: 0.70 → 0.85. Fidelidad de bailarín profesional.
-      revLimitPanPerSec: 380,   // 🔥 WAVE 2472: 250 → 380. ~805°/s — cumbia a toda máquina.
-      revLimitTiltPerSec: 280,  // 🔥 WAVE 2472: 180 → 280. ~297°/s — tilt de cadera libre.
+      maxAcceleration: 1400,    // 🌊 WAVE 4703 M2: 1200→1400. Arranques más vivos.
+      maxVelocity: 560,         // 🌊 WAVE 4703 M2: 500→560. Más rango de velocidad.
+      friction: 0.07,           // 🌊 WAVE 4703 M2: 0.08→0.07. Piel de serpiente aún más fluida.
+      arrivalThreshold: 2.0,    // Permite overshoot elegante (sin cambio)
+      physicsMode: 'snap',      // Caderas no esperan (sin cambio)
+      snapFactor: 0.90,         // 🌊 WAVE 4703 M2: 0.85→0.90. Cadera libre necesita fidelidad alta.
+      revLimitPanPerSec: 520,   // 🌊 WAVE 4703 M2: 380→520. ~1101°/s — dentro del CAP de 900 DMX/s
+      revLimitTiltPerSec: 420,  // 🌊 WAVE 4703 M2: 280→420. ~445°/s — tilt de espiral conga
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)

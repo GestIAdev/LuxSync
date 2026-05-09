@@ -758,14 +758,21 @@ export class EffectManager extends EventEmitter {
         highestPriorityColor = output.colorOverride
       }
       
-      // � WAVE 991: THE MISSING LINK - El efecto de mayor prioridad determina el mixBus
+      // 🚂 WAVE 991: THE MISSING LINK - El efecto de mayor prioridad determina el mixBus
       // CRÍTICO: Usar variable SEPARADA (mixBusPriority) para no depender de colorOverride
       // REGLA: Si hay empate de prioridad Y uno es 'global', el 'global' SIEMPRE gana
       if (effect.priority > mixBusPriority || 
           (effect.priority === mixBusPriority && effect.mixBus === 'global')) {
         mixBusPriority = effect.priority
         dominantMixBus = effect.mixBus
-        dominantOverrideMoverShield = output.overrideMoverShield === true
+      }
+      
+      // 🛂 WAVE 4704 M2: EMANCIPATION — overrideMoverShield es un OR acumulativo.
+      // No pertenece al efecto dominante: si CUALQUIER efecto activo pide el pasaporte,
+      // se concede. CorazonLatino/OroSolido pueden no ser el efecto de mayor prioridad
+      // de mixBus, pero sus colores en mover-zones siguen necesitando el escudo abierto.
+      if (output.overrideMoverShield === true) {
+        dominantOverrideMoverShield = true
       }
       
       // 🥁 WAVE 700.7: Highest priority takes movement

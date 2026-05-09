@@ -265,36 +265,34 @@ export class ZoneNodeRouter implements IZoneNodeRouter {
       }
     }
 
-    // Alias compuesto: all-movers = union determinista movers-left + movers-right.
+    // Alias compuesto: all-movers = union determinista movers + movers-left + movers-right.
+    // Incluye fixtures asignados directamente a 'movers' (sin estereo L/R).
     // Se precalcula en patch-time para evitar fallback accidental a 'all'.
     {
-      const leftMap = this._zoneCache.get('movers-left' as EffectZone)
-      const rightMap = this._zoneCache.get('movers-right' as EffectZone)
-      if (leftMap || rightMap) {
+      const moversMap = this._zoneCache.get('movers' as EffectZone)
+      const leftMap   = this._zoneCache.get('movers-left' as EffectZone)
+      const rightMap  = this._zoneCache.get('movers-right' as EffectZone)
+      if (moversMap || leftMap || rightMap) {
         const allMoversMap = new Map<NodeFamily, readonly NodeId[]>()
         for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
           const familyKey = family as NodeFamily
-          const left = leftMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY
-          const right = rightMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY
-
-          if (left.length === 0) {
-            allMoversMap.set(familyKey, right)
-            continue
-          }
-          if (right.length === 0) {
-            allMoversMap.set(familyKey, left)
-            continue
-          }
+          const center = moversMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY
+          const left   = leftMap?.get(familyKey)   ?? ZoneNodeRouter.EMPTY_NODE_ARRAY
+          const right  = rightMap?.get(familyKey)  ?? ZoneNodeRouter.EMPTY_NODE_ARRAY
 
           const merged: NodeId[] = []
-          for (let i = 0; i < left.length; i++) {
-            merged.push(left[i])
-          }
-          for (let i = 0; i < right.length; i++) {
-            const nodeId = right[i]
-            if (!merged.includes(nodeId)) {
-              merged.push(nodeId)
+          const sources = [center, left, right]
+          for (let s = 0; s < sources.length; s++) {
+            const src = sources[s]
+            for (let i = 0; i < src.length; i++) {
+              if (!merged.includes(src[i])) {
+                merged.push(src[i])
+              }
             }
+          }
+          if (merged.length === 0) {
+            allMoversMap.set(familyKey, ZoneNodeRouter.EMPTY_NODE_ARRAY)
+            continue
           }
           allMoversMap.set(familyKey, Object.freeze(merged) as readonly NodeId[])
         }

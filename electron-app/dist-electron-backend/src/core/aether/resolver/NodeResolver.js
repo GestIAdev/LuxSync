@@ -326,6 +326,12 @@ export class NodeResolver {
         for (const [nodeId, channelValues] of arbitrated) {
             this._writeNode(nodeId, channelValues);
         }
+        // 🌊 WAVE 4685: DarkSpin cross-node sweep.
+        // DarkSpin state lives on COLOR nodes, but dimmer lives on IMPACT nodes.
+        // After all nodes are written, zero IMPACT dimmer/shutter for any device
+        // whose COLOR node is in wheel transit. This covers both manual fader
+        // changes and Selene L1 global color effects.
+        this._applyDarkSpinCrossNodeSweep();
         this._traceFirstDeviceDmxBytes();
         // 3. Ensamblar los packets de salida desde los buffers activos
         this._framePackets.clear();
@@ -599,6 +605,64 @@ export class NodeResolver {
                     // Corregir el coarse para coherencia 16-bit:
                     buf[bufIdx] = (safeRaw16 >> 8) & 0xFF;
                 }
+            }
+        }
+    }
+    /**
+     * 🌊 WAVE 4685: Cross-node DarkSpin sweep.
+     * Scans devices with COLOR nodes in active wheel transit and zeroes
+     * dimmer/shutter on their IMPACT nodes. Must run AFTER all _writeNode()
+     * calls so the actual wheel DMX has been evaluated and checkDarkSpin
+     * state is up to date.
+     */
+    _applyDarkSpinCrossNodeSweep() {
+        const sm = this._safetyMiddleware;
+        if (!sm)
+            return;
+        const transitNodeIds = sm.getDarkSpinTransitNodeIds();
+        if (transitNodeIds.length === 0)
+            return;
+        // Collect unique deviceIds in transit
+        const transitDevices = new Set();
+        for (const nodeId of transitNodeIds) {
+            const node = this._graph.getNodeData(nodeId);
+            if (node)
+                transitDevices.add(node.deviceId);
+        }
+        if (transitDevices.size === 0)
+            return;
+        // For each transit device, find its IMPACT nodes and kill dimmer/shutter
+        for (const deviceId of transitDevices) {
+            const device = this._graph.getDevice(deviceId);
+            if (!device)
+                continue;
+            const buf = this._universeBuffers.get(device.universe);
+            if (!buf)
+                continue;
+            const baseAddr = device.dmxAddress - 1;
+            const nodeIds = this._graph.getDeviceNodes(deviceId);
+            if (!nodeIds)
+                continue;
+            let killed = 0;
+            for (const nid of nodeIds) {
+                const node = this._graph.getNodeData(nid);
+                if (!node || node.family !== NodeFamily.IMPACT)
+                    continue;
+                for (const chDef of node.channels) {
+                    if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL)
+                        continue;
+                    const idx = baseAddr + chDef.dmxOffset;
+                    if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                        continue;
+                    if (buf[idx] > 0) {
+                        buf[idx] = 0;
+                        killed++;
+                    }
+                }
+            }
+            if (killed > 0) {
+                console.log(`[DarkSpin 🌑 WAVE 4685] device=${String(deviceId)} ` +
+                    `IMPACT dimmer/shutter zeroed (${killed} channels) — wheel in transit`);
             }
         }
     }

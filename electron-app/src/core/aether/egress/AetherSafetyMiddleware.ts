@@ -19,18 +19,22 @@
 
 import type { NodeId, DeviceId } from '../types'
 
-// ── Kinetic Safety Constants (from FixturePhysicsDriver Legacy) ──────────
-const KINETIC_SAFETY_CAP_VEL = 400   // DMX units/s max absolute
+// ── Kinetic Safety Constants (from FixturePhysicsDriver Legacy) ──────────────────
+// 🌊 WAVE 4703: Cap raised 400→600 to accommodate Latino expansion (520 DMX/s).
+//   Still within hardware physical limits (Clay Paky Sharpy ~257°/s = 121 DMX/s
+//   on 540° pan, but mid/pro movers can sustain 600+ DMX/s safely).
+const KINETIC_SAFETY_CAP_VEL = 600   // DMX units/s max absolute
 const KINETIC_DEFAULT_REV_PAN  = 300
 const KINETIC_DEFAULT_REV_TILT = 200
 const TELEPORT_THRESHOLD_MS = 200
 const PAN_AIRBAG_MARGIN  = 5
 const TILT_AIRBAG_MARGIN = 5
 
-// ── REV_LIMIT per-vibe (DMX/s, frame-rate independent) ───────────────────
+// ── REV_LIMIT per-vibe (DMX/s, frame-rate independent) ─────────────────────
+// 🌊 WAVE 4703: Techno 400→340/320 (more weight). Latino 380/280→520/420 (more soul).
 const VIBE_REV_LIMITS: Record<string, { pan: number; tilt: number }> = {
-  'techno-club':   { pan: 400, tilt: 400 },
-  'fiesta-latina': { pan: 380, tilt: 280 },
+  'techno-club':   { pan: 340, tilt: 320 },
+  'fiesta-latina': { pan: 520, tilt: 420 },
   'pop-rock':      { pan: 300, tilt: 200 },
   'chill-lounge':  { pan:  12, tilt:   8 },
   'idle':          { pan: 120, tilt:  80 },

@@ -215,6 +215,9 @@ export class NodeResolver implements INodeResolver {
 
   // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
   private _safetyMiddleware: AetherSafetyMiddleware | null = null
+  // 🌊 WAVE 4703: Tracks devices currently in DarkSpin transit to suppress per-frame log spam.
+  // Cleared each sweep — log fires only on the first frame a device enters transit.
+  private readonly _darkSpinActiveDevices = new Set<DeviceId>()
 
   constructor(graph: INodeGraph) {
     this._graph = graph
@@ -768,10 +771,21 @@ export class NodeResolver implements INodeResolver {
       }
 
       if (killed > 0) {
-        console.log(
-          `[DarkSpin 🌑 WAVE 4685] device=${String(deviceId)} ` +
-          `IMPACT dimmer/shutter zeroed (${killed} channels) — wheel in transit`
-        )
+        // Log only once when a device newly enters transit (not every frame)
+        if (!this._darkSpinActiveDevices.has(deviceId)) {
+          console.log(
+            `[DarkSpin 🌑 WAVE 4685] device=${String(deviceId)} ` +
+            `IMPACT dimmer/shutter zeroed (${killed} channels) — wheel in transit`
+          )
+        }
+        this._darkSpinActiveDevices.add(deviceId)
+      }
+    }
+
+    // Remove devices that are no longer in transit this frame
+    for (const prevDeviceId of this._darkSpinActiveDevices) {
+      if (!transitDevices.has(prevDeviceId)) {
+        this._darkSpinActiveDevices.delete(prevDeviceId)
       }
     }
   }

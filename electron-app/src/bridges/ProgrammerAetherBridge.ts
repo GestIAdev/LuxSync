@@ -42,8 +42,6 @@ const FAMILY_LABEL: Record<ProgrammerFamily, string> = {
   EXTRAS:  'atmosphere',
 }
 
-const ALL_FAMILY_LABELS: readonly string[] = Object.freeze(Object.values(FAMILY_LABEL))
-
 // ─────────────────────────────────────────────────────────────────────────────
 // CHANNEL EXTRACTOR — Construye channels Record<string, number> por familia
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,7 +151,6 @@ const FAMILY_EXTRACTOR: Record<
 class ProgrammerAetherBridgeClass {
   private _intervalId: ReturnType<typeof setInterval> | null = null
   private _started = false
-  private _lastActiveFixtureIds = new Set<string>()
 
   /**
    * Inicia el puente. Sólo puede llamarse una vez.
@@ -177,7 +174,6 @@ class ProgrammerAetherBridgeClass {
       this._intervalId = null
     }
     this._started = false
-    this._lastActiveFixtureIds.clear()
     console.log('[ProgrammerAetherBridge] Detenido')
   }
 
@@ -190,15 +186,7 @@ class ProgrammerAetherBridgeClass {
     const state = useProgrammerStore.getState()
     const { fixtureOverrides, dirtyFamilies, activeFixtureIds } = state
 
-    const activeSet = new Set(activeFixtureIds)
-    const removedFixtureIds: string[] = []
-    for (const fixtureId of this._lastActiveFixtureIds) {
-      if (!activeSet.has(fixtureId)) {
-        removedFixtureIds.push(fixtureId)
-      }
-    }
-
-    if (dirtyFamilies.size === 0 && removedFixtureIds.length === 0) {
+    if (dirtyFamilies.size === 0) {
       return
     }
 
@@ -213,16 +201,15 @@ class ProgrammerAetherBridgeClass {
     const setPayloads: Array<{ nodeId: string; channels: Record<string, number> }> = []
     const clearNodeIds: string[] = []
 
-    // Limpieza dura de L2 para fixtures deseleccionados.
-    // Evita overrides zombies en backend cuando la UI deja de incluirlos
-    // en activeFixtureIds.
-    for (const fixtureId of removedFixtureIds) {
-      for (const familyLabel of ALL_FAMILY_LABELS) {
-        clearNodeIds.push(`${fixtureId}:${familyLabel}`)
-      }
+    // Persistencia L2: selection es UI-only.
+    // El flush recorre todos los fixtures con estado de override persistido,
+    // más la selección actual para poder inicializar fixtures nuevos.
+    const flushFixtureIds = new Set<string>(activeFixtureIds)
+    for (const fixtureId of fixtureOverrides.keys()) {
+      flushFixtureIds.add(fixtureId)
     }
 
-    for (const fixtureId of activeFixtureIds) {
+    for (const fixtureId of flushFixtureIds) {
       const ov = fixtureOverrides.get(fixtureId)
 
       for (const family of dirtySnapshot) {
@@ -265,7 +252,6 @@ class ProgrammerAetherBridgeClass {
     // Nada que enviar: limpiar el snapshot para no dejar dirty zombie.
     if (requests.length === 0) {
       state.consumeDirtyFamilies(Array.from(dirtySnapshot))
-      this._lastActiveFixtureIds = activeSet
       return
     }
 
@@ -275,7 +261,6 @@ class ProgrammerAetherBridgeClass {
         useProgrammerStore
           .getState()
           .consumeDirtyFamilies(Array.from(dirtySnapshot))
-        this._lastActiveFixtureIds = activeSet
       })
       .catch((err: unknown) => {
         console.error('[ProgrammerAetherBridge] IPC flush error (will retry next tick):', err)

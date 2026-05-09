@@ -197,8 +197,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         return this._buffer.length;
     }
     routeZones(frame) {
-        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, bands, morphFactor, isBreakdown, } = frame;
-        const { floorIntensity, ambientIntensity, airIntensity } = frame;
+        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, bands, morphFactor, isBreakdown, } = frame;
         // ── 4.1 COMPACTION ──────────────────────────────────────────────
         const frontPar = Math.max(frontLeft, frontRight);
         const backPar = Math.max(backLeft, backRight);

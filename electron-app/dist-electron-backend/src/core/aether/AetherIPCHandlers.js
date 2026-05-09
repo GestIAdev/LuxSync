@@ -376,7 +376,8 @@ export function registerAetherIPCHandlers() {
                     else {
                         const intensity = typeof value === 'number' ? value : 1.0;
                         // #FFD700 dorado puro → r=1.0, g=0.843, b=0.0
-                        arbiter.setManualOverride(t.goldenMaster, { dimmer: intensity });
+                        // 🌊 WAVE 4701 M2: golden-master incluye strobe (canal 4) al maximo (1.0)
+                        arbiter.setManualOverride(t.goldenMaster, { dimmer: intensity, strobe: 1.0 });
                         arbiter.setManualOverride(t.petalL, { dimmer: intensity });
                         arbiter.setManualOverride(t.petalC, { dimmer: intensity });
                         arbiter.setManualOverride(t.petalR, { dimmer: intensity });

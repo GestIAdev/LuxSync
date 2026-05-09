@@ -738,8 +738,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   /**
    * Build the complete FixtureDefinition with wheels included
    */
-  const buildCompleteFixture = useCallback((): FixtureDefinition => {
-    const fixtureWithGraph = fixture as FixtureDefinition & {
+  const buildCompleteFixture = useCallback((sourceFixture?: FixtureDefinition): FixtureDefinition => {
+    const fixtureForBuild = sourceFixture ?? fixture
+
+    const fixtureWithGraph = fixtureForBuild as FixtureDefinition & {
       nodeGraph?: typeof forgeGraph
     }
     const hasPersistedNodeGraph = !!fixtureWithGraph.nodeGraph
@@ -751,13 +753,22 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       ? deepClone(forgeGraph)
       : (hasPersistedNodeGraph ? deepClone(fixtureWithGraph.nodeGraph) : undefined)
 
-    // WAVE 4548.3: Sync channels[] from nodeGraph before building
-    const syncedChannels = shouldPersistNodeGraph && graphSnapshot
+    // WAVE 4683: Prefer current editor channels unless nodeGraph is actively authoritative.
+    const currentChannels = fixtureForBuild.channels
+    const graphChannels = shouldPersistNodeGraph && graphSnapshot
       ? NodeGraphBuilder.toChannels(graphSnapshot)
-      : fixture.channels
+      : null
+    const syncedChannels = (forgeGraphDirty || hasGraphTopology) && graphChannels
+      ? graphChannels
+      : currentChannels
+
+    const hasRed = syncedChannels.some(ch => ch.type === 'red')
+    const hasGreen = syncedChannels.some(ch => ch.type === 'green')
+    const hasBlue = syncedChannels.some(ch => ch.type === 'blue')
+    const hasRgbColorMixing = hasRed && hasGreen && hasBlue
 
     const builtFixture = {
-      ...fixture,
+      ...fixtureForBuild,
       channels: syncedChannels,
       // WAVE 1116.4: Include PHYSICS at root level for JSON export!
       // 🛡️ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt frozen to false in physics.
@@ -778,7 +789,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       wheels: wheelColors.length > 0 ? { colors: wheelColors } : undefined,
       // Also keep in capabilities for HAL compatibility
       capabilities: {
-        ...fixture.capabilities,
+        ...fixtureForBuild.capabilities,
         colorEngine,
         colorWheel: wheelColors.length > 0 ? {
           colors: wheelColors,
@@ -787,7 +798,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         } : undefined,
         hasPan: syncedChannels.some(ch => ch.type === 'pan'),
         hasTilt: syncedChannels.some(ch => ch.type === 'tilt'),
-        hasColorMixing: syncedChannels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
+        hasColorMixing: hasRgbColorMixing,
         hasColorWheel: syncedChannels.some(ch => ch.type === 'color_wheel'),
         hasGobo: syncedChannels.some(ch => ch.type === 'gobo'),
         hasPrism: syncedChannels.some(ch => ch.type === 'prism'),
@@ -806,7 +817,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
-    const completeFixture = deepClone(buildCompleteFixture())
+    const currentChannels = deepClone(fixture.channels)
+    const fixtureSnapshot: FixtureDefinition = {
+      ...fixture,
+      channels: currentChannels,
+    }
+
+    const completeFixture = deepClone(buildCompleteFixture(fixtureSnapshot))
     
     // 🔥 WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
     // When system→user clone happens, fixtures in the show still point to the old system ID.
@@ -885,7 +902,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)
-  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile])
+  }, [fixture, fixture.channels, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile])
 
   const handleExportJSON = useCallback(() => {
     const completeFixture = deepClone(buildCompleteFixture())

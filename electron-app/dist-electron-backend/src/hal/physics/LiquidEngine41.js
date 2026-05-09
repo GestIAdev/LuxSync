@@ -28,38 +28,14 @@ export class LiquidEngine41 extends LiquidEngineBase {
         super(profile, '4.1');
     }
     routeZones(frame) {
-        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, isKickEdge, floorIntensity, ambientIntensity, airIntensity, } = frame;
-        let frontPar;
-        let backPar;
-        let outMoverL;
-        let outMoverR;
-        if (this.profile.layout41Strategy === 'strict-split') {
-            // ── METRÓNOMO / LIENZO (WAVE 2455) ───────────────────────────────────
-            //
-            // PARs: ritmo puro y separado.
-            //   Front = solo Kick      → El Metrónomo. Parpadea con el bombo.
-            //   Back  = solo Snare     → El Látigo. Percusión aguda.
-            //
-            // MOVERS: roles espectrales exclusivos para generar contraste real.
-            //   Mover L (El Melodista)  = moverLeft  de la base (WAVE 911: highMid+treble)
-            //   Mover R (El Terminator) = moverRight de la base (WAVE 911: treble puro)
-            //
-            // sB (envSubBass) y hMid (envHighMid) EXCLUIDOS del max() de los movers.
-            // Antes estaban incluidos y el hMid capeado a 0.850 (AGC) no dejaba bajar nunca.
-            // Ahora los PARs absorben el grave continuo. Los movers solo reaccionan a agudos.
-            //
-            frontPar = frontRight; // envKick
-            backPar = backRight; // envSnare
-            outMoverL = moverLeft; // highMid*0.70 + treble*0.30 → gate(0.28)+boost(7.0)
-            outMoverR = moverRight; // treble puro → gate(0.18)+boost(9.0)
-        }
-        else {
-            // ── DEFAULT (legacy) ─────────────────────────────────────────────────
-            frontPar = Math.max(frontLeft, frontRight);
-            backPar = Math.max(backLeft, backRight);
-            outMoverL = moverLeft;
-            outMoverR = moverRight;
-        }
+        const { frontRight, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, } = frame;
+        // WAVE 4691: En 4.1 los PARs son SIEMPRE rítmicos.
+        // Front = envKick, Back = envSnare. Voces/synths quedan confinados en movers.
+        // `layout41Strategy` sigue afectando la síntesis upstream en LiquidEngineBase.
+        const frontPar = frontRight;
+        const backPar = backRight;
+        const outMoverL = moverLeft;
+        const outMoverR = moverRight;
         // ── [LAB-DATA] front/back — Telemetría táctica para calibración 4.1 (SILENCIADO)
         if (this.profile.id === 'techno-industrial') {
             const f = (n) => n.toFixed(3);

@@ -466,9 +466,16 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // floor: instant reaction to subBass+lowMid, gated by AGC recovery
         const floorIntensity = Math.min(1.0, Math.max(0.0, (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor));
-        // ambient: slow EMA blended with morphFactor — NOT gated by recoveryFactor
-        // (the room breathes slowly; the natural EMA decay handles recovery)
-        const ambientIntensity = Math.min(1.0, Math.max(0.0, this._ambientEMA * 0.70 + morphFactor * 0.30));
+        // ambient: slow EMA with morph-shaped gain — NOT gated by recoveryFactor.
+        // Evita baseline fijo por morph (que puede petrificar la cola en silencio).
+        const ambientMorphGain = 0.82 + morphFactor * 0.18;
+        const _ambientRaw = Math.min(1.0, Math.max(0.0, this._ambientEMA * ambientMorphGain));
+        // 🌊 WAVE 4698 M1: Cubic power curve — crushes low/mid values for club contrast.
+        // ^3.5: 50% → ~8%, 90% → ~70%, 100% → 100%. Forces signal to black fast.
+        // 🌊 WAVE 4698 M2: Noise gate — cut to zero below threshold 0.15.
+        // If music has insufficient viscous energy the Tungsten goes fully dark.
+        const _ambientCrushed = Math.pow(_ambientRaw, 3.5);
+        const ambientIntensity = _ambientCrushed < 0.15 ? 0.0 : _ambientCrushed;
         // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
         const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor));
         const frame = {
@@ -504,10 +511,6 @@ export class LiquidEngineBase {
         this.lastFrame = frame;
         const result = this.routeZones(frame);
         this.lastResult = result;
-        // 🩺 WAVE 4686 TEMP TRACE 1 — L0 RAW
-        if (result.ambientIntensity > 0 || result.airIntensity > 0) {
-            console.log(`[L0 RAW 📡] amb:${result.ambientIntensity.toFixed(3)} air:${result.airIntensity.toFixed(3)} floor:${result.floorIntensity?.toFixed(3) ?? '?'}`);
-        }
         return result;
     }
     /** Resetea todo el estado interno */

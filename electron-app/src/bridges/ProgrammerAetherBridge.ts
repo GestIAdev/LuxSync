@@ -108,12 +108,31 @@ function extractBeam(ov: ProgrammerOverrides | undefined): Record<string, number
   return Object.keys(ch).length > 0 ? ch : null
 }
 
-/** Extrae los canales activos de la familia EXTRAS (phantom channels) */
-function extractExtras(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+/**
+ * Canal phantom que debe enrutarse al nodo :kinetic en vez de :atmosphere.
+ * `rotation` y `speed` son tipos de canal KINETIC; enviarlos a :atmosphere
+ * (que solo tiene el canal 'custom' / Pan Kill) haría que el resolver los ignore.
+ */
+const KINETIC_PHANTOM_CHANNELS = new Set<string>(['rotation', 'speed'])
+
+/** Extrae canales EXTRAS que van al nodo :atmosphere (custom, macro, control…) */
+function extractExtrasAtmosphere(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
   if (!ov || ov.extras.size === 0) return null
   const ch: Record<string, number> = {}
-  ov.extras.forEach((value, key) => { ch[key] = value })
-  return ch
+  ov.extras.forEach((value, key) => {
+    if (!KINETIC_PHANTOM_CHANNELS.has(key)) ch[key] = value
+  })
+  return Object.keys(ch).length > 0 ? ch : null
+}
+
+/** Extrae canales EXTRAS que van al nodo :kinetic (rotation, speed) */
+function extractExtrasKinetic(ov: ProgrammerOverrides | undefined): Record<string, number> | null {
+  if (!ov || ov.extras.size === 0) return null
+  const ch: Record<string, number> = {}
+  ov.extras.forEach((value, key) => {
+    if (KINETIC_PHANTOM_CHANNELS.has(key)) ch[key] = value
+  })
+  return Object.keys(ch).length > 0 ? ch : null
 }
 
 const FAMILY_EXTRACTOR: Record<
@@ -124,7 +143,7 @@ const FAMILY_EXTRACTOR: Record<
   COLOR:   extractColor,
   KINETIC: extractKinetic,
   BEAM:    extractBeam,
-  EXTRAS:  extractExtras,
+  EXTRAS:  extractExtrasAtmosphere,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -216,6 +235,19 @@ class ProgrammerAetherBridgeClass {
         } else {
           // Sin canales activos = liberar el nodo completamente
           clearNodeIds.push(nodeId)
+        }
+
+        // 🌊 WAVE 4701 M1: EXTRAS kinetic split.
+        // Canales tipo rotation/speed pertenecen al nodo :kinetic, no :atmosphere.
+        // Se despachan como un override L2 separado sobre el nodeId correcto.
+        if (family === 'EXTRAS') {
+          const kineticNodeId = `${fixtureId}:kinetic`
+          const kineticCh = ov ? extractExtrasKinetic(ov) : null
+          if (kineticCh !== null) {
+            setPayloads.push({ nodeId: kineticNodeId, channels: kineticCh })
+          } else {
+            clearNodeIds.push(kineticNodeId)
+          }
         }
       }
     }

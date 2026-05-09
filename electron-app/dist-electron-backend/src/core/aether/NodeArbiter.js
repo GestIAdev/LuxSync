@@ -32,7 +32,7 @@
 // ── Canales con estrategia HTP ──────────────────────────────────────────
 // Solo los canales de intensidad aplican HTP.
 // El resto usa LTP (la capa más alta dicta el valor final).
-const HTP_CHANNELS = new Set(['dimmer', 'strobe', 'shutter']);
+const HTP_CHANNELS = new Set(['dimmer', 'brightness', 'strobe', 'shutter']);
 const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
     'r', 'g', 'b',
     'red', 'green', 'blue',
@@ -298,9 +298,6 @@ export class NodeArbiter {
                     record['dimmer'] = capped < 0 ? 0 : capped > 1 ? 1 : capped;
                 }
             }
-        }
-        if (this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-            // Silencio operacional WAVE 4627: sin telemetría legacy en el Arbiter.
         }
         return this._result;
     }

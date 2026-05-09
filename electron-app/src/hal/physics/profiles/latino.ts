@@ -138,6 +138,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     squelchSlope: 0.10,
     ghostCap: 0.00,        // Negro absoluto
     gateMargin: 0.005,
+    attackSlopeMin: 0.02,  // WAVE 4693: voces suben más lento; el snare/hat pasa por ataque real
   },
 
   // Mover L — "El Galán" (HighMid + Mid moderado — Congas, Acordeones, Melodías)
@@ -152,7 +153,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   envelopeTreble: {
     name: 'Mover L (El Galán — Melodía & Conga)',
     gateOn: 0.18,              // WAVE 3492: 0.25->0.18 — deja pasar melodias reales
-    boost: 3.5,
+    boost: 4.2,
     crushExponent: 1.8,        // WAVE 3492: 3.5->1.8 — picos melódicos no aplastados
     decayBase: 0.62,           // WAVE 3494: 0.70->0.62 — contraste real entre notas
     decayRange: 0.05,
@@ -200,9 +201,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
   // Con highMid directo como input principal (backLHighMidWeight futuro)
   // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-  backLLowMidWeight: 0.00,
-  backLMidWeight: 0.00,
-  backLTrebleSub: 0.20,      // WAVE 3492: -0.50->+0.20 — ya no suma treble, pequeña resta para limpiar
+  backLLowMidWeight: 0.22,
+  backLMidWeight: 0.10,
+  backLTrebleSub: 0.28,      // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
   backLBassSub: 0.0,
 
   // ═══════════════════════════════════════════════════════════════
@@ -279,8 +280,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
 
   // WAVE 4686: Ambient viscosity — Latino fiesta
   // Elástico musical: el tumbao respira entre golpes del dembow
+  // 🌊 WAVE 4698 M3: Release 800→600ms — shorter tail for black gaps between dembow hits.
   ambientAttackMs: 200,
-  ambientReleaseMs: 800,
+  ambientReleaseMs: 600,
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()
@@ -311,7 +313,10 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
   overrides41: {
     // ── ANTI-AUTOTUNE: Matar falsos latigazos en Back R ──────────
-    percMidSubtract: 2.0,  // WAVE 3485: modo 4.1 hereda purga agresiva contra voz sostenida
+    percMidSubtract: 3.0,  // WAVE 4692: aislamiento agresivo contra voz aguda distorsionada
+    percGate: 0.085,       // WAVE 4692: solo pasan transientes percusivos claros
+    percBoost: 2.8,        // WAVE 4692: reduce picos falsos de consonantes
+    percExponent: 1.35,    // WAVE 4692: curva más dura para rechazar micro-ataques vocales
 
     // ── BACK L: WAVE 3492 — trebleSub restaurado a positivo ─────
     // El truco -0.50 (sumaba treble al canal) generaba que el treble
@@ -325,7 +330,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     envelopeTreble: {
       gateOn: 0.18,        // WAVE 3492: igual que base
       squelchBase: 0.12,   // WAVE 3492: igual que base
-      boost: 3.50,
+      boost: 4.10,
       decayBase: 0.62,     // WAVE 3494: alineado con base
       ghostCap: 0.06,
       riseRate: 0.12,      // WAVE 3494: alineado con base
@@ -335,7 +340,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     envelopeVocal: {
       gateOn: 0.15,        // WAVE 3492: trompetas/güira pasan
       squelchBase: 0.08,   // WAVE 3492: piso moderado
-      boost: 4.00,
+      boost: 4.60,
       decayBase: 0.72,     // WAVE 3494: alineado con base
       ghostCap: 0.04,
       riseRate: 0.14,      // WAVE 3494: alineado con base
@@ -375,10 +380,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
     // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
     envelopeSnare: {
-      gateOn: 0.45,
-      squelchBase: 0.35,
-      decayBase: 0.14,
-      ghostCap: 0.00,
+      gateOn: 0.52,
+      squelchBase: 0.40,
+      decayBase: 0.34,
+      decayRange: 0.16,
+      ghostCap: 0.01,
       boost: 2.5,
     },
 

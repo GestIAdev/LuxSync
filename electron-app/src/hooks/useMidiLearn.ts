@@ -228,6 +228,30 @@ export function useMidiLearn() {
       return
     }
 
+    // ── tung-* → Tungsten Golden Nuke (WAVE 4699.2) ──
+    if (controlId.startsWith('tung-')) {
+      const tungAction = controlId.slice(5) // 'tung-spin' → 'spin', etc.
+
+      if (tungAction === 'spin') {
+        if (msg.type !== 'cc') return
+        // CC 0-127 → bipolar norm 0-1 (64=stopped, 0=left max, 127=right max)
+        const norm = msg.value / 127
+        window.lux.aether.fireTungstenNuke({ target: 'spin', value: norm })
+        return
+      }
+
+      // Pad actions: Note On = fire, Note Off = release
+      const target = tungAction === 'nuke-all' ? 'all' : tungAction // 'petal-l', 'petal-c', 'petal-r'
+      if (msg.type === 'note_on') {
+        window.lux.aether.fireTungstenNuke({ target, value: 1.0 })
+        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON`)
+      } else if (msg.type === 'note_off') {
+        window.lux.aether.fireTungstenNuke({ target, release: true })
+        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} OFF`)
+      }
+      return
+    }
+
     // ── arb-* → Arbiter overrides ──
     if (controlId.startsWith('arb-')) {
       const arbAction = controlId.slice(4) // 'arb-blackout' → 'blackout'

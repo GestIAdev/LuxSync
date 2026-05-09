@@ -896,6 +896,13 @@ const luxApi = {
          * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
          */
         getL2State: (nodeIds) => ipcRenderer.invoke('lux:aether:getL2State', { nodeIds }),
+        /**
+         * 🌊 WAVE 4699.2: Tungsten Golden Nuke — override L2 sobre nodos flash/kinetic.
+         * target: 'all' | 'petal-l' | 'petal-c' | 'petal-r' | 'spin'
+         * release: true = libera el override (Note Off)
+         * value: intensidad 0-1 o valor bipolar norm 0-1 para spin
+         */
+        fireTungstenNuke: (args) => ipcRenderer.invoke('lux:aether:fireTungstenNuke', args),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

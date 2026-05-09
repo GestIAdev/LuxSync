@@ -120,9 +120,10 @@ export class LiquidEnvelope {
         //    Herencia: WAVE 2387/2394 (Return to Origins, crush 1.5-1.8)
         // ═══════════════════════════════════════════════════════════════════
         const breakdownPenalty = isBreakdown ? 0.06 : 0;
+        const attackSlopeMin = c.attackSlopeMin ?? 0;
         let kickPower = 0;
         let ghostPower = 0;
-        if (signal > dynamicGate && isAttacking && signal > 0.15) {
+        if (signal > dynamicGate && isAttacking && signal > 0.15 && velocity >= attackSlopeMin) {
             // Above gate + attacking → main power path
             const requiredJump = 0.14 - 0.07 * morphFactor + breakdownPenalty;
             let rawPower = (signal - dynamicGate) / requiredJump;

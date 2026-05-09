@@ -27,7 +27,7 @@
 
 import type { NodeGraph } from '../NodeGraph'
 import { NodeFamily } from '../types'
-import type { IKineticNodeData } from '../capability-node'
+import type { IKineticNodeData, IColorNodeData, IImpactNodeData } from '../capability-node'
 import type { ArbitratedNodeMap } from '../intent-bus'
 import type { FixtureState } from '../../../hal/mapping/FixtureMapper'
 
@@ -38,8 +38,17 @@ function toDmx(v: number): number {
   return Math.round(Math.max(0, Math.min(1, v)) * DMX_MAX)
 }
 
-export class AetherUIProjector {
+// 🌊 WAVE 4696 M1: Zonas atmosféricas — nunca compiten por luminancia con zonas
+// rítmicas. Se suman aditivamente en su propio canal perceptual (ambiente / aire).
+const ATMOSPHERIC_ZONES = new Set(['ambient', 'air', 'flash'])
 
+/** Devuelve true si la zona normalizada es atmosférica (ambient, air, flash). */
+function isAtmosphericZone(zoneId: string): boolean {
+  const z = zoneId.toLowerCase().trim()
+  return ATMOSPHERIC_ZONES.has(z)
+}
+
+export class AetherUIProjector {
   /**
    * Proyecta el estado Aether sobre el array legacy de FixtureState.
    *
@@ -62,6 +71,15 @@ export class AetherUIProjector {
 
       const nodeIds = graph.getDeviceNodes(deviceId)
       if (!nodeIds || nodeIds.length === 0) continue
+
+      // 🌊 WAVE 4695: Pre-scan — does this device own at least one IMPACT node?
+      // When yes, the IMPACT case handles luminance via fixture.dimmer and the
+      // renderer scales color by it (HDR boost path). Scaling r/g/b by brightness
+      // here would cause quadratic L0² attenuation (Moiré / besugo effect).
+      // Pure-RGB fixtures with no IMPACT node keep the brightness-as-scale path.
+      const hasImpactDimmer = nodeIds.some(
+        nid => graph.getNodeData(nid)?.family === NodeFamily.IMPACT,
+      )
 
       for (const nodeId of nodeIds) {
         const node = graph.getNodeData(nodeId)
@@ -87,19 +105,41 @@ export class AetherUIProjector {
             // intents r/g/b al bus pero nunca escribe de vuelta al nodo.
             // El patrón es idéntico al fix de IMPACT (WAVE 4612).
             //
-            // 🌊 WAVE 4690: brightness (intensidad virtual L0) actúa como master dimmer
-            // para fixtures RGB sin canal físico de dimmer. Se aplica como escala
-            // sobre r/g/b y se refleja en fixture.dimmer para que la UI preview
-            // muestre intensidad proporcional.
+            // 🌊 WAVE 4695: Luminance-chrominance decoupling.
+            // Si existe IMPACT, fixture.dimmer ya porta la luminancia L0 → el renderer
+            // aplica HDR boost proporcional al dimmer sobre el color puro de Selene.
+            // Escalar r/g/b por brightness causaría L0² (Moiré): se evita.
+            // Para fixtures RGB puro sin IMPACT, brightness es la única fuente de
+            // intensidad y se mantiene como escala.
+            const colorNode    = node as IColorNodeData
             const colorChannels = arbitrated.get(nodeId)
-            const brightnessNorm = colorChannels?.['brightness'] ?? 1.0
-            fixture.r = toDmx((colorChannels?.['r'] ?? 0) * brightnessNorm)
-            fixture.g = toDmx((colorChannels?.['g'] ?? 0) * brightnessNorm)
-            fixture.b = toDmx((colorChannels?.['b'] ?? 0) * brightnessNorm)
-            fixture.dimmer = toDmx(colorChannels?.['dimmer'] ?? brightnessNorm)
-            // 🩺 WAVE 4690 TEMP TRACE 3b — UI RENDER (COLOR)
-            if ((node as any).zoneId === 'ambient' || (node as any).zoneId === 'air') {
-              console.log(`[UI RENDER 🎨 COLOR] nodeId=${nodeId} zone=${(node as any).zoneId ?? '?'} brightness=${brightnessNorm.toFixed(3)} r=${fixture.r} g=${fixture.g} b=${fixture.b}`)
+            const brightnessNorm = hasImpactDimmer
+              ? 1.0
+              : (colorChannels?.['brightness'] ?? 1.0)
+            const projectedR = toDmx((colorChannels?.['r'] ?? 0) * brightnessNorm)
+            const projectedG = toDmx((colorChannels?.['g'] ?? 0) * brightnessNorm)
+            const projectedB = toDmx((colorChannels?.['b'] ?? 0) * brightnessNorm)
+
+            // 🌊 WAVE 4696 M1: Zone-aware color routing.
+            // Atmospheric zones (ambient, air, flash) → additive blending.
+            //   These nodes exist in a perceptual layer independent of rhythmic
+            //   fixtures. They must NEVER be discarded by luminance comparison
+            //   against front/back/mover nodes (Tungsten wash-color / beam-color).
+            // Rhythmic zones → luminance-dominant selection (WAVE 4695):
+            //   the emitter with higher total lumen output paints the fixture;
+            //   an inactive node (lum=0) can never displace an active one.
+            if (isAtmosphericZone(colorNode.zoneId)) {
+              fixture.r = Math.min(255, fixture.r + projectedR)
+              fixture.g = Math.min(255, fixture.g + projectedG)
+              fixture.b = Math.min(255, fixture.b + projectedB)
+            } else {
+              const newLum  = projectedR + projectedG + projectedB
+              const currLum = fixture.r   + fixture.g   + fixture.b
+              if (newLum > currLum) {
+                fixture.r = projectedR
+                fixture.g = projectedG
+                fixture.b = projectedB
+              }
             }
             break
           }
@@ -111,13 +151,17 @@ export class AetherUIProjector {
             //
             // 🌊 WAVE 4690: Fallback a brightness para nodos IMPACT sin dimmer físico
             // (parches universales de fixtures RGB-only clasificados como IMPACT).
+            //
+            // 🌊 WAVE 4696 M2: Gain compensation para dimmers físicos (role='primary').
+            // Movers con dimmer físico reciben +25% de ganancia para recuperar punch
+            // visual perdido en el decoupling L0²-prevention de WAVE 4695.
+            // Nodos role='percussion' (shutter/strobe) no reciben ganancia.
+            const impactNode         = node as IImpactNodeData
             const arbitratedChannels = arbitrated.get(nodeId)
             const dimmerNorm = arbitratedChannels?.['dimmer'] ?? arbitratedChannels?.['brightness'] ?? 0
-            fixture.dimmer = toDmx(dimmerNorm)
-            // 🩺 WAVE 4686 TEMP TRACE 3 — UI RENDER (IMPACT)
-            if ((node as any).zoneId === 'ambient' || (node as any).zoneId === 'air') {
-              console.log(`[UI RENDER 🎨 IMPACT] nodeId=${nodeId} zone=${(node as any).zoneId ?? '?'} dimmer=${dimmerNorm.toFixed(3)}`)
-            }
+            const gainFactor  = impactNode.role === 'primary' ? 1.25 : 1.0
+            const projectedDimmer = toDmx(dimmerNorm * gainFactor)
+            fixture.dimmer = Math.max(fixture.dimmer, projectedDimmer)
             break
           }
           case NodeFamily.BEAM: {

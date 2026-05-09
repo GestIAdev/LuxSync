@@ -130,6 +130,10 @@ export class AetherSafetyMiddleware {
         // No mutar canales pre-resolve. El cálculo (IK/currentPosition) debe permanecer
         // íntegro para UI aunque output esté desarmado. El bloqueo real de salida
         // se aplica en el write final al buffer DMX dentro del resolver.
+        //
+        // 🛂 WAVE 4690: ADUANA 7.1 — No existe whitelist de zonas.
+        // El gate es family-based (bloquea todo non-KINETIC). ambient/air no son
+        // discriminadas; pasan o se bloquean exactamente igual que front/back/center.
         for (const [nodeId] of arbitrated) {
             if (this._manualNodeIds.has(nodeId))
                 continue;

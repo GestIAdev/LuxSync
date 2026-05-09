@@ -773,6 +773,14 @@ declare global {
       releaseSpatialTarget: (args: { fixtureIds: string[] }) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * 🌊 WAVE 4699.2: Tungsten Golden Nuke — dispara un override L2 sobre los nodos flash.
+       * target: 'all' | 'petal-l' | 'petal-c' | 'petal-r' | 'spin'
+       * release: true = libera el override (Note Off / fader al centro)
+       * value: intensidad 0-1 (pads) o valor bipolar normalizado 0-1 (spin fader)
+       */
+      fireTungstenNuke: (args: { target: string; release?: boolean; value?: number }) => Promise<{ success: boolean; error?: string }>
+
+      /**
        * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
        */
       setBlackout: (active: boolean) => Promise<{ success: boolean; blackoutActive?: boolean; error?: string }>

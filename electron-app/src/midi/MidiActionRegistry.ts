@@ -152,6 +152,18 @@ const ARBITER_CONTROLS: MidiActionMeta[] = [
   { id: 'arb-kill-effects',  label: 'Kill All Effects',    category: 'button', group: 'arbiter' },
 ]
 
+// 🌊 WAVE 4699.2: TUNGSTEN GOLDEN NUKE — NanoPAD2 mappings
+// tung-spin      → CC fader bipolar [-1, 1]: rotation continua del rotor Tungsten.
+// tung-nuke-all  → PAD 1: golden-master + petal-l/c/r (Big Bang dorá)
+// tung-petal-l/c/r → PAD 2/3/4: ráfagas individuales de pétalo
+const TUNGSTEN_CONTROLS: MidiActionMeta[] = [
+  { id: 'tung-spin',     label: 'Tungsten Spin',      category: 'fader',  group: 'arbiter' },
+  { id: 'tung-nuke-all', label: 'Nuke Gold — Big Bang', category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-l',  label: 'Petal Left Burst',   category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-c',  label: 'Petal Center Burst', category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-r',  label: 'Petal Right Burst',  category: 'button', group: 'arbiter' },
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT CONTROLS (built from EFFECT_ZONE_MAP)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -201,7 +213,13 @@ export function getAllActions(): MidiActionMeta[] {
     ...EFFECT_CONTROLS,
     ...VIBE_CONTROLS,
     ...ARBITER_CONTROLS,
+    ...TUNGSTEN_CONTROLS,
   ]
+}
+
+/** Tungsten Golden Nuke controls */
+export function getTungstenActions(): MidiActionMeta[] {
+  return TUNGSTEN_CONTROLS
 }
 
 /** System controls only */

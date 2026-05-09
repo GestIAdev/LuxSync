@@ -224,12 +224,7 @@ export class SeleneAetherAdapter {
         // colorOverride HSL/RGB → COLOR nodes zona 'all'
         if (output.colorOverride) {
             this._emitColor('all', output.colorOverride, composition, bus);
-            // 🌊 WAVE 4684: Omni-Zone Awakening — ambient/air get their own color character.
-            // Zone-specific intents override the 'all' color via LTP in the Arbiter.
-            const ambColor = this._deriveAmbientColor(output.colorOverride);
-            this._emitColor('ambient', ambColor, composition, bus);
-            const airColor = this._deriveAirColor(output.colorOverride);
-            this._emitColor('air', airColor, composition, bus);
+            this._emitOmniZoneColors(output.colorOverride, composition, bus);
         }
         // whiteOverride → COLOR nodes zona 'all' (canal 'white')
         if (output.whiteOverride !== undefined) {
@@ -245,6 +240,17 @@ export class SeleneAetherAdapter {
         }
     }
     /**
+     * WAVE 4684: Inyección nativa de color para zonas ambientales.
+     * Se emiten intents explícitos para `ambient` y `air` para que no dependan
+     * del fallback de `all` y tengan carácter cromático propio.
+     */
+    _emitOmniZoneColors(base, composition, bus) {
+        const ambColor = this._deriveAmbientColor(base);
+        this._emitColor('ambient', ambColor, composition, bus);
+        const airColor = this._deriveAirColor(base);
+        this._emitColor('air', airColor, composition, bus);
+    }
+    /**
      * Derive a soft wash color for the ambient zone from the primary color.
      * Same hue, reduced saturation (×0.6) and lightness (×0.5).
      */
@@ -252,16 +258,16 @@ export class SeleneAetherAdapter {
         if (isHslColor(base)) {
             return {
                 h: base.h,
-                s: Math.min(100, base.s * 0.6),
-                l: Math.min(100, base.l * 0.5),
+                s: Math.min(100, base.s * 0.58),
+                l: Math.min(100, base.l * 0.62),
                 isHSL: true,
             };
         }
-        // RGB fallback: dim by 50%
+        // RGB fallback: warm wash, no blackout.
         return {
-            r: (base.r ?? base.red ?? 0) * 0.5,
-            g: (base.g ?? base.green ?? 0) * 0.5,
-            b: (base.b ?? base.blue ?? 0) * 0.5,
+            r: (base.r ?? base.red ?? 0) * 0.62,
+            g: (base.g ?? base.green ?? 0) * 0.62,
+            b: (base.b ?? base.blue ?? 0) * 0.62,
         };
     }
     /**
@@ -271,17 +277,17 @@ export class SeleneAetherAdapter {
     _deriveAirColor(base) {
         if (isHslColor(base)) {
             return {
-                h: (base.h + 30) % 360,
-                s: Math.min(100, base.s * 0.7),
-                l: Math.min(100, base.l * 0.55),
+                h: (base.h + 22) % 360,
+                s: Math.min(100, base.s * 0.72),
+                l: Math.min(100, base.l * 0.66),
                 isHSL: true,
             };
         }
         // RGB fallback: same color but dimmed
         return {
-            r: (base.r ?? base.red ?? 0) * 0.55,
-            g: (base.g ?? base.green ?? 0) * 0.55,
-            b: (base.b ?? base.blue ?? 0) * 0.55,
+            r: (base.r ?? base.red ?? 0) * 0.66,
+            g: (base.g ?? base.green ?? 0) * 0.66,
+            b: (base.b ?? base.blue ?? 0) * 0.66,
         };
     }
     /**

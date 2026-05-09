@@ -355,16 +355,6 @@ export class NodeArbiter implements INodeArbiter {
       }
     }
 
-    if (this._photonTracerFrame % PHOTON_TRACER_EVERY_FRAMES === 0) {
-      // 🩺 WAVE 4690: ARBITER TRACE — dump nodes with intensity channels.
-      for (const [nodeId, record] of this._result) {
-        const dimmer = record['dimmer'] ?? record['brightness']
-        if (dimmer !== undefined && dimmer > 0.005) {
-          console.log(`[ARBITER TRACE ⚖️] Node: ${nodeId} FinalDimmer/Brightness: ${dimmer.toFixed(3)}`)
-        }
-      }
-    }
-
     return this._result as ArbitratedNodeMap
   }
 

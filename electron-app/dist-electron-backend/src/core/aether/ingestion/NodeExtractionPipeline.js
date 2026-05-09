@@ -350,20 +350,28 @@ export class NodeExtractionPipeline {
             };
         };
         // [INYECCIÓN WAVE 4683.4] - BYPASS TUNGSTEN (KILL PAN + COLOR SELENE)
-        // 1. ROTOR: pan asesinado con 'custom' (VMM ciego, clavado en 127) + speed manual
-        const tungstenRotorChannels = [
+        // 1a. PAN KILL: canal 'custom' clavado en 127 — el VMM lo ignora (ciego).
+        //     Sigue siendo un ATMOSPHERE node para que el resolver no lo mueva.
+        const tungstenPanKillChannels = [
             mkChannel(0, 'custom', 127, 'Pan Kill'),
-            mkChannel(1, 'speed', 0, 'Rotor Speed'),
         ];
-        // 2. WASH: Baño RGB -> IMPACT/front (atrapa el color PRIMARY de Selene)
+        // 1b. ROTOR SPIN: canal de rotación continua (bipolar: 0=izq, 127=stop, 255=dcha).
+        //     🌊 WAVE 4699.2 M1: tipado como 'rotation' → _buildKineticNode detecta
+        //     isContinuous=true (hasRotation && !hasPanTilt) → KINETIC family.
+        const tungstenRotorChannels = [
+            mkChannel(1, 'rotation', 127, 'Rotor Spin'),
+        ];
+        // 2. WASH: Baño RGB -> IMPACT/front para dimmer, COLOR para RGB
         const tungstenWashChannels = [
             mkChannel(7, 'dimmer', 0, 'Staining Dim'),
+        ];
+        const tungstenWashColorChannels = [
             mkChannel(9, 'red', 0, 'Wash Red'),
             mkChannel(10, 'green', 0, 'Wash Green'),
             mkChannel(11, 'blue', 0, 'Wash Blue'),
         ];
-        // 3. BEAM: Cañón RGBW -> IMPACT/back (atrapa el color ACCENT de Selene)
-        const tungstenBeamChannels = [
+        // 3. BEAM: Cañón RGBW -> COLOR (no hay dimmer en beam)
+        const tungstenBeamColorChannels = [
             mkChannel(12, 'red', 0, 'Red'),
             mkChannel(13, 'green', 0, 'Green'),
             mkChannel(14, 'blue', 0, 'Blue'),
@@ -399,9 +407,14 @@ export class NodeExtractionPipeline {
             ...(position !== undefined && { position }),
         });
         return [
-            this._buildAtmosphereNode(deviceId, normalizeZoneId('unassigned'), fixtureDef, tungstenRotorChannels, position),
-            impactNode('wash', normalizeZoneId('front'), tungstenWashChannels),
-            impactNode('beam', normalizeZoneId('back'), tungstenBeamChannels),
+            this._buildAtmosphereNode(deviceId, normalizeZoneId('unassigned'), fixtureDef, tungstenPanKillChannels, position),
+            // 🌊 WAVE 4699.2 M1: KINETIC node de giro continuo.
+            // isContinuous=true → AetherUIProjector proyecta fixture.rotation.
+            // Control bipolar: rotation=0.5 (norm) → DMX 127 (parado).
+            this._buildKineticNode(deviceId, normalizeZoneId('unassigned'), fixtureDef, tungstenRotorChannels, position),
+            impactNode('wash', normalizeZoneId('ambient'), tungstenWashChannels),
+            this._buildColorNode(deviceId, normalizeZoneId('ambient'), fixtureDef, { emitterIndex: 0, labelSuffix: 'wash-color', channels: tungstenWashColorChannels }, position),
+            this._buildColorNode(deviceId, normalizeZoneId('air'), fixtureDef, { emitterIndex: 0, labelSuffix: 'beam-color', channels: tungstenBeamColorChannels }, position),
             impactNode('petal-l', normalizeZoneId('flash'), tungstenPetalLeftChannels),
             impactNode('petal-c', normalizeZoneId('flash'), tungstenPetalCenterChannels),
             impactNode('petal-r', normalizeZoneId('flash'), tungstenPetalRightChannels),

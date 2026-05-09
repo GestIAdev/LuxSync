@@ -106,7 +106,7 @@ export const MAPPABLE_CONTROLS: MappableControlMeta[] = getAllActions().map(
 )
 
 /** @deprecated Use MidiActionRegistry directly for grouped/filtered access */
-export { getAllActions, getEffectsByZone, getVibeActions, getArbiterActions, getSystemActions } from '../midi/MidiActionRegistry'
+export { getAllActions, getEffectsByZone, getVibeActions, getArbiterActions, getSystemActions, getTungstenActions } from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STORE STATE

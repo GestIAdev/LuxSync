@@ -335,6 +335,76 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
+    // ── G1: TUNGSTEN GOLDEN NUKE (WAVE 4699.2) ───────────────────────────────
+    /**
+     * G1: Dispara un override L2 sobre los nodos flash del Tungsten.
+     *
+     * Payload:
+     *   target  — 'all' | 'petal-l' | 'petal-c' | 'petal-r' | 'spin'
+     *   release — true = clearManualOverride (Note Off / fader a 0)
+     *   value   — [0,1] intensidad (solo para 'spin': valor bipolar norm 0–1)
+     *
+     * Color dorado puro = #FFD700 → r=1.0, g=0.843, b=0.0
+     * Zona flash es aditiva (WAVE 4696) → "quema" sobre la luz actual.
+     */
+    ipcMain.handle('lux:aether:fireTungstenNuke', (_event, { target, release, value }) => {
+        try {
+            const orchestrator = getTitanOrchestrator();
+            const arbiter = orchestrator.getAetherArbiter();
+            const tungstenList = orchestrator.getTungstenNodeIds();
+            if (tungstenList.length === 0) {
+                return { success: false, error: 'No Tungsten fixture registered in NodeGraph' };
+            }
+            for (const t of tungstenList) {
+                if (target === 'spin') {
+                    // Bipolar spin: value 0–1 (0=full-left, 0.5=stop, 1=full-right)
+                    const norm = typeof value === 'number' ? Math.max(0, Math.min(1, value)) : 0.5;
+                    if (release) {
+                        arbiter.setManualOverride(t.kinetic, { rotation: 0.5 });
+                    }
+                    else {
+                        arbiter.setManualOverride(t.kinetic, { rotation: norm });
+                    }
+                }
+                else if (target === 'all') {
+                    if (release) {
+                        arbiter.clearManualOverride(t.goldenMaster);
+                        arbiter.clearManualOverride(t.petalL);
+                        arbiter.clearManualOverride(t.petalC);
+                        arbiter.clearManualOverride(t.petalR);
+                    }
+                    else {
+                        const intensity = typeof value === 'number' ? value : 1.0;
+                        // #FFD700 dorado puro → r=1.0, g=0.843, b=0.0
+                        arbiter.setManualOverride(t.goldenMaster, { dimmer: intensity });
+                        arbiter.setManualOverride(t.petalL, { dimmer: intensity });
+                        arbiter.setManualOverride(t.petalC, { dimmer: intensity });
+                        arbiter.setManualOverride(t.petalR, { dimmer: intensity });
+                    }
+                }
+                else if (target === 'petal-l' || target === 'petal-c' || target === 'petal-r') {
+                    const nodeId = target === 'petal-l' ? t.petalL
+                        : target === 'petal-c' ? t.petalC
+                            : t.petalR;
+                    if (release) {
+                        arbiter.clearManualOverride(nodeId);
+                    }
+                    else {
+                        const intensity = typeof value === 'number' ? value : 1.0;
+                        arbiter.setManualOverride(nodeId, { dimmer: intensity });
+                    }
+                }
+                else {
+                    return { success: false, error: `Unknown target: ${target}` };
+                }
+            }
+            return { success: true };
+        }
+        catch (err) {
+            console.error('[AetherIPC] fireTungstenNuke error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
     // ── R1: L2 State Reader (WAVE 4653) ─────────────────────────────────────
     /**
      * R1: Devuelve los overrides manuales L2 activos para los nodeIds pedidos.

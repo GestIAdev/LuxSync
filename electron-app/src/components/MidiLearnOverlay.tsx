@@ -27,6 +27,7 @@ import {
   getEffectsByZone,
   getVibeActions,
   getArbiterActions,
+  getTungstenActions,
 } from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -300,6 +301,37 @@ export default function MidiLearnOverlay() {
                       <div className="ml-control-header">
                         <span className="ml-control-name">{control.label}</span>
                         <span className="ml-control-type">{control.category === 'fader' ? 'CC' : 'NOTE'}</span>
+                      </div>
+                      <div className="ml-control-status">
+                        {listeningControl === control.id
+                          ? '👂 Listening...'
+                          : lastMapped === control.id
+                            ? '✅ Mapped!'
+                            : mappings[control.id]
+                              ? formatBinding(mappings[control.id])
+                              : '—'
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tungsten Golden Nuke — WAVE 4699.2 */}
+              <div className="ml-section ml-section--full">
+                <div className="ml-section-title" style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.2)' }}>💛 TUNGSTEN GOLDEN NUKE</div>
+                <div className="ml-zone-grid">
+                  {getTungstenActions().map(control => (
+                    <div
+                      key={control.id}
+                      className={getControlStateClass(control.id)}
+                      onClick={() => handleControlClick(control.id)}
+                      onContextMenu={(e) => handleControlRightClick(e, control.id)}
+                      style={mappings[control.id] ? undefined : { borderColor: 'rgba(245,158,11,0.2)' }}
+                    >
+                      <div className="ml-control-header">
+                        <span className="ml-control-name">{control.label}</span>
+                        <span className="ml-control-type">{control.category === 'fader' ? 'CC' : 'PAD'}</span>
                       </div>
                       <div className="ml-control-status">
                         {listeningControl === control.id

@@ -198,6 +198,31 @@ export class TitanOrchestrator {
         return this._aetherArbiter;
     }
     /**
+     * 🌊 WAVE 4699.2 M2: Resuelve los nodeIds del Tungsten para el Golden Nuke.
+     * Busca el/los fixtures cuya definición tenga name === 'Tungsten',
+     * luego devuelve un mapa de sufijo → nodeId para cada nodo de flash.
+     *
+     * Retorna null si no hay ningún Tungsten registrado en el NodeGraph.
+     */
+    getTungstenNodeIds() {
+        const results = [];
+        const deviceIds = this._aetherGraph.getDeviceIds();
+        for (const deviceId of deviceIds) {
+            const nodeIds = this._aetherGraph.getDeviceNodes(deviceId);
+            const hasGoldenMaster = nodeIds.some(nid => nid.endsWith(':golden-master'));
+            if (!hasGoldenMaster)
+                continue;
+            results.push({
+                goldenMaster: `${deviceId}:golden-master`,
+                petalL: `${deviceId}:petal-l`,
+                petalC: `${deviceId}:petal-c`,
+                petalR: `${deviceId}:petal-r`,
+                kinetic: `${deviceId}:kinetic`,
+            });
+        }
+        return results;
+    }
+    /**
      * Retira un dispositivo del Motor Agnostico Aether.
      *
      * @param deviceId — ID del dispositivo a retirar
@@ -1610,10 +1635,6 @@ export class TitanOrchestrator {
                 const _liqFrame = _activeEngine?.lastFrame ?? null;
                 const _liqResult = _activeEngine?.lastResult ?? null;
                 if (_liqFrame !== null && _liqResult !== null) {
-                    // 🩺 WAVE 4686 TEMP TRACE 2 — ADAPTER PUB
-                    if (_liqResult.ambientIntensity > 0 || _liqResult.airIntensity > 0) {
-                        console.log(`[ADAPTER PUB 📤] amb:${_liqResult.ambientIntensity.toFixed(3)} air:${_liqResult.airIntensity.toFixed(3)} → liquidAetherAdapter.ingest()`);
-                    }
                     liquidAetherAdapter.ingest(_liqFrame, _liqResult, this._aetherBus);
                 }
                 // ── 2. WAVE 3516.2: Systems escriben sus intents en el _aetherBus ─────

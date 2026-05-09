@@ -921,10 +921,14 @@ export class NodeResolver implements INodeResolver {
     bNorm: number,
     original: Readonly<Record<string, number>>,
   ): Readonly<Record<string, number>> {
+    // 🌊 WAVE 4690: brightness (intensidad virtual L0) escala r/g/b de L1.
+    // Fixtures RGB sin dimmer físico necesitan que brightness actúe como
+    // master dimmer multiplicativo para que el DMX refleje la curva líquida.
+    const brightnessMult = sanitizeNormalizedValue(original['brightness'], 1.0)
     // Escalar a 0-255 para el ColorTranslator (que trabaja en 255)
-    const safeR = sanitizeNormalizedValue(rNorm)
-    const safeG = sanitizeNormalizedValue(gNorm)
-    const safeB = sanitizeNormalizedValue(bNorm)
+    const safeR = sanitizeNormalizedValue(rNorm) * brightnessMult
+    const safeG = sanitizeNormalizedValue(gNorm) * brightnessMult
+    const safeB = sanitizeNormalizedValue(bNorm) * brightnessMult
     this._rgbScratch.r = sanitizeDmxByte(Math.round(safeR * 255))
     this._rgbScratch.g = sanitizeDmxByte(Math.round(safeG * 255))
     this._rgbScratch.b = sanitizeDmxByte(Math.round(safeB * 255))

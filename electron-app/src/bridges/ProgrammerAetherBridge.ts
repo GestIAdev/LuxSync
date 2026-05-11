@@ -85,14 +85,17 @@ function extractColor(ov: ProgrammerOverrides | undefined): Record<string, numbe
 /**
  * Extrae los canales activos de la familia KINETIC.
  *
- * WAVE 4720 FIX ORBITAL:
- * Cuando hay patrón activo, pan/tilt del Radar son la BASE de la órbita —
- * deben llegar al NodeArbiter como 'pan_base'/'tilt_base' para que el
- * nodo orbit (NodeArbiter.ts) ejecute: output.pan = pan_base + (L0.pan - 0.5)
+ * WAVE 4718 FIX ANCHOR:
+ * Cuando hay patrón activo, el AetherKineticEngine es el ÚNICO propietario
+ * de `pan_base`/`tilt_base` en L2 — lee el anchor del Radar directamente
+ * desde NodeArbiter (`getManualOverride`) en cada tick del motor.
+ * El ProgrammerAetherBridge NO debe escribir `pan_base`/`tilt_base`
+ * cuando hay patrón activo: lo picaría con la posición estática del store
+ * interrumpiendo la sincronía motor↔radar.
  *
- * Si emitimos 'pan'/'tilt' absolutos con patrón activo, el MANUAL HARD LOCK
- * (WAVE 4714) los reaplicaría post-L3, aplastando el resultado de la órbita
- * y congelando los focos en la posición del radar sin movimiento.
+ * Con patrón activo → solo speed (si existe). Pan/tilt del store son el
+ * anchor que el KineticsBridge ya escribió vía `setManualOverrides` L2.
+ * Sin patrón activo → emite `pan`/`tilt` absolutos LTP normales.
  *
  * @param ov               Overrides del fixture (puede ser undefined)
  * @param hasActivePattern true cuando hay patrón circle/sweep/etc activo
@@ -105,16 +108,15 @@ function extractKinetic(ov: ProgrammerOverrides | undefined, hasActivePattern: b
     ch['targetX'] = ov.targetX!
     ch['targetY'] = ov.targetY!
     ch['targetZ'] = ov.targetZ!
-  } else {
-    // WAVE 4720: con patrón activo → canales orbit (pan_base/tilt_base).
-    // NodeArbiter suma la desviación del LFO sobre esta base:
-    //   output.pan = pan_base + (L0.pan - 0.5)
-    // Sin patrón activo → canales absolutos LTP normales.
-    const panCh  = hasActivePattern ? 'pan_base'  : 'pan'
-    const tiltCh = hasActivePattern ? 'tilt_base' : 'tilt'
-    if (ov.pan   !== null) ch[panCh]  = ov.pan
-    if (ov.tilt  !== null) ch[tiltCh] = ov.tilt
+  } else if (!hasActivePattern) {
+    // Sin patrón activo → canales absolutos LTP normales
+    if (ov.pan  !== null) ch['pan']  = ov.pan
+    if (ov.tilt !== null) ch['tilt'] = ov.tilt
   }
+  // Con patrón activo: pan/tilt del store son el anchor del Radar.
+  // KineticsBridge._flushClassic ya los escribió en L2 como pan_base/tilt_base.
+  // AetherKineticEngine.tick() los lee con getManualOverride() para centrar la órbita.
+  // Este bridge NO reescribe nada de posición — evita la condición de carrera L2.
   if (ov.speed !== null) ch['speed'] = ov.speed
   return Object.keys(ch).length > 0 ? ch : null
 }

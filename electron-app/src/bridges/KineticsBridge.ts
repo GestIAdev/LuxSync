@@ -109,7 +109,6 @@ class KineticsBridgeClass {
   private _patternFlushTimeout: ReturnType<typeof setTimeout> | null = null
   private _spatialFlushTimeout: ReturnType<typeof setTimeout> | null = null
   private _classicFlushTimeout: ReturnType<typeof setTimeout> | null = null
-  private _fanPhaseFlushTimeout: ReturnType<typeof setTimeout> | null = null
 
   /** Debounce en ms para agrupar cambios continuos de speed/amplitude */
   private static readonly PATTERN_DEBOUNCE_MS = 30
@@ -159,8 +158,8 @@ class KineticsBridgeClass {
     // El XY pad clásico escribe pan (0-540°) y tilt (0-270°) en el store.
     // El ChaosOrderSlider escribe chaosAmount (0-1) y chaosSeed (16-bit).
     // fanValue (-100..100): spread lineal adicional desde radar gestures.
-    // WAVE 4717.2: fanValue también dispara _scheduleFanPhaseFlush() que calcula
-    // un phase offset en radianes por índice de selección y lo envía al VMM vía IPC.
+    // WAVE 4718: _scheduleFanPhaseFlush eliminada — el fan viaja integrado en
+    // _flushPattern como parámetro, y setKineticFanOffsets IPC es no-op.
     const unsubClassic = useMovementStore.subscribe(
       (s) => ({
         pan: s.pan, tilt: s.tilt, fanValue: s.fanValue,
@@ -168,8 +167,6 @@ class KineticsBridgeClass {
       }),
       ({ pan, tilt, fanValue }) => {
         this._scheduleClassicFlush(pan, tilt, fanValue)
-        // WAVE 4717.2: fan como phase offset — funciona con y sin patrón activo
-        this._scheduleFanPhaseFlush(fanValue)
       },
       { equalityFn: (a, b) =>
           a.pan === b.pan && a.tilt === b.tilt && a.fanValue === b.fanValue &&
@@ -219,6 +216,9 @@ class KineticsBridgeClass {
     if (this._patternFlushTimeout !== null) clearTimeout(this._patternFlushTimeout)
     if (this._spatialFlushTimeout !== null) clearTimeout(this._spatialFlushTimeout)
     if (this._classicFlushTimeout !== null) clearTimeout(this._classicFlushTimeout)
+    this._patternFlushTimeout = null
+    this._spatialFlushTimeout = null
+    this._classicFlushTimeout = null
     for (const unsub of this._unsubscribers) unsub()
     this._unsubscribers = []
     this._started = false
@@ -364,59 +364,9 @@ class KineticsBridgeClass {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FAN PHASE FLUSH — WAVE 4717.2
-  // El fan distribute opera como un desfase de FASE (oscilador temporal).
-  // fanValue=0   → todos en fase (sin offset). fanValue=±100 → ±2π spread total.
-  // El offset se calcula por índice de selección (orden del usuario, determinista)
-  // y se envía al VMM vía IPC → KineticAdapter lo lee en el hot-path (O(1)).
-  // Funciona independientemente de si hay patrón activo o modo AI.
-  // ─────────────────────────────────────────────────────────────────────────
-
-  private _scheduleFanPhaseFlush(fanValue: number): void {
-    if (this._fanPhaseFlushTimeout !== null) clearTimeout(this._fanPhaseFlushTimeout)
-    this._fanPhaseFlushTimeout = setTimeout(
-      () => this._flushFanPhase(fanValue),
-      KineticsBridgeClass.CLASSIC_DEBOUNCE_MS,
-    )
-  }
-
-  /**
-   * WAVE 4717.2: Fan Distribute como phase offset en el oscilador del VMM.
-   *
-   * Matemática determinista por índice de selección:
-   *   t = i / (N-1)  →  0..1 uniforme (i = índice en activeFixtureIds)
-   *   phaseOffset = fanSpread * t * 2π  →  0..fanSpread*2π rad
-   *
-   * fanValue=0    → todos con offset=0 (en fase, Borg mode).
-   * fanValue=100  → fixture 0: 0 rad, fixture N-1: 2π rad (un ciclo completo).
-   * fanValue=-100 → fixture 0: 0 rad, fixture N-1: -2π rad (spread invertido).
-   *
-   * El Record se envía al VMM main-process vía IPC. El KineticAdapter lo lee
-   * en process() sumándolo al phaseOffset L/R antes de generateIntent().
-   */
-  private async _flushFanPhase(fanValue: number): Promise<void> {
-    const fixtureIds = getSelectedIds()
-    const n = fixtureIds.length
-    if (n === 0) return
-
-    // fanValue (-100..100) → fanSpread (-1..1): fracción de 2π de spread total
-    const fanSpread = fanValue / 100
-    const TWO_PI = 2 * Math.PI
-
-    // Construir el record de offsets — sin crear arrays intermedios
-    const offsets: Record<string, number> = {}
-    for (let i = 0; i < n; i++) {
-      const t = n > 1 ? i / (n - 1) : 0  // 0..1 uniforme
-      offsets[`${fixtureIds[i]}:kinetic`] = fanSpread * t * TWO_PI
-    }
-
-    try {
-      await window.lux?.aether?.setKineticFanOffsets(offsets)
-    } catch (err) {
-      console.error('[KineticsBridge] setKineticFanOffsets error:', err)
-    }
-  }
+  // 🪦 WAVE 4718: _scheduleFanPhaseFlush / _flushFanPhase eliminados.
+  // El fan viaja integrado en _flushPattern como parámetro `fan`.
+  // window.lux.aether.setKineticFanOffsets IPC es no-op en backend — tráfico fantasma.
 
   private _scheduleSpatialFlush(
     target: { x: number; y: number; z: number },

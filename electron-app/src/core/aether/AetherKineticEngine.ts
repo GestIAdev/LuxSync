@@ -329,6 +329,16 @@ export class AetherKineticEngine {
    *
    * Calcula la nueva posición de cada fixture y la escribe en NodeArbiter L2.
    *
+   * WAVE 4718 — ANCHOR DINÁMICO:
+   * Antes de calcular la oscilación, el motor lee el override L2 actual del
+   * nodeId (escrito por KineticsBridge._flushClassic como `pan_base`/`tilt_base`)
+   * y lo usa como punto de anclaje del patrón. Si el operador no ha movido el
+   * radar (o aún no hay override L2), el fallback es 0.5 (centro del universo).
+   *
+   * Esto garantiza:
+   *   pan_base_final = radar_anchor_pan + scaledX * 0.5
+   * donde scaledX ∈ [-amplitude, amplitude].
+   *
    * @param dtSeconds Segundos transcurridos desde el último tick.
    * @param arbiter   Referencia al NodeArbiter activo.
    */
@@ -362,40 +372,17 @@ export class AetherKineticEngine {
       const scaledX = x * amplitude
       const scaledY = y * amplitude
 
-      // Convertir a normalizado [0, 1] para pan_base / tilt_base
-      // El orbit math de NodeArbiter expecta: pan_base + (L0.pan − 0.5)
-      // Nosotros emitimos el punto de anclaje del radar (0.5 = centro).
-      // La excentricidad del patrón viene de L0 vía KineticAdapter/VMM.
-      // — PERO — en este motor L2 nativo, el patrón ES el override L2.
-      // El punto de anclaje del radar viene desde el store y se combina aquí:
-      // pan_base = radar_pan_norm + scaledX * 0.5
-      // (0.5 factor porque pan_base ∈ [0,1] y scaledX ∈ [-1,1] daría range [−0.5, 1.5])
-      //
-      // CORRECCIÓN WAVE 4700: el motor L2 es el GENERADOR del movimiento, no el
-      // KineticAdapter (L0). El L0 sigue corriendo con el VMM en modo audio-reactivo.
-      // En modo manual, el operador quiere que el patrón sea el movimiento principal.
-      // La arquitectura correcta:
-      //   pan_base = radar_anchor (0.5 si no hay anchor)
-      //   L0 (KineticAdapter) genera la oscilación sobre ese anchor
-      //
-      // El motor L2 NO puede duplicar el rol de L0 sin crear un conflicto.
-      // La solución limpia: escribir `pan_base`/`tilt_base` CON el movimiento
-      // del patrón INTEGRADO, usando 0.5 como anchor de radar.
-      // El NodeArbiter orbit math suma L0 delta sobre este base.
-      // Si queremos que el motor L2 SEA el movimiento (sin L0):
-      //   → emitir `pan` / `tilt` directos en L2 (pero los pisaría HARD LOCK)
-      //   → o desactivar el L0 para este fixture (requiere otro mecanismo)
-      //
-      // DECISIÓN WAVE 4700: Emitir `pan_base` / `tilt_base` con el patrón integrado.
-      // El L0 (VMM en modo manual) también corre — produce una segunda oscilación.
-      // Para evitar doble oscilación, el caller (IPC handler) debe desactivar
-      // el VMM (setManualPattern(null)) cuando el motor L2 esté activo.
-      // → Esto se hace en el handler actualizado de setManualPattern.
-      //
-      // Con VMM desactivado: L0 emite {pan=0.5, tilt=0.5} (home).
-      // L2 orbit math: pan = pan_base + (0.5 − 0.5) = pan_base → correcto.
-      const panBase  = clamp01(0.5 + scaledX * 0.5)
-      const tiltBase = clamp01(0.5 + scaledY * 0.5)
+      // WAVE 4718 — ANCHOR DEL RADAR:
+      // Leer el override L2 actual (escrito por KineticsBridge._flushClassic).
+      // Si el operador posicionó el radar, pan_base/tilt_base tienen su valor.
+      // Si no hay override todavía, usar 0.5 (centro).
+      const l2 = arbiter.getManualOverride(nodeId)
+      const anchorPan  = (l2 && Number.isFinite(l2['pan_base']))  ? l2['pan_base']  : 0.5
+      const anchorTilt = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5
+
+      // Convertir a normalizado [0,1] usando el anchor real del radar
+      const panBase  = clamp01(anchorPan  + scaledX * 0.5)
+      const tiltBase = clamp01(anchorTilt + scaledY * 0.5)
 
       // Escribir en el pool reutilizable (cero alloc en hot path)
       let rec = this._overridePool.get(nodeId)

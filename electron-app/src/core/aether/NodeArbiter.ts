@@ -191,6 +191,16 @@ export class NodeArbiter implements INodeArbiter {
     this._manualOverrides.delete(nodeId)
   }
 
+  /**
+   * WAVE 4718: Lectura del anchor de L2 para el motor cinético.
+   * Devuelve los `pan_base`/`tilt_base` actuales del nodo (0-1),
+   * o undefined si no hay override manual para ese nodeId.
+   * Zero-lock: solo lectura del Map, sin alloc.
+   */
+  getManualOverride(nodeId: NodeId): Readonly<Record<string, number>> | undefined {
+    return this._manualOverrides.get(nodeId)
+  }
+
   setEffectIntents(intents: readonly INodeIntent[]): void {
     this._effectIntents = intents
   }

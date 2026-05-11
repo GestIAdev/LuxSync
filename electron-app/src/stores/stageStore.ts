@@ -1073,6 +1073,22 @@ export function setupStageStoreListeners(): () => void {
     })
     useStageStore.getState()._syncDerivedState()
   })
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 4718 MAPA DEL MUNDO: Bootstrap — trigger active show load on startup
+  // The listener is passive — nobody was calling loadActive to fire the first
+  // lux:stage:loaded event. This call primes the pump: backend loads the show,
+  // emits the broadcast, and the listener above hydrates the store.
+  // ═══════════════════════════════════════════════════════════════════════
+  if (lux.stage.loadActive) {
+    lux.stage.loadActive().then((result: { success: boolean; error?: string }) => {
+      if (!result.success) {
+        console.warn('[stageStore] ⚠️ No active show found at startup:', result.error || '(no file)')
+      }
+    }).catch((err: unknown) => {
+      console.error('[stageStore] ❌ Failed to load active show at startup:', err)
+    })
+  }
   
   return unsubscribe
 }

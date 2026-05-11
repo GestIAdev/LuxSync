@@ -69,10 +69,28 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
 
   /**
    * Load the active show (called at startup)
+   * WAVE 4718: Emits lux:stage:loaded broadcast so setupStageStoreListeners hydrates the store
    */
   ipcMain.handle('lux:stage:loadActive', async () => {
     console.log('[StageIPC] Load active show')
-    return stagePersistence.loadShow()
+    const result = await stagePersistence.loadShow()
+
+    if (result.success && result.showFile) {
+      const mainWindow = getMainWindow()
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        try {
+          mainWindow.webContents.send('lux:stage:loaded', {
+            showFile: result.showFile,
+            migrated: result.migrated,
+            warnings: result.warnings
+          })
+        } catch {
+          // Renderer disposed
+        }
+      }
+    }
+
+    return result
   })
 
   // ═══════════════════════════════════════════════════════════════════════

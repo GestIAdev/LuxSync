@@ -535,11 +535,16 @@ export function registerAetherIPCHandlers(): void {
    */
   ipcMain.handle(
     'lux:aether:setFixtures',
-    (_event, { fixtures, stageBounds }: { fixtures: any[]; stageBounds?: any }) => {
+    (_event, { fixtures, stageBounds }: { fixtures: any[] | Record<string, any>; stageBounds?: any }) => {
       try {
+        // WAVE TYPECAST: El store puede serializar fixtures como Record<id, Fixture>
+        // en lugar de Array. Normalizamos aquí antes de tocar el Orchestrator.
+        const fixtureArray: any[] = Array.isArray(fixtures)
+          ? fixtures
+          : Object.values(fixtures as Record<string, any>)
         const orchestrator = getTitanOrchestrator()
-        const liquidLayout = orchestrator.setFixtures(fixtures, stageBounds)
-        return { success: true, fixtureCount: fixtures.length, liquidLayout }
+        const liquidLayout = orchestrator.setFixtures(fixtureArray, stageBounds)
+        return { success: true, fixtureCount: fixtureArray.length, liquidLayout }
       } catch (err) {
         console.error('[AetherIPC] setFixtures error:', err)
         return { success: false, error: String(err) }

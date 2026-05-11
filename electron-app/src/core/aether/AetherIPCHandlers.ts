@@ -21,9 +21,9 @@
 
 import { ipcMain } from 'electron'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
-// WAVE 4702: masterArbiter retenido solo para IK solver (applySpatialTarget/releaseSpatialTarget).
-// Pendiente de migración a IK nativo en wave futura.
-import { masterArbiter } from '../arbiter'
+// 🚦 WAVE 4704: masterArbiter eliminado. IK solver nativo directo.
+import { buildProfile, solveGroupWithFan } from '../../engine/movement/InverseKinematicsEngine'
+import type { SpatialFanMode } from '../../engine/movement/InverseKinematicsEngine'
 // WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 // ⚡ WAVE 4700: Motor cinético nativo L2 — sustituye masterArbiter + VMM para patrones manuales
@@ -422,7 +422,7 @@ export function registerAetherIPCHandlers(): void {
   /**
    * E12: Apply spatial target (IK solve) para fixtures.
    * Ruta: lux:aether:applySpatialTarget (Aether IPC)
-   * Engine: masterArbiter.applySpatialTarget() — IK resolver compartido.
+   * Engine: InverseKinematicsEngine.solveGroupWithFan() — WAVE 4704 (masterArbiter eliminado)
    * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude? }
    */
   ipcMain.handle(
@@ -438,14 +438,59 @@ export function registerAetherIPCHandlers(): void {
       }
 
       try {
-        const results = masterArbiter.applySpatialTarget(
+        const orchestrator = getTitanOrchestrator()
+        const arbiter = orchestrator.getAetherArbiter()
+        const allFixtures: any[] = (orchestrator as any).fixtures ?? []
+
+        const profiles = []
+        const validIds: string[] = []
+
+        for (const id of fixtureIds) {
+          const f = allFixtures.find((x: any) => x.id === id)
+          if (!f || !f.position) continue
+          const cal = f.calibration
+          const physics = f.physics
+          const profile = buildProfile(
+            id,
+            f.position,
+            f.rotation,
+            f.orientation ?? f.installationType ?? 'ceiling',
+            cal ? {
+              panOffset:  cal.panOffset  ?? 0,
+              tiltOffset: cal.tiltOffset ?? 0,
+              panInvert:  cal.panInvert  ?? false,
+              tiltInvert: cal.tiltInvert ?? false,
+            } : undefined,
+            f.panRangeDeg,
+            f.tiltRangeDeg,
+            physics?.tiltLimits,
+          )
+          profiles.push(profile)
+          validIds.push(id)
+        }
+
+        if (profiles.length === 0) return { success: true, results: {} }
+
+        const results = solveGroupWithFan(
+          profiles,
           target,
-          fixtureIds,
-          fanMode ?? 'converge',
-          fanAmplitude ?? 0
+          (fanMode ?? 'converge') as SpatialFanMode,
+          fanAmplitude ?? 0,
+          null,
         )
+
         const serialized: Record<string, unknown> = {}
-        results.forEach((result, id) => { serialized[id] = result })
+        for (const id of validIds) {
+          const ikResult = results.get(id)
+          if (!ikResult) continue
+          // Inject into Aether L2 as pan_base/tilt_base (0-1 normalized)
+          arbiter.setManualOverride(`${id}:kinetic`, {
+            pan_base:  ikResult.pan  / 255,
+            tilt_base: ikResult.tilt / 255,
+          })
+          serialized[id] = ikResult
+        }
+
         return { success: true, results: serialized }
       } catch (err) {
         console.error('[AetherIPC] applySpatialTarget error:', err)
@@ -457,7 +502,7 @@ export function registerAetherIPCHandlers(): void {
   /**
    * E12: Release spatial target — devuelve fixtures al control AI.
    * Ruta: lux:aether:releaseSpatialTarget (Aether IPC)
-   * Engine: masterArbiter.releaseSpatialTarget() — IK release compartido.
+   * Engine: NodeArbiter.clearManualOverride — WAVE 4704 (masterArbiter eliminado)
    */
   ipcMain.handle(
     'lux:aether:releaseSpatialTarget',
@@ -467,7 +512,10 @@ export function registerAetherIPCHandlers(): void {
       }
 
       try {
-        masterArbiter.releaseSpatialTarget(fixtureIds)
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        for (const id of fixtureIds) {
+          arbiter.clearManualOverride(`${id}:kinetic`)
+        }
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] releaseSpatialTarget error:', err)

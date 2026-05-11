@@ -117,6 +117,12 @@ class KineticsBridgeClass {
   /** Debounce en ms para agrupar arrastres continuos del XY pad clásico */
   private static readonly CLASSIC_DEBOUNCE_MS = 16
 
+  // ── CLEAN BUS: caché del último setManualPattern enviado al motor ──────
+  // Permite detectar si el patrón y los fixtures son los mismos para usar
+  // updateKineticScalars (scalars-only, fase continua) en lugar de setManualPattern.
+  private _lastPatternSent: string | null = null
+  private _lastFixtureKeysSent: string | null = null
+
   start(): void {
     if (this._started) {
       console.warn('[KineticsBridge] Ya iniciado, ignorando start()')
@@ -219,6 +225,8 @@ class KineticsBridgeClass {
     this._patternFlushTimeout = null
     this._spatialFlushTimeout = null
     this._classicFlushTimeout = null
+    this._lastPatternSent = null
+    this._lastFixtureKeysSent = null
     for (const unsub of this._unsubscribers) unsub()
     this._unsubscribers = []
     this._started = false
@@ -350,6 +358,34 @@ class KineticsBridgeClass {
 
     const enginePattern = toEnginePattern(activePattern)
 
+    // CLEAN BUS: si el patrón y los fixtures son los mismos que el último flush,
+    // usar updateKineticScalars (scalars-only, fase NO se reinicia).
+    // Solo se hace setManualPattern completo cuando cambia patrón o selección.
+    const fixtureKey = fixtureIds.slice().sort().join(',')
+    const isStop = enginePattern === 'hold'
+    const samePatternAndFixtures =
+      !isStop &&
+      enginePattern === this._lastPatternSent &&
+      fixtureKey === this._lastFixtureKeysSent
+
+    if (samePatternAndFixtures) {
+      try {
+        await window.lux?.aether?.updateKineticScalars({
+          speed: patternSpeed,
+          amplitude: patternAmplitude,
+          fan: fanValue,
+        })
+      } catch (err) {
+        console.error('[KineticsBridge] updateKineticScalars error:', err)
+      }
+      return
+    }
+
+    // Patrón nuevo, fixtures cambiaron, o stop — ruta completa.
+    // Invalidar caché antes del await para no usar datos stale si falla.
+    this._lastPatternSent = isStop ? null : enginePattern
+    this._lastFixtureKeysSent = isStop ? null : fixtureKey
+
     // WAVE 4700: Incluir fan en el payload — el motor nativo integra el desfase
     try {
       await window.lux?.aether?.setManualPattern({
@@ -360,6 +396,9 @@ class KineticsBridgeClass {
         fan: fanValue,  // [-100, 100] — el handler IPC normaliza a [0, 1]
       })
     } catch (err) {
+      // Si el setManualPattern falla, invalidar caché para forzar reintento completo
+      this._lastPatternSent = null
+      this._lastFixtureKeysSent = null
       console.error('[KineticsBridge] setManualPattern error:', err)
     }
   }

@@ -28,6 +28,14 @@ import type { Target3D } from '../engine/movement/InverseKinematicsEngine'
 /** Familias de canales que el bridge conoce */
 export type ProgrammerFamily = 'IMPACT' | 'COLOR' | 'KINETIC' | 'BEAM' | 'EXTRAS'
 
+type DisplayScalar = number | null
+
+type DisplayColor = {
+  r: number | null
+  g: number | null
+  b: number | null
+}
+
 /**
  * Overrides normalizados (0-1) para un fixture.
  * null = canal no en override (AI controla).
@@ -80,10 +88,10 @@ interface ProgrammerState {
   activeFixtureIds: string[]
 
   // ── Display values (raw, sin normalizar — para alimentar la UI) ──
-  displayDimmer: number   // 0-100
-  displayStrobe: number   // 0-100
-  displayLimit: number    // 0-100
-  displayColor: { r: number; g: number; b: number }  // 0-255 cada uno
+  displayDimmer: DisplayScalar   // 0-100 | null = MIXED
+  displayStrobe: DisplayScalar   // 0-100 | null = MIXED
+  displayLimit: DisplayScalar    // 0-100 | null = MIXED
+  displayColor: DisplayColor     // 0-255 | null por canal = MIXED
 }
 
 interface ProgrammerActions {
@@ -213,6 +221,76 @@ function getNormAny(
   return null
 }
 
+const MIXED = Symbol('mixed')
+
+function resolveSharedOverrideValue(
+  fixtureIds: readonly string[],
+  fixtureOverrides: ReadonlyMap<string, ProgrammerOverrides>,
+  picker: (override: ProgrammerOverrides | undefined) => number | null,
+): number | null | typeof MIXED {
+  let hasBaseline = false
+  let baseline: number | null = null
+
+  for (const fixtureId of fixtureIds) {
+    const current = picker(fixtureOverrides.get(fixtureId))
+    if (!hasBaseline) {
+      baseline = current
+      hasBaseline = true
+      continue
+    }
+    if (baseline !== current) {
+      return MIXED
+    }
+  }
+
+  return baseline
+}
+
+function resolveDisplayScalar(
+  fixtureIds: readonly string[],
+  fixtureOverrides: ReadonlyMap<string, ProgrammerOverrides>,
+  picker: (override: ProgrammerOverrides | undefined) => number | null,
+  defaultValue: number,
+  mapValue: (value: number) => number,
+): DisplayScalar {
+  const shared = resolveSharedOverrideValue(fixtureIds, fixtureOverrides, picker)
+  if (shared === MIXED) return null
+  if (shared === null) return defaultValue
+  return mapValue(shared)
+}
+
+function resolveDisplayColor(
+  fixtureIds: readonly string[],
+  fixtureOverrides: ReadonlyMap<string, ProgrammerOverrides>,
+): DisplayColor {
+  return {
+    r: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.red ?? null, 255, value => Math.round(value * 255)),
+    g: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.green ?? null, 255, value => Math.round(value * 255)),
+    b: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.blue ?? null, 255, value => Math.round(value * 255)),
+  }
+}
+
+function resolveDisplayState(
+  fixtureIds: readonly string[],
+  fixtureOverrides: ReadonlyMap<string, ProgrammerOverrides>,
+): Pick<ProgrammerState, 'displayDimmer' | 'displayStrobe' | 'displayLimit' | 'displayColor'> {
+  if (fixtureIds.length === 0) {
+    return {
+      displayDimmer: 100,
+      displayStrobe: 0,
+      displayLimit: 100,
+      displayColor: { r: 255, g: 255, b: 255 },
+    }
+  }
+
+  return {
+    displayDimmer: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.dimmer ?? null, 100, value => Math.round(value * 100)),
+    displayStrobe: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.strobe ?? null, 0, value => Math.round(value * 100)),
+    displayLimit: resolveDisplayScalar(fixtureIds, fixtureOverrides, ov => ov?.limit ?? null, 100, value => Math.round(value * 100)),
+    displayColor: resolveDisplayColor(fixtureIds, fixtureOverrides),
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,7 +336,12 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             }
           }
         }
-        return { activeFixtureIds: fixtureIds, fixtureOverrides: hadZombies ? next : state.fixtureOverrides }
+        const finalOverrides = hadZombies ? next : state.fixtureOverrides
+        return {
+          activeFixtureIds: fixtureIds,
+          fixtureOverrides: finalOverrides,
+          ...resolveDisplayState(fixtureIds, finalOverrides),
+        }
       })
     },
 
@@ -311,26 +394,9 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
           })
         }
 
-        const firstFixture = fixtureIds[0]
-        const firstOv = firstFixture ? next.get(firstFixture) : null
-
-        const displayDimmer = firstOv?.dimmer !== null && firstOv?.dimmer !== undefined
-          ? Math.round(firstOv.dimmer * 100)
-          : 100
-        const displayStrobe = firstOv?.strobe !== null && firstOv?.strobe !== undefined
-          ? Math.round(firstOv.strobe * 100)
-          : 0
-        const displayColor = {
-          r: firstOv?.red !== null && firstOv?.red !== undefined ? Math.round(firstOv.red * 255) : 255,
-          g: firstOv?.green !== null && firstOv?.green !== undefined ? Math.round(firstOv.green * 255) : 255,
-          b: firstOv?.blue !== null && firstOv?.blue !== undefined ? Math.round(firstOv.blue * 255) : 255,
-        }
-
         return {
           fixtureOverrides: next,
-          displayDimmer,
-          displayStrobe,
-          displayColor,
+          ...resolveDisplayState(fixtureIds, next),
         }
       })
     },
@@ -429,15 +495,13 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         const next = new Map(state.fixtureOverrides)
         for (const id of state.activeFixtureIds) {
           const ov = next.get(id) ?? createEmptyOverrides()
-          // Forzar actualización RGB completa y limpiar canales auxiliares
-          // para evitar contaminación de presets por overrides previos RGBW/Amber.
+          // Solo toca canales RGB — white/amber se mantienen intactos.
+          // El operador debe limpiarlos explícitamente si lo desea.
           next.set(id, {
             ...ov,
             red: nr,
             green: ng,
             blue: nb,
-            white: 0,
-            amber: 0,
           })
         }
         const dirty = new Set(state.dirtyFamilies)

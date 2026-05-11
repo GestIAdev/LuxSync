@@ -99,7 +99,7 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
         {/* WAVE 2051: IMMORTALITY — Keep all tabs mounted, toggle visibility
             Scene player must stay alive when switching tabs (audio/clock persist) */}
         <div style={{ display: activeTab === 'controls' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-          <TheProgrammer />
+          <TheProgrammer isActive={activeTab === 'controls'} />
         </div>
         <div style={{ display: activeTab === 'groups' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
           <GroupsPanel onSwitchToControls={handleSwitchToControls} />

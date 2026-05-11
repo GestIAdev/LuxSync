@@ -237,6 +237,9 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // ── Beat envelope detection (main thread → worker via FRAME msg) ──────
   const lastOnBeatRef = useRef(false)
 
+  // ── Persistent transient map — reutilizado cada frame, cero allocations ──
+  const transientMapRef = useRef<Map<string, any>>(new Map())
+
   // ── State ───────────────────────────────────────────────────────────────
   
   const [isReady, setIsReady] = useState(false)
@@ -627,15 +630,16 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         return
       }
 
-      // Read transient truth
+      // Read transient truth — reutilizamos el mismo Map (clear + fill, 0 GC)
       const transientTruth = getTransientTruth()
       const transientFixtures = transientTruth?.hardware?.fixtures
       let transientMap: Map<string, any> | null = null
       if (transientFixtures && Array.isArray(transientFixtures)) {
-        transientMap = new Map()
+        transientMapRef.current.clear()
         for (const f of transientFixtures) {
-          if (f?.id) transientMap.set(f.id, f)
+          if (f?.id) transientMapRef.current.set(f.id, f)
         }
+        transientMap = transientMapRef.current
       }
 
       // Beat detection (rising edge)

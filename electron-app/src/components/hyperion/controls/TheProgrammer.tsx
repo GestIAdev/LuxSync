@@ -40,7 +40,7 @@ interface OverrideState {
   extras: boolean
 }
 
-export const TheProgrammer: React.FC = () => {
+export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = true }) => {
   // 🛡️ WAVE 2042.13.13: Fixed - Use stable hooks
   const selectedIds = useSelectedArray()
   const deselectAll = useSelectionStore(state => state.deselectAll)
@@ -144,7 +144,9 @@ export const TheProgrammer: React.FC = () => {
       })
       return
     }
-
+    // Guard: no hidratar desde IPC si la pestaña CONTROLS no está visible.
+    // Evita round-trips inútiles cuando el operador está en GROUPS o SCENES.
+    if (!isActive) return
     let cancelled = false
     const expectedSelectionKey = fixtureIds.join(',')
 
@@ -200,7 +202,7 @@ export const TheProgrammer: React.FC = () => {
 
     hydrate()
     return () => { cancelled = true }
-  }, [selectedIds.join(','), syncSelection, hydrateFromL2, hydrateMovementFromL2])
+  }, [selectedIds.join(','), isActive, syncSelection, hydrateFromL2, hydrateMovementFromL2])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS — ahora síncronos, el bridge vuelca a 44Hz
@@ -370,7 +372,7 @@ export const TheProgrammer: React.FC = () => {
             strobeValue={currentStrobe}
             hasStrobeOverride={overrideState.strobe}
             limitValue={currentLimit}
-            hasLimitActive={currentLimit < 100}
+            hasLimitActive={currentLimit !== null && currentLimit < 100}
             isExpanded={activeSection === 'intensity'}
             onToggle={() => toggleSection('intensity')}
             onChange={handleDimmerChange}

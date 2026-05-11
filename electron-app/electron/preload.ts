@@ -1296,11 +1296,21 @@ const luxApi = {
     /**
      * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
      * Reemplaza window.lux.arbiter.setFixtures — fuente de verdad única.
+     * WAVE OSCURIDAD FIX: acepta tanto la firma posicional (fixtures[], stageBounds?)
+     * como la firma objeto ({ fixtures, stageBounds }) que usa TitanSyncBridge.
      */
     setFixtures: (
-      fixtures: any[],
-      stageBounds?: { width?: number; height?: number; depth?: number },
-    ) => ipcRenderer.invoke('lux:aether:setFixtures', { fixtures, stageBounds }),
+      fixturesOrArg: any[] | { fixtures: any[]; stageBounds?: any },
+      stageBoundsArg?: { width?: number; height?: number; depth?: number },
+    ) => {
+      const fixtures = Array.isArray(fixturesOrArg)
+        ? fixturesOrArg
+        : (fixturesOrArg as any).fixtures
+      const stageBounds = Array.isArray(fixturesOrArg)
+        ? stageBoundsArg
+        : (fixturesOrArg as any).stageBounds
+      return ipcRenderer.invoke('lux:aether:setFixtures', { fixtures, stageBounds })
+    },
 
     /**
      * 🌊 WAVE 4699.2: Tungsten Golden Nuke — override L2 sobre nodos flash/kinetic.

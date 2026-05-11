@@ -1204,14 +1204,38 @@ const luxApi = {
 
     /**
      * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
-     * Stub → MasterArbiter legacy hasta que Aether tenga KineticEngine proprio.
+     * WAVE 4700: Motor cinético nativo L2 (AetherKineticEngine).
+     * Reemplaza masterArbiter.setPattern() + VMM para patrones manuales.
      */
     setManualPattern: (args: {
       fixtureIds: string[]
       pattern: string | null
       speed: number
       amplitude: number
+      fan?: number
     }) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
+
+    /**
+     * WAVE 4700: Actualizar scalares (speed/amplitude/fan) sin reiniciar la fase.
+     * Para cambios en tiempo real desde sliders UI — no produce glitch de fase.
+     */
+    updateKineticScalars: (args: { speed: number; amplitude: number; fan: number }) =>
+      ipcRenderer.invoke('lux:aether:updateKineticScalars', args),
+
+    /**
+     * WAVE 4701: Snapshot del estado manual del motor cinético nativo.
+     * Fuente de verdad para hidratar pattern/speed/amplitude/fan en UI.
+     */
+    getManualKineticState: () =>
+      ipcRenderer.invoke('lux:aether:getManualKineticState'),
+
+    /**
+     * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
+     * WAVE 4700: No-op legacy — el fan se pasa directamente en setManualPattern.
+     * Canal mantenido para no romper llamadas desde KineticsBridge legacy.
+     */
+    setKineticFanOffsets: (offsets: Record<string, number>) =>
+      ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
 
     /**
      * E12 WAVE 4531: IK solve y apply spatial target para fixtures.

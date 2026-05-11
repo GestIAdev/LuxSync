@@ -103,6 +103,7 @@ type GoldenPattern =
   | 'square'      // Movimiento cuadrado, esquinas duras
   | 'diamond'     // Rombo agresivo (abs + abs)
   | 'botstep'     // Posiciones cuantizadas roboticas
+  | 'darkspin'    // Giro orbital oscuro con respiración de radio
   // LATINO (5 patterns - Fluid/Hips/Soul)
   | 'figure8'     // El infinito - caderas de cumbia
   | 'wave_y'      // Ola: X lento, Y rapido
@@ -134,7 +135,7 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
     panScale: 0.72,
     tiltScale: 0.68,
     baseFrequency: 0.22,
-    patterns: ['scan_x', 'square', 'diamond', 'botstep'],
+    patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
     homeOnSilence: false,
   },
   
@@ -197,6 +198,7 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   square: 16,       // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
   diamond: 8,       // 2 compases: rombo contenido pero fluido
   botstep: 8,       // 2 compases: posiciones robóticas con gravitas
+  darkspin: 12,     // WAVE 4706: órbita oscura de 3 compases, densa pero controlada
   
   // LATINO — fluido, sensual, cadera
   figure8: 16,      // 4 compases: el infinito tiene tiempo para respirar
@@ -349,6 +351,16 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
       x: fromX + (toX - fromX) * t,
       y: fromY + (toY - fromY) * t,
     }
+  },
+
+  // DARKSPIN: órbita elíptica con pulso de radio y contra-rotación vertical.
+  // Diseñado para conservar identidad "oscura" sin entrar en jitter ni picos.
+  darkspin: (phase, audio, index = 0, total = 1) => {
+    const fixtureOffset = (index / Math.max(total, 1)) * (Math.PI / 2)
+    const radiusPulse = 0.70 + 0.20 * Math.sin(phase * 0.5)
+    const x = Math.sin(phase + fixtureOffset) * radiusPulse
+    const y = Math.cos((phase + fixtureOffset) * 1.5) * 0.62
+    return { x, y }
   },
   
   // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
@@ -622,6 +634,8 @@ export class VibeMovementManager {
     'eight': 'figure8',
     'sweep': 'scan_x',
     'spiral': 'ballyhoo',
+    'darkspin': 'darkspin',
+    'tornado': 'darkspin',
     'wave': 'wave_y',
     'bounce': 'botstep',
     'random': 'drift',
@@ -665,11 +679,41 @@ export class VibeMovementManager {
       pattern: this.manualPatternOverride,
     }
   }
-  
+
+  // ─── WAVE 4717.2: L2 PHASE OFFSETS (Fan Distribute) ──────────────────────
+  // Record pre-allocado, mutado in-place en el hot-path — cero alloc @ 44Hz.
+  // Key: nodeId (`${fixtureId}:kinetic`). Value: phase offset en radianes.
+  // El KineticAdapter lee este record en process() antes de llamar a generateIntent().
+  // El bridge (renderer-side) lo actualiza vía IPC cada vez que cambia fanValue.
+  readonly _l2PhaseOverrides: Record<string, number> = {}
+
+  /**
+   * Actualiza los offsets de fase L2 para el fan distribute.
+   * Limpia keys obsoletas e inserta las nuevas — sin crear el objeto Record.
+   * @param offsets map de nodeId → phase offset (rad)
+   */
+  setKineticFanOffsets(offsets: Record<string, number>): void {
+    // Limpiar keys que ya no están en el nuevo batch
+    for (const key in this._l2PhaseOverrides) {
+      if (!(key in offsets)) {
+        delete this._l2PhaseOverrides[key]
+      }
+    }
+    // Escribir valores nuevos in-place
+    for (const key in offsets) {
+      this._l2PhaseOverrides[key] = offsets[key]
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   clearManualOverrides(): void {
     this.manualSpeedOverride = null
     this.manualAmplitudeOverride = null
     this.manualPatternOverride = null
+    // Limpiar también los L2 phase offsets
+    for (const key in this._l2PhaseOverrides) {
+      delete this._l2PhaseOverrides[key]
+    }
     console.log(`[CHOREO] All overrides cleared`)
   }
   
@@ -899,7 +943,7 @@ export class VibeMovementManager {
     // ═══════════════════════════════════════════════════════════════════════
     const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle']
     let stereoPosition = { ...finalPosition }
-    
+
     if (stereoConfig.type === 'mirror' && totalFixtures > 1) {
       // 🪞 MIRROR: Fixtures impares (derecha) invierten PAN (eje X)
       // Fixture 0 (L): x se mantiene → puerta izquierda

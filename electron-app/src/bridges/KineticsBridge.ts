@@ -42,6 +42,29 @@ function getSelectedIds(): string[] {
 }
 
 /**
+ * WAVE 4719: Retorna true si alguno de los fixtures seleccionados tiene un
+ * override KINETIC activo en Programmer EXCLUIDOS pan/tilt.
+ * Pan y tilt NO son motivo de bloqueo — son la BASE de la orbita.
+ * Solo bloquea por: speed, targets IK (X/Y/Z) y extras rotation/speed.
+ * Esto permite que el Radar y el PatternArsenal coexistan sin auto-bloquearse.
+ */
+function hasNonPositionKineticManual(fixtureIds: string[]): boolean {
+  const overrides = useProgrammerStore.getState().fixtureOverrides
+  for (const id of fixtureIds) {
+    const ov = overrides.get(id)
+    if (!ov) continue
+    const hasNonPosition =
+      ov.speed !== null ||
+      ov.targetX !== null ||
+      ov.targetY !== null ||
+      ov.targetZ !== null
+    const hasKineticExtras = ov.extras.has('rotation') || ov.extras.has('speed')
+    if (hasNonPosition || hasKineticExtras) return true
+  }
+  return false
+}
+
+/**
  * Convierte el PatternType de movementStore al string que espera el backend:
  * 'none' o 'static' → 'hold'  |  pattern real → pass-through
  */
@@ -65,6 +88,10 @@ function fnv1aOffset(fixtureId: string, seed: number): number {
   return ((h & 0xFFFF) / 0x7FFF) - 1
 }
 
+// WAVE 4719: hasProgrammerL2Manual eliminada — era identica a hasProgrammerKineticManual.
+// Sustituida por hasNonPositionKineticManual que excluye pan/tilt del bloqueo.
+// Ninguna de las dos funciones antiguas debe existir en el bridge.
+
 /** Retorna true si el PatternType activo implica movimiento oscilatorio */
 function isActivePattern(p: string): boolean {
   return p !== 'none' && p !== 'static' && p !== 'hold'
@@ -82,6 +109,7 @@ class KineticsBridgeClass {
   private _patternFlushTimeout: ReturnType<typeof setTimeout> | null = null
   private _spatialFlushTimeout: ReturnType<typeof setTimeout> | null = null
   private _classicFlushTimeout: ReturnType<typeof setTimeout> | null = null
+  private _fanPhaseFlushTimeout: ReturnType<typeof setTimeout> | null = null
 
   /** Debounce en ms para agrupar cambios continuos de speed/amplitude */
   private static readonly PATTERN_DEBOUNCE_MS = 30
@@ -103,25 +131,27 @@ class KineticsBridgeClass {
         activePattern: s.activePattern,
         patternSpeed: s.patternSpeed,
         patternAmplitude: s.patternAmplitude,
+        fanValue: s.fanValue,
       }),
-      ({ activePattern, patternSpeed, patternAmplitude }) => {
+      ({ activePattern, patternSpeed, patternAmplitude, fanValue }) => {
         // Speed → programmerStore (44Hz pipeline para L2:speed)
         if (getSelectedIds().length > 0) {
           useProgrammerStore.getState().setKineticSpeed(patternSpeed)
         }
 
-        // Pattern + speed + amplitude → MasterArbiter Layer 2
-        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude)
+        // Pattern + speed + amplitude + fan → AetherKineticEngine (WAVE 4700)
+        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, fanValue)
         // PASO 1: cuando cambia el estado activo/inactivo del patrón,
         // re-emitir el classic flush con los nombres de canal correctos
         // (pan/tilt ↔ pan_base/tilt_base) para evitar stale orbit channels.
-        const { pan, tilt, fanValue } = useMovementStore.getState()
+        const { pan, tilt } = useMovementStore.getState()
         this._scheduleClassicFlush(pan, tilt, fanValue)
       },
       { equalityFn: (a, b) =>
           a.activePattern === b.activePattern &&
           a.patternSpeed === b.patternSpeed &&
-          a.patternAmplitude === b.patternAmplitude
+          a.patternAmplitude === b.patternAmplitude &&
+          a.fanValue === b.fanValue
       },
     )
 
@@ -129,6 +159,8 @@ class KineticsBridgeClass {
     // El XY pad clásico escribe pan (0-540°) y tilt (0-270°) en el store.
     // El ChaosOrderSlider escribe chaosAmount (0-1) y chaosSeed (16-bit).
     // fanValue (-100..100): spread lineal adicional desde radar gestures.
+    // WAVE 4717.2: fanValue también dispara _scheduleFanPhaseFlush() que calcula
+    // un phase offset en radianes por índice de selección y lo envía al VMM vía IPC.
     const unsubClassic = useMovementStore.subscribe(
       (s) => ({
         pan: s.pan, tilt: s.tilt, fanValue: s.fanValue,
@@ -136,6 +168,8 @@ class KineticsBridgeClass {
       }),
       ({ pan, tilt, fanValue }) => {
         this._scheduleClassicFlush(pan, tilt, fanValue)
+        // WAVE 4717.2: fan como phase offset — funciona con y sin patrón activo
+        this._scheduleFanPhaseFlush(fanValue)
       },
       { equalityFn: (a, b) =>
           a.pan === b.pan && a.tilt === b.tilt && a.fanValue === b.fanValue &&
@@ -226,6 +260,23 @@ class KineticsBridgeClass {
    *      chaosAmount=0 → sin spread caótico
    *      chaosAmount=1 → full spread con distribución hash determinista
    */
+  /**
+   * WAVE 4719: GUARD SUICIDA ELIMINADO.
+   *
+   * _flushClassic ya NO aborta si hay pan/tilt en programmerStore.
+   * La posicion del Radar ES la base de la orbita — no compite, SUMA.
+   *
+   * Logica de canal orbit vs absoluto (sin cambios en la math):
+   *   - Sin patron activo: escribe 'pan'/'tilt' (absoluto, LTP)
+   *   - Con patron activo: escribe 'pan_base'/'tilt_base'
+   *     NodeArbiter.ts:322-329 suma la desviacion del LFO sobre esta base:
+   *       output.pan = pan_base + (L0.pan - 0.5)
+   *     => el patron oscila alrededor del punto exacto del Radar.
+   *
+   * Fan spread (dos fuentes aditivas, deterministicas):
+   *   1. fanValue (-100..100): spread lineal simetrico +/-0.25 norm
+   *   2. chaosAmount (0-1): spread caotico FNV-1a +/-0.35 norm
+   */
   private async _flushClassic(
     pan: number,
     tilt: number,
@@ -233,26 +284,28 @@ class KineticsBridgeClass {
   ): Promise<void> {
     const fixtureIds = getSelectedIds()
     if (fixtureIds.length === 0) return
+    // WAVE 4719: GUARD ELIMINADO. Pan/tilt no son causa de bloqueo.
+    // Solo bloqueamos por overrides que NO sean posicion (speed, IK targets, extras).
+    if (hasNonPositionKineticManual(fixtureIds)) return
 
     const panNorm  = Math.max(0, Math.min(1, pan  / 540))
     const tiltNorm = Math.max(0, Math.min(1, tilt / 270))
     const n        = fixtureIds.length
 
-    // PASO 1: canal de escritura depende de si hay patrón activo.
     const { activePattern, chaosAmount, chaosSeed } = useMovementStore.getState()
     const hasPattern  = isActivePattern(activePattern)
+    // Con patron activo: canal orbit (NodeArbiter suma delta L0 sobre esta base).
+    // Sin patron activo: canal absoluto LTP.
     const panChannel  = hasPattern ? 'pan_base'  : 'pan'
     const tiltChannel = hasPattern ? 'tilt_base' : 'tilt'
 
-    // PASO 3: fan spread = lineal (fanValue) + caótico (chaosAmount).
-    // fanValue=100 → ±0.25 norm • chaosAmount=1 → ±0.35 norm (hash FNV-1a).
     const linearFanRange = (fanValue / 100) * 0.25
     const chaosSpread    = chaosAmount * 0.35
 
     const payloads = fixtureIds.map((id, i) => {
-      const t           = n > 1 ? i / (n - 1) : 0.5       // 0..1 dentro de la selección
-      const linearPart  = linearFanRange * (t * 2 - 1)     // simétrico [-range, +range]
-      const chaosPart   = chaosSpread    * fnv1aOffset(id, chaosSeed)  // hash determinista
+      const t           = n > 1 ? i / (n - 1) : 0.5
+      const linearPart  = linearFanRange * (t * 2 - 1)
+      const chaosPart   = chaosSpread    * fnv1aOffset(id, chaosSeed)
       const fanOffset   = linearPart + chaosPart
       const panFinal    = Math.max(0, Math.min(1, panNorm + fanOffset))
 
@@ -273,10 +326,11 @@ class KineticsBridgeClass {
     activePattern: string,
     patternSpeed: number,
     patternAmplitude: number,
+    fanValue: number,
   ): void {
     if (this._patternFlushTimeout !== null) clearTimeout(this._patternFlushTimeout)
     this._patternFlushTimeout = setTimeout(
-      () => this._flushPattern(activePattern, patternSpeed, patternAmplitude),
+      () => this._flushPattern(activePattern, patternSpeed, patternAmplitude, fanValue),
       KineticsBridgeClass.PATTERN_DEBOUNCE_MS,
     )
   }
@@ -285,29 +339,82 @@ class KineticsBridgeClass {
     activePattern: string,
     patternSpeed: number,
     patternAmplitude: number,
+    fanValue: number,
   ): Promise<void> {
     const fixtureIds = getSelectedIds()
     if (fixtureIds.length === 0) return
+    // WAVE 4719: GUARD SUICIDA ELIMINADO.
+    // El patron y la posicion base son ortogonales — el operador DEBE poder
+    // activar un patron mientras tiene una posicion base del Radar.
+    // hasNonPositionKineticManual solo bloquea por speed/IK/extras, nunca por pan/tilt.
 
     const enginePattern = toEnginePattern(activePattern)
 
-    // WAVE 4661 V2: propagar speed/amplitude al VMM directamente desde el
-    // bridge para no depender de que el backend IPC lo haga.
-    // El backend también lo hace vía vibeMovementManager (WAVE 4659 V3),
-    // pero este path garantiza que el renderer siempre actúa antes del frame.
-    // (El VMM es un singleton main-process; el bridge es renderer — esta
-    //  llamada va al IPC que ya lo propaga en AetherIPCHandlers)
-
-    // WAVE 4651: ruta 100% Aether — sin tocar window.lux.arbiter
+    // WAVE 4700: Incluir fan en el payload — el motor nativo integra el desfase
     try {
       await window.lux?.aether?.setManualPattern({
         fixtureIds,
         pattern: enginePattern,
         speed: patternSpeed,
         amplitude: patternAmplitude,
+        fan: fanValue,  // [-100, 100] — el handler IPC normaliza a [0, 1]
       })
     } catch (err) {
       console.error('[KineticsBridge] setManualPattern error:', err)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FAN PHASE FLUSH — WAVE 4717.2
+  // El fan distribute opera como un desfase de FASE (oscilador temporal).
+  // fanValue=0   → todos en fase (sin offset). fanValue=±100 → ±2π spread total.
+  // El offset se calcula por índice de selección (orden del usuario, determinista)
+  // y se envía al VMM vía IPC → KineticAdapter lo lee en el hot-path (O(1)).
+  // Funciona independientemente de si hay patrón activo o modo AI.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private _scheduleFanPhaseFlush(fanValue: number): void {
+    if (this._fanPhaseFlushTimeout !== null) clearTimeout(this._fanPhaseFlushTimeout)
+    this._fanPhaseFlushTimeout = setTimeout(
+      () => this._flushFanPhase(fanValue),
+      KineticsBridgeClass.CLASSIC_DEBOUNCE_MS,
+    )
+  }
+
+  /**
+   * WAVE 4717.2: Fan Distribute como phase offset en el oscilador del VMM.
+   *
+   * Matemática determinista por índice de selección:
+   *   t = i / (N-1)  →  0..1 uniforme (i = índice en activeFixtureIds)
+   *   phaseOffset = fanSpread * t * 2π  →  0..fanSpread*2π rad
+   *
+   * fanValue=0    → todos con offset=0 (en fase, Borg mode).
+   * fanValue=100  → fixture 0: 0 rad, fixture N-1: 2π rad (un ciclo completo).
+   * fanValue=-100 → fixture 0: 0 rad, fixture N-1: -2π rad (spread invertido).
+   *
+   * El Record se envía al VMM main-process vía IPC. El KineticAdapter lo lee
+   * en process() sumándolo al phaseOffset L/R antes de generateIntent().
+   */
+  private async _flushFanPhase(fanValue: number): Promise<void> {
+    const fixtureIds = getSelectedIds()
+    const n = fixtureIds.length
+    if (n === 0) return
+
+    // fanValue (-100..100) → fanSpread (-1..1): fracción de 2π de spread total
+    const fanSpread = fanValue / 100
+    const TWO_PI = 2 * Math.PI
+
+    // Construir el record de offsets — sin crear arrays intermedios
+    const offsets: Record<string, number> = {}
+    for (let i = 0; i < n; i++) {
+      const t = n > 1 ? i / (n - 1) : 0  // 0..1 uniforme
+      offsets[`${fixtureIds[i]}:kinetic`] = fanSpread * t * TWO_PI
+    }
+
+    try {
+      await window.lux?.aether?.setKineticFanOffsets(offsets)
+    } catch (err) {
+      console.error('[KineticsBridge] setKineticFanOffsets error:', err)
     }
   }
 
@@ -330,6 +437,8 @@ class KineticsBridgeClass {
     fanMode: string,
     fanAmplitude: number,
   ): Promise<void> {
+    // WAVE 4719: spatial tampoco bloquea por posicion — solo por overrides no-posicion.
+    if (hasNonPositionKineticManual(fixtureIds)) return
     try {
       const result = await window.lux?.aether?.applySpatialTarget({
         target,

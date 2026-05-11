@@ -403,6 +403,8 @@ export class TitanOrchestrator {
         // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
         // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures × 3 familias).
         this._seleneBus = new IntentBus(512);
+        // WAVE 4705: Bus dedicado para LiveFX (L3). Autoridad sobre L2 manual.
+        this._effectBus = new IntentBus(512);
         this._aetherArbiter = null;
         this._aetherResolver = null;
         // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
@@ -1623,6 +1625,8 @@ export class TitanOrchestrator {
                 // Si hasActiveEffects=false en este frame, Selene no empuja nada
                 // → bus queda vacío → L1 es no-op → L0 (Liquid/VMM) retoma control.
                 this._seleneBus.clear();
+                // WAVE 4705: limpiar bus L3 de LiveFX en cada frame.
+                this._effectBus.clear();
                 // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
                 // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
                 const _activeEngine = this.engine?.getActiveLiquidEngine();
@@ -1659,10 +1663,11 @@ export class TitanOrchestrator {
                 // ═══════════════════════════════════════════════════════════════════════
                 const consciousnessOutput = this.lastConsciousnessOutput ?? null;
                 const effectOutput = getEffectManager().getCombinedOutput();
-                aetherArbiter.setSeleneOverrideMoverShield(effectOutput.overrideMoverShield === true);
-                // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
-                // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
-                seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._seleneBus);
+                // WAVE 4675: passport VIP de Selene/LiveFX para saltar MoverShield cuando
+                // el efecto dominante lo requiere (p.ej. CorazonLatino, OroSolido).
+                aetherArbiter.setSeleneOverrideMoverShield(effectOutput?.overrideMoverShield === true);
+                // LiveFX se inyecta en bus L3 dedicado para que domine sobre L2 manual.
+                seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._effectBus);
                 // STEP 4.5: Playback LP bridge Chronos -> Aether
                 this._chronosAetherAdapter.ingest(this._timelineEngine, ctx.deltaMs, aetherArbiter);
                 // STEP 5: Hephaestus L3+ Diamond Data bridge
@@ -1677,6 +1682,7 @@ export class TitanOrchestrator {
                 }
                 // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
+                aetherArbiter.setEffectIntents(this._effectBus.getAll());
                 const arbitrated = aetherArbiter.arbitrate();
                 // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()

@@ -269,6 +269,8 @@ export function registerAetherIPCHandlers() {
                 vibeMovementManager.setManualPattern(null);
                 vibeMovementManager.setManualSpeed(null);
                 vibeMovementManager.setManualAmplitude(null);
+                // WAVE 4717.2: limpiar L2 phase offsets (fan distribute)
+                vibeMovementManager.setKineticFanOffsets({});
                 return { success: true };
             }
             // Normalizacion speed: 0.05-0.5 Hz (rango WAVE 2652, constante fija)
@@ -293,6 +295,26 @@ export function registerAetherIPCHandlers() {
         }
         catch (err) {
             console.error('[AetherIPC] setManualPattern error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
+     * Ruta: lux:aether:setKineticFanOffsets (Aether IPC)
+     * Engine: vibeMovementManager._l2PhaseOverrides — lookup O(1) en hot-path.
+     * Payload: Record<nodeId, phaseOffset (rad)>
+     * El KineticAdapter lee este mapa en process() antes de generateIntent().
+     */
+    ipcMain.handle('lux:aether:setKineticFanOffsets', (_event, offsets) => {
+        if (typeof offsets !== 'object' || offsets === null) {
+            return { success: false, error: 'offsets must be a non-null object' };
+        }
+        try {
+            vibeMovementManager.setKineticFanOffsets(offsets);
+            return { success: true };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setKineticFanOffsets error:', err);
             return { success: false, error: String(err) };
         }
     });

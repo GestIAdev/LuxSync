@@ -52,13 +52,29 @@ const KINETIC_CHANNEL_TYPES = new Set([
     'pan', 'pan_fine', 'tilt', 'tilt_fine', 'speed', 'rotation',
 ]);
 const BEAM_CHANNEL_TYPES = new Set([
-    'gobo', 'gobo_rotation', 'prism', 'prism_rotation',
     'focus', 'zoom', 'frost',
+]);
+// WAVE 4708: canales mecánicos/legacy cuarentenados.
+// NO se exponen a familias automáticas de IA (BEAM/ATMOSPHERE adapter loop).
+// Se enrutan en nodo :atmosphere para control explícito L2/L3 (Extras).
+// CLEAN CABIN: ampliado con sound_active y auto.
+// Pares LED baratos tienen canales auto-program que el LiquidEngine excita
+// sin querer. Cuarentena total: defaultValue=0 forzado en build.
+const QUARANTINED_MECHANICAL_CHANNEL_TYPES = new Set([
+    'gobo',
+    'gobo_rotation',
+    'prism',
+    'prism_rotation',
+    'macro',
+    'effect',
+    'sound_active',
+    'auto',
 ]);
 // WAVE 3517.1: ATMOSPHERE incluye custom/macro/control (canales de máquinas de efecto).
 // La detección semántica se refuerza con el fixture.type en _analyzeTopology().
 const ATMOSPHERE_CHANNEL_TYPES = new Set([
-    'control', 'macro', 'custom',
+    'control', 'custom',
+    ...QUARANTINED_MECHANICAL_CHANNEL_TYPES,
 ]);
 // Fixture types que por definición producen un ATMOSPHERE node aunque sus
 // canales sean 'custom' (fog output, haze pump, spark ignition, etc.).
@@ -151,6 +167,7 @@ const CHANNEL_PRIORITY_BY_TYPE = Object.freeze({
     yellow: 42,
     control: 20,
     macro: 19,
+    effect: 19,
     custom: 18,
     unknown: 0,
 });
@@ -668,12 +685,28 @@ export class NodeExtractionPipeline {
         return channels.map(ch => ({
             type: this._normalizeChannelType(ch.type),
             dmxOffset: ch.index - 1, // FixtureChannel.index es 1-based
-            defaultValue: ch.defaultValue ?? (kinetic && (this._normalizeChannelType(ch.type) === 'pan' || this._normalizeChannelType(ch.type) === 'tilt') ? 128 :
-                (this._normalizeChannelType(ch.type) === 'shutter' || this._normalizeChannelType(ch.type) === 'strobe') ? 255 :
-                    0),
+            defaultValue: this._resolveDefaultValue(ch, kinetic),
             is16bit: ch.is16bit ?? false,
             customName: ch.customName,
         }));
+    }
+    _resolveDefaultValue(ch, kinetic) {
+        const type = this._normalizeChannelType(ch.type);
+        // WAVE 4708: hard-safe factory home para canales mecánicos/legacy cuarentenados.
+        // Evita arranques en macros/gobos/prismas activos por default del perfil.
+        if (QUARANTINED_MECHANICAL_CHANNEL_TYPES.has(type)) {
+            return 0;
+        }
+        if (typeof ch.defaultValue === 'number') {
+            return ch.defaultValue;
+        }
+        if (kinetic && (type === 'pan' || type === 'tilt')) {
+            return 128;
+        }
+        if (type === 'shutter' || type === 'strobe') {
+            return 255;
+        }
+        return 0;
     }
     _normalizeChannelType(type) {
         return typeof type === 'string' ? type.toLowerCase() : 'unknown';

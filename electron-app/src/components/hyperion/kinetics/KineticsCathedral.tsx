@@ -5,7 +5,7 @@
  *
  * Sidebar de control cinemático. El OrthoRadar fue relocado al Main Viewport
  * (KinRadarViewport) en WAVE 4564. Esta sidebar alberga exclusivamente:
- *   - ModeBar [AUTO][DEGREES][3D]
+ *   - ModeBar [UNLOCK] (modo clásico forzado)
  *   - TacticalFader SPEED + AMP (expandidos)
  *   - ChaosOrderSlider
  *   - PatternArsenal (botones prominentes)
@@ -15,22 +15,19 @@
  * @version WAVE 4564
  */
 
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 
-import { useMovementStore, type RadarMode, type PatternType } from '../../../stores/movementStore'
-import type { SpatialFanMode } from '../../../engine/movement/InverseKinematicsEngine'
+import { useMovementStore, type PatternType } from '../../../stores/movementStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
-import { useStageStore } from '../../../stores/stageStore'
 
 import { HorizontalFader } from './HorizontalFader'
 import { FixtureMatrix } from './FixtureMatrix'
 import { PatternArsenal } from './PatternArsenal'
 import { ChaosOrderSlider } from './ChaosOrderSlider'
 import { KinRadarViewport } from './KinRadarViewport'
-import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
 
 import './KineticsCathedral.css'
 
@@ -41,23 +38,16 @@ interface KineticsCathedralProps {
 export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose }) => {
   // ── Stores ─────────────────────────────────────────────────────────────
   const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
-  const stageFixtures = useStageStore(s => s.fixtures)
   const hardware = useHardware()
 
   const {
-    // Spatial
-    radarModeOverride,
-    cathedralTab,
-    spatialFanMode, spatialFanAmplitude,
     // Pattern
     activePattern, patternSpeed, patternAmplitude,
+    cathedralTab,
     // Chaos
     chaosAmount, chaosSeed,
   } = useMovementStore(useShallow(s => ({
-    radarModeOverride: s.radarModeOverride,
     cathedralTab: s.cathedralTab,
-    spatialFanMode: s.spatialFanMode,
-    spatialFanAmplitude: s.spatialFanAmplitude,
     activePattern: s.activePattern,
     patternSpeed: s.patternSpeed,
     patternAmplitude: s.patternAmplitude,
@@ -66,24 +56,16 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   })))
 
   const {
-    setRadarModeOverride, setActivePattern, setPatternSpeed, setPatternAmplitude,
-    setChaosAmount, reseed, hydrateFromBackend, setCathedralTab,
-    setSpatialFanMode, setSpatialFanAmplitude,
+    setActivePattern, setPatternSpeed, setPatternAmplitude,
+    setChaosAmount, reseed, setCathedralTab,
   } = useMovementStore(useShallow(s => ({
-    setRadarModeOverride: s.setRadarModeOverride,
     setActivePattern: s.setActivePattern,
     setPatternSpeed: s.setPatternSpeed,
     setPatternAmplitude: s.setPatternAmplitude,
     setChaosAmount: s.setChaosAmount,
     reseed: s.reseed,
-    hydrateFromBackend: s.hydrateFromBackend,
     setCathedralTab: s.setCathedralTab,
-    setSpatialFanMode: s.setSpatialFanMode,
-    setSpatialFanAmplitude: s.setSpatialFanAmplitude,
   })))
-
-  // ── Adiabatic Detection (para el mode-bar indicator) ─────────────────
-  const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
 
   // ── Check if selected fixtures are moving heads ────────────────────────
   const hasMovingHeads = useMemo(() => {
@@ -95,35 +77,8 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     })
   }, [selectedIds, hardware?.fixtures])
 
-  // ── Hydrate on selection change ────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true
-    const hydrate = async () => {
-      if (selectedIds.length === 0) return
-      try {
-        const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
-        if (!mounted) return
-        if (result?.success && result?.state) {
-          // Preservar posiciones de fixtures con override activo de pan/tilt
-          // para evitar amnesia al cambiar selección (WAVE 4579 M2)
-          const progOverrides = useProgrammerStore.getState().fixtureOverrides
-          const filteredState = { ...result.state }
-          for (const id of selectedIds) {
-            const ov = progOverrides.get(id)
-            if (ov?.pan !== null || ov?.tilt !== null) {
-              delete filteredState[id]
-            }
-          }
-          hydrateFromBackend(filteredState)
-        }
-      } catch {
-        // fallback: keep current state
-      }
-    }
-    hydrate()
-    return () => { mounted = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIds.join(',')])
+  // WAVE 4701: La hidratación de Kinetics viene 100% desde Aether L2
+  // en TheProgrammer (getL2State + getManualKineticState).
 
   // ─────────────────────────────────────────────────────────────────────────
   // HANDLERS
@@ -165,11 +120,10 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   }, [selectedIds, fixtureOverrides])
 
   const handleUnlockKinetics = useCallback(() => {
-    // WAVE 4651: Unlock en dos capas, un solo frame coherente:
-    // 1) NodeArbiter L2: limpia speed/pan/tilt/color de todas las familias
+    // WAVE 4719: Unlock total en 5 capas sincronicas — sin zombies.
+    // 1) NodeArbiter L2: limpia pan/tilt/speed/color de todas las familias
     useProgrammerStore.getState().releaseAll()
-    // 2) Pattern engine (masterArbiter via ruta Aether): clear del patron activo
-    //    para que las cabezas vuelvan al control IA sin patron fantasma residual
+    // 2) VMM: limpia patron activo en masterArbiter + KineticEngine
     if (selectedIds.length > 0) {
       void window.lux?.aether?.setManualPattern({
         fixtureIds: selectedIds,
@@ -177,9 +131,16 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
         speed: 50,
         amplitude: 50,
       })
+      // 3) VMM: limpiar phase offsets del fan (WAVE 4717.2 residuales)
+      void window.lux?.aether?.setKineticFanOffsets({})
     }
-    // 3) UI inmediata: resetear pattern en store sin esperar hidratacion del backend
+    // 4) UI inmediata: resetear patron en store
     useMovementStore.getState().setActivePattern('none')
+    // 5) EXORCISMO (WAVE 4719): limpiar Sets zombificados
+    //    manualOverrideFixtureIds nunca se limpiaba, bloqueando guards futuros
+    //    lockedFixtureIds nunca se limpiaba, dejando faders SPEED/AMP disabled permanentemente
+    useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
+    useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -242,87 +203,23 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
       {/* ── MAIN CONTROLS ── */}
       {hasMovingHeads && (
         <>
-          {/* Mode bar */}
-          <div className="kinetics-cathedral__mode-bar">
-            <button
-              className={`kc-mode-btn ${radarModeOverride === 'classic' ? 'kc-mode-btn--active' : ''}`}
-              onClick={() => setRadarModeOverride('classic')}
-              title="Fuerza modo grados PAN/TILT"
-            >DEGREES</button>
-            <button
-              className={`kc-mode-btn ${radarModeOverride === 'spatial' ? 'kc-mode-btn--active' : ''}`}
-              onClick={() => setRadarModeOverride('spatial')}
-              title="Fuerza modo IK 3D espacial"
-            >3D</button>
-            {hasKineticOverride && (
+          {/* Mode bar — WAVE 4717: DEGREES y 3D en cuarentena. Classic forzado. Solo UNLOCK visible. */}
+          {hasKineticOverride && (
+            <div className="kinetics-cathedral__mode-bar">
               <button
                 className="kc-mode-btn kc-mode-btn--unlock"
                 onClick={handleUnlockKinetics}
                 title="Liberar control PAN/TILT → AI controla"
               >🔓 UNLOCK</button>
-            )}
-            <span className="kc-mode-indicator">
-              {radarModeOverride === null ? `AUTO → ${radarMode.toUpperCase()}` : `↑ MANUAL`}
-            </span>
-          </div>
+            </div>
+          )}
 
           {/* ── RADAR EMBED ── WAVE 4647: centro de mando integrado en la Cathedral ── */}
           <div className="kinetics-cathedral__radar-embed">
             <KinRadarViewport />
           </div>
 
-          {/* ── SPATIAL FAN CONTROLS (solo en modo 3D con múltiples fixtures) ── */}
-          {radarMode === 'spatial' && selectedIds.length > 1 && (
-            <div className="kinetics-cathedral__fan-controls">
-              <div className="kc-fan-header">
-                <span className="kc-fan-label">FAN MODE</span>
-                <span className="kc-fan-mode-indicator">{spatialFanMode.toUpperCase()}</span>
-              </div>
-              <div className="kc-fan-mode-row">
-                <button
-                  className={`kc-fan-btn${spatialFanMode === 'converge' ? ' kc-fan-btn--active' : ''}`}
-                  onClick={() => setSpatialFanMode('converge' as SpatialFanMode)}
-                  title="Convergente — todos apuntan al mismo punto"
-                  disabled={anyLocked}
-                >
-                  <span className="kc-fan-btn-icon">⊙</span>
-                  <span className="kc-fan-btn-label">CONV</span>
-                </button>
-                <button
-                  className={`kc-fan-btn${spatialFanMode === 'line' ? ' kc-fan-btn--active' : ''}`}
-                  onClick={() => setSpatialFanMode('line' as SpatialFanMode)}
-                  title="Lineal — abanico en línea recta"
-                  disabled={anyLocked}
-                >
-                  <span className="kc-fan-btn-icon">═</span>
-                  <span className="kc-fan-btn-label">LINE</span>
-                </button>
-                <button
-                  className={`kc-fan-btn${spatialFanMode === 'circle' ? ' kc-fan-btn--active' : ''}`}
-                  onClick={() => setSpatialFanMode('circle' as SpatialFanMode)}
-                  title="Circular — dispersión en circunferencia"
-                  disabled={anyLocked}
-                >
-                  <span className="kc-fan-btn-icon">◎</span>
-                  <span className="kc-fan-btn-label">CIRC</span>
-                </button>
-              </div>
-              {spatialFanMode !== 'converge' && (
-                <div className="kc-fan-amplitude">
-                  <span className="kc-fan-amplitude-label">SPREAD</span>
-                  <input
-                    type="range"
-                    className="kc-fan-amplitude-slider"
-                    min={0} max={10} step={0.1}
-                    value={spatialFanAmplitude}
-                    onChange={e => setSpatialFanAmplitude(parseFloat(e.target.value))}
-                    disabled={anyLocked}
-                  />
-                  <span className="kc-fan-amplitude-value">{spatialFanAmplitude.toFixed(1)}m</span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* SPATIAL FAN CONTROLS — WAVE 4717: en cuarentena. Solo Classic mode activo. */}
 
           {/* ── FADERS — SPEED + AMP ── */}
           <div className="kinetics-cathedral__faders-row">

@@ -746,15 +746,46 @@ declare global {
       clearInhibitLimit: (nodeIds: string[]) => Promise<{ success: boolean; error?: string }>
 
       /**
-       * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
-       * Stub hacia MasterArbiter legacy.
+       * E11 WAVE 4700: Set manual kinetic pattern para fixtures.
+       * Motor nativo L2 (AetherKineticEngine) — reemplaza masterArbiter + VMM.
        */
       setManualPattern: (args: {
         fixtureIds: string[]
         pattern: string | null
         speed: number
         amplitude: number
-      }) => Promise<{ success: boolean; error?: string }>
+        fan?: number
+      }) => Promise<{ success: boolean; pattern?: string; error?: string }>
+
+      /**
+       * WAVE 4700: Actualizar scalares sin reiniciar fase.
+       * Para cambios en tiempo real desde sliders UI sin glitch de fase.
+       */
+      updateKineticScalars: (args: { speed: number; amplitude: number; fan: number }) =>
+        Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4701: Estado manual actual del motor cinético nativo.
+       * Se usa para hidratación de pattern/speed/amplitude/fan al cambiar selección.
+       */
+      getManualKineticState: () => Promise<{
+        success: boolean
+        active?: boolean
+        nodeIds?: string[]
+        pattern?: string | null
+        speed?: number
+        amplitude?: number
+        fan?: number
+        error?: string
+      }>
+
+      /**
+       * E11b WAVE 4717.2 → WAVE 4700: Canal legacy — no-op.
+       * El fan se pasa directamente en setManualPattern como parámetro `fan`.
+       * Mantenido para compatibilidad con KineticsBridge legacy.
+       */
+      setKineticFanOffsets: (offsets: Record<string, number>) =>
+        Promise<{ success: boolean; error?: string }>
 
       /**
        * E12 WAVE 4531: Apply spatial IK target para fixtures.

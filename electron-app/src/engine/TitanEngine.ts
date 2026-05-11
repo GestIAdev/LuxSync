@@ -544,7 +544,7 @@ export class TitanEngine extends EventEmitter {
               effectType: trigger.effectId,
               intensity: trigger.intensity,
               zones: trigger.zones,
-              source: 'manual', // Chronos usa 'manual' como source
+              source: 'chronos',
               reason: `Chronos Timeline [clip: ${trigger.sourceClipId}]`,
               // Cast necesario: MusicalContext de protocol vs effects.types
               musicalContext: processedContext as any,

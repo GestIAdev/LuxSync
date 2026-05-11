@@ -42,19 +42,21 @@
 // VIBE CONFIGURATIONS
 const VIBE_CONFIG = {
     // TECHNO: Geometria dura, cortes precisos
+    // 🌊 WAVE 4703 M3: Velocidad reducida sutilmente. Más peso visual.
     'techno-club': {
-        panScale: 0.80,
-        tiltScale: 0.75,
-        baseFrequency: 0.25,
-        patterns: ['scan_x', 'square', 'diamond', 'botstep'],
+        panScale: 0.72,
+        tiltScale: 0.68,
+        baseFrequency: 0.22,
+        patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
         homeOnSilence: false,
     },
     // LATINO: Curvas, fluidez, caderas
+    // 🌊 WAVE 4703 M2: Más amplitud, más alma, 2 nuevos patrones orgánicos.
     'fiesta-latina': {
-        panScale: 0.85,
-        tiltScale: 0.70,
-        baseFrequency: 0.15,
-        patterns: ['figure8', 'wave_y', 'ballyhoo'],
+        panScale: 0.95,
+        tiltScale: 0.80,
+        baseFrequency: 0.17,
+        patterns: ['figure8', 'wave_y', 'ballyhoo', 'cadera_libre', 'espiral_conga'],
         homeOnSilence: false,
     },
     // POP-ROCK: Simetria, majestuosidad, estadio
@@ -102,10 +104,13 @@ const PATTERN_PERIOD = {
     square: 16, // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
     diamond: 8, // 2 compases: rombo contenido pero fluido
     botstep: 8, // 2 compases: posiciones robóticas con gravitas
+    darkspin: 12, // WAVE 4706: órbita oscura de 3 compases, densa pero controlada
     // LATINO — fluido, sensual, cadera
     figure8: 16, // 4 compases: el infinito tiene tiempo para respirar
     wave_y: 8, // 2 compases: ola con peso, no espuma nerviosa
     ballyhoo: 16, // 4 compases: espiral épica pero con cadencia latina (WAVE 2088.11: era 32, demasiado lento)
+    cadera_libre: 20, // 🌊 WAVE 4703: 5 compases — el 3:2 Lissajous respira largo
+    espiral_conga: 24, // 🌊 WAVE 4703: 6 compases — hélice tarda en cerrar, épica
     // POP-ROCK — estadio, simetría, majestuosidad
     circle_big: 16, // 4 compases: el rey necesita su corte completa
     cancan: 8, // 2 compases: subida/bajada con drama
@@ -132,20 +137,22 @@ const PATTERNS = {
     // TECHNO PATTERNS - Industrial / Sharp / Geometria Dura
     // SCAN_X: Barrido horizontal con ondulación vertical (Lissajous 1:2 suave)
     // 🔧 WAVE 2221 MENDOZA: Añadido Y sinusoidal. Sin offset hardcodeado.
-    // La orientación floor/ceiling la gestiona el PhysicsDriver con su preset.
-    // Centro en y=0.0 — el FPD aplica tiltOffset según instalación.
+    // 🌊 WAVE 4703 M3: Añadido detuning armónico sutil (3er parcial a 3%) para
+    //   romper la periodicidad perfecta sin perder la identidad del barrido.
     scan_x: (phase, audio, index = 0, total = 1) => {
         const fixtureOffset = (index / Math.max(total, 1)) * Math.PI * 0.5;
+        // Detuning orgánico: 3er armónico al 3% — apenas perceptible pero elimina la rigidez
+        const detuneX = Math.sin((phase + fixtureOffset) * 3) * 0.03;
         return {
-            x: Math.sin(phase + fixtureOffset),
-            y: Math.sin((phase + fixtureOffset) * 2) * 0.45, // WAVE 2224: 0.3→0.45, oscilación vertical más dramática
+            x: Math.sin(phase + fixtureOffset) + detuneX,
+            y: Math.sin((phase + fixtureOffset) * 2) * 0.45,
         };
     },
     // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
     // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
-    // El VMM genera un target que avanza a velocidad CONSTANTE entre esquinas.
-    // El FixturePhysicsDriver ya es un filtro paso-bajo que añadirá la inercia
-    // y la aceleración mecánica. NO pre-suavizamos el target.
+    // 🌊 WAVE 4703 M3: Las esquinas tienen un micro-wobble senoidal (±2%) que
+    //   hace que el fixture no llegue exactamente al vértice, sino que lo roce
+    //   con un leve desvío — como un robot con personalidad.
     square: (phase, audio) => {
         const corners = [
             { x: 1, y: 1 },
@@ -159,9 +166,11 @@ const PATTERNS = {
         const t = normalizedPhase - Math.floor(normalizedPhase);
         const from = corners[currentCorner];
         const to = corners[nextCorner];
+        // Micro-wobble: desvío senoidal de baja frecuencia en cada arista
+        const wobble = Math.sin(phase * 7.3) * 0.02;
         return {
-            x: from.x + (to.x - from.x) * t,
-            y: from.y + (to.y - from.y) * t,
+            x: from.x + (to.x - from.x) * t + wobble,
+            y: from.y + (to.y - from.y) * t + wobble * 0.5,
         };
     },
     // DIAMOND: Rombo con interpolación lineal entre vértices cardinales
@@ -207,6 +216,15 @@ const PATTERNS = {
             y: fromY + (toY - fromY) * t,
         };
     },
+    // DARKSPIN: órbita elíptica con pulso de radio y contra-rotación vertical.
+    // Diseñado para conservar identidad "oscura" sin entrar en jitter ni picos.
+    darkspin: (phase, audio, index = 0, total = 1) => {
+        const fixtureOffset = (index / Math.max(total, 1)) * (Math.PI / 2);
+        const radiusPulse = 0.70 + 0.20 * Math.sin(phase * 0.5);
+        const x = Math.sin(phase + fixtureOffset) * radiusPulse;
+        const y = Math.cos((phase + fixtureOffset) * 1.5) * 0.62;
+        return { x, y };
+    },
     // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
     // FIGURE8: El clasico infinito (Lissajous 1:2)
     // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Y-axis 0.6 → 0.75
@@ -241,6 +259,37 @@ const PATTERNS = {
             Math.cos(phase * 3) * 0.25 +
             Math.cos(phase * 5) * 0.1;
         return { x: x * 1.8, y: y * 1.8 };
+    },
+    // ─────────────────────────────────────────────────────────────────────
+    // 🌊 WAVE 4703: NUEVOS PATRONES LATINOS — La Expansión del Alma
+    // ─────────────────────────────────────────────────────────────────────
+    // CADERA_LIBRE: Lissajous 3:2 con micro-deriva de fase orgánica
+    // La relación 3:2 crea una figura-8 asimétrica que nunca cierra exactamente
+    // (ligeramente irracional) — da la sensación de movimiento vivo, no mecánico.
+    // La deriva senoidal lenta (period ≈ 37 beats) hace que el patrón "respire".
+    // Resultado: una cadera que no repite exactamente, como una bailarina real.
+    cadera_libre: (phase, audio, index = 0, total = 1) => {
+        // Deriva lenta: 1 ciclo cada ~37 beats (primo relativo al período de 20)
+        const drift = Math.sin(phase * 0.137) * 0.18;
+        return {
+            x: Math.sin(phase * 3 + drift) * 0.90,
+            y: Math.sin(phase * 2) * 0.65 + Math.sin(phase * 0.5) * 0.12,
+        };
+    },
+    // ESPIRAL_CONGA: Hélice tridimensional con modulación de elevación
+    // Combina un barrido circular creciente con un arco de tilt que simula
+    // la elevación/bajada del bombo en la conga. El índice de fixture añade
+    // un offset de π/3 para que el ensemble forme una ola escalonada.
+    // El multiplicador de radio (0.7 + 0.3*sin) hace que la espiral "respire".
+    espiral_conga: (phase, audio, index = 0, total = 1) => {
+        const fixturePhase = phase + (index / Math.max(total, 1)) * (Math.PI / 3);
+        // Radio que pulsa entre 0.7 y 1.0 en ciclos largos (≈8 beats)
+        const r = 0.70 + 0.30 * Math.sin(phase * 0.25);
+        // Y combina arco de hélice (sin 1x) con acento de conga (sin 3x)
+        return {
+            x: Math.cos(fixturePhase) * r,
+            y: Math.sin(fixturePhase) * 0.60 + Math.sin(fixturePhase * 3) * 0.18,
+        };
     },
     // POP-ROCK PATTERNS - Stadium / Symmetry / Majestuosidad
     // CIRCLE_BIG: El rey de los estadios
@@ -386,6 +435,12 @@ export class VibeMovementManager {
         this.transitionStartTime = 0;
         this.isTransitioning = false;
         this.TRANSITION_DURATION_MS = 2000; // 2 segundos
+        // ─── WAVE 4717.2: L2 PHASE OFFSETS (Fan Distribute) ──────────────────────
+        // Record pre-allocado, mutado in-place en el hot-path — cero alloc @ 44Hz.
+        // Key: nodeId (`${fixtureId}:kinetic`). Value: phase offset en radianes.
+        // El KineticAdapter lee este record en process() antes de llamar a generateIntent().
+        // El bridge (renderer-side) lo actualiza vía IPC cada vez que cambia fanValue.
+        this._l2PhaseOverrides = {};
     }
     // 🎚️ WAVE 2472: GRANDMASTER SPEED API
     setGlobalSpeedMultiplier(mult) {
@@ -440,10 +495,32 @@ export class VibeMovementManager {
             pattern: this.manualPatternOverride,
         };
     }
+    /**
+     * Actualiza los offsets de fase L2 para el fan distribute.
+     * Limpia keys obsoletas e inserta las nuevas — sin crear el objeto Record.
+     * @param offsets map de nodeId → phase offset (rad)
+     */
+    setKineticFanOffsets(offsets) {
+        // Limpiar keys que ya no están en el nuevo batch
+        for (const key in this._l2PhaseOverrides) {
+            if (!(key in offsets)) {
+                delete this._l2PhaseOverrides[key];
+            }
+        }
+        // Escribir valores nuevos in-place
+        for (const key in offsets) {
+            this._l2PhaseOverrides[key] = offsets[key];
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     clearManualOverrides() {
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
         this.manualPatternOverride = null;
+        // Limpiar también los L2 phase offsets
+        for (const key in this._l2PhaseOverrides) {
+            delete this._l2PhaseOverrides[key];
+        }
         console.log(`[CHOREO] All overrides cleared`);
     }
     // GENERATE INTENT - El corazon del coreografo
@@ -460,7 +537,11 @@ export class VibeMovementManager {
         // same-frame calls: if Date.now() === lastUpdate, skip state updates.
         // ═══════════════════════════════════════════════════════════════════════
         const now = Date.now();
-        const isSameFrame = (now - this.lastUpdate) < 2; // <2ms = same render frame
+        // 🌊 WAVE 4703 M1 JITTER FIX: threshold 2ms→1ms.
+        // Date.now() has 1ms resolution. At 60fps, dt≈16ms so two consecutive real
+        // frames are ≥16ms apart. <1ms reliably means same-frame second call (R fixture).
+        // <2ms was causing some real frames (dt=1ms on high-res clocks) to be skipped.
+        const isSameFrame = (now - this.lastUpdate) < 1; // <1ms = same render frame
         // 🔥 WAVE 2088.10: Capture dt BEFORE updating lastUpdate
         let frameDeltaTime = 0.016; // default 60fps
         if (!isSameFrame) {
@@ -810,6 +891,8 @@ VibeMovementManager.UI_TO_GOLDEN_PATTERN = {
     'eight': 'figure8',
     'sweep': 'scan_x',
     'spiral': 'ballyhoo',
+    'darkspin': 'darkspin',
+    'tornado': 'darkspin',
     'wave': 'wave_y',
     'bounce': 'botstep',
     'random': 'drift',

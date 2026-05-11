@@ -98,7 +98,7 @@ interface ArbiterEvents {
 }
 
 interface PatternConfig {
-  type: 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
+  type: 'circle' | 'eight' | 'sweep' | 'darkspin' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
   speed: number
   size: number
   center: { pan: number; tilt: number }
@@ -1280,6 +1280,7 @@ export class ArbitrationDirector extends EventEmitter {
         panOffset = Math.sin(t)
         tiltOffset = 0
         break
+      case 'darkspin':
       case 'tornado': {
         const envelope = Math.sin(t * 0.25)
         panOffset = Math.cos(t) * envelope

@@ -331,7 +331,7 @@ export class EffectManager extends EventEmitter {
             return null;
         }
         // 🚦 WAVE 700.7: TRAFFIC CONTROL - Check if busy with critical effect
-        const trafficResult = this.checkTraffic(config.effectType);
+        const trafficResult = this.checkTraffic(config.effectType, config.source);
         if (!trafficResult.allowed) {
             console.log(`[EffectManager 🚦] ${config.effectType} BLOCKED: ${trafficResult.reason}`);
             this.emit('effectBlocked', {
@@ -596,14 +596,20 @@ export class EffectManager extends EventEmitter {
                 highestPriority = effect.priority;
                 highestPriorityColor = output.colorOverride;
             }
-            // � WAVE 991: THE MISSING LINK - El efecto de mayor prioridad determina el mixBus
+            // 🚂 WAVE 991: THE MISSING LINK - El efecto de mayor prioridad determina el mixBus
             // CRÍTICO: Usar variable SEPARADA (mixBusPriority) para no depender de colorOverride
             // REGLA: Si hay empate de prioridad Y uno es 'global', el 'global' SIEMPRE gana
             if (effect.priority > mixBusPriority ||
                 (effect.priority === mixBusPriority && effect.mixBus === 'global')) {
                 mixBusPriority = effect.priority;
                 dominantMixBus = effect.mixBus;
-                dominantOverrideMoverShield = output.overrideMoverShield === true;
+            }
+            // 🛂 WAVE 4704 M2: EMANCIPATION — overrideMoverShield es un OR acumulativo.
+            // No pertenece al efecto dominante: si CUALQUIER efecto activo pide el pasaporte,
+            // se concede. CorazonLatino/OroSolido pueden no ser el efecto de mayor prioridad
+            // de mixBus, pero sus colores en mover-zones siguen necesitando el escudo abierto.
+            if (output.overrideMoverShield === true) {
+                dominantOverrideMoverShield = true;
             }
             // 🥁 WAVE 700.7: Highest priority takes movement
             if (output.movement && effect.priority > movementPriority) {
@@ -904,12 +910,18 @@ export class EffectManager extends EventEmitter {
      * @param effectType Effect type to check
      * @returns { allowed: boolean, reason: string }
      */
-    checkTraffic(effectType) {
+    checkTraffic(effectType, source) {
         // 🔒 WAVE 998: Rule 0 - GLOBAL LOCK (THE RESPECT PROTOCOL)
         // Si hay un DICTADOR (mixBus='global') activo, NADIE le interrumpe
         const activeDictator = Array.from(this.activeEffects.values())
             .find(e => e.mixBus === 'global');
         if (activeDictator) {
+            // WAVE 4706: Human Override — disparos manuales (UI/MIDI/ForceStrike)
+            // atraviesan GLOBAL_LOCK para evitar secuestro por dictador global.
+            if (source === 'manual') {
+                console.log(`🧨 [GLOBAL_LOCK_BYPASS] ${effectType} autorizado por HUMAN_OVERRIDE (source=manual).`);
+                return { allowed: true, reason: 'HUMAN_OVERRIDE: manual source bypasses GLOBAL_LOCK' };
+            }
             // Excepción: Si el candidato es PEAK/EMERGENCY/DROP 
             // WAVE 2101.1: Agregamos TODOS los drops multigenérico para evitar Dictadores Inmortales
             const isEmergency = [

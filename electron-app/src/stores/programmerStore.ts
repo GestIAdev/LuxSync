@@ -231,7 +231,35 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     // ── SELECTION ──
 
     syncSelection: (fixtureIds) => {
-      set({ activeFixtureIds: fixtureIds })
+      set(state => {
+        // CLEAN CABIN: purgar del Map los fixtures que ya no están en la selección.
+        // Esto elimina overrides zombie que el bridge seguiría enviando a 44Hz
+        // para fixtures deseleccionados sin override activo visible.
+        const incomingSet = new Set(fixtureIds)
+        const next = new Map(state.fixtureOverrides)
+        const dirty = new Set(state.dirtyFamilies)
+        let hadZombies = false
+        for (const id of state.fixtureOverrides.keys()) {
+          if (!incomingSet.has(id)) {
+            // Solo eliminar si todos los valores son null (sin override real activo).
+            // Si el fixture tiene valores activos, conservar para que el bridge
+            // envíe el clear explícito al NodeArbiter antes de liberar el Map.
+            const ov = state.fixtureOverrides.get(id)!
+            const hasActiveOverride =
+              ov.dimmer !== null || ov.strobe !== null || ov.shutter !== null ||
+              ov.red !== null || ov.green !== null || ov.blue !== null ||
+              ov.white !== null || ov.amber !== null ||
+              ov.pan !== null || ov.tilt !== null || ov.speed !== null ||
+              ov.focus !== null || ov.zoom !== null || ov.gobo !== null ||
+              ov.prism !== null || ov.extras.size > 0
+            if (!hasActiveOverride) {
+              next.delete(id)
+              hadZombies = true
+            }
+          }
+        }
+        return { activeFixtureIds: fixtureIds, fixtureOverrides: hadZombies ? next : state.fixtureOverrides }
+      })
     },
 
     hydrateFromL2: (fixtureIds, overridesByNodeId) => {
@@ -271,8 +299,8 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             targetY: getNorm(kinetic, 'targetY'),
             targetZ: getNorm(kinetic, 'targetZ'),
 
-            gobo: getNorm(beam, 'gobo'),
-            prism: getNorm(beam, 'prism'),
+            gobo: getNorm(beam, 'gobo') ?? getNorm(extras, 'gobo'),
+            prism: getNorm(beam, 'prism') ?? getNorm(extras, 'prism'),
             focus: getNorm(beam, 'focus'),
             zoom: getNorm(beam, 'zoom'),
             iris: getNorm(beam, 'iris'),
@@ -607,10 +635,16 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
 
     releaseAll: () => {
       set(state => {
+        // CLEAN CABIN: RELEASE ALL vacía el Map completamente.
+        // El bridge detectará que fixtureOverrides está vacío y enviará
+        // clearManualOverrides para cada nodeId conocido antes de limpiar.
+        // Usar un Map vacío (no keys con empty objects) elimina el set de
+        // zombies null-value que crecía monótonamente durante el show.
         const next = new Map<string, ProgrammerOverrides>()
-        // RELEASE ALL es global: limpia todos los overrides persistidos,
-        // incluidos fixtures fuera de la selección actual.
-        for (const id of state.fixtureOverrides.keys()) {
+        // Conservar solo los fixtures de la selección activa que PUEDEN tener
+        // overrides nuevos inmediatamente después — se inicializan vacíos
+        // para que el bridge pueda enviar el clear al NodeArbiter.
+        for (const id of state.activeFixtureIds) {
           next.set(id, createEmptyOverrides())
         }
         const allFamilies: Set<ProgrammerFamily> = new Set([

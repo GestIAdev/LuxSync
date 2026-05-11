@@ -118,6 +118,24 @@ function makeFogMachine(): FixtureDefinition {
   }
 }
 
+/** Fixture con canales mecánicos legacy que deben quedar en cuarentena */
+function makeMechanicalLegacyMover(): FixtureDefinition {
+  return {
+    id: 'test-mech-legacy-005',
+    name: 'Test Mechanical Legacy Mover',
+    manufacturer: 'PunkFactory',
+    type: 'moving-head',
+    channels: [
+      ch(1, 'focus', 'Focus'),
+      ch(2, 'zoom', 'Zoom'),
+      ch(3, 'gobo', 'Gobo Wheel'),
+      ch(4, 'prism', 'Prism'),
+      ch(5, 'macro', 'Factory Macro'),
+      ch(6, 'effect', 'Factory Effect'),
+    ],
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -316,6 +334,61 @@ describe('⚗️ NodeExtractionPipeline — La Forja', () => {
 
       const atmosNode = result.nodes.find(n => n.family === NodeFamily.ATMOSPHERE)
       expect(atmosNode).toBeUndefined()
+    })
+
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
+  // §6 — WAVE 4708: Cuarentena mecánica (gobo/macro/prism/effect)
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe('§6 — WAVE 4708 cuarentena mecánica', () => {
+
+    test('gobo/prism/macro/effect no entran al nodo BEAM automático', () => {
+      const result = pipeline.extract(makeMechanicalLegacyMover(), 1, 0, 'movers-left')
+
+      const beamNode = result.nodes.find(n => n.family === NodeFamily.BEAM)
+      expect(beamNode).toBeDefined()
+
+      const beamTypes = new Set((beamNode?.channels ?? []).map(c => c.type))
+      expect(beamTypes.has('focus')).toBe(true)
+      expect(beamTypes.has('zoom')).toBe(true)
+      expect(beamTypes.has('gobo')).toBe(false)
+      expect(beamTypes.has('prism')).toBe(false)
+      expect(beamTypes.has('macro')).toBe(false)
+      expect(beamTypes.has('effect')).toBe(false)
+    })
+
+    test('gobo/prism/macro/effect se enrutan al nodo ATMOSPHERE cuarentenado', () => {
+      const result = pipeline.extract(makeMechanicalLegacyMover(), 1, 0, 'movers-left')
+
+      const atmosNode = result.nodes.find(n => n.family === NodeFamily.ATMOSPHERE)
+      expect(atmosNode).toBeDefined()
+
+      const atmosTypes = new Set((atmosNode?.channels ?? []).map(c => c.type))
+      expect(atmosTypes.has('gobo')).toBe(true)
+      expect(atmosTypes.has('prism')).toBe(true)
+      expect(atmosTypes.has('macro')).toBe(true)
+      expect(atmosTypes.has('effect')).toBe(true)
+    })
+
+    test('factory defaults de cuarentena quedan forzados a 0', () => {
+      const def = makeMechanicalLegacyMover()
+      def.channels[2]!.defaultValue = 255 // gobo
+      def.channels[3]!.defaultValue = 127 // prism
+      def.channels[4]!.defaultValue = 200 // macro
+      def.channels[5]!.defaultValue = 180 // effect
+
+      const result = pipeline.extract(def, 1, 0, 'movers-left')
+      const atmosNode = result.nodes.find(n => n.family === NodeFamily.ATMOSPHERE)
+
+      expect(atmosNode).toBeDefined()
+      const defaults = new Map((atmosNode?.channels ?? []).map(c => [c.type, c.defaultValue]))
+
+      expect(defaults.get('gobo')).toBe(0)
+      expect(defaults.get('prism')).toBe(0)
+      expect(defaults.get('macro')).toBe(0)
+      expect(defaults.get('effect')).toBe(0)
     })
 
   })

@@ -38,6 +38,7 @@ const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
     'red', 'green', 'blue',
     'white', 'amber',
 ]);
+const MANUAL_HARD_LOCK_EXCLUDED_CHANNELS = new Set(['pan_base', 'tilt_base']);
 const PHOTON_TRACER_EVERY_FRAMES = 20;
 function isFiniteChannelValue(value) {
     return value !== undefined && Number.isFinite(value);
@@ -72,7 +73,13 @@ export class NodeArbiter {
          * WAVE 4670: Lock de dimmer manual explícito (L2) por frame.
          * Si el operador toca dimmer, ese valor se vuelve piso HTP del canal.
          */
+        /**
+         * WAVE 4713: Fixtures con dimmer manual activo (prefijo fixtureId).
+         * Se usa para bloquear intents L0 no cinéticos que causen tics visuales.
+         */
+        this._manualDimmerFixtureIds = new Set();
         this._manualDimmerLocks = new Map();
+        this._manualChannelLocks = new Map();
         /**
          * Inhibit limits (L2.5 — post-arbitraje, pre-retorno):
          * nodeId → cap 0-1 aplicado al canal `dimmer` del nodo.
@@ -184,6 +191,17 @@ export class NodeArbiter {
         this._poolCursor = 0;
         // Limpiar el mapa de resultado anterior
         this._result.clear();
+        // WAVE 4713: precomputar fixtures con dimmer manual activo desde L2.
+        // Se hace ANTES de aplicar L0 para bloquear ruido visual nativo.
+        this._manualDimmerFixtureIds.clear();
+        for (const [nodeId, channels] of this._manualOverrides) {
+            const manualDimmer = channels['dimmer'];
+            if (!isFiniteChannelValue(manualDimmer))
+                continue;
+            const sep = nodeId.lastIndexOf(':');
+            if (sep > 0)
+                this._manualDimmerFixtureIds.add(nodeId.slice(0, sep));
+        }
         // 2. Recolectar intents en orden ascendente de prioridad de capa.
         //    El orden de escritura garantiza que las capas superiores
         //    sobreescriban a las inferiores en el merge LTP.
@@ -191,7 +209,7 @@ export class NodeArbiter {
         if (this._systemBus) {
             const all = this._systemBus.getAll();
             for (let i = 0; i < all.length; i++) {
-                this._applyIntent(all[i], false);
+                this._applyIntent(all[i], 'system');
             }
         }
         // L1: Selene IA overrides
@@ -200,30 +218,23 @@ export class NodeArbiter {
         if (this._seleneBus !== null) {
             const count = this._seleneBus.count;
             for (let i = 0; i < count; i++) {
-                this._applyIntent(this._seleneBus.getAt(i), true);
+                this._applyIntent(this._seleneBus.getAt(i), 'selene');
             }
         }
         else {
             // Fallback legacy: array de overrides pre-WAVE-4663
             for (let i = 0; i < this._seleneOverrides.length; i++) {
-                this._applyIntent(this._seleneOverrides[i], true);
+                this._applyIntent(this._seleneOverrides[i], 'selene');
             }
         }
         // LP: Playback (Chronos Timeline) — entre L1 y L3
         for (let i = 0; i < this._playbackIntents.length; i++) {
-            this._applyIntent(this._playbackIntents[i], false);
+            this._applyIntent(this._playbackIntents[i], 'playback');
         }
-        // L3: Effect intents
-        for (let i = 0; i < this._effectIntents.length; i++) {
-            this._applyIntent(this._effectIntents[i], false);
-        }
-        // L3+: Hephaestus custom intents (Diamond Data direct curves)
-        for (let i = 0; i < this._hephaestusIntents.length; i++) {
-            this._applyIntent(this._hephaestusIntents[i], false);
-        }
-        // L2: Manual overrides (tienen prioridad sobre effects)
+        // L2: Manual overrides (UI Hold)
         // Se aplican directamente sobre el _result, sin pasar por _applyIntent
         this._manualDimmerLocks.clear();
+        this._manualChannelLocks.clear();
         for (const [nodeId, channels] of this._manualOverrides) {
             let record = this._result.get(nodeId);
             if (!record) {
@@ -246,6 +257,14 @@ export class NodeArbiter {
                 if (!isFiniteChannelValue(incoming)) {
                     continue;
                 }
+                if (!MANUAL_HARD_LOCK_EXCLUDED_CHANNELS.has(key)) {
+                    let lockRecord = this._manualChannelLocks.get(nodeId);
+                    if (!lockRecord) {
+                        lockRecord = {};
+                        this._manualChannelLocks.set(nodeId, lockRecord);
+                    }
+                    lockRecord[key] = incoming;
+                }
                 if (key === 'pan_base') {
                     const l0 = isFiniteChannelValue(record['pan']) ? record['pan'] : 0.5;
                     const v = incoming + (l0 - 0.5);
@@ -261,18 +280,68 @@ export class NodeArbiter {
                 }
             }
         }
-        // WAVE 4670: DIMMER AUTO-TAKE (ley del operador).
-        // Si L2 tiene dimmer explícito, ese valor fija el piso HTP del canal
-        // para impedir que capas inferiores lo apaguen durante el frame.
+        // L3: Effect intents (WAVE 4705 — autoridad sobre L2 manual)
+        for (let i = 0; i < this._effectIntents.length; i++) {
+            this._applyIntent(this._effectIntents[i], 'effect');
+        }
+        // L3+: Hephaestus custom intents (Diamond Data direct curves)
+        for (let i = 0; i < this._hephaestusIntents.length; i++) {
+            this._applyIntent(this._hephaestusIntents[i], 'hephaestus');
+        }
+        // WAVE 4714: MANUAL HARD LOCK (ley del operador).
+        // Reaplica todos los canales manuales L2 (salvo orbit base channels)
+        // después de L3/L3+ para evitar intrusiones de capas automáticas.
+        if (this._manualChannelLocks.size > 0) {
+            for (const [nodeId, lockChannels] of this._manualChannelLocks) {
+                let record = this._result.get(nodeId);
+                if (!record) {
+                    record = this._acquireRecord();
+                    this._result.set(nodeId, record);
+                }
+                for (const ch in lockChannels) {
+                    const v = lockChannels[ch];
+                    if (!isFiniteChannelValue(v))
+                        continue;
+                    record[ch] = v;
+                }
+            }
+        }
+        // WAVE 4670 + 4709 + 4710: MANUAL INTENSITY LOCK (ley del operador).
+        // Si L2 tiene dimmer explícito, ese valor se impone de forma ABSOLUTA sobre
+        // dimmer/brightness para congelar intensidad fija (sin pulso L0/L3).
+        // Además se replica al nodo hermano :color del mismo fixture para cubrir
+        // PAR RGB puros cuyo atenuador vive en brightness de COLOR.
         if (this._manualDimmerLocks.size > 0) {
             for (const [nodeId, lockValue] of this._manualDimmerLocks) {
-                const record = this._result.get(nodeId);
+                let record = this._result.get(nodeId);
                 if (!record) {
-                    continue;
+                    record = this._acquireRecord();
+                    this._result.set(nodeId, record);
                 }
-                const current = record['dimmer'];
-                if (current === undefined || current < lockValue) {
-                    record['dimmer'] = lockValue;
+                record['dimmer'] = lockValue;
+                record['brightness'] = lockValue;
+                const sep = nodeId.lastIndexOf(':');
+                if (sep > 0) {
+                    const fixtureId = nodeId.slice(0, sep);
+                    const fixturePrefix = `${fixtureId}:`;
+                    // WAVE 4711 HOTFIX SHOWTIME:
+                    // Lock de intensidad por FIXTURE completo para neutralizar rutas
+                    // anómalas de extracción (familias no estándar / nodeId raros).
+                    for (const [candidateNodeId, candidateRecord] of this._result) {
+                        if (!candidateNodeId.startsWith(fixturePrefix))
+                            continue;
+                        candidateRecord['dimmer'] = lockValue;
+                        candidateRecord['brightness'] = lockValue;
+                    }
+                    // Crear/forzar también el nodo :color aunque no exista aún en _result.
+                    const colorNodeId = `${fixtureId}:color`;
+                    let colorRecord = this._result.get(colorNodeId);
+                    if (!colorRecord) {
+                        colorRecord = this._acquireRecord();
+                        this._result.set(colorNodeId, colorRecord);
+                    }
+                    colorRecord['dimmer'] = lockValue;
+                    colorRecord['brightness'] = lockValue;
                 }
             }
         }
@@ -308,14 +377,29 @@ export class NodeArbiter {
      * ZERO-ALLOC: accede al Record pre-allocated del pool si el nodo
      * no existe aún en el _result.
      */
-    _applyIntent(intent, isSeleneLayer) {
+    _applyIntent(intent, layer) {
+        // WAVE 4713: si un fixture está bajo dimmer manual, ignorar intents L0
+        // para familias visuales no-cinéticas. Así no se cuelan tics de color/
+        // intensidad desde rutas automáticas del extractor.
+        if (layer === 'system' && this._manualDimmerFixtureIds.size > 0) {
+            const sep = intent.nodeId.lastIndexOf(':');
+            if (sep > 0) {
+                const fixtureId = intent.nodeId.slice(0, sep);
+                if (this._manualDimmerFixtureIds.has(fixtureId)) {
+                    const family = intent.nodeId.slice(sep + 1);
+                    if (family !== 'kinetic' && family !== 'atmosphere') {
+                        return;
+                    }
+                }
+            }
+        }
         let record = this._result.get(intent.nodeId);
         if (!record) {
             record = this._acquireRecord();
             this._result.set(intent.nodeId, record);
         }
         const values = intent.values;
-        const shieldedColorNode = isSeleneLayer &&
+        const shieldedColorNode = layer === 'selene' &&
             !this._seleneOverrideMoverShield &&
             this._moverShieldNodeIds.has(intent.nodeId);
         for (const channel in values) {
@@ -327,6 +411,23 @@ export class NodeArbiter {
                 continue;
             }
             if (HTP_CHANNELS.has(channel)) {
+                // WAVE 4705: L3 dimmer=0 debe poder apagar un hold manual (priority destructive).
+                if (layer === 'effect' && channel === 'dimmer' && incoming <= 0) {
+                    record[channel] = 0;
+                    continue;
+                }
+                // CLEAN CABIN: L2 DICTATOR — si el operador tiene un lock manual sobre
+                // este canal HTP (dimmer/strobe/shutter), L0/L1/LP NO pueden pisarlo
+                // con HTP. El MANUAL HARD LOCK post-L3 lo repondría igualmente,
+                // pero este guard temprano evita que la capa intermedia herede
+                // el valor alto de L0 antes del lock final, eliminando flashes de un frame.
+                // L3 (effect) y L3+ (hephaestus) conservan autoridad destructiva.
+                if (layer !== 'effect' && layer !== 'hephaestus') {
+                    const lockRecord = this._manualChannelLocks.get(intent.nodeId);
+                    if (lockRecord !== undefined && channel in lockRecord) {
+                        continue;
+                    }
+                }
                 // HTP: el valor más alto gana independientemente de la capa
                 const current = record[channel];
                 if (current === undefined || incoming > current) {

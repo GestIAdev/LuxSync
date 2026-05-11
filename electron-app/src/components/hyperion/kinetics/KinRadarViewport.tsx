@@ -50,11 +50,11 @@ type RadarKey = 'xypad' | 'radarxy' | 'spatial' | 'empty' | 'static-warning'
 function resolveRadarComponent(
   selectedCount: number,
   movingHeadCount: number,
-  radarMode: 'classic' | 'spatial',
 ): RadarKey {
   if (selectedCount === 0) return 'empty'
   if (movingHeadCount === 0) return 'static-warning'
-  if (radarMode === 'spatial') return 'spatial'
+  // WAVE 4717.3: cuarentena total de spatial routing.
+  // Con moving heads seleccionados, SIEMPRE montar ruta clásica.
   if (movingHeadCount === 1) return 'xypad'
   return 'radarxy'
 }
@@ -127,7 +127,7 @@ export const KinRadarViewport: React.FC = () => {
   }, [selectedIds, hardware?.fixtures, stageFixtures, stageFromStore])
 
   const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
-  const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length, radarMode)
+  const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length)
 
   // ── Ghost points para RadarXY (classic multi) ─────────────────────────────
   const ghostPoints = useMemo(() => {
@@ -291,8 +291,8 @@ export const KinRadarViewport: React.FC = () => {
           />
         )}
 
-        {/* Spatial IK target pad */}
-        {radarKey === 'spatial' && (
+        {/* Spatial IK target pad en cuarentena: montaje deshabilitado en V1.0 */}
+        {false && (
           <SpatialTargetPad
             target={spatialTarget}
             onChange={handleTargetChange}

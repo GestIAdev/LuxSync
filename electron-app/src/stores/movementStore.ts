@@ -29,7 +29,7 @@ import type { Target3D, IKResult, SpatialFanMode } from '../engine/movement/Inve
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Tipos de patrones disponibles */
-export type PatternType = 'none' | 'static' | 'circle' | 'eight' | 'sweep' | 'tornado' | 'bounce' | 'butterfly' | 'pulse'
+export type PatternType = 'none' | 'static' | 'circle' | 'eight' | 'sweep' | 'darkspin' | 'tornado' | 'bounce' | 'butterfly' | 'pulse'
 
 /** Modo del radar: classic (grados) vs spatial (IK 3D) */
 export type RadarMode = 'spatial' | 'classic'
@@ -130,6 +130,9 @@ interface MovementActions {
     pan: number | null
     tilt: number | null
     speed: number | null
+    pattern?: string | null
+    amplitude?: number | null
+    fan?: number | null
   }) => void
 
   /** Reset completo a defaults cuando no hay selección */
@@ -201,7 +204,11 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
   }),
 
   hydrateFromBackend: ({ pan, tilt, pattern, speed, amplitude }) => {
-    const uiPattern = pattern === 'hold' ? 'static' : (pattern ?? 'none')
+    const uiPattern = pattern === 'hold'
+      ? 'static'
+      : pattern === 'tornado'
+        ? 'darkspin'
+        : (pattern ?? 'none')
     set({
       pan: pan ?? 270,
       tilt: tilt ?? 135,
@@ -211,12 +218,45 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
     })
   },
 
-  hydrateFromL2: ({ pan, tilt, speed }) => {
-    set({
+  hydrateFromL2: ({ pan, tilt, speed, pattern, amplitude, fan }) => {
+    const next: Partial<MovementState> = {
       pan: pan !== null ? Math.max(0, Math.min(540, pan * 540)) : 270,
       tilt: tilt !== null ? Math.max(0, Math.min(270, tilt * 270)) : 135,
       patternSpeed: speed !== null ? Math.max(0, Math.min(100, speed * 100)) : 50,
-    })
+    }
+    // WAVE 4701: Hidratar patrón, amplitude y fan desde snapshot L2
+    if (pattern !== undefined) {
+      // Mapear nombres internos del motor a nombres de UI
+      const UI_PATTERN_MAP: Record<string, string> = {
+        'hold': 'static',
+        'circle': 'circle',
+        'figure8': 'eight',
+        'lemniscate': 'eight',
+        'scan_x': 'sweep',
+        'square': 'sweep',
+        'diamond': 'sweep',
+        'wave_y': 'bounce',
+        'ballyhoo': 'pulse',
+        'darkspin': 'darkspin',
+        'sway': 'sweep',
+        // Legacy names
+        'tornado': 'darkspin',
+        'eight': 'eight',
+        'gravity_bounce': 'bounce',
+        'butterfly': 'butterfly',
+        'heartbeat': 'pulse',
+      }
+      const raw = pattern ?? 'none'
+      next.activePattern = (UI_PATTERN_MAP[raw] ?? 'none') as PatternType
+    }
+    if (amplitude !== undefined && amplitude !== null) {
+      next.patternAmplitude = Math.max(0, Math.min(100, amplitude * 100))
+    }
+    if (fan !== undefined && fan !== null) {
+      // fan en motor nativo está normalizado en [-1,1] → UI fanValue [-100,100]
+      next.fanValue = Math.max(-100, Math.min(100, fan * 100))
+    }
+    set(next)
   },
 
   resetToDefaults: () => set({ ...DEFAULTS, chaosSeed: generateSeed() }),

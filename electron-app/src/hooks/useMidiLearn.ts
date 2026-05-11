@@ -344,7 +344,7 @@ export function useMidiLearn() {
         // 🔴 WAVE 3304: Absolute setter — lee estado, envía opuesto, sincroniza desde backend
         const currentBlackoutState = useEffectsStore.getState().blackout
         const targetBlackout = !currentBlackoutState
-        window.lux.arbiter.setBlackout(targetBlackout)
+        window.lux.aether.setBlackout(targetBlackout)
           .then((result: { success?: boolean; blackoutActive?: boolean }) => {
             if (result?.success) {
               useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)

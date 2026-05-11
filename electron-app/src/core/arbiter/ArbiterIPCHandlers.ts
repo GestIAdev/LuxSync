@@ -84,7 +84,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }: {
       fixtureIds: string[]
       pattern: {
-        type: 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
+        type: 'circle' | 'eight' | 'sweep' | 'darkspin' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat'
         speed: number
         size: number
         center: { pan: number; tilt: number }
@@ -306,47 +306,9 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       }
       
       masterArbiter.setManualOverride(override)
-
-      // 🔌 WAVE 4674 PASO 1: PHYSICAL LINK — Espejo al NodeArbiter (Aether L2).
-      // El ArbitrationDirector legacy ya no controla el DMX físico en el pipeline
-      // Aether. Para que el radar y los faders afecten al hardware real, debemos
-      // escribir los mismos valores (normalizados 0-1) en el NodeArbiter.
-      try {
-        const aetherArbiter = getTitanOrchestrator().getAetherArbiter()
-        if (aetherArbiter) {
-          // Construir el dict de canales Aether (0-1) desde los controles DMX (0-255).
-          // Solo se inyectan los canales que el fixture V2 declara en overrideChannels.
-          const aetherChannels: Record<string, number> = {}
-          for (const ch of perFixtureChannels) {
-            const raw = perFixtureControls[ch]
-            if (typeof raw === 'number' && Number.isFinite(raw)) {
-              aetherChannels[ch] = raw / 255
-            }
-          }
-          if (Object.keys(aetherChannels).length > 0) {
-            // NodeIds Aether derivados del deviceId (fixtureId) + familia.
-            // Si el canal es pan/tilt/speed → nodo kinetic.
-            // Si el canal es red/green/blue/white/color_wheel → nodo color.
-            // Si el canal es dimmer/strobe/shutter → nodo impact.
-            const kineticCh = new Set(['pan', 'tilt', 'pan_fine', 'tilt_fine', 'speed', 'rotation'])
-            const colorCh   = new Set(['red', 'green', 'blue', 'white', 'amber', 'uv', 'cyan', 'magenta', 'yellow', 'color_wheel'])
-            const impactCh  = new Set(['dimmer', 'strobe', 'shutter'])
-            const kinetic: Record<string, number> = {}
-            const color:   Record<string, number> = {}
-            const impact:  Record<string, number> = {}
-            for (const [ch, v] of Object.entries(aetherChannels)) {
-              if (kineticCh.has(ch)) kinetic[ch] = v
-              else if (colorCh.has(ch)) color[ch] = v
-              else if (impactCh.has(ch)) impact[ch] = v
-            }
-            if (Object.keys(kinetic).length > 0) aetherArbiter.setManualOverride(`${fixtureId}:kinetic`, kinetic)
-            if (Object.keys(color).length > 0)   aetherArbiter.setManualOverride(`${fixtureId}:color`,   color)
-            if (Object.keys(impact).length > 0)  aetherArbiter.setManualOverride(`${fixtureId}:impact`,  impact)
-          }
-        }
-      } catch (_aetherErr) {
-        // Aether no inicializado todavía — silenciar, el legacy path funciona como fallback.
-      }
+      // ⚰️ WAVE 4674 PHYSICAL LINK PURGED — El ProgrammerAetherBridge ya escribe
+      // al NodeArbiter con todas las familias unificadas (kinetic/color/impact/beam/atmosphere)
+      // a 44Hz. El espejo parcial WAVE 4674 generaba colisiones de familias → eliminado.
     }
     
     return { success: true, overrideCount }
@@ -382,18 +344,9 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       masterArbiter.releaseManualOverride(fixtureId, channels as any)
     }
 
-    // 🔌 WAVE 4674 PASO 1: Espejo de release al NodeArbiter (Aether L2).
-    try {
-      const aetherArbiter = getTitanOrchestrator().getAetherArbiter()
-      if (aetherArbiter) {
-        for (const fixtureId of resolvedIds) {
-          aetherArbiter.clearManualOverride(`${fixtureId}:kinetic`)
-          aetherArbiter.clearManualOverride(`${fixtureId}:color`)
-          aetherArbiter.clearManualOverride(`${fixtureId}:impact`)
-        }
-      }
-    } catch (_aetherErr) { /* Aether no inicializado */ }
-    
+    // ⚰️ WAVE 4674 clear PURGED — El ProgrammerAetherBridge gestiona el clear correcto
+    // de todas las familias (kinetic/color/impact/beam/atmosphere) cuando el store
+    // pierde sus overrides. El clear parcial WAVE 4674 dejaba beam/atmosphere zombies → eliminado.
     return { success: true, releaseCount }
   })
   
@@ -572,7 +525,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // ═══════════════════════════════════════════════════════════════════════
     
     // Validate pattern type
-    const validPatterns = ['circle', 'eight', 'sweep', 'tornado', 'gravity_bounce', 'butterfly', 'heartbeat']
+    const validPatterns = ['circle', 'eight', 'sweep', 'darkspin', 'tornado', 'gravity_bounce', 'butterfly', 'heartbeat']
     if (!validPatterns.includes(pattern)) {
       console.warn(`[Arbiter IPC] Invalid pattern: ${pattern}, using 'circle'`)
       pattern = 'circle'
@@ -616,7 +569,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       : masterArbiter.getCurrentPosition(fixtureIds[0])  // First pattern → snapshot now
     
     masterArbiter.setPattern(fixtureIds, {
-      type: pattern as 'circle' | 'eight' | 'sweep' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat',
+      type: pattern as 'circle' | 'eight' | 'sweep' | 'darkspin' | 'tornado' | 'gravity_bounce' | 'butterfly' | 'heartbeat',
       speed: speedNormalized,
       size: sizeNormalized,
       center: { pan: anchorPos.pan, tilt: anchorPos.tilt },

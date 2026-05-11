@@ -982,6 +982,7 @@ export class ArbitrationDirector extends EventEmitter {
                 panOffset = Math.sin(t);
                 tiltOffset = 0;
                 break;
+            case 'darkspin':
             case 'tornado': {
                 const envelope = Math.sin(t * 0.25);
                 panOffset = Math.cos(t) * envelope;

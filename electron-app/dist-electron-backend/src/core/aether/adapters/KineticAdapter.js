@@ -145,7 +145,11 @@ export class KineticAdapter extends BaseSystem {
             // ── 4b. Obtener intención 2D del VMM para este nodo ───────────────
             // 🎭 WAVE 4645: Left/Right phase asymmetry
             // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
-            const phaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0;
+            // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge
+            // según el orden de selección del usuario (determinista, cero alloc).
+            const lrPhaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0;
+            const l2PhaseOffset = this._vmm._l2PhaseOverrides[node.nodeId] ?? 0;
+            const phaseOffset = lrPhaseOffset + l2PhaseOffset;
             const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed, phaseOffset);
             if (node.isContinuous) {
                 // ── FLUJO LEGACY: rotación continua (fan, mirror ball) ──────────

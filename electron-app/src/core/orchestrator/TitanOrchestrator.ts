@@ -108,6 +108,8 @@ import { timelineEngine } from '../engine/TimelineEngine'
 
 // 🧟 ZOMBIE KILLER: singleton DMX para flushing físico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
+// ⚡ WAVE 4700: Motor cinético nativo L2 — reemplaza masterArbiter para patrones manuales
+import { aetherKineticEngine } from '../aether/AetherKineticEngine'
 
 // 🧹 WAVE 2227: VMM singleton para cleanup en stop()
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
@@ -377,6 +379,8 @@ export class TitanOrchestrator {
   // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
   // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures × 3 familias).
   private readonly _seleneBus     = new IntentBus(512)
+  // WAVE 4705: Bus dedicado para LiveFX (L3). Autoridad sobre L2 manual.
+  private readonly _effectBus     = new IntentBus(512)
   private _aetherArbiter: NodeArbiter | null = null
   private _aetherResolver: NodeResolver | null = null
   // ⚙️ WAVE 4518.1: Physics Post-Processor — The Inertia Engine
@@ -1867,6 +1871,8 @@ export class TitanOrchestrator {
       // Si hasActiveEffects=false en este frame, Selene no empuja nada
       // → bus queda vacío → L1 es no-op → L0 (Liquid/VMM) retoma control.
       this._seleneBus.clear()
+      // WAVE 4705: limpiar bus L3 de LiveFX en cada frame.
+      this._effectBus.clear()
 
       // ── WAVE 4655 F1: L0 — LiquidAetherAdapter usa el engine activo según layout UI ────
       // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
@@ -1927,14 +1933,15 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const consciousnessOutput = this.lastConsciousnessOutput ?? null
       const effectOutput = getEffectManager().getCombinedOutput()
-      aetherArbiter.setSeleneOverrideMoverShield(effectOutput.overrideMoverShield === true)
-      // WAVE 4663 PASO 1: Selene inyecta en el bus L1 dedicado (no en L0).
-      // Prioridad estructural garantizada: L1 eclipsa L0 en el Arbiter.
+      // WAVE 4675: passport VIP de Selene/LiveFX para saltar MoverShield cuando
+      // el efecto dominante lo requiere (p.ej. CorazonLatino, OroSolido).
+      aetherArbiter.setSeleneOverrideMoverShield(effectOutput?.overrideMoverShield === true)
+      // LiveFX se inyecta en bus L3 dedicado para que domine sobre L2 manual.
       seleneAetherAdapter.ingest(
         consciousnessOutput,
         effectOutput,
         ctx.deltaMs,
-        this._seleneBus,
+        this._effectBus,
       )
 
       // STEP 4.5: Playback LP bridge Chronos -> Aether
@@ -1954,8 +1961,16 @@ export class TitanOrchestrator {
         this._hephaestusAetherAdapter.clear(aetherArbiter)
       }
 
+      // ⚡ WAVE 4700: Motor cinético nativo L2 — tick antes de arbitrate().
+      // Escribe pan_base/tilt_base por fixture en L2 si hay patrón manual activo.
+      // dtSeconds calculado desde deltaMs (FrameScheduler, monotonic, nunca Date.now).
+      if (aetherKineticEngine.isActive()) {
+        aetherKineticEngine.tick(this._aetherCtx.deltaMs / 1000, aetherArbiter)
+      }
+
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       aetherArbiter.setSystemIntents(this._aetherBus)
+      aetherArbiter.setEffectIntents(this._effectBus.getAll())
       const arbitrated = aetherArbiter.arbitrate()
 
       // 3.5. ⚙️ WAVE 4518.1: Physics Post-Processor — aplica inercia a nodos KINETIC

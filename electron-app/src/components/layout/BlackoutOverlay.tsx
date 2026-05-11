@@ -13,7 +13,7 @@ const BlackoutOverlay: React.FC = () => {
 
   // 🔴 WAVE 3304: Release absoluto — siempre false, sin toggle
   const handleRelease = useCallback(() => {
-    window.lux?.arbiter?.setBlackout(false)
+    window.lux?.aether?.setBlackout(false)
       .then((result: { success?: boolean; blackoutActive?: boolean }) => {
         if (result?.success) {
           setBlackout(result.blackoutActive ?? false)

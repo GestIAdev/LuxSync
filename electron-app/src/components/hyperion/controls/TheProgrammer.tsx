@@ -134,7 +134,14 @@ export const TheProgrammer: React.FC = () => {
     syncSelection(fixtureIds)
 
     if (fixtureIds.length === 0) {
-      hydrateMovementFromL2({ pan: null, tilt: null, speed: null })
+      hydrateMovementFromL2({
+        pan: null,
+        tilt: null,
+        speed: null,
+        pattern: 'none',
+        amplitude: 0.5,
+        fan: 0,
+      })
       return
     }
 
@@ -164,11 +171,27 @@ export const TheProgrammer: React.FC = () => {
         hydrateFromL2(fixtureIds, result.overrides)
 
         const firstFixtureId = fixtureIds[0]
-        const kinetic = result.overrides[`${firstFixtureId}:kinetic`]
+        const firstNodeId = `${firstFixtureId}:kinetic`
+        const kinetic = result.overrides[firstNodeId]
+        const kineticState = await window.lux?.aether?.getManualKineticState?.()
+
+        const pattern = kineticState?.success
+          && kineticState.active
+          && kineticState.nodeIds?.includes(firstNodeId)
+          ? kineticState.pattern
+          : 'none'
+
         hydrateMovementFromL2({
-          pan: typeof kinetic?.pan === 'number' ? kinetic.pan : null,
-          tilt: typeof kinetic?.tilt === 'number' ? kinetic.tilt : null,
+          pan: typeof kinetic?.pan_base === 'number'
+            ? kinetic.pan_base
+            : (typeof kinetic?.pan === 'number' ? kinetic.pan : null),
+          tilt: typeof kinetic?.tilt_base === 'number'
+            ? kinetic.tilt_base
+            : (typeof kinetic?.tilt === 'number' ? kinetic.tilt : null),
           speed: typeof kinetic?.speed === 'number' ? kinetic.speed : null,
+          pattern,
+          amplitude: kineticState?.success && kineticState.active ? kineticState.amplitude : 0.5,
+          fan: kineticState?.success && kineticState.active ? kineticState.fan : 0,
         })
       } catch (err) {
         console.error('[TheProgrammer] L2 hydration error:', err)
@@ -232,10 +255,26 @@ export const TheProgrammer: React.FC = () => {
   
   const handleUnlockAll = useCallback(() => {
     if (selectedIds.length === 0) return
+    // WAVE 4719: Unlock All alineado con Cathedral Unlock — misma ruta total.
+    // 1) NodeArbiter L2: release todos los canales
     releaseAll()
-    // WAVE 4531: También limpiar inhibit limits del NodeArbiter
+    // 2) Inhibit limits del NodeArbiter (canal IMPACT)
     const nodeIds = selectedIds.map(id => `${id}:impact`)
     window.lux?.aether?.clearInhibitLimit(nodeIds)
+    // 3) VMM: limpiar patron activo en masterArbiter + KineticEngine
+    void window.lux?.aether?.setManualPattern({
+      fixtureIds: selectedIds,
+      pattern: null,
+      speed: 50,
+      amplitude: 50,
+    })
+    // 4) VMM: limpiar phase offsets del fan residuales
+    void window.lux?.aether?.setKineticFanOffsets({})
+    // 5) UI: resetear patron
+    useMovementStore.getState().setActivePattern('none')
+    // 6) EXORCISMO: limpiar Sets zombificados
+    useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
+    useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds, releaseAll])
   
   /**

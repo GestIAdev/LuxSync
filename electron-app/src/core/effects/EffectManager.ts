@@ -457,7 +457,7 @@ export class EffectManager extends EventEmitter {
     }
     
     // 🚦 WAVE 700.7: TRAFFIC CONTROL - Check if busy with critical effect
-    const trafficResult = this.checkTraffic(config.effectType)
+    const trafficResult = this.checkTraffic(config.effectType, config.source)
     if (!trafficResult.allowed) {
       console.log(`[EffectManager 🚦] ${config.effectType} BLOCKED: ${trafficResult.reason}`)
       this.emit('effectBlocked', {
@@ -1195,13 +1195,20 @@ export class EffectManager extends EventEmitter {
    * @param effectType Effect type to check
    * @returns { allowed: boolean, reason: string }
    */
-  private checkTraffic(effectType: string): { allowed: boolean; reason: string } {
+  private checkTraffic(effectType: string, source?: string): { allowed: boolean; reason: string } {
     // 🔒 WAVE 998: Rule 0 - GLOBAL LOCK (THE RESPECT PROTOCOL)
     // Si hay un DICTADOR (mixBus='global') activo, NADIE le interrumpe
     const activeDictator = Array.from(this.activeEffects.values())
       .find(e => (e as any).mixBus === 'global')
     
     if (activeDictator) {
+      // WAVE 4706: Human Override — disparos manuales (UI/MIDI/ForceStrike)
+      // atraviesan GLOBAL_LOCK para evitar secuestro por dictador global.
+      if (source === 'manual') {
+        console.log(`🧨 [GLOBAL_LOCK_BYPASS] ${effectType} autorizado por HUMAN_OVERRIDE (source=manual).`)
+        return { allowed: true, reason: 'HUMAN_OVERRIDE: manual source bypasses GLOBAL_LOCK' }
+      }
+
       // Excepción: Si el candidato es PEAK/EMERGENCY/DROP 
       // WAVE 2101.1: Agregamos TODOS los drops multigenérico para evitar Dictadores Inmortales
       const isEmergency = [

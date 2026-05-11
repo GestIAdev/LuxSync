@@ -861,6 +861,11 @@ const luxApi = {
          */
         setManualPattern: (args) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
         /**
+         * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
+         * Record<nodeId, phaseOffset (rad)> → VMM._l2PhaseOverrides (O(1) lookup).
+         */
+        setKineticFanOffsets: (offsets) => ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
+        /**
          * E12 WAVE 4531: IK solve y apply spatial target para fixtures.
          * Stub → MasterArbiter legacy hasta que Aether tenga IK Resolver propio.
          */

@@ -5,7 +5,7 @@ Checklist operativa para migrar todo lo crítico al NodeArbiter y eliminar el le
 ## 1) Corte de dependencias Legacy en Frontend [WAVE 4651 OK]
 
 - [x] Migrar Kinetics pattern/speed/amplitude para que NO use `window.lux.arbiter.setManualFixturePattern`. -> usa `window.lux.aether.setManualPattern` (KineticsBridge.ts)
-- [ ] Reemplazar hidratación de Kinetics (`getFixturesState`) por endpoint Aether equivalente. (pendiente WAVE 4700 KineticSystem Aether)
+- [x] Reemplazar hidratación de Kinetics (`getFixturesState`) por endpoint Aether equivalente. (WAVE 4701: `getL2State` + `getManualKineticState`, sin arbiter legacy)
 - [x] Eliminar cualquier lectura/escritura de `window.lux.arbiter.*` en Kinetics para la ruta de pattern. Ruta Aether activa.
 - [x] Validar que Unlock en Kinetics limpie estado local UI + L2 remoto en un solo flujo coherente. -> handleUnlockKinetics: releaseAll + aether.setManualPattern(null) + setActivePattern(none)
 
@@ -14,15 +14,21 @@ Archivos clave:
 - `src/components/hyperion/kinetics/KineticsCathedral.tsx`
 - `src/components/hyperion/kinetics/KinRadarViewport.tsx`
 
-## 2) Sustitución de Stubs Legacy en Aether IPC [WAVE 4651 OK - ruta limpia]
+## 2) Sustitución de Stubs Legacy en Aether IPC [WAVE 4700 OK - motor nativo L2]
 
-- [x] `lux:aether:setManualPattern`: ruta IPC es Aether. Motor cinematico temporalmente en masterArbiter (pattern engine) hasta WAVE 4700.
-- [x] `lux:aether:applySpatialTarget`: ruta IPC es Aether. IK resolver temporalmente en masterArbiter hasta WAVE 4700.
-- [x] `lux:aether:releaseSpatialTarget`: ruta IPC es Aether. Release en masterArbiter hasta WAVE 4700.
-- [ ] Quitar import de `masterArbiter` en AetherIPCHandlers cuando NodeArbiter tenga KineticSystem e IKResolver propios (WAVE 4700).
+- [x] `lux:aether:setManualPattern`: ruta IPC es Aether. Motor cinematico en **AetherKineticEngine** (WAVE 4700). masterArbiter eliminado del flujo.
+- [x] `lux:aether:applySpatialTarget`: ruta IPC es Aether. IK resolver temporalmente en masterArbiter hasta WAVE futura.
+- [x] `lux:aether:releaseSpatialTarget`: ruta IPC es Aether. Release en masterArbiter hasta WAVE futura.
+- [x] Quitar llamadas a `masterArbiter.setPattern()`, `masterArbiter.clearPattern()`, `masterArbiter.getCurrentPosition()` en IPC de kinetics. (**WAVE 4700** — eliminadas en AetherIPCHandlers)
+- [x] `masterArbiter` importado en AetherIPCHandlers aún (necesario para blackout/grandmaster/spatial). No eliminar hasta WAVE futura de IK nativo.
+- [x] `AetherKineticEngine`: motor nativo con acumulador de fase, 9 patrones, fan offset determinista, Speed/Amplitude escalares profesionales. Tick a 44Hz en TitanOrchestrator.
+- [x] `lux:aether:updateKineticScalars`: nuevo canal para actualizar speed/amplitude/fan sin reiniciar fase (para sliders en tiempo real).
+- [x] `lux:aether:setKineticFanOffsets`: canal legacy mantenido como no-op para compatibilidad con KineticsBridge WAVE 4717.2. El fan se integra nativamente en tick().
 
 Archivos clave:
 - `src/core/aether/AetherIPCHandlers.ts`
+- `src/core/aether/AetherKineticEngine.ts` **(nuevo WAVE 4700)**
+- `src/core/orchestrator/TitanOrchestrator.ts`
 
 ## 3) Estado y Feedback UI (hidratación completa) [WAVE 4653 OK - Truth Mirror]
 
@@ -49,7 +55,8 @@ Archivos clave:
   → si IPC falla, dirty flags persisten y el tick 44Hz reintenta automáticamente.
 - [x] Garantizar orden de flush por familia para evitar condiciones de carrera.  
   → limpieza selectiva por snapshot (`consumeDirtyFamilies`) evita borrar cambios nuevos.
-- [ ] Añadir métricas/log de dropped updates.
+- [x] Añadir métricas/log de dropped updates.  
+  → `ProgrammerAetherBridge` emite `console.warn` detallado con fixtures/set/clear/families en reintentos IPC.
 
 Archivos clave:
 - `src/bridges/ProgrammerAetherBridge.ts`
@@ -64,8 +71,10 @@ Archivos clave:
   → `BlackoutButton`, `KeyboardProvider` → `aether.setBlackout()`
 - [x] Migrar hooks MIDI (`arb-*`) al nuevo namespace y acciones.  
   → `useMidiLearn` arb-blackout + arb-grand-master → `aether.*`
-- [ ] Migrar BlackoutOverlay (si usa arbiter directamente — pendiente de auditoría).
-- [ ] Migrar output gate (arm/live/GO) — pendiente WAVE futura.
+- [x] Migrar BlackoutOverlay (si usa arbiter directamente — pendiente de auditoría).  
+  → `BlackoutOverlay` y blackout MIDI (`useMidiLearn`) usan `window.lux.aether.setBlackout`.
+- [x] Migrar output gate (arm/live/GO) — pendiente WAVE futura.  
+  → `CommandDeck` opera por `window.lux.aether.setOutputEnabled`; sin rutas legacy de output en UI activa.
 
 Archivos clave:
 - `src/components/commandDeck/CommandDeck.tsx`

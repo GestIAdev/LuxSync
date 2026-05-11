@@ -20,7 +20,7 @@ const PATTERNS: PatternConfig[] = [
   { id: 'circle',    icon: '○',  label: 'CIRCLE',    color: '#00F0FF' },
   { id: 'eight',     icon: '∞',  label: 'EIGHT',     color: '#FF00E5' },
   { id: 'sweep',     icon: '↔',  label: 'SWEEP',     color: '#FF8C00' },
-  { id: 'tornado',   icon: '🌪️', label: 'TORNADO',   color: '#FF4040' },
+  { id: 'darkspin',  icon: '🌀', label: 'DARKSPIN',  color: '#FF4040' },
   { id: 'bounce',    icon: '🏓', label: 'BOUNCE',    color: '#7FFF00' },
   { id: 'butterfly', icon: '🦋', label: 'BUTTERFLY', color: '#FF69B4' },
   { id: 'pulse',     icon: '⚡',  label: 'PULSE',     color: '#FFD700' },

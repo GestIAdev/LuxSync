@@ -43,7 +43,7 @@ import { CurveEvaluator } from '../CurveEvaluator'
 import { PhaseDistributor } from './PhaseDistributor'
 import { resolveFixtureSelector } from '../../stage/ShowFileV2'
 import { resolveZoneTags } from '../../zones/ZoneMapper'
-import { masterArbiter } from '../../arbiter'
+import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -583,13 +583,13 @@ export class HephaestusRuntime {
     // Single 'all' or empty → all fixtures. Multiple tags → AND-intersection.
     let targetFixtureIds: string[]
     if (clipZones.length === 0 || (clipZones.length === 1 && clipZones[0] === 'all')) {
-      targetFixtureIds = masterArbiter.getFixtureIds()
+      targetFixtureIds = getTitanOrchestrator().getFixtureIds()
     } else {
-      const fixtures = masterArbiter.getFixturesForZoneMapping()
+      const fixtures = getTitanOrchestrator().getFixturesForZoneMapping()
       targetFixtureIds = resolveZoneTags(clipZones as string[], fixtures)
       // Fallback: if zone combo resolves to nothing, treat as global
       if (targetFixtureIds.length === 0) {
-        targetFixtureIds = masterArbiter.getFixtureIds()
+        targetFixtureIds = getTitanOrchestrator().getFixtureIds()
       }
     }
 
@@ -730,7 +730,7 @@ export class HephaestusRuntime {
    */
   private estimateTotalOutputs(): number {
     let total = 0
-    const allFixtureCount = masterArbiter.getFixtureIds().length || 32
+    const allFixtureCount = getTitanOrchestrator().getFixtureIds().length || 32
     for (const [, active] of this.activeClips) {
       // Legacy clips now emit per-fixture (not per-zone), use full fixture count as upper bound
       const fixtureCount = active.fixturePhases?.length ?? allFixtureCount

@@ -28,9 +28,6 @@ const bytenode = require('bytenode')
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies, registerTitanOrchestrator } from '../src/core/orchestrator'
 
-// Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
-import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter'
-
 // ⚡ WAVE 4529: Aether Programmer IPC Handlers
 import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers'
 
@@ -571,11 +568,6 @@ async function initTitan(): Promise<void> {
   
   setupIPCHandlers(ipcDeps)
   
-  // 🎭 WAVE 374 + 377: Arbiter IPC Handlers (unified)
-  // Note: Using registerArbiterHandlers from arbiter module (more complete)
-  // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
-  registerArbiterHandlers(masterArbiter)
-
   // ⚡ WAVE 4529: Aether Programmer IPC Handlers (L2 overrides via NodeArbiter)
   registerAetherIPCHandlers()
 

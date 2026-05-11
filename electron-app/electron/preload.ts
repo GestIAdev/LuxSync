@@ -1255,8 +1255,8 @@ const luxApi = {
       ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
 
     /**
-     * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
-     * Reemplaza window.lux.arbiter.setBlackout.
+     * WAVE 4652: Set blackout global — NodeArbiter L4.
+     * Canal canónico post WAVE 4702.
      */
     setBlackout: (active: boolean) =>
       ipcRenderer.invoke('lux:aether:setBlackout', { active }),
@@ -1275,14 +1275,14 @@ const luxApi = {
 
     /**
      * WAVE 4652: Set grand master dimmer global (0-1).
-     * Reemplaza window.lux.arbiter.setGrandMaster.
+     * Canal canónico post WAVE 4702.
      */
     setGrandMaster: (value: number) =>
       ipcRenderer.invoke('lux:aether:setGrandMaster', { value }),
 
     /**
      * WAVE 4652: Set grand master speed (0.1-2.0).
-     * Reemplaza window.lux.arbiter.setGrandMasterSpeed.
+     * Canal canónico post WAVE 4702.
      */
     setGrandMasterSpeed: (value: number) =>
       ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
@@ -1292,6 +1292,15 @@ const luxApi = {
      */
     getL2State: (nodeIds: string[]) =>
       ipcRenderer.invoke('lux:aether:getL2State', { nodeIds }),
+
+    /**
+     * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
+     * Reemplaza window.lux.arbiter.setFixtures — fuente de verdad única.
+     */
+    setFixtures: (
+      fixtures: any[],
+      stageBounds?: { width?: number; height?: number; depth?: number },
+    ) => ipcRenderer.invoke('lux:aether:setFixtures', { fixtures, stageBounds }),
 
     /**
      * 🌊 WAVE 4699.2: Tungsten Golden Nuke — override L2 sobre nodos flash/kinetic.

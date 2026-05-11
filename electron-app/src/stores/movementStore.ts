@@ -13,7 +13,7 @@
  *   movementStore (Zustand)
  *     ↓
  *   programmerStore.setPosition / setPositionPerFixture
- *   + window.lux.arbiter.setManualFixturePattern / applySpatialTarget
+ *   + window.lux.aether.applySpatialTarget (WAVE 4702)
  *
  * @module stores/movementStore
  * @version WAVE 4561

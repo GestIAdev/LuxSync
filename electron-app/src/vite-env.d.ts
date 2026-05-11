@@ -224,9 +224,6 @@ declare global {
   
   // Lux API (TRINITY PHASE 2)
   lux: {
-    // 🎛️ MASTER ARBITER (legacy window.lux bridge)
-    arbiter: Window['luxsync']['arbiter']
-
     // Control
     start: () => Promise<{ success: boolean; inputGain?: number; alreadyRunning?: boolean }>  // 🔧 WAVE 15.1
     stop: () => Promise<{ success: boolean }>
@@ -789,7 +786,7 @@ declare global {
 
       /**
        * E12 WAVE 4531: Apply spatial IK target para fixtures.
-       * Stub hacia MasterArbiter legacy.
+       * Stub hacia IK nativo futuro — delega a masterArbiter mentre migra.
        */
       applySpatialTarget: (args: {
         target: { x: number; y: number; z: number }
@@ -804,6 +801,19 @@ declare global {
       releaseSpatialTarget: (args: { fixtureIds: string[] }) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
+       * Canal canónico post WAVE 4702.
+       */
+      setFixtures: (
+        fixtures: any[],
+        stageBounds?: { width?: number; height?: number; depth?: number },
+      ) => Promise<{
+        success: boolean
+        fixtureCount: number
+        liquidLayout?: '4.1' | '7.1'
+      }>
+
+      /**
        * 🌊 WAVE 4699.2: Tungsten Golden Nuke — dispara un override L2 sobre los nodos flash.
        * target: 'all' | 'petal-l' | 'petal-c' | 'petal-r' | 'spin'
        * release: true = libera el override (Note Off / fader al centro)
@@ -812,7 +822,7 @@ declare global {
       fireTungstenNuke: (args: { target: string; release?: boolean; value?: number }) => Promise<{ success: boolean; error?: string }>
 
       /**
-       * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
+       * WAVE 4652: Set blackout global — NodeArbiter L4.
        */
       setBlackout: (active: boolean) => Promise<{ success: boolean; blackoutActive?: boolean; error?: string }>
 

@@ -12,7 +12,7 @@
  *             Cero IPC, cero latencia — los datos ya están en RAM.
  * - PATH 2: IPC — fallback a getFixtureDefinition() para casos legacy
  * - Cache de definiciones por defId (no IPC repetitivo)
- * - Conecta al MasterArbiter via window.lux.arbiter.setManual()
+ * - Conecta al Aether via window.lux.aether.setManual() (WAVE 4702: arbiter removed)
  * 
  * ANTI-SIMULACIÓN: Toda función es real, determinista, sin mocks.
  */

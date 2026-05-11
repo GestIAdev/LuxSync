@@ -19,7 +19,7 @@
  * - This prevents WebGL Context Lost during fixture sync
  * 
  * WAVE 406 FIX:
- * - ADDED: Backend Ready Check - waits for window.lux.arbiter.setFixtures
+ * - ADDED: Backend Ready Check - waits for window.lux.aether.setFixtures (WAVE 4702)
  * - ADDED: Retry logic with hash invalidation on IPC failure
  * - FIXED: Race condition eliminated - polling hasta 5 segundos
  * - FIXED: Silent failures replaced with loud error logs
@@ -85,7 +85,7 @@ const syncToBackend = async (
 ) => {
   const lux = (window as any).lux
   
-  if (!lux?.arbiter?.setFixtures) {
+  if (!lux?.aether?.setFixtures) {
     console.warn('[TitanSyncBridge] ⚠️ Lost connection to Backend during sync!')
     return
   }
@@ -136,7 +136,7 @@ const syncToBackend = async (
       `[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${syncHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`
     )
 
-    const result = await lux.arbiter.setFixtures(arbiterFixtures, stageBounds)
+    const result = await lux.aether.setFixtures({ fixtures: arbiterFixtures, stageBounds })
     if (result?.liquidLayout === '4.1' || result?.liquidLayout === '7.1') {
       const currentLayout = useControlStore.getState().liquidLayout
       if (currentLayout !== result.liquidLayout) {
@@ -186,7 +186,7 @@ export const TitanSyncBridge: React.FC = () => {
       const maxAttempts = Math.ceil(IPC_READY_TIMEOUT_MS / 100) // 5000ms / 100ms = 50 attempts
       while (attempts < maxAttempts) {
         const lux = (window as any).lux
-        if (lux && lux.arbiter && lux.arbiter.setFixtures) {
+        if (lux && lux.aether && lux.aether.setFixtures) {
           console.log(`[TitanSyncBridge] ✅ IPC Ready after ${attempts * 100}ms`)
           break
         }
@@ -195,7 +195,7 @@ export const TitanSyncBridge: React.FC = () => {
         if (!isMounted) return // Si desmontamos mientras esperamos
       }
       
-      if (!(window as any).lux?.arbiter?.setFixtures) {
+      if (!(window as any).lux?.aether?.setFixtures) {
         console.error('[TitanSyncBridge] ❌ CRITICAL: IPC TIMEOUT. Backend unreachable.')
         return // TODO: Notificación UI
       }

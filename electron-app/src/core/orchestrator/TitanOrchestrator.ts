@@ -22,9 +22,8 @@ import {
   createDefaultSensory 
 } from '../protocol/SeleneProtocol'
 
-// 🎭 WAVE 374: Import MasterArbiter
+// 🎭 WAVE 374: Import Arbiter types (masterArbiter singleton removed WAVE 4703)
 import { 
-  masterArbiter, 
   type Layer0_Titan,
   type FinalLightingTarget,
   type EffectIntentMap,
@@ -115,7 +114,7 @@ import { aetherKineticEngine } from '../aether/AetherKineticEngine'
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
 // 🗺️ WAVE 2543.4: Centralized zone resolution
-import { fixtureMatchesZone as zoneMapperMatch } from '../zones/ZoneMapper'
+import { fixtureMatchesZone as zoneMapperMatch, resolveZone } from '../zones/ZoneMapper'
 
 // ⚡ WAVE 3050: MODULE-LEVEL CONSTANTS — allocated once, reused per frame
 // Zone mapping for StageSimulator2 compatibility (was recreated per fixture * per truth broadcast)
@@ -697,7 +696,7 @@ export class TitanOrchestrator {
     }
     
     this.eventRouter = getEventRouter()
-    this._outputEnabled = masterArbiter.isOutputEnabled()
+    // WAVE 4703: _outputEnabled starts false at boot — canonical state owned by TitanOrchestrator
     // WAVE 2098: Boot silence
   }
 
@@ -1064,15 +1063,14 @@ export class TitanOrchestrator {
     // ═══════════════════════════════════════════════════════════════════
     // 🧹 WAVE 2227: REACTOR CLEANUP — Purgar estado residual
     // Sin esto, al re-armar el engine retoma desde la fase congelada:
-    // VMM con acumuladores viejos, Arbiter con ghost positions, BeatDetector
-    // con BPM acumulado. El resultado: saltos de posición al rearmar.
+    // VMM con acumuladores viejos, BeatDetector con BPM acumulado.
+    // El resultado: saltos de posición al rearmar.
     // ═══════════════════════════════════════════════════════════════════
 
     // Purgar acumuladores de fase del movement engine
     vibeMovementManager.resetTime()
 
-    // Purgar caches AI del Arbiter (preserva manual overrides + outputEnabled)
-    masterArbiter.clearTitanState()
+    // WAVE 4703: ArbitrationDirector bypased (WAVE 4592) — clearTitanState removed
 
     // Purgar estado acumulado del beat detector
     if (this.beatDetector) {
@@ -1377,31 +1375,11 @@ export class TitanOrchestrator {
     // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
     const intent = await this.engine.update(context, engineAudioMetrics)
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
-    // Instead of sending intent directly to HAL, we now:
-    // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
-    // 2. Arbiter merges all layers (manual overrides, effects, blackout)
-    // 3. Send arbitrated result to HAL
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     // ═══════════════════════════════════════════════════════════════════════
-    // 🪓 WAVE-4592: LEGACY ARBITER BYPASS — ArbitrationDirector disconnected.
-    // masterArbiter.setTitanIntent / setEffectIntents / arbitrate() NO longer
-    // drive DMX or UI. Aether pipeline is the single source of truth.
-    // Legacy block kept (commented) for safe rollback during validation phase.
+    // 🪓 WAVE 4592 → WAVE 4703: AETHER PIPELINE ONLY
+    // ArbitrationDirector (masterArbiter) is extinct. Aether is the single source of truth.
     // ═══════════════════════════════════════════════════════════════════════
 
-    // // Feed Layer 0: AI Intent
-    // const titanLayer: Layer0_Titan = {
-    //   intent,
-    //   timestamp: now,
-    //   vibeId: this.engine.getCurrentVibe(),
-    //   frameNumber: this.frameCount,
-    // }
-    // masterArbiter.setTitanIntent(titanLayer)
-
-    // // EffectIntents → legacy arbiter (WAVE 2662 path) — bypassed
     const effectManager = getEffectManager()
     const effectOutput = effectManager.getCombinedOutput()
 
@@ -1411,22 +1389,8 @@ export class TitanOrchestrator {
       (playbackFrame?.targets ?? []).map(t => t.fixtureId)
     )
 
-    // if (effectOutput.hasActiveEffects) {
-    //   this._effectIntentBuf.clear()
-    //   const { intentMap } = this.intentComposer.compose(
-    //     effectOutput,
-    //     this.fixtures as import('./intent/types').FixtureSnapshot[],
-    //     chronosFixtureIds,
-    //     this._effectIntentBuf,
-    //   )
-    //   masterArbiter.setEffectIntents(intentMap)
-    // }
-
-    // // Arbitrate all layers — BYPASSED
-    // const arbitratedTarget = masterArbiter.arbitrate()
-
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔎 FORENSIC TRACE (CP2): Arbiter → HAL handoff snapshot
+    // 🔎 FORENSIC TRACE (CP2): Aether → HAL handoff snapshot
     // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
     // Optional focus: LUXSYNC_TRACE_FIXTURE_ID=<fixtureId>
     // ═══════════════════════════════════════════════════════════════════════
@@ -1436,15 +1400,7 @@ export class TitanOrchestrator {
         const everyRaw = Number.parseInt(String(process?.env?.LUXSYNC_TRACE_DMX_EVERY ?? ''), 10)
         const every = Number.isFinite(everyRaw) && everyRaw > 0 ? everyRaw : 60
         if (this.frameCount % every === 0) {
-          const traceFixtureId =
-            process?.env?.LUXSYNC_TRACE_FIXTURE_ID
-              ? String(process.env.LUXSYNC_TRACE_FIXTURE_ID)
-              : undefined
-
-          // const traced = traceFixtureId
-          //   ? arbitratedTarget.fixtures.find(f => f.fixtureId === traceFixtureId)
-          //   : null
-          // 🔎 TRACE CP2 DISABLED: Remove this for now; keeping CP3 + CP4 for final mile forensics
+          // Trace CP2: Aether pipeline snapshot — no arbitratedTarget (WAVE 4703)
         }
       }
     } catch {
@@ -2374,10 +2330,9 @@ export class TitanOrchestrator {
       // Un cambio de Vibe es un cambio de universo. Los overrides manuales del
       // Layer 2 pertenecen al universo anterior. Limpiarlos garantiza que el
       // nuevo estado se hidrate desde cero desde la AI (Layer 0).
-      // Usamos releaseAllManualOverrides() en lugar de un clear() brutalista
-      // para respetar las transiciones crossfade ya configuradas.
-      masterArbiter.releaseAllManualOverrides()
-      console.log(`[TitanOrchestrator] 🧹 WAVE 3230: Layer 2 purged — Clean Slate for vibe ${normalizedVibeId}`)
+      // WAVE 4703: ArbitrationDirector bypased (WAVE 4592) — releaseAllManualOverrides removed.
+      // L2 manual overrides en NodeArbiter se limpian via getAetherArbiter().releaseAll() si aplica.
+      console.log(`[TitanOrchestrator] 🧹 WAVE 3230: Clean Slate for vibe ${normalizedVibeId}`)
     }
   }
   
@@ -2746,31 +2701,7 @@ export class TitanOrchestrator {
       this.hal.invalidateProfileCache()
     }
     
-    // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
-    // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
-    // 🎨 WAVE 1001: Include HAL color flags
-    // 🔧 WAVE 1055: IDENTITY CRISIS FIX - INCLUDE POSITION!!!
-    masterArbiter.setFixtures(this.fixtures.map(f => ({
-      id: f.id,
-      name: f.name,
-      zone: f.zone,
-      type: f.type || 'generic',
-      dmxAddress: f.dmxAddress,  // 🎨 WAVE 686.11: Already normalized above
-      universe: f.universe ?? 0,  // 🔥 WAVE 1219: ArtNet 0-indexed
-      capabilities: f.capabilities,
-      hasMovementChannels: f.hasMovementChannels,
-      hasColorWheel: f.hasColorWheel,      // 🎨 WAVE 1001: HAL Translation
-      hasColorMixing: f.hasColorMixing,    // 🎨 WAVE 1001: HAL Translation
-      profileId: f.profileId || f.id,      // 🎨 WAVE 1001: HAL Translation
-      channels: f.channels,
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🕵️ WAVE 1055: THE MISSING LINK - Position for L/R stereo detection
-      // WITHOUT THIS, Arbiter receives position=undefined, assumes x=0, ALL → RIGHT
-      // ═══════════════════════════════════════════════════════════════════════
-      position: f.position,  // 🔧 WAVE 1055: CRITICAL FOR STEREO ROUTING
-    })))
-    
-    // 🌊 WAVE 2432 AUTO-DETECT: Detectar y auto-setear el layout basado en PAR fixtures
+    //  WAVE 2432 AUTO-DETECT: Detectar y auto-setear el layout basado en PAR fixtures
     // Si el show tiene PAR stereo (L/R), usa LiquidEngine71. De lo contrario, 4.1.
     const detectedLayout = detectLiquidLayoutFromFixtures(this.fixtures)
     this.setLiquidLayout(detectedLayout)
@@ -3212,6 +3143,39 @@ export class TitanOrchestrator {
    */
   getFixturesCount(): number {
     return this.fixtures.length
+  }
+
+  /**
+   * WAVE 4703: Fixture query API — replaces masterArbiter.getFixtureIds().
+   * Used by TimelineEngine and HephaestusRuntime for zone resolution.
+   */
+  getFixtureIds(): string[] {
+    return this.fixtures.map((f: any) => f.id as string)
+  }
+
+  /**
+   * WAVE 4703: Zone mapping data — replaces masterArbiter.getFixturesForZoneMapping().
+   */
+  getFixturesForZoneMapping(): Array<{ id: string; zone: string; position?: { x: number }; enabled?: boolean }> {
+    return this.fixtures.map((f: any) => ({
+      id: f.id as string,
+      zone: (f.zone as string) || '',
+      position: f.position as { x: number } | undefined,
+      enabled: (f as any).enabled !== false,
+    }))
+  }
+
+  /**
+   * WAVE 4703: Zone ID → fixture IDs resolution — replaces masterArbiter.getFixtureIdsByZone().
+   */
+  getFixtureIdsByZone(effectZone: string): string[] {
+    const fixtures = this.getFixturesForZoneMapping()
+    const result = resolveZone(effectZone, fixtures)
+    if (result.length === 0) {
+      console.warn(`[TitanOrchestrator] ⚠️ Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`)
+      return this.getFixtureIds()
+    }
+    return result
   }
 
   /**

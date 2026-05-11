@@ -198,7 +198,7 @@ export function useMidiLearn() {
    * - lux-*   → LuxSyncStore
    * - fx-*    → window.lux.forceStrike() — REAL DMX via TitanEngine
    * - vibe-*  → window.lux.setVibe() — VibeProfile change
-   * - arb-*   → window.lux.arbiter.* — MasterArbiter overrides
+   * - arb-*   → window.lux.aether.* — Aether overrides (WAVE 4702: arbiter removed)
    */
   const dispatchToStore = useCallback((controlId: MappableControlId, msg: MidiMessage) => {
     const controlStore = controlStoreRef.current()

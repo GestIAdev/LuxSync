@@ -31,7 +31,6 @@ import type { ILightEffect, EffectFrameOutput, EffectZone } from '../effects/typ
 import type { LuxProject } from '../../chronos/core/ChronosProject'
 import type { FXClip, FXKeyframe, VibeClip } from '../../chronos/core/TimelineClip'
 import type { Layer2_Manual } from '../arbiter/types'
-import { masterArbiter } from '../arbiter'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { resolveZoneTags } from '../zones/ZoneMapper'
 
@@ -424,10 +423,8 @@ export class TimelineEngine {
     // If no FX clip is active → fixtureTargets is EMPTY → Titan reigns supreme.
     // ═══════════════════════════════════════════════════════════════════════
 
-    masterArbiter.setPlaybackFrame(fixtureTargets as any, {
-      hasActiveVibe,
-      vibeId: this.currentPlaybackVibeId,
-    })
+    // 🎤 WAVE 4703: setPlaybackFrame on ArbitrationDirector removed — bypased since WAVE 4592.
+    // TitanOrchestrator reads getLastPlaybackFrame() directly from this engine.
 
     // ── Cleanup clips that ended ──
     Array.from(this.previousActiveIds).forEach(prevId => {
@@ -458,7 +455,7 @@ export class TimelineEngine {
     this.colorLatch.clear()
 
     // �🔥 WAVE 2056: Stop playback mode in Arbiter
-    masterArbiter.stopPlayback()
+    // 🎬 WAVE 4703: stopPlayback on ArbitrationDirector removed — bypased since WAVE 4592.
 
     // 🎬 WAVE 2063: Clear tracked vibe
     this.currentPlaybackVibeId = null
@@ -820,7 +817,7 @@ export class TimelineEngine {
 
       // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
       // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
-      const zoneResolved = masterArbiter.getFixtureIdsByZone(zoneId)
+      const zoneResolved = getTitanOrchestrator().getFixtureIdsByZone(zoneId)
 
       // 🎯 WAVE 2544.1: AND-gate — clip permission mask
       // If the clip has zone restrictions, only pass fixtures that are in BOTH
@@ -1164,8 +1161,7 @@ export class TimelineEngine {
       const cached = this._zoneCache.get(cacheKey)
       if (cached) return cached
 
-      const fixtures = masterArbiter.getFixturesForZoneMapping()
-
+      const fixtures = getTitanOrchestrator().getFixturesForZoneMapping()
       const resolved = resolveZoneTags(zones, fixtures)
 
       if (resolved.length > 0) {
@@ -1178,7 +1174,7 @@ export class TimelineEngine {
       )
     }
 
-    return masterArbiter.getFixtureIds()
+    return getTitanOrchestrator().getFixtureIds()
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1210,7 +1206,7 @@ export class TimelineEngine {
     // A. Expand wildcard '*' → All fixture IDs
     let finalIds = targetIds
     if (targetIds.includes('*')) {
-      finalIds = masterArbiter.getFixtureIds()
+      finalIds = getTitanOrchestrator().getFixtureIds()
       if (finalIds.length === 0) {
         console.warn('[TimelineEngine] ⚠️ No fixtures registered in Arbiter!')
         return

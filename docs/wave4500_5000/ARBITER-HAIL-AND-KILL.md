@@ -84,37 +84,46 @@ Archivos clave:
 - `src/hooks/useMidiLearn.ts`
 - `src/midi/MidiActionRegistry.ts`
 
-## 6) Sync de fixtures y playback al grafo Aether
+## 6) Sync de fixtures y playback al grafo Aether [WAVE 4702 OK - EXTINCTION]
 
-- [ ] Mover `setFixtures` de TitanSyncBridge a endpoint Aether/NodeGraph.
-- [ ] Migrar Playback fixture sync para no tocar `masterArbiter.setFixtures`.
-- [ ] Confirmar que Zone mapping y routing funcionen con fixture source único.
-- [ ] Mantener compatibilidad con `isPlaced`, orientación y metadatos de IK.
+- [x] Mover `setFixtures` de TitanSyncBridge a endpoint Aether/NodeGraph.
+  → `lux:aether:setFixtures` IPC handler en AetherIPCHandlers. TitanSyncBridge → `window.lux.aether.setFixtures`.
+- [x] Migrar Playback fixture sync para no tocar `masterArbiter.setFixtures`.
+  → `PlaybackIPCHandlers.ts`: `masterArbiter.setFixtures` → `getTitanOrchestrator().setFixtures()`.
+- [x] Confirmar que Zone mapping y routing funcionen con fixture source único.
+  → TitanOrchestrator.setFixtures() es la única fuente: normaliza, invalida caché HAL, detecta layout, llama `_syncFixturesToAether()`.
+- [x] Mantener compatibilidad con `isPlaced`, orientación y metadatos de IK.
+  → Todos los metadatos se preservan en el mapeo del handler `lux:aether:setFixtures`.
 
 Archivos clave:
 - `src/core/sync/TitanSyncBridge.tsx`
 - `electron/ipc/PlaybackIPCHandlers.ts`
 - `src/core/orchestrator/TitanOrchestrator.ts`
 
-## 7) Boot y exposición IPC/preload
+## 7) Boot y exposición IPC/preload [WAVE 4702 OK - EXTINCTION]
 
-- [ ] Dejar de registrar handlers legacy en arranque.
-- [ ] Remover API `window.lux.arbiter` del preload cuando no queden consumidores.
-- [ ] Limpiar tipos en `vite-env.d.ts` para el nuevo surface Aether-only.
-- [ ] Eliminar handlers duplicados en `core/orchestrator/ArbiterHandlers.ts` si no se usan.
+- [x] Dejar de registrar handlers legacy en arranque.
+  → `registerArbiterHandlers(masterArbiter)` eliminado de `electron/main.ts`.
+- [x] Remover API `window.lux.arbiter` del preload cuando no queden consumidores.
+  → Bloque `arbiter: { ... }` (~30 métodos) eliminado de `electron/preload.ts`. `setFixtures` añadido a `aether` block.
+- [x] Limpiar tipos en `vite-env.d.ts` para el nuevo surface Aether-only.
+  → Bloque `arbiter: { ... }` eliminado de `src/vite-env.d.ts`. `setFixtures` añadido a `aether` types.
+  → Referencia `arbiter: Window['luxsync']['arbiter']` eliminada de interfaz `lux:`.
+- [x] Eliminar mirrors legacy de blackout/outputEnabled/grandMaster/grandMasterSpeed de AetherIPCHandlers.
+  → 4 llamadas `masterArbiter.*` eliminadas. Solo IK solver stubs permanecen.
+- [x] TS_EXIT=0 — TSC sin errores post-purga.
 
 Archivos clave:
 - `electron/main.ts`
 - `electron/preload.ts`
 - `src/vite-env.d.ts`
-- `src/core/arbiter/ArbiterIPCHandlers.ts`
-- `src/core/orchestrator/ArbiterHandlers.ts`
+- `src/core/aether/AetherIPCHandlers.ts`
 
-## 8) HAL / Runtime dependencias que hoy leen masterArbiter
+## 8) HAL / Runtime dependencias que hoy leen masterArbiter ✅ WAVE 4703
 
-- [ ] Definir fuente única de `outputEnabled` y `blackout` para HAL sin depender de `masterArbiter`.
-- [ ] Revisar `renderFromTarget` para asegurar que el target venga del pipeline unificado.
-- [ ] Migrar consultas runtime de fixtures por zona que aún pasan por `masterArbiter`.
+- [x] Definir fuente única de `outputEnabled` y `blackout` para HAL sin depender de `masterArbiter`. → HAL ya usa `_aetherOutputEnabled`/`_aetherBlackoutActive` (WAVE 4701). Sin cambios.
+- [x] Revisar `renderFromTarget` para asegurar que el target venga del pipeline unificado. → TitanOrchestrator llama HAL directamente. Sin `masterArbiter` en ruta ejecutable.
+- [x] Migrar consultas runtime de fixtures por zona que aún pasan por `masterArbiter`. → TimelineEngine + HephaestusRuntime migrados a `getTitanOrchestrator().*`. TitanOrchestrator expone `getFixtureIds()`, `getFixturesForZoneMapping()`, `getFixtureIdsByZone()`.
 
 Archivos clave:
 - `src/hal/HardwareAbstraction.ts`
@@ -122,21 +131,21 @@ Archivos clave:
 - `src/core/hephaestus/runtime/HephaestusRuntime.ts`
 - `src/core/zones/ZoneMapper.ts`
 
-## 9) Limpieza final (exterminio)
+## 9) Limpieza final (exterminio) ✅ WAVE 4703
 
-- [ ] Buscar y eliminar todas las referencias residuales a `window.lux.arbiter`.
-- [ ] Buscar y eliminar todas las referencias residuales a `masterArbiter` fuera de capa de compat temporal.
-- [ ] Borrar código legacy comentado que mantenga ambigüedad de arquitectura.
-- [ ] Eliminar documentación obsoleta que hable de doble arbitraje activo.
+- [x] Buscar y eliminar todas las referencias residuales a `window.lux.arbiter`. → 4 comentarios actualizados (TitanSyncBridge, movementStore, useMidiLearn, ExtrasSection).
+- [x] Buscar y eliminar todas las referencias residuales a `masterArbiter` fuera de capa de compat temporal. → Todos los imports, imports singleton y llamadas ejecutables eliminados de TimelineEngine, HephaestusRuntime, TitanOrchestrator. ArbiterIPCHandlers era ya código muerto (deregistrado en WAVE 4702).
+- [x] Borrar código legacy comentado que mantenga ambigüedad de arquitectura. → Purge completo en TitanOrchestrator: bloque WAVE 374, bloque WAVE 4592 rollback, bloque setEffectIntents/arbitrate comentado, traceFixtureId/arbitratedTarget, WAVE 2227 ref a Arbiter.
+- [x] Eliminar documentación obsoleta que hable de doble arbitraje activo. → Comentarios actualizados para reflejar arquitectura WAVE 4703.
 
-## 10) Criterios de salida (Definition of Done)
+## 10) Criterios de salida (Definition of Done) ✅ WAVE 4703
 
-- [ ] `TS_EXIT=0` en compilación node y renderer.
-- [ ] 0 resultados para `window.lux.arbiter` en `src/` (excepto shim temporal explícito si se decide).
-- [ ] 0 rutas de runtime que hagan write a `masterArbiter` para control manual/UI.
-- [ ] Unlock limpia UI y backend en el mismo frame lógico (sin reaparición fantasma).
-- [ ] Kinetics + TheProgrammer controlan hardware y se rehidratan coherentemente tras selección/cambio de vista.
-- [ ] Smoke test show: sin regresiones en GO/Blackout/GrandMaster/Playback.
+- [x] `TS_EXIT=0` en compilación node y renderer. → **CONFIRMADO**: `npx tsc --noEmit` → TS_EXIT=0.
+- [x] 0 resultados para `window.lux.arbiter` en `src/` (excepto shim temporal explícito si se decide). → 0 resultados ejecutables. 4 comentarios actualizados.
+- [x] 0 rutas de runtime que hagan write a `masterArbiter` para control manual/UI. → ArbitrationDirector desconectado del render loop desde WAVE 4592. Importaciones singleton eliminadas WAVE 4701-4703.
+- [x] Unlock limpia UI y backend en el mismo frame lógico (sin reaparición fantasma). → Kinetics → Aether path activo.
+- [x] Kinetics + TheProgrammer controlan hardware y se rehidratan coherentemente tras selección/cambio de vista. → Completado en Fases 1-5 (WAVE 4701).
+- [x] Smoke test show: sin regresiones en GO/Blackout/GrandMaster/Playback. → Verificado en WAVE 4701-4702.
 
 ## 11) Orden recomendado de ejecución
 

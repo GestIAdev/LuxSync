@@ -21,9 +21,8 @@
 
 import { ipcMain } from 'electron'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
-// WAVE 4651: masterArbiter delegado temporal para pattern engine e IK solver.
-// WAVE 4652: masterArbiter compartido para blackout/grandmaster mientras el HAL
-// sigue leyendo de el. Ambos pipelines reciben la misma senal en paralelo.
+// WAVE 4702: masterArbiter retenido solo para IK solver (applySpatialTarget/releaseSpatialTarget).
+// Pendiente de migración a IK nativo en wave futura.
 import { masterArbiter } from '../arbiter'
 // WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
@@ -188,14 +187,12 @@ export function registerAetherIPCHandlers(): void {
     }
   )
 
-  // ── G1/G2: Blackout + GrandMaster globales (WAVE 4652) ─────────────────────
-  // Atacan NodeArbiter (pipeline Aether) Y masterArbiter (pipeline legacy + HAL)
-  // de forma simultanea. Cuando el HAL migre al pipeline Aether, se elimina
-  // la llamada a masterArbiter de aqui.
+  // ── G1/G2: Blackout + GrandMaster globales (WAVE 4702) ─────────────────────
+  // Atacan NodeArbiter (pipeline Aether). masterArbiter extinto — WAVE 4702.
 
   /**
    * G1: Set blackout global.
-   * Escribe en NodeArbiter L4 Y en masterArbiter (HAL legacy).
+   * Escribe en NodeArbiter L4.
    * Payload: active boolean
    * Devuelve: { success, blackoutActive }
    */
@@ -205,8 +202,6 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         arbiter.setBlackout(active)
-        // WAVE 4652: espejo al pipeline legacy hasta que HAL migre a Aether
-        masterArbiter.setBlackout(active)
         return { success: true, blackoutActive: active }
       } catch (err) {
         console.error('[AetherIPC] setBlackout error:', err)
@@ -225,8 +220,6 @@ export function registerAetherIPCHandlers(): void {
       try {
         const orchestrator = getTitanOrchestrator()
         orchestrator.setOutputEnabled(!!enabled)
-        // Compat temporal con rutas legacy todavía vivas.
-        masterArbiter.setOutputEnabled(!!enabled)
         return { success: true, outputEnabled: orchestrator.isOutputEnabled() }
       } catch (err) {
         console.error('[AetherIPC] setOutputEnabled error:', err)
@@ -260,7 +253,7 @@ export function registerAetherIPCHandlers(): void {
 
   /**
    * G2: Set grand master dimmer global (0-1).
-   * Escribe en NodeArbiter Y en masterArbiter.
+   * Escribe en NodeArbiter L4.
    * Payload: value (0-1)
    */
   ipcMain.handle(
@@ -269,8 +262,6 @@ export function registerAetherIPCHandlers(): void {
       try {
         const clamped = value < 0 ? 0 : value > 1 ? 1 : value
         getTitanOrchestrator().getAetherArbiter().setGrandMaster(clamped)
-        // WAVE 4652: espejo al pipeline legacy
-        masterArbiter.setGrandMaster(clamped)
         return { success: true, grandMaster: clamped }
       } catch (err) {
         console.error('[AetherIPC] setGrandMaster error:', err)
@@ -281,7 +272,7 @@ export function registerAetherIPCHandlers(): void {
 
   /**
    * G3: Set grand master speed (0.1-2.0) — escala velocidad AI global.
-   * Delegado a masterArbiter (controla el VMM legacy).
+   * Controla VMM nativo del pipeline Aether.
    * Payload: value (0.1-2.0)
    */
   ipcMain.handle(
@@ -291,8 +282,6 @@ export function registerAetherIPCHandlers(): void {
         const clamped = value < 0.1 ? 0.1 : value > 2.0 ? 2.0 : value
         // Aether kinetic flow consumes VMM in hot-path. This is the canonical speed control.
         vibeMovementManager.setGlobalSpeedMultiplier(clamped)
-        // Compat temporal con rutas legacy aún conectadas al ArbitrationDirector.
-        masterArbiter.setGrandMasterSpeed(clamped)
         return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
       } catch (err) {
         console.error('[AetherIPC] setGrandMasterSpeed error:', err)
@@ -482,6 +471,29 @@ export function registerAetherIPCHandlers(): void {
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] releaseSpatialTarget error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  // ── F1: FIXTURE SYNC — Canal canónico → TitanOrchestrator (WAVE 4702) ───────
+  /**
+   * F1: Sync fixtures desde stageStore al NodeGraph de Aether.
+   * Reemplaza lux:arbiter:setFixtures como canal canónico.
+   * Llama a TitanOrchestrator.setFixtures() que internamente:
+   *   - Actualiza HAL
+   *   - Llama _syncFixturesToAether (NodeGraph full-resync)
+   * Devuelve: { success, fixtureCount, liquidLayout }
+   */
+  ipcMain.handle(
+    'lux:aether:setFixtures',
+    (_event, { fixtures, stageBounds }: { fixtures: any[]; stageBounds?: any }) => {
+      try {
+        const orchestrator = getTitanOrchestrator()
+        const liquidLayout = orchestrator.setFixtures(fixtures, stageBounds)
+        return { success: true, fixtureCount: fixtures.length, liquidLayout }
+      } catch (err) {
+        console.error('[AetherIPC] setFixtures error:', err)
         return { success: false, error: String(err) }
       }
     }

@@ -128,6 +128,29 @@ export function registerAetherIPCHandlers(): void {
   )
 
   /**
+   * WAVE 4708 T3 — CAOS UNIFICADO:
+   * Propaga la posición del slider ChaosOrderSlider al motor IA (L0).
+   * El KineticAdapter lo usa como desfase de fase determinista por nodo,
+   * unificando el comportamiento del caos entre patrones manuales y IA.
+   * Payload: { amount: 0..1, seed: uint16 }
+   */
+  ipcMain.handle(
+    'lux:aether:setGlobalKineticChaos',
+    (_event, { amount, seed }: { amount: number; seed: number }) => {
+      try {
+        vibeMovementManager.setGlobalChaos(
+          typeof amount === 'number' && Number.isFinite(amount) ? amount : 0,
+          typeof seed === 'number' && Number.isFinite(seed) ? seed : 0,
+        )
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] setGlobalKineticChaos error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
    * WAVE L2-SUPREMACY: Limpia todas las entradas del motor cinético nativo
    * (_motorKineticOverrides) del NodeArbiter. Los nodos dejan de tener
    * autoridad L2-MOTOR sobre pan/tilt — L0 retoma el control inmediatamente.
@@ -142,6 +165,34 @@ export function registerAetherIPCHandlers(): void {
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearAllMotorKineticOverrides error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * WAVE 4709 T1 — EXORCISMO POR LISTA:
+   * Limpia entradas del Dual-Map del motor cinético por nodeId. Usado por
+   * KineticsBridge cuando un fixture cae fuera de la selección activa
+   * (orphan diffing) para evitar movers congelados en la última coordenada
+   * L2 que el engine les calculó antes del despido.
+   */
+  ipcMain.handle(
+    'lux:aether:clearMotorKineticOverrides',
+    (_event, nodeIds: string[]) => {
+      if (!Array.isArray(nodeIds)) {
+        return { success: false, error: 'nodeIds must be an array' }
+      }
+      try {
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        for (const nodeId of nodeIds) {
+          if (typeof nodeId === 'string') {
+            arbiter.clearMotorKineticOverride(nodeId)
+          }
+        }
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] clearMotorKineticOverrides error:', err)
         return { success: false, error: String(err) }
       }
     }
@@ -334,14 +385,19 @@ export function registerAetherIPCHandlers(): void {
    */
   ipcMain.handle(
     'lux:aether:setManualPattern',
-    (_event, { fixtureIds, pattern, speed, amplitude, fan }: {
+    (_event, { fixtureIds, pattern, speed, amplitude, fan, anchorPan, anchorTilt }: {
       fixtureIds: string[]
       pattern: string | null
       speed: number
       amplitude: number
       fan?: number
+      // WAVE 4708 T2: ancla del radar inyectada atomicamente con el pattern.
+      // Si llega, el handler escribe pan_base/tilt_base en _manualOverrides
+      // antes de activar el motor — elimina la ventana de carrera con _flushClassic.
+      anchorPan?: number
+      anchorTilt?: number
     }) => {
-      console.log('[SONDA L2-IPC] Payload recibido:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan })
+      console.log('[SONDA L2-IPC] Payload recibido:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt })
       if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
         return { success: false, error: 'fixtureIds must be a non-empty array' }
       }
@@ -378,23 +434,29 @@ export function registerAetherIPCHandlers(): void {
         vibeMovementManager.setManualAmplitude(null)
         vibeMovementManager.setKineticFanOffsets({})
 
-        // WAVE L2-SUPREMACY: guardar estado previo para limpiar L2 de fixtures
-        // que ya no forman parte de la nueva selección.
-        // Si no se limpian, quedan congelados en su última posición cinética.
-        const prevKineticState = aetherKineticEngine.getState()
-
-        // Activar motor nativo con la configuración completa
-        aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm)
-
-        // Limpiar overrides L2 para fixtures que salieron de la selección
-        if (prevKineticState.active) {
-          const newNodeSet = new Set(nodeIds)
-          for (const prevNodeId of prevKineticState.nodeIds) {
-            if (!newNodeSet.has(prevNodeId)) {
-              arbiter.clearManualOverride(prevNodeId)
-            }
+        // WAVE 4708 T2 — ANCHOR HYDRATION ATÓMICA:
+        // Si el cliente envió anchorPan/anchorTilt (posición actual del radar),
+        // los inyectamos en _manualOverrides como pan_base/tilt_base ANTES de
+        // activar el motor. Garantiza que el primer tick del engine lea el
+        // anchor correcto en lugar del fallback 0.5 (centro), eliminando el
+        // "snap a centro" cuando el operador activa un patrón sin haber
+        // disparado un _flushClassic previo en el mismo frame lógico.
+        if (typeof anchorPan === 'number' && typeof anchorTilt === 'number'
+            && Number.isFinite(anchorPan) && Number.isFinite(anchorTilt)) {
+          const pan_base  = anchorPan  < 0 ? 0 : anchorPan  > 1 ? 1 : anchorPan
+          const tilt_base = anchorTilt < 0 ? 0 : anchorTilt > 1 ? 1 : anchorTilt
+          for (const nodeId of nodeIds) {
+            // Merge no-destructivo con overrides existentes (preserva otros canales L2).
+            const prev = arbiter.getManualOverride(nodeId) ?? {}
+            arbiter.setManualOverride(nodeId, { ...prev, pan_base, tilt_base })
           }
         }
+
+        // Activar motor nativo con la configuración completa.
+        // WAVE 4710: Programmer Paradigm — la selección NO dicta el ciclo de vida en L2.
+        // Fixtures que salen del scope del engine quedan congelados vía L2-MOTOR
+        // hasta un Unlock explícito. NO se limpian overrides aquí.
+        aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter)
 
         return { success: true, pattern: nativePattern }
       } catch (err) {

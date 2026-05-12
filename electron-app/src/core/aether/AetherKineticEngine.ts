@@ -248,11 +248,26 @@ export class AetherKineticEngine {
     speed: number,
     amplitude: number,
     fan: number,
+    arbiter: NodeArbiter,
   ): void {
     console.log('[SONDA L2-ENGINE] Registrando patrón manual:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds)
     if (nodeIds.length === 0) {
-      this.stop()
+      this.stop(arbiter)
       return
+    }
+
+    // ── WAVE 4711 ENGINE GC ─────────────────────────────────────────────────
+    // Antes de re-escopear, limpiar EXCLUSIVAMENTE el rastro L2-MOTOR de los
+    // nodos que salen del scope. El ancla L2 (_manualOverrides: pan_base/tilt_base)
+    // se preserva intacta — el operador la puso manualmente y es su estado.
+    if (this._config) {
+      const newNodeSet = new Set(nodeIds)
+      for (const oldNodeId of this._config.nodeIds) {
+        if (!newNodeSet.has(oldNodeId)) {
+          arbiter.clearMotorKineticOverride(oldNodeId)
+          // ESTRICTAMENTE PROHIBIDO: clearManualOverride — preservar ancla L2
+        }
+      }
     }
 
     // Pre-warm phase map y override pool para los nodeIds nuevos

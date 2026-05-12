@@ -22,6 +22,7 @@ import { useMovementStore, type PatternType } from '../../../stores/movementStor
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
+import { KineticsBridge } from '../../../bridges/KineticsBridge'
 
 import { HorizontalFader } from './HorizontalFader'
 import { FixtureMatrix } from './FixtureMatrix'
@@ -110,43 +111,47 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     [selectedIds, lockedFixtureIds],
   )
 
-  // ── Kinetic overrides activos (para mostrar botón Unlock) ────────────────
-  const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
-  const hasKineticOverride = useMemo(() => {
-    // WAVE 4707 S2: el motor corre con _motorKineticOverrides, no con fixtureOverrides.
-    // Cuando hay patrón activo el botón UNLOCK debe aparecer aunque el programmerStore
-    // no tenga pan/tilt registrados (los patrones usan el dual-map del NodeArbiter).
-    if (activePattern !== 'none') return true
-    return selectedIds.some(id => {
-      const ov = fixtureOverrides.get(id)
-      return ov?.pan !== null || ov?.tilt !== null
-    })
-  }, [selectedIds, fixtureOverrides, activePattern])
+  // WAVE 4708 T1: el botón UNLOCK siempre se muestra cuando hay selección.
+  // El gate antiguo (hasKineticOverride sobre fixtureOverrides) ignoraba
+  // el Dual-Map del motor (_motorKineticOverrides) y dejaba al operador sin
+  // forma de detener un patrón activo cuyo anchor seguía en defaults.
 
   const handleUnlockKinetics = useCallback(() => {
-    if (selectedIds.length === 0) return
-    // WAVE 4707 S3: Unlock idéntico al de TheProgrammer — cinco capas sincrónicas.
-    // 1) NodeArbiter L2: limpia pan/tilt/speed/color de todas las familias
+    // WAVE 4708 T1: Unlock TOTAL alineado con TheProgrammer.handleUnlockAll.
+    // Limpia Motor L2 + Ancla L2 + Inhibit Limit + UI state — sin zombies.
+    // 1) NodeArbiter L2 (Ancla pan/tilt + dimmer/color/speed)
     useProgrammerStore.getState().releaseAll()
-    // 2) Inhibit limits del NodeArbiter (canal IMPACT) — FALTABA en la Cathedral
-    const nodeIds = selectedIds.map(id => `${id}:impact`)
-    window.lux?.aether?.clearInhibitLimit(nodeIds)
-    // 3) VMM: limpiar patrón activo en masterArbiter + KineticEngine
-    void window.lux?.aether?.setManualPattern({
-      fixtureIds: selectedIds,
-      pattern: null,
-      speed: 50,
-      amplitude: 50,
-    })
-    // WAVE L2-SUPREMACY: limpiar dual-map motor kinético (safety net)
+    if (selectedIds.length > 0) {
+      // 2) Inhibit limits del NodeArbiter (canal IMPACT)
+      const impactNodeIds = selectedIds.map(id => `${id}:impact`)
+      window.lux?.aether?.clearInhibitLimit(impactNodeIds)
+      // 3) Motor L2 + VMM legacy + KineticEngine
+      void window.lux?.aether?.setManualPattern({
+        fixtureIds: selectedIds,
+        pattern: null,
+        speed: 50,
+        amplitude: 50,
+      })
+      // 4) VMM: limpiar phase offsets del fan residuales
+      void window.lux?.aether?.setKineticFanOffsets({})
+    }
+    // 5) Safety net: barrer Dual-Map global del motor por si quedaron huérfanos
     void window.lux?.aether?.clearAllMotorKineticOverrides?.()
-    // 4) VMM: limpiar phase offsets del fan (WAVE 4717.2 residuales)
-    void window.lux?.aether?.setKineticFanOffsets({})
-    // 5) UI inmediata: resetear patrón en store
-    useMovementStore.getState().setActivePattern('none')
-    // 6) EXORCISMO (WAVE 4719): limpiar Sets zombificados
-    useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
-    useMovementStore.getState().setLockedFixtures(new Set())
+    // 6) UI: resetear patrón y dinámicas que NO disparan flush
+    //    (pattern/speed/amplitude no son leídas por la subscripción classic).
+    const ms = useMovementStore.getState()
+    ms.setActivePattern('none')
+    ms.setPatternSpeed(50)
+    ms.setPatternAmplitude(50)
+    // 7) WAVE 4709 T2 — RESET RADAR UI silencioso:
+    //    devuelve pan/tilt/fan/chaos a defaults SIN dispar un flush a L2.
+    //    Si los reseteáramos directamente, la subscripción classic del bridge
+    //    grabaría el "centro" como nuevo lock manual y la IA (L0) quedaría
+    //    bloqueada de retomar el control hasta el próximo click del operador.
+    KineticsBridge.resetRadarSilent()
+    // 8) EXORCISMO: limpiar Sets zombificados
+    ms.setManualOverrideForFixtures(selectedIds, false)
+    ms.setLockedFixtures(new Set())
   }, [selectedIds])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -209,16 +214,14 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
       {/* ── MAIN CONTROLS ── */}
       {hasMovingHeads && (
         <>
-          {/* Mode bar — WAVE 4717: DEGREES y 3D en cuarentena. Classic forzado. Solo UNLOCK visible. */}
-          {hasKineticOverride && (
-            <div className="kinetics-cathedral__mode-bar">
-              <button
-                className="kc-mode-btn kc-mode-btn--unlock"
-                onClick={handleUnlockKinetics}
-                title="Liberar control PAN/TILT → AI controla"
-              >🔓 UNLOCK</button>
-            </div>
-          )}
+          {/* Mode bar — WAVE 4708 T1: UNLOCK siempre visible mientras haya selección. */}
+          <div className="kinetics-cathedral__mode-bar">
+            <button
+              className="kc-mode-btn kc-mode-btn--unlock"
+              onClick={handleUnlockKinetics}
+              title="Liberar control cinético total (Motor + Ancla L2 + UI)"
+            >🔓 UNLOCK</button>
+          </div>
 
           {/* ── RADAR EMBED ── WAVE 4647: centro de mando integrado en la Cathedral ── */}
           <div className="kinetics-cathedral__radar-embed">

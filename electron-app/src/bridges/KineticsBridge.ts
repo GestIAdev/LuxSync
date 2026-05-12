@@ -123,6 +123,12 @@ class KineticsBridgeClass {
   private _lastPatternSent: string | null = null
   private _lastFixtureKeysSent: string | null = null
 
+  // ── WAVE 4709 T2: SILENT RESET SEMAPHORE ───────────────────────────────
+  // Contador de flushes clásicos a suprimir tras un Unlock. handleUnlockKinetics
+  // resetea la UI del radar (pan/tilt → defaults) sin querer reescribir L2:
+  // bumpea este contador, la subscripción classic decrementa y skipea.
+  private _suppressClassicFlushCount: number = 0
+
   start(): void {
     if (this._started) {
       console.warn('[KineticsBridge] Ya iniciado, ignorando start()')
@@ -171,13 +177,29 @@ class KineticsBridgeClass {
     // fanValue (-100..100): spread lineal adicional desde radar gestures.
     // WAVE 4718: _scheduleFanPhaseFlush eliminada — el fan viaja integrado en
     // _flushPattern como parámetro, y setKineticFanOffsets IPC es no-op.
+    // WAVE 4708 T3: chaosAmount/chaosSeed también se propagan al motor IA (L0)
+    // vía setGlobalKineticChaos para unificar el caos entre L0 y L2.
     const unsubClassic = useMovementStore.subscribe(
       (s) => ({
         pan: s.pan, tilt: s.tilt, fanValue: s.fanValue,
         chaosAmount: s.chaosAmount, chaosSeed: s.chaosSeed,
       }),
-      ({ pan, tilt, fanValue }) => {
-        this._scheduleClassicFlush(pan, tilt, fanValue)
+      ({ pan, tilt, fanValue, chaosAmount, chaosSeed }) => {
+        // WAVE 4709 T2: si la UI fue reseteada silenciosamente (post-Unlock),
+        // consumir el token de supresión y NO escribir a L2. Evita que el
+        // "centro 270°/135°" del reset se grabe como nuevo lock manual y
+        // bloquee al motor IA (L0) de retomar el control.
+        if (this._suppressClassicFlushCount > 0) {
+          this._suppressClassicFlushCount--
+        } else {
+          this._scheduleClassicFlush(pan, tilt, fanValue)
+        }
+        // WAVE 4708 T3: caos unificado L0 — best-effort, sin debounce (slider ya
+        // emite a ~60 Hz máx; el handler IPC es trivial: dos asignaciones).
+        void window.lux?.aether?.setGlobalKineticChaos?.({
+          amount: chaosAmount,
+          seed:   chaosSeed,
+        })
       },
       { equalityFn: (a, b) =>
           a.pan === b.pan && a.tilt === b.tilt && a.fanValue === b.fanValue &&
@@ -232,7 +254,9 @@ class KineticsBridgeClass {
     // sobre un fixture recién seleccionado lo snapeaba al centro — freeze de foco.
     const unsubSelection = useSelectionStore.subscribe(
       (s) => s.selectedIds,
-      (_selectedIds) => {
+      (currentSelectedIds) => {
+        // WAVE 4710: Programmer Paradigm — deselección NO libera estado L2.
+        // Los overrides persisten congelados (L2-MOTOR los aplica) hasta un Unlock explícito.
         // Forzar full setManualPattern en el próximo flush (no scalar-only)
         this._lastFixtureKeysSent = null
         const { activePattern, patternSpeed, patternAmplitude, chaosAmount } =
@@ -253,6 +277,31 @@ class KineticsBridgeClass {
     console.log('[KineticsBridge] 🧠 Iniciado — Neural Link activo')
   }
 
+  /**
+   * WAVE 4709 T2 — RESET RADAR UI sin escribir L2.
+   *
+   * Vuelca pan/tilt/fanValue/chaos a defaults en movementStore y suprime los
+   * flushes clásicos derivados para que el "centro" no se grabe como un nuevo
+   * lock manual que bloquee al motor IA (L0). Llamado por handleUnlockKinetics.
+   *
+   * Bumpea el semáforo en 3 (cubre los hasta 3 disparos posibles de la
+   * subscripción classic: pan/tilt, fanValue, chaosAmount/Seed).
+   */
+  resetRadarSilent(): void {
+    // Cancelar primero cualquier flush clásico en cola del último gesto del
+    // operador — si llega antes del set(), reescribiría L2 con valores stale.
+    if (this._classicFlushTimeout !== null) {
+      clearTimeout(this._classicFlushTimeout)
+      this._classicFlushTimeout = null
+    }
+    // Bumpear semáforo ANTES de los set() — cubre los disparos derivados.
+    this._suppressClassicFlushCount += 3
+    const ms = useMovementStore.getState()
+    ms.setPanTilt(270, 135)
+    ms.setFanValue(0)
+    ms.setChaosAmount(0)
+  }
+
   stop(): void {
     if (this._patternFlushTimeout !== null) clearTimeout(this._patternFlushTimeout)
     if (this._spatialFlushTimeout !== null) clearTimeout(this._spatialFlushTimeout)
@@ -262,6 +311,7 @@ class KineticsBridgeClass {
     this._classicFlushTimeout = null
     this._lastPatternSent = null
     this._lastFixtureKeysSent = null
+    this._suppressClassicFlushCount = 0
     for (const unsub of this._unsubscribers) unsub()
     this._unsubscribers = []
     this._started = false
@@ -421,8 +471,16 @@ class KineticsBridgeClass {
     this._lastPatternSent = isStop ? null : enginePattern
     this._lastFixtureKeysSent = isStop ? null : fixtureKey
 
+    // WAVE 4708 T2 — ANCHOR HYDRATION: leer la posición ACTUAL del radar
+    // del movementStore y enviarla normalizada en el mismo payload. El handler
+    // IPC inyecta pan_base/tilt_base en _manualOverrides ANTES de activar el
+    // motor → el primer tick lee el anchor real, no el fallback 0.5.
+    const { pan: anchorPanDeg, tilt: anchorTiltDeg } = useMovementStore.getState()
+    const anchorPan  = Math.max(0, Math.min(1, anchorPanDeg  / 540))
+    const anchorTilt = Math.max(0, Math.min(1, anchorTiltDeg / 270))
+
     // WAVE 4700: Incluir fan en el payload — el motor nativo integra el desfase
-    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, 'IDs:', fixtureIds)
+    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, 'anchor:', { anchorPan, anchorTilt })
     try {
       await window.lux?.aether?.setManualPattern({
         fixtureIds,
@@ -430,6 +488,8 @@ class KineticsBridgeClass {
         speed: patternSpeed,
         amplitude: patternAmplitude,
         fan: fanValue,  // [-100, 100] — el handler IPC normaliza a [0, 1]
+        anchorPan,      // [0, 1] — WAVE 4708 T2
+        anchorTilt,     // [0, 1] — WAVE 4708 T2
       })
     } catch (err) {
       // Si el setManualPattern falla, invalidar caché para forzar reintento completo

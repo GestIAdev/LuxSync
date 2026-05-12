@@ -858,6 +858,11 @@ const luxApi = {
          */
         clearAllMotorKineticOverrides: () => ipcRenderer.invoke('lux:aether:clearAllMotorKineticOverrides'),
         /**
+         * WAVE 4709 T1: Exorcismo selectivo del Dual-Map del motor cinético.
+         * Limpia _motorKineticOverrides solo para los nodeIds dados (orphans).
+         */
+        clearMotorKineticOverrides: (nodeIds) => ipcRenderer.invoke('lux:aether:clearMotorKineticOverrides', nodeIds),
+        /**
          * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
          */
         clearInhibitLimit: (nodeIds) => ipcRenderer.invoke('lux:aether:clearInhibitLimit', nodeIds),
@@ -883,6 +888,12 @@ const luxApi = {
          * Canal mantenido para no romper llamadas desde KineticsBridge legacy.
          */
         setKineticFanOffsets: (offsets) => ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
+        /**
+         * WAVE 4708 T3: Propaga ChaosOrderSlider al motor IA (L0).
+         * El KineticAdapter usa amount+seed para distribuir fase por nodo,
+         * unificando el caos entre patrones manuales y patrones automáticos.
+         */
+        setGlobalKineticChaos: (args) => ipcRenderer.invoke('lux:aether:setGlobalKineticChaos', args),
         /**
          * E12 WAVE 4531: IK solve y apply spatial target para fixtures.
          * Stub → MasterArbiter legacy hasta que Aether tenga IK Resolver propio.

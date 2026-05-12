@@ -203,7 +203,12 @@ export const KinRadarViewport: React.FC = () => {
       })
       useProgrammerStore.getState().setPositionPerFixture(positions)
     } else {
-      useProgrammerStore.getState().setPosition(sp, st)
+      // WAVE 4710 S2: aislar payload al único mover activo — ignora selectedIds global
+      useProgrammerStore.getState().setPositionPerFixture([{
+        fixtureId: movingHeadIds[0],
+        pan: sp,
+        tilt: st,
+      }])
     }
   }, [movingHeadIds, fanValue, setPanTilt])
 

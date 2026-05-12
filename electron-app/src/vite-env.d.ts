@@ -731,6 +731,19 @@ declare global {
       clearAllManualOverrides: () => Promise<{ success: boolean; error?: string }>
 
       /**
+       * WAVE L2-SUPREMACY: Limpia el Dual-Map del motor cinético nativo
+       * (_motorKineticOverrides). Safety net cuando el engine fue detenido
+       * sin arbiter y quedan overrides huérfanos sobre pan/tilt finales.
+       */
+      clearAllMotorKineticOverrides: () => Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4709 T1: Exorcismo selectivo del Dual-Map del motor cinético
+       * para nodeIds que cayeron fuera de la selección activa (orphans).
+       */
+      clearMotorKineticOverrides: (nodeIds: string[]) => Promise<{ success: boolean; error?: string }>
+
+      /**
        * WAVE 4531: Inhibit limit — cap post-arbitraje sobre canal dimmer.
        * @param nodeIds  Array de nodeIds Aether (ej: ['fix-01:impact'])
        * @param limit    Cap 0-1. 1.0 = sin límite. 0.0 = oscuro total.
@@ -752,6 +765,9 @@ declare global {
         speed: number
         amplitude: number
         fan?: number
+        // WAVE 4708 T2: ancla normalizada [0,1] inyectada atomicamente con el patrón.
+        anchorPan?: number
+        anchorTilt?: number
       }) => Promise<{ success: boolean; pattern?: string; error?: string }>
 
       /**
@@ -782,6 +798,14 @@ declare global {
        * Mantenido para compatibilidad con KineticsBridge legacy.
        */
       setKineticFanOffsets: (offsets: Record<string, number>) =>
+        Promise<{ success: boolean; error?: string }>
+
+      /**
+       * WAVE 4708 T3: Propaga ChaosOrderSlider (amount 0..1, seed uint16)
+       * al motor IA (L0). El KineticAdapter lo aplica como desfase de fase
+       * determinista por nodo — caos unificado L0 + L2.
+       */
+      setGlobalKineticChaos: (args: { amount: number; seed: number }) =>
         Promise<{ success: boolean; error?: string }>
 
       /**

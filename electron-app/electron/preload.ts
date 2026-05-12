@@ -1205,6 +1205,13 @@ const luxApi = {
       ipcRenderer.invoke('lux:aether:clearAllMotorKineticOverrides'),
 
     /**
+     * WAVE 4709 T1: Exorcismo selectivo del Dual-Map del motor cinético.
+     * Limpia _motorKineticOverrides solo para los nodeIds dados (orphans).
+     */
+    clearMotorKineticOverrides: (nodeIds: string[]) =>
+      ipcRenderer.invoke('lux:aether:clearMotorKineticOverrides', nodeIds),
+
+    /**
      * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
      */
     clearInhibitLimit: (nodeIds: string[]) =>
@@ -1221,6 +1228,9 @@ const luxApi = {
       speed: number
       amplitude: number
       fan?: number
+      // WAVE 4708 T2: ancla del radar normalizada [0,1] inyectada atomicamente.
+      anchorPan?: number
+      anchorTilt?: number
     }) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
 
     /**
@@ -1244,6 +1254,14 @@ const luxApi = {
      */
     setKineticFanOffsets: (offsets: Record<string, number>) =>
       ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
+
+    /**
+     * WAVE 4708 T3: Propaga ChaosOrderSlider al motor IA (L0).
+     * El KineticAdapter usa amount+seed para distribuir fase por nodo,
+     * unificando el caos entre patrones manuales y patrones automáticos.
+     */
+    setGlobalKineticChaos: (args: { amount: number; seed: number }) =>
+      ipcRenderer.invoke('lux:aether:setGlobalKineticChaos', args),
 
     /**
      * E12 WAVE 4531: IK solve y apply spatial target para fixtures.

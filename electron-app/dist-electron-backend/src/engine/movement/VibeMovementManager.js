@@ -424,6 +424,12 @@ export class VibeMovementManager {
         // Escala el flujo de fase del motor generativo (0.1 = cámara lenta, 2.0 = doble velocidad)
         // NO afecta patrones manuales (Layer 2 del Arbiter) — solo Layer 0 (CHOREO)
         this.globalSpeedMultiplier = 1.0;
+        // 🌪️ WAVE 4708 T3: CAOS UNIFICADO — amplitud y semilla globales del slider
+        // ChaosOrderSlider, leídos por el KineticAdapter (L0) para calcular un
+        // desfase determinista por nodo. Permite que el caos afecte a la IA igual
+        // que ya afecta al patrón manual L2 (vía _flushClassic).
+        this.globalChaosAmount = 0;
+        this.globalChaosSeed = 0;
         // Manual override system (WAVE 999 compatible)
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
@@ -449,6 +455,16 @@ export class VibeMovementManager {
     }
     getGlobalSpeedMultiplier() {
         return this.globalSpeedMultiplier;
+    }
+    // 🌪️ WAVE 4708 T3: CAOS UNIFICADO API
+    /**
+     * Establece la amplitud (0-1) y semilla (uint16) del caos global.
+     * Llamado desde AetherIPCHandlers cuando el operador mueve ChaosOrderSlider.
+     * El KineticAdapter lo aplica por nodo como desfase de fase determinista.
+     */
+    setGlobalChaos(amount, seed) {
+        this.globalChaosAmount = amount < 0 ? 0 : amount > 1 ? 1 : amount;
+        this.globalChaosSeed = (seed | 0) & 0xFFFF;
     }
     // MANUAL OVERRIDE API
     setManualSpeed(speed) {

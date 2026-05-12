@@ -53,10 +53,19 @@ interface HyperionViewProps {
  * Hook para persistir preferencias en localStorage.
  */
 function usePersistedState<T>(key: string, defaultValue: T): [T, (value: T) => void] {
+  const STORAGE_VERSION = 1
+
   const [state, setState] = useState<T>(() => {
     try {
       const stored = localStorage.getItem(`hyperion:${key}`)
-      return stored ? JSON.parse(stored) : defaultValue
+      if (!stored) return defaultValue
+
+      const parsed = JSON.parse(stored)
+      if (!parsed || typeof parsed !== 'object' || parsed.__version !== STORAGE_VERSION || !('value' in parsed)) {
+        return defaultValue
+      }
+
+      return parsed.value as T
     } catch {
       return defaultValue
     }
@@ -65,7 +74,10 @@ function usePersistedState<T>(key: string, defaultValue: T): [T, (value: T) => v
   const setPersistedState = useCallback((value: T) => {
     setState(value)
     try {
-      localStorage.setItem(`hyperion:${key}`, JSON.stringify(value))
+      localStorage.setItem(`hyperion:${key}`, JSON.stringify({
+        __version: STORAGE_VERSION,
+        value,
+      }))
     } catch {
       // localStorage no disponible
     }

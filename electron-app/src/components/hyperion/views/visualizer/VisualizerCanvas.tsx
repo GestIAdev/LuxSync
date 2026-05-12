@@ -450,12 +450,6 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     onFixtureSelect?.(id)
   }, [toggleSelection, select, selectMultiple, onFixtureSelect])
 
-  // ── Canvas Click (deselect) ───────────────────────────────────────────────
-  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    // Only deselect if clicking on canvas background (not on a fixture)
-    // R3F handles stopPropagation for fixture clicks
-  }, [])
-
   // ── Quality Settings ──────────────────────────────────────────────────────
   const qualitySettings = QUALITY_PRESETS[quality]
 
@@ -463,7 +457,6 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     <div 
       ref={containerRef}
       className={`visualizer-canvas ${className}`}
-      onClick={handleCanvasClick}
     >
       <Canvas
         shadows={qualitySettings.shadows}
@@ -480,6 +473,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         style={{ background: '#050508' }}
+        onPointerMissed={() => deselectAll()}
       >
         <Suspense fallback={null}>
           <Scene

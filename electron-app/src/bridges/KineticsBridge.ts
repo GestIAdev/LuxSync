@@ -28,9 +28,10 @@
  * @version WAVE 4661
  */
 
-import { useMovementStore } from '../stores/movementStore'
+import { useMovementStore, type PatternType } from '../stores/movementStore'
 import { useProgrammerStore } from '../stores/programmerStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { useKineticHydrationStore, nativePatternToUI } from '../stores/kineticHydrationStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -137,6 +138,10 @@ class KineticsBridgeClass {
     this._started = true
 
     // ── Suscripción 1: pattern + speed + amplitude ──────────────────────
+    // WAVE 4712: SOLO se dispara ante GESTOS del operador (cambios en
+    // movementStore). La hidratación de la UI tras un cambio de selección
+    // se hace en `unsubSelection` poblando `kineticHydrationStore` directamente,
+    // SIN tocar movementStore — por tanto este handler no se activa por ese flujo.
     const unsubPattern = useMovementStore.subscribe(
       (s) => ({
         activePattern: s.activePattern,
@@ -146,10 +151,22 @@ class KineticsBridgeClass {
         chaosAmount: s.chaosAmount,  // WAVE 4707: chaos como fan spread del motor
       }),
       ({ activePattern, patternSpeed, patternAmplitude, fanValue, chaosAmount }) => {
+        const selectedIds = getSelectedIds()
+        if (selectedIds.length === 0) return  // sin selección no hay destino para el intent
+
+        // WAVE 4712 — OPTIMISTIC HYDRATION:
+        // Reflejar el intent del operador en el hydration store antes del IPC
+        // ack. Así el botón/slider que el operador acaba de tocar se actualiza
+        // de forma inmediata y se computa el aggregate (mixed/uniforme) sin lag.
+        useKineticHydrationStore.getState().applyOperatorIntent(selectedIds, {
+          pattern:   activePattern,
+          speed:     patternSpeed,
+          amplitude: patternAmplitude,
+          fan:       chaosAmount * 100,
+        })
+
         // Speed → programmerStore (44Hz pipeline para L2:speed)
-        if (getSelectedIds().length > 0) {
-          useProgrammerStore.getState().setKineticSpeed(patternSpeed)
-        }
+        useProgrammerStore.getState().setKineticSpeed(patternSpeed)
 
         // Pattern + speed + amplitude → AetherKineticEngine (WAVE 4700)
         // WAVE 4707: chaosAmount (0-1) * 100 → fan del motor (S6 fix).
@@ -193,6 +210,19 @@ class KineticsBridgeClass {
           this._suppressClassicFlushCount--
         } else {
           this._scheduleClassicFlush(pan, tilt, fanValue)
+
+          // WAVE 4712 — OPTIMISTIC HYDRATION (radar drag):
+          // El cursor del radar lee panAnchor/tiltAnchor del hydration store.
+          // Sin esta proyección, el cursor quedaría congelado durante el drag
+          // (la siguiente actualización vendría solo al cambiar selección).
+          const selectedIds = getSelectedIds()
+          if (selectedIds.length > 0) {
+            useKineticHydrationStore.getState().applyOperatorIntent(selectedIds, {
+              panAnchor:  pan,
+              tiltAnchor: tilt,
+              fan:        chaosAmount * 100,
+            })
+          }
         }
         // WAVE 4708 T3: caos unificado L0 — best-effort, sin debounce (slider ya
         // emite a ~60 Hz máx; el handler IPC es trivial: dos asignaciones).
@@ -252,16 +282,19 @@ class KineticsBridgeClass {
     // _flushClassic solo debe ejecutarse ante un gesto explícito del operador
     // sobre el radar (click/drag). Escribir los defaults del store (270°/135°)
     // sobre un fixture recién seleccionado lo snapeaba al centro — freeze de foco.
+    // WAVE 4712 — HIDRATACIÓN SILENCIOSA:
+    // Cambiar la selección NO emite IPC. En su lugar, el bridge consulta al
+    // backend el estado L2 actual de los fixtures seleccionados y lo vierte en
+    // `kineticHydrationStore` para que la UI muestre los valores reales (o
+    // el sentinel "mixed" cuando difieren). El operador queda libre de
+    // recorrer fixtures sin alterar el show.
     const unsubSelection = useSelectionStore.subscribe(
       (s) => s.selectedIds,
       (currentSelectedIds) => {
-        // WAVE 4710: Programmer Paradigm — deselección NO libera estado L2.
-        // Los overrides persisten congelados (L2-MOTOR los aplica) hasta un Unlock explícito.
-        // Forzar full setManualPattern en el próximo flush (no scalar-only)
+        // Invalidar caché de patrón — la próxima escritura real será completa.
         this._lastFixtureKeysSent = null
-        const { activePattern, patternSpeed, patternAmplitude, chaosAmount } =
-          useMovementStore.getState()
-        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, chaosAmount * 100)
+        const ids = Array.from(currentSelectedIds)
+        void this._hydrateFromBackend(ids)
       },
       {
         equalityFn: (a, b) => {
@@ -274,7 +307,50 @@ class KineticsBridgeClass {
     )
 
     this._unsubscribers = [unsubPattern, unsubClassic, unsubSpatial, unsubFan, unsubSelection]
+
+    // WAVE 4712: hidratación inicial de la selección que ya estuviera activa
+    // al montar el bridge (cold start tras reload). Sin esto la UI mostraría
+    // valores fantasma hasta el primer cambio de selección.
+    void this._hydrateFromBackend(getSelectedIds())
+
     console.log('[KineticsBridge] 🧠 Iniciado — Neural Link activo')
+  }
+
+  /**
+   * WAVE 4712 — HIDRATACIÓN SILENCIOSA:
+   * Lee `getKineticNodeStates` del backend para los fixtureIds dados y
+   * vuelca el resultado en `kineticHydrationStore`. NO emite IPC de escritura.
+   * Convierte unidades del engine (norm [0,1]) a UI (deg / %, etc).
+   */
+  private async _hydrateFromBackend(fixtureIds: string[]): Promise<void> {
+    const hydration = useKineticHydrationStore.getState()
+    if (fixtureIds.length === 0) {
+      hydration.recomputeAggregate([])
+      return
+    }
+    try {
+      const res = await window.lux?.aether?.getKineticNodeStates(fixtureIds)
+      if (!res?.success || !res.states) {
+        hydration.recomputeAggregate(fixtureIds)
+        return
+      }
+      // Backend devuelve un snapshot por fixtureId en el mismo orden enviado.
+      const states = res.states.map((s, i) => ({
+        fixtureId: fixtureIds[i],
+        snapshot: {
+          active:     s.active,
+          pattern:    nativePatternToUI(s.pattern) as PatternType,
+          speed:      s.speed     * 100,
+          amplitude:  s.amplitude * 100,
+          fan:        s.fan       * 100,
+          panAnchor:  s.panAnchor  * 540,
+          tiltAnchor: s.tiltAnchor * 270,
+        },
+      }))
+      hydration.setNodeStates(states, fixtureIds)
+    } catch (err) {
+      console.error('[KineticsBridge] _hydrateFromBackend error:', err)
+    }
   }
 
   /**
@@ -300,6 +376,12 @@ class KineticsBridgeClass {
     ms.setPanTilt(270, 135)
     ms.setFanValue(0)
     ms.setChaosAmount(0)
+
+    // WAVE 4712: tras un Unlock, el backend ya limpió las pistas — refresca
+    // el hydration store para que la UI (PatternArsenal, faders, radar)
+    // refleje el estado neutral inmediato sin esperar a un cambio de selección.
+    useKineticHydrationStore.getState().reset()
+    void this._hydrateFromBackend(getSelectedIds())
   }
 
   stop(): void {
@@ -455,7 +537,10 @@ class KineticsBridgeClass {
 
     if (samePatternAndFixtures) {
       try {
+        // WAVE 4712: pasar fixtureIds para scope per-fixture en multitrack.
+        // Sin nodeIds, el engine actualizaría TODAS sus pistas activas (bleed).
         await window.lux?.aether?.updateKineticScalars({
+          fixtureIds,
           speed: patternSpeed,
           amplitude: patternAmplitude,
           fan: fanValue,

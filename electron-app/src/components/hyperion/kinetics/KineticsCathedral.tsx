@@ -23,6 +23,7 @@ import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
+import { useKineticHydrationStore } from '../../../stores/kineticHydrationStore'
 
 import { HorizontalFader } from './HorizontalFader'
 import { FixtureMatrix } from './FixtureMatrix'
@@ -41,32 +42,38 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
   const hardware = useHardware()
 
-  const {
-    // Pattern
-    activePattern, patternSpeed, patternAmplitude,
-    cathedralTab,
-    // Chaos
-    chaosAmount, chaosSeed,
-  } = useMovementStore(useShallow(s => ({
+  // ── movementStore: SOLO el cathedralTab (UI local) y el seed (no se hidrata desde L2) ─
+  const { cathedralTab, chaosSeed } = useMovementStore(useShallow(s => ({
     cathedralTab: s.cathedralTab,
-    activePattern: s.activePattern,
-    patternSpeed: s.patternSpeed,
-    patternAmplitude: s.patternAmplitude,
-    chaosAmount: s.chaosAmount,
-    chaosSeed: s.chaosSeed,
+    chaosSeed:    s.chaosSeed,
   })))
 
+  // ── Acciones del movementStore — operador → bridge → IPC ──────────────
   const {
     setActivePattern, setPatternSpeed, setPatternAmplitude,
     setChaosAmount, reseed, setCathedralTab,
   } = useMovementStore(useShallow(s => ({
-    setActivePattern: s.setActivePattern,
-    setPatternSpeed: s.setPatternSpeed,
-    setPatternAmplitude: s.setPatternAmplitude,
-    setChaosAmount: s.setChaosAmount,
-    reseed: s.reseed,
-    setCathedralTab: s.setCathedralTab,
+    setActivePattern:     s.setActivePattern,
+    setPatternSpeed:      s.setPatternSpeed,
+    setPatternAmplitude:  s.setPatternAmplitude,
+    setChaosAmount:       s.setChaosAmount,
+    reseed:               s.reseed,
+    setCathedralTab:      s.setCathedralTab,
   })))
+
+  // ── WAVE 4712: HYDRATION STORE — la verdad visual para la selección ───
+  // El bridge llena este store con los snapshots L2 de los fixtures de la
+  // selección. Si todos coinciden → valor numérico. Si difieren → null (mixed).
+  // La UI NUNCA escribe aquí; solo lee. Las escrituras siguen yendo a
+  // `movementStore`, que el bridge a su vez escribe optimísticamente aquí.
+  const aggregate = useKineticHydrationStore(s => s.aggregate)
+  const activePattern    = aggregate.pattern    // PatternType | null
+  const patternSpeed     = aggregate.speed      // number | null
+  const patternAmplitude = aggregate.amplitude  // number | null
+  // chaosAmount en hydration usa rango UI -100..100 (fan signo); el slider
+  // espera 0..1. Convertimos a positivo y normalizamos. null = mixed.
+  const chaosAmount: number | null =
+    aggregate.fan === null ? null : Math.max(0, Math.min(1, Math.abs(aggregate.fan) / 100))
 
   // ── Check if selected fixtures are moving heads ────────────────────────
   const hasMovingHeads = useMemo(() => {
@@ -88,8 +95,8 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   /** Pattern change — KineticsBridge suscribe activePattern y despacha setManualFixturePattern */
   const handlePatternChange = useCallback((pattern: PatternType) => {
     setActivePattern(pattern)
-    // Speed → programmerStore via KineticsBridge (44Hz pipeline)
-    useProgrammerStore.getState().setKineticSpeed(patternSpeed)
+    // WAVE 4712: patternSpeed agregado puede ser null (mixed); usar fallback 50.
+    useProgrammerStore.getState().setKineticSpeed(patternSpeed ?? 50)
   }, [patternSpeed, setActivePattern])
 
   /** Speed fader — KineticsBridge suscribe patternSpeed y despacha pattern+speed */
@@ -248,7 +255,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             />
           </div>
 
-          {/* ── CHAOS SLIDER ── */}
+          {/* ── CHAOS SLIDER ── WAVE 4712: chaosAmount agregado puede ser null (mixed) */}
           <ChaosOrderSlider
             value={chaosAmount}
             onChange={setChaosAmount}

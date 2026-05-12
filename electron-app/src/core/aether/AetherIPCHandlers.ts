@@ -405,14 +405,19 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
 
+        // WAVE 4712 MULTITRACK: pattern: null|'hold'|'static' ahora elimina
+        // SOLO las pistas de los fixtureIds dados. El resto del Map sigue
+        // ejecutándose intacto (otros focos no se ven afectados).
         if (pattern === null || pattern === 'static' || pattern === 'hold') {
-          // Detener motor nativo y limpiar L2
-          aetherKineticEngine.stop(arbiter)
-          // Limpiar VMM por si quedaron overrides del modo legacy (backward compat)
-          vibeMovementManager.setManualPattern(null)
-          vibeMovementManager.setManualSpeed(null)
-          vibeMovementManager.setManualAmplitude(null)
-          vibeMovementManager.setKineticFanOffsets({})
+          const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
+          aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
+          // VMM: silenciar solo si el motor ya no tiene pistas (paridad legacy).
+          if (!aetherKineticEngine.isActive()) {
+            vibeMovementManager.setManualPattern(null)
+            vibeMovementManager.setManualSpeed(null)
+            vibeMovementManager.setManualAmplitude(null)
+            vibeMovementManager.setKineticFanOffsets({})
+          }
           return { success: true }
         }
 
@@ -474,16 +479,56 @@ export function registerAetherIPCHandlers(): void {
    */
   ipcMain.handle(
     'lux:aether:updateKineticScalars',
-    (_event, { speed, amplitude, fan }: { speed: number; amplitude: number; fan: number }) => {
+    (_event, payload: {
+      fixtureIds?: string[]  // WAVE 4712: opcional; si falta o vacío aplica a TODOS los nodos activos
+      speed: number
+      amplitude: number
+      fan: number
+    }) => {
       try {
-        aetherKineticEngine.updateScalars(
-          (speed     ?? 50) / 100,
-          (amplitude ?? 50) / 100,
-          (fan       ?? 0)  / 100,
-        )
+        const speed     = (payload?.speed     ?? 50) / 100
+        const amplitude = (payload?.amplitude ?? 50) / 100
+        const fan       = (payload?.fan       ?? 0)  / 100
+        let nodeIds: string[]
+        if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
+          nodeIds = payload.fixtureIds.map(id => `${id}:kinetic`)
+        } else {
+          // Compat: sin nodeIds, aplica a todos los nodos activos del motor.
+          nodeIds = aetherKineticEngine.getState().nodeIds
+        }
+        aetherKineticEngine.updateScalars(nodeIds, speed, amplitude, fan)
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] updateKineticScalars error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * WAVE 4712 — HIDRATACIÓN SILENCIOSA:
+   * Snapshot per-node del estado L2-MOTOR (patrón, scalars, anchor pan/tilt).
+   * Llamado por KineticsBridge al cambiar la selección para poblar la UI
+   * sin emitir un solo IPC de escritura. La UI muestra estado mixto si los
+   * snapshots difieren entre sí para alguna propiedad.
+   *
+   * Payload: fixtureIds: string[]
+   * Return:  states: KineticNodeStateSnapshot[]  (uno por fixture, orden preservado)
+   */
+  ipcMain.handle(
+    'lux:aether:getKineticNodeStates',
+    (_event, fixtureIds: string[]) => {
+      if (!Array.isArray(fixtureIds)) {
+        return { success: false, error: 'fixtureIds must be an array' }
+      }
+      try {
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        const states  = fixtureIds.map(id =>
+          aetherKineticEngine.getNodeState(`${id}:kinetic`, arbiter)
+        )
+        return { success: true, states }
+      } catch (err) {
+        console.error('[AetherIPC] getKineticNodeStates error:', err)
         return { success: false, error: String(err) }
       }
     }

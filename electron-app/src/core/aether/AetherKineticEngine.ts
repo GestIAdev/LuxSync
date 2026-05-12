@@ -85,18 +85,19 @@ export type NativeKineticPattern =
 /** Posición normalizada en [-1, 1] */
 interface PatternXY { x: number; y: number }
 
-/** Configuración activa del patrón manual */
-interface KineticConfig {
-  /** Fixtures seleccionados (nodeIds en formato `${fixtureId}:kinetic`) */
-  nodeIds: string[]
-  /** Patrón activo */
+/**
+ * WAVE 4712: Configuración por nodo (multitrack).
+ * Cada nodeId tiene su propia pista — pattern, speed, amplitude y dispersión
+ * de fan dentro del grupo al que fue asignado. Las pistas son independientes:
+ * cambiar la config de unos nodeIds no afecta a los demás.
+ */
+interface KineticNodeConfig {
   pattern: NativeKineticPattern
-  /** Velocidad [0, 1] */
-  speed: number
-  /** Amplitud [0, 1] */
-  amplitude: number
-  /** Valor de fan/dispersión [-1, 1] — 0 = sync, ±1 = ±2π dispersión total */
-  fan: number
+  speed: number      // [0, 1]
+  amplitude: number  // [0, 1]
+  fan: number        // [-1, 1] del grupo en el que se asignó
+  fanIndex: number   // posición en el grupo (0..fanTotal-1)
+  fanTotal: number   // tamaño del grupo al momento del setManualKinetics
 }
 
 export interface NativeKineticState {
@@ -106,6 +107,18 @@ export interface NativeKineticState {
   speed: number
   amplitude: number
   fan: number
+}
+
+/** WAVE 4712: snapshot per-node para hidratación silenciosa de la UI. */
+export interface KineticNodeStateSnapshot {
+  nodeId: string
+  active: boolean
+  pattern: NativeKineticPattern | null
+  speed: number      // [0, 1]
+  amplitude: number  // [0, 1]
+  fan: number        // [-1, 1]
+  panAnchor: number  // [0, 1] — pan_base actual (radar anchor)
+  tiltAnchor: number // [0, 1] — tilt_base actual
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,8 +237,12 @@ export class AetherKineticEngine {
    */
   private readonly _overridePool = new Map<string, Record<string, number>>()
 
-  /** Configuración activa. null = motor inactivo */
-  private _config: KineticConfig | null = null
+  /**
+   * WAVE 4712: Configuración por nodo (multitrack).
+   * Cada nodeId activo tiene su propia entrada. El motor itera el Map en tick().
+   * Cambiar la config de unos nodos no afecta a los demás — true multitrack.
+   */
+  private readonly _nodeConfigs = new Map<string, KineticNodeConfig>()
 
   /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
   private _heartbeatCounter = 0
@@ -248,107 +265,155 @@ export class AetherKineticEngine {
     speed: number,
     amplitude: number,
     fan: number,
-    arbiter: NodeArbiter,
+    _arbiter: NodeArbiter,
   ): void {
-    console.log('[SONDA L2-ENGINE] Registrando patrón manual:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds)
-    if (nodeIds.length === 0) {
-      this.stop(arbiter)
-      return
-    }
+    console.log('[SONDA L2-ENGINE] Multitrack upsert:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds)
+    if (nodeIds.length === 0) return  // no-op: multitrack NO tiene 'stop global' implícito
 
-    // ── WAVE 4711 ENGINE GC ─────────────────────────────────────────────────
-    // Antes de re-escopear, limpiar EXCLUSIVAMENTE el rastro L2-MOTOR de los
-    // nodos que salen del scope. El ancla L2 (_manualOverrides: pan_base/tilt_base)
-    // se preserva intacta — el operador la puso manualmente y es su estado.
-    if (this._config) {
-      const newNodeSet = new Set(nodeIds)
-      for (const oldNodeId of this._config.nodeIds) {
-        if (!newNodeSet.has(oldNodeId)) {
-          arbiter.clearMotorKineticOverride(oldNodeId)
-          // ESTRICTAMENTE PROHIBIDO: clearManualOverride — preservar ancla L2
-        }
-      }
-    }
+    // ── WAVE 4712 MULTITRACK UPSERT ─────────────────────────────────────────
+    // Asigna/actualiza la pista de cada nodeId del grupo. Los demás nodos
+    // del Map quedan intactos — su show sigue corriendo sin interrupción.
+    // Cada nodo guarda su fanIndex/fanTotal dentro de ESTE grupo, así la
+    // dispersión es estable aunque se cambien selecciones ajenas.
+    const speedClamped     = clamp01(speed)
+    const amplitudeClamped = clamp01(amplitude)
+    const fanClamped       = clampSigned(fan)
+    const total            = nodeIds.length
 
-    // Pre-warm phase map y override pool para los nodeIds nuevos
-    for (const nodeId of nodeIds) {
+    for (let i = 0; i < total; i++) {
+      const nodeId = nodeIds[i]
       if (!this._phaseMap.has(nodeId)) {
         this._phaseMap.set(nodeId, 0)
       }
       if (!this._overridePool.has(nodeId)) {
         this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 })
       }
-    }
-
-    this._config = {
-      nodeIds,
-      pattern,
-      speed:    clamp01(speed),
-      amplitude: clamp01(amplitude),
-      fan:      clampSigned(fan),
+      this._nodeConfigs.set(nodeId, {
+        pattern,
+        speed:     speedClamped,
+        amplitude: amplitudeClamped,
+        fan:       fanClamped,
+        fanIndex:  i,
+        fanTotal:  total,
+      })
     }
   }
 
   /**
-   * Detiene el motor y limpia los overrides L2 del Arbiter.
-   * Llamado en Unlock o cuando pattern === null.
+   * WAVE 4712: Elimina pistas del Map y limpia el rastro L2-MOTOR.
+   * Usado cuando el operador envía pattern: 'hold' / null para un subset
+   * específico de fixtures. NO toca _manualOverrides (ancla L2 preservada).
+   */
+  removeNodes(nodeIds: string[], arbiter: NodeArbiter): void {
+    for (const nodeId of nodeIds) {
+      if (this._nodeConfigs.delete(nodeId)) {
+        arbiter.clearMotorKineticOverride(nodeId)
+        this._phaseMap.delete(nodeId)
+        // _overridePool y _manualOverrides: PRESERVADOS — paradigma Programmer.
+      }
+    }
+  }
+
+  /**
+   * Detiene el motor COMPLETO y limpia el rastro L2-MOTOR de todos los nodos.
+   * Llamado solo por Unlock explícito (WAVE 4710 paradigma Programmer).
    */
   stop(arbiter?: NodeArbiter): void {
-    if (arbiter && this._config) {
-      for (const nodeId of this._config.nodeIds) {
+    if (arbiter) {
+      for (const nodeId of this._nodeConfigs.keys()) {
         arbiter.clearMotorKineticOverride(nodeId)
       }
     }
-    this._config = null
-    // Resetear fases para el próximo arranque (evita phase glitch en re-trigger)
+    this._nodeConfigs.clear()
     this._phaseMap.clear()
   }
 
   /**
-   * Actualiza velocidad y amplitud sin reiniciar la fase.
-   * Para cambios en tiempo real de los sliders de UI.
+   * WAVE 4712: Actualiza scalars (speed/amplitude/fan) SOLO para los nodeIds
+   * dados. Los demás nodos en el Map mantienen sus scalars actuales.
+   * Sin reiniciar fase — para sliders en tiempo real.
+   * También recalcula fanIndex/fanTotal del grupo entrante (la dispersión
+   * se mantiene coherente cuando el operador cambia su selección activa).
    */
-  updateScalars(speed: number, amplitude: number, fan: number): void {
-    if (!this._config) return
-    this._config.speed     = clamp01(speed)
-    this._config.amplitude = clamp01(amplitude)
-    this._config.fan       = clampSigned(fan)
+  updateScalars(
+    nodeIds: string[],
+    speed: number,
+    amplitude: number,
+    fan: number,
+  ): void {
+    if (nodeIds.length === 0) return
+    const speedClamped     = clamp01(speed)
+    const amplitudeClamped = clamp01(amplitude)
+    const fanClamped       = clampSigned(fan)
+    const total            = nodeIds.length
+    for (let i = 0; i < total; i++) {
+      const cfg = this._nodeConfigs.get(nodeIds[i])
+      if (!cfg) continue
+      cfg.speed     = speedClamped
+      cfg.amplitude = amplitudeClamped
+      cfg.fan       = fanClamped
+      cfg.fanIndex  = i
+      cfg.fanTotal  = total
+    }
   }
 
-  /** ¿Hay un patrón activo? */
+  /** ¿Hay AL MENOS un patrón activo en cualquier pista? */
   isActive(): boolean {
-    return this._config !== null
+    return this._nodeConfigs.size > 0
   }
 
   /**
    * WAVE L2-SUPREMACY: ¿Este nodeId está bajo control manual L2?
    * Usado por KineticAdapter para silenciar el emit L0 por nodo.
-   * Zero-alloc: solo lectura de config.nodeIds (Array.includes O(n) pero n pequeño).
+   * O(1) — lectura directa del Map.
    */
   hasNode(nodeId: string): boolean {
-    return this._config !== null && this._config.nodeIds.includes(nodeId)
+    return this._nodeConfigs.has(nodeId)
   }
 
-  /** Snapshot serializable del estado manual actual del motor. */
-  getState(): NativeKineticState {
-    const cfg = this._config
+  /**
+   * WAVE 4712: snapshot de estado por nodo para hidratación silenciosa.
+   * El bridge lo invoca al cambiar la selección para poblar la UI sin emitir.
+   * Lee también pan_base/tilt_base del arbiter como anchor visible.
+   */
+  getNodeState(nodeId: string, arbiter: NodeArbiter): KineticNodeStateSnapshot {
+    const cfg = this._nodeConfigs.get(nodeId)
+    const l2  = arbiter.getManualOverride(nodeId)
+    const panAnchor  = (l2 && Number.isFinite(l2['pan_base']))  ? l2['pan_base']  : 0.5
+    const tiltAnchor = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5
     if (!cfg) {
-      return {
-        active: false,
-        nodeIds: [],
-        pattern: null,
-        speed: 0,
-        amplitude: 0,
-        fan: 0,
-      }
+      return { nodeId, active: false, pattern: null, speed: 0, amplitude: 0, fan: 0, panAnchor, tiltAnchor }
     }
     return {
+      nodeId,
       active: true,
-      nodeIds: [...cfg.nodeIds],
       pattern: cfg.pattern,
       speed: cfg.speed,
       amplitude: cfg.amplitude,
       fan: cfg.fan,
+      panAnchor,
+      tiltAnchor,
+    }
+  }
+
+  /**
+   * Legacy: snapshot global. Para multitrack, retorna el primer nodo como
+   * representativo y la lista completa de nodeIds activos. Compat con
+   * llamadores que aún consultan getManualKineticState IPC global.
+   */
+  getState(): NativeKineticState {
+    if (this._nodeConfigs.size === 0) {
+      return { active: false, nodeIds: [], pattern: null, speed: 0, amplitude: 0, fan: 0 }
+    }
+    const nodeIds = Array.from(this._nodeConfigs.keys())
+    const first   = this._nodeConfigs.get(nodeIds[0])!
+    return {
+      active: true,
+      nodeIds,
+      pattern: first.pattern,
+      speed: first.speed,
+      amplitude: first.amplitude,
+      fan: first.fan,
     }
   }
 
@@ -371,48 +436,44 @@ export class AetherKineticEngine {
    * @param arbiter   Referencia al NodeArbiter activo.
    */
   tick(dtSeconds: number, arbiter: NodeArbiter): void {
-    const cfg = this._config
-    if (!cfg) return
+    if (this._nodeConfigs.size === 0) return
 
-    const patternFn  = PATTERN_FNS[cfg.pattern]
-    if (!patternFn) return
+    // WAVE 4712: iteramos el Map directamente — cada nodo tiene su propia pista.
+    let sampleNodeId = ''
+    let sampleCfg: KineticNodeConfig | null = null
 
-    const total      = cfg.nodeIds.length
-    const freqHz     = SPEED_MIN_HZ + cfg.speed * (SPEED_MAX_HZ - SPEED_MIN_HZ)
-    const dPhase     = freqHz * TWO_PI * dtSeconds
-    const amplitude  = cfg.amplitude
-    // Fan: desfase total de 2π cuando fan === 1 (spread máximo entre fixture[0] y fixture[N-1])
-    const fanRange   = cfg.fan * TWO_PI
+    for (const [nodeId, cfg] of this._nodeConfigs) {
+      const patternFn = PATTERN_FNS[cfg.pattern]
+      if (!patternFn) continue
 
-    for (let i = 0; i < total; i++) {
-      const nodeId   = cfg.nodeIds[i]
+      const freqHz    = SPEED_MIN_HZ + cfg.speed * (SPEED_MAX_HZ - SPEED_MIN_HZ)
+      const dPhase    = freqHz * TWO_PI * dtSeconds
 
-      // Acumular fase (monotonic, wrap en 2π para evitar pérdida de precisión flotante)
+      // Acumular fase (monotonic, wrap en 2π)
       const prevPhase = this._phaseMap.get(nodeId) ?? 0
       const phase     = (prevPhase + dPhase) % TWO_PI
       this._phaseMap.set(nodeId, phase)
 
-      // Desfase de fan por índice — determinista, cero alloc
-      const fanOffset = total > 1 ? (fanRange * i) / (total - 1) : 0
-      const { x, y }  = patternFn(phase + fanOffset)
+      // Fan: desfase de 2π * fan cuando el nodo está al final de su grupo.
+      // El grupo es el último setManualKinetics(...) que lo asignó — esto
+      // mantiene la dispersión coherente aun cuando otros nodos cambian.
+      const fanRange  = cfg.fan * TWO_PI
+      const fanOffset = cfg.fanTotal > 1
+        ? (fanRange * cfg.fanIndex) / (cfg.fanTotal - 1)
+        : 0
+      const { x, y } = patternFn(phase + fanOffset)
 
-      // Escalar amplitud: x/y ∈ [-1, 1] → [-amplitude, amplitude]
-      const scaledX = x * amplitude
-      const scaledY = y * amplitude
+      const scaledX = x * cfg.amplitude
+      const scaledY = y * cfg.amplitude
 
-      // WAVE 4718 — ANCHOR DEL RADAR:
-      // Leer el override L2 actual (escrito por KineticsBridge._flushClassic).
-      // Si el operador posicionó el radar, pan_base/tilt_base tienen su valor.
-      // Si no hay override todavía, usar 0.5 (centro).
+      // WAVE 4718 — ANCHOR DEL RADAR: lectura por nodo del override L2.
       const l2 = arbiter.getManualOverride(nodeId)
       const anchorPan  = (l2 && Number.isFinite(l2['pan_base']))  ? l2['pan_base']  : 0.5
       const anchorTilt = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5
 
-      // Convertir a normalizado [0,1] usando el anchor real del radar
       const panBase  = clamp01(anchorPan  + scaledX * 0.5)
       const tiltBase = clamp01(anchorTilt + scaledY * 0.5)
 
-      // Escribir en el pool reutilizable (cero alloc en hot path)
       let rec = this._overridePool.get(nodeId)
       if (!rec) {
         rec = { pan_base: panBase, tilt_base: tiltBase }
@@ -423,21 +484,25 @@ export class AetherKineticEngine {
       }
 
       arbiter.setMotorKineticOverride(nodeId, rec)
+
+      if (!sampleNodeId) {
+        sampleNodeId = nodeId
+        sampleCfg    = cfg
+      }
     }
 
     // WAVE 4706 TELEMETRÍA — heartbeat rate-limited (1 log/seg @ 44Hz)
     this._heartbeatCounter++
-    if (this._heartbeatCounter >= 44) {
+    if (this._heartbeatCounter >= 44 && sampleCfg) {
       this._heartbeatCounter = 0
-      const firstNodeId = cfg.nodeIds[0]
-      const sampleRec = firstNodeId ? this._overridePool.get(firstNodeId) : null
+      const sampleRec = this._overridePool.get(sampleNodeId)
       console.log(
-        `[KineticEngine L2] Nodos activos: ${total}` +
-        ` | Pattern: ${cfg.pattern}` +
-        ` | Speed: ${cfg.speed.toFixed(3)}` +
-        ` | Amplitude: ${cfg.amplitude.toFixed(3)}` +
-        ` | Fan: ${cfg.fan.toFixed(3)}` +
-        ` | Output muestra[${firstNodeId}]: ` +
+        `[KineticEngine L2] Pistas activas: ${this._nodeConfigs.size}` +
+        ` | Muestra[${sampleNodeId}]: ${sampleCfg.pattern}` +
+        ` | Speed: ${sampleCfg.speed.toFixed(3)}` +
+        ` | Amplitude: ${sampleCfg.amplitude.toFixed(3)}` +
+        ` | Fan: ${sampleCfg.fan.toFixed(3)} (${sampleCfg.fanIndex}/${sampleCfg.fanTotal})` +
+        ` | Output: ` +
         (sampleRec
           ? `{pan: ${sampleRec['pan_base'].toFixed(3)}, tilt: ${sampleRec['tilt_base'].toFixed(3)}}`
           : 'null')

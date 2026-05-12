@@ -20,7 +20,8 @@ import './HorizontalFader.css'
 
 interface HorizontalFaderProps {
   label: string
-  value: number            // 0-100
+  /** WAVE 4712: null = estado mixto (selección con valores divergentes) → muestra '--' */
+  value: number | null     // 0-100 ó null
   onChange: (v: number) => void
   color?: string
   unit?: string
@@ -39,7 +40,10 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
   const isDragging = useRef(false)
   const rafId = useRef<number>(0)
   const [editMode, setEditMode] = useState(false)
-  const [inputText, setInputText] = useState(String(Math.round(value)))
+  // WAVE 4712: el numeric value para edición se inicializa en 50 si está mixed.
+  const isMixed = value === null
+  const numericValue = value ?? 50
+  const [inputText, setInputText] = useState(String(Math.round(numericValue)))
 
   const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)))
 
@@ -51,11 +55,11 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
 
   const posToValue = useCallback((clientX: number): number => {
     const el = trackRef.current
-    if (!el) return value
+    if (!el) return numericValue
     const rect = el.getBoundingClientRect()
     const rel = (clientX - rect.left) / rect.width
     return clamp(rel * 100)
-  }, [value])
+  }, [numericValue])
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (disabled) return
@@ -78,8 +82,8 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
     if (disabled) return
     e.preventDefault()
     const step = e.shiftKey ? 5 : 1
-    commitValue(value + (e.deltaY < 0 ? step : -step))
-  }, [disabled, value, commitValue])
+    commitValue(numericValue + (e.deltaY < 0 ? step : -step))
+  }, [disabled, numericValue, commitValue])
 
   useNonPassiveWheel(trackRef, handleWheel)
 
@@ -90,16 +94,17 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
   }, [inputText, commitValue])
 
   useEffect(() => {
-    if (!editMode) setInputText(String(Math.round(value)))
-  }, [value, editMode])
+    if (!editMode) setInputText(String(Math.round(numericValue)))
+  }, [numericValue, editMode])
 
   useEffect(() => () => cancelAnimationFrame(rafId.current), [])
 
-  const fillPct = Math.max(0, Math.min(100, value))
+  // WAVE 4712: en estado mixto el track aparece sin fill (thumb oculto, '--' como readout).
+  const fillPct = isMixed ? 0 : Math.max(0, Math.min(100, numericValue))
 
   return (
     <div
-      className={`h-fader${disabled ? ' h-fader--disabled' : ''}`}
+      className={`h-fader${disabled ? ' h-fader--disabled' : ''}${isMixed ? ' h-fader--mixed' : ''}`}
       style={{ '--fader-color': color } as React.CSSProperties}
     >
       <span className="h-fader__label">{label}</span>
@@ -113,7 +118,9 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
         onPointerCancel={onPointerUp}
       >
         <div className="h-fader__fill" style={{ width: `${fillPct}%` }} />
-        <div className="h-fader__thumb" style={{ left: `${fillPct}%` }} />
+        {!isMixed && (
+          <div className="h-fader__thumb" style={{ left: `${fillPct}%` }} />
+        )}
       </div>
 
       <div className="h-fader__readout">
@@ -132,9 +139,9 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
           <span
             className="h-fader__value"
             onClick={() => !disabled && setEditMode(true)}
-            title="Click para editar"
+            title={isMixed ? 'Valores divergentes en la selección' : 'Click para editar'}
           >
-            {Math.round(value)}{unit}
+            {isMixed ? '——' : `${Math.round(numericValue)}${unit}`}
           </span>
         )}
       </div>

@@ -774,11 +774,16 @@ declare global {
        * WAVE 4700: Actualizar scalares sin reiniciar fase.
        * Para cambios en tiempo real desde sliders UI sin glitch de fase.
        */
-      updateKineticScalars: (args: { speed: number; amplitude: number; fan: number }) =>
+      updateKineticScalars: (args: {
+        fixtureIds?: string[]  // WAVE 4712: scope per-fixture; si falta aplica a todos
+        speed: number
+        amplitude: number
+        fan: number
+      }) =>
         Promise<{ success: boolean; error?: string }>
 
       /**
-       * WAVE 4701: Estado manual actual del motor cinético nativo.
+       * WAVE 4701: Estado manual actual del motor cinético nativo (global legacy).
        * Se usa para hidratación de pattern/speed/amplitude/fan al cambiar selección.
        */
       getManualKineticState: () => Promise<{
@@ -789,6 +794,27 @@ declare global {
         speed?: number
         amplitude?: number
         fan?: number
+        error?: string
+      }>
+
+      /**
+       * WAVE 4712: Hidratación silenciosa per-node.
+       * Devuelve un snapshot por fixtureId con su pattern/speed/amplitude/fan
+       * y el anchor radar (pan/tilt en [0,1]). La UI los agrega para detectar
+       * estado mixto y mostrar "--" cuando difieren.
+       */
+      getKineticNodeStates: (fixtureIds: string[]) => Promise<{
+        success: boolean
+        states?: Array<{
+          nodeId: string
+          active: boolean
+          pattern: string | null
+          speed: number      // [0, 1]
+          amplitude: number  // [0, 1]
+          fan: number        // [-1, 1]
+          panAnchor: number  // [0, 1]
+          tiltAnchor: number // [0, 1]
+        }>
         error?: string
       }>
 

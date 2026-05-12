@@ -25,6 +25,7 @@ import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
+import { useKineticHydrationStore } from '../../../stores/kineticHydrationStore'
 import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
 
 import { XYPad } from '../controls/controls/XYPad'
@@ -79,13 +80,11 @@ export const KinRadarViewport: React.FC = () => {
   const hardware = useHardware()
 
   const {
-    pan, tilt, fanValue,
+    fanValue,
     spatialTarget, spatialFanMode, spatialFanAmplitude,
     spatialReachability, spatialSubTargets,
     radarModeOverride, isCalibrating,
   } = useMovementStore(useShallow(s => ({
-    pan: s.pan,
-    tilt: s.tilt,
     fanValue: s.fanValue,
     spatialTarget: s.spatialTarget,
     spatialFanMode: s.spatialFanMode,
@@ -95,6 +94,13 @@ export const KinRadarViewport: React.FC = () => {
     radarModeOverride: s.radarModeOverride,
     isCalibrating: s.isCalibrating,
   })))
+
+  // ── WAVE 4712: el ancla visible del radar viene del hydration store ─────
+  // Si la selección está mixta, panAnchor/tiltAnchor son null → cursor
+  // se posiciona al centro (270°/135°) como estado neutral.
+  const radarAggregate = useKineticHydrationStore(s => s.aggregate)
+  const pan  = radarAggregate.panAnchor  ?? 270  // [0, 540] deg — fallback centro
+  const tilt = radarAggregate.tiltAnchor ?? 135  // [0, 270] deg — fallback centro
 
   const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude, setManualOverrideForFixtures } =
     useMovementStore(useShallow(s => ({

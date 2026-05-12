@@ -852,17 +852,35 @@ const luxApi = {
          */
         setInhibitLimit: (nodeIds, limit) => ipcRenderer.invoke('lux:aether:setInhibitLimit', { nodeIds, limit }),
         /**
+         * WAVE L2-SUPREMACY: Limpia todos los overrides del motor cinético nativo
+         * (dual-map _motorKineticOverrides del NodeArbiter). Safety net para unlock
+         * cuando el motor tiene overrides huérfanos tras un stop() sin arbiter.
+         */
+        clearAllMotorKineticOverrides: () => ipcRenderer.invoke('lux:aether:clearAllMotorKineticOverrides'),
+        /**
          * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
          */
         clearInhibitLimit: (nodeIds) => ipcRenderer.invoke('lux:aether:clearInhibitLimit', nodeIds),
         /**
          * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
-         * Stub → MasterArbiter legacy hasta que Aether tenga KineticEngine proprio.
+         * WAVE 4700: Motor cinético nativo L2 (AetherKineticEngine).
+         * Reemplaza masterArbiter.setPattern() + VMM para patrones manuales.
          */
         setManualPattern: (args) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
         /**
+         * WAVE 4700: Actualizar scalares (speed/amplitude/fan) sin reiniciar la fase.
+         * Para cambios en tiempo real desde sliders UI — no produce glitch de fase.
+         */
+        updateKineticScalars: (args) => ipcRenderer.invoke('lux:aether:updateKineticScalars', args),
+        /**
+         * WAVE 4701: Snapshot del estado manual del motor cinético nativo.
+         * Fuente de verdad para hidratar pattern/speed/amplitude/fan en UI.
+         */
+        getManualKineticState: () => ipcRenderer.invoke('lux:aether:getManualKineticState'),
+        /**
          * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
-         * Record<nodeId, phaseOffset (rad)> → VMM._l2PhaseOverrides (O(1) lookup).
+         * WAVE 4700: No-op legacy — el fan se pasa directamente en setManualPattern.
+         * Canal mantenido para no romper llamadas desde KineticsBridge legacy.
          */
         setKineticFanOffsets: (offsets) => ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
         /**
@@ -875,8 +893,8 @@ const luxApi = {
          */
         releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
         /**
-         * WAVE 4652: Set blackout global — NodeArbiter L4 + HAL legacy en paralelo.
-         * Reemplaza window.lux.arbiter.setBlackout.
+         * WAVE 4652: Set blackout global — NodeArbiter L4.
+         * Canal canónico post WAVE 4702.
          */
         setBlackout: (active) => ipcRenderer.invoke('lux:aether:setBlackout', { active }),
         /**
@@ -889,18 +907,33 @@ const luxApi = {
         getControlState: () => ipcRenderer.invoke('lux:aether:getControlState'),
         /**
          * WAVE 4652: Set grand master dimmer global (0-1).
-         * Reemplaza window.lux.arbiter.setGrandMaster.
+         * Canal canónico post WAVE 4702.
          */
         setGrandMaster: (value) => ipcRenderer.invoke('lux:aether:setGrandMaster', { value }),
         /**
          * WAVE 4652: Set grand master speed (0.1-2.0).
-         * Reemplaza window.lux.arbiter.setGrandMasterSpeed.
+         * Canal canónico post WAVE 4702.
          */
         setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
         /**
          * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
          */
         getL2State: (nodeIds) => ipcRenderer.invoke('lux:aether:getL2State', { nodeIds }),
+        /**
+         * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
+         * Reemplaza window.lux.arbiter.setFixtures — fuente de verdad única.
+         * WAVE OSCURIDAD FIX: acepta tanto la firma posicional (fixtures[], stageBounds?)
+         * como la firma objeto ({ fixtures, stageBounds }) que usa TitanSyncBridge.
+         */
+        setFixtures: (fixturesOrArg, stageBoundsArg) => {
+            const fixtures = Array.isArray(fixturesOrArg)
+                ? fixturesOrArg
+                : fixturesOrArg.fixtures;
+            const stageBounds = Array.isArray(fixturesOrArg)
+                ? stageBoundsArg
+                : fixturesOrArg.stageBounds;
+            return ipcRenderer.invoke('lux:aether:setFixtures', { fixtures, stageBounds });
+        },
         /**
          * 🌊 WAVE 4699.2: Tungsten Golden Nuke — override L2 sobre nodos flash/kinetic.
          * target: 'all' | 'petal-l' | 'petal-c' | 'petal-r' | 'spin'

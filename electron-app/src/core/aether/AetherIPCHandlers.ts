@@ -127,6 +127,26 @@ export function registerAetherIPCHandlers(): void {
     }
   )
 
+  /**
+   * WAVE L2-SUPREMACY: Limpia todas las entradas del motor cinético nativo
+   * (_motorKineticOverrides) del NodeArbiter. Los nodos dejan de tener
+   * autoridad L2-MOTOR sobre pan/tilt — L0 retoma el control inmediatamente.
+   * Útil como safety net al hacer Unlock cuando el motor fue detenido
+   * sin arbiter (stop() sin argumento) y quedan overrides huérfanos.
+   */
+  ipcMain.handle(
+    'lux:aether:clearAllMotorKineticOverrides',
+    () => {
+      try {
+        getTitanOrchestrator().getAetherArbiter().clearAllMotorKineticOverrides()
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] clearAllMotorKineticOverrides error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
   // ── Inhibit Limit (WAVE 4531) ──────────────────────────────────────────
 
   /**
@@ -321,6 +341,7 @@ export function registerAetherIPCHandlers(): void {
       amplitude: number
       fan?: number
     }) => {
+      console.log('[SONDA L2-IPC] Payload recibido:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan })
       if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
         return { success: false, error: 'fixtureIds must be a non-empty array' }
       }

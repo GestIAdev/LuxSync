@@ -227,6 +227,9 @@ export class AetherKineticEngine {
   /** Configuración activa. null = motor inactivo */
   private _config: KineticConfig | null = null
 
+  /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
+  private _heartbeatCounter = 0
+
   // ── API pública ──────────────────────────────────────────────────────────
 
   /**
@@ -246,6 +249,7 @@ export class AetherKineticEngine {
     amplitude: number,
     fan: number,
   ): void {
+    console.log('[SONDA L2-ENGINE] Registrando patrón manual:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds)
     if (nodeIds.length === 0) {
       this.stop()
       return
@@ -277,7 +281,7 @@ export class AetherKineticEngine {
   stop(arbiter?: NodeArbiter): void {
     if (arbiter && this._config) {
       for (const nodeId of this._config.nodeIds) {
-        arbiter.clearManualOverride(nodeId)
+        arbiter.clearMotorKineticOverride(nodeId)
       }
     }
     this._config = null
@@ -299,6 +303,15 @@ export class AetherKineticEngine {
   /** ¿Hay un patrón activo? */
   isActive(): boolean {
     return this._config !== null
+  }
+
+  /**
+   * WAVE L2-SUPREMACY: ¿Este nodeId está bajo control manual L2?
+   * Usado por KineticAdapter para silenciar el emit L0 por nodo.
+   * Zero-alloc: solo lectura de config.nodeIds (Array.includes O(n) pero n pequeño).
+   */
+  hasNode(nodeId: string): boolean {
+    return this._config !== null && this._config.nodeIds.includes(nodeId)
   }
 
   /** Snapshot serializable del estado manual actual del motor. */
@@ -394,7 +407,26 @@ export class AetherKineticEngine {
         rec['tilt_base'] = tiltBase
       }
 
-      arbiter.setManualOverride(nodeId, rec)
+      arbiter.setMotorKineticOverride(nodeId, rec)
+    }
+
+    // WAVE 4706 TELEMETRÍA — heartbeat rate-limited (1 log/seg @ 44Hz)
+    this._heartbeatCounter++
+    if (this._heartbeatCounter >= 44) {
+      this._heartbeatCounter = 0
+      const firstNodeId = cfg.nodeIds[0]
+      const sampleRec = firstNodeId ? this._overridePool.get(firstNodeId) : null
+      console.log(
+        `[KineticEngine L2] Nodos activos: ${total}` +
+        ` | Pattern: ${cfg.pattern}` +
+        ` | Speed: ${cfg.speed.toFixed(3)}` +
+        ` | Amplitude: ${cfg.amplitude.toFixed(3)}` +
+        ` | Fan: ${cfg.fan.toFixed(3)}` +
+        ` | Output muestra[${firstNodeId}]: ` +
+        (sampleRec
+          ? `{pan: ${sampleRec['pan_base'].toFixed(3)}, tilt: ${sampleRec['tilt_base'].toFixed(3)}}`
+          : 'null')
+      )
     }
   }
 }

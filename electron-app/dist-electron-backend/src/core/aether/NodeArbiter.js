@@ -112,6 +112,14 @@ export class NodeArbiter {
         this._resultPool = [];
         this._poolCursor = 0;
         this._photonTracerFrame = 0;
+        /**
+         * WAVE L2-SUPREMACY: Output del motor cinético nativo (AetherKineticEngine).
+         * Mapa separado de _manualOverrides — sin colisión con anchor del radar ni con
+         * ProgrammerAetherBridge. Se aplica como última autoridad en arbitrate(),
+         * después del MANUAL HARD LOCK y del Grand Master.
+         * Key = `${fixtureId}:kinetic`, Value = { pan_base, tilt_base } computados.
+         */
+        this._motorKineticOverrides = new Map();
     }
     // ── INodeArbiter API ──────────────────────────────────────────────────
     setSystemIntents(bus) {
@@ -129,7 +137,19 @@ export class NodeArbiter {
         this._seleneBus = bus;
     }
     setManualOverride(nodeId, channels) {
-        this._manualOverrides.set(nodeId, channels);
+        const existing = this._manualOverrides.get(nodeId);
+        if (existing !== undefined) {
+            // Merge in-place: los canales entrantes actualizan los existentes sin borrar otros.
+            // Garantiza que KineticsBridge (anchor pan_base/tilt_base) y ProgrammerAetherBridge
+            // (speed) no se destruyan mutuamente al escribir el mismo nodo :kinetic.
+            const mutable = existing;
+            for (const key in channels) {
+                mutable[key] = channels[key];
+            }
+        }
+        else {
+            this._manualOverrides.set(nodeId, channels);
+        }
     }
     /**
      * WAVE 4670: Inyecta el set de nodos COLOR de movers con rueda física.
@@ -151,6 +171,29 @@ export class NodeArbiter {
     }
     clearManualOverride(nodeId) {
         this._manualOverrides.delete(nodeId);
+    }
+    /**
+     * WAVE L2-SUPREMACY: Registra el output computado del motor cinético nativo.
+     * Solo AetherKineticEngine debe llamar este método.
+     * Separado de _manualOverrides para evitar colisión anchor↔output.
+     */
+    setMotorKineticOverride(nodeId, channels) {
+        this._motorKineticOverrides.set(nodeId, channels);
+    }
+    clearMotorKineticOverride(nodeId) {
+        this._motorKineticOverrides.delete(nodeId);
+    }
+    clearAllMotorKineticOverrides() {
+        this._motorKineticOverrides.clear();
+    }
+    /**
+     * WAVE 4718: Lectura del anchor de L2 para el motor cinético.
+     * Devuelve los `pan_base`/`tilt_base` actuales del nodo (0-1),
+     * o undefined si no hay override manual para ese nodeId.
+     * Zero-lock: solo lectura del Map, sin alloc.
+     */
+    getManualOverride(nodeId) {
+        return this._manualOverrides.get(nodeId);
     }
     setEffectIntents(intents) {
         this._effectIntents = intents;
@@ -265,19 +308,11 @@ export class NodeArbiter {
                     }
                     lockRecord[key] = incoming;
                 }
-                if (key === 'pan_base') {
-                    const l0 = isFiniteChannelValue(record['pan']) ? record['pan'] : 0.5;
-                    const v = incoming + (l0 - 0.5);
-                    record['pan'] = v < 0 ? 0 : v > 1 ? 1 : v;
-                }
-                else if (key === 'tilt_base') {
-                    const l0 = isFiniteChannelValue(record['tilt']) ? record['tilt'] : 0.5;
-                    const v = incoming + (l0 - 0.5);
-                    record['tilt'] = v < 0 ? 0 : v > 1 ? 1 : v;
-                }
-                else {
-                    record[key] = incoming;
-                }
+                // pan_base/tilt_base en _manualOverrides son el anchor del radar (escritos por
+                // KineticsBridge._flushClassic). Se almacenan tal cual — NO se traducen a pan/tilt
+                // aquí. La traducción final ocurre exclusivamente en el bloque L2-MOTOR
+                // (post-hardlock), ejecutado por AetherKineticEngine vía _motorKineticOverrides.
+                record[key] = incoming;
             }
         }
         // L3: Effect intents (WAVE 4705 — autoridad sobre L2 manual)
@@ -368,6 +403,25 @@ export class NodeArbiter {
                 }
             }
         }
+        // WAVE L2-SUPREMACY — L2-MOTOR: output del AetherKineticEngine.
+        // Aplicado DESPUÉS del Grand Master y los inhibit limits — el motor nativo
+        // tiene la última palabra absoluta sobre pan/tilt de sus fixtures.
+        // Nunca mezcla aditiva: el engine ya embedió el anchor_radar en el cómputo.
+        for (const [nodeId, channels] of this._motorKineticOverrides) {
+            let record = this._result.get(nodeId);
+            if (!record) {
+                record = this._acquireRecord();
+                this._result.set(nodeId, record);
+            }
+            const panBase = channels['pan_base'];
+            const tiltBase = channels['tilt_base'];
+            if (isFiniteChannelValue(panBase)) {
+                record['pan'] = panBase < 0 ? 0 : panBase > 1 ? 1 : panBase;
+            }
+            if (isFiniteChannelValue(tiltBase)) {
+                record['tilt'] = tiltBase < 0 ? 0 : tiltBase > 1 ? 1 : tiltBase;
+            }
+        }
         return this._result;
     }
     // ── Métodos internos ──────────────────────────────────────────────────
@@ -449,6 +503,7 @@ export class NodeArbiter {
      */
     clearAllManualOverrides() {
         this._manualOverrides.clear();
+        this._motorKineticOverrides.clear();
     }
     /**
      * WAVE 4529: Lista los nodeIds que tienen overrides manuales activos.

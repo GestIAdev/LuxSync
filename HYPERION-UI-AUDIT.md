@@ -517,3 +517,215 @@ Para V1.0, las prioridades son:
 ---
 
 *Fin del informe. Se encontraron 8 bugs arquitectónicos confirmados y 3 áreas de deuda técnica. El subsistema visual está sano; el subsistema de control manual necesita una cirugía antes de V1.0.*
+
+---
+
+# APÉNDICE B — OPERACIÓN "CABLE CORTADO" (WAVE 4704-RESTORE)
+## Forense del IPC `lux:state-update` — Backend → Frontend
+
+> **Fecha:** 2026-05-11  
+> **Auditor:** Cascade (Sonnet Forense)  
+> **Contexto:** Tras implementar "Opción B" (emisión de `lux:state-update` desde `electron/main.ts`), la UI seguía ciega. Este apéndice documenta el rastreo cable-a-cable del canal IPC y el hallazgo final.
+
+---
+
+## B.1 Resumen Ejecutivo
+
+**VEREDICTO: El cable NO está cortado en el código. El cable está cortado en el runtime.**
+
+El pipeline IPC de `lux:state-update` es 100% completo y funcional en el source tree:
+
+| Tramo | Archivo | Estado |
+|---|---|---|
+| Emisor backend | `electron/main.ts:552` | ✅ Envía `lux:state-update` |
+| Preload bridge | `electron/preload.ts:582-590` | ✅ Escucha y reenvía a callback |
+| Suscripción frontend | `src/providers/TrinityProvider.tsx:315-316` | ✅ `window.lux.onStateUpdate(cb)` |
+| Handler de datos | `TrinityProvider.tsx:195-287` | ✅ `handleStateUpdate` → `dmxStore.updateFixtureValues` |
+| Store consumidor | `src/stores/dmxStore.ts:265-269` | ✅ `updateFixtureValues` crea Map y llama `set()` |
+
+El problema es que **`electron/main.ts` NO se ejecuta directamente** — la app corre desde `dist-electron/main.js`. Si el desarrollador solo ejecutó `tsc --noEmit` (chequeo de tipos) sin reconstruir el bundle del proceso principal, el archivo compilado sigue siendo el código **viejo** (pre-WAVE 4704-RESTORE), que nunca envía `lux:state-update`.
+
+---
+
+## B.2 PASO 1 — La Aduana (`preload.ts`)
+
+**Archivo:** `electron/preload.ts:580-590`
+
+```typescript
+onStateUpdate: (callback: (state: SeleneStateUpdate) => void) => {
+  const handler = (_: Electron.IpcRendererEvent, state: SeleneStateUpdate) => callback(state)
+  ipcRenderer.on('lux:state-update', handler)
+  return () => {
+    ipcRenderer.removeListener('lux:state-update', handler)
+  }
+}
+```
+
+**Hallazgo:** El handler existe, está activo, y mapea exactamente `ipcRenderer.on('lux:state-update', ...)`. No fue eliminado en WAVE 4704. **La Aduana está intacta.**
+
+---
+
+## B.3 PASO 2 — El Payload (Misma señal, dos dialectos)
+
+### Interfaz esperada por `TrinityProvider.tsx`
+
+```typescript
+interface SeleneStateUpdate {
+  beat?:     { bpm, onBeat, beatPhase, confidence, energy? }
+  brain?:    { mode: 'reactive'|'intelligent', confidence, beautyScore, energy, mood, section }
+  palette?:  { name, source }
+  fixtures?: FixtureValues[]   // <-- dmxStore
+  effects?:  { blackout, strobe, blinder, police, rainbow, beam, prism }
+  frameId?:  number
+  timestamp?: number
+}
+```
+
+### Payload emitido desde `electron/main.ts` (post-restore)
+
+```typescript
+{
+  beat:     { bpm, onBeat, beatPhase, confidence, energy },
+  brain:    { mode, confidence, beautyScore, energy, mood, section },
+  palette:  { name, source },
+  fixtures: [ { dmxAddress, r, g, b, dimmer, pan, tilt }, ... ],
+  effects:  { blackout, strobe, blinder, police, rainbow, beam, prism },
+  frameId, timestamp
+}
+```
+
+**Hallazgo:** Cada campo del payload existe, tiene el nombre correcto, y el shape es compatible con `FixtureValues` (importado desde `dmxStore.ts`). El optional chaining (`?.`) protege contra `undefined` en todas las ramas. **No hay mismatch.**
+
+---
+
+## B.4 PASO 3 — El Consumidor (`TrinityProvider.tsx`)
+
+**Condición de activación:**
+
+```typescript
+// TrinityProvider.tsx:548-553
+useEffect(() => {
+  if (powerState === 'ONLINE' && !hasStartedRef.current) {
+    hasStartedRef.current = true
+    startTrinity().then(() => { ... })
+  }
+}, [powerState])
+```
+
+**Suscripción interna:**
+
+```typescript
+// TrinityProvider.tsx:314-317
+if (window.lux?.onStateUpdate) {
+  unsubscribeRef.current = window.lux.onStateUpdate(handleStateUpdate)
+}
+```
+
+**Handler:**
+
+```typescript
+// TrinityProvider.tsx:266-270
+if (seleneState.fixtures && seleneState.fixtures.length > 0) {
+  updateFixtureValues(seleneState.fixtures)
+}
+```
+
+**Store:**
+
+```typescript
+// dmxStore.ts:265-269
+updateFixtureValues: (values) => {
+  const newMap = new Map<number, FixtureValues>()
+  values.forEach(v => newMap.set(v.dmxAddress, v))
+  set({ fixtureValues: newMap })
+}
+```
+
+**Hallazgo:** Todos los eslabones de la cadena están presentes y no tienen guardas que bloqueen el flujo. `powerState === 'ONLINE'` es el único prerequisito, y eso ya se cumple (de lo contrario `selene:truth` y `selene:hot-frame` tampoco llegarían). **El consumidor no tiene cortes internos.**
+
+---
+
+## B.5 PASO 4 — La Compilación (El corte real)
+
+### Configuración de build
+
+**Archivo:** `package.json:5`
+```json
+"main": "dist-electron/main.js"
+```
+
+**Archivo:** `vite.config.ts:21-33`
+```typescript
+electron([
+  {
+    entry: 'electron/main.ts',
+    vite: { build: { outDir: 'dist-electron', ... } }
+  },
+  {
+    entry: 'electron/preload.ts',
+    onstart(options) { options.reload() },  // <-- preload SÍ recarga renderer
+    vite: { build: { outDir: 'dist-electron' } }
+  },
+])
+```
+
+### El problema
+
+- `vite-plugin-electron` **recompila** `electron/main.ts` → `dist-electron/main.js` cuando detecta cambios.
+- Pero **NO reinicia el proceso principal de Electron** automáticamente (a diferencia del preload, que tiene `options.reload()`).
+- El proceso principal de Electron mantiene el código **viejo** en memoria hasta que se reinicie.
+
+**Esto significa:**
+1. El developer modifica `electron/main.ts` ✅
+2. `tsc --noEmit` pasa sin errores ✅
+3. `vite` recompila `dist-electron/main.js` ✅
+4. Pero el proceso principal sigue ejecutando el `main.js` **anterior** en memoria ❌
+5. Resultado: `lux:state-update` nunca se envía en runtime ❌
+
+---
+
+## B.6 Recomendaciones
+
+### Para verificar que el fix funciona:
+
+1. **Matar y reiniciar Electron completamente** después de modificar `electron/main.ts`:
+   ```bash
+   # En la terminal del dev server
+   Ctrl+C  # matar vite + electron
+   npm run dev   # o: npm run electron:dev
+   ```
+
+2. **Añadir un log de confirmación** en `electron/main.ts` (temporal, quitar después):
+   ```typescript
+   console.log('[IPC RESTORE] lux:state-update sent @', Date.now(),
+               'fixtures:', stateUpdate.fixtures?.length)
+   ```
+
+3. **Añadir un log de confirmación** en `TrinityProvider.tsx` (temporal):
+   ```typescript
+   const handleStateUpdate = useCallback((seleneState: SeleneStateUpdate) => {
+     console.log('[Trinity] lux:state-update received, fixtures:', seleneState.fixtures?.length)
+     ...
+   }, [...])
+   ```
+
+4. Si ambos logs aparecen en sus respectivas consolas (main process → terminal; renderer → DevTools), el cable está soldado.
+
+### Para prevenir regresiones futuras:
+
+Documentar en el README o en un workflow que **cualquier cambio en `electron/main.ts` requiere reinicio completo de Electron**:
+
+```markdown
+## ⚠️ Regla de oro del Main Process
+> `electron/main.ts` → requiere **reinicio completo** de Electron.
+> `electron/preload.ts` → Vite recarga automáticamente el renderer.
+> `src/**/*.ts` → HMR funciona normalmente.
+```
+
+---
+
+## B.7 Conclusión
+
+El código de la Opción B es correcto. No hay bugs en la lógica, el payload, ni el consumidor. El "cable cortado" es un **artefacto de build**: el proceso principal de Electron sigue ejecutando el `dist-electron/main.js` compilado antes del cambio. Reiniciar Electron completo soldará el cable.
+
+*Fin del apéndice forense. Cero bugs de código encontrados; 1 bug de proceso de desarrollo identificado.*

@@ -495,6 +495,61 @@ async function initTitan(): Promise<void> {
         if (_dt > 5) {
           console.warn(`[IPC PROBE] 🐢 selene:truth BLOCK ${_dt.toFixed(1)}ms`)
         }
+
+        // ⚡ WAVE 4704-RESTORE: Resucitar lux:state-update (legacy masterArbiter canal).
+        // TrinityProvider.handleStateUpdate escucha este canal para actualizar audioStore,
+        // seleneStore (brain metrics), dmxStore (fixture values) y luxsyncStore (effects).
+        // El canal fue cortado al eliminar masterArbiter en WAVE 4704; se restaura aquí
+        // construyendo SeleneStateUpdate desde la SeleneTruth ya disponible (~7Hz).
+        // Zero-alloc: no se crean objetos extra más allá del literal de proyección.
+        const beat = truth?.sensory?.beat
+        const audio = truth?.sensory?.audio
+        const consciousness = truth?.consciousness
+        const intentPalette = truth?.intent?.palette
+        const hw = truth?.hardware
+
+        const stateUpdate = {
+          beat: beat ? {
+            bpm:        beat.bpm        ?? 0,
+            onBeat:     beat.onBeat     ?? false,
+            beatPhase:  beat.beatPhase  ?? 0,
+            confidence: beat.confidence ?? 0,
+            energy:     audio?.energy   ?? 0,
+          } : undefined,
+          brain: consciousness ? {
+            mode:        (consciousness.vibe?.active ?? 'selene') as 'reactive' | 'intelligent',
+            confidence:  beat?.confidence            ?? 0,
+            beautyScore: (consciousness.ai as any)?.beautyScore ?? 0,
+            energy:      audio?.energy               ?? 0,
+            mood:        consciousness.mood          ?? 'neutral',
+            section:     (truth?.context?.section as any)?.type ?? 'unknown',
+          } : undefined,
+          palette: intentPalette ? {
+            name:   (intentPalette as any)?.name   ?? 'procedural',
+            source: ((intentPalette as any)?.source ?? 'procedural') as 'memory' | 'procedural' | 'fallback',
+          } : undefined,
+          fixtures: hw?.fixtures?.map((f: any) => ({
+            dmxAddress: f.dmxAddress ?? 0,
+            r:          Math.round((f.color?.r ?? 0)),
+            g:          Math.round((f.color?.g ?? 0)),
+            b:          Math.round((f.color?.b ?? 0)),
+            dimmer:     Math.round((f.dimmer ?? 0) * 255),
+            pan:        Math.round((f.pan    ?? 0.5) * 255),
+            tilt:       Math.round((f.tilt   ?? 0.5) * 255),
+          })),
+          effects: {
+            blackout: (truth as any)?.blackout ?? false,
+            strobe:   false,
+            blinder:  false,
+            police:   false,
+            rainbow:  false,
+            beam:     false,
+            prism:    false,
+          },
+          frameId:   truth?.system?.frameNumber ?? 0,
+          timestamp: truth?.system?.timestamp   ?? Date.now(),
+        }
+        mainWindow.webContents.send('lux:state-update', stateUpdate)
       }
     } catch (err) {
       // Silently ignore - the renderer is being destroyed (e.g., during heavy audio loading)

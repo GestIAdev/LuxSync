@@ -43,6 +43,7 @@ import {
   vibeMovementManager,
   type AudioContext as VmmAudioContext,
 } from '../../../engine/movement/VibeMovementManager'
+import { aetherKineticEngine } from '../AetherKineticEngine'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -175,7 +176,14 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       this._valuesDict['rotation'] = undefined as any
       this._valuesDict['speed']    = undefined as any
 
-      // ── 4b. Obtener intención 2D del VMM para este nodo ───────────────
+      // ── 4b. GATE L2-SUPREMACY: si el motor nativo L2 tiene este nodo bajo
+      // control manual, NO emitir intent L0 — el engine ya escribió pan_base/tilt_base
+      // en L2 antes de este tick. Emitir L0 aquí contaminaría el resultado final.
+      if (aetherKineticEngine.hasNode(node.nodeId)) {
+        return
+      }
+
+      // ── 4c. Obtener intención 2D del VMM para este nodo ───────────────
       // 🎭 WAVE 4645: Left/Right phase asymmetry
       // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
       // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge

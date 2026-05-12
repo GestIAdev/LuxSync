@@ -1197,6 +1197,14 @@ const luxApi = {
       ipcRenderer.invoke('lux:aether:setInhibitLimit', { nodeIds, limit }),
 
     /**
+     * WAVE L2-SUPREMACY: Limpia todos los overrides del motor cinético nativo
+     * (dual-map _motorKineticOverrides del NodeArbiter). Safety net para unlock
+     * cuando el motor tiene overrides huérfanos tras un stop() sin arbiter.
+     */
+    clearAllMotorKineticOverrides: () =>
+      ipcRenderer.invoke('lux:aether:clearAllMotorKineticOverrides'),
+
+    /**
      * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
      */
     clearInhibitLimit: (nodeIds: string[]) =>

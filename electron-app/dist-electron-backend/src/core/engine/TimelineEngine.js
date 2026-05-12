@@ -26,7 +26,6 @@
  * @module core/engine/TimelineEngine
  * @version WAVE 2053.1
  */
-import { masterArbiter } from '../arbiter';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 import { resolveZoneTags } from '../zones/ZoneMapper';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -332,10 +331,8 @@ export class TimelineEngine {
         // touches are sent to the Arbiter. Everything else stays under Titan/Selene.
         // If no FX clip is active → fixtureTargets is EMPTY → Titan reigns supreme.
         // ═══════════════════════════════════════════════════════════════════════
-        masterArbiter.setPlaybackFrame(fixtureTargets, {
-            hasActiveVibe,
-            vibeId: this.currentPlaybackVibeId,
-        });
+        // 🎤 WAVE 4703: setPlaybackFrame on ArbitrationDirector removed — bypased since WAVE 4592.
+        // TitanOrchestrator reads getLastPlaybackFrame() directly from this engine.
         // ── Cleanup clips that ended ──
         Array.from(this.previousActiveIds).forEach(prevId => {
             if (!nowActiveIds.has(prevId)) {
@@ -361,7 +358,7 @@ export class TimelineEngine {
         // � WAVE 2069: Clear color latch — no stale colors after stop
         this.colorLatch.clear();
         // �🔥 WAVE 2056: Stop playback mode in Arbiter
-        masterArbiter.stopPlayback();
+        // 🎬 WAVE 4703: stopPlayback on ArbitrationDirector removed — bypased since WAVE 4592.
         // 🎬 WAVE 2063: Clear tracked vibe
         this.currentPlaybackVibeId = null;
         // 🗺️ WAVE 2543.5: Clear zone resolution cache
@@ -674,7 +671,7 @@ export class TimelineEngine {
                 continue;
             // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
             // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
-            const zoneResolved = masterArbiter.getFixtureIdsByZone(zoneId);
+            const zoneResolved = getTitanOrchestrator().getFixtureIdsByZone(zoneId);
             // 🎯 WAVE 2544.1: AND-gate — clip permission mask
             // If the clip has zone restrictions, only pass fixtures that are in BOTH
             // the zone's fixture list AND the clip's allowed set.
@@ -994,7 +991,7 @@ export class TimelineEngine {
             const cached = this._zoneCache.get(cacheKey);
             if (cached)
                 return cached;
-            const fixtures = masterArbiter.getFixturesForZoneMapping();
+            const fixtures = getTitanOrchestrator().getFixturesForZoneMapping();
             const resolved = resolveZoneTags(zones, fixtures);
             if (resolved.length > 0) {
                 this._zoneCache.set(cacheKey, resolved);
@@ -1002,7 +999,7 @@ export class TimelineEngine {
             }
             console.warn(`[TimelineEngine] ⚠️ Zones [${zones.join(', ')}] resolved to 0 fixtures — fallback to all`);
         }
-        return masterArbiter.getFixtureIds();
+        return getTitanOrchestrator().getFixtureIds();
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 2065: Frame Accumulator — Sparse Overlay
@@ -1022,7 +1019,7 @@ export class TimelineEngine {
         // A. Expand wildcard '*' → All fixture IDs
         let finalIds = targetIds;
         if (targetIds.includes('*')) {
-            finalIds = masterArbiter.getFixtureIds();
+            finalIds = getTitanOrchestrator().getFixtureIds();
             if (finalIds.length === 0) {
                 console.warn('[TimelineEngine] ⚠️ No fixtures registered in Arbiter!');
                 return;

@@ -113,32 +113,38 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   // ── Kinetic overrides activos (para mostrar botón Unlock) ────────────────
   const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
   const hasKineticOverride = useMemo(() => {
+    // WAVE 4707 S2: el motor corre con _motorKineticOverrides, no con fixtureOverrides.
+    // Cuando hay patrón activo el botón UNLOCK debe aparecer aunque el programmerStore
+    // no tenga pan/tilt registrados (los patrones usan el dual-map del NodeArbiter).
+    if (activePattern !== 'none') return true
     return selectedIds.some(id => {
       const ov = fixtureOverrides.get(id)
       return ov?.pan !== null || ov?.tilt !== null
     })
-  }, [selectedIds, fixtureOverrides])
+  }, [selectedIds, fixtureOverrides, activePattern])
 
   const handleUnlockKinetics = useCallback(() => {
-    // WAVE 4719: Unlock total en 5 capas sincronicas — sin zombies.
+    if (selectedIds.length === 0) return
+    // WAVE 4707 S3: Unlock idéntico al de TheProgrammer — cinco capas sincrónicas.
     // 1) NodeArbiter L2: limpia pan/tilt/speed/color de todas las familias
     useProgrammerStore.getState().releaseAll()
-    // 2) VMM: limpia patron activo en masterArbiter + KineticEngine
-    if (selectedIds.length > 0) {
-      void window.lux?.aether?.setManualPattern({
-        fixtureIds: selectedIds,
-        pattern: null,
-        speed: 50,
-        amplitude: 50,
-      })
-      // 3) VMM: limpiar phase offsets del fan (WAVE 4717.2 residuales)
-      void window.lux?.aether?.setKineticFanOffsets({})
-    }
-    // 4) UI inmediata: resetear patron en store
+    // 2) Inhibit limits del NodeArbiter (canal IMPACT) — FALTABA en la Cathedral
+    const nodeIds = selectedIds.map(id => `${id}:impact`)
+    window.lux?.aether?.clearInhibitLimit(nodeIds)
+    // 3) VMM: limpiar patrón activo en masterArbiter + KineticEngine
+    void window.lux?.aether?.setManualPattern({
+      fixtureIds: selectedIds,
+      pattern: null,
+      speed: 50,
+      amplitude: 50,
+    })
+    // WAVE L2-SUPREMACY: limpiar dual-map motor kinético (safety net)
+    void window.lux?.aether?.clearAllMotorKineticOverrides?.()
+    // 4) VMM: limpiar phase offsets del fan (WAVE 4717.2 residuales)
+    void window.lux?.aether?.setKineticFanOffsets({})
+    // 5) UI inmediata: resetear patrón en store
     useMovementStore.getState().setActivePattern('none')
-    // 5) EXORCISMO (WAVE 4719): limpiar Sets zombificados
-    //    manualOverrideFixtureIds nunca se limpiaba, bloqueando guards futuros
-    //    lockedFixtureIds nunca se limpiaba, dejando faders SPEED/AMP disabled permanentemente
+    // 6) EXORCISMO (WAVE 4719): limpiar Sets zombificados
     useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
     useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds])

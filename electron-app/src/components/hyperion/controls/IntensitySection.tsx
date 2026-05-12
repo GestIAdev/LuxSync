@@ -15,11 +15,11 @@ import React, { useCallback } from 'react'
 import { IntensityIcon, StrobeIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
-  value: number          // 0-100
+  value: number | null          // 0-100 | null = MIXED
   hasOverride: boolean   // Is dimmer under manual control?
-  strobeValue: number    // 0-100 strobe speed
+  strobeValue: number | null    // 0-100 | null = MIXED
   hasStrobeOverride: boolean // Is strobe under manual control?
-  limitValue: number     // 0-100 inhibit limit (100 = no limit)
+  limitValue: number | null     // 0-100 | null = MIXED
   hasLimitActive: boolean // Is limit below 100%?
   isExpanded: boolean    // Is section expanded?
   onToggle: () => void   // Toggle expansion
@@ -73,6 +73,13 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
   onLimitChange,
   onLimitRelease,
 }) => {
+  const sliderValue = value ?? 0
+  const sliderStrobeValue = strobeValue ?? 0
+  const sliderLimitValue = limitValue ?? 0
+  const dimmerLabel = value === null ? '-' : `${Math.round(value)}%`
+  const strobeLabel = strobeValue === null ? '-' : (strobeValue === 0 ? 'OFF' : `${Math.round(strobeValue)}%`)
+  const limitLabel = limitValue === null ? '-' : `${Math.round(limitValue)}%`
+
   
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(Number(e.target.value))
@@ -134,18 +141,18 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               type="range"
               min={0}
               max={100}
-              value={value}
+              value={sliderValue}
               onChange={handleSliderChange}
               className="intensity-slider"
             />
-            <div className="intensity-value">{Math.round(value)}%</div>
+            <div className="intensity-value">{dimmerLabel}</div>
           </div>
           
           {/* Fill indicator */}
           <div className="intensity-bar">
             <div 
               className="intensity-fill"
-              style={{ width: `${value}%` }}
+              style={{ width: `${sliderValue}%` }}
             />
           </div>
           
@@ -154,7 +161,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
             {PRESETS.map(preset => (
               <button
                 key={preset.value}
-                className={`preset-btn ${value === preset.value ? 'active' : ''}`}
+                className={`preset-btn ${value !== null && value === preset.value ? 'active' : ''}`}
                 onClick={() => handlePresetClick(preset.value)}
               >
                 {preset.label}
@@ -188,18 +195,18 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
                 type="range"
                 min={0}
                 max={100}
-                value={limitValue}
+                value={sliderLimitValue}
                 onChange={handleLimitSliderChange}
                 className="intensity-slider limit-slider"
               />
-              <div className="intensity-value">{Math.round(limitValue)}%</div>
+              <div className="intensity-value">{limitLabel}</div>
             </div>
             
             <div className="intensity-presets limit-presets">
               {LIMIT_PRESETS.map(preset => (
                 <button
                   key={preset.label}
-                  className={`preset-btn ${limitValue === preset.value ? 'active' : ''}`}
+                  className={`preset-btn ${limitValue !== null && limitValue === preset.value ? 'active' : ''}`}
                   onClick={() => handleLimitPresetClick(preset.value)}
                 >
                   {preset.label}
@@ -208,7 +215,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
             </div>
             
             {hasLimitActive && (
-              <div className="override-badge limit-override">LIMIT {Math.round(limitValue)}%</div>
+              <div className="override-badge limit-override">LIMIT {limitLabel}</div>
             )}
           </div>
           
@@ -233,18 +240,18 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
                 type="range"
                 min={0}
                 max={100}
-                value={strobeValue}
+                value={sliderStrobeValue}
                 onChange={handleStrobeSliderChange}
                 className="intensity-slider strobe-slider"
               />
-              <div className="intensity-value">{strobeValue === 0 ? 'OFF' : `${Math.round(strobeValue)}%`}</div>
+              <div className="intensity-value">{strobeLabel}</div>
             </div>
             
             <div className="intensity-presets strobe-presets">
               {STROBE_PRESETS.map(preset => (
                 <button
                   key={preset.label}
-                  className={`preset-btn ${strobeValue === preset.value ? 'active' : ''}`}
+                  className={`preset-btn ${strobeValue !== null && strobeValue === preset.value ? 'active' : ''}`}
                   onClick={() => handleStrobePresetClick(preset.value)}
                 >
                   {preset.label}

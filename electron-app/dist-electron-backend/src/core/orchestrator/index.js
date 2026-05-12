@@ -12,5 +12,4 @@ export { EventRouter, getEventRouter, resetEventRouter, } from './EventRouter';
 // WAVE 243.5: Titan Orchestrator (Simplified V2)
 export { TitanOrchestrator, getTitanOrchestrator, registerTitanOrchestrator, // WAVE 380: Register singleton from main.ts
  } from './TitanOrchestrator';
-// 🎭 WAVE 374: Arbiter Handlers
-export { setupArbiterHandlers, } from './ArbiterHandlers';
+// 🪦 WAVE 4704: ArbiterHandlers eliminado — setupArbiterHandlers nunca fue llamado desde main.ts

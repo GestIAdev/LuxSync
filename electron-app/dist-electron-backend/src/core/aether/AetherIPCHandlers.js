@@ -20,12 +20,12 @@
  */
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
-// WAVE 4651: masterArbiter delegado temporal para pattern engine e IK solver.
-// WAVE 4652: masterArbiter compartido para blackout/grandmaster mientras el HAL
-// sigue leyendo de el. Ambos pipelines reciben la misma senal en paralelo.
-import { masterArbiter } from '../arbiter';
+// 🚦 WAVE 4704: masterArbiter eliminado. IK solver nativo directo.
+import { buildProfile, solveGroupWithFan } from '../../engine/movement/InverseKinematicsEngine';
 // WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
+// ⚡ WAVE 4700: Motor cinético nativo L2 — sustituye masterArbiter + VMM para patrones manuales
+import { aetherKineticEngine } from './AetherKineticEngine';
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,6 +98,23 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
+    /**
+     * WAVE L2-SUPREMACY: Limpia todas las entradas del motor cinético nativo
+     * (_motorKineticOverrides) del NodeArbiter. Los nodos dejan de tener
+     * autoridad L2-MOTOR sobre pan/tilt — L0 retoma el control inmediatamente.
+     * Útil como safety net al hacer Unlock cuando el motor fue detenido
+     * sin arbiter (stop() sin argumento) y quedan overrides huérfanos.
+     */
+    ipcMain.handle('lux:aether:clearAllMotorKineticOverrides', () => {
+        try {
+            getTitanOrchestrator().getAetherArbiter().clearAllMotorKineticOverrides();
+            return { success: true };
+        }
+        catch (err) {
+            console.error('[AetherIPC] clearAllMotorKineticOverrides error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
     // ── Inhibit Limit (WAVE 4531) ──────────────────────────────────────────
     /**
      * Set inhibit limits para un array de nodeIds.
@@ -149,13 +166,11 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
-    // ── G1/G2: Blackout + GrandMaster globales (WAVE 4652) ─────────────────────
-    // Atacan NodeArbiter (pipeline Aether) Y masterArbiter (pipeline legacy + HAL)
-    // de forma simultanea. Cuando el HAL migre al pipeline Aether, se elimina
-    // la llamada a masterArbiter de aqui.
+    // ── G1/G2: Blackout + GrandMaster globales (WAVE 4702) ─────────────────────
+    // Atacan NodeArbiter (pipeline Aether). masterArbiter extinto — WAVE 4702.
     /**
      * G1: Set blackout global.
-     * Escribe en NodeArbiter L4 Y en masterArbiter (HAL legacy).
+     * Escribe en NodeArbiter L4.
      * Payload: active boolean
      * Devuelve: { success, blackoutActive }
      */
@@ -163,8 +178,6 @@ export function registerAetherIPCHandlers() {
         try {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             arbiter.setBlackout(active);
-            // WAVE 4652: espejo al pipeline legacy hasta que HAL migre a Aether
-            masterArbiter.setBlackout(active);
             return { success: true, blackoutActive: active };
         }
         catch (err) {
@@ -180,8 +193,6 @@ export function registerAetherIPCHandlers() {
         try {
             const orchestrator = getTitanOrchestrator();
             orchestrator.setOutputEnabled(!!enabled);
-            // Compat temporal con rutas legacy todavía vivas.
-            masterArbiter.setOutputEnabled(!!enabled);
             return { success: true, outputEnabled: orchestrator.isOutputEnabled() };
         }
         catch (err) {
@@ -211,15 +222,13 @@ export function registerAetherIPCHandlers() {
     });
     /**
      * G2: Set grand master dimmer global (0-1).
-     * Escribe en NodeArbiter Y en masterArbiter.
+     * Escribe en NodeArbiter L4.
      * Payload: value (0-1)
      */
     ipcMain.handle('lux:aether:setGrandMaster', (_event, { value }) => {
         try {
             const clamped = value < 0 ? 0 : value > 1 ? 1 : value;
             getTitanOrchestrator().getAetherArbiter().setGrandMaster(clamped);
-            // WAVE 4652: espejo al pipeline legacy
-            masterArbiter.setGrandMaster(clamped);
             return { success: true, grandMaster: clamped };
         }
         catch (err) {
@@ -229,7 +238,7 @@ export function registerAetherIPCHandlers() {
     });
     /**
      * G3: Set grand master speed (0.1-2.0) — escala velocidad AI global.
-     * Delegado a masterArbiter (controla el VMM legacy).
+     * Controla VMM nativo del pipeline Aether.
      * Payload: value (0.1-2.0)
      */
     ipcMain.handle('lux:aether:setGrandMasterSpeed', (_event, { value }) => {
@@ -237,8 +246,6 @@ export function registerAetherIPCHandlers() {
             const clamped = value < 0.1 ? 0.1 : value > 2.0 ? 2.0 : value;
             // Aether kinetic flow consumes VMM in hot-path. This is the canonical speed control.
             vibeMovementManager.setGlobalSpeedMultiplier(clamped);
-            // Compat temporal con rutas legacy aún conectadas al ArbitrationDirector.
-            masterArbiter.setGrandMasterSpeed(clamped);
             return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
         }
         catch (err) {
@@ -246,52 +253,74 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
-    // ── E11/E12: Kinetic pattern engine + IK spatial solver (WAVE 4651) ─────────
-    // El NodeArbiter opera sobre canales abstractos (pan, tilt, speed...).
-    // La logica de pattern (timing matematico, anchor, sweep) y la resolucion
-    // IK (giroscopio de cables, calibracion, pan range) viven en el ArbitrationDirector.
-    // WAVE 4651: la RUTA IPC es 100% Aether. El engine de movimiento fisico
-    // permanece en masterArbiter como motor compartido hasta WAVE 4700 (KineticSystem Aether).
+    // ── E11/E12: Kinetic pattern engine + IK spatial solver ─────────────────────
+    // WAVE 4700: El motor cinético nativo (AetherKineticEngine) reemplaza a
+    // masterArbiter.setPattern() + vibeMovementManager en el flujo de patrones
+    // manuales. El engine acumula fase propia, calcula la posición con fan offset
+    // determinista, y escribe pan_base/tilt_base en NodeArbiter L2 directamente.
+    //
+    // El IPC lux:aether:setKineticFanOffsets ya NO es necesario como canal
+    // separado — el fan se integra en setManualPattern como parámetro `fan`.
+    // El canal legacy queda como no-op para compatibilidad de llamadas antiguas
+    // (KineticsBridge.ts lo sigue invocando en WAVE 4717.2).
     /**
      * E11: Set manual kinetic pattern para fixtures.
      * Ruta: lux:aether:setManualPattern (Aether IPC)
-     * Engine: masterArbiter.setPattern() — motor cinematico compartido.
-     * Payload: { fixtureIds, pattern, speed (0-100), amplitude (0-100) }
+     * Engine: aetherKineticEngine — MOTOR NATIVO L2 (WAVE 4700).
+     *
+    * Payload: { fixtureIds, pattern, speed (0-100), amplitude (0-100), fan? (-100..100) }
+     *
+     * El motor escribe pan_base/tilt_base por fixture en cada tick de 44Hz.
+     * El VMM se desactiva (setManualPattern(null)) para evitar doble oscilación:
+     * el L0 queda en home (0.5) y el orbit math del Arbiter pasa pan_base sin suma.
      */
-    ipcMain.handle('lux:aether:setManualPattern', (_event, { fixtureIds, pattern, speed, amplitude }) => {
+    ipcMain.handle('lux:aether:setManualPattern', (_event, { fixtureIds, pattern, speed, amplitude, fan }) => {
+        console.log('[SONDA L2-IPC] Payload recibido:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan });
         if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
         try {
+            const arbiter = getTitanOrchestrator().getAetherArbiter();
             if (pattern === null || pattern === 'static' || pattern === 'hold') {
-                masterArbiter.clearPattern(fixtureIds);
-                // WAVE 4659 + 4661: limpiar también speed/amplitude/pattern en VMM
+                // Detener motor nativo y limpiar L2
+                aetherKineticEngine.stop(arbiter);
+                // Limpiar VMM por si quedaron overrides del modo legacy (backward compat)
                 vibeMovementManager.setManualPattern(null);
                 vibeMovementManager.setManualSpeed(null);
                 vibeMovementManager.setManualAmplitude(null);
-                // WAVE 4717.2: limpiar L2 phase offsets (fan distribute)
                 vibeMovementManager.setKineticFanOffsets({});
                 return { success: true };
             }
-            // Normalizacion speed: 0.05-0.5 Hz (rango WAVE 2652, constante fija)
-            const SPEED_MIN = 0.05;
-            const SPEED_MAX = 0.5;
-            const speedNorm = SPEED_MIN + (speed / 100) * (SPEED_MAX - SPEED_MIN);
-            const sizeNorm = (amplitude / 100) * 1.0;
-            // Anchor: posicion actual del primer fixture como centro del patron
-            const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0]);
-            masterArbiter.setPattern(fixtureIds, {
-                type: pattern,
-                speed: speedNorm,
-                size: sizeNorm,
-                center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
-            });
-            // WAVE 4659 + 4661: propagar patrón, speed y amplitude al VMM
-            // para que KineticAdapter los use en el hot-path Aether.
-            vibeMovementManager.setManualPattern(pattern);
-            vibeMovementManager.setManualSpeed(speed); // 0-100 → VMM escala a Hz internamente
-            vibeMovementManager.setManualAmplitude(amplitude); // 0-100 → VMM escala a [0.05, 1.0]
-            return { success: true, pattern };
+            // Normalizar speed/amplitude de rango UI [0–100] a [0, 1]
+            const speedNorm = (speed ?? 50) / 100;
+            const amplitudeNorm = (amplitude ?? 50) / 100;
+            const fanNorm = (fan ?? 0) / 100;
+            // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
+            const nodeIds = fixtureIds.map(id => `${id}:kinetic`);
+            // Mapear nombre de patrón UI → NativeKineticPattern
+            const nativePattern = mapToNativePattern(pattern);
+            // Silenciar VMM — con L2 supremacy el delta L0 ya no llega al resultado
+            // final de pan/tilt, pero silenciar VMM evita el coste de CPU inútil.
+            vibeMovementManager.setManualPattern(null);
+            vibeMovementManager.setManualSpeed(null);
+            vibeMovementManager.setManualAmplitude(null);
+            vibeMovementManager.setKineticFanOffsets({});
+            // WAVE L2-SUPREMACY: guardar estado previo para limpiar L2 de fixtures
+            // que ya no forman parte de la nueva selección.
+            // Si no se limpian, quedan congelados en su última posición cinética.
+            const prevKineticState = aetherKineticEngine.getState();
+            // Activar motor nativo con la configuración completa
+            aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm);
+            // Limpiar overrides L2 para fixtures que salieron de la selección
+            if (prevKineticState.active) {
+                const newNodeSet = new Set(nodeIds);
+                for (const prevNodeId of prevKineticState.nodeIds) {
+                    if (!newNodeSet.has(prevNodeId)) {
+                        arbiter.clearManualOverride(prevNodeId);
+                    }
+                }
+            }
+            return { success: true, pattern: nativePattern };
         }
         catch (err) {
             console.error('[AetherIPC] setManualPattern error:', err);
@@ -299,29 +328,48 @@ export function registerAetherIPCHandlers() {
         }
     });
     /**
-     * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
-     * Ruta: lux:aether:setKineticFanOffsets (Aether IPC)
-     * Engine: vibeMovementManager._l2PhaseOverrides — lookup O(1) en hot-path.
-     * Payload: Record<nodeId, phaseOffset (rad)>
-     * El KineticAdapter lee este mapa en process() antes de generateIntent().
+     * E11b: Actualizar escalares (speed/amplitude/fan) sin reiniciar la fase.
+     * Ruta: lux:aether:updateKineticScalars (Aether IPC) — NUEVO WAVE 4700.
+     * Para cambios en tiempo real de los sliders de UI sin glitch de fase.
+     * Payload: { speed (0-100), amplitude (0-100), fan (-100..100) }
      */
-    ipcMain.handle('lux:aether:setKineticFanOffsets', (_event, offsets) => {
-        if (typeof offsets !== 'object' || offsets === null) {
-            return { success: false, error: 'offsets must be a non-null object' };
-        }
+    ipcMain.handle('lux:aether:updateKineticScalars', (_event, { speed, amplitude, fan }) => {
         try {
-            vibeMovementManager.setKineticFanOffsets(offsets);
+            aetherKineticEngine.updateScalars((speed ?? 50) / 100, (amplitude ?? 50) / 100, (fan ?? 0) / 100);
             return { success: true };
         }
         catch (err) {
-            console.error('[AetherIPC] setKineticFanOffsets error:', err);
+            console.error('[AetherIPC] updateKineticScalars error:', err);
             return { success: false, error: String(err) };
         }
     });
     /**
+     * E11d WAVE 4701: Snapshot de estado manual del motor cinético nativo.
+     * Se usa para hidratar UI (pattern/speed/amplitude/fan) al cambiar selección.
+     */
+    ipcMain.handle('lux:aether:getManualKineticState', () => {
+        try {
+            return { success: true, ...aetherKineticEngine.getState() };
+        }
+        catch (err) {
+            console.error('[AetherIPC] getManualKineticState error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * E11c: Canal legacy para compatibilidad con WAVE 4717.2.
+     * El fan ahora se pasa directamente en setManualPattern como parámetro `fan`.
+     * Este handler queda como no-op (el motor nativo ignora el mapa de offsets VMM).
+     */
+    ipcMain.handle('lux:aether:setKineticFanOffsets', (_event, _offsets) => {
+        // No-op: los fan offsets se calculan nativamente en AetherKineticEngine.tick().
+        // El canal IPC se mantiene para no romper llamadas desde KineticsBridge legacy.
+        return { success: true };
+    });
+    /**
      * E12: Apply spatial target (IK solve) para fixtures.
      * Ruta: lux:aether:applySpatialTarget (Aether IPC)
-     * Engine: masterArbiter.applySpatialTarget() — IK resolver compartido.
+     * Engine: InverseKinematicsEngine.solveGroupWithFan() — WAVE 4704 (masterArbiter eliminado)
      * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude? }
      */
     ipcMain.handle('lux:aether:applySpatialTarget', (_event, { target, fixtureIds, fanMode, fanAmplitude }) => {
@@ -329,9 +377,41 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
         try {
-            const results = masterArbiter.applySpatialTarget(target, fixtureIds, fanMode ?? 'converge', fanAmplitude ?? 0);
+            const orchestrator = getTitanOrchestrator();
+            const arbiter = orchestrator.getAetherArbiter();
+            const allFixtures = orchestrator.fixtures ?? [];
+            const profiles = [];
+            const validIds = [];
+            for (const id of fixtureIds) {
+                const f = allFixtures.find((x) => x.id === id);
+                if (!f || !f.position)
+                    continue;
+                const cal = f.calibration;
+                const physics = f.physics;
+                const profile = buildProfile(id, f.position, f.rotation, f.orientation ?? f.installationType ?? 'ceiling', cal ? {
+                    panOffset: cal.panOffset ?? 0,
+                    tiltOffset: cal.tiltOffset ?? 0,
+                    panInvert: cal.panInvert ?? false,
+                    tiltInvert: cal.tiltInvert ?? false,
+                } : undefined, f.panRangeDeg, f.tiltRangeDeg, physics?.tiltLimits);
+                profiles.push(profile);
+                validIds.push(id);
+            }
+            if (profiles.length === 0)
+                return { success: true, results: {} };
+            const results = solveGroupWithFan(profiles, target, (fanMode ?? 'converge'), fanAmplitude ?? 0, null);
             const serialized = {};
-            results.forEach((result, id) => { serialized[id] = result; });
+            for (const id of validIds) {
+                const ikResult = results.get(id);
+                if (!ikResult)
+                    continue;
+                // Inject into Aether L2 as pan_base/tilt_base (0-1 normalized)
+                arbiter.setManualOverride(`${id}:kinetic`, {
+                    pan_base: ikResult.pan / 255,
+                    tilt_base: ikResult.tilt / 255,
+                });
+                serialized[id] = ikResult;
+            }
             return { success: true, results: serialized };
         }
         catch (err) {
@@ -342,18 +422,46 @@ export function registerAetherIPCHandlers() {
     /**
      * E12: Release spatial target — devuelve fixtures al control AI.
      * Ruta: lux:aether:releaseSpatialTarget (Aether IPC)
-     * Engine: masterArbiter.releaseSpatialTarget() — IK release compartido.
+     * Engine: NodeArbiter.clearManualOverride — WAVE 4704 (masterArbiter eliminado)
      */
     ipcMain.handle('lux:aether:releaseSpatialTarget', (_event, { fixtureIds }) => {
         if (!Array.isArray(fixtureIds)) {
             return { success: false, error: 'fixtureIds must be an array' };
         }
         try {
-            masterArbiter.releaseSpatialTarget(fixtureIds);
+            const arbiter = getTitanOrchestrator().getAetherArbiter();
+            for (const id of fixtureIds) {
+                arbiter.clearManualOverride(`${id}:kinetic`);
+            }
             return { success: true };
         }
         catch (err) {
             console.error('[AetherIPC] releaseSpatialTarget error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    // ── F1: FIXTURE SYNC — Canal canónico → TitanOrchestrator (WAVE 4702) ───────
+    /**
+     * F1: Sync fixtures desde stageStore al NodeGraph de Aether.
+     * Reemplaza lux:arbiter:setFixtures como canal canónico.
+     * Llama a TitanOrchestrator.setFixtures() que internamente:
+     *   - Actualiza HAL
+     *   - Llama _syncFixturesToAether (NodeGraph full-resync)
+     * Devuelve: { success, fixtureCount, liquidLayout }
+     */
+    ipcMain.handle('lux:aether:setFixtures', (_event, { fixtures, stageBounds }) => {
+        try {
+            // WAVE TYPECAST: El store puede serializar fixtures como Record<id, Fixture>
+            // en lugar de Array. Normalizamos aquí antes de tocar el Orchestrator.
+            const fixtureArray = Array.isArray(fixtures)
+                ? fixtures
+                : Object.values(fixtures);
+            const orchestrator = getTitanOrchestrator();
+            const liquidLayout = orchestrator.setFixtures(fixtureArray, stageBounds);
+            return { success: true, fixtureCount: fixtureArray.length, liquidLayout };
+        }
+        catch (err) {
+            console.error('[AetherIPC] setFixtures error:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -453,4 +561,40 @@ export function registerAetherIPCHandlers() {
             return { success: false, error: String(err) };
         }
     });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 4700: PATTERN NAME MAPPER
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Mapea nombres de patrón de la UI (string libre del movementStore)
+ * al tipo `NativeKineticPattern` del AetherKineticEngine.
+ *
+ * Garantiza que siempre haya un fallback válido para evitar que
+ * un nombre desconocido silencie el motor.
+ */
+function mapToNativePattern(pattern) {
+    const MAP = {
+        // Nombres de la UI (movementStore / PatternArsenal)
+        'circle': 'circle',
+        'circle_big': 'circle',
+        'figure8': 'figure8',
+        'figure_8': 'figure8',
+        'lemniscate': 'lemniscate',
+        'scan_x': 'scan_x',
+        'sweep': 'scan_x',
+        'square': 'square',
+        'diamond': 'diamond',
+        'wave_y': 'wave_y',
+        'wave': 'wave_y',
+        'ballyhoo': 'ballyhoo',
+        'darkspin': 'darkspin',
+        'sway': 'sway',
+        // Patrones legacy del masterArbiter (backward compat)
+        'eight': 'figure8',
+        'tornado': 'darkspin',
+        'gravity_bounce': 'wave_y',
+        'butterfly': 'lemniscate',
+        'heartbeat': 'sway',
+    };
+    return MAP[pattern] ?? 'circle';
 }

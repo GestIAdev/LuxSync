@@ -144,6 +144,15 @@ export class NodeArbiter implements INodeArbiter {
   private _poolCursor = 0
   private _photonTracerFrame = 0
 
+  /**
+   * WAVE L2-SUPREMACY: Output del motor cinético nativo (AetherKineticEngine).
+   * Mapa separado de _manualOverrides — sin colisión con anchor del radar ni con
+   * ProgrammerAetherBridge. Se aplica como última autoridad en arbitrate(),
+   * después del MANUAL HARD LOCK y del Grand Master.
+   * Key = `${fixtureId}:kinetic`, Value = { pan_base, tilt_base } computados.
+   */
+  private readonly _motorKineticOverrides = new Map<NodeId, Readonly<Record<string, number>>>()
+
   // ── INodeArbiter API ──────────────────────────────────────────────────
 
   setSystemIntents(bus: IIntentBus): void {
@@ -164,7 +173,18 @@ export class NodeArbiter implements INodeArbiter {
   }
 
   setManualOverride(nodeId: NodeId, channels: Readonly<Record<string, number>>): void {
-    this._manualOverrides.set(nodeId, channels)
+    const existing = this._manualOverrides.get(nodeId)
+    if (existing !== undefined) {
+      // Merge in-place: los canales entrantes actualizan los existentes sin borrar otros.
+      // Garantiza que KineticsBridge (anchor pan_base/tilt_base) y ProgrammerAetherBridge
+      // (speed) no se destruyan mutuamente al escribir el mismo nodo :kinetic.
+      const mutable = existing as Record<string, number>
+      for (const key in channels) {
+        mutable[key] = (channels as Record<string, number>)[key]
+      }
+    } else {
+      this._manualOverrides.set(nodeId, channels)
+    }
   }
 
   /**
@@ -189,6 +209,23 @@ export class NodeArbiter implements INodeArbiter {
 
   clearManualOverride(nodeId: NodeId): void {
     this._manualOverrides.delete(nodeId)
+  }
+
+  /**
+   * WAVE L2-SUPREMACY: Registra el output computado del motor cinético nativo.
+   * Solo AetherKineticEngine debe llamar este método.
+   * Separado de _manualOverrides para evitar colisión anchor↔output.
+   */
+  setMotorKineticOverride(nodeId: NodeId, channels: Readonly<Record<string, number>>): void {
+    this._motorKineticOverrides.set(nodeId, channels)
+  }
+
+  clearMotorKineticOverride(nodeId: NodeId): void {
+    this._motorKineticOverrides.delete(nodeId)
+  }
+
+  clearAllMotorKineticOverrides(): void {
+    this._motorKineticOverrides.clear()
   }
 
   /**
@@ -329,17 +366,11 @@ export class NodeArbiter implements INodeArbiter {
           lockRecord[key] = incoming
         }
 
-        if (key === 'pan_base') {
-          // WAVE L2-SUPREMACY: pan_base ES la posición final exclusiva.
-          // AetherKineticEngine ya incorpora anchor_radar + oscilación en pan_base.
-          // El delta L0 (VMM/Choreo) es descartado — cero mezcla aditiva.
-          record['pan'] = incoming < 0 ? 0 : incoming > 1 ? 1 : incoming
-        } else if (key === 'tilt_base') {
-          // Ídem para tilt.
-          record['tilt'] = incoming < 0 ? 0 : incoming > 1 ? 1 : incoming
-        } else {
-          record[key] = incoming
-        }
+        // pan_base/tilt_base en _manualOverrides son el anchor del radar (escritos por
+        // KineticsBridge._flushClassic). Se almacenan tal cual — NO se traducen a pan/tilt
+        // aquí. La traducción final ocurre exclusivamente en el bloque L2-MOTOR
+        // (post-hardlock), ejecutado por AetherKineticEngine vía _motorKineticOverrides.
+        record[key] = incoming
       }
     }
 
@@ -438,6 +469,26 @@ export class NodeArbiter implements INodeArbiter {
       }
     }
 
+    // WAVE L2-SUPREMACY — L2-MOTOR: output del AetherKineticEngine.
+    // Aplicado DESPUÉS del Grand Master y los inhibit limits — el motor nativo
+    // tiene la última palabra absoluta sobre pan/tilt de sus fixtures.
+    // Nunca mezcla aditiva: el engine ya embedió el anchor_radar en el cómputo.
+    for (const [nodeId, channels] of this._motorKineticOverrides) {
+      let record = this._result.get(nodeId)
+      if (!record) {
+        record = this._acquireRecord()
+        this._result.set(nodeId, record)
+      }
+      const panBase  = channels['pan_base']
+      const tiltBase = channels['tilt_base']
+      if (isFiniteChannelValue(panBase)) {
+        record['pan']  = panBase  < 0 ? 0 : panBase  > 1 ? 1 : panBase
+      }
+      if (isFiniteChannelValue(tiltBase)) {
+        record['tilt'] = tiltBase < 0 ? 0 : tiltBase > 1 ? 1 : tiltBase
+      }
+    }
+
     return this._result as ArbitratedNodeMap
   }
 
@@ -526,6 +577,7 @@ export class NodeArbiter implements INodeArbiter {
    */
   clearAllManualOverrides(): void {
     this._manualOverrides.clear()
+    this._motorKineticOverrides.clear()
   }
 
   /**

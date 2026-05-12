@@ -1,32 +1,21 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 MASTER ARBITER - BARREL EXPORT
+ * 🪦 ARBITER TYPES — Survivor barrel post WAVE 4704
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 373: Central control hierarchy for LuxSync.
+ * ArbitrationDirector, MasterArbiter, CrossfadeEngine, MergeStrategies y
+ * LayerStateManager han sido eliminados físicamente en WAVE 4704.
+ * Este barrel mantiene SOLO los tipos que aún tienen dependencias activas:
+ *   - ControlLayer      → usado en HardwareAbstraction.ts
+ *   - EffectIntent/Map  → usado en TitanOrchestrator + IntentComposer
+ *   - Layer0_Titan, FinalLightingTarget, etc. → tipos de pipeline Aether
  *
  * @module core/arbiter
- * @version WAVE 373
+ * @version WAVE 4704 (RIP masterArbiter)
  */
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN CLASS & SINGLETON
-// ═══════════════════════════════════════════════════════════════════════════
-export { MasterArbiter, masterArbiter } from './MasterArbiter';
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
+// TYPES (únicos supervivientes)
 // ═══════════════════════════════════════════════════════════════════════════
 export { 
 // Enums
 ControlLayer, DEFAULT_ARBITER_CONFIG, DEFAULT_MERGE_STRATEGIES, } from './types';
-// ═══════════════════════════════════════════════════════════════════════════
-// MERGE STRATEGIES
-// ═══════════════════════════════════════════════════════════════════════════
-export { mergeHTP, mergeLTP, mergeBLEND, mergeOVERRIDE, mergeChannel, getDefaultStrategy, isHTPChannel, isLTPChannel, clampDMX, dmxToNormalized, normalizedToDMX, } from './merge/MergeStrategies';
-// ═══════════════════════════════════════════════════════════════════════════
-// CROSSFADE ENGINE
-// ═══════════════════════════════════════════════════════════════════════════
-export { CrossfadeEngine, globalCrossfadeEngine, easeInOutCubic, easeOutCubic, easeInCubic, linear, } from './CrossfadeEngine';
-// ═══════════════════════════════════════════════════════════════════════════
-// IPC HANDLERS (WAVE 376)
-// ═══════════════════════════════════════════════════════════════════════════
-export { registerArbiterHandlers, } from './ArbiterIPCHandlers';

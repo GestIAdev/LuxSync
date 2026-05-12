@@ -7,7 +7,7 @@ import React, { useCallback, useRef } from 'react'
 import { ColorIcon } from '../../icons/LuxIcons'
 
 export interface ColorSectionProps {
-  color: { r: number; g: number; b: number }
+  color: { r: number | null; g: number | null; b: number | null }
   hasOverride: boolean
   isExpanded: boolean
   onToggle: () => void
@@ -93,11 +93,17 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
   onRelease,
 }) => {
   const nativePickerRef = useRef<HTMLInputElement>(null)
+  const safeColor = {
+    r: color.r ?? 0,
+    g: color.g ?? 0,
+    b: color.b ?? 0,
+  }
+  const isMixedColor = color.r === null || color.g === null || color.b === null
 
   const handleRGBChange = useCallback((channel: 'r' | 'g' | 'b', value: number) => {
-    const newColor = { ...color, [channel]: value }
+    const newColor = { ...safeColor, [channel]: value }
     onChange(newColor.r, newColor.g, newColor.b)
-  }, [color, onChange])
+  }, [safeColor, onChange])
 
   const handleQuickColorClick = useCallback((quickColor: typeof QUICK_COLORS[0]) => {
     onChange(quickColor.color.r, quickColor.color.g, quickColor.color.b)
@@ -123,8 +129,8 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
     onChange(vivid.r, vivid.g, vivid.b)
   }, [onChange])
 
-  const previewColor = `rgb(${color.r}, ${color.g}, ${color.b})`
-  const previewHex = rgbToHex(color.r, color.g, color.b)
+  const previewColor = `rgb(${safeColor.r}, ${safeColor.g}, ${safeColor.b})`
+  const previewHex = rgbToHex(safeColor.r, safeColor.g, safeColor.b)
   
   return (
     <div className={`programmer-section color-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
@@ -155,7 +161,9 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
               <button
                 className="color-preview-swatch"
                 onClick={handleOpenNativePicker}
-                style={{ backgroundColor: previewColor }}
+                style={isMixedColor
+                  ? { background: 'linear-gradient(135deg, #ff3366 0%, #ff3366 33%, #10141d 33%, #10141d 66%, #36d1ff 66%, #36d1ff 100%)' }
+                  : { backgroundColor: previewColor }}
                 title="Open color wheel"
                 type="button"
               />
@@ -168,10 +176,10 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 aria-label="Color wheel"
               />
               <div className="color-values">
-                <span>R: {color.r}</span>
-                <span>G: {color.g}</span>
-                <span>B: {color.b}</span>
-                <span>HEX: {previewHex.toUpperCase()}</span>
+                <span>R: {color.r ?? '-'}</span>
+                <span>G: {color.g ?? '-'}</span>
+                <span>B: {color.b ?? '-'}</span>
+                <span>HEX: {isMixedColor ? '-' : previewHex.toUpperCase()}</span>
               </div>
             </div>
 
@@ -211,11 +219,11 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 type="range"
                 min={0}
                 max={255}
-                value={color.r}
+                value={safeColor.r}
                 onChange={(e) => handleRGBChange('r', Number(e.target.value))}
                 className="rgb-slider red"
               />
-              <span className="rgb-value">{color.r}</span>
+              <span className="rgb-value">{color.r ?? '-'}</span>
             </div>
 
             <div className="rgb-slider-row">
@@ -224,11 +232,11 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 type="range"
                 min={0}
                 max={255}
-                value={color.g}
+                value={safeColor.g}
                 onChange={(e) => handleRGBChange('g', Number(e.target.value))}
                 className="rgb-slider green"
               />
-              <span className="rgb-value">{color.g}</span>
+              <span className="rgb-value">{color.g ?? '-'}</span>
             </div>
 
             <div className="rgb-slider-row">
@@ -237,11 +245,11 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 type="range"
                 min={0}
                 max={255}
-                value={color.b}
+                value={safeColor.b}
                 onChange={(e) => handleRGBChange('b', Number(e.target.value))}
                 className="rgb-slider blue"
               />
-              <span className="rgb-value">{color.b}</span>
+              <span className="rgb-value">{color.b ?? '-'}</span>
             </div>
           </div>
 

@@ -19,7 +19,7 @@
  */
 import { ipcMain } from 'electron';
 import { timelineEngine } from '../../src/core/engine/TimelineEngine';
-import { masterArbiter } from '../../src/core/arbiter';
+import { getTitanOrchestrator } from '../../src/core/orchestrator/TitanOrchestrator';
 import { universalDMX } from '../../src/hal/drivers/UniversalDMXDriver';
 let mainWindow = null;
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,7 +64,7 @@ export function setupPlaybackIPCHandlers(window) {
     // ─── FIXTURE SYNC (Frontend → Backend) ───
     ipcMain.on('lux:stage:sync', (_event, fixtures) => {
         try {
-            console.log(`[PlaybackIPC] 🎭 Syncing ${fixtures.length} fixtures to Arbiter...`);
+            console.log(`[PlaybackIPC] 🎭 Syncing ${fixtures.length} fixtures to TitanOrchestrator...`);
             // Map FixtureInstance to ArbiterFixture format
             const arbiterFixtures = fixtures.map(f => {
                 const mapped = {
@@ -87,7 +87,7 @@ export function setupPlaybackIPCHandlers(window) {
                 }
                 return mapped;
             });
-            masterArbiter.setFixtures(arbiterFixtures);
+            getTitanOrchestrator().setFixtures(arbiterFixtures);
             // 🧹 WAVE 3080: PURGA DE SHOW — limpiar buffer del worker DMX.
             // Focos no parcheados en el nuevo show no deben recibir valores del show anterior.
             universalDMX.resetAllWorkerBuffers();

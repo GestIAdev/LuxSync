@@ -137,16 +137,20 @@ class KineticsBridgeClass {
         patternSpeed: s.patternSpeed,
         patternAmplitude: s.patternAmplitude,
         fanValue: s.fanValue,
+        chaosAmount: s.chaosAmount,  // WAVE 4707: chaos como fan spread del motor
       }),
-      ({ activePattern, patternSpeed, patternAmplitude, fanValue }) => {
+      ({ activePattern, patternSpeed, patternAmplitude, fanValue, chaosAmount }) => {
         // Speed → programmerStore (44Hz pipeline para L2:speed)
         if (getSelectedIds().length > 0) {
           useProgrammerStore.getState().setKineticSpeed(patternSpeed)
         }
 
-        // Pattern + speed + amplitude + fan → AetherKineticEngine (WAVE 4700)
-        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, fanValue)
-        // PASO 1: cuando cambia el estado activo/inactivo del patrón,
+        // Pattern + speed + amplitude → AetherKineticEngine (WAVE 4700)
+        // WAVE 4707: chaosAmount (0-1) * 100 → fan del motor (S6 fix).
+        // El ChaosOrderSlider es el control de dispersión/fan del motor nativo.
+        // fanValue (radar gesture spread) sigue siendo el fan del flush clásico.
+        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, chaosAmount * 100)
+        // cuando cambia el estado activo/inactivo del patrón,
         // re-emitir el classic flush con los nombres de canal correctos
         // (pan/tilt ↔ pan_base/tilt_base) para evitar stale orbit channels.
         const { pan, tilt } = useMovementStore.getState()
@@ -156,7 +160,8 @@ class KineticsBridgeClass {
           a.activePattern === b.activePattern &&
           a.patternSpeed === b.patternSpeed &&
           a.patternAmplitude === b.patternAmplitude &&
-          a.fanValue === b.fanValue
+          a.fanValue === b.fanValue &&
+          a.chaosAmount === b.chaosAmount  // WAVE 4707: chaos dispara flush de patrón
       },
     )
 
@@ -219,15 +224,20 @@ class KineticsBridgeClass {
     // el motor nativo quedaba apuntando a los fixtures anteriores (scope stale).
     // Fix: invalidar la caché de fixtureKey y re-enviar el estado actual del
     // movementStore para que el motor reciba los nuevos nodeIds de inmediato.
+    //
+    // WAVE 4707 S1: NO se llama a _scheduleClassicFlush desde aquí.
+    // Seleccionar un fixture ≠ Escribir posición sobre él.
+    // _flushClassic solo debe ejecutarse ante un gesto explícito del operador
+    // sobre el radar (click/drag). Escribir los defaults del store (270°/135°)
+    // sobre un fixture recién seleccionado lo snapeaba al centro — freeze de foco.
     const unsubSelection = useSelectionStore.subscribe(
       (s) => s.selectedIds,
       (_selectedIds) => {
         // Forzar full setManualPattern en el próximo flush (no scalar-only)
         this._lastFixtureKeysSent = null
-        const { activePattern, patternSpeed, patternAmplitude, fanValue, pan, tilt } =
+        const { activePattern, patternSpeed, patternAmplitude, chaosAmount } =
           useMovementStore.getState()
-        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, fanValue)
-        this._scheduleClassicFlush(pan, tilt, fanValue)
+        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, chaosAmount * 100)
       },
       {
         equalityFn: (a, b) => {
@@ -412,6 +422,7 @@ class KineticsBridgeClass {
     this._lastFixtureKeysSent = isStop ? null : fixtureKey
 
     // WAVE 4700: Incluir fan en el payload — el motor nativo integra el desfase
+    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, 'IDs:', fixtureIds)
     try {
       await window.lux?.aether?.setManualPattern({
         fixtureIds,

@@ -24,8 +24,6 @@ import path from 'path';
 const bytenode = require('bytenode');
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '../src/core/orchestrator';
-// Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
-import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter';
 // ⚡ WAVE 4529: Aether Programmer IPC Handlers
 import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers';
 // Stage Persistence (WAVE 365)
@@ -390,6 +388,59 @@ async function initTitan() {
                 if (_dt > 5) {
                     console.warn(`[IPC PROBE] 🐢 selene:truth BLOCK ${_dt.toFixed(1)}ms`);
                 }
+                // ⚡ WAVE 4704-RESTORE: Resucitar lux:state-update (legacy masterArbiter canal).
+                // TrinityProvider.handleStateUpdate escucha este canal para actualizar audioStore,
+                // seleneStore (brain metrics), dmxStore (fixture values) y luxsyncStore (effects).
+                // El canal fue cortado al eliminar masterArbiter en WAVE 4704; se restaura aquí
+                // construyendo SeleneStateUpdate desde la SeleneTruth ya disponible (~7Hz).
+                // Zero-alloc: no se crean objetos extra más allá del literal de proyección.
+                const beat = truth?.sensory?.beat;
+                const audio = truth?.sensory?.audio;
+                const consciousness = truth?.consciousness;
+                const intentPalette = truth?.intent?.palette;
+                const hw = truth?.hardware;
+                const stateUpdate = {
+                    beat: beat ? {
+                        bpm: beat.bpm ?? 0,
+                        onBeat: beat.onBeat ?? false,
+                        beatPhase: beat.beatPhase ?? 0,
+                        confidence: beat.confidence ?? 0,
+                        energy: audio?.energy ?? 0,
+                    } : undefined,
+                    brain: consciousness ? {
+                        mode: (consciousness.vibe?.active ?? 'selene'),
+                        confidence: beat?.confidence ?? 0,
+                        beautyScore: consciousness.ai?.beautyScore ?? 0,
+                        energy: audio?.energy ?? 0,
+                        mood: consciousness.mood ?? 'neutral',
+                        section: truth?.context?.section?.type ?? 'unknown',
+                    } : undefined,
+                    palette: intentPalette ? {
+                        name: intentPalette?.name ?? 'procedural',
+                        source: (intentPalette?.source ?? 'procedural'),
+                    } : undefined,
+                    fixtures: hw?.fixtures?.map((f) => ({
+                        dmxAddress: f.dmxAddress ?? 0,
+                        r: Math.round((f.color?.r ?? 0)),
+                        g: Math.round((f.color?.g ?? 0)),
+                        b: Math.round((f.color?.b ?? 0)),
+                        dimmer: Math.round((f.dimmer ?? 0) * 255),
+                        pan: Math.round((f.pan ?? 0.5) * 255),
+                        tilt: Math.round((f.tilt ?? 0.5) * 255),
+                    })),
+                    effects: {
+                        blackout: truth?.blackout ?? false,
+                        strobe: false,
+                        blinder: false,
+                        police: false,
+                        rainbow: false,
+                        beam: false,
+                        prism: false,
+                    },
+                    frameId: truth?.system?.frameNumber ?? 0,
+                    timestamp: truth?.system?.timestamp ?? Date.now(),
+                };
+                mainWindow.webContents.send('lux:state-update', stateUpdate);
             }
         }
         catch (err) {
@@ -461,10 +512,6 @@ async function initTitan() {
         getCustomLibPath: () => customLibPath,
     };
     setupIPCHandlers(ipcDeps);
-    // 🎭 WAVE 374 + 377: Arbiter IPC Handlers (unified)
-    // Note: Using registerArbiterHandlers from arbiter module (more complete)
-    // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
-    registerArbiterHandlers(masterArbiter);
     // ⚡ WAVE 4529: Aether Programmer IPC Handlers (L2 overrides via NodeArbiter)
     registerAetherIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════

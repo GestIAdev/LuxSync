@@ -64,6 +64,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     fixtureOverrides,
   } = useProgrammerStore()
   const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
+  const pruneManualOverride = useMovementStore(s => s.pruneManualOverride)
 
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
@@ -132,6 +133,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   useEffect(() => {
     const fixtureIds = [...selectedIds]
     syncSelection(fixtureIds)
+    // Bug H: purgar override zombies del motor cinemático al cambiar selección.
+    pruneManualOverride(fixtureIds)
 
     if (fixtureIds.length === 0) {
       hydrateMovementFromL2({
@@ -202,7 +205,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
 
     hydrate()
     return () => { cancelled = true }
-  }, [selectedIds.join(','), isActive, syncSelection, hydrateFromL2, hydrateMovementFromL2])
+  }, [selectedIds.join(','), isActive, syncSelection, pruneManualOverride, hydrateFromL2, hydrateMovementFromL2])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS — ahora síncronos, el bridge vuelca a 44Hz

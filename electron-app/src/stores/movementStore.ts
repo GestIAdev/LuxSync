@@ -116,6 +116,12 @@ interface MovementActions {
   /** Activa/desactiva MANUAL OVERRIDE para un conjunto de fixtures */
   setManualOverrideForFixtures: (fixtureIds: string[], enabled: boolean) => void
 
+  /**
+   * Purga de manualOverrideFixtureIds los IDs que ya NO están en la selección activa.
+   * Llamar en cada cambio de selección para evitar override zombies.
+   */
+  pruneManualOverride: (activeIds: string[]) => void
+
   /** Hidratar desde respuesta del backend (selection change) */
   hydrateFromBackend: (state: {
     pan: number | null
@@ -203,6 +209,17 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
     return { manualOverrideFixtureIds: next }
   }),
 
+  pruneManualOverride: (activeIds) => set((state) => {
+    if (state.manualOverrideFixtureIds.size === 0) return {}
+    const activeSet = new Set(activeIds)
+    const next = new Set<string>()
+    for (const id of state.manualOverrideFixtureIds) {
+      if (activeSet.has(id)) next.add(id)
+    }
+    if (next.size === state.manualOverrideFixtureIds.size) return {}
+    return { manualOverrideFixtureIds: next }
+  }),
+
   hydrateFromBackend: ({ pan, tilt, pattern, speed, amplitude }) => {
     const uiPattern = pattern === 'hold'
       ? 'static'
@@ -223,6 +240,10 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
       pan: pan !== null ? Math.max(0, Math.min(540, pan * 540)) : 270,
       tilt: tilt !== null ? Math.max(0, Math.min(270, tilt * 270)) : 135,
       patternSpeed: speed !== null ? Math.max(0, Math.min(100, speed * 100)) : 50,
+      // Bug I: limpiar reachability y sub-targets stale en cada cambio de selección.
+      // Los datos IK son válidos solo para la selección que los generó.
+      spatialReachability: {},
+      spatialSubTargets: {},
     }
     // WAVE 4701: Hidratar patrón, amplitude y fan desde snapshot L2
     if (pattern !== undefined) {

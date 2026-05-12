@@ -57,85 +57,115 @@
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 const TWO_PI = Math.PI * 2;
-/** Rango de frecuencia [0,1] → Hz */
-const SPEED_MIN_HZ = 0.03; // 1 ciclo cada 33 s (muy lento, ambiental)
-const SPEED_MAX_HZ = 1.2; // 1.2 ciclos/s (rápido sin epilepsia)
+/**
+ * WAVE 4713 — Rango de frecuencia [0,1] → Hz.
+ *
+ * Cap absoluto en 2.0 Hz: por encima, el muestreo a 44 Hz produce aliasing
+ * temporal (efecto rueda de carreta — el patrón parece girar al revés o
+ * detenerse). Bajo este límite las cabezas siguen el patrón fielmente.
+ */
+const SPEED_MIN_HZ = 0.02; // 1 ciclo cada 50 s (ambiente glacial)
+const SPEED_MAX_HZ = 0.60; // 1 ciclo cada ~1.7 s — headroom restaurado (SAFETY_CAP 400 aguanta)
+/**
+ * 🔥 WAVE 4731 FIX GEOMÉTRICO — PAN ASPECT RATIO.
+ *
+ * Pan range típico = 540°, Tilt range típico = 270° → ratio 2:1.
+ * Sin corrección, un "circle" en espacio DMX normalizado [0,1] produce una
+ * elipse 2× más ancha en Pan que en Tilt (porque 1 unidad DMX de Pan = 2.12°
+ * pero 1 unidad DMX de Tilt = 1.06°).
+ *
+ * Multiplicando X por 0.5 igualamos la excursión angular: ambos ejes barren
+ * la misma cantidad de grados → circle = circle REAL en el espacio físico.
+ *
+ * NOTA: Este factor se aplica en tick(), NO en las funciones de patrón.
+ * Las funciones de patrón emiten [-1,1] simétrico puro.
+ */
+const PAN_ASPECT_RATIO = 0.5; // 270° / 540° = 0.5
 const PATTERN_FNS = {
-    // Círculo puro (Lissajous 1:1 con 90° de offset)
+    // ── STATIC ─────────────────────────────────────────────────────────────
+    // Guardia defensiva: si llega 'static' (no debería; el IPC lo intercepta),
+    // la cabeza permanece exactamente en su ancla.
+    static: (_p) => ({ x: 0, y: 0 }),
+    // ── CIRCLE — Lissajous 1:1 con 90° de offset ───────────────────
+    // Círculo trigonométrico perfecto. Radio constante = 1.
+    // 🔥 WAVE 4731 FIX GEOMÉTRICO:
+    //   ANTES: x * 0.5 pretendía corregir ratio Pan/Tilt (540°/270°).
+    //   PERO: eso creaba asimetría en el clamp01 → cuando amplitude era alto,
+    //   el eje Y (sin cap) clipea arriba/abajo generando "lóbulos" de 8.
+    //   FIX: Pattern emite [-1,1] simétrico. La compensación angular se aplica
+    //   FUERA (en tick() con PAN_ASPECT_RATIO) donde hay contexto de rango.
     circle: (p) => ({
         x: Math.sin(p),
         y: Math.cos(p),
     }),
-    // Figure-8 clásica (Lissajous 1:2)
-    figure8: (p) => ({
+    // ── EIGHT — Lissajous 1:2 canónico (infinito horizontal) ─────────────
+    // Tumbado: x oscila a frecuencia base, y al doble → "∞" acostado.
+    // WAVE 4740 — REVERT del cambio cos→sin de WAVE 4731:
+    //   El cos(p) era una corrección FALSA. La causa real de los "4 pétalos"
+    //   era el clipping en eje Y (scale 0.5 → tiltBase=0 y 1 a amplitude=1).
+    //   Ese clipping se resuelve cambiando 0.5→0.45 en tick().
+    //   La forma del eight (sin/sin) es idéntica en ambos (solo cambia fase
+    //   inicial). Restoreamos sin(p) como Lissajous canónico.
+    eight: (p) => ({
         x: Math.sin(p),
-        y: Math.sin(p * 2) * 0.75,
+        y: Math.sin(p * 2),
     }),
-    // Lemniscata horizontal (figure8 rotada 90°)
-    lemniscate: (p) => ({
-        x: Math.sin(p * 2) * 0.75,
-        y: Math.sin(p),
-    }),
-    // Barrido horizontal con ondulación vertical (searchlight)
-    scan_x: (p) => ({
-        x: Math.sin(p),
-        y: Math.sin(p * 2) * 0.45,
-    }),
-    // Cuadrado con interpolación lineal entre esquinas
-    square: (p) => {
-        const corners = [
-            { x: 1, y: 1 },
-            { x: 1, y: -1 },
-            { x: -1, y: -1 },
-            { x: -1, y: 1 },
-        ];
-        const n = (p / TWO_PI) * 4;
-        const i = Math.floor(n) % 4;
-        const j = (i + 1) % 4;
-        const t = n - Math.floor(n);
-        return {
-            x: corners[i].x + (corners[j].x - corners[i].x) * t,
-            y: corners[i].y + (corners[j].y - corners[i].y) * t,
-        };
-    },
-    // Rombo (square rotado 45°)
-    diamond: (p) => {
-        const verts = [
-            { x: 0, y: 1 },
-            { x: 1, y: 0 },
-            { x: 0, y: -1 },
-            { x: -1, y: 0 },
-        ];
-        const n = (p / TWO_PI) * 4;
-        const i = Math.floor(n) % 4;
-        const j = (i + 1) % 4;
-        const t = n - Math.floor(n);
-        return {
-            x: verts[i].x + (verts[j].x - verts[i].x) * t,
-            y: verts[i].y + (verts[j].y - verts[i].y) * t,
-        };
-    },
-    // Péndulo latino — ola en U cadenciosa
-    wave_y: (p) => ({
-        x: Math.sin(p) * 0.8,
-        y: -(Math.abs(Math.cos(p * 0.5)) * 0.6),
-    }),
-    // Caos controlado (Fourier armónicos 1+3+5)
-    ballyhoo: (p) => {
-        const x = Math.sin(p) * 0.5 + Math.sin(p * 3) * 0.3 + Math.sin(p * 5) * 0.15;
-        const y = Math.cos(p) * 0.4 + Math.cos(p * 3) * 0.25 + Math.cos(p * 5) * 0.1;
-        return { x: x * 1.8, y: y * 1.8 };
-    },
-    // Órbita elíptica oscura con pulso de radio
-    darkspin: (p) => ({
-        x: Math.sin(p) * (0.70 + 0.20 * Math.sin(p * 0.5)),
-        y: Math.cos(p * 1.5) * 0.62,
-    }),
-    // Pendulo suave solo en X
-    sway: (p) => ({
+    // ── SWEEP — Barrido horizontal puro ────────────────────────────────────
+    // Senoidal acotada solo en X. Punta-a-punta del escenario.
+    // No hay deriva en Y → la cabeza se queda en la altura del ancla.
+    sweep: (p) => ({
         x: Math.sin(p),
         y: 0,
     }),
+    // ── BOUNCE — Rebote parabólico (bote físico en Y) ──────────────────────
+    // |sin(p)| genera "joroba" rectificada en [0,1]; remapeada a [-1,1]
+    // simula el rebote de un balón.
+    //
+    // BUG 4720 CORREGIDO — x: sin(p*0.5)
+    // Con phase ∈ [0, 2π), phase*0.5 ∈ [0, π) → sin siempre ≥ 0 →
+    // x solo alcanzaba [0, 1], NUNCA el lado izquierdo [-1, 0].
+    // Corrección: x = sin(p), período 2π → rango completo [-1, 1].
+    //
+    // Trayectoria final:
+    //   p=0   → (0, 1)   top-centro
+    //   p=π/2 → (1, -1)  right-bottom
+    //   p=π   → (0, 1)   top-centro
+    //   p=3π/2 → (-1,-1) left-bottom
+    // = arco péndulo / pelota rebotando entre dos paredes bajo gravedad.
+    bounce: (p) => ({
+        x: Math.sin(p),
+        y: 1 - 2 * Math.abs(Math.sin(p)),
+    }),
+    // ── BUTTERFLY — Lissajous 1:3 simétrico ────────────────────────────────
+    // Patrón en cuatro pétalos cuadrados. La asimetría visual de 1:3
+    // produce el efecto "alas batiendo" característico.
+    butterfly: (p) => ({
+        x: Math.sin(p),
+        y: Math.cos(p * 3),
+    }),
+    // ── PULSE — Roseta r=cos(2θ) (cuatro pétalos pulsantes) ────────────────
+    // Una rosa polar de 4 pétalos. El "latido" sale de que el radio
+    // (cos(2p)) cae a 0 cuatro veces por ciclo y rebota agresivamente
+    // hacia ±1 en los lóbulos. Puro y matemático — sin Math.random.
+    pulse: (p) => {
+        const r = Math.cos(p * 2); // ∈ [-1, 1] — radio firmado
+        return {
+            x: r * Math.cos(p),
+            y: r * Math.sin(p),
+        };
+    },
+    // ── DARKSPIN — Epitrocoide (círculo con bucle interno) ─────────────────
+    // Órbita base más una secundaria al triple de frecuencia → la cabeza
+    // dibuja "loops" hacia el centro mientras gira. Espiral desfasada,
+    // perfecta para climaxes oscuros.
+    darkspin: (p) => {
+        // Coeficientes dimensionados para que el envelope quede en [-1, 1].
+        const k = 0.75;
+        return {
+            x: k * Math.sin(p) - (1 - k) * Math.sin(p * 3),
+            y: k * Math.cos(p) - (1 - k) * Math.cos(p * 3),
+        };
+    },
 };
 // ─────────────────────────────────────────────────────────────────────────────
 // ENGINE
@@ -156,10 +186,21 @@ export class AetherKineticEngine {
          * y la lee en cada arbitrate(), nosotros la mutamos antes de cada tick.
          */
         this._overridePool = new Map();
-        /** Configuración activa. null = motor inactivo */
-        this._config = null;
+        /**
+         * WAVE 4712: Configuración por nodo (multitrack).
+         * Cada nodeId activo tiene su propia entrada. El motor itera el Map en tick().
+         * Cambiar la config de unos nodos no afecta a los demás — true multitrack.
+         */
+        this._nodeConfigs = new Map();
         /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
         this._heartbeatCounter = 0;
+        /**
+         * 🔥 WAVE 4731 PASO 3: Grand Master Speed multiplicador para L2.
+         * Escala la frecuencia del motor L2 igual que globalSpeedMultiplier escala L0.
+         * Default 1.0 = sin escala. Rango [0.1, 2.0].
+         * Seteado desde AetherIPCHandlers vía setGrandMasterSpeed.
+         */
+        this._gmSpeed = 1.0;
     }
     // ── API pública ──────────────────────────────────────────────────────────
     /**
@@ -172,87 +213,158 @@ export class AetherKineticEngine {
      * @param amplitude [0, 1] — amplitud (excursión del patrón)
      * @param fan       [0, 1] — valor del slider Fan/Dispersión
      */
-    setManualKinetics(nodeIds, pattern, speed, amplitude, fan) {
-        console.log('[SONDA L2-ENGINE] Registrando patrón manual:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds);
-        if (nodeIds.length === 0) {
-            this.stop();
-            return;
-        }
-        // Pre-warm phase map y override pool para los nodeIds nuevos
-        for (const nodeId of nodeIds) {
+    setManualKinetics(nodeIds, pattern, speed, amplitude, fan, _arbiter) {
+        console.log('[SONDA L2-ENGINE] Multitrack upsert:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds);
+        if (nodeIds.length === 0)
+            return; // no-op: multitrack NO tiene 'stop global' implícito
+        // ── WAVE 4712 MULTITRACK UPSERT ─────────────────────────────────────────
+        // Asigna/actualiza ÚNICAMENTE la pista de los nodeIds recibidos.
+        // Los demás nodos del Map NO se tocan: siguen ejecutando su patrón propio,
+        // independientemente de la selección actual del operador.
+        // La selección NO define la ejecución — es solo el scope del gesto.
+        // Un nodo abandona el motor únicamente por removeNodes() o stop() explícito.
+        // Cada nodo guarda su fanIndex/fanTotal dentro de ESTE grupo, así la
+        // dispersión es estable aunque se cambien selecciones ajenas.
+        const speedClamped = clamp01(speed);
+        const amplitudeClamped = clamp01(amplitude);
+        const fanClamped = clampSigned(fan);
+        const total = nodeIds.length;
+        for (let i = 0; i < total; i++) {
+            const nodeId = nodeIds[i];
             if (!this._phaseMap.has(nodeId)) {
                 this._phaseMap.set(nodeId, 0);
             }
             if (!this._overridePool.has(nodeId)) {
                 this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 });
             }
+            this._nodeConfigs.set(nodeId, {
+                pattern,
+                speed: speedClamped,
+                amplitude: amplitudeClamped,
+                fan: fanClamped,
+                fanIndex: i,
+                fanTotal: total,
+            });
         }
-        this._config = {
-            nodeIds,
-            pattern,
-            speed: clamp01(speed),
-            amplitude: clamp01(amplitude),
-            fan: clampSigned(fan),
-        };
     }
     /**
-     * Detiene el motor y limpia los overrides L2 del Arbiter.
-     * Llamado en Unlock o cuando pattern === null.
+     * WAVE 4712: Elimina pistas del Map y limpia el rastro L2-MOTOR.
+     * Usado cuando el operador envía pattern: 'hold' / null para un subset
+     * específico de fixtures. NO toca _manualOverrides (ancla L2 preservada).
+     */
+    removeNodes(nodeIds, arbiter) {
+        for (const nodeId of nodeIds) {
+            if (this._nodeConfigs.delete(nodeId)) {
+                arbiter.clearMotorKineticOverride(nodeId);
+                this._phaseMap.delete(nodeId);
+                // _overridePool y _manualOverrides: PRESERVADOS — paradigma Programmer.
+            }
+        }
+    }
+    /**
+     * Detiene el motor COMPLETO y limpia el rastro L2-MOTOR de todos los nodos.
+     * Llamado solo por Unlock explícito (WAVE 4710 paradigma Programmer).
      */
     stop(arbiter) {
-        if (arbiter && this._config) {
-            for (const nodeId of this._config.nodeIds) {
+        if (arbiter) {
+            for (const nodeId of this._nodeConfigs.keys()) {
                 arbiter.clearMotorKineticOverride(nodeId);
             }
         }
-        this._config = null;
-        // Resetear fases para el próximo arranque (evita phase glitch en re-trigger)
+        this._nodeConfigs.clear();
         this._phaseMap.clear();
     }
     /**
-     * Actualiza velocidad y amplitud sin reiniciar la fase.
-     * Para cambios en tiempo real de los sliders de UI.
+     * WAVE 4712: Actualiza scalars (speed/amplitude/fan) SOLO para los nodeIds
+     * dados. Los demás nodos en el Map mantienen sus scalars actuales.
+     * Sin reiniciar fase — para sliders en tiempo real.
+     * También recalcula fanIndex/fanTotal del grupo entrante (la dispersión
+     * se mantiene coherente cuando el operador cambia su selección activa).
      */
-    updateScalars(speed, amplitude, fan) {
-        if (!this._config)
+    updateScalars(nodeIds, speed, amplitude, fan) {
+        if (nodeIds.length === 0)
             return;
-        this._config.speed = clamp01(speed);
-        this._config.amplitude = clamp01(amplitude);
-        this._config.fan = clampSigned(fan);
+        const speedClamped = clamp01(speed);
+        const amplitudeClamped = clamp01(amplitude);
+        const fanClamped = clampSigned(fan);
+        const total = nodeIds.length;
+        for (let i = 0; i < total; i++) {
+            const cfg = this._nodeConfigs.get(nodeIds[i]);
+            if (!cfg)
+                continue;
+            cfg.speed = speedClamped;
+            cfg.amplitude = amplitudeClamped;
+            cfg.fan = fanClamped;
+            cfg.fanIndex = i;
+            cfg.fanTotal = total;
+        }
     }
-    /** ¿Hay un patrón activo? */
+    /** ¿Hay AL MENOS un patrón activo en cualquier pista? */
     isActive() {
-        return this._config !== null;
+        return this._nodeConfigs.size > 0;
     }
     /**
      * WAVE L2-SUPREMACY: ¿Este nodeId está bajo control manual L2?
      * Usado por KineticAdapter para silenciar el emit L0 por nodo.
-     * Zero-alloc: solo lectura de config.nodeIds (Array.includes O(n) pero n pequeño).
+     * O(1) — lectura directa del Map.
      */
     hasNode(nodeId) {
-        return this._config !== null && this._config.nodeIds.includes(nodeId);
+        return this._nodeConfigs.has(nodeId);
     }
-    /** Snapshot serializable del estado manual actual del motor. */
-    getState() {
-        const cfg = this._config;
+    /**
+     * WAVE 4712: snapshot de estado por nodo para hidratación silenciosa.
+     * El bridge lo invoca al cambiar la selección para poblar la UI sin emitir.
+     * Lee también pan_base/tilt_base del arbiter como anchor visible.
+     */
+    getNodeState(nodeId, arbiter) {
+        const cfg = this._nodeConfigs.get(nodeId);
+        const l2 = arbiter.getManualOverride(nodeId);
+        const panAnchor = (l2 && Number.isFinite(l2['pan_base'])) ? l2['pan_base'] : 0.5;
+        const tiltAnchor = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5;
         if (!cfg) {
-            return {
-                active: false,
-                nodeIds: [],
-                pattern: null,
-                speed: 0,
-                amplitude: 0,
-                fan: 0,
-            };
+            return { nodeId, active: false, pattern: null, speed: 0, amplitude: 0, fan: 0, panAnchor, tiltAnchor };
         }
         return {
+            nodeId,
             active: true,
-            nodeIds: [...cfg.nodeIds],
             pattern: cfg.pattern,
             speed: cfg.speed,
             amplitude: cfg.amplitude,
             fan: cfg.fan,
+            panAnchor,
+            tiltAnchor,
         };
+    }
+    /**
+     * Legacy: snapshot global. Para multitrack, retorna el primer nodo como
+     * representativo y la lista completa de nodeIds activos. Compat con
+     * llamadores que aún consultan getManualKineticState IPC global.
+     */
+    getState() {
+        if (this._nodeConfigs.size === 0) {
+            return { active: false, nodeIds: [], pattern: null, speed: 0, amplitude: 0, fan: 0 };
+        }
+        const nodeIds = Array.from(this._nodeConfigs.keys());
+        const first = this._nodeConfigs.get(nodeIds[0]);
+        return {
+            active: true,
+            nodeIds,
+            pattern: first.pattern,
+            speed: first.speed,
+            amplitude: first.amplitude,
+            fan: first.fan,
+        };
+    }
+    /**
+     * 🔥 WAVE 4731 PASO 3: Set Grand Master Speed para L2.
+     * Permite que el fader físico de Speed Master altere L2 además de L0.
+     * @param mult Multiplicador [0.1, 2.0]
+     */
+    setGrandMasterSpeed(mult) {
+        this._gmSpeed = mult < 0.1 ? 0.1 : mult > 2.0 ? 2.0 : mult;
+    }
+    getGrandMasterSpeed() {
+        return this._gmSpeed;
     }
     /**
      * HOT PATH — 44Hz.
@@ -273,41 +385,61 @@ export class AetherKineticEngine {
      * @param arbiter   Referencia al NodeArbiter activo.
      */
     tick(dtSeconds, arbiter) {
-        const cfg = this._config;
-        if (!cfg)
+        if (this._nodeConfigs.size === 0)
             return;
-        const patternFn = PATTERN_FNS[cfg.pattern];
-        if (!patternFn)
-            return;
-        const total = cfg.nodeIds.length;
-        const freqHz = SPEED_MIN_HZ + cfg.speed * (SPEED_MAX_HZ - SPEED_MIN_HZ);
-        const dPhase = freqHz * TWO_PI * dtSeconds;
-        const amplitude = cfg.amplitude;
-        // Fan: desfase total de 2π cuando fan === 1 (spread máximo entre fixture[0] y fixture[N-1])
-        const fanRange = cfg.fan * TWO_PI;
-        for (let i = 0; i < total; i++) {
-            const nodeId = cfg.nodeIds[i];
-            // Acumular fase (monotonic, wrap en 2π para evitar pérdida de precisión flotante)
+        // WAVE 4712: iteramos el Map directamente — cada nodo tiene su propia pista.
+        let sampleNodeId = '';
+        let sampleCfg = null;
+        for (const [nodeId, cfg] of this._nodeConfigs) {
+            const patternFn = PATTERN_FNS[cfg.pattern];
+            if (!patternFn)
+                continue;
+            // ── WAVE 4713/4720 — FRECUENCIA ACOTADA ─────────────────────────────
+            // freqHz ∈ [SPEED_MIN_HZ, SPEED_MAX_HZ].
+            // SPEED_MAX_HZ = 0.35 → máximo físicamente alcanzable por hardware real.
+            // A 0.35 Hz, amplitude=0.5: velocidad pico Pan ≈ 297°/s — dentro del rango
+            // de la mayoría de moving heads (150-600°/s). Elimina el clipping de
+            // velocidad que distorsionaba circle→8 y eight→doble-eight.
+            const freqHz = SPEED_MIN_HZ + cfg.speed * (SPEED_MAX_HZ - SPEED_MIN_HZ);
+            // 🔥 WAVE 4731 PASO 3: GM escala la frecuencia de L2 igual que L0.
+            const dPhase = freqHz * TWO_PI * dtSeconds * this._gmSpeed;
+            // Acumular fase (monotonic, wrap en 2π)
             const prevPhase = this._phaseMap.get(nodeId) ?? 0;
             const phase = (prevPhase + dPhase) % TWO_PI;
             this._phaseMap.set(nodeId, phase);
-            // Desfase de fan por índice — determinista, cero alloc
-            const fanOffset = total > 1 ? (fanRange * i) / (total - 1) : 0;
+            // Fan: desfase de 2π * fan cuando el nodo está al final de su grupo.
+            // El grupo es el último setManualKinetics(...) que lo asignó — esto
+            // mantiene la dispersión coherente aun cuando otros nodos cambian.
+            const fanRange = cfg.fan * TWO_PI;
+            const fanOffset = cfg.fanTotal > 1
+                ? (fanRange * cfg.fanIndex) / (cfg.fanTotal - 1)
+                : 0;
             const { x, y } = patternFn(phase + fanOffset);
-            // Escalar amplitud: x/y ∈ [-1, 1] → [-amplitude, amplitude]
-            const scaledX = x * amplitude;
-            const scaledY = y * amplitude;
-            // WAVE 4718 — ANCHOR DEL RADAR:
-            // Leer el override L2 actual (escrito por KineticsBridge._flushClassic).
-            // Si el operador posicionó el radar, pan_base/tilt_base tienen su valor.
-            // Si no hay override todavía, usar 0.5 (centro).
+            // ── WAVE 4713 — AMPLITUDE BOOST + CLAMP DE SEGURIDAD ─────────────────
+            // El factor 0.5 mapea el envelope nativo [-1,1] al rango DMX completo:
+            //   amplitude=1 ⇒ excursión nominal de ±0.5 sobre el ancla en escala
+            //   normalizada [0,1], i.e. ±127 en DMX 0-255 → barrido punta-a-punta.
+            // El clamp01 garantiza que NUNCA escribimos fuera de [0, 1] (≡ DMX
+            // [0, 255] tras la curva de transferencia del NodeResolver).
+            //
+            // ── WAVE 4740 — SCALE 0.5 → 0.45 (EL FIX GEOMÉTRICO REAL) ──────────────
+            // L a causa de "circle→8" y "eight→4 pétalos" era clipping en eje Y:
+            //   Con factor 0.5 y amplitude=1, scaledY max = 0.5 → tiltBase toca
+            //   exactamente 0.0 y 1.0 (límites del clamp). Con ancla ≠ 0.5 se sale.
+            //   Los segmentos planos del clip visual = figura-8 / pétalo.
+            //
+            // Con 0.45: tiltBase ∈ [0.05, 0.95] → margen de 5% en cada extremo.
+            //   PAN_ASPECT_RATIO mantiene paridad angular:
+            //   Pan: ±(0.5 × 0.45) × 540° = ±121° | Tilt: ±0.45 × 270° = ±121° ✓
+            //   → Círculo real en espacio físico. Sin deformación. Sin clipping.
+            const scaledX = x * PAN_ASPECT_RATIO * cfg.amplitude * 0.45;
+            const scaledY = y * cfg.amplitude * 0.45;
+            // WAVE 4718 — ANCHOR DEL RADAR: lectura por nodo del override L2.
             const l2 = arbiter.getManualOverride(nodeId);
             const anchorPan = (l2 && Number.isFinite(l2['pan_base'])) ? l2['pan_base'] : 0.5;
             const anchorTilt = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5;
-            // Convertir a normalizado [0,1] usando el anchor real del radar
-            const panBase = clamp01(anchorPan + scaledX * 0.5);
-            const tiltBase = clamp01(anchorTilt + scaledY * 0.5);
-            // Escribir en el pool reutilizable (cero alloc en hot path)
+            const panBase = clamp01(anchorPan + scaledX);
+            const tiltBase = clamp01(anchorTilt + scaledY);
             let rec = this._overridePool.get(nodeId);
             if (!rec) {
                 rec = { pan_base: panBase, tilt_base: tiltBase };
@@ -318,19 +450,22 @@ export class AetherKineticEngine {
                 rec['tilt_base'] = tiltBase;
             }
             arbiter.setMotorKineticOverride(nodeId, rec);
+            if (!sampleNodeId) {
+                sampleNodeId = nodeId;
+                sampleCfg = cfg;
+            }
         }
         // WAVE 4706 TELEMETRÍA — heartbeat rate-limited (1 log/seg @ 44Hz)
         this._heartbeatCounter++;
-        if (this._heartbeatCounter >= 44) {
+        if (this._heartbeatCounter >= 44 && sampleCfg) {
             this._heartbeatCounter = 0;
-            const firstNodeId = cfg.nodeIds[0];
-            const sampleRec = firstNodeId ? this._overridePool.get(firstNodeId) : null;
-            console.log(`[KineticEngine L2] Nodos activos: ${total}` +
-                ` | Pattern: ${cfg.pattern}` +
-                ` | Speed: ${cfg.speed.toFixed(3)}` +
-                ` | Amplitude: ${cfg.amplitude.toFixed(3)}` +
-                ` | Fan: ${cfg.fan.toFixed(3)}` +
-                ` | Output muestra[${firstNodeId}]: ` +
+            const sampleRec = this._overridePool.get(sampleNodeId);
+            console.log(`[KineticEngine L2] Pistas activas: ${this._nodeConfigs.size}` +
+                ` | Muestra[${sampleNodeId}]: ${sampleCfg.pattern}` +
+                ` | Speed: ${sampleCfg.speed.toFixed(3)}` +
+                ` | Amplitude: ${sampleCfg.amplitude.toFixed(3)}` +
+                ` | Fan: ${sampleCfg.fan.toFixed(3)} (${sampleCfg.fanIndex}/${sampleCfg.fanTotal})` +
+                ` | Output: ` +
                 (sampleRec
                     ? `{pan: ${sampleRec['pan_base'].toFixed(3)}, tilt: ${sampleRec['tilt_base'].toFixed(3)}}`
                     : 'null'));

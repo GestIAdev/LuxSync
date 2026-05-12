@@ -46,7 +46,10 @@ import {
   Check,
   Palette,
   BookOpen,
-  Lock
+  Lock,
+  Zap,
+  Plus,
+  X as XIcon
 } from 'lucide-react'
 // WAVE 1117: Moved to shared components (modal folder deleted)
 import { FixturePreview3D } from '../../shared/PhysicsTuner/FixturePreview3D'
@@ -60,7 +63,7 @@ import {
   FixtureV2,
   MotorType
 } from '../../../core/stage/ShowFileV2'
-import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, deriveCapabilitiesUnified, DerivedCapabilities } from '../../../types/FixtureDefinition'
+import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, IgnitionDependency, deriveCapabilities, deriveCapabilitiesUnified, DerivedCapabilities } from '../../../types/FixtureDefinition'
 import { NodeGraphBuilder } from '../../../core/forge/NodeGraphBuilder'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
@@ -491,6 +494,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [isFormValid, setIsFormValid] = useState(false)
   const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  // 🔥 WAVE 4718: Ignition Dependencies — índice de canal cuyo panel está desplegado.
+  const [expandedIgnitionIdx, setExpandedIgnitionIdx] = useState<number | null>(null)
 
   const createBlankForgeGraph = useCallback((dmxFootprint: number) => {
     return NodeGraphBuilder.fromChannels([], {
@@ -730,6 +735,69 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       return { ...prev, channels: newChannels }
     })
   }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 4718: IGNITION DEPENDENCIES — handlers
+  // ═════════════════════════════════════════════════════════════════════════
+
+  /** Inmutablemente reemplaza el array `ignitionDeps` del canal `idx`. */
+  const updateChannelIgnitionDeps = useCallback((idx: number, deps: IgnitionDependency[]) => {
+    setFixture(prev => {
+      const newChannels = [...prev.channels]
+      const current = newChannels[idx]
+      if (!current) return prev
+      // Si el array queda vacío, eliminar la propiedad para mantener
+      // el JSON limpio en perfiles sin dependencias.
+      if (deps.length === 0) {
+        const { ignitionDeps: _omit, ...rest } = current
+        newChannels[idx] = rest
+      } else {
+        newChannels[idx] = { ...current, ignitionDeps: deps }
+      }
+      return { ...prev, channels: newChannels }
+    })
+  }, [])
+
+  const addIgnitionDep = useCallback((idx: number, dep: IgnitionDependency) => {
+    setFixture(prev => {
+      const current = prev.channels[idx]
+      if (!current) return prev
+      const existing = current.ignitionDeps ?? []
+      const newDeps: IgnitionDependency[] = [...existing, dep]
+      const newChannels = [...prev.channels]
+      newChannels[idx] = { ...current, ignitionDeps: newDeps }
+      return { ...prev, channels: newChannels }
+    })
+  }, [])
+
+  const removeIgnitionDep = useCallback((idx: number, depIndex: number) => {
+    setFixture(prev => {
+      const current = prev.channels[idx]
+      if (!current || !current.ignitionDeps) return prev
+      const newDeps = current.ignitionDeps.filter((_, i) => i !== depIndex)
+      const newChannels = [...prev.channels]
+      if (newDeps.length === 0) {
+        const { ignitionDeps: _omit, ...rest } = current
+        newChannels[idx] = rest
+      } else {
+        newChannels[idx] = { ...current, ignitionDeps: newDeps }
+      }
+      return { ...prev, channels: newChannels }
+    })
+  }, [])
+
+  const updateIgnitionDep = useCallback((idx: number, depIndex: number, patch: Partial<IgnitionDependency>) => {
+    setFixture(prev => {
+      const current = prev.channels[idx]
+      if (!current || !current.ignitionDeps) return prev
+      const newDeps = current.ignitionDeps.map((d, i) =>
+        i === depIndex ? { ...d, ...patch } : d
+      )
+      const newChannels = [...prev.channels]
+      newChannels[idx] = { ...current, ignitionDeps: newDeps }
+      return { ...prev, channels: newChannels }
+    })
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - WAVE 1112: Save to Library
@@ -1270,9 +1338,17 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               {fixture.channels.map((channel, idx) => {
                 const category = getChannelCategory(channel.type)
                 const categoryColor = getCategoryColor(category)
+                // 🔥 WAVE 4718: Disponibilidad de canales target para el selector
+                const availableTargetTypes = fixture.channels
+                  .filter(ch => ch.type !== 'unknown' && ch.type !== channel.type)
+                  .map(ch => ch.type)
+                  // dedupe preservando orden
+                  .filter((t, i, arr) => arr.indexOf(t) === i)
+                const depsCount = channel.ignitionDeps?.length ?? 0
+                const isIgnitionExpanded = expandedIgnitionIdx === idx
                 return (
+                  <React.Fragment key={idx}>
                   <div 
-                    key={idx}
                     className={`channel-slot ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''} ${category ? `category-${category}` : ''}`}
                     style={categoryColor ? { 
                       '--slot-category-color': categoryColor 
@@ -1360,15 +1436,197 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                       }}
                     />
                     {channel.type !== 'unknown' && (
-                      <button 
-                        className="channel-clear"
-                        onClick={() => clearChannel(idx)}
-                        title="Clear channel"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <>
+                        {/* 🔥 WAVE 4718: IGNITION DEPS toggle button */}
+                        <button
+                          className={`channel-ignition-btn ${depsCount > 0 ? 'has-deps' : ''} ${isIgnitionExpanded ? 'expanded' : ''}`}
+                          onClick={() => setExpandedIgnitionIdx(isIgnitionExpanded ? null : idx)}
+                          title={depsCount > 0
+                            ? `Ignition Dependencies (${depsCount})`
+                            : 'Add Ignition Dependency'}
+                          style={{
+                            background: depsCount > 0 ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                            border: `1px solid ${depsCount > 0 ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255,255,255,0.12)'}`,
+                            color: depsCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.5)',
+                            borderRadius: '4px',
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '10px',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <Zap size={12} />
+                          {depsCount > 0 && <span>{depsCount}</span>}
+                        </button>
+                        <button
+                          className="channel-clear"
+                          onClick={() => clearChannel(idx)}
+                          title="Clear channel"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
+
+                  {/* 🔥 WAVE 4718: IGNITION DEPS panel (full-width row beneath the slot) */}
+                  {isIgnitionExpanded && channel.type !== 'unknown' && (
+                    <div
+                      className="ignition-deps-panel"
+                      style={{
+                        gridColumn: '1 / -1',
+                        background: 'rgba(245, 158, 11, 0.05)',
+                        border: '1px solid rgba(245, 158, 11, 0.25)',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        margin: '2px 0 6px 0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: '#f59e0b',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        letterSpacing: '0.04em',
+                      }}>
+                        <Zap size={12} />
+                        <span>IGNITION DEPENDENCIES</span>
+                        <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '10px' }}>
+                          — channel "{channel.name || channel.type}" requires:
+                        </span>
+                      </div>
+
+                      {(channel.ignitionDeps ?? []).length === 0 && (
+                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', fontStyle: 'italic' }}>
+                          No dependencies yet. This channel emits with no prerequisites.
+                        </div>
+                      )}
+
+                      {(channel.ignitionDeps ?? []).map((dep, depIdx) => (
+                        <div
+                          key={depIdx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: 'rgba(0,0,0,0.25)',
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
+                            borderRadius: '4px',
+                            padding: '6px 8px',
+                          }}
+                        >
+                          <span style={{ color: '#f59e0b', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
+                            ⚡
+                          </span>
+                          <select
+                            value={dep.channelType}
+                            onChange={(e) => updateIgnitionDep(idx, depIdx, { channelType: e.target.value as ChannelType })}
+                            style={{
+                              background: 'rgba(0,0,0,0.4)',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              color: '#fff',
+                              padding: '4px 6px',
+                              borderRadius: '3px',
+                              fontFamily: 'inherit',
+                              fontSize: '11px',
+                              minWidth: '120px',
+                            }}
+                          >
+                            {/* Si el target actual no está en la lista (ej. canal renombrado), inyectarlo */}
+                            {!availableTargetTypes.includes(dep.channelType) && (
+                              <option value={dep.channelType}>{dep.channelType} (missing)</option>
+                            )}
+                            {availableTargetTypes.map(t => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>→</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={255}
+                            value={dep.requiredValue}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
+                              updateIgnitionDep(idx, depIdx, { requiredValue: val })
+                            }}
+                            style={{
+                              background: 'rgba(0,0,0,0.4)',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              color: '#fff',
+                              padding: '4px 6px',
+                              borderRadius: '3px',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '11px',
+                              width: '60px',
+                              textAlign: 'center',
+                            }}
+                          />
+                          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>DMX</span>
+                          <button
+                            onClick={() => removeIgnitionDep(idx, depIdx)}
+                            title="Remove dependency"
+                            style={{
+                              marginLeft: 'auto',
+                              background: 'transparent',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#ef4444',
+                              borderRadius: '3px',
+                              padding: '3px 5px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <XIcon size={12} />
+                          </button>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={() => {
+                          // Default: primer target disponible que no esté ya usado
+                          const used = new Set((channel.ignitionDeps ?? []).map(d => d.channelType))
+                          const firstFree = availableTargetTypes.find(t => !used.has(t)) ?? availableTargetTypes[0]
+                          if (!firstFree) return
+                          // Default requiredValue: 255 para shutter, 0 para otros (heurística segura)
+                          const requiredValue = firstFree === 'shutter' ? 255 : 255
+                          addIgnitionDep(idx, { channelType: firstFree, requiredValue })
+                        }}
+                        disabled={availableTargetTypes.length === 0}
+                        title={availableTargetTypes.length === 0
+                          ? 'No other channels to depend on'
+                          : 'Add a new ignition dependency'}
+                        style={{
+                          alignSelf: 'flex-start',
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          color: '#f59e0b',
+                          borderRadius: '4px',
+                          padding: '6px 10px',
+                          cursor: availableTargetTypes.length === 0 ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          opacity: availableTargetTypes.length === 0 ? 0.4 : 1,
+                        }}
+                      >
+                        <Plus size={12} />
+                        <span>Add Dependency</span>
+                      </button>
+                    </div>
+                  )}
+                  </React.Fragment>
                 )
               })}
             </div>

@@ -129,51 +129,56 @@ type GoldenPattern =
 // VIBE CONFIGURATIONS
 
 const VIBE_CONFIG: Record<string, VibeConfig> = {
-  // TECHNO: Geometria dura, cortes precisos
-  // 🌊 WAVE 4703 M3: Velocidad reducida sutilmente. Más peso visual.
+  // TECHNO: Geometría dura, cortes precisos — CATEDRAL industrial
+  // �️ WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
+  //   Barrido enorme (92% del pan = ~497°), frecuencia sostenible para hardware real.
   'techno-club': {
-    panScale: 0.72,
-    tiltScale: 0.68,
-    baseFrequency: 0.22,
+    panScale: 0.92,
+    tiltScale: 0.85,
+    baseFrequency: 0.22,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
     patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
     homeOnSilence: false,
   },
   
-  // LATINO: Curvas, fluidez, caderas
-  // 🌊 WAVE 4703 M2: Más amplitud, más alma, 2 nuevos patrones orgánicos.
+  // LATINO: Curvas, fluidez, caderas — CATEDRAL sensual
+  // �️ WAVE 4730 TRÍADA: panScale 0.95→0.95, tiltScale 0.80→0.88, freq 0.17→0.12
+  //   Full stage pan, tilt abierto (88% = ~238°), frecuencia oceánica.
   'fiesta-latina': {
     panScale: 0.95,
-    tiltScale: 0.80,
-    baseFrequency: 0.17,
+    tiltScale: 0.88,
+    baseFrequency: 0.17,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
     patterns: ['figure8', 'wave_y', 'ballyhoo', 'cadera_libre', 'espiral_conga'],
     homeOnSilence: false,
   },
   
-  // POP-ROCK: Simetria, majestuosidad, estadio
+  // POP-ROCK: Simetría, majestuosidad, estadio — CATEDRAL épica
+  // 🏛️ WAVE 4730 TRÍADA: panScale 0.75→0.90, tiltScale 0.65→0.82, freq 0.20→0.08
+  //   Arcos enormes de estadio (90% pan = ~486°), frecuencia lenta y solemne.
   'pop-rock': {
-     panScale: 0.75,
-    tiltScale: 0.65,  // 🎭 WAVE 4645: ~176° Tilt — crowd-wash vertical drama
-    baseFrequency: 0.20,
+    panScale: 0.90,
+    tiltScale: 0.82,
+    baseFrequency: 0.20,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
     patterns: ['circle_big', 'cancan', 'dual_sweep'],
     homeOnSilence: true,
   },
   
-  // CHILL: Oceánico, casi estático, deriva de medusa
-  // 🌊 WAVE 2470 MODO DERIVA: amplitudeScale 0.50→0.12. Recorrido mínimo.
-  // Los patrones existen, pero apenas son perceptibles. Es poesía en movimiento.
+  // CHILL: Oceánico, deriva continental — CATEDRAL submarina
+  // �️ WAVE 4730 TRÍADA: panScale 0.70→0.85, tiltScale 0.70→0.80, freq 0.04→0.03
+  //   La medusa ahora abarca más océano, pero más lentamente que nunca.
   'chill-lounge': {
-     panScale: 0.70,
-     tiltScale: 0.70,
-    baseFrequency: 0.04,
+    panScale: 0.85,
+    tiltScale: 0.80,
+    baseFrequency: 0.03,
     patterns: ['drift', 'sway', 'breath'],
-    homeOnSilence: false,  // Flotar eternamente. Nunca volver a casa.
+    homeOnSilence: false,
   },
   
-  // IDLE: Minimo
+  // IDLE: Mínimo — respiración imperceptible
+  // �️ WAVE 4730 TRÍADA: sin cambio significativo (ya era correcto)
   'idle': {
-    panScale: 0.10,  // 🎭 WAVE 4645: near-static
-    tiltScale: 0.15, // 🎭 WAVE 4645: subtle vertical pulse
-    baseFrequency: 0.05,
+    panScale: 0.15,
+    tiltScale: 0.20,
+    baseFrequency: 0.04,
     patterns: ['breath'],
     homeOnSilence: true,
   },
@@ -192,37 +197,39 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
 //   Ballyhoo/Drift épico:   1 ciclo / 8 compases     = 32 beats
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🏛️ WAVE 4730 TRÍADA: Períodos duplicados para acomodar la amplitud masiva.
+// Con panScale ~0.90 y hardware real (~180°/s pan), el foco necesita ≥4s
+// para recorrer el arco completo. Períodos largos = majestuosidad = cero estrés.
 const PATTERN_PERIOD: Record<GoldenPattern, number> = {
-  // TECHNO — geometría industrial, pero DELIBERADA
-  scan_x: 8,        // 🔧 WAVE 2221: 16→8. 2 compases: barrido rápido, no letárgico
-  square: 16,       // 4 compases: 1 esquina por compás, 4 esquinas = 1 ciclo
-  diamond: 8,       // 2 compases: rombo contenido pero fluido
-  botstep: 8,       // 2 compases: posiciones robóticas con gravitas
-  darkspin: 12,     // WAVE 4706: órbita oscura de 3 compases, densa pero controlada
+  // TECHNO — geometría industrial, DELIBERADA y ENORME
+  scan_x: 16,       // 🏛️ 8→16. 4 compases: barrido de pared a pared con gravitas
+  square: 32,       // 🏛️ 16→32. 8 compases: 1 esquina cada 2 compases, monumental
+  diamond: 16,      // 🏛️ 8→16. 4 compases: rombo amplio con tiempo de llegada
+  botstep: 16,      // 🏛️ 8→16. 4 compases: posiciones con peso, no nervio
+  darkspin: 24,     // 🏛️ 12→24. 6 compases: órbita oscura lenta y densa
   
-  // LATINO — fluido, sensual, cadera
-  figure8: 16,      // 4 compases: el infinito tiene tiempo para respirar
-  wave_y: 8,        // 2 compases: ola con peso, no espuma nerviosa
-  ballyhoo: 16,     // 4 compases: espiral épica pero con cadencia latina (WAVE 2088.11: era 32, demasiado lento)
-  cadera_libre: 20, // 🌊 WAVE 4703: 5 compases — el 3:2 Lissajous respira largo
-  espiral_conga: 24,// 🌊 WAVE 4703: 6 compases — hélice tarda en cerrar, épica
+  // LATINO — fluido, sensual, cadera — arcos épicos
+  figure8: 32,      // 🏛️ 16→32. 8 compases: el infinito respira profundo
+  wave_y: 16,       // 🏛️ 8→16. 4 compases: ola con masa, no espuma
+  ballyhoo: 32,     // 🏛️ 16→32. 8 compases: espiral épica con cadencia
+  cadera_libre: 32, // �️ 20→32. 8 compases: Lissajous 3:2 necesita espacio
+  espiral_conga: 48,// �️ 24→48. 12 compases: hélice monumental
   
-  // POP-ROCK — estadio, simetría, majestuosidad
-  circle_big: 16,   // 4 compases: el rey necesita su corte completa
-  cancan: 8,        // 2 compases: subida/bajada con drama
-  dual_sweep: 16,   // 4 compases: barrido en U con peso cinematográfico
+  // POP-ROCK — estadio, simetría, majestuosidad — arcos de catedral
+  circle_big: 32,   // 🏛️ 16→32. 8 compases: el rey recorre TODO el escenario
+  cancan: 16,       // 🏛️ 8→16. 4 compases: subida/bajada con gravitas
+  dual_sweep: 32,   // 🏛️ 16→32. 8 compases: barrido en U cinematográfico
   
-  // CHILL — oceánico, casi estático, tiempo geológico profundo
-  // 🌊 WAVE 2470 MODO DERIVA: períodos x8. Una medusa no tiene prisa.
-  drift: 256,       // 64 compases: deriva continental. Un ciclo = ~2 minutos a 120BPM.
-  sway: 128,        // 32 compases: la corriente profunda. Apenas perceptible.
-  breath: 96,       // 24 compases: la luz respira. Una inspiración = 96 beats.
+  // CHILL — oceánico, periodos geológicos (sin cambio, ya eran correctos)
+  drift: 256,       // 64 compases: deriva continental.
+  sway: 128,        // 32 compases: la corriente profunda.
+  breath: 96,       // 24 compases: la luz respira.
   
-  // 🎭 WAVE 2086.5: THE FOUR NOBLES
-  slow_pan: 32,         // 8 compases: el faro del fondo del escenario
-  tilt_nod: 16,         // 4 compases: cabeceo meditativo
-  figure_of_4: 16,      // 4 compases: figure8 contenido en el centro
-  chase_position: 16,   // 4 compases: 4 posiciones × 4 beats = 16 beats
+  // THE FOUR NOBLES — sin cambio significativo
+  slow_pan: 48,         // 🏛️ 32→48. 12 compases: faro lento del fondo
+  tilt_nod: 24,         // 🏛️ 16→24. 6 compases: cabeceo meditativo
+  figure_of_4: 24,      // 🏛️ 16→24. 6 compases: figure8 contenido
+  chase_position: 24,   // 🏛️ 16→24. 6 compases: posiciones con solemnidad
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -376,30 +383,35 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     }
   },
   
-  // WAVE_Y: Péndulo latino — ola suave en U cadenciosa
-  // 🔥 WAVE 2213 FÉNIX: sin(phase*0.5)/sin(phase*2) generaba W nerviosa.
-  //   FIX: Péndulo real. X = balanceo lateral. Y = arco de gravedad (siempre ≤ 0).
+  // WAVE_Y: Péndulo elíptico — ola suave con elevación
+  // WAVE 4740 FIX: La fórmula anterior tenía dos bugs críticos:
+  //   1) y = -(Math.abs(cos(p*0.5)) * 0.6) → y SIEMPRE ≤ 0 (cabeza al suelo)
+  //      → con ancla baja, tiltBase clipea a 0 → deadzone de 2+ compases.
+  //   2) Math.abs(cos(p*0.5)) = 0 en p=π y 3π → y=0 exacto dos veces
+  //      por ciclo: el foco se queda estático en el ancla durante ~2s.
+  // FIX: Péndulo elíptico simétrico. X=balanceo, Y=elevación.
+  //   Nunca toca (0,0) excepto instantáneamente. Rango completo en ambos ejes.
   wave_y: (phase, audio) => {
     return {
-      x: Math.sin(phase) * 0.8,
-      y: -(Math.abs(Math.cos(phase * 0.5)) * 0.6),
+      x: Math.sin(phase) * 0.80,
+      y: Math.cos(phase) * 0.70,
     }
   },
   
-  // BALLYHOO: Caos controlado (cierra cada 16 beats)
-  // 🔥 WAVE 2213 FÉNIX: Eliminado fixtureOffset de amplitud — cada foco dibujaba
-  //   la figura a un tamaño distinto. El offset de posición vive en el dominio
-  //   del tiempo (phase/snake), no en la amplitud.
-  // 🔥 WAVE 2213: ×1.8 — la multiplicación sin/cos atenúa severamente la amplitud
-  //   final. El Gearbox y las escalas globales acotan el resultado de forma segura.
+  // BALLYHOO: Espiral polar con radio garantizado (WAVE 4740 REDISEÑO)
+  // DIAGNÓSTICO: La serie de Fourier anterior colapsaba a (0,0) cuando
+  //   phase = π/2 (todos los armónicos cos/sin en cuadratura suman cero).
+  //   El ×1.8 amplifier llevaba picos a ±1.35 → clipping duro adicional.
+  // REDISEÑO: Polar con envolvente garantizada.
+  //   r = 0.75 + 0.25×cos(2p) → r ∈ [0.50, 1.00] — piso del 50% garantizado.
+  //   x = sin(1.5p)×r / y = cos(p)×r: ratio 3:2 Lissajous no cierra exactamente
+  //   → patrón siempre activo, NUNCA colapsa al centro (x=0, y=0).
   ballyhoo: (phase, audio, index = 0, total = 1) => {
-    const x = Math.sin(phase) * 0.5 + 
-              Math.sin(phase * 3) * 0.3 + 
-              Math.sin(phase * 5) * 0.15
-    const y = Math.cos(phase) * 0.4 + 
-              Math.cos(phase * 3) * 0.25 + 
-              Math.cos(phase * 5) * 0.1
-    return { x: x * 1.8, y: y * 1.8 }
+    const r = 0.75 + 0.25 * Math.cos(phase * 2)   // r ∈ [0.50, 1.00]
+    return {
+      x: Math.sin(phase * 1.5) * r,               // barrido complejo en X
+      y: Math.cos(phase) * r,                      // elevación que respira con r
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -427,8 +439,9 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // El multiplicador de radio (0.7 + 0.3*sin) hace que la espiral "respire".
   espiral_conga: (phase, audio, index = 0, total = 1) => {
     const fixturePhase = phase + (index / Math.max(total, 1)) * (Math.PI / 3)
-    // Radio que pulsa entre 0.7 y 1.0 en ciclos largos (≈8 beats)
-    const r = 0.70 + 0.30 * Math.sin(phase * 0.25)
+    // WAVE 4740: Radio mínimo elevado 0.40 → 0.50 — anillo constante y dinámico.
+    // El foco NUNCA colapsa al centro/suelo: r ∈ [0.50, 1.00] garantizado.
+    const r = 0.75 + 0.25 * Math.sin(phase * 0.25)
     // Y combina arco de hélice (sin 1x) con acento de conga (sin 3x)
     return {
       x: Math.cos(fixturePhase) * r,
@@ -584,7 +597,12 @@ export class VibeMovementManager {
   // 🎚️ WAVE 2472: GRANDMASTER SPEED — multiplicador global de la IA
   // Escala el flujo de fase del motor generativo (0.1 = cámara lenta, 2.0 = doble velocidad)
   // NO afecta patrones manuales (Layer 2 del Arbiter) — solo Layer 0 (CHOREO)
-  private globalSpeedMultiplier: number = 1.0
+  // 🏛️ WAVE 4730 TRÍADA: 0.6 → 0.8. Con períodos duplicados, 0.6 sería
+  //   demasiado lento. A 0.8× con nuevos períodos:
+  //   circle_big (32b) @ 120 BPM: 1 ciclo cada 20 s (majestuoso)
+  //   scan_x (16b) @ 130 BPM:     1 ciclo cada 9 s  (catedral industrial)
+  //   drift (256b) @ 100 BPM:     1 ciclo cada ~192 s (glacial)
+  private globalSpeedMultiplier: number = 0.8
 
   // 🌪️ WAVE 4708 T3: CAOS UNIFICADO — amplitud y semilla globales del slider
   // ChaosOrderSlider, leídos por el KineticAdapter (L0) para calcular un

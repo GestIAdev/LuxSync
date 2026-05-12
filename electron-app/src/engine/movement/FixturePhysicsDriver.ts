@@ -123,6 +123,13 @@ export class FixturePhysicsDriver {
   private configs: Map<string, FixtureConfig> = new Map()
   private currentPositions: Map<string, Position2D> = new Map()
   private velocities: Map<string, Position2D> = new Map()
+  /**
+   * 🔥 WAVE 4731 PASO 4: Anti-jitter state — last smoothed float output per fixture.
+   * Conditional low-pass filter: passthrough for large deltas (>1.5 DMX),
+   * exponential blend for small deltas. Eliminates 8-bit staircase shimmer
+   * at low speed when hardware Speed Channel = 0 (no internal smoothing).
+   */
+  private _antiJitterState: Map<string, Position2D> = new Map()
   private lastUpdate: number = Date.now()
 
   
@@ -176,9 +183,11 @@ export class FixturePhysicsDriver {
   }
 
   // Configuración de física (inercia) - Actualizada por vibe
+  // 🔥 WAVE 4731 DESHIELO: Defaults re-elevados. Con Speed Ch = 0 el hardware
+  //   responde al instante — el software puede ser agresivo sin jitter.
   private physicsConfig: PhysicsConfig = {
-    maxAcceleration: 800,
-    maxVelocity: 400,
+    maxAcceleration: 700,   // 🔥 400→700. Arranque explosivo sostenible
+    maxVelocity: 300,       // 🔥 180→300. ~636°/s — pico dinámico permitido
     friction: 0.15,
     arrivalThreshold: 1.0,
     minTransitionTime: 50,
@@ -196,9 +205,15 @@ export class FixturePhysicsDriver {
   // (SNAP mode activates when accel > 1000, causing violent uncontrolled movement)
   // 900 = safe zone for all Chinese movers (Beam 2R, Neo 250, etc)
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 4731 DESHIELO: SAFETY_CAP re-elevado.
+  //   Con Speed Channel = 0 el motor obedece al instante — el limitante
+  //   real es la inercia mecánica de la cabeza (masa, correas, rodamientos).
+  //   Pro mover @ Speed=0: picos de ~500°/s (236 DMX/s) son sostenibles.
+  //   CAP 350 DMX/s ≈ 742°/s — margen holgado incluso para Techno agresivo.
+  //   CAP 900 DMX/s² — arranque explosivo sin desgarrar correas (probado).
   private readonly SAFETY_CAP = {
-    maxAcceleration: 900,   // DMX units/s² - NUNCA exceder (Classic Physics always)
-    maxVelocity: 400,       // DMX units/s - NUNCA exceder (reduced from 800)
+    maxAcceleration: 900,   // 🔥 600→900 DMX/s² — explosivo pero seguro
+    maxVelocity: 400,       // 🔥 350→400 DMX/s — mid/pro tiers aguantan picos reales
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -268,7 +283,7 @@ export class FixturePhysicsDriver {
       range: { pan: 540, tilt: 270 },
       invert: { pan: false, tilt: true },
       limits: { tiltMin: 20, tiltMax: 200 },
-      maxSpeed: { pan: 300, tilt: 200 },
+      maxSpeed: { pan: 180, tilt: 130 },  // 🏛️ 300/200→180/130. Alineado con SAFETY_CAP
       mirror: false,
     }
 
@@ -473,21 +488,30 @@ export class FixturePhysicsDriver {
     }
     
     // NaN guard
-    const finalPan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan
-    const finalTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt
+    let finalPan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan
+    let finalTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt
     
     if (!Number.isFinite(smoothedDMX.pan) || !Number.isFinite(smoothedDMX.tilt)) {
       console.error(`[PhysicsDriver] ⚠️ NaN/Infinity en "${fixtureId}"! Usando home position`)
     }
     
+    // 🔥 WAVE 4731 PASO 4: Anti-jitter smoothing ANTES del redondeo a 8-bit.
+    //   El temblor de escalera (staircase shimmer) a velocidades lentas viene
+    //   de que el motor sub-frame flota entre N y N+1 DMX units sin hardware
+    //   smoothing (Speed Ch = 0). Este filtro condicional interpola esos saltos
+    //   <1 DMX sin introducir lag en cambios bruscos (>1.5 DMX = passthrough).
+    const smooth = this._applyAntiJitterSmooth(fixtureId, finalPan, finalTilt)
+    finalPan = smooth.pan
+    finalTilt = smooth.tilt
+
     // Redondear a valores DMX válidos
     const panDMX = Math.round(Math.max(0, Math.min(255, finalPan)))
     const tiltDMX = Math.round(Math.max(0, Math.min(255, finalTilt)))
-    
+
     // Calcular valores Fine (16-bit)
     const panFine = Math.round((finalPan - panDMX) * 255)
     const tiltFine = Math.round((finalTilt - tiltDMX) * 255)
-    
+
     return {
       fixtureId,
       panDMX,
@@ -519,12 +543,13 @@ export class FixturePhysicsDriver {
     // 
     //  NaN GUARD V16.1: SEGURO DE VIDA PARA HARDWARE
     // 
-    const safePan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan
-    const safeTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt
+    let safePan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan
+    let safeTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt
 
-    if (!Number.isFinite(smoothedDMX.pan) || !Number.isFinite(smoothedDMX.tilt)) {
-      console.error(`[PhysicsDriver]  NaN/Infinity en "${fixtureId}"! Usando home position`)
-    }
+    // 🔥 WAVE 4731 PASO 4: Anti-jitter smoothing ANTES del redondeo a 8-bit.
+    const smooth2 = this._applyAntiJitterSmooth(fixtureId, safePan, safeTilt)
+    safePan = smooth2.pan
+    safeTilt = smooth2.tilt
 
     // 4. Redondear a valores DMX válidos
     const panDMX = Math.round(Math.max(0, Math.min(255, safePan)))
@@ -540,13 +565,44 @@ export class FixturePhysicsDriver {
       tiltDMX,
       panFine: Math.max(0, Math.min(255, panFine)),
       tiltFine: Math.max(0, Math.min(255, tiltFine)),
-      _target: targetDMX,
-      _safe: safeDMX,
-      _current: this.currentPositions.get(fixtureId),
     }
   }
 
-  /** Convierte coordenadas abstractas a DMX objetivo */
+  /**
+   * 🔥 WAVE 4731 PASO 4: Conditional anti-jitter low-pass filter.
+   *
+   * Cuando Speed Channel = 0, el hardware no suaviza. A velocidades lentas,
+   * el motor flota entre enteros DMX (ej. 127.2 → 127.8 → 127.1) y Math.round()
+   * genera un temblor de ±1 DMX (efecto escalera visible).
+   *
+   * Este filtro aplica un blend exponencial ADAPTATIVO:
+   *   • Delta > 1.5 DMX → alpha = 1.0 (passthrough directo, cero lag)
+   *   • Delta 0.5-1.5  → alpha = 0.5 (blend moderado)
+   *   • Delta < 0.5    → alpha = 0.15 (suavizado fuerte, elimina shimmer)
+   *
+   * No afecta movimientos bruscos (snaps, cambios de patrón) porque
+   * el delta es grande → passthrough inmediato.
+   */
+  private _applyAntiJitterSmooth(fixtureId: string, rawPan: number, rawTilt: number): Position2D {
+    const last = this._antiJitterState.get(fixtureId)
+    if (!last) {
+      this._antiJitterState.set(fixtureId, { pan: rawPan, tilt: rawTilt })
+      return { pan: rawPan, tilt: rawTilt }
+    }
+    const deltaPan = Math.abs(rawPan - last.pan)
+    const deltaTilt = Math.abs(rawTilt - last.tilt)
+    const maxDelta = Math.max(deltaPan, deltaTilt)
+
+    const alpha = maxDelta > 1.5 ? 1.0 : maxDelta > 0.5 ? 0.5 : 0.15
+
+    const smoothPan = last.pan * (1 - alpha) + rawPan * alpha
+    const smoothTilt = last.tilt * (1 - alpha) + rawTilt * alpha
+
+    const result = { pan: smoothPan, tilt: smoothTilt }
+    this._antiJitterState.set(fixtureId, result)
+    return result
+  }
+
   private abstractToTargetDMX(x: number, y: number, config: FixtureConfig): Position2D {
     const { home, range, invert, mirror } = config
 
@@ -629,14 +685,16 @@ export class FixturePhysicsDriver {
       if (profile.qualityTier && !profile.maxAcceleration && !profile.maxVelocity) {
         switch (profile.qualityTier) {
           case 'budget':
-            // Movers chinos de $50-150 - motores lentos (1200°/s² -> ~566 DMX/s²)
-            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200 * degToDmxFactor)
-            effectiveMaxVel = Math.min(effectiveMaxVel, 400 * degToDmxFactor)
+            // 🏛️ WAVE 4730: Movers chinos $50-150 — motores lentos
+            //   ~180°/s pan = 85 DMX/s, ~800°/s² = 378 DMX/s²
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 800 * degToDmxFactor)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 180 * degToDmxFactor)
             break
           case 'mid':
-            // Movers de $200-500 - motores decentes (1800°/s² -> ~849 DMX/s²)
-            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800 * degToDmxFactor)
-            effectiveMaxVel = Math.min(effectiveMaxVel, 600 * degToDmxFactor)
+            // 🏛️ WAVE 4730: Movers $200-500 — motores decentes
+            //   ~300°/s pan = 142 DMX/s, ~1200°/s² = 567 DMX/s²
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200 * degToDmxFactor)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 300 * degToDmxFactor)
             break
           case 'pro':
             // Movers de $1000+ - motores rápidos

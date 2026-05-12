@@ -353,6 +353,8 @@ export function registerAetherIPCHandlers(): void {
         const clamped = value < 0.1 ? 0.1 : value > 2.0 ? 2.0 : value
         // Aether kinetic flow consumes VMM in hot-path. This is the canonical speed control.
         vibeMovementManager.setGlobalSpeedMultiplier(clamped)
+        // 🔥 WAVE 4731 PASO 3: GM también escala L2 (AetherKineticEngine).
+        aetherKineticEngine.setGrandMasterSpeed(clamped)
         return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
       } catch (err) {
         console.error('[AetherIPC] setGrandMasterSpeed error:', err)
@@ -801,35 +803,38 @@ export function registerAetherIPCHandlers(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Mapea nombres de patrón de la UI (string libre del movementStore)
- * al tipo `NativeKineticPattern` del AetherKineticEngine.
- *
- * Garantiza que siempre haya un fallback válido para evitar que
- * un nombre desconocido silencie el motor.
+ * WAVE 4713: Las keys del motor están alineadas 1:1 con `PatternArsenal.tsx`.
+ * Este mapper se reduce a un pass-through con compat para nombres legacy del
+ * masterArbiter / movementStore antiguos. El fallback sigue siendo `'circle'`
+ * para evitar que un nombre desconocido silencie el motor.
  */
 function mapToNativePattern(pattern: string): NativeKineticPattern {
   const MAP: Record<string, NativeKineticPattern> = {
-    // Nombres de la UI (movementStore / PatternArsenal)
-    'circle':      'circle',
-    'circle_big':  'circle',
-    'figure8':     'figure8',
-    'figure_8':    'figure8',
-    'lemniscate':  'lemniscate',
-    'scan_x':      'scan_x',
-    'sweep':       'scan_x',
-    'square':      'square',
-    'diamond':     'diamond',
-    'wave_y':      'wave_y',
-    'wave':        'wave_y',
-    'ballyhoo':    'ballyhoo',
-    'darkspin':    'darkspin',
-    'sway':        'sway',
-    // Patrones legacy del masterArbiter (backward compat)
-    'eight':        'figure8',
-    'tornado':      'darkspin',
-    'gravity_bounce': 'wave_y',
-    'butterfly':    'lemniscate',
-    'heartbeat':    'sway',
+    // Pass-through directo — keys alineadas con la UI
+    'static':    'static',
+    'circle':    'circle',
+    'eight':     'eight',
+    'sweep':     'sweep',
+    'darkspin':  'darkspin',
+    'bounce':    'bounce',
+    'butterfly': 'butterfly',
+    'pulse':     'pulse',
+
+    // ── Compat: nombres legacy del masterArbiter / VMM / movementStore ──
+    'circle_big':     'circle',
+    'figure8':        'eight',
+    'figure_8':       'eight',
+    'lemniscate':     'eight',     // figure8 horizontal → eight
+    'scan_x':         'sweep',
+    'square':         'circle',
+    'diamond':        'circle',
+    'wave_y':         'bounce',    // ola en U → bounce
+    'wave':           'bounce',
+    'ballyhoo':       'pulse',     // caos pulsante → pulse
+    'sway':           'sweep',
+    'tornado':        'darkspin',
+    'gravity_bounce': 'bounce',
+    'heartbeat':      'pulse',
   }
   return MAP[pattern] ?? 'circle'
 }

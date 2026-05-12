@@ -59,10 +59,11 @@ export function clampToCrystalBox(pos, stage) {
  * Default physics profiles by motor type
  */
 export const DEFAULT_PHYSICS_PROFILES = {
+    // 🏛️ WAVE 4730 TRÍADA: Valores en °/s y °/s² (convertidos a DMX en FixturePhysicsDriver)
     'servo-pro': {
         motorType: 'servo-pro',
-        maxAcceleration: 4000,
-        maxVelocity: 800,
+        maxAcceleration: 1600, // 🏛️ 4000→1600 °/s² — arranque rápido pero real
+        maxVelocity: 400, // 🏛️ 800→400 °/s — Clay Paky top tier real
         safetyCap: false,
         invertPan: false,
         invertTilt: false,
@@ -72,8 +73,8 @@ export const DEFAULT_PHYSICS_PROFILES = {
     },
     'stepper-quality': {
         motorType: 'stepper-quality',
-        maxAcceleration: 2500,
-        maxVelocity: 600,
+        maxAcceleration: 1200, // 🏛️ 2500→1200 °/s² — arranque firme
+        maxVelocity: 300, // 🏛️ 600→300 °/s — ADJ Vizi tier real
         safetyCap: true,
         invertPan: false,
         invertTilt: false,
@@ -83,8 +84,8 @@ export const DEFAULT_PHYSICS_PROFILES = {
     },
     'stepper-cheap': {
         motorType: 'stepper-cheap',
-        maxAcceleration: 1500, // 🛡️ THE LIFE INSURANCE - Low acceleration for cheap motors
-        maxVelocity: 400,
+        maxAcceleration: 800, // 🏛️ 1500→800 °/s² — seguro de vida para motores baratos
+        maxVelocity: 180, // 🏛️ 400→180 °/s — Beam 2R / clones chinos
         safetyCap: true,
         invertPan: false,
         invertTilt: false,
@@ -94,8 +95,8 @@ export const DEFAULT_PHYSICS_PROFILES = {
     },
     'unknown': {
         motorType: 'unknown',
-        maxAcceleration: 2000, // Conservative default
-        maxVelocity: 500,
+        maxAcceleration: 1000, // 🏛️ 2000→1000. Conservative default
+        maxVelocity: 250, // 🏛️ 500→250. Mid-range assumption
         safetyCap: true,
         invertPan: false,
         invertTilt: false,

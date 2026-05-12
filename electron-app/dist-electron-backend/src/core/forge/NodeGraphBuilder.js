@@ -89,6 +89,13 @@ function makeOutputDmxNode(channel, yPosition) {
         defaultDmxValue: channel.defaultValue,
         is16bit: channel.is16bit || undefined,
         continuousRotation: channel.continuousRotation || undefined,
+        // 🔥 WAVE 4718: roundtrip ignitionDeps from legacy channel
+        ...(channel.ignitionDeps && channel.ignitionDeps.length > 0 && {
+            ignitionDeps: channel.ignitionDeps.map(d => ({
+                channelType: d.channelType,
+                requiredValue: d.requiredValue,
+            })),
+        }),
     };
     const inputPort = {
         id: PORT_VALUE_IN,
@@ -214,6 +221,13 @@ export class NodeGraphBuilder {
             }
             if (cfg.channelName && (cfg.channelType === 'custom' || cfg.channelType === 'macro')) {
                 channel.customName = cfg.channelName;
+            }
+            // 🔥 WAVE 4718: roundtrip ignitionDeps back to legacy channel
+            if (cfg.ignitionDeps && cfg.ignitionDeps.length > 0) {
+                channel.ignitionDeps = cfg.ignitionDeps.map(d => ({
+                    channelType: d.channelType,
+                    requiredValue: d.requiredValue,
+                }));
             }
             return channel;
         });

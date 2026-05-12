@@ -242,6 +242,16 @@ export interface IOutputDmxConfig {
   readonly is16bit?: boolean
   /** ¿Rotación continua? (convención DMX: 0-127 CW, 128 stop, 129-255 CCW) */
   readonly continuousRotation?: boolean
+  /**
+   * 🔥 WAVE 4718: IGNITION DEPENDENCIES — prerequisitos de canales para que
+   * este canal pueda emitir luz/movimiento. Se propaga al/desde el legacy
+   * FixtureChannel.ignitionDeps a través de NodeGraphBuilder roundtrip.
+   * Opcional — perfiles LED simples no lo usan.
+   */
+  readonly ignitionDeps?: readonly {
+    readonly channelType: ChannelType
+    readonly requiredValue: number
+  }[]
 }
 
 export interface ICompoundIngenioConfig {

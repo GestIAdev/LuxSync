@@ -83,23 +83,22 @@ export interface MovementPreset {
 export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   
   // ───────────────────────────────────────────────────────────────
-  // 🎛️ TECHNO: Velocidad máxima, Aceleración agresiva, Beam cerrado
-  // "Los demonios de neón en el bunker noruego"
-  // 🔧 WAVE 350.5: maxAcceleration 1500 → 2000 (safety bump para botStabs)
-  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — basada en hardware real (Sharpy ~257°/s = 121 DMX/s)
-  // 🌊 WAVE 4703 M3: revLimits reducidos sutilmente para más peso visual.
-  //    Pan 400→340, Tilt 400→320. Patrones más deliberados, menos frenéticos.
+  // �️ TECHNO: Geometría dura, precisión industrial — CATEDRAL de neón
+  // 🏛️ WAVE 4730 TRÍADA: Rebalanceo total con hardware real.
+  //   Hardware ref: Sharpy ~257°/s = 121 DMX/s. Pro mover ~400°/s = 189 DMX/s.
+  //   Con períodos duplicados (16-32 beats) y amplitud 0.92, la velocidad
+  //   pico baja drásticamente. Ya no necesitamos 600 DMX/s — eso era ficción.
   // ───────────────────────────────────────────────────────────────
   'techno-club': {
     physics: {
-      maxAcceleration: 2000,    // 🔧 Arranques agresivos pero seguros (era 1500)
-      maxVelocity: 600,         // Muy rápido
-      friction: 0.08,           // 🔥 WAVE 2213: Bajísima — industrial robótico sin escalonado
-      arrivalThreshold: 0.1,    // 🔧 WAVE 2233: Esquinas clavadas en botstep/diamond
-      physicsMode: 'snap',      // 🔧 WAVE 2192: RESURRECCIÓN DE ESQUINAS
-      snapFactor: 1.0,          // Target instantáneo, la inercia la manda el revLimit + hardware
-      revLimitPanPerSec: 340,   // 🌊 WAVE 4703 M3: 400→340. ~719°/s — geometría con peso, no epilepsia
-      revLimitTiltPerSec: 320,  // 🌊 WAVE 4703 M3: 400→320. ~339°/s — tilt deliberado, con gravitas
+      maxAcceleration: 850,     // 🔥 600→850. Explosivo — Speed Ch=0 lo permite
+      maxVelocity: 380,         // 🔥 320→380. ~805°/s — Techno REAL agresivo
+      friction: 0.06,           // 🔥 0.08→0.06. Más inercia industrial
+      arrivalThreshold: 0.3,    // 🔥 0.5→0.3. Esquinas clavadas
+      physicsMode: 'snap',      // Sin cambio
+      snapFactor: 1.0,          // Sin cambio
+      revLimitPanPerSec: 360,   // 🔥 300→360. ~763°/s — geometría aflática
+      revLimitTiltPerSec: 270,  // 🔥 220→270. ~572°/s — tilt con fuerza máxima
     },
     optics: {
       zoomDefault: 30,          // Beam cerrado (láser)
@@ -116,23 +115,21 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   },
   
   // ───────────────────────────────────────────────────────────────
-  // 💃 LATINO: Fluido, Circular, Orgánico
-  // "La cumbia tiene swing, los movers también"
-  // 🔧 WAVE 340.5: Aceleración alta para seguir caderas
-  // 🌊 WAVE 4703 M2: Más amplitud y velocidad. Alma latina sin límites.
-  //    revLimitPan 380→520, revLimitTilt 280→420. Bien por debajo del CAP de 900.
-  //    snapFactor 0.85→0.90: más fidelidad de seguimiento para cadera_libre/espiral_conga.
+  // 💃 LATINO: Fluido, Circular, Orgánico — CATEDRAL sensual
+  // 🏛️ WAVE 4730 TRÍADA: Rebalanceo con hardware real.
+  //   Con períodos 32-48 beats y panScale 0.95, la velocidad pico
+  //   cae a ~100-140 DMX/s — dentro del rango de cualquier mover.
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
-      maxAcceleration: 1400,    // 🌊 WAVE 4703 M2: 1200→1400. Arranques más vivos.
-      maxVelocity: 560,         // 🌊 WAVE 4703 M2: 500→560. Más rango de velocidad.
-      friction: 0.07,           // 🌊 WAVE 4703 M2: 0.08→0.07. Piel de serpiente aún más fluida.
-      arrivalThreshold: 2.0,    // Permite overshoot elegante (sin cambio)
-      physicsMode: 'snap',      // Caderas no esperan (sin cambio)
-      snapFactor: 0.90,         // 🌊 WAVE 4703 M2: 0.85→0.90. Cadera libre necesita fidelidad alta.
-      revLimitPanPerSec: 520,   // 🌊 WAVE 4703 M2: 380→520. ~1101°/s — dentro del CAP de 900 DMX/s
-      revLimitTiltPerSec: 420,  // 🌊 WAVE 4703 M2: 280→420. ~445°/s — tilt de espiral conga
+      maxAcceleration: 650,     // 🔥 500→650. Más vida en curvas
+      maxVelocity: 310,         // 🔥 250→310. ~657°/s — caderas con alma autentica
+      friction: 0.06,           // 🔥 0.07→0.06. Seda pura
+      arrivalThreshold: 2.0,    // Sin cambio — overshoot elegante
+      physicsMode: 'snap',      // Sin cambio
+      snapFactor: 0.88,         // 🔥 0.85→0.88. Más fidelidad de seguimiento
+      revLimitPanPerSec: 300,   // 🔥 240→300. ~636°/s — espiral conga real
+      revLimitTiltPerSec: 240,  // 🔥 180→240. ~509°/s — tilt orgánico con fuerza
     },
     optics: {
       zoomDefault: 150,         // Zoom medio (spot suave)
@@ -149,32 +146,21 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   },
   
   // ───────────────────────────────────────────────────────────────
-  // 🎸 ROCK: Reactivo, Posiciones fijas, Wall of Light
-  // "El muro de luz que golpea con la guitarra"
-  // 🔧 WAVE 340.5: Aceleración alta para punch
-  // 🔧 WAVE 2088.4: CALIBRACIÓN REAL — golpes dramáticos pero creíbles
-  //    Rock necesita movimientos con peso, como un headbang — no teleporting.
-  //    Referencia: mover de gama media (~200°/s pan = 94 DMX/s)
+  // 🎸 ROCK: Reactivo, Wall of Light — CATEDRAL épica
+  // 🏛️ WAVE 4730 TRÍADA: Rebalanceo con hardware real.
+  //   Rock con classic physics + períodos 16-32 beats. Arcos enormes
+  //   con gravitas de headbang. Referencia: mover mid ~200°/s = 94 DMX/s.
   // ───────────────────────────────────────────────────────────────
   'pop-rock': {
     physics: {
-      maxAcceleration: 1100,    // 🔧 Subido: Golpes reactivos duros
-      maxVelocity: 450,         // 🔧 Subido: Rápido en golpes
-      friction: 0.20,           // 🔥 WAVE 2213: Peso con punch (era 0.30 snap)
-      arrivalThreshold: 1.0,    // Precisión normal
-      physicsMode: 'classic',   // 🔥 WAVE 2213: Exorcismo del snap — arcos con gravitas
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 2088.8: THE SHAPE RESURRECTION
-      // Rock usa circle_big, cancan, dual_sweep. Con snap=0.30 + revLimit=95
-      // un circle_big de 16 beats se convertía en un temblor amorfo.
-      // Los movers de estadio necesitan dibujar ARCOS visibles.
-      //
-      // snap=0.65 → el mover persigue con PESO (más lento que techno)
-      // revLimit=300 → 5 DMX/frame → arcos grandes con gravitas
-      // ═══════════════════════════════════════════════════════════════════
-      snapFactor: 0.65,         // 🔧 WAVE 2088.8: Golpes con peso visible — más lento que techno
-      revLimitPanPerSec: 300,   // 🔧 WAVE 2088.8: ~636°/s — arcos dramáticos de estadio
-      revLimitTiltPerSec: 200,  // 🔧 WAVE 2088.8: ~212°/s — tilt con gravitas
+      maxAcceleration: 700,     // 🔥 450→700. Golpes reactivos con masa
+      maxVelocity: 280,         // 🔥 220→280. ~594°/s — headbang con potencia real
+      friction: 0.15,           // 🔥 0.20→0.15. Menos fricción = más inercia visual
+      arrivalThreshold: 1.0,    // 🔥 1.5→1.0. Esquinas más definidas
+      physicsMode: 'classic',   // Sin cambio — física con inercia
+      snapFactor: 0.70,         // 🔥 0.60→0.70. Más reactividad en golpes
+      revLimitPanPerSec: 260,   // 🔥 200→260. ~551°/s — arcos potentes
+      revLimitTiltPerSec: 200,  // 🔥 150→200. ~424°/s — tilt con punch
     },
     optics: {
       zoomDefault: 220,         // Zoom abierto (wash)
@@ -194,16 +180,18 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 🍸 CHILL: Glacial, Nebulosa, Meditativo
   // "Flotando en el sunset con cocktail en mano"
   // ───────────────────────────────────────────────────────────────
+  // 🏛️ WAVE 4730 TRÍADA: Chill con amplitudes más amplias pero misma velocidad glacial.
+  //   panScale subido 0.70→0.85 en VMM, pero física sigue siendo medusa.
   'chill-lounge': {
     physics: {
-      maxAcceleration: 4,       // 🌊 WAVE 2470 MODO DERIVA: arranque de 8→4. Inercia de continente deriva.
-      maxVelocity: 8,           // 🌊 WAVE 2470 MODO DERIVA: 50→8. Velocidad de medusa.
-      friction: 0.97,           // 🌊 WAVE 2470 MODO DERIVA: 0.80→0.97. Agua espesa, casi gelatina.
-      arrivalThreshold: 8.0,    // 🌊 WAVE 2470 MODO DERIVA: 3.0→8.0. No importa llegar, importa flotar.
-      physicsMode: 'classic',   // Inercia oceánica, siempre classic.
-      snapFactor: 0.0,          // No aplica en classic mode.
-      revLimitPanPerSec: 12,    // 🌊 WAVE 2470 MODO DERIVA: 80→12. ~25°/s. Panorámica de amanecer.
-      revLimitTiltPerSec: 8,    // 🌊 WAVE 2470 MODO DERIVA: 55→8. ~17°/s. Tilt de anémona.
+      maxAcceleration: 6,       // �️ 4→6. Ligeramente más energía para el arco mayor
+      maxVelocity: 12,          // �️ 8→12. ~25°/s — medusa con algo más de corriente
+      friction: 0.95,           // �️ 0.97→0.95. Agua densa pero no gelatina
+      arrivalThreshold: 8.0,    // Sin cambio — importa flotar
+      physicsMode: 'classic',   // Sin cambio — inercia oceánica
+      snapFactor: 0.0,          // Sin cambio
+      revLimitPanPerSec: 15,    // �️ 12→15. ~32°/s — ligeramente más rango para la amplitud mayor
+      revLimitTiltPerSec: 10,   // �️ 8→10. ~21°/s — tilt más abierto que antes
     },
     optics: {
       zoomDefault: 255,         // Zoom máximo (wash total)
@@ -223,16 +211,17 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // 💤 IDLE: Estático, Neutral
   // "Esperando que el DJ arranque"
   // ───────────────────────────────────────────────────────────────
+  // 🏛️ WAVE 4730 TRÍADA: Idle con valores proporcionalmente reducidos.
   'idle': {
     physics: {
-      maxAcceleration: 200,
-      maxVelocity: 100,
-      friction: 0.50,
-      arrivalThreshold: 1.0,
-      physicsMode: 'classic',   // 🏎️ WAVE 2074.2: Idle = sin prisa, física suave
-      snapFactor: 0.0,          // 🏎️ WAVE 2074.3: No aplica en classic mode (ignorado)
-      revLimitPanPerSec: 120,    // 🔧 WAVE 2088.8: ~254°/s — idle visible, no congelado
-      revLimitTiltPerSec: 80,    // 🔧 WAVE 2088.8: ~85°/s — tilt suave en idle
+      maxAcceleration: 120,     // 🏛️ 200→120. Arranque suave
+      maxVelocity: 60,          // 🏛️ 100→60. ~127°/s — visible pero sin prisa
+      friction: 0.50,           // Sin cambio
+      arrivalThreshold: 1.0,    // Sin cambio
+      physicsMode: 'classic',   // Sin cambio
+      snapFactor: 0.0,          // Sin cambio
+      revLimitPanPerSec: 60,    // 🏛️ 120→60. ~127°/s — idle visible, no agresivo
+      revLimitTiltPerSec: 40,   // 🏛️ 80→40. ~85°/s — tilt suave
     },
     optics: {
       zoomDefault: 127,         // Zoom neutro

@@ -878,10 +878,16 @@ const luxApi = {
          */
         updateKineticScalars: (args) => ipcRenderer.invoke('lux:aether:updateKineticScalars', args),
         /**
-         * WAVE 4701: Snapshot del estado manual del motor cinético nativo.
+         * WAVE 4701: Snapshot del estado manual del motor cinético nativo (legacy global).
          * Fuente de verdad para hidratar pattern/speed/amplitude/fan en UI.
          */
         getManualKineticState: () => ipcRenderer.invoke('lux:aether:getManualKineticState'),
+        /**
+         * WAVE 4712: Hidratación silenciosa per-node.
+         * Retorna snapshots ({ pattern, speed, amplitude, fan, panAnchor, tiltAnchor })
+         * para los fixtureIds dados. La UI los agrega para detectar estado mixto.
+         */
+        getKineticNodeStates: (fixtureIds) => ipcRenderer.invoke('lux:aether:getKineticNodeStates', fixtureIds),
         /**
          * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
          * WAVE 4700: No-op legacy — el fan se pasa directamente en setManualPattern.

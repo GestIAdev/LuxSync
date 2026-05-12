@@ -110,25 +110,17 @@ interface KineticHydrationActions {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Mapeo inverso del que vive en AetherIPCHandlers.mapToNativePattern.
- * El motor solo conoce nombres nativos; la UI usa los nombres de PatternType.
+ * WAVE 4713: las keys del motor están alineadas 1:1 con las del PatternArsenal.
+ * Solo queda traducir 'static'/null → 'none' (semántica UI de "sin patrón").
+ * El resto es pass-through directo.
  */
-const NATIVE_TO_UI_PATTERN: Record<string, PatternType> = {
-  'circle':     'circle',
-  'figure8':    'eight',
-  'lemniscate': 'butterfly',
-  'scan_x':     'sweep',
-  'square':     'circle',     // no hay UI dedicada — fallback visual
-  'diamond':    'circle',     // idem
-  'wave_y':     'bounce',
-  'ballyhoo':   'circle',     // sin UI dedicada → no se ilumina ninguno
-  'darkspin':   'darkspin',
-  'sway':       'pulse',
-}
+const VALID_UI_PATTERNS: ReadonlySet<string> = new Set([
+  'circle', 'eight', 'sweep', 'darkspin', 'bounce', 'butterfly', 'pulse',
+])
 
 export function nativePatternToUI(native: string | null): PatternType {
-  if (native === null) return 'none'
-  return NATIVE_TO_UI_PATTERN[native] ?? 'none'
+  if (native === null || native === 'static' || native === 'hold') return 'none'
+  return VALID_UI_PATTERNS.has(native) ? (native as PatternType) : 'none'
 }
 
 const EMPTY_AGGREGATE: KineticAggregate = {

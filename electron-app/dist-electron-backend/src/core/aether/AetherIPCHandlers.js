@@ -288,6 +288,8 @@ export function registerAetherIPCHandlers() {
             const clamped = value < 0.1 ? 0.1 : value > 2.0 ? 2.0 : value;
             // Aether kinetic flow consumes VMM in hot-path. This is the canonical speed control.
             vibeMovementManager.setGlobalSpeedMultiplier(clamped);
+            // 🔥 WAVE 4731 PASO 3: GM también escala L2 (AetherKineticEngine).
+            aetherKineticEngine.setGrandMasterSpeed(clamped);
             return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() };
         }
         catch (err) {
@@ -323,14 +325,19 @@ export function registerAetherIPCHandlers() {
         }
         try {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
+            // WAVE 4712 MULTITRACK: pattern: null|'hold'|'static' ahora elimina
+            // SOLO las pistas de los fixtureIds dados. El resto del Map sigue
+            // ejecutándose intacto (otros focos no se ven afectados).
             if (pattern === null || pattern === 'static' || pattern === 'hold') {
-                // Detener motor nativo y limpiar L2
-                aetherKineticEngine.stop(arbiter);
-                // Limpiar VMM por si quedaron overrides del modo legacy (backward compat)
-                vibeMovementManager.setManualPattern(null);
-                vibeMovementManager.setManualSpeed(null);
-                vibeMovementManager.setManualAmplitude(null);
-                vibeMovementManager.setKineticFanOffsets({});
+                const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`);
+                aetherKineticEngine.removeNodes(removeNodeIds, arbiter);
+                // VMM: silenciar solo si el motor ya no tiene pistas (paridad legacy).
+                if (!aetherKineticEngine.isActive()) {
+                    vibeMovementManager.setManualPattern(null);
+                    vibeMovementManager.setManualSpeed(null);
+                    vibeMovementManager.setManualAmplitude(null);
+                    vibeMovementManager.setKineticFanOffsets({});
+                }
                 return { success: true };
             }
             // Normalizar speed/amplitude de rango UI [0–100] a [0, 1]
@@ -347,10 +354,6 @@ export function registerAetherIPCHandlers() {
             vibeMovementManager.setManualSpeed(null);
             vibeMovementManager.setManualAmplitude(null);
             vibeMovementManager.setKineticFanOffsets({});
-            // WAVE L2-SUPREMACY: guardar estado previo para limpiar L2 de fixtures
-            // que ya no forman parte de la nueva selección.
-            // Si no se limpian, quedan congelados en su última posición cinética.
-            const prevKineticState = aetherKineticEngine.getState();
             // WAVE 4708 T2 — ANCHOR HYDRATION ATÓMICA:
             // Si el cliente envió anchorPan/anchorTilt (posición actual del radar),
             // los inyectamos en _manualOverrides como pan_base/tilt_base ANTES de
@@ -368,22 +371,11 @@ export function registerAetherIPCHandlers() {
                     arbiter.setManualOverride(nodeId, { ...prev, pan_base, tilt_base });
                 }
             }
-            // Activar motor nativo con la configuración completa
-            aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm);
-            // Limpiar overrides L2 para fixtures que salieron de la selección.
-            // WAVE 4709 T1: además de _manualOverrides (ancla), limpiar también
-            // _motorKineticOverrides (salida del engine) — sin esto, el último
-            // tick antes del despido dejaba la coordenada motor congelada y el
-            // mover quedaba en una postura zombie.
-            if (prevKineticState.active) {
-                const newNodeSet = new Set(nodeIds);
-                for (const prevNodeId of prevKineticState.nodeIds) {
-                    if (!newNodeSet.has(prevNodeId)) {
-                        arbiter.clearManualOverride(prevNodeId);
-                        arbiter.clearMotorKineticOverride(prevNodeId);
-                    }
-                }
-            }
+            // Activar motor nativo con la configuración completa.
+            // WAVE 4710: Programmer Paradigm — la selección NO dicta el ciclo de vida en L2.
+            // Fixtures que salen del scope del engine quedan congelados vía L2-MOTOR
+            // hasta un Unlock explícito. NO se limpian overrides aquí.
+            aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter);
             return { success: true, pattern: nativePattern };
         }
         catch (err) {
@@ -397,13 +389,48 @@ export function registerAetherIPCHandlers() {
      * Para cambios en tiempo real de los sliders de UI sin glitch de fase.
      * Payload: { speed (0-100), amplitude (0-100), fan (-100..100) }
      */
-    ipcMain.handle('lux:aether:updateKineticScalars', (_event, { speed, amplitude, fan }) => {
+    ipcMain.handle('lux:aether:updateKineticScalars', (_event, payload) => {
         try {
-            aetherKineticEngine.updateScalars((speed ?? 50) / 100, (amplitude ?? 50) / 100, (fan ?? 0) / 100);
+            const speed = (payload?.speed ?? 50) / 100;
+            const amplitude = (payload?.amplitude ?? 50) / 100;
+            const fan = (payload?.fan ?? 0) / 100;
+            let nodeIds;
+            if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
+                nodeIds = payload.fixtureIds.map(id => `${id}:kinetic`);
+            }
+            else {
+                // Compat: sin nodeIds, aplica a todos los nodos activos del motor.
+                nodeIds = aetherKineticEngine.getState().nodeIds;
+            }
+            aetherKineticEngine.updateScalars(nodeIds, speed, amplitude, fan);
             return { success: true };
         }
         catch (err) {
             console.error('[AetherIPC] updateKineticScalars error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
+    /**
+     * WAVE 4712 — HIDRATACIÓN SILENCIOSA:
+     * Snapshot per-node del estado L2-MOTOR (patrón, scalars, anchor pan/tilt).
+     * Llamado por KineticsBridge al cambiar la selección para poblar la UI
+     * sin emitir un solo IPC de escritura. La UI muestra estado mixto si los
+     * snapshots difieren entre sí para alguna propiedad.
+     *
+     * Payload: fixtureIds: string[]
+     * Return:  states: KineticNodeStateSnapshot[]  (uno por fixture, orden preservado)
+     */
+    ipcMain.handle('lux:aether:getKineticNodeStates', (_event, fixtureIds) => {
+        if (!Array.isArray(fixtureIds)) {
+            return { success: false, error: 'fixtureIds must be an array' };
+        }
+        try {
+            const arbiter = getTitanOrchestrator().getAetherArbiter();
+            const states = fixtureIds.map(id => aetherKineticEngine.getNodeState(`${id}:kinetic`, arbiter));
+            return { success: true, states };
+        }
+        catch (err) {
+            console.error('[AetherIPC] getKineticNodeStates error:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -630,35 +657,37 @@ export function registerAetherIPCHandlers() {
 // WAVE 4700: PATTERN NAME MAPPER
 // ─────────────────────────────────────────────────────────────────────────────
 /**
- * Mapea nombres de patrón de la UI (string libre del movementStore)
- * al tipo `NativeKineticPattern` del AetherKineticEngine.
- *
- * Garantiza que siempre haya un fallback válido para evitar que
- * un nombre desconocido silencie el motor.
+ * WAVE 4713: Las keys del motor están alineadas 1:1 con `PatternArsenal.tsx`.
+ * Este mapper se reduce a un pass-through con compat para nombres legacy del
+ * masterArbiter / movementStore antiguos. El fallback sigue siendo `'circle'`
+ * para evitar que un nombre desconocido silencie el motor.
  */
 function mapToNativePattern(pattern) {
     const MAP = {
-        // Nombres de la UI (movementStore / PatternArsenal)
+        // Pass-through directo — keys alineadas con la UI
+        'static': 'static',
         'circle': 'circle',
-        'circle_big': 'circle',
-        'figure8': 'figure8',
-        'figure_8': 'figure8',
-        'lemniscate': 'lemniscate',
-        'scan_x': 'scan_x',
-        'sweep': 'scan_x',
-        'square': 'square',
-        'diamond': 'diamond',
-        'wave_y': 'wave_y',
-        'wave': 'wave_y',
-        'ballyhoo': 'ballyhoo',
+        'eight': 'eight',
+        'sweep': 'sweep',
         'darkspin': 'darkspin',
-        'sway': 'sway',
-        // Patrones legacy del masterArbiter (backward compat)
-        'eight': 'figure8',
+        'bounce': 'bounce',
+        'butterfly': 'butterfly',
+        'pulse': 'pulse',
+        // ── Compat: nombres legacy del masterArbiter / VMM / movementStore ──
+        'circle_big': 'circle',
+        'figure8': 'eight',
+        'figure_8': 'eight',
+        'lemniscate': 'eight', // figure8 horizontal → eight
+        'scan_x': 'sweep',
+        'square': 'circle',
+        'diamond': 'circle',
+        'wave_y': 'bounce', // ola en U → bounce
+        'wave': 'bounce',
+        'ballyhoo': 'pulse', // caos pulsante → pulse
+        'sway': 'sweep',
         'tornado': 'darkspin',
-        'gravity_bounce': 'wave_y',
-        'butterfly': 'lemniscate',
-        'heartbeat': 'sway',
+        'gravity_bounce': 'bounce',
+        'heartbeat': 'pulse',
     };
     return MAP[pattern] ?? 'circle';
 }

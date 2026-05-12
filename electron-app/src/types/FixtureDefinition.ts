@@ -137,6 +137,29 @@ export function deriveCapabilities(channels: FixtureChannel[]): DerivedCapabilit
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 4718: IGNITION DEPENDENCIES — GrandMA-style channel prerequisites
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Declaración de una dependencia de ignición.
+ * "Para que ESTE canal funcione, `channelType` debe estar en `requiredValue`."
+ *
+ * Ejemplo (Beam 2R, canal Dimmer):
+ *   { channelType: 'shutter', requiredValue: 255 }
+ * → "El dimmer requiere que el Shutter esté en 255 (abierto) para emitir luz."
+ *
+ * Las dependencias se leen por las capas Aether (CORE) y los bridges de test
+ * (WheelSmith / TestPanel) para asegurar la ignición de luminarias de
+ * descarga (Beam, Spot, Wash con lámpara) que actualmente fallan al subir
+ * solo el canal de intensidad.
+ */
+export interface IgnitionDependency {
+  /** Tipo de canal del que depende (referencia semántica, no por índice) */
+  channelType: ChannelType;
+  /** Valor DMX (0-255) que el canal target debe tener para que ESTE canal funcione */
+  requiredValue: number;
+}
+
 export interface FixtureChannel {
   index: number;
   name: string;
@@ -150,6 +173,10 @@ export interface FixtureChannel {
   // 🔥 WAVE 2084: INGENIOS — Indica si el canal es de rotación continua (no posicional)
   // true = 0-127 CW speed, 128 stop, 129-255 CCW speed (convención DMX estándar)
   continuousRotation?: boolean;
+  // 🔥 WAVE 4718: IGNITION DEPENDENCIES — prerequisitos de canales para que
+  // ESTE canal pueda emitir luz/movimiento. Opcional: perfiles LED y
+  // luminarias simples no lo usan y siguen funcionando sin cambios.
+  ignitionDeps?: IgnitionDependency[];
 }
 
 // WAVE 390.6: Import InstallationOrientation from ShowFileV2 for type consistency

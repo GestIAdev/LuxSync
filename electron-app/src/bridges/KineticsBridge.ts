@@ -214,7 +214,32 @@ class KineticsBridgeClass {
       },
     )
 
-    this._unsubscribers = [unsubPattern, unsubClassic, unsubSpatial, unsubFan]
+    // ── Suscripción 5: selección de fixtures (WAVE L2-SUPREMACY) ───────────
+    // Cuando el operador cambia la selección sin tocar los campos cinéticos,
+    // el motor nativo quedaba apuntando a los fixtures anteriores (scope stale).
+    // Fix: invalidar la caché de fixtureKey y re-enviar el estado actual del
+    // movementStore para que el motor reciba los nuevos nodeIds de inmediato.
+    const unsubSelection = useSelectionStore.subscribe(
+      (s) => s.selectedIds,
+      (_selectedIds) => {
+        // Forzar full setManualPattern en el próximo flush (no scalar-only)
+        this._lastFixtureKeysSent = null
+        const { activePattern, patternSpeed, patternAmplitude, fanValue, pan, tilt } =
+          useMovementStore.getState()
+        this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, fanValue)
+        this._scheduleClassicFlush(pan, tilt, fanValue)
+      },
+      {
+        equalityFn: (a, b) => {
+          // Set es reference type — comparar contenido explícitamente
+          if (a.size !== b.size) return false
+          for (const id of a) if (!b.has(id)) return false
+          return true
+        },
+      },
+    )
+
+    this._unsubscribers = [unsubPattern, unsubClassic, unsubSpatial, unsubFan, unsubSelection]
     console.log('[KineticsBridge] 🧠 Iniciado — Neural Link activo')
   }
 

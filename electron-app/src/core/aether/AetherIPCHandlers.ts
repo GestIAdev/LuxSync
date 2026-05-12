@@ -350,16 +350,30 @@ export function registerAetherIPCHandlers(): void {
         // Mapear nombre de patrón UI → NativeKineticPattern
         const nativePattern = mapToNativePattern(pattern)
 
-        // Desactivar VMM en modo manual para evitar doble oscilación en L0.
-        // Con VMM inactivo, el KineticAdapter emite pan=0.5/tilt=0.5 (home).
-        // La fórmula orbit del Arbiter: pan = pan_base + (0.5 - 0.5) = pan_base.
+        // Silenciar VMM — con L2 supremacy el delta L0 ya no llega al resultado
+        // final de pan/tilt, pero silenciar VMM evita el coste de CPU inútil.
         vibeMovementManager.setManualPattern(null)
         vibeMovementManager.setManualSpeed(null)
         vibeMovementManager.setManualAmplitude(null)
         vibeMovementManager.setKineticFanOffsets({})
 
+        // WAVE L2-SUPREMACY: guardar estado previo para limpiar L2 de fixtures
+        // que ya no forman parte de la nueva selección.
+        // Si no se limpian, quedan congelados en su última posición cinética.
+        const prevKineticState = aetherKineticEngine.getState()
+
         // Activar motor nativo con la configuración completa
         aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm)
+
+        // Limpiar overrides L2 para fixtures que salieron de la selección
+        if (prevKineticState.active) {
+          const newNodeSet = new Set(nodeIds)
+          for (const prevNodeId of prevKineticState.nodeIds) {
+            if (!newNodeSet.has(prevNodeId)) {
+              arbiter.clearManualOverride(prevNodeId)
+            }
+          }
+        }
 
         return { success: true, pattern: nativePattern }
       } catch (err) {

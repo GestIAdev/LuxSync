@@ -330,13 +330,13 @@ export class NodeArbiter implements INodeArbiter {
         }
 
         if (key === 'pan_base') {
-          const l0 = isFiniteChannelValue(record['pan']) ? record['pan'] : 0.5
-          const v  = incoming + (l0 - 0.5)
-          record['pan'] = v < 0 ? 0 : v > 1 ? 1 : v
+          // WAVE L2-SUPREMACY: pan_base ES la posición final exclusiva.
+          // AetherKineticEngine ya incorpora anchor_radar + oscilación en pan_base.
+          // El delta L0 (VMM/Choreo) es descartado — cero mezcla aditiva.
+          record['pan'] = incoming < 0 ? 0 : incoming > 1 ? 1 : incoming
         } else if (key === 'tilt_base') {
-          const l0 = isFiniteChannelValue(record['tilt']) ? record['tilt'] : 0.5
-          const v  = incoming + (l0 - 0.5)
-          record['tilt'] = v < 0 ? 0 : v > 1 ? 1 : v
+          // Ídem para tilt.
+          record['tilt'] = incoming < 0 ? 0 : incoming > 1 ? 1 : incoming
         } else {
           record[key] = incoming
         }

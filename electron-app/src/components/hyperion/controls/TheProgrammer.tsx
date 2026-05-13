@@ -18,7 +18,7 @@ import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useMovementStore } from '../../../stores/movementStore'
 import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
-import { ExtrasSection } from './ExtrasSection'
+
 import { GroupsPanel } from './GroupsPanel'
 import { DeviceCellGroup } from '../programmer/DeviceCellGroup'
 import { useCapabilityCells } from '../../../hooks/useCapabilityCells'
@@ -67,7 +67,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
 
   // WAVE 4725: CAMALEÓN — carga células de capacidad del nodeGraph
   const deviceGroups = useCapabilityCells(selectedIds)
-  const hasCellGroups = deviceGroups.some(g => g.cells.length > 0)
+
 
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
@@ -261,12 +261,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds, releaseAll])
   
-  /**
-   * Handler for extras (phantom channels) override changes (informativo)
-   */
-  const handleExtrasOverrideChange = useCallback((_hasOverride: boolean) => {
-    // No-op: overrideState es derivado del store
-  }, [])
+
   
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER - WAVE 432: Always show tabs, empty state only for CONTROLS
@@ -340,34 +335,17 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
             </div>
           </div>
           
-          {/* ── WAVE 4725: CAMALEÓN — Cells layer (cuando hay nodeGraph) ── */}
-          {hasCellGroups ? (
-            deviceGroups.map(group => group.cells.length > 0 ? (
-              <DeviceCellGroup
-                key={group.deviceId}
-                deviceId={group.deviceId}
-                fixtureName={group.fixtureName}
-                fixtureType={group.fixtureType}
-                cells={group.cells}
-                onSectionToggle={toggleSection}
-              />
-            ) : null)
-          ) : (
-            <>
-              {/* ── LEGACY FALLBACK: no hay nodeGraph, fixtures sin perfil Aether ── */}
-              <div className="programmer-section" style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>
-                Fixtures sin perfil Aether — selecciona fixtures con nodeGraph activo.
-              </div>
-
-              {/* EXTRAS SECTION — Phantom channels */}
-              <ExtrasSection
-                hasOverride={overrideState.extras}
-                isExpanded={activeSection === 'extras'}
-                onToggle={() => toggleSection('extras')}
-                onOverrideChange={handleExtrasOverrideChange}
-              />
-            </>
-          )}
+          {/* ── WAVE 4727: VIP BOUNCER — Todo fixture usa DeviceCellGroup ── */}
+          {deviceGroups.map(group => group.cells.length > 0 ? (
+            <DeviceCellGroup
+              key={group.deviceId}
+              deviceId={group.deviceId}
+              fixtureName={group.fixtureName}
+              fixtureType={group.fixtureType}
+              cells={group.cells}
+              onSectionToggle={toggleSection}
+            />
+          ) : null)}
 
           {/* OVERRIDE INDICATOR */}
           {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (

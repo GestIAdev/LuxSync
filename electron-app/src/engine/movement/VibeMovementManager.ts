@@ -263,10 +263,10 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
   cancan: 16,       // 🏛️ 8→16. 4 compases: subida/bajada con gravitas
   dual_sweep: 32,   // 🏛️ 16→32. 8 compases: barrido en U cinematográfico
   
-  // CHILL — oceánico, periodos geológicos (sin cambio, ya eran correctos)
-  drift: 256,       // 64 compases: deriva continental.
-  sway: 128,        // 32 compases: la corriente profunda.
-  breath: 96,       // 24 compases: la luz respira.
+  // CHILL — oceánico, periodos geológicos — WAVE 4750: escalados a catedral submarina
+  drift: 512,       // 128 compases: la deriva continental profunda.
+  sway: 256,        // 64 compases: la corriente del abismo.
+  breath: 192,      // 48 compases: la luz respira en cámara lenta.
   
   // THE FOUR NOBLES — sin cambio significativo
   slow_pan: 48,         // 🏛️ 32→48. 12 compases: faro lento del fondo
@@ -305,11 +305,12 @@ const PATTERN_CONFIG: Record<GoldenPattern, PatternConfig> = {
   circle_big:  { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0,      safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2   },
   cancan:      { cycleBeats: 8,  phraseDuration: 32, safeHarborPhase: Math.PI,safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8,  transitionBeats: 1   },
   dual_sweep:  { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0,      safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2   },
-  // ── CHILL — oceánico, geológico expandido (CALIBRACIÓN DE FÁBRICA) ────────
-  // Períodos aún más largos para la medusa: 30-60 minutos de ciclo
-  drift:  { cycleBeats: 128, phraseDuration: 256, safeHarborPhase: 0,          safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 64, transitionBeats: 4   },
-  sway:   { cycleBeats: 64,  phraseDuration: 128, safeHarborPhase: 0,          safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 32, transitionBeats: 4   },
-  breath: { cycleBeats: 48,  phraseDuration: 96,  safeHarborPhase: 0,          safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 24, transitionBeats: 3   },
+  // ── CHILL — WAVE 4750: ABISMO OCEÁNICO — velocidad de catedral submarina ──────
+  // cycleBeats 256-512 → 1 ciclo en 128-256 compases a 120 BPM = 64-128 minutos.
+  // Con anti-jitter 8-bit (dithering) el movimiento es terciopelo puro.
+  drift:  { cycleBeats: 512, phraseDuration: 1024, safeHarborPhase: 0,         safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 128, transitionBeats: 8   },
+  sway:   { cycleBeats: 256, phraseDuration: 512,  safeHarborPhase: 0,         safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 64,  transitionBeats: 8   },
+  breath: { cycleBeats: 192, phraseDuration: 384,  safeHarborPhase: 0,         safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 48,  transitionBeats: 6   },
   // ── THE FOUR NOBLES — universales relajados (CALIBRACIÓN DE FÁBRICA) ──────
   slow_pan:      { cycleBeats: 32, phraseDuration: 64, safeHarborPhase: 0,    safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3   },
   tilt_nod:      { cycleBeats: 16, phraseDuration: 32, safeHarborPhase: 0,    safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2   },

@@ -1,16 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚡ PROGRAMMER AETHER BRIDGE — WAVE 4529: THE 44Hz PULSE
+ * ⚡ PROGRAMMER AETHER BRIDGE — WAVE 4529 → WAVE 4724: CAMALEÓN MULTI-CELL
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Singleton que conecta el programmerStore con el NodeArbiter L2 vía IPC.
  *
- * FLUJO:
- *   UI event → programmerStore (sync, in-memory) → dirty flag set
- *   44Hz tick → bridge lee dirty flags → construye payloads → IPC → NodeArbiter L2
- *   → consumeDirty() → flags cleared
+ * FLUJO LEGACY (fixture-flat):
+ *   UI event → programmerStore.setColor/setDimmer/... → dirty FAMILY set
+ *   44Hz tick → bridge lee dirtyFamilies → construye payloads → IPC L2
+ *   → consumeDirtyFamilies()
  *
- * FAMILIA → NodeId label map:
+ * FLUJO CELL (Multi-Cell, WAVE 4724):
+ *   UI event → programmerStore.setCellColor(cellKey, ...) → dirty CELL set
+ *   44Hz tick → bridge itera dirtyCells → emite a los nodeIds reales del Aether
+ *   → consumeDirtyCells() / consumePendingClearNodeIds()
+ *
+ * PRECEDENCIA:
+ *   La capa CELL drena PRIMERO. Los nodeIds tocados por celdas se registran
+ *   en `coveredNodeIds` y se EXCLUYEN del path legacy en el mismo tick para
+ *   evitar dobles escrituras.
+ *
+ * FAMILIA → NodeId label map (legacy):
  *   IMPACT  → 'impact'
  *   COLOR   → 'color'
  *   KINETIC → 'kinetic'
@@ -20,11 +30,30 @@
  * Los valores en el store ya están normalizados 0-1.
  * El bridge NO hace ninguna transformación de valores.
  *
+ * ZERO-ALLOC HOT PATH:
+ *   - Iteración con for...of sobre Map y Set (sin .filter/.map intermedios).
+ *   - CellKey y nodeIds[] son referencias pre-construidas — no se concatenan.
+ *   - Las arrays `setPayloads` y `clearNodeIds` se reusan POR TICK (allocations
+ *     locales del flush, no globales) y son escalables al volumen normal de
+ *     un show (≤200 cells dirty/tick).
+ *
  * @module bridges/ProgrammerAetherBridge
- * @version WAVE 4529
+ * @version WAVE 4724
  */
 
-import { useProgrammerStore, type ProgrammerFamily, type ProgrammerOverrides } from '../stores/programmerStore'
+import {
+  useProgrammerStore,
+  type ProgrammerFamily,
+  type ProgrammerOverrides,
+  type CellOverride,
+  type CellOverridePayload,
+  type CellKey,
+  type ColorCellPayload,
+  type ImpactCellPayload,
+  type BeamCellPayload,
+  type KineticCellPayload,
+} from '../stores/programmerStore'
+import { NodeFamily } from '../core/aether/types'
 // WAVE 4720: necesitamos saber si hay patrón activo para emitir pan_base/tilt_base
 // en vez de pan/tilt LTP, evitando que el MANUAL HARD LOCK aplaste la órbita.
 import { useMovementStore } from '../stores/movementStore'
@@ -216,6 +245,98 @@ const FAMILY_EXTRACTOR_STATIC: Record<
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WAVE 4724: CELL-LAYER EXTRACTORS
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Mapean un CellOverridePayload (estructurado por familia) al Record<string,
+// number> canónico que entiende el NodeArbiter. Mismo contrato que los
+// extractores legacy — el L2 no distingue de qué capa viene un override.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Color cell → canales canónicos r/g/b/white/amber (WAVE 4715). */
+function extractCellColor(data: ColorCellPayload): Record<string, number> | null {
+  const ch: Record<string, number> = {}
+  if (data.r     !== undefined) ch['r']     = data.r
+  if (data.g     !== undefined) ch['g']     = data.g
+  if (data.b     !== undefined) ch['b']     = data.b
+  if (data.white !== undefined) ch['white'] = data.white
+  if (data.amber !== undefined) ch['amber'] = data.amber
+  return Object.keys(ch).length > 0 ? ch : null
+}
+
+/** Impact cell → dimmer/brightness alias (WAVE 4709) + strobe + shutter. */
+function extractCellImpact(data: ImpactCellPayload): Record<string, number> | null {
+  const ch: Record<string, number> = {}
+  if (data.dimmer !== undefined) {
+    ch['dimmer']     = data.dimmer
+    // WAVE 4709 HOTFIX: alias brightness para PARs RGB sin canal dimmer físico
+    ch['brightness'] = data.dimmer
+  }
+  if (data.strobe  !== undefined) ch['strobe']  = data.strobe
+  if (data.shutter !== undefined) ch['shutter'] = data.shutter
+  // limit NO viaja por L2 — usa IPC dedicado setInhibitLimit (igual que legacy)
+  return Object.keys(ch).length > 0 ? ch : null
+}
+
+/** Beam cell → focus/zoom/iris/gobo/prism. */
+function extractCellBeam(data: BeamCellPayload): Record<string, number> | null {
+  const ch: Record<string, number> = {}
+  if (data.focus !== undefined) ch['focus'] = data.focus
+  if (data.zoom  !== undefined) ch['zoom']  = data.zoom
+  if (data.iris  !== undefined) ch['iris']  = data.iris
+  if (data.gobo  !== undefined) ch['gobo']  = data.gobo
+  if (data.prism !== undefined) ch['prism'] = data.prism
+  return Object.keys(ch).length > 0 ? ch : null
+}
+
+/**
+ * Kinetic cell → respeta hasActivePattern (WAVE 4718).
+ * Con patrón activo: solo speed y rotation (pan/tilt los gestiona el
+ * AetherKineticEngine como anchor del Radar).
+ * Sin patrón: pan/tilt absolutos LTP + speed + rotation.
+ * targetX/Y/Z: emitidos siempre que estén presentes (ruta IK pura).
+ */
+function extractCellKinetic(data: KineticCellPayload, hasActivePattern: boolean): Record<string, number> | null {
+  const ch: Record<string, number> = {}
+  const hasSpatialTarget = data.targetX !== undefined && data.targetY !== undefined && data.targetZ !== undefined
+  if (hasSpatialTarget) {
+    ch['targetX'] = data.targetX!
+    ch['targetY'] = data.targetY!
+    ch['targetZ'] = data.targetZ!
+  } else if (!hasActivePattern) {
+    if (data.pan  !== undefined) ch['pan']  = data.pan
+    if (data.tilt !== undefined) ch['tilt'] = data.tilt
+  }
+  if (data.speed    !== undefined) ch['speed']    = data.speed
+  if (data.rotation !== undefined) ch['rotation'] = data.rotation
+  return Object.keys(ch).length > 0 ? ch : null
+}
+
+/** Atmosphere/extras cell → ReadonlyMap<key, value> → Record. */
+function extractCellAtmosphere(data: ReadonlyMap<string, number>): Record<string, number> | null {
+  if (data.size === 0) return null
+  const ch: Record<string, number> = {}
+  for (const [key, value] of data) {
+    ch[key] = value
+  }
+  return ch
+}
+
+/**
+ * Despachador único de payload de célula.
+ * Switch exhaustivo sobre `family` — type-safe sin casts en runtime.
+ */
+function extractCellPayload(payload: CellOverridePayload, hasActivePattern: boolean): Record<string, number> | null {
+  switch (payload.family) {
+    case NodeFamily.COLOR:      return extractCellColor(payload.data)
+    case NodeFamily.IMPACT:     return extractCellImpact(payload.data)
+    case NodeFamily.BEAM:       return extractCellBeam(payload.data)
+    case NodeFamily.KINETIC:    return extractCellKinetic(payload.data, hasActivePattern)
+    case NodeFamily.ATMOSPHERE: return extractCellAtmosphere(payload.data)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BRIDGE CLASS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -250,14 +371,29 @@ class ProgrammerAetherBridgeClass {
 
   /**
    * Tick de 44Hz.
-   * Lee dirty flags, construye payloads para las familias sucias,
-    * envía vía window.lux.aether y consume los flags SOLO al confirmar éxito.
+   *
+   * WAVE 4724: Drenaje en DOS FASES:
+   *   1. CELL FASE: itera `dirtyCells` + `pendingClearNodeIds` y emite a los
+   *      nodeIds reales de cada célula. Registra `coveredNodeIds` con cada
+   *      nodeId tocado.
+   *   2. LEGACY FASE: itera `dirtyFamilies` × `fixtureOverrides` y emite a los
+   *      nodeIds canónicos `<fixtureId>:<familyLabel>`, EXCLUYENDO los que ya
+   *      están en `coveredNodeIds` para evitar dobles escrituras.
+   *
+   * Ambos buckets se mergean por nodeId al final, IPC en una sola llamada,
+   * y los callbacks de consumo se invocan SOLO si el IPC fue exitoso.
    */
   private _flush(): void {
     const state = useProgrammerStore.getState()
-    const { fixtureOverrides, dirtyFamilies, activeFixtureIds } = state
+    const {
+      fixtureOverrides, dirtyFamilies, activeFixtureIds,
+      cellOverrides, dirtyCells, pendingClearNodeIds,
+    } = state
 
-    if (dirtyFamilies.size === 0) {
+    const hasLegacyWork = dirtyFamilies.size > 0
+    const hasCellWork   = dirtyCells.size > 0 || pendingClearNodeIds.size > 0
+
+    if (!hasLegacyWork && !hasCellWork) {
       return
     }
 
@@ -277,60 +413,117 @@ class ProgrammerAetherBridgeClass {
     const setPayloads: Array<{ nodeId: string; channels: Record<string, number> }> = []
     const clearNodeIds: string[] = []
 
+    // ════════════════════════════════════════════════════════════════════
+    // FASE 1: CELL LAYER (WAVE 4724) — prioridad sobre legacy
+    // ════════════════════════════════════════════════════════════════════
+    // Snapshot mínimo para que el callback de consumo no borre cells nuevas
+    // marcadas como dirty entre el flush y el resolve del IPC.
+    const dirtyCellsSnapshot: CellKey[] = []
+    const pendingClearsSnapshot: string[] = []
+    /**
+     * Set de nodeIds tocados por la fase cell — usado para excluir el legacy.
+     * Allocación local del tick, descartada al final.
+     */
+    const coveredNodeIds = new Set<string>()
+
+    if (dirtyCells.size > 0) {
+      // Iteración nativa sobre Set — sin conversión a array, sin filter
+      for (const cellKey of dirtyCells) {
+        dirtyCellsSnapshot.push(cellKey)
+        const cell: CellOverride | undefined = cellOverrides.get(cellKey)
+        if (!cell) continue  // protección defensiva (race window)
+
+        const channels = extractCellPayload(cell.payload, hasActivePattern)
+
+        // Emitir a TODOS los nodeIds de la célula (twin-selection: N>1)
+        for (const nodeId of cell.nodeIds) {
+          coveredNodeIds.add(nodeId)
+          if (channels !== null) {
+            setPayloads.push({ nodeId, channels })
+          } else {
+            // Payload vacío = liberar este nodo
+            clearNodeIds.push(nodeId)
+          }
+        }
+      }
+    }
+
+    if (pendingClearNodeIds.size > 0) {
+      for (const nodeId of pendingClearNodeIds) {
+        pendingClearsSnapshot.push(nodeId)
+        coveredNodeIds.add(nodeId)
+        clearNodeIds.push(nodeId)
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // FASE 2: LEGACY LAYER — emite solo a nodeIds NO cubiertos por la fase cell
+    // ════════════════════════════════════════════════════════════════════
     // Persistencia L2: selection es UI-only.
     // El flush recorre todos los fixtures con estado de override persistido,
     // más la selección actual para poder inicializar fixtures nuevos.
-    const flushFixtureIds = new Set<string>(activeFixtureIds)
-    for (const fixtureId of fixtureOverrides.keys()) {
-      flushFixtureIds.add(fixtureId)
-    }
+    // Solo se construye si hay trabajo legacy real.
+    let flushFixtureCount = 0
+    if (hasLegacyWork) {
+      const flushFixtureIds = new Set<string>(activeFixtureIds)
+      for (const fixtureId of fixtureOverrides.keys()) {
+        flushFixtureIds.add(fixtureId)
+      }
+      flushFixtureCount = flushFixtureIds.size
 
-    for (const fixtureId of flushFixtureIds) {
-      const ov = fixtureOverrides.get(fixtureId)
+      for (const fixtureId of flushFixtureIds) {
+        const ov = fixtureOverrides.get(fixtureId)
 
-      for (const family of dirtySnapshot) {
-        const nodeId = `${fixtureId}:${FAMILY_LABEL[family]}`
-        // WAVE 4720: KINETIC usa extractor dinámico (depende de hasActivePattern).
-        // El resto usan el mapa estático.
-        const channels = family === 'KINETIC'
-          ? (ov ? extractUnifiedKinetic(ov, hasActivePattern) : null)
-          : (ov ? FAMILY_EXTRACTOR_STATIC[family as Exclude<ProgrammerFamily, 'KINETIC'>](ov) : null)
+        for (const family of dirtySnapshot) {
+          const nodeId = `${fixtureId}:${FAMILY_LABEL[family]}`
+          // WAVE 4720: KINETIC usa extractor dinámico (depende de hasActivePattern).
+          // El resto usan el mapa estático.
+          const channels = family === 'KINETIC'
+            ? (ov ? extractUnifiedKinetic(ov, hasActivePattern) : null)
+            : (ov ? FAMILY_EXTRACTOR_STATIC[family as Exclude<ProgrammerFamily, 'KINETIC'>](ov) : null)
 
-        if (channels !== null) {
-          setPayloads.push({ nodeId, channels })
-        } else {
-          // Sin canales activos = liberar el nodo completamente
-          clearNodeIds.push(nodeId)
-        }
+          // WAVE 4724: si la cell layer ya escribió a este nodeId, saltamos.
+          if (!coveredNodeIds.has(nodeId)) {
+            if (channels !== null) {
+              setPayloads.push({ nodeId, channels })
+            } else {
+              // Sin canales activos = liberar el nodo completamente
+              clearNodeIds.push(nodeId)
+            }
+          }
 
-        // WAVE 4708: BEAM split.
-        // gobo/prism se enrutan al nodo cuarentenado :atmosphere
-        // para control explícito L2/L3, fuera del loop automático de IA.
-        if (family === 'BEAM') {
-          const extrasNodeId = `${fixtureId}:atmosphere`
-          const mechanicalCh = ov ? extractUnifiedAtmosphere(ov) : null
-          if (mechanicalCh !== null) {
-            setPayloads.push({ nodeId: extrasNodeId, channels: mechanicalCh })
-          } else {
-            clearNodeIds.push(extrasNodeId)
+          // WAVE 4708: BEAM split.
+          // gobo/prism se enrutan al nodo cuarentenado :atmosphere
+          // para control explícito L2/L3, fuera del loop automático de IA.
+          if (family === 'BEAM') {
+            const extrasNodeId = `${fixtureId}:atmosphere`
+            if (!coveredNodeIds.has(extrasNodeId)) {
+              const mechanicalCh = ov ? extractUnifiedAtmosphere(ov) : null
+              if (mechanicalCh !== null) {
+                setPayloads.push({ nodeId: extrasNodeId, channels: mechanicalCh })
+              } else {
+                clearNodeIds.push(extrasNodeId)
+              }
+            }
+          }
+
+          // 🌊 WAVE 4701 M1: EXTRAS kinetic split.
+          // Canales tipo rotation/speed pertenecen al nodo :kinetic, no :atmosphere.
+          // Se despachan como un override L2 separado sobre el nodeId correcto.
+          // WAVE 4720: hasActivePattern no afecta rotation/speed (solo pan/tilt),
+          // pero pasamos el flag por consistencia con la firma actualizada.
+          if (family === 'EXTRAS') {
+            const kineticNodeId = `${fixtureId}:kinetic`
+            if (!coveredNodeIds.has(kineticNodeId)) {
+              const kineticCh = ov ? extractUnifiedKinetic(ov, hasActivePattern) : null
+              if (kineticCh !== null) {
+                setPayloads.push({ nodeId: kineticNodeId, channels: kineticCh })
+              } else {
+                clearNodeIds.push(kineticNodeId)
+              }
+            }
           }
         }
-
-        // 🌊 WAVE 4701 M1: EXTRAS kinetic split.
-        // Canales tipo rotation/speed pertenecen al nodo :kinetic, no :atmosphere.
-        // Se despachan como un override L2 separado sobre el nodeId correcto.
-        // WAVE 4720: hasActivePattern no afecta rotation/speed (solo pan/tilt),
-        // pero pasamos el flag por consistencia con la firma actualizada.
-        if (family === 'EXTRAS') {
-          const kineticNodeId = `${fixtureId}:kinetic`
-          const kineticCh = ov ? extractUnifiedKinetic(ov, hasActivePattern) : null
-          if (kineticCh !== null) {
-            setPayloads.push({ nodeId: kineticNodeId, channels: kineticCh })
-          } else {
-            clearNodeIds.push(kineticNodeId)
-          }
-        }
-
       }
     }
 
@@ -358,26 +551,39 @@ class ProgrammerAetherBridgeClass {
       requests.push(aether.clearManualOverrides(finalClearNodeIds))
     }
 
+    // Helper: consumir TODAS las dirty queues (legacy + cell) tras éxito.
+    // WAVE 4724: las tres queues son independientes y se drenan por separado.
+    const drainDirtyQueues = () => {
+      const store = useProgrammerStore.getState()
+      if (hasLegacyWork) {
+        store.consumeDirtyFamilies(Array.from(dirtySnapshot))
+      }
+      if (dirtyCellsSnapshot.length > 0) {
+        store.consumeDirtyCells(dirtyCellsSnapshot)
+      }
+      if (pendingClearsSnapshot.length > 0) {
+        store.consumePendingClearNodeIds(pendingClearsSnapshot)
+      }
+    }
+
     // Nada que enviar: limpiar el snapshot para no dejar dirty zombie.
     if (requests.length === 0) {
-      state.consumeDirtyFamilies(Array.from(dirtySnapshot))
+      drainDirtyQueues()
       return
     }
 
     Promise.all(requests)
       .then(() => {
-        // Limpia solo las familias del snapshot enviado con éxito.
-        useProgrammerStore
-          .getState()
-          .consumeDirtyFamilies(Array.from(dirtySnapshot))
+        // Limpia solo las queues del snapshot enviado con éxito.
+        drainDirtyQueues()
       })
       .catch((err: unknown) => {
         const dirtyFamiliesList = Array.from(dirtySnapshot)
-        const fixtureCount = flushFixtureIds.size
         const setCount = finalSetPayloads.length
         const clearCount = finalClearNodeIds.length
+        const cellCount = dirtyCellsSnapshot.length
         console.warn(
-          `[AetherBridge] ⚠️ L2 Update Dropped/Retrying | fixtures=${fixtureCount} set=${setCount} clear=${clearCount} families=${dirtyFamiliesList.join(',')}`,
+          `[AetherBridge] ⚠️ L2 Update Dropped/Retrying | fixtures=${flushFixtureCount} cells=${cellCount} set=${setCount} clear=${clearCount} families=${dirtyFamiliesList.join(',')}`,
         )
         console.error('[ProgrammerAetherBridge] IPC flush error (will retry next tick):', err)
       })

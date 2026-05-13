@@ -35,6 +35,7 @@ import { RockStereoPhysics2, rockPhysics2, type RockPhysicsInput } from '../../h
 import { LatinoStereoPhysics } from '../../hal/physics/_legacy_archive/LatinoStereoPhysics'
 // ⚰️ WAVE 3450: calculateChillStereo / getOceanicMorphFactor eliminados.
 // El path chill ya corre 100% por liquidEngine71 + ChillAmbientEngine. Sin océano.
+import { chillAmbientEngine } from '../../hal/physics/ChillAmbientEngine'
 
 import { 
   // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics
@@ -596,19 +597,17 @@ export class SeleneLux {
       };
 
       // ═══════════════════════════════════════════════════════════════════
-      // 🪨 WAVE 3450: CHILL MORPH — El hydrostatic bridge oceánico fue purgado.
-      // ChillAmbientEngine genera intensidades vía ondas senoidales asíncronas.
-      // El morphFactorOverride se alimenta ahora con una onda lenta de 30s
-      // (0.30–0.70) para que LiquidEngine71 module el colchón de forma orgánica
-      // sin depender de FFT. Suelo 0.30 garantiza que nunca se apague.
+      // 🌊 WAVE 4750: CHILL MORPH — SISTEMA DE MAREAS (Multi-LFO Oceánico).
+      // ChillAmbientEngine genera morphFactor vía 3 osciladores de períodos
+      // primos (31s, 47s, 73s) + suavizado EMA. Patrón cuasi-infinito que
+      // nunca se repite. Rango [0.25, 0.75] — más contraste que el 0.30-0.70
+      // de WAVE 4709. La onda senoidal inline de 30s ha sido fulminada.
       // ═══════════════════════════════════════════════════════════════════
       let chillMorphFactor: number | undefined = undefined
 
       if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
           vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
-        // Onda senoidal de 30 segundos → morphFactor ∈ [0.30, 0.70]
-        const tSec = performance.now() / 1000
-        chillMorphFactor = 0.50 + 0.20 * Math.sin((2 * Math.PI * tSec) / 30)
+        chillMorphFactor = chillAmbientEngine.tick().morphFactor  // [0.25, 0.75]
         dimmerOverride = 0.75  // Chill ambient: siempre suave
       }
 

@@ -154,6 +154,13 @@ export function deriveCapabilities(channels: FixtureChannel[]): DerivedCapabilit
  * solo el canal de intensidad.
  */
 export interface IgnitionDependency {
+  /**
+   * WAVE 4722: Índice DMX 0-based del canal target (máxima prioridad).
+   * Cuando presente, tiene precedencia absoluta sobre channelType.
+   * Evita colisiones en fixtures con múltiples dimmers del mismo tipo.
+   * Ejemplo: { targetChannelIndex: 2, requiredValue: 255 } → canal offset 2.
+   */
+  targetChannelIndex?: number;
   /** Tipo de canal del que depende (referencia semántica, no por índice) */
   channelType: ChannelType;
   /** Valor DMX (0-255) que el canal target debe tener para que ESTE canal funcione */

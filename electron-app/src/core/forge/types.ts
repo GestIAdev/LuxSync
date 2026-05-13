@@ -251,7 +251,23 @@ export interface IOutputDmxConfig {
   readonly ignitionDeps?: readonly {
     readonly channelType: ChannelType
     readonly requiredValue: number
+    /** WAVE 4722: Índice DMX 0-based del canal master. Precedencia sobre channelType. */
+    readonly targetChannelIndex?: number
+    readonly mode?: 'hold' | 'release'
   }[]
+  /**
+   * WAVE 4722: ID del nodo Aether al que pertenece este output DMX.
+   * Cuando varios output_dmx comparten el mismo aetherNodeId, el pipeline
+   * los agrupa en un único ICapabilityNode. El nodeId resultante será
+   * `${deviceId}:${aetherNodeId}`. Si ausente, se infiere por channelType.
+   */
+  readonly aetherNodeId?: string
+  /**
+   * WAVE 4722: Zona Aether explícita para este nodo.
+   * Cuando presente, sobreescribe la zona del show para este nodo específico.
+   * Permite rutar petal-l/c/r a 'flash', wash a 'ambient', etc.
+   */
+  readonly aetherZone?: string
 }
 
 export interface ICompoundIngenioConfig {

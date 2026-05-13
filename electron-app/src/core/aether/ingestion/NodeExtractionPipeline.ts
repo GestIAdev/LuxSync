@@ -73,6 +73,7 @@ import type {
   FixtureChannel,
   FixtureType,
 } from '../../../types/FixtureDefinition'
+import type { IForgeNodeGraph, IForgeNode, IOutputDmxConfig } from '../../forge/types'
 import type { FixtureV2 } from '../../stage/ShowFileV2'
 import { normalizeZoneId } from '../adapters/zoneUtils'
 
@@ -379,12 +380,15 @@ export class NodeExtractionPipeline {
     }
 
     const topology = this._analyzeTopology(fixtureDef)
+    const fixtureGraph = (fixtureDef as FixtureDefinition & { nodeGraph?: IForgeNodeGraph }).nodeGraph
     const nodes    = this._sanitizeOverlappingChannels(
       resolvedDeviceId,
-      fixtureDef.name === 'Tungsten'
-        ? this._buildTungstenBypassNodes(
+      fixtureGraph && fixtureGraph.nodes.length > 0
+        ? this._buildNodesFromForgeGraph(
           resolvedDeviceId,
+          resolvedZone,
           fixtureDef,
+          fixtureGraph,
           resolvedPosition,
         )
         : this._buildAllNodes(
@@ -509,128 +513,243 @@ export class NodeExtractionPipeline {
   // PHASE 2 — NODE CONSTRUCTION
   // ─────────────────────────────────────────────────────────────────────────
 
-  // [INYECCIÓN WAVE 4683] - BYPASS TUNGSTEN (Zonas independientes para LiquidEngine)
-  private _buildTungstenBypassNodes(
-    deviceId: DeviceId,
+  // ── FORGE GRAPH PATH (WAVE 4722) ─────────────────────────────────────────
+
+  /**
+   * Construye ICapabilityNode[] desde un IForgeNodeGraph.
+   * Lee los output_dmx nodes, los agrupa por aetherNodeId, y produce
+   * los nodos Aether correctos con node IDs específicos y zonas declaradas.
+   *
+   * Esta ruta es la ÚNICA fuente de verdad cuando nodeGraph está presente.
+   * Reemplaza _buildAllNodes para fixtures con topología multi-cell
+   * (e.g. Tungsten: kinetic + golden-master + petal-l/c/r + wash + wash-color + beam-color).
+   */
+  private _buildNodesFromForgeGraph(
+    deviceId:   DeviceId,
+    fallbackZone: ZoneId,
     fixtureDef: Readonly<FixtureDefinition>,
-    position?: Position3D,
+    graph:      IForgeNodeGraph,
+    position?:  Position3D,
   ): ICapabilityNode[] {
-    const mkChannel = (
-      dmxOffset: number,
-      type: AetherChannelType,
-      defaultValue: number,
-      fallbackName: string,
-    ): FixtureChannel => {
-      const source = fixtureDef.channels.find(ch => (ch.index - 1) === dmxOffset)
-      return {
-        index: dmxOffset + 1,
-        name: source?.name ?? fallbackName,
-        type: type as FixtureChannel['type'],
-        defaultValue: defaultValue,
-        is16bit: source?.is16bit ?? false,
-        ...(source?.customName !== undefined && { customName: source.customName }),
+    // 1. Recopilar todos los output_dmx nodes
+    type OutputNode = IForgeNode & { config: IOutputDmxConfig }
+    const outputNodes = graph.nodes.filter(
+      (n): n is OutputNode => n.type === 'output_dmx' && n.config.nodeType === 'output_dmx',
+    )
+
+    if (outputNodes.length === 0) return []
+
+    // 2. Agrupar por aetherNodeId (con fallback inferido)
+    type ForgeGroup = { zone: ZoneId; nodes: OutputNode[] }
+    const groups = new Map<string, ForgeGroup>()
+
+    for (const n of outputNodes) {
+      const cfg     = n.config
+      const suffix  = cfg.aetherNodeId ?? this._inferAetherSuffix(cfg.channelType)
+      const zone    = cfg.aetherZone
+        ? normalizeZoneId(cfg.aetherZone) as ZoneId
+        : fallbackZone
+
+      const group = groups.get(suffix)
+      if (group) {
+        group.nodes.push(n)
+      } else {
+        groups.set(suffix, { zone, nodes: [n] })
       }
     }
 
-    // [INYECCIÓN WAVE 4683.4] - BYPASS TUNGSTEN (KILL PAN + COLOR SELENE)
+    // 3. Construir un ICapabilityNode por grupo
+    const nodes: ICapabilityNode[] = []
+    for (const [suffix, group] of groups) {
+      const nodeId   = `${deviceId}:${suffix}` as NodeId
+      const channels = this._mapForgeNodes(group.nodes.map(n => n.config))
+      const typeSet  = new Set(
+        group.nodes.map(n => this._normalizeChannelType(n.config.channelType)),
+      )
+      const node = this._buildForgeGroupNode(
+        nodeId, group.zone, fixtureDef, channels, typeSet, position,
+      )
+      if (node) nodes.push(node)
+    }
 
-    // 1a. PAN KILL: canal 'custom' clavado en 127 — el VMM lo ignora (ciego).
-    //     Sigue siendo un ATMOSPHERE node para que el resolver no lo mueva.
-    const tungstenPanKillChannels: FixtureChannel[] = [
-      mkChannel(0, 'custom', 127, 'Pan Kill'),
-    ]
+    return nodes
+  }
 
-    // 1b. ROTOR SPIN: canal de rotación continua (bipolar: 0=izq, 127=stop, 255=dcha).
-    //     🌊 WAVE 4699.2 M1: tipado como 'rotation' → _buildKineticNode detecta
-    //     isContinuous=true (hasRotation && !hasPanTilt) → KINETIC family.
-    const tungstenRotorChannels: FixtureChannel[] = [
-      mkChannel(1, 'rotation', 127, 'Rotor Spin'),
-    ]
+  /**
+   * Convierte IOutputDmxConfig[] → INodeChannelDef[].
+   * A diferencia de _mapChannels, usa cfg.dmxOffset DIRECTAMENTE (0-based),
+   * sin la corrección -1 que asume índices 1-based legacy.
+   */
+  private _mapForgeNodes(configs: readonly IOutputDmxConfig[]): INodeChannelDef[] {
+    return configs.map(cfg => {
+      const mapped: INodeChannelDef = {
+        type:         this._normalizeChannelType(cfg.channelType) as AetherChannelType,
+        dmxOffset:    cfg.dmxOffset,
+        defaultValue: cfg.defaultDmxValue,
+        is16bit:      cfg.is16bit ?? false,
+        customName:   cfg.channelName,
+        ...(cfg.ignitionDeps && cfg.ignitionDeps.length > 0 && {
+          ignitionDeps: cfg.ignitionDeps.map(dep => ({
+            targetChannelType: this._normalizeChannelType(dep.channelType) as AetherChannelType,
+            requiredValue:     dep.requiredValue,
+            mode:              dep.mode ?? 'hold' as const,
+            ...(dep.targetChannelIndex !== undefined && { targetDmxOffset: dep.targetChannelIndex }),
+          })),
+        }),
+      }
+      return mapped
+    })
+  }
 
-    // 2. WASH: Baño RGB -> IMPACT/front para dimmer, COLOR para RGB
-    const tungstenWashChannels: FixtureChannel[] = [
-      mkChannel(7,  'dimmer', 0, 'Staining Dim'),
-    ]
-    const tungstenWashColorChannels: FixtureChannel[] = [
-      mkChannel(9,  'red',    0, 'Wash Red'),
-      mkChannel(10, 'green',  0, 'Wash Green'),
-      mkChannel(11, 'blue',   0, 'Wash Blue'),
-    ]
+  /**
+   * Infiere el sufijo de nodo Aether para canales sin aetherNodeId declarado.
+   * Solo como fallback — los fixtures bien declarados tienen aetherNodeId.
+   */
+  private _inferAetherSuffix(channelType: string): string {
+    const norm = this._normalizeChannelType(channelType)
+    if (COLOR_CHANNEL_TYPES.has(norm))     return 'color'
+    if (IMPACT_CHANNEL_TYPES.has(norm))    return 'impact'
+    if (KINETIC_CHANNEL_TYPES.has(norm))   return 'kinetic'
+    if (BEAM_CHANNEL_TYPES.has(norm))      return 'beam'
+    return 'atmosphere'
+  }
 
-    // 3. BEAM: Cañón RGBW -> COLOR (no hay dimmer en beam)
-    const tungstenBeamColorChannels: FixtureChannel[] = [
-      mkChannel(12, 'red',   0, 'Red'),
-      mkChannel(13, 'green', 0, 'Green'),
-      mkChannel(14, 'blue',  0, 'Blue'),
-      mkChannel(15, 'white', 0, 'White'),
-    ]
+  /**
+   * Construye el ICapabilityNode correcto según los tipos de canal del grupo.
+   * Motor de decisión: familia determinada por mayoría de tipos presentes.
+   */
+  private _buildForgeGroupNode(
+    nodeId:     NodeId,
+    zoneId:     ZoneId,
+    fixtureDef: Readonly<FixtureDefinition>,
+    channels:   INodeChannelDef[],
+    typeSet:    Set<string>,
+    position?:  Position3D,
+  ): ICapabilityNode | null {
+    const deviceId = nodeId.split(':')[0] as DeviceId
 
-    // 4. LOS 3 DORADOS: dormidos en flash hasta el PAD MIDI
-    const tungstenPetalLeftChannels: FixtureChannel[] = [
-      mkChannel(4, 'dimmer', 0, 'Petal Left Dimmer'),
-    ]
+    // COLOR: todos los canales son de color
+    const isAllColor = [...typeSet].every(t => COLOR_CHANNEL_TYPES.has(t))
+    if (isAllColor) {
+      const mixingType = this._detectMixingTypeFromSet(typeSet)
+      const colorWheel = this._buildColorWheelDef(fixtureDef)
+      return {
+        nodeId,
+        family:       NodeFamily.COLOR,
+        deviceId,
+        zoneId,
+        role:         'primary',
+        channels,
+        constraints:  COLOR_CONSTRAINTS,
+        mixingType,
+        colorWheel,
+        currentColor: { r: 0, g: 0, b: 0 },
+        state:        new Float64Array(4),
+        ...(position !== undefined && { position }),
+      } satisfies IColorNodeData
+    }
 
-    const tungstenPetalCenterChannels: FixtureChannel[] = [
-      mkChannel(5, 'dimmer', 0, 'Petal Center Dimmer'),
-    ]
+    // IMPACT: hay al menos un canal de impacto (dimmer/strobe/shutter)
+    if ([...typeSet].some(t => IMPACT_CHANNEL_TYPES.has(t))) {
+      const hasDimmer = typeSet.has('dimmer')
+      return {
+        nodeId,
+        family:        NodeFamily.IMPACT,
+        deviceId,
+        zoneId,
+        role:          hasDimmer ? 'primary' : 'percussion',
+        channels,
+        constraints:   IMPACT_CONSTRAINTS,
+        transferCurve: IMPACT_TRANSFER_CURVE,
+        bandMix:       IMPACT_BAND_MIX,
+        envelopeState: IMPACT_ENVELOPE_INIT,
+        state:         new Float64Array(4),
+        ...(position !== undefined && { position }),
+      } satisfies IImpactNodeData
+    }
 
-    const tungstenPetalRightChannels: FixtureChannel[] = [
-      mkChannel(6, 'dimmer', 0, 'Petal Right Dimmer'),
-    ]
+    // KINETIC: hay al menos un canal cinético
+    if ([...typeSet].some(t => KINETIC_CHANNEL_TYPES.has(t))) {
+      const hasPanTilt   = typeSet.has('pan') || typeSet.has('tilt')
+      const hasRotation  = typeSet.has('rotation')
+      const isContinuous = !hasPanTilt && hasRotation
+      const motorType    = this._mapMotorType(fixtureDef.physics?.motorType)
+      const maxSpeed     = fixtureDef.physics?.maxVelocity ?? 540
+      return {
+        nodeId,
+        family:            NodeFamily.KINETIC,
+        deviceId,
+        zoneId,
+        role:              isContinuous ? 'percussion' : 'primary',
+        channels,
+        constraints:       { ...KINETIC_CONSTRAINTS_BASE, maxSpeed },
+        motorType,
+        isContinuous,
+        maxPanSpeed:       isContinuous ? 0 : maxSpeed,
+        maxTiltSpeed:      isContinuous ? 0 : maxSpeed,
+        maxRotationSpeed:  isContinuous ? maxSpeed : undefined,
+        currentPosition:   isContinuous
+          ? { pan: 0, tilt: 0, rotation: 0.5 }
+          : { pan: 0.5, tilt: 0.5 },
+        physicalPosition:  position ?? NEUTRAL_POSITION,
+        stereoIndex:       0,
+        stereoTotal:       1,
+        state:             new Float64Array(4),
+        ...(position !== undefined && { position }),
+      } satisfies IKineticNodeData
+    }
 
-    // 5. MASTER GOLDEN + STROBE: botón Nuke
-    const tungstenGoldenMasterChannels: FixtureChannel[] = [
-      mkChannel(2, 'dimmer', 0, 'Golden Master Dimmer'),
-      mkChannel(3, 'strobe', 0, 'Golden Strobe'),
-    ]
+    // BEAM: has beam-shaping channels
+    if ([...typeSet].some(t => BEAM_CHANNEL_TYPES.has(t))) {
+      const hasBeamShaping = typeSet.has('zoom') || typeSet.has('focus')
+      return {
+        nodeId,
+        family:           NodeFamily.BEAM,
+        deviceId,
+        zoneId,
+        role:             hasBeamShaping ? 'primary' : 'decoration',
+        channels,
+        constraints:      BEAM_CONSTRAINTS,
+        hasGobo:          typeSet.has('gobo'),
+        hasGoboRotation:  typeSet.has('gobo_rotation'),
+        hasPrism:         typeSet.has('prism'),
+        hasPrismRotation: typeSet.has('prism_rotation'),
+        hasFrost:         typeSet.has('frost'),
+        hasZoom:          typeSet.has('zoom'),
+        hasFocus:         typeSet.has('focus'),
+        state:            new Float64Array(4),
+        ...(position !== undefined && { position }),
+      } satisfies IBeamNodeData
+    }
 
-    const impactNode = (
-      nodeSuffix: string,
-      zoneId: ZoneId,
-      channels: readonly FixtureChannel[],
-    ): IImpactNodeData => ({
-      nodeId: `${deviceId}:${nodeSuffix}`,
-      family: NodeFamily.IMPACT,
+    // Default: ATMOSPHERE (custom, control, macros, etc.)
+    const atmosType = this._mapAtmosphereType(fixtureDef.type)
+    const role = (atmosType === 'fog' || atmosType === 'haze' || atmosType === 'fan')
+      ? 'ambient'
+      : 'atmosphere'
+    return {
+      nodeId,
+      family:      NodeFamily.ATMOSPHERE,
       deviceId,
       zoneId,
-      role: channels.some(ch => this._normalizeChannelType(ch.type) === 'dimmer') ? 'primary' : 'percussion',
-      channels: this._mapChannels(channels),
-      constraints: IMPACT_CONSTRAINTS,
-      transferCurve: IMPACT_TRANSFER_CURVE,
-      bandMix: IMPACT_BAND_MIX,
-      envelopeState: IMPACT_ENVELOPE_INIT,
-      state: new Float64Array(4),
+      role,
+      channels,
+      constraints: ATMOSPHERE_CONSTRAINTS,
+      atmosType,
+      safety:      ATMOSPHERE_SAFETY_INIT,
+      state:       new Float64Array(4),
       ...(position !== undefined && { position }),
-    })
+    } satisfies IAtmosphereNodeData
+  }
 
-    return [
-      this._buildAtmosphereNode(
-        deviceId,
-        normalizeZoneId('unassigned') as ZoneId,
-        fixtureDef,
-        tungstenPanKillChannels,
-        position,
-      ),
-      // 🌊 WAVE 4699.2 M1: KINETIC node de giro continuo.
-      // isContinuous=true → AetherUIProjector proyecta fixture.rotation.
-      // Control bipolar: rotation=0.5 (norm) → DMX 127 (parado).
-      this._buildKineticNode(
-        deviceId,
-        normalizeZoneId('unassigned') as ZoneId,
-        fixtureDef,
-        tungstenRotorChannels,
-        position,
-      ),
-      impactNode('wash',         normalizeZoneId('ambient') as ZoneId,  tungstenWashChannels),
-      this._buildColorNode(deviceId, normalizeZoneId('ambient') as ZoneId, fixtureDef,
-        { emitterIndex: 0, labelSuffix: 'wash-color', channels: tungstenWashColorChannels }, position),
-      this._buildColorNode(deviceId, normalizeZoneId('air') as ZoneId, fixtureDef,
-        { emitterIndex: 0, labelSuffix: 'beam-color', channels: tungstenBeamColorChannels }, position),
-      impactNode('petal-l',      normalizeZoneId('flash') as ZoneId,  tungstenPetalLeftChannels),
-      impactNode('petal-c',      normalizeZoneId('flash') as ZoneId,  tungstenPetalCenterChannels),
-      impactNode('petal-r',      normalizeZoneId('flash') as ZoneId,  tungstenPetalRightChannels),
-      impactNode('golden-master',normalizeZoneId('flash') as ZoneId,  tungstenGoldenMasterChannels),
-    ]
+  /** Detecta el tipo de mezcla de color desde un Set<string> de tipos normalizados. */
+  private _detectMixingTypeFromSet(typeSet: Set<string>): ColorMixingType {
+    if (typeSet.has('cyan') && typeSet.has('magenta') && typeSet.has('yellow')) return 'cmy'
+    if (typeSet.has('color_wheel')) return 'wheel'
+    const rgb = typeSet.has('red') && typeSet.has('green') && typeSet.has('blue')
+    if (rgb && (typeSet.has('white') || typeSet.has('amber'))) return 'rgbw'
+    if (rgb) return 'rgb'
+    return 'rgb'
   }
 
   private _buildAllNodes(
@@ -974,7 +1093,7 @@ export class NodeExtractionPipeline {
     return channels.map(ch => {
       const mapped: INodeChannelDef = {
         type:         this._normalizeChannelType(ch.type) as AetherChannelType,
-        dmxOffset:    ch.index - 1,   // FixtureChannel.index es 1-based
+        dmxOffset:    ch.index,       // FixtureChannel.index es 0-based
         defaultValue: this._resolveDefaultValue(ch, kinetic),
         is16bit:    ch.is16bit  ?? false,
         customName: ch.customName,
@@ -984,6 +1103,7 @@ export class NodeExtractionPipeline {
             targetChannelType: this._normalizeChannelType(dep.channelType) as AetherChannelType,
             requiredValue: dep.requiredValue,
             mode: dep.mode ?? 'hold' as const,
+            ...(dep.targetChannelIndex !== undefined && { targetDmxOffset: dep.targetChannelIndex }),
           })),
         }),
       }

@@ -2129,6 +2129,9 @@ export class SeleneColorInterpolator {
    * 
    * 🌊 WAVE 70.5: Tolerancia de jitter - solo resetear transición si cambio > 15°
    * ⚡ WAVE 148: Ahora acepta GenerationOptions para aplicar Constitution
+   * 🌊 WAVE 4755: Si la constitución define transitionConfig.minDuration, se usa
+   *   directamente para calcular transitionFrames a 60fps. El isDrop es IGNORADO
+   *   cuando hay minDuration constitucional — en el océano no hay drops musicales.
    */
   update(targetData: ExtendedAudioAnalysis, isDrop: boolean = false, options?: GenerationOptions): SelenePalette {
     this.frameCount++;
@@ -2144,10 +2147,23 @@ export class SeleneColorInterpolator {
       return newTarget;
     }
     
+    // 🌊 WAVE 4755: DESACOPLE MUSICAL DEL CHILL
+    // Si la constitución define transitionConfig.minDuration, overrideamos la
+    // velocidad de transición con ese valor fijo y BLOQUEAMOS el isDrop.
+    // Razón: en el océano no hay drops musicales. Las paletas mutan como
+    // corrientes submarinas — imperceptibles en tiempo real, transformadoras.
+    const constitutionalMinDuration = options?.transitionConfig?.minDuration;
+    const constitutionalMaxDuration = options?.transitionConfig?.maxDuration;
+    const isChillConstitution = constitutionalMinDuration !== undefined && constitutionalMinDuration >= 10000;
+
     // 🛡️ WAVE 3454: FULL PALETTE DIFF GATE
     // La transición ya no depende solo del hue primario:
     // si cualquier canal H/S/L cambia de forma significativa, se transiciona.
-    const isRealChange = this.hasSignificantPaletteDifference(this.currentPalette, newTarget);
+    // WAVE 4755: En modo chill el umbral de "cambio significativo" se eleva a
+    // 30° (vs 15° normal) para evitar rotaciones por micro-variaciones de audio.
+    const isRealChange = isChillConstitution
+      ? this.hasSignificantPaletteDifferenceChill(this.currentPalette, newTarget)
+      : this.hasSignificantPaletteDifference(this.currentPalette, newTarget);
     const hasAnyPaletteDelta = this.hasAnyPaletteDifference(this.targetPalette ?? this.currentPalette, newTarget);
 
     if (isRealChange) {
@@ -2155,8 +2171,16 @@ export class SeleneColorInterpolator {
       this.targetPalette = newTarget;
       this.transitionProgress = 0;
       
-      // Velocidad según contexto
-      const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
+      // 🌊 WAVE 4755: Velocidad según constitución o contexto
+      let transitionFrames: number;
+      if (isChillConstitution) {
+        // Duración glaciar desde la constitución (en ms → frames a ~60fps).
+        // isDrop se IGNORA — en el océano no hay drops.
+        const durationMs = constitutionalMaxDuration ?? constitutionalMinDuration!;
+        transitionFrames = Math.round((durationMs / 1000) * 60);
+      } else {
+        transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
+      }
       this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
     } else if (hasAnyPaletteDelta) {
       // Cambios menores: actualizar target sin reiniciar transición
@@ -2223,6 +2247,34 @@ export class SeleneColorInterpolator {
       || this.hasSignificantColorDifference(from.accent, to.accent)
       || this.hasSignificantColorDifference(from.ambient, to.ambient)
       || this.hasSignificantColorDifference(from.contrast, to.contrast);
+  }
+
+  /**
+   * 🌊 WAVE 4755: Variante chill del diff gate.
+   * Umbral de hue elevado a 30° (vs 15° normal) para que micro-variaciones
+   * de audio no disparen rotaciones cromáticas en modo océano.
+   * S/L mantienen tolerancia estándar de 3 puntos.
+   */
+  private hasSignificantPaletteDifferenceChill(from: SelenePalette, to: SelenePalette): boolean {
+    return this.hasSignificantColorDifferenceChill(from.primary, to.primary)
+      || this.hasSignificantColorDifferenceChill(from.secondary, to.secondary)
+      || this.hasSignificantColorDifferenceChill(from.accent, to.accent)
+      || this.hasSignificantColorDifferenceChill(from.ambient, to.ambient)
+      || this.hasSignificantColorDifferenceChill(from.contrast, to.contrast);
+  }
+
+  private hasSignificantColorDifferenceChill(from: HSLColor, to: HSLColor): boolean {
+    if (!Number.isFinite(from.h) || !Number.isFinite(from.s) || !Number.isFinite(from.l)
+      || !Number.isFinite(to.h) || !Number.isFinite(to.s) || !Number.isFinite(to.l)) {
+      return true;
+    }
+    const fromHue = normalizeHue(from.h);
+    const toHue = normalizeHue(to.h);
+    let hueDiff = Math.abs(fromHue - toHue);
+    if (hueDiff > 180) hueDiff = 360 - hueDiff;
+    return hueDiff > 30
+      || Math.abs(from.s - to.s) > 3
+      || Math.abs(from.l - to.l) > 3;
   }
 
   private hasAnyPaletteDifference(from: SelenePalette, to: SelenePalette): boolean {

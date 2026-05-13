@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎹 PROGRAMMER STORE — WAVE 4529: THE PLUMBING
+ * 🎹 PROGRAMMER STORE — WAVE 4529 → WAVE 4724: CAMALEÓN MULTI-CELL
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Estado centralizado del Programmer. Reemplaza los useState locales
@@ -10,16 +10,74 @@
  *            El store normaliza a 0-1 internamente.
  *            El ProgrammerAetherBridge lee los valores normalizados.
  *
- * DIRTY FLAGS: Permiten al bridge saber qué familias enviarse en el
- * próximo tick de 44Hz. Se limpian con consumeDirty() tras cada flush.
+ * ARQUITECTURA WAVE 4724 (Camaleón Foundation):
+ *   Coexisten DOS capas mientras la UI migra:
+ *
+ *   1. LEGACY (fixture-flat): `fixtureOverrides` + `dirtyFamilies`.
+ *      Setters: setDimmer, setColor, setBeam, setExtra, setPosition...
+ *      Granularidad: 1 override por (fixture, familia) — un fixture entero
+ *      no puede tener 3 colores distintos por pétalo.
+ *      Estado: ESTABLE. Lo consumen los .tsx existentes.
+ *
+ *   2. CELL (multi-célula): `cellOverrides` + `dirtyCells` + `pendingClearNodeIds`.
+ *      Setters: setCellColor, setCellImpact, setCellBeam, setCellKinetic, setCellExtra.
+ *      Granularidad: 1 override por nodo Aether (CellKey = `<deviceId>:<nodeLabel>`).
+ *      Permite controlar pétalo 1, pétalo 2, wash y rayo de un Tungsteno
+ *      independientemente sin colisiones.
+ *      Estado: NUEVO. Será consumido por la próxima ola del Camaleón.
+ *
+ *   PRECEDENCIA EN EL BRIDGE:
+ *     El bridge da prioridad a la capa CELL. Los nodeIds cubiertos por
+ *     cellOverrides se EXCLUYEN del path legacy en el mismo tick para
+ *     evitar dobles escrituras. La capa legacy queda como fallback para
+ *     fixtures que aún no se hayan registrado en la capa cell.
+ *
+ * ZERO-ALLOC EN HOT PATH:
+ *   Las CellKey y los arrays de nodeIds se pre-construyen al registrar la
+ *   selección (`registerFixtureCells`). El bridge a 44Hz NUNCA construye
+ *   strings ni arrays — solo itera Map/Set con `for...of`.
  *
  * @module stores/programmerStore
- * @version WAVE 4529
+ * @version WAVE 4724
  */
 
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import type { Target3D } from '../engine/movement/InverseKinematicsEngine'
+
+// ── WAVE 4724: Capa Multi-Cell ───────────────────────────────────────────────
+import { NodeFamily } from '../core/aether/types'
+import type { DeviceId, NodeId } from '../core/aether/types'
+import type {
+  CellKey,
+  CellOverride,
+  CellOverridePayload,
+  CellDescriptor,
+  ColorCellPayload,
+  ImpactCellPayload,
+  BeamCellPayload,
+  KineticCellPayload,
+  ImpactChannelName,
+  ColorChannelName,
+  BeamChannelName,
+  KineticChannelName,
+} from './programmer-types'
+
+// Re-export para que los consumidores tengan un único entrypoint
+export type {
+  CellKey,
+  CellOverride,
+  CellDescriptor,
+  CellOverridePayload,
+  ColorCellPayload,
+  ImpactCellPayload,
+  BeamCellPayload,
+  KineticCellPayload,
+  ImpactChannelName,
+  ColorChannelName,
+  BeamChannelName,
+  KineticChannelName,
+} from './programmer-types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -92,6 +150,67 @@ interface ProgrammerState {
   displayStrobe: DisplayScalar   // 0-100 | null = MIXED
   displayLimit: DisplayScalar    // 0-100 | null = MIXED
   displayColor: DisplayColor     // 0-255 | null por canal = MIXED
+
+  // ─── WAVE 4724: CELL LAYER (Multi-Cell Foundation) ────────────────────────
+
+  /**
+   * Map<CellKey, CellOverride> — Overrides por célula de capacidad.
+   *
+   * Granularidad: 1 entrada por nodo Aether activo (no por fixture).
+   * Vacío = ningún override manual a nivel cell. La capa legacy
+   * `fixtureOverrides` actúa como fallback en el bridge.
+   *
+   * INVARIANTE: las CellKey aquí almacenadas son las MISMAS instancias
+   * de string que se construyeron en `registerFixtureCells` — no se
+   * recrean en setters ni en el bridge.
+   */
+  cellOverrides: Map<CellKey, CellOverride>
+
+  /**
+   * Set<CellKey> — Celdas con cambios pendientes de flush al NodeArbiter.
+   * El bridge la consume vía `consumeDirtyCells` tras un flush exitoso.
+   */
+  dirtyCells: Set<CellKey>
+
+  /**
+   * Set<NodeId> — NodeIds que el bridge debe limpiar explícitamente
+   * (clearManualOverrides) en el próximo tick. Se llena cuando una cell
+   * se libera (`releaseCell`/`releaseDevice`/`releaseAllCells`) y se
+   * vacía con `consumePendingClearNodeIds` tras flush exitoso.
+   *
+   * Pre-extraída como nodeIds para que el bridge NO tenga que parsear
+   * CellKey ni reconstruir nodeIds en hot path.
+   */
+  pendingClearNodeIds: Set<NodeId>
+
+  /**
+   * Map<CellKey, CellDescriptor> — Catálogo COMPLETO de células registradas.
+   *
+   * Es la fuente de verdad de qué nodos representa cada CellKey:
+   *   registry.get(key).nodeIds  → NodeId[] reales (precomputado)
+   *   registry.get(key).deviceId → DeviceId padre
+   *   registry.get(key).family   → NodeFamily de los nodos
+   *
+   * INVARIANTE: una CellKey siempre debe estar en `cellRegistry` ANTES de
+   * que un setter cell-* la toque. Si no lo está, el setter es no-op.
+   *
+   * Lo popula `registerFixtureCells` con los descriptors completos resueltos
+   * por la UI desde el nodeGraph. El bridge no consulta este Map — los
+   * nodeIds viven duplicados dentro de cada CellOverride para evitar lookups
+   * en hot path.
+   */
+  cellRegistry: Map<CellKey, CellDescriptor>
+
+  /**
+   * Map<DeviceId, readonly CellKey[]> — Índice secundario device → cells.
+   * Derivado de `cellRegistry` para acelerar `releaseDevice()` y
+   * `unregisterDeviceCells()` a O(1) lookup + O(K) walk donde K =
+   * células del device.
+   *
+   * Las arrays de CellKey son inmutables tras registro — pre-construidas
+   * y congeladas con `Object.freeze`.
+   */
+  cellsByDevice: Map<DeviceId, readonly CellKey[]>
 }
 
 interface ProgrammerActions {
@@ -169,6 +288,65 @@ interface ProgrammerActions {
 
   /** Limpia solo las familias enviadas con éxito (evita borrar cambios nuevos). */
   consumeDirtyFamilies: (families: ProgrammerFamily[]) => void
+
+  // ─── WAVE 4724: CELL LAYER ACTIONS ────────────────────────────────────────
+
+  /**
+   * Registra el catálogo de células para los fixtures seleccionados.
+   *
+   * La UI llama esto tras resolver los nodos del nodeGraph para los
+   * `selectedFixtureIds`. El store memoriza qué células existen por device
+   * (`cellsByDevice`) para acelerar `releaseDevice()` y `releaseAllCells()`.
+   *
+   * NO crea overrides: solo registra el "directorio" de células disponibles.
+   * Las CellKey y los nodeIds[] llegan PRE-CONSTRUIDOS — esta función no
+   * concatena strings ni asigna arrays nuevos.
+   */
+  registerFixtureCells: (descriptors: readonly CellDescriptor[]) => void
+
+  /**
+   * Borra el catálogo de células de un device y libera todos sus overrides.
+   * Útil cuando el operador deselecciona o el showfile cambia.
+   */
+  unregisterDeviceCells: (deviceId: DeviceId) => void
+
+  /** Set color RGB para una célula específica (r,g,b en 0-255). */
+  setCellColor: (cellKey: CellKey, r: number, g: number, b: number) => void
+
+  /** Set canal IMPACT para una célula (dimmer/strobe/shutter/limit en 0-100%). */
+  setCellImpact: (cellKey: CellKey, channel: ImpactChannelName, percent: number) => void
+
+  /** Set canal BEAM para una célula (gobo/prism/focus/zoom/iris en 0-255). */
+  setCellBeam: (cellKey: CellKey, channel: BeamChannelName, value0_255: number) => void
+
+  /**
+   * Set canal KINETIC para una célula.
+   * Unidades por canal:
+   *  - pan: 0-540° (se normaliza /540)
+   *  - tilt: 0-270° (se normaliza /270)
+   *  - speed: 0-100% (se normaliza /100)
+   *  - rotation: 0-100% (se normaliza /100)
+   *  - targetX/Y/Z: metros directos (sin normalizar)
+   */
+  setCellKinetic: (cellKey: CellKey, channel: KineticChannelName, value: number) => void
+
+  /** Set phantom/extra channel en una célula (value 0-255). */
+  setCellExtra: (cellKey: CellKey, channelKey: string, value0_255: number) => void
+
+  /** Libera el override de UNA célula (por cellKey). */
+  releaseCell: (cellKey: CellKey) => void
+
+  /** Libera todas las celdas de un device. */
+  releaseDevice: (deviceId: DeviceId) => void
+
+  /** Libera TODAS las celdas. */
+  releaseAllCells: () => void
+
+  /** El bridge llama esto tras flushear con éxito el set indicado de cellKeys. */
+  consumeDirtyCells: (cellKeys: readonly CellKey[]) => void
+
+  /** El bridge llama esto tras flushear con éxito los nodeIds del clear queue. */
+  consumePendingClearNodeIds: (nodeIds: readonly NodeId[]) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,6 +400,56 @@ function getNormAny(
 }
 
 const MIXED = Symbol('mixed')
+
+// ─── WAVE 4724: CELL LAYER HELPERS ─────────────────────────────────────────
+
+/**
+ * Crea un payload vacío para la familia indicada.
+ * Útil para inicializar un cellOverride al primer setter.
+ */
+function createEmptyCellPayload(family: NodeFamily): CellOverridePayload {
+  switch (family) {
+    case NodeFamily.COLOR:      return { family, data: {} as ColorCellPayload }
+    case NodeFamily.IMPACT:     return { family, data: {} as ImpactCellPayload }
+    case NodeFamily.BEAM:       return { family, data: {} as BeamCellPayload }
+    case NodeFamily.KINETIC:    return { family, data: {} as KineticCellPayload }
+    case NodeFamily.ATMOSPHERE: return { family, data: new Map<string, number>() }
+  }
+}
+
+/**
+ * Mergea inmutablemente un parche en el payload de una célula, preservando
+ * los canales no tocados.
+ *
+ * INVARIANTE: el `family` del parche debe coincidir con el del existing.
+ * Si no, se ignora el parche para evitar corrupción de discriminantes.
+ */
+function mergeCellPayload(
+  existing: CellOverridePayload,
+  patchFamily: NodeFamily,
+  patch: Partial<ColorCellPayload> | Partial<ImpactCellPayload> | Partial<BeamCellPayload> | Partial<KineticCellPayload> | { extra: { key: string; value: number } },
+): CellOverridePayload {
+  if (existing.family !== patchFamily) {
+    // Family mismatch — devolver intacto para no corromper discriminante
+    return existing
+  }
+  switch (existing.family) {
+    case NodeFamily.COLOR:
+      return { family: NodeFamily.COLOR, data: { ...existing.data, ...(patch as Partial<ColorCellPayload>) } }
+    case NodeFamily.IMPACT:
+      return { family: NodeFamily.IMPACT, data: { ...existing.data, ...(patch as Partial<ImpactCellPayload>) } }
+    case NodeFamily.BEAM:
+      return { family: NodeFamily.BEAM, data: { ...existing.data, ...(patch as Partial<BeamCellPayload>) } }
+    case NodeFamily.KINETIC:
+      return { family: NodeFamily.KINETIC, data: { ...existing.data, ...(patch as Partial<KineticCellPayload>) } }
+    case NodeFamily.ATMOSPHERE: {
+      const extraPatch = patch as { extra: { key: string; value: number } }
+      const next = new Map(existing.data)
+      next.set(extraPatch.extra.key, extraPatch.extra.value)
+      return { family: NodeFamily.ATMOSPHERE, data: next }
+    }
+  }
+}
 
 function resolveSharedOverrideValue(
   fixtureIds: readonly string[],
@@ -305,6 +533,13 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     displayStrobe: 0,
     displayLimit: 100,
     displayColor: { r: 255, g: 255, b: 255 },
+
+    // ── WAVE 4724: CELL LAYER STATE (inicializadores) ───────────────────
+    cellOverrides: new Map<CellKey, CellOverride>(),
+    dirtyCells: new Set<CellKey>(),
+    pendingClearNodeIds: new Set<NodeId>(),
+    cellRegistry: new Map<CellKey, CellDescriptor>(),
+    cellsByDevice: new Map<DeviceId, readonly CellKey[]>(),
 
     // ── SELECTION ──
 
@@ -740,5 +975,302 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         return { dirtyFamilies: next }
       })
     },
+
+    // ═════════════════════════════════════════════════════════════════════
+    // WAVE 4724: CELL LAYER ACTIONS — IMPLEMENTACIÓN
+    // ═════════════════════════════════════════════════════════════════════
+
+    registerFixtureCells: (descriptors) => {
+      if (descriptors.length === 0) return
+      set(state => {
+        // 1. Indexar por deviceId — una sola pasada O(N)
+        const groupedByDevice = new Map<DeviceId, CellKey[]>()
+        for (const d of descriptors) {
+          let arr = groupedByDevice.get(d.deviceId)
+          if (!arr) {
+            arr = []
+            groupedByDevice.set(d.deviceId, arr)
+          }
+          arr.push(d.cellKey)
+        }
+
+        // 2. Catálogo: insertar/actualizar todos los descriptors
+        const nextRegistry = new Map(state.cellRegistry)
+        for (const d of descriptors) {
+          nextRegistry.set(d.cellKey, d)
+        }
+
+        // 3. Índice device → cells: fusionar arrays existentes con los nuevos
+        const nextCellsByDevice = new Map(state.cellsByDevice)
+        for (const [deviceId, freshCellKeys] of groupedByDevice) {
+          const existing = nextCellsByDevice.get(deviceId)
+          if (!existing) {
+            nextCellsByDevice.set(deviceId, Object.freeze(freshCellKeys.slice()) as readonly CellKey[])
+          } else {
+            // Merge sin duplicados, preservando orden de inserción
+            const seen = new Set(existing)
+            const merged: CellKey[] = existing.slice()
+            for (const k of freshCellKeys) {
+              if (!seen.has(k)) {
+                merged.push(k)
+                seen.add(k)
+              }
+            }
+            nextCellsByDevice.set(deviceId, Object.freeze(merged) as readonly CellKey[])
+          }
+        }
+
+        return {
+          cellRegistry: nextRegistry,
+          cellsByDevice: nextCellsByDevice,
+        }
+      })
+    },
+
+    unregisterDeviceCells: (deviceId) => {
+      set(state => {
+        const cellKeys = state.cellsByDevice.get(deviceId)
+        if (!cellKeys || cellKeys.length === 0) {
+          // Nada que liberar
+          if (state.cellsByDevice.has(deviceId)) {
+            const next = new Map(state.cellsByDevice)
+            next.delete(deviceId)
+            return { cellsByDevice: next }
+          }
+          return {}
+        }
+
+        const nextOverrides = new Map(state.cellOverrides)
+        const nextDirty = new Set(state.dirtyCells)
+        const nextClears = new Set(state.pendingClearNodeIds)
+        const nextRegistry = new Map(state.cellRegistry)
+
+        for (const cellKey of cellKeys) {
+          const ov = nextOverrides.get(cellKey)
+          if (ov) {
+            // Programar clear de los nodeIds reales antes de eliminar el override
+            for (const nid of ov.nodeIds) {
+              nextClears.add(nid)
+            }
+            nextOverrides.delete(cellKey)
+          } else {
+            // Sin override activo: igualmente programar clear de los nodeIds
+            // del registry para liberar el L2 si quedó sucio por una sesión previa.
+            const desc = nextRegistry.get(cellKey)
+            if (desc) {
+              for (const nid of desc.nodeIds) nextClears.add(nid)
+            }
+          }
+          nextDirty.delete(cellKey)
+          nextRegistry.delete(cellKey)
+        }
+
+        const nextCellsByDevice = new Map(state.cellsByDevice)
+        nextCellsByDevice.delete(deviceId)
+
+        return {
+          cellOverrides: nextOverrides,
+          dirtyCells: nextDirty,
+          pendingClearNodeIds: nextClears,
+          cellRegistry: nextRegistry,
+          cellsByDevice: nextCellsByDevice,
+        }
+      })
+    },
+
+    setCellColor: (cellKey, r, g, b) => {
+      const patch: Partial<ColorCellPayload> = {
+        r: clamp01(r / 255),
+        g: clamp01(g / 255),
+        b: clamp01(b / 255),
+      }
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.COLOR, patch))
+    },
+
+    setCellImpact: (cellKey, channel, percent) => {
+      const patch: Partial<ImpactCellPayload> = { [channel]: clamp01(percent / 100) }
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.IMPACT, patch))
+    },
+
+    setCellBeam: (cellKey, channel, value0_255) => {
+      const patch: Partial<BeamCellPayload> = { [channel]: clamp01(value0_255 / 255) }
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.BEAM, patch))
+    },
+
+    setCellKinetic: (cellKey, channel, value) => {
+      let normalized: number
+      switch (channel) {
+        case 'pan':      normalized = clamp01(value / 540); break
+        case 'tilt':     normalized = clamp01(value / 270); break
+        case 'speed':    normalized = clamp01(value / 100); break
+        case 'rotation': normalized = clamp01(value / 100); break
+        // targetX/Y/Z: metros directos, sin clamp01 porque pueden ser negativos
+        case 'targetX':
+        case 'targetY':
+        case 'targetZ':  normalized = value; break
+      }
+      const patch: Partial<KineticCellPayload> = { [channel]: normalized }
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.KINETIC, patch))
+    },
+
+    setCellExtra: (cellKey, channelKey, value0_255) => {
+      const normalized = clamp01(value0_255 / 255)
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.ATMOSPHERE, {
+        extra: { key: channelKey, value: normalized },
+      }))
+    },
+
+    releaseCell: (cellKey) => {
+      set(state => {
+        const ov = state.cellOverrides.get(cellKey)
+        if (!ov) return {}
+
+        const nextOverrides = new Map(state.cellOverrides)
+        nextOverrides.delete(cellKey)
+
+        const nextDirty = new Set(state.dirtyCells)
+        nextDirty.delete(cellKey)
+
+        const nextClears = new Set(state.pendingClearNodeIds)
+        for (const nid of ov.nodeIds) nextClears.add(nid)
+
+        return {
+          cellOverrides: nextOverrides,
+          dirtyCells: nextDirty,
+          pendingClearNodeIds: nextClears,
+        }
+      })
+    },
+
+    releaseDevice: (deviceId) => {
+      set(state => {
+        const cellKeys = state.cellsByDevice.get(deviceId)
+        if (!cellKeys || cellKeys.length === 0) return {}
+
+        const nextOverrides = new Map(state.cellOverrides)
+        const nextDirty = new Set(state.dirtyCells)
+        const nextClears = new Set(state.pendingClearNodeIds)
+
+        for (const cellKey of cellKeys) {
+          const ov = nextOverrides.get(cellKey)
+          if (ov) {
+            for (const nid of ov.nodeIds) nextClears.add(nid)
+            nextOverrides.delete(cellKey)
+          }
+          nextDirty.delete(cellKey)
+        }
+
+        return {
+          cellOverrides: nextOverrides,
+          dirtyCells: nextDirty,
+          pendingClearNodeIds: nextClears,
+        }
+      })
+    },
+
+    releaseAllCells: () => {
+      set(state => {
+        if (state.cellOverrides.size === 0) return {}
+
+        const nextClears = new Set(state.pendingClearNodeIds)
+        for (const ov of state.cellOverrides.values()) {
+          for (const nid of ov.nodeIds) nextClears.add(nid)
+        }
+
+        return {
+          cellOverrides: new Map<CellKey, CellOverride>(),
+          dirtyCells: new Set<CellKey>(),
+          pendingClearNodeIds: nextClears,
+        }
+      })
+    },
+
+    consumeDirtyCells: (cellKeys) => {
+      if (cellKeys.length === 0) return
+      set(state => {
+        const next = new Set(state.dirtyCells)
+        for (const k of cellKeys) next.delete(k)
+        return { dirtyCells: next }
+      })
+    },
+
+    consumePendingClearNodeIds: (nodeIds) => {
+      if (nodeIds.length === 0) return
+      set(state => {
+        const next = new Set(state.pendingClearNodeIds)
+        for (const nid of nodeIds) next.delete(nid)
+        return { pendingClearNodeIds: next }
+      })
+    },
   }))
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 4724: PURE STATE TRANSFORMER — upsertCellOverride
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Upsert puro de un cellOverride: si existe, mergea el parche en su payload;
+ * si no existe pero el device está registrado, error silencioso (la UI debe
+ * llamar `registerFixtureCells` antes de cualquier setter).
+ *
+ * Valida que `family` coincida con el override existente — un cell jamás
+ * cambia de familia (la familia depende del nodo Aether, no del setter).
+ *
+ * Retorna un partial para pasar a `set()` de Zustand. Solo crea las nuevas
+ * estructuras inmutables cuando hay cambio real.
+ */
+function upsertCellOverride(
+  state: ProgrammerState,
+  cellKey: CellKey,
+  family: NodeFamily,
+  patch: Partial<ColorCellPayload> | Partial<ImpactCellPayload> | Partial<BeamCellPayload> | Partial<KineticCellPayload> | { extra: { key: string; value: number } },
+): Partial<ProgrammerState> {
+  const existing = state.cellOverrides.get(cellKey)
+
+  let nextOverride: CellOverride
+  if (!existing) {
+    // Primera escritura: resolvemos nodeIds + deviceId desde el registry.
+    // Si no está registrada, descartamos el override (anti-simulación).
+    const descriptor = state.cellRegistry.get(cellKey)
+    if (!descriptor) {
+      console.warn(`[programmerStore] setCell* ignorado: cellKey "${cellKey}" no registrada. Llama registerFixtureCells primero.`)
+      return {}
+    }
+    if (descriptor.family !== family) {
+      console.warn(`[programmerStore] setCell* family mismatch en "${cellKey}": registry=${descriptor.family} patch=${family}`)
+      return {}
+    }
+    const newPayload = mergeCellPayload(createEmptyCellPayload(family), family, patch)
+    nextOverride = {
+      cellKey,
+      nodeIds: descriptor.nodeIds,   // referencia directa al array congelado del registry
+      deviceId: descriptor.deviceId,
+      payload: newPayload,
+      lastWriteMs: Date.now(),
+    }
+  } else {
+    if (existing.payload.family !== family) {
+      // Family mismatch — proteger discriminante. NO se permite cambio de familia.
+      console.warn(`[programmerStore] setCell* family mismatch en "${cellKey}": existing=${existing.payload.family} patch=${family}`)
+      return {}
+    }
+    const newPayload = mergeCellPayload(existing.payload, family, patch)
+    if (newPayload === existing.payload) return {}  // no-op
+    nextOverride = {
+      ...existing,
+      payload: newPayload,
+      lastWriteMs: Date.now(),
+    }
+  }
+
+  const nextOverrides = new Map(state.cellOverrides)
+  nextOverrides.set(cellKey, nextOverride)
+  const nextDirty = new Set(state.dirtyCells)
+  nextDirty.add(cellKey)
+
+  return {
+    cellOverrides: nextOverrides,
+    dirtyCells: nextDirty,
+  }
+}

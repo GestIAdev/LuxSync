@@ -72,6 +72,37 @@ const TWO_PI = Math.PI * 2
 const SPEED_MIN_HZ = 0.02  // 1 ciclo cada 50 s (ambiente glacial)
 const SPEED_MAX_HZ = 0.60  // 1 ciclo cada ~1.7 s — headroom restaurado (SAFETY_CAP 400 aguanta)
 
+// ═══════════════════════════════════════════════════════════════════
+// WAVE 4750 — FILTRO GLACIAR ANTI-JITTER 8-BIT (Spatial Dithering)
+// ───────────────────────────────────────────────────────────────────
+// Cuando el movimiento es glaciar (velocidad < DITHER_VELOCITY_THRESHOLD DMX/s),
+// se suma una micro-oscilación de alta frecuencia a la posición final.
+//
+// PRINCIPIO FÍSICO:
+//   En motores de pasos 8-bit (255 posiciones), un movimiento de 0.3 DMX/s
+//   tarda >3 segundos entre pasos. El motor "espera" en una posición discreta
+//   hasta que la diferencia acumulada supera 1 LSB (1/255 ≈ 0.0039 en [0,1]).
+//   Esto produce el "clack-clack" perceptible.
+//
+// SOLUCIÓN:
+//   Suma Math.sin(Date.now() * DITHER_FREQ_FACTOR) * DITHER_AMPLITUDE.
+//   La micro-oscilación nunca supera 1 LSB pero mantiene el motor en un
+//   estado de "microstepping virtual": oscila entre dos valores DMX
+//   adyacentes a alta frecuencia → la inercia mecánica promedia ambos
+//   → movimiento suave continuo sin posición discreta perceptible.
+//
+// DITHER_AMPLITUDE = 0.0030 ≈ 0.77 LSB en 8-bit (sub-umbral por diseño).
+// DITHER_FREQ_FACTOR = 0.1 → ~16 Hz a 60fps (mayor que la respuesta mecánica).
+// DITHER_VELOCITY_THRESHOLD = 0.5 DMX/s en escala [0,1]/s → ≈1.27 DMX/s real.
+// ═══════════════════════════════════════════════════════════════════
+
+/** Velocidad máxima (en unidades normalizadas [0,1]/s) bajo la que se activa el dithering */
+const DITHER_VELOCITY_THRESHOLD = 0.008  // ~2 DMX/s a 44Hz en escala [0,1]
+/** Amplitud de la micro-oscilación — sub-DMX: < 1/255 ≈ 0.00392 */
+const DITHER_AMPLITUDE = 0.0030
+/** Frecuencia temporal del dithering — > respuesta mecánica del motor */
+const DITHER_FREQ_FACTOR = 0.1
+
 /**
  * 🔥 WAVE 4731 FIX GEOMÉTRICO — PAN ASPECT RATIO.
  *
@@ -290,6 +321,13 @@ export class AetherKineticEngine {
    * Cambiar la config de unos nodos no afecta a los demás — true multitrack.
    */
   private readonly _nodeConfigs = new Map<string, KineticNodeConfig>()
+
+  /**
+   * WAVE 4750 — FILTRO GLACIAR: posición del frame anterior por nodo.
+   * Usada para calcular la velocidad de cambio (delta/dt) y decidir si
+   * activar el spatial dithering. Float64Array(2) = [prevPan, prevTilt].
+   */
+  private readonly _prevPositionMap = new Map<string, Float64Array>()
 
   /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
   private _heartbeatCounter = 0
@@ -569,13 +607,35 @@ export class AetherKineticEngine {
       const panBase  = clamp01(anchorPan  + scaledX)
       const tiltBase = clamp01(anchorTilt + scaledY)
 
+      // ── WAVE 4750 — FILTRO GLACIAR ANTI-JITTER 8-BIT ──────────────────────
+      // Calcula la velocidad de cambio respecto al frame anterior.
+      // Si el movimiento es glaciar (|delta| < umbral), inyecta una
+      // micro-oscilación sub-DMX para mantener el motor en estado fluido.
+      let prevPos = this._prevPositionMap.get(nodeId)
+      if (!prevPos) {
+        prevPos = new Float64Array([panBase, tiltBase])
+        this._prevPositionMap.set(nodeId, prevPos)
+      }
+      const velPan  = dtSeconds > 0 ? Math.abs(panBase  - prevPos[0]) / dtSeconds : 0
+      const velTilt = dtSeconds > 0 ? Math.abs(tiltBase - prevPos[1]) / dtSeconds : 0
+      prevPos[0] = panBase
+      prevPos[1] = tiltBase
+
+      const isGlacier = velPan < DITHER_VELOCITY_THRESHOLD && velTilt < DITHER_VELOCITY_THRESHOLD
+      const tNow = Date.now()
+      const ditherPan  = isGlacier ? Math.sin(tNow * DITHER_FREQ_FACTOR)              * DITHER_AMPLITUDE : 0
+      const ditherTilt = isGlacier ? Math.sin(tNow * DITHER_FREQ_FACTOR + Math.PI / 2) * DITHER_AMPLITUDE : 0
+
+      const finalPanBase  = clamp01(panBase  + ditherPan)
+      const finalTiltBase = clamp01(tiltBase + ditherTilt)
+
       let rec = this._overridePool.get(nodeId)
       if (!rec) {
-        rec = { pan_base: panBase, tilt_base: tiltBase }
+        rec = { pan_base: finalPanBase, tilt_base: finalTiltBase }
         this._overridePool.set(nodeId, rec)
       } else {
-        rec['pan_base']  = panBase
-        rec['tilt_base'] = tiltBase
+        rec['pan_base']  = finalPanBase
+        rec['tilt_base'] = finalTiltBase
       }
 
       arbiter.setMotorKineticOverride(nodeId, rec)

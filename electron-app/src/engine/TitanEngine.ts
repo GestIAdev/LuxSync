@@ -693,9 +693,15 @@ export class TitanEngine extends EventEmitter {
       ? 'complementary' 
       : strategyOutput.stableStrategy as ('analogous' | 'triadic' | 'complementary');
     
-    constitution = {
-      ...constitution,
-      forceStrategy: mappedStrategy,
+    // 🌊 WAVE 4755: BLINDAJE CONSTITUCIONAL — Si la constitución ya tiene un
+    // forceStrategy definido (ej: CHILL_CONSTITUTION.forceStrategy = 'analogous'),
+    // el StrategyArbiter NO puede sobreescribirlo. Las reglas del océano son inmutables.
+    // Solo se aplica el mappedStrategy del Arbiter cuando la constitución no impone estrategia.
+    if (!constitution.forceStrategy) {
+      constitution = {
+        ...constitution,
+        forceStrategy: mappedStrategy,
+      }
     }
     
     // ⚰️ WAVE 3450: OCEAN TRANSLATOR retired.

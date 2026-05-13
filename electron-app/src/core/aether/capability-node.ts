@@ -105,6 +105,8 @@ export interface INodeChannelDef {
     readonly targetChannelType: AetherChannelType
     readonly requiredValue: number
     readonly mode: 'hold' | 'release'
+    /** WAVE 4722: Offset DMX 0-based del canal master. Precedencia sobre targetChannelType. */
+    readonly targetDmxOffset?: number
   }[]
 }
 

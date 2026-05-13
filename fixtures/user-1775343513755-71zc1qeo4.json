@@ -2,26 +2,28 @@
   "id": "user-1775343513755-71zc1qeo4",
   "name": "Tungsten",
   "manufacturer": "American Pro",
-  "type": "fan",
+  "type": "effect",
   "channels": [
     {
       "index": 0,
-      "name": "Pan",
-      "type": "pan",
+      "name": "Pan Kill",
+      "type": "custom",
+      "customName": "Pan Kill",
       "defaultValue": 127,
       "is16bit": false
     },
     {
       "index": 1,
       "name": "X infinite",
-      "type": "custom",
-      "defaultValue": 0,
-      "is16bit": false
+      "type": "rotation",
+      "defaultValue": 127,
+      "is16bit": false,
+      "continuousRotation": true
     },
     {
       "index": 2,
       "name": "Golden dimmer",
-      "type": "custom",
+      "type": "dimmer",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -35,58 +37,76 @@
     {
       "index": 4,
       "name": "Gold 1",
-      "type": "custom",
+      "type": "dimmer",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 2, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 5,
       "name": "Gold 2",
-      "type": "custom",
+      "type": "dimmer",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 2, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 6,
       "name": "Gold 3",
-      "type": "custom",
+      "type": "dimmer",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 2, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 7,
       "name": "Stainning dimmer",
-      "type": "custom",
+      "type": "dimmer",
       "defaultValue": 0,
       "is16bit": false
     },
     {
       "index": 8,
       "name": "Stainning strobe",
-      "type": "custom",
+      "type": "strobe",
       "defaultValue": 0,
       "is16bit": false
     },
     {
       "index": 9,
       "name": "Stain red",
-      "type": "custom",
+      "type": "red",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 7, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 10,
       "name": "Stain green",
-      "type": "custom",
+      "type": "green",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 7, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 11,
       "name": "Stain blue",
-      "type": "custom",
+      "type": "blue",
       "defaultValue": 0,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": [
+        { "targetChannelIndex": 7, "channelType": "dimmer", "requiredValue": 255 }
+      ]
     },
     {
       "index": 12,
@@ -120,6 +140,7 @@
       "index": 16,
       "name": "macro gold",
       "type": "custom",
+      "customName": "macro gold",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -127,6 +148,7 @@
       "index": 17,
       "name": "macro stain",
       "type": "custom",
+      "customName": "macro stain",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -134,6 +156,7 @@
       "index": 18,
       "name": "macro beam",
       "type": "custom",
+      "customName": "macro beam",
       "defaultValue": 0,
       "is16bit": false
     },
@@ -141,23 +164,25 @@
       "index": 19,
       "name": "repo",
       "type": "custom",
+      "customName": "repo",
       "defaultValue": 0,
       "is16bit": false
     }
   ],
   "capabilities": {
     "colorEngine": "rgbw",
-    "hasPan": true,
+    "hasPan": false,
     "hasTilt": false,
     "hasColorMixing": true,
     "hasColorWheel": false,
     "hasGobo": false,
     "hasPrism": false,
     "hasStrobe": true,
-    "hasDimmer": false
+    "hasDimmer": true,
+    "hasRotation": true
   },
   "physics": {
-    "motorType": "stepper-cheap",
+    "motorType": "stepper",
     "maxAcceleration": 1000,
     "maxVelocity": 400,
     "safetyCap": true,
@@ -174,7 +199,386 @@
       "max": 180
     }
   },
+  "nodeGraph": {
+    "version": "1.0.0",
+    "nodes": [
+      {
+        "id": "out-custom-0",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0.498, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "custom",
+          "dmxOffset": 0,
+          "channelName": "Pan Kill",
+          "defaultDmxValue": 127,
+          "aetherNodeId": "atmosphere",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 0 },
+        "label": "CH1: Pan Kill"
+      },
+      {
+        "id": "out-rotation-1",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0.498, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "rotation",
+          "dmxOffset": 1,
+          "channelName": "X infinite",
+          "defaultDmxValue": 127,
+          "continuousRotation": true,
+          "aetherNodeId": "kinetic",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 80 },
+        "label": "CH2: X infinite"
+      },
+      {
+        "id": "out-dimmer-2",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "dimmer",
+          "dmxOffset": 2,
+          "channelName": "Golden dimmer",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "golden-master",
+          "aetherZone": "flash"
+        },
+        "uiPosition": { "x": 600, "y": 160 },
+        "label": "CH3: Golden dimmer"
+      },
+      {
+        "id": "out-strobe-3",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "strobe",
+          "dmxOffset": 3,
+          "channelName": "Strobe",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "golden-master",
+          "aetherZone": "flash"
+        },
+        "uiPosition": { "x": 600, "y": 240 },
+        "label": "CH4: Strobe"
+      },
+      {
+        "id": "out-dimmer-4",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "dimmer",
+          "dmxOffset": 4,
+          "channelName": "Gold 1",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "petal-l",
+          "aetherZone": "flash",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 2 }]
+        },
+        "uiPosition": { "x": 600, "y": 320 },
+        "label": "CH5: Gold 1"
+      },
+      {
+        "id": "out-dimmer-5",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "dimmer",
+          "dmxOffset": 5,
+          "channelName": "Gold 2",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "petal-c",
+          "aetherZone": "flash",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 2 }]
+        },
+        "uiPosition": { "x": 600, "y": 400 },
+        "label": "CH6: Gold 2"
+      },
+      {
+        "id": "out-dimmer-6",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "dimmer",
+          "dmxOffset": 6,
+          "channelName": "Gold 3",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "petal-r",
+          "aetherZone": "flash",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 2 }]
+        },
+        "uiPosition": { "x": 600, "y": 480 },
+        "label": "CH7: Gold 3"
+      },
+      {
+        "id": "out-dimmer-7",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "dimmer",
+          "dmxOffset": 7,
+          "channelName": "Stainning dimmer",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "wash",
+          "aetherZone": "ambient"
+        },
+        "uiPosition": { "x": 600, "y": 560 },
+        "label": "CH8: Stainning dimmer"
+      },
+      {
+        "id": "out-strobe-8",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "strobe",
+          "dmxOffset": 8,
+          "channelName": "Stainning strobe",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "wash",
+          "aetherZone": "ambient"
+        },
+        "uiPosition": { "x": 600, "y": 640 },
+        "label": "CH9: Stainning strobe"
+      },
+      {
+        "id": "out-red-9",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "red",
+          "dmxOffset": 9,
+          "channelName": "Stain red",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "wash-color",
+          "aetherZone": "ambient",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 7 }]
+        },
+        "uiPosition": { "x": 600, "y": 720 },
+        "label": "CH10: Stain red"
+      },
+      {
+        "id": "out-green-10",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "green",
+          "dmxOffset": 10,
+          "channelName": "Stain green",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "wash-color",
+          "aetherZone": "ambient",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 7 }]
+        },
+        "uiPosition": { "x": 600, "y": 800 },
+        "label": "CH11: Stain green"
+      },
+      {
+        "id": "out-blue-11",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "blue",
+          "dmxOffset": 11,
+          "channelName": "Stain blue",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "wash-color",
+          "aetherZone": "ambient",
+          "ignitionDeps": [{ "channelType": "dimmer", "requiredValue": 255, "targetChannelIndex": 7 }]
+        },
+        "uiPosition": { "x": 600, "y": 880 },
+        "label": "CH12: Stain blue"
+      },
+      {
+        "id": "out-red-12",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "red",
+          "dmxOffset": 12,
+          "channelName": "Red",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "beam-color",
+          "aetherZone": "air"
+        },
+        "uiPosition": { "x": 600, "y": 960 },
+        "label": "CH13: Red"
+      },
+      {
+        "id": "out-green-13",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "green",
+          "dmxOffset": 13,
+          "channelName": "Green",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "beam-color",
+          "aetherZone": "air"
+        },
+        "uiPosition": { "x": 600, "y": 1040 },
+        "label": "CH14: Green"
+      },
+      {
+        "id": "out-blue-14",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "blue",
+          "dmxOffset": 14,
+          "channelName": "Blue",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "beam-color",
+          "aetherZone": "air"
+        },
+        "uiPosition": { "x": 600, "y": 1120 },
+        "label": "CH15: Blue"
+      },
+      {
+        "id": "out-white-15",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "white",
+          "dmxOffset": 15,
+          "channelName": "White",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "beam-color",
+          "aetherZone": "air"
+        },
+        "uiPosition": { "x": 600, "y": 1200 },
+        "label": "CH16: White"
+      },
+      {
+        "id": "out-custom-16",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "custom",
+          "dmxOffset": 16,
+          "channelName": "macro gold",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "atmosphere",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 1280 },
+        "label": "CH17: macro gold"
+      },
+      {
+        "id": "out-custom-17",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "custom",
+          "dmxOffset": 17,
+          "channelName": "macro stain",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "atmosphere",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 1360 },
+        "label": "CH18: macro stain"
+      },
+      {
+        "id": "out-custom-18",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "custom",
+          "dmxOffset": 18,
+          "channelName": "macro beam",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "atmosphere",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 1440 },
+        "label": "CH19: macro beam"
+      },
+      {
+        "id": "out-custom-19",
+        "type": "output_dmx",
+        "category": "output",
+        "inputs": [{ "id": "value", "label": "Value", "dataType": "normalized", "direction": "in", "defaultValue": 0, "required": true }],
+        "outputs": [],
+        "config": {
+          "nodeType": "output_dmx",
+          "channelType": "custom",
+          "dmxOffset": 19,
+          "channelName": "repo",
+          "defaultDmxValue": 0,
+          "aetherNodeId": "atmosphere",
+          "aetherZone": "unassigned"
+        },
+        "uiPosition": { "x": 600, "y": 1520 },
+        "label": "CH20: repo"
+      }
+    ],
+    "edges": [],
+    "meta": {
+      "createdAt": "2026-05-22T00:00:00.000Z",
+      "generatorWave": "WAVE-4722-OPERATION-TUNGSTEN",
+      "autoMigrated": false,
+      "dmxFootprint": 20
+    }
+  },
   "source": "user",
   "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1775343513755-71zc1qeo4.json",
-  "savedAt": "2026-05-09T00:21:21.829Z"
+  "savedAt": "2026-05-22T00:00:00.000Z"
 }

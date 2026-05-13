@@ -1,0 +1,53 @@
+/**
+ * DeviceCellGroup — WAVE 4725
+ * Wrapper visual por device en el Programmer
+ */
+
+.device-cell-group {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--neon-base, #ff3366);
+  margin: 4px 0;
+  border-radius: 0 6px 6px 0;
+  background: rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease;
+}
+
+/* HEADER */
+.dcg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dcg-neon-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dcg-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dcg-type {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}

@@ -23,6 +23,8 @@ import { ColorSection } from './ColorSection'
 import { BeamSection } from './BeamSection'
 import { ExtrasSection } from './ExtrasSection'
 import { GroupsPanel } from './GroupsPanel'
+import { DeviceCellGroup } from '../programmer/DeviceCellGroup'
+import { useCapabilityCells } from '../../../hooks/useCapabilityCells'
 import { IntensityIcon, GroupIcon } from '../../icons/LuxIcons'
 import './TheProgrammer.css'
 import './accordion-styles.css'
@@ -65,6 +67,10 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   } = useProgrammerStore()
   const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
   const pruneManualOverride = useMovementStore(s => s.pruneManualOverride)
+
+  // WAVE 4725: CAMALEÓN — carga células de capacidad del nodeGraph
+  const deviceGroups = useCapabilityCells(selectedIds)
+  const hasCellGroups = deviceGroups.some(g => g.cells.length > 0)
 
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
@@ -368,52 +374,69 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
             </div>
           </div>
           
-          {/* INTENSITY SECTION */}
-          <IntensitySection
-            value={currentDimmer}
-            hasOverride={overrideState.dimmer}
-            strobeValue={currentStrobe}
-            hasStrobeOverride={overrideState.strobe}
-            limitValue={currentLimit}
-            hasLimitActive={currentLimit !== null && currentLimit < 100}
-            isExpanded={activeSection === 'intensity'}
-            onToggle={() => toggleSection('intensity')}
-            onChange={handleDimmerChange}
-            onRelease={handleDimmerRelease}
-            onStrobeChange={handleStrobeChange}
-            onStrobeRelease={handleStrobeRelease}
-            onLimitChange={handleLimitChange}
-            onLimitRelease={handleLimitRelease}
-          />
-          
-          {/* COLOR SECTION (solo si hay fixtures con color) */}
-          {hasColorFixtures && (
-            <ColorSection
-              color={currentColor}
-              hasOverride={overrideState.color}
-              isExpanded={activeSection === 'color'}
-              onToggle={() => toggleSection('color')}
-              onChange={handleColorChange}
-              onRelease={handleColorRelease}
-            />
+          {/* ── WAVE 4725: CAMALEÓN — Cells layer (cuando hay nodeGraph) ── */}
+          {hasCellGroups ? (
+            deviceGroups.map(group => group.cells.length > 0 ? (
+              <DeviceCellGroup
+                key={group.deviceId}
+                deviceId={group.deviceId}
+                fixtureName={group.fixtureName}
+                fixtureType={group.fixtureType}
+                cells={group.cells}
+                onSectionToggle={toggleSection}
+                onOverrideChange={handleBeamOverrideChange}
+              />
+            ) : null)
+          ) : (
+            <>
+              {/* ── LEGACY FALLBACK: secciones planas cuando no hay nodeGraph ── */}
+              <IntensitySection
+                value={currentDimmer}
+                hasOverride={overrideState.dimmer}
+                strobeValue={currentStrobe}
+                hasStrobeOverride={overrideState.strobe}
+                limitValue={currentLimit}
+                hasLimitActive={currentLimit !== null && currentLimit < 100}
+                isExpanded={activeSection === 'intensity'}
+                onToggle={() => toggleSection('intensity')}
+                onChange={handleDimmerChange}
+                onRelease={handleDimmerRelease}
+                onStrobeChange={handleStrobeChange}
+                onStrobeRelease={handleStrobeRelease}
+                onLimitChange={handleLimitChange}
+                onLimitRelease={handleLimitRelease}
+              />
+
+              {/* COLOR SECTION (solo si hay fixtures con color) */}
+              {hasColorFixtures && (
+                <ColorSection
+                  color={currentColor}
+                  hasOverride={overrideState.color}
+                  isExpanded={activeSection === 'color'}
+                  onToggle={() => toggleSection('color')}
+                  onChange={handleColorChange}
+                  onRelease={handleColorRelease}
+                />
+              )}
+
+              {/* BEAM SECTION (solo para fixtures con óptica) */}
+              <BeamSection
+                hasOverride={overrideState.beam}
+                isExpanded={activeSection === 'beam'}
+                onToggle={() => toggleSection('beam')}
+                onOverrideChange={handleBeamOverrideChange}
+              />
+
+              {/* EXTRAS SECTION — Phantom channels (custom, macro, rotation, speed) */}
+              <ExtrasSection
+                hasOverride={overrideState.extras}
+                isExpanded={activeSection === 'extras'}
+                onToggle={() => toggleSection('extras')}
+                onOverrideChange={handleExtrasOverrideChange}
+              />
+            </>
           )}
-          
-          {/* BEAM SECTION (solo para fixtures con óptica) */}
-          <BeamSection
-            hasOverride={overrideState.beam}
-            isExpanded={activeSection === 'beam'}
-            onToggle={() => toggleSection('beam')}
-            onOverrideChange={handleBeamOverrideChange}
-          />
-          
-          {/* 🔥 WAVE 2084.2: EXTRAS SECTION — Phantom channels (custom, macro, rotation, speed) */}
-          <ExtrasSection
-            hasOverride={overrideState.extras}
-            isExpanded={activeSection === 'extras'}
-            onToggle={() => toggleSection('extras')}
-            onOverrideChange={handleExtrasOverrideChange}
-          />
-          
+
           {/* OVERRIDE INDICATOR */}
           {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (
             <div className="override-indicator">

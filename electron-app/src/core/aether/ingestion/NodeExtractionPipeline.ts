@@ -971,13 +971,24 @@ export class NodeExtractionPipeline {
     channels: readonly FixtureChannel[],
     kinetic = false,
   ): INodeChannelDef[] {
-    return channels.map(ch => ({
-      type:         this._normalizeChannelType(ch.type) as AetherChannelType,
-      dmxOffset:    ch.index - 1,   // FixtureChannel.index es 1-based
-      defaultValue: this._resolveDefaultValue(ch, kinetic),
-      is16bit:    ch.is16bit  ?? false,
-      customName: ch.customName,
-    }))
+    return channels.map(ch => {
+      const mapped: INodeChannelDef = {
+        type:         this._normalizeChannelType(ch.type) as AetherChannelType,
+        dmxOffset:    ch.index - 1,   // FixtureChannel.index es 1-based
+        defaultValue: this._resolveDefaultValue(ch, kinetic),
+        is16bit:    ch.is16bit  ?? false,
+        customName: ch.customName,
+        // 🔥 WAVE 4720: Propagar ignitionDeps al dominio Aether para pre-cómputo
+        ...(ch.ignitionDeps && ch.ignitionDeps.length > 0 && {
+          ignitionDeps: ch.ignitionDeps.map(dep => ({
+            targetChannelType: this._normalizeChannelType(dep.channelType) as AetherChannelType,
+            requiredValue: dep.requiredValue,
+            mode: dep.mode ?? 'hold' as const,
+          })),
+        }),
+      }
+      return mapped
+    })
   }
 
   private _resolveDefaultValue(ch: Readonly<FixtureChannel>, kinetic: boolean): number {

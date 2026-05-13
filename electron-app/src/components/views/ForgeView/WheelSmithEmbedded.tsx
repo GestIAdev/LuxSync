@@ -7,9 +7,11 @@
  * WAVE 2072 MANIFESTO:
  * Phase 1 — Array robustness: stable keys via crypto.randomUUID(), 
  *           deep-copy updateColorSlot, zero index-based mutations.
- * Phase 2 — DMX injection bridge: sendDirectDMX() with 3-tier fallback
- *           (lux.sendDmxChannel → lux.dmx.sendDirect → lux.arbiter.setManual),
+ * Phase 2 — DMX injection bridge: sendDirectDMX() via lux.sendDmxChannel
+ *           (direct hardware bypass, no dead arbiter fallbacks),
  *           per-slot ⚡TEST button for instant hardware verification.
+ * WAVE 4719 — Ignition Hydrator: builds complete DMX frame from default values
+ *           + ignitionDeps + test overrides, sent channel-by-channel.
  * Phase 3 — Cyberpunk visual overhaul: dark slot cards (#18181b), amber
  *           accents (#f59e0b), circular color pickers, JetBrains Mono,
  *           tactical buttons, ForgeView CSS integration.
@@ -297,7 +299,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // ═══════════════════════════════════════════════════════════════════════
   
   const lux = (typeof window !== 'undefined' ? window.lux : null) as any
-  const hasDmxEngine = !!lux?.sendDmxChannel || !!lux?.dmx?.sendDirect || !!lux?.arbiter
+  const hasDmxEngine = !!lux?.sendDmxChannel
   // canSendLive: tiene motor DMX Y hay un fixture real para apuntar
   const canSendLive = hasDmxEngine && !!effectiveTestFixtureId
   const isMoldTest = !effectiveTestFixtureId || dmxBaseAddress === null
@@ -337,24 +339,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
 
       if (lux?.sendDmxChannel) {
         lux.sendDmxChannel(effectiveUniverse, absoluteAddress, val)
-        return
-      }
-      if (lux?.dmx?.sendDirect) {
-        lux.dmx.sendDirect(effectiveUniverse, absoluteAddress, val)
-        return
-      }
-    
-      if (!isMoldTest && effectiveTestFixtureId && lux?.arbiter?.setManual) {
-        lux.arbiter.setManual({
-          fixtureIds: [effectiveTestFixtureId],
-          controls: { color_wheel: val },
-          channels: ['color_wheel'],
-        }).catch((err: unknown) => {
-          console.error('[WheelSmith] ❌ Arbiter error:', err)
-        })
       }
     }, 40) // 25Hz max IPC rate — QUIET ZONE
-  }, [effectiveTestFixtureId, dmxBaseAddress, channelIndex, universe, testAddress, lux, isMoldTest])
+  }, [dmxBaseAddress, channelIndex, universe, testAddress, lux, isMoldTest])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS — All use deep-copy updateColorSlot or fresh arrays
@@ -424,101 +411,113 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   }, [onTestDmx, sendDirectDMX])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 2073 rev2: THE LIGHT SWITCH — usa Arbiter igual que CalibrationView
-  // Enviamos los canales de luz por tipo (no por dirección absoluta) para que
-  // el Arbiter los route correctamente, igual que hace el TestPanel.
-  // Canal de apertura de luz según el fixture:
-  //   - shutter=255 si existe
-  //   - strobe=0 si no hay shutter (mover chino: strobe=0 = luz continua)
-  //   - dimmer=255 siempre que exista
-  // Los canales nativos van en controls directamente.
-  // Los no-nativos (strobe, shutter) van en phantomChannels.
+  // WAVE 4719: IGNITION HYDRATOR — Full DMX frame builder
+  // Construye un frame DMX completo: base (defaultValue) + ignitionDeps
+  // + overrides de test (color_wheel + dimmer 255 + shutter/strobe).
+  // Envía canal por canal vía lux.sendDmxChannel (bypass directo al driver).
+  // El antiguo lux.arbiter.setManual está MUERTO (masterArbiter extinto WAVE 4704).
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Canales nativos del Arbiter (mismo set que CalibrationView/MasterArbiter)
-  const ARBITER_NATIVE_CHANNELS = useMemo(() => new Set([
-    'dimmer', 'red', 'green', 'blue', 'pan', 'tilt',
-    'zoom', 'focus', 'speed', 'color_wheel',
-  ]), [])
+  const buildHydratedTestFrame = useCallback((
+    wheelDmxValue: number,
+  ): Array<{ address: number; value: number }> => {
+    const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
+    if (effectiveBaseAddress === null) return []
 
-  // Extraer tipos de canal del fixture efectivo (Stage, no el perfil de librería)
-  const fixtureChannelTypes = useMemo(() => {
-    if (!effectiveTestFixture?.channels) return new Set<string>()
-    return new Set(effectiveTestFixture.channels.map((ch: any) => ch.type as string).filter(Boolean))
-  }, [effectiveTestFixture])
+    const channels = effectiveTestFixture?.channels as Array<any> | undefined
+    if (!channels || channels.length === 0) {
+      // No hay metadatos de canales — fallback a un solo canal
+      return [{ address: effectiveBaseAddress + (channelIndex || 0), value: wheelDmxValue }]
+    }
+
+    // 1. Base frame: todos los canales a su defaultValue
+    const frame = new Map<number, number>()
+    for (const ch of channels) {
+      frame.set(ch.index, typeof ch.defaultValue === 'number' ? ch.defaultValue : 0)
+    }
+
+    // 2. Canales que vamos a overridear en este test
+    const channelsToOverride = new Map<number, number>()
+    channelsToOverride.set(channelIndex || 0, wheelDmxValue)
+
+    const dimmerCh = channels.find((ch: any) => ch.type === 'dimmer')
+    if (dimmerCh) channelsToOverride.set(dimmerCh.index, 255)
+
+    const shutterCh = channels.find((ch: any) => ch.type === 'shutter')
+    if (shutterCh) {
+      channelsToOverride.set(shutterCh.index, 255)
+    } else {
+      const strobeCh = channels.find((ch: any) => ch.type === 'strobe')
+      if (strobeCh) channelsToOverride.set(strobeCh.index, 0)
+    }
+
+    // 2b. Aplicar ignitionDeps de cada canal que vamos a activar
+    for (const [chIdx] of channelsToOverride) {
+      const ch = channels.find((c: any) => c.index === chIdx)
+      if (ch?.ignitionDeps && Array.isArray(ch.ignitionDeps)) {
+        for (const dep of ch.ignitionDeps as Array<{ channelType: string; requiredValue: number }>) {
+          const targetCh = channels.find((c: any) => c.type === dep.channelType)
+          if (targetCh) {
+            frame.set(targetCh.index, dep.requiredValue)
+          }
+        }
+      }
+    }
+
+    // 3. Aplicar overrides de test (encima de los deps)
+    for (const [chIdx, val] of channelsToOverride) {
+      frame.set(chIdx, val)
+    }
+
+    // 4. Convertir a lista de {address, value}
+    const result: Array<{ address: number; value: number }> = []
+    for (const [chIdx, val] of frame) {
+      result.push({ address: effectiveBaseAddress + chIdx, value: val })
+    }
+    return result
+  }, [effectiveTestFixture, channelIndex, isMoldTest, testAddress, dmxBaseAddress])
 
   const sendTestWithLight = useCallback(async (wheelDmxValue: number): Promise<void> => {
-    if (!effectiveTestFixtureId || !lux?.arbiter?.setManual) {
-      // Fallback: si no hay arbiter ni fixtureId (mold-test), usar sendDmxChannel directo
-      const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
-      if (effectiveBaseAddress === null) return
-      const effectiveUniverse = isMoldTest ? 0 : universe
-      const send = (addr: number, val: number) => {
-        if (lux?.sendDmxChannel) lux.sendDmxChannel(effectiveUniverse, addr, val)
-        else if (lux?.dmx?.sendDirect) lux.dmx.sendDirect(effectiveUniverse, addr, val)
+    const effectiveUniverse = isMoldTest ? 0 : universe
+    const frame = buildHydratedTestFrame(wheelDmxValue)
+    if (frame.length === 0) return
+
+    console.log('[WheelSmith] ⚡ sendTestWithLight → Hydrated frame:', frame)
+
+    for (const { address, value } of frame) {
+      if (lux?.sendDmxChannel) {
+        lux.sendDmxChannel(effectiveUniverse, address, value)
       }
-      send(effectiveBaseAddress + channelIndex, wheelDmxValue)
-      return
     }
-
-    // Construir payload completo: rueda + apertura de luz
-    const nativeControls: Record<string, number> = {}
-    const phantomControls: Record<string, number> = {}
-    const channelsList: string[] = []
-
-    // Rueda de color (siempre nativa)
-    nativeControls['color_wheel'] = wheelDmxValue
-    channelsList.push('color_wheel')
-
-    // Dimmer: siempre 255 si existe
-    if (fixtureChannelTypes.has('dimmer')) {
-      nativeControls['dimmer'] = 255
-      channelsList.push('dimmer')
-    }
-
-    // Apertura del haz: shutter preferido, si no strobe=0 (luz continua)
-    if (fixtureChannelTypes.has('shutter')) {
-      phantomControls['shutter'] = 255
-      channelsList.push('shutter')
-    } else if (fixtureChannelTypes.has('strobe')) {
-      // Sin shutter: strobe=0 desactiva estrobo → luz continua
-      phantomControls['strobe'] = 0
-      channelsList.push('strobe')
-    }
-
-    const controls: Record<string, unknown> = { ...nativeControls }
-    if (Object.keys(phantomControls).length > 0) {
-      controls['phantomChannels'] = phantomControls
-    }
-
-    console.log('[WheelSmith] ⚡ sendTestWithLight → Arbiter:', controls)
-
-    try {
-      await lux.arbiter.setManual({
-        fixtureIds: [effectiveTestFixtureId],
-        controls: controls as Record<string, number>,
-        channels: channelsList,
-      })
-    } catch (err) {
-      console.error('[WheelSmith] ❌ Arbiter.setManual falló:', err)
-    }
-  }, [effectiveTestFixtureId, lux, effectiveTestFixture, fixtureChannelTypes, ARBITER_NATIVE_CHANNELS, isMoldTest, testAddress, dmxBaseAddress, universe, channelIndex])
+  }, [buildHydratedTestFrame, lux, isMoldTest, universe])
 
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 2074: KILL SWITCH — Test/Stop toggle por slot
+  // WAVE 2074 / 4719: KILL SWITCH — Restaura defaults por canal directo
   // ═══════════════════════════════════════════════════════════════════════
 
   const killLight = useCallback(async (): Promise<void> => {
-    if (!effectiveTestFixtureId || !lux?.arbiter?.clearManual) return
-    try {
-      await lux.arbiter.clearManual({
-        fixtureIds: [effectiveTestFixtureId],
-        channels: ['color_wheel', 'dimmer', 'shutter', 'strobe'],
-      })
-    } catch (err) {
-      console.error('[WheelSmith] ❌ killLight falló:', err)
+    const effectiveUniverse = isMoldTest ? 0 : universe
+    const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
+    if (effectiveBaseAddress === null) return
+
+    const channels = effectiveTestFixture?.channels as Array<any> | undefined
+    if (!channels || channels.length === 0) {
+      // Fallback: apagar solo el canal de color_wheel
+      if (lux?.sendDmxChannel) {
+        lux.sendDmxChannel(effectiveUniverse, effectiveBaseAddress + (channelIndex || 0), 0)
+      }
+      return
     }
-  }, [effectiveTestFixtureId, lux])
+
+    console.log('[WheelSmith] 🛑 killLight → Restoring defaults')
+
+    for (const ch of channels) {
+      const defaultValue = typeof ch.defaultValue === 'number' ? ch.defaultValue : 0
+      if (lux?.sendDmxChannel) {
+        lux.sendDmxChannel(effectiveUniverse, effectiveBaseAddress + ch.index, defaultValue)
+      }
+    }
+  }, [effectiveTestFixture, lux, isMoldTest, universe, testAddress, dmxBaseAddress, channelIndex])
 
   const handleSlotTest = useCallback((slotKey: string, dmxValue: number) => {
     if (activeTestSlotKey === slotKey) {
@@ -527,7 +526,7 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
       setActiveTestSlotKey(null)
       return
     }
-    // Toggle ON (apaga anterior automáticamente vía Arbiter overwrite)
+    // Toggle ON (previous test stops automatically via killLight overwrite)
     setActiveTestSlotKey(slotKey)
     setProbeValue(dmxValue)
     sendTestWithLight(dmxValue)

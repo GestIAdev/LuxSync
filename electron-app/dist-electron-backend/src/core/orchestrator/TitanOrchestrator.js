@@ -159,6 +159,9 @@ export class TitanOrchestrator {
         const nodeIds = this._aetherGraph.registerDevice(definition);
         this._chronosAetherAdapter.rebuildNodeIndex();
         resolver.registerUniverse(definition.universe);
+        // 🔥 WAVE 4720: Pre-compute ignition injection map for this device.
+        // Must run AFTER NodeGraph.registerDevice() so getDeviceNodes()/getNodeData() work.
+        resolver.registerDevice(definition.deviceId);
         this._aetherHasDevices = true;
         // ⚙️ WAVE 4518.1: Registrar nodos KINETIC en el PhysicsPostProcessor
         // Iteramos los nodeIds devueltos por registerDevice para pre-alocar estado de inercia

@@ -149,6 +149,20 @@ interface MutableDMXPacket {
   channels: number[]   // Uint8Array-backed si se quiere cero-copy hacia el driver
 }
 
+// 🔥 WAVE 4720: Regla de inyección de ignición pre-computada.
+// Creada en patch-time, iterada O(1) en hot path.
+interface IgnitionInjection {
+  /** Índice absoluto en el buffer del universo del canal TARGET (0-indexed) */
+  readonly targetBufIdx: number
+  /** Valor DMX requerido en el target */
+  readonly requiredValue: number
+  /** Índice absoluto en el buffer del canal SOURCE (el que tiene la dep) */
+  readonly sourceBufIdx: number
+  /** 'hold' = inyectar siempre; 'release' = solo si source > 0 */
+  readonly mode: 'hold' | 'release'
+}
+
+
 /**
  * NodeResolver — Traducción zero-alloc de nodos abstractos a DMX físico.
  *
@@ -219,6 +233,12 @@ export class NodeResolver implements INodeResolver {
   // Cleared each sweep — log fires only on the first frame a device enters transit.
   private readonly _darkSpinActiveDevices = new Set<DeviceId>()
 
+  // 🔥 WAVE 4720: IGNITION ENGINE — Pre-computed injection map (patch-time only)
+  // Key: DeviceId  Value: array of IgnitionInjection rules
+  // Built once in _precomputeIgnitionMap(); iterated O(2-4) times per frame in resolve().
+  // ZERO ALLOC in hot path — all arrays created at patch time.
+  private readonly _ignitionMap = new Map<DeviceId, IgnitionInjection[]>()
+
   constructor(graph: INodeGraph) {
     this._graph = graph
   }
@@ -229,6 +249,21 @@ export class NodeResolver implements INodeResolver {
    */
   setSafetyMiddleware(middleware: AetherSafetyMiddleware): void {
     this._safetyMiddleware = middleware
+  }
+
+  /**
+   * 🔥 WAVE 4720: Registra un device y pre-computa su mapa de ignición.
+   *
+   * Llamar DESPUÉS de NodeGraph.registerDevice() — el device debe estar
+   * ya en el grafo para que getDeviceNodes() y getNodeData() funcionen.
+   *
+   * PATCH TIME — nunca llamar desde el hot path.
+   *
+   * @param deviceId — DeviceId del device recién registrado
+   */
+  registerDevice(deviceId: DeviceId): void {
+    this._ignitionMap.delete(deviceId)  // limpiar si re-patch
+    this._precomputeIgnitionMap(deviceId)
   }
 
   /**
@@ -404,6 +439,12 @@ export class NodeResolver implements INodeResolver {
     // changes and Selene L1 global color effects.
     this._applyDarkSpinCrossNodeSweep()
 
+    // 🔥 WAVE 4720: IGNITION INJECTION PASS — O(Σ injections per device)
+    // Ejecutado DESPUÉS de todos los _writeNode() y DarkSpin.
+    // Inyecta prerequisitos (ej. shutter=255) cuando el canal fuente está activo.
+    // HTP: Math.max(buf[target], requiredValue) — nunca baja un valor más alto.
+    this._applyIgnitionInjections()
+
     this._traceFirstDeviceDmxBytes()
 
     // 3. Ensamblar los packets de salida desde los buffers activos
@@ -421,6 +462,110 @@ export class NodeResolver implements INodeResolver {
 
     // Retornar como Array readonly (sin new Array — reutiliza la misma ref)
     return Array.from(this._framePackets.values()) as readonly IDMXPacket[]
+  }
+
+  /**
+   * 🔥 WAVE 4720: Pre-computa el mapa de inyección de ignición para un device.
+   *
+   * Recopila todos los canales del device, busca los que tienen ignitionDeps,
+   * y construye IgnitionInjection[] con índices de buffer absolutos.
+   *
+   * PATCH TIME — cero alloc en hot path.
+   */
+  private _precomputeIgnitionMap(deviceId: DeviceId): void {
+    const device = this._graph.getDevice(deviceId)
+    if (!device) return
+
+    const nodeIds = this._graph.getDeviceNodes(deviceId)
+    if (!nodeIds || nodeIds.length === 0) return
+
+    const baseAddr = device.dmxAddress - 1  // 1-based → 0-indexed
+
+    // 1. Collect all channels across all nodes of this device for dep resolution
+    const allChannels: { type: string; dmxOffset: number }[] = []
+    for (const nodeId of nodeIds) {
+      const node = this._graph.getNodeData(nodeId)
+      if (!node) continue
+      for (const ch of node.channels) {
+        allChannels.push({ type: ch.type, dmxOffset: ch.dmxOffset })
+      }
+    }
+
+    // 2. Build injection rules from channels that declare ignitionDeps
+    const injections: IgnitionInjection[] = []
+    for (const nodeId of nodeIds) {
+      const node = this._graph.getNodeData(nodeId)
+      if (!node) continue
+
+      for (const ch of node.channels) {
+        if (!ch.ignitionDeps || ch.ignitionDeps.length === 0) continue
+
+        const sourceBufIdx = baseAddr + ch.dmxOffset
+
+        for (const dep of ch.ignitionDeps) {
+          const target = allChannels.find(c => c.type === dep.targetChannelType)
+          if (!target) {
+            console.warn(
+              `[NodeResolver] ⚠️ WAVE 4720: Ignition dep target "${dep.targetChannelType}" ` +
+              `not found in device ${String(deviceId)} for source channel "${ch.type}"`
+            )
+            continue
+          }
+          injections.push({
+            targetBufIdx: baseAddr + target.dmxOffset,
+            requiredValue: dep.requiredValue,
+            sourceBufIdx,
+            mode: dep.mode,
+          })
+        }
+      }
+    }
+
+    if (injections.length > 0) {
+      this._ignitionMap.set(deviceId, injections)
+      console.log(
+        `[NodeResolver] 🔥 WAVE 4720: ${injections.length} ignition injection(s) ` +
+        `pre-computed for device ${String(deviceId)}`
+      )
+    }
+  }
+
+  /**
+   * 🔥 WAVE 4720: Inyecta valores de ignición en el buffer DMX — HOT PATH.
+   *
+   * Para cada device con ignition rules:
+   *   'hold'    → buf[target] = max(buf[target], requiredValue) siempre
+   *   'release' → idem, pero solo si buf[source] > 0
+   *
+   * HTP: NUNCA baja un valor que ya estuviera más alto (ej: operador
+   * tiene shutter a 255 manualmente — la inyección no lo toca).
+   *
+   * Complejidad: O(Σ injections) ≈ O(2-4) por device de descarga.
+   * Cero alloc. Cero búsqueda por tipo.
+   */
+  private _applyIgnitionInjections(): void {
+    for (const [deviceId, injections] of this._ignitionMap) {
+      const device = this._graph.getDevice(deviceId)
+      if (!device) continue
+
+      const buf = this._universeBuffers.get(device.universe)
+      if (!buf) continue
+
+      for (let i = 0; i < injections.length; i++) {
+        const inj = injections[i]
+
+        if (inj.targetBufIdx < 0 || inj.targetBufIdx >= DMX_UNIVERSE_SIZE) continue
+        if (inj.sourceBufIdx < 0 || inj.sourceBufIdx >= DMX_UNIVERSE_SIZE) continue
+
+        // 'release': only inject when source channel is active (> 0)
+        if (inj.mode === 'release' && buf[inj.sourceBufIdx] === 0) continue
+
+        // HTP: never lower an existing value
+        if (buf[inj.targetBufIdx] < inj.requiredValue) {
+          buf[inj.targetBufIdx] = inj.requiredValue
+        }
+      }
+    }
   }
 
   private _traceFirstDeviceDmxBytes(): void {

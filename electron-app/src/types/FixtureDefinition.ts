@@ -158,6 +158,12 @@ export interface IgnitionDependency {
   channelType: ChannelType;
   /** Valor DMX (0-255) que el canal target debe tener para que ESTE canal funcione */
   requiredValue: number;
+  /**
+   * Modo de inyección:
+   * - 'hold' (default): inyectar SIEMPRE mientras este perfil esté activo.
+   * - 'release': inyectar SOLO cuando el canal fuente (este canal) > 0.
+   */
+  mode?: 'hold' | 'release';
 }
 
 export interface FixtureChannel {

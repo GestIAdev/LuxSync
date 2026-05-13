@@ -133,6 +133,44 @@ const PATTERN_PERIOD = {
     figure_of_4: 24, // 🏛️ 16→24. 6 compases: figure8 contenido
     chase_position: 24, // 🏛️ 16→24. 6 compases: posiciones con solemnidad
 };
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 4741: PATTERN_CONFIG — Reemplaza PATTERN_PERIOD
+// ─────────────────────────────────────────────────────────────────────────
+// Cada entrada desacopla cycleBeats (velocidad) de phraseDuration (escena).
+// Regla musical: phraseDuration = N × cycleBeats (múltiplo entero siempre).
+// safeHarborWindow = π/4 (±45°) estándar — tolerancia generosa sin ruido.
+// hardDeadlineExtra = cycleBeats (1 ciclo extra de gracia anti-bloqueo).
+// PATTERN_PERIOD permanece como fallback para código legacy hasta ASALTO 2.
+// ═══════════════════════════════════════════════════════════════════════════
+const PATTERN_CONFIG = {
+    // ── TECHNO — geometría industrial agresiva ──────────────────────────────
+    // cycleBeats 2-6 → 1 revolución en 1-3 compases a 128 BPM = energético
+    scan_x: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+    square: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+    diamond: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+    botstep: { cycleBeats: 2, phraseDuration: 8, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 2, transitionBeats: 0.5 },
+    darkspin: { cycleBeats: 6, phraseDuration: 12, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 6, transitionBeats: 1 },
+    // ── LATINO — fluido, sensual, cadencia ─────────────────────────────────
+    // cycleBeats 6-10 → 1 revolución en 3-5 compases a 100 BPM = cadencia real
+    figure8: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    wave_y: { cycleBeats: 6, phraseDuration: 12, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 6, transitionBeats: 1 },
+    ballyhoo: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 2 },
+    cadera_libre: { cycleBeats: 10, phraseDuration: 20, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 10, transitionBeats: 2 },
+    espiral_conga: { cycleBeats: 8, phraseDuration: 24, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    // ── POP-ROCK — estadio, simetría ──────────────────────────────────────
+    circle_big: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    cancan: { cycleBeats: 4, phraseDuration: 8, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+    dual_sweep: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    // ── CHILL — oceánico, geológico ─────────────────────────────────────────
+    drift: { cycleBeats: 64, phraseDuration: 128, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 32, transitionBeats: 4 },
+    sway: { cycleBeats: 32, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
+    breath: { cycleBeats: 24, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 3 },
+    // ── THE FOUR NOBLES — universales ───────────────────────────────────────
+    slow_pan: { cycleBeats: 16, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 2 },
+    tilt_nod: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    figure_of_4: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
+    chase_position: { cycleBeats: 4, phraseDuration: 8, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+};
 const STEREO_CONFIG = {
     'techno-club': { offset: Math.PI, type: 'mirror' }, // L/R espejos (puertas abren/cierran)
     'fiesta-latina': { offset: Math.PI / 4, type: 'snake' }, // 45° cadena de caderas
@@ -413,24 +451,23 @@ export class VibeMovementManager {
         this.time = 0;
         this.lastUpdate = Date.now();
         this.frameCount = 0;
-        this.barCount = 0;
-        this.lastBeatCount = 0;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
-        //
-        // THE ROOT CAUSE (2088.9 forensics):
-        //   Before: phase = (absoluteBeats % patternPeriod) / patternPeriod * 2π
-        //   Problem 1: patternPeriod varied with energy → phase JUMPED discontinuously
-        //   Problem 2: BPM fluctuated 70→184 frame-to-frame → chaotic phase velocity
-        //   Problem 3: beatCount modulo changing period = INSTANT position teleport
-        //
-        // THE FIX: Accumulate phase delta frame-by-frame using smoothed BPM.
-        //   phaseAccumulator += (smoothedBPM / 60) * dt / patternPeriod * 2π
-        //   Phase ONLY moves forward (or very slowly backward), NEVER teleports.
-        //   patternPeriod is FIXED per pattern (no energy modulation on period).
-        //   Energy modulates AMPLITUDE only (which is continuous, not discontinuous).
+        // WAVE 4741: SCHEDULER STATE — Desacoplado cycleBeats / phraseDuration
+        // ─────────────────────────────────────────────────────────────────────
+        // Reemplaza phaseAccumulator+barCount+lastBeatCount como fuente de verdad.
+        // schedulerState.phase avanza a (2π/cycleBeats)*beatsThisFrame (velocidad pura).
+        // schedulerState.sceneBeatsElapsed avanza el mismo ΔBeats independientemente.
+        // Cuando sceneBeatsElapsed >= phraseDuration + hardDeadlineExtra el
+        // scheduler rota al siguiente patrón (implementación completa en ASALTO 2;
+        // aquí ya se acumula correctamente la información temporal).
         // ═══════════════════════════════════════════════════════════════════════
-        this.phaseAccumulator = 0;
+        this.schedulerState = {
+            patternIndex: 0,
+            phase: 0,
+            sceneBeatsElapsed: 0,
+        };
+        // Último vibeId procesado — detecta cambios de vibe para resetear el scheduler
+        this.lastVibeId = null;
         this.smoothedBPM = 120;
         this.BPM_SMOOTH_FACTOR = 0.05; // Very slow BPM tracking (20 frames to converge)
         // 🎚️ WAVE 2472: GRANDMASTER SPEED — multiplicador global de la IA
@@ -454,11 +491,14 @@ export class VibeMovementManager {
         this.manualPatternOverride = null;
         // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
         // Cuando el patron cambia, hacemos LERP de 2 segundos
-        this.lastPattern = null;
         this.lastPosition = { x: 0, y: 0 };
-        this.transitionStartTime = 0;
-        this.isTransitioning = false;
-        this.TRANSITION_DURATION_MS = 2000; // 2 segundos
+        // ═══════════════════════════════════════════════════════════════════════
+        // WAVE 4741 ASALTO 2: KINETIC CROSSFADE — Interpolación beat-sincronizada
+        // Reemplaza TRANSITION_DURATION_MS + transitionStartTime + isTransitioning.
+        // fromPattern continúa avanzando su fase durante el crossfade (movimiento vivo).
+        // totalBeats proviene de patternCfg.transitionBeats del patrón SALIENTE.
+        // ═══════════════════════════════════════════════════════════════════════
+        this.kineticTransition = { active: false, fromPattern: 'breath', fromPhaseSnapshot: 0, progressBeats: 0, totalBeats: 0 };
         // ─── WAVE 4717.2: L2 PHASE OFFSETS (Fan Distribute) ──────────────────────
         // Record pre-allocado, mutado in-place en el hot-path — cero alloc @ 44Hz.
         // Key: nodeId (`${fixtureId}:kinetic`). Value: phase offset en radianes.
@@ -585,70 +625,113 @@ export class VibeMovementManager {
             this.time += frameDeltaTime;
             this.frameCount++;
         }
-        // Second call (R fixture): reuse same time/frameCount/barCount
+        // Second call (R fixture): reuse same time/frameCount from first call
         // Obtener configuracion del vibe
         const config = VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle'];
-        // Actualizar barCount desde beatCount
         const beatCount = audio.beatCount ?? 0;
         const beatPhase = audio.beatPhase ?? 0;
-        if (beatCount !== this.lastBeatCount) {
-            if (beatCount % 4 === 0)
-                this.barCount++;
-            this.lastBeatCount = beatCount;
-        }
-        // Seleccionar patron
-        const patternName = this.selectPattern(config, audio);
-        // 🥶 WAVE 1165: GHOST PROTOCOL - FREEZE instead of HOME on silence
-        // When energy is very low, MAINTAIN last position instead of going to center
-        // This prevents the "whip to home" movement when audio stops
-        if (audio.energy < 0.03 && config.homeOnSilence) {
-            return this.createFreezeIntent(patternName);
-        }
-        // PHASE CALCULATION - Beat-Locked (WAVE 1153 compatible)
-        const basePatternPeriod = PATTERN_PERIOD[patternName] || 4;
+        // ═══════════════════════════════════════════════════════════════════
+        // WAVE 4741: TICK DESACOPLADO — Paso A + B (Blueprint §5)
+        //
+        // Paso A: BPM suavizado + beatsThisFrame
+        // Paso B: Avance de fase a ritmo de cycleBeats (velocidad pura)
+        //         + avance de sceneBeatsElapsed independiente (duración escena)
+        // Paso C (Paso D del Blueprint): Safe-harbor check y scheduler
+        //         → implementación completa en ASALTO 2 (se conecta aquí)
+        //
+        // El viejo PATTERN_PERIOD se conserva como fallback para el Gearbox
+        // hasta que ASALTO 2 lo reemplace con patternConfig.cycleBeats.
+        // ═══════════════════════════════════════════════════════════════════
         const safeBPM = this.getSafeBPM(audio.bpm);
-        // ═══════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 2088.10: MONOTONIC PHASE ACCUMULATOR
-        //
-        // KILLED: ENERGY-TO-PERIOD modulation.
-        // WHY: Changing patternPeriod frame-by-frame caused DISCONTINUOUS phase
-        //      jumps. (absoluteBeats % changingPeriod) teleports the pattern.
-        //      Energy should modulate AMPLITUDE (continuous), not PERIOD (discontinuous).
-        //
-        // KILLED: Direct beatCount-to-phase mapping.
-        // WHY: BPM fluctuating 70→184 made absoluteBeats advance erratically.
-        //      Modulo of erratic value = chaotic phase = convulsive movement.
-        //
-        // NEW: Smooth BPM → delta phase per frame → accumulate monotonically.
-        //      Phase advances like a FLYWHEEL — steady, never teleporting.
-        //      patternPeriod is FIXED per pattern (no energy modulation).
-        // ═══════════════════════════════════════════════════════════════════
-        const patternPeriod = basePatternPeriod; // FIXED — no energy modulation
-        // Smooth BPM with heavy low-pass filter (only on first call per frame)
+        // Reset scheduler si cambió el vibe (nuevo set de patrones)
+        if (!isSameFrame && this.lastVibeId !== null && this.lastVibeId !== vibeId) {
+            this.schedulerState.patternIndex = 0;
+            this.schedulerState.phase = 0;
+            this.schedulerState.sceneBeatsElapsed = 0;
+            this.kineticTransition = { active: false, fromPattern: 'breath', fromPhaseSnapshot: 0, progressBeats: 0, totalBeats: 0 };
+            console.log(`[CHOREO4741] Vibe changed ${this.lastVibeId} → ${vibeId}: scheduler + crossfade reset`);
+        }
+        if (!isSameFrame) {
+            this.lastVibeId = vibeId;
+        }
+        // Smooth BPM con filtro paso-bajo pesado (solo en la primera llamada del frame)
         if (!isSameFrame) {
             this.smoothedBPM += (safeBPM - this.smoothedBPM) * this.BPM_SMOOTH_FACTOR;
         }
-        // Accumulate phase delta using smoothed BPM and frame dt
-        // 🎚️ WAVE 2472: globalSpeedMultiplier scales the AI's time flow
-        // 🌿 WAVE 3450: CHILL SEDATION — 5% de velocidad. La medusa no tiene prisa.
-        //   Un ciclo drift (256 beats @ 120BPM) pasa de ~2 min a ~42 min. Glacial.
+        // ── Lookup patrón ACTUAL (previo a la posible rotación de este frame) ────────────
+        // Se consulta ANTES del bloque de fase para que el safe-harbor sepa desde
+        // qué patrón se está saliendo y pueda disparar el crossfade cinético.
+        const currentPatternName = this.selectPattern(config, audio);
+        const currentPatternCfg = PATTERN_CONFIG[currentPatternName];
+        const currentCycleBeats = currentPatternCfg
+            ? currentPatternCfg.cycleBeats
+            : (PATTERN_PERIOD[currentPatternName] || 8);
         if (!isSameFrame) {
             const beatsPerSecond = this.smoothedBPM / 60;
-            const phasePerBeat = (2 * Math.PI) / patternPeriod; // radians per beat
+            const beatsThisFrame = beatsPerSecond * frameDeltaTime;
             const chillSedationFactor = vibeId === 'chill-lounge' ? 0.80 : 1.0;
-            // WAVE 4661 PASO 4: manualSpeedOverride (0-100) escala el LFO
-            // multiplicativamente con globalSpeedMultiplier (GrandMaster).
-            //   slider=0  → 0.5× (mitad de velocidad)
-            //   slider=50 → 1.0× (velocidad nominal, centro del fader)
-            //   slider=100 → 2.0× (doble velocidad)
-            // Sumatorio con GM: efectivo = GM × manualFactor
             const manualSpeedFactor = this.manualSpeedOverride !== null
                 ? Math.pow(2, (this.manualSpeedOverride - 50) / 50)
                 : 1.0;
-            const phaseDelta = beatsPerSecond * frameDeltaTime * phasePerBeat * this.globalSpeedMultiplier * manualSpeedFactor * chillSedationFactor;
-            this.phaseAccumulator += phaseDelta;
+            const effectiveBeats = beatsThisFrame * this.globalSpeedMultiplier * manualSpeedFactor * chillSedationFactor;
+            // ── PASO A: avanzar fase a ritmo de cycleBeats (velocidad pura) ──────────────
+            const phasePerBeat = (2 * Math.PI) / currentCycleBeats;
+            this.schedulerState.phase += effectiveBeats * phasePerBeat;
+            // ── PASO B: avanzar contador de escena (independiente de cycleBeats) ─────────
+            // sceneBeatsElapsed mide el tiempo en escena del patrón actual.
+            // Es TOTALMENTE independiente de la velocidad del ciclo.
+            this.schedulerState.sceneBeatsElapsed += effectiveBeats;
+            // ── PASO C: SAFE-HARBOR — Rotación de patrón beat-sincronizada ───────────────
+            // Espera a que sceneBeatsElapsed supere phraseDuration Y la fase esté
+            // próxima a safeHarborPhase (fixture cerca del centro) para rotar.
+            // Si se excede hardDeadline, fuerza la rotación igualmente.
+            if (currentPatternCfg && this.manualPatternOverride === null && config.patterns.length > 1) {
+                if (this.schedulerState.sceneBeatsElapsed >= currentPatternCfg.phraseDuration) {
+                    const TWO_PI = 2 * Math.PI;
+                    const normalizedPhase = ((this.schedulerState.phase % TWO_PI) + TWO_PI) % TWO_PI;
+                    const distFromHarbor = Math.abs(normalizedPhase - currentPatternCfg.safeHarborPhase);
+                    const inHarbor = distFromHarbor < currentPatternCfg.safeHarborWindow;
+                    const hardDeadline = this.schedulerState.sceneBeatsElapsed >=
+                        currentPatternCfg.phraseDuration + currentPatternCfg.hardDeadlineExtra;
+                    if (inHarbor || hardDeadline) {
+                        const oldIndex = this.schedulerState.patternIndex;
+                        this.schedulerState.patternIndex = (oldIndex + 1) % config.patterns.length;
+                        this.schedulerState.sceneBeatsElapsed = 0;
+                        // ── Disparar crossfade cinético ────────────────────────────────────────
+                        this.kineticTransition = {
+                            active: true,
+                            fromPattern: currentPatternName,
+                            fromPhaseSnapshot: this.schedulerState.phase,
+                            progressBeats: 0,
+                            totalBeats: currentPatternCfg.transitionBeats,
+                        };
+                        const newPattern = config.patterns[this.schedulerState.patternIndex];
+                        console.log(`[SCHED] 🌊 ${currentPatternName} → ${newPattern}` +
+                            ` | harbor:${inHarbor} deadline:${hardDeadline}` +
+                            ` | phase:${Math.round(normalizedPhase * 180 / Math.PI)}°`);
+                    }
+                }
+            }
+            // ── Avanzar crossfade en curso ────────────────────────────────────────────────
+            if (this.kineticTransition.active) {
+                this.kineticTransition.progressBeats += effectiveBeats;
+                if (this.kineticTransition.progressBeats >= this.kineticTransition.totalBeats) {
+                    this.kineticTransition.active = false;
+                    const finishedPattern = config.patterns[this.schedulerState.patternIndex];
+                    console.log(`[SCHED] ✅ Crossfade complete → ${finishedPattern}`);
+                }
+            }
         }
-        const phase = this.phaseAccumulator + phaseOffset;
+        // ── patternName post-rotación: refleja el índice actualizado en este frame ───────
+        const patternName = this.selectPattern(config, audio);
+        const patternCfg = PATTERN_CONFIG[patternName];
+        const patternPeriod = patternCfg ? patternCfg.cycleBeats : (PATTERN_PERIOD[patternName] || 8);
+        // 🥶 WAVE 1165: GHOST PROTOCOL — FREEZE instead of HOME on silence
+        // When energy is very low, MAINTAIN last position instead of going to center
+        if (audio.energy < 0.03 && config.homeOnSilence) {
+            return this.createFreezeIntent(patternName);
+        }
+        const phase = this.schedulerState.phase + phaseOffset;
         // PATTERN EXECUTION
         const patternFn = PATTERNS[patternName];
         if (!patternFn) {
@@ -690,37 +773,36 @@ export class VibeMovementManager {
             x: Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude)),
             y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
         };
-        // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
-        // Detectar cambio de patron e iniciar transicion LERP de 2 segundos
-        if (!isSameFrame && this.lastPattern !== null && this.lastPattern !== patternName) {
-            // Patron cambio! Iniciar transicion (only on first call per frame)
-            this.isTransitioning = true;
-            this.transitionStartTime = now;
-            console.log(`[CHOREO] Pattern transition: ${this.lastPattern} -> ${patternName} (2s LERP)`);
-        }
-        // Si estamos en transicion, hacer LERP entre lastPosition y position
+        // WAVE 4741 ASALTO 2: KINETIC CROSSFADE
+        // Si hay un crossfade activo, calcula la posición del patrón SALIENTE en tiempo
+        // real (continúa avanzando su fase) y hace un LERP hasta la del ENTRANTE.
         let finalPosition = position;
-        if (this.isTransitioning) {
-            const elapsed = now - this.transitionStartTime;
-            const t = Math.min(1.0, elapsed / this.TRANSITION_DURATION_MS);
-            // Curva de ease-out (suave al final): t^2 * (3 - 2t)
-            const smoothT = t * t * (3 - 2 * t);
-            finalPosition = {
-                x: this.lastPosition.x + (position.x - this.lastPosition.x) * smoothT,
-                y: this.lastPosition.y + (position.y - this.lastPosition.y) * smoothT,
-            };
-            // Terminar transicion despues de 2 segundos
-            if (t >= 1.0) {
-                this.isTransitioning = false;
-                console.log(`[CHOREO] Transition complete -> ${patternName}`);
+        if (this.kineticTransition.active) {
+            const fromCfg = PATTERN_CONFIG[this.kineticTransition.fromPattern]
+                ?? PATTERN_CONFIG['breath'];
+            const fromPhasePerBeat = (2 * Math.PI) / fromCfg.cycleBeats;
+            // Fase del patrón saliente: snapshot + beats acumulados × velocidad de su ciclo
+            const fromPhase = this.kineticTransition.fromPhaseSnapshot +
+                this.kineticTransition.progressBeats * fromPhasePerBeat + phaseOffset;
+            const fromPatternFn = PATTERNS[this.kineticTransition.fromPattern];
+            if (fromPatternFn) {
+                const fromRaw = fromPatternFn(fromPhase, audio, fixtureIndex, totalFixtures);
+                const fromPosition = {
+                    x: Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude)),
+                    y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),
+                };
+                // Smoothstep ease-in-out: t² × (3 − 2t)
+                const t = Math.min(1.0, this.kineticTransition.progressBeats / this.kineticTransition.totalBeats);
+                const smoothT = t * t * (3 - 2 * t);
+                finalPosition = {
+                    x: fromPosition.x + (position.x - fromPosition.x) * smoothT,
+                    y: fromPosition.y + (position.y - fromPosition.y) * smoothT,
+                };
             }
         }
-        // 🎭 WAVE 2086.1: Save state ONLY on first call per frame
-        // This prevents the R fixture's stereo position from contaminating
-        // the L fixture's LERP origin on the next frame.
+        // 🎭 WAVE 2086.1: Save lastPosition ONE per frame (para GHOST PROTOCOL)
         if (!isSameFrame) {
-            this.lastPattern = patternName;
-            this.lastPosition = finalPosition; // Pre-stereo position (shared base)
+            this.lastPosition = finalPosition;
         }
         // ═══════════════════════════════════════════════════════════════════════
         // 🎭 WAVE 2086.1: STEREO PHASE OFFSET — The Resurrection
@@ -783,10 +865,14 @@ export class VibeMovementManager {
             const panDeg = Math.round(stereoPosition.x * 270);
             const tiltDeg = Math.round(stereoPosition.y * 135);
             const manualTag = this.hasAnyOverride() ? ' [MANUAL]' : '';
-            const transitionTag = this.isTransitioning ? ' [LERP]' : '';
+            const xfadeTag = this.kineticTransition.active
+                ? ` [XF→${config.patterns[this.schedulerState.patternIndex] ?? '?'}]`
+                : '';
             const stereoTag = stereoConfig.type !== 'sync' ? ` [${stereoConfig.type.toUpperCase()} ×${totalFixtures}]` : '';
-            const phaseDeg = Math.round((this.phaseAccumulator % (2 * Math.PI)) * 180 / Math.PI);
-            console.log(`[CHOREO] ${vibeId} | ${patternName}${manualTag}${transitionTag}${stereoTag} | Bar:${this.barCount} | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`);
+            const phaseDeg = Math.round((this.schedulerState.phase % (2 * Math.PI)) * 180 / Math.PI);
+            const sceneB = Math.round(this.schedulerState.sceneBeatsElapsed);
+            console.log(`[CHOREO] ${vibeId} | #${this.schedulerState.patternIndex}:${patternName}${manualTag}${xfadeTag}${stereoTag}` +
+                ` | scene:${sceneB}b | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`);
         }
         // Determinar phaseType
         // 🔧 WAVE 2086.1: phaseType is now informational only (stereo already applied)
@@ -800,7 +886,7 @@ export class VibeMovementManager {
             amplitude: effectivePanAmplitude,
             phaseType,
             _frequency: effectiveFrequency,
-            _phrase: Math.floor(this.barCount / 8),
+            _phrase: this.schedulerState.patternIndex,
         };
     }
     // PATTERN SELECTION
@@ -815,10 +901,9 @@ export class VibeMovementManager {
         const patterns = config.patterns;
         if (patterns.length === 0)
             return 'breath';
-        // Rotacion por phrase (cada 8 compases)
-        const phrase = Math.floor(this.barCount / 8);
-        const patternIndex = phrase % patterns.length;
-        return patterns[patternIndex];
+        // WAVE 4741 ASALTO 2: índice directo desde el scheduler (rotado por safe-harbor)
+        const safeIndex = this.schedulerState.patternIndex % patterns.length;
+        return patterns[safeIndex];
     }
     // GEARBOX - Hardware speed limiting
     calculateEffectiveAmplitude(baseAmplitude, bpm, patternPeriod, energy, 
@@ -872,7 +957,7 @@ export class VibeMovementManager {
             speed: 0,
             amplitude: 0,
             _frequency: 0,
-            _phrase: Math.floor(this.barCount / 8),
+            _phrase: this.schedulerState.patternIndex,
         };
     }
     /**
@@ -888,7 +973,7 @@ export class VibeMovementManager {
             speed: 0,
             amplitude: 0,
             _frequency: 0,
-            _phrase: Math.floor(this.barCount / 8),
+            _phrase: this.schedulerState.patternIndex,
         };
     }
     // PUBLIC GETTERS
@@ -901,20 +986,19 @@ export class VibeMovementManager {
     resetTime() {
         this.time = 0;
         this.lastUpdate = Date.now();
-        this.barCount = 0;
-        this.lastBeatCount = 0;
-        this.phaseAccumulator = 0;
-        this.smoothedBPM = 120;
-        // WAVE 1155.1: Reset transition state
-        this.lastPattern = null;
+        // WAVE 4741: reset completo — scheduler + crossfade
+        this.schedulerState = { patternIndex: 0, phase: 0, sceneBeatsElapsed: 0 };
+        this.lastVibeId = null;
+        this.kineticTransition = { active: false, fromPattern: 'breath', fromPhaseSnapshot: 0, progressBeats: 0, totalBeats: 0 };
         this.lastPosition = { x: 0, y: 0 };
-        this.isTransitioning = false;
+        this.smoothedBPM = 120;
     }
     getTime() {
         return this.time;
     }
     getBarCount() {
-        return this.barCount;
+        // WAVE 4741: aprox desde sceneBeatsElapsed (mantiene compatibilidad de tests)
+        return Math.floor(this.schedulerState.sceneBeatsElapsed / 4);
     }
 }
 // UI Pattern → GoldenPattern Translation Map

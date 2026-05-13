@@ -913,6 +913,12 @@ declare global {
       }>
     }
     
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 4719: MODERN DMX DIRECT INJECTION — The Nerve Link
+      // ═══════════════════════════════════════════════════════════════════════════
+      /** 🔦 WAVE 1007: Direct DMX channel send — bypasses Aether, hits hardware directly */
+      sendDmxChannel: (universe: number, address: number, value: number) => Promise<{ success: boolean }>
+
     // ============================================
     // 🔌 WAVE 365: Stage Persistence V2 API
     // 🎯 WAVE 369.5: Native File Dialogs

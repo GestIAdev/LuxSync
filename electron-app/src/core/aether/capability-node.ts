@@ -95,6 +95,17 @@ export interface INodeChannelDef {
    * Ejemplo: "pump", "fan-speed", "spark-rate".
    */
   readonly customName?: string
+  /**
+   * 🔥 WAVE 4720: IGNITION DEPENDENCIES — canales que deben estar activos
+   * para que este canal produzca salida. Pre-computados en patch-time y
+   * usados por NodeResolver._precomputeIgnitionMap() para construir el
+   * mapa de inyección HTP. NUNCA iterar en el hot path (44Hz).
+   */
+  readonly ignitionDeps?: readonly {
+    readonly targetChannelType: AetherChannelType
+    readonly requiredValue: number
+    readonly mode: 'hold' | 'release'
+  }[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

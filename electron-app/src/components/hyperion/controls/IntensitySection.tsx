@@ -1,34 +1,19 @@
 /**
- * 💡 INTENSITY SECTION - WAVE 430
- * Dimmer control for selected fixtures
- * 
- * Features:
- * - COLLAPSIBLE section header
- * - Slider 0-100%
- * - Quick buttons: 0%, 25%, 50%, 75%, 100%
- * - Release button (↺) to return control to AI
- * - Orange glow when manual override active
- * - 🔒 WAVE 3270: LIMIT (Inhibit) — proportional output ceiling
+ * 💡 INTENSITY SECTION — WAVE 4726: ATOMIC WIRING
+ * Dimmer / Strobe / Limit control.
+ * Lee y escribe directamente en el programmer store vía ctx.cellKey.
  */
 
 import React, { useCallback } from 'react'
+import { NodeFamily } from '../../../stores/programmer-types'
+import type { CapabilityContext } from '../../../stores/programmer-types'
+import { useProgrammerStore } from '../../../stores/programmerStore'
 import { IntensityIcon, StrobeIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
-  value: number | null          // 0-100 | null = MIXED
-  hasOverride: boolean   // Is dimmer under manual control?
-  strobeValue: number | null    // 0-100 | null = MIXED
-  hasStrobeOverride: boolean // Is strobe under manual control?
-  limitValue: number | null     // 0-100 | null = MIXED
-  hasLimitActive: boolean // Is limit below 100%?
-  isExpanded: boolean    // Is section expanded?
-  onToggle: () => void   // Toggle expansion
-  onChange: (value: number) => void
-  onRelease: () => void
-  onStrobeChange: (value: number) => void
-  onStrobeRelease: () => void
-  onLimitChange: (value: number) => void
-  onLimitRelease: () => void
+  ctx: CapabilityContext<NodeFamily.IMPACT>
+  isExpanded: boolean
+  onToggle: () => void
 }
 
 // Quick presets
@@ -57,55 +42,66 @@ const LIMIT_PRESETS = [
   { label: 'FULL', value: 100 },
 ]
 
-export const IntensitySection: React.FC<IntensitySectionProps> = ({
-  value,
-  hasOverride,
-  strobeValue,
-  hasStrobeOverride,
-  limitValue,
-  hasLimitActive,
-  isExpanded,
-  onToggle,
-  onChange,
-  onRelease,
-  onStrobeChange,
-  onStrobeRelease,
-  onLimitChange,
-  onLimitRelease,
-}) => {
-  const sliderValue = value ?? 0
-  const sliderStrobeValue = strobeValue ?? 0
-  const sliderLimitValue = limitValue ?? 0
-  const dimmerLabel = value === null ? '-' : `${Math.round(value)}%`
-  const strobeLabel = strobeValue === null ? '-' : (strobeValue === 0 ? 'OFF' : `${Math.round(strobeValue)}%`)
-  const limitLabel = limitValue === null ? '-' : `${Math.round(limitValue)}%`
+export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, isExpanded, onToggle }) => {
+  const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
+  const data = ov?.payload.family === NodeFamily.IMPACT ? ov.payload.data : {}
 
-  
+  const dimmer = data.dimmer !== undefined ? Math.round(data.dimmer * 100) : null
+  const strobe = data.strobe !== undefined ? Math.round(data.strobe * 100) : null
+  const limit  = data.limit  !== undefined ? Math.round(data.limit  * 100) : 100
+
+  const hasDimmer      = data.dimmer !== undefined
+  const hasStrobe      = data.strobe !== undefined
+  const hasLimit       = data.limit  !== undefined && data.limit < 1
+  const hasAnyOverride = hasDimmer || hasStrobe || hasLimit
+
+  const sliderValue       = dimmer ?? 0
+  const sliderStrobeValue = strobe ?? 0
+  const sliderLimitValue  = limit
+  const dimmerLabel = dimmer === null ? '-' : `${Math.round(dimmer)}%`
+  const strobeLabel = strobe === null ? '-' : (strobe === 0 ? 'OFF' : `${Math.round(strobe)}%`)
+  const limitLabel  = `${Math.round(limit)}%`
+
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(Number(e.target.value))
-  }, [onChange])
-  
-  const handlePresetClick = useCallback((presetValue: number) => {
-    onChange(presetValue)
-  }, [onChange])
-  
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'dimmer', Number(e.target.value))
+  }, [ctx.cellKey])
+
+  const handlePresetClick = useCallback((v: number) => {
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'dimmer', v)
+  }, [ctx.cellKey])
+
   const handleStrobeSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onStrobeChange(Number(e.target.value))
-  }, [onStrobeChange])
-  
-  const handleStrobePresetClick = useCallback((presetValue: number) => {
-    onStrobeChange(presetValue)
-  }, [onStrobeChange])
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'strobe', Number(e.target.value))
+  }, [ctx.cellKey])
+
+  const handleStrobePresetClick = useCallback((v: number) => {
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'strobe', v)
+  }, [ctx.cellKey])
 
   const handleLimitSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onLimitChange(Number(e.target.value))
-  }, [onLimitChange])
+    const v = Number(e.target.value)
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'limit', v)
+    window.lux?.aether?.setInhibitLimit([...ctx.nodeIds], Math.max(0, Math.min(100, v)) / 100)
+  }, [ctx.cellKey, ctx.nodeIds])
 
-  const handleLimitPresetClick = useCallback((presetValue: number) => {
-    onLimitChange(presetValue)
-  }, [onLimitChange])
-  
-  const hasAnyOverride = hasOverride || hasStrobeOverride || hasLimitActive
+  const handleLimitPresetClick = useCallback((v: number) => {
+    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'limit', v)
+    window.lux?.aether?.setInhibitLimit([...ctx.nodeIds], Math.max(0, Math.min(100, v)) / 100)
+  }, [ctx.cellKey, ctx.nodeIds])
+
+  const handleLimitRelease = useCallback(() => {
+    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+    window.lux?.aether?.clearInhibitLimit([...ctx.nodeIds])
+  }, [ctx.cellKey, ctx.nodeIds])
+
+  const handleRelease = useCallback(() => {
+    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+    window.lux?.aether?.clearInhibitLimit([...ctx.nodeIds])
+  }, [ctx.cellKey, ctx.nodeIds])
+
+  const handleStrobeRelease = useCallback(() => {
+    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+  }, [ctx.cellKey])
   
   return (
     <div className={`programmer-section intensity-section ${hasAnyOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
@@ -121,9 +117,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               className="release-btn"
               onClick={(e) => {
                 e.stopPropagation()
-                onRelease()
-                onStrobeRelease()
-                onLimitRelease()
+                handleRelease()
               }}
               title="Release to AI control"
             >
@@ -156,12 +150,12 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
             />
           </div>
           
-          {/* Quick Presets */}
+          {/* Presets */}
           <div className="intensity-presets">
             {PRESETS.map(preset => (
               <button
                 key={preset.value}
-                className={`preset-btn ${value !== null && value === preset.value ? 'active' : ''}`}
+                className={`preset-btn ${dimmer !== null && dimmer === preset.value ? 'active' : ''}`}
                 onClick={() => handlePresetClick(preset.value)}
               >
                 {preset.label}
@@ -170,7 +164,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
           </div>
           
           {/* Override indicator */}
-          {hasOverride && (
+          {hasDimmer && (
             <div className="override-badge">MANUAL</div>
           )}
 
@@ -179,10 +173,10 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
             <div className="strobe-header">
               <span className="limit-icon">🔒</span>
               <span className="strobe-label">LIMIT</span>
-              {hasLimitActive && (
+              {hasLimit && (
                 <button
                   className="release-btn release-btn-mini"
-                  onClick={onLimitRelease}
+                  onClick={handleLimitRelease}
                   title="Release limit (restore full power)"
                 >
                   ↺
@@ -206,7 +200,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               {LIMIT_PRESETS.map(preset => (
                 <button
                   key={preset.label}
-                  className={`preset-btn ${limitValue !== null && limitValue === preset.value ? 'active' : ''}`}
+                  className={`preset-btn ${limit === preset.value ? 'active' : ''}`}
                   onClick={() => handleLimitPresetClick(preset.value)}
                 >
                   {preset.label}
@@ -214,7 +208,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               ))}
             </div>
             
-            {hasLimitActive && (
+            {hasLimit && (
               <div className="override-badge limit-override">LIMIT {limitLabel}</div>
             )}
           </div>
@@ -224,10 +218,10 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
             <div className="strobe-header">
               <StrobeIcon size={14} className="strobe-icon" />
               <span className="strobe-label">STROBE</span>
-              {hasStrobeOverride && (
+              {hasStrobe && (
                 <button
                   className="release-btn release-btn-mini"
-                  onClick={onStrobeRelease}
+                  onClick={handleStrobeRelease}
                   title="Release strobe to AI"
                 >
                   ↺
@@ -251,7 +245,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               {STROBE_PRESETS.map(preset => (
                 <button
                   key={preset.label}
-                  className={`preset-btn ${strobeValue !== null && strobeValue === preset.value ? 'active' : ''}`}
+                  className={`preset-btn ${strobe !== null && strobe === preset.value ? 'active' : ''}`}
                   onClick={() => handleStrobePresetClick(preset.value)}
                 >
                   {preset.label}
@@ -259,7 +253,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
               ))}
             </div>
             
-            {hasStrobeOverride && (
+            {hasStrobe && (
               <div className="override-badge strobe-override">STROBE MANUAL</div>
             )}
           </div>

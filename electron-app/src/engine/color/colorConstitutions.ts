@@ -236,6 +236,21 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   accentBehavior: 'solar-flare',
   solarFlareAccent: { h: 35, s: 100, l: 55 },
 
+  // WAVE 4760: Golden Angle A para secundario tropical (137.5° en vez de 222.5°).
+  fibonacciRotationDeg: 137.5,
+
+  // WAVE 4760: Salt cromático por key root — F→Lima (-35°), A→Miami Pink (+35°).
+  saltChromaticKeys: { 5: -35, 9: 35 },
+
+  // WAVE 4760: Luxury signature overrides para secundario — F→Mint, A→Navy.
+  luxurySignatures: {
+    5: { h: 160, maxS: 85 },  // F Major → Verde Menta
+    9: { h: 230 },             // A Major → Azul Marino
+  },
+
+  // WAVE 4760: Activar Tropical Ambient Bias (WAVE 84) vía constitución.
+  tropicalAmbientBias: true,
+
   dimmingConfig: {
     floor: 0.08,
     ceiling: 1.0,

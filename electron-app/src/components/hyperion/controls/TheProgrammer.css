@@ -223,6 +223,13 @@
   /* Padding lateral reducido */
   padding: 0 4px;
   margin-bottom: 4px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.programmer-section.has-override {
+  border-left-color: var(--neon-base, #a855f7);
+  box-shadow: inset 2px 0 8px rgba(168, 85, 247, 0.15);
 }
 
 .programmer-section .section-header {
@@ -329,10 +336,10 @@
   appearance: none;
   width: 16px;
   height: 16px;
-  background: var(--accent-cyan, #00ffff);
+  background: var(--neon-base, #a855f7);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
 }
 
 .intensity-value {
@@ -614,15 +621,16 @@
 .override-badge {
   display: inline-block;
   padding: 4px 8px;
-  background: rgba(255, 140, 0, 0.2);
-  border: 1px solid rgba(255, 140, 0, 0.4);
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid var(--neon-base, #a855f7);
   border-radius: 12px;
-  color: #ff8c00;
+  color: var(--neon-base, #a855f7);
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 16px 8px 16px;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.35);
 }
 
 /* 
@@ -967,10 +975,10 @@
   appearance: none;
   width: 14px;
   height: 14px;
-  background: #ffd700;
+  background: var(--neon-base, #a855f7);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
 }
 
 /* Prism Slider */

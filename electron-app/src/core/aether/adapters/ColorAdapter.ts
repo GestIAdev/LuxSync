@@ -46,13 +46,16 @@ import { selectColorRoleFromZone, normalizeZoneId } from './zoneUtils'
  * Rota el matiz de un color RGB por `hueDeg` grados (0-360).
  * Si la saturación resultante cae por debajo del umbral, se fuerza al máximo
  * para evitar colores sucios/marrones (regla de oro).
- * Zero-alloc: opera sobre componentes escalares, sin objetos intermiedios.
+ *
+ * Zero-alloc: escribe el resultado en `out` en lugar de retornar un nuevo objeto.
+ * Llamar con un buffer pre-allocated para garantizar cero asignaciones en hot path.
  */
 function hueShiftRgb(
   r: number, g: number, b: number,
   hueDeg: number,
+  out: { r: number; g: number; b: number },
   minSaturation = 0.6,
-): { r: number; g: number; b: number } {
+): void {
   // RGB [0,1] → HSL
   const max = r > g ? (r > b ? r : b) : (g > b ? g : b)
   const min = r < g ? (r < b ? r : b) : (g < b ? g : b)
@@ -75,9 +78,10 @@ function hueShiftRgb(
   // Forzar saturación mínima si el color es sucio
   if (s < minSaturation && (max - min) > 0.05) s = 1.0
 
-  // HSL → RGB
+  // HSL → RGB — escribir directamente en out (zero-alloc)
   if (s === 0) {
-    return { r: l, g: l, b: l }
+    out.r = l; out.g = l; out.b = l
+    return
   }
 
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s
@@ -92,11 +96,9 @@ function hueShiftRgb(
     return p
   }
 
-  return {
-    r: hue2rgb(h + 1 / 3),
-    g: hue2rgb(h),
-    b: hue2rgb(h - 1 / 3),
-  }
+  out.r = hue2rgb(h + 1 / 3)
+  out.g = hue2rgb(h)
+  out.b = hue2rgb(h - 1 / 3)
 }
 
 /** Desplazamiento de matiz (grados) aplicado a nodos COLOR en zona 'air'. */
@@ -179,6 +181,9 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
   // Paleta activa del frame actual — actualizada via setIngress() antes de process()
   private _ingress: IColorIngressPalette = _FALLBACK_PALETTE
 
+  // Buffer pre-allocated para hueShiftRgb — zero-alloc en hot path
+  private readonly _hueShiftOut: { r: number; g: number; b: number } = { r: 0, g: 0, b: 0 }
+
   constructor() {
     super()
     // Pre-allocar los canales cromáticos en el scratch — zero-alloc hot path
@@ -226,10 +231,10 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
       // 60° de rotación de matiz sobre el color ambient de Selene.
       // Saturación mínima 60% para evitar colores marrones/sucios.
       if (normalizeZoneId(node.zoneId ?? '') === 'air') {
-        const shifted = hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, 0.6)
-        rNorm = shifted.r
-        gNorm = shifted.g
-        bNorm = shifted.b
+        hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6)
+        rNorm = this._hueShiftOut.r
+        gNorm = this._hueShiftOut.g
+        bNorm = this._hueShiftOut.b
       }
 
       // Limpiar stale values de frames anteriores antes de asignar

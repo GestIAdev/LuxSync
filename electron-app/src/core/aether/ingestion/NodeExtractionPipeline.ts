@@ -625,7 +625,7 @@ export class NodeExtractionPipeline {
     channels:   INodeChannelDef[],
     typeSet:    Set<string>,
     position?:  Position3D,
-  ): ICapabilityNode | null {
+  ): IColorNodeData | IImpactNodeData | IKineticNodeData | IBeamNodeData | IAtmosphereNodeData | null {
     const deviceId = nodeId.split(':')[0] as DeviceId
 
     // COLOR: todos los canales son de color

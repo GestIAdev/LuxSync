@@ -1,29 +1,19 @@
 /**
- * 🔦 BEAM SECTION - WAVE 430
- * Optical control for moving heads: Gobos, Prism, Focus, Zoom
- * 
- * Features:
- * - COLLAPSIBLE section header
- * - Gobo: Pattern wheel (steps 0-7)
- * - Prism: Split the beam, spin it
- * - Focus: Near to far
- * - Zoom: Spot to flood
- * - Iris: Control beam diameter (optional)
- * 
- * Connected to Aether L2 via programmerStore + ProgrammerAetherBridge
+ * 🔦 BEAM SECTION — WAVE 4726: ATOMIC WIRING
+ * Óptica para moving heads: Gobos, Prism, Focus, Zoom, Iris.
+ * Lee y escribe directamente en el programmer store vía ctx.cellKey.
  */
 
 import React, { useCallback, useMemo } from 'react'
-import { useSelectedArray } from '../../../stores/selectionStore'
-import { useHardware } from '../../../stores/truthStore'
+import { NodeFamily } from '../../../stores/programmer-types'
+import type { CapabilityContext } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { BeamIcon } from '../../icons/LuxIcons'
 
 export interface BeamSectionProps {
-  hasOverride: boolean
+  ctx: CapabilityContext<NodeFamily.BEAM>
   isExpanded: boolean
   onToggle: () => void
-  onOverrideChange: (hasOverride: boolean) => void
 }
 
 // Gobo steps (8 positions on typical wheel)
@@ -38,145 +28,54 @@ const GOBO_STEPS = [
   { value: 255, label: '7' },
 ]
 
-export const BeamSection: React.FC<BeamSectionProps> = ({
-  hasOverride,
-  isExpanded,
-  onToggle,
-  onOverrideChange,
-}) => {
-  // 🛡️ WAVE 2042.13.13: Fixed - Use stable hook
-  const selectedIds = useSelectedArray()
-  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
-  const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
+export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, isExpanded, onToggle }) => {
+  const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
+  const data = ov?.payload.family === NodeFamily.BEAM ? ov.payload.data : {}
 
   const clamp255 = useCallback((v: number) => Math.max(0, Math.min(255, Math.round(v))), [])
-  const denorm255 = useCallback((v: number | null, fallback: number) => {
-    if (v === null || v === undefined) return fallback
-    return clamp255(v * 255)
+  const denorm255 = useCallback((v: number | undefined, fallback: number) => {
+    return v !== undefined ? clamp255(v * 255) : fallback
   }, [clamp255])
 
-  const firstSelectedId = selectedIds[0]
-  const firstOverride = firstSelectedId ? fixtureOverrides.get(firstSelectedId) : null
+  const gobo       = denorm255(data.gobo,  0)
+  const prismValue = denorm255(data.prism, 0)
+  const focus      = denorm255(data.focus, 128)
+  const zoom       = denorm255(data.zoom,  128)
+  const iris       = denorm255(data.iris,  255)
+  const hasOverride = Object.keys(data).length > 0
 
-  // Valores de UI derivados del estado real hidratado (L2 snapshot + cambios locales).
-  const gobo = denorm255(firstOverride?.gobo ?? null, 0)
-  const prismValue = denorm255(firstOverride?.prism ?? null, 0)
-  const focus = denorm255(firstOverride?.focus ?? null, 128)
-  const zoom = denorm255(firstOverride?.zoom ?? null, 128)
-  const iris = denorm255(firstOverride?.iris ?? null, 255)
-  
-  // Check if selected fixtures have beam capabilities
-  const hasBeamFixtures = useMemo(() => {
-    const fixtures = hardware?.fixtures || []
-    return selectedIds.some(id => {
-      const fixture = fixtures.find((f: { id: string }) => f.id === id) as
-        | { type?: string; channels?: Array<{ type?: string }> }
-        | undefined
-
-      const channelTypes = new Set(
-        (fixture?.channels ?? [])
-          .map(ch => (ch?.type ?? '').toLowerCase())
-          .filter(Boolean),
-      )
-
-      const hasBeamChannels =
-        channelTypes.has('gobo') ||
-        channelTypes.has('gobo_rotation') ||
-        channelTypes.has('prism') ||
-        channelTypes.has('prism_rotation') ||
-        channelTypes.has('focus') ||
-        channelTypes.has('zoom') ||
-        channelTypes.has('iris') ||
-        channelTypes.has('frost')
-
-      if (hasBeamChannels) return true
-
-      const type = fixture?.type?.toLowerCase() || ''
-      return type.includes('moving') || type.includes('spot') || 
-             type.includes('beam') || type.includes('profile')
-    })
-  }, [selectedIds, hardware?.fixtures])
-  
-  // WAVE 428.5: Condición movida - NO hacer return temprano (rompe hooks)
-  const shouldRender = hasBeamFixtures && selectedIds.length > 0
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // HANDLERS - Connect to Arbiter
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  // ─── WAVE 4529: Beam handlers → programmerStore ─────────────────────────
-
-  /**
-   * Gobo change (stepped wheel)
-   */
   const handleGoboChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('gobo', value)
-  }, [onOverrideChange])
-  
-  /**
-   * Gobo step click (direct selection)
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'gobo', parseInt(e.target.value, 10))
+  }, [ctx.cellKey])
+
   const handleGoboStep = useCallback((stepValue: number) => {
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('gobo', stepValue)
-  }, [onOverrideChange])
-  
-  /**
-   * Prism direct control (0=off, 122-255=active+speed)
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'gobo', stepValue)
+  }, [ctx.cellKey])
+
   const handlePrismChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('prism', value)
-  }, [onOverrideChange])
-  
-  /**
-   * Focus change
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'prism', parseInt(e.target.value, 10))
+  }, [ctx.cellKey])
+
   const handleFocusChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('focus', value)
-  }, [onOverrideChange])
-  
-  /**
-   * Zoom change
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'focus', parseInt(e.target.value, 10))
+  }, [ctx.cellKey])
+
   const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('zoom', value)
-  }, [onOverrideChange])
-  
-  /**
-   * Iris change
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'zoom', parseInt(e.target.value, 10))
+  }, [ctx.cellKey])
+
   const handleIrisChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    onOverrideChange(true)
-    useProgrammerStore.getState().setBeam('iris', value)
-  }, [onOverrideChange])
-  
-  /**
-   * Release all beam controls back to AI
-   * WAVE 4529: Vía programmerStore.
-   */
+    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'iris', parseInt(e.target.value, 10))
+  }, [ctx.cellKey])
+
   const handleRelease = useCallback(() => {
-    onOverrideChange(false)
-    useProgrammerStore.getState().releaseBeam()
-  }, [onOverrideChange])
-  
+    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+  }, [ctx.cellKey])
+
   // Find closest gobo step for display
-  const currentGoboStep = GOBO_STEPS.reduce((prev, curr) => 
+  const currentGoboStep = useMemo(() => GOBO_STEPS.reduce((prev, curr) =>
     Math.abs(curr.value - gobo) < Math.abs(prev.value - gobo) ? curr : prev
-  )
-  
-  // WAVE 428.5: Condición de render al final (después de todos los hooks)
-  if (!shouldRender) {
-    return null
-  }
+  ), [gobo])
   
   return (
     <div className={`programmer-section beam-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>

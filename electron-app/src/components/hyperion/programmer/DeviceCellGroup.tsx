@@ -1,33 +1,24 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 DEVICE CELL GROUP — WAVE 4725: CAMALEÓN UI LAYER
+ * 🎭 DEVICE CELL GROUP — WAVE 4726: CLEAN SWEEP
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Wrapper de células de capacidad para UN device.
- * Recibe las `cells[]` del hook `useCapabilityCells` y las renderiza
- * como secciones colapsables (IntensitySection | ColorSection | BeamSection)
- * según la familia de cada célula.
+ * Recibe las `cells[]` del hook `useCapabilityCells` y renderiza
+ * las secciones atómicas (IntensitySection | ColorSection | BeamSection)
+ * pasando `ctx` directamente — cada sección lee/escribe el store por sí sola.
  *
  * SISTEMA NEON:
- *   Cada device tiene un color neon basado en el `role` de su primera célula.
- *   Se inyecta como CSS custom property `--neon-base` en el wrapper,
- *   de modo que las secciones hijas la heredan sin prop drilling.
- *
- * DECISIONES DE ARQUITECTURA:
- * - DeviceCellGroup lee los valores actuales del store para cada CellKey
- *   y los traduce a los props legacy de cada Section (bridge de transición).
- * - La familia KINETIC no se renderiza aquí — es dominio exclusivo del
- *   KineticsCathedral.
- * - Cada sección recibe los callbacks de write que van a los setters cell-*.
+ *   CSS custom property `--neon-base` inyectada en el wrapper,
+ *   heredada por las secciones hijas sin prop drilling.
  *
  * @module components/hyperion/programmer/DeviceCellGroup
- * @version WAVE 4725
+ * @version WAVE 4726
  */
 
 import React, { useState, useCallback } from 'react'
-import type { CellDescriptor, ImpactCellPayload, ColorCellPayload, BeamCellPayload } from '../../../stores/programmer-types'
+import type { CellDescriptor, CapabilityContext } from '../../../stores/programmer-types'
 import { NodeFamily } from '../../../stores/programmer-types'
-import { useProgrammerStore } from '../../../stores/programmerStore'
 import { IntensitySection } from '../controls/IntensitySection'
 import { ColorSection } from '../controls/ColorSection'
 import { BeamSection } from '../controls/BeamSection'
@@ -66,7 +57,6 @@ export interface DeviceCellGroupProps {
   fixtureType: string
   cells: CellDescriptor[]
   onSectionToggle: (sectionKey: string) => void
-  onOverrideChange?: (hasOverride: boolean) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,16 +69,8 @@ export const DeviceCellGroup: React.FC<DeviceCellGroupProps> = ({
   fixtureType,
   cells,
   onSectionToggle,
-  onOverrideChange,
 }) => {
-  // Sección activa local (dentro del grupo)
   const [localSection, setLocalSection] = useState<string | null>(null)
-
-  // Leer todos los cellOverrides del store (el componente re-renderiza solo cuando cambian)
-  const cellOverrides = useProgrammerStore(s => s.cellOverrides)
-  const setCellImpact = useProgrammerStore(s => s.setCellImpact)
-  const setCellColor  = useProgrammerStore(s => s.setCellColor)
-  const releaseCell   = useProgrammerStore(s => s.releaseCell)
 
   const toggleSection = useCallback((key: string) => {
     setLocalSection(prev => prev === key ? null : key)
@@ -129,88 +111,43 @@ export const DeviceCellGroup: React.FC<DeviceCellGroupProps> = ({
       {cells.map(cell => {
         const sectionKey = `${deviceId}:${cell.family}`
         const isExpanded = localSection === sectionKey
-        const ov = cellOverrides.get(cell.cellKey)
 
         switch (cell.family) {
-          case NodeFamily.IMPACT: {
-            const data = (ov?.payload.family === NodeFamily.IMPACT
-              ? ov.payload.data
-              : {}) as ImpactCellPayload
-
-            const dimmer  = data.dimmer  !== undefined ? Math.round(data.dimmer  * 100) : null
-            const strobe  = data.strobe  !== undefined ? Math.round(data.strobe  * 100) : null
-            const limit   = data.limit   !== undefined ? Math.round(data.limit   * 100) : null
-            const hasDimmer = data.dimmer !== undefined
-            const hasStrobe = data.strobe !== undefined
-            const hasLimit  = data.limit  !== undefined && data.limit < 1
-
+          case NodeFamily.IMPACT:
             return (
               <IntensitySection
                 key={cell.cellKey}
-                value={dimmer}
-                hasOverride={hasDimmer}
-                strobeValue={strobe}
-                hasStrobeOverride={hasStrobe}
-                limitValue={limit ?? 100}
-                hasLimitActive={hasLimit}
+                ctx={cell as unknown as CapabilityContext<NodeFamily.IMPACT>}
                 isExpanded={isExpanded}
                 onToggle={() => toggleSection(sectionKey)}
-                onChange={v => setCellImpact(cell.cellKey, 'dimmer', v)}
-                onRelease={() => releaseCell(cell.cellKey)}
-                onStrobeChange={v => setCellImpact(cell.cellKey, 'strobe', v)}
-                onStrobeRelease={() => releaseCell(cell.cellKey)}
-                onLimitChange={v => setCellImpact(cell.cellKey, 'limit', v)}
-                onLimitRelease={() => releaseCell(cell.cellKey)}
               />
             )
-          }
 
-          case NodeFamily.COLOR: {
-            const data = (ov?.payload.family === NodeFamily.COLOR
-              ? ov.payload.data
-              : {}) as ColorCellPayload
-
-            const r = data.r !== undefined ? Math.round(data.r * 255) : 255
-            const g = data.g !== undefined ? Math.round(data.g * 255) : 255
-            const b = data.b !== undefined ? Math.round(data.b * 255) : 255
-            const hasColorOv = data.r !== undefined || data.g !== undefined || data.b !== undefined
-
+          case NodeFamily.COLOR:
             return (
               <ColorSection
                 key={cell.cellKey}
-                color={{ r: data.r !== undefined ? r : null, g: data.g !== undefined ? g : null, b: data.b !== undefined ? b : null }}
-                hasOverride={hasColorOv}
+                ctx={cell as unknown as CapabilityContext<NodeFamily.COLOR>}
                 isExpanded={isExpanded}
                 onToggle={() => toggleSection(sectionKey)}
-                onChange={(nr, ng, nb) => setCellColor(cell.cellKey, nr, ng, nb)}
-                onRelease={() => releaseCell(cell.cellKey)}
               />
             )
-          }
 
-          case NodeFamily.BEAM: {
-            const data = (ov?.payload.family === NodeFamily.BEAM
-              ? ov.payload.data
-              : {}) as BeamCellPayload
-
-            const hasBeamOv = Object.keys(data).length > 0
-
+          case NodeFamily.BEAM:
             return (
               <BeamSection
                 key={cell.cellKey}
-                hasOverride={hasBeamOv}
+                ctx={cell as unknown as CapabilityContext<NodeFamily.BEAM>}
                 isExpanded={isExpanded}
                 onToggle={() => toggleSection(sectionKey)}
-                onOverrideChange={onOverrideChange ?? (() => {})}
               />
             )
-          }
 
-          // KINETIC → dominio del KineticsCathedral, no del Programmer
+          // KINETIC → dominio del KineticsCathedral
           case NodeFamily.KINETIC:
             return null
 
-          // ATMOSPHERE → ExtrasSection (legacy, enlazada desde TheProgrammer globalmente)
+          // ATMOSPHERE → ExtrasSection (global en TheProgrammer)
           case NodeFamily.ATMOSPHERE:
             return null
 

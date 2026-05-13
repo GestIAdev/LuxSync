@@ -18,9 +18,6 @@ import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useMovementStore } from '../../../stores/movementStore'
 import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
-import { IntensitySection } from './IntensitySection'
-import { ColorSection } from './ColorSection'
-import { BeamSection } from './BeamSection'
 import { ExtrasSection } from './ExtrasSection'
 import { GroupsPanel } from './GroupsPanel'
 import { DeviceCellGroup } from '../programmer/DeviceCellGroup'
@@ -113,20 +110,6 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
       .map(id => fixtures.find((f: { id: string }) => f.id === id))
       .filter(Boolean)
   }, [selectedIds, hardware?.fixtures])
-  
-  // Check if any fixture supports color
-  const hasColorFixtures = useMemo(() => {
-    return selectedFixtures.some((f: any) => {
-      const type = f?.type?.toLowerCase() || ''
-      return type.includes('rgb') || 
-             type.includes('wash') || 
-             type.includes('par') || 
-             type.includes('led') ||
-             type.includes('moving') ||
-             type.includes('spot') ||
-             type.includes('beam')
-    })
-  }, [selectedFixtures])
 
   // ─── WAVE 4529: Iniciar el bridge una sola vez ───────────────────────────
   useEffect(() => {
@@ -254,16 +237,6 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     window.lux?.aether?.clearInhibitLimit(nodeIds)
   }, [selectedIds, releaseLimit])
   
-  const handleColorChange = useCallback((r: number, g: number, b: number) => {
-    if (selectedIds.length === 0) return
-    setColor(r, g, b)
-  }, [selectedIds.length, setColor])
-  
-  const handleColorRelease = useCallback(() => {
-    if (selectedIds.length === 0) return
-    releaseColor()
-  }, [selectedIds.length, releaseColor])
-  
   const handleUnlockAll = useCallback(() => {
     if (selectedIds.length === 0) return
     // WAVE 4719: Unlock All alineado con Cathedral Unlock — misma ruta total.
@@ -287,13 +260,6 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
     useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds, releaseAll])
-  
-  /**
-   * Handler for beam override changes (informativo)
-   */
-  const handleBeamOverrideChange = useCallback((_hasOverride: boolean) => {
-    // No-op: overrideState es derivado del store
-  }, [])
   
   /**
    * Handler for extras (phantom channels) override changes (informativo)
@@ -384,50 +350,16 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
                 fixtureType={group.fixtureType}
                 cells={group.cells}
                 onSectionToggle={toggleSection}
-                onOverrideChange={handleBeamOverrideChange}
               />
             ) : null)
           ) : (
             <>
-              {/* ── LEGACY FALLBACK: secciones planas cuando no hay nodeGraph ── */}
-              <IntensitySection
-                value={currentDimmer}
-                hasOverride={overrideState.dimmer}
-                strobeValue={currentStrobe}
-                hasStrobeOverride={overrideState.strobe}
-                limitValue={currentLimit}
-                hasLimitActive={currentLimit !== null && currentLimit < 100}
-                isExpanded={activeSection === 'intensity'}
-                onToggle={() => toggleSection('intensity')}
-                onChange={handleDimmerChange}
-                onRelease={handleDimmerRelease}
-                onStrobeChange={handleStrobeChange}
-                onStrobeRelease={handleStrobeRelease}
-                onLimitChange={handleLimitChange}
-                onLimitRelease={handleLimitRelease}
-              />
+              {/* ── LEGACY FALLBACK: no hay nodeGraph, fixtures sin perfil Aether ── */}
+              <div className="programmer-section" style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>
+                Fixtures sin perfil Aether — selecciona fixtures con nodeGraph activo.
+              </div>
 
-              {/* COLOR SECTION (solo si hay fixtures con color) */}
-              {hasColorFixtures && (
-                <ColorSection
-                  color={currentColor}
-                  hasOverride={overrideState.color}
-                  isExpanded={activeSection === 'color'}
-                  onToggle={() => toggleSection('color')}
-                  onChange={handleColorChange}
-                  onRelease={handleColorRelease}
-                />
-              )}
-
-              {/* BEAM SECTION (solo para fixtures con óptica) */}
-              <BeamSection
-                hasOverride={overrideState.beam}
-                isExpanded={activeSection === 'beam'}
-                onToggle={() => toggleSection('beam')}
-                onOverrideChange={handleBeamOverrideChange}
-              />
-
-              {/* EXTRAS SECTION — Phantom channels (custom, macro, rotation, speed) */}
+              {/* EXTRAS SECTION — Phantom channels */}
               <ExtrasSection
                 hasOverride={overrideState.extras}
                 isExpanded={activeSection === 'extras'}

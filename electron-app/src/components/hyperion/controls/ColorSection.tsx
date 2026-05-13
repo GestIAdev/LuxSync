@@ -1,18 +1,18 @@
 /**
- * 🎨 COLOR SECTION - WAVE 430
- * Color control for selected fixtures.
+ * 🎨 COLOR SECTION — WAVE 4726: ATOMIC WIRING
+ * Color control. Lee y escribe directamente en el programmer store vía ctx.cellKey.
  */
 
 import React, { useCallback, useRef } from 'react'
+import { NodeFamily } from '../../../stores/programmer-types'
+import type { CapabilityContext } from '../../../stores/programmer-types'
+import { useProgrammerStore } from '../../../stores/programmerStore'
 import { ColorIcon } from '../../icons/LuxIcons'
 
 export interface ColorSectionProps {
-  color: { r: number | null; g: number | null; b: number | null }
-  hasOverride: boolean
+  ctx: CapabilityContext<NodeFamily.COLOR>
   isExpanded: boolean
   onToggle: () => void
-  onChange: (r: number, g: number, b: number) => void
-  onRelease: () => void
 }
 
 /**
@@ -84,35 +84,32 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
   }
 }
 
-export const ColorSection: React.FC<ColorSectionProps> = ({
-  color,
-  hasOverride,
-  isExpanded,
-  onToggle,
-  onChange,
-  onRelease,
-}) => {
+export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onToggle }) => {
   const nativePickerRef = useRef<HTMLInputElement>(null)
-  const safeColor = {
-    r: color.r ?? 0,
-    g: color.g ?? 0,
-    b: color.b ?? 0,
-  }
-  const isMixedColor = color.r === null || color.g === null || color.b === null
+  const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
+  const data = ov?.payload.family === NodeFamily.COLOR ? ov.payload.data : {}
+
+  const r = data.r !== undefined ? Math.round(data.r * 255) : null
+  const g = data.g !== undefined ? Math.round(data.g * 255) : null
+  const b = data.b !== undefined ? Math.round(data.b * 255) : null
+  const hasOverride = data.r !== undefined || data.g !== undefined || data.b !== undefined
+
+  const safeColor = { r: r ?? 0, g: g ?? 0, b: b ?? 0 }
+  const isMixedColor = r === null || g === null || b === null
 
   const handleRGBChange = useCallback((channel: 'r' | 'g' | 'b', value: number) => {
     const newColor = { ...safeColor, [channel]: value }
-    onChange(newColor.r, newColor.g, newColor.b)
-  }, [safeColor, onChange])
+    useProgrammerStore.getState().setCellColor(ctx.cellKey, newColor.r, newColor.g, newColor.b)
+  }, [safeColor, ctx.cellKey])
 
   const handleQuickColorClick = useCallback((quickColor: typeof QUICK_COLORS[0]) => {
-    onChange(quickColor.color.r, quickColor.color.g, quickColor.color.b)
-  }, [onChange])
+    useProgrammerStore.getState().setCellColor(ctx.cellKey, quickColor.color.r, quickColor.color.g, quickColor.color.b)
+  }, [ctx.cellKey])
 
   const handleRelease = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    onRelease()
-  }, [onRelease])
+    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+  }, [ctx.cellKey])
 
   const handleOpenNativePicker = useCallback(() => {
     nativePickerRef.current?.click()
@@ -120,14 +117,14 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
 
   const handleNativePickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const parsed = hexToRgb(e.target.value)
-    onChange(parsed.r, parsed.g, parsed.b)
-  }, [onChange])
+    useProgrammerStore.getState().setCellColor(ctx.cellKey, parsed.r, parsed.g, parsed.b)
+  }, [ctx.cellKey])
 
   const handleHueStripChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const hue = Number(e.target.value)
     const vivid = hslToRgb(hue, 1, 0.5)
-    onChange(vivid.r, vivid.g, vivid.b)
-  }, [onChange])
+    useProgrammerStore.getState().setCellColor(ctx.cellKey, vivid.r, vivid.g, vivid.b)
+  }, [ctx.cellKey])
 
   const previewColor = `rgb(${safeColor.r}, ${safeColor.g}, ${safeColor.b})`
   const previewHex = rgbToHex(safeColor.r, safeColor.g, safeColor.b)
@@ -176,9 +173,9 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 aria-label="Color wheel"
               />
               <div className="color-values">
-                <span>R: {color.r ?? '-'}</span>
-                <span>G: {color.g ?? '-'}</span>
-                <span>B: {color.b ?? '-'}</span>
+                <span>R: {r ?? '-'}</span>
+                <span>G: {g ?? '-'}</span>
+                <span>B: {b ?? '-'}</span>
                 <span>HEX: {isMixedColor ? '-' : previewHex.toUpperCase()}</span>
               </div>
             </div>
@@ -223,7 +220,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 onChange={(e) => handleRGBChange('r', Number(e.target.value))}
                 className="rgb-slider red"
               />
-              <span className="rgb-value">{color.r ?? '-'}</span>
+              <span className="rgb-value">{r ?? '-'}</span>
             </div>
 
             <div className="rgb-slider-row">
@@ -236,7 +233,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 onChange={(e) => handleRGBChange('g', Number(e.target.value))}
                 className="rgb-slider green"
               />
-              <span className="rgb-value">{color.g ?? '-'}</span>
+              <span className="rgb-value">{g ?? '-'}</span>
             </div>
 
             <div className="rgb-slider-row">
@@ -249,7 +246,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
                 onChange={(e) => handleRGBChange('b', Number(e.target.value))}
                 className="rgb-slider blue"
               />
-              <span className="rgb-value">{color.b ?? '-'}</span>
+              <span className="rgb-value">{b ?? '-'}</span>
             </div>
           </div>
 

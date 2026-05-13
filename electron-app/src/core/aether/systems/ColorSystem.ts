@@ -421,15 +421,15 @@ export class ColorSystem
    * que no usan todos los canales.
    */
   private _clearColorKeys(): void {
-    // Las keys posibles de color en nuestro sistema.
-    // delete de keys conocidas es O(1) en V8.
-    if ('red'         in this._valuesDict) delete this._valuesDict['red']
-    if ('green'       in this._valuesDict) delete this._valuesDict['green']
-    if ('blue'        in this._valuesDict) delete this._valuesDict['blue']
-    if ('white'       in this._valuesDict) delete this._valuesDict['white']
-    if ('cyan'        in this._valuesDict) delete this._valuesDict['cyan']
-    if ('magenta'     in this._valuesDict) delete this._valuesDict['magenta']
-    if ('yellow'      in this._valuesDict) delete this._valuesDict['yellow']
-    if ('color_wheel' in this._valuesDict) delete this._valuesDict['color_wheel']
+    // Zero-alloc: asignar undefined mantiene la hidden class de V8 estable
+    // (evita la de-optimización que causa delete en hot path 44Hz).
+    this._valuesDict['red']         = undefined as unknown as number
+    this._valuesDict['green']       = undefined as unknown as number
+    this._valuesDict['blue']        = undefined as unknown as number
+    this._valuesDict['white']       = undefined as unknown as number
+    this._valuesDict['cyan']        = undefined as unknown as number
+    this._valuesDict['magenta']     = undefined as unknown as number
+    this._valuesDict['yellow']      = undefined as unknown as number
+    this._valuesDict['color_wheel'] = undefined as unknown as number
   }
 }

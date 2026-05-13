@@ -38,6 +38,7 @@ import {
 } from '../stores/programmer-types'
 import type { ICapabilityNode } from '../core/aether/capability-node'
 import type { FixtureV2 } from '../core/stage/ShowFileV2'
+import type { FixtureDefinition, FixtureChannel, FixtureType } from '../types/FixtureDefinition'
 import { NodeExtractionPipeline } from '../core/aether/ingestion/NodeExtractionPipeline'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,6 +46,86 @@ import { NodeExtractionPipeline } from '../core/aether/ingestion/NodeExtractionP
 // ─────────────────────────────────────────────────────────────────────────────
 
 const pipeline = new NodeExtractionPipeline()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYNTHETIC FALLBACK — genera FixtureDefinition mínima desde FixtureV2
+//
+// Cuando una fixture tiene profileId que no existe en la librería (ej: la
+// constante por defecto "generic-dimmer"), este helper sintetiza canales DMX
+// plausibles basándose en el tipo de fixture y su channelCount.
+// NodeExtractionPipeline puede procesar el resultado igual que un perfil real.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFixtureDefinition(stageFix: FixtureV2): FixtureDefinition {
+  const fixtureType = (stageFix.type ?? 'generic') as FixtureType
+  const channelCount = (stageFix as { channelCount?: number }).channelCount ?? 1
+
+  let channelTemplate: Omit<FixtureChannel, 'index'>[]
+
+  switch (fixtureType) {
+    case 'moving-head':
+    case 'scanner':
+      channelTemplate = [
+        { name: 'Pan',    type: 'pan',    defaultValue: 128, is16bit: false },
+        { name: 'Tilt',   type: 'tilt',   defaultValue: 128, is16bit: false },
+        { name: 'Dimmer', type: 'dimmer', defaultValue: 0,   is16bit: false },
+        { name: 'Red',    type: 'red',    defaultValue: 0,   is16bit: false },
+        { name: 'Green',  type: 'green',  defaultValue: 0,   is16bit: false },
+        { name: 'Blue',   type: 'blue',   defaultValue: 0,   is16bit: false },
+        { name: 'Shutter',type: 'shutter',defaultValue: 255, is16bit: false },
+        { name: 'Speed',  type: 'speed',  defaultValue: 128, is16bit: false },
+      ]
+      break
+    case 'par':
+    case 'wash':
+    case 'blinder':
+    case 'bar':
+      channelTemplate = [
+        { name: 'Dimmer', type: 'dimmer', defaultValue: 0, is16bit: false },
+        { name: 'Red',    type: 'red',    defaultValue: 0, is16bit: false },
+        { name: 'Green',  type: 'green',  defaultValue: 0, is16bit: false },
+        { name: 'Blue',   type: 'blue',   defaultValue: 0, is16bit: false },
+        { name: 'White',  type: 'white',  defaultValue: 0, is16bit: false },
+        { name: 'Strobe', type: 'strobe', defaultValue: 0, is16bit: false },
+      ]
+      break
+    case 'strobe':
+    case 'effect':
+      channelTemplate = [
+        { name: 'Dimmer', type: 'dimmer', defaultValue: 0, is16bit: false },
+        { name: 'Strobe', type: 'strobe', defaultValue: 0, is16bit: false },
+        { name: 'Red',    type: 'red',    defaultValue: 0, is16bit: false },
+        { name: 'Green',  type: 'green',  defaultValue: 0, is16bit: false },
+        { name: 'Blue',   type: 'blue',   defaultValue: 0, is16bit: false },
+      ]
+      break
+    default:
+      // generic, fan, fog, laser, mirror-ball, pyro, unknown
+      channelTemplate = [
+        { name: 'Dimmer', type: 'dimmer', defaultValue: 0, is16bit: false },
+      ]
+      break
+  }
+
+  // Recortar al channelCount real para no asumir más canales de los que hay
+  const channels: FixtureChannel[] = channelTemplate
+    .slice(0, channelCount)
+    .map((ch, idx) => ({ ...ch, index: idx }))
+
+  // Si channelCount > template, rellenar con canales custom
+  for (let i = channels.length; i < channelCount; i++) {
+    channels.push({ index: i, name: `Ch${i + 1}`, type: 'custom', defaultValue: 0, is16bit: false })
+  }
+
+  return {
+    id: stageFix.profileId ?? stageFix.id,
+    name: stageFix.name ?? 'Generic Fixture',
+    manufacturer: 'Generic',
+    type: fixtureType,
+    channels,
+    capabilities: {},
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROLE LABEL — Mapeadores para UI
@@ -146,17 +227,31 @@ export interface DeviceCells {
  * @param selectedIds — Array de fixture IDs seleccionados
  * @returns Array de DeviceCells agrupados (uno por fixture)
  */
+// Referencia estable para el caso vacío — evita nueva referencia en cada render
+const EMPTY_FIXTURES: never[] = []
+
 export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[] {
   const stageFixtures = useStageStore(state => {
     if (state.fixtures && state.fixtures.length > 0) return state.fixtures
     if (state.showFile?.fixtures && state.showFile.fixtures.length > 0) return state.showFile.fixtures
-    return []
+    return EMPTY_FIXTURES
   })
 
   const getLibraryFixtureById = useLibraryStore(state => state.getFixtureById)
+  const loadLibraryFromDisk   = useLibraryStore(state => state.loadFromDisk)
+  const libraryIsLoading      = useLibraryStore(state => state.isLoading)
+  const libraryFixtureCount   = useLibraryStore(state => state.systemFixtures.length + state.userFixtures.length)
   const libraryLastLoadTime   = useLibraryStore(state => state.lastLoadTime)
   const registerFixtureCells  = useProgrammerStore(state => state.registerFixtureCells)
   const unregisterDeviceCells = useProgrammerStore(state => state.unregisterDeviceCells)
+
+  // Hyperion puede abrirse sin pasar por Forge; auto-carga librería bajo demanda.
+  useEffect(() => {
+    if (selectedIds.length === 0) return
+    if (libraryFixtureCount > 0) return
+    if (libraryIsLoading) return
+    void loadLibraryFromDisk()
+  }, [selectedIds.length, libraryFixtureCount, libraryIsLoading, loadLibraryFromDisk])
 
   // Memokey: ids + stageFixtures count + library load time
   const memoKey = selectedIds.join(',') + '|' + stageFixtures.length + '|' + libraryLastLoadTime
@@ -169,24 +264,34 @@ export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[
     for (const fixtureId of selectedIds) {
       // Buscar el FixtureV2 en stage
       const stageFix = stageFixtures.find((f: { id: string }) => f.id === fixtureId) as FixtureV2 | undefined
-      if (!stageFix) continue
+      if (!stageFix) {
+          continue
+      }
 
-      // Resolver el perfil de librería
+      // Resolver el perfil de librería; si no existe, sintetizar uno mínimo
       const libraryFix = stageFix.profileId ? getLibraryFixtureById(stageFix.profileId) : null
 
-      if (!libraryFix) {
-        result.push({
-          deviceId: fixtureId as DeviceId,
-          fixtureId,
-          fixtureName: stageFix.name ?? fixtureId,
-          fixtureType: stageFix.type ?? 'generic',
-          cells: [],
-        })
+      // 🚨 WAVE 4728 FIX A — RACE CONDITION CONTRA LIBRARY LOAD
+      // Si el fixture declara profileId pero la librería NO lo encontró todavía,
+      // pueden pasar dos cosas:
+      //   (a) loadFromDisk() async aún no terminó.
+      //   (b) El profileId apunta a un perfil ausente en disco.
+      // Sintetizar AHORA destruye los nodos custom del Tungsten
+      // (4 COLOR petals + wash + beam + impact + kinetic → 1 IMPACT + 1 COLOR plano).
+      // Política: si hay profileId, no se encontró, y la librería está cargando
+      // o vacía, ABORTAR y esperar al siguiente render con la librería lista.
+      if (
+        stageFix.profileId &&
+        !libraryFix &&
+        (libraryIsLoading || libraryFixtureCount === 0)
+      ) {
         continue
       }
 
+      const fixtureDef = libraryFix ?? synthesizeFixtureDefinition(stageFix)
+
       // NodeExtractionPipeline produce los mismos ICapabilityNode[] que Aether backend
-      const deviceDef = pipeline.extract(libraryFix, stageFix)
+      const deviceDef = pipeline.extract(fixtureDef, stageFix)
       const descriptors = capabilityNodesToDescriptors(fixtureId, deviceDef.nodes)
 
       result.push({

@@ -136,6 +136,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onT
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
           <ColorIcon size={18} className="title-icon" />
           COLOR
+          <span className="section-node-label" style={{ color: 'var(--neon-base)' }}>: {ctx.label.toUpperCase()}</span>
         </h4>
         <div className="header-right">
           {hasOverride && (

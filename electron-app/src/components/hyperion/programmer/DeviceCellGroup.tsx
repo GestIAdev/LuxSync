@@ -109,7 +109,11 @@ export const DeviceCellGroup: React.FC<DeviceCellGroupProps> = ({
 
       {/* CÉLULAS */}
       {cells.map(cell => {
-        const sectionKey = `${deviceId}:${cell.family}`
+        // 🚨 WAVE 4728 FIX B: usar cellKey por celda en lugar de family agrupada.
+        // Antes: `${deviceId}:${cell.family}` colisionaba para fixtures multi-célula
+        // como el Tungsten (4 COLOR cells = 1 sectionKey compartida → toggle roto).
+        // Ahora cada acordeón mantiene su propio toggle.
+        const sectionKey = cell.cellKey
         const isExpanded = localSection === sectionKey
 
         switch (cell.family) {

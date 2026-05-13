@@ -470,22 +470,12 @@ export class SeleneColorEngine {
             // Calcular temperatura en Kelvin aproximada
             // Warm = 2700-3500K, Neutral = 4000-5000K, Cool = 5500-6500K
             let tempKelvin = 4500;
-            // 🔥 WAVE 68: HARD CLAMP FINAL - Si el vibe es Latino, forzar temperatura cálida
-            // Esto es un failsafe adicional al clamp en generate()
-            const isLatinoVibe = vibeId.toLowerCase().includes('latin') || vibeId.toLowerCase().includes('fiesta');
-            let effectiveTemp = palette.meta.temperature;
-            if (isLatinoVibe && effectiveTemp !== 'warm') {
-                effectiveTemp = 'warm'; // Forzar cálido para vibes Latino
-            }
+            const effectiveTemp = palette.meta.temperature;
             if (effectiveTemp === 'warm') {
                 tempKelvin = 3000 + Math.floor(palette.primary.h / 360 * 500);
             }
             else if (effectiveTemp === 'cool') {
                 tempKelvin = 5500 + Math.floor((360 - palette.primary.h) / 360 * 1000);
-            }
-            // 🔥 WAVE 68: Clamp final de temperatura para Latino
-            if (isLatinoVibe) {
-                tempKelvin = Math.min(tempKelvin, 4500); // Máximo 4500K para Latino
             }
             const audit = {
                 vibe: vibeId,
@@ -544,10 +534,10 @@ export class SeleneColorEngine {
         // 🎯 WAVE 161.5: LATINO EXCEPTION - No restringir hue para permitir triadic
         let baseHue = 120; // Default: Verde (neutro)
         let hueSource = 'default';
-        // 🎯 WAVE 161.5: Detectar si es Latino para NO restringir hue
-        const isLatinoHueFree = vibeId.includes('latin') || vibeId.includes('fiesta') ||
-            vibeId.includes('cumbia') || vibeId.includes('salsa') ||
-            vibeId.includes('reggae');
+        // 🎯 WAVE 161.5 / WAVE 4760: Hue libre cuando la constitución suprime el tropical bias
+        // (o cuando el Sidereal Clock gestiona la zona cromática).
+        // Se deriva de la constitución, no del nombre del vibe.
+        const isLatinoHueFree = options?.suppressTropicalBias !== undefined || options?.tropicalAmbientBias === true;
         // ═══════════════════════════════════════════════════════════════════════
         // 🔓 WAVE 285.5: KEY IDENTITY LIBERATION
         // ═══════════════════════════════════════════════════════════════════════
@@ -776,7 +766,7 @@ export class SeleneColorEngine {
         if (options?.siderealClock) {
             const clock = options.siderealClock;
             if (clock.slots && clock.slots.length > 0) {
-                const slotIndex = Math.floor(Date.now() / clock.slotDurationMs) % clock.slots.length;
+                const slotIndex = Math.floor(performance.now() / clock.slotDurationMs) % clock.slots.length;
                 const slot = clock.slots[slotIndex];
                 effectiveOptions = {
                     ...options,
@@ -863,24 +853,17 @@ export class SeleneColorEngine {
             l: correctedLight,
         };
         // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
-        // 🎨 WAVE 90: GOLDEN REVERSAL - Rotación condicional para fiesta-latina
-        // - Default: φ × 360° ≈ 222.5° (Golden Angle B) → Azules/Morados
-        // - Fiesta Latina: 360° - 222.5° = 137.5° (Golden Angle A) → Verdes/Violetas
-        // Esto nos libera del lock artificial, la naturaleza matemática hace el trabajo.
-        const isLatinoVibe = vibeId === 'fiesta-latina';
-        const fibonacciRotation = isLatinoVibe ? 137.5 : PHI_ROTATION; // 137.5° o 222.5°
-        // 🛡️ WAVE 81: Usar valores corregidos como base
-        // 🧂 WAVE 94.2: SALT CROMÁTICO (Diferenciación de Gemelas)
-        // F Major y A Major naturalmente caen en zonas similares tras warm filter
-        // F Major (root 5): Empuja hacia LIMA/Verde (-35°)
-        // A Major (root 9): Empuja hacia ROSA MIAMI/Magenta (+35°)
+        // 🎨 WAVE 90 / WAVE 4760: Rotación configurable vía constitución.
+        // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
+        const fibonacciRotation = options?.fibonacciRotationDeg ?? PHI_ROTATION;
+        // 🧂 WAVE 94.2 / WAVE 4760: Salt cromático configurable vía constitución.
+        // saltChromaticKeys es un Record<rootIndex, deltaDeg> — sin detección por nombre de vibe.
         let saltRotation = 0;
-        if (isLatinoVibe && key) {
-            const keyIndex = KEY_TO_ROOT[key]; // 0=C, 5=F, 9=A
-            if (keyIndex === 5)
-                saltRotation = -35; // F → Lima
-            else if (keyIndex === 9)
-                saltRotation = +35; // A → Miami Pink
+        if (key && options?.saltChromaticKeys) {
+            const keyIndex = KEY_TO_ROOT[key];
+            if (keyIndex !== undefined) {
+                saltRotation = options.saltChromaticKeys[keyIndex] ?? 0;
+            }
         }
         const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
         const secondary = {
@@ -888,23 +871,19 @@ export class SeleneColorEngine {
             s: clamp(correctedSat + 5, 20, 100), // Ligeramente más saturado
             l: clamp(correctedLight - 10, 20, 80), // Ligeramente más oscuro
         };
-        // 🏛️ WAVE 94.3: MINT & NAVY OVERRIDE (Luxury Signatures)
-        // F Major y A Major obtienen colores signature de lujo en lugar de rotación
-        // F Major -> MINT (160°) | A Major -> NAVY (230°)
-        // El TROPICAL MIRROR (WAVE 85) luego creará los complementarios automáticamente
-        if (isLatinoVibe && key) {
-            const keyIndex = KEY_TO_ROOT[key]; // 0=C, 5=F, 9=A
-            if (keyIndex === 5) {
-                // F MAJOR -> MINT & BERRY
-                secondary.h = 160; // Verde Menta / Espuma de mar
-                secondary.s = Math.min(secondary.s, 85); // Saturación pastel/menta
+        // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
+        // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
+        if (key && options?.luxurySignatures) {
+            const keyIndex = KEY_TO_ROOT[key];
+            if (keyIndex !== undefined) {
+                const sig = options.luxurySignatures[keyIndex];
+                if (sig !== undefined) {
+                    secondary.h = sig.h;
+                    if (sig.maxS !== undefined) {
+                        secondary.s = Math.min(secondary.s, sig.maxS);
+                    }
+                }
             }
-            else if (keyIndex === 9) {
-                // A MAJOR -> NAVY & GOLD
-                secondary.h = 230; // Azul Marino / Royal Blue
-                // Saturación alta mantenida para azul eléctrico
-            }
-            // Nota: ambient.h se recalcula en WAVE 85 TROPICAL MIRROR (secondary.h + 180)
         }
         // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
         // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
@@ -965,12 +944,9 @@ export class SeleneColorEngine {
         // PALETA CARIBEÑA: En vibes latinas, permitir Secondary/Ambient FRÍOS
         // (Verde/Turquesa/Magenta) mientras Primary se mantiene cálido.
         // ═══════════════════════════════════════════════════════════════════════
-        // Detectar si es vibe tropical
-        const isTropicalVibe = vibeId.toLowerCase().includes('latin') ||
-            vibeId.toLowerCase().includes('fiesta') ||
-            vibeId.toLowerCase().includes('reggae') ||
-            vibeId.toLowerCase().includes('cumbia') ||
-            vibeId.toLowerCase().includes('salsa');
+        // 🌴 WAVE 84 / WAVE 4760: Tropical Ambient Bias activado vía constitución (tropicalAmbientBias).
+        // Sin detección por nombre de vibe — el vibeId no importa aquí.
+        const isTropicalVibe = options?.tropicalAmbientBias === true;
         // 🌴 WAVE 84: Calcular Ambient Hue según estrategia
         let ambientHue;
         switch (strategy) {
@@ -1102,44 +1078,40 @@ export class SeleneColorEngine {
             `S=${(syncopation * 100).toFixed(0)}%`,
         ].join(' ');
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌴 WAVE 85: LATINO PRO - Paleta "Fiesta Latina" de alta calidad
-        // vibeId ya declarado arriba (línea ~798)
+        // 🌴 WAVE 85 / WAVE 4760: TROPICAL PRO - Post-procesamiento constitucional
+        // Activado por mudGuard.enabled + tropicalMirror en GenerationOptions.
+        // Sin detección por nombre de vibe.
         // ═══════════════════════════════════════════════════════════════════════
-        const isLatinoVibeW85 = vibeId.toLowerCase().includes('latin') ||
-            vibeId.toLowerCase().includes('fiesta') ||
-            vibeId.toLowerCase().includes('reggaeton') ||
-            vibeId.toLowerCase().includes('cumbia');
-        if (isLatinoVibeW85) {
-            // 🛡️ 1. ANTI-CIENO PROTOCOL (Mud Guard)
-            // Detectar zona pantanosa (Hue 15-75: naranjas sucios, verdes oliva)
-            // y forzar brillo/saturación para convertir en Oro o Lima vibrante
-            const fixDirtyColor = (c) => {
-                const isSwamp = c.h > 40 && c.h < 75; // Zona Lima/Oliva
-                const isMud = c.h >= 15 && c.h <= 40; // Zona Naranja/Marrón
-                if (isSwamp || isMud) {
-                    // "Si es pantano, hazlo neón o oro"
-                    c.l = Math.max(c.l, 55); // 🛡️ WAVE 87: Reducido de 65 a 55 (evitar whitewash)
-                    c.s = Math.max(c.s, 85); // Mucha saturación
-                }
-            };
-            fixDirtyColor(primary);
-            fixDirtyColor(secondary);
-            fixDirtyColor(ambient);
-            // 🪞 2. TROPICAL MIRROR (Stereo Contrast Máximo)
-            // Ambient = Complementario exacto del Secondary
-            // Esto garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
-            ambient.h = normalizeHue(secondary.h + 180);
-            // Variación en luz para profundidad (no plano)
-            // 🛡️ WAVE 87: Limitar luz máxima del ambient
-            ambient.l = clamp(secondary.l * 1.1, 40, 60);
-            ambient.s = Math.max(secondary.s, 70); // Mantener saturado
-            // ☀️ 3. WAVE 288.9: ACCENT = COLOR VIBRANTE (no blanco)
-            // ANTES: accent.s = 10 (blanco hospitalario - ¡ELIMINADO!)
-            // AHORA: El accent hereda saturación de la Constitución (80-100%)
-            // Si queremos "flash blanco" en picos, lo hace LatinoStereoPhysics con brillo
-            accent.h = normalizeHue(primary.h + 30); // Hue shifted para contraste con primary
-            accent.s = Math.max(80, primary.s); // ✅ Saturación vibrante (mínimo 80%)
-            accent.l = clamp(primary.l * 1.1, 55, 75); // Brillo moderado-alto
+        const hasMudGuard = options?.mudGuard?.enabled === true;
+        const hasTropicalMirror = options?.tropicalMirror === true;
+        if (hasMudGuard || hasTropicalMirror) {
+            // 🛡️ 1. ANTI-CIENO PROTOCOL — solo si mudGuard.enabled
+            if (hasMudGuard) {
+                const mg = options.mudGuard;
+                const [swampMin, swampMax] = mg.swampZone;
+                const fixDirtyColor = (c) => {
+                    const inSwamp = c.h >= swampMin && c.h <= swampMax;
+                    if (inSwamp) {
+                        c.l = Math.max(c.l, mg.minLightness);
+                        c.s = Math.max(c.s, mg.minSaturation);
+                    }
+                };
+                fixDirtyColor(primary);
+                fixDirtyColor(secondary);
+                fixDirtyColor(ambient);
+            }
+            // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
+            if (hasTropicalMirror) {
+                // Ambient = Complementario exacto del Secondary
+                // Garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
+                ambient.h = normalizeHue(secondary.h + 180);
+                ambient.l = clamp(secondary.l * 1.1, 40, 60);
+                ambient.s = Math.max(secondary.s, 70);
+                // ☀️ WAVE 288.9: ACCENT = COLOR VIBRANTE (no blanco)
+                accent.h = normalizeHue(primary.h + 30);
+                accent.s = Math.max(80, primary.s);
+                accent.l = clamp(primary.l * 1.1, 55, 75);
+            }
         }
         // ═══════════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════════
@@ -1439,6 +1411,9 @@ export class SeleneColorInterpolator {
      *
      * 🌊 WAVE 70.5: Tolerancia de jitter - solo resetear transición si cambio > 15°
      * ⚡ WAVE 148: Ahora acepta GenerationOptions para aplicar Constitution
+     * 🌊 WAVE 4755: Si la constitución define transitionConfig.minDuration, se usa
+     *   directamente para calcular transitionFrames a 60fps. El isDrop es IGNORADO
+     *   cuando hay minDuration constitucional — en el océano no hay drops musicales.
      */
     update(targetData, isDrop = false, options) {
         this.frameCount++;
@@ -1451,17 +1426,38 @@ export class SeleneColorInterpolator {
             this.transitionProgress = 1.0;
             return newTarget;
         }
+        // 🌊 WAVE 4755: DESACOPLE MUSICAL DEL CHILL
+        // Si la constitución define transitionConfig.minDuration, overrideamos la
+        // velocidad de transición con ese valor fijo y BLOQUEAMOS el isDrop.
+        // Razón: en el océano no hay drops musicales. Las paletas mutan como
+        // corrientes submarinas — imperceptibles en tiempo real, transformadoras.
+        const constitutionalMinDuration = options?.transitionConfig?.minDuration;
+        const constitutionalMaxDuration = options?.transitionConfig?.maxDuration;
+        const isChillConstitution = constitutionalMinDuration !== undefined && constitutionalMinDuration >= 10000;
         // 🛡️ WAVE 3454: FULL PALETTE DIFF GATE
         // La transición ya no depende solo del hue primario:
         // si cualquier canal H/S/L cambia de forma significativa, se transiciona.
-        const isRealChange = this.hasSignificantPaletteDifference(this.currentPalette, newTarget);
+        // WAVE 4755: En modo chill el umbral de "cambio significativo" se eleva a
+        // 30° (vs 15° normal) para evitar rotaciones por micro-variaciones de audio.
+        const isRealChange = isChillConstitution
+            ? this.hasSignificantPaletteDifferenceChill(this.currentPalette, newTarget)
+            : this.hasSignificantPaletteDifference(this.currentPalette, newTarget);
         const hasAnyPaletteDelta = this.hasAnyPaletteDifference(this.targetPalette ?? this.currentPalette, newTarget);
         if (isRealChange) {
             // Cambio significativo en cualquier canal de la paleta - iniciar transición
             this.targetPalette = newTarget;
             this.transitionProgress = 0;
-            // Velocidad según contexto
-            const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
+            // 🌊 WAVE 4755: Velocidad según constitución o contexto
+            let transitionFrames;
+            if (isChillConstitution) {
+                // Duración glaciar desde la constitución (en ms → frames a ~60fps).
+                // isDrop se IGNORA — en el océano no hay drops.
+                const durationMs = constitutionalMaxDuration ?? constitutionalMinDuration;
+                transitionFrames = Math.round((durationMs / 1000) * 60);
+            }
+            else {
+                transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
+            }
             this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
         }
         else if (hasAnyPaletteDelta) {
@@ -1521,6 +1517,33 @@ export class SeleneColorInterpolator {
             || this.hasSignificantColorDifference(from.accent, to.accent)
             || this.hasSignificantColorDifference(from.ambient, to.ambient)
             || this.hasSignificantColorDifference(from.contrast, to.contrast);
+    }
+    /**
+     * 🌊 WAVE 4755: Variante chill del diff gate.
+     * Umbral de hue elevado a 30° (vs 15° normal) para que micro-variaciones
+     * de audio no disparen rotaciones cromáticas en modo océano.
+     * S/L mantienen tolerancia estándar de 3 puntos.
+     */
+    hasSignificantPaletteDifferenceChill(from, to) {
+        return this.hasSignificantColorDifferenceChill(from.primary, to.primary)
+            || this.hasSignificantColorDifferenceChill(from.secondary, to.secondary)
+            || this.hasSignificantColorDifferenceChill(from.accent, to.accent)
+            || this.hasSignificantColorDifferenceChill(from.ambient, to.ambient)
+            || this.hasSignificantColorDifferenceChill(from.contrast, to.contrast);
+    }
+    hasSignificantColorDifferenceChill(from, to) {
+        if (!Number.isFinite(from.h) || !Number.isFinite(from.s) || !Number.isFinite(from.l)
+            || !Number.isFinite(to.h) || !Number.isFinite(to.s) || !Number.isFinite(to.l)) {
+            return true;
+        }
+        const fromHue = normalizeHue(from.h);
+        const toHue = normalizeHue(to.h);
+        let hueDiff = Math.abs(fromHue - toHue);
+        if (hueDiff > 180)
+            hueDiff = 360 - hueDiff;
+        return hueDiff > 30
+            || Math.abs(from.s - to.s) > 3
+            || Math.abs(from.l - to.l) > 3;
     }
     hasAnyPaletteDifference(from, to) {
         return this.hasAnyColorDifference(from.primary, to.primary)

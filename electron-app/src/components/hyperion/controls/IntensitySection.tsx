@@ -110,6 +110,7 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, isExpan
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
           <IntensityIcon size={18} className="title-icon" />
           INTENSITY
+          <span className="section-node-label" style={{ color: 'var(--neon-base)' }}>: {ctx.label.toUpperCase()}</span>
         </h4>
         <div className="header-right">
           {hasAnyOverride && (

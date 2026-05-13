@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 4522.3: THE COLOR-AETHER BRIDGE (Fase A)
+ * WAVE 4775: Restricción espacial del Mood — PAR-only color.
  *
  * RESPONSABILIDAD (SINGLE):
  * Consumir la paleta RGB de SeleneLuxOutput (fuente musical canónica) y
@@ -15,6 +16,14 @@
  *   - Fuente de color: IColorIngress.paletteRgb (RGB 0-255 de SeleneLux).
  *   - Mapeo zona → rol: selectColorRoleFromZone() (via zoneUtils).
  *   - Normalización: r255 / 255, clampeado a [0, 1].
+ *
+ * RESTRICCIÓN ESPACIAL DEL MOOD (WAVE 4775):
+ *   Las variaciones de color dictadas por el Mood (paleta musical rápida)
+ *   SOLO se ruteaban a fixtures PAR (front, back, floor, ambient).
+ *   Los movers (fixtures con nodo KINETIC) mantienen el color base
+ *   constitucional o los overrides explícitos de L3 (Drops), aislándolos
+ *   del caos emocional rápido de L0.
+ *   API: setMoverNodeIds(nodeIds) — llamar en patch time desde TitanOrchestrator.
  *
  * INVARIANTES DE DISEÑO:
  *   - Zero allocations en hot path (todas las estructuras pre-allocated).
@@ -28,7 +37,7 @@
  *   NodeArbiter los combina: brightness vía LTP × nodo, r/g/b vía LTP L1.
  *
  * @module core/aether/adapters/ColorAdapter
- * @version WAVE 4522.3
+ * @version WAVE 4775
  */
 import { NodeFamily } from '../types';
 import { BaseSystem } from '../systems';
@@ -40,9 +49,11 @@ import { selectColorRoleFromZone, normalizeZoneId } from './zoneUtils';
  * Rota el matiz de un color RGB por `hueDeg` grados (0-360).
  * Si la saturación resultante cae por debajo del umbral, se fuerza al máximo
  * para evitar colores sucios/marrones (regla de oro).
- * Zero-alloc: opera sobre componentes escalares, sin objetos intermiedios.
+ *
+ * Zero-alloc: escribe el resultado en `out` en lugar de retornar un nuevo objeto.
+ * Llamar con un buffer pre-allocated para garantizar cero asignaciones en hot path.
  */
-function hueShiftRgb(r, g, b, hueDeg, minSaturation = 0.6) {
+function hueShiftRgb(r, g, b, hueDeg, out, minSaturation = 0.6) {
     // RGB [0,1] → HSL
     const max = r > g ? (r > b ? r : b) : (g > b ? g : b);
     const min = r < g ? (r < b ? r : b) : (g < b ? g : b);
@@ -66,9 +77,12 @@ function hueShiftRgb(r, g, b, hueDeg, minSaturation = 0.6) {
     // Forzar saturación mínima si el color es sucio
     if (s < minSaturation && (max - min) > 0.05)
         s = 1.0;
-    // HSL → RGB
+    // HSL → RGB — escribir directamente en out (zero-alloc)
     if (s === 0) {
-        return { r: l, g: l, b: l };
+        out.r = l;
+        out.g = l;
+        out.b = l;
+        return;
     }
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
@@ -85,11 +99,9 @@ function hueShiftRgb(r, g, b, hueDeg, minSaturation = 0.6) {
             return p + (q - p) * (2 / 3 - t) * 6;
         return p;
     };
-    return {
-        r: hue2rgb(h + 1 / 3),
-        g: hue2rgb(h),
-        b: hue2rgb(h - 1 / 3),
-    };
+    out.r = hue2rgb(h + 1 / 3);
+    out.g = hue2rgb(h);
+    out.b = hue2rgb(h - 1 / 3);
 }
 /** Desplazamiento de matiz (grados) aplicado a nodos COLOR en zona 'air'. */
 const AIR_ZONE_HUE_OFFSET_DEG = 60;
@@ -136,6 +148,15 @@ export class ColorAdapter extends BaseSystem {
         this.source = COLOR_SOURCE;
         // Paleta activa del frame actual — actualizada via setIngress() antes de process()
         this._ingress = _FALLBACK_PALETTE;
+        // Buffer pre-allocated para hueShiftRgb — zero-alloc en hot path
+        this._hueShiftOut = { r: 0, g: 0, b: 0 };
+        /**
+         * WAVE 4775: Set de nodeIds que pertenecen a movers (fixtures con KINETIC).
+         * Calculado en patch time via setMoverNodeIds(); costo 0 en hot path.
+         * Si un nodeId COLOR está aquí, el adapter L0 NO emite color Mood para él.
+         * Los movers reciben color solo desde L3 (Effects/Drops) o paleta constitucional.
+         */
+        this._moverColorNodeIds = new Set();
         // Pre-allocar los canales cromáticos en el scratch — zero-alloc hot path
         this._valuesDict['r'] = 0;
         this._valuesDict['g'] = 0;
@@ -150,6 +171,19 @@ export class ColorAdapter extends BaseSystem {
     setIngress(palette) {
         this._ingress = palette;
     }
+    /**
+     * WAVE 4775: Registra los nodeIds COLOR que pertenecen a movers.
+     * Llamar en patch time (registerAetherDevice) desde TitanOrchestrator.
+     * Costo en hot path: O(1) Set.has() por nodo.
+     *
+     * @param nodeIds - Array de nodeIds COLOR de movers (ej: 'fix-mh-01:color')
+     */
+    setMoverNodeIds(nodeIds) {
+        this._moverColorNodeIds.clear();
+        for (let i = 0; i < nodeIds.length; i++) {
+            this._moverColorNodeIds.add(nodeIds[i]);
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // HOT-PATH — 44Hz / 60Hz
     // ─────────────────────────────────────────────────────────────────────────
@@ -160,6 +194,13 @@ export class ColorAdapter extends BaseSystem {
         this._intentScratch.source = COLOR_SOURCE;
         // ── 2. Iterar nodos COLOR — determinar rol, normalizar, empujar intent
         nodes.forEach((node, _index) => {
+            // WAVE 4775: RESTRICCIÓN ESPACIAL DEL MOOD.
+            // Los movers NO reciben color del Mood (paleta musical rápida L0).
+            // Su color proviene exclusivamente de L3 (Effects/Drops) o paleta constitucional.
+            // Esto aísla a los movers del caos emocional de L0 en cada beat.
+            if (this._moverColorNodeIds.size > 0 && this._moverColorNodeIds.has(node.nodeId)) {
+                return;
+            }
             const role = selectColorRoleFromZone(node.zoneId ?? '');
             const rgb = ingress[role];
             // Normalización RGB 0-255 → 0.0-1.0, clampeada
@@ -170,10 +211,10 @@ export class ColorAdapter extends BaseSystem {
             // 60° de rotación de matiz sobre el color ambient de Selene.
             // Saturación mínima 60% para evitar colores marrones/sucios.
             if (normalizeZoneId(node.zoneId ?? '') === 'air') {
-                const shifted = hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, 0.6);
-                rNorm = shifted.r;
-                gNorm = shifted.g;
-                bNorm = shifted.b;
+                hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6);
+                rNorm = this._hueShiftOut.r;
+                gNorm = this._hueShiftOut.g;
+                bNorm = this._hueShiftOut.b;
             }
             // Limpiar stale values de frames anteriores antes de asignar
             // (previene ghost channels si el adaptador cambia de familia de canales)

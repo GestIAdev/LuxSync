@@ -294,14 +294,24 @@ export class TitanOrchestrator {
             }
         });
         const protectedColorNodes = [];
+        const moverColorNodeIds = [];
         const colorView = this._aetherGraph.getView(NodeFamily.COLOR);
         colorView.forEach((node) => {
             const hasPhysicalWheel = node.colorWheel !== undefined || node.mixingType === 'wheel' || node.mixingType === 'hybrid';
-            if (hasPhysicalWheel && moverDeviceIds.has(node.deviceId)) {
-                protectedColorNodes.push(node.nodeId);
+            if (moverDeviceIds.has(node.deviceId)) {
+                // WAVE 4775 PASO 3: todos los nodos COLOR de movers quedan fuera del Mood rápido L0.
+                moverColorNodeIds.push(node.nodeId);
+                // MoverShield (WAVE 4670): solo los de rueda física necesitan el shield adicional del arbiter.
+                if (hasPhysicalWheel) {
+                    protectedColorNodes.push(node.nodeId);
+                }
             }
         });
         arbiter.setMoverShieldNodeIds(protectedColorNodes);
+        // WAVE 4775 PASO 3: Notificar al ColorAdapter qué nodos son movers para bloquear Mood.
+        if (this._colorAdapter) {
+            this._colorAdapter.setMoverNodeIds(moverColorNodeIds);
+        }
     }
     constructor(config = {}) {
         this.brain = null;

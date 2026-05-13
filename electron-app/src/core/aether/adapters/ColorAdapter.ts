@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 4522.3: THE COLOR-AETHER BRIDGE (Fase A)
+ * WAVE 4775: Restricción espacial del Mood — PAR-only color.
  *
  * RESPONSABILIDAD (SINGLE):
  * Consumir la paleta RGB de SeleneLuxOutput (fuente musical canónica) y
@@ -15,6 +16,14 @@
  *   - Fuente de color: IColorIngress.paletteRgb (RGB 0-255 de SeleneLux).
  *   - Mapeo zona → rol: selectColorRoleFromZone() (via zoneUtils).
  *   - Normalización: r255 / 255, clampeado a [0, 1].
+ *
+ * RESTRICCIÓN ESPACIAL DEL MOOD (WAVE 4775):
+ *   Las variaciones de color dictadas por el Mood (paleta musical rápida)
+ *   SOLO se ruteaban a fixtures PAR (front, back, floor, ambient).
+ *   Los movers (fixtures con nodo KINETIC) mantienen el color base
+ *   constitucional o los overrides explícitos de L3 (Drops), aislándolos
+ *   del caos emocional rápido de L0.
+ *   API: setMoverNodeIds(nodeIds) — llamar en patch time desde TitanOrchestrator.
  *
  * INVARIANTES DE DISEÑO:
  *   - Zero allocations en hot path (todas las estructuras pre-allocated).
@@ -28,7 +37,7 @@
  *   NodeArbiter los combina: brightness vía LTP × nodo, r/g/b vía LTP L1.
  *
  * @module core/aether/adapters/ColorAdapter
- * @version WAVE 4522.3
+ * @version WAVE 4775
  */
 
 import { NodeFamily } from '../types'
@@ -184,6 +193,14 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
   // Buffer pre-allocated para hueShiftRgb — zero-alloc en hot path
   private readonly _hueShiftOut: { r: number; g: number; b: number } = { r: 0, g: 0, b: 0 }
 
+  /**
+   * WAVE 4775: Set de nodeIds que pertenecen a movers (fixtures con KINETIC).
+   * Calculado en patch time via setMoverNodeIds(); costo 0 en hot path.
+   * Si un nodeId COLOR está aquí, el adapter L0 NO emite color Mood para él.
+   * Los movers reciben color solo desde L3 (Effects/Drops) o paleta constitucional.
+   */
+  private readonly _moverColorNodeIds = new Set<string>()
+
   constructor() {
     super()
     // Pre-allocar los canales cromáticos en el scratch — zero-alloc hot path
@@ -200,6 +217,20 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
    */
   setIngress(palette: IColorIngressPalette): void {
     this._ingress = palette
+  }
+
+  /**
+   * WAVE 4775: Registra los nodeIds COLOR que pertenecen a movers.
+   * Llamar en patch time (registerAetherDevice) desde TitanOrchestrator.
+   * Costo en hot path: O(1) Set.has() por nodo.
+   *
+   * @param nodeIds - Array de nodeIds COLOR de movers (ej: 'fix-mh-01:color')
+   */
+  setMoverNodeIds(nodeIds: readonly string[]): void {
+    this._moverColorNodeIds.clear()
+    for (let i = 0; i < nodeIds.length; i++) {
+      this._moverColorNodeIds.add(nodeIds[i])
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -227,14 +258,22 @@ export class ColorAdapter extends BaseSystem<IColorNodeData> implements IAetherS
       let gNorm = rgb.g < 0 ? 0 : rgb.g > 255 ? 1 : rgb.g / 255
       let bNorm = rgb.b < 0 ? 0 : rgb.b > 255 ? 1 : rgb.b / 255
 
-      // 🌊 WAVE 4701 M3: Desplazamiento cromático para zona 'air' (beam Tungsten).
-      // 60° de rotación de matiz sobre el color ambient de Selene.
-      // Saturación mínima 60% para evitar colores marrones/sucios.
-      if (normalizeZoneId(node.zoneId ?? '') === 'air') {
-        hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6)
-        rNorm = this._hueShiftOut.r
-        gNorm = this._hueShiftOut.g
-        bNorm = this._hueShiftOut.b
+      // WAVE 4775.1: BIFURCACIÓN BASE vs MOOD.
+      // Movers: reciben la paleta constitucional de Selene directa (role→RGB),
+      // sin modificadores de zona (hue-shift air). Esto les da color estable.
+      // PARs/Ambient: reciben la paleta completa incluyendo hue-shift de zona air.
+      const isMover = this._moverColorNodeIds.size > 0 && this._moverColorNodeIds.has(node.nodeId)
+
+      if (!isMover) {
+        // 🌊 WAVE 4701 M3: Desplazamiento cromático para zona 'air' (beam Tungsten).
+        // 60° de rotación de matiz sobre el color ambient de Selene.
+        // Saturación mínima 60% para evitar colores marrones/sucios.
+        if (normalizeZoneId(node.zoneId ?? '') === 'air') {
+          hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6)
+          rNorm = this._hueShiftOut.r
+          gNorm = this._hueShiftOut.g
+          bNorm = this._hueShiftOut.b
+        }
       }
 
       // Limpiar stale values de frames anteriores antes de asignar

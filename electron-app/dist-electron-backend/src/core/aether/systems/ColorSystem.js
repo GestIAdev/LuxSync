@@ -342,23 +342,15 @@ export class ColorSystem extends BaseSystem {
      * que no usan todos los canales.
      */
     _clearColorKeys() {
-        // Las keys posibles de color en nuestro sistema.
-        // delete de keys conocidas es O(1) en V8.
-        if ('red' in this._valuesDict)
-            delete this._valuesDict['red'];
-        if ('green' in this._valuesDict)
-            delete this._valuesDict['green'];
-        if ('blue' in this._valuesDict)
-            delete this._valuesDict['blue'];
-        if ('white' in this._valuesDict)
-            delete this._valuesDict['white'];
-        if ('cyan' in this._valuesDict)
-            delete this._valuesDict['cyan'];
-        if ('magenta' in this._valuesDict)
-            delete this._valuesDict['magenta'];
-        if ('yellow' in this._valuesDict)
-            delete this._valuesDict['yellow'];
-        if ('color_wheel' in this._valuesDict)
-            delete this._valuesDict['color_wheel'];
+        // Zero-alloc: asignar undefined mantiene la hidden class de V8 estable
+        // (evita la de-optimización que causa delete en hot path 44Hz).
+        this._valuesDict['red'] = undefined;
+        this._valuesDict['green'] = undefined;
+        this._valuesDict['blue'] = undefined;
+        this._valuesDict['white'] = undefined;
+        this._valuesDict['cyan'] = undefined;
+        this._valuesDict['magenta'] = undefined;
+        this._valuesDict['yellow'] = undefined;
+        this._valuesDict['color_wheel'] = undefined;
     }
 }

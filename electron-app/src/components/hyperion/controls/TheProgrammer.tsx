@@ -68,6 +68,16 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   // WAVE 4725: CAMALEÓN — carga células de capacidad del nodeGraph
   const deviceGroups = useCapabilityCells(selectedIds)
 
+  // 🔬 WAVE 4728: SONDA FORENSE — qué llega al render
+  useEffect(() => {
+    if (selectedIds.length === 0) return
+    console.log(
+      '[TheProgrammer] 🎭 deviceGroups received | selection=', selectedIds.join(','),
+      '| groupCount=', deviceGroups.length,
+      '| cellsByGroup=', deviceGroups.map(g => `${g.fixtureName}[${g.cells.length}cells:${g.cells.map(c => c.family).join('+')}]`).join(' | '),
+    )
+  }, [selectedIds, deviceGroups])
+
 
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')

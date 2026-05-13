@@ -208,6 +208,17 @@ export const LATINO_CONSTITUTION = {
     // El dorado es el accent — su trono, no su dictadura.
     accentBehavior: 'solar-flare',
     solarFlareAccent: { h: 35, s: 100, l: 55 },
+    // WAVE 4760: Golden Angle A para secundario tropical (137.5° en vez de 222.5°).
+    fibonacciRotationDeg: 137.5,
+    // WAVE 4760: Salt cromático por key root — F→Lima (-35°), A→Miami Pink (+35°).
+    saltChromaticKeys: { 5: -35, 9: 35 },
+    // WAVE 4760: Luxury signature overrides para secundario — F→Mint, A→Navy.
+    luxurySignatures: {
+        5: { h: 160, maxS: 85 }, // F Major → Verde Menta
+        9: { h: 230 }, // A Major → Azul Marino
+    },
+    // WAVE 4760: Activar Tropical Ambient Bias (WAVE 84) vía constitución.
+    tropicalAmbientBias: true,
     dimmingConfig: {
         floor: 0.08,
         ceiling: 1.0,
@@ -291,53 +302,83 @@ export const ROCK_CONSTITUTION = {
     },
 };
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "Bioluminiscencia" (WAVE 315)
+// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "El Abismo Oceánico" (WAVE 4755)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * WAVE 315: EXPANDED SPECTRUM - El ecosistema submarino completo.
+ * WAVE 4755: LA LEY DEL ABISMO — Constitución Cromática del Chillout.
  *
- * En el reino del Chill, la profundidad es infinita. Flotamos en luz líquida.
+ * En el reino del Chill, el calor es herejía. Solo la bioluminiscencia vive.
+ * El espectro cálido y agresivo está TERMINANTEMENTE PROHIBIDO.
  *
- * 🌿 ZONA ALGA:   135° - 170° (Verde Esmeralda → Turquesa)  [NUEVO]
- * 🌊 ZONA CORAL:  170° - 200° (Turquesa → Cian)
- * 🐋 ZONA ABISAL: 200° - 260° (Azul Profundo → Índigo)
- * 🪼 ZONA MEDUSA: 260° - 320° (Violeta → Magenta Suave)
- * 🌺 ZONA ROSA:   320° - 340° (Magenta Profundo → Rosa)    [NUEVO]
+ * ════════════════════════════════════════════════════════════
+ * ZONAS PROHIBIDAS (La Zona Incandescente):
+ *   🔴 330° → 360°/0° → 70°: Rojo / Naranja / Amarillo puro
+ *   Cruza el 0° → se define como rango dual:
+ *     [[330, 360], [0, 70]]  ← dos entradas para cubrir el cruce
  *
- * FILOSOFÍA: "El océano tiene TODO. Algas, corales, abismos, medusas, flores."
+ * ZONAS PERMITIDAS (El Espectro Bioluminiscente):
+ *   🌿 ZONA ALGA:       70° -  135° (Verde Lima → Verde Esmeralda)
+ *   🌊 ZONA CORAL:     135° -  200° (Turquesa → Cian)
+ *   🐋 ZONA ABISAL:    200° -  260° (Azul Profundo → Índigo)
+ *   🪼 ZONA MEDUSA:    260° -  330° (Violeta → Magenta Frío)
+ * ════════════════════════════════════════════════════════════
+ *
+ * REGLA DE ESTRATEGIA:
+ *   forceStrategy: 'analogous' es CONSTITUCIONAL y NO puede ser overrideado
+ *   por el StrategyArbiter. En el océano no hay contrastes complementarios.
+ *   TitanEngine.ts respeta este flag cuando vibeId === 'chill-lounge'.
+ *
+ * REGLA DE TRANSICIÓN:
+ *   minDuration: 20000ms (20 segundos). Las paletas mutan como corrientes
+ *   submarinas — imperceptibles en tiempo real, pero transformadoras.
  */
 export const CHILL_CONSTITUTION = {
-    // Analogous para armonía
+    // ── ESTRATEGIA ANÁLOGA CONSTITUCIONAL ──────────────────────────────────
+    // 'analogous' = colores vecinos en el círculo. Nunca complementarios.
+    // WAVE 4755: Este valor es INMUTABLE. TitanEngine no lo sobreescribe.
     forceStrategy: 'analogous',
-    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Cian Suave
-    // 8000K = Fuerza 0.33 hacia 240° (Cian/Agua)
-    // Tirón suave hacia tonos acuáticos relajantes
-    atmosphericTemp: 8000,
-    // Prohibido: naranjas/amarillos (demasiado energéticos para el fondo marino)
-    forbiddenHueRanges: [[30, 80]],
-    // 🌊 WAVE 315: EXPANDED SPECTRUM
-    // Antes: [[170, 320]] = 150° de espectro
-    // Ahora: [[135, 340]] = 205° de espectro (+55°)
-    // Nuevas zonas: Verde Alga (135-170°) + Magenta Rosa (320-340°)
-    allowedHueRanges: [[135, 340]],
-    // Saturación respirable (no neón)
-    saturationRange: [50, 80],
-    // Luminosidad profunda
-    lightnessRange: [35, 55],
-    // Sin strobes (constitucional)
+    // ── GRAVEDAD TÉRMICA OCEÁNICA ───────────────────────────────────────────
+    // 8500K → Polo Cian/Azul profundo. Más frío que WAVE 315 (8000K).
+    // thermalGravityStrength = 0.18 → Tirón suave (preserva verdes y violetas,
+    // no colapsa todo al azul rey como 9500K de Techno).
+    atmosphericTemp: 8500,
+    thermalGravityStrength: 0.18,
+    // ── LA LEY DEL ABISMO: ZONAS PROHIBIDAS ────────────────────────────────
+    // El rango cálido cruza el 0° → necesita dos entradas para cubrirlo:
+    //   [330, 360] = Rojo cálido / Coral agresivo
+    //   [0,   70]  = Naranja / Amarillo / Lima caliente
+    // Elastic Rotation (paso 20°) expulsa infractores hacia Verde/Cian.
+    forbiddenHueRanges: [[330, 360], [0, 70]],
+    elasticRotation: 20,
+    // ── ESPECTRO PERMITIDO: 260° DE UNIVERSO BIOLUMINISCENTE ───────────────
+    // [70, 330] = Verde Esmeralda → Violeta → Magenta Frío
+    // 260° de arco = infinita diversidad orgánica sin un solo tono caliente.
+    allowedHueRanges: [[70, 330]],
+    // ── SATURACIÓN RESPIRATORIA ────────────────────────────────────────────
+    // [50, 85]: Piso 50 = bioluminiscencia siempre visible (no lavado).
+    //           Techo 85 = evitar plástico neón de saturación 100.
+    saturationRange: [50, 85],
+    // ── LUMINOSIDAD SUBMARINA ──────────────────────────────────────────────
+    // [30, 60]: Piso 30 = abismo con textura visible.
+    //           Techo 60 = evitar blancos cegadores (mandato WAVE 4755).
+    lightnessRange: [30, 60],
+    // ── SIN STROBES (CONSTITUCIONAL) ───────────────────────────────────────
     strobeProhibited: true,
-    // Breathing: pulso lento
+    // ── ACENTO: PULSO BIOLUMINISCENTE ──────────────────────────────────────
     accentBehavior: 'breathing',
-    pulseConfig: { duration: 4000, amplitude: 0.15 },
-    // Transiciones líquidas
+    pulseConfig: { duration: 6000, amplitude: 0.12 },
+    // ── TRANSICIONES GLACIARES ─────────────────────────────────────────────
+    // WAVE 4755: 20 segundos mínimo. Las corrientes marinas no se apuran.
+    // La sección musical (drop, verse) NO impulsa estas transiciones.
     transitionConfig: {
-        minDuration: 2000, // 2 segundos mínimo
-        easing: 'sine-inout', // Ondas suaves
+        minDuration: 20000, // 20 segundos — corriente submarina
+        maxDuration: 30000, // 30 segundos — el glaciar cromático
+        easing: 'sine-inout', // Ondas profundas y suaves
     },
-    // 🌟 WAVE 315: Dimmer floor subido - bioluminiscencia siempre visible
-    // La vida marina siempre brilla, nunca hay oscuridad total
+    // ── DIMMER BIOLUMINISCENTE ─────────────────────────────────────────────
+    // La vida marina siempre brilla, nunca hay oscuridad total.
     dimmingConfig: {
-        floor: 0.10, // Antes 0.05 - Ahora 10% mínimo (brillo residual)
+        floor: 0.10, // 10% mínimo — brillo residual siempre presente
         ceiling: 0.85, // Nunca cegador
     },
 };

@@ -123,10 +123,10 @@ const PATTERN_PERIOD = {
     circle_big: 32, // 🏛️ 16→32. 8 compases: el rey recorre TODO el escenario
     cancan: 16, // 🏛️ 8→16. 4 compases: subida/bajada con gravitas
     dual_sweep: 32, // 🏛️ 16→32. 8 compases: barrido en U cinematográfico
-    // CHILL — oceánico, periodos geológicos (sin cambio, ya eran correctos)
-    drift: 256, // 64 compases: deriva continental.
-    sway: 128, // 32 compases: la corriente profunda.
-    breath: 96, // 24 compases: la luz respira.
+    // CHILL — oceánico, periodos geológicos — WAVE 4750: escalados a catedral submarina
+    drift: 512, // 128 compases: la deriva continental profunda.
+    sway: 256, // 64 compases: la corriente del abismo.
+    breath: 192, // 48 compases: la luz respira en cámara lenta.
     // THE FOUR NOBLES — sin cambio significativo
     slow_pan: 48, // 🏛️ 32→48. 12 compases: faro lento del fondo
     tilt_nod: 24, // 🏛️ 16→24. 6 compases: cabeceo meditativo
@@ -143,33 +143,37 @@ const PATTERN_PERIOD = {
 // PATTERN_PERIOD permanece como fallback para código legacy hasta ASALTO 2.
 // ═══════════════════════════════════════════════════════════════════════════
 const PATTERN_CONFIG = {
-    // ── TECHNO — geometría industrial agresiva ──────────────────────────────
-    // cycleBeats 2-6 → 1 revolución en 1-3 compases a 128 BPM = energético
-    scan_x: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
-    square: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
-    diamond: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
-    botstep: { cycleBeats: 2, phraseDuration: 8, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 2, transitionBeats: 0.5 },
-    darkspin: { cycleBeats: 6, phraseDuration: 12, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 6, transitionBeats: 1 },
-    // ── LATINO — fluido, sensual, cadencia ─────────────────────────────────
-    // cycleBeats 6-10 → 1 revolución en 3-5 compases a 100 BPM = cadencia real
-    figure8: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    wave_y: { cycleBeats: 6, phraseDuration: 12, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 6, transitionBeats: 1 },
-    ballyhoo: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 2 },
-    cadera_libre: { cycleBeats: 10, phraseDuration: 20, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 10, transitionBeats: 2 },
-    espiral_conga: { cycleBeats: 8, phraseDuration: 24, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    // ── POP-ROCK — estadio, simetría ──────────────────────────────────────
-    circle_big: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    cancan: { cycleBeats: 4, phraseDuration: 8, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
-    dual_sweep: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    // ── CHILL — oceánico, geológico ─────────────────────────────────────────
-    drift: { cycleBeats: 64, phraseDuration: 128, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 32, transitionBeats: 4 },
-    sway: { cycleBeats: 32, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
-    breath: { cycleBeats: 24, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 3 },
-    // ── THE FOUR NOBLES — universales ───────────────────────────────────────
-    slow_pan: { cycleBeats: 16, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 2 },
-    tilt_nod: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    figure_of_4: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1.5 },
-    chase_position: { cycleBeats: 4, phraseDuration: 8, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 1 },
+    // ── TECHNO — geometría industrial, majestuosa (CALIBRACIÓN DE FÁBRICA) ───
+    // cycleBeats duplicados → mitad de velocidad física con GM=1.0x
+    // phraseDuration extendido → 4-8 compases para que el show respire
+    scan_x: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    square: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    diamond: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    botstep: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 0.5 },
+    darkspin: { cycleBeats: 12, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 2 },
+    // ── LATINO — fluido, sensual, cadencia relajada (CALIBRACIÓN DE FÁBRICA) ──
+    // cycleBeats 12-20 → 1 revolución en 6-10 compases a 100 BPM = meditativo
+    figure8: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    wave_y: { cycleBeats: 12, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 2 },
+    ballyhoo: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
+    cadera_libre: { cycleBeats: 20, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 20, transitionBeats: 3 },
+    espiral_conga: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
+    // ── POP-ROCK — estadio, simetría majestuosa (CALIBRACIÓN DE FÁBRICA) ──────
+    // cycleBeats 8-16 → 1 revolución en 4-8 compases = monumentalidad
+    circle_big: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    cancan: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    dual_sweep: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    // ── CHILL — WAVE 4750: ABISMO OCEÁNICO — velocidad de catedral submarina ──────
+    // cycleBeats 256-512 → 1 ciclo en 128-256 compases a 120 BPM = 64-128 minutos.
+    // Con anti-jitter 8-bit (dithering) el movimiento es terciopelo puro.
+    drift: { cycleBeats: 512, phraseDuration: 1024, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 128, transitionBeats: 8 },
+    sway: { cycleBeats: 256, phraseDuration: 512, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 64, transitionBeats: 8 },
+    breath: { cycleBeats: 192, phraseDuration: 384, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 48, transitionBeats: 6 },
+    // ── THE FOUR NOBLES — universales relajados (CALIBRACIÓN DE FÁBRICA) ──────
+    slow_pan: { cycleBeats: 32, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
+    tilt_nod: { cycleBeats: 16, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    figure_of_4: { cycleBeats: 16, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    chase_position: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
 };
 const STEREO_CONFIG = {
     'techno-club': { offset: Math.PI, type: 'mirror' }, // L/R espejos (puertas abren/cierran)
@@ -774,9 +778,20 @@ export class VibeMovementManager {
             y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
         };
         // WAVE 4741 ASALTO 2: KINETIC CROSSFADE
+        // Guard defensivo: si el fromPattern ya no existe en este vibe (edge case de cambio
+        // de vibe rápido), matar el crossfade antes de calcular nada.
+        if (this.kineticTransition.active) {
+            const fromInVibe = config.patterns.includes(this.kineticTransition.fromPattern);
+            if (!fromInVibe) {
+                console.warn(`[SCHED] ⚠️ Crossfade killed — fromPattern '${this.kineticTransition.fromPattern}'` +
+                    ` not in ${vibeId} playlist. Race condition on vibe change?`);
+                this.kineticTransition.active = false;
+            }
+        }
         // Si hay un crossfade activo, calcula la posición del patrón SALIENTE en tiempo
         // real (continúa avanzando su fase) y hace un LERP hasta la del ENTRANTE.
         let finalPosition = position;
+        let crossfadeSmoothT = 0; // 0 = 100% saliente, 1 = 100% entrante
         if (this.kineticTransition.active) {
             const fromCfg = PATTERN_CONFIG[this.kineticTransition.fromPattern]
                 ?? PATTERN_CONFIG['breath'];
@@ -793,10 +808,10 @@ export class VibeMovementManager {
                 };
                 // Smoothstep ease-in-out: t² × (3 − 2t)
                 const t = Math.min(1.0, this.kineticTransition.progressBeats / this.kineticTransition.totalBeats);
-                const smoothT = t * t * (3 - 2 * t);
+                crossfadeSmoothT = t * t * (3 - 2 * t);
                 finalPosition = {
-                    x: fromPosition.x + (position.x - fromPosition.x) * smoothT,
-                    y: fromPosition.y + (position.y - fromPosition.y) * smoothT,
+                    x: fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT,
+                    y: fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT,
                 };
             }
         }
@@ -878,10 +893,16 @@ export class VibeMovementManager {
         // 🔧 WAVE 2086.1: phaseType is now informational only (stereo already applied)
         // We keep it for downstream compatibility but HAL no longer uses it for phase offset
         const phaseType = (patternName === 'scan_x' || patternName === 'cancan') ? 'linear' : 'polar';
+        // UI SYNC: reportar el patrón que DOMINA visualmente.
+        // Durante crossfade, el saliente domina hasta que smoothT >= 0.5.
+        // Fuera de crossfade, siempre es patternName.
+        const reportedPattern = this.kineticTransition.active && crossfadeSmoothT < 0.5
+            ? this.kineticTransition.fromPattern
+            : patternName;
         return {
             x: stereoPosition.x,
             y: stereoPosition.y,
-            pattern: patternName,
+            pattern: reportedPattern,
             speed: effectiveFrequency,
             amplitude: effectivePanAmplitude,
             phaseType,

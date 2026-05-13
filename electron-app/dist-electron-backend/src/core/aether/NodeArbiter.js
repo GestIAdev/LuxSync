@@ -4,14 +4,24 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 3505.4: Implementación concreta del INodeArbiter.
+ * WAVE 4775: El Árbitro de Hierro — refactor forense completo.
  *
  * El NodeArbiter resuelve conflictos multicapa sobre los CapabilityNodes.
  * Opera sobre valores normalizados (0-1) producidos por los 5 Systems
  * y los hooks externos (Selene, Manual, Effects, Playback).
  *
- * ESTRATEGIAS DE MERGE POR CANAL:
- * - `dimmer`, `strobe`, `shutter` → HTP (Highest Takes Precedence)
+ * ESTRATEGIAS DE MERGE POR CANAL (WAVE 4775):
+ * - `dimmer`, `strobe`, `shutter` → PRIORIDAD ESTRICTA POR CAPA
+ *   (L4 > LP > L3 > L2 > L1 > L0). El HTP SÓLO existe dentro de la misma
+ *   capa (multi-fuente en L0), nunca entre capas distintas.
+ *   Destruye el HTP trans-capa que causaba flashes de un frame.
  * - todos los demás → LTP (Latest Takes Precedence = capa de mayor prioridad)
+ *
+ * OPAQUE MASK (WAVE 4775):
+ * - Cuando L2 (Manual) o LP (Timeline) tocan CUALQUIER canal de un fixture,
+ *   ese fixture queda "Opaco": L0 y L1 NO pueden inyectar canales estéticos
+ *   (color, gobo, prisma, zoom, focus, frost) para ese fixture.
+ *   El movimiento continuo (pan/tilt) de L0 sigue funcionando.
  *
  * CAPAS (menor a mayor prioridad):
  * - L0: IntentBus (Systems — ColorSystem, ImpactSystem, KineticSystem…)
@@ -27,12 +37,25 @@
  * - No se crean nuevos Maps, Sets ni Arrays durante `arbitrate()`.
  *
  * @module core/aether/NodeArbiter
- * @version WAVE 3505.4
+ * @version WAVE 4775 — El Árbitro de Hierro
  */
-// ── Canales con estrategia HTP ──────────────────────────────────────────
-// Solo los canales de intensidad aplican HTP.
-// El resto usa LTP (la capa más alta dicta el valor final).
-const HTP_CHANNELS = new Set(['dimmer', 'brightness', 'strobe', 'shutter']);
+// ── Canales con prioridad estricta por capa (WAVE 4775) ────────────────────
+// ANTES: HTP (max global entre capas) → causaba flashes de 1 frame.
+// AHORA: Prioridad estricta. La capa más alta con valor definido gana.
+// El HTP SOLO existe dentro de L0 (multi-fuente en el mismo bus).
+const STRICT_PRIORITY_CHANNELS = new Set(['dimmer', 'brightness', 'strobe', 'shutter']);
+// ── Canales bloqueados por Opaque Mask de L0 y L1 (WAVE 4775) ──────────────
+// Cuando un fixture está opaco (L2/LP tocó cualquier canal),
+// L0 y L1 NO pueden inyectar estos canales sobre ese fixture.
+// pan/tilt EXCLUIDOS: el movimiento continuo de L0 siempre pasa.
+const OPAQUE_BLOCKED_CHANNELS_L0_L1 = new Set([
+    'r', 'g', 'b',
+    'red', 'green', 'blue',
+    'white', 'amber',
+    'gobo', 'gobo_rotation',
+    'prisma', 'prisma_rotation',
+    'zoom', 'focus', 'frost',
+]);
 const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
     'r', 'g', 'b',
     'red', 'green', 'blue',
@@ -93,6 +116,15 @@ export class NodeArbiter {
         this._hephaestusIntents = [];
         /** Playback intents (LP — Chronos Timeline, prioridad entre L1-L3) */
         this._playbackIntents = [];
+        /**
+         * WAVE 4775: OPAQUE FIXTURE REGISTRY.
+         * Fixtures (prefijo de nodeId) que tienen override activo en L2 (Manual)
+         * o LP (Playback). Pre-computado en arbitrate() antes de aplicar L0/L1.
+         * Si un fixture está aquí, L0 y L1 NO pueden inyectar canales estéticos
+         * (OPAQUE_BLOCKED_CHANNELS_L0_L1) — Opaque Mask activa.
+         * pan/tilt de L0 siempre pasan (movimiento continuo).
+         */
+        this._opaqueFixtureIds = new Set();
         /** Grand Master (0-1) — multiplica todos los canales HTP */
         this._grandMaster = 1.0;
         /** Blackout flag (L4) — se aplica en egress selectivo de intensidad */
@@ -245,6 +277,21 @@ export class NodeArbiter {
             if (sep > 0)
                 this._manualDimmerFixtureIds.add(nodeId.slice(0, sep));
         }
+        // WAVE 4775: OPAQUE MASK — precomputar fixtures opacos.
+        // Un fixture es opaco si L2 (Manual) o LP (Playback) tiene CUALQUIER canal
+        // activo sobre alguno de sus nodos. Se bloquean L0/L1 para canales estéticos.
+        this._opaqueFixtureIds.clear();
+        for (const [nodeId] of this._manualOverrides) {
+            const sep = nodeId.lastIndexOf(':');
+            if (sep > 0)
+                this._opaqueFixtureIds.add(nodeId.slice(0, sep));
+        }
+        for (let i = 0; i < this._playbackIntents.length; i++) {
+            const nodeId = this._playbackIntents[i].nodeId;
+            const sep = nodeId.lastIndexOf(':');
+            if (sep > 0)
+                this._opaqueFixtureIds.add(nodeId.slice(0, sep));
+        }
         // 2. Recolectar intents en orden ascendente de prioridad de capa.
         //    El orden de escritura garantiza que las capas superiores
         //    sobreescriban a las inferiores en el merge LTP.
@@ -380,10 +427,10 @@ export class NodeArbiter {
                 }
             }
         }
-        // 3. Aplicar Grand Master sobre canales HTP
+        // 3. Aplicar Grand Master sobre canales de intensidad (STRICT_PRIORITY_CHANNELS)
         if (this._grandMaster !== 1.0) {
             for (const record of this._result.values()) {
-                for (const ch of HTP_CHANNELS) {
+                for (const ch of STRICT_PRIORITY_CHANNELS) {
                     if (ch in record) {
                         record[ch] = record[ch] * this._grandMaster;
                     }
@@ -428,6 +475,16 @@ export class NodeArbiter {
     /**
      * Aplica un intent al _result usando la estrategia de merge correcta.
      *
+     * WAVE 4775 — ÁRBITRO DE HIERRO:
+     * - STRICT_PRIORITY_CHANNELS (dimmer/strobe/shutter/brightness):
+     *   Prioridad estricta por capa. L4>LP>L3>L2>L1>L0.
+     *   Un valor ya escrito por capa superior NO puede ser pisado por
+     *   una capa inferior, ni siquiera con HTP (max).
+     *   HTP solo aplica dentro de L0 (múltiples sources en el mismo bus).
+     * - Canales LTP: LTP normal (última capa en escribir gana).
+     * - Opaque Mask: si el fixture es opaco, L0/L1 no pueden inyectar
+     *   canales estéticos (OPAQUE_BLOCKED_CHANNELS_L0_L1).
+     *
      * ZERO-ALLOC: accede al Record pre-allocated del pool si el nodo
      * no existe aún en el _result.
      */
@@ -452,41 +509,67 @@ export class NodeArbiter {
             record = this._acquireRecord();
             this._result.set(intent.nodeId, record);
         }
+        // Pre-computar si el fixture del intent está opaco (para el filtro por canal)
+        let fixtureIsOpaque = false;
+        if ((layer === 'system' || layer === 'selene') && this._opaqueFixtureIds.size > 0) {
+            const sep = intent.nodeId.lastIndexOf(':');
+            if (sep > 0) {
+                fixtureIsOpaque = this._opaqueFixtureIds.has(intent.nodeId.slice(0, sep));
+            }
+        }
         const values = intent.values;
         const shieldedColorNode = layer === 'selene' &&
             !this._seleneOverrideMoverShield &&
             this._moverShieldNodeIds.has(intent.nodeId);
         for (const channel in values) {
+            // MoverShield: bloquea canales de color en L1 para movers con rueda física
             if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
+                continue;
+            }
+            // WAVE 4775: OPAQUE MASK por canal.
+            // L0/L1 no pueden escribir canales estéticos en fixtures opacos.
+            if (fixtureIsOpaque && OPAQUE_BLOCKED_CHANNELS_L0_L1.has(channel)) {
                 continue;
             }
             const incoming = values[channel];
             if (!isFiniteChannelValue(incoming)) {
                 continue;
             }
-            if (HTP_CHANNELS.has(channel)) {
-                // WAVE 4705: L3 dimmer=0 debe poder apagar un hold manual (priority destructive).
+            if (STRICT_PRIORITY_CHANNELS.has(channel)) {
+                // WAVE 4775: PRIORIDAD ESTRICTA POR CAPA para dimmer/strobe/shutter/brightness.
+                //
+                // Regla: si ya hay un valor en el record (escrito por una capa anterior
+                // de IGUAL o MAYOR prioridad en el orden de aplicación), NO se sobreescribe.
+                //
+                // Las capas se aplican de menor a mayor prioridad (L0 → LP),
+                // por lo que una capa inferior SOLO puede escribir si el canal está vacío.
+                // Una capa superior SIEMPRE sobreescribe (el bucle ya garantiza el orden).
+                //
+                // Excepción: L3 (effect) con dimmer=0 tiene autoridad destructiva (WAVE 4705).
                 if (layer === 'effect' && channel === 'dimmer' && incoming <= 0) {
                     record[channel] = 0;
                     continue;
                 }
-                // CLEAN CABIN: L2 DICTATOR — si el operador tiene un lock manual sobre
-                // este canal HTP (dimmer/strobe/shutter), L0/L1/LP NO pueden pisarlo
-                // con HTP. El MANUAL HARD LOCK post-L3 lo repondría igualmente,
-                // pero este guard temprano evita que la capa intermedia herede
-                // el valor alto de L0 antes del lock final, eliminando flashes de un frame.
-                // L3 (effect) y L3+ (hephaestus) conservan autoridad destructiva.
-                if (layer !== 'effect' && layer !== 'hephaestus') {
-                    const lockRecord = this._manualChannelLocks.get(intent.nodeId);
-                    if (lockRecord !== undefined && channel in lockRecord) {
-                        continue;
-                    }
-                }
-                // HTP: el valor más alto gana independientemente de la capa
-                const current = record[channel];
-                if (current === undefined || incoming > current) {
+                // L3+ (hephaestus) tiene autoridad total sobre todos los canales.
+                if (layer === 'hephaestus') {
                     record[channel] = incoming;
+                    continue;
                 }
+                // Para L0 (system): HTP DENTRO de L0 — múltiples sources del mismo bus.
+                // Esto permite que varios Systems de L0 compitan con max() entre ellos.
+                if (layer === 'system') {
+                    const current = record[channel];
+                    // Solo HTP si la capa actual es L0 (no hay escritura de capa superior aún).
+                    // Si el valor ya fue escrito por L1/LP/L3, no pisamos (prioridad estricta).
+                    if (current === undefined || incoming > current) {
+                        record[channel] = incoming;
+                    }
+                    continue;
+                }
+                // L1, LP, L3 (effect no-zero): LTP estricto entre capas.
+                // El orden ascendente de aplicación garantiza que la última escritura
+                // (capa más alta) prevalezca sin necesidad de comparación.
+                record[channel] = incoming;
             }
             else {
                 // LTP: la última escritura (capa más alta) gana

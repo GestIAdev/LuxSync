@@ -30,6 +30,7 @@ import type { AggregatedCellGroup } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { CellAccordion } from './CellAccordion'
 import { useOrphanPhantomChannels, type OrphanPhantom } from './useOrphanPhantomChannels'
+import './TheProgrammer.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -101,17 +102,22 @@ const AtmosphereCellRow: React.FC<AtmosphereCellRowProps> = ({ group }) => {
         {group.cellCount > 1 && (
           <span className="extras-atm-row__badge">×{group.cellCount}</span>
         )}
-        <span className="extras-atm-row__value">{displayVal}</span>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={255}
-        value={displayVal}
-        onChange={handleChange}
-        className="extras-atm-row__slider"
-        aria-label={`${group.label} level`}
-      />
+      <div
+        className="intensity-slider-container"
+        style={{ '--neon-base': '#8b5cf6' } as React.CSSProperties}
+      >
+        <input
+          type="range"
+          min={0}
+          max={255}
+          value={displayVal}
+          onChange={handleChange}
+          className="intensity-slider"
+          aria-label={`${group.label} level`}
+        />
+        <div className="intensity-value">{displayVal}</div>
+      </div>
     </div>
   )
 }
@@ -145,28 +151,27 @@ const PhantomChannelRow: React.FC<PhantomChannelRowProps> = ({ phantom }) => {
   return (
     <div
       className={`phantom-row ${phantom.continuousRotation ? 'phantom-row--rotation' : ''}`}
-      style={{
-        '--pc':           hexColor,
-        '--pc-border':    `rgba(${cR},${cG},${cB},0.4)`,
-        '--pc-glow':      `rgba(${cR},${cG},${cB},0.12)`,
-        '--pc-label':     `rgba(${cR},${cG},${cB},0.85)`,
-      } as React.CSSProperties}
     >
       <div className="phantom-row__header">
-        <span className="phantom-row__label">{phantom.label}</span>
-        <span className="phantom-row__value">
-          {formatPhantomValue(value, phantom.continuousRotation)}
-        </span>
+        <span className="phantom-row__label" style={{ color: hexColor }}>{phantom.label}</span>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={255}
-        value={value}
-        onChange={handleChange}
-        className="phantom-row__slider"
-        aria-label={phantom.label}
-      />
+      <div
+        className="intensity-slider-container"
+        style={{ '--neon-base': hexColor } as React.CSSProperties}
+      >
+        <input
+          type="range"
+          min={0}
+          max={255}
+          value={value}
+          onChange={handleChange}
+          className="intensity-slider"
+          aria-label={phantom.label}
+        />
+        <div className="intensity-value" style={{ color: hexColor }}>
+          {formatPhantomValue(value, phantom.continuousRotation)}
+        </div>
+      </div>
     </div>
   )
 }

@@ -193,7 +193,11 @@ function capabilityNodesToDescriptors(
     const family = node.family
     const cellKey = makeCellKey(deviceId, suffix)
     const role = node.role ?? suffixToRole(suffix, family)
-    const label = suffixToLabel(suffix, family)
+    // WAVE 4738: si el nodo lleva customLabel en profileMeta (Forja custom), lo usa directamente.
+    const _customLabel = node.profileMeta?.['customLabel']
+    const label = (typeof _customLabel === 'string' && _customLabel.length > 0)
+      ? _customLabel
+      : suffixToLabel(suffix, family)
 
     descriptors.push({
       cellKey,

@@ -36,6 +36,7 @@
 import React, { useCallback, useMemo } from 'react'
 import { buildSectionHeaderText } from './cellLabels'
 import type { SectionMeta } from './cellRouting'
+import { NodeFamily } from '../../../stores/programmer-types'
 import type { AggregatedCellGroup, CellOverride } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import './CellAccordion.css'
@@ -43,6 +44,18 @@ import './CellAccordion.css'
 // ─────────────────────────────────────────────────────────────────────────────
 // ROLE → NEON COLOR
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Color neon por familia Aether.
+ * WAVE 4738: Prioridad sobre ROLE_NEON — color-coding consistente por tipo de capacidad.
+ */
+export const FAMILY_NEON: Readonly<Record<NodeFamily, string>> = Object.freeze({
+  [NodeFamily.IMPACT]:     '#ffd700', // Dorado — intensidad
+  [NodeFamily.COLOR]:      '#ff3366', // Rojo ardiente — mezcla cromática
+  [NodeFamily.KINETIC]:    '#00ffff', // Cyan neon — rotación / movimiento
+  [NodeFamily.BEAM]:       '#e0e0ff', // Azul-blanco frío — óptica
+  [NodeFamily.ATMOSPHERE]: '#00ffcc', // Verde tóxico — extras / ambiente
+})
 
 /**
  * Única fuente de verdad de colores neon por rol.
@@ -96,7 +109,8 @@ const CellAccordionBase: React.FC<CellAccordionProps> = ({
     [meta.title, group.label],
   )
 
-  const neonColor = ROLE_NEON[group.role] ?? meta.defaultNeon
+  // WAVE 4738: familia tiene prioridad para color-coding consistente.
+  const neonColor = FAMILY_NEON[group.family] ?? ROLE_NEON[group.role] ?? meta.defaultNeon
 
   const hasOverride = override !== undefined
 

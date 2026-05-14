@@ -540,7 +540,8 @@ export class NodeExtractionPipeline {
     if (outputNodes.length === 0) return []
 
     // 2. Agrupar por aetherNodeId (con fallback inferido)
-    type ForgeGroup = { zone: ZoneId; nodes: OutputNode[] }
+    // WAVE 4738: recopilamos el label custom del IForgeNode para propagar al profileMeta.
+    type ForgeGroup = { zone: ZoneId; nodes: OutputNode[]; customLabel?: string }
     const groups = new Map<string, ForgeGroup>()
 
     for (const n of outputNodes) {
@@ -553,8 +554,10 @@ export class NodeExtractionPipeline {
       const group = groups.get(suffix)
       if (group) {
         group.nodes.push(n)
+        // Primer label no-nulo del IForgeNode gana.
+        if (!group.customLabel && n.label) group.customLabel = n.label
       } else {
-        groups.set(suffix, { zone, nodes: [n] })
+        groups.set(suffix, { zone, nodes: [n], customLabel: n.label ?? undefined })
       }
     }
 
@@ -569,7 +572,14 @@ export class NodeExtractionPipeline {
       const node = this._buildForgeGroupNode(
         nodeId, group.zone, fixtureDef, channels, typeSet, position,
       )
-      if (node) nodes.push(node)
+      if (node) {
+        // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
+        nodes.push(
+          group.customLabel
+            ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } }) as ICapabilityNode
+            : node,
+        )
+      }
     }
 
     return nodes

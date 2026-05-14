@@ -628,9 +628,11 @@ export class NodeExtractionPipeline {
   ): IColorNodeData | IImpactNodeData | IKineticNodeData | IBeamNodeData | IAtmosphereNodeData | null {
     const deviceId = nodeId.split(':')[0] as DeviceId
 
-    // COLOR: todos los canales son de color
-    const isAllColor = [...typeSet].every(t => COLOR_CHANNEL_TYPES.has(t))
-    if (isAllColor) {
+    // COLOR: hay al menos un canal de mezcla cromática.
+    // WAVE 4737 WASH FIX: grupos mixtos (color + dimmer) también van a COLOR.
+    // El ColorBody ya tiene InlineImpactRow para gestionar el dimmer interno.
+    const hasColorChannels = [...typeSet].some(t => COLOR_CHANNEL_TYPES.has(t))
+    if (hasColorChannels) {
       const mixingType = this._detectMixingTypeFromSet(typeSet)
       const colorWheel = this._buildColorWheelDef(fixtureDef)
       return {

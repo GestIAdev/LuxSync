@@ -119,17 +119,21 @@ const alwaysRenderIfAnyCell: CellGatePredicate = (group) =>
 /**
  * Gating KINETIC — anti-fantasma (bug F1 del blueprint).
  *
- * KineticSection SOLO controla 'rotation'. Pan/tilt/speed pertenecen al
+ * KineticBody SOLO controla 'rotation'. Pan/tilt/speed pertenecen al
  * KineticsCathedral. Por tanto la cell solo se pinta si:
- *   (a) hay override 'rotation' activo, o
- *   (b) el role es 'rotor' (cells diseñadas explícitamente para rotación).
+ *   (a) el role es 'rotor' O 'percussion' (rotación continua — isContinuous=true
+ *       en el pipeline asigna 'percussion'; 'rotor' era el nombre legacy), o
+ *   (b) hay override 'rotation' activo.
  *
- * Esto evita que un fixture con Pan+Tilt clásico genere un acordeón Kinetic
- * vacío en CONTROLS.
+ * 'primary' (pan/tilt) queda EXCLUIDO → no genera acordeón vacío en CONTROLS.
+ *
+ * WAVE 4737: 'percussion' añadido porque NodeExtractionPipeline asigna ese
+ * role a todos los nodos de rotación continua (isContinuous = !hasPanTilt && hasRotation).
  */
-const renderKineticOnlyIfRotor: CellGatePredicate = (group, override) => {
+const renderKineticIfContinuous: CellGatePredicate = (group, override) => {
   if (group.cellKeys.length === 0) return false
-  if (group.role === 'rotor') return true
+  // 'rotor' (legacy suffix) y 'percussion' (pipeline continuo) → mostrar
+  if (group.role === 'rotor' || group.role === 'percussion') return true
   if (override?.payload.family === NodeFamily.KINETIC) {
     const data = (override.payload as OverridePayloadOf<NodeFamily.KINETIC>).data as {
       rotation?: number
@@ -221,10 +225,10 @@ export const SECTION_REGISTRY: Readonly<Record<NodeFamily, SectionMeta>> = Objec
   }),
   [NodeFamily.KINETIC]: Object.freeze({
     family:            NodeFamily.KINETIC,
-    title:             'KINETIC',
+    title:             'ROTATION',
     componentKey:      'kinetic',
     defaultNeon:       '#22c55e',
-    canRender:         renderKineticOnlyIfRotor,
+    canRender:         renderKineticIfContinuous,
     delegatedToExtras: false,
   }),
   [NodeFamily.ATMOSPHERE]: Object.freeze({

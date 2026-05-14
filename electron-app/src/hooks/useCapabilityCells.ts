@@ -42,6 +42,7 @@ import type { ICapabilityNode } from '../core/aether/capability-node'
 import type { FixtureV2 } from '../core/stage/ShowFileV2'
 import type { FixtureDefinition, FixtureChannel, FixtureType } from '../types/FixtureDefinition'
 import { NodeExtractionPipeline } from '../core/aether/ingestion/NodeExtractionPipeline'
+import { WELL_KNOWN_LABELS } from '../components/hyperion/controls/cellLabels'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PIPELINE SINGLETON — stateless, instanciado una vez por módulo
@@ -153,6 +154,10 @@ function suffixToLabel(suffix: string, family: NodeFamily): string {
   if (['color','impact','kinetic','beam','atmosphere'].includes(suffix)) {
     return FAMILY_DEFAULT_LABEL[family]
   }
+  // WAVE 4737: consultar WELL_KNOWN_LABELS con el suffix en kebab-case original
+  // ANTES de humanizar, para que 'impact-golden' → 'Golden' (no 'Impact-Golden').
+  const wellKnown = WELL_KNOWN_LABELS[suffix.toLowerCase()]
+  if (wellKnown !== undefined) return wellKnown
   return suffix.replace(/-(\d+)$/, ' $1').replace(/\b\w/g, c => c.toUpperCase())
 }
 

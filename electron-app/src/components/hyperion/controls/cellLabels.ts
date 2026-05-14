@@ -147,23 +147,36 @@ export function resolveCellLabel(raw: string | null | undefined): string {
 }
 
 /**
+ * Labels genéricos de familia — producidos por `suffixToLabel` cuando no hay
+ * una etiqueta semántica real (fixtures clásicos de un solo canal).
+ *
+ * Si el label resuelto ES uno de estos → muestra formato «FAMILIA: LABEL».
+ * Si NO lo es → es una etiqueta personalizada Aether → muestra SOLO el label.
+ */
+const GENERIC_AUTO_LABELS = new Set([
+  'Intensidad', 'Color', 'Cinética', 'Haz', 'Extras',
+])
+
+/**
  * Combina título canónico de sección + label de célula para el header.
  *
- * Formato: `"INTENSITY: PÉTALO 1"`. Ambas partes en MAYÚSCULAS. Nunca falla
- * aunque ambos sean nulos — usa fallback `'CELL'` para el sublabel.
+ * WAVE 4737 PURIST UI:
+ *   - `isCustom = true`  → el label es semántico (Aether): mostrar SOLO el label.
+ *   - `isCustom = false` → label genérico de familia: mostrar «TITLE: SUBLABEL».
  *
  * @param sectionTitle El `SectionMeta.title` (`'INTENSITY'`, `'COLOR'`, …).
  * @param cellLabel    El label resuelto por `resolveCellLabel` (o crudo).
- * @returns Texto listo para `<h4>` del acordeón.
+ * @returns Texto listo para el header del acordeón.
  */
 export function buildSectionHeaderText(
   sectionTitle: string | null | undefined,
   cellLabel:    string | null | undefined,
-): { title: string; sublabel: string } {
+): { title: string; sublabel: string; isCustom: boolean } {
   const title    = safeUpperCase(sectionTitle, 'SECTION')
   const resolved = resolveCellLabel(cellLabel)
   const sublabel = safeUpperCase(resolved, 'CELL')
-  return { title, sublabel }
+  const isCustom = !GENERIC_AUTO_LABELS.has(resolved)
+  return { title, sublabel, isCustom }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

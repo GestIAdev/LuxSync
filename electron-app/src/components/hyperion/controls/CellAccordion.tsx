@@ -91,7 +91,7 @@ const CellAccordionBase: React.FC<CellAccordionProps> = ({
   override,
   children,
 }) => {
-  const { title, sublabel } = useMemo(
+  const { title, sublabel, isCustom } = useMemo(
     () => buildSectionHeaderText(meta.title, group.label),
     [meta.title, group.label],
   )
@@ -121,9 +121,9 @@ const CellAccordionBase: React.FC<CellAccordionProps> = ({
           {/* Neon dot por rol */}
           <span className="cell-accordion__neon-dot" aria-hidden="true" />
 
-          {/* Texto: "INTENSITY: PÉTALO 1" */}
-          <span className="cell-accordion__title">{title}</span>
-          <span className="cell-accordion__sublabel">: {sublabel}</span>
+          {/* Texto: «GOLD 1» (Aether custom) o «INTENSITY: MAIN» (clásico) */}
+          <span className="cell-accordion__title">{isCustom ? sublabel : title}</span>
+          {!isCustom && <span className="cell-accordion__sublabel">: {sublabel}</span>}
 
           {/* Badge ×N — solo cuando hay más de un fixture (Hive Mind) */}
           {group.cellCount > 1 && (

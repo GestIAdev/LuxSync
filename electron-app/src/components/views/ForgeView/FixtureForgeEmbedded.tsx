@@ -700,13 +700,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     const hasChannels = fixture.channels.some(ch => ch.type !== 'unknown')
     
     if (!hasName) {
-      setValidationMessage('âš ï¸ Model name required')
+      setValidationMessage('Model name required')
       setIsFormValid(false)
     } else if (!hasChannels) {
-      setValidationMessage('âš ï¸ At least one channel function required')
+      setValidationMessage('At least one channel function required')
       setIsFormValid(false)
     } else {
-      setValidationMessage('âœ“ Ready to save')
+      setValidationMessage('Ready to save')
       setIsFormValid(true)
     }
   }, [fixture])
@@ -987,7 +987,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         setFixture(clonedFixture)
         setEditingSource('user')
         setOriginalFixtureId(clonedFixture.id)
-        setSaveMessage('âœ… Saved as User Copy (System fixtures are read-only)')
+        setSaveMessage('Saved as User Copy')
         setTimeout(() => setSaveMessage(null), 3000)
         
         // ðŸ”¥ WAVE 2183.5: Reconcile using the CLONED fixture (with new user ID)
@@ -995,7 +995,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         // ID get their profileId migrated to the new user ID.
         reconcileFixturesWithProfile(clonedFixture, previousProfileId)
       } else {
-        setSaveMessage(`âŒ Save failed: ${result.error}`)
+        setSaveMessage(`Save failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
       }
     } else if (editingSource === 'user') {
@@ -1008,32 +1008,32 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       
       const result = await saveUserFixture(updatedFixture)
       if (result.success) {
-        setSaveMessage('âœ… Updated in User Library')
+        setSaveMessage("Updated in User Library")
         setTimeout(() => setSaveMessage(null), 3000)
-        
-        // ðŸ”¥ WAVE 2183.5: Reconcile with the updatedFixture (correct ID)
+
+        // WAVE 2183.5: Reconcile with the updatedFixture (correct ID)
         reconcileFixturesWithProfile(updatedFixture)
       } else {
-        setSaveMessage(`âŒ Update failed: ${result.error}`)
+        setSaveMessage(`Update failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
       }
     } else {
       // New fixture: Generate new ID
-      if (!completeFixture.id || !completeFixture.id.startsWith('user-')) {
+      if (!completeFixture.id || !completeFixture.id.startsWith("user-")) {
         completeFixture.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       }
-      
-      const result = await saveUserFixture(completeFixture)
-      if (result.success) {
-        setEditingSource('user')
+
+      const result2 = await saveUserFixture(completeFixture)
+      if (result2.success) {
+        setEditingSource("user")
         setOriginalFixtureId(completeFixture.id)
-        setSaveMessage('âœ… Saved to User Library')
+        setSaveMessage("Saved to User Library")
         setTimeout(() => setSaveMessage(null), 3000)
-        
-        // ðŸ”¥ WAVE 2183.5: Reconcile for new fixtures too (in case they match by ID)
+
+        // WAVE 2183.5: Reconcile for new fixtures too (in case they match by ID)
         reconcileFixturesWithProfile(completeFixture)
       } else {
-        setSaveMessage(`âŒ Save failed: ${result.error}`)
+        setSaveMessage(`Save failed: ${result2.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
       }
     }
@@ -1083,11 +1083,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   // RENDER
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
+  // WAVE 4732.2: Status badge computation
+  const _saveError = saveMessage?.startsWith('Save failed') || saveMessage?.startsWith('Update failed')
+  const badgeClass: 'saved' | 'error' | 'ready' | 'invalid' = _saveError ? 'error' : saveMessage ? 'saved' : isFormValid ? 'ready' : 'invalid'
+  const badgeIcon = (badgeClass === 'error' || badgeClass === 'invalid') ? <AlertTriangle size={11} /> : <Check size={11} />
+  const badgeText = saveMessage ?? validationMessage
+
   return (
     <div className="forge-embedded">
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {/* HEADER - WAVE 1112: Shows editing source */}
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* HEADER - WAVE 1112/4732.2: Fixture title centered + status badge */}
       <header className="forge-header embedded">
         <div className="forge-title">
           <Factory size={24} />
@@ -1098,15 +1102,21 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             {editingSource === 'new' && 'New Fixture'}
           </span>
         </div>
-        
-        <div className="forge-actions">
-          {saveMessage && (
-            <span className="save-message">{saveMessage}</span>
-          )}
-          <span className={`validation-status ${isFormValid ? 'valid' : 'invalid'}`}>
-            {validationMessage}
+
+        {/* WAVE 4732.2 PASO 1: Fixture name — absolute center of header */}
+        <div className="forge-fixture-name" aria-label="Editing fixture">
+          <span className="forge-fixture-name__text">
+            {fixture.name || 'Untitled Fixture'}
           </span>
-          <button 
+        </div>
+
+        <div className="forge-actions">
+          {/* WAVE 4732.2 PASO 2: Status badge */}
+          <div className={`forge-status-badge forge-status-badge--${badgeClass}`}>
+            {badgeIcon}
+            <span>{badgeText}</span>
+          </div>
+          <button
             className="forge-action-btn export"
             onClick={handleExportJSON}
             title="Export JSON"
@@ -1114,7 +1124,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             <Download size={18} />
             <span>Export</span>
           </button>
-          <button 
+          <button
             className="forge-action-btn save"
             onClick={handleSave}
             disabled={!isFormValid}

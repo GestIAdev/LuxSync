@@ -28,9 +28,73 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
   padding: 16px 24px;
   background: linear-gradient(180deg, rgba(34, 211, 238, 0.08) 0%, transparent 100%);
   border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+/* WAVE 4732.2 PASO 1: Fixture name — absolute center of the header bar */
+.forge-fixture-name {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  max-width: 340px;
+  overflow: hidden;
+}
+
+.forge-fixture-name__text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.65);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* WAVE 4732.2 PASO 2: Status badge */
+.forge-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.forge-status-badge--ready {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.10);
+  border: 1px solid rgba(34, 197, 94, 0.30);
+}
+
+.forge-status-badge--saved {
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.10);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+.forge-status-badge--invalid {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.30);
+}
+
+.forge-status-badge--error {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.30);
 }
 
 .forge-header.embedded .forge-title {
@@ -67,29 +131,7 @@
   gap: 16px;
 }
 
-.validation-status {
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.save-message {
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 4px;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #22c55e;
-  animation: fadeIn 0.3s ease;
-}
-
-.validation-status.valid {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
+/* WAVE 4732.2: .validation-status and .save-message replaced by .forge-status-badge */
 .validation-status.invalid {
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.1);
@@ -913,3 +955,12 @@
 .cockpit-identity::-webkit-scrollbar-thumb,
 .cockpit-capabilities::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 4px; }
 
+
+/* WAVE 4732-D: shake animation for rejected DnD drops */
+@keyframes forge-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}

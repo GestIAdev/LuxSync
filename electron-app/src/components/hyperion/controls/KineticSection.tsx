@@ -130,3 +130,65 @@ export const KineticSection: React.FC<KineticSectionProps> = ({ ctx, peerCellKey
 }
 
 export default KineticSection
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KINETIC BODY — WAVE 4735
+// Shell-less: el CellAccordion (Batch 2) envuelve este cuerpo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface KineticBodyProps {
+  primaryKey: CellKey
+  allCellKeys: readonly CellKey[]
+}
+
+export const KineticBody: React.FC<KineticBodyProps> = ({ primaryKey, allCellKeys }) => {
+  const ov   = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
+  const data = ov?.payload.family === NodeFamily.KINETIC ? ov.payload.data : {}
+
+  const rotation = (data as { rotation?: number }).rotation !== undefined
+    ? Math.round(((data as { rotation?: number }).rotation ?? 0) * 100)
+    : null
+
+  const hasOverride  = rotation !== null
+  const sliderValue  = rotation ?? 0
+  const displayLabel = rotation === null ? '-' : (rotation === 0 ? 'STOP' : `${rotation}%`)
+
+  const applyKinetic = useCallback((val: number) => {
+    const store = useProgrammerStore.getState()
+    for (const k of allCellKeys) store.setCellKinetic(k, 'rotation', val)
+  }, [allCellKeys])
+
+  return (
+    <>
+      <div className="intensity-slider-container">
+        <input
+          type="range" min={0} max={100} value={sliderValue}
+          onChange={e => applyKinetic(Number(e.target.value))}
+          className="intensity-slider kinetic-slider"
+        />
+        <div className="intensity-value">{displayLabel}</div>
+      </div>
+
+      <div className="intensity-bar">
+        <div
+          className="intensity-fill kinetic-fill"
+          style={{ width: `${sliderValue}%`, background: 'var(--neon-base)' }}
+        />
+      </div>
+
+      <div className="intensity-presets kinetic-presets">
+        {ROTATION_PRESETS.map(preset => (
+          <button
+            key={preset.label}
+            className={`preset-btn ${rotation !== null && rotation === preset.value ? 'active' : ''}`}
+            onClick={() => applyKinetic(preset.value)}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {hasOverride && <div className="override-badge kinetic-override">ROTOR MANUAL</div>}
+    </>
+  )
+}

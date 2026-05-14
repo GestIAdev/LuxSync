@@ -20,28 +20,12 @@ import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
 
 import { GroupsPanel } from './GroupsPanel'
-import { IntensitySection } from './IntensitySection'
-import { ColorSection } from './ColorSection'
-import { BeamSection } from './BeamSection'
-import { KineticSection } from './KineticSection'
+import { CellRouter } from './CellRouter'
 import { useAggregatedCapabilityCells } from '../../../hooks/useAggregatedCapabilityCells'
-import { NodeFamily, cellKeyDeviceId } from '../../../stores/programmer-types'
-import type { CapabilityContext } from '../../../stores/programmer-types'
 import { IntensityIcon, GroupIcon } from '../../icons/LuxIcons'
 import './TheProgrammer.css'
 import './accordion-styles.css'
 import './GroupsPanel.css'
-
-// WAVE 4731: Colores neon por rol — espejo del ROLE_NEON de DeviceCellGroup
-const ROLE_NEON: Record<string, string> = {
-  master:  '#ff3366',
-  wash:    '#36d1ff',
-  petal:   '#d946ef',
-  beam:    '#facc15',
-  rotor:   '#22c55e',
-  ambient: '#8b5cf6',
-  primary: '#22c55e',
-}
 
 // Tab types
 type ProgrammerTab = 'controls' | 'groups'
@@ -65,18 +49,10 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   
   // WAVE 4529: Store centralizado
   const {
-    setDimmer, releaseDimmer,
-    setStrobe, releaseStrobe,
-    setLimit, releaseLimit,
-    setColor, releaseColor,
     releaseAll,
     releaseProgrammer,
     syncSelection,
     hydrateFromL2,
-    displayDimmer: currentDimmer,
-    displayStrobe: currentStrobe,
-    displayLimit: currentLimit,
-    displayColor: currentColor,
     fixtureOverrides,
   } = useProgrammerStore()
   const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
@@ -107,14 +83,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     return { dimmer, strobe, color, beam, extras }
   }, [selectedIds, fixtureOverrides])
 
-  // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
-  const [activeSection, setActiveSection] = useState<string>('intensity')
-  
-  // Toggle section - exclusive mode (only one open)
-  const toggleSection = useCallback((section: string) => {
-    setActiveSection(prev => prev === section ? '' : section)
-  }, [])
-  
+  // WAVE 430.5: EXCLUSIVE ACCORDION — gestionado por CellRouter desde WAVE 4735.
+
   // Callback for GroupsPanel to switch to controls
   const handleSwitchToControls = useCallback(() => {
     setActiveTab('controls')
@@ -214,46 +184,9 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   }, [selectedIds.join(','), isActive, syncSelection, pruneManualOverride, hydrateFromL2, hydrateMovementFromL2])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // HANDLERS — ahora síncronos, el bridge vuelca a 44Hz
+  // HANDLERS
   // ═══════════════════════════════════════════════════════════════════════
-  
-  const handleDimmerChange = useCallback((value: number) => {
-    if (selectedIds.length === 0) return
-    setDimmer(value)
-  }, [selectedIds.length, setDimmer])
-  
-  const handleDimmerRelease = useCallback(() => {
-    if (selectedIds.length === 0) return
-    releaseDimmer()
-  }, [selectedIds.length, releaseDimmer])
-  
-  const handleStrobeChange = useCallback((value: number) => {
-    if (selectedIds.length === 0) return
-    setStrobe(value)
-  }, [selectedIds.length, setStrobe])
-  
-  const handleStrobeRelease = useCallback(() => {
-    if (selectedIds.length === 0) return
-    releaseStrobe()
-  }, [selectedIds.length, releaseStrobe])
 
-  const handleLimitChange = useCallback((value: number) => {
-    if (selectedIds.length === 0) return
-    // WAVE 4531: El store persiste el displayLimit para la UI.
-    // El NodeArbiter recibe el cap real vía IPC dedicado (Opción B).
-    setLimit(value)
-    const nodeIds = selectedIds.map(id => `${id}:impact`)
-    const limitNorm = Math.max(0, Math.min(100, value)) / 100
-    window.lux?.aether?.setInhibitLimit(nodeIds, limitNorm)
-  }, [selectedIds, setLimit])
-
-  const handleLimitRelease = useCallback(() => {
-    if (selectedIds.length === 0) return
-    releaseLimit()
-    const nodeIds = selectedIds.map(id => `${id}:impact`)
-    window.lux?.aether?.clearInhibitLimit(nodeIds)
-  }, [selectedIds, releaseLimit])
-  
   const handleUnlockAll = useCallback(() => {
     if (selectedIds.length === 0) return
     // 🛡️ WAVE 4730 TARGET 3: divorcio de dominios.
@@ -363,48 +296,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
             </div>
           </div>
           
-          {/* ── WAVE 4731: HIVE MIND — Un acordeón por capacidad compartida ── */}
-          {aggregatedGroups.map(group => {
-            if (group.cellKeys.length === 0) return null
-            const primaryKey     = group.cellKeys[0]
-            const peerCellKeys   = group.cellKeys.length > 1 ? group.cellKeys.slice(1) : undefined
-            const primaryDevId   = cellKeyDeviceId(primaryKey)
-            const neonColor      = ROLE_NEON[group.role] ?? '#ffffff'
-            const ctx = {
-              cellKey:   primaryKey,
-              family:    group.family,
-              nodeIds:   group.nodeIds,
-              deviceId:  primaryDevId,
-              fixtureId: primaryDevId,
-              role:      group.role,
-              label:     group.label,
-              cellIndex: 0,
-            }
-            const sectionKey = group.groupKey
-            const isExpanded = activeSection === sectionKey
-            let sectionEl: React.ReactNode
-            switch (group.family) {
-              case NodeFamily.IMPACT:
-                sectionEl = <IntensitySection ctx={ctx as unknown as CapabilityContext<NodeFamily.IMPACT>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
-                break
-              case NodeFamily.COLOR:
-                sectionEl = <ColorSection ctx={ctx as unknown as CapabilityContext<NodeFamily.COLOR>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
-                break
-              case NodeFamily.BEAM:
-                sectionEl = <BeamSection ctx={ctx as unknown as CapabilityContext<NodeFamily.BEAM>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
-                break
-              case NodeFamily.KINETIC:
-                sectionEl = <KineticSection ctx={ctx as unknown as CapabilityContext<NodeFamily.KINETIC>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
-                break
-              default:
-                return null
-            }
-            return (
-              <div key={sectionKey} style={{ '--neon-base': neonColor } as React.CSSProperties}>
-                {sectionEl}
-              </div>
-            )
-          })}
+          {/* ── WAVE 4735: CELL ROUTER — routing dinámico por familia ── */}
+          <CellRouter groups={aggregatedGroups} />
 
           {/* OVERRIDE INDICATOR */}
           {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (

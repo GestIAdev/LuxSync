@@ -23,8 +23,10 @@
 
 .inline-impact-row {
   padding: 5px 10px;
+  padding-bottom: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   min-width: 0;
+  flex-shrink: 0;
   overflow: hidden;
   transition: background 0.15s ease;
 }
@@ -193,4 +195,21 @@
 /* Badge suprimido — el valor en header row ya comunica el estado */
 .inline-impact-row__badge {
   display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WRAPPER CONTAINER — WAVE 4743.5 HOTFIX
+   Contenedor aislado que envuelve múltiples InlineImpactRow dentro de ColorBody.
+   Proporciona "breathing room" visual y evita que se solapen con otros controles.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.inline-impact-rows-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  min-width: 0;
 }

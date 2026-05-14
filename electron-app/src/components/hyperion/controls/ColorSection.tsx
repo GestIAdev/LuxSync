@@ -410,24 +410,29 @@ export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys, e
 
       {/* Canales de intensidad embebidos — blueprint §7.2 / WAVE 4734-D.
           Se muestran únicamente cuando el canal existe en el payload COLOR.
-          Con valor 0 el slider aparece; sin override el canal no existe => fila oculta. */}
-      {dimmerVal !== undefined && (
-        <InlineImpactRow
-          primaryKey={primaryKey} allCellKeys={allCellKeys}
-          channel="dimmer" label="Cell Dimmer" value={dimmerVal}
-        />
-      )}
-      {strobeVal !== undefined && (
-        <InlineImpactRow
-          primaryKey={primaryKey} allCellKeys={allCellKeys}
-          channel="strobe" label="Cell Strobe" value={strobeVal}
-        />
-      )}
-      {shutterVal !== undefined && (
-        <InlineImpactRow
-          primaryKey={primaryKey} allCellKeys={allCellKeys}
-          channel="shutter" label="Cell Shutter" value={shutterVal}
-        />
+          Con valor 0 el slider aparece; sin override el canal no existe => fila oculta.
+          WAVE 4743.5: Contenedor aislado para dar "breathing room" y evitar overlap. */}
+      {(dimmerVal !== undefined || strobeVal !== undefined || shutterVal !== undefined) && (
+        <div className="inline-impact-rows-wrapper">
+          {dimmerVal !== undefined && (
+            <InlineImpactRow
+              primaryKey={primaryKey} allCellKeys={allCellKeys}
+              channel="dimmer" label="Cell Dimmer" value={dimmerVal}
+            />
+          )}
+          {strobeVal !== undefined && (
+            <InlineImpactRow
+              primaryKey={primaryKey} allCellKeys={allCellKeys}
+              channel="strobe" label="Cell Strobe" value={strobeVal}
+            />
+          )}
+          {shutterVal !== undefined && (
+            <InlineImpactRow
+              primaryKey={primaryKey} allCellKeys={allCellKeys}
+              channel="shutter" label="Cell Shutter" value={shutterVal}
+            />
+          )}
+        </div>
       )}
     </>
   )

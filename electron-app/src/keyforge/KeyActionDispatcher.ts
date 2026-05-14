@@ -125,6 +125,149 @@ export function isFireable(actionId: string): boolean {
 // DISPATCH
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SEL-* HANDLER — Selection Store
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Dispatch a `sel-*` action against `useSelectionStore`.
+ *
+ * Supported sub-actions:
+ *   sel-group-N   → selectMultiple(groupN)   — requires stageStore groups (best-effort)
+ *   sel-all       → selectMultiple(allIds)   — best-effort from stageStore snapshot
+ *   sel-clear     → deselectAll()
+ *   sel-invert    → invertSelection(allIds)
+ *   sel-add-last  → no-op (requires pointer context; skipped)
+ */
+function dispatchSelAction(actionId: string): boolean {
+  const selStore = useSelectionStore.getState()
+  const sub = actionId.slice(4) // 'sel-group-1' → 'group-1'
+
+  if (sub === 'clear') {
+    selStore.deselectAll()
+    return true
+  }
+
+  if (sub === 'all') {
+    // Best-effort: pull all fixture IDs from stageStore if available.
+    const allIds = getAllFixtureIds()
+    selStore.selectMultiple(allIds, 'replace')
+    return true
+  }
+
+  if (sub === 'invert') {
+    const allIds = getAllFixtureIds()
+    selStore.invertSelection(allIds)
+    return true
+  }
+
+  // sel-group-N : numeric group index (1-based). The stageStore may have
+  // fixture groups; we try to resolve them. If not available, log and skip.
+  const groupMatch = sub.match(/^group-(\d+)$/)
+  if (groupMatch) {
+    const groupIds = getGroupFixtureIds(parseInt(groupMatch[1], 10))
+    if (groupIds.length > 0) {
+      selStore.selectMultiple(groupIds, 'replace')
+    } else {
+      console.log(`[KeyForge] sel-group-${groupMatch[1]}: group not found or empty.`)
+    }
+    return true
+  }
+
+  console.warn(`[KeyForge] ⚠️ Unknown sel-* sub-action: ${actionId}`)
+  return false
+}
+
+/** Pull all fixture IDs from the stageStore (renderer-side snapshot). */
+function getAllFixtureIds(): string[] {
+  try {
+    const w = globalThis as unknown as {
+      luxStageSnapshot?: { fixtures?: Array<{ id: string }> }
+    }
+    return w.luxStageSnapshot?.fixtures?.map(f => f.id) ?? []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Get fixture IDs belonging to a 1-based group index.
+ * Groups are not formally typed in this context so we attempt a dynamic
+ * lookup against the stageStore's groups array if available.
+ */
+function getGroupFixtureIds(groupIndex: number): string[] {
+  try {
+    const w = globalThis as unknown as {
+      luxStageSnapshot?: {
+        groups?: Array<{ fixtureIds: string[] }>
+      }
+    }
+    const groups = w.luxStageSnapshot?.groups ?? []
+    const group = groups[groupIndex - 1]
+    return group?.fixtureIds ?? []
+  } catch {
+    return []
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KIN-* HANDLER — Movement Store
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Pan/Tilt nudge step in degrees (per key event). */
+const KIN_STEP_DEG = 5
+const KIN_STEP_FAST_DEG = 15  // used on `charge` actions or repeat
+
+/**
+ * Dispatch a `kin-*` action against `useMovementStore`.
+ *
+ * Supported sub-actions:
+ *   kin-pan-left    → pan  −step
+ *   kin-pan-right   → pan  +step
+ *   kin-tilt-up     → tilt −step  (tilt-up = lower degrees in classic mode)
+ *   kin-tilt-down   → tilt +step
+ *   kin-home        → reset to defaults (pan=270, tilt=135)
+ *   kin-speed-up    → patternSpeed +10
+ *   kin-speed-down  → patternSpeed −10
+ */
+function dispatchKinAction(actionId: string, payload: ActionPayload): boolean {
+  const mvStore = useMovementStore.getState()
+  const sub = actionId.slice(4) // 'kin-pan-left' → 'pan-left'
+  const step = payload.intensity >= 1.0 ? KIN_STEP_FAST_DEG : KIN_STEP_DEG
+
+  switch (sub) {
+    case 'pan-left':
+      mvStore.setPanTilt(Math.max(0, mvStore.pan - step), mvStore.tilt)
+      return true
+    case 'pan-right':
+      mvStore.setPanTilt(Math.min(540, mvStore.pan + step), mvStore.tilt)
+      return true
+    case 'tilt-up':
+      mvStore.setPanTilt(mvStore.pan, Math.max(0, mvStore.tilt - step))
+      return true
+    case 'tilt-down':
+      mvStore.setPanTilt(mvStore.pan, Math.min(270, mvStore.tilt + step))
+      return true
+    case 'home':
+      if (payload.phase === 'release') return true
+      mvStore.setPanTilt(270, 135)
+      return true
+    case 'speed-up':
+      mvStore.setPatternSpeed(Math.min(100, mvStore.patternSpeed + 10))
+      return true
+    case 'speed-down':
+      mvStore.setPatternSpeed(Math.max(0, mvStore.patternSpeed - 10))
+      return true
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown kin-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN DISPATCH
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
  * Dispatch a resolved action with a payload.
  *
@@ -201,29 +344,40 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     }
   }
 
-  // ── ctrl-* / flow-* / lux-* → reserved for the next batch ──
-  // These are continuous controllers in MIDI and require store wiring
-  // (ControlStore, LuxSyncStore). We log them so devs can see them firing
-  // in Batch 1 without yet executing side effects.
+  // ── ctrl-* / flow-* / lux-* → log only (continuous store wiring = Batch 3) ──
   if (
     actionId.startsWith('ctrl-')
     || actionId.startsWith('flow-')
     || actionId.startsWith('lux-')
   ) {
-    console.log(
-      `[KeyForge] 🎚️ ${actionId} fired (intensity=${payload.intensity.toFixed(2)}, `
-      + `phase=${payload.phase ?? 'press'}) — store wiring pending Batch 2.`,
-    )
+    if (payload.phase !== 'release') {
+      console.log(
+        `[KeyForge] 🎚️ ${actionId} (intensity=${payload.intensity.toFixed(2)}) — `
+        + `ctrl/flow/lux store wiring pending Batch 3.`,
+      )
+    }
     return true
   }
 
-  // ── KeyForge-native (sel-*, kin-*, cue-*, ui-*, kf-*) ──
+  // ── sel-* → Selection Store ──
+  if (actionId.startsWith('sel-')) {
+    if (payload.phase === 'release') return true
+    return dispatchSelAction(actionId)
+  }
+
+  // ── kin-* → Movement Store ──
+  if (actionId.startsWith('kin-')) {
+    return dispatchKinAction(actionId, payload)
+  }
+
+  // ── cue-*, ui-*, kf-* → log only (handler wiring pending Batch 3) ──
   if (isKeyForgeNativeAction(actionId)) {
-    console.log(
-      `[KeyForge] 🧠 native action: ${actionId} `
-      + `(intensity=${payload.intensity.toFixed(2)}, phase=${payload.phase ?? 'press'}) — `
-      + `handler wiring pending Batch 2/3.`,
-    )
+    if (payload.phase !== 'release') {
+      console.log(
+        `[KeyForge] 🧠 ${actionId} (phase=${payload.phase ?? 'press'}) — `
+        + `handler wiring pending Batch 3.`,
+      )
+    }
     return true
   }
 

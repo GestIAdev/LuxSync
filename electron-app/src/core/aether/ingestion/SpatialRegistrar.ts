@@ -689,6 +689,7 @@ export function connectStageStoreToSpatialRegistrar(
 
       // Identificar qué fixtures cambiaron de posición
       let anyPositionChanged = false
+      const changedFixtures: Array<{ id: string; position: StagePosition3D }> = []
       for (const curr of currFixtures) {
         const prev = prevFixtures.find(f => f.id === curr.id)
         if (!prev) continue
@@ -697,14 +698,21 @@ export function connectStageStoreToSpatialRegistrar(
           prev.position.y !== curr.position.y ||
           prev.position.z !== curr.position.z
         ) {
-          registrar.updateDevicePosition(curr.id, curr.position, nodeGraph, target)
+          changedFixtures.push(curr)
           anyPositionChanged = true
         }
       }
 
-      // Reconstruir tabla de vecinos una sola vez al final del batch
+      // 🌍 WAVE 4735.3 FORENSIC: Batch position updates so topology_changed
+      // fires exactly once after ALL updates + neighbor rebuild.
+      // Previously updateDevicePosition() emitted one event per fixture.
       if (anyPositionChanged) {
-        registrar.rebuildNeighborGraph(nodeGraph)
+        registrar.batch(() => {
+          for (const f of changedFixtures) {
+            registrar.updateDevicePosition(f.id, f.position, nodeGraph, target)
+          }
+          registrar.rebuildNeighborGraph(nodeGraph)
+        })
       }
     },
   )

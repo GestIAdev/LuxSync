@@ -609,6 +609,34 @@ export class NodeResolver implements INodeResolver {
 
   private _traceFirstDeviceDmxBytes(): void {
     if (this._resolveFrameIndex % PHOTON_TRACER_EVERY_FRAMES !== 0) return
+
+    // 🩺 WAVE 4735.3 FORENSIC: Throttled health snapshot of the resolver.
+    // Emits every 20 frames (~450ms @ 44Hz) so the user can send terminal
+    // output for diagnosis without drowning the console.
+    const activeNodeCount = this._activeUniverses.size
+    if (activeNodeCount === 0) {
+      console.log(
+        `[AETHER 🩺 TRACE] frame=${this._resolveFrameIndex} | `
+        + `Active universes: 0 | All buffers zero (blackout or empty topology)`
+      )
+      return
+    }
+
+    const firstUniverse = this._activeUniverses.values().next().value as number
+    const buf = this._universeBuffers.get(firstUniverse)
+    if (!buf) return
+
+    const headBytes: number[] = []
+    for (let i = 0; i < 10 && i < buf.length; i++) {
+      headBytes.push(buf[i]!)
+    }
+    const byteSum = Array.from(buf).reduce((s, v) => s + v, 0)
+
+    console.log(
+      `[AETHER 🩺 TRACE] frame=${this._resolveFrameIndex} | `
+      + `Active universes: ${activeNodeCount} | First uni: ${firstUniverse} | `
+      + `Sum bytes: ${byteSum} | Head[0..9]: [${headBytes.join(', ')}]`
+    )
   }
 
   private _traceProbeDeviceLayout(deviceId: NodeId): void {
@@ -896,7 +924,11 @@ export class NodeResolver implements INodeResolver {
 
       if (nodeBlocked) continue
 
-      buf[bufIdx] = dmxValue
+      // 🛂 WAVE 4735.3 FORENSIC: NaN sentinel defense-in-depth.
+      // The _colorTranslateScratch uses NaN as "not written this frame".
+      // sanitizeDmxByte already clamps, but we hard-guard here to prevent
+      // ANY NaN from ever reaching the Uint8Array (Uint8Array casts NaN → 0 silently).
+      buf[bufIdx] = Number.isNaN(dmxValue) ? 0 : dmxValue
 
       // Telemetría legacy removida.
 
@@ -910,7 +942,7 @@ export class NodeResolver implements INodeResolver {
           // El byte coarse (MSB) ya fue escrito como (raw16 >> 8) arriba,
           // pero nuestro `dmxValue` ya redondeó al byte coarse.
           // Corregir el coarse para coherencia 16-bit:
-          buf[bufIdx] = (safeRaw16 >> 8) & 0xFF
+          buf[bufIdx] = Number.isNaN(safeRaw16) ? 0 : (safeRaw16 >> 8) & 0xFF
         }
       }
     }

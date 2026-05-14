@@ -160,10 +160,11 @@
 
 .cell-accordion__body {
   animation: cellAccordionExpand 0.2s ease forwards;
-  /* overflow-x:hidden evita que sliders y contenedores internos desborden
-     la tarjeta. overflow-y:visible para sombras de scroll internas. */
+  /* WAVE 4743.6: overflow-y:auto permite scroll interno si el contenido
+     (ej. InlineImpactRow con min-height) excede la altura del accordion.
+     overflow-x:hidden evita que sliders desborden la tarjeta. */
   overflow-x: hidden;
-  overflow-y: visible;
+  overflow-y: auto;
   min-width: 0;
 }
 

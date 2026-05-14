@@ -67,6 +67,8 @@ const CH_CYAN = 'cyan';
 const CH_MAGENTA = 'magenta';
 const CH_YELLOW = 'yellow';
 const CH_COLOR_WHEEL = 'color_wheel';
+const CH_AMBER = 'amber';
+const CH_UV = 'uv';
 // ── Canales espaciales 3D — WAVE 4523.5 ──────────────────────────────────
 // Emitidos por KineticAdapter cuando el nodo opera en flujo IK (metros).
 const CH_TARGET_X = 'targetX';
@@ -99,6 +101,22 @@ function sanitizeDmxByte(value) {
 // ── Canales que deben pasar por traducción cromática ─────────────────────
 // Si el mapa arbitrado del nodo contiene alguno de estos, es un nodo COLOR.
 const COLOR_ABSTRACT_CHANNELS = new Set([CH_R, CH_G, CH_B]);
+// WAVE 4735.1 HOTFIX: canales de mezcla electrónica.
+// Si un nodo usa estos canales y NO tiene color_wheel físico, DarkSpin debe abortarse.
+const ELECTRONIC_COLOR_CHANNELS = new Set([
+    CH_R,
+    CH_G,
+    CH_B,
+    CH_RED,
+    CH_GREEN,
+    CH_BLUE,
+    CH_WHITE,
+    CH_CYAN,
+    CH_MAGENTA,
+    CH_YELLOW,
+    CH_AMBER,
+    CH_UV,
+]);
 // ── Orientación IK por defecto — ceiling mount, sin rotación custom ───────
 const DEFAULT_IK_ORIENTATION = {
     installation: 'ceiling',
@@ -141,6 +159,16 @@ export class NodeResolver {
         // Mutable in-place, pasado al ColorTranslator por referencia.
         // INVARIANTE: solo válido durante _translateColor(); no exponer.
         this._rgbScratch = { r: 0, g: 0, b: 0 };
+        // ── WAVE 4735.2: Color output scratchpad — zero-alloc en hot path ────
+        // Sustituye la creación de objetos literales con `...original` spread
+        // en cada llamada a _translateColor(). Se muta y se retorna su referencia.
+        // NaN = "no escrito en este frame" (sentinel para el fallback en _writeNode).
+        // INVARIANTE: solo válido sincrónicamente durante _writeNode(); no retener.
+        this._colorTranslateScratch = Object.create(null);
+        // ── WAVE 4735.2: WeakMap cache para _aetherWheelToLegacy ─────────────
+        // La conversión slots[] → colors[] solo ocurre una vez por rueda mecánica
+        // durante la vida del show (las ruedas son patch-time, no cambian a 44Hz).
+        this._wheelLegacyCache = new WeakMap();
         // ── Buffers por universo ───────────────────────────────────────────────
         // Map<universe (1-based), Uint8Array(512)>
         // Pre-allocated en registerDevice(), re-usado frame a frame.
@@ -178,6 +206,14 @@ export class NodeResolver {
         // ZERO ALLOC in hot path — all arrays created at patch time.
         this._ignitionMap = new Map();
         this._graph = graph;
+        // Pre-establecer la forma del scratchpad para que V8 use hidden class fija.
+        // NaN = sentinel (no escrito). Los valores reales se asignan en _translateColor().
+        const s = this._colorTranslateScratch;
+        s[CH_RED] = s[CH_GREEN] = s[CH_BLUE] = NaN;
+        s[CH_R] = s[CH_G] = s[CH_B] = NaN;
+        s[CH_WHITE] = s[CH_CYAN] = s[CH_MAGENTA] = s[CH_YELLOW] = NaN;
+        s[CH_COLOR_WHEEL] = s[CH_AMBER] = s[CH_UV] = NaN;
+        s[DIMMER_CHANNEL] = NaN;
     }
     /**
      * WAVE 4557: Inyecta el AetherSafetyMiddleware.
@@ -583,6 +619,7 @@ export class NodeResolver {
                 let wheelDmx;
                 let wheelTransitMs = 0;
                 const colorNode = node;
+                const darkSpinEligible = this._isDarkSpinEligibleColorNode(colorNode);
                 for (let ci = 0; ci < node.channels.length; ci++) {
                     const chDef = node.channels[ci];
                     if (chDef.type !== CH_COLOR_WHEEL)
@@ -594,7 +631,7 @@ export class NodeResolver {
                     wheelTransitMs = colorNode.colorWheel?.minTransitionMs ?? 0;
                     break;
                 }
-                if (wheelDmx !== undefined && wheelTransitMs > 0) {
+                if (darkSpinEligible && wheelDmx !== undefined && wheelTransitMs > 0) {
                     const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs);
                     if (inBlackout) {
                         for (let ci = 0; ci < node.channels.length; ci++) {
@@ -654,11 +691,20 @@ export class NodeResolver {
             const bufIdx = baseAddr + chDef.dmxOffset;
             if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE)
                 continue; // safety bound
-            // Valor normalizado arbitrado (usando translatedValues que puede ser
-            // el mapa original o el mapa con canales físicos ya calculados).
-            let rawNormalized = translatedValues[chDef.type] !== undefined
-                ? translatedValues[chDef.type]
-                : this._getDefaultNormalizedValue(node, chDef);
+            // WAVE 4735.2: Two-level lookup — zero-alloc.
+            // translatedValues apunta al scratchpad (_colorTranslateScratch) para nodos COLOR,
+            // o a channelValues directamente para el resto. El scratchpad usa NaN como centinela
+            // ("no escrito este frame") para canales sin traducción específica.
+            // En ese caso se cae al valor arbitrado original (channelValues).
+            const _tv = translatedValues[chDef.type];
+            let rawNormalized;
+            if (_tv !== undefined && !Number.isNaN(_tv)) {
+                rawNormalized = _tv;
+            }
+            else {
+                const _cv = channelValues[chDef.type];
+                rawNormalized = _cv !== undefined ? _cv : this._getDefaultNormalizedValue(node, chDef);
+            }
             rawNormalized = sanitizeNormalizedValue(rawNormalized);
             // Telemetría legacy removida.
             // Aplicar TransferCurve
@@ -707,7 +753,8 @@ export class NodeResolver {
             dmxValue = sanitizeDmxByte(dmxValue);
             // 🔬 WAVE 4682: Strobe Ghost diagnostic
             if (chDef.type === STROBE_CHANNEL && dmxValue > 0) {
-                const arbStrobe = translatedValues[STROBE_CHANNEL];
+                // Leer desde channelValues, NO desde scratchpad (NaN para canales no-color)
+                const arbStrobe = channelValues[STROBE_CHANNEL];
                 console.log(`[StrobeGhost 🔎] nodeId=${nodeId} type=${chDef.type} ` +
                     `dmxOut=${dmxValue} arbValue=${arbStrobe} defaultRaw=${chDef.defaultValue}`);
             }
@@ -748,8 +795,11 @@ export class NodeResolver {
         const transitDevices = new Set();
         for (const nodeId of transitNodeIds) {
             const node = this._graph.getNodeData(nodeId);
-            if (node)
-                transitDevices.add(node.deviceId);
+            if (!node || node.family !== NodeFamily.COLOR)
+                continue;
+            if (!this._isDarkSpinEligibleColorNode(node))
+                continue;
+            transitDevices.add(node.deviceId);
         }
         if (transitDevices.size === 0)
             return;
@@ -960,6 +1010,15 @@ export class NodeResolver {
         this._rgbScratch.r = sanitizeDmxByte(Math.round(safeR * 255));
         this._rgbScratch.g = sanitizeDmxByte(Math.round(safeG * 255));
         this._rgbScratch.b = sanitizeDmxByte(Math.round(safeB * 255));
+        // WAVE 4735.2: Reset centinelos NaN — "no escrito este frame".
+        // El scratchpad se reutiliza cada llamada sin alloc (zero-alloc hot path).
+        // NaN != undefined en la lookup de _writeNode, así V8 mantiene hidden class fija.
+        const s = this._colorTranslateScratch;
+        s[CH_RED] = s[CH_GREEN] = s[CH_BLUE] = NaN;
+        s[CH_R] = s[CH_G] = s[CH_B] = NaN;
+        s[CH_WHITE] = s[CH_CYAN] = s[CH_MAGENTA] = s[CH_YELLOW] = NaN;
+        s[CH_COLOR_WHEEL] = s[CH_AMBER] = s[CH_UV] = NaN;
+        s[DIMMER_CHANNEL] = NaN;
         switch (mixingType) {
             // ── RGB / pass-through ──────────────────────────────────────────
             case 'rgb':
@@ -967,15 +1026,13 @@ export class NodeResolver {
                 // Emitir los canales físicos red/green/blue (nombres legacy del Aether).
                 // También preservar r/g/b abstractos por si algún canal del nodo
                 // tiene type='r'/'g'/'b' (fixtures puramente abstractos).
-                return {
-                    ...original,
-                    [CH_RED]: safeR,
-                    [CH_GREEN]: safeG,
-                    [CH_BLUE]: safeB,
-                    [CH_R]: safeR,
-                    [CH_G]: safeG,
-                    [CH_B]: safeB,
-                };
+                s[CH_RED] = safeR;
+                s[CH_GREEN] = safeG;
+                s[CH_BLUE] = safeB;
+                s[CH_R] = safeR;
+                s[CH_G] = safeG;
+                s[CH_B] = safeB;
+                return s;
             // ── RGBW ────────────────────────────────────────────────────────
             case 'rgbw': {
                 const result = getColorTranslator().translate(this._rgbScratch, {
@@ -984,18 +1041,19 @@ export class NodeResolver {
                 const rgbw = result.rgbw;
                 if (!rgbw) {
                     // Fallback: sin datos RGBW, pass-through RGB
-                    return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB };
+                    s[CH_RED] = safeR;
+                    s[CH_GREEN] = safeG;
+                    s[CH_BLUE] = safeB;
+                    return s;
                 }
-                return {
-                    ...original,
-                    [CH_RED]: rgbw.r / 255,
-                    [CH_GREEN]: rgbw.g / 255,
-                    [CH_BLUE]: rgbw.b / 255,
-                    [CH_WHITE]: rgbw.w / 255,
-                    [CH_R]: safeR,
-                    [CH_G]: safeG,
-                    [CH_B]: safeB,
-                };
+                s[CH_RED] = rgbw.r / 255;
+                s[CH_GREEN] = rgbw.g / 255;
+                s[CH_BLUE] = rgbw.b / 255;
+                s[CH_WHITE] = rgbw.w / 255;
+                s[CH_R] = safeR;
+                s[CH_G] = safeG;
+                s[CH_B] = safeB;
+                return s;
             }
             // ── CMY ─────────────────────────────────────────────────────────
             case 'cmy': {
@@ -1004,34 +1062,36 @@ export class NodeResolver {
                 });
                 const cmy = result.cmy;
                 if (!cmy) {
-                    return { ...original, [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB };
+                    s[CH_RED] = safeR;
+                    s[CH_GREEN] = safeG;
+                    s[CH_BLUE] = safeB;
+                    return s;
                 }
-                return {
-                    ...original,
-                    [CH_CYAN]: cmy.c / 255,
-                    [CH_MAGENTA]: cmy.m / 255,
-                    [CH_YELLOW]: cmy.y / 255,
-                    // Preservar abstractos por compatibilidad
-                    [CH_R]: safeR,
-                    [CH_G]: safeG,
-                    [CH_B]: safeB,
-                };
+                s[CH_CYAN] = cmy.c / 255;
+                s[CH_MAGENTA] = cmy.m / 255;
+                s[CH_YELLOW] = cmy.y / 255;
+                // Preservar abstractos por compatibilidad
+                s[CH_R] = safeR;
+                s[CH_G] = safeG;
+                s[CH_B] = safeB;
+                return s;
             }
             // ── COLOR WHEEL ─────────────────────────────────────────────────
             case 'wheel':
             case 'hybrid': {
                 if (!aetherWheel || aetherWheel.slots.length === 0) {
                     // Sin datos de rueda: pass-through RGB
-                    return {
-                        ...original,
-                        [CH_RED]: safeR, [CH_GREEN]: safeG, [CH_BLUE]: safeB,
-                        [CH_R]: safeR, [CH_G]: safeG, [CH_B]: safeB,
-                    };
+                    s[CH_RED] = safeR;
+                    s[CH_GREEN] = safeG;
+                    s[CH_BLUE] = safeB;
+                    s[CH_R] = safeR;
+                    s[CH_G] = safeG;
+                    s[CH_B] = safeB;
+                    return s;
                 }
                 // Convertir ColorWheelDefinition del Aether (slots[]) al formato
                 // del ColorTranslator HAL (colors[]) sin alloc persistente.
                 const legacyWheel = this._aetherWheelToLegacy(aetherWheel);
-                const profile = { colorEngine: { mixing: 'wheel' }, colorEngine_wheel: legacyWheel };
                 const result = getColorTranslator().translate(this._rgbScratch, {
                     colorEngine: { mixing: 'wheel', colorWheel: legacyWheel },
                 });
@@ -1057,28 +1117,52 @@ export class NodeResolver {
                 // ★ WAVE 4557: DarkSpin — transit blackout via AetherSafetyMiddleware
                 // If the color wheel value changed, force dimmer=0 during mechanical transit.
                 // Applied AFTER HarmonicQuantizer (which decides IF the change occurs).
-                if (this._safetyMiddleware && aetherWheel.minTransitionMs > 0) {
+                const darkSpinEligible = this._isDarkSpinEligibleColorNode(this._graph.getNodeData(nodeId));
+                if (this._safetyMiddleware && darkSpinEligible && aetherWheel.minTransitionMs > 0) {
                     const wheelDmxForDarkSpin = Math.round(wheelDmxNorm * 255);
                     const inBlackout = this._safetyMiddleware.checkDarkSpin(nodeId, wheelDmxForDarkSpin, aetherWheel.minTransitionMs);
                     if (inBlackout) {
-                        return {
-                            ...original,
-                            [CH_COLOR_WHEEL]: wheelDmxNorm,
-                            [CH_R]: safeR, [CH_G]: safeG, [CH_B]: safeB,
-                            [DIMMER_CHANNEL]: 0, // ★ BLACKOUT: hide mechanical crystal transit
-                        };
+                        s[CH_COLOR_WHEEL] = wheelDmxNorm;
+                        s[CH_R] = safeR;
+                        s[CH_G] = safeG;
+                        s[CH_B] = safeB;
+                        s[DIMMER_CHANNEL] = 0; // ★ BLACKOUT: hide mechanical crystal transit
+                        return s;
                     }
                 }
                 // Para hybrid: también emitir canales RGB si el nodo los tiene
-                return {
-                    ...original,
-                    [CH_COLOR_WHEEL]: wheelDmxNorm,
-                    [CH_R]: safeR,
-                    [CH_G]: safeG,
-                    [CH_B]: safeB,
-                };
+                s[CH_COLOR_WHEEL] = wheelDmxNorm;
+                s[CH_R] = safeR;
+                s[CH_G] = safeG;
+                s[CH_B] = safeB;
+                return s;
             }
         }
+    }
+    /**
+     * WAVE 4735.1 HOTFIX — DarkSpin solo para ruedas físicas.
+     *
+     * Regla de oro:
+     * - RGB/CMY/electrónico puro (sin color_wheel) => DarkSpin abortado.
+     * - Solo elegible cuando existe canal `color_wheel` y rueda mecánica válida.
+     */
+    _isDarkSpinEligibleColorNode(node) {
+        if (!node || node.family !== NodeFamily.COLOR)
+            return false;
+        let hasWheelChannel = false;
+        let hasElectronicMixChannels = false;
+        for (let i = 0; i < node.channels.length; i++) {
+            const channelType = node.channels[i].type;
+            if (channelType === CH_COLOR_WHEEL) {
+                hasWheelChannel = true;
+            }
+            else if (ELECTRONIC_COLOR_CHANNELS.has(channelType)) {
+                hasElectronicMixChannels = true;
+            }
+        }
+        if (hasElectronicMixChannels && !hasWheelChannel)
+            return false;
+        return hasWheelChannel && !!node.colorWheel && node.colorWheel.minTransitionMs > 0;
     }
     /**
      * WAVE 4522.4: Adapta ColorWheelDefinition del Aether (slots[]) al formato
@@ -1089,7 +1173,12 @@ export class NodeResolver {
      * Esta conversión solo ocurre en nodos wheel/hybrid.
      */
     _aetherWheelToLegacy(wheel) {
-        return {
+        // WAVE 4735.2: WeakMap cache — las ColorWheelDefinition son estables durante un show
+        // (solo cambian en patch). Evita el .map() en cada frame por nodo wheel.
+        const cached = this._wheelLegacyCache.get(wheel);
+        if (cached)
+            return cached;
+        const result = {
             colors: wheel.slots.map(slot => ({
                 dmx: slot.dmxValue,
                 name: slot.name,
@@ -1098,6 +1187,8 @@ export class NodeResolver {
             allowsContinuousSpin: false,
             minChangeTimeMs: wheel.minTransitionMs,
         };
+        this._wheelLegacyCache.set(wheel, result);
+        return result;
     }
     /**
      * Aplica la TransferCurve al valor normalizado (0-1).

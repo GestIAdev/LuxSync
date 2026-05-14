@@ -17,7 +17,7 @@
  */
 
 import { useMemo } from 'react'
-import type { AggregatedCellGroup, CellKey, NodeId } from '../stores/programmer-types'
+import type { AggregatedCellGroup, CellKey, NodeId, EmbeddedImpactChannelType } from '../stores/programmer-types'
 import { useCapabilityCells } from './useCapabilityCells'
 
 export function useAggregatedCapabilityCells(selectedIds: readonly string[]): AggregatedCellGroup[] {
@@ -33,6 +33,7 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
       cellKeys:  CellKey[]
       nodeIds:   NodeId[]
       deviceIds: Set<string>
+      embeddedImpactChannels: Set<EmbeddedImpactChannelType>
     }
 
     // Map preserva orden de inserción = primer-aparece-primero
@@ -50,12 +51,19 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
             cellKeys:  [],
             nodeIds:   [],
             deviceIds: new Set(),
+            embeddedImpactChannels: new Set(),
           }
           map.set(sig, entry)
         }
         entry.cellKeys.push(cell.cellKey)
         for (const nid of cell.nodeIds) entry.nodeIds.push(nid)
         entry.deviceIds.add(dc.deviceId)
+        // WAVE 4743: Propagar embeddedImpactChannels desde cada célula
+        if (cell.embeddedImpactChannels) {
+          for (const ch of cell.embeddedImpactChannels) {
+            entry.embeddedImpactChannels.add(ch)
+          }
+        }
       }
     }
 
@@ -70,6 +78,10 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
         nodeIds:     Object.freeze([...g.nodeIds])  as readonly NodeId[],
         cellCount:   g.cellKeys.length,
         deviceCount: g.deviceIds.size,
+        // WAVE 4743: Incluir embeddedImpactChannels si existe
+        ...(g.embeddedImpactChannels.size > 0 && {
+          embeddedImpactChannels: Object.freeze(g.embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType>
+        }),
       })
     }
 

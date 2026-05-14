@@ -205,6 +205,11 @@ export class SpatialRegistrar implements ISpatialRegistrar {
    */
   private _neighborGraph: Map<NodeId, readonly NodeId[]> = new Map()
 
+  // ── WAVE 4735.2: Batch API — supresión de eventos durante operaciones bulk ──
+  private _topologyChangedCallback: (() => void) | null = null
+  private _isBatching = false
+  private _pendingTopologyChange = false
+
   constructor(options: SpatialRegistrarOptions = {}) {
     this._petalRadiusM      = options.petalRadiusM      ?? DEFAULT_PETAL_RADIUS_M
     this._petalBaseAngleDeg = options.petalBaseAngleDeg ?? DEFAULT_PETAL_BASE_DEG
@@ -234,10 +239,12 @@ export class SpatialRegistrar implements ISpatialRegistrar {
     // Register the raw device definition for Classic Pan/Tilt mode instead.
     if (isPlaced === false) {
       target.registerAetherDevice(deviceDef as IDeviceDefinition)
+      this._notifyTopologyChange()
       return
     }
     const enriched = this._enrichWithSpatialData(deviceDef, stagePosition)
     target.registerAetherDevice(enriched)
+    this._notifyTopologyChange()
   }
 
   /**
@@ -289,6 +296,7 @@ export class SpatialRegistrar implements ISpatialRegistrar {
     nodeGraph.registerDevice(enriched)
     // Notificar al target para mantener su bookkeeping interno sincronizado
     target.registerAetherDevice(enriched)
+    this._notifyTopologyChange()
   }
 
   /**
@@ -418,6 +426,7 @@ export class SpatialRegistrar implements ISpatialRegistrar {
     nodeGraph.unregisterDevice(deviceId)
     nodeGraph.registerDevice(updatedDef)
     target.registerAetherDevice(updatedDef)
+    this._notifyTopologyChange()
   }
 
   /**
@@ -428,6 +437,52 @@ export class SpatialRegistrar implements ISpatialRegistrar {
    */
   public getNeighbors(nodeId: NodeId): readonly NodeId[] {
     return this._neighborGraph.get(nodeId) ?? EMPTY_NEIGHBOR_IDS
+  }
+
+  // ── WAVE 4735.2: Batch API ─────────────────────────────────────────────
+
+  /**
+   * Registra un listener para el evento de cambio de topología (patch time).
+   * El callback se dispara al final de cada operación register/update
+   * o una sola vez al finalizar un batch() completo.
+   */
+  public setTopologyChangedListener(cb: () => void): void {
+    this._topologyChangedCallback = cb
+  }
+
+  /**
+   * Ejecuta `fn` como una operación atómica de batch.
+   * Suprime los eventos `topology_changed` individuales durante la ejecución
+   * y emite un único evento consolidado al final.
+   *
+   * Garantiza que el evento se emite incluso si `fn` lanza una excepción.
+   *
+   * @example
+   * registrar.batch(() => {
+   *   for (const f of fixtures) registrar.register(f.def, f.pos, target)
+   *   registrar.rebuildNeighborGraph(nodeGraph)
+   * })
+   */
+  public batch(fn: () => void): void {
+    this._isBatching = true
+    this._pendingTopologyChange = false
+    try {
+      fn()
+    } finally {
+      this._isBatching = false
+      if (this._pendingTopologyChange) {
+        this._pendingTopologyChange = false
+        this._topologyChangedCallback?.()
+      }
+    }
+  }
+
+  private _notifyTopologyChange(): void {
+    if (this._isBatching) {
+      this._pendingTopologyChange = true
+    } else {
+      this._topologyChangedCallback?.()
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

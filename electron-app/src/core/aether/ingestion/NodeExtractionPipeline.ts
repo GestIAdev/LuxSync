@@ -50,6 +50,7 @@ import type {
   IAtmosphereNodeData,
   INodeChannelDef,
   INodeConstraints,
+  IProfileMetadata,
 } from '../capability-node'
 import { NodeFamily } from '../types'
 import type {
@@ -554,10 +555,14 @@ export class NodeExtractionPipeline {
       const group = groups.get(suffix)
       if (group) {
         group.nodes.push(n)
-        // Primer label no-nulo del IForgeNode gana.
-        if (!group.customLabel && n.label) group.customLabel = n.label
+        // WAVE 4743.2: profileMeta.customLabel (cell label set in Forge) tiene prioridad
+        // sobre n.label que es un label genérico de canal (p.ej. "CH1: dimmer").
+        if (!group.customLabel && n.profileMeta?.customLabel) {
+          group.customLabel = n.profileMeta.customLabel
+        }
       } else {
-        groups.set(suffix, { zone, nodes: [n], customLabel: n.label ?? undefined })
+        // profileMeta.customLabel = nombre de célula user-defined; n.label = "CH1: dimmer" genérico.
+        groups.set(suffix, { zone, nodes: [n], customLabel: n.profileMeta?.customLabel ?? undefined })
       }
     }
 
@@ -576,7 +581,7 @@ export class NodeExtractionPipeline {
         // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
         nodes.push(
           group.customLabel
-            ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } }) as ICapabilityNode
+            ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } satisfies IProfileMetadata })
             : node,
         )
       }

@@ -738,6 +738,50 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     })
   }, [totalChannels])
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 4742: SYNC fixture.channels → forgeState.channels when Aether Cells exist
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Problem: When user edits Channel Rack (fixture.channels), the forgeState remains
+  // out of sync. If Aether Cells exist, compileForgeState() uses stale data.
+  // Solution: Periodically sync fixture.channels into forgeState.channels
+  // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Only sync if Aether Cells exist (hybrid mode is active)
+    if (forgeState.cells.length === 0) return
+
+    // Sync: For each channel in fixture, update forgeState.channels with same data
+    fixture.channels.forEach((fixtureChannel, idx) => {
+      const forgeChannelCurrent = forgeState.channels[idx]
+      
+      // Sync type (if changed)
+      if (!forgeChannelCurrent || forgeChannelCurrent.type !== fixtureChannel.type) {
+        forgeDispatch({
+          type: 'CHANNEL_SET_TYPE',
+          idx,
+          channelType: fixtureChannel.type,
+        })
+      }
+      
+      // Sync name (if changed)
+      if (!forgeChannelCurrent || forgeChannelCurrent.name !== fixtureChannel.name) {
+        forgeDispatch({
+          type: 'CHANNEL_SET_NAME',
+          idx,
+          name: fixtureChannel.name,
+        })
+      }
+      
+      // Sync defaultValue (if changed) ← KEY FIX for Problem 2
+      if (!forgeChannelCurrent || forgeChannelCurrent.defaultValue !== fixtureChannel.defaultValue) {
+        forgeDispatch({
+          type: 'CHANNEL_SET_DEFAULT',
+          idx,
+          value: fixtureChannel.defaultValue,
+        })
+      }
+    })
+  }, [fixture.channels, forgeState.cells.length, forgeDispatch])
+
   // Drag handlers
   const handleDragStart = (e: DragEvent<HTMLDivElement>, funcType: ChannelType, funcLabel: string) => {
     e.dataTransfer.setData('channelType', funcType)

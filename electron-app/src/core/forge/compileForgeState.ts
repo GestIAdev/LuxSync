@@ -247,6 +247,7 @@ function makeOutputDmxNode(
   rowIndex:    number,
   aetherNodeId?: string,
   aetherZone?:   string,
+  cellLabel?:    string,  // WAVE 4742: Cell label for JSON roundtrip
 ): IForgeNode {
   const nodeId: ForgeNodeId = `out-${ch.type}-${ch.index}`
   const config: IOutputDmxConfig = {
@@ -254,6 +255,7 @@ function makeOutputDmxNode(
     channelType:        ch.type,
     dmxOffset:          ch.index,
     channelName:        ch.name || undefined,
+    cellLabel:          cellLabel || undefined,  // WAVE 4742: Persist cell label
     defaultDmxValue:    ch.defaultValue,
     is16bit:            ch.is16bit || undefined,
     continuousRotation: ch.continuousRotation || undefined,
@@ -281,6 +283,8 @@ function makeOutputDmxNode(
     config,
     uiPosition: { x: OUTPUT_COL_X, y: ROW_START_Y + rowIndex * ROW_SPACING_Y },
     label:      `CH${ch.index + 1}: ${ch.name || ch.type}`,
+    // WAVE 4743: Persist cell.label en profileMeta.customLabel para JSON roundtrip
+    profileMeta: cellLabel ? { customLabel: cellLabel } : undefined,
   }
 }
 
@@ -325,9 +329,10 @@ function compileNodeGraph(
     const ownerCell  = channelToCell.get(ch.index)
     const aetherNodeId = ownerCell?.cellId
     const aetherZone   = ownerCell?.aetherZone
+    const cellLabel    = ownerCell?.label  // WAVE 4742: Pass cell label for JSON persistence
 
     const inNode  = makeInputDmxNode(ch, rowIndex)
-    const outNode = makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone)
+    const outNode = makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone, cellLabel)
     const edge    = makeEdge(inNode.id, outNode.id, edgeIndex)
 
     nodes.push(inNode, outNode)

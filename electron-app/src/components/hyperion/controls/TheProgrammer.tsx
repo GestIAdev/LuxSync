@@ -295,9 +295,13 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
               </button>
             </div>
           </div>
-          
-          {/* ── WAVE 4735: CELL ROUTER — routing dinámico por familia ── */}
-          <CellRouter groups={aggregatedGroups} />
+
+          {/* Scroll container dedicado para secciones de control.
+              Evita que células densas (wash + sliders embebidos) desborden el panel. */}
+          <div className="programmer-scroll-area">
+            {/* ── WAVE 4735: CELL ROUTER — routing dinámico por familia ── */}
+            <CellRouter groups={aggregatedGroups} />
+          </div>
 
           {/* OVERRIDE INDICATOR */}
           {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (

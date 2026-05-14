@@ -36,6 +36,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useLibraryStore } from '../../../stores/libraryStore'
+import { NodeFamily } from '../../../stores/programmer-types'
 import type { AggregatedCellGroup } from '../../../stores/programmer-types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,21 +155,22 @@ export function useOrphanPhantomChannels(
   //   BEAM    → gobo, prism, focus, zoom, iris
   //   KINETIC → pan, tilt, speed, rotation, targetX, targetY, targetZ
   //
-  // Los tipos phantom (rotation, speed) que caen en KINETIC cells
-  // siguen siendo huérfanos para la UI de Extras (el cell KINETIC los
-  // gestiona via KineticSection, pero rotation/speed phantom se exponen
-  // como canales directos). Para conservar el comportamiento de ExtrasSection
-  // legado, SE INCLUYEN como huérfanos siempre.
-  //
-  // La excepción es cuando el propio tipo ya tiene su propia cell family — en
-  // ese caso el aggregatedGroup lo cubre y no debe duplicarse en Extras.
+  // WAVE 4743 FIX Bug #3: cuando hay grupos Aether KINETIC activos, los tipos
+  // 'rotation' y 'speed' ya están cubiertos por KineticSection. No deben
+  // duplicarse en Extras. El comportamiento legado (sin nodeGraph) se mantiene:
+  // si no hay grupos Aether, todos los phantom son huérfanos.
   const coveredTypes = useMemo<Set<string>>(() => {
     if (aggregatedGroups.length === 0) return new Set()
-    // No filtramos nada — devolvemos todos los PHANTOM_TYPES como huérfanos.
-    // La Section atomic de cada familia sólo entiende su propio payload;
-    // los phantom types (rotation/speed/custom/macro/control) nunca forman
-    // parte de esos payloads, así que siempre son "huérfanos" de las Sections.
-    return new Set<string>()
+    const covered = new Set<string>()
+    for (const group of aggregatedGroups) {
+      // NodeFamily.KINETIC — cuando hay células KINETIC activas,
+      // los canales 'rotation' y 'speed' ya tienen UI en KineticSection.
+      if (group.family === NodeFamily.KINETIC) {
+        covered.add('rotation')
+        covered.add('speed')
+      }
+    }
+    return covered
   }, [aggregatedGroups])
 
   // ── Resolución de fixtures seleccionados ──────────────────────────────────

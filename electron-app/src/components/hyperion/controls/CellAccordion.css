@@ -160,9 +160,11 @@
 
 .cell-accordion__body {
   animation: cellAccordionExpand 0.2s ease forwards;
-  /* overflow:visible permite que los sliders no queden clippeados por el
-     border-radius cuando el contenido crece. */
-  overflow: visible;
+  /* overflow-x:hidden evita que sliders y contenedores internos desborden
+     la tarjeta. overflow-y:visible para sombras de scroll internas. */
+  overflow-x: hidden;
+  overflow-y: visible;
+  min-width: 0;
 }
 
 @keyframes cellAccordionExpand {

@@ -162,10 +162,22 @@ export interface INodeConstraints {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ICAPABILITYNODE — La interfaz atómica base
-// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * WAVE 4735.2: Metadata de perfil HAL con tipo seguro.
+ *
+ * Permite acceso directo a `customLabel` sin casts ni bracket access.
+ * El index signature preserva la extensibilidad para datos de familia
+ * específicos que aún no tienen campo formalizado.
+ */
+export interface IProfileMetadata {
+  /** Etiqueta de display personalizada (asignada por Forge, WAVE 4738) */
+  readonly customLabel?: string
+  /** Extensible — datos de perfil HAL adicionales */
+  readonly [key: string]: unknown
+}
 
 /**
- * 🌌 ICapabilityNode — La interfaz atómica fundamental del Aether.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
  * Representa una capacidad física indivisible: emitir color,
  * producir impacto lumínico, generar movimiento, conformar un haz,
@@ -210,7 +222,7 @@ export interface ICapabilityNode {
    * estándar. Ejemplo: definición de rueda de colores para
    * COLOR_NODE, ángulos máximos para KINETIC_NODE.
    */
-  readonly profileMeta?: Readonly<Record<string, unknown>>
+  readonly profileMeta?: Readonly<IProfileMetadata>
   /**
    * Estado pre-allocated del nodo (mutable in-place).
    *

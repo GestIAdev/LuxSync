@@ -24,6 +24,7 @@
 import React, { useCallback } from 'react'
 import type { CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
+import './InlineImpactRow.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS

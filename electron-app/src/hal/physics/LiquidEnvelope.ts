@@ -69,6 +69,36 @@ export interface LiquidEnvelopeConfig {
    * WAVE 3493: introducido para movers latinos (anti-tembleque).
    */
   readonly riseRate?: number
+
+  /**
+   * Anti-sustain: frames consecutivos de señal plana/alta antes de endurecer squelch.
+   * Si no está definido, el modo anti-autotune queda desactivado.
+   */
+  readonly sustainedSquelchStartFrames?: number
+
+  /**
+   * Anti-sustain: incremento de squelch por frame tras superar sustainedSquelchStartFrames.
+   * Rango útil: 0.01-0.08.
+   */
+  readonly sustainedSquelchRisePerFrame?: number
+
+  /**
+   * Anti-sustain: techo de endurecimiento acumulado de squelch.
+   * 0.0 = desactivado, 0.6 = endurecimiento muy agresivo.
+   */
+  readonly sustainedSquelchMaxBoost?: number
+
+  /**
+   * Umbral de velocidad absoluta considerado "plano" (nota sostenida).
+   * Si |velocity| <= threshold mientras signal > dynamicGate, se acumula sustain.
+   */
+  readonly sustainedFlatVelocityMax?: number
+
+  /**
+   * Alpha extra para que avgSignal persiga más rápido una señal sostenida.
+   * A mayor alpha, más rápido sube dynamicGate y más pronto se anula el sustain.
+   */
+  readonly adaptiveNoiseAlpha?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,6 +118,10 @@ interface LiquidEnvelopeState {
   lastSignal: number
   /** Flag de grace frame para The Undertow */
   wasAttacking: boolean
+  /** Contador de frames en estado plano/sostenido sobre el gate */
+  sustainedFrames: number
+  /** Endurecimiento acumulado de squelch por sustain */
+  sustainedSquelchBoost: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -112,6 +146,8 @@ export class LiquidEnvelope {
       lastFireTime: 0,
       lastSignal: 0,
       wasAttacking: false,
+      sustainedFrames: 0,
+      sustainedSquelchBoost: 0,
     }
   }
 
@@ -193,14 +229,49 @@ export class LiquidEnvelope {
     const dynamicGate = avgEffective + c.gateMargin
 
     // ═══════════════════════════════════════════════════════════════════
-    // 6. DECAY — Morfología líquida
+    // 6. ANTI-SUSTAIN TRACKER — Squelch dinámico + noise-floor adaptativo
+    //    Nuevo en WAVE 4780: mata notas planas largas (autotune sustain)
+    // ═══════════════════════════════════════════════════════════════════
+    const sustainStart = c.sustainedSquelchStartFrames ?? 0
+    const sustainRise = c.sustainedSquelchRisePerFrame ?? 0
+    const sustainMaxBoost = Math.max(0, c.sustainedSquelchMaxBoost ?? 0)
+    const flatVelocityMax = c.sustainedFlatVelocityMax ?? 0.006
+    const isSustainCandidate = signal > dynamicGate && Math.abs(velocity) <= flatVelocityMax
+
+    if (sustainStart > 0 && sustainRise > 0 && isSustainCandidate && !isBreakdown) {
+      s.sustainedFrames += 1
+      if (s.sustainedFrames > sustainStart) {
+        s.sustainedSquelchBoost = Math.min(
+          sustainMaxBoost,
+          s.sustainedSquelchBoost + sustainRise,
+        )
+      }
+
+      // Dynamic noise floor catch-up: la media alcanza la nota sostenida
+      // para elevar dynamicGate y asfixiar sustain continuo.
+      if (c.adaptiveNoiseAlpha !== undefined) {
+        const adaptive = Math.max(0, Math.min(1, c.adaptiveNoiseAlpha))
+        s.avgSignal = s.avgSignal * (1 - adaptive) + signal * adaptive
+        s.avgSignalPeak = Math.max(
+          s.avgSignal,
+          s.avgSignalPeak * (1 - adaptive * 0.5) + s.avgSignal * (adaptive * 0.5),
+        )
+      }
+    } else {
+      s.sustainedFrames = 0
+      // Release rápido para recuperar sensibilidad tras el sustain.
+      s.sustainedSquelchBoost *= 0.45
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 7. DECAY — Morfología líquida
     //    Herencia: WAVE 2392/2394 (decay base + range × morph)
     // ═══════════════════════════════════════════════════════════════════
     const decay = c.decayBase + c.decayRange * morphFactor
     s.intensity *= decay
 
     // ═══════════════════════════════════════════════════════════════════
-    // 7. MAIN GATE — Crush exponent + breakdown penalty
+    // 8. MAIN GATE — Crush exponent + breakdown penalty
     //    Herencia: WAVE 2387/2394 (Return to Origins, crush 1.5-1.8)
     // ═══════════════════════════════════════════════════════════════════
     const breakdownPenalty = isBreakdown ? 0.06 : 0
@@ -227,10 +298,11 @@ export class LiquidEnvelope {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // 8. IGNITION SQUELCH — Anti-pad-ghost rampa
+    // 9. IGNITION SQUELCH — Anti-pad-ghost + anti-sustain dinámico
     //    Herencia: WAVE 2394 (squelchBase - squelchSlope × morph)
     // ═══════════════════════════════════════════════════════════════════
-    const squelch = Math.max(0.02, c.squelchBase - c.squelchSlope * morphFactor)
+    const squelchBase = Math.max(0.02, c.squelchBase - c.squelchSlope * morphFactor)
+    const squelch = Math.min(0.98, squelchBase + s.sustainedSquelchBoost)
 
     if (kickPower > squelch) {
       s.lastFireTime = now
@@ -254,7 +326,7 @@ export class LiquidEnvelope {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // 9. SMOOTH FADE — Anti-guillotine low-end filter
+    // 10. SMOOTH FADE — Anti-guillotine low-end filter
     //    Herencia: WAVE 2383 (quadratic fade below 0.08)
     // ═══════════════════════════════════════════════════════════════════
     const fadeZone = 0.08

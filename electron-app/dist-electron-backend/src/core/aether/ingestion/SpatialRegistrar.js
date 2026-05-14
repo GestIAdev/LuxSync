@@ -67,6 +67,10 @@ export class SpatialRegistrar {
          * Map es el tipo correcto aquí: O(1) get, tamaño dinámico (N varía por show).
          */
         this._neighborGraph = new Map();
+        // ── WAVE 4735.2: Batch API — supresión de eventos durante operaciones bulk ──
+        this._topologyChangedCallback = null;
+        this._isBatching = false;
+        this._pendingTopologyChange = false;
         this._petalRadiusM = options.petalRadiusM ?? DEFAULT_PETAL_RADIUS_M;
         this._petalBaseAngleDeg = options.petalBaseAngleDeg ?? DEFAULT_PETAL_BASE_DEG;
     }
@@ -88,10 +92,12 @@ export class SpatialRegistrar {
         // Register the raw device definition for Classic Pan/Tilt mode instead.
         if (isPlaced === false) {
             target.registerAetherDevice(deviceDef);
+            this._notifyTopologyChange();
             return;
         }
         const enriched = this._enrichWithSpatialData(deviceDef, stagePosition);
         target.registerAetherDevice(enriched);
+        this._notifyTopologyChange();
     }
     /**
      * Desregistra un Device del motor Aether.
@@ -131,6 +137,7 @@ export class SpatialRegistrar {
         nodeGraph.registerDevice(enriched);
         // Notificar al target para mantener su bookkeeping interno sincronizado
         target.registerAetherDevice(enriched);
+        this._notifyTopologyChange();
     }
     /**
      * Recalcula la tabla de vecinos para Selene IA.
@@ -243,6 +250,7 @@ export class SpatialRegistrar {
         nodeGraph.unregisterDevice(deviceId);
         nodeGraph.registerDevice(updatedDef);
         target.registerAetherDevice(updatedDef);
+        this._notifyTopologyChange();
     }
     /**
      * Retorna los vecinos pre-calculados de un nodo.
@@ -252,6 +260,50 @@ export class SpatialRegistrar {
      */
     getNeighbors(nodeId) {
         return this._neighborGraph.get(nodeId) ?? EMPTY_NEIGHBOR_IDS;
+    }
+    // ── WAVE 4735.2: Batch API ─────────────────────────────────────────────
+    /**
+     * Registra un listener para el evento de cambio de topología (patch time).
+     * El callback se dispara al final de cada operación register/update
+     * o una sola vez al finalizar un batch() completo.
+     */
+    setTopologyChangedListener(cb) {
+        this._topologyChangedCallback = cb;
+    }
+    /**
+     * Ejecuta `fn` como una operación atómica de batch.
+     * Suprime los eventos `topology_changed` individuales durante la ejecución
+     * y emite un único evento consolidado al final.
+     *
+     * Garantiza que el evento se emite incluso si `fn` lanza una excepción.
+     *
+     * @example
+     * registrar.batch(() => {
+     *   for (const f of fixtures) registrar.register(f.def, f.pos, target)
+     *   registrar.rebuildNeighborGraph(nodeGraph)
+     * })
+     */
+    batch(fn) {
+        this._isBatching = true;
+        this._pendingTopologyChange = false;
+        try {
+            fn();
+        }
+        finally {
+            this._isBatching = false;
+            if (this._pendingTopologyChange) {
+                this._pendingTopologyChange = false;
+                this._topologyChangedCallback?.();
+            }
+        }
+    }
+    _notifyTopologyChange() {
+        if (this._isBatching) {
+            this._pendingTopologyChange = true;
+        }
+        else {
+            this._topologyChangedCallback?.();
+        }
     }
     // ─────────────────────────────────────────────────────────────────────────
     // SPATIAL ENRICHMENT

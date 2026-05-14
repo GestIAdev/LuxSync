@@ -378,9 +378,15 @@ export class NodeExtractionPipeline {
             const group = groups.get(suffix);
             if (group) {
                 group.nodes.push(n);
+                // WAVE 4743.2: profileMeta.customLabel (cell label set in Forge) tiene prioridad
+                // sobre n.label que es un label genérico de canal (p.ej. "CH1: dimmer").
+                if (!group.customLabel && n.profileMeta?.customLabel) {
+                    group.customLabel = n.profileMeta.customLabel;
+                }
             }
             else {
-                groups.set(suffix, { zone, nodes: [n] });
+                // profileMeta.customLabel = nombre de célula user-defined; n.label = "CH1: dimmer" genérico.
+                groups.set(suffix, { zone, nodes: [n], customLabel: n.profileMeta?.customLabel ?? undefined });
             }
         }
         // 3. Construir un ICapabilityNode por grupo
@@ -390,8 +396,12 @@ export class NodeExtractionPipeline {
             const channels = this._mapForgeNodes(group.nodes.map(n => n.config));
             const typeSet = new Set(group.nodes.map(n => this._normalizeChannelType(n.config.channelType)));
             const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position);
-            if (node)
-                nodes.push(node);
+            if (node) {
+                // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
+                nodes.push(group.customLabel
+                    ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } })
+                    : node);
+            }
         }
         return nodes;
     }
@@ -442,9 +452,11 @@ export class NodeExtractionPipeline {
      */
     _buildForgeGroupNode(nodeId, zoneId, fixtureDef, channels, typeSet, position) {
         const deviceId = nodeId.split(':')[0];
-        // COLOR: todos los canales son de color
-        const isAllColor = [...typeSet].every(t => COLOR_CHANNEL_TYPES.has(t));
-        if (isAllColor) {
+        // COLOR: hay al menos un canal de mezcla cromática.
+        // WAVE 4737 WASH FIX: grupos mixtos (color + dimmer) también van a COLOR.
+        // El ColorBody ya tiene InlineImpactRow para gestionar el dimmer interno.
+        const hasColorChannels = [...typeSet].some(t => COLOR_CHANNEL_TYPES.has(t));
+        if (hasColorChannels) {
             const mixingType = this._detectMixingTypeFromSet(typeSet);
             const colorWheel = this._buildColorWheelDef(fixtureDef);
             return {

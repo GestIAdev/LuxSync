@@ -5,7 +5,7 @@
 
 import React, { useCallback, useRef } from 'react'
 import { NodeFamily } from '../../../stores/programmer-types'
-import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
+import type { CapabilityContext, CellKey, EmbeddedImpactChannelType } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { ColorIcon } from '../../icons/LuxIcons'
 import { InlineImpactRow } from './InlineImpactRow'
@@ -288,9 +288,16 @@ export default ColorSection
 export interface ColorBodyProps {
   primaryKey: CellKey
   allCellKeys: readonly CellKey[]
+  /**
+   * WAVE 4743: Canales de intensidad embebidos en este nodo COLOR
+   * (dimmer/strobe/shutter dentro del mismo nodo físico).
+   * Cuando están presentes, los InlineImpactRow se muestran aunque
+   * no exista override previo — el usuario ve los faders desde el principio.
+   */
+  embeddedImpactChannels?: ReadonlySet<EmbeddedImpactChannelType>
 }
 
-export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys }) => {
+export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys, embeddedImpactChannels }) => {
   const nativePickerRef = useRef<HTMLInputElement>(null)
   const ov   = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
   const data = ov?.payload.family === NodeFamily.COLOR ? ov.payload.data : {}
@@ -320,12 +327,16 @@ export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys })
   }, [applyColor])
 
   // ── Canales de intensidad embebidos en ColorCellPayload (WAVE 4734-D) ──
-  // dimmer/strobe/shutter son opcionales. Si el pipeline los asignó al
-  // nodo COLOR (wash autónomo / Tungsten petal), aparecerán en el payload.
-  // InlineImpactRow se muestra solo cuando el canal existe en el override.
-  const dimmerVal  = data.dimmer  !== undefined ? Math.round(data.dimmer  * 100) : undefined
-  const strobeVal  = data.strobe  !== undefined ? Math.round(data.strobe  * 100) : undefined
-  const shutterVal = data.shutter !== undefined ? Math.round(data.shutter * 100) : undefined
+  // WAVE 4743 FIX: Mostrar el fader si el nodo tiene canal dimmer/strobe/shutter
+  // en su definición (embeddedImpactChannels), aunque el usuario aún no lo haya
+  // tocado (override = undefined). Antes del fix: la fila permanecía invisible
+  // hasta la primera interacción, causando que el dimmer pareciera inexistente.
+  const dimmerVal  = data.dimmer  !== undefined ? Math.round(data.dimmer  * 100)
+                   : embeddedImpactChannels?.has('dimmer')  ? 0 : undefined
+  const strobeVal  = data.strobe  !== undefined ? Math.round(data.strobe  * 100)
+                   : embeddedImpactChannels?.has('strobe')  ? 0 : undefined
+  const shutterVal = data.shutter !== undefined ? Math.round(data.shutter * 100)
+                   : embeddedImpactChannels?.has('shutter') ? 0 : undefined
 
   return (
     <>

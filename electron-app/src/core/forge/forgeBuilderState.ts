@@ -479,15 +479,24 @@ function hydrateCells(fixture: FixtureDefinition): readonly IForgeCellBuilder[] 
   const graph = (fixture as unknown as Record<string, unknown>).nodeGraph as NodeGraphLike | undefined
   if (!graph || !Array.isArray(graph.nodes) || graph.nodes.length === 0) return []
 
-  const buckets = new Map<string, { indices: number[]; zone?: string }>()
+  const buckets = new Map<string, { indices: number[]; zone?: string; label?: string }>()
 
   for (const node of graph.nodes) {
     if (node.type !== 'output_dmx') continue
     const cfg = node.config
     if (!cfg || typeof cfg.aetherNodeId !== 'string') continue
     const id = cfg.aetherNodeId
-    if (!buckets.has(id)) buckets.set(id, { indices: [], zone: cfg.aetherZone as string | undefined })
-    buckets.get(id)!.indices.push(cfg.dmxOffset as number)
+    if (!buckets.has(id)) {
+      buckets.set(id, {
+        indices: [],
+        zone: cfg.aetherZone as string | undefined,
+        label: typeof cfg.cellLabel === 'string' ? cfg.cellLabel : undefined,
+      })
+    }
+    const dmxOffset = cfg.dmxOffset
+    if (typeof dmxOffset === 'number') {
+      buckets.get(id)!.indices.push(dmxOffset)
+    }
   }
 
   if (buckets.size === 0) return []
@@ -495,7 +504,7 @@ function hydrateCells(fixture: FixtureDefinition): readonly IForgeCellBuilder[] 
   return Array.from(buckets.entries()).map(([cellId, bucket], i) => ({
     cellId,
     family:         inferFamilyFromCellId(cellId),
-    label:          formatCellLabel(cellId),
+    label:          bucket.label || formatCellLabel(cellId),
     role:           inferRoleFromCellId(cellId) as NodeRole,
     channelIndices: [...bucket.indices].sort((a, b) => a - b),
     aetherZone:     bucket.zone,

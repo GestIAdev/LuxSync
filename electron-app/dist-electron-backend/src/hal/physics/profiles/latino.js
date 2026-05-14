@@ -312,14 +312,19 @@ export const LATINO_PROFILE = {
         },
         // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────
         moverLTonalThreshold: 0.99, // WAVE 2460/2461: desactivado para latino
-        // ── WAVE 3491: BACK L — GUILLOTINA DE DECAY (refuerzo del override) ──
-        // La base ya aplica decayBase 0.14 / gateOn 0.35 / squelchBase 0.38.
-        // El override confirma los valores críticos para garantizar el snap violento.
+        // ── BACK HighMid — WAVE 4780: EXTIRPACIÓN DE AUTOTUNE ────────
+        // Las voces de reggaetón viven aquí. Autotune = nota sostenida/plana.
+        // Estrategia: gate alto + staccato + squelch dinámico por sustain.
         envelopeHighMid: {
-            gateOn: 0.22, // WAVE 3483: abrir el Back L para que respiren congas/palmas reales
-            squelchBase: 0.20, // WAVE 3483: bajar el bozal del override 4.1 en directo
-            decayBase: 0.14, // WAVE 3491: GUILLOTINA — snap percusivo
-            ghostCap: 0.00, // Negro absoluto
+            decayBase: 0.10, // Negro rápido tras cada flash.
+            gateOn: 0.30, // Muro base alto para filtrar sustain vocal.
+            attackSlopeMin: 0.03, // Solo pasa transiente real (no meseta).
+            adaptiveNoiseAlpha: 0.70, // La media alcanza la nota sostenida en pocos frames.
+            sustainedSquelchStartFrames: 3, // ~68ms @44Hz antes de endurecer el squelch.
+            sustainedSquelchRisePerFrame: 0.12,
+            sustainedSquelchMaxBoost: 0.60, // Nota larga = blackout progresivo.
+            sustainedFlatVelocityMax: 0.007, // Meseta vocal/autotune detectada por velocidad plana.
+            boost: 2.20, // Si rompe el muro, el pico debe explotar.
         },
         // ── FRONT SubBass — WAVE 2462: gate anti-bajo-continuo ───────
         // Log real: sB = 0.08-0.30. Entre golpes de bombo: sB = 0.13-0.19 (bajo

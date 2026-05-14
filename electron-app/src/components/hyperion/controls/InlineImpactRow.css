@@ -1,0 +1,196 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚡ INLINE IMPACT ROW — STYLES (WAVE 4743.2)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Estilos para las mini-filas de intensidad embebidas dentro de ColorBody.
+ * Representa dimmer / strobe / shutter embebidos en nodos COLOR (patrón Tungsten).
+ *
+ * Convenciones BEM:
+ *   .inline-impact-row              — bloque raíz
+ *   .inline-impact-row--{channel}   — modificador por tipo de canal (dimmer|strobe|shutter)
+ *   .inline-impact-row--active      — override activo (valor > 0 o manualmente establecido)
+ *   .inline-impact-row__header      — fila icono + label + valor
+ *   .inline-impact-row__icon        — símbolo representativo del canal
+ *   .inline-impact-row__label       — nombre del canal (truncado con ellipsis)
+ *   .inline-impact-row__value       — valor numérico mostrado
+ *   .inline-impact-row__slider      — input[type=range] fullwidth
+ *   .inline-impact-row__slider--{channel} — thumb con color del canal
+ *   .inline-impact-row__badge       — badge "MANUAL" cuando hay override
+ */
+
+/* ── BASE ──────────────────────────────────────────────────────────────────── */
+
+.inline-impact-row {
+  padding: 5px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  min-width: 0;
+  overflow: hidden;
+  transition: background 0.15s ease;
+}
+
+.inline-impact-row--active {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── CHANNEL ACCENTS ───────────────────────────────────────────────────────── */
+
+.inline-impact-row--dimmer.inline-impact-row--active {
+  border-top-color: rgba(255, 215, 0, 0.2);
+  box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.05);
+}
+
+.inline-impact-row--strobe.inline-impact-row--active {
+  border-top-color: rgba(54, 209, 255, 0.2);
+  box-shadow: inset 0 0 10px rgba(54, 209, 255, 0.05);
+}
+
+.inline-impact-row--shutter.inline-impact-row--active {
+  border-top-color: rgba(168, 85, 247, 0.2);
+  box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.05);
+}
+
+/* ── HEADER ROW ────────────────────────────────────────────────────────────── */
+
+.inline-impact-row__header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+
+.inline-impact-row__icon {
+  font-size: 11px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.inline-impact-row--dimmer  .inline-impact-row__icon { color: #ffd700; }
+.inline-impact-row--strobe  .inline-impact-row__icon { color: #36d1ff; }
+.inline-impact-row--shutter .inline-impact-row__icon { color: #a855f7; }
+
+.inline-impact-row__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-impact-row--active .inline-impact-row__label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.inline-impact-row__value {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  min-width: 34px;
+  text-align: right;
+}
+
+.inline-impact-row--active .inline-impact-row__value {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.inline-impact-row--dimmer.inline-impact-row--active  .inline-impact-row__value { color: #ffd700; }
+.inline-impact-row--strobe.inline-impact-row--active  .inline-impact-row__value { color: #36d1ff; }
+.inline-impact-row--shutter.inline-impact-row--active .inline-impact-row__value { color: #a855f7; }
+
+/* ── SLIDER ────────────────────────────────────────────────────────────────── */
+
+.inline-impact-row__slider {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Thumb — Dimmer (gold) */
+.inline-impact-row__slider--dimmer::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+.inline-impact-row__slider--dimmer::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+/* Thumb — Strobe (cyan) */
+.inline-impact-row__slider--strobe::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #36d1ff;
+  box-shadow: 0 0 4px rgba(54, 209, 255, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+.inline-impact-row__slider--strobe::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #36d1ff;
+  box-shadow: 0 0 4px rgba(54, 209, 255, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+/* Thumb — Shutter (purple) */
+.inline-impact-row__slider--shutter::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+.inline-impact-row__slider--shutter::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
+  cursor: pointer;
+  border: none;
+}
+
+/* ── BADGE ─────────────────────────────────────────────────────────────────── */
+
+/* Badge suprimido — el valor en header row ya comunica el estado */
+.inline-impact-row__badge {
+  display: none;
+}

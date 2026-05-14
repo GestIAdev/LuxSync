@@ -252,6 +252,12 @@ export interface CapabilityContext<F extends NodeFamily = NodeFamily> {
  * nodeGraph y se lo pasa al store vía `registerFixtureCells`. Es la frontera
  * entre el mundo Aether (read-only) y el store (mutable).
  */
+/**
+ * Tipos de canal de intensidad que pueden estar embebidos en un nodo COLOR
+ * autónomo (patrón Tungsten Petal / Wash con dimmer propio).
+ */
+export type EmbeddedImpactChannelType = 'dimmer' | 'strobe' | 'shutter'
+
 export interface CellDescriptor {
   readonly cellKey: CellKey
   readonly family: NodeFamily
@@ -261,6 +267,13 @@ export interface CellDescriptor {
   readonly role: NodeRole
   readonly label: string
   readonly cellIndex: number
+  /**
+   * Para nodos COLOR con canales de intensidad físicos embebidos
+   * (dimmer/strobe/shutter dentro del mismo nodo). Informa a ColorBody
+   * qué filas InlineImpactRow mostrar ANTES de que haya un override.
+   * Undefined o vacío → no hay canales de intensidad embebidos.
+   */
+  readonly embeddedImpactChannels?: ReadonlySet<EmbeddedImpactChannelType>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +312,12 @@ export interface AggregatedCellGroup {
   readonly cellCount: number
   /** Cantidad de devices DISTINTOS aportando células al grupo. */
   readonly deviceCount: number
+  /**
+   * Unión de los canales de intensidad embebidos en todas las células COLOR
+   * del grupo. Solo relevante cuando `family === NodeFamily.COLOR`.
+   * Usado por ColorBody para saber qué InlineImpactRow mostrar sin override.
+   */
+  readonly embeddedImpactChannels?: ReadonlySet<EmbeddedImpactChannelType>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@
  */
 
 import type { ChannelType, FixtureChannel, FixtureDefinition } from '../../types/FixtureDefinition'
+import type { IProfileMetadata } from '../aether/capability-node'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IDENTITY TYPES
@@ -236,6 +237,8 @@ export interface IOutputDmxConfig {
   readonly dmxOffset: number
   /** Nombre legible del canal (para canales custom) */
   readonly channelName?: string
+  /** WAVE 4742: Etiqueta de célula Aether a la que pertenece este output (p.ej. "Color") */
+  readonly cellLabel?: string
   /** Default value DMX (0–255) cuando nada está conectado al input */
   readonly defaultDmxValue: number
   /** ¿Es canal de 16-bit? Si true, ocupa dmxOffset y dmxOffset+1 */
@@ -344,6 +347,8 @@ export interface IForgeNode {
   readonly uiPosition: { readonly x: number; readonly y: number }
   /** Etiqueta legible para la UI */
   readonly label?: string
+  /** Metadata de perfil — para persistencia de labels personalizados (cell.label) */
+  readonly profileMeta?: Readonly<IProfileMetadata>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

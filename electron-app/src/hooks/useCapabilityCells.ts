@@ -34,6 +34,7 @@ import {
   type CellDescriptor,
   type AggregatedCellGroup,
   type CellKey,
+  type EmbeddedImpactChannelType,
   NodeFamily,
   type DeviceId,
   type NodeId,
@@ -194,10 +195,24 @@ function capabilityNodesToDescriptors(
     const cellKey = makeCellKey(deviceId, suffix)
     const role = node.role ?? suffixToRole(suffix, family)
     // WAVE 4738: si el nodo lleva customLabel en profileMeta (Forja custom), lo usa directamente.
-    const _customLabel = node.profileMeta?.['customLabel']
-    const label = (typeof _customLabel === 'string' && _customLabel.length > 0)
-      ? _customLabel
+    // WAVE 4735.2: acceso directo con tipo seguro IProfileMetadata (sin bracket access ni typeof guard)
+    const customLabel = node.profileMeta?.customLabel
+    const label = (customLabel && customLabel.length > 0)
+      ? customLabel
       : suffixToLabel(suffix, family)
+
+    // WAVE 4743: Para nodos COLOR con canales de intensidad físicos (dimmer/strobe/shutter),
+    // construir el set de canales embebidos. Esto permite a ColorBody mostrar los
+    // InlineImpactRow ANTES de que exista un override (discovery desde la definición).
+    let embeddedImpactChannels: Set<EmbeddedImpactChannelType> | undefined
+    if (family === NodeFamily.COLOR) {
+      for (const ch of node.channels) {
+        if (ch.type === 'dimmer' || ch.type === 'strobe' || ch.type === 'shutter') {
+          if (!embeddedImpactChannels) embeddedImpactChannels = new Set()
+          embeddedImpactChannels.add(ch.type as EmbeddedImpactChannelType)
+        }
+      }
+    }
 
     descriptors.push({
       cellKey,
@@ -208,6 +223,9 @@ function capabilityNodesToDescriptors(
       role,
       label,
       cellIndex,
+      ...(embeddedImpactChannels && embeddedImpactChannels.size > 0
+        ? { embeddedImpactChannels: Object.freeze(embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType> }
+        : {}),
     })
   }
 
@@ -396,6 +414,7 @@ export function useAggregatedCapabilityCells(
       cellKeys: CellKey[]
       nodeIds: NodeId[]
       deviceSet: Set<DeviceId>
+      embeddedImpactChannels: Set<EmbeddedImpactChannelType>
     }
 
     const groups = new Map<string, MutableGroup>()
@@ -413,6 +432,7 @@ export function useAggregatedCapabilityCells(
             cellKeys: [],
             nodeIds: [],
             deviceSet: new Set(),
+            embeddedImpactChannels: new Set<EmbeddedImpactChannelType>(),
           }
           groups.set(groupKey, entry)
           groupOrder.push(groupKey)
@@ -422,12 +442,19 @@ export function useAggregatedCapabilityCells(
           entry.nodeIds.push(nid)
         }
         entry.deviceSet.add(cell.deviceId)
+        // WAVE 4743: propagar canales de intensidad embebidos — unión de todas las cells.
+        if (cell.embeddedImpactChannels) {
+          for (const ch of cell.embeddedImpactChannels) {
+            entry.embeddedImpactChannels.add(ch)
+          }
+        }
       }
     }
 
     const result: AggregatedCellGroup[] = []
     for (const groupKey of groupOrder) {
       const e = groups.get(groupKey)!
+      const hasEmbedded = e.embeddedImpactChannels.size > 0
       result.push({
         groupKey,
         family: e.family,
@@ -437,6 +464,9 @@ export function useAggregatedCapabilityCells(
         nodeIds: Object.freeze(e.nodeIds.slice()) as readonly NodeId[],
         cellCount: e.cellKeys.length,
         deviceCount: e.deviceSet.size,
+        ...(hasEmbedded
+          ? { embeddedImpactChannels: Object.freeze(e.embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType> }
+          : {}),
       })
     }
     return result

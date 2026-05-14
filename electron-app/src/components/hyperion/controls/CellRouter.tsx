@@ -26,6 +26,7 @@
 import React, { useState, useCallback, memo } from 'react'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import type { AggregatedCellGroup, CellKey, CellOverride } from '../../../stores/programmer-types'
+import { NodeFamily } from '../../../stores/programmer-types'
 import { SECTION_REGISTRY } from './cellRouting'
 import type { SectionMeta } from './cellRouting'
 import { CellAccordion } from './CellAccordion'
@@ -34,6 +35,15 @@ import { ColorBody } from './ColorSection'
 import { BeamBody } from './BeamSection'
 import { KineticBody } from './KineticSection'
 import { ExtrasAggregator } from './ExtrasAggregator'
+
+// Orden ergonómico: Impact → Color → Beam → Kinetic → Atmosphere/Extras
+const FAMILY_RENDER_ORDER: Partial<Record<NodeFamily, number>> = {
+  [NodeFamily.IMPACT]:     0,
+  [NodeFamily.COLOR]:      1,
+  [NodeFamily.BEAM]:       2,
+  [NodeFamily.KINETIC]:    3,
+  [NodeFamily.ATMOSPHERE]: 4,
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUTED CELL — sub-componente por grupo
@@ -77,6 +87,7 @@ const RoutedCell: React.FC<RoutedCellProps> = memo(({ group, meta, isExpanded, o
         <ColorBody
           primaryKey={primaryKey}
           allCellKeys={group.cellKeys}
+          embeddedImpactChannels={group.embeddedImpactChannels}
         />
       )
       break
@@ -137,9 +148,15 @@ export const CellRouter: React.FC<CellRouterProps> = ({ groups }) => {
     setActiveSection(prev => (prev === key ? '' : key))
   }, [])
 
+  const sortedGroups = [...groups].sort((a, b) => {
+    const orderA = FAMILY_RENDER_ORDER[a.family] ?? 99
+    const orderB = FAMILY_RENDER_ORDER[b.family] ?? 99
+    return orderA - orderB
+  })
+
   return (
     <>
-      {groups.map(group => {
+      {sortedGroups.map(group => {
         const meta = SECTION_REGISTRY[group.family]
         if (!meta) return null
 

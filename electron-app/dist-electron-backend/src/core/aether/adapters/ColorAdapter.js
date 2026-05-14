@@ -194,27 +194,27 @@ export class ColorAdapter extends BaseSystem {
         this._intentScratch.source = COLOR_SOURCE;
         // ── 2. Iterar nodos COLOR — determinar rol, normalizar, empujar intent
         nodes.forEach((node, _index) => {
-            // WAVE 4775: RESTRICCIÓN ESPACIAL DEL MOOD.
-            // Los movers NO reciben color del Mood (paleta musical rápida L0).
-            // Su color proviene exclusivamente de L3 (Effects/Drops) o paleta constitucional.
-            // Esto aísla a los movers del caos emocional de L0 en cada beat.
-            if (this._moverColorNodeIds.size > 0 && this._moverColorNodeIds.has(node.nodeId)) {
-                return;
-            }
             const role = selectColorRoleFromZone(node.zoneId ?? '');
             const rgb = ingress[role];
             // Normalización RGB 0-255 → 0.0-1.0, clampeada
             let rNorm = rgb.r < 0 ? 0 : rgb.r > 255 ? 1 : rgb.r / 255;
             let gNorm = rgb.g < 0 ? 0 : rgb.g > 255 ? 1 : rgb.g / 255;
             let bNorm = rgb.b < 0 ? 0 : rgb.b > 255 ? 1 : rgb.b / 255;
-            // 🌊 WAVE 4701 M3: Desplazamiento cromático para zona 'air' (beam Tungsten).
-            // 60° de rotación de matiz sobre el color ambient de Selene.
-            // Saturación mínima 60% para evitar colores marrones/sucios.
-            if (normalizeZoneId(node.zoneId ?? '') === 'air') {
-                hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6);
-                rNorm = this._hueShiftOut.r;
-                gNorm = this._hueShiftOut.g;
-                bNorm = this._hueShiftOut.b;
+            // WAVE 4775.1: BIFURCACIÓN BASE vs MOOD.
+            // Movers: reciben la paleta constitucional de Selene directa (role→RGB),
+            // sin modificadores de zona (hue-shift air). Esto les da color estable.
+            // PARs/Ambient: reciben la paleta completa incluyendo hue-shift de zona air.
+            const isMover = this._moverColorNodeIds.size > 0 && this._moverColorNodeIds.has(node.nodeId);
+            if (!isMover) {
+                // 🌊 WAVE 4701 M3: Desplazamiento cromático para zona 'air' (beam Tungsten).
+                // 60° de rotación de matiz sobre el color ambient de Selene.
+                // Saturación mínima 60% para evitar colores marrones/sucios.
+                if (normalizeZoneId(node.zoneId ?? '') === 'air') {
+                    hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6);
+                    rNorm = this._hueShiftOut.r;
+                    gNorm = this._hueShiftOut.g;
+                    bNorm = this._hueShiftOut.b;
+                }
             }
             // Limpiar stale values de frames anteriores antes de asignar
             // (previene ghost channels si el adaptador cambia de familia de canales)

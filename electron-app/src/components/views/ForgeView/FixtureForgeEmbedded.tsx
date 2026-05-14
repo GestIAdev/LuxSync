@@ -956,6 +956,20 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
+
+    // WAVE 4732.3 PASO 3: Pre-check compile errors BEFORE touching the save pipeline.
+    // If the forge has cells but they're invalid (empty cells, type mismatch, etc.),
+    // block the save and surface the first error in the status badge.
+    if (forgeState.cells.length > 0) {
+      const preCheck = compileForgeState(forgeState)
+      if (!preCheck.ok) {
+        const firstError = preCheck.errors[0]
+        setSaveMessage(`Save failed: ${firstError.message}`)
+        setTimeout(() => setSaveMessage(null), 6000)
+        console.error('[Forge 4732.3] Compile pre-check failed:', preCheck.errors)
+        return
+      }
+    }
     
     const currentChannels = deepClone(fixture.channels)
     const fixtureSnapshot: FixtureDefinition = {
@@ -2040,31 +2054,74 @@ function DroppableCellBox({
         alignItems:   'center',
         gap:          '6px',
       }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: neon, letterSpacing: '0.1em' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: neon, letterSpacing: '0.1em', flexShrink: 0 }}>
           {String(cell.family)}
         </span>
-        <span style={{ flex: 1, color: '#e2e8f0', fontSize: '12px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {cell.label}
-        </span>
+        {/* WAVE 4732.3 PASO 1: Label editable por el operador */}
+        <input
+          type="text"
+          value={cell.label}
+          onChange={e => forgeDispatch({ type: 'CELL_RENAME_LABEL', cellId: cell.cellId, label: e.target.value })}
+          title="Rename cell"
+          style={{
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            borderBottom: '1px solid transparent',
+            color: '#e2e8f0',
+            fontSize: '12px',
+            fontWeight: 600,
+            outline: 'none',
+            minWidth: 0,
+            fontFamily: 'inherit',
+            cursor: 'text',
+            padding: '0 2px',
+            transition: 'border-color 0.15s',
+          }}
+          onFocus={e => { e.currentTarget.style.borderBottomColor = neon }}
+          onBlur={e => { e.currentTarget.style.borderBottomColor = 'transparent' }}
+        />
         <button
           onClick={() => forgeDispatch({ type: 'CELL_DELETE', cellId: cell.cellId })}
           title="Delete cell"
-          style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+          style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
         >
           <XIcon size={12} />
         </button>
       </div>
 
-      {/* ID + zona */}
-      <div style={{ padding: '4px 10px', borderBottom: '1px solid #1e293b' }}>
-        <span style={{ color: '#334155', fontFamily: 'monospace', fontSize: '10px' }}>
+      {/* WAVE 4732.3 PASO 2: ID + selector de zona canónica */}
+      <div style={{ padding: '4px 8px 4px 10px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ color: '#334155', fontFamily: 'monospace', fontSize: '10px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>
           {cell.cellId}
         </span>
-        {cell.aetherZone && (
-          <span style={{ color: '#7dd3fc', fontSize: '10px', marginLeft: '8px' }}>
-            zone: {cell.aetherZone}
-          </span>
-        )}
+        <select
+          value={cell.aetherZone ?? ''}
+          onChange={e => forgeDispatch({ type: 'CELL_SET_ZONE', cellId: cell.cellId, zone: e.target.value || undefined })}
+          title="Canonical Aether zone"
+          style={{
+            flex: 1,
+            background: '#0a0f1a',
+            border: `1px solid ${cell.aetherZone ? neon + '55' : '#1e293b'}`,
+            color: cell.aetherZone ? '#7dd3fc' : '#475569',
+            borderRadius: '3px',
+            padding: '2px 4px',
+            fontSize: '10px',
+            cursor: 'pointer',
+            fontFamily: 'monospace',
+          }}
+        >
+          <option value="">— zone —</option>
+          <option value="ambient">ambient</option>
+          <option value="air">air</option>
+          <option value="floor">floor</option>
+          <option value="flash">flash</option>
+          <option value="front">front</option>
+          <option value="back">back</option>
+          <option value="movement">movement</option>
+          <option value="dimmer">dimmer</option>
+          <option value="unassigned">unassigned</option>
+        </select>
       </div>
 
       {/* Canales asignados (tambiÃ©n arrastrables entre cÃ©lulas) */}

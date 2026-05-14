@@ -397,6 +397,19 @@ class ProgrammerAetherBridgeClass {
     const hasLegacyWork = dirtyFamilies.size > 0
     const hasCellWork   = dirtyCells.size > 0 || pendingClearNodeIds.size > 0
 
+    // 🔬 WAVE 4735.6 BRIDGE DIAG: log every 50 ticks (~1s) when there is work
+    const _bridgeTick = (this as any)._diagTick ?? 0
+    ;(this as any)._diagTick = _bridgeTick + 1
+    const _shouldLog = _bridgeTick % 50 === 0 && (hasLegacyWork || hasCellWork)
+    if (_shouldLog) {
+      console.log(
+        `[BridgeDiag 🌉] tick=${_bridgeTick} | ` +
+        `dirtyCells=${dirtyCells.size} dirtyFamilies=${dirtyFamilies.size} ` +
+        `pendingClear=${pendingClearNodeIds.size} cellOverrides=${cellOverrides.size} ` +
+        `fixtureOverrides=${fixtureOverrides.size}`
+      )
+    }
+
     if (!hasLegacyWork && !hasCellWork) {
       return
     }
@@ -405,6 +418,7 @@ class ProgrammerAetherBridgeClass {
     if (!aether) {
       // Si IPC no está disponible aún, no consumimos los dirty flags —
       // se reintentará en el próximo tick.
+      if (_shouldLog) console.warn('[BridgeDiag 🌉] IPC NOT AVAILABLE (window.lux?.aether undefined)')
       return
     }
 
@@ -548,6 +562,14 @@ class ProgrammerAetherBridgeClass {
     const requests: Array<Promise<unknown>> = []
 
     if (finalSetPayloads.length > 0) {
+      // 🔬 WAVE 4735.6 BRIDGE DIAG: exact payload about to be sent via IPC
+      console.log(
+        `[BridgeDiag 🌉 SEND] setPayloads=${finalSetPayloads.length} ` +
+        `samples:` +
+        finalSetPayloads.slice(0, 3).map(p =>
+          ` {nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`
+        ).join(' |')
+      )
       requests.push(aether.setManualOverrides(finalSetPayloads))
     }
 

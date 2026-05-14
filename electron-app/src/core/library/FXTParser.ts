@@ -79,6 +79,9 @@ export interface ParsedFixture {
     hasStrobe?: boolean
     hasDimmer?: boolean
   }
+  // 🔧 WAVE 4735.11: Preserve V2 Forge graph data from JSON
+  nodeGraph?: any
+  forgeGraph?: any
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,7 +426,8 @@ export class FXTParser {
       if (!seenChannelNames.has(line.toLowerCase())) {
         seenChannelNames.add(line.toLowerCase())
         channels.push({
-          index: channels.length,
+          // 🔧 WAVE 4735.7: DMX channels are 1-based. channel 1 = index 1.
+          index: channels.length + 1,
           name: line, // Guardamos el nombre original siempre
           type: channelType, // Puede ser 'unknown', no importa - datos > filtro
           is16bit: channelType.includes('fine') || line.toLowerCase().includes('16bit'),
@@ -618,6 +622,9 @@ export class FXTParser {
             // WAVE 389.6: Include physics and capabilities
             physics: jsonFixture.physics,
             capabilities: jsonFixture.capabilities,
+            // 🔧 WAVE 4735.11: Preserve V2 Forge graph data from JSON
+            nodeGraph: jsonFixture.nodeGraph,
+            forgeGraph: jsonFixture.forgeGraph,
           }
           fixtures.push(fixture)
           if (this.debug) {

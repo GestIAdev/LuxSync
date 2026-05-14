@@ -249,9 +249,13 @@ export class NodeExtractionPipeline {
         }
         const topology = this._analyzeTopology(fixtureDef);
         const fixtureGraph = fixtureDef.nodeGraph;
-        const nodes = this._sanitizeOverlappingChannels(resolvedDeviceId, fixtureGraph && fixtureGraph.nodes.length > 0
+        const hasForgeGraph = fixtureGraph && fixtureGraph.nodes.length > 0;
+        if (hasForgeGraph) {
+            console.log(`[NodeExtractionPipeline] 🔧 WAVE 4735.7: V2 path — _buildNodesFromForgeGraph for ${String(resolvedDeviceId)} with ${fixtureGraph.nodes.length} output_dmx nodes`);
+        }
+        const nodes = hasForgeGraph
             ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition)
-            : this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition));
+            : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition));
         const calibration = this._buildCalibration(fixtureDef, v2CalibOverride);
         return {
             deviceId: resolvedDeviceId,
@@ -823,7 +827,9 @@ export class NodeExtractionPipeline {
         return channels.map(ch => {
             const mapped = {
                 type: this._normalizeChannelType(ch.type),
-                dmxOffset: ch.index, // FixtureChannel.index es 0-based
+                // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
+                // dmxOffset must be 0-based (offset within fixture).
+                dmxOffset: ch.index - 1,
                 defaultValue: this._resolveDefaultValue(ch, kinetic),
                 is16bit: ch.is16bit ?? false,
                 customName: ch.customName,

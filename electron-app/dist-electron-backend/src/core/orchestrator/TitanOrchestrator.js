@@ -1704,22 +1704,6 @@ export class TitanOrchestrator {
                 this._forgeAudioBands[5] = _a.air;
                 aetherResolver.setForgeFrameContext(this._forgeFrameCtx);
                 aetherResolver.resolve(arbitrated);
-                // 🔬 WAVE 4735.3 FORENSIC: Throttled Aether health snapshot.
-                // Emits every ~2.3s so the user can capture terminal output for diagnosis.
-                if (this.frameCount % 100 === 0) {
-                    const firstUni = aetherResolver.registeredUniverses.next().value;
-                    const tickBuf = firstUni !== undefined ? aetherResolver.getUniverseBuffer(firstUni) : undefined;
-                    const headBytes = [];
-                    if (tickBuf) {
-                        for (let ti = 0; ti < 10 && ti < tickBuf.length; ti++)
-                            headBytes.push(tickBuf[ti]);
-                    }
-                    console.log(`[AETHER TICK 🩺] frame=${this.frameCount} | ` +
-                        `Nodos activos: ${arbitrated.size} | ` +
-                        `outputEnabled: ${this._outputEnabled} | ` +
-                        `blackout: ${aetherArbiter.isBlackoutActive()} | ` +
-                        `Primeros 10 bytes DMX: [${headBytes.join(', ') || 'N/A'}]`);
-                }
                 // 🎭 WAVE 4617-B M4: UI projection AFTER resolve — zero frame lag.
                 // NodeResolver.resolve() actualiza currentPosition con el IK result
                 // del frame actual. project() + emitHotFrame() ahora leen frame N,
@@ -2429,6 +2413,11 @@ export class TitanOrchestrator {
             }
             try {
                 let definition = this._resolveFixtureDefinitionForAether(fixture);
+                // 🔧 WAVE 4735.7: V2 bridge — show fixtures carry forgeGraph; pipeline expects nodeGraph.
+                if (fixture.forgeGraph && definition) {
+                    definition.nodeGraph = fixture.forgeGraph;
+                    console.log(`[TitanOrchestrator] 🔧 WAVE 4735.7: V2 bridge — injected forgeGraph → nodeGraph for fixture "${fixture.id}"`);
+                }
                 // ⚡ WAVE 4610-B Acción A: si la resolución falla o devuelve channels vacíos,
                 // construir una definición mínima con un canal dimmer sintético siempre que
                 // el fixture tenga profileId u otro identificador estructural válido.
@@ -2517,9 +2506,34 @@ export class TitanOrchestrator {
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _normalizeFixtureDefinitionForAether(definition, fixture, profileId) {
-        const rawChannels = Array.isArray(definition.channels) && definition.channels.length > 0
+        const rawChannelsOriginal = Array.isArray(definition.channels) && definition.channels.length > 0
             ? definition.channels
             : Array.isArray(fixture.channels) ? fixture.channels : [];
+        // 🔧 WAVE 4735.7: Backward compat — old show files / libraries saved 0-based indices.
+        // Detect by presence of index=0. If found, migrate ALL channels to 1-based (+1).
+        const hasZeroBased = rawChannelsOriginal.some((ch) => ch && ch.index === 0);
+        const rawChannels = hasZeroBased
+            ? rawChannelsOriginal.map((ch) => ch ? { ...ch, index: ch.index + 1 } : ch)
+            : rawChannelsOriginal;
+        if (hasZeroBased) {
+            console.log(`[TitanOrchestrator] 🔧 WAVE 4735.7: Migrated 0-based → 1-based for fixture "${fixture.id ?? profileId}"`);
+        }
+        // 🔧 WAVE 4735.7: V2 bypass — if nodeGraph/forgeGraph is present, skip 1-based legacy normalization.
+        const hasNodeGraph = !!definition.nodeGraph || !!fixture.forgeGraph || !!fixture.nodeGraph;
+        if (hasNodeGraph) {
+            return {
+                ...definition,
+                id: profileId ?? definition.id ?? fixture.id,
+                name: definition.name ?? fixture.name ?? profileId ?? fixture.id ?? 'Unknown Fixture',
+                manufacturer: definition.manufacturer ?? fixture.manufacturer ?? 'Unknown',
+                type: this._normalizeFixtureType(definition.type ?? fixture.type),
+                channels: rawChannels,
+                physics: definition.physics ?? fixture.physics,
+                capabilities: definition.capabilities ?? fixture.capabilities,
+                wheels: definition.wheels ?? fixture.wheels,
+                nodeGraph: definition.nodeGraph,
+            };
+        }
         const channels = rawChannels
             .filter((channel) => channel)
             .map((channel, idx) => {

@@ -381,6 +381,15 @@ export class NodeArbiter implements INodeArbiter {
     // Se aplican directamente sobre el _result, sin pasar por _applyIntent
     this._manualDimmerLocks.clear()
     this._manualChannelLocks.clear()
+    // 🔬 WAVE 4735.6 DIAG: log every 200 frames how many L2 overrides we have
+    const _l2Count = this._manualOverrides.size
+    if (this._photonTracerFrame % 200 === 0 && _l2Count > 0) {
+      const _sampleKeys = [...this._manualOverrides.keys()].slice(0, 3)
+      console.log(
+        `[NodeArbiter L2-DIAG] frame=${this._photonTracerFrame} | ` +
+        `manualOverrides=${_l2Count} | samples:[${_sampleKeys.join(',')}]`
+      )
+    }
     for (const [nodeId, channels] of this._manualOverrides) {
       let record = this._result.get(nodeId)
       if (!record) {

@@ -462,6 +462,27 @@ export class NodeResolver implements INodeResolver {
   resolve(arbitrated: ArbitratedNodeMap): readonly IDMXPacket[] {
     this._resolveFrameIndex++
 
+    // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: throttled warning if the gate is closed
+    // while there's substantial arbitrated traffic and no manual exemptions.
+    // This is the #1 silent-blackout cause.
+    if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
+      const gateOpen = this._safetyMiddleware.isOutputEnabled()
+      if (!gateOpen && arbitrated.size > 0) {
+        let manualCount = 0
+        for (const [nid] of arbitrated) {
+          if (this._safetyMiddleware.isManualNode(nid)) manualCount++
+        }
+        if (manualCount === 0) {
+          console.warn(
+            `[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
+            `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
+            `Smart Gate is blocking ALL non-KINETIC nodes. ` +
+            `Check TitanOrchestrator._outputEnabled (boot default = false).`
+          )
+        }
+      }
+    }
+
     // 1. Zero-fill y marcar universos como inactivos
     this._activeUniverses.clear()
     for (const [, buf] of this._universeBuffers) {
@@ -485,8 +506,6 @@ export class NodeResolver implements INodeResolver {
     // Inyecta prerequisitos (ej. shutter=255) cuando el canal fuente está activo.
     // HTP: Math.max(buf[target], requiredValue) — nunca baja un valor más alto.
     this._applyIgnitionInjections()
-
-    this._traceFirstDeviceDmxBytes(arbitrated.size)
 
     // 3. Ensamblar los packets de salida desde los buffers activos
     this._framePackets.clear()
@@ -610,37 +629,7 @@ export class NodeResolver implements INodeResolver {
   }
 
   private _traceFirstDeviceDmxBytes(activeNodeCount: number): void {
-    if (this._resolveFrameIndex % AETHER_TICK_HEALTH_EVERY_FRAMES !== 0) return
-
-    let sampleUniverse = this._activeUniverses.values().next().value as number | undefined
-    if (sampleUniverse === undefined) {
-      sampleUniverse = this._universeBuffers.keys().next().value as number | undefined
-    }
-    if (sampleUniverse === undefined) {
-      console.log(
-        `AETHER TICK | Nodos activos: ${activeNodeCount} | Primeros 10 bytes DMX: [] | Universos registrados: 0`
-      )
-      return
-    }
-
-    const sampleBuf = this._universeBuffers.get(sampleUniverse)
-    if (!sampleBuf) return
-
-    const dmxHead: number[] = []
-    for (let i = 0; i < 10 && i < sampleBuf.length; i++) {
-      dmxHead.push(sampleBuf[i])
-    }
-
-    const darkSpinTransit = this._safetyMiddleware
-      ? this._safetyMiddleware.getDarkSpinTransitNodeIds().length
-      : 0
-
-    console.log(
-      `AETHER TICK | Nodos activos: ${activeNodeCount} | `
-      + `Primeros 10 bytes DMX: [${dmxHead.join(', ')}] | `
-      + `Universos activos: ${this._activeUniverses.size} | `
-      + `DarkSpin transit: ${darkSpinTransit}`
-    )
+    void activeNodeCount
   }
 
   private _traceProbeDeviceLayout(deviceId: NodeId): void {
@@ -915,16 +904,6 @@ export class NodeResolver implements INodeResolver {
 
       // Clamp final de seguridad
       dmxValue = sanitizeDmxByte(dmxValue)
-
-      // 🔬 WAVE 4682: Strobe Ghost diagnostic
-      if (chDef.type === STROBE_CHANNEL && dmxValue > 0) {
-        // Leer desde channelValues, NO desde scratchpad (NaN para canales no-color)
-        const arbStrobe = channelValues[STROBE_CHANNEL]
-        console.log(
-          `[StrobeGhost 🔎] nodeId=${nodeId} type=${chDef.type} ` +
-          `dmxOut=${dmxValue} arbValue=${arbStrobe} defaultRaw=${chDef.defaultValue}`,
-        )
-      }
 
       if (nodeBlocked) continue
 

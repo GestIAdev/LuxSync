@@ -6,28 +6,28 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
   it('Test 1 (El Espejo): channels[] -> graph -> channels[] conserva identidad exacta', () => {
     const channels: FixtureChannel[] = [
       {
-        index: 0,
+        index: 1,
         name: 'Dimmer Master',
         type: 'dimmer',
         defaultValue: 255,
         is16bit: false,
       },
       {
-        index: 1,
+        index: 2,
         name: 'Pan Coarse',
         type: 'pan',
         defaultValue: 127,
         is16bit: true,
       },
       {
-        index: 3,
+        index: 4,
         name: 'Tilt Coarse',
         type: 'tilt',
         defaultValue: 96,
         is16bit: true,
       },
       {
-        index: 5,
+        index: 6,
         name: 'Mirror Rotation',
         type: 'rotation',
         defaultValue: 128,
@@ -35,7 +35,7 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
         continuousRotation: true,
       },
       {
-        index: 6,
+        index: 7,
         name: 'Fan Speed',
         type: 'custom',
         defaultValue: 180,
@@ -43,7 +43,7 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
         customName: 'Fan Speed',
       },
       {
-        index: 7,
+        index: 8,
         name: 'Fog Macro',
         type: 'macro',
         defaultValue: 90,
@@ -61,7 +61,7 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
   it('Test 2 (Preservación de Estado): defaultValue, channelName, is16bit sobreviven en output_dmx', () => {
     const channels: FixtureChannel[] = [
       {
-        index: 10,
+        index: 11,
         name: 'Custom Laser Pattern',
         type: 'custom',
         defaultValue: 64,
@@ -69,7 +69,7 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
         customName: 'Custom Laser Pattern',
       },
       {
-        index: 11,
+        index: 12,
         name: 'Pan Coarse',
         type: 'pan',
         defaultValue: 200,
@@ -102,9 +102,9 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
 
   it('Test 3 (Resiliencia al Desorden): toChannels ordena por dmxOffset', () => {
     const baseChannels: FixtureChannel[] = [
-      { index: 0, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
-      { index: 5, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
-      { index: 2, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
+      { index: 1, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
+      { index: 6, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
+      { index: 3, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
     ]
 
     const graph = NodeGraphBuilder.fromChannels(baseChannels)
@@ -122,7 +122,7 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
     }
 
     const restored = NodeGraphBuilder.toChannels(shuffledGraph)
-    expect(restored.map((c) => c.index)).toEqual([0, 2, 5])
+    expect(restored.map((c) => c.index)).toEqual([1, 3, 6])
   })
 
   it('Edge Case: fromChannels([]) retorna grafo válido vacío', () => {
@@ -137,8 +137,8 @@ describe('NodeGraphBuilder - Roundtrip y resiliencia', () => {
 
   it('Edge Case: validate detecta colisión de dmxOffset en output_dmx', () => {
     const graph = NodeGraphBuilder.fromChannels([
-      { index: 0, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
-      { index: 1, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
+      { index: 1, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
+      { index: 2, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
     ])
 
     const firstOutput = graph.nodes.find((n) => n.type === 'output_dmx')

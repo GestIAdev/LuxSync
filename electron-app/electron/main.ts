@@ -206,6 +206,9 @@ interface FixtureLibraryItem {
     hasStrobe?: boolean
     hasDimmer?: boolean
   }
+  // 🔧 WAVE 4735.11: Preserve V2 Forge graph data in runtime library
+  nodeGraph?: any
+  forgeGraph?: any
 }
 
 interface PatchedFixture extends FixtureLibraryItem {

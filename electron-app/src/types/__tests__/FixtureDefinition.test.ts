@@ -10,7 +10,7 @@ describe('FixtureDefinition - deriveCapabilitiesUnified', () => {
   it('Test 1 (Prioridad NodeGraph): usa output_dmx del grafo por encima de channels[] engañoso', () => {
     const deceptiveChannels: FixtureChannel[] = [
       {
-        index: 0,
+        index: 1,
         name: 'Legacy Dimmer Only',
         type: 'dimmer',
         defaultValue: 255,
@@ -19,11 +19,11 @@ describe('FixtureDefinition - deriveCapabilitiesUnified', () => {
     ]
 
     const graphChannels: FixtureChannel[] = [
-      { index: 1, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
-      { index: 2, name: 'Tilt', type: 'tilt', defaultValue: 127, is16bit: false },
-      { index: 3, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
-      { index: 4, name: 'Green', type: 'green', defaultValue: 0, is16bit: false },
-      { index: 5, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
+      { index: 2, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
+      { index: 3, name: 'Tilt', type: 'tilt', defaultValue: 127, is16bit: false },
+      { index: 4, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
+      { index: 5, name: 'Green', type: 'green', defaultValue: 0, is16bit: false },
+      { index: 6, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
     ]
 
     const fixtureWithGraph: FixtureDefinition & { nodeGraph: ReturnType<typeof NodeGraphBuilder.fromChannels> } = {
@@ -46,13 +46,13 @@ describe('FixtureDefinition - deriveCapabilitiesUnified', () => {
 
   it('Test 2 (Fallback Legacy): sin nodeGraph usa channels[] legacy', () => {
     const legacyChannels: FixtureChannel[] = [
-      { index: 0, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
-      { index: 1, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
-      { index: 2, name: 'Tilt', type: 'tilt', defaultValue: 127, is16bit: false },
-      { index: 3, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
-      { index: 4, name: 'Green', type: 'green', defaultValue: 0, is16bit: false },
-      { index: 5, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
-      { index: 6, name: 'Macro', type: 'macro', defaultValue: 32, is16bit: false },
+      { index: 1, name: 'Dimmer', type: 'dimmer', defaultValue: 255, is16bit: false },
+      { index: 2, name: 'Pan', type: 'pan', defaultValue: 127, is16bit: false },
+      { index: 3, name: 'Tilt', type: 'tilt', defaultValue: 127, is16bit: false },
+      { index: 4, name: 'Red', type: 'red', defaultValue: 0, is16bit: false },
+      { index: 5, name: 'Green', type: 'green', defaultValue: 0, is16bit: false },
+      { index: 6, name: 'Blue', type: 'blue', defaultValue: 0, is16bit: false },
+      { index: 7, name: 'Macro', type: 'macro', defaultValue: 32, is16bit: false },
     ]
 
     const legacyFixture: FixtureDefinition = {

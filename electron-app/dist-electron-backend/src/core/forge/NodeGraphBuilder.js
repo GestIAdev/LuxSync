@@ -84,7 +84,9 @@ function makeOutputDmxNode(channel, yPosition) {
     const config = {
         nodeType: 'output_dmx',
         channelType: channel.type,
-        dmxOffset: channel.index,
+        // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
+        // dmxOffset must be 0-based (offset within fixture). Convert here.
+        dmxOffset: channel.index - 1,
         channelName: channel.name || undefined,
         defaultDmxValue: channel.defaultValue,
         is16bit: channel.is16bit || undefined,
@@ -181,9 +183,11 @@ export class NodeGraphBuilder {
             edges.push(edge);
         }
         // Calculate DMX footprint: max(dmxOffset) + 1 (accounting for 16-bit)
+        // 🔧 WAVE 4735.7: channel.index is 1-based, dmxOffset = index - 1.
         let maxOffset = 0;
         for (const channel of channels) {
-            const end = channel.is16bit ? channel.index + 1 : channel.index;
+            const offset = channel.index - 1;
+            const end = channel.is16bit ? offset + 1 : offset;
             if (end > maxOffset)
                 maxOffset = end;
         }
@@ -212,7 +216,8 @@ export class NodeGraphBuilder {
         const channels = outputNodes.map((node) => {
             const cfg = node.config;
             const channel = {
-                index: cfg.dmxOffset,
+                // 🔧 WAVE 4735.7: dmxOffset is 0-based; FixtureChannel.index must be 1-based.
+                index: cfg.dmxOffset + 1,
                 name: cfg.channelName || cfg.channelType,
                 type: cfg.channelType,
                 defaultValue: cfg.defaultDmxValue,

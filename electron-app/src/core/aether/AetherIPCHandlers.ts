@@ -74,6 +74,9 @@ export function registerAetherIPCHandlers(): void {
             arbiter.setManualOverride(nodeId, channels)
           }
         }
+        // 🔬 WAVE 4735.6 DIAG: confirmar que _manualOverrides tiene las entradas
+        const manualCount = arbiter.getManualOverrideNodeIds().length
+        console.log(`[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: ${manualCount}`)
         return { success: true }
       } catch (err) {
         console.error('[AetherIPC] setManualOverrides error:', err)

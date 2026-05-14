@@ -69,8 +69,9 @@ export class SpatialRegistrar {
         this._neighborGraph = new Map();
         // ── WAVE 4735.2: Batch API — supresión de eventos durante operaciones bulk ──
         this._topologyChangedCallback = null;
-        this._isBatching = false;
+        this._batchDepth = 0;
         this._pendingTopologyChange = false;
+        this._warnedMissingTopologyListener = false;
         this._petalRadiusM = options.petalRadiusM ?? DEFAULT_PETAL_RADIUS_M;
         this._petalBaseAngleDeg = options.petalBaseAngleDeg ?? DEFAULT_PETAL_BASE_DEG;
     }
@@ -105,6 +106,7 @@ export class SpatialRegistrar {
      */
     unregister(deviceId, target) {
         target.unregisterAetherDevice(deviceId);
+        this._notifyTopologyChange();
     }
     // ─────────────────────────────────────────────────────────────────────────
     // ISpatialRegistrar — CONTRATO FORMAL (Blueprint 3506 §1.7)
@@ -269,6 +271,7 @@ export class SpatialRegistrar {
      */
     setTopologyChangedListener(cb) {
         this._topologyChangedCallback = cb;
+        this._warnedMissingTopologyListener = false;
     }
     /**
      * Ejecuta `fn` como una operación atómica de batch.
@@ -284,25 +287,40 @@ export class SpatialRegistrar {
      * })
      */
     batch(fn) {
-        this._isBatching = true;
-        this._pendingTopologyChange = false;
+        const isOuterBatch = this._batchDepth === 0;
+        if (isOuterBatch) {
+            this._pendingTopologyChange = false;
+        }
+        this._batchDepth++;
         try {
             fn();
         }
         finally {
-            this._isBatching = false;
-            if (this._pendingTopologyChange) {
+            this._batchDepth = Math.max(0, this._batchDepth - 1);
+            if (isOuterBatch && this._pendingTopologyChange) {
                 this._pendingTopologyChange = false;
-                this._topologyChangedCallback?.();
+                if (this._topologyChangedCallback) {
+                    this._topologyChangedCallback();
+                }
+                else if (!this._warnedMissingTopologyListener) {
+                    this._warnedMissingTopologyListener = true;
+                    console.warn('[SpatialRegistrar] topology_changed pending pero sin listener registrado');
+                }
             }
         }
     }
     _notifyTopologyChange() {
-        if (this._isBatching) {
+        if (this._batchDepth > 0) {
             this._pendingTopologyChange = true;
         }
         else {
-            this._topologyChangedCallback?.();
+            if (this._topologyChangedCallback) {
+                this._topologyChangedCallback();
+            }
+            else if (!this._warnedMissingTopologyListener) {
+                this._warnedMissingTopologyListener = true;
+                console.warn('[SpatialRegistrar] topology_changed emitido sin listener registrado');
+            }
         }
     }
     // ─────────────────────────────────────────────────────────────────────────

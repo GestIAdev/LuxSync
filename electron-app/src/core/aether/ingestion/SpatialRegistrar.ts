@@ -151,6 +151,16 @@ export interface ISpatialRegistrar {
    * @param nodeId — ID del nodo
    */
   getNeighbors(nodeId: NodeId): readonly NodeId[]
+
+  /**
+   * Ejecuta `fn` como operación atómica de batch.
+   * Suprime eventos `topology_changed` individuales durante la ejecución
+   * y emite un único evento consolidado al final (incluso si `fn` lanza).
+   *
+   * WAVE 4735.3: Obligatorio para operaciones bulk (ej. mover múltiples
+   * fixtures) para evitar N callbacks de topología.
+   */
+  batch(fn: () => void): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -207,8 +217,9 @@ export class SpatialRegistrar implements ISpatialRegistrar {
 
   // ── WAVE 4735.2: Batch API — supresión de eventos durante operaciones bulk ──
   private _topologyChangedCallback: (() => void) | null = null
-  private _isBatching = false
+  private _batchDepth = 0
   private _pendingTopologyChange = false
+  private _warnedMissingTopologyListener = false
 
   constructor(options: SpatialRegistrarOptions = {}) {
     this._petalRadiusM      = options.petalRadiusM      ?? DEFAULT_PETAL_RADIUS_M
@@ -256,6 +267,7 @@ export class SpatialRegistrar implements ISpatialRegistrar {
     target:   IAetherRegistrationTarget,
   ): void {
     target.unregisterAetherDevice(deviceId)
+    this._notifyTopologyChange()
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -448,6 +460,7 @@ export class SpatialRegistrar implements ISpatialRegistrar {
    */
   public setTopologyChangedListener(cb: () => void): void {
     this._topologyChangedCallback = cb
+    this._warnedMissingTopologyListener = false
   }
 
   /**
@@ -464,24 +477,37 @@ export class SpatialRegistrar implements ISpatialRegistrar {
    * })
    */
   public batch(fn: () => void): void {
-    this._isBatching = true
-    this._pendingTopologyChange = false
+    const isOuterBatch = this._batchDepth === 0
+    if (isOuterBatch) {
+      this._pendingTopologyChange = false
+    }
+    this._batchDepth++
     try {
       fn()
     } finally {
-      this._isBatching = false
-      if (this._pendingTopologyChange) {
+      this._batchDepth = Math.max(0, this._batchDepth - 1)
+      if (isOuterBatch && this._pendingTopologyChange) {
         this._pendingTopologyChange = false
-        this._topologyChangedCallback?.()
+        if (this._topologyChangedCallback) {
+          this._topologyChangedCallback()
+        } else if (!this._warnedMissingTopologyListener) {
+          this._warnedMissingTopologyListener = true
+          console.warn('[SpatialRegistrar] topology_changed pending pero sin listener registrado')
+        }
       }
     }
   }
 
   private _notifyTopologyChange(): void {
-    if (this._isBatching) {
+    if (this._batchDepth > 0) {
       this._pendingTopologyChange = true
     } else {
-      this._topologyChangedCallback?.()
+      if (this._topologyChangedCallback) {
+        this._topologyChangedCallback()
+      } else if (!this._warnedMissingTopologyListener) {
+        this._warnedMissingTopologyListener = true
+        console.warn('[SpatialRegistrar] topology_changed emitido sin listener registrado')
+      }
     }
   }
 

@@ -83,6 +83,7 @@ const IK_WARN_INTERVAL_FRAMES = 44;
 const MATH_TELEMETRY_EVERY_FRAMES = 30;
 const IK_DEFAULT_PAN_RANGE_DEG = 540;
 const IK_DEFAULT_TILT_RANGE_DEG = 270;
+const AETHER_TICK_HEALTH_EVERY_FRAMES = 100;
 function sanitizeNormalizedValue(value, fallback = 0) {
     return value !== undefined && Number.isFinite(value) ? value : fallback;
 }
@@ -124,7 +125,6 @@ const DEFAULT_IK_ORIENTATION = {
 };
 // ── DMX universe size ────────────────────────────────────────────────────
 const DMX_UNIVERSE_SIZE = 512;
-const PHOTON_TRACER_EVERY_FRAMES = 20;
 // ── Contexto de frame para el HarmonicQuantizer ──────────────────────────
 // Inyectado via setResolveContext() antes de cada llamada a resolve().
 // Valores por defecto conservadores (sin cuantización activa).
@@ -395,7 +395,7 @@ export class NodeResolver {
         // Inyecta prerequisitos (ej. shutter=255) cuando el canal fuente está activo.
         // HTP: Math.max(buf[target], requiredValue) — nunca baja un valor más alto.
         this._applyIgnitionInjections();
-        this._traceFirstDeviceDmxBytes();
+        this._traceFirstDeviceDmxBytes(arbitrated.size);
         // 3. Ensamblar los packets de salida desde los buffers activos
         this._framePackets.clear();
         for (const universe of this._activeUniverses) {
@@ -506,9 +506,31 @@ export class NodeResolver {
             }
         }
     }
-    _traceFirstDeviceDmxBytes() {
-        if (this._resolveFrameIndex % PHOTON_TRACER_EVERY_FRAMES !== 0)
+    _traceFirstDeviceDmxBytes(activeNodeCount) {
+        if (this._resolveFrameIndex % AETHER_TICK_HEALTH_EVERY_FRAMES !== 0)
             return;
+        let sampleUniverse = this._activeUniverses.values().next().value;
+        if (sampleUniverse === undefined) {
+            sampleUniverse = this._universeBuffers.keys().next().value;
+        }
+        if (sampleUniverse === undefined) {
+            console.log(`AETHER TICK | Nodos activos: ${activeNodeCount} | Primeros 10 bytes DMX: [] | Universos registrados: 0`);
+            return;
+        }
+        const sampleBuf = this._universeBuffers.get(sampleUniverse);
+        if (!sampleBuf)
+            return;
+        const dmxHead = [];
+        for (let i = 0; i < 10 && i < sampleBuf.length; i++) {
+            dmxHead.push(sampleBuf[i]);
+        }
+        const darkSpinTransit = this._safetyMiddleware
+            ? this._safetyMiddleware.getDarkSpinTransitNodeIds().length
+            : 0;
+        console.log(`AETHER TICK | Nodos activos: ${activeNodeCount} | `
+            + `Primeros 10 bytes DMX: [${dmxHead.join(', ')}] | `
+            + `Universos activos: ${this._activeUniverses.size} | `
+            + `DarkSpin transit: ${darkSpinTransit}`);
     }
     _traceProbeDeviceLayout(deviceId) {
         void deviceId;
@@ -760,7 +782,9 @@ export class NodeResolver {
             }
             if (nodeBlocked)
                 continue;
-            buf[bufIdx] = dmxValue;
+            buf[bufIdx] = Number.isNaN(dmxValue)
+                ? 0
+                : sanitizeDmxByte(dmxValue);
             // Telemetría legacy removida.
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {
@@ -768,11 +792,11 @@ export class NodeResolver {
                 if (fineIdx < DMX_UNIVERSE_SIZE) {
                     const raw16 = Math.round(normalized * 65535);
                     const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0;
-                    buf[fineIdx] = safeRaw16 & 0xFF; // byte fine (LSB)
+                    buf[fineIdx] = sanitizeDmxByte(safeRaw16 & 0xFF); // byte fine (LSB)
                     // El byte coarse (MSB) ya fue escrito como (raw16 >> 8) arriba,
                     // pero nuestro `dmxValue` ya redondeó al byte coarse.
                     // Corregir el coarse para coherencia 16-bit:
-                    buf[bufIdx] = (safeRaw16 >> 8) & 0xFF;
+                    buf[bufIdx] = sanitizeDmxByte((safeRaw16 >> 8) & 0xFF);
                 }
             }
         }

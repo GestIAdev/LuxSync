@@ -1704,6 +1704,22 @@ export class TitanOrchestrator {
                 this._forgeAudioBands[5] = _a.air;
                 aetherResolver.setForgeFrameContext(this._forgeFrameCtx);
                 aetherResolver.resolve(arbitrated);
+                // 🔬 WAVE 4735.3 FORENSIC: Throttled Aether health snapshot.
+                // Emits every ~2.3s so the user can capture terminal output for diagnosis.
+                if (this.frameCount % 100 === 0) {
+                    const firstUni = aetherResolver.registeredUniverses.next().value;
+                    const tickBuf = firstUni !== undefined ? aetherResolver.getUniverseBuffer(firstUni) : undefined;
+                    const headBytes = [];
+                    if (tickBuf) {
+                        for (let ti = 0; ti < 10 && ti < tickBuf.length; ti++)
+                            headBytes.push(tickBuf[ti]);
+                    }
+                    console.log(`[AETHER TICK 🩺] frame=${this.frameCount} | ` +
+                        `Nodos activos: ${arbitrated.size} | ` +
+                        `outputEnabled: ${this._outputEnabled} | ` +
+                        `blackout: ${aetherArbiter.isBlackoutActive()} | ` +
+                        `Primeros 10 bytes DMX: [${headBytes.join(', ') || 'N/A'}]`);
+                }
                 // 🎭 WAVE 4617-B M4: UI projection AFTER resolve — zero frame lag.
                 // NodeResolver.resolve() actualiza currentPosition con el IK result
                 // del frame actual. project() + emitHotFrame() ahora leen frame N,

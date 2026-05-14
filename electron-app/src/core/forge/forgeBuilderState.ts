@@ -330,7 +330,7 @@ export function forgeReducer(
 
       // Aduana de tipos — AUTORIDAD FINAL (triple validation §6.3)
       const admission = canAdmit(channel.type, targetCell.family)
-      if (!admission.ok) {
+      if (admission.ok === false) {
         emitWarning({ cellId, channelIdx, reason: admission.reason })
         return state  // no-op
       }
@@ -372,7 +372,7 @@ export function forgeReducer(
 
       // Aduana al destino
       const admission = canAdmit(channel.type, destCell.family)
-      if (!admission.ok) {
+      if (admission.ok === false) {
         emitWarning({ cellId: toCellId, channelIdx, reason: admission.reason })
         return state
       }

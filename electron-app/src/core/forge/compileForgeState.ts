@@ -131,7 +131,7 @@ function validateState(
       const ch = state.channels[idx]
       if (!ch) continue
       const result = canAdmit(ch.type, cell.family)
-      if (!result.ok) {
+      if (result.ok === false) {
         errors.push({
           level:      'error',
           code:       'INCOMPATIBLE_CHANNEL_FAMILY',

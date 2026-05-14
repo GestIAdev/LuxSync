@@ -121,10 +121,13 @@ function makeOutputDmxNode(
     is16bit: channel.is16bit || undefined,
     continuousRotation: channel.continuousRotation || undefined,
     // 🔥 WAVE 4718: roundtrip ignitionDeps from legacy channel
+    // 🔥 WAVE 4732-A Fix B2: propagate targetChannelIndex + mode (lost before)
     ...(channel.ignitionDeps && channel.ignitionDeps.length > 0 && {
       ignitionDeps: channel.ignitionDeps.map(d => ({
-        channelType: d.channelType,
-        requiredValue: d.requiredValue,
+        channelType:        d.channelType,
+        requiredValue:      d.requiredValue,
+        targetChannelIndex: d.targetChannelIndex,
+        mode:               d.mode,
       })),
     }),
   }

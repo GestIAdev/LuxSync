@@ -1854,7 +1854,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                       {idx + 1}
                     </td>
                     <td style={{ padding: '6px 8px', color: '#e2e8f0' }}>
-                      {ch.name || <span style={{ color: '#475569', fontStyle: 'italic' }}>â€”</span>}
+                        {ch.name || <span style={{ color: '#475569', fontStyle: 'italic' }}>-</span>}
                     </td>
                     <td style={{ padding: '6px 8px' }}>
                       <span style={{
@@ -1874,8 +1874,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     </td>
                     <td style={{ padding: '6px 8px' }}>
                       {(ch.ignitionDeps?.length ?? 0) > 0 && (
-                        <span style={{ color: '#fbbf24', fontSize: '11px' }}>
-                          âš¡ {ch.ignitionDeps!.length}
+                          <span style={{ color: '#fbbf24', fontSize: '11px', fontFamily: 'monospace' }}>
+                            IGN x{ch.ignitionDeps!.length}
                         </span>
                       )}
                     </td>

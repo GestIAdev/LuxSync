@@ -20,12 +20,28 @@ import { ProgrammerAetherBridge } from '../../../bridges/ProgrammerAetherBridge'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
 
 import { GroupsPanel } from './GroupsPanel'
-import { DeviceCellGroup } from '../programmer/DeviceCellGroup'
-import { useCapabilityCells } from '../../../hooks/useCapabilityCells'
+import { IntensitySection } from './IntensitySection'
+import { ColorSection } from './ColorSection'
+import { BeamSection } from './BeamSection'
+import { KineticSection } from './KineticSection'
+import { useAggregatedCapabilityCells } from '../../../hooks/useAggregatedCapabilityCells'
+import { NodeFamily, cellKeyDeviceId } from '../../../stores/programmer-types'
+import type { CapabilityContext } from '../../../stores/programmer-types'
 import { IntensityIcon, GroupIcon } from '../../icons/LuxIcons'
 import './TheProgrammer.css'
 import './accordion-styles.css'
 import './GroupsPanel.css'
+
+// WAVE 4731: Colores neon por rol — espejo del ROLE_NEON de DeviceCellGroup
+const ROLE_NEON: Record<string, string> = {
+  master:  '#ff3366',
+  wash:    '#36d1ff',
+  petal:   '#d946ef',
+  beam:    '#facc15',
+  rotor:   '#22c55e',
+  ambient: '#8b5cf6',
+  primary: '#22c55e',
+}
 
 // Tab types
 type ProgrammerTab = 'controls' | 'groups'
@@ -54,6 +70,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     setLimit, releaseLimit,
     setColor, releaseColor,
     releaseAll,
+    releaseProgrammer,
     syncSelection,
     hydrateFromL2,
     displayDimmer: currentDimmer,
@@ -65,18 +82,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
   const pruneManualOverride = useMovementStore(s => s.pruneManualOverride)
 
-  // WAVE 4725: CAMALEÓN — carga células de capacidad del nodeGraph
-  const deviceGroups = useCapabilityCells(selectedIds)
-
-  // 🔬 WAVE 4728: SONDA FORENSE — qué llega al render
-  useEffect(() => {
-    if (selectedIds.length === 0) return
-    console.log(
-      '[TheProgrammer] 🎭 deviceGroups received | selection=', selectedIds.join(','),
-      '| groupCount=', deviceGroups.length,
-      '| cellsByGroup=', deviceGroups.map(g => `${g.fixtureName}[${g.cells.length}cells:${g.cells.map(c => c.family).join('+')}]`).join(' | '),
-    )
-  }, [selectedIds, deviceGroups])
+  // WAVE 4731: HIVE MIND — células agregadas por firma de capacidad compartida
+  const aggregatedGroups = useAggregatedCapabilityCells(selectedIds)
 
 
   // WAVE 432: TAB NAVIGATION
@@ -249,27 +256,38 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   
   const handleUnlockAll = useCallback(() => {
     if (selectedIds.length === 0) return
-    // WAVE 4719: Unlock All alineado con Cathedral Unlock — misma ruta total.
-    // 1) NodeArbiter L2: release todos los canales
-    releaseAll()
-    // 2) Inhibit limits del NodeArbiter (canal IMPACT)
+    // 🛡️ WAVE 4730 TARGET 3: divorcio de dominios.
+    // Este botón es "UNLOCK CONTROLS" — pertenece al dominio Programmer.
+    // Limpia EXCLUSIVAMENTE impact/color/beam/extras y el inhibit limit.
+    // El dominio cinético (pan/tilt/speed/patrones/fan offsets) queda intacto;
+    // su limpieza es responsabilidad del KineticsCathedral via releaseKinetics().
+    releaseProgrammer()
     const nodeIds = selectedIds.map(id => `${id}:impact`)
     window.lux?.aether?.clearInhibitLimit(nodeIds)
-    // 3) VMM: limpiar patron activo en masterArbiter + KineticEngine
+  }, [selectedIds, releaseProgrammer])
+
+  // 🧨 WAVE 4730: Kill switch nuclear — borra TODO (Programmer + Cathedral).
+  // Reservado para acciones explícitas tipo "Reset Show" o emergencia.
+  // El botón "UNLOCK CONTROLS" del Programmer NUNCA debe llamarlo.
+  const handleNuclearReset = useCallback(() => {
+    if (selectedIds.length === 0) return
+    releaseAll()
+    const nodeIds = selectedIds.map(id => `${id}:impact`)
+    window.lux?.aether?.clearInhibitLimit(nodeIds)
     void window.lux?.aether?.setManualPattern({
       fixtureIds: selectedIds,
       pattern: null,
       speed: 50,
       amplitude: 50,
     })
-    // 4) VMM: limpiar phase offsets del fan residuales
     void window.lux?.aether?.setKineticFanOffsets({})
-    // 5) UI: resetear patron
     useMovementStore.getState().setActivePattern('none')
-    // 6) EXORCISMO: limpiar Sets zombificados
     useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
     useMovementStore.getState().setLockedFixtures(new Set())
   }, [selectedIds, releaseAll])
+  // Suprime warning de variable no usada (handler queda disponible para futuras
+  // wires del UI al dominio nuclear sin re-implementarlo cada vez).
+  void handleNuclearReset
   
 
   
@@ -345,17 +363,48 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
             </div>
           </div>
           
-          {/* ── WAVE 4727: VIP BOUNCER — Todo fixture usa DeviceCellGroup ── */}
-          {deviceGroups.map(group => group.cells.length > 0 ? (
-            <DeviceCellGroup
-              key={group.deviceId}
-              deviceId={group.deviceId}
-              fixtureName={group.fixtureName}
-              fixtureType={group.fixtureType}
-              cells={group.cells}
-              onSectionToggle={toggleSection}
-            />
-          ) : null)}
+          {/* ── WAVE 4731: HIVE MIND — Un acordeón por capacidad compartida ── */}
+          {aggregatedGroups.map(group => {
+            if (group.cellKeys.length === 0) return null
+            const primaryKey     = group.cellKeys[0]
+            const peerCellKeys   = group.cellKeys.length > 1 ? group.cellKeys.slice(1) : undefined
+            const primaryDevId   = cellKeyDeviceId(primaryKey)
+            const neonColor      = ROLE_NEON[group.role] ?? '#ffffff'
+            const ctx = {
+              cellKey:   primaryKey,
+              family:    group.family,
+              nodeIds:   group.nodeIds,
+              deviceId:  primaryDevId,
+              fixtureId: primaryDevId,
+              role:      group.role,
+              label:     group.label,
+              cellIndex: 0,
+            }
+            const sectionKey = group.groupKey
+            const isExpanded = activeSection === sectionKey
+            let sectionEl: React.ReactNode
+            switch (group.family) {
+              case NodeFamily.IMPACT:
+                sectionEl = <IntensitySection ctx={ctx as unknown as CapabilityContext<NodeFamily.IMPACT>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
+                break
+              case NodeFamily.COLOR:
+                sectionEl = <ColorSection ctx={ctx as unknown as CapabilityContext<NodeFamily.COLOR>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
+                break
+              case NodeFamily.BEAM:
+                sectionEl = <BeamSection ctx={ctx as unknown as CapabilityContext<NodeFamily.BEAM>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
+                break
+              case NodeFamily.KINETIC:
+                sectionEl = <KineticSection ctx={ctx as unknown as CapabilityContext<NodeFamily.KINETIC>} peerCellKeys={peerCellKeys} isExpanded={isExpanded} onToggle={() => toggleSection(sectionKey)} />
+                break
+              default:
+                return null
+            }
+            return (
+              <div key={sectionKey} style={{ '--neon-base': neonColor } as React.CSSProperties}>
+                {sectionEl}
+              </div>
+            )
+          })}
 
           {/* OVERRIDE INDICATOR */}
           {(overrideState.dimmer || overrideState.strobe || overrideState.color || overrideState.beam || overrideState.extras) && (

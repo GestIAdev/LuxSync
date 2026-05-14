@@ -32,6 +32,8 @@ import { useProgrammerStore } from '../stores/programmerStore'
 import {
   makeCellKey,
   type CellDescriptor,
+  type AggregatedCellGroup,
+  type CellKey,
   NodeFamily,
   type DeviceId,
   type NodeId,
@@ -243,7 +245,11 @@ export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[
   const libraryFixtureCount   = useLibraryStore(state => state.systemFixtures.length + state.userFixtures.length)
   const libraryLastLoadTime   = useLibraryStore(state => state.lastLoadTime)
   const registerFixtureCells  = useProgrammerStore(state => state.registerFixtureCells)
-  const unregisterDeviceCells = useProgrammerStore(state => state.unregisterDeviceCells)
+  // 🛡️ WAVE 4730 TARGET 2: cleanup SUAVE en lugar de destructivo.
+  // Cambiar selección NO debe borrar cellOverrides ni disparar clearManualOverrides.
+  // forgetDeviceCatalog solo poda el directorio UI manteniendo overrides intactos
+  // — al re-seleccionar el fixture, los valores persisten y la UI los re-hidrata.
+  const forgetDeviceCatalog  = useProgrammerStore(state => state.forgetDeviceCatalog)
 
   // Hyperion puede abrirse sin pasar por Forge; auto-carga librería bajo demanda.
   useEffect(() => {
@@ -314,10 +320,12 @@ export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[
     const prevSelected = prevSelectedRef.current
     const currentSelected = new Set(selectedIds)
 
-    // Desregistrar fixtures que salieron de la selección
+    // 🛡️ WAVE 4730 TARGET 2: cleanup SUAVE — solo poda el directorio UI.
+    // Los cellOverrides y nodeIds activos persisten en el store; el L2 sigue
+    // recibiendo los manuales aunque el fixture salga de la selección visual.
     for (const prevId of prevSelected) {
       if (!currentSelected.has(prevId)) {
-        unregisterDeviceCells(prevId as DeviceId)
+        forgetDeviceCatalog(prevId as DeviceId)
       }
     }
 
@@ -332,7 +340,96 @@ export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[
     }
 
     prevSelectedRef.current = selectedIds
-  }, [deviceCells, selectedIds, registerFixtureCells, unregisterDeviceCells])
+  }, [deviceCells, selectedIds, registerFixtureCells, forgetDeviceCatalog])
 
   return deviceCells
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 4730 TARGET 1 — HIVE MIND: AGGREGATED HOOK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Hook de agregación por firma de capacidad.
+ *
+ * Reusa `useCapabilityCells` (que sigue resolviendo el catálogo por device)
+ * y reorganiza la salida en grupos `AggregatedCellGroup` cuya identidad es
+ * `${family}:${role}:${label}`.
+ *
+ * Caso típico:
+ *   - 10 PARs LED seleccionados → 1 grupo `IMPACT:primary:Intensidad` con 10
+ *     cellKeys + 1 grupo `COLOR:primary:Color` con 10 cellKeys.
+ *   - Tungsten + 5 PARs seleccionados → grupos COMPARTIDOS para las
+ *     capacidades coincidentes + grupos exclusivos del Tungsten (petals/wash/beam).
+ *
+ * La UI itera estos grupos y, en el onChange del slider/picker, despacha a
+ * todos los cellKeys con un solo bucle:
+ *
+ * ```tsx
+ * const onColorChange = (r,g,b) => {
+ *   for (const key of group.cellKeys) setCellColor(key, r, g, b)
+ * }
+ * ```
+ *
+ * @param selectedIds — Array de fixture IDs seleccionados
+ * @returns Array de AggregatedCellGroup (firma de capacidad compartida)
+ */
+export function useAggregatedCapabilityCells(
+  selectedIds: readonly string[],
+): AggregatedCellGroup[] {
+  const deviceCells = useCapabilityCells(selectedIds)
+
+  return useMemo(() => {
+    interface MutableGroup {
+      family: NodeFamily
+      role: string
+      label: string
+      cellKeys: CellKey[]
+      nodeIds: NodeId[]
+      deviceSet: Set<DeviceId>
+    }
+
+    const groups = new Map<string, MutableGroup>()
+    const groupOrder: string[] = []
+
+    for (const dc of deviceCells) {
+      for (const cell of dc.cells) {
+        const groupKey = `${cell.family}:${cell.role}:${cell.label}`
+        let entry = groups.get(groupKey)
+        if (!entry) {
+          entry = {
+            family: cell.family,
+            role: cell.role,
+            label: cell.label,
+            cellKeys: [],
+            nodeIds: [],
+            deviceSet: new Set(),
+          }
+          groups.set(groupKey, entry)
+          groupOrder.push(groupKey)
+        }
+        entry.cellKeys.push(cell.cellKey)
+        for (const nid of cell.nodeIds) {
+          entry.nodeIds.push(nid)
+        }
+        entry.deviceSet.add(cell.deviceId)
+      }
+    }
+
+    const result: AggregatedCellGroup[] = []
+    for (const groupKey of groupOrder) {
+      const e = groups.get(groupKey)!
+      result.push({
+        groupKey,
+        family: e.family,
+        role: e.role,
+        label: e.label,
+        cellKeys: Object.freeze(e.cellKeys.slice()) as readonly CellKey[],
+        nodeIds: Object.freeze(e.nodeIds.slice()) as readonly NodeId[],
+        cellCount: e.cellKeys.length,
+        deviceCount: e.deviceSet.size,
+      })
+    }
+    return result
+  }, [deviceCells])
 }

@@ -256,11 +256,15 @@ const FAMILY_EXTRACTOR_STATIC: Record<
 /** Color cell → canales canónicos r/g/b/white/amber (WAVE 4715). */
 function extractCellColor(data: ColorCellPayload): Record<string, number> | null {
   const ch: Record<string, number> = {}
-  if (data.r     !== undefined) ch['r']     = data.r
-  if (data.g     !== undefined) ch['g']     = data.g
-  if (data.b     !== undefined) ch['b']     = data.b
-  if (data.white !== undefined) ch['white'] = data.white
-  if (data.amber !== undefined) ch['amber'] = data.amber
+  if (data.r       !== undefined) ch['r']       = data.r
+  if (data.g       !== undefined) ch['g']       = data.g
+  if (data.b       !== undefined) ch['b']       = data.b
+  if (data.white   !== undefined) ch['white']   = data.white
+  if (data.amber   !== undefined) ch['amber']   = data.amber
+  // WAVE 4734-D: canales de intensidad embebidos en nodos COLOR autónomos (Tungsten Petal)
+  if (data.dimmer  !== undefined) { ch['dimmer'] = data.dimmer; ch['brightness'] = data.dimmer }
+  if (data.strobe  !== undefined) ch['strobe']  = data.strobe
+  if (data.shutter !== undefined) ch['shutter'] = data.shutter
   return Object.keys(ch).length > 0 ? ch : null
 }
 

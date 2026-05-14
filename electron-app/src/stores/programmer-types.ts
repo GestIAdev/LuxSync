@@ -88,6 +88,15 @@ export interface ColorCellPayload {
   readonly b?: number
   readonly white?: number
   readonly amber?: number
+  /**
+   * Canales de intensidad embebidos en nodos COLOR autónomos (patrón Tungsten Petal).
+   * Presentes cuando el canal físico `dimmer/strobe/shutter` es admitido por
+   * NodeFamily.COLOR en cellTypeAdmittance.ts (WAVE 4732.4).
+   * Normalizados 0-1 al igual que el resto de la familia.
+   */
+  readonly dimmer?:  number
+  readonly strobe?:  number
+  readonly shutter?: number
 }
 
 /**
@@ -252,6 +261,44 @@ export interface CellDescriptor {
   readonly role: NodeRole
   readonly label: string
   readonly cellIndex: number
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AGGREGATED CELL GROUP — WAVE 4730: HIVE MIND
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Grupo de células AGREGADAS por firma de capacidad.
+ *
+ * En lugar de devolver una lista por device (un panel por aparato), agrupamos
+ * las células que comparten la misma `family + role + label`. Si el operador
+ * selecciona 10 PARs, este array contendrá UN sólo grupo `COLOR:primary` con
+ * los 10 cellKeys y los 10 nodeIds correspondientes — la UI puede renderizar
+ * un único acordeón cuyo setter dispara sobre todo el conjunto a la vez.
+ *
+ * INVARIANTES:
+ * - `groupKey` es estable y único: `${family}:${role}:${label}`.
+ * - `cellKeys` y `nodeIds` son arrays congelados (Object.freeze).
+ * - `nodeIds` es la unión flat (twin-aware) de todos los nodeIds de las cells.
+ *
+ * Útil para multi-edit pro: el componente UI itera `cellKeys` y llama el
+ * setter `setCellColor / setCellImpact / ...` por cada una en un único
+ * onChange.
+ */
+export interface AggregatedCellGroup {
+  /** Identidad del grupo: `${family}:${role}:${label}`. */
+  readonly groupKey: string
+  readonly family: NodeFamily
+  readonly role: NodeRole
+  readonly label: string
+  /** Todas las células agregadas en este grupo (≥1). */
+  readonly cellKeys: readonly CellKey[]
+  /** Unión flat de todos los nodeIds — para hidratación o telemetría. */
+  readonly nodeIds: readonly NodeId[]
+  /** Cantidad de células en el grupo (= cellKeys.length). */
+  readonly cellCount: number
+  /** Cantidad de devices DISTINTOS aportando células al grupo. */
+  readonly deviceCount: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

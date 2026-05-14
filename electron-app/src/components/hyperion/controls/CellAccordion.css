@@ -1,0 +1,187 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎨 CELL ACCORDION — STYLES (WAVE 4734 BATCH 2)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Estilos para el `<CellAccordion>` compound component.
+ *
+ * Variable CSS clave inyectada por el componente:
+ *   --neon-base : color neon calculado por rol/familia (ej. #36d1ff para wash)
+ *
+ * Convenciones BEM:
+ *   .cell-accordion              — bloque raíz
+ *   .cell-accordion__header      — zona clickable
+ *   .cell-accordion__title-row  — flex row: chevron + dot + title + sublabel + badge
+ *   .cell-accordion__body        — slot de contenido (sección atómica)
+ *   .cell-accordion--expanded    — modificador: abierto
+ *   .cell-accordion--collapsed   — modificador: cerrado
+ *   .cell-accordion--active      — modificador: tiene override manual
+ *   .cell-accordion--generic     — variante sin SectionMeta (ExtrasAggregator)
+ */
+
+/* ── BASE ──────────────────────────────────────────────────────────────────── */
+
+.cell-accordion {
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    box-shadow   0.2s ease,
+    background   0.2s ease;
+}
+
+/* Cuando hay override activo — borde neon sutil */
+.cell-accordion--active {
+  border-color: color-mix(in srgb, var(--neon-base, #36d1ff) 40%, transparent);
+  box-shadow:   0 0 6px color-mix(in srgb, var(--neon-base, #36d1ff) 18%, transparent);
+}
+
+/* ── HEADER ────────────────────────────────────────────────────────────────── */
+
+.cell-accordion__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.cell-accordion__header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cell-accordion--collapsed .cell-accordion__header {
+  border-bottom: none;
+}
+
+/* ── TITLE ROW ─────────────────────────────────────────────────────────────── */
+
+.cell-accordion__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Chevron */
+.cell-accordion__chevron {
+  font-size: 9px;
+  color: color-mix(in srgb, var(--neon-base, #36d1ff) 80%, white);
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+}
+
+/* Neon identity dot */
+.cell-accordion__neon-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-base, #36d1ff);
+  box-shadow: 0 0 5px var(--neon-base, #36d1ff);
+  flex-shrink: 0;
+}
+
+/* Family title (uppercase, prominent) */
+.cell-accordion__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  flex-shrink: 0;
+}
+
+/* Cell sub-label ("PÉTALO 1") en el neon del rol */
+.cell-accordion__sublabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neon-base, #36d1ff);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Badge ×N — Hive Mind multi-fixture */
+.cell-accordion__hive-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  padding: 1px 4px;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+/* ── ACTIONS (Release button) ──────────────────────────────────────────────── */
+
+.cell-accordion__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cell-accordion__release-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  line-height: 1;
+}
+
+.cell-accordion__release-btn:hover {
+  background: rgba(255, 80, 80, 0.2);
+  border-color: rgba(255, 80, 80, 0.5);
+  color: #ff7070;
+}
+
+/* ── BODY ──────────────────────────────────────────────────────────────────── */
+
+.cell-accordion__body {
+  animation: cellAccordionExpand 0.2s ease forwards;
+  /* overflow:visible permite que los sliders no queden clippeados por el
+     border-radius cuando el contenido crece. */
+  overflow: visible;
+}
+
+@keyframes cellAccordionExpand {
+  from {
+    opacity: 0.7;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── GENERIC VARIANT ───────────────────────────────────────────────────────── */
+
+.cell-accordion--generic {
+  border-color: color-mix(in srgb, var(--neon-base, #8b5cf6) 20%, rgba(255,255,255,0.06));
+}
+
+.cell-accordion--generic .cell-accordion__title {
+  color: rgba(255, 255, 255, 0.75);
+}

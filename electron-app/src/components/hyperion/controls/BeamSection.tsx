@@ -6,12 +6,13 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { NodeFamily } from '../../../stores/programmer-types'
-import type { CapabilityContext } from '../../../stores/programmer-types'
+import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { BeamIcon } from '../../icons/LuxIcons'
 
 export interface BeamSectionProps {
   ctx: CapabilityContext<NodeFamily.BEAM>
+  peerCellKeys?: readonly CellKey[]
   isExpanded: boolean
   onToggle: () => void
 }
@@ -28,7 +29,7 @@ const GOBO_STEPS = [
   { value: 255, label: '7' },
 ]
 
-export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, isExpanded, onToggle }) => {
+export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, peerCellKeys, isExpanded, onToggle }) => {
   const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
   const data = ov?.payload.family === NodeFamily.BEAM ? ov.payload.data : {}
 
@@ -44,33 +45,46 @@ export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, isExpanded, onTog
   const iris       = denorm255(data.iris,  255)
   const hasOverride = Object.keys(data).length > 0
 
+  // WAVE 4731: Hive Mind — dispatch simultáneo a todas las células del grupo
+  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'focus' | 'zoom' | 'iris', val: number) => {
+    const store = useProgrammerStore.getState()
+    store.setCellBeam(ctx.cellKey, ch, val)
+    if (peerCellKeys) for (const k of peerCellKeys) store.setCellBeam(k, ch, val)
+  }, [ctx.cellKey, peerCellKeys])
+
+  const applyRelease = useCallback(() => {
+    const store = useProgrammerStore.getState()
+    store.releaseCell(ctx.cellKey)
+    if (peerCellKeys) for (const k of peerCellKeys) store.releaseCell(k)
+  }, [ctx.cellKey, peerCellKeys])
+
   const handleGoboChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'gobo', parseInt(e.target.value, 10))
-  }, [ctx.cellKey])
+    applyBeam('gobo', parseInt(e.target.value, 10))
+  }, [applyBeam])
 
   const handleGoboStep = useCallback((stepValue: number) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'gobo', stepValue)
-  }, [ctx.cellKey])
+    applyBeam('gobo', stepValue)
+  }, [applyBeam])
 
   const handlePrismChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'prism', parseInt(e.target.value, 10))
-  }, [ctx.cellKey])
+    applyBeam('prism', parseInt(e.target.value, 10))
+  }, [applyBeam])
 
   const handleFocusChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'focus', parseInt(e.target.value, 10))
-  }, [ctx.cellKey])
+    applyBeam('focus', parseInt(e.target.value, 10))
+  }, [applyBeam])
 
   const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'zoom', parseInt(e.target.value, 10))
-  }, [ctx.cellKey])
+    applyBeam('zoom', parseInt(e.target.value, 10))
+  }, [applyBeam])
 
   const handleIrisChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellBeam(ctx.cellKey, 'iris', parseInt(e.target.value, 10))
-  }, [ctx.cellKey])
+    applyBeam('iris', parseInt(e.target.value, 10))
+  }, [applyBeam])
 
   const handleRelease = useCallback(() => {
-    useProgrammerStore.getState().releaseCell(ctx.cellKey)
-  }, [ctx.cellKey])
+    applyRelease()
+  }, [applyRelease])
 
   // Find closest gobo step for display
   const currentGoboStep = useMemo(() => GOBO_STEPS.reduce((prev, curr) =>
@@ -230,3 +244,122 @@ export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, isExpanded, onTog
 }
 
 export default BeamSection
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BEAM BODY — WAVE 4734 BATCH 2
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface BeamBodyProps {
+  primaryKey: CellKey
+  allCellKeys: readonly CellKey[]
+}
+
+export const BeamBody: React.FC<BeamBodyProps> = ({ primaryKey, allCellKeys }) => {
+  const ov   = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
+  const data = ov?.payload.family === NodeFamily.BEAM ? ov.payload.data : {}
+
+  const clamp255Local = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
+  const denorm = (v: number | undefined, fallback: number) =>
+    v !== undefined ? clamp255Local(v * 255) : fallback
+
+  const gobo       = denorm(data.gobo,  0)
+  const prismValue = denorm(data.prism, 0)
+  const focus      = denorm(data.focus, 128)
+  const zoom       = denorm(data.zoom,  128)
+  const iris       = denorm(data.iris,  255)
+
+  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'focus' | 'zoom' | 'iris', val: number) => {
+    const store = useProgrammerStore.getState()
+    for (const k of allCellKeys) store.setCellBeam(k, ch, val)
+  }, [allCellKeys])
+
+  const currentGoboStep = useMemo(() =>
+    GOBO_STEPS.reduce((prev, curr) =>
+      Math.abs(curr.value - gobo) < Math.abs(prev.value - gobo) ? curr : prev
+    ),
+  [gobo])
+
+  return (
+    <>
+      {/* GOBO */}
+      <div className="beam-control gobo-control">
+        <div className="control-header">
+          <label className="control-label">GOBO</label>
+          <span className="control-value">{currentGoboStep.label}</span>
+        </div>
+        <div className="gobo-steps">
+          {GOBO_STEPS.map(step => (
+            <button key={step.value}
+              className={`gobo-step ${gobo === step.value ? 'active' : ''}`}
+              onClick={() => applyBeam('gobo', step.value)}
+              title={`Gobo ${step.label}`}
+            >
+              {step.label}
+            </button>
+          ))}
+        </div>
+        <input type="range" className="beam-slider gobo-slider"
+          min={0} max={255} value={gobo}
+          onChange={e => applyBeam('gobo', parseInt(e.target.value, 10))}
+        />
+      </div>
+
+      {/* PRISM */}
+      <div className="beam-control prism-control">
+        <div className="control-header">
+          <label className="control-label">PRISM</label>
+          <span className="control-value">
+            {prismValue === 0 ? 'OFF' : prismValue < 122 ? `${prismValue}` : `⟳ ${prismValue}`}
+          </span>
+        </div>
+        <div className="prism-slider-wrap">
+          <input type="range" className="beam-slider prism-slider"
+            min={0} max={255} value={prismValue}
+            onChange={e => applyBeam('prism', parseInt(e.target.value, 10))}
+          />
+          <div className="prism-markers">
+            <span className="prism-marker" style={{ left: '0%' }}>OFF</span>
+            <span className="prism-marker" style={{ left: '47.8%' }}>122</span>
+            <span className="prism-marker" style={{ left: '100%' }}>255</span>
+          </div>
+        </div>
+      </div>
+
+      {/* FOCUS / ZOOM / IRIS */}
+      <div className="beam-control optics-control">
+        <div className="optic-row">
+          <label className="optic-label">FOCUS</label>
+          <span className="optic-range-label near">Near</span>
+          <input type="range" className="beam-slider focus-slider"
+            min={0} max={255} value={focus}
+            onChange={e => applyBeam('focus', parseInt(e.target.value, 10))}
+          />
+          <span className="optic-range-label far">Far</span>
+          <span className="optic-value">{Math.round((focus / 255) * 100)}%</span>
+        </div>
+        <div className="optic-row">
+          <label className="optic-label">ZOOM</label>
+          <span className="optic-range-label spot">Spot</span>
+          <input type="range" className="beam-slider zoom-slider"
+            min={0} max={255} value={zoom}
+            onChange={e => applyBeam('zoom', parseInt(e.target.value, 10))}
+          />
+          <span className="optic-range-label flood">Flood</span>
+          <span className="optic-value">{Math.round((zoom / 255) * 100)}%</span>
+        </div>
+        <div className="optic-row">
+          <label className="optic-label">IRIS</label>
+          <span className="optic-range-label closed">Closed</span>
+          <input type="range" className="beam-slider iris-slider"
+            min={0} max={255} value={iris}
+            onChange={e => applyBeam('iris', parseInt(e.target.value, 10))}
+          />
+          <span className="optic-range-label open">Open</span>
+          <span className="optic-value">{Math.round((iris / 255) * 100)}%</span>
+        </div>
+      </div>
+
+      {Object.keys(data).length > 0 && <div className="override-badge">MANUAL</div>}
+    </>
+  )
+}

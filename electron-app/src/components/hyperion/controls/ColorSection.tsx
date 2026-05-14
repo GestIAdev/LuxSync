@@ -5,12 +5,14 @@
 
 import React, { useCallback, useRef } from 'react'
 import { NodeFamily } from '../../../stores/programmer-types'
-import type { CapabilityContext } from '../../../stores/programmer-types'
+import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { ColorIcon } from '../../icons/LuxIcons'
+import { InlineImpactRow } from './InlineImpactRow'
 
 export interface ColorSectionProps {
   ctx: CapabilityContext<NodeFamily.COLOR>
+  peerCellKeys?: readonly CellKey[]
   isExpanded: boolean
   onToggle: () => void
 }
@@ -84,7 +86,7 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
   }
 }
 
-export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onToggle }) => {
+export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, peerCellKeys, isExpanded, onToggle }) => {
   const nativePickerRef = useRef<HTMLInputElement>(null)
   const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
   const data = ov?.payload.family === NodeFamily.COLOR ? ov.payload.data : {}
@@ -97,19 +99,32 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onT
   const safeColor = { r: r ?? 0, g: g ?? 0, b: b ?? 0 }
   const isMixedColor = r === null || g === null || b === null
 
+  // WAVE 4731: Hive Mind — dispatch simultáneo a todas las células del grupo
+  const applyColor = useCallback((r: number, g: number, b: number) => {
+    const store = useProgrammerStore.getState()
+    store.setCellColor(ctx.cellKey, r, g, b)
+    if (peerCellKeys) for (const k of peerCellKeys) store.setCellColor(k, r, g, b)
+  }, [ctx.cellKey, peerCellKeys])
+
+  const applyRelease = useCallback(() => {
+    const store = useProgrammerStore.getState()
+    store.releaseCell(ctx.cellKey)
+    if (peerCellKeys) for (const k of peerCellKeys) store.releaseCell(k)
+  }, [ctx.cellKey, peerCellKeys])
+
   const handleRGBChange = useCallback((channel: 'r' | 'g' | 'b', value: number) => {
     const newColor = { ...safeColor, [channel]: value }
-    useProgrammerStore.getState().setCellColor(ctx.cellKey, newColor.r, newColor.g, newColor.b)
-  }, [safeColor, ctx.cellKey])
+    applyColor(newColor.r, newColor.g, newColor.b)
+  }, [safeColor, applyColor])
 
   const handleQuickColorClick = useCallback((quickColor: typeof QUICK_COLORS[0]) => {
-    useProgrammerStore.getState().setCellColor(ctx.cellKey, quickColor.color.r, quickColor.color.g, quickColor.color.b)
-  }, [ctx.cellKey])
+    applyColor(quickColor.color.r, quickColor.color.g, quickColor.color.b)
+  }, [applyColor])
 
   const handleRelease = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    useProgrammerStore.getState().releaseCell(ctx.cellKey)
-  }, [ctx.cellKey])
+    applyRelease()
+  }, [applyRelease])
 
   const handleOpenNativePicker = useCallback(() => {
     nativePickerRef.current?.click()
@@ -117,14 +132,14 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onT
 
   const handleNativePickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const parsed = hexToRgb(e.target.value)
-    useProgrammerStore.getState().setCellColor(ctx.cellKey, parsed.r, parsed.g, parsed.b)
-  }, [ctx.cellKey])
+    applyColor(parsed.r, parsed.g, parsed.b)
+  }, [applyColor])
 
   const handleHueStripChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const hue = Number(e.target.value)
     const vivid = hslToRgb(hue, 1, 0.5)
-    useProgrammerStore.getState().setCellColor(ctx.cellKey, vivid.r, vivid.g, vivid.b)
-  }, [ctx.cellKey])
+    applyColor(vivid.r, vivid.g, vivid.b)
+  }, [applyColor])
 
   const previewColor = `rgb(${safeColor.r}, ${safeColor.g}, ${safeColor.b})`
   const previewHex = rgbToHex(safeColor.r, safeColor.g, safeColor.b)
@@ -261,3 +276,148 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, isExpanded, onT
 }
 
 export default ColorSection
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLOR BODY — WAVE 4734 BATCH 2
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Rueda de color + RGB sliders + hue strip sin accordion shell.
+// Si el grupo contiene canales de impacto (dimmer/strobe en cell COLOR —
+// patrón Tungsten petal), se inyecta <InlineImpactRow> debajo (§7 blueprint).
+
+export interface ColorBodyProps {
+  primaryKey: CellKey
+  allCellKeys: readonly CellKey[]
+}
+
+export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys }) => {
+  const nativePickerRef = useRef<HTMLInputElement>(null)
+  const ov   = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
+  const data = ov?.payload.family === NodeFamily.COLOR ? ov.payload.data : {}
+
+  const r = data.r !== undefined ? Math.round(data.r * 255) : null
+  const g = data.g !== undefined ? Math.round(data.g * 255) : null
+  const b = data.b !== undefined ? Math.round(data.b * 255) : null
+  const hasOverride  = data.r !== undefined || data.g !== undefined || data.b !== undefined
+  const safeColor    = { r: r ?? 0, g: g ?? 0, b: b ?? 0 }
+  const isMixedColor = r === null || g === null || b === null
+  const previewColor = `rgb(${safeColor.r}, ${safeColor.g}, ${safeColor.b})`
+  const previewHex   = rgbToHex(safeColor.r, safeColor.g, safeColor.b)
+
+  const applyColor = useCallback((nr: number, ng: number, nb: number) => {
+    const store = useProgrammerStore.getState()
+    for (const k of allCellKeys) store.setCellColor(k, nr, ng, nb)
+  }, [allCellKeys])
+
+  const handleRGBChange = useCallback((ch: 'r' | 'g' | 'b', value: number) => {
+    const next = { ...safeColor, [ch]: value }
+    applyColor(next.r, next.g, next.b)
+  }, [safeColor, applyColor])
+
+  const handleHueStrip = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const vivid = hslToRgb(Number(e.target.value), 1, 0.5)
+    applyColor(vivid.r, vivid.g, vivid.b)
+  }, [applyColor])
+
+  // ── Canales de intensidad embebidos en ColorCellPayload (WAVE 4734-D) ──
+  // dimmer/strobe/shutter son opcionales. Si el pipeline los asignó al
+  // nodo COLOR (wash autónomo / Tungsten petal), aparecerán en el payload.
+  // InlineImpactRow se muestra solo cuando el canal existe en el override.
+  const dimmerVal  = data.dimmer  !== undefined ? Math.round(data.dimmer  * 100) : undefined
+  const strobeVal  = data.strobe  !== undefined ? Math.round(data.strobe  * 100) : undefined
+  const shutterVal = data.shutter !== undefined ? Math.round(data.shutter * 100) : undefined
+
+  return (
+    <>
+      {/* Swatch + native picker */}
+      <div className="color-preview-container">
+        <div className="color-preview-main">
+          <button
+            className="color-preview-swatch"
+            onClick={() => nativePickerRef.current?.click()}
+            style={isMixedColor
+              ? { background: 'linear-gradient(135deg, #ff3366 0%, #ff3366 33%, #10141d 33%, #10141d 66%, #36d1ff 66%, #36d1ff 100%)' }
+              : { backgroundColor: previewColor }
+            }
+            title="Open color wheel"
+            type="button"
+          />
+          <input
+            ref={nativePickerRef}
+            type="color"
+            className="native-color-input"
+            value={previewHex}
+            onChange={e => { const p = hexToRgb(e.target.value); applyColor(p.r, p.g, p.b) }}
+            aria-label="Color wheel"
+          />
+          <div className="color-values">
+            <span>R: {r ?? '-'}</span>
+            <span>G: {g ?? '-'}</span>
+            <span>B: {b ?? '-'}</span>
+            <span>HEX: {isMixedColor ? '-' : previewHex.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <div className="hue-strip-wrap floating">
+          <label className="hue-strip-label">RAINBOW PALETTE</label>
+          <input type="range" min={0} max={360} defaultValue={0}
+            onChange={handleHueStrip} className="hue-strip"
+          />
+        </div>
+      </div>
+
+      <div className="quick-colors">
+        {QUICK_COLORS.map((qc, i) => (
+          <button key={i} className="quick-color-btn"
+            onClick={() => applyColor(qc.color.r, qc.color.g, qc.color.b)}
+            style={{ backgroundColor: `rgb(${qc.color.r}, ${qc.color.g}, ${qc.color.b})` }}
+            title={qc.label}
+          >
+            {qc.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="rgb-sliders">
+        {(['r', 'g', 'b'] as const).map(ch => (
+          <div key={ch} className="rgb-slider-row">
+            <label className={`rgb-label ${ch === 'r' ? 'red' : ch === 'g' ? 'green' : 'blue'}`}>
+              {ch.toUpperCase()}
+            </label>
+            <input
+              type="range" min={0} max={255}
+              value={safeColor[ch]}
+              onChange={e => handleRGBChange(ch, Number(e.target.value))}
+              className={`rgb-slider ${ch === 'r' ? 'red' : ch === 'g' ? 'green' : 'blue'}`}
+            />
+            <span className="rgb-value">{ch === 'r' ? r : ch === 'g' ? g : b}{ch === 'r' ? (r === null ? '-' : '') : ch === 'g' ? (g === null ? '-' : '') : (b === null ? '-' : '')}</span>
+          </div>
+        ))}
+      </div>
+
+      {hasOverride && <div className="override-badge">MANUAL</div>}
+
+      {/* Canales de intensidad embebidos — blueprint §7.2 / WAVE 4734-D.
+          Se muestran únicamente cuando el canal existe en el payload COLOR.
+          Con valor 0 el slider aparece; sin override el canal no existe => fila oculta. */}
+      {dimmerVal !== undefined && (
+        <InlineImpactRow
+          primaryKey={primaryKey} allCellKeys={allCellKeys}
+          channel="dimmer" label="Cell Dimmer" value={dimmerVal}
+        />
+      )}
+      {strobeVal !== undefined && (
+        <InlineImpactRow
+          primaryKey={primaryKey} allCellKeys={allCellKeys}
+          channel="strobe" label="Cell Strobe" value={strobeVal}
+        />
+      )}
+      {shutterVal !== undefined && (
+        <InlineImpactRow
+          primaryKey={primaryKey} allCellKeys={allCellKeys}
+          channel="shutter" label="Cell Shutter" value={shutterVal}
+        />
+      )}
+    </>
+  )
+}

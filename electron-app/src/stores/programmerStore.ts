@@ -280,8 +280,29 @@ interface ProgrammerActions {
   /** Release todos los phantom channels */
   releaseExtras: () => void
 
-  /** Release TODAS las familias para los fixtures activos (UNLOCK ALL) */
+  /** Release TODAS las familias para los fixtures activos (UNLOCK ALL — kill switch) */
   releaseAll: () => void
+
+  /**
+   * WAVE 4730: divorcio de dominios.
+   *
+   * Limpia SOLO las familias del dominio Programmer (IMPACT, COLOR, BEAM, EXTRAS
+   * no-kinetic). Preserva intacto pan/tilt/speed/targetX/Y/Z y los phantoms
+   * `rotation`/`speed` que pertenecen a la Cathedral. NO marca KINETIC dirty.
+   *
+   * Es la acción que debe disparar el botón de "UNLOCK CONTROLS" del Programmer.
+   */
+  releaseProgrammer: () => void
+
+  /**
+   * WAVE 4730: divorcio de dominios.
+   *
+   * Limpia SOLO el dominio cinético (familia KINETIC + phantoms rotation/speed).
+   * Preserva intactos los canales del Programmer (color/intensidad/beam).
+   *
+   * Es la acción que debe disparar el "UNLOCK CATHEDRAL" del KineticsCathedral.
+   */
+  releaseKinetics: () => void
 
   /** El bridge llama esto tras hacer flush de las dirty families */
   consumeDirty: () => void
@@ -305,13 +326,35 @@ interface ProgrammerActions {
   registerFixtureCells: (descriptors: readonly CellDescriptor[]) => void
 
   /**
-   * Borra el catálogo de células de un device y libera todos sus overrides.
-   * Útil cuando el operador deselecciona o el showfile cambia.
+   * Borra el catálogo de células de un device Y libera todos sus overrides
+   * (envía clear al L2 para los nodeIds activos). Útil al cargar showfile o
+   * al hacer un teardown explícito del device — NO debe llamarse al cambiar
+   * la selección UI (eso destruiría la persistencia).
    */
   unregisterDeviceCells: (deviceId: DeviceId) => void
 
+  /**
+   * WAVE 4730: cleanup SUAVE del catálogo UI.
+   *
+   * Solo elimina del `cellRegistry` las cells de este device QUE NO tengan
+   * override activo. Mantiene intactas las que sí lo tengan, para que al
+   * re-seleccionar el fixture el override persista y la UI lo hidrate
+   * leyendo `cellOverrides.get(cellKey)`.
+   *
+   * NUNCA emite clears al L2. Es 100% UI-side.
+   */
+  forgetDeviceCatalog: (deviceId: DeviceId) => void
+
   /** Set color RGB para una célula específica (r,g,b en 0-255). */
   setCellColor: (cellKey: CellKey, r: number, g: number, b: number) => void
+
+  /**
+   * Set canal de intensidad EMBEBIDO en una célula COLOR (WAVE 4734-D).
+   * Para nodos Wash/Petal que tienen dimmer físico dentro del nodo COLOR.
+   * Escribe en `ColorCellPayload.dimmer|strobe|shutter` (0-100%), NO en IMPACT.
+   * Usar `setCellImpact` para nodos de familia IMPACT pura.
+   */
+  setCellColorImpact: (cellKey: CellKey, channel: 'dimmer' | 'strobe' | 'shutter', percent: number) => void
 
   /** Set canal IMPACT para una célula (dimmer/strobe/shutter/limit en 0-100%). */
   setCellImpact: (cellKey: CellKey, channel: ImpactChannelName, percent: number) => void
@@ -960,6 +1003,112 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
       })
     },
 
+    // ── WAVE 4730: DIVORCIO DE DOMINIOS ──
+
+    releaseProgrammer: () => {
+      set(state => {
+        // ── CELL LAYER: limpia overrides cuya familia NO sea KINETIC
+        const nextCellOverrides = new Map(state.cellOverrides)
+        const nextDirtyCells = new Set(state.dirtyCells)
+        const nextClears = new Set(state.pendingClearNodeIds)
+        for (const [key, ov] of state.cellOverrides) {
+          if (ov.payload.family !== NodeFamily.KINETIC) {
+            for (const nid of ov.nodeIds) nextClears.add(nid)
+            nextCellOverrides.delete(key)
+            nextDirtyCells.delete(key)
+          }
+        }
+
+        // ── LEGACY LAYER: preservar pan/tilt/speed/targetXYZ + extras phantom kinetic
+        const KINETIC_PHANTOM = new Set(['rotation', 'speed'])
+        const nextOverrides = new Map<string, ProgrammerOverrides>()
+        for (const [id, ov] of state.fixtureOverrides) {
+          const kept = createEmptyOverrides()
+          // Preservar campos cinéticos
+          kept.pan     = ov.pan
+          kept.tilt    = ov.tilt
+          kept.speed   = ov.speed
+          kept.targetX = ov.targetX
+          kept.targetY = ov.targetY
+          kept.targetZ = ov.targetZ
+          // Preservar extras phantom kinetic (rotation, speed)
+          ov.extras.forEach((v, k) => {
+            if (KINETIC_PHANTOM.has(k)) kept.extras.set(k, v)
+          })
+          nextOverrides.set(id, kept)
+        }
+        // Asegurar que los activos queden inicializados (el bridge necesita el slot
+        // para emitir clears explícitos al NodeArbiter L2).
+        for (const id of state.activeFixtureIds) {
+          if (!nextOverrides.has(id)) nextOverrides.set(id, createEmptyOverrides())
+        }
+
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('IMPACT')
+        dirty.add('COLOR')
+        dirty.add('BEAM')
+        dirty.add('EXTRAS')
+        // KINETIC NO se marca dirty — el dominio Cathedral queda intacto.
+
+        return {
+          cellOverrides: nextCellOverrides,
+          dirtyCells: nextDirtyCells,
+          pendingClearNodeIds: nextClears,
+          fixtureOverrides: nextOverrides,
+          dirtyFamilies: dirty,
+          displayDimmer: 100,
+          displayStrobe: 0,
+          displayLimit: 100,
+          displayColor: { r: 255, g: 255, b: 255 },
+        }
+      })
+    },
+
+    releaseKinetics: () => {
+      set(state => {
+        // ── CELL LAYER: limpia overrides KINETIC
+        const nextCellOverrides = new Map(state.cellOverrides)
+        const nextDirtyCells = new Set(state.dirtyCells)
+        const nextClears = new Set(state.pendingClearNodeIds)
+        for (const [key, ov] of state.cellOverrides) {
+          if (ov.payload.family === NodeFamily.KINETIC) {
+            for (const nid of ov.nodeIds) nextClears.add(nid)
+            nextCellOverrides.delete(key)
+            nextDirtyCells.delete(key)
+          }
+        }
+
+        // ── LEGACY LAYER: limpia pan/tilt/speed/targetXYZ + extras phantom kinetic
+        const KINETIC_PHANTOM = new Set(['rotation', 'speed'])
+        const nextOverrides = new Map<string, ProgrammerOverrides>()
+        for (const [id, ov] of state.fixtureOverrides) {
+          const newExtras = new Map(ov.extras)
+          for (const k of Array.from(newExtras.keys())) {
+            if (KINETIC_PHANTOM.has(k)) newExtras.delete(k)
+          }
+          nextOverrides.set(id, {
+            ...ov,
+            pan: null, tilt: null, speed: null,
+            targetX: null, targetY: null, targetZ: null,
+            extras: newExtras,
+          })
+        }
+
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('KINETIC')
+        // Si había phantoms en extras, también recalcula EXTRAS para empujar el clear.
+        dirty.add('EXTRAS')
+
+        return {
+          cellOverrides: nextCellOverrides,
+          dirtyCells: nextDirtyCells,
+          pendingClearNodeIds: nextClears,
+          fixtureOverrides: nextOverrides,
+          dirtyFamilies: dirty,
+        }
+      })
+    },
+
     // ── BRIDGE CONTROL ──
 
     consumeDirty: () => {
@@ -1078,12 +1227,58 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
       })
     },
 
+    forgetDeviceCatalog: (deviceId) => {
+      set(state => {
+        const cellKeys = state.cellsByDevice.get(deviceId)
+        if (!cellKeys || cellKeys.length === 0) {
+          if (state.cellsByDevice.has(deviceId)) {
+            const next = new Map(state.cellsByDevice)
+            next.delete(deviceId)
+            return { cellsByDevice: next }
+          }
+          return {}
+        }
+
+        // Solo eliminar entries del registry para cells SIN override activo.
+        // Las cells con override permanecen en el registry para garantizar
+        // que al re-seleccionar el fixture, los nodeIds sigan siendo
+        // resolubles y los valores se hidraten correctamente desde
+        // `cellOverrides`.
+        const nextRegistry = new Map(state.cellRegistry)
+        const remainingKeys: CellKey[] = []
+        for (const key of cellKeys) {
+          if (state.cellOverrides.has(key)) {
+            remainingKeys.push(key)
+          } else {
+            nextRegistry.delete(key)
+          }
+        }
+
+        const nextCellsByDevice = new Map(state.cellsByDevice)
+        if (remainingKeys.length === 0) {
+          nextCellsByDevice.delete(deviceId)
+        } else {
+          nextCellsByDevice.set(deviceId, Object.freeze(remainingKeys) as readonly CellKey[])
+        }
+
+        return {
+          cellRegistry: nextRegistry,
+          cellsByDevice: nextCellsByDevice,
+        }
+      })
+    },
+
     setCellColor: (cellKey, r, g, b) => {
       const patch: Partial<ColorCellPayload> = {
         r: clamp01(r / 255),
         g: clamp01(g / 255),
         b: clamp01(b / 255),
       }
+      set(state => upsertCellOverride(state, cellKey, NodeFamily.COLOR, patch))
+    },
+
+    setCellColorImpact: (cellKey, channel, percent) => {
+      const patch: Partial<ColorCellPayload> = { [channel]: clamp01(percent / 100) }
       set(state => upsertCellOverride(state, cellKey, NodeFamily.COLOR, patch))
     },
 

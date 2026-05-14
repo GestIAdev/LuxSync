@@ -6,12 +6,13 @@
 
 import React, { useCallback } from 'react'
 import { NodeFamily } from '../../../stores/programmer-types'
-import type { CapabilityContext } from '../../../stores/programmer-types'
+import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { IntensityIcon, StrobeIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
   ctx: CapabilityContext<NodeFamily.IMPACT>
+  peerCellKeys?: readonly CellKey[]
   isExpanded: boolean
   onToggle: () => void
 }
@@ -42,7 +43,7 @@ const LIMIT_PRESETS = [
   { label: 'FULL', value: 100 },
 ]
 
-export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, isExpanded, onToggle }) => {
+export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, peerCellKeys, isExpanded, onToggle }) => {
   const ov = useProgrammerStore(s => s.cellOverrides.get(ctx.cellKey))
   const data = ov?.payload.family === NodeFamily.IMPACT ? ov.payload.data : {}
 
@@ -62,46 +63,59 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, isExpan
   const strobeLabel = strobe === null ? '-' : (strobe === 0 ? 'OFF' : `${Math.round(strobe)}%`)
   const limitLabel  = `${Math.round(limit)}%`
 
+  // WAVE 4731: Hive Mind — dispatch simultáneo a todas las células del grupo
+  const applyImpact = useCallback((ch: 'dimmer' | 'strobe' | 'limit', val: number) => {
+    const store = useProgrammerStore.getState()
+    store.setCellImpact(ctx.cellKey, ch, val)
+    if (peerCellKeys) for (const k of peerCellKeys) store.setCellImpact(k, ch, val)
+  }, [ctx.cellKey, peerCellKeys])
+
+  const applyRelease = useCallback(() => {
+    const store = useProgrammerStore.getState()
+    store.releaseCell(ctx.cellKey)
+    if (peerCellKeys) for (const k of peerCellKeys) store.releaseCell(k)
+  }, [ctx.cellKey, peerCellKeys])
+
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'dimmer', Number(e.target.value))
-  }, [ctx.cellKey])
+    applyImpact('dimmer', Number(e.target.value))
+  }, [applyImpact])
 
   const handlePresetClick = useCallback((v: number) => {
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'dimmer', v)
-  }, [ctx.cellKey])
+    applyImpact('dimmer', v)
+  }, [applyImpact])
 
   const handleStrobeSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'strobe', Number(e.target.value))
-  }, [ctx.cellKey])
+    applyImpact('strobe', Number(e.target.value))
+  }, [applyImpact])
 
   const handleStrobePresetClick = useCallback((v: number) => {
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'strobe', v)
-  }, [ctx.cellKey])
+    applyImpact('strobe', v)
+  }, [applyImpact])
 
   const handleLimitSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value)
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'limit', v)
+    applyImpact('limit', v)
     window.lux?.aether?.setInhibitLimit([...ctx.nodeIds], Math.max(0, Math.min(100, v)) / 100)
-  }, [ctx.cellKey, ctx.nodeIds])
+  }, [applyImpact, ctx.nodeIds])
 
   const handleLimitPresetClick = useCallback((v: number) => {
-    useProgrammerStore.getState().setCellImpact(ctx.cellKey, 'limit', v)
+    applyImpact('limit', v)
     window.lux?.aether?.setInhibitLimit([...ctx.nodeIds], Math.max(0, Math.min(100, v)) / 100)
-  }, [ctx.cellKey, ctx.nodeIds])
+  }, [applyImpact, ctx.nodeIds])
 
   const handleLimitRelease = useCallback(() => {
-    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+    applyRelease()
     window.lux?.aether?.clearInhibitLimit([...ctx.nodeIds])
-  }, [ctx.cellKey, ctx.nodeIds])
+  }, [applyRelease, ctx.nodeIds])
 
   const handleRelease = useCallback(() => {
-    useProgrammerStore.getState().releaseCell(ctx.cellKey)
+    applyRelease()
     window.lux?.aether?.clearInhibitLimit([...ctx.nodeIds])
-  }, [ctx.cellKey, ctx.nodeIds])
+  }, [applyRelease, ctx.nodeIds])
 
   const handleStrobeRelease = useCallback(() => {
-    useProgrammerStore.getState().releaseCell(ctx.cellKey)
-  }, [ctx.cellKey])
+    applyRelease()
+  }, [applyRelease])
   
   return (
     <div className={`programmer-section intensity-section ${hasAnyOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
@@ -265,3 +279,152 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({ ctx, isExpan
 }
 
 export default IntensitySection
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTENSITY BODY — WAVE 4734 BATCH 2
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Variante "pura" sin accordion shell. CellAccordion monta este componente
+// como children slot. La lógica Hive Mind se despacha a TODOS los cellKeys
+// del grupo agregado (allCellKeys), no solo al primero.
+
+export interface IntensityBodyProps {
+  /** CellKey de lectura (primary — determina qué override se muestra). */
+  primaryKey: CellKey
+  /** Todos los cellKeys del grupo (incluye primary). Setters disparan a todos. */
+  allCellKeys: readonly CellKey[]
+  /** nodeIds para IPC de inhibit limit. */
+  nodeIds: readonly string[]
+}
+
+export const IntensityBody: React.FC<IntensityBodyProps> = ({ primaryKey, allCellKeys, nodeIds }) => {
+  const ov = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
+  const data = ov?.payload.family === NodeFamily.IMPACT ? ov.payload.data : {}
+
+  const dimmer = data.dimmer !== undefined ? Math.round(data.dimmer * 100) : null
+  const strobe = data.strobe !== undefined ? Math.round(data.strobe * 100) : null
+  const limit  = data.limit  !== undefined ? Math.round(data.limit  * 100) : 100
+
+  const hasDimmer = data.dimmer !== undefined
+  const hasStrobe = data.strobe !== undefined
+  const hasLimit  = data.limit  !== undefined && data.limit < 1
+
+  const sliderValue       = dimmer ?? 0
+  const sliderStrobeValue = strobe ?? 0
+  const sliderLimitValue  = limit
+  const dimmerLabel = dimmer === null ? '-' : `${Math.round(dimmer)}%`
+  const strobeLabel = strobe === null ? '-' : (strobe === 0 ? 'OFF' : `${Math.round(strobe)}%`)
+  const limitLabel  = `${Math.round(limit)}%`
+
+  const applyImpact = useCallback((ch: 'dimmer' | 'strobe' | 'limit', val: number) => {
+    const store = useProgrammerStore.getState()
+    for (const k of allCellKeys) store.setCellImpact(k, ch, val)
+  }, [allCellKeys])
+
+  const applyRelease = useCallback(() => {
+    const store = useProgrammerStore.getState()
+    for (const k of allCellKeys) store.releaseCell(k)
+  }, [allCellKeys])
+
+  return (
+    <>
+      {/* Main Dimmer Slider */}
+      <div className="intensity-slider-container">
+        <input
+          type="range" min={0} max={100} value={sliderValue}
+          onChange={e => applyImpact('dimmer', Number(e.target.value))}
+          className="intensity-slider"
+        />
+        <div className="intensity-value">{dimmerLabel}</div>
+      </div>
+
+      <div className="intensity-bar">
+        <div className="intensity-fill" style={{ width: `${sliderValue}%` }} />
+      </div>
+
+      <div className="intensity-presets">
+        {PRESETS.map(p => (
+          <button
+            key={p.value}
+            className={`preset-btn ${dimmer !== null && dimmer === p.value ? 'active' : ''}`}
+            onClick={() => applyImpact('dimmer', p.value)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {hasDimmer && <div className="override-badge">MANUAL</div>}
+
+      {/* LIMIT */}
+      <div className="strobe-control-section limit-control-section">
+        <div className="strobe-header">
+          <span className="limit-icon">🔒</span>
+          <span className="strobe-label">LIMIT</span>
+          {hasLimit && (
+            <button className="release-btn release-btn-mini"
+              onClick={() => { applyRelease(); window.lux?.aether?.clearInhibitLimit([...nodeIds]) }}
+              title="Release limit"
+            >↺</button>
+          )}
+        </div>
+        <div className="intensity-slider-container">
+          <input
+            type="range" min={0} max={100} value={sliderLimitValue}
+            onChange={e => {
+              const v = Number(e.target.value)
+              applyImpact('limit', v)
+              window.lux?.aether?.setInhibitLimit([...nodeIds], Math.max(0, Math.min(100, v)) / 100)
+            }}
+            className="intensity-slider limit-slider"
+          />
+          <div className="intensity-value">{limitLabel}</div>
+        </div>
+        <div className="intensity-presets limit-presets">
+          {LIMIT_PRESETS.map(p => (
+            <button key={p.label}
+              className={`preset-btn ${limit === p.value ? 'active' : ''}`}
+              onClick={() => applyImpact('limit', p.value)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {hasLimit && <div className="override-badge limit-override">LIMIT {limitLabel}</div>}
+      </div>
+
+      {/* STROBE */}
+      <div className="strobe-control-section">
+        <div className="strobe-header">
+          <StrobeIcon size={14} className="strobe-icon" />
+          <span className="strobe-label">STROBE</span>
+          {hasStrobe && (
+            <button className="release-btn release-btn-mini"
+              onClick={applyRelease}
+              title="Release strobe"
+            >↺</button>
+          )}
+        </div>
+        <div className="intensity-slider-container">
+          <input
+            type="range" min={0} max={100} value={sliderStrobeValue}
+            onChange={e => applyImpact('strobe', Number(e.target.value))}
+            className="intensity-slider strobe-slider"
+          />
+          <div className="intensity-value">{strobeLabel}</div>
+        </div>
+        <div className="intensity-presets strobe-presets">
+          {STROBE_PRESETS.map(p => (
+            <button key={p.label}
+              className={`preset-btn ${strobe !== null && strobe === p.value ? 'active' : ''}`}
+              onClick={() => applyImpact('strobe', p.value)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {hasStrobe && <div className="override-badge strobe-override">STROBE MANUAL</div>}
+      </div>
+    </>
+  )
+}

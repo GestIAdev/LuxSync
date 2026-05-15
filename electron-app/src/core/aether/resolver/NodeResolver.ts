@@ -847,11 +847,19 @@ export class NodeResolver implements INodeResolver {
       // En ese caso se cae al valor arbitrado original (channelValues).
       const _tv = translatedValues[chDef.type]
       let rawNormalized: number
+      let rawSource: 'translated' | 'channel' | 'default'
       if (_tv !== undefined && !Number.isNaN(_tv)) {
         rawNormalized = _tv
+        rawSource = 'translated'
       } else {
         const _cv = channelValues[chDef.type]
-        rawNormalized = _cv !== undefined ? _cv : this._getDefaultNormalizedValue(node, chDef)
+        if (_cv !== undefined) {
+          rawNormalized = _cv
+          rawSource = 'channel'
+        } else {
+          rawNormalized = this._getDefaultNormalizedValue(node, chDef)
+          rawSource = 'default'
+        }
       }
       rawNormalized = sanitizeNormalizedValue(rawNormalized)
 
@@ -909,9 +917,16 @@ export class NodeResolver implements INodeResolver {
 
       // 🛂 WAVE 4735.3 FORENSIC: NaN sentinel defense-in-depth.
       // Nunca permitir NaN/Infinity fuera de [0..255] hacia el Uint8Array.
-      buf[bufIdx] = Number.isNaN(dmxValue)
+      const safeDmxValue = Number.isNaN(dmxValue)
         ? 0
         : sanitizeDmxByte(dmxValue)
+      if (chDef.type === 'rotation' && safeDmxValue === 127) {
+        console.log(
+          `[DYE] Escribiendo DMX para Rotation. Valor: ${safeDmxValue}. ` +
+          `Source: ${rawSource} | node=${String(node.nodeId)} | device=${String(device.deviceId)}`,
+        )
+      }
+      buf[bufIdx] = safeDmxValue
 
       // Telemetría legacy removida.
 

@@ -19,10 +19,22 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useKeyMapStore, selectIsLearning, selectBindings, selectCurrentLayer, selectListening } from '../stores/keyMapStore'
+import {
+  useKeyMapStore,
+  selectIsLearning,
+  selectIsLearnModeActive,
+  selectBindings,
+  selectCurrentLayer,
+  selectListening,
+  selectPendingMappingAction,
+  selectLastMappingWarning,
+} from '../stores/keyMapStore'
 import type { KeyCode, LayerId } from '../keyforge/types'
 import { MODIFIER_KEYS } from '../keyforge/types'
+import { normalizeKeyCode, captureModifiers } from '../keyforge/normalizeKeyCode'
 import { isFireable } from '../keyforge/KeyActionDispatcher'
+import { getAllActions } from '../midi/MidiActionRegistry'
+import ActionPalette, { type PaletteActionItem } from './ActionPalette'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ACTION FAMILY CLASSIFICATION
@@ -176,6 +188,8 @@ interface KeyCellProps {
   listeningSlot: { layer: LayerId; key: KeyCode | null } | null
   lastBoundKey: string | null
   isLearning: boolean
+  pendingMappingAction: string | null
+  onArmAction: (actionId: string) => void
   onBind: (code: KeyCode) => void
   onUnbind: (code: KeyCode) => void
   unitPx: number
@@ -185,7 +199,7 @@ const UNIT_GAP_PX = 3
 
 const KeyCell: React.FC<KeyCellProps> = ({
   code, label, w, layer, bindings, listeningSlot, lastBoundKey,
-  isLearning, onBind, onUnbind, unitPx,
+  isLearning, pendingMappingAction, onArmAction, onBind, onUnbind, unitPx,
 }) => {
   const isModifier = MODIFIER_KEYS.has(code)
   const storageKey = `${layer}::${code}`
@@ -199,13 +213,18 @@ const KeyCell: React.FC<KeyCellProps> = ({
     && (listeningSlot.key === null || listeningSlot.key === code)
 
   const isFlashing = lastBoundKey === storageKey
+  const isArmed = pendingMappingAction !== null && binding?.actionId === pendingMappingAction
 
   const widthPx = w * unitPx + (w - 1) * UNIT_GAP_PX
 
   const handleClick = useCallback(() => {
     if (!isLearning || isModifier) return
+    if (actionId) {
+      onArmAction(actionId)
+      return
+    }
     onBind(code)
-  }, [isLearning, isModifier, onBind, code])
+  }, [actionId, isLearning, isModifier, onArmAction, onBind, code])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -246,6 +265,8 @@ const KeyCell: React.FC<KeyCellProps> = ({
           ? `0 0 8px ${glowColor}60, inset 0 0 4px ${glowColor}30`
           : 'none',
         border: `1px solid ${glowColor}`,
+        outline: isArmed ? '2px solid #fb923c' : 'none',
+        outlineOffset: isArmed ? '1px' : '0',
         opacity,
         cursor: isLearning && !isModifier ? 'pointer' : 'default',
         borderRadius: '4px',
@@ -294,6 +315,33 @@ const KeyCell: React.FC<KeyCellProps> = ({
         }}>
           {actionShort}
         </span>
+      )}
+
+      {isLearning && actionId && !isModifier && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onArmAction(actionId)
+          }}
+          style={{
+            marginTop: '2px',
+            border: 'none',
+            borderRadius: '999px',
+            padding: '1px 5px',
+            fontSize: '7px',
+            lineHeight: 1,
+            fontFamily: 'monospace',
+            letterSpacing: '0.04em',
+            color: '#1a1a1a',
+            background: '#fb923c',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+          }}
+          title={`Arm ${actionId} for remapping`}
+        >
+          Learn
+        </button>
       )}
 
       {/* Listening pulse ring */}
@@ -368,17 +416,58 @@ interface KeyForgeOverlayProps {
 const LAYER_ORDER: LayerId[] = ['base', 'alt', 'kinetic', 'select', 'cmd', 'forge']
 const UNIT_PX = 46   // 1 key-unit = 46px
 
+const KEYFORGE_CORE_ACTIONS: readonly PaletteActionItem[] = [
+  { id: 'cue-go', label: 'Cue Go', category: 'Playback' },
+  { id: 'cue-next', label: 'Cue Next', category: 'Playback' },
+  { id: 'cue-prev', label: 'Cue Previous', category: 'Playback' },
+  { id: 'cue-play', label: 'Cue Play', category: 'Playback' },
+  { id: 'cue-pause', label: 'Cue Pause', category: 'Playback' },
+  { id: 'ui-toggle-forge', label: 'Toggle Forge', category: 'UI Navigation' },
+  { id: 'ui-toggle-zen', label: 'Toggle Zen', category: 'UI Navigation' },
+  { id: 'ui-toggle-3d', label: 'Toggle 3D', category: 'UI Navigation' },
+  { id: 'arb-freeze-frame', label: 'Freeze Frame', category: 'Overrides' },
+  { id: 'sel-all', label: 'Select All', category: 'Selection' },
+  { id: 'sel-invert', label: 'Invert Selection', category: 'Selection' },
+  { id: 'sel-clear', label: 'Clear Selection', category: 'Selection' },
+  { id: 'kin-pan-left', label: 'Pan Left', category: 'Kinetic' },
+  { id: 'kin-pan-right', label: 'Pan Right', category: 'Kinetic' },
+  { id: 'kin-tilt-up', label: 'Tilt Up', category: 'Kinetic' },
+  { id: 'kin-tilt-down', label: 'Tilt Down', category: 'Kinetic' },
+  { id: 'kin-home', label: 'Kinetic Home', category: 'Kinetic' },
+  { id: 'kin-speed-up', label: 'Kinetic Speed Up', category: 'Kinetic' },
+  { id: 'kin-speed-down', label: 'Kinetic Speed Down', category: 'Kinetic' },
+]
+
+function toPaletteCategory(actionId: string): string {
+  if (actionId.startsWith('cue-')) return 'Playback'
+  if (actionId.startsWith('ui-') || actionId.startsWith('kf-')) return 'UI Navigation'
+  if (actionId.startsWith('arb-') || actionId.startsWith('tung-') || actionId === 'lux-blackout') return 'Overrides'
+  if (actionId.startsWith('sel-')) return 'Selection'
+  if (actionId.startsWith('kin-')) return 'Kinetic'
+  if (actionId.startsWith('ctrl-') || actionId.startsWith('flow-')) return 'System Control'
+  if (actionId.startsWith('fx-')) return 'Effects'
+  if (actionId.startsWith('vibe-')) return 'Vibes'
+  return 'Other'
+}
+
 const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose }) => {
   // ── Store selectors ──────────────────────────────────────────────────────
   const isLearning   = useKeyMapStore(selectIsLearning)
+  const isLearnModeActive = useKeyMapStore(selectIsLearnModeActive)
   const bindings     = useKeyMapStore(selectBindings)
   const currentLayer = useKeyMapStore(selectCurrentLayer)
   const listeningSlot = useKeyMapStore(selectListening)
+  const pendingMappingAction = useKeyMapStore(selectPendingMappingAction)
+  const lastMappingWarning = useKeyMapStore(selectLastMappingWarning)
   const lastBoundKey = useKeyMapStore(s => s.lastBoundKey)
 
   const {
-    toggleLearnMode,
-    startListeningSlot,
+    setLayer,
+    setLearnModeActive,
+    setPendingMappingAction,
+    setMapping,
+    exitLearnMode,
+    clearLastMappingWarning,
     unbindKey,
     cancelListening,
     clearLayer,
@@ -386,8 +475,29 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [viewLayer, setViewLayer] = useState<LayerId>('base')
+  const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted]     = useState(false)
   const overlayRef                = useRef<HTMLDivElement>(null)
+
+  const paletteActions = useMemo<PaletteActionItem[]>(() => {
+    const merged = new Map<string, PaletteActionItem>()
+
+    for (const action of getAllActions()) {
+      merged.set(action.id, {
+        id: action.id,
+        label: action.label,
+        category: toPaletteCategory(action.id),
+      })
+    }
+
+    for (const coreAction of KEYFORGE_CORE_ACTIONS) {
+      if (!merged.has(coreAction.id)) {
+        merged.set(coreAction.id, coreAction)
+      }
+    }
+
+    return Array.from(merged.values())
+  }, [])
 
   // Sync viewed layer with active layer
   useEffect(() => {
@@ -403,7 +513,69 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     }
   }, [isVisible])
 
-  // Close on Escape
+  const formatCapturedCombo = useCallback((key: KeyCode, modifiers: ReturnType<typeof captureModifiers>): string => {
+    const parts: string[] = []
+    if (modifiers.shift) parts.push('Shift')
+    if (modifiers.ctrl) parts.push('Control')
+    if (modifiers.alt) parts.push('Alt')
+    if (modifiers.meta) parts.push('Meta')
+    parts.push(key)
+    return parts.join('+')
+  }, [])
+
+  const consumeKeyEvent = useCallback((e: KeyboardEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    const nativeEvent = e as KeyboardEvent & { stopImmediatePropagation?: () => void }
+    nativeEvent.stopImmediatePropagation?.()
+  }, [])
+
+  // Learn mode capture — claim the next physical key and bind it to the armed action.
+  useEffect(() => {
+    if (!isVisible || !isLearnModeActive) return
+
+    const onKey = (e: KeyboardEvent) => {
+      const key = normalizeKeyCode(e)
+      if (key === null) return
+
+      consumeKeyEvent(e)
+
+      if (key === 'Escape') {
+        exitLearnMode()
+        return
+      }
+
+      if (MODIFIER_KEYS.has(key)) {
+        return
+      }
+
+      const armedAction = pendingMappingAction
+      if (armedAction === null) {
+        clearLastMappingWarning()
+        return
+      }
+
+      const combo = formatCapturedCombo(key, captureModifiers(e))
+      const mapped = setMapping(combo, armedAction)
+      if (mapped) {
+        exitLearnMode()
+      }
+    }
+
+    window.addEventListener('keydown', onKey, { capture: true })
+    return () => window.removeEventListener('keydown', onKey, { capture: true })
+  }, [
+    clearLastMappingWarning,
+    consumeKeyEvent,
+    exitLearnMode,
+    formatCapturedCombo,
+    isLearnModeActive,
+    isVisible,
+    pendingMappingAction,
+    setMapping,
+  ])
+
+  // Close on Escape when not learn-capturing.
   useEffect(() => {
     if (!isVisible) return
     const onKey = (e: KeyboardEvent) => {
@@ -421,10 +593,23 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     }
   }, [cancelListening, onClose])
 
-  // Binding click → start listening on that slot
+  // Binding click → arm the action behind the clicked key for remapping.
   const handleBind = useCallback((code: KeyCode) => {
-    startListeningSlot({ layer: viewLayer, key: code })
-  }, [startListeningSlot, viewLayer])
+    const actionId = bindings[`${viewLayer}::${code}`]?.actionId
+    if (!actionId) return
+
+    setLayer(viewLayer)
+    clearLastMappingWarning()
+    setPendingMappingAction(actionId)
+    setLearnModeActive(true)
+  }, [bindings, clearLastMappingWarning, setLayer, setLearnModeActive, setPendingMappingAction, viewLayer])
+
+  const armActionFromPalette = useCallback((actionId: string) => {
+    setLayer(viewLayer)
+    clearLastMappingWarning()
+    setPendingMappingAction(actionId)
+    setLearnModeActive(true)
+  }, [clearLastMappingWarning, setLayer, setLearnModeActive, setPendingMappingAction, viewLayer])
 
   // Right-click → unbind
   const handleUnbind = useCallback((code: KeyCode) => {
@@ -487,7 +672,7 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
             borderRadius: '10px',
             boxShadow: `0 0 40px ${layerMeta.color}25, 0 24px 64px rgba(0,0,0,0.8)`,
             padding: '16px',
-            maxWidth: '900px',
+            maxWidth: '1280px',
             width: '100%',
           }}
         >
@@ -535,7 +720,7 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
 
             {/* Learn mode toggle */}
             <button
-              onClick={toggleLearnMode}
+              onClick={() => setLearnModeActive(!isLearnModeActive)}
               style={{
                 fontSize: '10px',
                 fontFamily: 'monospace',
@@ -602,7 +787,10 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
               return (
                 <button
                   key={lid}
-                  onClick={() => setViewLayer(lid)}
+                  onClick={() => {
+                    setViewLayer(lid)
+                    setLayer(lid)
+                  }}
                   style={{
                     fontSize: '9px',
                     fontFamily: 'monospace',
@@ -627,28 +815,48 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
             })}
           </div>
 
-          {/* ── Keyboard ──────────────────────────────────────────────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${UNIT_GAP_PX}px` }}>
-            {LAYOUT_ROWS.map((row, ri) => (
-              <div key={ri} style={{ display: 'flex', gap: `${UNIT_GAP_PX}px` }}>
-                {row.map((key, ki) => (
-                  <KeyCell
-                    key={`${key.code}-${ki}`}
-                    code={key.code}
-                    label={key.label}
-                    w={key.w ?? 1}
-                    layer={viewLayer}
-                    bindings={bindings}
-                    listeningSlot={listeningSlot}
-                    lastBoundKey={lastBoundKey}
-                    isLearning={isLearning}
-                    onBind={handleBind}
-                    onUnbind={handleUnbind}
-                    unitPx={UNIT_PX}
-                  />
-                ))}
-              </div>
-            ))}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+          }}>
+            {/* ── Keyboard ────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: `${UNIT_GAP_PX}px`, flex: '1 1 740px' }}>
+              {LAYOUT_ROWS.map((row, ri) => (
+                <div key={ri} style={{ display: 'flex', gap: `${UNIT_GAP_PX}px` }}>
+                  {row.map((key, ki) => (
+                    <KeyCell
+                      key={`${key.code}-${ki}`}
+                      code={key.code}
+                      label={key.label}
+                      w={key.w ?? 1}
+                      layer={viewLayer}
+                      bindings={bindings}
+                      listeningSlot={listeningSlot}
+                      lastBoundKey={lastBoundKey}
+                      isLearning={isLearning}
+                      pendingMappingAction={pendingMappingAction}
+                      onArmAction={armActionFromPalette}
+                      onBind={handleBind}
+                      onUnbind={handleUnbind}
+                      unitPx={UNIT_PX}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <ActionPalette
+              actions={paletteActions}
+              bindings={bindings}
+              viewLayer={viewLayer}
+              searchQuery={searchQuery}
+              pendingMappingAction={pendingMappingAction}
+              isLearnModeActive={isLearnModeActive}
+              onSearchQueryChange={setSearchQuery}
+              onLearnAction={armActionFromPalette}
+            />
           </div>
 
           {/* ── Legend ─────────────────────────────────────────────────── */}
@@ -664,9 +872,22 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
               letterSpacing: '0.06em',
               textShadow: '0 0 6px #fb923c80',
             }}>
-              {listeningSlot
-                ? `👂 Waiting for key press → ${listeningSlot.layer}::${listeningSlot.key ?? '<next>'}`
-                : '⌨ Click a key to bind it · Right-click to unbind'}
+              {pendingMappingAction
+                ? `⌨ Armed: ${pendingMappingAction} · press a physical key to bind it`
+                : '⌨ Click Learn on a bound key to arm an action'}
+            </div>
+          )}
+
+          {lastMappingWarning && (
+            <div style={{
+              marginTop: '8px',
+              fontSize: '9px',
+              fontFamily: 'monospace',
+              color: '#fca5a5',
+              letterSpacing: '0.05em',
+              textShadow: '0 0 6px #f8717180',
+            }}>
+              {lastMappingWarning}
             </div>
           )}
         </div>

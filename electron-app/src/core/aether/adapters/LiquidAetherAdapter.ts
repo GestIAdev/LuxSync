@@ -72,6 +72,12 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 
+type UniversalNodeLike = {
+  nodeId: string
+  zoneId?: string
+  channels: readonly { type: string }[]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LIQUID AETHER ADAPTER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,52 +196,19 @@ export class LiquidAetherAdapter {
   ingest(_frame: ProcessedFrame, result: LiquidStereoResult, bus: IIntentBus): void {
     this._photonTracerFrame++
 
-    // 🌊 WAVE 4689: UNIVERSAL INTENSITY ROUTING
-    // IMPACT:
-    // - con dimmer físico: publicar dimmer
-    // - sin dimmer físico (RGB/W puro): publicar brightness virtual
-    // COLOR:
-    // - publicar brightness (atenuación nativa para cruce con color de Selene)
-
-    const impactNodes: INodeView<IImpactNodeData> =
-      this._nodeGraph.getView(NodeFamily.IMPACT)
-
-    impactNodes.forEach((node) => {
-      const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''))
-      if (zoneIntensity <= 0.005) return
-
-      const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer')
-
-      // limpiar scratch previo (zero-alloc, anti-stale)
-      this._impactValues['dimmer'] = undefined as unknown as number
-      this._impactValues['brightness'] = undefined as unknown as number
-
-      if (hasPhysicalDimmer) {
-        this._impactValues['dimmer'] = zoneIntensity
-      } else {
-        // Fallback universal para nodos sin dimmer físico.
-        // `brightness` es la señal canónica de atenuación de color en Aether.
-        this._impactValues['brightness'] = zoneIntensity
-        // Compat forward: si aparece soporte de dimmer virtual aguas abajo,
-        // este valor ya viaja en el intent.
-        this._impactValues['dimmer'] = zoneIntensity
-      }
-
-      this._impactScratch.nodeId = node.nodeId
-      bus.push(this._impactScratch as INodeIntent)
-    })
-
-    const colorNodes: INodeView<IColorNodeData> =
-      this._nodeGraph.getView(NodeFamily.COLOR)
-
-    colorNodes.forEach((node) => {
-      const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''))
-      if (zoneIntensity <= 0.005) return
-
-      this._colorValues['brightness'] = zoneIntensity
-      this._colorScratch.nodeId = node.nodeId
-      bus.push(this._colorScratch as INodeIntent)
-    })
+    // WAVE 4818: eliminación de "lista VIP" por familias explícitas.
+    // Recorremos TODA la matriz (todas las NodeFamily registradas) y
+    // decidimos por capacidades reales del nodo (duck-typing de channels).
+    for (const family of Object.values(NodeFamily)) {
+      const view = this._nodeGraph.getView(family)
+      view.forEach((node) => {
+        this._routeUniversalIntensity(
+          node as unknown as UniversalNodeLike,
+          result,
+          bus,
+        )
+      })
+    }
 
     // WAVE 4752 F5: Strobe gating — solo rutar strobe si está activo.
     // _routeStrobeNodes filtra internamente por zona (floor/ambient/air = block).
@@ -284,6 +257,37 @@ export class LiquidAetherAdapter {
       this._strobeScratch.nodeId       = node.nodeId
       bus.push(this._strobeScratch as INodeIntent)
     })
+  }
+
+  private _routeUniversalIntensity(
+    node: UniversalNodeLike,
+    result: LiquidStereoResult,
+    bus: IIntentBus,
+  ): void {
+    const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''))
+    if (zoneIntensity <= 0.005) return
+
+    const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer')
+    const hasColorCh = node.channels.some((ch) =>
+      ch.type === 'red' || ch.type === 'green' || ch.type === 'blue' ||
+      ch.type === 'white' || ch.type === 'amber' || ch.type === 'uv',
+    )
+
+    if (hasPhysicalDimmer) {
+      this._impactValues['dimmer'] = undefined as unknown as number
+      this._impactValues['brightness'] = undefined as unknown as number
+      this._impactValues['dimmer'] = zoneIntensity
+      this._impactScratch.nodeId = node.nodeId
+      bus.push(this._impactScratch as INodeIntent)
+      return
+    }
+
+    if (hasColorCh) {
+      this._colorValues['brightness'] = undefined as unknown as number
+      this._colorValues['brightness'] = zoneIntensity
+      this._colorScratch.nodeId = node.nodeId
+      bus.push(this._colorScratch as INodeIntent)
+    }
   }
 
   /**

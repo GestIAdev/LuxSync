@@ -372,6 +372,16 @@ export class NodeExtractionPipeline {
         const outputNodes = graph.nodes.filter((n) => n.type === 'output_dmx' && n.config.nodeType === 'output_dmx');
         if (outputNodes.length === 0)
             return [];
+        // WAVE 4817: tabla de lookup de defaultValue desde el top-level channels[].
+        // El nodeGraph puede carecer de defaultDmxValue si fue serializado antes de WAVE 4817
+        // o editado manualmente. La fuente canónica de verdad para valores por defecto es
+        // fixtureDef.channels (keyed por dmxOffset 0-based).
+        const legacyDefaultByOffset = new Map();
+        for (const ch of fixtureDef.channels) {
+            if (typeof ch.index === 'number' && typeof ch.defaultValue === 'number') {
+                legacyDefaultByOffset.set(ch.index - 1, ch.defaultValue); // index es 1-based
+            }
+        }
         const groups = new Map();
         for (const n of outputNodes) {
             const cfg = n.config;
@@ -397,7 +407,7 @@ export class NodeExtractionPipeline {
         const nodes = [];
         for (const [suffix, group] of groups) {
             const nodeId = `${deviceId}:${suffix}`;
-            const channels = this._mapForgeNodes(group.nodes.map(n => n.config));
+            const channels = this._mapForgeNodes(group.nodes.map(n => n.config), legacyDefaultByOffset);
             const typeSet = new Set(group.nodes.map(n => this._normalizeChannelType(n.config.channelType)));
             const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position);
             if (node) {
@@ -413,13 +423,22 @@ export class NodeExtractionPipeline {
      * Convierte IOutputDmxConfig[] → INodeChannelDef[].
      * A diferencia de _mapChannels, usa cfg.dmxOffset DIRECTAMENTE (0-based),
      * sin la corrección -1 que asume índices 1-based legacy.
+     *
+     * @param legacyDefaultByOffset — Lookup opcional desde top-level channels[] para
+     *   recuperar defaultValue cuando cfg.defaultDmxValue sea undefined. WAVE 4817.
      */
-    _mapForgeNodes(configs) {
+    _mapForgeNodes(configs, legacyDefaultByOffset) {
         return configs.map(cfg => {
+            // WAVE 4817: cfg.defaultDmxValue puede ser undefined si el JSON fue escrito
+            // sin Forge o antes de que defaultDmxValue fuera obligatorio. Fallback al
+            // top-level channels[] (keyed por dmxOffset) y, último recurso, a 0.
+            const defaultValue = typeof cfg.defaultDmxValue === 'number'
+                ? cfg.defaultDmxValue
+                : (legacyDefaultByOffset?.get(cfg.dmxOffset) ?? 0);
             const mapped = {
                 type: this._normalizeChannelType(cfg.channelType),
                 dmxOffset: cfg.dmxOffset,
-                defaultValue: cfg.defaultDmxValue,
+                defaultValue,
                 is16bit: cfg.is16bit ?? false,
                 customName: cfg.channelName,
                 ...(cfg.ignitionDeps && cfg.ignitionDeps.length > 0 && {

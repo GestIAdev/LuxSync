@@ -34,6 +34,9 @@ import {
 } from '../midi/MidiActionRegistry'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useMovementStore } from '../stores/movementStore'
+import { useSceneStore } from '../stores/sceneStore'
+import { useNavigationStore } from '../stores/navigationStore'
+import type { TabId } from '../stores/navigationStore'
 import type {
   ActionPayload,
   ResolvedAction,
@@ -211,6 +214,103 @@ function getGroupFixtureIds(groupIndex: number): string[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CUE-* HANDLER — Scene Store (WAVE 4800 Batch 3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Dispatch a `cue-*` action against `useSceneStore`.
+ *
+ * Supported sub-actions:
+ *   cue-go / cue-next  → advance to the next scene (wraps around)
+ *   cue-prev           → go to the previous scene (wraps around)
+ *   cue-play           → load first scene if none active (resume intent)
+ *   cue-pause          → cancel any active transition (freeze mid-fade)
+ */
+function dispatchCueAction(actionId: string): boolean {
+  const sceneState = useSceneStore.getState()
+  const { scenes, activeSceneId } = sceneState
+  const sub = actionId.slice(4) // 'cue-go' → 'go'
+
+  if (scenes.length === 0) {
+    console.log('[KeyForge] 🎬 cue-*: no scenes loaded.')
+    return true
+  }
+
+  const currentIdx = activeSceneId !== null
+    ? scenes.findIndex(s => s.id === activeSceneId)
+    : -1
+
+  switch (sub) {
+    case 'go':
+    case 'next': {
+      const nextIdx = currentIdx < scenes.length - 1 ? currentIdx + 1 : 0
+      sceneState.loadScene(scenes[nextIdx].id)
+      return true
+    }
+    case 'prev': {
+      const prevIdx = currentIdx > 0 ? currentIdx - 1 : scenes.length - 1
+      sceneState.loadScene(scenes[prevIdx].id)
+      return true
+    }
+    case 'play': {
+      if (activeSceneId === null) {
+        sceneState.loadScene(scenes[0].id)
+      }
+      return true
+    }
+    case 'pause': {
+      sceneState.cancelTransition()
+      return true
+    }
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown cue-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI-* HANDLER — Navigation Store (WAVE 4800 Batch 3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Dispatch a `ui-*` action against `useNavigationStore`.
+ *
+ * Toggle semantics: if already on the target tab → go back.
+ *
+ * Supported sub-actions:
+ *   ui-toggle-forge     → toggle BUILD (constructor) programmer view
+ *   ui-toggle-zen       → toggle LIVE performance stage
+ *   ui-toggle-3d        → toggle CHRONOS timeline/automation view
+ *   ui-toggle-live-hud  → alias for toggle-zen (go to LIVE)
+ *   ui-toggle-keyforge  → KeyForge overlay (handled by captureGuard; no-op here)
+ */
+function dispatchUiAction(actionId: string): boolean {
+  const navState = useNavigationStore.getState()
+  const { activeTab, setActiveTab, goBack } = navState
+  const sub = actionId.slice(3) // 'ui-toggle-forge' → 'toggle-forge'
+
+  function toggleTab(targetTab: TabId): boolean {
+    if (activeTab === targetTab) {
+      goBack()
+    } else {
+      setActiveTab(targetTab)
+    }
+    return true
+  }
+
+  switch (sub) {
+    case 'toggle-forge':     return toggleTab('constructor')
+    case 'toggle-zen':       return toggleTab('live')
+    case 'toggle-3d':        return toggleTab('chronos')
+    case 'toggle-live-hud':  return toggleTab('live')
+    case 'toggle-keyforge':  return true  // overlay is toggled upstream by captureGuard
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown ui-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // KIN-* HANDLER — Movement Store
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -370,12 +470,24 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     return dispatchKinAction(actionId, payload)
   }
 
-  // ── cue-*, ui-*, kf-* → log only (handler wiring pending Batch 3) ──
-  if (isKeyForgeNativeAction(actionId)) {
+  // ── cue-* → Scene Store (Batch 3) ──
+  if (actionId.startsWith('cue-')) {
+    if (payload.phase === 'release') return true
+    return dispatchCueAction(actionId)
+  }
+
+  // ── ui-* → Navigation Store (Batch 3) ──
+  if (actionId.startsWith('ui-')) {
+    if (payload.phase === 'release') return true
+    return dispatchUiAction(actionId)
+  }
+
+  // ── kf-* → KeyForge meta (Batch 4) ──
+  if (actionId.startsWith('kf-')) {
     if (payload.phase !== 'release') {
       console.log(
-        `[KeyForge] 🧠 ${actionId} (phase=${payload.phase ?? 'press'}) — `
-        + `handler wiring pending Batch 3.`,
+        `[KeyForge] 🖹 ${actionId} (phase=${payload.phase ?? 'press'}) — `
+        + `kf-* meta wiring pending Batch 4.`,
       )
     }
     return true

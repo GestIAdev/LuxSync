@@ -534,30 +534,38 @@ describe('⚡ VMMAdapter — El Coreógrafo', () => {
   })
 
   // ── §3.4 Nodo continuo (fan) → rotation + speed, NO pan/tilt ─────────
+  // WAVE 4819: El fan YA NO emite cuando el VMM está en reposo (|intent.x| < ε).
+  // Cuando sí emite, la estructura es rotation+speed, NUNCA pan/tilt.
 
-  test('§3.4 — Nodo continuo emite rotation y speed, NO pan ni tilt', () => {
+  test('§3.4 — Nodo continuo: cada intent emitido lleva rotation+speed (nunca pan/tilt)', () => {
     const fan  = makeFanNode()
     const view = makeNodeView([fan])
 
-    adapter.process(view, makeContext(), bus)
-
-    expect(bus.captured).toHaveLength(1)
-    const { values } = bus.captured[0]
-
-    // Para isContinuous === true: debe tener rotation y speed
-    expect(values['rotation']).toBeDefined()
-    expect(values['speed']).toBeDefined()
-
-    // Y NO debe tener pan/tilt (son canales de mover posicionado)
-    expect(values['pan']).toBeUndefined()
-    expect(values['tilt']).toBeUndefined()
+    // Acumular captures sobre 20 frames — el VMM usa Date.now() por lo que
+    // algunos frames pueden estar en reposo (|intent.x| < 0.005) y no emitir.
+    // El invariante es: TODO intent capturado debe tener rotation+speed, NO pan/tilt.
+    for (let frame = 0; frame < 20; frame++) {
+      bus.clear()
+      adapter.process(view, makeContext(), bus)
+      for (const intent of bus.captured) {
+        // Para isContinuous === true: debe tener rotation y speed
+        expect(intent.values['rotation']).toBeDefined()
+        expect(intent.values['speed']).toBeDefined()
+        // Y NO debe tener pan/tilt (canales de mover posicionado)
+        expect(intent.values['pan']).toBeUndefined()
+        expect(intent.values['tilt']).toBeUndefined()
+      }
+    }
+    // Note: capturar 0 intents es válido si el VMM estaba en reposo (WAVE 4819).
+    // En ese caso, NodeResolver usará rotationHome del fixture → DMX correcto.
   })
 
-  test('§3.5 — rotation del fan está en [0, 1] (0.5 = stop)', () => {
+  test('§3.5 — rotation de los intents emitidos está en [0, 1]', () => {
     const fan  = makeFanNode()
     const view = makeNodeView([fan])
 
-    // 20 frames — rotation siempre debe ser [0,1]
+    // 20 frames — solo verificar intents capturados (cuando VMM está activo).
+    // WAVE 4819: frames en reposo (|intent.x| < 0.005) no emiten — correcto.
     for (let frame = 0; frame < 20; frame++) {
       bus.clear()
       const ctx = makeContext({
@@ -567,9 +575,11 @@ describe('⚡ VMMAdapter — El Coreógrafo', () => {
       })
       adapter.process(view, ctx, bus)
 
-      const { values } = bus.captured[0]
-      expect(values['rotation'], `frame ${frame}: rotation`).toBeGreaterThanOrEqual(0)
-      expect(values['rotation'], `frame ${frame}: rotation`).toBeLessThanOrEqual(1)
+      for (const intent of bus.captured) {
+        const rot = intent.values['rotation']
+        expect(rot, `frame ${frame}: rotation`).toBeGreaterThanOrEqual(0)
+        expect(rot, `frame ${frame}: rotation`).toBeLessThanOrEqual(1)
+      }
     }
   })
 

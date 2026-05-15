@@ -81,6 +81,25 @@ const STADIUM_BINDINGS: readonly KeyBinding[] = [
   // ── AI SELENE ────────────────────────────────────────────────────────────
   { layer: 'base', key: 'Y', actionId: 'ctrl-ai-toggle', behavior: { kind: 'toggle' } },
 
+  // ── CUE TRANSPORT — Arrow / Page nav (WAVE 4800 Batch 3) ─────────────────
+  // cue-go / cue-next → advance scene (ArrowRight = forward, PageDown = drop)
+  { layer: 'base', key: 'ArrowRight', actionId: 'cue-next', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'PageDown',   actionId: 'cue-next', behavior: { kind: 'tap' } },
+  // cue-prev → back one scene
+  { layer: 'base', key: 'ArrowLeft',  actionId: 'cue-prev', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'PageUp',     actionId: 'cue-prev', behavior: { kind: 'tap' } },
+  // ArrowUp/Down → cue-play / cue-pause (start/freeze the current block)
+  { layer: 'base', key: 'ArrowUp',   actionId: 'cue-play',  behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'ArrowDown', actionId: 'cue-pause', behavior: { kind: 'tap' } },
+
+  // ── UI NAVIGATION — F2/F3/F4 (WAVE 4800 Batch 3) ────────────────────────
+  // F2 → toggle BUILD (programmer/stage-layout view)
+  { layer: 'base', key: 'F2', actionId: 'ui-toggle-forge', behavior: { kind: 'tap' } },
+  // F3 → toggle LIVE (Zen mode — full performance stage)
+  { layer: 'base', key: 'F3', actionId: 'ui-toggle-zen',   behavior: { kind: 'tap' } },
+  // F4 → toggle CHRONOS (timeline/automation 3-D view)
+  { layer: 'base', key: 'F4', actionId: 'ui-toggle-3d',    behavior: { kind: 'tap' } },
+
   // ── KINETIC LAYER — WASD pan/tilt (K+Shift activates kinetic layer) ───────
   { layer: 'kinetic', key: 'W', actionId: 'kin-tilt-up',    behavior: { kind: 'repeat', periodMs: 60 } },
   { layer: 'kinetic', key: 'S', actionId: 'kin-tilt-down',  behavior: { kind: 'repeat', periodMs: 60 } },

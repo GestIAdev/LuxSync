@@ -1,156 +1,104 @@
-[PROBE 💉] f=800 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=red | arbIn=undef | tv=0.502 | rawN=0.502 | normalized=0.502 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=800 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=green | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=800 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=blue | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-AETHER TICK | Nodos activos: 8 | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] | Universos activos: 1 | DarkSpin transit: 0
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=57% B/D/N=147/257/47
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.85 BR:0.85 | ML:0.22 MR:0.41
-[GAMMA 🎵] Frame 600: bpm=90, energy=0.39
-[MoodArbiter] 🎭 EMOTION SHIFT: BRIGHT → DARK (dominance=60.2%, after 8.2s)
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.85 BR:0.85 | ML:0.17 MR:0.26
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.00 | PLL=FREEWHEEL [mem=90@-47f] phase=0.00 sync=0.03 | beat #24 | bass=0.0383 sab=0.000 | 🔬in_peak=0.09964 in_rms=0.04508
-[TitanEngine 🧠] Stabilization: Key=B Emotion=DARK Strategy=analogous Temp=5684K
+[TitanEngine] 🌊 Layout: 4.1
+[TitanOrchestrator] 🌊 Layout: 4.1
+[TitanOrchestrator] 🔧 WAVE 4735.7: Migrated 0-based → 1-based for fixture "fixture-1778823203458"
+[NodeExtractionPipeline] 🔧 WAVE 4735.7: V2 path — _buildNodesFromForgeGraph for fixture-1778823203458 with 40 output_dmx nodes
+[DYE] Nodo extraído con rotationHome: 0 | nodeId=fixture-1778823203458:kinetic | fixture=Tungsten
+[NodeResolver] 🔥 WAVE 4720: 6 ignition injection(s) pre-computed for device fixture-1778823203458
+[TitanOrchestrator] ✅ WAVE 4674: Fixture "fixture-1778823203458" (effect) → Aether @ dmx:220/u0 | nodes: [fixture-1778823203458:atmosphere(ATMOSPHERE), fixture-1778823203458:kinetic(KINETIC), fixture-1778823203458:golden-master(IMPACT), fixture-1778823203458:impact-2(IMPACT), fixture-1778823203458:impact-4(IMPACT), fixture-1778823203458:impact-6(IMPACT), fixture-1778823203458:wash-color(COLOR), fixture-1778823203458:beam-color(COLOR)]
+[TitanOrchestrator] 🔧 WAVE 4735.7: Migrated 0-based → 1-based for fixture "fixture-1778823230824"
+[TitanOrchestrator] ✅ WAVE 4674: Fixture "fixture-1778823230824" (par) → Aether @ dmx:22/u0 | nodes: [fixture-1778823230824:color(COLOR), fixture-1778823230824:impact(IMPACT)]
+[TitanOrchestrator] 🔧 WAVE 4735.7: Migrated 0-based → 1-based for fixture "fixture-1778823233408"
+[TitanOrchestrator] ✅ WAVE 4674: Fixture "fixture-1778823233408" (par) → Aether @ dmx:33/u0 | nodes: [fixture-1778823233408:color(COLOR), fixture-1778823233408:impact(IMPACT)]
+[IPC] lux:start - TitanOrchestrator active
+[TitanOrchestrator 🌊] AETHER-ENGINE: LiquidEngine71 | frame=48
+[IPC] lux:start - TitanOrchestrator active
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:492
+[IPC] lux:setVibe: fiesta-latina
+[TitanEngine] 🎭 Vibe changed to: fiesta-latina
+[TitanOrchestrator] Vibe set to: fiesta-latina
+[ALPHA] 🎛️ Setting VIBE to: fiesta-latina
+[ALPHA] 🎯 WAVE 289.5: Vibe propagated to BETA SectionTracker
+[TitanOrchestrator] 🎯 WAVE 289: Vibe propagated to Workers
+[PhysicsDriver] WAVE 2074.3: Vibe "fiesta-latina" - Mode:snap Snap:0.88 RevPan:300/s Acc:650 (cap:900)
+[HAL] 🎛️ WAVE 338: Vibe "fiesta-latina" - Zoom:150 Focus:100
+[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe
+[ALPHA] 🧨 WAVE 2140: RESET_PACEMAKER sent to BETA — Amnesia Protocol active
+[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → fiesta-latina
+[SeleneLux 🌊] Profile hot-swapped: fiesta-latina → latino-fiesta (Latino Fiesta)
+[TitanEngine] 🌊 Profile: fiesta-latina
+[TitanOrchestrator] 🧹 WAVE 3230: Clean Slate for vibe fiesta-latina
+[SeleneLux 🌊] ENGINE: 41T | layout=4.1 | vibe=fiesta-latina | chill=false
+[CHOREO4741] Vibe changed idle → fiesta-latina: scheduler + crossfade reset
+[TitanOrchestrator 🌊] AETHER-ENGINE: _LiquidEngine41Telemetry | frame=100
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[GAMMA] 🎯 WAVE 289: Vibe set to fiesta-latina
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:0b | Pan:27 Tilt:19 | sBPM:120 phase:7°
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:528
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:3b | Pan:198 Tilt:69 | sBPM:120 phase:60°
+[VirtualWire] start() — current state: "ready"
+[OmniInput] enumerateDevices() called
+[WASAPI] enumerateFlow: flow=eCapture found 2 active endpoints
+[WASAPI] Device[0]: "Auriculares con micrófono (USB Audio)  " | 1ch @ 48000Hz | loopback=false | excl=false | default=false | id={0.0.1.00000000}.{9a38f04d-cee7-49be-9a87-34eaabd3478f}
+[WASAPI] Device[1]: "CABLE Output (VB-Audio Virtual Cable)   " | 2ch @ 44100Hz | loopback=false | excl=false | default=true  | id={0.0.1.00000000}.{a1fbd0a5-bad6-4c84-b057-52db0177788b}
+[WASAPI] enumerateFlow: flow=eRender found 4 active endpoints
+[WASAPI] Device[2]: "Auriculares con micrófono (USB Audio)  " | 2ch @ 48000Hz | loopback=true  | excl=false | default=false | id={0.0.0.00000000}.{05a98e3b-a83f-4168-9a15-de9c44067666}
+[WASAPI] Device[3]: "CABLE In 16ch (VB-Audio Virtual Cable)  " | 2ch @ 44100Hz | loopback=true  | excl=false | default=false | id={0.0.0.00000000}.{30c0ab7c-7f6a-40af-8b4d-5cc743cd469b}
+[WASAPI] Device[4]: "Auriculares (Realtek(R) Audio)          " | 2ch @ 44100Hz | loopback=true  | excl=false | default=false | id={0.0.0.00000000}.{743e91cf-d33d-4066-b3ac-10b36be77a73}
+[WASAPI] Device[5]: "CABLE Input (VB-Audio Virtual Cable)    " | 2ch @ 44100Hz | loopback=true  | excl=false | default=true  | id={0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}
+[OmniInput] enumerateDevices() returned 6 devices
+[NativeAudio] Device enumeration — 6 device(s) found:
+[NativeAudio]   [WASAPI] "Auriculares con micrófono (USB Audio)" | 1ch @ 48000Hz | flags: [shared-only] | supported rates: [] | id: {0.0.1.00000000}.{9a38f04d-cee7-49be-9a87-34eaabd3478f}
+[NativeAudio]   [WASAPI] "CABLE Output (VB-Audio Virtual Cable)" | 2ch @ 44100Hz | flags: [DEFAULT] | supported rates: [] | id: {0.0.1.00000000}.{a1fbd0a5-bad6-4c84-b057-52db0177788b}
+[NativeAudio]   [WASAPI] "Auriculares con micrófono (USB Audio)" | 2ch @ 48000Hz | flags: [LOOPBACK] | supported rates: [] | id: {0.0.0.00000000}.{05a98e3b-a83f-4168-9a15-de9c44067666}
+[NativeAudio]   [WASAPI] "CABLE In 16ch (VB-Audio Virtual Cable)" | 2ch @ 44100Hz | flags: [LOOPBACK] | supported rates: [] | id: {0.0.0.00000000}.{30c0ab7c-7f6a-40af-8b4d-5cc743cd469b}
+[NativeAudio]   [WASAPI] "Auriculares (Realtek(R) Audio)" | 2ch @ 44100Hz | flags: [LOOPBACK] | supported rates: [] | id: {0.0.0.00000000}.{743e91cf-d33d-4066-b3ac-10b36be77a73}
+[NativeAudio]   [WASAPI] "CABLE Input (VB-Audio Virtual Cable)" | 2ch @ 44100Hz | flags: [DEFAULT, LOOPBACK] | supported rates: [] | id: {0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}
+[NativeAudio] ✅ Loopback device(s) detected: "Auriculares con micrófono (USB Audio)", "CABLE In 16ch (VB-Audio Virtual Cable)", "Auriculares (Realtek(R) Audio)", "CABLE Input (VB-Audio Virtual Cable)"
+[VirtualWire] Starting native capture — device: "{0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}" | 2ch @ 44100Hz | exclusive: false | loopback: true
+[NativeAudio] startCapture — device: "{0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}" | 2ch @ 44100Hz | bufferSize: 256 frames | exclusive: false
+[OmniInput] startCapture: device='{0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}' rate=44100 ch=2 buf=256 excl=0 loopback=1
+[OmniInput] startCapture OK — handle=1
+[VirtualWire] ✅ Capture streaming — handle: 1
+[AudioMatrix] Provider virtual-wire status: streaming
+[AudioMatrix] WAVE 3401: Hot-swap initiated: virtual-wire -> virtual-wire
+[ALPHA] 🧨 WAVE 2140: RESET_PACEMAKER sent to BETA — Amnesia Protocol active
+[IPCHandlers] 🔄 WAVE 3414/3415: source → "virtual-wire" — Pacemaker reset (Amnesia Protocol)
+[WASAPI] WAVE 3410: Cold-start wake-up rendered (loopback endpoint activated)
+[WASAPI] Starting capture: device='{0.0.0.00000000}.{f9a440de-48be-43af-aeb4-0892442cef3d}' 44100Hz 2ch buf=256 exclusive=0 loopback=1 latency=22.00ms
+[WASAPI] Capture loop running
+[ARBITER 🎭] In: mood='neutral' mode='unknown' → instant=NEUTRAL stable=NEUTRAL dom=100% B/D/N=0/0/30
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
+[AudioMatrix] WAVE 3401: Hot-swap complete. Active: virtual-wire
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:528
+[KeyStabilizer] 🎵 Initial key detected: G
+[TitanOrchestrator] 🎧 WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0 | bass=0.0585 sab=0.054 | 🔬in_peak=0.10501 in_rms=0.03551
 [TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:11% BR:11%
-[AETHER TICK 🩺] frame=900 | Nodos activos: 8 | outputEnabled: true | blackout: false | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[Egress 📤] Universe 0 → HAL. Suma bytes: 1175 | outputEnabled: true | blackout: false
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:28b | Pan:-269 Tilt:2 | sBPM:90 phase:269°
-[VirtualWire] 📡 SAB feed — cb#2000 | frames=441 | peak=0.4451 | ch=2
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=61% B/D/N=120/264/50
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.21 BR:0.21 | ML:0.30 MR:0.33
-[GAMMA 🎵] Frame 660: bpm=0, energy=0.58
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.46 FR:0.46 | BL:0.11 BR:0.11 | ML:0.08 MR:0.10
-[PROBE 💉] f=900 dev=fixture-1778790599599 node=fixture-1778790599599:impact fam=IMPACT ch=dimmer | arbIn=0.106 | tv=0.106 | rawN=0.106 | normalized=0.106 | dmxValue=27 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.401 | tv=0.401 | rawN=0.401 | normalized=0.401 | dmxValue=102 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.401 | tv=0.401 | rawN=0.401 | normalized=0.401 | dmxValue=102 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.401 | tv=0.401 | rawN=0.401 | normalized=0.401 | dmxValue=102 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.401 | tv=0.401 | rawN=0.401 | normalized=0.401 | dmxValue=102 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.401 | tv=0.401 | rawN=0.401 | normalized=0.401 | dmxValue=102 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790599599 node=fixture-1778790599599:color fam=COLOR ch=red | arbIn=undef | tv=0.075 | rawN=0.075 | normalized=0.075 | dmxValue=19 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.200 | rawN=0.200 | normalized=0.200 | dmxValue=51 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.302 | rawN=0.302 | normalized=0.302 | dmxValue=77 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.200 | rawN=0.200 | normalized=0.200 | dmxValue=51 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.302 | rawN=0.302 | normalized=0.302 | dmxValue=77 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=dimmer | arbIn=0.500 | tv=0.500 | rawN=0.500 | normalized=0.500 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=strobe | arbIn=undef | tv=undef | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=red | arbIn=undef | tv=0.502 | rawN=0.502 | normalized=0.502 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=green | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=900 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=blue | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-AETHER TICK | Nodos activos: 8 | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] | Universos activos: 1 | DarkSpin transit: 0
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×1] | scene:30b | Pan:21 Tilt:-10 | sBPM:90 phase:309°
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.87 | PLL=FREEWHEEL [mem=90@-0f] phase=0.00 sync=0.14 | beat #27 | bass=0.5809 sab=0.108 | 🔬in_peak=0.49518 in_rms=0.21207
-[TitanEngine 🧠] Stabilization: Key=B Emotion=DARK Strategy=analogous Temp=5372K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.02 MR:0.05
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:5b | Pan:228 Tilt:-51 | sBPM:120 phase:108°
+[ARBITER 🎭] In: mood='neutral' mode='unknown' → instant=NEUTRAL stable=NEUTRAL dom=68% B/D/N=31/1/68
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.16 MR:0.18
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:528
+[GAMMA 🎵] Frame 60: bpm=0, energy=0.68
+[TitanOrchestrator] 🎧 WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0 | bass=0.0624 sab=0.108 | 🔬in_peak=0.44081 in_rms=0.10603
+[TitanEngine 🧠] Stabilization: Key=G Emotion=NEUTRAL Strategy=analogous Temp=3935K
 [TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:80% FR:80% BL:2% BR:2%
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=52% B/D/N=163/232/49
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.80 FR:0.80 | BL:0.00 BR:0.00 | ML:0.14 MR:0.20
-[AETHER TICK 🩺] frame=1000 | Nodos activos: 8 | outputEnabled: true | blackout: false | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[GAMMA 🎵] Frame 720: bpm=90, energy=0.80
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.16 FR:0.16 | BL:0.85 BR:0.85 | ML:0.13 MR:0.21
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:31b | Pan:-70 Tilt:-50 | sBPM:90 phase:345°
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.95 | PLL=FREEWHEEL [mem=90@-0f] phase=0.00 sync=0.48 | beat #30 | bass=0.1554 sab=0.054 | 🔬in_peak=0.37503 in_rms=0.11984
-[TitanEngine 🧠] Stabilization: Key=B Emotion=DARK Strategy=analogous Temp=5031K
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:2% FR:2% BL:85% BR:85%
-[AudioMatrix] 📊 SAB fill=0.161 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=1024002
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=47% B/D/N=208/216/39
-[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 900 frames (15.0s)
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(43%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.46 FR:0.46 | BL:0.00 BR:0.00 | ML:0.11 MR:0.29
-[NodeArbiter L2-DIAG] frame=1000 | manualOverrides=2 | samples:[fixture-1778790597168:impact,fixture-1778790597168:color]
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.350 | tv=0.350 | rawN=0.350 | normalized=0.350 | dmxValue=89 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.350 | tv=0.350 | rawN=0.350 | normalized=0.350 | dmxValue=89 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.350 | tv=0.350 | rawN=0.350 | normalized=0.350 | dmxValue=89 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.350 | tv=0.350 | rawN=0.350 | normalized=0.350 | dmxValue=89 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.350 | tv=0.350 | rawN=0.350 | normalized=0.350 | dmxValue=89 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.165 | rawN=0.165 | normalized=0.165 | dmxValue=42 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.251 | rawN=0.251 | normalized=0.251 | dmxValue=64 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.165 | rawN=0.165 | normalized=0.165 | dmxValue=42 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.251 | rawN=0.251 | normalized=0.251 | dmxValue=64 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790599599 node=fixture-1778790599599:color fam=COLOR ch=red | arbIn=undef | tv=0.647 | rawN=0.647 | normalized=0.647 | dmxValue=165 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=dimmer | arbIn=0.500 | tv=0.500 | rawN=0.500 | normalized=0.500 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=strobe | arbIn=undef | tv=undef | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=red | arbIn=undef | tv=0.502 | rawN=0.502 | normalized=0.502 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=green | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1000 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=blue | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-AETHER TICK | Nodos activos: 8 | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] | Universos activos: 1 | DarkSpin transit: 0
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:33b | Pan:99 Tilt:66 | sBPM:90 phase:24°
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.80 FR:0.80 | BL:0.85 BR:0.85 | ML:0.15 MR:0.28
-[GAMMA 🎵] Frame 780: bpm=90, energy=0.58
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.95 | PLL=FREEWHEEL [mem=90@-0f] phase=0.00 sync=0.49 | beat #33 | bass=0.4478 sab=0.108 | 🔬in_peak=0.28238 in_rms=0.15399
-[TitanEngine 🧠] Stabilization: Key=B Emotion=DARK Strategy=analogous Temp=4795K
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:2% FR:2% BL:43% BR:43%
-[VirtualWire] 📡 SAB feed — cb#2500 | frames=441 | peak=0.1310 | ch=2
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=52% B/D/N=252/195/34
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(42%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.11 BR:0.11 | ML:0.09 MR:0.19
-[AETHER TICK 🩺] frame=1100 | Nodos activos: 8 | outputEnabled: true | blackout: false | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:35b | Pan:213 Tilt:78 | sBPM:90 phase:61°
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.26 FR:0.26 | BL:0.02 BR:0.02 | ML:0.12 MR:0.22
-[GAMMA 🎵] Frame 840: bpm=90, energy=0.76
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.87 | PLL=FREEWHEEL [mem=90@-0f] phase=0.00 sync=0.49 | beat #36 | bass=0.8832 sab=0.054 | 🔬in_peak=0.60507 in_rms=0.20216
-[TitanEngine 🧠] Stabilization: Key=B Emotion=DARK Strategy=analogous Temp=4546K
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:80% FR:80% BL:10% BR:10%
-[PROBE 💉] f=1100 dev=fixture-1778790599599 node=fixture-1778790599599:impact fam=IMPACT ch=dimmer | arbIn=0.397 | tv=0.397 | rawN=0.397 | normalized=0.397 | dmxValue=101 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.241 | tv=0.241 | rawN=0.241 | normalized=0.241 | dmxValue=61 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.241 | tv=0.241 | rawN=0.241 | normalized=0.241 | dmxValue=61 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.241 | tv=0.241 | rawN=0.241 | normalized=0.241 | dmxValue=61 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.241 | tv=0.241 | rawN=0.241 | normalized=0.241 | dmxValue=61 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.241 | tv=0.241 | rawN=0.241 | normalized=0.241 | dmxValue=61 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790599599 node=fixture-1778790599599:color fam=COLOR ch=red | arbIn=undef | tv=0.259 | rawN=0.259 | normalized=0.259 | dmxValue=66 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.118 | rawN=0.118 | normalized=0.118 | dmxValue=30 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.176 | rawN=0.176 | normalized=0.176 | dmxValue=45 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.118 | rawN=0.118 | normalized=0.118 | dmxValue=30 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.176 | rawN=0.176 | normalized=0.176 | dmxValue=45 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=dimmer | arbIn=0.500 | tv=0.500 | rawN=0.500 | normalized=0.500 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=strobe | arbIn=undef | tv=undef | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=red | arbIn=undef | tv=0.502 | rawN=0.502 | normalized=0.502 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=green | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1100 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=blue | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-AETHER TICK | Nodos activos: 8 | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] | Universos activos: 1 | DarkSpin transit: 0
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:36b | Pan:247 Tilt:-21 | sBPM:90 phase:96°
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=60% B/D/N=294/161/39
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(67%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.80 FR:0.80 | BL:0.85 BR:0.85 | ML:0.16 MR:0.03
-[MoodArbiter] 🎭 EMOTION SHIFT: DARK → BRIGHT (dominance=60.2%, after 4.6s)
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.85 BR:0.85 | ML:0.21 MR:0.32
-[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.87 | PLL=FREEWHEEL [mem=90@-0f] phase=0.00 sync=0.41 | beat #39 | bass=0.1233 sab=0.054 | 🔬in_peak=0.53645 in_rms=0.13799
-[TitanEngine 🧠] Stabilization: Key=B Emotion=BRIGHT Strategy=analogous Temp=4331K
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=water
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:9% FR:9% BL:85% BR:85%
-[AETHER TICK 🩺] frame=1200 | Nodos activos: 8 | outputEnabled: true | blackout: false | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[Egress 📤] Universe 0 → HAL. Suma bytes: 1555 | outputEnabled: true | blackout: false
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×1] | scene:38b | Pan:-19 Tilt:-10 | sBPM:90 phase:133°
-[GAMMA 🎵] Frame 900: bpm=90, energy=0.75
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=66% B/D/N=335/141/33
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(60%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.80 FR:0.80 | BL:0.00 BR:0.00 | ML:0.12 MR:0.28
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.85 BR:0.85 | ML:0.21 MR:0.03
-[NodeArbiter L2-DIAG] frame=1200 | manualOverrides=2 | samples:[fixture-1778790597168:impact,fixture-1778790597168:color]
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.476 | tv=0.476 | rawN=0.476 | normalized=0.476 | dmxValue=121 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.476 | tv=0.476 | rawN=0.476 | normalized=0.476 | dmxValue=121 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.476 | tv=0.476 | rawN=0.476 | normalized=0.476 | dmxValue=121 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.476 | tv=0.476 | rawN=0.476 | normalized=0.476 | dmxValue=121 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:impact fam=IMPACT ch=dimmer | arbIn=0.476 | tv=0.476 | rawN=0.476 | normalized=0.476 | dmxValue=121 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.235 | rawN=0.235 | normalized=0.235 | dmxValue=60 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.353 | rawN=0.353 | normalized=0.353 | dmxValue=90 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=green | arbIn=undef | tv=0.235 | rawN=0.235 | normalized=0.235 | dmxValue=60 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790604152 node=fixture-1778790604152:color fam=COLOR ch=blue | arbIn=undef | tv=0.353 | rawN=0.353 | normalized=0.353 | dmxValue=90 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790599599 node=fixture-1778790599599:impact fam=IMPACT ch=dimmer | arbIn=0.002 | tv=0.002 | rawN=0.002 | normalized=0.002 | dmxValue=1 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790599599 node=fixture-1778790599599:color fam=COLOR ch=red | arbIn=undef | tv=0.675 | rawN=0.675 | normalized=0.675 | dmxValue=172 | gateOpen=true | manual=false | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=dimmer | arbIn=0.500 | tv=0.500 | rawN=0.500 | normalized=0.500 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790597168 node=fixture-1778790597168:impact fam=IMPACT ch=strobe | arbIn=undef | tv=undef | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=red | arbIn=undef | tv=0.502 | rawN=0.502 | normalized=0.502 | dmxValue=128 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=green | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-[PROBE 💉] f=1200 dev=fixture-1778790597168 node=fixture-1778790597168:color fam=COLOR ch=blue | arbIn=undef | tv=0.000 | rawN=0.000 | normalized=0.000 | dmxValue=0 | gateOpen=true | manual=true | blocked=false | bufBefore=0
-AETHER TICK | Nodos activos: 8 | Primeros 10 bytes DMX: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] | Universos activos: 1 | DarkSpin transit: 0
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:40b | Pan:36 Tilt:-27 | sBPM:90 phase:172°
-
-------------------------------------
-
-[BridgeDiag 🌉 SEND] setPayloads=1 samples: {nodeId:fixture-1778790597168:impact, ch:[dimmer,brightness]}
-ProgrammerAetherBridge.ts:566 [BridgeDiag 🌉 SEND] setPayloads=1 samples: {nodeId:fixture-1778790597168:color, ch:[r,g,b]}
-
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:85% BR:85%
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:7b | Pan:102 Tilt:-69 | sBPM:120 phase:155°
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=200 | gateOpen=false, manualNodes=0, arbitrated.size=12 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.00 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.01
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:528
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[DYE] Escribiendo DMX para Rotation. Valor: 127. Source: translated | node=fixture-1778823203458:kinetic | device=fixture-1778823203458
+[ARBITER 🎭] In: mood='neutral' mode='unknown' → instant=NEUTRAL stable=NEUTRAL dom=53% B/D/N=94/1/106
+[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(48%) | Safety:✅OK
+[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.40 FR:0.40 | BL:0.00 BR:0.00 | ML:0.00 MR:0.00
+[GAMMA 🎵] Frame 120: bpm=0, energy=0.77
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:9b | Pan:-98 Tilt:67 | sBPM:120 phase:203°

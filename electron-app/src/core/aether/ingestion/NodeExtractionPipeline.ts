@@ -544,6 +544,17 @@ export class NodeExtractionPipeline {
 
     if (outputNodes.length === 0) return []
 
+    // WAVE 4817: tabla de lookup de defaultValue desde el top-level channels[].
+    // El nodeGraph puede carecer de defaultDmxValue si fue serializado antes de WAVE 4817
+    // o editado manualmente. La fuente canónica de verdad para valores por defecto es
+    // fixtureDef.channels (keyed por dmxOffset 0-based).
+    const legacyDefaultByOffset = new Map<number, number>()
+    for (const ch of fixtureDef.channels) {
+      if (typeof ch.index === 'number' && typeof ch.defaultValue === 'number') {
+        legacyDefaultByOffset.set(ch.index - 1, ch.defaultValue) // index es 1-based
+      }
+    }
+
     // 2. Agrupar por aetherNodeId (con fallback inferido)
     // WAVE 4738: recopilamos el label custom del IForgeNode para propagar al profileMeta.
     type ForgeGroup = { zone: ZoneId; nodes: OutputNode[]; customLabel?: string }
@@ -574,7 +585,7 @@ export class NodeExtractionPipeline {
     const nodes: ICapabilityNode[] = []
     for (const [suffix, group] of groups) {
       const nodeId   = `${deviceId}:${suffix}` as NodeId
-      const channels = this._mapForgeNodes(group.nodes.map(n => n.config))
+      const channels = this._mapForgeNodes(group.nodes.map(n => n.config), legacyDefaultByOffset)
       const typeSet  = new Set(
         group.nodes.map(n => this._normalizeChannelType(n.config.channelType)),
       )
@@ -598,13 +609,26 @@ export class NodeExtractionPipeline {
    * Convierte IOutputDmxConfig[] → INodeChannelDef[].
    * A diferencia de _mapChannels, usa cfg.dmxOffset DIRECTAMENTE (0-based),
    * sin la corrección -1 que asume índices 1-based legacy.
+   *
+   * @param legacyDefaultByOffset — Lookup opcional desde top-level channels[] para
+   *   recuperar defaultValue cuando cfg.defaultDmxValue sea undefined. WAVE 4817.
    */
-  private _mapForgeNodes(configs: readonly IOutputDmxConfig[]): INodeChannelDef[] {
+  private _mapForgeNodes(
+    configs: readonly IOutputDmxConfig[],
+    legacyDefaultByOffset?: ReadonlyMap<number, number>,
+  ): INodeChannelDef[] {
     return configs.map(cfg => {
+      // WAVE 4817: cfg.defaultDmxValue puede ser undefined si el JSON fue escrito
+      // sin Forge o antes de que defaultDmxValue fuera obligatorio. Fallback al
+      // top-level channels[] (keyed por dmxOffset) y, último recurso, a 0.
+      const defaultValue: number =
+        typeof cfg.defaultDmxValue === 'number'
+          ? cfg.defaultDmxValue
+          : (legacyDefaultByOffset?.get(cfg.dmxOffset) ?? 0)
       const mapped: INodeChannelDef = {
         type:         this._normalizeChannelType(cfg.channelType) as AetherChannelType,
         dmxOffset:    cfg.dmxOffset,
-        defaultValue: cfg.defaultDmxValue,
+        defaultValue,
         is16bit:      cfg.is16bit ?? false,
         customName:   cfg.channelName,
         ...(cfg.ignitionDeps && cfg.ignitionDeps.length > 0 && {
@@ -701,6 +725,12 @@ export class NodeExtractionPipeline {
       const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
         ? rotCh.defaultValue / 255
         : 0.5
+      if (rotCh && fixtureDef.name.toLowerCase().includes('tungsten')) {
+        console.log(
+          `[DYE] Nodo extraído con rotationHome: ${rotationHome} ` +
+          `| nodeId=${String(nodeId)} | fixture=${fixtureDef.name}`,
+        )
+      }
       return {
         nodeId,
         family:            NodeFamily.KINETIC,

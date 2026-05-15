@@ -166,6 +166,60 @@ export class LiquidAetherAdapter {
             this._colorScratch.nodeId = node.nodeId;
             bus.push(this._colorScratch);
         });
+        // WAVE 4817: Universal L0 — extensión a nodos KINETIC y ATMOSPHERE.
+        // IMPACT y COLOR ya tienen loops dedicados arriba. Las familias restantes
+        // se inspeccionan por duck-typing sobre node.channels:
+        //   · canal 'dimmer' presente  → bus de impacto (_impactScratch)
+        //   · canales RGB/W presentes  → bus de color   (_colorScratch)
+        //   · solo rotation/speed/control → sin luz, se ignora
+        // Esto corrige el caso Tungsteno donde nodos de zona ambient/air quedan
+        // en familia KINETIC o ATMOSPHERE con dimmer/RGB y nunca reciben L0.
+        const kineticNodes = this._nodeGraph.getView(NodeFamily.KINETIC);
+        kineticNodes.forEach((node) => {
+            const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''));
+            if (zoneIntensity <= 0.005)
+                return;
+            const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer');
+            const hasColorCh = node.channels.some((ch) => ch.type === 'red' || ch.type === 'green' || ch.type === 'blue' ||
+                ch.type === 'white' || ch.type === 'amber' || ch.type === 'uv');
+            if (hasPhysicalDimmer) {
+                this._impactValues['dimmer'] = undefined;
+                this._impactValues['brightness'] = undefined;
+                this._impactValues['dimmer'] = zoneIntensity;
+                this._impactScratch.nodeId = node.nodeId;
+                bus.push(this._impactScratch);
+            }
+            else if (hasColorCh) {
+                this._colorValues['brightness'] = undefined;
+                this._colorValues['brightness'] = zoneIntensity;
+                this._colorScratch.nodeId = node.nodeId;
+                bus.push(this._colorScratch);
+            }
+            // Nodo puramente cinético (solo rotation/pan/tilt/speed): sin canal de luz → skip.
+        });
+        const atmosphereNodes = this._nodeGraph.getView(NodeFamily.ATMOSPHERE);
+        atmosphereNodes.forEach((node) => {
+            const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''));
+            if (zoneIntensity <= 0.005)
+                return;
+            const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer');
+            const hasColorCh = node.channels.some((ch) => ch.type === 'red' || ch.type === 'green' || ch.type === 'blue' ||
+                ch.type === 'white' || ch.type === 'amber' || ch.type === 'uv');
+            if (hasPhysicalDimmer) {
+                this._impactValues['dimmer'] = undefined;
+                this._impactValues['brightness'] = undefined;
+                this._impactValues['dimmer'] = zoneIntensity;
+                this._impactScratch.nodeId = node.nodeId;
+                bus.push(this._impactScratch);
+            }
+            else if (hasColorCh) {
+                this._colorValues['brightness'] = undefined;
+                this._colorValues['brightness'] = zoneIntensity;
+                this._colorScratch.nodeId = node.nodeId;
+                bus.push(this._colorScratch);
+            }
+            // Máquinas de efecto puro (fog/haze/fan) sin dimmer/RGB: no reciben L0.
+        });
         // WAVE 4752 F5: Strobe gating — solo rutar strobe si está activo.
         // _routeStrobeNodes filtra internamente por zona (floor/ambient/air = block).
         if (result.strobeActive) {

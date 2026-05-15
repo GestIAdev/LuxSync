@@ -27,6 +27,8 @@ export interface ChannelInfo {
   name: string
   type: ChannelType
   is16bit: boolean  // Canales Fine (Pan16bit, Tilt16bit)
+  /** Valor DMX de reposo declarado en el perfil JSON (0-255). Ausente en .fxt legacy. */
+  defaultValue?: number
 }
 
 export type ChannelType = 
@@ -590,6 +592,20 @@ export class FXTParser {
         try {
           const jsonContent = fs.readFileSync(fullPath, 'utf-8')
           const jsonFixture = JSON.parse(jsonContent)
+
+          const fixtureNameForDye = String(jsonFixture.name || file)
+          const isTungstenFixture = fixtureNameForDye.toLowerCase().includes('tungsten')
+          if (isTungstenFixture && Array.isArray(jsonFixture.channels)) {
+            const rotationChannel = jsonFixture.channels.find((ch: any) =>
+              typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation',
+            )
+            if (rotationChannel) {
+              console.log(
+                `[DYE] Canal Rotation - defaultValue leído: ${String(rotationChannel.defaultValue)} ` +
+                `| fixture=${fixtureNameForDye} | file=${file}`,
+              )
+            }
+          }
           
           // Detect type from name or explicit type field
           let fixtureType: FixtureType = 'generic'

@@ -227,7 +227,24 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         // ── FLUJO LEGACY: rotación continua (fan, mirror ball) ──────────
         // El IK no aplica a rotación continua. Seguimos emitiendo canales
         // normalizados que el NodeResolver trata directamente.
-        let rotation = (intent.x + 1) * 0.5   // [-1,+1] → [0,1]  (0.5 = stop)
+
+        // WAVE 4819 — ABSOLUTE ROTATION RESOLVER:
+        // Si el VMM no tiene movimiento real (|intent.x| < epsilon), NO emitir intent.
+        // El NodeResolver cae en _getDefaultNormalizedValue() → rotationHome del fixture
+        // → 0 DMX para Tungsteno (defaultValue JSON = 0). Cero absoluto en reposo.
+        if (Math.abs(intent.x) < 0.005) {
+          return
+        }
+
+        // WAVE 4819: Mapeo bilineal usando rotationHome como punto de reposo real.
+        // Para fixtures estándar (rotHome=0.5), la curva es idéntica a la anterior:
+        //   intent.x=0 → 0.5, intent.x=+1 → 1.0, intent.x=-1 → 0.0.
+        // Para Tungsteno (rotHome=0): intent.x=+1 → 1.0, intent.x=0 → 0, intent.x=-1 → 0.
+        // El fallback 0.5 solo aplica cuando currentPosition.rotation no fue inicializado.
+        const rotHome = node.currentPosition.rotation ?? 0.5
+        let rotation = intent.x > 0
+          ? rotHome + intent.x * (1 - rotHome)   // [0,+1] → [rotHome, 1.0]
+          : rotHome + intent.x * rotHome          // [-1, 0] → [0.0, rotHome]
 
         // El espejeo para nodos continuos se aplica en X de posición física
         if ((node.physicalPosition?.x ?? 0) < 0) {

@@ -5,6 +5,7 @@
  *
  * WAVE 4522.3: THE COLOR-AETHER BRIDGE (Fase A)
  * WAVE 4775: Restricción espacial del Mood — PAR-only color.
+ * WAVE 4812: Pureza cromática — eliminados hue-shifts de zona. Zona air consume accent directo.
  *
  * RESPONSABILIDAD (SINGLE):
  * Consumir la paleta RGB de SeleneLuxOutput (fuente musical canónica) y
@@ -41,70 +42,7 @@
  */
 import { NodeFamily } from '../types';
 import { BaseSystem } from '../systems';
-import { selectColorRoleFromZone, normalizeZoneId } from './zoneUtils';
-// ─────────────────────────────────────────────────────────────────────────────
-// HUE SHIFT — WAVE 4701 M3
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Rota el matiz de un color RGB por `hueDeg` grados (0-360).
- * Si la saturación resultante cae por debajo del umbral, se fuerza al máximo
- * para evitar colores sucios/marrones (regla de oro).
- *
- * Zero-alloc: escribe el resultado en `out` en lugar de retornar un nuevo objeto.
- * Llamar con un buffer pre-allocated para garantizar cero asignaciones en hot path.
- */
-function hueShiftRgb(r, g, b, hueDeg, out, minSaturation = 0.6) {
-    // RGB [0,1] → HSL
-    const max = r > g ? (r > b ? r : b) : (g > b ? g : b);
-    const min = r < g ? (r < b ? r : b) : (g < b ? g : b);
-    const l = (max + min) / 2;
-    let h = 0;
-    let s = 0;
-    if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        if (max === r)
-            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        else if (max === g)
-            h = ((b - r) / d + 2) / 6;
-        else
-            h = ((r - g) / d + 4) / 6;
-    }
-    // Aplicar rotación de matiz
-    h = (h + hueDeg / 360) % 1;
-    if (h < 0)
-        h += 1;
-    // Forzar saturación mínima si el color es sucio
-    if (s < minSaturation && (max - min) > 0.05)
-        s = 1.0;
-    // HSL → RGB — escribir directamente en out (zero-alloc)
-    if (s === 0) {
-        out.r = l;
-        out.g = l;
-        out.b = l;
-        return;
-    }
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    const hue2rgb = (t) => {
-        if (t < 0)
-            t += 1;
-        if (t > 1)
-            t -= 1;
-        if (t < 1 / 6)
-            return p + (q - p) * 6 * t;
-        if (t < 1 / 2)
-            return q;
-        if (t < 2 / 3)
-            return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-    };
-    out.r = hue2rgb(h + 1 / 3);
-    out.g = hue2rgb(h);
-    out.b = hue2rgb(h - 1 / 3);
-}
-/** Desplazamiento de matiz (grados) aplicado a nodos COLOR en zona 'air'. */
-const AIR_ZONE_HUE_OFFSET_DEG = 60;
+import { selectColorRoleFromZone } from './zoneUtils';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,8 +86,6 @@ export class ColorAdapter extends BaseSystem {
         this.source = COLOR_SOURCE;
         // Paleta activa del frame actual — actualizada via setIngress() antes de process()
         this._ingress = _FALLBACK_PALETTE;
-        // Buffer pre-allocated para hueShiftRgb — zero-alloc en hot path
-        this._hueShiftOut = { r: 0, g: 0, b: 0 };
         /**
          * WAVE 4775: Set de nodeIds que pertenecen a movers (fixtures con KINETIC).
          * Calculado en patch time via setMoverNodeIds(); costo 0 en hot path.
@@ -202,20 +138,11 @@ export class ColorAdapter extends BaseSystem {
             let bNorm = rgb.b < 0 ? 0 : rgb.b > 255 ? 1 : rgb.b / 255;
             // WAVE 4775.1: BIFURCACIÓN BASE vs MOOD.
             // Movers: reciben la paleta constitucional de Selene directa (role→RGB),
-            // sin modificadores de zona (hue-shift air). Esto les da color estable.
-            // PARs/Ambient: reciben la paleta completa incluyendo hue-shift de zona air.
-            const isMover = this._moverColorNodeIds.size > 0 && this._moverColorNodeIds.has(node.nodeId);
-            if (!isMover) {
-                // 🌊 WAVE 4701 M3: Desplazamiento cromático para zona 'air' (beam Tungsten).
-                // 60° de rotación de matiz sobre el color ambient de Selene.
-                // Saturación mínima 60% para evitar colores marrones/sucios.
-                if (normalizeZoneId(node.zoneId ?? '') === 'air') {
-                    hueShiftRgb(rNorm, gNorm, bNorm, AIR_ZONE_HUE_OFFSET_DEG, this._hueShiftOut, 0.6);
-                    rNorm = this._hueShiftOut.r;
-                    gNorm = this._hueShiftOut.g;
-                    bNorm = this._hueShiftOut.b;
-                }
-            }
+            // sin modificadores de zona. Esto les da color estable.
+            // PARs/Ambient: reciben el color puro del rol asignado por selectColorRoleFromZone.
+            // WAVE 4812: hue-shift de zona eliminado — 4 colores puros de Selene, sin alteraciones.
+            // La zona 'air' recibe el rol 'accent' directamente (ver zoneUtils.selectColorRoleFromZone).
+            void this._moverColorNodeIds;
             // Limpiar stale values de frames anteriores antes de asignar
             // (previene ghost channels si el adaptador cambia de familia de canales)
             this._valuesDict['r'] = undefined;

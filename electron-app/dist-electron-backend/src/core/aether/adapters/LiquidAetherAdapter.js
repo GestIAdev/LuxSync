@@ -32,7 +32,7 @@
  * @version WAVE 4521.2
  */
 import { NodeFamily } from '../types';
-import { selectZoneFromResult } from './zoneUtils';
+import { selectZoneFromResult, normalizeZoneId } from './zoneUtils';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +42,14 @@ const L0_PRIORITY = 0;
 const SOURCE = 'liquid-aether-l0';
 /** Radio máximo de influencia de la onda energética (metros). */
 const DEFAULT_MAX_RADIUS_M = 12.0;
+// ── WAVE 4752: Zonas donde el strobe está PROHIBIDO ─────────────────────────
+// floor/ambient/air = zonas de luz base. El strobe debe reservarse para
+// flash, front y movers. Cualquier zona no listada aquí permite strobe.
+const STROBE_BLOCKED_ZONES = new Set([
+    'floor',
+    'ambient',
+    'air',
+]);
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS INLINE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,6 +166,11 @@ export class LiquidAetherAdapter {
             this._colorScratch.nodeId = node.nodeId;
             bus.push(this._colorScratch);
         });
+        // WAVE 4752 F5: Strobe gating — solo rutar strobe si está activo.
+        // _routeStrobeNodes filtra internamente por zona (floor/ambient/air = block).
+        if (result.strobeActive) {
+            this._routeStrobeNodes(result, bus);
+        }
     }
     // ─────────────────────────────────────────────────────────────────────────
     // SUBRUTAS DE ENRUTAMIENTO
@@ -175,6 +188,12 @@ export class LiquidAetherAdapter {
         const impactNodes = this._nodeGraph.getView(NodeFamily.IMPACT);
         const strobeIntensity = result.strobeIntensity;
         impactNodes.forEach((node) => {
+            // ── WAVE 4752 F5: Gating por zona ────────────────────────────
+            // Zonas base (floor/ambient/air) reciben strobe=0 garantizado.
+            // El strobe se reserva para flash, front, movers y zonas dinámicas.
+            const zoneNormalized = normalizeZoneId(node.zoneId ?? '');
+            if (STROBE_BLOCKED_ZONES.has(zoneNormalized))
+                return;
             // ── Verificar capacidad de shutter ────────────────────────────
             const hasShutter = node.channels.some((ch) => ch.type === 'shutter');
             if (!hasShutter)

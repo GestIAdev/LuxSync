@@ -253,9 +253,15 @@ export class KineticSystem extends BaseSystem {
                 const rotation = limitedPan; // reutilizamos la curva del patrón
                 const speed = limitedTilt; // reutilizamos variación como speed scalar
                 node.currentPosition.rotation = rotation;
-                this._intentScratch.nodeId = node.nodeId;
-                this._valuesDict['rotation'] = rotation;
-                this._valuesDict['speed'] = speed;
+                // WAVE 4815: No forzar rotation=0.5 (stop/128) cuando no hay movimiento.
+                // Si patrón=idle y movementSpeed=0, no emitir intent L0.
+                // El defaultValue del canal (del JSON, ej. 0) prevalece en reposo.
+                if (vibe.movementSpeed > 0 || pattern !== 0) {
+                    this._intentScratch.nodeId = node.nodeId;
+                    this._valuesDict['rotation'] = rotation;
+                    this._valuesDict['speed'] = speed;
+                    bus.push(this._intentScratch);
+                }
             }
             else {
                 // ── Mover estándar (pan/tilt posicionado) ─────────────────────────────
@@ -271,8 +277,8 @@ export class KineticSystem extends BaseSystem {
                     const tiltFraction = limitedTilt * 255;
                     this._valuesDict['tilt_fine'] = (tiltFraction % 1);
                 }
+                bus.push(this._intentScratch);
             }
-            bus.push(this._intentScratch);
         });
     }
     // ═════════════════════════════════════════════════════════════════════════

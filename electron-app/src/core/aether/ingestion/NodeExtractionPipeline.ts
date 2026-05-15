@@ -696,6 +696,11 @@ export class NodeExtractionPipeline {
       const isContinuous = !hasPanTilt && hasRotation
       const motorType    = this._mapMotorType(fixtureDef.physics?.motorType)
       const maxSpeed     = fixtureDef.physics?.maxVelocity ?? 540
+      // WAVE 4814: respetar defaultValue del JSON para posición home de rotación.
+      const rotCh        = channels.find(c => c.type === 'rotation')
+      const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
+        ? rotCh.defaultValue / 255
+        : 0.5
       return {
         nodeId,
         family:            NodeFamily.KINETIC,
@@ -710,7 +715,7 @@ export class NodeExtractionPipeline {
         maxTiltSpeed:      isContinuous ? 0 : maxSpeed,
         maxRotationSpeed:  isContinuous ? maxSpeed : undefined,
         currentPosition:   isContinuous
-          ? { pan: 0, tilt: 0, rotation: 0.5 }
+          ? { pan: 0, tilt: 0, rotation: rotationHome }
           : { pan: 0.5, tilt: 0.5 },
         physicalPosition:  position ?? NEUTRAL_POSITION,
         stereoIndex:       0,
@@ -956,13 +961,20 @@ export class NodeExtractionPipeline {
     const hasRotation  = kineticChs.some(ch => ch.type === 'rotation')
     const isContinuous = !hasPanTilt && hasRotation
 
+    const channels = this._mapChannels(kineticChs, true)
+    // WAVE 4814: respetar defaultValue del JSON para posición home de rotación.
+    const rotCh        = channels.find(c => c.type === 'rotation')
+    const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
+      ? rotCh.defaultValue / 255
+      : 0.5
+
     return {
       nodeId,
       family:            NodeFamily.KINETIC,
       deviceId,
       zoneId,
       role:              isContinuous ? 'percussion' : 'primary',
-      channels:          this._mapChannels(kineticChs, true),
+      channels,
       constraints:       { ...KINETIC_CONSTRAINTS_BASE, maxSpeed },
       motorType,
       isContinuous,
@@ -970,7 +982,7 @@ export class NodeExtractionPipeline {
       maxTiltSpeed:      isContinuous ? 0 : maxSpeed,
       maxRotationSpeed:  isContinuous ? maxSpeed : undefined,
       currentPosition:   isContinuous
-        ? { pan: 0, tilt: 0, rotation: 0.5 }
+        ? { pan: 0, tilt: 0, rotation: rotationHome }
         : { pan: 0.5, tilt: 0.5 },
       physicalPosition:  position ?? NEUTRAL_POSITION,
       stereoIndex:       0,
@@ -1147,13 +1159,15 @@ export class NodeExtractionPipeline {
       return ch.defaultValue
     }
 
-    if (kinetic && (type === 'pan' || type === 'tilt')) {
+    if (kinetic && (type === 'pan' || type === 'tilt' || type === 'rotation')) {
       return 128
     }
 
-    if (type === 'shutter' || type === 'strobe') {
-      return 255
-    }
+    // WAVE 4752 F6: defaults seguros diferenciados.
+    // shutter=255: obturador abierto — la luz pasa. Caída a default NO ciega el fixture.
+    // strobe=0: sin parpadeo en silencio — evita velocidad máxima en idle.
+    if (type === 'shutter') return 255
+    if (type === 'strobe')  return 0
 
     return 0
   }

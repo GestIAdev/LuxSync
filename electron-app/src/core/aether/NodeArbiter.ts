@@ -5,23 +5,26 @@
  *
  * WAVE 3505.4: Implementación concreta del INodeArbiter.
  * WAVE 4775: El Árbitro de Hierro — refactor forense completo.
+ * WAVE 4752: THE SMART GATE — Máscara granular per-node/per-channel.
  *
  * El NodeArbiter resuelve conflictos multicapa sobre los CapabilityNodes.
  * Opera sobre valores normalizados (0-1) producidos por los 5 Systems
  * y los hooks externos (Selene, Manual, Effects, Playback).
  *
- * ESTRATEGIAS DE MERGE POR CANAL (WAVE 4775):
- * - `dimmer`, `strobe`, `shutter` → PRIORIDAD ESTRICTA POR CAPA
- *   (L4 > LP > L3 > L2 > L1 > L0). El HTP SÓLO existe dentro de la misma
- *   capa (multi-fuente en L0), nunca entre capas distintas.
- *   Destruye el HTP trans-capa que causaba flashes de un frame.
- * - todos los demás → LTP (Latest Takes Precedence = capa de mayor prioridad)
+ * ESTRATEGIAS DE MERGE POR CANAL (WAVE 4752):
+ * - `dimmer`, `brightness` → LTP absoluto: L2 gana cuando está activo.
+ *   L0 sigue fluyendo mientras L2 NO toque ese canal específico.
+ * - `strobe`, `shutter` → PRIORIDAD ESTRICTA POR CAPA (L4>LP>L3>L2>L1>L0).
+ *   HTP solo dentro de L0 (multi-fuente en el mismo bus).
+ * - todos los demás → LTP por canal-tocado: L0 escribe si L2/LP NO
+ *   escribieron ese canal en ese nodo específico.
  *
- * OPAQUE MASK (WAVE 4775):
- * - Cuando L2 (Manual) o LP (Timeline) tocan CUALQUIER canal de un fixture,
- *   ese fixture queda "Opaco": L0 y L1 NO pueden inyectar canales estéticos
- *   (color, gobo, prisma, zoom, focus, frost) para ese fixture.
- *   El movimiento continuo (pan/tilt) de L0 sigue funcionando.
+ * SMART GATE (WAVE 4752 — reemplaza OPAQUE MASK fixture-wide de WAVE 4775):
+ * - Tracking per-node de los canales que L2/LP están tocando este frame.
+ * - L0/L1 solo bloqueados en los canales exactos que L2/LP escribieron.
+ * - Un toque de dimmer en :impact NO bloquea color de L0 en :color.
+ * - Un toque de color en :color NO afecta dimmer de :impact.
+ * - Release Time: al liberar un override, fade ease-out al estado L0.
  *
  * CAPAS (menor a mayor prioridad):
  * - L0: IntentBus (Systems — ColorSystem, ImpactSystem, KineticSystem…)
@@ -34,10 +37,11 @@
  * ZERO-ALLOC EN HOT PATH:
  * - `_result` es un Map pre-existente que se muta in-place cada frame.
  * - Los Records internos se reusan vía `_resultPool` (object pool).
+ * - `_opaqueNodeChannels` usa Set pool — sin alloc en hot path.
  * - No se crean nuevos Maps, Sets ni Arrays durante `arbitrate()`.
  *
  * @module core/aether/NodeArbiter
- * @version WAVE 4775 — El Árbitro de Hierro
+ * @version WAVE 4752 — The Smart Gate
  */
 
 import type {
@@ -50,31 +54,33 @@ import type {
   ArbitratedNodeMap,
 } from './intent-bus'
 
-// ── Canales con prioridad estricta por capa (WAVE 4775) ────────────────────
-// ANTES: HTP (max global entre capas) → causaba flashes de 1 frame.
-// AHORA: Prioridad estricta. La capa más alta con valor definido gana.
-// El HTP SOLO existe dentro de L0 (multi-fuente en el mismo bus).
-const STRICT_PRIORITY_CHANNELS = new Set<string>(['dimmer', 'brightness', 'strobe', 'shutter'])
+// ── Canales con prioridad estricta por capa (WAVE 4775 / 4752) ─────────────
+// strobe/shutter: prioridad estricta descendente (L4>LP>L3>L2>L1>L0).
+// HTP solo dentro de L0 (multi-fuente en el mismo bus).
+// dimmer/brightness: ahora LTP absoluto — L2 gana cuando está activo;
+// L0 sigue fluyendo si L2 NO toca ese canal en ese nodo.
+const STRICT_PRIORITY_CHANNELS = new Set<string>(['strobe', 'shutter'])
 
-// ── Canales bloqueados por Opaque Mask de L0 y L1 (WAVE 4775) ──────────────
-// Cuando un fixture está opaco (L2/LP tocó cualquier canal),
-// L0 y L1 NO pueden inyectar estos canales sobre ese fixture.
-// pan/tilt EXCLUIDOS: el movimiento continuo de L0 siempre pasa.
-const OPAQUE_BLOCKED_CHANNELS_L0_L1 = new Set<string>([
-  'r', 'g', 'b',
-  'red', 'green', 'blue',
-  'white', 'amber',
-  'gobo', 'gobo_rotation',
-  'prisma', 'prisma_rotation',
-  'zoom', 'focus', 'frost',
-])
+// ── WAVE 4752: SMART GATE — bloqueo per-node/per-channel ────────────────────
+// Reemplaza OPAQUE_BLOCKED_CHANNELS_L0_L1 (fixture-wide).
+// El tracking de canales-tocados se hace en _opaqueNodeChannels y
+// _opaquePlaybackChannels, populados en arbitrate() antes de aplicar L0/L1.
+// No es una lista estática — es un mapa dinámico por canal exacto.
 
 const MOVER_SHIELD_BLOCKED_CHANNELS = new Set<string>([
   'r', 'g', 'b',
   'red', 'green', 'blue',
   'white', 'amber',
 ])
+// ── Canales excluidos del Hard Lock (siguen lógica especial del motor cinético)
 const MANUAL_HARD_LOCK_EXCLUDED_CHANNELS = new Set<string>(['pan_base', 'tilt_base'])
+
+// ── WAVE 4752: Canales con duración de release larga (movers) ────────────────
+// Estos canales usan RELEASE_MS_SLOW (1000ms) al soltar el override.
+// El resto usa RELEASE_MS_FAST (200ms).
+const SLOW_RELEASE_CHANNELS = new Set<string>(['pan', 'tilt', 'zoom', 'focus', 'rotation'])
+const RELEASE_MS_FAST = 200
+const RELEASE_MS_SLOW = 1000
 const PHOTON_TRACER_EVERY_FRAMES = 20
 
 function isFiniteChannelValue(value: number | undefined): value is number {
@@ -146,14 +152,33 @@ export class NodeArbiter implements INodeArbiter {
   private _playbackIntents: readonly INodeIntent[] = []
 
   /**
-   * WAVE 4775: OPAQUE FIXTURE REGISTRY.
-   * Fixtures (prefijo de nodeId) que tienen override activo en L2 (Manual)
-   * o LP (Playback). Pre-computado en arbitrate() antes de aplicar L0/L1.
-   * Si un fixture está aquí, L0 y L1 NO pueden inyectar canales estéticos
-   * (OPAQUE_BLOCKED_CHANNELS_L0_L1) — Opaque Mask activa.
-   * pan/tilt de L0 siempre pasan (movimiento continuo).
+   * WAVE 4752: SMART GATE — Tracking per-node de canales tocados por L2.
+   * Key = nodeId, Value = Set de nombres de canal que L2 escribió este frame.
+   * L0/L1 solo bloqueados en los canales exactos presentes en estos Sets.
+   * Populado y limpiado cada frame en arbitrate(). Pool de Sets para zero-alloc.
    */
-  private readonly _opaqueFixtureIds = new Set<string>()
+  private readonly _opaqueNodeChannels = new Map<string, Set<string>>()
+
+  /**
+   * WAVE 4752: SMART GATE — Tracking per-node de canales tocados por LP.
+   * Misma semántica que _opaqueNodeChannels pero para Playback Timeline.
+   */
+  private readonly _opaquePlaybackChannels = new Map<string, Set<string>>()
+
+  /** Pool de Sets reutilizables para zero-alloc en _opaqueNodeChannels/LP */
+  private readonly _channelSetPool: Set<string>[] = []
+  private _channelSetCursor = 0
+
+  /**
+   * WAVE 4752: RELEASE TIME — estados de fade al soltar overrides manuales.
+   * Key = nodeId, Value = snapshot del override en el momento del clear.
+   * Se interpola ease-out cúbico durante la duración configurada.
+   */
+  private readonly _releaseStates = new Map<string, {
+    channels: Record<string, number>
+    startedAtMs: number
+    durationByChannel: Record<string, number>  // ms por canal (200 o 1000)
+  }>()
 
   /** Grand Master (0-1) — multiplica todos los canales HTP */
   private _grandMaster = 1.0
@@ -242,7 +267,27 @@ export class NodeArbiter implements INodeArbiter {
     this._seleneOverrideMoverShield = active
   }
 
-  clearManualOverride(nodeId: NodeId): void {
+  clearManualOverride(nodeId: NodeId, _releaseMs?: number): void {
+    const channels = this._manualOverrides.get(nodeId)
+    if (channels) {
+      // Capturar snapshot para el fade de retorno
+      const snapshot: Record<string, number> = {}
+      const durationByChannel: Record<string, number> = {}
+      for (const key in channels) {
+        const v = (channels as Record<string, number>)[key]
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          snapshot[key] = v
+          durationByChannel[key] = SLOW_RELEASE_CHANNELS.has(key) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+        }
+      }
+      if (Object.keys(snapshot).length > 0) {
+        this._releaseStates.set(nodeId, {
+          channels: snapshot,
+          startedAtMs: performance.now(),
+          durationByChannel,
+        })
+      }
+    }
     this._manualOverrides.delete(nodeId)
   }
 
@@ -321,28 +366,48 @@ export class NodeArbiter implements INodeArbiter {
     // Limpiar el mapa de resultado anterior
     this._result.clear()
 
-    // WAVE 4713: precomputar fixtures con dimmer manual activo desde L2.
-    // Se hace ANTES de aplicar L0 para bloquear ruido visual nativo.
+    // WAVE 4752: SMART GATE — pre-computar canales tocados por L2/LP por nodo.
+    // Sustituye el fixture-wide opaque mask de WAVE 4775.
+    // L0/L1 solo bloqueados en los canales exactos que L2/LP están escribiendo.
+    this._channelSetCursor = 0
+    this._opaqueNodeChannels.clear()
+    this._opaquePlaybackChannels.clear()
+
+    // L2: registrar canales tocados por nodo
+    for (const [nodeId, channels] of this._manualOverrides) {
+      let set = this._opaqueNodeChannels.get(nodeId)
+      if (!set) {
+        set = this._acquireChannelSet()
+        this._opaqueNodeChannels.set(nodeId, set)
+      }
+      for (const key in channels) {
+        const v = (channels as Record<string, number>)[key]
+        if (typeof v === 'number' && Number.isFinite(v)) set.add(key)
+      }
+    }
+
+    // LP: registrar canales tocados por nodo
+    for (let i = 0; i < this._playbackIntents.length; i++) {
+      const intent = this._playbackIntents[i]
+      let set = this._opaquePlaybackChannels.get(intent.nodeId)
+      if (!set) {
+        set = this._acquireChannelSet()
+        this._opaquePlaybackChannels.set(intent.nodeId, set)
+      }
+      for (const key in intent.values) {
+        const v = (intent.values as Record<string, number>)[key]
+        if (typeof v === 'number' && Number.isFinite(v)) set.add(key)
+      }
+    }
+
+    // WAVE 4713 COMPAT: dimmer fixture tracking sigue activo para bloquear
+    // intents de familia completa (kinetic/atmosphere pasan igual).
     this._manualDimmerFixtureIds.clear()
     for (const [nodeId, channels] of this._manualOverrides) {
-      const manualDimmer = channels['dimmer']
+      const manualDimmer = (channels as Record<string, number>)['dimmer']
       if (!isFiniteChannelValue(manualDimmer)) continue
       const sep = nodeId.lastIndexOf(':')
       if (sep > 0) this._manualDimmerFixtureIds.add(nodeId.slice(0, sep))
-    }
-
-    // WAVE 4775: OPAQUE MASK — precomputar fixtures opacos.
-    // Un fixture es opaco si L2 (Manual) o LP (Playback) tiene CUALQUIER canal
-    // activo sobre alguno de sus nodos. Se bloquean L0/L1 para canales estéticos.
-    this._opaqueFixtureIds.clear()
-    for (const [nodeId] of this._manualOverrides) {
-      const sep = nodeId.lastIndexOf(':')
-      if (sep > 0) this._opaqueFixtureIds.add(nodeId.slice(0, sep))
-    }
-    for (let i = 0; i < this._playbackIntents.length; i++) {
-      const nodeId = this._playbackIntents[i].nodeId
-      const sep = nodeId.lastIndexOf(':')
-      if (sep > 0) this._opaqueFixtureIds.add(nodeId.slice(0, sep))
     }
 
     // 2. Recolectar intents en orden ascendente de prioridad de capa.
@@ -460,11 +525,10 @@ export class NodeArbiter implements INodeArbiter {
       }
     }
 
-    // WAVE 4670 + 4709 + 4710: MANUAL INTENSITY LOCK (ley del operador).
-    // Si L2 tiene dimmer explícito, ese valor se impone de forma ABSOLUTA sobre
-    // dimmer/brightness para congelar intensidad fija (sin pulso L0/L3).
-    // Además se replica al nodo hermano :color del mismo fixture para cubrir
-    // PAR RGB puros cuyo atenuador vive en brightness de COLOR.
+    // WAVE 4752: MANUAL INTENSITY LOCK — node-wide (no fixture-wide).
+    // Solo el nodo que el operador tocó queda lockeado en dimmer/brightness.
+    // Los nodos hermanos (otros cells, otras familias) siguen siendo
+    // gobernados por L0 según sus propias reglas LTP.
     if (this._manualDimmerLocks.size > 0) {
       for (const [nodeId, lockValue] of this._manualDimmerLocks) {
         let record = this._result.get(nodeId)
@@ -474,35 +538,18 @@ export class NodeArbiter implements INodeArbiter {
         }
         record['dimmer'] = lockValue
         record['brightness'] = lockValue
-
-        const sep = nodeId.lastIndexOf(':')
-        if (sep > 0) {
-          const fixtureId = nodeId.slice(0, sep)
-          const fixturePrefix = `${fixtureId}:`
-
-          // WAVE 4711 HOTFIX SHOWTIME:
-          // Lock de intensidad por FIXTURE completo para neutralizar rutas
-          // anómalas de extracción (familias no estándar / nodeId raros).
-          for (const [candidateNodeId, candidateRecord] of this._result) {
-            if (!candidateNodeId.startsWith(fixturePrefix)) continue
-            candidateRecord['dimmer'] = lockValue
-            candidateRecord['brightness'] = lockValue
-          }
-
-          // Crear/forzar también el nodo :color aunque no exista aún en _result.
-          const colorNodeId = `${fixtureId}:color`
-          let colorRecord = this._result.get(colorNodeId)
-          if (!colorRecord) {
-            colorRecord = this._acquireRecord()
-            this._result.set(colorNodeId, colorRecord)
-          }
-          colorRecord['dimmer'] = lockValue
-          colorRecord['brightness'] = lockValue
-        }
       }
     }
 
-    // 3. Aplicar Grand Master sobre canales de intensidad (STRICT_PRIORITY_CHANNELS)
+    // WAVE 4752: RELEASE FADES — interpolación ease-out al soltar overrides.
+    // Se aplica DESPUÉS de L2/L3 y ANTES del Grand Master.
+    if (this._releaseStates.size > 0) {
+      this._applyReleaseFades()
+    }
+
+    // 3. Aplicar Grand Master sobre canales de intensidad.
+    // dimmer y brightness son ahora LTP (no están en STRICT_PRIORITY_CHANNELS)
+    // pero sí escalan con el Grand Master.
     if (this._grandMaster !== 1.0) {
       for (const record of this._result.values()) {
         for (const ch of STRICT_PRIORITY_CHANNELS) {
@@ -510,6 +557,8 @@ export class NodeArbiter implements INodeArbiter {
             record[ch] = record[ch] * this._grandMaster
           }
         }
+        if ('dimmer' in record) record['dimmer'] = record['dimmer'] * this._grandMaster
+        if ('brightness' in record) record['brightness'] = record['brightness'] * this._grandMaster
       }
     }
 
@@ -591,14 +640,14 @@ export class NodeArbiter implements INodeArbiter {
       this._result.set(intent.nodeId, record)
     }
 
-    // Pre-computar si el fixture del intent está opaco (para el filtro por canal)
-    let fixtureIsOpaque = false
-    if ((layer === 'system' || layer === 'selene') && this._opaqueFixtureIds.size > 0) {
-      const sep = intent.nodeId.lastIndexOf(':')
-      if (sep > 0) {
-        fixtureIsOpaque = this._opaqueFixtureIds.has(intent.nodeId.slice(0, sep))
-      }
-    }
+    // WAVE 4752: SMART GATE — obtener canales bloqueados para este nodo.
+    // L0/L1 solo bloqueados en canales que L2/LP están tocando EN ESE NODO.
+    const l2BlockedChannels = (layer === 'system' || layer === 'selene')
+      ? this._opaqueNodeChannels.get(intent.nodeId)
+      : undefined
+    const lpBlockedChannels = (layer === 'system' || layer === 'selene')
+      ? this._opaquePlaybackChannels.get(intent.nodeId)
+      : undefined
 
     const values = intent.values
     const shieldedColorNode =
@@ -611,9 +660,11 @@ export class NodeArbiter implements INodeArbiter {
         continue
       }
 
-      // WAVE 4775: OPAQUE MASK por canal.
-      // L0/L1 no pueden escribir canales estéticos en fixtures opacos.
-      if (fixtureIsOpaque && OPAQUE_BLOCKED_CHANNELS_L0_L1.has(channel)) {
+      // WAVE 4752: SMART GATE — bloqueo per-canal-tocado.
+      // L0/L1 no pueden escribir un canal si L2 o LP lo están escribiendo
+      // en ESTE NODO específico. Canales no tocados por L2/LP fluyen libres.
+      if ((l2BlockedChannels?.has(channel) === true ||
+           lpBlockedChannels?.has(channel) === true)) {
         continue
       }
 
@@ -623,15 +674,7 @@ export class NodeArbiter implements INodeArbiter {
       }
 
       if (STRICT_PRIORITY_CHANNELS.has(channel)) {
-        // WAVE 4775: PRIORIDAD ESTRICTA POR CAPA para dimmer/strobe/shutter/brightness.
-        //
-        // Regla: si ya hay un valor en el record (escrito por una capa anterior
-        // de IGUAL o MAYOR prioridad en el orden de aplicación), NO se sobreescribe.
-        //
-        // Las capas se aplican de menor a mayor prioridad (L0 → LP),
-        // por lo que una capa inferior SOLO puede escribir si el canal está vacío.
-        // Una capa superior SIEMPRE sobreescribe (el bucle ya garantiza el orden).
-        //
+        // strobe/shutter: PRIORIDAD ESTRICTA POR CAPA.
         // Excepción: L3 (effect) con dimmer=0 tiene autoridad destructiva (WAVE 4705).
         if (layer === 'effect' && channel === 'dimmer' && incoming <= 0) {
           record[channel] = 0
@@ -643,24 +686,19 @@ export class NodeArbiter implements INodeArbiter {
           continue
         }
         // Para L0 (system): HTP DENTRO de L0 — múltiples sources del mismo bus.
-        // Esto permite que varios Systems de L0 compitan con max() entre ellos.
         if (layer === 'system') {
           const current = record[channel]
-          // Solo HTP si la capa actual es L0 (no hay escritura de capa superior aún).
-          // Si el valor ya fue escrito por L1/LP/L3, no pisamos (prioridad estricta).
           if (current === undefined || incoming > current) {
             record[channel] = incoming
           }
           continue
         }
         // L1, LP, L3 (effect no-zero): LTP estricto entre capas.
-        // El orden ascendente de aplicación garantiza que la última escritura
-        // (capa más alta) prevalezca sin necesidad de comparación.
         record[channel] = incoming
       } else {
-        // LTP: la última escritura (capa más alta) gana
-        // — Los intents llegan en orden ascendente de prioridad,
-        //   así que simplemente sobreescribir es correcto.
+        // LTP: la última escritura (capa más alta) gana.
+        // dimmer/brightness: LTP puro — L0 escribe libremente en canales
+        // que L2 NO esté tocando (el Smart Gate ya los filtró arriba).
         record[channel] = incoming
       }
     }
@@ -674,6 +712,7 @@ export class NodeArbiter implements INodeArbiter {
   clearAllManualOverrides(): void {
     this._manualOverrides.clear()
     this._motorKineticOverrides.clear()
+    this._releaseStates.clear()
   }
 
   /**
@@ -736,12 +775,60 @@ export class NodeArbiter implements INodeArbiter {
     return result
   }
 
+  /** Zero-alloc Set pool para _opaqueNodeChannels / _opaquePlaybackChannels */
+  private _acquireChannelSet(): Set<string> {
+    if (this._channelSetCursor < this._channelSetPool.length) {
+      const s = this._channelSetPool[this._channelSetCursor++]
+      s.clear()
+      return s
+    }
+    const s = new Set<string>()
+    this._channelSetPool.push(s)
+    this._channelSetCursor++
+    return s
+  }
+
   /**
-   * Obtiene un Record del pool o crea uno nuevo si el pool está agotado.
-   *
-   * El pool crece hasta el máximo de nodos activos simultáneamente
-   * y luego se estabiliza. GC amortizado a cero tras warm-up.
+   * WAVE 4752: Aplica fades de retorno ease-out cúbico al soltar overrides.
+   * Para cada nodo en _releaseStates, mezcla el snapshot del override
+   * con el valor L0 ya en _result. Al terminar el fade (t=1), elimina el estado.
    */
+  private _applyReleaseFades(): void {
+    const now = performance.now()
+    for (const [nodeId, rel] of this._releaseStates) {
+      let record = this._result.get(nodeId)
+
+      let fadeCompleted = true
+      for (const key in rel.channels) {
+        const duration = rel.durationByChannel[key] ?? RELEASE_MS_FAST
+        const elapsed  = now - rel.startedAtMs
+        if (elapsed < duration) fadeCompleted = false
+        const t = elapsed >= duration ? 1.0 : elapsed / duration
+        // Ease-out cúbico: suave al final — orgánico para movers
+        const fadeWeight = 1.0 - t * t * t
+        if (fadeWeight <= 0) continue
+
+        const releaseValue = rel.channels[key]
+        if (!record) {
+          record = this._acquireRecord()
+          this._result.set(nodeId, record)
+        }
+        const l0Value = record[key]
+        if (l0Value !== undefined && Number.isFinite(l0Value)) {
+          // Blend: snapshot del manual → valor L0 actual
+          record[key] = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight)
+        } else {
+          // L0 no escribió este canal aún: fade a 0
+          record[key] = releaseValue * fadeWeight
+        }
+      }
+
+      if (fadeCompleted) {
+        this._releaseStates.delete(nodeId)
+      }
+    }
+  }
+
   private _acquireRecord(): Record<string, number> {
     if (this._poolCursor < this._resultPool.length) {
       const rec = this._resultPool[this._poolCursor++]

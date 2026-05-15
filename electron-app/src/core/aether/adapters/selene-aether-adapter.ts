@@ -293,57 +293,14 @@ export class SeleneAetherAdapter {
 
   /**
    * WAVE 4684: Inyección nativa de color para zonas ambientales.
-   * Se emiten intents explícitos para `ambient` y `air` para que no dependan
-   * del fallback de `all` y tengan carácter cromático propio.
+   * WAVE 4812: Eliminadas derivaciones de matiz (—_deriveAmbientColor, _deriveAirColor).
+   * Se envía el color base directamente — la paleta Selene ya tiene 4 roles puros
+   * (primary/secondary/accent/ambient) que el ColorAdapter mapea según la zona.
+   * No se necesitan transformaciones locales de hue/sat/lightness aquí.
    */
   private _emitOmniZoneColors(base: ColorInput, composition: number, bus: IIntentBus): void {
-    const ambColor = this._deriveAmbientColor(base)
-    this._emitColor('ambient' as EffectZone, ambColor, composition, bus)
-
-    const airColor = this._deriveAirColor(base)
-    this._emitColor('air' as EffectZone, airColor, composition, bus)
-  }
-
-  /**
-   * Derive a soft wash color for the ambient zone from the primary color.
-   * Same hue, reduced saturation (×0.6) and lightness (×0.5).
-   */
-  private _deriveAmbientColor(base: ColorInput): ColorInput {
-    if (isHslColor(base)) {
-      return {
-        h: base.h,
-        s: Math.min(100, base.s * 0.58),
-        l: Math.min(100, base.l * 0.62),
-        isHSL: true,
-      }
-    }
-    // RGB fallback: warm wash, no blackout.
-    return {
-      r: (base.r ?? base.red ?? 0) * 0.62,
-      g: (base.g ?? base.green ?? 0) * 0.62,
-      b: (base.b ?? base.blue ?? 0) * 0.62,
-    }
-  }
-
-  /**
-   * Derive an accent color for the air/haze zone from the primary color.
-   * Hue shifted +30°, reduced saturation (×0.7) and lightness (×0.55).
-   */
-  private _deriveAirColor(base: ColorInput): ColorInput {
-    if (isHslColor(base)) {
-      return {
-        h: (base.h + 22) % 360,
-        s: Math.min(100, base.s * 0.72),
-        l: Math.min(100, base.l * 0.66),
-        isHSL: true,
-      }
-    }
-    // RGB fallback: same color but dimmed
-    return {
-      r: (base.r ?? base.red ?? 0) * 0.66,
-      g: (base.g ?? base.green ?? 0) * 0.66,
-      b: (base.b ?? base.blue ?? 0) * 0.66,
-    }
+    this._emitColor('ambient' as EffectZone, base, composition, bus)
+    this._emitColor('air' as EffectZone, base, composition, bus)
   }
 
   /**

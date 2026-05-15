@@ -106,10 +106,14 @@ export class LiquidEngineBase {
         this.lastHighMid = 0;
         this.lastMid = 0;
         // WAVE 4520.2: 9-zone EMA state
-        // Ambient: slow follower of (bass × 0.4 + mid × 0.6). Attack ~5 frames, release ~33 frames.
+        // Ambient: slow follower of subBass. Attack ~5 frames, release ~33 frames.
         this._ambientEMA = 0;
         // Air: soft-compressed follower of (treble × 0.6 + highMid × 0.4). Attack ~8 frames, release ~20 frames.
         this._airEMA = 0;
+        // WAVE 4812 M3: Vocal Sustain Detector — EMA rápida de mid para detectar vocales sostenidas.
+        // Attack muy rápido (alpha=0.25, ~4 frames) para capturar vocales al instante.
+        // Release lento (alpha=0.04, ~25 frames) para que la penalización persista post-frase vocal.
+        this._vocalSustainEMA = 0;
         // WAVE 4521.3: El último ProcessedFrame producido por applyBands().
         // Expuesto para que LiquidAetherAdapter pueda consumirlo sin re-llamar al engine.
         // Nunca es null después del primer frame procesado.
@@ -208,14 +212,25 @@ export class LiquidEngineBase {
         // WAVE 4684: Ambient EMA — profile-configurable viscosity.
         // Attack/Release time constants in ms → alpha = 1000/(ms×44).
         // Default: attack ~800ms (gentle rise), release ~10000ms (ultra-slow lung).
+        // WAVE 4812 M2: EL OCÉANO — El ambient se alimenta exclusivamente de subBass.
+        // Antes: bass×0.40 + mid×0.60 (contaminado por vocales).
+        // Ahora: subBass puro — late con el graves del reguetón, invisáble a voces.
         const _ambAttackAlpha = Math.min(1.0, 1000 / ((p.ambientAttackMs ?? 800) * 44));
         const _ambReleaseAlpha = Math.min(1.0, 1000 / ((p.ambientReleaseMs ?? 10000) * 44));
-        const _ambMix = bands.bass * 0.40 + bands.mid * 0.60;
+        const _ambMix = bands.subBass;
         if (_ambMix > this._ambientEMA) {
             this._ambientEMA = this._ambientEMA * (1 - _ambAttackAlpha) + _ambMix * _ambAttackAlpha;
         }
         else {
             this._ambientEMA = this._ambientEMA * (1 - _ambReleaseAlpha) + _ambMix * _ambReleaseAlpha;
+        }
+        // WAVE 4812 M3: Vocal Sustain EMA — detecta energía mid sostenida (vocales continuas).
+        // La vocal tiene EMA alta + delta baja. El snare tiene delta alta + EMA baja.
+        if (bands.mid > this._vocalSustainEMA) {
+            this._vocalSustainEMA = this._vocalSustainEMA * 0.75 + bands.mid * 0.25;
+        }
+        else {
+            this._vocalSustainEMA = this._vocalSustainEMA * 0.96 + bands.mid * 0.04;
         }
         // Air EMA: soft-compressed follower of (treble × 0.6 + highMid × 0.4)
         // Compression: 1 - e^(-x*3) — prevents ultraAir spikes from causing hysterics
@@ -303,9 +318,17 @@ export class LiquidEngineBase {
         // WAVE 2451: midDelta peso morfológico por centroide.
         //   En Anyma (cent > 1500Hz) los synths mid son los "percutores" — midDelta×1.5.
         //   En techno industrial (cent < 500Hz = bombo puro) — midDelta×0.8 como antes.
+        // WAVE 4812 M3: ANTI-VOCAL GATE en midDelta.
+        //   Si _vocalSustainEMA es alta (vocal sostenida activa) Y midDelta es bajo
+        //   (no hay transiente real), penalizar el peso de mid en el transient shaper.
+        //   vocalPenalty: 0 cuando la EMA es baja (sin vocales), hasta 0.75 cuando
+        //   la EMA es alta y midDelta es menor que la EMA (energía sostenida, no percutiva).
+        //   Un snare REAL tiene delta >> EMA — no se ve penalizado.
         const MIN_DELTA = 0.020;
         const midCentWeight = Math.min(1.0, (input.spectralCentroid ?? 0) / 1500);
-        const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDelta * (0.8 + 0.7 * midCentWeight));
+        const vocalPenalty = Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)));
+        const midDeltaGated = midDelta * (1.0 - vocalPenalty);
+        const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDeltaGated * (0.8 + 0.7 * midCentWeight));
         const cleanDelta = Math.max(0, impactDelta - MIN_DELTA);
         const baseSnare = cleanDelta * 2.0;
         const clapBonus = baseSnare * harshness * 2.0;
@@ -416,7 +439,10 @@ export class LiquidEngineBase {
             moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown);
         }
         // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
-        const midSynthInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight
+        // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty suprime el componente mid
+        // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
+        // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
+        const midSynthInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
             - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub);
         let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown);
         // moverLeft y moverRight ya calculados arriba (WAVE 911 legacy block)
@@ -466,16 +492,15 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // floor: instant reaction to subBass+lowMid, gated by AGC recovery
         const floorIntensity = Math.min(1.0, Math.max(0.0, (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor));
-        // ambient: slow EMA with morph-shaped gain — NOT gated by recoveryFactor.
-        // Evita baseline fijo por morph (que puede petrificar la cola en silencio).
-        const ambientMorphGain = 0.82 + morphFactor * 0.18;
-        const _ambientRaw = Math.min(1.0, Math.max(0.0, this._ambientEMA * ambientMorphGain));
-        // 🌊 WAVE 4698 M1: Cubic power curve — crushes low/mid values for club contrast.
-        // ^3.5: 50% → ~8%, 90% → ~70%, 100% → 100%. Forces signal to black fast.
-        // 🌊 WAVE 4698 M2: Noise gate — cut to zero below threshold 0.15.
-        // If music has insufficient viscous energy the Tungsten goes fully dark.
-        const _ambientCrushed = Math.pow(_ambientRaw, 3.5);
-        const ambientIntensity = _ambientCrushed < 0.15 ? 0.0 : _ambientCrushed;
+        // ambient: slow EMA of subBass, no morphGain baseline — NOT gated by recoveryFactor.
+        // WAVE 4812 M2: gain=1.0 — el ambient no tiene onda estática; solo brilla cuando
+        // hay energía sub-grave real. El morphFactor ya no infla el baseline.
+        const _ambientRaw = Math.min(1.0, Math.max(0.0, this._ambientEMA));
+        // 🌊 WAVE 4814: Curva cuadrática (antes cúbica ^3.5) + noise-gate bajado.
+        // ^2.0: subBass=0.40 → 0.16, subBass=0.60 → 0.36. El sub-grave real brilla.
+        // gate=0.03 (antes 0.15): valores típicos de subBass (0.25-0.50) ahora pasan.
+        const _ambientCrushed = Math.pow(_ambientRaw, 2.0);
+        const ambientIntensity = _ambientCrushed < 0.03 ? 0.0 : _ambientCrushed;
         // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
         const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor));
         const frame = {

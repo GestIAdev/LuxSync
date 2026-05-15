@@ -239,7 +239,8 @@ export function selectZoneIntensityXZ(result, nodeX, nodeZ) {
  * | backLeft, backRight, back   | secondary|
  * | movers-left                 | secondary|
  * | movers-right                | ambient  |
- * | ambient, air, floor         | ambient  |
+ * | air                         | accent   |
+ * | ambient, floor              | ambient  |
  * | (desconocido)               | ambient  |
  *
  * Función pura, determinista, zero-alloc.
@@ -264,8 +265,9 @@ export function selectColorRoleFromZone(zoneId) {
             return 'secondary';
         case 'movers-right':
             return 'ambient';
-        case 'ambient':
         case 'air':
+            return 'accent';
+        case 'ambient':
         case 'floor':
         default:
             return 'ambient';

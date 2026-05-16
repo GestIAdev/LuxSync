@@ -67,6 +67,9 @@ export class AetherSafetyMiddleware {
   // ── Per-node DarkSpin transit state ────────────────────────────────────
   private readonly _darkSpinState = new Map<NodeId, DarkSpinNodeState>()
 
+  // 🏎️ WAVE 4831: DarkSpin bypass — nodos que solicitaron skip este frame
+  private readonly _skipDarkSpinNodeIds = new Set<NodeId>()
+
   // ── Output gate ────────────────────────────────────────────────────────
   private _outputEnabled = true
   private readonly _manualNodeIds = new Set<NodeId>()
@@ -263,6 +266,25 @@ export class AetherSafetyMiddleware {
   // FASE 1b: DarkSpin — Transit Blackout
   // ═════════════════════════════════════════════════════════════════════════
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🏎️ WAVE 4831: DARKSPIN BYPASS API
+  // ═════════════════════════════════════════════════════════════════════════
+
+  setSkipDarkSpinNodes(nodeIds: readonly NodeId[]): void {
+    this._skipDarkSpinNodeIds.clear()
+    for (let i = 0; i < nodeIds.length; i++) {
+      this._skipDarkSpinNodeIds.add(nodeIds[i])
+    }
+  }
+
+  clearSkipDarkSpinNodes(): void {
+    this._skipDarkSpinNodeIds.clear()
+  }
+
+  isSkipDarkSpinNode(nodeId: NodeId): boolean {
+    return this._skipDarkSpinNodeIds.has(nodeId)
+  }
+
   /**
    * WAVE 4685: Returns all NodeIds currently in active wheel transit.
    * Used by NodeResolver for cross-node DarkSpin sweep (COLOR→IMPACT dimmer kill).
@@ -280,6 +302,11 @@ export class AetherSafetyMiddleware {
    * Woodstock-compliant: uses this._nowMs (performance.now()-based).
    */
   checkDarkSpin(nodeId: NodeId, currentWheelDmx: number, minTransitMs: number, safetyMargin: number = 1.1): boolean {
+    // 🏎️ WAVE 4831: DarkSpin bypass — efectos cortos solicitan ignorar blackout
+    if (this._skipDarkSpinNodeIds.has(nodeId)) {
+      return false
+    }
+
     let s = this._darkSpinState.get(nodeId)
     if (!s) {
       s = { lastStableWheelDmx: currentWheelDmx, pendingWheelDmx: currentWheelDmx,

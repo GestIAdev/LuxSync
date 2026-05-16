@@ -260,6 +260,10 @@ export class TitanEngine extends EventEmitter {
      * @returns LightingIntent para el HAL
      */
     async update(context, audio) {
+        audio = this.normalizeAudioMetrics(audio);
+        if (!Number.isFinite(context.energy)) {
+            context = { ...context, energy: 0 };
+        }
         const now = Date.now();
         const deltaTime = now - this.state.lastFrameTime;
         this.state.lastFrameTime = now;
@@ -304,6 +308,8 @@ export class TitanEngine extends EventEmitter {
                 }
             }
         }
+        // WAVE 4845: Si Chronos inyectó NaN/undefined en algún campo, saneamos otra vez.
+        audio = this.normalizeAudioMetrics(audio);
         // Obtener perfil del vibe actual
         const vibeProfile = this.vibeManager.getActiveVibe();
         // ─────────────────────────────────────────────────────────────────────
@@ -1427,6 +1433,45 @@ export class TitanEngine extends EventEmitter {
             });
         }
         return effects;
+    }
+    normalizeAudioMetrics(audio) {
+        const src = (audio ?? {});
+        const clamp01 = (v, fallback = 0) => {
+            const n = Number(v);
+            if (!Number.isFinite(n))
+                return fallback;
+            if (n < 0)
+                return 0;
+            if (n > 1)
+                return 1;
+            return n;
+        };
+        const safeNumber = (v, fallback = 0) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : fallback;
+        };
+        return {
+            bass: clamp01(src.bass),
+            mid: clamp01(src.mid),
+            high: clamp01(src.high),
+            energy: clamp01(src.energy),
+            beatPhase: clamp01(src.beatPhase),
+            isBeat: src.isBeat === true,
+            beatCount: Math.max(0, Math.floor(safeNumber(src.beatCount, 0))),
+            harshness: clamp01(src.harshness, 0),
+            spectralFlatness: clamp01(src.spectralFlatness, 0),
+            spectralCentroid: Math.max(0, safeNumber(src.spectralCentroid, 0)),
+            clarity: clamp01(src.clarity, 0.5),
+            subBass: clamp01(src.subBass, 0),
+            lowMid: clamp01(src.lowMid, 0),
+            highMid: clamp01(src.highMid, 0),
+            ultraAir: clamp01(src.ultraAir, 0),
+            kickDetected: src.kickDetected === true,
+            snareDetected: src.snareDetected === true,
+            hihatDetected: src.hihatDetected === true,
+            isPLLBeat: src.isPLLBeat === true,
+            crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
+        };
     }
     /**
      * Crea una paleta por defecto (para inicialización).

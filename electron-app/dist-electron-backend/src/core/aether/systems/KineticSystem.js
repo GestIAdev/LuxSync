@@ -76,6 +76,7 @@ const MIN_BPM_THRESHOLD = 40;
 // Threshold de velocidad máxima de motor para considerar suave (grados/s)
 // Motores con maxPanSpeed < SLOW_MOTOR_THRESHOLD reciben targets suavizados.
 const SLOW_MOTOR_THRESHOLD = 90;
+const GLACIER_LERP_ALPHA = 0.0005;
 // ═══════════════════════════════════════════════════════════════════════════
 // KINETIC SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
@@ -121,6 +122,8 @@ export class KineticSystem extends BaseSystem {
         const audio = context.audio;
         const deltaMs = context.deltaMs;
         const vibe = context.vibe;
+        const normalizedVibe = vibe.name.toLowerCase();
+        const isChillVibe = normalizedVibe.includes('chill') || normalizedVibe.includes('ambient') || normalizedVibe.includes('lounge');
         // Seleccionar el patrón VMM para el frame actual (O(1), sin alloc)
         const pattern = KineticSystem._selectPattern(musical);
         // Pre-limpiar keys del frame anterior
@@ -207,6 +210,17 @@ export class KineticSystem extends BaseSystem {
                     pan = HOME_PAN;
                     tilt = HOME_TILT;
                     break;
+            }
+            if (isChillVibe) {
+                // WAVE 4845: Chill absoluto — cero dependencia de beats/transientes.
+                const tSec = context.nowMs / 1000;
+                const total = node.stereoTotal > 0 ? node.stereoTotal : 1;
+                const frac = node.stereoIndex / total;
+                const phase = frac * TWO_PI;
+                const targetPan = BaseSystem.clamp01(0.5 + Math.sin((TWO_PI * tSec) / 180 + phase) * 0.15);
+                const targetTilt = BaseSystem.clamp01(0.5 + Math.cos((TWO_PI * tSec) / 240 + phase) * 0.10);
+                pan = node.currentPosition.pan + (targetPan - node.currentPosition.pan) * GLACIER_LERP_ALPHA;
+                tilt = node.currentPosition.tilt + (targetTilt - node.currentPosition.tilt) * GLACIER_LERP_ALPHA;
             }
             // ── 2. Stereo routing: mirror/direct según position.x ─────────────────
             // Nodos en la izquierda (x < 0) espejean el pan.

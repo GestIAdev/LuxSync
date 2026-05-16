@@ -537,6 +537,8 @@ export class EffectManager extends EventEmitter {
         let dominantMixBus = 'htp';
         // 🛂 WAVE 3477: Pasaporte diplomático heredado del efecto dominante
         let dominantOverrideMoverShield = false;
+        // 🏎️ WAVE 4831: DarkSpin bypass — OR acumulativo
+        let anySkipDarkSpin = false;
         // 🔗 WAVE 991: Prioridad separada para mixBus (THE MISSING LINK)
         let mixBusPriority = -1;
         // 🥁 WAVE 700.7: Movement tracking
@@ -611,6 +613,10 @@ export class EffectManager extends EventEmitter {
             if (output.overrideMoverShield === true) {
                 dominantOverrideMoverShield = true;
             }
+            // 🏎️ WAVE 4831: DarkSpin bypass — OR acumulativo
+            if (output.skipDarkSpin === true) {
+                anySkipDarkSpin = true;
+            }
             // 🥁 WAVE 700.7: Highest priority takes movement
             if (output.movement && effect.priority > movementPriority) {
                 movementPriority = effect.priority;
@@ -629,10 +635,19 @@ export class EffectManager extends EventEmitter {
                         // Primera vez que vemos esta zona - inicializar
                         combinedZoneOverrides[zoneId] = {
                             priority: effect.priority,
+                            // 🌊 WAVE 4832: heredar blendMode del primer efecto en pisar la zona.
+                            // Será sobreescrito si después llega un efecto de mayor prioridad.
+                            blendMode: zoneData.blendMode,
                         };
                     }
                     const existing = combinedZoneOverrides[zoneId];
                     const existingPriority = existing.priority ?? -1;
+                    // 🌊 WAVE 4832: el blendMode lo manda el efecto de mayor prioridad
+                    // (mismo criterio que color/movement). Empate → último gana, lo que
+                    // permite a una capa más reciente refinar la mezcla declarada.
+                    if (zoneData.blendMode !== undefined && effect.priority >= existingPriority) {
+                        existing.blendMode = zoneData.blendMode;
+                    }
                     // HTP para dimmer (el más alto gana)
                     if (zoneData.dimmer !== undefined) {
                         if (existing.dimmer === undefined || zoneData.dimmer > existing.dimmer) {
@@ -679,6 +694,7 @@ export class EffectManager extends EventEmitter {
             contributingEffects: contributing,
             globalComposition: globalComposition > 0 ? globalComposition : undefined, // 🌊 WAVE 1080
             overrideMoverShield: dominantOverrideMoverShield || undefined, // 🛂 WAVE 3477
+            skipDarkSpin: anySkipDarkSpin || undefined, // 🏎️ WAVE 4831
             zones: allZones.size > 0 ? Array.from(allZones) : undefined, // 🌴 WAVE 700.8
             movementOverride: highestPriorityMovement, // 🥁 WAVE 700.7
             zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined, // 🎨 WAVE 725

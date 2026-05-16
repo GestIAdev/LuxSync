@@ -64,7 +64,6 @@ const DEFAULT_CONFIG = {
     blinderColor: { h: 40, s: 65, l: 45 }, // 🪜 LADDER: Mucho más suave
     bpmSync: true,
     beatsPerHeartbeat: 4, // 4 beats = 1 latido
-    expansionAmplitude: 0.5, // 🪜 LADDER: 50% movimiento (antes 80%) - más contenido
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // CORAZÓN LATINO CLASS
@@ -84,9 +83,6 @@ export class CorazonLatino extends BaseEffect {
         this.totalDurationMs = 6000; // 🔥 WAVE 750: Total duration calculada
         // ❤️ State del corazón
         this.heartIntensity = 0;
-        // 🌟 State de expansión (movers)
-        this.expansionProgress = 0;
-        this.moverPanOffset = 0;
         // ✨ State del blinder
         this.blinderIntensity = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
@@ -102,8 +98,6 @@ export class CorazonLatino extends BaseEffect {
         this.heartbeatPhase = 'strong';
         this.phaseTimer = 0;
         this.heartIntensity = 0;
-        this.expansionProgress = 0;
-        this.moverPanOffset = 0;
         this.blinderIntensity = 0;
         // Calcular duración basada en BPM
         this.calculateHeartbeatDuration();
@@ -192,9 +186,7 @@ export class CorazonLatino extends BaseEffect {
             const decayProgress = (progress - 0.2) / 0.8;
             this.heartIntensity = 1 - (decayProgress * 0.7); // No baja de 0.3
         }
-        // Expansión de los movers (abren en el DUM)
-        this.expansionProgress = this.heartIntensity * this.config.expansionAmplitude;
-        this.moverPanOffset = this.expansionProgress; // Pan hacia afuera
+        // Expansión resonante (solo intensidad, sin movimiento L3)
     }
     updateWeakBeat(duration) {
         const progress = Math.min(1, this.phaseTimer / duration);
@@ -208,15 +200,12 @@ export class CorazonLatino extends BaseEffect {
             const decayProgress = (progress - 0.15) / 0.85;
             this.heartIntensity = 0.7 - (decayProgress * 0.5); // 0.7→0.2
         }
-        // Los movers empiezan a volver
-        this.moverPanOffset = this.expansionProgress * (1 - progress * 0.5);
+        // Decay armónico del latido (sin movimiento L3)
     }
     updateRest(duration) {
         const progress = Math.min(1, this.phaseTimer / duration);
         // Silencio entre latidos
         this.heartIntensity = Math.max(0.1, this.heartIntensity * (1 - progress));
-        // Los movers vuelven a centro
-        this.moverPanOffset = this.moverPanOffset * (1 - progress);
     }
     updateBlinder() {
         // El blinder solo aparece en el ÚLTIMO latido, al final

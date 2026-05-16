@@ -43,6 +43,7 @@ import { aetherKineticEngine } from '../AetherKineticEngine';
 const INTENT_PRIORITY = 10;
 /** Fuente identificable para debug y arbitraje */
 const INTENT_SOURCE = 'kinetic-adapter';
+const TWO_PI = Math.PI * 2;
 /**
  * Fallback determinista si aún no llega stageBounds por IPC.
  * Se usa solo como red de seguridad de arranque.
@@ -79,6 +80,8 @@ const VIBE_ID_MAP = {
     'idle': 'idle',
 };
 const FALLBACK_VIBE_ID = 'techno-club';
+const CHILL_VIBE_ID = 'chill-lounge';
+const GLACIER_LERP_ALPHA = 0.0005;
 // 🌪️ WAVE 4708 T3: hash FNV-1a determinista (espejo del que usa el bridge en
 // _flushClassic) para distribuir caos por nodeId. Retorna un offset de fase
 // signado en [-π, π] modulado por amount × seed × hash(nodeId).
@@ -130,15 +133,28 @@ export class KineticAdapter extends BaseSystem {
         const { audio, vibe } = context;
         // ── 1. Resolver vibeId → VMM vibeId (lookup O(1), sin alloc)
         const vibeId = VIBE_ID_MAP[vibe.name] ?? FALLBACK_VIBE_ID;
+        const isChillVibe = vibeId === CHILL_VIBE_ID;
         // ── 2. Actualizar puente de audio in-place (cero alloc)
         const va = this._vmmAudio;
-        va.energy = audio.energy;
-        va.bass = audio.bass;
-        va.mids = audio.mid;
-        va.highs = audio.highMid;
-        va.bpm = audio.bpm;
-        va.beatPhase = audio.beatPhase;
-        va.beatCount = audio.beatCount ?? 0;
+        if (isChillVibe) {
+            // WAVE 4845: Muro de Silencio — flujo cinético totalmente desacoplado del audio.
+            va.energy = 0;
+            va.bass = 0;
+            va.mids = 0;
+            va.highs = 0;
+            va.bpm = 0;
+            va.beatPhase = 0;
+            va.beatCount = 0;
+        }
+        else {
+            va.energy = audio.energy;
+            va.bass = audio.bass;
+            va.mids = audio.mid;
+            va.highs = audio.highMid;
+            va.bpm = audio.bpm;
+            va.beatPhase = audio.beatPhase;
+            va.beatCount = audio.beatCount ?? 0;
+        }
         // ── 3. Preparar scratch de intent (campos invariantes al frame)
         this._intentScratch.priority = INTENT_PRIORITY;
         this._intentScratch.confidence = BaseSystem.clamp01(audio.energy * 0.8 + 0.2);
@@ -191,11 +207,27 @@ export class KineticAdapter extends BaseSystem {
                 ? fnv1aChaosPhase(node.nodeId, this._vmm.globalChaosSeed) * chaosAmount
                 : 0;
             const phaseOffset = lrPhaseOffset + l2PhaseOffset + chaosPhase;
-            const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed, phaseOffset);
-            // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
-            this._valuesDict['pan'] = BaseSystem.clamp01((intent.x + 1) * 0.5);
-            this._valuesDict['tilt'] = BaseSystem.clamp01((intent.y + 1) * 0.5);
-            this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed);
+            if (isChillVibe) {
+                // WAVE 4845: Movimiento de hielo — LFO paramétrico ultra-lento + lerp perezoso.
+                const tSec = context.nowMs / 1000;
+                const total = node.stereoTotal > 0 ? node.stereoTotal : 1;
+                const frac = node.stereoIndex / total;
+                const phase = frac * TWO_PI + phaseOffset * 0.25;
+                const targetPan = BaseSystem.clamp01(0.5 + Math.sin((TWO_PI * tSec) / 180 + phase) * 0.15);
+                const targetTilt = BaseSystem.clamp01(0.5 + Math.cos((TWO_PI * tSec) / 240 + phase) * 0.10);
+                const pan = node.currentPosition.pan + (targetPan - node.currentPosition.pan) * GLACIER_LERP_ALPHA;
+                const tilt = node.currentPosition.tilt + (targetTilt - node.currentPosition.tilt) * GLACIER_LERP_ALPHA;
+                this._valuesDict['pan'] = BaseSystem.clamp01(pan);
+                this._valuesDict['tilt'] = BaseSystem.clamp01(tilt);
+                this._valuesDict['speed'] = 0.05;
+            }
+            else {
+                const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed, phaseOffset);
+                // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
+                this._valuesDict['pan'] = BaseSystem.clamp01((intent.x + 1) * 0.5);
+                this._valuesDict['tilt'] = BaseSystem.clamp01((intent.y + 1) * 0.5);
+                this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed);
+            }
             // ── 4c. Push al bus (IntentBus copia los valores — seguro reutilizar scratch)
             this._intentScratch.nodeId = node.nodeId;
             bus.push(this._intentScratch);

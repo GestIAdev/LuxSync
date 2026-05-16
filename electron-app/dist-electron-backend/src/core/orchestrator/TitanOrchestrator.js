@@ -226,6 +226,24 @@ export class TitanOrchestrator {
         return results;
     }
     /**
+     * 🔥 WAVE 4835 — DMX BYPASS: Habilita la inyección directa de 255 en los canales Golden Nuke
+     */
+    setGoldenNukeLock(deviceId) {
+        const device = this._aetherGraph?.getDevice(deviceId);
+        if (!device)
+            return;
+        this._goldenNukeLocks.set(deviceId, {
+            universe: device.universe,
+            dmxAddress: device.dmxAddress,
+        });
+    }
+    /**
+     * 🔥 WAVE 4835 — DMX BYPASS: Deshabilita la inyección directa
+     */
+    clearGoldenNukeLock(deviceId) {
+        this._goldenNukeLocks.delete(deviceId);
+    }
+    /**
      * Retira un dispositivo del Motor Agnostico Aether.
      *
      * @param deviceId — ID del dispositivo a retirar
@@ -519,6 +537,10 @@ export class TitanOrchestrator {
         this.peakHoldMap = new Map(); // fixtureId → peak dimmer (0-255)
         // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clásico)
         this._outputEnabled = false;
+        // 🔥 WAVE 4835 — DMX BYPASS: Golden Nuke Lock
+        // Key: deviceId, Value: { universe, dmxAddress }
+        // Cuando está presente, inyecta 255 directamente en los canales del Tungsteno
+        this._goldenNukeLocks = new Map();
         /**
          * WAVE 257: Set callback for sending logs to frontend (Tactical Log)
          */
@@ -1677,6 +1699,8 @@ export class TitanOrchestrator {
                 // FASE 2: POST-RESOLVE  — Throttle + virtual skip before sendUniverseRaw
                 // ═══════════════════════════════════════════════════════════════════════
                 const aetherSafety = this._aetherSafety;
+                // 🏎️ WAVE 4831: Propagar nodos con DarkSpin bypass al safety middleware
+                aetherSafety.setSkipDarkSpinNodes(aetherArbiter.getSkipDarkSpinNodeIds());
                 // FASE 0: Set frame context + apply output gate
                 aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name);
                 aetherSafety.setOutputEnabled(this._outputEnabled);
@@ -1737,6 +1761,45 @@ export class TitanOrchestrator {
                     const egressBuf = blackoutActive
                         ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
                         : rawBuf;
+                    // 🔥 WAVE 4835 — DMX BYPASS: Inyección directa para Golden Nuke
+                    // Si el Tungsteno está lockeado, clava 255 en CH2-6 (GM, Strobe, G1, G2, G3)
+                    for (const [deviceId, lockInfo] of this._goldenNukeLocks) {
+                        if (lockInfo.universe === universe && Array.isArray(egressBuf)) {
+                            const base = lockInfo.dmxAddress - 1; // 0-based
+                            // CH2: Golden Master Dimmer → 255
+                            egressBuf[base + 1] = 255;
+                            // CH3: Strobe → 255
+                            egressBuf[base + 2] = 255;
+                            // CH4: Gold 1 → 255
+                            egressBuf[base + 3] = 255;
+                            // CH5: Gold 2 → 255
+                            egressBuf[base + 4] = 255;
+                            // CH6: Gold 3 → 255
+                            egressBuf[base + 5] = 255;
+                        }
+                    }
+                    // ════════════════════════════════════════════════════════════════════
+                    // 🔬 WAVE 4832 — DMX SNIFFER (TUNGSTEN)
+                    // Imprime los bytes exactos del Tungsteno en el buffer final,
+                    // ANTES de que salgan al adaptador físico.
+                    // Eliminar cuando se confirme el diagnóstico.
+                    // ════════════════════════════════════════════════════════════════════
+                    if (this.frameCount % 30 === 0) {
+                        const tungstenFixture = this.fixtures
+                            .find(f => typeof f.name === 'string' && f.name.toLowerCase().includes('tungsten'));
+                        if (tungstenFixture) {
+                            const base = (tungstenFixture.dmxAddress ?? (tungstenFixture.address ?? 1)) - 1; // 0-based
+                            console.log(`[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
+                                `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
+                                `CH2(GM)=${egressBuf[base + 1]} | ` +
+                                `CH3(Strobe)=${egressBuf[base + 2]} | ` +
+                                `CH4(G1)=${egressBuf[base + 3]} | ` +
+                                `CH5(G2)=${egressBuf[base + 4]} | ` +
+                                `CH6(G3)=${egressBuf[base + 5]} | ` +
+                                `CH7=${egressBuf[base + 6]}`);
+                        }
+                    }
+                    // ════════════════════════════════════════════════════════════════════
                     this.hal.sendUniverseRaw(universe, egressBuf);
                     // 🔬 WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
                     if (this.frameCount % 300 === 0) {

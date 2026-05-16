@@ -3,7 +3,7 @@
  * WAVE 4750: ChillAmbientEngine — SISTEMA DE MAREAS (Multi-LFO Oceánico)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Motor de modulación de envelope para chill — DESPOJADO de generación de dimmer.
+ * Motor de modulación glacial para chill — dueño autónomo de dimmer y morph.
  *
  * FILOSOFÍA:
  *   Las ondas senoidales de intensidad bypasseaban L2 manual. FULMINADAS.
@@ -12,9 +12,8 @@
  *
  * ARQUITECTURA (WAVE 4750 — SISTEMA DE MAREAS):
  *   - Desconectado del audio. No lee bandas espectrales.
- *   - 3 osciladores LFO con períodos PRIMOS entre sí (31s, 47s, 73s).
- *     Períodos primos garantizan que NUNCA coinciden en fase → patrón
- *     cuasi-infinito no periódico. El MCM de 31×47×73 ≈ 106.421s ≈ 29.5h.
+ *   - 3 osciladores LFO ultra-lentos (120s, 180s, 240s).
+ *     Ventana glacial: pulso principal aproximado cada ~60s.
  *   - Combinación ponderada: LFO1×0.50 + LFO2×0.30 + LFO3×0.20.
  *   - Suavizado EMA (α=0.008 @ 60fps ≈ τ≈2s) para transiciones fluidas.
  *   - morphFactor ∈ [0.25, 0.75] — rango más profundo que el 0.30-0.70 previo.
@@ -46,9 +45,9 @@
  * Primos entre sí → MCM = 31 × 47 × 73 ≈ 106.421s ≈ 29.5 horas.
  * El patrón combinado no se repite dentro de una noche completa de show.
  */
-const LFO1_PERIOD_S = 31.0   // La Corriente Profunda
-const LFO2_PERIOD_S = 47.0   // La Marea Alta
-const LFO3_PERIOD_S = 73.0   // El Glaciar
+const LFO1_PERIOD_S = 120.0  // La Corriente Profunda
+const LFO2_PERIOD_S = 180.0  // La Marea Alta
+const LFO3_PERIOD_S = 240.0  // El Glaciar
 
 /**
  * Pesos de combinación de los 3 LFOs.
@@ -66,11 +65,11 @@ const LFO3_WEIGHT = 0.20
 const EMA_ALPHA = 0.008
 
 /**
- * Rango de salida del morphFactor.
- * Más profundo que el 0.30-0.70 de WAVE 4709 para mayor contraste oceánico.
+ * Rango de salida del morphFactor y dimmer glacial.
+ * 0..1 para respiración completa (ciclo de 0% a 100%).
  */
-const MORPH_MIN = 0.25
-const MORPH_RANGE = 0.50   // → [0.25, 0.75]
+const MORPH_MIN = 0.0
+const MORPH_RANGE = 1.0
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -78,8 +77,10 @@ const MORPH_RANGE = 0.50   // → [0.25, 0.75]
 
 /** Salida de un tick del ChillAmbientEngine */
 export interface ChillAmbientFrame {
-  /** morphFactor para LiquidEngine71.morphFactorOverride — en [0.25, 0.75] */
+  /** morphFactor para LiquidEngine71.morphFactorOverride — en [0, 1] */
   readonly morphFactor: number
+  /** Dimmer maestro de chill (0..1), derivado del mismo morph suavizado. */
+  readonly dimmer: number
   /** Timestamp de este frame (ms) — para debug y telemetría */
   readonly _ts: number
 }
@@ -96,8 +97,8 @@ export interface ChillAmbientFrame {
 export class ChillAmbientEngine {
 
   /**
-   * Estado suavizado del morphFactor (EMA).
-   * Inicializado en 0.50 (centro del rango) para evitar saltos al arrancar.
+  * Estado suavizado del morphFactor/dimmer (EMA).
+  * Inicializado al centro para evitar saltos al arrancar.
    */
   private _smoothedMorph: number = 0.50
 
@@ -127,7 +128,7 @@ export class ChillAmbientEngine {
     this._smoothedMorph += (morphTarget - this._smoothedMorph) * EMA_ALPHA
     const morphFactor = this._smoothedMorph
 
-    return { morphFactor, _ts: tMs }
+    return { morphFactor, dimmer: morphFactor, _ts: tMs }
   }
 
   /** Resetea el estado EMA al centro del rango (útil en tests o cambio brusco de vibe). */

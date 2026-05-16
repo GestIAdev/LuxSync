@@ -559,6 +559,25 @@ export class TitanOrchestrator {
   }
 
   /**
+   * 🔥 WAVE 4835 — DMX BYPASS: Habilita la inyección directa de 255 en los canales Golden Nuke
+   */
+  public setGoldenNukeLock(deviceId: string): void {
+    const device = this._aetherGraph?.getDevice(deviceId)
+    if (!device) return
+    this._goldenNukeLocks.set(deviceId, {
+      universe: device.universe,
+      dmxAddress: device.dmxAddress,
+    })
+  }
+
+  /**
+   * 🔥 WAVE 4835 — DMX BYPASS: Deshabilita la inyección directa
+   */
+  public clearGoldenNukeLock(deviceId: string): void {
+    this._goldenNukeLocks.delete(deviceId)
+  }
+
+  /**
    * Retira un dispositivo del Motor Agnostico Aether.
    *
    * @param deviceId — ID del dispositivo a retirar
@@ -700,6 +719,11 @@ export class TitanOrchestrator {
   private peakHoldMap: Map<string, number> = new Map()  // fixtureId → peak dimmer (0-255)
   // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clásico)
   private _outputEnabled = false
+
+  // 🔥 WAVE 4835 — DMX BYPASS: Golden Nuke Lock
+  // Key: deviceId, Value: { universe, dmxAddress }
+  // Cuando está presente, inyecta 255 directamente en los canales del Tungsteno
+  private _goldenNukeLocks = new Map<string, { universe: number; dmxAddress: number }>()
 
   constructor(config: TitanConfig = {}) {
     this.config = {
@@ -1961,6 +1985,9 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const aetherSafety = this._aetherSafety
 
+      // 🏎️ WAVE 4831: Propagar nodos con DarkSpin bypass al safety middleware
+      aetherSafety.setSkipDarkSpinNodes(aetherArbiter.getSkipDarkSpinNodeIds())
+
       // FASE 0: Set frame context + apply output gate
       aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name)
       aetherSafety.setOutputEnabled(this._outputEnabled)
@@ -2029,6 +2056,24 @@ export class TitanOrchestrator {
         const egressBuf = blackoutActive
           ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
           : rawBuf
+
+        // 🔥 WAVE 4835 — DMX BYPASS: Inyección directa para Golden Nuke
+        // Si el Tungsteno está lockeado, clava 255 en CH2-6 (GM, Strobe, G1, G2, G3)
+        for (const [deviceId, lockInfo] of this._goldenNukeLocks) {
+          if (lockInfo.universe === universe && Array.isArray(egressBuf)) {
+            const base = lockInfo.dmxAddress - 1  // 0-based
+            // CH2: Golden Master Dimmer → 255
+            egressBuf[base + 1] = 255
+            // CH3: Strobe → 255
+            egressBuf[base + 2] = 255
+            // CH4: Gold 1 → 255
+            egressBuf[base + 3] = 255
+            // CH5: Gold 2 → 255
+            egressBuf[base + 4] = 255
+            // CH6: Gold 3 → 255
+            egressBuf[base + 5] = 255
+          }
+        }
 
         // ════════════════════════════════════════════════════════════════════
         // 🔬 WAVE 4832 — DMX SNIFFER (TUNGSTEN)

@@ -749,9 +749,8 @@ export function registerAetherIPCHandlers(): void {
             } else {
               const intensity = typeof value === 'number' ? value : 1.0
               for (const node of goldNodes) {
-                const overridePayload = node.needsStrobe
-                  ? { dimmer: intensity, strobe: 1.0 }
-                  : { dimmer: intensity }
+                const overridePayload: Record<string, number> = { dimmer: intensity }
+                if (node.needsStrobe) overridePayload['strobe'] = 1.0
                 arbiter.setManualOverride(node.nodeId, overridePayload)
               }
             }
@@ -768,14 +767,22 @@ export function registerAetherIPCHandlers(): void {
               for (const node of goldNodes) {
                 arbiter.clearManualOverride(node.nodeId)
               }
+              // 🔥 WAVE 4835 — DMX BYPASS: Desactivar inyección directa
+              // Hay potencial que el deviceId sea extráible del nodeId, pero por ahora
+              // asumimos que `t.goldenMaster` contiene "deviceId:golden-master"
+              const deviceId = t.goldenMaster.split(':')[0]
+              orchestrator.clearGoldenNukeLock(deviceId)
             } else {
               const intensity = typeof value === 'number' ? Math.max(0, Math.min(1, value)) : 1.0
               for (const node of goldNodes) {
-                const overridePayload = node.needsStrobe
-                  ? { dimmer: intensity, strobe: 1.0 }
-                  : { dimmer: intensity }
+                const overridePayload: Record<string, number> = { dimmer: intensity }
+                if (node.needsStrobe) overridePayload['strobe'] = 1.0
                 arbiter.setManualOverride(node.nodeId, overridePayload)
               }
+              // 🔥 WAVE 4835 — DMX BYPASS: Activar inyección directa
+              // Clava 255 en los canales CH2-6 del Tungsteno mientras está pulsado
+              const deviceId = t.goldenMaster.split(':')[0]
+              orchestrator.setGoldenNukeLock(deviceId)
             }
           } else if (target === 'petal-l' || target === 'petal-c' || target === 'petal-r') {
             const nodeId = target === 'petal-l' ? t.petalL

@@ -103,7 +103,7 @@ export interface KeyMapState {
 
 const FLASH_FEEDBACK_MS = 1500
 
-const MODIFIER_ORDER: readonly Array<keyof Pick<ModifierState, 'shift' | 'ctrl' | 'alt' | 'meta'>> = [
+const MODIFIER_ORDER: ReadonlyArray<keyof Pick<ModifierState, 'shift' | 'ctrl' | 'alt' | 'meta'>> = [
   'shift',
   'ctrl',
   'alt',
@@ -143,25 +143,25 @@ function parseKeyCombo(keyCombo: string): { key: KeyCode; requiredMods?: Partial
   const tokens = keyCombo.split('+').map(token => token.trim()).filter(Boolean)
   if (tokens.length === 0) return null
 
-  const requiredMods: Partial<ModifierState> = {}
+  const requiredMods: Record<string, boolean> = {}
   let key: KeyCode | null = null
 
   for (const token of tokens) {
     const normalized = token.toLowerCase()
     if (normalized === 'shift') {
-      requiredMods.shift = true
+      requiredMods['shift'] = true
       continue
     }
     if (normalized === 'control' || normalized === 'ctrl') {
-      requiredMods.ctrl = true
+      requiredMods['ctrl'] = true
       continue
     }
     if (normalized === 'alt' || normalized === 'option') {
-      requiredMods.alt = true
+      requiredMods['alt'] = true
       continue
     }
     if (normalized === 'meta' || normalized === 'cmd' || normalized === 'win' || normalized === 'super') {
-      requiredMods.meta = true
+      requiredMods['meta'] = true
       continue
     }
 
@@ -170,7 +170,9 @@ function parseKeyCombo(keyCombo: string): { key: KeyCode; requiredMods?: Partial
   }
 
   if (key === null) return null
-  return Object.keys(requiredMods).length > 0 ? { key, requiredMods } : { key }
+  return Object.keys(requiredMods).length > 0
+    ? { key, requiredMods: requiredMods as Partial<ModifierState> }
+    : { key }
 }
 
 export const useKeyMapStore = create<KeyMapState>()(

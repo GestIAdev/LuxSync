@@ -144,6 +144,14 @@ export interface EffectFrameOutput {
    * para color/white/amber incluso en mixBus='global'.
    */
   overrideMoverShield?: boolean
+
+  /**
+   * 🏎️ WAVE 4831: DARKSPIN BYPASS
+   * Si true, el efecto corto solicita que AetherSafetyMiddleware ignore
+   * el blackout de tránsito mecánico de rueda de color.
+   * Preferible ver el scroll rápido que un blackout de ~550ms.
+   */
+  skipDarkSpin?: boolean
   
   /**
    * 🧨 WAVE 630: AMBER OVERRIDE
@@ -513,6 +521,13 @@ export interface CombinedEffectOutput {
    * si debe respetar o saltar el escudo cromático de movers.
    */
   overrideMoverShield?: boolean
+
+  /**
+   * 🏎️ WAVE 4831: DARKSPIN BYPASS (combinado)
+   * OR acumulativo: si CUALQUIER efecto activo pide bypass,
+   * se concede para todos los nodos que L3 toca este frame.
+   */
+  skipDarkSpin?: boolean
   
   /**
    * 🌴 WAVE 700.8: ZONE FILTERING

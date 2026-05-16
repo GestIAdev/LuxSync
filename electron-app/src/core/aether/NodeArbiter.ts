@@ -125,6 +125,21 @@ export class NodeArbiter implements INodeArbiter {
   private readonly _moverShieldNodeIds = new Set<NodeId>()
 
   /**
+   * WAVE 4829: ABSOLUTE L3 OVERRIDE — Escudo Anti-Sangrado.
+   * Registra los nodos + canales que L3 (effect/hephaestus) escribe en este frame.
+   * L0 (system) y L1 (selene) NUNCA pueden sobrepasar a L3 en esos canales.
+   * Limpiado al inicio de cada arbitrate(). Pool compartido con _opaqueNodeChannels.
+   */
+  private readonly _l3DominatedChannels = new Map<string, Set<string>>()
+
+  /**
+   * 🏎️ WAVE 4831: DARKSPIN BYPASS — Nodos que solicitan skip de blackout.
+   * Si un intent L3 declara skipDarkSpin, su nodo se registra aquí.
+   * El middleware de seguridad consultará este set antes de forzar dimmer=0.
+   */
+  private readonly _skipDarkSpinNodeIds = new Set<NodeId>()
+
+  /**
    * Pasaporte diplomático por frame para la capa Selene (L1).
    * Cuando está activo, los canales de color NO son bloqueados por Mover Shield.
    */
@@ -152,6 +167,9 @@ export class NodeArbiter implements INodeArbiter {
 
   /** Effect intents (L3) */
   private _effectIntents: readonly INodeIntent[] = []
+
+  /** 🔬 WAVE 4832 DIAG: contador de frames con intents L3 (anti-spam). */
+  private _diagL3FrameCount = 0
 
   /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
   private _hephaestusIntents: readonly INodeIntent[] = []
@@ -376,6 +394,10 @@ export class NodeArbiter implements INodeArbiter {
     this._poolCursor = 0
     // Limpiar el mapa de resultado anterior
     this._result.clear()
+    this._opaqueNodeChannels.clear()
+    this._opaquePlaybackChannels.clear()
+    this._l3DominatedChannels.clear()
+    this._skipDarkSpinNodeIds.clear()
 
     // WAVE 4752: SMART GATE — pre-computar canales tocados por L2/LP por nodo.
     // Sustituye el fixture-wide opaque mask de WAVE 4775.
@@ -383,6 +405,8 @@ export class NodeArbiter implements INodeArbiter {
     this._channelSetCursor = 0
     this._opaqueNodeChannels.clear()
     this._opaquePlaybackChannels.clear()
+    // WAVE 4829: ABSOLUTE L3 OVERRIDE — limpiar mapa de dominación L3 del frame anterior.
+    this._l3DominatedChannels.clear()
 
     // L2: registrar canales tocados por nodo
     for (const [nodeId, channels] of this._manualOverrides) {
@@ -512,6 +536,21 @@ export class NodeArbiter implements INodeArbiter {
     }
 
     // L3: Effect intents (WAVE 4705 — autoridad sobre L2 manual)
+    // WAVE 4829: Se aplica ANTES de L2 en el flujo de datos internos para
+    // poder registrar dominación. El MANUAL HARD LOCK sigue siendo la
+    // autoridad final del operador humano (paso post-L3 abajo).
+    // 🔬 WAVE 4832 DIAG: contador para verificar arrival de intents L3.
+    if (this._effectIntents.length > 0) {
+      this._diagL3FrameCount++
+      if (this._diagL3FrameCount % 60 === 1) {
+        // Sample 1ª intent para confirmar valores
+        const sample = this._effectIntents[0]
+        const sampleVals = Object.entries(sample.values)
+          .map(([k, v]) => `${k}=${v.toFixed(2)}`)
+          .join(',')
+        console.log(`[NodeArbiter 🔬] L3 intents=${this._effectIntents.length} sample[${sample.nodeId}] merge=${sample.mergeStrategy ?? '?'} ${sampleVals}`)
+      }
+    }
     for (let i = 0; i < this._effectIntents.length; i++) {
       this._applyIntent(this._effectIntents[i], 'effect')
     }
@@ -662,12 +701,22 @@ export class NodeArbiter implements INodeArbiter {
     const lpBlockedChannels = (layer === 'system' || layer === 'selene')
       ? this._opaquePlaybackChannels.get(intent.nodeId)
       : undefined
+    // WAVE 4829: ABSOLUTE L3 OVERRIDE — canales dominados por L3 en este frame.
+    // L0/L1 no pueden escribir canales que L3 ya reclamó — zero blend.
+    const l3DominatedChannels = (layer === 'system' || layer === 'selene')
+      ? this._l3DominatedChannels.get(intent.nodeId)
+      : undefined
 
     const values = intent.values
     const shieldedColorNode =
       layer === 'selene' &&
       !this._seleneOverrideMoverShield &&
       this._moverShieldNodeIds.has(intent.nodeId)
+    // 🌊 WAVE 4832: Estrategia de mezcla por-intent.
+    // Solo respetada en capa 'effect' (L3 blandos vs tiranos).
+    // Las demás capas mantienen su contrato histórico (LTP entre capas).
+    const intentMerge = intent.mergeStrategy
+    const useHtpMerge = (layer === 'effect') && intentMerge === 'HTP'
     for (const channel in values) {
       // MoverShield: bloquea canales de color en L1 para movers con rueda física
       if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
@@ -681,10 +730,34 @@ export class NodeArbiter implements INodeArbiter {
            lpBlockedChannels?.has(channel) === true)) {
         continue
       }
+      // WAVE 4829: ABSOLUTE L3 OVERRIDE — L3 Supremacy.
+      // Si L3 ya escribió este canal en este nodo, L0/L1 son silenciados.
+      // Zero blend: el efecto de Selene se renderiza puro, sin sangrado físico.
+      if (l3DominatedChannels?.has(channel) === true) {
+        continue
+      }
 
       const incoming = values[channel]
       if (!isFiniteChannelValue(incoming)) {
         continue
+      }
+
+      // WAVE 4829: Registrar dominación L3 para el Escudo Anti-Sangrado.
+      // 🌊 WAVE 4832: SOLO se registra dominación cuando el intent es LTP.
+      // Los intents HTP de efectos blandos NO dominan — coexisten con L0/L1
+      // para que CumbiaMoon/CorazonLatino tinten sin matar el brillo musical.
+      if ((layer === 'effect' || layer === 'hephaestus') && !useHtpMerge) {
+        let dominated = this._l3DominatedChannels.get(intent.nodeId)
+        if (!dominated) {
+          dominated = this._acquireChannelSet()
+          this._l3DominatedChannels.set(intent.nodeId, dominated)
+        }
+        dominated.add(channel)
+      }
+
+      // 🏎️ WAVE 4831: Registrar DarkSpin bypass por nodo.
+      if (intent.skipDarkSpin === true) {
+        this._skipDarkSpinNodeIds.add(intent.nodeId)
       }
 
       if (STRICT_PRIORITY_CHANNELS.has(channel)) {
@@ -709,6 +782,15 @@ export class NodeArbiter implements INodeArbiter {
         }
         // L1, LP, L3 (effect no-zero): LTP estricto entre capas.
         record[channel] = incoming
+      } else if (useHtpMerge) {
+        // 🌊 WAVE 4832: HTP-merge para L3 blandos (blendMode='max').
+        // record[ch] = max(L0/L1_value, incoming). El brillo de L0 se preserva
+        // si supera al del efecto blando; el efecto solo "eleva" cuando aporta.
+        // No registra dominación → L0 sigue contribuyendo en frames sucesivos.
+        const current = record[channel]
+        if (current === undefined || incoming > current) {
+          record[channel] = incoming
+        }
       } else {
         // LTP: la última escritura (capa más alta) gana.
         // dimmer/brightness: LTP puro — L0 escribe libremente en canales
@@ -735,6 +817,13 @@ export class NodeArbiter implements INodeArbiter {
    */
   getManualOverrideNodeIds(): readonly string[] {
     return [...this._manualOverrides.keys()]
+  }
+
+  /**
+   * 🏎️ WAVE 4831: Devuelve los nodeIds que solicitaron DarkSpin bypass este frame.
+   */
+  getSkipDarkSpinNodeIds(): readonly NodeId[] {
+    return [...this._skipDarkSpinNodeIds]
   }
 
   // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────

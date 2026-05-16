@@ -285,17 +285,14 @@ export abstract class LiquidEngineBase {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // WAVE 2513 — AMBIENT ISOLATION: BYPASS TOTAL DE GodEarFFT
-    // Si el perfil es isPureAmbient, el motor ignora TODA señal de audio
-    // y genera intensidades puramente desde osciladores trigonométricos.
-    // El resultado es idéntico con volumen=0 o volumen=100.
-    //
-    // Arquitectura: early-return completo. El hot-path de GodEar (kicks,
-    // strobe, sidechain, transient shaper) NUNCA se ejecuta para este vibe.
-    // Los envelopes SÍ se ejecutan para mantener ghostCap oceánico activo.
+    // WAVE 4845 — THE ABSOLUTE ZERO (CHILLOUT ISOLATION)
+    // Modo chill/ambient: cortocircuito total del flujo audio-reactivo.
+    // Nada de kick, transientes, strobe ni sidechain entra en L0.
     // ═══════════════════════════════════════════════════════════════════
-    if (p.isPureAmbient) {
-      return this.applyAmbientGenerative(morphFactor, now)
+    if (this.isAbsoluteChillProfile()) {
+      this.clearAudioTransients()
+      const glacierMorph = this.applyGlacierPalette(morphFactor)
+      return this.renderPureGlacierPayload(glacierMorph, now)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -439,11 +436,14 @@ export abstract class LiquidEngineBase {
     const clapBonus = baseSnare * harshness * 2.0
     let hybridSnare = baseSnare + clapBonus
 
-    // WAVE 4826.1 — ANTI-VOCAL GATE en hybridSnare (Back R)
-    // Si el transiente de agudos es menor que la mitad de la señal vocal,
-    // ignorarlo — vocales comprimidas de reguetón tienen treble bajo + mid alto.
-    if (trebleDelta < vocalPenalty * 0.5) {
-      hybridSnare *= 0.1
+    // WAVE 4826.3 — RESCATE DEL GÜIRO: Mover a impactSignal con umbrales realistas
+    // (Removido de aquí; ver línea ~480-610 donde se calcula backRight)
+
+    // WAVE 4826.3 — ANTI-VOCAL GATE en hybridSnare (Back R)
+    // Permitir pasar si es un impacto fuerte, o si la voz no es dominante.
+    // Snares reales tienen trebleDelta alto o hybridSnare alto → pasan.
+    if (trebleDelta < vocalPenalty * 0.35 && hybridSnare < 0.6) {
+      hybridSnare *= 0.15  // Más estricto que 0.2, menos que 0.1
     }
 
     // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
@@ -604,6 +604,14 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     const strobeResult = this.calculateStrobe(bands.treble, bands.ultraAir, noiseMode)
 
+    // WAVE 4826.5 — EFECTO GÜIRO INYECTADO EN STROBE (El verdadero FLASH dorado)
+    // Detectar drops realistas e inyectar trebleDelta puro para flashes dorados en Tungsten
+    const isDrop = bands.bass < 0.35 && bands.lowMid < 0.4
+    if (isDrop && trebleDelta > 0.25) {
+      strobeResult.active = true
+      strobeResult.intensity = Math.min(1.0, strobeResult.intensity + trebleDelta * 2.0)
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 9. AGC REBOUND ATTENUATION
     // ═══════════════════════════════════════════════════════════════════
@@ -634,14 +642,19 @@ export abstract class LiquidEngineBase {
     // ^2.0: subBass=0.40 → 0.16, subBass=0.60 → 0.36. El sub-grave real brilla.
     // gate=0.03 (antes 0.15): valores típicos de subBass (0.25-0.50) ahora pasan.
     const _ambientCrushed = Math.pow(_ambientRaw, 2.0)
+    // WAVE 4826.3 — PRE-GAIN + CONTRASTE EXTREMO
+    // Ganancia pre-curva para compensar falta de graves en latino (1.35x boost)
+    // Luego expansión ^1.3 para contraste más suave (es ^1.6 era demasiado agresivo)
+    let preGainAmbient = Math.min(1.0, _ambientCrushed * 1.35)
+    let ambientIntensity = Math.pow(preGainAmbient, 1.3)
     // WAVE 4826.1 — Reemplazar gate binario por fade exponencial suave para Tungsten en Ambient
-    let ambientIntensity = _ambientCrushed
     if (ambientIntensity < 0.03) {
       ambientIntensity *= 0.85
       if (ambientIntensity < 0.001) ambientIntensity = 0
     }
     // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
-    const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor))
+    // WAVE 4826.3 — BOOST AIR: 1.4x directo para resucitar con brillo
+    const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor * 1.4))
 
     const frame: ProcessedFrame = {
       bands,
@@ -765,6 +778,31 @@ export abstract class LiquidEngineBase {
     const ambResult = this.routeZones(frame)
     this.lastResult = ambResult
     return ambResult
+  }
+
+  private isAbsoluteChillProfile(): boolean {
+    if (this.profile.isPureAmbient) return true
+    const id = this.profile.id.toLowerCase()
+    return id.includes('chill') || id.includes('ambient')
+  }
+
+  private clearAudioTransients(): void {
+    this._kickVetoFrames = 0
+    this._kickIntervalMs = 0
+    this._lastKickTime = 0
+    this._strobeActive = false
+    this.strobeStartTime = 0
+    this.lastTreble = 0
+    this._vocalSustainEMA = 0
+    this._airEMA = 0
+  }
+
+  private applyGlacierPalette(morphFactor: number): number {
+    return Math.min(1.0, Math.max(0.0, morphFactor))
+  }
+
+  private renderPureGlacierPayload(morphFactor: number, now: number): LiquidStereoResult {
+    return this.applyAmbientGenerative(morphFactor, now)
   }
 
   // ─────────────────────────────────────────────────────────────────────

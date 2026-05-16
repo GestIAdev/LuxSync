@@ -195,6 +195,12 @@ export class NodeResolver {
         // Si un device tiene un CompiledForgeGraph, _writeNode() delega
         // completamente al ForgeNodeEvaluator — bypass total del flujo legacy.
         this._forgeGraphs = new Map();
+        // Acumulador por device para evaluar Forge UNA sola vez por fixture/frame.
+        // Evita que múltiples nodos (golden-master + petal-l/c/r) se pisen entre sí.
+        this._forgeAccumValues = new Map();
+        this._forgeManualDevices = new Set();
+        this._forgeValuePool = [];
+        this._forgeValuePoolCursor = 0;
         this._forgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT;
         // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
         this._safetyMiddleware = null;
@@ -400,9 +406,26 @@ export class NodeResolver {
         for (const [, buf] of this._universeBuffers) {
             buf.fill(0);
         }
-        // 2. Para cada nodo arbitrado, escribir en el buffer del universo
+        // Reset scratch de acumulación Forge (zero-alloc pool reuse)
+        this._forgeAccumValues.clear();
+        this._forgeManualDevices.clear();
+        this._forgeValuePoolCursor = 0;
+        // 2. Para cada nodo arbitrado:
+        //    - legacy: escribir directo
+        //    - forge: acumular por device y evaluar al final (una sola vez)
         for (const [nodeId, channelValues] of arbitrated) {
+            const node = this._graph.getNodeData(nodeId);
+            if (!node)
+                continue;
+            if (this._forgeGraphs.has(node.deviceId)) {
+                this._accumulateForgeNodeValues(nodeId, node.deviceId, channelValues);
+                continue;
+            }
             this._writeNode(nodeId, channelValues);
+        }
+        // 2b. Evaluar cada fixture Forge una sola vez con el merge final.
+        for (const [deviceId, mergedValues] of this._forgeAccumValues) {
+            this._writeForgeDevice(deviceId, mergedValues);
         }
         // 🌊 WAVE 4685: DarkSpin cross-node sweep.
         // DarkSpin state lives on COLOR nodes, but dimmer lives on IMPACT nodes.
@@ -530,6 +553,108 @@ export class NodeResolver {
     }
     _traceProbeDeviceLayout(deviceId) {
         void deviceId;
+    }
+    _acquireForgeValueRecord() {
+        if (this._forgeValuePoolCursor < this._forgeValuePool.length) {
+            const record = this._forgeValuePool[this._forgeValuePoolCursor++];
+            for (const key in record)
+                delete record[key];
+            return record;
+        }
+        const created = {};
+        this._forgeValuePool.push(created);
+        this._forgeValuePoolCursor++;
+        return created;
+    }
+    _accumulateForgeNodeValues(nodeId, deviceId, channelValues) {
+        let record = this._forgeAccumValues.get(deviceId);
+        if (!record) {
+            record = this._acquireForgeValueRecord();
+            this._forgeAccumValues.set(deviceId, record);
+        }
+        for (const key in channelValues) {
+            const value = channelValues[key];
+            if (!Number.isFinite(value))
+                continue;
+            record[key] = value;
+        }
+        if (this._safetyMiddleware?.isManualNode(nodeId)) {
+            this._forgeManualDevices.add(deviceId);
+        }
+    }
+    _writeForgeDevice(deviceId, channelValues) {
+        const compiled = this._forgeGraphs.get(deviceId);
+        if (!compiled)
+            return;
+        const device = this._graph.getDevice(deviceId);
+        if (!device)
+            return;
+        const buf = this._universeBuffers.get(device.universe);
+        if (!buf)
+            return;
+        const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
+        const hasManualNode = this._forgeManualDevices.has(deviceId);
+        if (!gateOpen && !hasManualNode)
+            return;
+        const baseAddr = device.dmxAddress - 1;
+        ForgeNodeEvaluator.evaluate(compiled, channelValues, this._forgeFrameContext, buf, baseAddr);
+        const sm = this._safetyMiddleware;
+        if (sm) {
+            const nodeIds = this._graph.getDeviceNodes(deviceId);
+            for (let ni = 0; ni < nodeIds.length; ni++) {
+                const node = this._graph.getNodeData(nodeIds[ni]);
+                if (!node)
+                    continue;
+                if (node.family === NodeFamily.KINETIC) {
+                    for (let ci = 0; ci < node.channels.length; ci++) {
+                        const chDef = node.channels[ci];
+                        const idx = baseAddr + chDef.dmxOffset;
+                        if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                            continue;
+                        if (chDef.type === PAN_COARSE) {
+                            buf[idx] = sm.clampKineticSingleAxis(node.nodeId, true, buf[idx]);
+                            buf[idx] = sm.applyAirbag(buf[idx], true);
+                        }
+                        else if (chDef.type === TILT_COARSE) {
+                            buf[idx] = sm.clampKineticSingleAxis(node.nodeId, false, buf[idx]);
+                            buf[idx] = sm.applyAirbag(buf[idx], false);
+                        }
+                    }
+                }
+                if (node.family === NodeFamily.COLOR) {
+                    let wheelDmx;
+                    let wheelTransitMs = 0;
+                    const colorNode = node;
+                    const darkSpinEligible = this._isDarkSpinEligibleColorNode(colorNode);
+                    for (let ci = 0; ci < node.channels.length; ci++) {
+                        const chDef = node.channels[ci];
+                        if (chDef.type !== CH_COLOR_WHEEL)
+                            continue;
+                        const idx = baseAddr + chDef.dmxOffset;
+                        if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                            continue;
+                        wheelDmx = buf[idx];
+                        wheelTransitMs = colorNode.colorWheel?.minTransitionMs ?? 0;
+                        break;
+                    }
+                    if (darkSpinEligible && wheelDmx !== undefined && wheelTransitMs > 0) {
+                        const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs);
+                        if (inBlackout) {
+                            for (let ci = 0; ci < node.channels.length; ci++) {
+                                const chDef = node.channels[ci];
+                                if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL)
+                                    continue;
+                                const idx = baseAddr + chDef.dmxOffset;
+                                if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                                    continue;
+                                buf[idx] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        this._activeUniverses.add(device.universe);
     }
     _getOrBuildSoftBlackoutMask(universe) {
         const cached = this._softBlackoutMasks.get(universe);

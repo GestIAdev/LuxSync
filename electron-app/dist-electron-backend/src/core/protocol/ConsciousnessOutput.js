@@ -90,7 +90,7 @@ export function clampColorDecision(decision) {
  *
  * "En los drops, la física manda. En los valles, Selene piensa."
  */
-export const ENERGY_OVERRIDE_THRESHOLD = 0.85;
+export const ENERGY_OVERRIDE_THRESHOLD = 0.75; // WAVE 4829: 0.85→0.75 — captura drops latinos (0.75-0.82)
 /**
  * Verifica si estamos en modo Energy Override (drop/clímax)
  */

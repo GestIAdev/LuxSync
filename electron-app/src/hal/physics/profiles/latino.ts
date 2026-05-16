@@ -172,7 +172,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   percMidSubtract: 2.0,   // WAVE 3485: purga anti-autotune agresiva en Transient Shaper
-  percGate: 0.065,        // WAVE 4826.1: 0.045→0.065 — alinear con techno, evitar vocales reguetón en Back R
+  percGate: 0.065,        // WAVE 4826.3: 0.055→0.060 — el punto dulce latino (Back R)
   percBoost: 4.0,         // Moderado (techno=5.0) — no saturar
   percExponent: 0.6,      // Ligeramente más convexo que techno (0.5)
 

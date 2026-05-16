@@ -97,7 +97,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     description: 'El profesional. El DJ está sobrio. 🎧',
     emoji: '⚖️',
     thresholdMultiplier: 1.10,     // 🩸 WAVE 2492: 1.20→1.10 (hard techno raw 0.50-0.66 needs to breathe)
-    cooldownMultiplier: 1.8,       // 🎯 WAVE 1176: Cooldowns x1.8
+    cooldownMultiplier: 2.2,       // 🩸 WAVE 4829: 1.8→2.2 — más aire en latino, objetivo 3-4 EPM
     ethicsThreshold: 1.20,         // 🩸 WAVE 2104.2: 1.12→1.20. Con 1.12, ethics=1.134 pasaba con margen de 0.014 = GRATIS. El override debe ser ÉPICO, no rutinario.
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo

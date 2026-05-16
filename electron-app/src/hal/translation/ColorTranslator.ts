@@ -405,6 +405,25 @@ export class ColorTranslator {
       }
     }
 
+    // 🥇 WAVE 4831: THE GOLDEN SNAP — identidad cultural del color Oro
+    // Si el hue objetivo cae en el rango ámbar/dorado (35°-55°), forzar
+    // selección del slot Amber/Gold cuando existe en la rueda física.
+    if (targetHsl.h >= 35 && targetHsl.h <= 55) {
+      const amberSlot = wheel.colors.find(
+        (s) => s.name === 'Amber' || s.name === 'Gold' || s.name === 'CTO' || s.name === 'Orange'
+      )
+      if (amberSlot) {
+        return {
+          outputRGB: amberSlot.rgb,
+          colorWheelDmx: amberSlot.dmx,
+          colorName: amberSlot.name,
+          colorDistance: 0,
+          wasTranslated: true,
+          poorMatch: false,
+        }
+      }
+    }
+
     let nearestIndex = 0
     let secondNearestIndex = -1
     let smallestHueDiff = Infinity

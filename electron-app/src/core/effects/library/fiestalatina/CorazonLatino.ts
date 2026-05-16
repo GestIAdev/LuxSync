@@ -89,9 +89,6 @@ interface CorazonLatinoConfig {
   
   /** Beats por latido completo (DUM-dum) */
   beatsPerHeartbeat: number
-  
-  /** Amplitud del movimiento de expansión (normalizado 0-1) */
-  expansionAmplitude: number
 }
 
 const DEFAULT_CONFIG: CorazonLatinoConfig = {
@@ -113,7 +110,6 @@ const DEFAULT_CONFIG: CorazonLatinoConfig = {
   
   bpmSync: true,
   beatsPerHeartbeat: 4,         // 4 beats = 1 latido
-  expansionAmplitude: 0.5,      // 🪜 LADDER: 50% movimiento (antes 80%) - más contenido
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -138,10 +134,6 @@ export class CorazonLatino extends BaseEffect {
   private heartIntensity = 0
   private currentHeartColor: { h: number; s: number; l: number }
   
-  // 🌟 State de expansión (movers)
-  private expansionProgress = 0
-  private moverPanOffset = 0
-  
   // ✨ State del blinder
   private blinderIntensity = 0
   
@@ -163,8 +155,6 @@ export class CorazonLatino extends BaseEffect {
     this.heartbeatPhase = 'strong'
     this.phaseTimer = 0
     this.heartIntensity = 0
-    this.expansionProgress = 0
-    this.moverPanOffset = 0
     this.blinderIntensity = 0
     
     // Calcular duración basada en BPM
@@ -269,9 +259,7 @@ export class CorazonLatino extends BaseEffect {
       this.heartIntensity = 1 - (decayProgress * 0.7)  // No baja de 0.3
     }
     
-    // Expansión de los movers (abren en el DUM)
-    this.expansionProgress = this.heartIntensity * this.config.expansionAmplitude
-    this.moverPanOffset = this.expansionProgress  // Pan hacia afuera
+    // Expansión resonante (solo intensidad, sin movimiento L3)
   }
   
   private updateWeakBeat(duration: number): void {
@@ -287,8 +275,7 @@ export class CorazonLatino extends BaseEffect {
       this.heartIntensity = 0.7 - (decayProgress * 0.5)  // 0.7→0.2
     }
     
-    // Los movers empiezan a volver
-    this.moverPanOffset = this.expansionProgress * (1 - progress * 0.5)
+    // Decay armónico del latido (sin movimiento L3)
   }
   
   private updateRest(duration: number): void {
@@ -296,9 +283,6 @@ export class CorazonLatino extends BaseEffect {
     
     // Silencio entre latidos
     this.heartIntensity = Math.max(0.1, this.heartIntensity * (1 - progress))
-    
-    // Los movers vuelven a centro
-    this.moverPanOffset = this.moverPanOffset * (1 - progress)
   }
   
   private updateBlinder(): void {

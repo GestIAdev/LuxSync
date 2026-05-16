@@ -101,6 +101,35 @@ export interface INodeIntent {
   readonly confidence: number
   /** Identifica qué System o Hook produjo este intent */
   readonly source: IntentSource
+
+  /**
+   * 🏎️ WAVE 4831: DARKSPIN BYPASS
+   * Si true, AetherSafetyMiddleware ignora el blackout de tránsito
+   * mecánico para este nodo en este frame.
+   */
+  skipDarkSpin?: boolean
+
+  /**
+   * 🌊 WAVE 4832: PER-INTENT MERGE STRATEGY
+   * Cómo debe mezclarse este intent con valores ya escritos en el canal.
+   *
+   * - `'LTP'` (default si omitido): Last Takes Precedence. El intent
+   *   sobreescribe lo que haya. Para capa L3 ('effect'), además domina
+   *   el canal (anti-sangrado: L0/L1 silenciados en ese canal).
+   *
+   * - `'HTP'`: Highest Takes Precedence. `record[ch] = max(record[ch], v)`.
+   *   Para capa L3 ('effect'), NO se registra como dominado — L0 sigue
+   *   contribuyendo. Útil para efectos "blandos" que quieren tintar
+   *   sin matar el brillo musical (CumbiaMoon, CorazonLatino…).
+   *
+   * - `'ADD'`: Suma clamped a 1. Reservado, no usado en L3 actualmente.
+   *
+   * Propagado por SeleneAetherAdapter desde `zoneOverride.blendMode`:
+   *   'max'     → 'HTP'
+   *   'replace' → 'LTP'
+   *   undefined → 'LTP'
+   */
+  mergeStrategy?: MergeStrategy
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

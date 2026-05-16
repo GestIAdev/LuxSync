@@ -188,6 +188,7 @@ export class SeleneLux {
      * @param elementalMods - Modificadores zodiacales (WAVE 273)
      */
     updateFromTitan(vibeContext, basePalette, audioMetrics, elementalMods) {
+        audioMetrics = this.normalizeAudioMetrics(audioMetrics);
         this.frameCount++;
         // Convertir ColorPalette a RGB interno
         const inputPalette = this.colorPaletteToRgb(basePalette);
@@ -265,8 +266,9 @@ export class SeleneLux {
             let chillMorphFactor = undefined;
             if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
                 vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
-                chillMorphFactor = chillAmbientEngine.tick().morphFactor; // [0.25, 0.75]
-                dimmerOverride = 0.75; // Chill ambient: siempre suave
+                const chillFrame = chillAmbientEngine.tick();
+                chillMorphFactor = chillFrame.morphFactor;
+                dimmerOverride = chillFrame.dimmer;
             }
             const liquidInput = {
                 bands,
@@ -800,6 +802,43 @@ export class SeleneLux {
         // 🌊 WAVE 1072: oceanicContext NO necesita limpiarse tampoco
         // this.oceanicContextState = null;   // ❌ COMENTADO
         return this.lastOutput;
+    }
+    normalizeAudioMetrics(metrics) {
+        const src = (metrics ?? {});
+        const clamp01 = (v, fallback = 0) => {
+            const n = Number(v);
+            if (!Number.isFinite(n))
+                return fallback;
+            if (n < 0)
+                return 0;
+            if (n > 1)
+                return 1;
+            return n;
+        };
+        const safeNumber = (v, fallback = 0) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : fallback;
+        };
+        return {
+            normalizedBass: clamp01(src.normalizedBass),
+            normalizedMid: clamp01(src.normalizedMid),
+            normalizedTreble: clamp01(src.normalizedTreble),
+            avgNormEnergy: clamp01(src.avgNormEnergy),
+            subBass: clamp01(src.subBass, 0),
+            lowMid: clamp01(src.lowMid, 0),
+            highMid: clamp01(src.highMid, 0),
+            harshness: clamp01(src.harshness, 0),
+            spectralFlatness: clamp01(src.spectralFlatness, 0),
+            spectralCentroid: Math.max(0, safeNumber(src.spectralCentroid, 1000)),
+            clarity: clamp01(src.clarity, 0.5),
+            ultraAir: clamp01(src.ultraAir, 0),
+            texture: src.texture,
+            kickDetected: src.kickDetected === true,
+            snareDetected: src.snareDetected === true,
+            hihatDetected: src.hihatDetected === true,
+            isPLLBeat: src.isPLLBeat === true,
+            crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
+        };
     }
     /**
      * Obtiene el último estado calculado

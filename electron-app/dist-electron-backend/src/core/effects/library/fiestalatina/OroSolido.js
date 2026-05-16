@@ -51,11 +51,6 @@ const DEFAULT_CONFIG = {
     totalMs: 2000, // WAVE 3473: 600 + 1400
     decayCurve: 2.5, // Decay exponencial moderado-rápido (resonancia bombo)
     decayFloor: 0.0, // Apagado completo
-    // Movers DMX — valores en rango 0-255
-    panLeft: 60, // Pan izquierda ~45° respecto al centro
-    panRight: 195, // Pan derecha simétrico
-    tiltFront: 80, // Tilt frontal ~45° hacia el público
-    tiltSweep: 55, // Tilt barrido — sube ligeramente durante la apertura
     // 🥇 ORO PURO — quema dorado, no blanco frío
     colorPeak: {
         r: 255,
@@ -166,18 +161,6 @@ export class OroSolido extends BaseEffect {
                 h = ((r - g) / d + 4) / 6;
         }
         const hsl = { h: h * 360, s: s * 100, l: l * 100 };
-        // ─── MOVIMIENTO DE MOVERS ─────────────────────────────────────────────
-        // Fase 1 LATCH: Tilt frontal (45° al público), Pan centrado
-        // Fase 2 BARRIDO: Movers izquierda abren a la izquierda, derecha a la derecha
-        // Usamos zoneOverrides para dividir izquierda/derecha
-        const sweepProgress = inLatch
-            ? 0
-            : Math.min(1, (elapsed - latchMs) / (totalMs - latchMs));
-        // Interpolación de tilt: tiltFront → tiltSweep durante el barrido
-        const tiltNow = Math.round(this.config.tiltFront + (this.config.tiltSweep - this.config.tiltFront) * sweepProgress);
-        // Pan: en latch todo centrado (127), en barrido se separan
-        const panLeftNow = Math.round(127 + (this.config.panLeft - 127) * sweepProgress);
-        const panRightNow = Math.round(127 + (this.config.panRight - 127) * sweepProgress);
         // ─── OUTPUT ───────────────────────────────────────────────────────────
         return {
             effectId: this.id,
@@ -224,6 +207,7 @@ export class OroSolido extends BaseEffect {
                 },
             },
             overrideMoverShield: true,
+            skipDarkSpin: true, // 🏎️ WAVE 4831: OroSolido es corto — preferible ver scroll que blackout
         };
     }
     isFinished() {

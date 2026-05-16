@@ -27,6 +27,13 @@
  * @version WAVE 4524.3
  */
 import { NodeFamily } from '../types';
+// 🌊 WAVE 4832: Traducción blendMode (per-zone) → mergeStrategy (per-intent).
+// 'max'     → 'HTP'  (efecto blando que tinta sin matar el brillo de L0)
+// 'replace' → 'LTP'  (efecto tirano que domina la capa)
+// undefined → 'LTP'  (default seguro retrocompatible)
+function blendModeToMergeStrategy(blendMode) {
+    return blendMode === 'max' ? 'HTP' : 'LTP';
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES L3
 // ═══════════════════════════════════════════════════════════════════════════
@@ -125,6 +132,12 @@ function isHslColor(color) {
  */
 export class SeleneAetherAdapter {
     constructor(zoneRouter) {
+        /** 🏎️ WAVE 4831: DarkSpin bypass flag para este frame */
+        this._skipDarkSpin = false;
+        /** 🔬 WAVE 4832 DIAG: firma de zonas previamente loggeada (anti-spam). */
+        this._lastDiagSignature = '';
+        /** 🔬 WAVE 4832 DIAG: contador anti-spam para values trace (1 cada 60 frames con valor). */
+        this._diagFrameCount = 0;
         // ── Scratch objects pre-allocated (ver §5.4 del blueprint) ─────────────
         /** Scratch para canales IMPACT (dimmer) */
         this._impactValues = { dimmer: 0 };
@@ -134,6 +147,8 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
+            skipDarkSpin: false,
+            mergeStrategy: 'LTP',
         };
         /** Scratch para canales COLOR (aliases duales rgb + red/green/blue + white/amber) */
         this._colorValues = {
@@ -152,6 +167,8 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
+            skipDarkSpin: false,
+            mergeStrategy: 'LTP',
         };
         /** Scratch para canales STROBE (strobeRate, shutter) */
         this._strobeValues = { strobeRate: 0, shutter: 0 };
@@ -161,6 +178,8 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
+            skipDarkSpin: false,
+            mergeStrategy: 'LTP',
         };
         this._zoneRouter = zoneRouter;
         // Cablear values al scratch — un único wiring en construcción
@@ -196,6 +215,8 @@ export class SeleneAetherAdapter {
             composition < MIN_GLOBAL_COMPOSITION) {
             return;
         }
+        // 🏎️ WAVE 4831: DarkSpin bypass flag para este frame
+        this._skipDarkSpin = effectOutput.skipDarkSpin === true;
         // ── Fase 1: Overrides globales (zona 'all') ───────────────────────────
         this._processGlobalOverrides(effectOutput, composition, bus);
         // ── Fase 2: Zone overrides (zonas específicas) ────────────────────────
@@ -217,9 +238,13 @@ export class SeleneAetherAdapter {
      * NO emite movimiento (regla L3 estricta).
      */
     _processGlobalOverrides(output, composition, bus) {
+        // 🌊 WAVE 4832: Los overrides globales son tiranos por construcción
+        // (provienen de efectos con mixBus='global' tipo OroSolido/StrobeStorm).
+        // Siempre 'LTP' → dominación L3 absoluta sobre L0/L1.
+        const globalMerge = 'LTP';
         // dimmerOverride → IMPACT nodes zona 'all'
         if (output.dimmerOverride !== undefined) {
-            this._emitImpact('all', clamp01(output.dimmerOverride), composition, bus);
+            this._emitImpact('all', clamp01(output.dimmerOverride), composition, bus, globalMerge);
         }
         // colorOverride HSL/RGB → COLOR nodes zona 'all'
         if (output.colorOverride) {
@@ -228,11 +253,11 @@ export class SeleneAetherAdapter {
         }
         // whiteOverride → COLOR nodes zona 'all' (canal 'white')
         if (output.whiteOverride !== undefined) {
-            this._emitWhite('all', clamp01(output.whiteOverride), composition, bus);
+            this._emitWhite('all', clamp01(output.whiteOverride), composition, bus, globalMerge);
         }
         // amberOverride → COLOR nodes zona 'all' (canal 'amber')
         if (output.amberOverride !== undefined) {
-            this._emitAmber('all', clamp01(output.amberOverride), composition, bus);
+            this._emitAmber('all', clamp01(output.amberOverride), composition, bus, globalMerge);
         }
         // strobeRate → IMPACT nodes zona 'all' (canal 'strobeRate' para fixtures con shutter)
         if (output.strobeRate !== undefined && output.strobeRate > 0) {
@@ -257,26 +282,61 @@ export class SeleneAetherAdapter {
      * DESCARTA completamente el campo `movement` de cada zona (regla L3).
      */
     _processZoneOverrides(zoneOverrides, composition, bus) {
+        // 🔬 WAVE 4832 DIAG: log one-shot per zone-set signature.
+        // Imprime qué zonas declara el efecto y cuántos NodeIds resuelve cada una
+        // por familia. Permite detectar shows con fixtures en zonas que el adapter
+        // NO conoce (causa de "soft effects no pintan"). Auto-throttled: misma firma
+        // de zonas no re-imprime hasta que cambie el set.
+        const zoneSignature = Object.keys(zoneOverrides).sort().join(',');
+        if (zoneSignature !== this._lastDiagSignature) {
+            this._lastDiagSignature = zoneSignature;
+            const summary = [];
+            for (const z of Object.keys(zoneOverrides)) {
+                const impactCount = this._zoneRouter.resolve(z, NodeFamily.IMPACT).length;
+                const colorCount = this._zoneRouter.resolve(z, NodeFamily.COLOR).length;
+                summary.push(`${z}(I:${impactCount},C:${colorCount})`);
+            }
+            console.log(`[SeleneAetherAdapter 🔬] zone resolution: ${summary.join(' | ')}`);
+        }
+        // 🔬 WAVE 4832 DIAG: dump real de valores 1 vez/segundo (~60 frames a 60fps).
+        // Permite ver si dimmer/color emitidos son != 0 cuando el user reporta
+        // "no pinta". Captura SÓLO si pasaron suficientes frames para evitar spam.
+        this._diagFrameCount++;
+        const shouldDumpValues = this._diagFrameCount % 60 === 0;
         for (const zoneId in zoneOverrides) {
             const override = zoneOverrides[zoneId];
             const zone = zoneId;
-            // blendMode/priority/metadatos viejos se ignoran: la mezcla ya la decide el Arbiter.
-            void override.blendMode;
+            if (shouldDumpValues) {
+                const colorStr = override.color
+                    ? `H${Math.round(override.color.h)}/S${Math.round(override.color.s)}/L${Math.round(override.color.l)}`
+                    : '—';
+                const dimStr = override.dimmer !== undefined ? override.dimmer.toFixed(2) : '—';
+                const wStr = override.white !== undefined ? override.white.toFixed(2) : '—';
+                const aStr = override.amber !== undefined ? override.amber.toFixed(2) : '—';
+                console.log(`[SeleneAetherAdapter 🔬] zone=${zoneId} blend=${override.blendMode ?? '?'} dim=${dimStr} color=${colorStr} w=${wStr} a=${aStr}`);
+            }
+            // 🌊 WAVE 4832: El blendMode declarado por el efecto se traduce
+            // a mergeStrategy. SOLO afecta a canales de luminancia (dimmer/white/amber):
+            //   'max'     → 'HTP'  (CumbiaMoon/CorazonLatino: tintan sin matar L0)
+            //   'replace' → 'LTP'  (OroSolido/StrobeStorm: dominan la capa)
+            // El canal de color (r/g/b) siempre se emite con 'LTP': mezclar HSL por
+            // máximo de componente RGB rompe la identidad cromática del efecto.
+            const luminanceMerge = blendModeToMergeStrategy(override.blendMode);
             // dimmer → IMPACT nodes de esta zona
             if (override.dimmer !== undefined) {
-                this._emitImpact(zone, clamp01(override.dimmer), composition, bus);
+                this._emitImpact(zone, clamp01(override.dimmer), composition, bus, luminanceMerge);
             }
-            // color HSL/RGB → COLOR nodes de esta zona
+            // color HSL/RGB → COLOR nodes de esta zona (LTP forzado: ver nota arriba)
             if (override.color) {
                 this._emitColor(zone, override.color, composition, bus);
             }
             // white → COLOR nodes de esta zona
             if (override.white !== undefined) {
-                this._emitWhite(zone, clamp01(override.white), composition, bus);
+                this._emitWhite(zone, clamp01(override.white), composition, bus, luminanceMerge);
             }
             // amber → COLOR nodes de esta zona
             if (override.amber !== undefined) {
-                this._emitAmber(zone, clamp01(override.amber), composition, bus);
+                this._emitAmber(zone, clamp01(override.amber), composition, bus, luminanceMerge);
             }
             // strobeRate → IMPACT nodes de esta zona
             if (override.strobeRate !== undefined && override.strobeRate > 0) {
@@ -331,7 +391,7 @@ export class SeleneAetherAdapter {
     /**
      * Emite un intent de dimmer a todos los nodos IMPACT de una zona.
      */
-    _emitImpact(zone, dimmer, confidence, bus) {
+    _emitImpact(zone, dimmer, confidence, bus, mergeStrategy = 'LTP') {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.IMPACT);
         if (nodeIds.length === 0)
             return;
@@ -339,6 +399,8 @@ export class SeleneAetherAdapter {
         const vals = this._impactValues;
         vals.dimmer = dimmer;
         scratch.confidence = confidence;
+        scratch.skipDarkSpin = this._skipDarkSpin;
+        scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
             bus.push(scratch);
@@ -381,6 +443,10 @@ export class SeleneAetherAdapter {
         vals.green = g;
         vals.blue = b;
         scratch.confidence = confidence;
+        scratch.skipDarkSpin = this._skipDarkSpin;
+        // 🌊 WAVE 4832: el color SIEMPRE se emite como LTP. Mezclar componentes
+        // RGB por máximo rompe la identidad cromática (rojo + plata = magenta sucio).
+        scratch.mergeStrategy = 'LTP';
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
             bus.push(scratch);
@@ -389,7 +455,7 @@ export class SeleneAetherAdapter {
     /**
      * Emite un intent de white a todos los nodos COLOR de una zona.
      */
-    _emitWhite(zone, white, confidence, bus) {
+    _emitWhite(zone, white, confidence, bus, mergeStrategy = 'LTP') {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR);
         if (nodeIds.length === 0)
             return;
@@ -398,6 +464,8 @@ export class SeleneAetherAdapter {
         const vals = this._colorValues;
         vals.white = white;
         scratch.confidence = confidence;
+        scratch.skipDarkSpin = this._skipDarkSpin;
+        scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
             bus.push(scratch);
@@ -406,7 +474,7 @@ export class SeleneAetherAdapter {
     /**
      * Emite un intent de amber a todos los nodos COLOR de una zona.
      */
-    _emitAmber(zone, amber, confidence, bus) {
+    _emitAmber(zone, amber, confidence, bus, mergeStrategy = 'LTP') {
         const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR);
         if (nodeIds.length === 0)
             return;
@@ -415,6 +483,8 @@ export class SeleneAetherAdapter {
         const vals = this._colorValues;
         vals.amber = amber;
         scratch.confidence = confidence;
+        scratch.skipDarkSpin = this._skipDarkSpin;
+        scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
             bus.push(scratch);
@@ -433,6 +503,9 @@ export class SeleneAetherAdapter {
         vals.strobeRate = strobeRate;
         vals.shutter = 1.0;
         scratch.confidence = confidence;
+        scratch.skipDarkSpin = this._skipDarkSpin;
+        // Strobe es siempre LTP estricto (canal STRICT_PRIORITY en el Arbiter).
+        scratch.mergeStrategy = 'LTP';
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
             bus.push(scratch);

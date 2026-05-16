@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { KeyBinding, LayerId, ModifierState } from '../keyforge/types'
 
 export interface PaletteActionItem {
@@ -16,6 +16,7 @@ interface ActionPaletteProps {
   isLearnModeActive: boolean
   onSearchQueryChange: (value: string) => void
   onLearnAction: (actionId: string) => void
+  onClose?: () => void
 }
 
 const CATEGORY_ORDER: readonly string[] = [
@@ -66,8 +67,14 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
   isLearnModeActive,
   onSearchQueryChange,
   onLearnAction,
+  onClose,
 }) => {
   const normalizedQuery = searchQuery.trim().toLowerCase()
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ Playback: true })
+
+  const toggleCategory = (cat: string) =>
+    setExpanded(prev => ({ ...prev, [cat]: !prev[cat] }))
 
   const filtered = useMemo(() => {
     if (!normalizedQuery) return actions
@@ -104,24 +111,25 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
   }, [filtered])
 
   return (
-    <aside style={{
-      width: '360px',
-      minWidth: '360px',
-      maxHeight: '520px',
-      border: '1px solid #2c3442',
-      borderRadius: '8px',
+    <aside className="w-full h-full flex flex-col bg-gray-900" style={{
+      width: '100%',
+      height: '100%',
       background: 'linear-gradient(180deg, #101720 0%, #0c1219 100%)',
-      boxShadow: 'inset 0 0 0 1px #0f1726, 0 10px 30px rgba(0, 0, 0, 0.45)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
       <div style={{
-        padding: '10px',
+        padding: '16px 20px',
         borderBottom: '1px solid #253040',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '10px',
+        position: 'sticky',
+        top: 0,
+        background: 'rgba(16, 23, 32, 0.96)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 1,
       }}>
         <div style={{
           display: 'flex',
@@ -130,22 +138,45 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
           gap: '8px',
         }}>
           <span style={{
-            fontSize: '10px',
+            fontSize: '14px',
             fontFamily: 'monospace',
             letterSpacing: '0.1em',
             color: '#d1d5db',
             textTransform: 'uppercase',
+            fontWeight: '700',
           }}>
             Action Palette
           </span>
-          <span style={{
-            fontSize: '9px',
-            fontFamily: 'monospace',
-            color: '#9ca3af',
-            letterSpacing: '0.05em',
-          }}>
-            Layer: {viewLayer}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              color: '#9ca3af',
+              letterSpacing: '0.05em',
+            }}>
+              Layer: {viewLayer}
+            </span>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #374151',
+                  borderRadius: '6px',
+                  color: '#9ca3af',
+                  fontFamily: 'monospace',
+                  fontSize: '14px',
+                  lineHeight: 1,
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                }}
+                aria-label="Cerrar paleta"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <input
@@ -158,61 +189,92 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
             background: '#0b1118',
             color: '#e5e7eb',
             border: '1px solid #364152',
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontFamily: 'monospace',
-            fontSize: '10px',
+            fontSize: '13px',
             letterSpacing: '0.02em',
-            padding: '6px 8px',
+            padding: '10px 14px',
             outline: 'none',
           }}
         />
 
         {isLearnModeActive && pendingMappingAction && (
           <div style={{
-            fontSize: '9px',
+            fontSize: '12px',
             fontFamily: 'monospace',
             color: '#fbbf24',
-            letterSpacing: '0.06em',
-            textShadow: '0 0 8px #f59e0b70',
+            letterSpacing: '0.08em',
+            textShadow: '0 0 12px #f59e0b70',
             animation: 'kfo-pulse 0.9s ease-in-out infinite',
           }}>
-            A LA ESPERA DE TECLA... {pendingMappingAction}
+            🔴 A LA ESPERA DE TECLA... {pendingMappingAction}
           </div>
         )}
       </div>
 
-      <div style={{
-        overflowY: 'auto',
-        padding: '10px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-      }}>
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2"
+        style={{
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          flex: 1,
+          minHeight: 0,
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}
+      >
         {grouped.length === 0 && (
           <div style={{
-            fontSize: '10px',
+            fontSize: '13px',
             color: '#6b7280',
             fontFamily: 'monospace',
             letterSpacing: '0.04em',
+            textAlign: 'center',
+            padding: '40px 0',
           }}>
             No actions match the current filter.
           </div>
         )}
 
-        {grouped.map(([category, list]) => (
-          <section key={category} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{
-              fontSize: '9px',
-              fontFamily: 'monospace',
-              color: '#93c5fd',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              borderBottom: '1px solid #1f2937',
-              paddingBottom: '3px',
-            }}>
-              {category}
-            </div>
+        {grouped.map(([category, list]) => {
+          const isOpen = !!expanded[category]
+          return (
+          <section key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+            <button
+              type="button"
+              onClick={() => toggleCategory(category)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                color: '#93c5fd',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontWeight: '700',
+                borderBottom: `1px solid ${isOpen ? '#1e3a8a' : '#1f2937'}`,
+                borderTop: 'none',
+                borderLeft: 'none',
+                borderRight: 'none',
+                paddingBottom: '6px',
+                paddingTop: '6px',
+                background: 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span>{category}</span>
+              <span style={{ fontSize: '10px', color: '#4b5563', lineHeight: 1 }}>
+                {isOpen ? '▾' : '▸'} {list.length}
+              </span>
+            </button>
 
+            {isOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
             {list.map(action => {
               const mappedCombo = getMappedComboForLayer(bindings, viewLayer, action.id)
               const isArmed = pendingMappingAction === action.id && isLearnModeActive
@@ -225,32 +287,33 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                   style={{
                     width: '100%',
                     border: `1px solid ${isArmed ? '#f59e0b' : '#2b3644'}`,
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     background: isArmed ? '#2a1b04' : '#121a24',
-                    boxShadow: isArmed ? '0 0 10px #f59e0b50' : 'none',
-                    padding: '6px',
+                    boxShadow: isArmed ? '0 0 16px #f59e0b40' : 'none',
+                    padding: '10px 14px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '8px',
+                    gap: '12px',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{
-                      fontSize: '10px',
+                    <span className="truncate" style={{
+                      fontSize: '13px',
                       color: '#e5e7eb',
                       fontFamily: 'monospace',
                       letterSpacing: '0.03em',
+                      fontWeight: '500',
                       whiteSpace: 'nowrap',
                       textOverflow: 'ellipsis',
                       overflow: 'hidden',
                     }}>
                       {action.label}
                     </span>
-                    <span style={{
-                      fontSize: '10px',
+                    <span className="truncate" style={{
+                      fontSize: '11px',
                       color: '#9ca3af',
                       fontFamily: 'monospace',
                       letterSpacing: '0.04em',
@@ -264,15 +327,15 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     <span style={{
-                      fontSize: '8px',
+                      fontSize: '11px',
                       fontFamily: 'monospace',
-                      letterSpacing: '0.04em',
-                      fontWeight: '600',
+                      letterSpacing: '0.05em',
+                      fontWeight: '700',
                       color: mappedCombo ? '#86efac' : '#fca5a5',
                       border: `1px solid ${mappedCombo ? '#0d6d47' : '#991b1b'}`,
                       background: mappedCombo ? '#052e1660' : '#450a0a60',
                       borderRadius: '999px',
-                      padding: '2px 6px',
+                      padding: '4px 12px',
                     }}>
                       {mappedCombo ?? 'Unmapped'}
                     </span>
@@ -280,27 +343,30 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                       type="button"
                       onClick={() => onLearnAction(action.id)}
                       style={{
-                        fontSize: '8px',
+                        fontSize: '11px',
                         fontFamily: 'monospace',
                         letterSpacing: '0.06em',
                         fontWeight: '600',
                         color: isArmed ? '#fbbf24' : '#d1d5db',
                         background: isArmed ? '#78350f40' : '#1f2937',
                         border: `1px solid ${isArmed ? '#f59e0b' : '#374151'}`,
-                        borderRadius: '4px',
-                        padding: '2px 6px',
+                        borderRadius: '6px',
+                        padding: '5px 12px',
                         textTransform: 'uppercase',
                         cursor: 'pointer',
                       }}
                     >
-                      {isArmed ? '⚡' : 'L'}
+                      {isArmed ? '⚡ Armed' : 'Learn'}
                     </button>
                   </div>
                 </button>
               )
             })}
+            </div>
+            )}
           </section>
-        ))}
+          )
+        })}
       </div>
     </aside>
   )

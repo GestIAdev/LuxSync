@@ -41,6 +41,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'chronos': '#3b82f6',      // Blue-500 (Chronos Studio) - WAVE 2004
   'constructor': '#a855f7',  // Purple (Build)
   'forge': '#f97316',        // Orange (The Blacksmith) - WAVE 1110
+  'keyforge': '#14b8a6',     // Teal (Dedicated KeyForge view)
   'hephaestus': '#ff6b2b',   // Deep Orange/Ember (The God Forge) - WAVE 2030.3
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',

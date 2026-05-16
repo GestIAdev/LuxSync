@@ -591,20 +591,51 @@ export function registerAetherIPCHandlers() {
                     }
                 }
                 else if (target === 'all') {
+                    // WAVE 4828: The Software Cable Merge
+                    // Dispara simultaneamente los 4 nodos del Punio Dorado (Master + 3 Petalos)
+                    const goldNodes = [
+                        { nodeId: t.goldenMaster, family: 'golden-master', needsStrobe: true },
+                        { nodeId: t.petalL, family: 'petal-l', needsStrobe: false },
+                        { nodeId: t.petalC, family: 'petal-c', needsStrobe: false },
+                        { nodeId: t.petalR, family: 'petal-r', needsStrobe: false },
+                    ];
                     if (release) {
-                        arbiter.clearManualOverride(t.goldenMaster);
-                        arbiter.clearManualOverride(t.petalL);
-                        arbiter.clearManualOverride(t.petalC);
-                        arbiter.clearManualOverride(t.petalR);
+                        for (const node of goldNodes) {
+                            arbiter.clearManualOverride(node.nodeId);
+                        }
                     }
                     else {
                         const intensity = typeof value === 'number' ? value : 1.0;
-                        // #FFD700 dorado puro → r=1.0, g=0.843, b=0.0
-                        // 🌊 WAVE 4701 M2: golden-master incluye strobe (canal 4) al maximo (1.0)
-                        arbiter.setManualOverride(t.goldenMaster, { dimmer: intensity, strobe: 1.0 });
-                        arbiter.setManualOverride(t.petalL, { dimmer: intensity });
-                        arbiter.setManualOverride(t.petalC, { dimmer: intensity });
-                        arbiter.setManualOverride(t.petalR, { dimmer: intensity });
+                        for (const node of goldNodes) {
+                            const overridePayload = node.needsStrobe
+                                ? { dimmer: intensity, strobe: 1.0 }
+                                : { dimmer: intensity };
+                            arbiter.setManualOverride(node.nodeId, overridePayload);
+                        }
+                    }
+                }
+                else if (target === 'gold') {
+                    // WAVE 4828: The Software Cable Merge
+                    // Simultaneo Master + Petalos
+                    const goldNodes = [
+                        { nodeId: t.goldenMaster, family: 'golden-master', needsStrobe: true },
+                        { nodeId: t.petalL, family: 'petal-l', needsStrobe: false },
+                        { nodeId: t.petalC, family: 'petal-c', needsStrobe: false },
+                        { nodeId: t.petalR, family: 'petal-r', needsStrobe: false },
+                    ];
+                    if (release) {
+                        for (const node of goldNodes) {
+                            arbiter.clearManualOverride(node.nodeId);
+                        }
+                    }
+                    else {
+                        const intensity = typeof value === 'number' ? Math.max(0, Math.min(1, value)) : 1.0;
+                        for (const node of goldNodes) {
+                            const overridePayload = node.needsStrobe
+                                ? { dimmer: intensity, strobe: 1.0 }
+                                : { dimmer: intensity };
+                            arbiter.setManualOverride(node.nodeId, overridePayload);
+                        }
                     }
                 }
                 else if (target === 'petal-l' || target === 'petal-c' || target === 'petal-r') {

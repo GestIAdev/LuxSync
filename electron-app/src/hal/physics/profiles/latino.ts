@@ -172,7 +172,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   percMidSubtract: 2.0,   // WAVE 3485: purga anti-autotune agresiva en Transient Shaper
-  percGate: 0.045,        // WAVE 3483: hotfix directo — subir el muro para ignorar micro-transientes y ruido de línea en show
+  percGate: 0.065,        // WAVE 4826.1: 0.045→0.065 — alinear con techno, evitar vocales reguetón en Back R
   percBoost: 4.0,         // Moderado (techno=5.0) — no saturar
   percExponent: 0.6,      // Ligeramente más convexo que techno (0.5)
 
@@ -280,9 +280,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
 
   // WAVE 4686: Ambient viscosity — Latino fiesta
   // Elástico musical: el tumbao respira entre golpes del dembow
-  // 🌊 WAVE 4698 M3: Release 800→600ms — shorter tail for black gaps between dembow hits.
+  // 🌊 WAVE 4826.1: Release 600→280ms — decay rápido para Tungsten en Ambient, cortes suaves sin negro abrupto
   ambientAttackMs: 200,
-  ambientReleaseMs: 600,
+  ambientReleaseMs: 280,
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()

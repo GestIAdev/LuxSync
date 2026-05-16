@@ -2029,6 +2029,32 @@ export class TitanOrchestrator {
         const egressBuf = blackoutActive
           ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
           : rawBuf
+
+        // ════════════════════════════════════════════════════════════════════
+        // 🔬 WAVE 4832 — DMX SNIFFER (TUNGSTEN)
+        // Imprime los bytes exactos del Tungsteno en el buffer final,
+        // ANTES de que salgan al adaptador físico.
+        // Eliminar cuando se confirme el diagnóstico.
+        // ════════════════════════════════════════════════════════════════════
+        if (this.frameCount % 30 === 0) {
+          const tungstenFixture = (this.fixtures as Array<{ name?: string; dmxAddress?: number; address?: number }>)
+            .find(f => typeof f.name === 'string' && f.name.toLowerCase().includes('tungsten'))
+          if (tungstenFixture) {
+            const base = (tungstenFixture.dmxAddress ?? (tungstenFixture.address ?? 1)) - 1 // 0-based
+            console.log(
+              `[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
+              `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
+              `CH2(GM)=${egressBuf[base + 1]} | ` +
+              `CH3(Strobe)=${egressBuf[base + 2]} | ` +
+              `CH4(G1)=${egressBuf[base + 3]} | ` +
+              `CH5(G2)=${egressBuf[base + 4]} | ` +
+              `CH6(G3)=${egressBuf[base + 5]} | ` +
+              `CH7=${egressBuf[base + 6]}`,
+            )
+          }
+        }
+        // ════════════════════════════════════════════════════════════════════
+
         this.hal.sendUniverseRaw(universe, egressBuf)
 
         // 🔬 WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)

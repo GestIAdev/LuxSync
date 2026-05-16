@@ -23,6 +23,7 @@ const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 const LiveStageView = lazy(() => import('../hyperion'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
+const KeyForgeView = lazy(() => import('../KeyForgeView'))
 const VisualPatcher = lazy(() => import('../views/VisualPatcher/VisualPatcher'))
 const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
 const ChronosStudio = lazy(() => import('../../chronos/ui/ChronosLayout'))  // ⏱️ WAVE 2004
@@ -135,6 +136,8 @@ const ContentArea: React.FC = () => {
         return <CalibrationView />
       case 'forge':
         return <ForgeView />  // 🔨 WAVE 1110
+      case 'keyforge':
+        return <KeyForgeView />
       case 'chronos':
         return isTabAllowed('chronos') ? <ChronosStudio /> : <UpgradeGate featureName="CHRONOS STUDIO" />
       case 'hephaestus':

@@ -411,7 +411,9 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
       lux?.aether?.fireTungstenNuke?.({ target: 'spin', value: payload.intensity })
       return true
     }
-    const target = sub === 'nuke-all' ? 'all' : sub
+    const target = sub === 'nuke-all'  ? 'all'
+                 : sub === 'nuke-gold' ? 'gold'
+                 : sub
     if (payload.phase === 'release') {
       lux?.aether?.fireTungstenNuke?.({ target, release: true })
     } else {

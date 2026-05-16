@@ -15,6 +15,7 @@ import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator';
+import { NodeGraphBuilder } from '../forge/NodeGraphBuilder';
 // âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime = null;
 /**
@@ -1015,6 +1016,36 @@ function setupFixtureHandlers(deps) {
         try {
             const fs = await import('fs');
             const path = await import('path');
+            if (!fixture || typeof fixture !== 'object') {
+                return { success: false, error: 'Invalid fixture payload' };
+            }
+            // Deep clone para desacoplar referencia IPC y evitar writes parciales.
+            const payload = JSON.parse(JSON.stringify(fixture));
+            // Runtime-only fields no deben persistirse en disco.
+            delete payload.filePath;
+            delete payload.source;
+            // WAVE 4829 — FORGE SAVIOR: El frontend envía payload.channels como fuente de verdad.
+            // buildCompleteFixture() + syncGraphOutputsWithChannels() ya propagaron los cambios
+            // del canvas (borrar conexiones, eliminar ignitionDeps) a channels[] antes del IPC.
+            // Re-derivar channels desde nodeGraph aquí sobreescribía esos cambios con datos stale
+            // del grafo, restaurando ignitionDeps eliminados y revirtiendo edits del Channel Rack.
+            //
+            // Regla: si channels[] llegó del frontend, es la fuente de verdad — no tocar.
+            // Solo derivamos desde nodeGraph cuando channels está ausente (fixture legacy sin array).
+            if (!Array.isArray(payload.channels) || payload.channels.length === 0) {
+                if (payload.nodeGraph && typeof payload.nodeGraph === 'object') {
+                    try {
+                        payload.channels = NodeGraphBuilder.toChannels(payload.nodeGraph);
+                    }
+                    catch (graphErr) {
+                        const msg = graphErr instanceof Error ? graphErr.message : String(graphErr);
+                        return { success: false, error: `Invalid nodeGraph for save-user: ${msg}` };
+                    }
+                }
+                else {
+                    payload.channels = [];
+                }
+            }
             // WAVE 1116.2: Use PATHFINDER-resolved path
             const userPath = getCustomLibPath();
             console.log(`[Library Save] ðŸ“‚ User path: ${userPath}`);
@@ -1023,8 +1054,8 @@ function setupFixtureHandlers(deps) {
                 fs.mkdirSync(userPath, { recursive: true });
             }
             // Ensure fixture has an ID
-            if (!fixture.id) {
-                fixture.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            if (!payload.id) {
+                payload.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             }
             // WAVE 1114 FIX: Check if fixture already exists (by ID)
             // If exists, update the same file instead of creating new
@@ -1036,7 +1067,7 @@ function setupFixtureHandlers(deps) {
                 try {
                     const content = fs.readFileSync(path.join(userPath, file), 'utf-8');
                     const existingFixture = JSON.parse(content);
-                    if (existingFixture.id === fixture.id) {
+                    if (existingFixture.id === payload.id) {
                         existingFilePath = path.join(userPath, file);
                         console.log(`[Library] ðŸ”„ Updating existing fixture file: ${file}`);
                         break;
@@ -1054,7 +1085,7 @@ function setupFixtureHandlers(deps) {
             }
             else {
                 // Create new file with safe name from fixture id
-                const safeId = fixture.id
+                const safeId = String(payload.id)
                     .replace(/[^a-z0-9Ã¡Ã©Ã­Ã³ÃºÃ±Ã¼\s-]/gi, '')
                     .replace(/\s+/g, '_')
                     .substring(0, 50);
@@ -1062,21 +1093,24 @@ function setupFixtureHandlers(deps) {
                 filePath = path.join(userPath, fileName);
             }
             // Add metadata
-            fixture.savedAt = new Date().toISOString();
-            fixture.source = 'user';
+            payload.savedAt = new Date().toISOString();
+            payload.source = 'user';
             // Write file
-            fs.writeFileSync(filePath, JSON.stringify(fixture, null, 2), 'utf-8');
-            console.log(`[Library] ðŸ’¾ WAVE 1114: Saved user fixture: ${filePath}`);
+            fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
+            const nodeCount = Array.isArray(payload?.nodeGraph?.nodes) ? payload.nodeGraph.nodes.length : 0;
+            const edgeCount = Array.isArray(payload?.nodeGraph?.edges) ? payload.nodeGraph.edges.length : 0;
+            const channelCount = Array.isArray(payload.channels) ? payload.channels.length : 0;
+            console.log(`[FORGE] JSON guardado exitosamente en: ${filePath} | nodes=${nodeCount} edges=${edgeCount} channels=${channelCount}`);
             // Rescan to update cache
             await rescanAllLibraries();
             // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
             // Push the updated profile to the renderer so TitanSyncBridge can
             // force a backend resync without waiting for a full show reload.
-            safeWebSend(getMainWindow(), 'lux:profile:updated', fixture);
+            safeWebSend(getMainWindow(), 'lux:profile:updated', payload);
             return {
                 success: true,
                 filePath,
-                fixture,
+                fixture: payload,
             };
         }
         catch (err) {

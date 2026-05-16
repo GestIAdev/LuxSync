@@ -527,6 +527,10 @@ export class NodeExtractionPipeline {
             const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
                 ? rotCh.defaultValue / 255
                 : 0.5;
+            if (rotCh && fixtureDef.name.toLowerCase().includes('tungsten')) {
+                console.log(`[DYE] Nodo extraído con rotationHome: ${rotationHome} ` +
+                    `| nodeId=${String(nodeId)} | fixture=${fixtureDef.name}`);
+            }
             return {
                 nodeId,
                 family: NodeFamily.KINETIC,

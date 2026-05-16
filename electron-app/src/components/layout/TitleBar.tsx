@@ -12,8 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import MidiLearnOverlay from '../MidiLearnOverlay'
 import TacticalHub from './TacticalHub'
-import KeyForgeOverlay from '../KeyForgeOverlay'
-import { useKeyMapStore, selectIsLearning } from '../../stores/keyMapStore'
+import { useNavigationStore, selectActiveTab } from '../../stores/navigationStore'
 import './TitleBar.css'
 
 interface TitleBarProps {
@@ -38,8 +37,8 @@ const TitleBar: React.FC<TitleBarProps> = ({
   onToggleZenMode
 }) => {
   const [isMaximized, setIsMaximized]       = useState(false)
-  const [kfOverlayOpen, setKfOverlayOpen] = useState(false)
-  const isKfLearning = useKeyMapStore(selectIsLearning)
+  const activeTab = useNavigationStore(selectActiveTab)
+  const setActiveTab = useNavigationStore(s => s.setActiveTab)
 
   useEffect(() => {
     if (!lux?.window) return
@@ -76,9 +75,9 @@ const TitleBar: React.FC<TitleBarProps> = ({
 
           {/* ⌨ KEYFORGE pill */}
           <button
-            className={`tb-pill tb-pill--keyforge ${isKfLearning ? 'active' : ''}`}
-            onClick={() => setKfOverlayOpen(v => !v)}
-            title="KeyForge — Keyboard Control"
+            className={`tb-pill tb-pill--keyforge ${activeTab === 'keyforge' ? 'active' : ''}`}
+            onClick={() => setActiveTab('keyforge')}
+            title="KeyForge — Dedicated View"
           >
             <span style={{ fontSize: '11px', lineHeight: 1 }}>⌨</span>
             <span className="tb-pill-label">KF</span>
@@ -138,11 +137,6 @@ const TitleBar: React.FC<TitleBarProps> = ({
         </div>
       </div>
 
-      {/* ⌨ KeyForge overlay — floating portal, does not push layout */}
-      <KeyForgeOverlay
-        isVisible={kfOverlayOpen}
-        onClose={() => setKfOverlayOpen(false)}
-      />
     </>
   )
 }

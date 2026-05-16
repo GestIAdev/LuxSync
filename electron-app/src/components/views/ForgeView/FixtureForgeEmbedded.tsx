@@ -22,7 +22,7 @@
  * @version 1121.0.0
  */
 
-import React, { useState, useCallback, useEffect, useReducer, DragEvent, Suspense, type ReactNode } from 'react'
+import React, { useState, useCallback, useEffect, useReducer, useRef, DragEvent, Suspense, type ReactNode } from 'react'
 // â”€â”€ WAVE 4732-A: Forge Hybrid Builder State â”€â”€
 import {
   forgeReducer,
@@ -172,6 +172,65 @@ const CATEGORY_COLORS: Record<string, string> = {
   POSITION: '#22d3ee',    // Cyan Neon
   BEAM: '#f59e0b',        // Yellow/Amber
   CONTROL: '#a855f7',     // Violet
+}
+
+function syncGraphOutputsWithChannels(graph: any, channels: FixtureChannel[]): any {
+  if (!graph || !Array.isArray(graph.nodes) || channels.length === 0) return graph
+
+  const channelByIndex = new Map<number, FixtureChannel>()
+  const channelByIndexMinus1 = new Map<number, FixtureChannel>()
+  for (const ch of channels) {
+    channelByIndex.set(ch.index, ch)
+    channelByIndexMinus1.set(ch.index - 1, ch)
+  }
+
+  const resolveChannelForOffset = (offset: number): FixtureChannel | undefined => {
+    // Prefer exact 0-based match.
+    const exact = channelByIndex.get(offset)
+    if (exact) return exact
+
+    // Legacy fallback for 1-based channel indexes.
+    const shifted = channelByIndexMinus1.get(offset)
+    if (shifted) return shifted
+
+    // Last fallback by array position.
+    return channels[offset]
+  }
+
+  const nextNodes = graph.nodes.map((node: any) => {
+    const cfg = node?.config
+    if (!cfg || cfg.nodeType !== 'output_dmx' || typeof cfg.dmxOffset !== 'number') {
+      return node
+    }
+
+    const ch = resolveChannelForOffset(cfg.dmxOffset)
+    if (!ch) return node
+
+    return {
+      ...node,
+      config: {
+        ...cfg,
+        channelType: ch.type,
+        channelName: ch.name || ch.type,
+        defaultDmxValue: ch.defaultValue,
+        is16bit: !!ch.is16bit,
+        continuousRotation: ch.continuousRotation || undefined,
+        ignitionDeps: ch.ignitionDeps && ch.ignitionDeps.length > 0
+          ? ch.ignitionDeps.map((d) => ({
+              channelType: d.channelType,
+              requiredValue: d.requiredValue,
+              targetChannelIndex: d.targetChannelIndex,
+              mode: d.mode,
+            }))
+          : undefined,
+      },
+    }
+  })
+
+  return {
+    ...graph,
+    nodes: nextNodes,
+  }
 }
 
 interface FunctionDef {
@@ -502,6 +561,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const loadForgeGraph = useForgeGraphStore((s) => s.loadGraph)
   const unloadForgeGraph = useForgeGraphStore((s) => s.unloadGraph)
   const forgeGraphDirty = useForgeGraphStore((s) => s.isDirty)
+  const markForgeGraphClean = useForgeGraphStore((s) => s.markClean)
   
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // STATE
@@ -635,6 +695,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   const loadFixtureIntoEditor = useCallback((def: FixtureDefinition) => {
+    // WAVE 4831 DIAG: detectar llamadas inesperadas post-save
+    console.trace('[Forge 4831] 📥 loadFixtureIntoEditor called for:', def.name)
     setFixture(def)
     hydrateForgeGraph(def)
     setTotalChannels(def.channels.length)
@@ -740,43 +802,58 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 4742: SYNC fixture.channels → forgeState.channels when Aether Cells exist
+  // WAVE 4830 FIX: Removed forgeState.channels from dep array — it caused an infinite
+  // render loop: CHANNEL_REPLACE dispatch creates a new array reference → effect
+  // re-triggers → new CHANNEL_REPLACE → ∞. We access forgeState.channels via ref
+  // to read the current value without subscribing to it as a reactive dependency.
   // ═══════════════════════════════════════════════════════════════════════════
-  // Problem: When user edits Channel Rack (fixture.channels), the forgeState remains
-  // out of sync. If Aether Cells exist, compileForgeState() uses stale data.
-  // Solution: Periodically sync fixture.channels into forgeState.channels
-  // ───────────────────────────────────────────────────────────────────────────
+  const forgeChannelsRef = useRef(forgeState.channels)
+  forgeChannelsRef.current = forgeState.channels
+
   useEffect(() => {
     // Only sync if Aether Cells exist (hybrid mode is active)
     if (forgeState.cells.length === 0) return
 
-    // Sync: For each channel in fixture, update forgeState.channels with same data
+    const currentForgeChannels = forgeChannelsRef.current
+
+    if (currentForgeChannels.length !== fixture.channels.length) {
+      forgeDispatch({
+        type: 'META_SET_CHANNEL_COUNT',
+        channelCount: fixture.channels.length,
+      })
+      return
+    }
+
+    // Sync completo: evita que compileForgeState use deps stale.
     fixture.channels.forEach((fixtureChannel, idx) => {
-      const forgeChannelCurrent = forgeState.channels[idx]
-      
-      // Sync type (if changed)
-      if (!forgeChannelCurrent || forgeChannelCurrent.type !== fixtureChannel.type) {
-        forgeDispatch({
-          type: 'CHANNEL_SET_TYPE',
-          idx,
-          channelType: fixtureChannel.type,
+      const forgeChannelCurrent = currentForgeChannels[idx]
+
+      const fixtureDeps = fixtureChannel.ignitionDeps ?? []
+      const forgeDeps = forgeChannelCurrent?.ignitionDeps ?? []
+      const sameDeps =
+        fixtureDeps.length === forgeDeps.length &&
+        fixtureDeps.every((dep, i) => {
+          const current = forgeDeps[i]
+          return !!current
+            && dep.channelType === current.channelType
+            && dep.requiredValue === current.requiredValue
+            && dep.targetChannelIndex === current.targetChannelIndex
+            && dep.mode === current.mode
         })
-      }
-      
-      // Sync name (if changed)
-      if (!forgeChannelCurrent || forgeChannelCurrent.name !== fixtureChannel.name) {
+
+      const sameChannel = !!forgeChannelCurrent
+        && forgeChannelCurrent.type === fixtureChannel.type
+        && forgeChannelCurrent.name === fixtureChannel.name
+        && forgeChannelCurrent.defaultValue === fixtureChannel.defaultValue
+        && !!forgeChannelCurrent.is16bit === !!fixtureChannel.is16bit
+        && !!forgeChannelCurrent.continuousRotation === !!fixtureChannel.continuousRotation
+        && sameDeps
+
+      if (!sameChannel) {
         forgeDispatch({
-          type: 'CHANNEL_SET_NAME',
+          type: 'CHANNEL_REPLACE',
           idx,
-          name: fixtureChannel.name,
-        })
-      }
-      
-      // Sync defaultValue (if changed) ← KEY FIX for Problem 2
-      if (!forgeChannelCurrent || forgeChannelCurrent.defaultValue !== fixtureChannel.defaultValue) {
-        forgeDispatch({
-          type: 'CHANNEL_SET_DEFAULT',
-          idx,
-          value: fixtureChannel.defaultValue,
+          channel: deepClone(fixtureChannel),
         })
       }
     })
@@ -909,23 +986,27 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     const fixtureWithGraph = fixtureForBuild as FixtureDefinition & {
       nodeGraph?: typeof forgeGraph
     }
+    const currentChannels = fixtureForBuild.channels
     const hasPersistedNodeGraph = !!fixtureWithGraph.nodeGraph
-    const hasGraphTopology = !!forgeGraph && (forgeGraph.nodes.length > 0 || forgeGraph.edges.length > 0)
-    const shouldPersistNodeGraph = hasPersistedNodeGraph || forgeGraphDirty || hasGraphTopology
+    const hasLiveGraph = !!forgeGraph
+    const shouldPersistNodeGraph = hasPersistedNodeGraph || hasLiveGraph
 
-    // WAVE 4548.8e: Snapshot deep-cloned graph to preserve config fidelity
-    const graphSnapshot = shouldPersistNodeGraph && forgeGraph
+    // Forge source-of-truth: siempre priorizar el graph vivo del canvas al guardar.
+    let graphSnapshot = hasLiveGraph
       ? deepClone(forgeGraph)
       : (hasPersistedNodeGraph ? deepClone(fixtureWithGraph.nodeGraph) : undefined)
 
-    // WAVE 4683: Prefer current editor channels unless nodeGraph is actively authoritative.
-    const currentChannels = fixtureForBuild.channels
-    const graphChannels = shouldPersistNodeGraph && graphSnapshot
-      ? NodeGraphBuilder.toChannels(graphSnapshot)
-      : null
-    const syncedChannels = (forgeGraphDirty || hasGraphTopology) && graphChannels
-      ? graphChannels
-      : currentChannels
+    // WAVE 4830 — THE FRONTEND LIAR FIX:
+    // currentChannels (Channel Rack) es la única fuente de verdad para channels[].
+    // syncGraphOutputsWithChannels actualiza los nodos output_dmx del grafo para que
+    // el JSON persistido refleje el estado del Rack — pero NO se re-deriva channels
+    // desde el grafo. Re-derivar via toChannels(graphSnapshot) restauraba ignitionDeps
+    // ya eliminadas porque los nodos del canvas tienen config stale hasta el próximo
+    // loadGraph. El grafo es solo para la topología visual — el Rack manda en DMX.
+    if (graphSnapshot) {
+      graphSnapshot = syncGraphOutputsWithChannels(graphSnapshot, currentChannels)
+    }
+    const syncedChannels = currentChannels
 
     const hasRed = syncedChannels.some(ch => ch.type === 'red')
     const hasGreen = syncedChannels.some(ch => ch.type === 'green')
@@ -996,7 +1077,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
 
     return builtFixture
-  }, [fixture, physics, wheelColors, colorEngine, wheelMinChangeTimeMs, forgeGraph, forgeGraphDirty, forgeState])
+  }, [fixture, physics, wheelColors, colorEngine, wheelMinChangeTimeMs, forgeGraph, forgeState])
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
@@ -1022,6 +1103,20 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
 
     const completeFixture = deepClone(buildCompleteFixture(fixtureSnapshot))
+
+    // WAVE 4831 DIAG: Trazar channels que viajan al IPC — detectar ignitionDeps stale
+    console.log('[Forge 4831] 🔍 Pre-save channels:', completeFixture.channels.map((ch: any) => ({
+      idx: ch.index,
+      type: ch.type,
+      name: ch.name,
+      deps: ch.ignitionDeps?.length ?? 0,
+      depDetails: ch.ignitionDeps?.map((d: any) => ({
+        target: d.targetChannelIndex,
+        type: d.channelType,
+        value: d.requiredValue,
+        mode: d.mode,
+      })) ?? [],
+    })))
     
     // ðŸ”¥ WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
     // When systemâ†’user clone happens, fixtures in the show still point to the old system ID.
@@ -1043,6 +1138,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       const result = await saveUserFixture(clonedFixture)
       if (result.success) {
         setFixture(clonedFixture)
+        markForgeGraphClean()
         setEditingSource('user')
         setOriginalFixtureId(clonedFixture.id)
         setSaveMessage('Saved as User Copy')
@@ -1066,6 +1162,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       
       const result = await saveUserFixture(updatedFixture)
       if (result.success) {
+        markForgeGraphClean()
         setSaveMessage("Updated in User Library")
         setTimeout(() => setSaveMessage(null), 3000)
 
@@ -1083,6 +1180,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
       const result2 = await saveUserFixture(completeFixture)
       if (result2.success) {
+        markForgeGraphClean()
         setEditingSource("user")
         setOriginalFixtureId(completeFixture.id)
         setSaveMessage("Saved to User Library")
@@ -1100,7 +1198,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)
-  }, [fixture, fixture.channels, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile])
+  }, [fixture, fixture.channels, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile, markForgeGraphClean])
 
   const handleExportJSON = useCallback(() => {
     const completeFixture = deepClone(buildCompleteFixture())

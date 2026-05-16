@@ -997,7 +997,6 @@ export class NodeExtractionPipeline {
     const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
       ? rotCh.defaultValue / 255
       : 0.5
-
     return {
       nodeId,
       family:            NodeFamily.KINETIC,

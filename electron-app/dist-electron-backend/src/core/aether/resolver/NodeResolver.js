@@ -591,13 +591,20 @@ export class NodeResolver {
         const buf = this._universeBuffers.get(device.universe);
         if (!buf)
             return; // universe no registrado — ignorar silenciosamente
-        // WAVE 4680: Smart Gate — bloqueo selectivo por familia + bypass manual.
-        // gateOpen     → todo pasa normalmente.
-        // !gateOpen    → solo KINETIC y nodos L2 (manual) escriben al buffer.
-        //                IMPACT/COLOR/BEAM/ATMOSPHERE se bloquean (buffer ya en 0).
+        // WAVE 4680 → WAVE 4822: Blind Mode — compuerta selectiva por L2 manual.
+        //
+        // gateOpen  (outputEnabled=true,  LIVE):
+        //   → Todo pasa: L0 + L1 + L2 llegan al hardware.
+        //
+        // !gateOpen (outputEnabled=false, BLIND/ARMED):
+        //   → Solo nodos con override L2 activo (isManualNode) escriben al buffer.
+        //   → KINETIC sin L2: no recibe nuevos objetivos de Selene (retiene el
+        //     buffer en 0 — el hardware queda en su última posición física).
+        //   → currentPosition se actualiza igualmente para que la UI sea fiel
+        //     (WAVE 4616: Pre-Vis rescue no se toca).
         const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled();
         const isManualNode = this._safetyMiddleware ? this._safetyMiddleware.isManualNode(nodeId) : false;
-        const nodeBlocked = !gateOpen && !isManualNode && node.family !== NodeFamily.KINETIC;
+        const nodeBlocked = !gateOpen && !isManualNode;
         const baseAddr = device.dmxAddress - 1; // convertir a 0-indexed
         const _t36probe = this._resolveFrameIndex % 20 === 0
             ? this._graph.getView(NodeFamily.IMPACT).count > 0
@@ -716,12 +723,21 @@ export class NodeResolver {
             // En ese caso se cae al valor arbitrado original (channelValues).
             const _tv = translatedValues[chDef.type];
             let rawNormalized;
+            let rawSource;
             if (_tv !== undefined && !Number.isNaN(_tv)) {
                 rawNormalized = _tv;
+                rawSource = 'translated';
             }
             else {
                 const _cv = channelValues[chDef.type];
-                rawNormalized = _cv !== undefined ? _cv : this._getDefaultNormalizedValue(node, chDef);
+                if (_cv !== undefined) {
+                    rawNormalized = _cv;
+                    rawSource = 'channel';
+                }
+                else {
+                    rawNormalized = this._getDefaultNormalizedValue(node, chDef);
+                    rawSource = 'default';
+                }
             }
             rawNormalized = sanitizeNormalizedValue(rawNormalized);
             // Telemetría legacy removida.
@@ -773,9 +789,14 @@ export class NodeResolver {
                 continue;
             // 🛂 WAVE 4735.3 FORENSIC: NaN sentinel defense-in-depth.
             // Nunca permitir NaN/Infinity fuera de [0..255] hacia el Uint8Array.
-            buf[bufIdx] = Number.isNaN(dmxValue)
+            const safeDmxValue = Number.isNaN(dmxValue)
                 ? 0
                 : sanitizeDmxByte(dmxValue);
+            if (chDef.type === 'rotation' && safeDmxValue === 127) {
+                console.log(`[DYE] Escribiendo DMX para Rotation. Valor: ${safeDmxValue}. ` +
+                    `Source: ${rawSource} | node=${String(node.nodeId)} | device=${String(device.deviceId)}`);
+            }
+            buf[bufIdx] = safeDmxValue;
             // Telemetría legacy removida.
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {

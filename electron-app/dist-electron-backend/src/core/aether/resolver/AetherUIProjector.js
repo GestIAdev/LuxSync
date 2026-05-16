@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 AETHER UI PROJECTOR — Agnostic Ready (WAVE 3513.3.2)
+ * 🎭 AETHER UI PROJECTOR — Universal Canvas (WAVE 4822)
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * RESPONSABILIDAD:
@@ -17,12 +17,19 @@
  * - fixture.id es el DeviceId canónico (UUID).
  * - Solo muta campos legacy in-place; nunca crea objetos nuevos.
  * - Si un fixture no tiene nodos Aether, se salta silenciosamente.
+ * - El proyector NUNCA aplica blackout a los datos de la UI (WAVE 4822).
+ *   La Aduana de hardware vive en HAL.sendToDriver() (WAVE 3160), en capa de
+ *   bytes DMX, sin tocar FixtureState. El Canvas muestra siempre el estado
+ *   combinado real (L0 + L1 + L2) para permitir pre-programación en Blind Mode.
  *
- * WAVE 4613 FIX: COLOR r/g/b y KINETIC pan/tilt ahora leen del ArbitratedNodeMap
- * y de currentPosition actualizado por el IK engine respectivamente.
+ * WAVE 4822 DUCK-TYPING:
+ *   El switch(node.family) fue eliminado. La proyección lee directamente los
+ *   canales arbitrados del nodo sin importar su familia. Esto corrige el
+ *   simulador a oscuras para familias ATMOSPHERE/EFFECT y fixtures multicelulares
+ *   modernos como el Tungsten.
  *
  * @module core/aether/resolver/AetherUIProjector
- * @version WAVE 4613 — COLOR + KINETIC FIX
+ * @version WAVE 4822 — Universal Canvas
  */
 import { NodeFamily } from '../types';
 /** Conversión de valor normalizado 0-1 a rango DMX 0-255 */
@@ -44,14 +51,17 @@ export class AetherUIProjector {
      *
      * ZERO-ALLOC: solo lectura del graph + mutación in-place de fixtures.
      *
+     * WAVE 4822: El proyector nunca aplica blackout. El parámetro blackoutActive
+     * se mantiene por compatibilidad de firma pero se ignora deliberadamente.
+     * La Aduana de hardware (WAVE 3160) opera en capa de bytes DMX y es la única
+     * fuente de verdad para el apagón físico. El Canvas siempre muestra L0+L1+L2.
+     *
      * @param fixtures      Array mutable de FixtureState (mutado in-place)
-     * @param graph         NodeGraph para leer pan/tilt y color de los nodos
-     * @param arbitrated    ArbitratedNodeMap post-arbitraje — fuente de verdad para dimmers
-     * @param blackoutActive Si es true, todos los canales emisores se fuerzan a 0 en la UI.
-     *                       Pan/tilt/rotación se conservan para que la UI siga mostrando
-     *                       la orientación mecánica aunque el fixture esté oscuro.
+     * @param graph         NodeGraph para leer pan/tilt de nodos KINETIC
+     * @param arbitrated    ArbitratedNodeMap post-arbitraje — fuente de verdad
+     * @param _blackoutActive Ignorado (ver WAVE 4822). HAL es la única Aduana real.
      */
-    project(fixtures, graph, arbitrated, blackoutActive = false) {
+    project(fixtures, graph, arbitrated, _blackoutActive = false) {
         for (const fixture of fixtures) {
             // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
             // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
@@ -63,7 +73,7 @@ export class AetherUIProjector {
             if (!nodeIds || nodeIds.length === 0)
                 continue;
             // 🌊 WAVE 4695: Pre-scan — does this device own at least one IMPACT node?
-            // When yes, the IMPACT case handles luminance via fixture.dimmer and the
+            // When yes, the IMPACT path handles luminance via fixture.dimmer and the
             // renderer scales color by it (HDR boost path). Scaling r/g/b by brightness
             // here would cause quadratic L0² attenuation (Moiré / besugo effect).
             // Pure-RGB fixtures with no IMPACT node keep the brightness-as-scale path.
@@ -72,114 +82,76 @@ export class AetherUIProjector {
                 const node = graph.getNodeData(nodeId);
                 if (!node)
                     continue;
-                switch (node.family) {
-                    case NodeFamily.KINETIC: {
-                        const kn = node;
-                        if (kn.isContinuous) {
-                            // ── Rotación continua: fan, pétalo, mirror ball ─────────────
-                            const rot = kn.currentPosition.rotation ?? 0.5;
-                            fixture.rotation = toDmx(rot);
-                        }
-                        else {
-                            // ── Posicionado: pan / tilt ───────────────────────────────
-                            fixture.pan = toDmx(kn.currentPosition.pan ?? 0.5);
-                            fixture.tilt = toDmx(kn.currentPosition.tilt ?? 0.5);
-                        }
-                        break;
+                // ── KINETIC: posición mecánica leída desde currentPosition (IK/physics) ──
+                if (node.family === NodeFamily.KINETIC) {
+                    const kn = node;
+                    if (kn.isContinuous) {
+                        fixture.rotation = toDmx(kn.currentPosition.rotation ?? 0.5);
                     }
-                    case NodeFamily.COLOR: {
-                        // WAVE 4613: Leer r/g/b del ArbitratedNodeMap (post-arbitraje real).
-                        // currentColor NO se actualiza en el pipeline actual: ColorAdapter emite
-                        // intents r/g/b al bus pero nunca escribe de vuelta al nodo.
-                        // El patrón es idéntico al fix de IMPACT (WAVE 4612).
-                        //
-                        // 🌊 WAVE 4695: Luminance-chrominance decoupling.
-                        // Si existe IMPACT, fixture.dimmer ya porta la luminancia L0 → el renderer
-                        // aplica HDR boost proporcional al dimmer sobre el color puro de Selene.
-                        // Escalar r/g/b por brightness causaría L0² (Moiré): se evita.
-                        // Para fixtures RGB puro sin IMPACT, brightness es la única fuente de
-                        // intensidad y se mantiene como escala.
-                        const colorNode = node;
-                        const colorChannels = arbitrated.get(nodeId);
-                        const brightnessNorm = hasImpactDimmer
-                            ? 1.0
-                            : (colorChannels?.['brightness'] ?? 1.0);
-                        const rNorm = colorChannels?.['r'] ?? colorChannels?.['red'] ?? 0;
-                        const gNorm = colorChannels?.['g'] ?? colorChannels?.['green'] ?? 0;
-                        const bNorm = colorChannels?.['b'] ?? colorChannels?.['blue'] ?? 0;
-                        const projectedR = toDmx(rNorm * brightnessNorm);
-                        const projectedG = toDmx(gNorm * brightnessNorm);
-                        const projectedB = toDmx(bNorm * brightnessNorm);
-                        // 🌊 WAVE 4696 M1: Zone-aware color routing.
-                        // Atmospheric zones (ambient, air, flash) → additive blending.
-                        //   These nodes exist in a perceptual layer independent of rhythmic
-                        //   fixtures. They must NEVER be discarded by luminance comparison
-                        //   against front/back/mover nodes (Tungsten wash-color / beam-color).
-                        // Rhythmic zones → channel-wise max blend:
-                        //   conserva aportes válidos de color aunque su luminancia total sea menor,
-                        //   evitando silencios cromáticos en efectos espaciales (Corazon/Oro/Tidal).
-                        if (isAtmosphericZone(colorNode.zoneId)) {
-                            fixture.r = Math.min(255, fixture.r + projectedR);
-                            fixture.g = Math.min(255, fixture.g + projectedG);
-                            fixture.b = Math.min(255, fixture.b + projectedB);
-                        }
-                        else {
-                            fixture.r = Math.max(fixture.r, projectedR);
-                            fixture.g = Math.max(fixture.g, projectedG);
-                            fixture.b = Math.max(fixture.b, projectedB);
-                        }
-                        break;
+                    else {
+                        fixture.pan = toDmx(kn.currentPosition.pan ?? 0.5);
+                        fixture.tilt = toDmx(kn.currentPosition.tilt ?? 0.5);
                     }
-                    case NodeFamily.IMPACT: {
-                        // WAVE 4612: Leer dimmer del ArbitratedNodeMap (post-arbitraje real).
-                        // state[1] NO se usa porque nadie lo escribe en el pipeline actual:
-                        // el PhysicsPostProcessor solo procesa KINETIC, y el arbiter
-                        // solo retorna el mapa sin escribir de vuelta al NodeGraph.
-                        //
-                        // 🌊 WAVE 4690: Fallback a brightness para nodos IMPACT sin dimmer físico
-                        // (parches universales de fixtures RGB-only clasificados como IMPACT).
-                        //
-                        // 🌊 WAVE 4696 M2: Gain compensation para dimmers físicos (role='primary').
-                        // Movers con dimmer físico reciben +25% de ganancia para recuperar punch
-                        // visual perdido en el decoupling L0²-prevention de WAVE 4695.
-                        // Nodos role='percussion' (shutter/strobe) no reciben ganancia.
-                        const impactNode = node;
-                        const arbitratedChannels = arbitrated.get(nodeId);
-                        const dimmerNorm = arbitratedChannels?.['dimmer'] ?? arbitratedChannels?.['brightness'] ?? 0;
-                        const gainFactor = impactNode.role === 'primary' ? 1.25 : 1.0;
-                        const projectedDimmer = toDmx(dimmerNorm * gainFactor);
-                        fixture.dimmer = Math.max(fixture.dimmer, projectedDimmer);
-                        break;
+                    continue;
+                }
+                // ── DUCK-TYPING sobre canales arbitrados (WAVE 4822) ─────────────────
+                // Proyectar cualquier familia (COLOR, IMPACT, ATMOSPHERE, BEAM, EFFECT,
+                // y cualquier familia futura) usando los canales presentes en el mapa
+                // arbitrado. No hay switch: la familia no determina qué se proyecta.
+                const ch = arbitrated.get(nodeId);
+                if (!ch)
+                    continue;
+                // ── Luminancia: dimmer / brightness ────────────────────────────────
+                const dimmerNorm = ch['dimmer'] ?? ch['brightness'];
+                if (dimmerNorm !== undefined) {
+                    // 🌊 WAVE 4696 M2: Gain compensation para role='primary' (física de mover).
+                    const gainFactor = node.role === 'primary' ? 1.25 : 1.0;
+                    fixture.dimmer = Math.max(fixture.dimmer, toDmx(dimmerNorm * gainFactor));
+                }
+                // ── Crominancia: r/g/b ────────────────────────────────────────────
+                const rRaw = ch['r'] ?? ch['red'];
+                const gRaw = ch['g'] ?? ch['green'];
+                const bRaw = ch['b'] ?? ch['blue'];
+                if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
+                    // 🌊 WAVE 4695: Luminance-chrominance decoupling.
+                    // Si existe nodo IMPACT en el device, brightness ya porta luminancia → no escalar.
+                    const brightnessScale = hasImpactDimmer ? 1.0 : (ch['brightness'] ?? 1.0);
+                    const projectedR = toDmx((rRaw ?? 0) * brightnessScale);
+                    const projectedG = toDmx((gRaw ?? 0) * brightnessScale);
+                    const projectedB = toDmx((bRaw ?? 0) * brightnessScale);
+                    // 🌊 WAVE 4696 M1: Zone-aware color routing.
+                    // Atmospheric zones (ambient, air, flash) → additive blending.
+                    // Rhythmic/spatial zones → channel-wise max blend.
+                    if (isAtmosphericZone(node.zoneId)) {
+                        fixture.r = Math.min(255, fixture.r + projectedR);
+                        fixture.g = Math.min(255, fixture.g + projectedG);
+                        fixture.b = Math.min(255, fixture.b + projectedB);
                     }
-                    case NodeFamily.BEAM: {
-                        // Zoom y focus los resuelve el NodeResolver directamente al FixtureState.
-                        // El pipeline AetherSafetyMiddleware → FixtureMapper ya los propaga.
-                        break;
+                    else {
+                        fixture.r = Math.max(fixture.r, projectedR);
+                        fixture.g = Math.max(fixture.g, projectedG);
+                        fixture.b = Math.max(fixture.b, projectedB);
                     }
-                    default:
-                        break;
+                }
+                // ── Canales extendidos: white, amber, uv ────────────────────────
+                const whiteNorm = ch['white'] ?? ch['w'];
+                if (whiteNorm !== undefined && fixture.white !== undefined) {
+                    fixture.white = Math.max(fixture.white, toDmx(whiteNorm));
+                }
+                const amberNorm = ch['amber'] ?? ch['a'];
+                if (amberNorm !== undefined && fixture.amber !== undefined) {
+                    fixture.amber = Math.max(fixture.amber, toDmx(amberNorm));
+                }
+                const uvNorm = ch['uv'];
+                if (uvNorm !== undefined && fixture.uv !== undefined) {
+                    fixture.uv = Math.max(fixture.uv, toDmx(uvNorm));
                 }
             }
-            // 🚨 WAVE 4634: BLACKOUT UI SYNC — Apagón visual del hot-frame.
-            // Si blackout está activo, forzamos a 0 todos los canales emisores de luz
-            // en la UI. Pan, tilt y rotación se conservan para que la interfaz siga
-            // mostrando la orientación mecánica aunque el fixture esté oscuro.
-            if (blackoutActive) {
-                fixture.dimmer = 0;
-                fixture.r = 0;
-                fixture.g = 0;
-                fixture.b = 0;
-                if (fixture.white !== undefined)
-                    fixture.white = 0;
-                if (fixture.amber !== undefined)
-                    fixture.amber = 0;
-                if (fixture.uv !== undefined)
-                    fixture.uv = 0;
-                if (fixture.shutter !== undefined)
-                    fixture.shutter = 0;
-                if (fixture.strobe !== undefined)
-                    fixture.strobe = 0;
-            }
+            // WAVE 4822: Blackout eliminado del proyector UI.
+            // La Aduana de hardware vive en HAL.sendToDriver() (WAVE 3160) y opera
+            // exclusivamente en la capa de bytes DMX, sin mutar FixtureState.
+            // El simulador Canvas 2D/3D SIEMPRE recibe el estado combinado real
+            // (L0 + L1 + L2) para permitir pre-programación a ciegas (Blind Mode).
         }
     }
 }

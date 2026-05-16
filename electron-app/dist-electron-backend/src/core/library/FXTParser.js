@@ -441,6 +441,15 @@ export class FXTParser {
                 try {
                     const jsonContent = fs.readFileSync(fullPath, 'utf-8');
                     const jsonFixture = JSON.parse(jsonContent);
+                    const fixtureNameForDye = String(jsonFixture.name || file);
+                    const isTungstenFixture = fixtureNameForDye.toLowerCase().includes('tungsten');
+                    if (isTungstenFixture && Array.isArray(jsonFixture.channels)) {
+                        const rotationChannel = jsonFixture.channels.find((ch) => typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation');
+                        if (rotationChannel) {
+                            console.log(`[DYE] Canal Rotation - defaultValue leído: ${String(rotationChannel.defaultValue)} ` +
+                                `| fixture=${fixtureNameForDye} | file=${file}`);
+                        }
+                    }
                     // Detect type from name or explicit type field
                     let fixtureType = 'generic';
                     if (jsonFixture.type) {

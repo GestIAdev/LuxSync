@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
-export type ToolId = 'constructor' | 'forge' | 'hephaestus' | 'nexus' | 'core'
+export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -127,12 +127,21 @@ export const TABS: TabConfig[] = [
     description: 'Fixture Forge - Create & Edit Definitions',
   },
   {
+    id: 'keyforge',
+    label: 'KEYFORGE',
+    icon: 'forge',
+    customIcon: true,
+    type: 'tool',
+    shortcut: 'Alt+7',
+    description: 'KeyForge - Dedicated keyboard view and action palette',
+  },
+  {
     id: 'hephaestus',
     label: 'HEPHAESTUS',
     icon: 'hephaestus',     // IconHephaestus (custom SVG) - WAVE 2030.3
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+7',
+    shortcut: 'Alt+8',
     description: 'Hephaestus Studio - FX Curve Automation Editor',
   },
   // {
@@ -150,7 +159,7 @@ export const TABS: TabConfig[] = [
     icon: 'plug',
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+8',      // WAVE 2030.3: Shifted for Hephaestus
+    shortcut: 'Alt+9',      // WAVE 2030.3: Shifted for KeyForge/Hephaestus
     description: 'Visual Patching & Fixture Location',
   },
   {
@@ -159,12 +168,12 @@ export const TABS: TabConfig[] = [
     icon: 'brain',          // IconLuxCore (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+9',      // WAVE 2030.3: Shifted for Hephaestus
+    shortcut: 'Alt+0',      // WAVE 2030.3: Shifted for KeyForge/Hephaestus
     description: 'Selene AI Monitoring & Telemetry',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'hephaestus', 'nexus', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core']
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

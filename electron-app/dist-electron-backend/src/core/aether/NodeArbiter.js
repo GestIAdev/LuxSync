@@ -61,6 +61,14 @@ const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
 ]);
 // ── Canales excluidos del Hard Lock (siguen lógica especial del motor cinético)
 const MANUAL_HARD_LOCK_EXCLUDED_CHANNELS = new Set(['pan_base', 'tilt_base']);
+// WAVE 4825: overrides flash de Tungsten no deben activar bloqueo fixture-wide
+// legacy de WAVE 4713, o el wash del mismo fixture pierde L0 durante hold.
+const FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES = new Set([
+    'golden-master',
+    'petal-l',
+    'petal-c',
+    'petal-r',
+]);
 // ── WAVE 4752: Canales con duración de release larga (movers) ────────────────
 // Estos canales usan RELEASE_MS_SLOW (1000ms) al soltar el override.
 // El resto usa RELEASE_MS_FAST (200ms).
@@ -199,6 +207,9 @@ export class NodeArbiter {
         else {
             this._manualOverrides.set(nodeId, channels);
         }
+        // WAVE 4828: Cancel release fade si está en progreso para este nodo
+        // para evitar conflicto con el nuevo override
+        this._releaseStates.delete(nodeId);
     }
     /**
      * WAVE 4670: Inyecta el set de nodos COLOR de movers con rueda física.
@@ -344,8 +355,12 @@ export class NodeArbiter {
             if (!isFiniteChannelValue(manualDimmer))
                 continue;
             const sep = nodeId.lastIndexOf(':');
-            if (sep > 0)
-                this._manualDimmerFixtureIds.add(nodeId.slice(0, sep));
+            if (sep <= 0)
+                continue;
+            const family = nodeId.slice(sep + 1);
+            if (FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES.has(family))
+                continue;
+            this._manualDimmerFixtureIds.add(nodeId.slice(0, sep));
         }
         // 2. Recolectar intents en orden ascendente de prioridad de capa.
         //    El orden de escritura garantiza que las capas superiores

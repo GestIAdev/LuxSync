@@ -439,6 +439,13 @@ export abstract class LiquidEngineBase {
     const clapBonus = baseSnare * harshness * 2.0
     let hybridSnare = baseSnare + clapBonus
 
+    // WAVE 4826.1 — ANTI-VOCAL GATE en hybridSnare (Back R)
+    // Si el transiente de agudos es menor que la mitad de la señal vocal,
+    // ignorarlo — vocales comprimidas de reguetón tienen treble bajo + mid alto.
+    if (trebleDelta < vocalPenalty * 0.5) {
+      hybridSnare *= 0.1
+    }
+
     // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
     // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo
     // es el instrumento melódico — mismo centroide, indistinguibles con frecuencia fija.
@@ -627,7 +634,12 @@ export abstract class LiquidEngineBase {
     // ^2.0: subBass=0.40 → 0.16, subBass=0.60 → 0.36. El sub-grave real brilla.
     // gate=0.03 (antes 0.15): valores típicos de subBass (0.25-0.50) ahora pasan.
     const _ambientCrushed = Math.pow(_ambientRaw, 2.0)
-    const ambientIntensity = _ambientCrushed < 0.03 ? 0.0 : _ambientCrushed
+    // WAVE 4826.1 — Reemplazar gate binario por fade exponencial suave para Tungsten en Ambient
+    let ambientIntensity = _ambientCrushed
+    if (ambientIntensity < 0.03) {
+      ambientIntensity *= 0.85
+      if (ambientIntensity < 0.001) ambientIntensity = 0
+    }
     // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
     const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor))
 

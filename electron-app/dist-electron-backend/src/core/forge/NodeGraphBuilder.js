@@ -235,6 +235,8 @@ export class NodeGraphBuilder {
                 channel.ignitionDeps = cfg.ignitionDeps.map(d => ({
                     channelType: d.channelType,
                     requiredValue: d.requiredValue,
+                    targetChannelIndex: d.targetChannelIndex,
+                    mode: d.mode,
                 }));
             }
             return channel;

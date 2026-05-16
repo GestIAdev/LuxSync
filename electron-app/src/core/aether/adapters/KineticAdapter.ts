@@ -197,6 +197,20 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         return
       }
 
+      // 🛡️ WAVE 4824.1: KINETIC ADAPTER SHIELD — Early exit para rotación continua.
+      //
+      // Nodos isContinuous (ventiladores, fans, mirror balls) esperan velocidad
+      // constante, NO LFOs posicionales. El VMM genera ondas senoidales sincronizadas
+      // al BPM que, al mapearse a rotation, causan aceleraciones/frenadas violentas
+      // ("clack" mecánico). Early return ANTES de llamar al VMM — cero trabajo innecesario.
+      //
+      // Control exclusivo de rotation continua:
+      //   - L2 manual (override del operador desde The Programmer / Cathedral)
+      //   - defaultValue del JSON del fixture (reposo absoluto, sin DMX)
+      if (node.isContinuous) {
+        return
+      }
+
       // ── 4c. Obtener intención 2D del VMM para este nodo ───────────────
       // 🎭 WAVE 4645: Left/Right phase asymmetry
       // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
@@ -223,43 +237,10 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         phaseOffset,
       )
 
-      if (node.isContinuous) {
-        // ── FLUJO LEGACY: rotación continua (fan, mirror ball) ──────────
-        // El IK no aplica a rotación continua. Seguimos emitiendo canales
-        // normalizados que el NodeResolver trata directamente.
-
-        // WAVE 4819 — ABSOLUTE ROTATION RESOLVER:
-        // Si el VMM no tiene movimiento real (|intent.x| < epsilon), NO emitir intent.
-        // El NodeResolver cae en _getDefaultNormalizedValue() → rotationHome del fixture
-        // → 0 DMX para Tungsteno (defaultValue JSON = 0). Cero absoluto en reposo.
-        if (Math.abs(intent.x) < 0.005) {
-          return
-        }
-
-        // WAVE 4819: Mapeo bilineal usando rotationHome como punto de reposo real.
-        // Para fixtures estándar (rotHome=0.5), la curva es idéntica a la anterior:
-        //   intent.x=0 → 0.5, intent.x=+1 → 1.0, intent.x=-1 → 0.0.
-        // Para Tungsteno (rotHome=0): intent.x=+1 → 1.0, intent.x=0 → 0, intent.x=-1 → 0.
-        // El fallback 0.5 solo aplica cuando currentPosition.rotation no fue inicializado.
-        const rotHome = node.currentPosition.rotation ?? 0.5
-        let rotation = intent.x > 0
-          ? rotHome + intent.x * (1 - rotHome)   // [0,+1] → [rotHome, 1.0]
-          : rotHome + intent.x * rotHome          // [-1, 0] → [0.0, rotHome]
-
-        // El espejeo para nodos continuos se aplica en X de posición física
-        if ((node.physicalPosition?.x ?? 0) < 0) {
-          rotation = 1 - rotation
-        }
-
-        this._valuesDict['rotation'] = BaseSystem.clamp01(rotation)
-        this._valuesDict['speed']    = BaseSystem.clamp01(intent.speed)
-
-      } else {
-        // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
-        this._valuesDict['pan']     = BaseSystem.clamp01((intent.x + 1) * 0.5)
-        this._valuesDict['tilt']    = BaseSystem.clamp01((intent.y + 1) * 0.5)
-        this._valuesDict['speed']   = BaseSystem.clamp01(intent.speed)
-      }
+      // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
+      this._valuesDict['pan']     = BaseSystem.clamp01((intent.x + 1) * 0.5)
+      this._valuesDict['tilt']    = BaseSystem.clamp01((intent.y + 1) * 0.5)
+      this._valuesDict['speed']   = BaseSystem.clamp01(intent.speed)
 
       // ── 4c. Push al bus (IntentBus copia los valores — seguro reutilizar scratch)
       this._intentScratch.nodeId = node.nodeId

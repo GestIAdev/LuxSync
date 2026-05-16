@@ -106,6 +106,7 @@ function emitWarning(w: ForgeWarning): void {
 
 // Tab DMX Layout
 export type DmxAction =
+  | { type: 'CHANNEL_REPLACE';        idx: number; channel: FixtureChannel }
   | { type: 'CHANNEL_SET_TYPE';       idx: number; channelType: ChannelType }
   | { type: 'CHANNEL_SET_NAME';       idx: number; name: string }
   | { type: 'CHANNEL_SET_DEFAULT';    idx: number; value: number }
@@ -201,6 +202,13 @@ export function forgeReducer(
     }
 
     // ── CHANNEL (DMX Layout) ─────────────────────────────────────────────
+    case 'CHANNEL_REPLACE':
+      return {
+        ...state,
+        channels: patchChannel(state.channels, action.idx, action.channel),
+        dirty:    true,
+      }
+
     case 'CHANNEL_SET_TYPE':
       return {
         ...state,

@@ -153,15 +153,18 @@ const ARBITER_CONTROLS: MidiActionMeta[] = [
 ]
 
 // 🌊 WAVE 4699.2: TUNGSTEN GOLDEN NUKE — NanoPAD2 mappings
-// tung-spin      → CC fader bipolar [-1, 1]: rotation continua del rotor Tungsten.
-// tung-nuke-all  → PAD 1: golden-master + petal-l/c/r (Big Bang dorá)
+// tung-spin        → CC fader bipolar [-1, 1]: rotation continua del rotor Tungsten.
+// tung-nuke-all    → PAD 1: golden-master + petal-l/c/r (Big Bang dorá)
 // tung-petal-l/c/r → PAD 2/3/4: ráfagas individuales de pétalo
+// 🌊 WAVE 4825: SURGICAL NUKE
+// tung-nuke-gold   → PAD 5: SOLO golden-master node (L0 Washer intacto)
 const TUNGSTEN_CONTROLS: MidiActionMeta[] = [
-  { id: 'tung-spin',     label: 'Tungsten Spin',      category: 'fader',  group: 'arbiter' },
-  { id: 'tung-nuke-all', label: 'Nuke Gold — Big Bang', category: 'button', group: 'arbiter' },
-  { id: 'tung-petal-l',  label: 'Petal Left Burst',   category: 'button', group: 'arbiter' },
-  { id: 'tung-petal-c',  label: 'Petal Center Burst', category: 'button', group: 'arbiter' },
-  { id: 'tung-petal-r',  label: 'Petal Right Burst',  category: 'button', group: 'arbiter' },
+  { id: 'tung-spin',      label: 'Tungsten Spin',        category: 'fader',  group: 'arbiter' },
+  { id: 'tung-nuke-all',  label: 'Nuke Gold — Big Bang', category: 'button', group: 'arbiter' },
+  { id: 'tung-nuke-gold', label: 'Gold Surgical Nuke',   category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-l',   label: 'Petal Left Burst',     category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-c',   label: 'Petal Center Burst',   category: 'button', group: 'arbiter' },
+  { id: 'tung-petal-r',   label: 'Petal Right Burst',    category: 'button', group: 'arbiter' },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

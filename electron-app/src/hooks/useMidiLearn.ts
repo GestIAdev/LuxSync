@@ -230,24 +230,40 @@ export function useMidiLearn() {
 
     // ── tung-* → Tungsten Golden Nuke (WAVE 4699.2) ──
     if (controlId.startsWith('tung-')) {
+      const fireTungsten = (payload: { target: string; release?: boolean; value?: number }) => {
+        window.lux.aether.fireTungstenNuke(payload)
+      }
       const tungAction = controlId.slice(5) // 'tung-spin' → 'spin', etc.
 
       if (tungAction === 'spin') {
         if (msg.type !== 'cc') return
         // CC 0-127 → bipolar norm 0-1 (64=stopped, 0=left max, 127=right max)
         const norm = msg.value / 127
-        window.lux.aether.fireTungstenNuke({ target: 'spin', value: norm })
+        fireTungsten({ target: 'spin', value: norm })
         return
       }
 
       // Pad actions: Note On = fire, Note Off = release
-      const target = tungAction === 'nuke-all' ? 'all' : tungAction // 'petal-l', 'petal-c', 'petal-r'
+      const target = tungAction === 'nuke-all'  ? 'all'
+                   : tungAction === 'nuke-gold' ? 'gold'
+                   : tungAction // 'petal-l', 'petal-c', 'petal-r'
       if (msg.type === 'note_on') {
-        window.lux.aether.fireTungstenNuke({ target, value: 1.0 })
-        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON`)
+        // WAVE 4825 hotfix: nuke-gold va a full para evitar apagones por velocity baja del pad.
+        const intensity = 1.0
+        fireTungsten({ target, value: intensity })
+        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON (int=${(intensity * 100).toFixed(0)}%)`)
       } else if (msg.type === 'note_off') {
-        window.lux.aether.fireTungstenNuke({ target, release: true })
+        fireTungsten({ target, release: true })
         console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} OFF`)
+      } else if (msg.type === 'cc') {
+        // Compat controladores: algunos pads envian CC toggle/momentary.
+        if (msg.value > 0) {
+          fireTungsten({ target, value: 1.0 })
+          console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON (cc=${msg.value})`)
+        } else {
+          fireTungsten({ target, release: true })
+          console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} OFF (cc=0)`)
+        }
       }
       return
     }

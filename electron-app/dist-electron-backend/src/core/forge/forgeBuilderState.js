@@ -74,6 +74,12 @@ export function forgeReducer(state, action) {
             };
         }
         // ── CHANNEL (DMX Layout) ─────────────────────────────────────────────
+        case 'CHANNEL_REPLACE':
+            return {
+                ...state,
+                channels: patchChannel(state.channels, action.idx, action.channel),
+                dirty: true,
+            };
         case 'CHANNEL_SET_TYPE':
             return {
                 ...state,

@@ -58,7 +58,7 @@ export interface LibraryState {
   lastLoadTime: number | null
   
   // Actions
-  loadFromDisk: () => Promise<void>
+  loadFromDisk: (silent?: boolean) => Promise<void>
   saveUserFixture: (fixture: FixtureDefinition) => Promise<{ success: boolean; error?: string }>
   deleteUserFixture: (fixtureId: string) => Promise<{ success: boolean; error?: string }>
   refreshDMXStatus: () => Promise<void>
@@ -147,21 +147,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
    * Load fixtures from disk via IPC
    * This is the ONLY way to populate the store
    */
-  loadFromDisk: async () => {
+  loadFromDisk: async (silent = false) => {
     // Check if window.lux is available (Electron renderer)
     if (typeof window === 'undefined' || !window.lux?.library?.listAll) {
       console.warn('[LibraryStore] ⚠️ window.lux.library not available - running outside Electron?')
-      set({ 
-        isLoading: false, 
-        lastError: 'IPC bridge not available',
-      })
+      if (!silent) set({ isLoading: false, lastError: 'IPC bridge not available' })
       return
     }
-    
-    set({ isLoading: true, lastError: null })
+
+    // WAVE 4831: Silent reloads (post-save) skip isLoading:true to avoid
+    // unmounting components that observe isLoading (WebGL context loss).
+    if (!silent) set({ isLoading: true, lastError: null })
     
     try {
-      console.log('[LibraryStore] 📂 Loading fixtures from disk via IPC...')
+      if (!silent) console.log('[LibraryStore] 📂 Loading fixtures from disk via IPC...')
       
       const result = await window.lux.library.listAll()
       
@@ -208,6 +207,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     
     try {
       console.log(`[LibraryStore] 💾 Saving fixture: ${fixture.name}`)
+      // WAVE 4831 DIAG: Trazar channels que viajan al IPC
+      console.log('[LibraryStore 4831] 🔍 IPC payload channels:', (fixture.channels as any[])?.map((ch: any) => ({
+        idx: ch.index, type: ch.type, deps: ch.ignitionDeps?.length ?? 0,
+        depDetails: ch.ignitionDeps?.map((d: any) => ({
+          target: d.targetChannelIndex, type: d.channelType, value: d.requiredValue, mode: d.mode,
+        })) ?? [],
+      })))
       
       const result = await window.lux.library.saveUser(fixture as unknown as Parameters<typeof window.lux.library.saveUser>[0])
       
@@ -215,9 +221,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         return { success: false, error: result.error || 'Failed to save fixture' }
       }
       
-      // Reload library to get fresh data
-      await get().loadFromDisk()
-      
+      // WAVE 4831: Silent reload — no isLoading:true, no WebGL context loss.
+      await get().loadFromDisk(true)
+
       console.log(`[LibraryStore] ✅ Saved fixture: ${fixture.name}`)
       return { success: true }
       

@@ -258,6 +258,12 @@ export class NodeResolver implements INodeResolver {
   // Si un device tiene un CompiledForgeGraph, _writeNode() delega
   // completamente al ForgeNodeEvaluator — bypass total del flujo legacy.
   private readonly _forgeGraphs = new Map<DeviceId, CompiledForgeGraph>()
+  // Acumulador por device para evaluar Forge UNA sola vez por fixture/frame.
+  // Evita que múltiples nodos (golden-master + petal-l/c/r) se pisen entre sí.
+  private readonly _forgeAccumValues = new Map<DeviceId, Record<string, number>>()
+  private readonly _forgeManualDevices = new Set<DeviceId>()
+  private readonly _forgeValuePool: Record<string, number>[] = []
+  private _forgeValuePoolCursor = 0
   private _forgeFrameContext: ForgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT
 
   // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
@@ -489,9 +495,29 @@ export class NodeResolver implements INodeResolver {
       buf.fill(0)
     }
 
-    // 2. Para cada nodo arbitrado, escribir en el buffer del universo
+    // Reset scratch de acumulación Forge (zero-alloc pool reuse)
+    this._forgeAccumValues.clear()
+    this._forgeManualDevices.clear()
+    this._forgeValuePoolCursor = 0
+
+    // 2. Para cada nodo arbitrado:
+    //    - legacy: escribir directo
+    //    - forge: acumular por device y evaluar al final (una sola vez)
     for (const [nodeId, channelValues] of arbitrated) {
+      const node = this._graph.getNodeData(nodeId)
+      if (!node) continue
+
+      if (this._forgeGraphs.has(node.deviceId)) {
+        this._accumulateForgeNodeValues(nodeId, node.deviceId, channelValues)
+        continue
+      }
+
       this._writeNode(nodeId, channelValues)
+    }
+
+    // 2b. Evaluar cada fixture Forge una sola vez con el merge final.
+    for (const [deviceId, mergedValues] of this._forgeAccumValues) {
+      this._writeForgeDevice(deviceId, mergedValues)
     }
 
     // 🌊 WAVE 4685: DarkSpin cross-node sweep.
@@ -636,6 +662,127 @@ export class NodeResolver implements INodeResolver {
     void deviceId
   }
 
+  private _acquireForgeValueRecord(): Record<string, number> {
+    if (this._forgeValuePoolCursor < this._forgeValuePool.length) {
+      const record = this._forgeValuePool[this._forgeValuePoolCursor++]
+      for (const key in record) delete record[key]
+      return record
+    }
+    const created: Record<string, number> = {}
+    this._forgeValuePool.push(created)
+    this._forgeValuePoolCursor++
+    return created
+  }
+
+  private _accumulateForgeNodeValues(
+    nodeId: NodeId,
+    deviceId: DeviceId,
+    channelValues: Readonly<Record<string, number>>,
+  ): void {
+    let record = this._forgeAccumValues.get(deviceId)
+    if (!record) {
+      record = this._acquireForgeValueRecord()
+      this._forgeAccumValues.set(deviceId, record)
+    }
+
+    for (const key in channelValues) {
+      const value = channelValues[key]
+      if (!Number.isFinite(value)) continue
+      record[key] = value
+    }
+
+    if (this._safetyMiddleware?.isManualNode(nodeId)) {
+      this._forgeManualDevices.add(deviceId)
+    }
+  }
+
+  private _writeForgeDevice(
+    deviceId: DeviceId,
+    channelValues: Readonly<Record<string, number>>,
+  ): void {
+    const compiled = this._forgeGraphs.get(deviceId)
+    if (!compiled) return
+
+    const device = this._graph.getDevice(deviceId)
+    if (!device) return
+
+    const buf = this._universeBuffers.get(device.universe)
+    if (!buf) return
+
+    const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()
+    const hasManualNode = this._forgeManualDevices.has(deviceId)
+    if (!gateOpen && !hasManualNode) return
+
+    const baseAddr = device.dmxAddress - 1
+    ForgeNodeEvaluator.evaluate(
+      compiled,
+      channelValues,
+      this._forgeFrameContext,
+      buf,
+      baseAddr,
+    )
+
+    const sm = this._safetyMiddleware
+    if (sm) {
+      const nodeIds = this._graph.getDeviceNodes(deviceId)
+      for (let ni = 0; ni < nodeIds.length; ni++) {
+        const node = this._graph.getNodeData(nodeIds[ni])
+        if (!node) continue
+
+        if (node.family === NodeFamily.KINETIC) {
+          for (let ci = 0; ci < node.channels.length; ci++) {
+            const chDef = node.channels[ci]
+            const idx = baseAddr + chDef.dmxOffset
+            if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+
+            if (chDef.type === PAN_COARSE) {
+              buf[idx] = sm.clampKineticSingleAxis(node.nodeId, true, buf[idx])
+              buf[idx] = sm.applyAirbag(buf[idx], true)
+            } else if (chDef.type === TILT_COARSE) {
+              buf[idx] = sm.clampKineticSingleAxis(node.nodeId, false, buf[idx])
+              buf[idx] = sm.applyAirbag(buf[idx], false)
+            }
+          }
+        }
+
+        if (node.family === NodeFamily.COLOR) {
+          let wheelDmx: number | undefined
+          let wheelTransitMs = 0
+          const colorNode = node as IColorNodeData
+          const darkSpinEligible = this._isDarkSpinEligibleColorNode(colorNode)
+
+          for (let ci = 0; ci < node.channels.length; ci++) {
+            const chDef = node.channels[ci]
+            if (chDef.type !== CH_COLOR_WHEEL) continue
+
+            const idx = baseAddr + chDef.dmxOffset
+            if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+
+            wheelDmx = buf[idx]
+            wheelTransitMs = colorNode.colorWheel?.minTransitionMs ?? 0
+            break
+          }
+
+          if (darkSpinEligible && wheelDmx !== undefined && wheelTransitMs > 0) {
+            const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs)
+            if (inBlackout) {
+              for (let ci = 0; ci < node.channels.length; ci++) {
+                const chDef = node.channels[ci]
+                if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL) continue
+
+                const idx = baseAddr + chDef.dmxOffset
+                if (idx < 0 || idx >= DMX_UNIVERSE_SIZE) continue
+                buf[idx] = 0
+              }
+            }
+          }
+        }
+      }
+    }
+
+    this._activeUniverses.add(device.universe)
+  }
+
   private _getOrBuildSoftBlackoutMask(universe: number): Uint8Array {
     const cached = this._softBlackoutMasks.get(universe)
     if (cached) return cached
@@ -700,13 +847,20 @@ export class NodeResolver implements INodeResolver {
     const buf = this._universeBuffers.get(device.universe)
     if (!buf) return   // universe no registrado — ignorar silenciosamente
 
-    // WAVE 4680: Smart Gate — bloqueo selectivo por familia + bypass manual.
-    // gateOpen     → todo pasa normalmente.
-    // !gateOpen    → solo KINETIC y nodos L2 (manual) escriben al buffer.
-    //                IMPACT/COLOR/BEAM/ATMOSPHERE se bloquean (buffer ya en 0).
+    // WAVE 4680 → WAVE 4822: Blind Mode — compuerta selectiva por L2 manual.
+    //
+    // gateOpen  (outputEnabled=true,  LIVE):
+    //   → Todo pasa: L0 + L1 + L2 llegan al hardware.
+    //
+    // !gateOpen (outputEnabled=false, BLIND/ARMED):
+    //   → Solo nodos con override L2 activo (isManualNode) escriben al buffer.
+    //   → KINETIC sin L2: no recibe nuevos objetivos de Selene (retiene el
+    //     buffer en 0 — el hardware queda en su última posición física).
+    //   → currentPosition se actualiza igualmente para que la UI sea fiel
+    //     (WAVE 4616: Pre-Vis rescue no se toca).
     const gateOpen = !this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()
     const isManualNode = this._safetyMiddleware ? this._safetyMiddleware.isManualNode(nodeId) : false
-    const nodeBlocked = !gateOpen && !isManualNode && node.family !== NodeFamily.KINETIC
+    const nodeBlocked = !gateOpen && !isManualNode
 
     const baseAddr = device.dmxAddress - 1  // convertir a 0-indexed
     const _t36probe = this._resolveFrameIndex % 20 === 0

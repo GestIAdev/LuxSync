@@ -221,64 +221,41 @@ export class KineticSystem extends BaseSystem {
                 pan = BASE_lerp(HOME_PAN, pan, speed);
                 tilt = BASE_lerp(HOME_TILT, tilt, speed);
             }
+            // 🛡️ WAVE 4823: KINETIC SHIELD — Rotación continua inmune a macros L0/L1.
+            //
+            // Nodos isContinuous (ventiladores, fans, mirror balls, pétalos) NO reciben
+            // deltas de los patrones VMM (sweep, build, drop, etc.).
+            // currentPosition.rotation permanece en su defaultValue del JSON (WAVE 4814)
+            // o en el valor que el NodeArbiter haya impuesto desde L2 (manual override).
+            // El canal está 100% bajo control manual o en reposo absoluto.
+            if (node.isContinuous) {
+                return; // skip L0 kinetic generation for continuous rotation nodes
+            }
             // ── 4. Gearbox budget: limitar velocidad máxima del motor ─────────────
-            let limitedPan;
-            let limitedTilt;
-            if (node.isContinuous) {
-                // Rotación continua: budget basado en maxRotationSpeed (grados/s → rev/s normalizado)
-                const currentRotation = node.currentPosition.rotation ?? 0.5;
-                const maxRotDeltaPerMs = (node.maxRotationSpeed ?? 360) / (360 * 1000);
-                const maxRotDelta = maxRotDeltaPerMs * deltaMs;
-                const rotDelta = pan - currentRotation;
-                limitedPan = currentRotation + clampDelta(rotDelta, maxRotDelta);
-                limitedTilt = tilt; // reutilizado como speed scalar
+            const currentPan = node.currentPosition.pan;
+            const currentTilt = node.currentPosition.tilt;
+            const maxPanDeltaPerMs = node.maxPanSpeed / (540 * 1000);
+            const maxTiltDeltaPerMs = node.maxTiltSpeed / (270 * 1000);
+            const maxPanDelta = maxPanDeltaPerMs * deltaMs;
+            const maxTiltDelta = maxTiltDeltaPerMs * deltaMs;
+            const panDelta = pan - currentPan;
+            const tiltDelta = tilt - currentTilt;
+            const limitedPan = currentPan + clampDelta(panDelta, maxPanDelta);
+            const limitedTilt = currentTilt + clampDelta(tiltDelta, maxTiltDelta);
+            // ── Mover estándar (pan/tilt posicionado) ─────────────────────────────
+            node.currentPosition.pan = limitedPan;
+            node.currentPosition.tilt = limitedTilt;
+            this._intentScratch.nodeId = node.nodeId;
+            this._valuesDict['pan'] = limitedPan;
+            this._valuesDict['tilt'] = limitedTilt;
+            // Para motores lentos (steppers), incluir canales fine si están disponibles
+            if (node.maxPanSpeed < SLOW_MOTOR_THRESHOLD) {
+                const panFraction = limitedPan * 255;
+                this._valuesDict['pan_fine'] = (panFraction % 1);
+                const tiltFraction = limitedTilt * 255;
+                this._valuesDict['tilt_fine'] = (tiltFraction % 1);
             }
-            else {
-                // Mover estándar: budget pan/tilt independiente
-                const currentPan = node.currentPosition.pan;
-                const currentTilt = node.currentPosition.tilt;
-                const maxPanDeltaPerMs = node.maxPanSpeed / (540 * 1000);
-                const maxTiltDeltaPerMs = node.maxTiltSpeed / (270 * 1000);
-                const maxPanDelta = maxPanDeltaPerMs * deltaMs;
-                const maxTiltDelta = maxTiltDeltaPerMs * deltaMs;
-                const panDelta = pan - currentPan;
-                const tiltDelta = tilt - currentTilt;
-                limitedPan = currentPan + clampDelta(panDelta, maxPanDelta);
-                limitedTilt = currentTilt + clampDelta(tiltDelta, maxTiltDelta);
-            }
-            if (node.isContinuous) {
-                // ── Nodo de rotación continua (fan, pétalo) ──────────────────────────
-                // Usamos el valor de pan calculado como velocidad/dirección de rotación.
-                // 0.5 = stop, 0 = max CCW, 1 = max CW.
-                const rotation = limitedPan; // reutilizamos la curva del patrón
-                const speed = limitedTilt; // reutilizamos variación como speed scalar
-                node.currentPosition.rotation = rotation;
-                // WAVE 4815: No forzar rotation=0.5 (stop/128) cuando no hay movimiento.
-                // Si patrón=idle y movementSpeed=0, no emitir intent L0.
-                // El defaultValue del canal (del JSON, ej. 0) prevalece en reposo.
-                if (vibe.movementSpeed > 0 || pattern !== 0) {
-                    this._intentScratch.nodeId = node.nodeId;
-                    this._valuesDict['rotation'] = rotation;
-                    this._valuesDict['speed'] = speed;
-                    bus.push(this._intentScratch);
-                }
-            }
-            else {
-                // ── Mover estándar (pan/tilt posicionado) ─────────────────────────────
-                node.currentPosition.pan = limitedPan;
-                node.currentPosition.tilt = limitedTilt;
-                this._intentScratch.nodeId = node.nodeId;
-                this._valuesDict['pan'] = limitedPan;
-                this._valuesDict['tilt'] = limitedTilt;
-                // Para motores lentos (steppers), incluir canales fine si están disponibles
-                if (node.maxPanSpeed < SLOW_MOTOR_THRESHOLD) {
-                    const panFraction = limitedPan * 255;
-                    this._valuesDict['pan_fine'] = (panFraction % 1);
-                    const tiltFraction = limitedTilt * 255;
-                    this._valuesDict['tilt_fine'] = (tiltFraction % 1);
-                }
-                bus.push(this._intentScratch);
-            }
+            bus.push(this._intentScratch);
         });
     }
     // ═════════════════════════════════════════════════════════════════════════

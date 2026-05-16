@@ -32,7 +32,6 @@ import {
 import type { KeyCode, LayerId } from '../keyforge/types'
 import { MODIFIER_KEYS } from '../keyforge/types'
 import { normalizeKeyCode, captureModifiers } from '../keyforge/normalizeKeyCode'
-import { isFireable } from '../keyforge/KeyActionDispatcher'
 import { getAllActions } from '../midi/MidiActionRegistry'
 import ActionPalette, { type PaletteActionItem } from './ActionPalette'
 
@@ -285,11 +284,11 @@ const KeyCell: React.FC<KeyCellProps> = ({
     >
       {/* Physical key label */}
       <span style={{
-        fontSize: '9px',
+        fontSize: '24px',
         fontFamily: 'monospace',
-        color: isModifier ? '#6b7280' : colors.text,
+        color: isModifier ? '#9ca3af' : '#ffffff',
         lineHeight: 1,
-        fontWeight: 700,
+        fontWeight: 800,
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
         textShadow: family !== 'unbound'
@@ -302,10 +301,11 @@ const KeyCell: React.FC<KeyCellProps> = ({
       {/* Action label (only if bound) */}
       {actionShort && (
         <span style={{
-          fontSize: '7px',
+          fontSize: '14px',
           fontFamily: 'monospace',
           color: `${colors.text}bb`,
           lineHeight: 1,
+          fontWeight: 500,
           marginTop: '2px',
           textOverflow: 'ellipsis',
           overflow: 'hidden',
@@ -407,14 +407,10 @@ const LegendRow: React.FC = () => (
 // MAIN OVERLAY
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Props injected from TitleBar pill button */
-interface KeyForgeOverlayProps {
-  isVisible: boolean
-  onClose: () => void
-}
+/** Dedicated KeyForge view shell */
 
 const LAYER_ORDER: LayerId[] = ['base', 'alt', 'kinetic', 'select', 'cmd', 'forge']
-const UNIT_PX = 46   // 1 key-unit = 46px
+const UNIT_PX = 74   // 1 key-unit = 74px — fit to 65% panel without horizontal scroll
 
 const KEYFORGE_CORE_ACTIONS: readonly PaletteActionItem[] = [
   { id: 'cue-go', label: 'Cue Go', category: 'Playback' },
@@ -450,7 +446,7 @@ function toPaletteCategory(actionId: string): string {
   return 'Other'
 }
 
-const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose }) => {
+const KeyForgeView: React.FC = () => {
   // ── Store selectors ──────────────────────────────────────────────────────
   const isLearning   = useKeyMapStore(selectIsLearning)
   const isLearnModeActive = useKeyMapStore(selectIsLearnModeActive)
@@ -469,14 +465,12 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     exitLearnMode,
     clearLastMappingWarning,
     unbindKey,
-    cancelListening,
     clearLayer,
   } = useKeyMapStore.getState()
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [viewLayer, setViewLayer] = useState<LayerId>('base')
   const [searchQuery, setSearchQuery] = useState('')
-  const [mounted, setMounted]     = useState(false)
   const overlayRef                = useRef<HTMLDivElement>(null)
 
   const paletteActions = useMemo<PaletteActionItem[]>(() => {
@@ -504,15 +498,6 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     setViewLayer(currentLayer)
   }, [currentLayer])
 
-  // Mount / unmount for transition
-  useEffect(() => {
-    if (isVisible) {
-      requestAnimationFrame(() => setMounted(true))
-    } else {
-      setMounted(false)
-    }
-  }, [isVisible])
-
   const formatCapturedCombo = useCallback((key: KeyCode, modifiers: ReturnType<typeof captureModifiers>): string => {
     const parts: string[] = []
     if (modifiers.shift) parts.push('Shift')
@@ -532,7 +517,7 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
 
   // Learn mode capture — claim the next physical key and bind it to the armed action.
   useEffect(() => {
-    if (!isVisible || !isLearnModeActive) return
+    if (!isLearnModeActive) return
 
     const onKey = (e: KeyboardEvent) => {
       const key = normalizeKeyCode(e)
@@ -570,28 +555,9 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     exitLearnMode,
     formatCapturedCombo,
     isLearnModeActive,
-    isVisible,
     pendingMappingAction,
     setMapping,
   ])
-
-  // Close on Escape when not learn-capturing.
-  useEffect(() => {
-    if (!isVisible) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey, { capture: true })
-    return () => window.removeEventListener('keydown', onKey, { capture: true })
-  }, [isVisible, onClose])
-
-  // Close on backdrop click
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      cancelListening()
-      onClose()
-    }
-  }, [cancelListening, onClose])
 
   // Binding click → arm the action behind the clicked key for remapping.
   const handleBind = useCallback((code: KeyCode) => {
@@ -622,8 +588,6 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
     return Object.keys(bindings).filter(k => k.startsWith(prefix)).length
   }, [bindings, viewLayer])
 
-  if (!isVisible && !mounted) return null
-
   const layerMeta = LAYER_META[viewLayer]
 
   return (
@@ -644,40 +608,10 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
         }
       `}</style>
 
-      {/* Backdrop */}
-      <div
-        onClick={handleBackdropClick}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9000,
-          background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(2px)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          paddingBottom: '32px',
-          animation: mounted
-            ? 'kfo-enter 0.2s ease-out forwards'
-            : 'kfo-exit 0.15s ease-in forwards',
-        }}
-      >
-        {/* Panel */}
-        <div
-          ref={overlayRef}
-          onClick={e => e.stopPropagation()}
-          style={{
-            background: 'linear-gradient(180deg, #0c0c14 0%, #080810 100%)',
-            border: `1px solid ${layerMeta.color}40`,
-            borderRadius: '10px',
-            boxShadow: `0 0 40px ${layerMeta.color}25, 0 24px 64px rgba(0,0,0,0.8)`,
-            padding: '16px',
-            maxWidth: '1280px',
-            width: '100%',
-          }}
-        >
+      <div className="w-full max-w-none h-full flex flex-row bg-black/95">
+        <div className="w-[65%] flex flex-col h-full flex-shrink-0 border-r border-gray-800">
           {/* ── Header ─────────────────────────────────────────────────── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '16px 16px 12px' }}>
             {/* Glowing title */}
             <span style={{
               fontSize: '11px',
@@ -759,26 +693,10 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
               CLR LAYER
             </button>
 
-            {/* Close */}
-            <button
-              onClick={onClose}
-              title="Close KeyForge [Esc]"
-              style={{
-                fontSize: '11px',
-                lineHeight: 1,
-                color: '#6b7280',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px 4px',
-              }}
-            >
-              ✕
-            </button>
           </div>
 
           {/* ── Layer tab row ───────────────────────────────────────────── */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px', padding: '0 16px' }}>
             {LAYER_ORDER.map(lid => {
               const meta = LAYER_META[lid]
               const isActive = lid === viewLayer
@@ -815,85 +733,98 @@ const KeyForgeOverlay: React.FC<KeyForgeOverlayProps> = ({ isVisible, onClose })
             })}
           </div>
 
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-          }}>
-            {/* ── Keyboard ────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `${UNIT_GAP_PX}px`, flex: '1 1 740px' }}>
-              {LAYOUT_ROWS.map((row, ri) => (
-                <div key={ri} style={{ display: 'flex', gap: `${UNIT_GAP_PX}px` }}>
-                  {row.map((key, ki) => (
-                    <KeyCell
-                      key={`${key.code}-${ki}`}
-                      code={key.code}
-                      label={key.label}
-                      w={key.w ?? 1}
-                      layer={viewLayer}
-                      bindings={bindings}
-                      listeningSlot={listeningSlot}
-                      lastBoundKey={lastBoundKey}
-                      isLearning={isLearning}
-                      pendingMappingAction={pendingMappingAction}
-                      onArmAction={armActionFromPalette}
-                      onBind={handleBind}
-                      onUnbind={handleUnbind}
-                      unitPx={UNIT_PX}
-                    />
+          <div className="flex-1 flex items-center justify-center relative">
+            <div
+              ref={overlayRef}
+              style={{
+                width: '100%',
+                maxWidth: '1700px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                padding: '16px',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'nowrap', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: `${UNIT_GAP_PX}px`, flex: '1 1 auto' }}>
+                  {LAYOUT_ROWS.map((row, ri) => (
+                    <div key={ri} style={{ display: 'flex', gap: `${UNIT_GAP_PX}px` }}>
+                      {row.map((key, ki) => (
+                        <KeyCell
+                          key={`${key.code}-${ki}`}
+                          code={key.code}
+                          label={key.label}
+                          w={key.w ?? 1}
+                          layer={viewLayer}
+                          bindings={bindings}
+                          listeningSlot={listeningSlot}
+                          lastBoundKey={lastBoundKey}
+                          isLearning={isLearning}
+                          pendingMappingAction={pendingMappingAction}
+                          onArmAction={armActionFromPalette}
+                          onBind={handleBind}
+                          onUnbind={handleUnbind}
+                          unitPx={UNIT_PX}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <ActionPalette
-              actions={paletteActions}
-              bindings={bindings}
-              viewLayer={viewLayer}
-              searchQuery={searchQuery}
-              pendingMappingAction={pendingMappingAction}
-              isLearnModeActive={isLearnModeActive}
-              onSearchQueryChange={setSearchQuery}
-              onLearnAction={armActionFromPalette}
-            />
+              <LegendRow />
+
+              {isLearning && (
+                <div style={{
+                  fontSize: '9px',
+                  fontFamily: 'monospace',
+                  color: '#fb923c',
+                  letterSpacing: '0.06em',
+                  textShadow: '0 0 6px #fb923c80',
+                }}>
+                  {pendingMappingAction
+                    ? `⌨ Armed: ${pendingMappingAction} · press a physical key to bind it`
+                    : '⌨ Click Learn on a bound key to arm an action'}
+                </div>
+              )}
+
+              {lastMappingWarning && (
+                <div style={{
+                  fontSize: '9px',
+                  fontFamily: 'monospace',
+                  color: '#fca5a5',
+                  letterSpacing: '0.05em',
+                  textShadow: '0 0 6px #f8717180',
+                }}>
+                  {lastMappingWarning}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* ── Legend ─────────────────────────────────────────────────── */}
-          <LegendRow />
-
-          {/* ── Learn mode hint ─────────────────────────────────────────── */}
-          {isLearning && (
-            <div style={{
-              marginTop: '8px',
-              fontSize: '9px',
-              fontFamily: 'monospace',
-              color: '#fb923c',
-              letterSpacing: '0.06em',
-              textShadow: '0 0 6px #fb923c80',
-            }}>
-              {pendingMappingAction
-                ? `⌨ Armed: ${pendingMappingAction} · press a physical key to bind it`
-                : '⌨ Click Learn on a bound key to arm an action'}
+          <div className="h-48 flex-shrink-0 bg-gray-950 border-t border-gray-800 p-4" style={{ height: '12rem', borderTop: '1px solid #1f2937', background: '#030712', padding: '16px' }}>
+            <div style={{ fontFamily: 'monospace', color: '#d1d5db', letterSpacing: '0.04em', fontSize: '13px', lineHeight: 1.7, maxWidth: '880px' }}>
+              KeyForge Operator Manual: 1. Select Action. 2. Press Learn. 3. Hit the physical key. 4. Review bindings. 5. Use the right panel to browse grouped actions.
             </div>
-          )}
+          </div>
+        </div>
 
-          {lastMappingWarning && (
-            <div style={{
-              marginTop: '8px',
-              fontSize: '9px',
-              fontFamily: 'monospace',
-              color: '#fca5a5',
-              letterSpacing: '0.05em',
-              textShadow: '0 0 6px #f8717180',
-            }}>
-              {lastMappingWarning}
-            </div>
-          )}
+        <div className="flex-1 flex flex-col h-full bg-gray-900" style={{ background: '#111827' }}>
+          <ActionPalette
+            actions={paletteActions}
+            bindings={bindings}
+            viewLayer={viewLayer}
+            searchQuery={searchQuery}
+            pendingMappingAction={pendingMappingAction}
+            isLearnModeActive={isLearnModeActive}
+            onSearchQueryChange={setSearchQuery}
+            onLearnAction={armActionFromPalette}
+          />
         </div>
       </div>
     </>
   )
 }
 
-export default KeyForgeOverlay
+export default KeyForgeView

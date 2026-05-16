@@ -712,11 +712,13 @@ export class NodeArbiter implements INodeArbiter {
       layer === 'selene' &&
       !this._seleneOverrideMoverShield &&
       this._moverShieldNodeIds.has(intent.nodeId)
-    // 🌊 WAVE 4832: Estrategia de mezcla por-intent.
-    // Solo respetada en capa 'effect' (L3 blandos vs tiranos).
-    // Las demás capas mantienen su contrato histórico (LTP entre capas).
-    const intentMerge = intent.mergeStrategy
-    const useHtpMerge = (layer === 'effect') && intentMerge === 'HTP'
+    // 🌊 WAVE 4836 — L3 SUPREMACY ABSOLUTA (Doctrina sellada en WAVE-4835):
+    // Cuando L3 escribe un canal, L0/L1 callan en ese canal de ese nodo.
+    // El campo `intent.mergeStrategy` queda preservado en los tipos para
+    // arbitraje intra-L3 futuro (varios efectos L3 simultáneos), pero a
+    // nivel inter-capas siempre es LTP. Esto restaura el carácter de los
+    // efectos blandos (CumbiaMoon, CorazonLatino) — antes HTP per-canal
+    // de WAVE 4832 los hacía perder ante L0 en un entorno musical activo.
     for (const channel in values) {
       // MoverShield: bloquea canales de color en L1 para movers con rueda física
       if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
@@ -742,11 +744,11 @@ export class NodeArbiter implements INodeArbiter {
         continue
       }
 
-      // WAVE 4829: Registrar dominación L3 para el Escudo Anti-Sangrado.
-      // 🌊 WAVE 4832: SOLO se registra dominación cuando el intent es LTP.
-      // Los intents HTP de efectos blandos NO dominan — coexisten con L0/L1
-      // para que CumbiaMoon/CorazonLatino tinten sin matar el brillo musical.
-      if ((layer === 'effect' || layer === 'hephaestus') && !useHtpMerge) {
+      // WAVE 4829 + 🌊 WAVE 4836: Registrar dominación L3 para el Escudo Anti-Sangrado.
+      // L3 SIEMPRE domina los canales que escribe — sin ramas HTP de coexistencia.
+      // Los efectos blandos (CumbiaMoon/CorazonLatino) cargan su propio dimmer
+      // (peakIntensity/heartIntensity) y no necesitan a L0 como soporte.
+      if (layer === 'effect' || layer === 'hephaestus') {
         let dominated = this._l3DominatedChannels.get(intent.nodeId)
         if (!dominated) {
           dominated = this._acquireChannelSet()
@@ -782,19 +784,12 @@ export class NodeArbiter implements INodeArbiter {
         }
         // L1, LP, L3 (effect no-zero): LTP estricto entre capas.
         record[channel] = incoming
-      } else if (useHtpMerge) {
-        // 🌊 WAVE 4832: HTP-merge para L3 blandos (blendMode='max').
-        // record[ch] = max(L0/L1_value, incoming). El brillo de L0 se preserva
-        // si supera al del efecto blando; el efecto solo "eleva" cuando aporta.
-        // No registra dominación → L0 sigue contribuyendo en frames sucesivos.
-        const current = record[channel]
-        if (current === undefined || incoming > current) {
-          record[channel] = incoming
-        }
       } else {
-        // LTP: la última escritura (capa más alta) gana.
-        // dimmer/brightness: LTP puro — L0 escribe libremente en canales
-        // que L2 NO esté tocando (el Smart Gate ya los filtró arriba).
+        // 🌊 WAVE 4836: LTP universal entre capas.
+        // La última escritura (capa más alta) gana. L3 ya bloqueó L0/L1
+        // arriba vía _l3DominatedChannels, y L2/LP via Smart Gate.
+        // Nota: `intent.mergeStrategy` se preserva en el tipo para futuro
+        // arbitraje intra-L3 (varios efectos L3 escribiendo el mismo canal).
         record[channel] = incoming
       }
     }

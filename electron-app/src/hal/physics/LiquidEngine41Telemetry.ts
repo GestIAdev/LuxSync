@@ -307,8 +307,8 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     } = frame
 
     // ── 4.1 COMPACTION ──────────────────────────────────────────────
-    const frontPar = Math.max(frontLeft, frontRight)
-    const backPar  = Math.max(backLeft,  backRight)
+    const frontPar = frontRight
+    const backPar  = backRight
 
     // ── SIDECHAIN DETECTION (replicar lógica del Base para telemetría) ──
     const p = this.profile
@@ -487,7 +487,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
 // WAVE 2460: Telemetría siempre activa en desarrollo — se desactiva manualmente
 // con window.luxDebug.telemetry.stop() o IPC 'telemetry:lt41:stop' antes de producción.
 export const latinoEngine41Telemetry = new LiquidEngine41Telemetry()
-latinoEngine41Telemetry.setTelemetryEnabled(true)
+latinoEngine41Telemetry.setTelemetryEnabled(false)
 
 // ── WAVE 2434: IPC bridge expuesto en preload.ts → window.luxDebug.telemetry ──
 // Llamar desde DevTools del renderer:

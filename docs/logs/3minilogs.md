@@ -1,80 +1,40 @@
-[DMX-SNIFFER] universe=0 | base=200 (1-based) | CH1(StartCode/Pan?)=0 | CH2(GM)=0 | CH3(Strobe)=255 | CH4(G1)=0 | CH5(G2)=0 | CH6(G3)=0 | CH7=0
-[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
-[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×1] | scene:23b | Pan:122 Tilt:-82 | sBPM:106 phase:153°
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'corazon_latino', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: corazon_latino @ 1.00
-[TitanEngine] 🧨 Manual strike queued: corazon_latino @ 1.00
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'corazon_latino', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: corazon_latino @ 1.00
-[TitanEngine] 🧨 Manual strike queued: corazon_latino @ 1.00
-[EffectManager 🎯] corazon_latino BYPASS SHIELD (source: manual)
-[CorazonLatino ❤️] TRIGGERED! HeartbeatDuration=1500ms Beats=2
-[CorazonLatino ❤️] THE ARCHITECT'S SOUL AWAKENS...
-[SeleneTitanConscious 🔥] Cooldown registered: corazon_latino
-[EffectManager 🔥] corazon_latino FIRED [manual] in fiesta-latina  | I:1.00
-[DNA_ANALYZER] 📊 Diversity: corazon_latino usado 2x - Factor: 0.35x
-[TitanEngine] 🧨 MANUAL STRIKE: corazon_latino @ 1.00
-[SeleneAetherAdapter 🔬] zone resolution: back(I:2,C:2) | all-movers(I:6,C:6) | front(I:3,C:3)
-[NodeArbiter 🔬] L3 intents=22 sample[[object Object]] merge=HTP dimmer=0.43
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.46 FR:0.00 | BL:0.00 BR:0.14 | ML:0.80 MR:0.13
-[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2552
-[GAMMA 🎵] Frame 420: bpm=0, energy=0.66
-[DMX-SNIFFER] universe=0 | base=200 (1-based) | CH1(StartCode/Pan?)=0 | CH2(GM)=0 | CH3(Strobe)=255 | CH4(G1)=0 | CH5(G2)=0 | CH6(G3)=0 | CH7=0
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=95% B/D/N=529/24/6
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(40%) | Safety:✅OK
----------
+eporte Forense L0 vs L3 (solo auditoría, sin ejecución)
 
--
--------------------------
+Hallazgos críticos
 
+El “silencio total de L0 cuando pinta L3” no existe como regla global en el árbitro; existe solo por nodo/canal.
+Evidencia: L0 se aplica primero y L3 después en el mismo frame en NodeArbiter.ts:459 y NodeArbiter.ts:555.
+Evidencia: el bloqueo es por canal tocado de ese nodo con _l3DominatedChannels en NodeArbiter.ts:706, NodeArbiter.ts:738, NodeArbiter.ts:757.
+Diagnóstico: si L3 no escribe un canal concreto, L0 puede seguir vivo en ese canal.
+CumbiaMoon sí sobreescribe color blanco, pero no neutraliza toda la luminancia de fixture.
+Evidencia: CumbiaMoon emite en zonas front/back/all-movers en CumbiaMoon.ts:221.
+Evidencia: dimmer bajo (10-30%) en CumbiaMoon.ts:74, CumbiaMoon.ts:224, CumbiaMoon.ts:229, CumbiaMoon.ts:235.
+Evidencia: el color de zona se inyecta por COLOR nodes (RGB) y dimmer por IMPACT nodes en selene-aether-adapter.ts:422 y selene-aether-adapter.ts:427.
+Diagnóstico: hereda blanco (correcto), pero la luminancia puede seguir recibiendo energía por otros canales/nodos no dominados por L3.
+L0 sigue inyectando luminancia por dos rutas: dimmer y brightness.
+Evidencia: L0 empuja dimmer para nodos con dimmer físico y brightness para nodos color en LiquidAetherAdapter.ts:271, LiquidAetherAdapter.ts:280, LiquidAetherAdapter.ts:288.
+Diagnóstico: aunque L3 domine ciertos canales, si no domina brightness en nodos COLOR, L0 puede seguir “levantando” luz.
+En HyperionView 2D, la composición visual favorece fugas de luminancia por diseño de proyección.
+Evidencia: el proyector toma dimmerNorm como dimmer o brightness en AetherUIProjector.ts:118.
+Evidencia: fusiona luminancia por max en AetherUIProjector.ts:122.
+Evidencia: el estado arranca limpio cada frame (no es arrastre histórico) en TitanOrchestrator.ts:1477, TitanOrchestrator.ts:1485, TitanOrchestrator.ts:2034.
+Diagnóstico: en simulador, un valor alto de brightness/dimmer en cualquier nodo del fixture puede “asomar beats por detrás” aunque el color ya sea blanco de L3.
+Hallazgos de consistencia arquitectónica (importantes)
 
+Conflicto documental LTP/HTP entre adapter y arbiter.
+Evidencia: Selene adapter traduce blendMode max a HTP en selene-aether-adapter.ts:46 y lo propaga en selene-aether-adapter.ts:524.
+Evidencia: NodeArbiter declara LTP universal inter-capas e indica que mergeStrategy queda “para futuro” en NodeArbiter.ts:788 y NodeArbiter.ts:791.
+Diagnóstico: hay desalineación entre lo que el efecto “cree pedir” y lo que el árbitro realmente aplica.
+Inconsistencia menor en comentarios vs implementación de canales estrictos.
+Evidencia: set real estricto solo strobe/shutter en NodeArbiter.ts:62, mientras comentarios mencionan dimmer/brightness como estrictos en NodeArbiter.ts:661.
+Diagnóstico: no explica solo el bug, pero sí complica lectura y diagnóstico operativo.
+Conclusión forense
 
-H4(G1)=0 | CH5(G2)=0 | CH6(G3)=0 | CH7=0
-[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
-[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'salsa_fire', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: salsa_fire @ 1.00
-[TitanEngine] 🧨 Manual strike queued: salsa_fire @ 1.00
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'salsa_fire', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: salsa_fire @ 1.00
-[TitanEngine] 🧨 Manual strike queued: salsa_fire @ 1.00
-[EffectManager 🎯] salsa_fire BYPASS SHIELD (source: manual)
-[SalsaFire 🔥] INTENSE ZONE TRIGGERED! Duration=2000ms Flicker=15Hz
-[SalsaFire 🔥] DNA: A=0.82 C=0.55 O=0.60 (FUEGO QUE QUEMA)
-[SeleneTitanConscious 🔥] Cooldown registered: salsa_fire
-[EffectManager 🔥] salsa_fire FIRED [manual] in fiesta-latina  | I:1.00
-[DNA_ANALYZER] 📊 Diversity: salsa_fire usado 2x - Factor: 0.35x
-[TitanEngine] 🧨 MANUAL STRIKE: salsa_fire @ 1.00
-[SeleneAetherAdapter 🔬] zone resolution: all-pars(I:5,C:5) | all-movers(I:6,C:6)
-[AudioMatrix] 📊 SAB fill=0.215 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=2048004
-[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:3b | Pan:215 Tilt:7 | sBPM:105 phase:86°
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.24 FR:0.00 | BL:0.00 BR:0.00 | ML:0.00 MR:0.09
-[SeleneAetherAdapter 🔬] zone=all-pars blend=replace dim=0.88 color=H0/S100/L50 w=— a=—
-[SeleneAetherAdapter 🔬] zone=all-movers blend=replace dim=0.53 color=— w=— a=—
-[NodeArbiter 🔬] L3 intents=16 sample[[object Object]] merge=LTP dimmer=1.00
-[GAMMA 🎵] Frame 1500: bpm=0, energy=0.91
+Causa raíz principal: el sistema no hace mute global de L0 cuando entra L3; hace dominación por canal y por nodo.
+En CumbiaMoon, el color blanco sí domina, pero la luminancia puede seguir entrando por rutas L0 (dimmer/brightness) en canales o nodos no dominados por L3, y HyperionView lo amplifica al componer dimmer por max.
+Sobre tu sospecha bus global LTP/HTP: sí hay conflicto semántico real (adapter declara HTP, arbiter no lo ejecuta), pero el síntoma exacto “color sí, dimmer no” se explica con más fuerza por dominación parcial (canal/nodo) + rutas L0 de brightness/dimmer + composición del proyector.
+Pruebas sólidas ya verificadas
 
-----------------------------------------
-
-[DMX-SNIFFER] universe=0 | base=200 (1-based) | CH1(StartCode/Pan?)=0 | CH2(GM)=0 | CH3(Strobe)=255 | CH4(G1)=0 | CH5(G2)=0 | CH6(G3)=0 | CH7=0
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'gatling_raid', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: gatling_raid @ 1.00
-[TitanEngine] 🧨 Manual strike queued: gatling_raid @ 1.00
-[IPC] ðŸ§¨ lux:forceStrike: { effect: 'gatling_raid', intensity: 1 }
-[TitanOrchestrator] 🧨 Manual STRIKE: gatling_raid @ 1.00
-[TitanEngine] 🧨 Manual strike queued: gatling_raid @ 1.00
-[EffectManager 🎯] gatling_raid BYPASS SHIELD (source: manual)
-[GatlingRaid 🔫] TRIGGERED: 3 sweeps x 8 bullets | Pattern: linear
-[SeleneTitanConscious 🔥] Cooldown registered: gatling_raid
-[EffectManager 🔥] gatling_raid FIRED [manual] in fiesta-latina  | I:1.00
-[DNA_ANALYZER] 📊 Diversity: gatling_raid usado 2x - Factor: 0.35x
-[TitanEngine] 🧨 MANUAL STRIKE: gatling_raid @ 1.00
-[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×1] | scene:46b | Pan:-180 Tilt:52 | sBPM:105 phase:303°
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=98% B/D/N=575/6/7
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(66%) | Safety:✅OK
-[AGC TRUST 🌊LIQUID 7B] profile:latino-fiesta | FL:0.80 FR:0.00 | BL:0.00 BR:0.01 | ML:0.12 MR:0.05
-[SeleneAetherAdapter 🔬] zone resolution: front(I:3,C:3) | back(I:2,C:2)
-[TitanOrchestrator] 🎧 WORKER BPM=105 conf=0.30 | PLL=FREEWHEEL [mem=105@-0f] phase=0.00 sync=0.60 | beat #151 | bass=0.6220 sab=0.108 | 🔬in_peak=0.45128 in_rms=0.22515
-[TitanEngine ⚡] NervousSystem: Physics=liquid-stereo Strobe=false Element=earth
-[TitanEngine 🌊 LIQUID 7-ZONE] FL:36% FR:0% BL:0% BR:0%
-[DMX-SNIFFER] universe=0 | base=200 (1-based) | CH1(StartCode/Pan?)=0 | CH2(GM)=0 | CH3(Strobe)=255 | CH4(G1)=0 | CH5(G2)=0 | CH6(G3)=0 | CH7=0
+No ejecuté runtime, no corrí tests ni toqué código.
+La auditoría fue 100% estática sobre flujo L0/L3, router de zonas, adapter de efectos, arbiter y proyección UI.
+GPT-5.3-Codex • 0.9x

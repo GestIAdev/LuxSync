@@ -219,7 +219,30 @@ export function makeDecision(inputs, config = {}) {
  * 5. 🧘 Hold
  */
 function determineDecisionType(inputs) {
-    const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision } = inputs;
+    const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision, energyMaxHistoric } = inputs;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🐘 WAVE 4861: ABSOLUTE ENERGY GATE — El Candado Físico Anti-Silencio
+    // ═══════════════════════════════════════════════════════════════════════
+    // RAÍZ DEL PROBLEMA: Con bufferSize=300 (5s), un valle breve seguido de un
+    // bombo único genera Z=8σ porque la media se calcula sobre el silencio reciente.
+    // Con bufferSize=1800 (30s) el Z se modera, pero aun así puede que el Z sea
+    // estadísticamente alto mientras la energía absoluta es inferior al 60% del pico.
+    //
+    // SOLUCIÓN: Independientemente del Z, ningún efecto DROP o DIVINE se aprueba
+    // si rawEnergy < max_30s * 0.60. Un impacto requiere volumen, no solo anomalía.
+    // El threshold 0.60 es el más generoso posible para no afectar a géneros
+    // mastered en rangos medios (electro-pop, chill lo usa en 0.55-0.75).
+    //
+    // EXCEPCIÓN: Si no hay historial aún (primeros 30s), usar 0.45 como fallback.
+    // ═══════════════════════════════════════════════════════════════════════
+    const ABSOLUTE_ENERGY_GATE_RATIO = 0.60;
+    const ABSOLUTE_ENERGY_GATE_FALLBACK = 0.45;
+    const rawEnergy = energyContext?.absolute ?? pattern.rawEnergy ?? 0;
+    const maxHistoric = (energyMaxHistoric ?? 0) > 0 ? energyMaxHistoric : null;
+    const absoluteGateThreshold = maxHistoric !== null
+        ? maxHistoric * ABSOLUTE_ENERGY_GATE_RATIO
+        : ABSOLUTE_ENERGY_GATE_FALLBACK;
+    const isAbsoluteGateOpen = rawEnergy >= absoluteGateThreshold;
     // ═══════════════════════════════════════════════════════════════════════
     // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 4.0 + energy gate)
     // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
@@ -272,6 +295,12 @@ function determineDecisionType(inputs) {
         if (zone === 'silence' || zone === 'valley') {
             console.log(`[DecisionMaker 🌩️] DIVINE BLOCKED: Z=${currentZ.toFixed(2)}σ but zone=${zone} (protected)`);
             // Fall through a siguiente prioridad
+        }
+        else if (!isAbsoluteGateOpen) {
+            // 🐘 WAVE 4861: Candado físico — energía real insuficiente vs. histórico 30s
+            console.log(`[DecisionMaker 🐘] DIVINE BLOCKED (AbsGate): E=${rawEnergy.toFixed(2)} < ` +
+                `${absoluteGateThreshold.toFixed(2)} (${(ABSOLUTE_ENERGY_GATE_RATIO * 100).toFixed(0)}% of max=${(maxHistoric ?? 0).toFixed(2)}) → HOLD`);
+            // Fall through
         }
         else if (effectiveEnergy < DIVINE_ENERGY_GATE) {
             // 🔬 WAVE 2201: Z estadísticamente masivo pero energía real insuficiente
@@ -712,64 +741,90 @@ function generateDropPreparationDecision(inputs, output, confidence) {
     // Si no, vaciamos el arsenal durante el buildup (spam de CIENTOS de efectos).
     const isDropImminent = prediction.estimatedTimeMs < 800 || pattern.section === 'drop';
     if (prediction.probability > 0.7 && isDropImminent) {
-        // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
-        // Si ya disparamos un efecto en este drop, NO volver a disparar.
-        // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.
-        if (!acquireDropLock()) {
-            console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`);
-            // Sin effectDecision — las physics reactivas siguen funcionando
+        // ═══════════════════════════════════════════════════════════════════
+        // 🐘 WAVE 4861: ABSOLUTE ENERGY GATE — Candado físico en DROP path
+        // ═══════════════════════════════════════════════════════════════════
+        // Acceder al gate calculado en determineDecisionType a través de los inputs.
+        // Si la energía absoluta < 60% del máximo del buffer de 30s → no disparar.
+        const dropRawEnergy = inputs.energyContext?.absolute ?? inputs.pattern.rawEnergy ?? 0;
+        const dropMaxHistoric = (inputs.energyMaxHistoric ?? 0) > 0 ? inputs.energyMaxHistoric : null;
+        const dropGateThreshold = dropMaxHistoric !== null
+            ? dropMaxHistoric * 0.60
+            : 0.45;
+        const dropAbsGateOpen = dropRawEnergy >= dropGateThreshold;
+        if (!dropAbsGateOpen) {
+            console.log(`[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=${dropRawEnergy.toFixed(2)} < ` +
+                `${dropGateThreshold.toFixed(2)} (60% of max=${(dropMaxHistoric ?? 0).toFixed(2)}) → no heavy fire in a valley`);
+            // Sin effectDecision — physics reactivas siguen
         }
-        else {
-            const vibeId = pattern.vibeId;
-            // Usar el arsenal DIVINE como pool de efectos hard para drops
-            // 🌊 WAVE 2470: fallback seguro — chill no hereda el arsenal techno
-            const _dropFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
-                ? DIVINE_ARSENAL['chill-lounge']
-                : (vibeId.includes('latin') || vibeId.includes('fiesta'))
-                    ? DIVINE_ARSENAL['fiesta-latina']
-                    : DIVINE_ARSENAL['techno-club'];
-            const dropArsenal = DIVINE_ARSENAL[vibeId] || _dropFallback;
-            // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
-            // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
-            // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
-            // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
-            const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal);
-            // ═══════════════════════════════════════════════════════════════════
-            // 🛡️ WAVE 2200.2: ANTI-FAKE-DROP — Z-Score Sanity Check
-            // ═══════════════════════════════════════════════════════════════════
-            // ROOT CAUSE: generateDropPreparationDecision() tenía CERO validación
-            // energética. Un drop con Z negativo (energía colapsando) seguía
-            // disparando arsenal pesado. El Oracle predice ESTRUCTURA (hay drop),
-            // pero la ENERGÍA puede no acompañar (fake drop, DJ cortó graves).
-            //
-            // FIX: Si el efecto seleccionado es HEAVY ARSENAL Y Z < 0.5σ → abortar.
-            // Los efectos ligeros (no-heavy) pasan sin restricción — un flash suave
-            // en un mini-drop es aceptable. Solo los nucleares requieren energía real.
-            //
-            // EVIDENCE: buildupextrema.md:
-            //   Drop predictions fire during DJ EQ manipulation (bass cut),
-            //   Oracle sees structure → predicts drop, but energy is actually falling.
-            // ═══════════════════════════════════════════════════════════════════
-            const currentZ = zScore ?? 0;
-            if (HEAVY_ARSENAL_EFFECTS.has(suggestedEffect) && currentZ < 0.5) {
-                console.log(`[DecisionMaker 🛡️] ANTI-FAKE-DROP: "${suggestedEffect}" ABORTED — ` +
-                    `Z=${currentZ.toFixed(2)}σ < 0.5 (energy insufficient for heavy arsenal)`);
-                // Sin effectDecision — las physics reactivas manejan la transición suavemente
+        if (dropAbsGateOpen) {
+            // 🎧 WAVE 4863: Correlación de disparo — ¿qué bandas abrieron el candado?
+            // Objetivo: detectar si MID (voces comprimidas) sostiene el gate artificialmente.
+            console.log(`[AbsGate PASS 🐘] DROP path abierto | ` +
+                `LOW:${(inputs.pattern.bassPresence ?? 0).toFixed(3)} ` +
+                `MID:${(inputs.pattern.midPresence ?? 0).toFixed(3)} ` +
+                `HIGH:${(inputs.pattern.highPresence ?? 0).toFixed(3)} ` +
+                `TOTAL:${dropRawEnergy.toFixed(3)} | ` +
+                `Gate threshold:${dropGateThreshold.toFixed(3)} | Max_30s:${(dropMaxHistoric ?? 0).toFixed(3)}`);
+            // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
+            // Si ya disparamos un efecto en este drop, NO volver a disparar.
+            // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.
+            if (!acquireDropLock()) {
+                console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`);
+                // Sin effectDecision — las physics reactivas siguen funcionando
             }
             else {
-                output.effectDecision = {
-                    effectType: suggestedEffect,
-                    intensity: 0.8 + prediction.probability * 0.2, // 0.94-1.0 según probabilidad
-                    zones: ['all'],
-                    reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
-                    confidence: prediction.probability,
-                    // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
-                    divineArsenal: [suggestedEffect],
-                };
-                console.log(`[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
-                    `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`);
+                const vibeId = pattern.vibeId;
+                // Usar el arsenal DIVINE como pool de efectos hard para drops
+                // 🌊 WAVE 2470: fallback seguro — chill no hereda el arsenal techno
+                const _dropFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
+                    ? DIVINE_ARSENAL['chill-lounge']
+                    : (vibeId.includes('latin') || vibeId.includes('fiesta'))
+                        ? DIVINE_ARSENAL['fiesta-latina']
+                        : DIVINE_ARSENAL['techno-club'];
+                const dropArsenal = DIVINE_ARSENAL[vibeId] || _dropFallback;
+                // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+                // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+                // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+                // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
+                const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal);
+                // ═══════════════════════════════════════════════════════════════════
+                // 🛡️ WAVE 2200.2 + WAVE 4860: ANTI-FAKE-DROP — Z-Score Sanity Check
+                // ═══════════════════════════════════════════════════════════════════
+                // ROOT CAUSE: generateDropPreparationDecision() tenía CERO validación
+                // energética. Un drop con Z negativo (energía colapsando) seguía
+                // disparando arsenal pesado. El Oracle predice ESTRUCTURA (hay drop),
+                // pero la ENERGÍA puede no acompañar (fake drop, DJ cortó graves).
+                //
+                // FIX (WAVE 2200.2): Si el efecto seleccionado es HEAVY ARSENAL Y Z < 0.5σ → abortar.
+                //
+                // 🌴 WAVE 4860: LATINO CONSCIOUSNESS — El groove pesado del reggaetón mantiene
+                // Z entre 0.5-1.0 de forma CONSTANTE (no es clímax, es el ritmo). Para evitar
+                // que heavy arsenal dispare en cada kick de dembow, elevar umbral a 1.2σ en latino.
+                // ═══════════════════════════════════════════════════════════════════
+                const currentZ = zScore ?? 0;
+                const isLatinoVibe = vibeId === 'fiesta-latina' || vibeId?.includes('latina') || false;
+                const antiFakeThreshold = isLatinoVibe ? 1.2 : 0.5;
+                if (HEAVY_ARSENAL_EFFECTS.has(suggestedEffect) && currentZ < antiFakeThreshold) {
+                    console.log(`[DecisionMaker 🛡️] ANTI-FAKE-DROP (${isLatinoVibe ? 'LATINO' : 'STANDARD'}): "${suggestedEffect}" ABORTED — ` +
+                        `Z=${currentZ.toFixed(2)}σ < ${antiFakeThreshold} (energy insufficient for heavy arsenal)`);
+                    // Sin effectDecision — las physics reactivas manejan la transición suavemente
+                }
+                else {
+                    output.effectDecision = {
+                        effectType: suggestedEffect,
+                        intensity: 0.8 + prediction.probability * 0.2, // 0.94-1.0 según probabilidad
+                        zones: ['all'],
+                        reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
+                        confidence: prediction.probability,
+                        // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+                        divineArsenal: [suggestedEffect],
+                    };
+                    console.log(`[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+                        `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`);
+                }
             }
-        }
+        } // end if(dropAbsGateOpen)
     }
     // Color decision: Preparar transición
     output.colorDecision = {

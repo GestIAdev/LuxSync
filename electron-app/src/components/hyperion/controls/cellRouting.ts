@@ -147,12 +147,12 @@ const renderKineticIfContinuous: CellGatePredicate = (group, override) => {
  * Gating BEAM — solo si hay óptica activa o el role lo declara explícitamente.
  *
  * Una cell COLOR + dimmer interno no debe disparar BeamSection. Las cells
- * BEAM válidas tienen role ∈ {beam, decoration} O ya tienen un override
+ * BEAM válidas tienen role ∈ {primary, beam, decoration} O ya tienen un override
  * activo en alguno de sus canales ópticos.
  */
 const renderBeamOnlyIfOptical: CellGatePredicate = (group, override) => {
   if (group.cellKeys.length === 0) return false
-  if (group.role === 'beam' || group.role === 'decoration') return true
+  if (group.role === 'primary' || group.role === 'beam' || group.role === 'decoration') return true
   if (override?.payload.family === NodeFamily.BEAM) {
     const data = (override.payload as OverridePayloadOf<NodeFamily.BEAM>).data as {
       gobo?: number

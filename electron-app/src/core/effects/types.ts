@@ -146,14 +146,6 @@ export interface EffectFrameOutput {
   overrideMoverShield?: boolean
 
   /**
-   * 🏎️ WAVE 4831: DARKSPIN BYPASS
-   * Si true, el efecto corto solicita que AetherSafetyMiddleware ignore
-   * el blackout de tránsito mecánico de rueda de color.
-   * Preferible ver el scroll rápido que un blackout de ~550ms.
-   */
-  skipDarkSpin?: boolean
-  
-  /**
    * 🧨 WAVE 630: AMBER OVERRIDE
    * Override del canal Amber (0-1) para fixtures RGBWA
    */
@@ -307,14 +299,15 @@ export interface EffectTriggerConfig {
   /** Zonas objetivo. Default: 'all' */
   zones?: EffectZone[]
   
-  /** 
+  /**
    * Fuente del disparo (para logging y bypass rules)
    * - 'chronos': From timeline - bypasses vibe restrictions
    * - 'manual': From UI button
-   * - 'hunt_strike': From HuntEngine AI decision
+   * - 'hunt_strike': From HuntEngine AI decision (legacy alias for 'hunt')
+   * - 'hunt' | 'dream' | 'evolution' | 'bias-correction' | 'memory' | 'beauty' | 'consonance': Real DecisionSource from consciousness
    * - Others: standard rules apply
    */
-  source: 'hunt_strike' | 'prediction' | 'manual' | 'physics' | 'vibe' | 'chronos'
+  source: 'hunt_strike' | 'hunt' | 'dream' | 'evolution' | 'bias-correction' | 'memory' | 'beauty' | 'consonance' | 'prediction' | 'manual' | 'physics' | 'vibe' | 'chronos'
   
   /** Razón del disparo (para debug) */
   reason?: string
@@ -522,13 +515,6 @@ export interface CombinedEffectOutput {
    */
   overrideMoverShield?: boolean
 
-  /**
-   * 🏎️ WAVE 4831: DARKSPIN BYPASS (combinado)
-   * OR acumulativo: si CUALQUIER efecto activo pide bypass,
-   * se concede para todos los nodos que L3 toca este frame.
-   */
-  skipDarkSpin?: boolean
-  
   /**
    * 🌴 WAVE 700.8: ZONE FILTERING
    * Zonas afectadas por los efectos combinados.

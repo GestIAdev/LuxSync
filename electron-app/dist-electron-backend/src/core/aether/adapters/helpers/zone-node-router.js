@@ -156,12 +156,18 @@ export class ZoneNodeRouter {
             // Para cada familia que soportamos
             for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
                 const view = nodeGraph.getView(family);
-                // Obtener todos los nodos de esta familia en esta zona
-                // El byZone() es un método de INodeView que usa índice pre-construido
+                // 🩹 WAVE 4833 BUGFIX: byZone() retorna ICapabilityNode[], NO NodeId[].
+                // El cast `as unknown as readonly NodeId[]` previo era inseguro: pasaba
+                // OBJETOS al bus en lugar de strings, rompiendo el lookup en NodeArbiter
+                // y AetherUIProjector. Causaba que TODOS los efectos basados en
+                // zoneOverrides fueran invisibles aguas abajo. Sólo zona 'all' funcionaba
+                // por usar `view.forEach(node => push(node.nodeId))` correctamente.
                 const nodesInZone = view.byZone(zone);
-                // Convertir a NodeId[] si es necesario; byZone() ya retorna readonly
-                const nodeIds = nodesInZone;
-                familyMap.set(family, nodeIds);
+                const nodeIds = [];
+                for (let n = 0; n < nodesInZone.length; n++) {
+                    nodeIds.push(nodesInZone[n].nodeId);
+                }
+                familyMap.set(family, Object.freeze(nodeIds));
             }
             this._zoneCache.set(zone, familyMap);
         }
@@ -174,8 +180,13 @@ export class ZoneNodeRouter {
             for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
                 const familyKey = family;
                 const view = nodeGraph.getView(familyKey);
-                const nodesInRawZone = view.byZone(rawZone);
-                this._appendNodesToZone(canonical, familyKey, nodesInRawZone);
+                // 🩹 WAVE 4833 BUGFIX (idem): extraer nodeId string, no pasar el nodo entero.
+                const rawNodes = view.byZone(rawZone);
+                const rawNodeIds = [];
+                for (let n = 0; n < rawNodes.length; n++) {
+                    rawNodeIds.push(rawNodes[n].nodeId);
+                }
+                this._appendNodesToZone(canonical, familyKey, rawNodeIds);
             }
         }
         // Alias compuesto: all-movers = union determinista movers + movers-left + movers-right.

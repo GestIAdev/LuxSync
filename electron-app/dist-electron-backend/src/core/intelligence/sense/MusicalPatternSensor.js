@@ -55,10 +55,12 @@ export function senseMusicalPattern(state) {
     if (spectralLogFrameCount % 60 === 0 && state.harshness > 0) {
         const textureLabel = state.harshness > 0.5 ? 'HARSH/Dirty' :
             state.spectralFlatness > 0.6 ? 'NOISE/Percussive' : 'CLEAN/Tonal';
-        console.log(`[SENSE 🎛️] Texture: ${textureLabel} | ` +
-            `Harsh=${state.harshness.toFixed(2)} | ` +
-            `Flat=${state.spectralFlatness.toFixed(2)} | ` +
-            `Centroid=${state.spectralCentroid.toFixed(0)}Hz`);
+        // console.log(
+        //   `[SENSE 🎛️] Texture: ${textureLabel} | ` +
+        //   `Harsh=${state.harshness.toFixed(2)} | ` +
+        //   `Flat=${state.spectralFlatness.toFixed(2)} | ` +
+        //   `Centroid=${state.spectralCentroid.toFixed(0)}Hz`
+        // )
     }
     // Actualizar historial
     updateHistory({

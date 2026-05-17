@@ -194,7 +194,7 @@ function resolveDep(
   return dep
 }
 
-function resolveChannelDeps(ch: FixtureChannel, channels: readonly FixtureChannel[]): FixtureChannel {
+export function resolveChannelDeps(ch: FixtureChannel, channels: readonly FixtureChannel[]): FixtureChannel {
   if (!ch.ignitionDeps || ch.ignitionDeps.length === 0) return ch
   return {
     ...ch,

@@ -49,15 +49,18 @@ const DEFAULT_CONFIG = {
     whiteOnPeak: true, // 🌊 WAVE 750: Destello en el pico
     intensityFloor: 0.0, // 🌊 WAVE 805.2: NEGRO TOTAL en valles (era 0.1)
 };
-// WAVE 3473: Ola lateral izquierda → derecha (offsets absolutos por zona)
+// WAVE 4834: Ola lateral izquierda → derecha con fase única por zona.
+// IMPORTANTE: offset=1.0 colapsa con 0.0 por el `% 1` del localPhase.
+// Cada grupo debe vivir en una posición distinta del ciclo para que la ola
+// realmente se desplace y no encienda bloques enteros a la vez.
 const ZONE_PHASE_OFFSETS = [
     ['movers-left', 0.0],
-    ['front-left', 0.0],
-    ['back-left', 0.0],
-    ['center', 0.5],
-    ['front-right', 1.0],
-    ['back-right', 1.0],
-    ['movers-right', 1.0],
+    ['front-left', 1 / 7],
+    ['back-left', 2 / 7],
+    ['center', 3 / 7],
+    ['front-right', 4 / 7],
+    ['back-right', 5 / 7],
+    ['movers-right', 6 / 7],
 ];
 // ═══════════════════════════════════════════════════════════════════════════
 // TIDAL WAVE CLASS
@@ -243,7 +246,9 @@ export class TidalWave extends BaseEffect {
         const isReverse = this.wavesCompleted % 2 === 1;
         for (const [zone, baseOffset] of ZONE_PHASE_OFFSETS) {
             // Reverse invierte el eje X completo (derecha → izquierda)
-            const phaseOffset = isReverse ? 1 - baseOffset : baseOffset;
+            const phaseOffset = isReverse
+                ? ((1 - baseOffset) % 1)
+                : baseOffset;
             // Fase local de esta zona
             const localPhase = (this.wavePhase + phaseOffset) % 1;
             // 🌊 WAVE 805.5: Curva ULTRA-BRUTAL con vitaminas de intensidad

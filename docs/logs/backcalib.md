@@ -1,150 +1,366 @@
-8 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.138 snGate:0.360 snSq:0.442 snPow:1.000 snPass:1 snIgn:1 hmIn:0.209 hmGate:0.325 hmSq:0.142 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.735 mR:0.444 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.080 mid:0.553 hMid:0.265 tr:0.253 | morph:0.772 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.443 snPow:0.000 snPass:0 snIgn:0 hmIn:0.158 hmGate:0.325 hmSq:0.143 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.359 mL:0.469 mR:0.358 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.078 mid:0.517 hMid:0.239 tr:0.204 | morph:0.768 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.443 snPow:0.000 snPass:0 snIgn:0 hmIn:0.153 hmGate:0.325 hmSq:0.143 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.128 mL:0.441 mR:0.226 | sc:0 scDuck:1.000
-[🐟 BABEL FISH] EL 1140 TESTING: RGB(5,117,187) → Cyan (DMX 20) [Q-HOLD]
-[MATH AUDIT][LATINO-41] sB:0.075 mid:0.508 hMid:0.224 tr:0.158 | morph:0.763 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.444 snPow:0.000 snPass:0 snIgn:0 hmIn:0.154 hmGate:0.325 hmSq:0.144 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.015 mL:0.441 mR:0.112 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.070 mid:0.508 hMid:0.212 tr:0.137 | morph:0.758 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.444 snPow:0.000 snPass:0 snIgn:0 hmIn:0.153 hmGate:0.325 hmSq:0.144 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.001 mL:0.437 mR:0.065 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.067 mid:0.512 hMid:0.210 tr:0.137 | morph:0.753 tDelta:0.0001 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.147 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.411 mR:0.066 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.070 mid:0.537 hMid:0.205 tr:0.117 | morph:0.750 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.015 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.156 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.456 mR:0.026 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.072 mid:0.537 hMid:0.201 tr:0.117 | morph:0.747 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.156 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.456 mR:0.026 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.074 mid:0.537 hMid:0.198 tr:0.119 | morph:0.744 tDelta:0.0016 percRaw:0.006 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.153 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.443 mR:0.029 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.076 mid:0.586 hMid:0.307 tr:0.276 | morph:0.743 tDelta:0.1571 percRaw:0.629 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.147 snGate:0.360 snSq:0.446 snPow:1.000 snPass:1 snIgn:1 hmIn:0.194 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.644 mR:0.424 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.073 mid:0.586 hMid:0.336 tr:0.309 | morph:0.743 tDelta:0.0331 percRaw:0.132 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.186 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.204 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.347 mL:0.691 mR:0.521 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.070 mid:0.571 hMid:0.306 tr:0.264 | morph:0.741 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.195 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.120 mL:0.643 mR:0.388 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.069 mid:0.565 hMid:0.269 tr:0.189 | morph:0.740 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.187 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.011 mL:0.604 mR:0.188 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.079 mid:0.542 hMid:0.237 tr:0.154 | morph:0.737 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.172 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.529 mR:0.103 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.100 mid:0.516 hMid:0.209 tr:0.120 | morph:0.733 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.447 snPow:0.000 snPass:0 snIgn:0 hmIn:0.154 hmGate:0.325 hmSq:0.147 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.441 mR:0.032 | sc:0 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=126 conf=0.85 | PLL=FREEWHEEL [mem=126@-0f] phase=0.00 sync=0.47 | beat #308 | bass=0.1998 sab=0.000 | 🔬in_peak=0.35791 in_rms=0.11914
-[MATH AUDIT][LATINO-41] sB:0.116 mid:0.516 hMid:0.188 tr:0.120 | morph:0.729 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.447 snPow:0.000 snPass:0 snIgn:0 hmIn:0.154 hmGate:0.325 hmSq:0.147 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.441 mR:0.032 | sc:0 scDuck:1.000
-[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.5642939214375562,"s":0.95,"l":0.3733568404212911,"hex":"#0574ba"} hasColorOverride=false | p={"h":0.4391666666666667,"s":0.9,"l":0.47413946802868695,"hex":"#0ce696"} s={"h":0.5642939214375562,"s":0.95,"l":0.3733568404212911,"hex":"#0574ba"} amb={"h":0.5149999999999999,"s":0.8,"l":0.42335684042129107,"hex":"#16b3c2"}
-[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(5,116,186) → slot="Cyan" DMX=20 translated=true poorMatch=false
-[MATH AUDIT][LATINO-41] sB:0.106 mid:0.510 hMid:0.172 tr:0.090 | morph:0.725 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.447 snPow:0.000 snPass:0 snIgn:0 hmIn:0.147 hmGate:0.325 hmSq:0.147 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.412 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.094 mid:0.488 hMid:0.175 tr:0.121 | morph:0.720 tDelta:0.0304 percRaw:0.121 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.039 snGate:0.360 snSq:0.448 snPow:0.000 snPass:0 snIgn:0 hmIn:0.136 hmGate:0.325 hmSq:0.148 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.358 mR:0.032 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.099 mid:0.520 hMid:0.200 tr:0.193 | morph:0.717 tDelta:0.0725 percRaw:0.290 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.348 snGate:0.360 snSq:0.448 snPow:0.000 snPass:0 snIgn:0 hmIn:0.134 hmGate:0.325 hmSq:0.148 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.356 mR:0.198 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.121 mid:0.423 hMid:0.168 tr:0.169 | morph:0.709 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.449 snPow:0.000 snPass:0 snIgn:0 hmIn:0.090 hmGate:0.325 hmSq:0.149 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.156 mR:0.137 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.114 mid:0.392 hMid:0.141 tr:0.131 | morph:0.699 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.450 snPow:0.000 snPass:0 snIgn:0 hmIn:0.085 hmGate:0.325 hmSq:0.150 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.132 mR:0.052 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.108 mid:0.375 hMid:0.121 tr:0.103 | morph:0.689 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.451 snPow:0.000 snPass:0 snIgn:0 hmIn:0.082 hmGate:0.325 hmSq:0.151 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.116 mR:0.003 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.108 mid:0.471 hMid:0.158 tr:0.130 | morph:0.684 tDelta:0.0267 percRaw:0.107 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.421 snGate:0.360 snSq:0.452 snPow:0.635 snPass:1 snIgn:1 hmIn:0.129 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.325 mR:0.050 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.100 mid:0.540 hMid:0.175 tr:0.136 | morph:0.682 tDelta:0.0065 percRaw:0.026 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.221 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.154 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.323 mL:0.447 mR:0.064 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.116 mid:0.580 hMid:0.185 tr:0.121 | morph:0.685 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.101 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.171 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.105 mL:0.536 mR:0.032 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.137 mid:0.624 hMid:0.232 tr:0.192 | morph:0.703 tDelta:0.0709 percRaw:0.284 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.486 snGate:0.360 snSq:0.450 snPow:1.000 snPass:1 snIgn:1 hmIn:0.197 hmGate:0.325 hmSq:0.150 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.671 mR:0.193 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.145 mid:0.638 hMid:0.296 tr:0.277 | morph:0.725 tDelta:0.0853 percRaw:0.341 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.561 snGate:0.360 snSq:0.448 snPow:1.000 snPass:1 snIgn:1 hmIn:0.208 hmGate:0.325 hmSq:0.148 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.724 mR:0.426 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.151 mid:0.638 hMid:0.344 tr:0.277 | morph:0.743 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.176 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.208 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.347 mL:0.724 mR:0.426 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.157 mid:0.629 hMid:0.336 tr:0.272 | morph:0.755 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.204 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.122 mL:0.702 mR:0.413 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.177 mid:0.610 hMid:0.294 tr:0.192 | morph:0.758 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.444 snPow:0.000 snPass:0 snIgn:0 hmIn:0.186 hmGate:0.325 hmSq:0.144 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.013 mL:0.613 mR:0.194 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.190 mid:0.591 hMid:0.257 tr:0.140 | morph:0.757 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.444 snPow:0.000 snPass:0 snIgn:0 hmIn:0.171 hmGate:0.325 hmSq:0.144 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.001 mL:0.541 mR:0.072 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.184 mid:0.528 hMid:0.235 tr:0.132 | morph:0.753 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.140 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.386 mR:0.055 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.175 mid:0.506 hMid:0.210 tr:0.108 | morph:0.749 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.445 snPow:0.000 snPass:0 snIgn:0 hmIn:0.130 hmGate:0.325 hmSq:0.145 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.336 mR:0.010 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.165 mid:0.468 hMid:0.190 tr:0.090 | morph:0.742 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.106 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.230 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.158 mid:0.468 hMid:0.175 tr:0.090 | morph:0.736 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.446 snPow:0.000 snPass:0 snIgn:0 hmIn:0.106 hmGate:0.325 hmSq:0.146 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.230 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.294 mid:0.523 hMid:0.207 tr:0.180 | morph:0.732 tDelta:0.0896 percRaw:0.358 kickRaw:1.000 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.488 snGate:0.360 snSq:0.447 snPow:1.000 snPass:1 snIgn:1 hmIn:0.114 hmGate:0.325 hmSq:0.147 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:1.000 mL:0.275 mR:0.163 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.495 mid:0.441 hMid:0.175 tr:0.169 | morph:0.724 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:1 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.448 snPow:0.000 snPass:0 snIgn:0 hmIn:0.045 hmGate:0.325 hmSq:0.148 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.340 mL:0.156 mR:0.137 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.647 mid:0.377 hMid:0.139 tr:0.130 | morph:0.714 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:1 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.449 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.149 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.114 mL:0.095 mR:0.051 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.760 mid:0.339 hMid:0.115 tr:0.100 | morph:0.701 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.450 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.150 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.008 mL:0.062 mR:0.000 | sc:1 scDuck:1.000
-[CHOREO] techno-club | square [MIRROR F0/2] | Bar:77 | Pan:-135 Tilt:-135 | sBPM:126 phase:163°
-[CHOREO] techno-club | square [MIRROR F1/2] | Bar:77 | Pan:135 Tilt:-135 | sBPM:126 phase:163°
-[MATH AUDIT][LATINO-41] sB:0.845 mid:0.329 hMid:0.101 tr:0.086 | morph:0.689 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.451 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.151 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.054 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.909 mid:0.365 hMid:0.096 tr:0.076 | morph:0.678 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.032 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.084 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.939 mid:0.417 hMid:0.092 tr:0.070 | morph:0.671 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.069 snGate:0.360 snSq:0.453 snPow:0.000 snPass:0 snIgn:0 hmIn:0.023 hmGate:0.325 hmSq:0.153 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.132 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.912 mid:0.443 hMid:0.096 tr:0.080 | morph:0.664 tDelta:0.0103 percRaw:0.041 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.048 snGate:0.360 snSq:0.454 snPow:0.000 snPass:0 snIgn:0 hmIn:0.044 hmGate:0.325 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.158 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.818 mid:0.563 hMid:0.202 tr:0.223 | morph:0.664 tDelta:0.1427 percRaw:0.571 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.114 snGate:0.360 snSq:0.454 snPow:1.000 snPass:1 snIgn:1 hmIn:0.132 hmGate:0.325 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.176 bPar:1.000 mL:0.362 mR:0.275 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.746 mid:0.563 hMid:0.281 tr:0.223 | morph:0.664 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.310 snGate:0.360 snSq:0.454 snPow:0.000 snPass:0 snIgn:0 hmIn:0.132 hmGate:0.325 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.031 bPar:0.316 mL:0.362 mR:0.275 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.756 mid:0.597 hMid:0.303 tr:0.255 | morph:0.676 tDelta:0.0326 percRaw:0.130 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.251 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.159 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.101 mL:0.489 mR:0.364 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.780 mid:0.557 hMid:0.243 tr:0.179 | morph:0.675 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.137 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.005 mL:0.380 mR:0.161 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.802 mid:0.483 hMid:0.192 tr:0.129 | morph:0.671 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.453 snPow:0.000 snPass:0 snIgn:0 hmIn:0.092 hmGate:0.325 hmSq:0.153 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.197 mR:0.049 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.809 mid:0.514 hMid:0.161 tr:0.110 | morph:0.668 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.025 snGate:0.360 snSq:0.453 snPow:0.000 snPass:0 snIgn:0 hmIn:0.112 hmGate:0.325 hmSq:0.153 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.266 mR:0.014 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.804 mid:0.538 hMid:0.134 tr:0.084 | morph:0.667 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.008 snGate:0.360 snSq:0.453 snPow:0.000 snPass:0 snIgn:0 hmIn:0.130 hmGate:0.325 hmSq:0.153 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.344 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.798 mid:0.524 hMid:0.112 tr:0.058 | morph:0.664 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.454 snPow:0.000 snPass:0 snIgn:0 hmIn:0.123 hmGate:0.325 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.176 bPar:0.000 mL:0.315 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.764 mid:0.612 hMid:0.231 tr:0.198 | morph:0.682 tDelta:0.1396 percRaw:0.558 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.115 snGate:0.360 snSq:0.452 snPow:1.000 snPass:1 snIgn:1 hmIn:0.180 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.032 bPar:1.000 mL:0.587 mR:0.209 | sc:0 scDuck:1.000
-[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.5642939214375562,"s":0.95,"l":0.3763377735529281,"hex":"#0575bb"} hasColorOverride=false | p={"h":0.4391666666666667,"s":0.9,"l":0.47413946802868695,"hex":"#0ce696"} s={"h":0.5642939214375562,"s":0.95,"l":0.3763377735529281,"hex":"#0575bb"} amb={"h":0.5149999999999999,"s":0.8,"l":0.42633777355292807,"hex":"#16b4c4"}
-[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(5,117,187) → slot="Cyan" DMX=20 translated=true poorMatch=false
-[MATH AUDIT][LATINO-41] sB:0.670 mid:0.633 hMid:0.288 tr:0.268 | morph:0.704 tDelta:0.0702 percRaw:0.281 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.490 snGate:0.360 snSq:0.450 snPow:0.000 snPass:0 snIgn:0 hmIn:0.189 hmGate:0.325 hmSq:0.150 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:0.332 mL:0.634 mR:0.400 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.720 mid:0.504 hMid:0.261 tr:0.228 | morph:0.700 tDelta:0.0000 percRaw:0.000 kickRaw:1.008 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.000 snGate:0.360 snSq:0.450 snPow:0.000 snPass:0 snIgn:0 hmIn:0.101 hmGate:0.325 hmSq:0.150 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:0.110 mL:0.219 mR:0.289 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.790 mid:0.402 hMid:0.213 tr:0.166 | morph:0.692 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.451 snPow:0.000 snPass:0 snIgn:0 hmIn:0.036 hmGate:0.325 hmSq:0.151 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.007 mL:0.119 mR:0.131 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.830 mid:0.345 hMid:0.170 tr:0.125 | morph:0.680 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.452 snPow:0.000 snPass:0 snIgn:0 hmIn:0.002 hmGate:0.325 hmSq:0.152 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.067 mR:0.040 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.853 mid:0.315 hMid:0.144 tr:0.100 | morph:0.667 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.453 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.153 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.042 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.792 mid:0.313 hMid:0.120 tr:0.083 | morph:0.654 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.455 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.155 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.175 bPar:0.000 mL:0.041 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.708 mid:0.329 hMid:0.117 tr:0.092 | morph:0.643 tDelta:0.0089 percRaw:0.036 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.007 snGate:0.360 snSq:0.456 snPow:0.000 snPass:0 snIgn:0 hmIn:0.005 hmGate:0.325 hmSq:0.156 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.030 bPar:0.000 mL:0.054 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.592 mid:0.425 hMid:0.230 tr:0.247 | morph:0.636 tDelta:0.1549 percRaw:0.620 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.148 snGate:0.360 snSq:0.456 snPow:1.000 snPass:1 snIgn:1 hmIn:0.065 hmGate:0.325 hmSq:0.156 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:1.000 mL:0.140 mR:0.340 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.481 mid:0.473 hMid:0.288 tr:0.297 | morph:0.632 tDelta:0.0508 percRaw:0.203 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.509 snGate:0.360 snSq:0.457 snPow:0.000 snPass:0 snIgn:0 hmIn:0.098 hmGate:0.325 hmSq:0.157 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:0.303 mL:0.201 mR:0.485 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.400 mid:0.482 hMid:0.266 tr:0.259 | morph:0.629 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.457 snPow:0.000 snPass:0 snIgn:0 hmIn:0.105 hmGate:0.325 hmSq:0.157 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:0.091 mL:0.231 mR:0.375 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.346 mid:0.492 hMid:0.212 tr:0.180 | morph:0.626 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.457 snPow:0.000 snPass:0 snIgn:0 hmIn:0.109 hmGate:0.325 hmSq:0.157 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.003 mL:0.247 mR:0.164 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.323 mid:0.481 hMid:0.201 tr:0.168 | morph:0.622 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.458 snPow:0.000 snPass:0 snIgn:0 hmIn:0.105 hmGate:0.325 hmSq:0.158 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.229 mR:0.136 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.370 mid:0.476 hMid:0.197 tr:0.168 | morph:0.618 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.458 snPow:0.000 snPass:0 snIgn:0 hmIn:0.103 hmGate:0.325 hmSq:0.158 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:0.000 mL:0.220 mR:0.135 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.470 mid:0.436 hMid:0.166 tr:0.130 | morph:0.613 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.075 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.151 mR:0.051 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.518 mid:0.463 hMid:0.190 tr:0.166 | morph:0.609 tDelta:0.0360 percRaw:0.144 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.212 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.099 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.202 mR:0.131 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.501 mid:0.532 hMid:0.230 tr:0.229 | morph:0.608 tDelta:0.0631 percRaw:0.253 kickRaw:0.963 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.481 snGate:0.360 snSq:0.459 snPow:1.000 snPass:1 snIgn:1 hmIn:0.127 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:1.000 mL:0.331 mR:0.293 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.604 mid:0.409 hMid:0.180 tr:0.168 | morph:0.602 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:1 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.460 snPow:0.000 snPass:0 snIgn:0 hmIn:0.040 hmGate:0.325 hmSq:0.160 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.291 mL:0.125 mR:0.135 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.700 mid:0.334 hMid:0.142 tr:0.125 | morph:0.591 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.461 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.083 mL:0.058 mR:0.041 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.776 mid:0.295 hMid:0.114 tr:0.098 | morph:0.579 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.462 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.002 mL:0.028 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.832 mid:0.295 hMid:0.093 tr:0.098 | morph:0.567 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.463 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.163 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.028 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.868 mid:0.325 hMid:0.096 tr:0.096 | morph:0.557 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.026 snGate:0.360 snSq:0.464 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.325 hmSq:0.164 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.051 mR:0.000 | sc:1 scDuck:1.000
-[🐟 BABEL FISH] EL 1140 TESTING: RGB(5,117,187) → Cyan (DMX 20) [Q-HOLD]
-[MATH AUDIT][LATINO-41] sB:0.845 mid:0.405 hMid:0.096 tr:0.085 | morph:0.551 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.121 snGate:0.360 snSq:0.465 snPow:0.000 snPass:0 snIgn:0 hmIn:0.046 hmGate:0.325 hmSq:0.165 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.121 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.754 mid:0.436 hMid:0.103 tr:0.092 | morph:0.547 tDelta:0.0069 percRaw:0.028 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.058 snGate:0.360 snSq:0.465 snPow:0.000 snPass:0 snIgn:0 hmIn:0.073 hmGate:0.325 hmSq:0.165 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.165 bPar:0.000 mL:0.151 mR:0.000 | sc:1 scDuck:1.000
-[TitanOrchestrator] 🎧 WORKER BPM=126 conf=0.64 | PLL=FREEWHEEL [mem=126@-0f] phase=0.00 sync=0.49 | beat #311 | bass=0.4873 sab=0.054 | 🔬in_peak=0.55464 in_rms=0.19917
-[MATH AUDIT][LATINO-41] sB:0.640 mid:0.540 hMid:0.223 tr:0.243 | morph:0.555 tDelta:0.1515 percRaw:0.606 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.168 snGate:0.360 snSq:0.465 snPow:1.000 snPass:1 snIgn:1 hmIn:0.144 hmGate:0.325 hmSq:0.165 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.022 bPar:1.000 mL:0.406 mR:0.330 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.608 mid:0.609 hMid:0.284 tr:0.313 | morph:0.587 tDelta:0.0699 percRaw:0.279 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.641 snGate:0.360 snSq:0.461 snPow:0.000 snPass:0 snIgn:0 hmIn:0.193 hmGate:0.325 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.001 bPar:0.285 mL:0.647 mR:0.532 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.616 mid:0.601 hMid:0.259 tr:0.261 | morph:0.612 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.189 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.084 mL:0.624 mR:0.381 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.642 mid:0.547 hMid:0.205 tr:0.180 | morph:0.613 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.153 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.002 mL:0.449 mR:0.163 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.661 mid:0.547 hMid:0.165 tr:0.180 | morph:0.614 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.153 hmGate:0.325 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.449 mR:0.163 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.692 mid:0.507 hMid:0.142 tr:0.147 | morph:0.612 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.124 hmGate:0.324 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.314 mR:0.088 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.716 mid:0.562 hMid:0.133 tr:0.114 | morph:0.618 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.073 snGate:0.360 snSq:0.458 snPow:0.000 snPass:0 snIgn:0 hmIn:0.154 hmGate:0.323 hmSq:0.158 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.455 mR:0.019 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.726 mid:0.613 hMid:0.132 tr:0.091 | morph:0.643 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.065 snGate:0.360 snSq:0.456 snPow:0.000 snPass:0 snIgn:0 hmIn:0.183 hmGate:0.322 hmSq:0.156 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.602 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.707 mid:0.572 hMid:0.162 tr:0.129 | morph:0.649 tDelta:0.0380 percRaw:0.152 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.167 snGate:0.360 snSq:0.455 snPow:0.000 snPass:0 snIgn:0 hmIn:0.166 hmGate:0.321 hmSq:0.155 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.174 bPar:0.000 mL:0.512 mR:0.049 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.623 mid:0.592 hMid:0.219 tr:0.203 | morph:0.661 tDelta:0.0741 percRaw:0.297 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.454 snGate:0.360 snSq:0.454 snPow:1.000 snPass:1 snIgn:1 hmIn:0.172 hmGate:0.319 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.030 bPar:1.000 mL:0.544 mR:0.224 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.621 mid:0.524 hMid:0.235 tr:0.211 | morph:0.659 tDelta:0.0078 percRaw:0.031 kickRaw:0.976 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.035 snGate:0.360 snSq:0.454 snPow:0.000 snPass:0 snIgn:0 hmIn:0.119 hmGate:0.318 hmSq:0.154 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:0.313 mL:0.298 mR:0.244 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.687 mid:0.421 hMid:0.206 tr:0.170 | morph:0.652 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:1 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.455 snPow:0.000 snPass:0 snIgn:0 hmIn:0.054 hmGate:0.317 hmSq:0.155 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.097 mL:0.136 mR:0.139 | sc:1 scDuck:1.000
-[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.5642939214375562,"s":0.95,"l":0.3735442100236533,"hex":"#0574ba"} hasColorOverride=false | p={"h":0.4391666666666667,"s":0.9,"l":0.47413946802868695,"hex":"#0ce696"} s={"h":0.5642939214375562,"s":0.95,"l":0.3735442100236533,"hex":"#0574ba"} amb={"h":0.5149999999999999,"s":0.8,"l":0.4235442100236533,"hex":"#16b3c2"}
-[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(5,116,186) → slot="Cyan" DMX=20 translated=true poorMatch=false
-[MATH AUDIT][LATINO-41] sB:0.743 mid:0.357 hMid:0.172 tr:0.129 | morph:0.641 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.456 snPow:0.000 snPass:0 snIgn:0 hmIn:0.015 hmGate:0.316 hmSq:0.156 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.004 mL:0.077 mR:0.048 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.781 mid:0.312 hMid:0.139 tr:0.102 | morph:0.629 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.457 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.315 hmSq:0.157 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.040 mR:0.002 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.766 mid:0.341 hMid:0.121 tr:0.090 | morph:0.619 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.013 snGate:0.360 snSq:0.458 snPow:0.000 snPass:0 snIgn:0 hmIn:0.013 hmGate:0.314 hmSq:0.158 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.064 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.712 mid:0.348 hMid:0.101 tr:0.078 | morph:0.609 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.459 snPow:0.000 snPass:0 snIgn:0 hmIn:0.022 hmGate:0.313 hmSq:0.159 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.171 bPar:0.000 mL:0.070 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.671 mid:0.348 hMid:0.086 tr:0.078 | morph:0.599 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.460 snPow:0.000 snPass:0 snIgn:0 hmIn:0.022 hmGate:0.312 hmSq:0.160 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.026 bPar:0.000 mL:0.070 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.598 mid:0.387 hMid:0.145 tr:0.153 | morph:0.591 tDelta:0.0752 percRaw:0.301 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.460 snGate:0.360 snSq:0.461 snPow:1.000 snPass:1 snIgn:1 hmIn:0.049 hmGate:0.311 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.001 bPar:1.000 mL:0.105 mR:0.101 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.496 mid:0.494 hMid:0.249 tr:0.290 | morph:0.589 tDelta:0.1370 percRaw:0.548 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:1.102 snGate:0.360 snSq:0.461 snPow:1.000 snPass:1 snIgn:1 hmIn:0.117 hmGate:0.309 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:1.000 mL:0.282 mR:0.464 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.418 mid:0.524 hMid:0.297 tr:0.322 | morph:0.589 tDelta:0.0323 percRaw:0.129 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.353 snGate:0.360 snSq:0.461 snPow:0.000 snPass:0 snIgn:0 hmIn:0.137 hmGate:0.308 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.285 mL:0.373 mR:0.561 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.363 mid:0.509 hMid:0.266 tr:0.244 | morph:0.587 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.461 snPow:0.000 snPass:0 snIgn:0 hmIn:0.127 hmGate:0.307 hmSq:0.161 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.081 mL:0.327 mR:0.333 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.325 mid:0.482 hMid:0.219 tr:0.170 | morph:0.585 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.462 snPow:0.000 snPass:0 snIgn:0 hmIn:0.110 hmGate:0.305 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.002 mL:0.249 mR:0.140 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.306 mid:0.465 hMid:0.209 tr:0.149 | morph:0.581 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.462 snPow:0.000 snPass:0 snIgn:0 hmIn:0.103 hmGate:0.305 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.217 mR:0.092 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.400 mid:0.464 hMid:0.201 tr:0.115 | morph:0.578 tDelta:0.0000 percRaw:0.000 kickRaw:0.895 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.000 snGate:0.360 snSq:0.462 snPow:0.000 snPass:0 snIgn:0 hmIn:0.099 hmGate:0.304 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:0.000 mL:0.203 mR:0.022 | sc:1 scDuck:1.000
-[CHOREO] techno-club | square [MIRROR F0/2] | Bar:78 | Pan:-214 Tilt:20 | sBPM:125 phase:245°
-[CHOREO] techno-club | square [MIRROR F1/2] | Bar:78 | Pan:214 Tilt:20 | sBPM:125 phase:245°
-[MATH AUDIT][LATINO-41] sB:0.482 mid:0.458 hMid:0.187 tr:0.086 | morph:0.574 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.463 snPow:0.000 snPass:0 snIgn:0 hmIn:0.094 hmGate:0.303 hmSq:0.163 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.002 bPar:0.000 mL:0.181 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.506 mid:0.542 hMid:0.242 tr:0.186 | morph:0.579 tDelta:0.0998 percRaw:0.399 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.702 snGate:0.360 snSq:0.462 snPow:1.000 snPass:1 snIgn:1 hmIn:0.147 hmGate:0.301 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.507 bPar:1.000 mL:0.418 mR:0.178 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.526 mid:0.476 hMid:0.220 tr:0.185 | morph:0.576 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.462 snPow:0.000 snPass:0 snIgn:0 hmIn:0.090 hmGate:0.300 hmSq:0.162 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.280 mL:0.190 mR:0.177 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.541 mid:0.476 hMid:0.204 tr:0.185 | morph:0.573 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.463 snPow:0.000 snPass:0 snIgn:0 hmIn:0.090 hmGate:0.299 hmSq:0.163 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.075 mL:0.190 mR:0.177 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.652 mid:0.395 hMid:0.164 tr:0.138 | morph:0.566 tDelta:0.0000 percRaw:0.000 kickRaw:1.027 isKick:1 isKEdge:1 | kGate:0.131 kSq:0.039 kPow:1.000 kPass:1 kIgn:1 | snIn:0.000 snGate:0.360 snSq:0.463 snPow:0.000 snPass:0 snIgn:0 hmIn:0.032 hmGate:0.298 hmSq:0.163 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.800 bPar:0.002 mL:0.112 mR:0.067 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.743 mid:0.353 hMid:0.133 tr:0.103 | morph:0.558 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.464 snPow:0.000 snPass:0 snIgn:0 hmIn:0.004 hmGate:0.297 hmSq:0.164 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.074 mR:0.003 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.804 mid:0.322 hMid:0.113 tr:0.082 | morph:0.548 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.465 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.296 hmSq:0.165 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.048 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.824 mid:0.395 hMid:0.111 tr:0.074 | morph:0.541 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.107 snGate:0.360 snSq:0.466 snPow:0.000 snPass:0 snIgn:0 hmIn:0.036 hmGate:0.295 hmSq:0.166 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.112 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.808 mid:0.435 hMid:0.102 tr:0.069 | morph:0.537 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.035 snGate:0.360 snSq:0.466 snPow:0.000 snPass:0 snIgn:0 hmIn:0.067 hmGate:0.294 hmSq:0.166 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.529 bPar:0.000 mL:0.149 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.732 mid:0.452 hMid:0.091 tr:0.065 | morph:0.534 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.467 snPow:0.000 snPass:0 snIgn:0 hmIn:0.085 hmGate:0.293 hmSq:0.167 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.164 bPar:0.000 mL:0.166 mR:0.000 | sc:1 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.675 mid:0.452 hMid:0.084 tr:0.065 | morph:0.531 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.467 snPow:0.000 snPass:0 snIgn:0 hmIn:0.085 hmGate:0.292 hmSq:0.167 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.021 bPar:0.000 mL:0.166 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.552 mid:0.386 hMid:0.079 tr:0.062 | morph:0.525 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.468 snPow:0.000 snPass:0 snIgn:0 hmIn:0.076 hmGate:0.291 hmSq:0.168 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.001 bPar:0.000 mL:0.104 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.414 mid:0.251 hMid:0.059 tr:0.040 | morph:0.512 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.469 snPow:0.000 snPass:0 snIgn:0 hmIn:0.049 hmGate:0.289 hmSq:0.169 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.310 mid:0.163 hMid:0.044 tr:0.026 | morph:0.495 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.471 snPow:0.000 snPass:0 snIgn:0 hmIn:0.032 hmGate:0.288 hmSq:0.171 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.233 mid:0.106 hMid:0.033 tr:0.017 | morph:0.475 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.472 snPow:0.000 snPass:0 snIgn:0 hmIn:0.021 hmGate:0.287 hmSq:0.172 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.175 mid:0.069 hMid:0.025 tr:0.011 | morph:0.454 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.475 snPow:0.000 snPass:0 snIgn:0 hmIn:0.014 hmGate:0.286 hmSq:0.175 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.131 mid:0.045 hMid:0.019 tr:0.007 | morph:0.432 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.477 snPow:0.000 snPass:0 snIgn:0 hmIn:0.009 hmGate:0.285 hmSq:0.177 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.098 mid:0.029 hMid:0.014 tr:0.005 | morph:0.410 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.479 snPow:0.000 snPass:0 snIgn:0 hmIn:0.006 hmGate:0.283 hmSq:0.179 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.074 mid:0.019 hMid:0.011 tr:0.003 | morph:0.388 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.481 snPow:0.000 snPass:0 snIgn:0 hmIn:0.004 hmGate:0.282 hmSq:0.181 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.055 mid:0.012 hMid:0.008 tr:0.002 | morph:0.366 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.483 snPow:0.000 snPass:0 snIgn:0 hmIn:0.002 hmGate:0.281 hmSq:0.183 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.041 mid:0.008 hMid:0.006 tr:0.001 | morph:0.344 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.486 snPow:0.000 snPass:0 snIgn:0 hmIn:0.002 hmGate:0.280 hmSq:0.186 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.031 mid:0.005 hMid:0.004 tr:0.001 | morph:0.322 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.488 snPow:0.000 snPass:0 snIgn:0 hmIn:0.001 hmGate:0.279 hmSq:0.188 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.023 mid:0.003 hMid:0.003 tr:0.001 | morph:0.301 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.490 snPow:0.000 snPass:0 snIgn:0 hmIn:0.001 hmGate:0.278 hmSq:0.190 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.017 mid:0.003 hMid:0.003 tr:0.001 | morph:0.280 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.492 snPow:0.000 snPass:0 snIgn:0 hmIn:0.001 hmGate:0.277 hmSq:0.192 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[🔍 ARBITER-DIAG] EL 1140 TESTING zone=movers-left paletteRole=secondary selectedColor={"h":0.5642939214375562,"s":0.95,"l":0.35,"hex":"#046dae"} hasColorOverride=false | p={"h":0.4391666666666667,"s":0.9,"l":0.47413946802868695,"hex":"#0ce696"} s={"h":0.5642939214375562,"s":0.95,"l":0.35,"hex":"#046dae"} amb={"h":0.5149999999999999,"s":0.8,"l":0.4,"hex":"#14a9b8"}
-[🔍 COLOR-DIAG] EL 1140 TESTING: RGB(4,109,174) → slot="Cyan" DMX=20 translated=true poorMatch=false
-[MATH AUDIT][LATINO-41] sB:0.013 mid:0.002 hMid:0.002 tr:0.000 | morph:0.259 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.494 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.276 hmSq:0.194 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.010 mid:0.001 hMid:0.001 tr:0.000 | morph:0.239 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.496 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.275 hmSq:0.196 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.007 mid:0.001 hMid:0.001 tr:0.000 | morph:0.220 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.498 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.273 hmSq:0.198 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.006 mid:0.001 hMid:0.001 tr:0.000 | morph:0.200 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.500 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.272 hmSq:0.200 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.004 mid:0.000 hMid:0.001 tr:0.000 | morph:0.181 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.502 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.271 hmSq:0.202 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.003 mid:0.000 hMid:0.000 tr:0.000 | morph:0.163 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.504 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.270 hmSq:0.204 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.002 mid:0.000 hMid:0.000 tr:0.000 | morph:0.144 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.506 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.269 hmSq:0.206 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.002 mid:0.000 hMid:0.000 tr:0.000 | morph:0.127 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.507 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.268 hmSq:0.207 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.001 mid:0.000 hMid:0.000 tr:0.000 | morph:0.109 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.509 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.267 hmSq:0.209 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.001 mid:0.000 hMid:0.000 tr:0.000 | morph:0.092 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.511 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.266 hmSq:0.211 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
-[MATH AUDIT][LATINO-41] sB:0.001 mid:0.000 hMid:0.000 tr:0.000 | morph:0.075 tDelta:0.0000 percRaw:0.000 kickRaw:0.000 isKick:0 isKEdge:0 | kGate:0.131 kSq:0.039 kPow:0.000 kPass:0 kIgn:0 | snIn:0.000 snGate:0.360 snSq:0.513 snPow:0.000 snPass:0 snIgn:0 hmIn:0.000 hmGate:0.265 hmSq:0.213 hmPow:0.000 hmPass:0 hmIgn:0 | fPar:0.000 bPar:0.000 mL:0.000 mR:0.000 | sc:0 scDuck:1.000
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=drop Conf=0.32
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.425 | MID: 0.529 | HIGH: 0.146 | TOTAL: 0.559 | Max_30s: 1.000
+[SeleneTitanConscious 🔋] Zone transition: active → intense (E=0.75)
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.492 MID:0.728 HIGH:0.244 TOTAL:0.610 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop
+[DecisionMaker 🎲] DIVERSITY SELECT: winner=latina_meltdown score=0.895 from [latina_meltdown, oro_solido, solar_flare, salsa_fire]
+[DecisionMaker 🛡️] ANTI-FAKE-DROP (LATINO): "latina_meltdown" ABORTED — Z=0.27σ < 1.2 (energy insufficient for heavy arsenal)
+[SeleneTitanConscious 🔋] Zone transition: intense → active (E=0.40)
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.477 MID:0.564 HIGH:0.272 TOTAL:0.656 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.520 MID:0.590 HIGH:0.203 TOTAL:0.687 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.
+[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→verse
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.613 MID:0.750 HIGH:0.204 TOTAL:0.863 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop
+[DecisionMaker 🎲] DIVERSITY SELECT: winner=latina_meltdown score=0.895 from [latina_meltdown, oro_solido, solar_flare, salsa_fire]
+[DecisionMaker 🔴] DROP EFFECT: latina_meltdown | prob=0.76 vibe=fiesta-latina | Z=1.32
+[EffectRepository 🔪] Arsenal selection: latina_meltdown AVAILABLE (from [latina_meltdown])
+[SeleneTitanConscious 🔴] DROP ARSENAL: Selected latina_meltdown from [latina_meltdown]
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: latina_meltdown | confidence=0.76 | 🔴 DROP: prob=0.76 | winner=latina_meltdown | full arsenal=latina_meltdown, oro_solido, solar_flare, salsa_fire
+[LatinaMeltdown 🔥] NUCLEAR ACTIVATED! Hits=6 Duration=1500ms
+[LatinaMeltdown 🔥] DNA: A=0.95 C=0.30 O=0.20 (BRUTAL/RITMICO/SINTETICO)
+[SeleneTitanConscious 🔥] Cooldown registered: latina_meltdown
+[EffectManager 🔥] latina_meltdown FIRED [hunt_strike] in fiesta-latina  | I:0.95 Z:1.3
+[DNA_ANALYZER] 📊 Diversity: latina_meltdown usado 2x - Factor: 0.35x
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.596 MID:0.813 HIGH:0.193 TOTAL:0.788 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.
+[MEMORY 🧠] E:+0.6σ 🟢 B:+0.9σ 🟢 H:+0.5σ 🟢 | Phase: CLIMAX | normal
+[FUZZY 🎯] STRIKE | E=0.70 Z=0.6σ | Conf=0.57 Int=0.72 | Hunt_Strike | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious 🔋] Zone transition: intense → active (E=0.56)
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=0.9σ Alert=none
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:50b | Pan:199 Tilt:81 | sBPM:120 phase:54°
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:3 AduanaGate:2376
+[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→verse
+[VirtualWire] 📡 SAB feed — cb#3000 | frames=441 | peak=0.2485 | ch=2
+[SeleneTitanConscious 🔋] Zone transition: active → intense (E=0.79)
+[TitanOrchestrator] 🎧 WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #4 | bass=0.0853 sab=0.108 | 🔬in_peak=0.22560 in_rms=0.08658
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=BRIGHT Strategy=analogous Temp=4011K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:43% BR:43%
+[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
+[SeleneAetherAdapter 🔬] zone=front blend=replace dim=1.00 color=H330/S100/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=back blend=replace dim=1.00 color=H330/S100/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=movers blend=replace dim=1.00 color=H0/S0/L100 w=— a=—
+[NodeArbiter 🔬] L3 intents=41 sample[fixture-1778098893527:impact] merge=LTP dimmer=0.00
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=70% B/D/N=339/92/54
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=0.8σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=verse Conf=0.33
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:52b | Pan:250 Tilt:-9 | sBPM:120 phase:93°
+[SeleneTitanConscious 🔋] Zone transition: active → peak (E=0.90)
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+
+-------------------------------
+
+[SeleneTitanConscious 🔋] Zone transition: gentle → ambient (E=0.43)
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=61% B/D/N=165/275/14
+[SeleneTitanConscious] 🧠 Hunt=stalking Fuzzy=😴hold Z=-0.1σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=stalking Section=breakdown Conf=0.51
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.38 | Z=-0.35σ
+[VirtualWire] 📡 SAB feed — cb#19500 | frames=441 | peak=0.0639 | ch=2
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×2] | scene:7b | Pan:-189 Tilt:60 | sBPM:94 phase:147°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.395 | MID: 0.188 | HIGH: 0.009 | TOTAL: 0.490 | Max_30s: 1.000
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=7000 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[SeleneTitanConscious 🔋] Zone transition: valley → ambient (E=0.59)
+[MEMORY 🧠] E:+0.8σ 🟢 B:+0.1σ 🟢 H:-0.2σ 🟢 | Phase: RELEASE | normal
+[FUZZY 😴] HOLD | E=0.69 Z=0.8σ | Conf=0.20 Int=0.01 | Normal_State | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious] 🧠 Hunt=stalking Fuzzy=😴hold Z=0.2σ Alert=none
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.58)
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=drop_incoming conf=0.75 timeToEvent=5106.382978723404ms urgent=false candidates=11
+[DREAM_RANKING] 🏆 TOP 5 (11 total) | pred=drop_incoming conf=0.75:
+  1. strobe_burst         SCORE=1.000 | DNA=0.81 DIV=1.00 VIB=0.60 RSK=0.10 dist=0.33
+  2. glitch_guaguanco     SCORE=1.000 | DNA=0.73 DIV=0.70 VIB=0.60 RSK=0.10 dist=0.46
+  3. machete_spark        SCORE=1.000 | DNA=0.69 DIV=1.00 VIB=0.60 RSK=0.10 dist=0.53
+  4. clave_rhythm         SCORE=0.821 | DNA=0.89 DIV=1.00 VIB=0.60 RSK=0.00 dist=0.19
+  5. corazon_latino       SCORE=0.800 | DNA=0.86 DIV=1.00 VIB=0.60 RSK=0.10 dist=0.23
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "strobe_burst" stored for drop_incoming in ~5.1s (75% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: strobe_burst → 'modify' (pre-buffer active, timeToEvent=5106.382978723404ms)
+[INTEGRATOR] ✅ APPROVED: strobe_burst @ 0.74 | ethics=1.000 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ strobe_burst | ethics=1.000 | dream=1ms | modify
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: strobe_burst | confidence=1.00 | 🧬 DNA: modify | Ethics: 1.00
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[StrobeBurst 💥] TRIGGERED! Flashes=6 Duration=363ms Color=🌟 Dorado/Vibrante
+[SeleneTitanConscious 🔥] Cooldown registered: strobe_burst
+[EffectManager 🔥] strobe_burst FIRED [hunt_strike] in fiesta-latina  | I:0.74 Z:0.3
+[DNA_ANALYZER] 📊 Diversity: strobe_burst usado 2x - Factor: 0.35x
+[SeleneTitanConscious 🔋] Zone transition: gentle → ambient (E=0.44)
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×1] | scene:8b | Pan:-228 Tilt:18 | sBPM:94 phase:172°
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #229 | bass=0.0454 sab=0.215 | 🔬in_peak=0.06572 in_rms=0.02194
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=DARK Strategy=analogous Temp=5480K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=64% B/D/N=148/288/12
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=-0.6σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=buildup Conf=0.54
+[SeleneTitanConscious 🔋] Zone transition: valley → ambient (E=0.53)
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×1] | scene:9b | Pan:-224 Tilt:-39 | sBPM:94 phase:198°
+[MEMORY 🧠] E:-0.7σ 🟢 B:-0.7σ 🟢 H:-1.0σ 🟢 | Phase: BUILDING | normal
+[FUZZY 😴] HOLD | E=0.30 Z=-0.7σ | Conf=0.43 Int=0.17 | Energy_Silence_Total_Suppress | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=-0.7σ Alert=none
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[AudioMatrix] 📊 SAB fill=0.161 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=8704017
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #229 | bass=0.0148 sab=0.054 | 🔬in_peak=0.03551 in_rms=0.01167
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=DARK Strategy=analogous Temp=5685K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[SeleneTitanConscious 🔋] Zone transition: valley → gentle (E=0.63)
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.352 | MID: 0.123 | HIGH: 0.002 | TOTAL: 0.424 | Max_30s: 1.000
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=66% B/D/N=128/288/22
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=-0.4σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=breakdown Conf=0.28
+[SeleneTitanConscious 🔋] Zone transition: gentle → ambient (E=0.34)
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×1] | scene:11b | Pan:-81 Tilt:-55 | sBPM:94 phase:251°
+[MEMORY 🧠] E:-0.5σ 🟢 B:-0.8σ 🟢 H:-0.9σ 🟢 | Phase: RELEASE | normal
+[FUZZY 😴] HOLD | E=0.32 Z=-0.5σ | Conf=0.41 Int=0.17 | Energy_Silence_Total_Suppress | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious 🔋] Zone transition: valley → gentle (E=0.64)
+[SeleneTitanConscious] 🧠 Hunt=stalking Fuzzy=😴hold Z=0.4σ Alert=none
+[SeleneTitanConscious 🔋] Zone transition: gentle → ambient (E=0.29)
+[TitanOrchestrator] 🎧 WORKER BPM=94 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #229 | bass=0.0362 sab=0.054 | 🔬in_peak=0.03865 in_rms=0.01546
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=DARK Strategy=analogous Temp=6164K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
+[SeleneTitanConscious 🔋] Zone transition: ambient → valley (E=0.27)
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×1] | scene:12b | Pan:35 Tilt:-49 | sBPM:94 phase:278°
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=75% B/D/N=61/308/43
+[SeleneTitanConscious] 🧠 Hunt=stalking Fuzzy=😴hold Z=-0.8σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=stalking Section=breakdown Conf=0.52
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[VirtualWire] 📡 SAB feed — cb#20000 | frames=441 | peak=0.0146 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.17 | Z=-1.07σ
+[SeleneTitanConscious 🔋] Zone transition: valley → silence (E=0.13)
+[MEMORY 🧠] E:-0.9σ 🟢 B:-1.3σ 🟢 H:-0.2σ 🟢 | Phase: RELEASE | normal
+[FUZZY 😴] HOLD | E=0.20 Z=-0.9σ | Conf=0.43 Int=0.17 | Energy_Silence_Total_Suppress | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious] 🧠 Hunt=stalking Fuzzy=😴hold Z=-0.8σ Alert=none
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×1] | scene:14b | Pan:146 Tilt:-62 | sBPM:94 phase:306°
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=7200 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.232 | MID: 0.090 | HIGH: 0.003 | TOTAL: 0.300 | Max_30s: 1.000
+
+-------------------------------
+
+ Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.
+[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=0.54 < 0.60 (60% of max=1.00) → no heavy fire in a valley
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #370 | bass=0.1434 sab=0.000 | 🔬in_peak=0.19826 in_rms=0.07217
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=BRIGHT Strategy=analogous Temp=4057K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=0.54 < 0.60 (60% of max=1.00) → no heavy fire in a valley
+[SeleneTitanConscious 🔋] Zone transition: intense → active (E=0.58)
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=energy_spike conf=0.75 timeToEvent=1411.764705882353ms urgent=true candidates=12
+[DREAM_RANKING] 🏆 TOP 5 (12 total) | pred=energy_spike conf=0.75:
+  1. strobe_burst         SCORE=1.000 | DNA=0.87 DIV=0.70 VIB=0.60 RSK=0.10 dist=0.23
+  2. glitch_guaguanco     SCORE=1.000 | DNA=0.84 DIV=0.40 VIB=0.60 RSK=0.10 dist=0.28
+  3. machete_spark        SCORE=1.000 | DNA=0.80 DIV=0.70 VIB=0.60 RSK=0.10 dist=0.34
+  4. latina_meltdown      SCORE=1.000 | DNA=0.67 DIV=0.70 VIB=0.60 RSK=0.10 dist=0.56
+  5. strobe_storm         SCORE=1.000 | DNA=0.64 DIV=1.00 VIB=0.60 RSK=0.10 dist=0.63
+[INTEGRATOR] ✅ APPROVED: strobe_burst @ 0.98 | ethics=1.000 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ strobe_burst | ethics=1.000 | dream=1ms | execute
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:15b | Pan:242 Tilt:13 | sBPM:85 phase:270°
+[MEMORY 🧠] E:+0.4σ 🟢 B:-0.4σ 🟢 H:+0.4σ 🟢 | Phase: CLIMAX | normal
+[FUZZY 🎯] STRIKE | E=0.71 Z=0.4σ | Conf=0.57 Int=0.72 | Hunt_Strike | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: strobe_burst | confidence=1.00 | 🧬 DNA: execute | Ethics: 1.00
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[StrobeBurst 💥] TRIGGERED! Flashes=6 Duration=363ms Color=🌟 Dorado/Vibrante
+[SeleneTitanConscious 🔥] Cooldown registered: strobe_burst
+[EffectManager 🔥] strobe_burst FIRED [hunt_strike] in fiesta-latina  | I:0.98 Z:0.3
+[DNA_ANALYZER] 📊 Diversity: strobe_burst usado 2x - Factor: 0.35x
+[SeleneTitanConscious 🔋] Zone transition: active → peak (E=1.00)
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=71% B/D/N=354/123/21
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=0.9σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=drop Conf=0.32
+[NodeArbiter 🔬] L3 intents=53 sample[fixture-1778098893527:impact] merge=LTP dimmer=1.00
+[StrobeBurst 💥] Completed (570ms)
+[GLOBAL_COOLDOWN] ⏸️ Cached: 26s left | vibe=fiesta-latina lastEffect=strobe_burst
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.667 | MID: 0.457 | HIGH: 0.231 | TOTAL: 0.604 | Max_30s: 1.000
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=14200 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.82 | Z=1.04σ
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×1] | scene:16b | Pan:146 Tilt:-41 | sBPM:85 phase:288°
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+[TitanOrchestrator] 🎧 WORKER BPM=85 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #370 | bass=0.5068 sab=0.161 | 🔬in_peak=0.38907 in_rms=0.17292
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=BRIGHT Strategy=analogous Temp=3773K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:11% BR:11%
+[VirtualWire] 📡 SAB feed — cb#40000 | frames=441 | peak=0.5183 | ch=2
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=79% B/D/N=404/88/21
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 80% > 75%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:17b | Pan:-178 Tilt:-81 | sBPM:85 phase:316°
+[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→verse
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=0.5σ Alert=none
+[SeleneTitanConscious 🔋] Zone transition: intense → active (E=0.47)
+[SeleneTitanConscious 🔋] Zone transition: gentle → active (E=0.64)
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:19b | Pan:-227 Tilt:-58 | sBPM:87 phase:337°
+[TitanOrchestrator] 🎧 WORKER BPM=87 conf=0.44 | PLL=FREEWHEEL [mem=87@-0f] phase=0.00 sync=0.36 | beat #372 | bass=0.1474 sab=0.108 | 🔬in_peak=0.15509 in_rms=0.05535
+[TitanEngine 🧠] Stabilization: Key=G# Emotion=BRIGHT Strategy=analogous Temp=3753K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:2% BR:2%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.58)
+[MEMORY 🧠] E:+1.1σ 🟢 B:+0.7σ 🟢 H:+0.5σ 🟢 | Phase: RELEASE | normal
+[FUZZY 😴] HOLD | E=0.83 Z=1.1σ | Conf=0.16 Int=0.70 | Notable_Energy_Strike | ⚖️ MOOD:BALANCED
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=78% B/D/N=404/93/21
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=1.1σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=verse Conf=0.31
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.664 | MID: 0.485 | HIGH: 0.254 | TOTAL: 0.612 | Max_30s: 1.000
+
+-----------------------------------
+
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.56)
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×1] | scene:15b | Pan:145 Tilt:112 | sBPM:91 phase:336°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.669 | MID: 0.566 | HIGH: 0.236 | TOTAL: 0.590 | Max_30s: 1.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=82% B/D/N=419/72/21
+[GLOBAL_COOLDOWN] ⏸️ Cached: 7s left | vibe=fiesta-latina lastEffect=tidal_wave
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=😴hold Z=-0.1σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=buildup Conf=0.57
+[MEMORY 🧠] E:-0.0σ 🟢 B:+0.0σ 🟢 H:+0.8σ 🟢 | Phase: BUILDING | normal
+[FUZZY 😴] HOLD | E=0.66 Z=-0.0σ | Conf=0.20 Int=0.69 | Hunt_Strike | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.57)
+[SeleneTitanConscious 🔋] Zone transition: intense → peak (E=0.97)
+[GLOBAL_COOLDOWN] ⏸️ Cached: 7s left | vibe=fiesta-latina lastEffect=tidal_wave
+[SeleneTitanConscious 🔋] Zone transition: active → intense (E=0.80)
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×1] | scene:16b | Pan:-3 Tilt:134 | sBPM:91 phase:0°
+[GLOBAL_COOLDOWN] ⏸️ Cached: 6s left | vibe=fiesta-latina lastEffect=tidal_wave
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=0.5σ Alert=none
+[AetherAduana 🛂] VelClamp:0 Airbag:48 DarkSpin:0 AduanaGate:2376
+[TitanOrchestrator] 🎧 WORKER BPM=91 conf=0.88 | PLL=FREEWHEEL [mem=91@-0f] phase=0.00 sync=0.46 | beat #561 | bass=0.4634 sab=0.108 | 🔬in_peak=0.31575 in_rms=0.15781
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.49)
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.550 MID:0.540 HIGH:0.188 TOTAL:0.855 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop
+[DecisionMaker 🎲] DIVERSITY SELECT: winner=latina_meltdown score=0.895 from [latina_meltdown, oro_solido, solar_flare, salsa_fire]
+[DecisionMaker 🔴] DROP EFFECT: latina_meltdown | prob=0.79 vibe=fiesta-latina | Z=1.25
+[EffectRepository 🔪] Arsenal selection: latina_meltdown AVAILABLE (from [latina_meltdown])
+[SeleneTitanConscious 🔴] DROP ARSENAL: Selected latina_meltdown from [latina_meltdown]
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: latina_meltdown | confidence=0.79 | 🔴 DROP: prob=0.79 | winner=latina_meltdown | full arsenal=latina_meltdown, oro_solido, solar_flare, salsa_fire
+[LatinaMeltdown 🔥] NUCLEAR ACTIVATED! Hits=6 Duration=1500ms
+[LatinaMeltdown 🔥] DNA: A=0.95 C=0.30 O=0.20 (BRUTAL/RITMICO/SINTETICO)
+[SeleneTitanConscious 🔥] Cooldown registered: latina_meltdown
+[EffectManager 🔥] latina_meltdown FIRED [hunt_strike] in fiesta-latina  | I:0.96 Z:1.2
+[DNA_ANALYZER] 📊 Diversity: latina_meltdown usado 2x - Factor: 0.35x
+[SeleneAetherAdapter 🔬] zone resolution: front(I:3,C:3) | back(I:2,C:2) | movers(I:6,C:6)
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.739 MID:0.563 HIGH:0.246 TOTAL:0.815 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×1] | scene:17b | Pan:-152 Tilt:107 | sBPM:91 phase:26°
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=21800 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=79% B/D/N=403/86/23
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=1.6σ Alert=none
+[SeleneTitanConscious] 🐱 Hunt=evaluating Section=drop Conf=0.32
+[SeleneAetherAdapter 🔬] zone=front blend=replace dim=0.00 color=H45/S95/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=back blend=replace dim=0.00 color=H45/S95/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=movers blend=replace dim=0.00 color=H55/S100/L55 w=— a=—
+[NodeArbiter 🔬] L3 intents=41 sample[fixture-1778098893527:impact] merge=LTP dimmer=1.00
+[AetherAduana 🛂] VelClamp:0 Airbag:12 DarkSpin:6 AduanaGate:2376
+[MEMORY 🧠] E:+1.1σ 🟢 B:+0.3σ 🟢 H:+1.4σ 🟢 | Phase: CLIMAX | normal
+[FUZZY 🎯] STRIKE | E=0.84 Z=1.1σ | Conf=0.63 Int=0.75 | Hunt_Strike | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious 🔋] Zone transition: active → intense (E=0.85)
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:18b | Pan:-184 Tilt:61 | sBPM:91 phase:50°
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=0.7σ Alert=none
+[VirtualWire] 📡 SAB feed — cb#61500 | frames=441 | peak=0.3595 | ch=2
+[DecisionMaker 🔒] DROP LOCK RELEASED: section transitioned drop→verse
+[SeleneTitanConscious 🔋] Zone transition: active → gentle (E=0.54)
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.790 | MID: 0.579 | HIGH: 0.264 | TOTAL: 0.665 | Max_30s: 1.000
+[TitanOrchestrator] 🎧 WORKER BPM=91 conf=0.91 | PLL=FREEWHEEL [mem=91@-0f] phase=0.00 sync=0.50 | beat #563 | bass=0.0876 sab=0.000 | 🔬in_peak=0.48401 in_rms=0.14674
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
+[AudioMatrix] 📊 SAB fill=0.054 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=27136053
+[LatinaMeltdown 🔥] MELTDOWN COMPLETE - Nuclear salsa delivered
+
+--------------------------------
+
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.436 | MID: 0.316 | HIGH: 0.001 | TOTAL: 0.739 | Max_30s: 1.000
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🔮prepare Z=0.2σ Alert=none
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×1] | scene:32b | Pan:-168 Tilt:65 | sBPM:90 phase:221°
+[MEMORY 🧠] E:+0.4σ 🟢 B:-0.4σ 🟢 H:-0.9σ 🟢 | Phase: RELEASE | normal
+[FUZZY 😴] HOLD | E=0.61 Z=0.4σ | Conf=0.31 Int=0.42 | Building_Tension | ⚖️ MOOD:BALANCED
+[SeleneTitanConscious 🔋] Zone transition: intense → peak (E=1.00)
+[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=0.47 effective=0.43 < 0.55 | ⚖️ balanced
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | Hunt worthiness insufficient (balanced mode: 0.47
+[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.01 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #612 | bass=0.1104 sab=0.000 | 🔬in_peak=0.34303 in_rms=0.13201
+[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3214K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:85% BR:85%
+[VirtualWire] 📡 SAB feed — cb#68000 | frames=441 | peak=0.3076 | ch=2
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=95% B/D/N=531/29/1
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 79% > 75%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:33b | Pan:67 Tilt:50 | sBPM:90 phase:243°
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🎯strike Z=1.6σ Alert=none
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:35b | Pan:223 Tilt:0 | sBPM:90 phase:266°
+[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.01 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #612 | bass=0.1414 sab=0.054 | 🔬in_peak=0.10870 in_rms=0.04918
+[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3287K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=24200 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=93% B/D/N=524/41/1
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 77% > 75%
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.3s ago) | vibe=fiesta-latina | E=0.83 | Z=1.19σ
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=transition_beat conf=0.85 timeToEvent=2666.6666666666665ms urgent=false candidates=5
+[DREAM_RANKING] 🏆 TOP 5 (5 total) | pred=transition_beat conf=0.85:
+  1. strobe_storm         SCORE=0.901 | DNA=0.85 DIV=1.00 VIB=0.60 RSK=0.40 dist=0.26
+  2. machete_spark        SCORE=0.839 | DNA=0.91 DIV=0.70 VIB=0.60 RSK=0.20 dist=0.15
+  3. solar_flare          SCORE=0.822 | DNA=0.87 DIV=0.70 VIB=0.60 RSK=0.20 dist=0.23
+  4. latina_meltdown      SCORE=0.755 | DNA=0.92 DIV=0.40 VIB=0.60 RSK=0.40 dist=0.14
+  5. salsa_fire           SCORE=0.718 | DNA=0.91 DIV=0.70 VIB=0.60 RSK=0.20 dist=0.16
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "strobe_storm" stored for transition_beat in ~2.7s (85% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: strobe_storm → 'modify' (pre-buffer active, timeToEvent=2666.6666666666665ms)
+[INTEGRATOR] ✅ APPROVED: machete_spark @ 0.95 | ethics=1.000 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ machete_spark | ethics=1.000 | dream=1ms | modify
+[SeleneTitanConscious 🔋] Zone transition: peak → intense (E=0.81)
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: machete_spark | confidence=1.00 | 🧬 DNA: modify | Ethics: 1.00
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[MacheteSpark ⚔️] STEEL CUTS! Cuts=2 Duration=450ms
+[MacheteSpark ⚔️] DNA: A=0.70 C=0.50 O=0.30 (ACTIVE ZONE)
+[SeleneTitanConscious 🔥] Cooldown registered: machete_spark
+[EffectManager 🔥] machete_spark FIRED [hunt_strike] in fiesta-latina  | I:0.95 Z:1.2
+[DNA_ANALYZER] 📊 Diversity: machete_spark usado 2x - Factor: 0.35x
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.465 | MID: 0.398 | HIGH: 0.053 | TOTAL: 0.767 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:36b | Pan:108 Tilt:-56 | sBPM:90 phase:288°
+[MacheteSpark ⚔️] The work is done
+[SeleneTitanConscious 🔋] Zone transition: intense → active (E=0.57)
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+[MEMORY 🧠] E:+1.4σ 🟢 B:+0.2σ 🟢 H:+0.7σ 🟢 | Phase: RELEASE | normal
+[FUZZY 🎯] STRIKE | E=0.90 Z=1.4σ | Conf=0.64 Int=0.75 | Notable_Energy_Strike | ⚖️ MOOD:BALANCED
+[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.01 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #612 | bass=0.0998 sab=0.054 | 🔬in_peak=0.27170 in_rms=0.10208
+[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3347K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[Egress 📤] Universe 0 → HAL. Suma bytes: 510 | outputEnabled: false | blackout: false
+[SeleneTitanConscious 🔋] Zone transition: intense → peak (E=0.90)
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×1] | scene:37b | Pan:-123 Tilt:-85 | sBPM:90 phase:309°
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=91% B/D/N=517/49/1
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 77% > 75%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:2376
+[SeleneTitanConscious] 🧠 Hunt=evaluating Fuzzy=🔮prepare Z=0.6σ Alert=none
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:38b | Pan:-214 Tilt:-68 | sBPM:90 phase:333°
+[SeleneTitanConscious 🔋] Zone transition: active → peak (E=0.92)
+[AudioMatrix] 📊 SAB fill=0.054 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=30208059
+[VirtualWire] 📡 SAB feed — cb#68500 | frames=441 | peak=0.2729 | ch=2
+[GLOBAL_COOLDOWN] ⏸️ Cached: 24s left | vibe=fiesta-latina lastEffect=machete_spark
+[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.01 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #612 | bass=0.2051 sab=0.108 | 🔬in_peak=0.31641 in_rms=0.11467
+[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3385K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AbsGate PASS 🐘] DROP path abierto | LOW:0.870 MID:0.422 HIGH:0.270 TOTAL:0.930 | Gate threshold:0.600 | Max_30s:1.000
+[DecisionMaker 🔒] DROP LOCK ACQUIRED — single effect per drop
+[DecisionMaker 🎲] DIVERSITY SELECT: winner=latina_meltdown score=0.895 from [latina_meltdown, oro_solido, solar_flare, salsa_fire]
+[DecisionMaker 🔴] DROP EFFECT: latina_meltdown | prob=0.77 vibe=fiesta-latina | Z=1.53
+[EffectRepository 🔪] Arsenal selection: latina_meltdown AVAILABLE (from [latina_meltdown])
+[SeleneTitanConscious 🔴] DROP ARSENAL: Selected latina_meltdown from [latina_meltdown]
+[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: latina_meltdown | confidence=0.77 | 🔴 DROP: prob=0.77 | winner=latina_meltdown | full arsenal=latina_meltdown, oro_solido, solar_flare, salsa_fire
+[LatinaMeltdown 🔥] NUCLEAR ACTIVATED! Hits=6 Duration=1500ms
+[LatinaMeltdown 🔥] DNA: A=0.95 C=0.30 O=0.20 (BRUTAL/RITMICO/SINTETICO)
+[SeleneTitanConscious 🔥] Cooldown registered: latina_meltdown
+[EffectManager 🔥] latina_meltdown FIRED [hunt_strike] in fiesta-latina  | I:0.95 Z:1.5
+[DNA_ANALYZER] 📊 Diversity: latina_meltdown usado 2x - Factor: 0.35x
+[SeleneAetherAdapter 🔬] zone=front blend=replace dim=0.00 color=H45/S95/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=back blend=replace dim=0.00 color=H45/S95/L58 w=— a=—
+[SeleneAetherAdapter 🔬] zone=movers blend=replace dim=0.00 color=H55/S100/L55 w=— a=—
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=90% B/D/N=507/53/2
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 79% > 75%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:40b | Pan:-49 Tilt:-18 | sBPM:90 phase:354°
+[NodeArbiter 🔬] L3 intents=41 sample[fixture-1778098893527:impact] merge=LTP dimmer=0.00
+[TitanOrchestrator] 🎧 WORKER BPM=90 conf=0.01 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #612 | bass=0.2756 sab=0.000 | 🔬in_peak=0.25929 in_rms=0.11080
+[TitanEngine 🧠] Stabilization: Key=D Emotion=BRIGHT Strategy=analogous Temp=3430K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:6 AduanaGate:2376
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:41b | Pan:214 Tilt:60 | sBPM:90 phase:23°
+[LatinaMeltdown 🔥] MELTDOWN COMPLETE - Nuclear salsa delivered
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=89% B/D/N=503/59/4
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 87% > 75%
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=24400 | gateOpen=false, manualNodes=0, arbitrated.size=54 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.557 | MID: 0.445 | HIGH: 0.100 | TOTAL: 0.775 | Max_30s: 1.000

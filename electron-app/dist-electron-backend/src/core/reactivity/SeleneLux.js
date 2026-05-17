@@ -155,11 +155,6 @@ export class SeleneLux {
         const actualMode = mode === 'legacy' ? '4.1' : mode;
         this.liquidLayout = actualMode;
         this.useLiquidStereo = true; // Siempre liquid activo
-        if (actualMode === '4.1') {
-            // WAVE 3483: asegurar que el inyector de telemetría 4.1 quede activo
-            // aunque haya sido apagado manualmente en una sesión previa.
-            latinoEngine41Telemetry.setTelemetryEnabled(true);
-        }
         console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
     }
     getLastActiveLiquidEngine() {
@@ -525,10 +520,12 @@ export class SeleneLux {
         };
         // Log cada 60 frames (~1 segundo) si hay actividad significativa
         if (this.frameCount % 60 === 0 && (laserOutput.intensity > 0.1 || washerOutput.intensity > 0.3)) {
-            console.log(`[SeleneLux 🟢🎨 PHOTON WEAVER] ` +
-                `Laser:${laserOutput.mode}(${(laserOutput.intensity * 100).toFixed(0)}%) | ` +
-                `Washer:${washerOutput.mode}(${(washerOutput.intensity * 100).toFixed(0)}%) | ` +
-                `Safety:${laserOutput.safetyTriggered ? '⚠️TRIGGERED' : '✅OK'}`);
+            // console.log(
+            //   `[SeleneLux 🟢🎨 PHOTON WEAVER] ` +
+            //   `Laser:${laserOutput.mode}(${(laserOutput.intensity * 100).toFixed(0)}%) | ` +
+            //   `Washer:${washerOutput.mode}(${(washerOutput.intensity * 100).toFixed(0)}%) | ` +
+            //   `Safety:${laserOutput.safetyTriggered ? '⚠️TRIGGERED' : '✅OK'}`
+            // );
         }
         this.lastStrobeActive = isStrobeActive;
         this.lastForceMovement = forceMovement;
@@ -589,9 +586,11 @@ export class SeleneLux {
             // No temp vars needed — liquidStereoOverrides are spread directly in zoneIntensities
             if (this.frameCount % 30 === 0) {
                 const ls = this.liquidStereoOverrides;
-                console.log(`[AGC TRUST 🌊LIQUID 7B] profile:${this._activeProfileId} | FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
-                    `BL:${ls.backL.toFixed(2)} BR:${ls.backR.toFixed(2)} | ` +
-                    `ML:${ls.moverL.toFixed(2)} MR:${ls.moverR.toFixed(2)}`);
+                // console.log(
+                //   `[AGC TRUST 🌊LIQUID 7B] profile:${this._activeProfileId} | FL:${ls.frontL.toFixed(2)} FR:${ls.frontR.toFixed(2)} | ` +
+                //   `BL:${ls.backL.toFixed(2)} BR:${ls.backR.toFixed(2)} | ` +
+                //   `ML:${ls.moverL.toFixed(2)} MR:${ls.moverR.toFixed(2)}`
+                // );
             }
         }
         else if (this.rockOverrides && physicsApplied === 'rock') {

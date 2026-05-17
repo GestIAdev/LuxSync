@@ -1985,9 +1985,6 @@ export class TitanOrchestrator {
       // ═══════════════════════════════════════════════════════════════════════
       const aetherSafety = this._aetherSafety
 
-      // 🏎️ WAVE 4831: Propagar nodos con DarkSpin bypass al safety middleware
-      aetherSafety.setSkipDarkSpinNodes(aetherArbiter.getSkipDarkSpinNodeIds())
-
       // FASE 0: Set frame context + apply output gate
       aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name)
       aetherSafety.setOutputEnabled(this._outputEnabled)
@@ -2086,16 +2083,16 @@ export class TitanOrchestrator {
             .find(f => typeof f.name === 'string' && f.name.toLowerCase().includes('tungsten'))
           if (tungstenFixture) {
             const base = (tungstenFixture.dmxAddress ?? (tungstenFixture.address ?? 1)) - 1 // 0-based
-            console.log(
-              `[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
-              `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
-              `CH2(GM)=${egressBuf[base + 1]} | ` +
-              `CH3(Strobe)=${egressBuf[base + 2]} | ` +
-              `CH4(G1)=${egressBuf[base + 3]} | ` +
-              `CH5(G2)=${egressBuf[base + 4]} | ` +
-              `CH6(G3)=${egressBuf[base + 5]} | ` +
-              `CH7=${egressBuf[base + 6]}`,
-            )
+            // console.log(
+            //   `[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
+            //   `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
+            //   `CH2(GM)=${egressBuf[base + 1]} | ` +
+            //   `CH3(Strobe)=${egressBuf[base + 2]} | ` +
+            //   `CH4(G1)=${egressBuf[base + 3]} | ` +
+            //   `CH5(G2)=${egressBuf[base + 4]} | ` +
+            //   `CH6(G3)=${egressBuf[base + 5]} | ` +
+            //   `CH7=${egressBuf[base + 6]}`,
+            // )
           }
         }
         // ════════════════════════════════════════════════════════════════════

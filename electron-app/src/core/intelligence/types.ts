@@ -275,7 +275,10 @@ export interface SeleneMusicalPattern {
   
   /** Presencia de bass (0-1) */
   bassPresence: number
-  
+
+  /** 🎧 WAVE 4867: Bass suavizado (promedio ventana corta del FFT X-RAY) */
+  bassPresenceSustained?: number
+
   /** Presencia de mids (0-1) */
   midPresence: number
   

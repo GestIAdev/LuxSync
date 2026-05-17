@@ -710,8 +710,13 @@ const VIBE_STRIKE_MATRIX: Record<string, VibeStrikeWeights> = {
     beautyWeight: 0.3,      // WAVE 635: Subido de 0.2 a 0.3
     urgencyWeight: 0.6,     // Ritmo sigue siendo rey
     consonanceWeight: 0.1,  // WAVE 635: Bajado de 0.2 a 0.1
-    threshold: 0.65,        // WAVE 640: Bajado de 0.70 a 0.65 (sweet spot para cumbia)
-    urgencyBoost: 0.1       // WAVE 635: Bajado de 0.2 a 0.1 (más sutil)
+    // WAVE 4834: Endurecer latino para reducir cadencia en BALANCED.
+    // 0.70 mantiene la sensibilidad musical, pero corta los near-miss que
+    // disparaban efectos en cadena en valles intermedios.
+    threshold: 0.70,
+    // WAVE 4834: boost más conservador para evitar que el pulso rítmico
+    // empuje demasiados frames por encima del umbral.
+    urgencyBoost: 0.05
   },
   
   // 🔊 TECHNO-CLUB: Hypnotic urgency, minimal harmony

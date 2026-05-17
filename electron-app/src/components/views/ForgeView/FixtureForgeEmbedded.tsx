@@ -48,7 +48,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 // â”€â”€ WAVE 4732-C: Compilador â”€â”€
 import { canAdmit } from '../../../core/forge/cellTypeAdmittance'
-import { compileForgeState } from '../../../core/forge/compileForgeState'
+import { compileForgeState, resolveChannelDeps } from '../../../core/forge/compileForgeState'
 import './FixtureForgeEmbedded.css'
 import { 
   GripVertical, 
@@ -1057,22 +1057,30 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       builtFixture.nodeGraph = graphSnapshot
     }
 
-    // â”€â”€ WAVE 4732-C: Si hay cÃ©lulas Aether definidas, el compilador
+    // ── WAVE 4732-C: Si hay células Aether definidas, el compilador
     //    genera el nodeGraph sobreescribiendo cualquier grafo previo.
-    //    Las cÃ©lulas son la fuente de verdad cuando existen.
+    //    Las células son la fuente de verdad para la topología del grafo.
     if (forgeState.cells.length > 0) {
       const compileResult = compileForgeState(forgeState)
       if (compileResult.ok) {
+        // WAVE 4872 — GHOST IN THE JSON FIX:
+        // NO sobrescribir builtFixture.channels desde compileResult.fixture.channels.
+        // compileResult puede estar basado en forgeState que lleva 1 tick de retraso
+        // respecto al React state (Channel Rack), resucitando ignitionDeps eliminadas.
+        // El Rack manda en channels[]; las células solo aportan nodeGraph.
+        // Aplicamos resolveChannelDeps sobre los channels Rack-truthed para enriquecer
+        // targetChannelIndex sin reintroducir deps que el usuario ya eliminó.
         builtFixture.nodeGraph = compileResult.fixture.nodeGraph
-        // Propagar canales resueltos (ignitionDeps con targetChannelIndex)
-        builtFixture.channels = compileResult.fixture.channels as FixtureChannel[]
+        builtFixture.channels = (builtFixture.channels as FixtureChannel[]).map(ch =>
+          resolveChannelDeps(ch, builtFixture.channels as FixtureChannel[])
+        ) as FixtureChannel[]
         if (compileResult.warnings.length > 0) {
           console.warn('[Forge 4732-C] Compile warnings:', compileResult.warnings)
         }
       } else {
         console.error('[Forge 4732-C] Blocking compile errors:', compileResult.errors)
         // Blocking errors will surface to the user in 4732-E (toast layer).
-        // Por ahora, no abortamos el save â€” el grafo anterior prevalece.
+        // Por ahora, no abortamos el save — el grafo anterior prevalece.
       }
     }
 

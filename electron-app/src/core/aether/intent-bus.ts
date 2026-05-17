@@ -103,14 +103,7 @@ export interface INodeIntent {
   readonly source: IntentSource
 
   /**
-   * 🏎️ WAVE 4831: DARKSPIN BYPASS
-   * Si true, AetherSafetyMiddleware ignora el blackout de tránsito
-   * mecánico para este nodo en este frame.
-   */
-  skipDarkSpin?: boolean
-
-  /**
-   * 🌊 WAVE 4832: PER-INTENT MERGE STRATEGY
+   *  WAVE 4832: PER-INTENT MERGE STRATEGY
    * Cómo debe mezclarse este intent con valores ya escritos en el canal.
    *
    * - `'LTP'` (default si omitido): Last Takes Precedence. El intent

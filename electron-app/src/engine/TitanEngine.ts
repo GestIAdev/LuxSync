@@ -810,7 +810,7 @@ export class TitanEngine extends EventEmitter {
     
     // Log del sistema nervioso (cada 60 frames si hay energía)
     if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
-      console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`)
+      // console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`)
     }
     
     // ─────────────────────────────────────────────────────────────────────
@@ -1029,7 +1029,7 @@ export class TitanEngine extends EventEmitter {
         this.effectManager.trigger({
           effectType,
           intensity,
-          source: 'hunt_strike',  // Disparado por decisión de consciencia/HuntEngine
+          source: consciousnessOutput.source,  // 🎧 WAVE 4867: Fuente real (hunt|dream|prediction|...) en vez de hunt_strike hardcodeado
           reason,
           musicalContext: {
             zScore: this.selene.getEnergyZScore(),  // 🧠 Desde SeleneTitanConscious

@@ -274,9 +274,15 @@ export function forgeReducer(
       const ch = state.channels[action.idx]
       if (!ch || !ch.ignitionDeps) return state
       const deps = ch.ignitionDeps.filter((_, i) => i !== action.depIdx)
+      // WAVE 4872: Simetría con handler V1 — eliminar la clave cuando queda vacía.
+      // Dejar ignitionDeps:[] en forgeState causaba asimetría respecto al Channel Rack
+      // (que omite la clave) y contaminaba la igualdad estructural sameDeps en sync.
+      const patchedCh: FixtureChannel = deps.length === 0
+        ? (({ ignitionDeps: _omit, ...rest }) => rest)(ch) as FixtureChannel
+        : { ...ch, ignitionDeps: deps }
       return {
         ...state,
-        channels: patchChannel(state.channels, action.idx, { ignitionDeps: deps }),
+        channels: state.channels.map((c, i) => i === action.idx ? patchedCh : c),
         dirty:    true,
       }
     }

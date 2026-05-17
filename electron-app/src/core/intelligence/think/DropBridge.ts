@@ -57,6 +57,8 @@ export interface DropBridgeInput {
   hasSnare?: boolean
   /** Harshness espectral opcional (0-1) */
   harshness?: number
+  /** Vibe actual para consciencia de género (WAVE 4860) */
+  vibeId?: string
 }
 
 /**
@@ -145,7 +147,20 @@ export function checkDropBridge(
   config: Partial<DropBridgeConfig> = {}
 ): DropBridgeResult {
   const cfg = { ...DEFAULT_CONFIG, ...config }
-  const { energyZScore, sectionType, rawEnergy, hasKick } = input
+  const { energyZScore, sectionType, rawEnergy, hasKick, vibeId } = input
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌴 WAVE 4860: LATINO CONSCIOUSNESS — El groove pesado del reggaetón
+  // mantiene Z-scores artificialmente altos. Elevar thresholds para evitar
+  // falsos positivos de "momento divino" en cada kick de dembow.
+  // ═══════════════════════════════════════════════════════════════════════
+  const isLatinoVibe = vibeId === 'fiesta-latina' || vibeId === 'dembow' || vibeId?.includes('latina') || false
+  if (isLatinoVibe) {
+    cfg.zScoreThreshold = Math.max(cfg.zScoreThreshold, 3.5)
+    cfg.minEnergy = Math.max(cfg.minEnergy, 0.70)
+    cfg.watchingThreshold = Math.max(cfg.watchingThreshold, 2.5)
+    cfg.imminentThreshold = Math.max(cfg.imminentThreshold, 3.0)
+  }
   
   // === EVALUAR CONDICIONES ===
   const conditionsMet: string[] = []

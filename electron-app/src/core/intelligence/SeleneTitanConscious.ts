@@ -108,6 +108,7 @@ import {
 
 import {
   makeDecision,
+  HEAVY_ARSENAL_EFFECTS,
   type DecisionInputs,
 } from './think/DecisionMaker'
 
@@ -341,6 +342,36 @@ export class SeleneTitanConscious extends EventEmitter {
   // "No pueden brillar las fisicas reactivas que estan muy conseguidas" — Radwulf
   private lastGlobalEffectTimestamp: number = 0
   private readonly GLOBAL_EFFECT_COOLDOWN_MS = 7000  // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
+  // WAVE 4834: Fiesta Latina necesita más aire entre disparos para evitar
+  // ráfagas de 4-6 EPM en BALANCED cuando el groove mantiene worthiness alto.
+  private readonly LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 12000
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal
+  // ═══════════════════════════════════════════════════════════════════════
+  // Tras despachar un efecto DROP o de alta severidad (heavy arsenal), el
+  // Gatekeeper impone un bloqueo ético para que candidatos menores no ensucien
+  // el contraste visual. El objetivo es que el drop respire 3-5 segundos.
+  // ═══════════════════════════════════════════════════════════════════════
+  private lastHighSeverityEffectTimestamp: number = 0
+  private readonly POST_DROP_REFRACTORY_MS = 4000  // 4s de respiro retinal
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎧 WAVE 4863: FFT X-RAY SNIFFER — Diagnóstico temporal de bandas
+  // ═══════════════════════════════════════════════════════════════════════
+  // Buffer rodante de 180 frames (~3s @ 60fps) para auditar qué bandas
+  // mantienen el Absolute Energy Gate abierto durante los valles del reggaetón.
+  // Se sospecha que la compresión de voces (MID) sostiene el candado artificialmente.
+  // ═══════════════════════════════════════════════════════════════════════
+  private readonly FFT_XRAY_BUFFER_SIZE = 180        // 3s @ 60fps
+  private readonly FFT_XRAY_LOG_INTERVAL_MS = 3000   // Log cada 3s
+  private _fftXRayLow: Float32Array = new Float32Array(this.FFT_XRAY_BUFFER_SIZE)
+  private _fftXRayMid: Float32Array = new Float32Array(this.FFT_XRAY_BUFFER_SIZE)
+  private _fftXRayHigh: Float32Array = new Float32Array(this.FFT_XRAY_BUFFER_SIZE)
+  private _fftXRayTotal: Float32Array = new Float32Array(this.FFT_XRAY_BUFFER_SIZE)
+  private _fftXRayHead: number = 0
+  private _fftXRayCount: number = 0
+  private _fftXRayLastLogMs: number = 0
 
   // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
   private lastDreamIntegrationResult: IntegrationDecision | null = null
@@ -370,8 +401,11 @@ export class SeleneTitanConscious extends EventEmitter {
     this.config = { ...DEFAULT_CONFIG, ...config }
     
     // 🧠 WAVE 666: Inicializar memoria contextual
+    // 🐘 WAVE 4861: 300→1800 — The Elephant Memory (30s @ 60fps)
+    // WAVE 1181 corrigió el DEFAULT del módulo pero la instancia aquí seguía en 300.
+    // Z-Scores sobre 5s provocan inflación estadística en valles breves → false positives.
     this.contextualMemory = new ContextualMemory({
-      bufferSize: 300,       // ~5 segundos @ 60fps
+      bufferSize: 1800,      // 🐘 WAVE 4861: 30 segundos @ 60fps (was 300 = 5s)
       zScoreNotable: 1.5,
       zScoreSignificant: 2.0,
       zScoreEpic: 2.5,       // Threshold para anomalía
@@ -671,13 +705,70 @@ export class SeleneTitanConscious extends EventEmitter {
     const enrichedPattern: SeleneMusicalPattern = {
       ...pattern,
       energyZScore: this.lastMemoryOutput.stats.energy.zScore,
+      // 🎧 WAVE 4867: Bass suavizado — inercia contra plosivas y 808 cortos
+      bassPresenceSustained: this._fftXRayAvgLowLastN(30),
     }
     
+    // 🎧 WAVE 4863: FFT X-Ray — alimentar buffer de diagnóstico de bandas
+    this._fftXRayUpdate(state.bass, state.mid, state.high, state.rawEnergy, state.timestamp)
+
     // Capturar belleza y consonancia para decisiones posteriores
     this.currentBeauty = senseBeauty(state.currentPalette, enrichedPattern)
     this.currentConsonance = senseConsonance(state.currentPalette, enrichedPattern)
     
     return enrichedPattern
+  }
+
+  /**
+   * 🎧 WAVE 4867: Promedio de los últimos N frames del buffer LOW.
+   * Usado por el Sustained Spectral Gate para ignorar plosivas instantáneas.
+   */
+  private _fftXRayAvgLowLastN(n: number): number {
+    const count = Math.min(n, this._fftXRayCount)
+    if (count === 0) return 0
+    let sum = 0
+    const head = this._fftXRayHead
+    for (let i = 0; i < count; i++) {
+      const idx = (head - 1 - i + this.FFT_XRAY_BUFFER_SIZE) % this.FFT_XRAY_BUFFER_SIZE
+      sum += this._fftXRayLow[idx]
+    }
+    return sum / count
+  }
+
+  /**
+   * 🎧 WAVE 4863: FFT X-RAY SNIFFER
+   * Buffer rodante de 3s con media por bandas. Log periódico en consola para
+   * correlacionar qué banda sostiene el Absolute Energy Gate en los valles.
+   */
+  private _fftXRayUpdate(low: number, mid: number, high: number, total: number, nowMs: number): void {
+    const idx = this._fftXRayHead % this.FFT_XRAY_BUFFER_SIZE
+    this._fftXRayLow[idx]   = low
+    this._fftXRayMid[idx]   = mid
+    this._fftXRayHigh[idx]  = high
+    this._fftXRayTotal[idx] = total
+    this._fftXRayHead++
+    if (this._fftXRayCount < this.FFT_XRAY_BUFFER_SIZE) this._fftXRayCount++
+
+    if (nowMs - this._fftXRayLastLogMs >= this.FFT_XRAY_LOG_INTERVAL_MS) {
+      this._fftXRayLastLogMs = nowMs
+      const n = this._fftXRayCount
+      let sumLow = 0, sumMid = 0, sumHigh = 0, sumTotal = 0
+      for (let i = 0; i < n; i++) {
+        sumLow   += this._fftXRayLow[i]
+        sumMid   += this._fftXRayMid[i]
+        sumHigh  += this._fftXRayHigh[i]
+        sumTotal += this._fftXRayTotal[i]
+      }
+      const avgLow   = sumLow   / n
+      const avgMid   = sumMid   / n
+      const avgHigh  = sumHigh  / n
+      const avgTotal = sumTotal / n
+      const max30s   = this.lastMemoryOutput?.stats.energy.max ?? 0
+      console.log(
+        `[FFT X-RAY 🎧] 3s Avg -> LOW: ${avgLow.toFixed(3)} | MID: ${avgMid.toFixed(3)} | ` +
+        `HIGH: ${avgHigh.toFixed(3)} | TOTAL: ${avgTotal.toFixed(3)} | Max_30s: ${max30s.toFixed(3)}`
+      )
+    }
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -771,6 +862,7 @@ export class SeleneTitanConscious extends EventEmitter {
       energyZScore: zScore,
       sectionType: normalizedSection as 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro',
       rawEnergy: state.rawEnergy,
+      vibeId: pattern.vibeId,
       hasKick: false, // TODO: Integrar detección de transientes
       harshness: state.harshness,
     })
@@ -871,10 +963,16 @@ export class SeleneTitanConscious extends EventEmitter {
       const isDropUrgent = prediction.type === 'drop_incoming' 
                          && prediction.estimatedTimeMs < 800 
                          && prediction.probability > 0.80
-      if (timeSinceLastEffect < this.GLOBAL_EFFECT_COOLDOWN_MS && !isDropUrgent) {
+      const baseCooldownMs = pattern.vibeId === 'fiesta-latina'
+        ? this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS
+        : this.GLOBAL_EFFECT_COOLDOWN_MS
+      // 🎭 WAVE 4860: Conectar mood cooldownMultiplier al reloj global
+      // CALM x4.0 = 28s-48s | BALANCED x2.2 = 15s-26s | PUNK x0.7 = 5s-8s
+      const globalCooldownMs = MoodController.getInstance().applyCooldown(baseCooldownMs)
+      if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent) {
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
         if (this.stats.framesProcessed % 15 === 0) {
-          console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((this.GLOBAL_EFFECT_COOLDOWN_MS - timeSinceLastEffect) / 1000)}s left | lastEffect=${this.lastEffectType ?? 'none'}`)
+          console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`)
         }
         dreamIntegrationData = this.lastDreamIntegrationResult  // Reusar cache
       } else {
@@ -1022,6 +1120,8 @@ export class SeleneTitanConscious extends EventEmitter {
       activeDictator: getEffectManager().hasDictator(),
       // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote in decisions
       fuzzyDecision: this.lastFuzzyDecision ?? undefined,
+      // 🐘 WAVE 4861: Energía máxima del buffer de 30s para Absolute Energy Gate
+      energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -1157,9 +1257,28 @@ export class SeleneTitanConscious extends EventEmitter {
       // ═══════════════════════════════════════════════════════════════════════════
       const hardMinimumCheck = this.effectSelector.checkAvailability(intent, pattern.vibeId)
       const isHardMinimumBlocked = hardMinimumCheck.reason?.includes('HARD_COOLDOWN')
+
+      // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal
+      // Tras un efecto DROP o de alta severidad, cualquier candidato menor que llegue
+      // en los siguientes 4s es vetado para preservar el contraste visual.
+      const timeSinceHighSeverity = now - this.lastHighSeverityEffectTimestamp
+      const isInRefractory = timeSinceHighSeverity < this.POST_DROP_REFRACTORY_MS
+      const isHighSeverityCandidate = HEAVY_ARSENAL_EFFECTS.has(intent)
+        || output.effectDecision?.reason?.includes('DROP')
+        || output.effectDecision?.reason?.includes('DIVINE')
+      const refractoryBlocked = isInRefractory && !isHighSeverityCandidate && !isHardMinimumBlocked
+
+      if (refractoryBlocked) {
+        console.log(
+          `[Gatekeeper] Veto: Post-Drop Breathing Space — ${intent} blocked ` +
+          `(${Math.ceil((this.POST_DROP_REFRACTORY_MS - timeSinceHighSeverity) / 1000)}s remaining)`
+        )
+      }
       
       const availability = isHardMinimumBlocked
         ? hardMinimumCheck  // 🔒 HARD MINIMUM es LEY ABSOLUTA
+        : refractoryBlocked
+        ? { available: false, reason: 'Post-Drop Refractory Lock (WAVE 4860)' }
         : alreadyValidatedByArsenal
         ? { available: true, reason: 'DIVINE arsenal pre-validated' }
         : hasHighEthicsOverride
@@ -1168,6 +1287,16 @@ export class SeleneTitanConscious extends EventEmitter {
       
       if (availability.available && output.effectDecision) {
         finalEffectDecision = output.effectDecision
+
+        // 🛡️ WAVE 4860: Registrar si este efecto es de alta severidad para activar
+        // el Post-Drop Refractory Lock en el próximo frame.
+        const isHighSeverityApproved = HEAVY_ARSENAL_EFFECTS.has(intent)
+          || output.effectDecision.reason?.includes('DROP')
+          || output.effectDecision.reason?.includes('DIVINE')
+          || pattern.section === 'drop'
+        if (isHighSeverityApproved) {
+          this.lastHighSeverityEffectTimestamp = now
+        }
         
         if (hasHighEthicsOverride) {
           // ⚡ WAVE 2093.2: Registrar el override para temporal guard

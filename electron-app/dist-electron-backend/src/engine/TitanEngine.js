@@ -561,7 +561,7 @@ export class TitanEngine extends EventEmitter {
         }, elementalMods);
         // Log del sistema nervioso (cada 60 frames si hay energía)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
-            console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`);
+            // console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`)
         }
         // ─────────────────────────────────────────────────────────────────────
         // 2. CALCULAR INTENSIDAD GLOBAL  (⚡ WAVE 3504-EXT.2: pure module)

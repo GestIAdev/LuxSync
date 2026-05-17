@@ -687,8 +687,6 @@ export class EffectManager extends EventEmitter {
     let dominantMixBus: 'htp' | 'global' = 'htp'
     // 🛂 WAVE 3477: Pasaporte diplomático heredado del efecto dominante
     let dominantOverrideMoverShield = false
-    // 🏎️ WAVE 4831: DarkSpin bypass — OR acumulativo
-    let anySkipDarkSpin = false
     // 🔗 WAVE 991: Prioridad separada para mixBus (THE MISSING LINK)
     let mixBusPriority = -1
     // 🥁 WAVE 700.7: Movement tracking
@@ -777,11 +775,6 @@ export class EffectManager extends EventEmitter {
         dominantOverrideMoverShield = true
       }
 
-      // 🏎️ WAVE 4831: DarkSpin bypass — OR acumulativo
-      if (output.skipDarkSpin === true) {
-        anySkipDarkSpin = true
-      }
-      
       // 🥁 WAVE 700.7: Highest priority takes movement
       if (output.movement && effect.priority > movementPriority) {
         movementPriority = effect.priority
@@ -886,7 +879,6 @@ export class EffectManager extends EventEmitter {
       contributingEffects: contributing,
       globalComposition: globalComposition > 0 ? globalComposition : undefined,  // 🌊 WAVE 1080
       overrideMoverShield: dominantOverrideMoverShield || undefined,  // 🛂 WAVE 3477
-      skipDarkSpin: anySkipDarkSpin || undefined,  // 🏎️ WAVE 4831
       zones: allZones.size > 0 ? Array.from(allZones) : undefined,  // 🌴 WAVE 700.8
       movementOverride: highestPriorityMovement,  // 🥁 WAVE 700.7
       zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined,  // 🎨 WAVE 725

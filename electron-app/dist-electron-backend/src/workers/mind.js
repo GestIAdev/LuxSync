@@ -323,7 +323,7 @@ function handleMessage(message) {
                 state.frameCount++;
                 // 🔍 Log cada 60 frames (~1 segundo)
                 if (state.frameCount % 60 === 0) {
-                    console.log(`[GAMMA 🎵] Frame ${state.frameCount}: bpm=${analysis.bpm?.toFixed(0)}, energy=${analysis.energy?.toFixed(2)}`);
+                    // console.log(`[GAMMA 🎵] Frame ${state.frameCount}: bpm=${analysis.bpm?.toFixed(0)}, energy=${analysis.energy?.toFixed(2)}`);
                 }
                 if (isAudioAnalysis(analysis)) {
                     // 🧠 WAVE 230.5: SOLO EMITIR MUSICAL_CONTEXT

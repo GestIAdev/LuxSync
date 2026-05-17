@@ -103,9 +103,7 @@ interface IntentSlot {
   priority: number
   confidence: number
   source: IntentSource
-  /** 🏎️ WAVE 4831: DarkSpin bypass — pre-existing field on INodeIntent. */
-  skipDarkSpin?: boolean
-  /** 🌊 WAVE 4832: Per-intent merge strategy ('HTP' | 'LTP' | 'ADD'). */
+  /**  WAVE 4832: Per-intent merge strategy ('HTP' | 'LTP' | 'ADD'). */
   mergeStrategy?: MergeStrategy
 }
 
@@ -280,7 +278,7 @@ export class IntentBus implements IIntentBus {
     this._valuePool = new Array<Record<string, number>>(capacity)
     for (let i = 0; i < capacity; i++) {
       // Todos los slots tienen la misma structure literal → V8 hidden class compartida
-      this._slots[i] = { nodeId: '', values: {}, priority: 0, confidence: 1, source: 'color_system', skipDarkSpin: false, mergeStrategy: undefined }
+      this._slots[i] = { nodeId: '', values: {}, priority: 0, confidence: 1, source: 'color_system', mergeStrategy: undefined }
       // Pool de values objects: misma shape → hidden class compartida
       this._valuePool[i] = {}
     }
@@ -378,9 +376,7 @@ export class IntentBus implements IIntentBus {
     slot.priority      = intent.priority
     slot.confidence    = intent.confidence
     slot.source        = intent.source
-    // 🏎️ WAVE 4831 / 🌊 WAVE 4832: propagar metadatos opcionales.
-    // Sin estos, scratch objects del adapter perdían su semántica al cruzar el bus.
-    slot.skipDarkSpin  = intent.skipDarkSpin === true
+    // 🌊 WAVE 4832: propagar metadatos opcionales.
     slot.mergeStrategy = intent.mergeStrategy
 
     this._writeHead++

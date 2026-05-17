@@ -375,7 +375,7 @@ type DecisionType =
 function validateHuntStrikeZoneProgression(
   candidateEffectId: string,
   currentZone: EnergyZone | undefined
-): { allowed: boolean; reason?: string } {
+): { allowed: boolean; reason?: string; logKey?: string } {
   // 🛡️ REGLA 1: Prohibición absoluta de efectos nucleares en hunt_strike
   // Los efectos nucleares están reservados para DIVINE moments + deliberate actions
   const NUCLEAR_ARSENAL = new Set([
@@ -494,7 +494,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   const isLatinoVibeForSpectral = _vId.includes('latino') || _vId.includes('latina') || _vId.includes('dembow')
   let spectralGateOpen = true
   if (isLatinoVibeForSpectral && energyGateOpen) {
-    const lowBand = pattern.bassPresence ?? 0
+    const lowBand = pattern.bassPresenceSustained ?? pattern.bassPresence ?? 0
     const midBand = pattern.midPresence ?? 0
     const kickThreshold = (maxHistoric ?? 0) * 0.85
     const hasHeavyKick = lowBand >= kickThreshold
@@ -567,7 +567,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
         )
       } else {
         // 🌴 WAVE 4865: Bloqueado por Spectral Gate — candado opera en silencio salvo intención real
-        const lowBand = pattern.bassPresence ?? 0
+        const lowBand = pattern.bassPresenceSustained ?? pattern.bassPresence ?? 0
         const midBand = pattern.midPresence ?? 0
         const kickThreshold = (maxHistoric ?? 0) * 0.85
         const hasHeavyKick = lowBand >= kickThreshold
@@ -770,7 +770,10 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       // Fall through to buildup_enhance
     } else {
       // 🛡️ WAVE 4866: Hunt tactical strike also subject to zone validation
-      const candidateEffect = dreamIntegration!.effect!.effect
+      const candidateEffect = dreamIntegration?.effect?.effect
+      if (!candidateEffect) {
+        return 'strike'  // No DNA proposal — legacy strike sin zona check
+      }
       const huntZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone)
       if (!huntZoneCheck.allowed) {
         logHuntStrikeVetoOnce(
@@ -1161,7 +1164,7 @@ function generateDropPreparationDecision(
     const dropIsLatinoVibe = _vIdDrop.includes('latino') || _vIdDrop.includes('latina') || _vIdDrop.includes('dembow')
     let dropSpectralGateOpen = true
     if (dropIsLatinoVibe && dropEnergyGateOpen) {
-      const lowBand = inputs.pattern.bassPresence ?? 0
+      const lowBand = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0
       const midBand = inputs.pattern.midPresence ?? 0
       const kickThreshold = (dropMaxHistoric ?? 0) * 0.85
       const hasHeavyKick = lowBand >= kickThreshold
@@ -1179,7 +1182,7 @@ function generateDropPreparationDecision(
         )
       } else {
         // 🌴 WAVE 4865: Bloqueado por Spectral Gate en DROP candidato real
-        const lowBand = inputs.pattern.bassPresence ?? 0
+        const lowBand = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0
         const midBand = inputs.pattern.midPresence ?? 0
         const kickThreshold = (dropMaxHistoric ?? 0) * 0.85
         const hasHeavyKick = lowBand >= kickThreshold

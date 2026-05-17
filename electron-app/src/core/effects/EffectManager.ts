@@ -1545,3 +1545,9 @@ export function resetEffectManager(): void {
   }
   effectManagerInstance = null
 }
+
+/**
+ * 🛡️ WAVE 4866: Export EFFECT_ZONE_MAP para validación en DecisionMaker
+ * Permite que sistemas upstream validen zona antes de trigger
+ */
+export { EFFECT_ZONE_MAP }

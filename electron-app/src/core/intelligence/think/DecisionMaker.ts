@@ -44,6 +44,16 @@ import { getDNAAnalyzer, EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
 // 🛡️ WAVE 4866: Zone validation for hunt_strike anti-osmosis protection
 import { EFFECT_ZONE_MAP } from '../../effects/EffectManager'
 
+const HUNT_STRIKE_VETO_LOGGED = new Set<string>()
+
+function logHuntStrikeVetoOnce(key: string, message: string): void {
+  if (HUNT_STRIKE_VETO_LOGGED.has(key)) {
+    return
+  }
+  HUNT_STRIKE_VETO_LOGGED.add(key)
+  console.log(message)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -381,9 +391,11 @@ function validateHuntStrikeZoneProgression(
   ])
 
   if (NUCLEAR_ARSENAL.has(candidateEffectId)) {
+    const logKey = `nuclear:${candidateEffectId}`
     return {
       allowed: false,
       reason: `🛑 [WAVE 4866] Nuclear weapon (${candidateEffectId}) prohibited in tactical hunt_strike. Weapon reserved for DIVINE moments.`,
+      logKey,
     }
   }
 
@@ -412,18 +424,22 @@ function validateHuntStrikeZoneProgression(
 
   // ❌ Ósmosis inversa prohibida: no bajar de zona en hunt_strike
   if (candidateIndex < currentIndex) {
+    const logKey = `zone-drop:${candidateEffectId}:${currentZone}:${candidateZone}`
     return {
       allowed: false,
       reason: `🛑 [WAVE 4866] Incompatible zone drop: ${currentZone}(${currentIndex}) → ${candidateZone}(${candidateIndex}). Hunt_strike cannot reduce energy.`,
+      logKey,
     }
   }
 
   // ⚠️ Progresión suave: permite máximo 1 zona de salto
   const zoneDelta = candidateIndex - currentIndex
   if (zoneDelta > 1) {
+    const logKey = `zone-jump:${candidateEffectId}:${currentZone}:${candidateZone}`
     return {
       allowed: false,
       reason: `🛑 [WAVE 4866] Excessive zone jump: ${currentZone}(${currentIndex}) → ${candidateZone}(${candidateIndex}) = Δ${zoneDelta}. Max Δ=1 allowed in hunt_strike.`,
+      logKey,
     }
   }
 
@@ -640,7 +656,10 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       // 🛡️ WAVE 4866: Hunt_Strike Zone Protection — validate hunt_strike safety before return
       const huntEligibility = validateHuntStrikeZoneProgression(proposedEffect, energyContext?.zone)
       if (!huntEligibility.allowed) {
-        console.log(`[DecisionMaker ${huntEligibility.reason}]`)
+        logHuntStrikeVetoOnce(
+          huntEligibility.logKey ?? `hunt-veto:${proposedEffect}:${energyContext?.zone ?? 'unknown'}`,
+          `[DecisionMaker ${huntEligibility.reason}]`
+        )
         // Fall through — no 'strike', wait for better conditions
       } else {
         return 'strike'  // DNA aprobó + zona validada → strike con efecto de DNA
@@ -704,7 +723,10 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
         const candidateEffect = dreamIntegration!.effect!.effect
         const fuzzyZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone)
         if (!fuzzyZoneCheck.allowed) {
-          console.log(`[DecisionMaker ${fuzzyZoneCheck.reason}]`)
+          logHuntStrikeVetoOnce(
+            fuzzyZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`,
+            `[DecisionMaker ${fuzzyZoneCheck.reason}]`
+          )
           // Fall through instead of forcing strike through zone barrier
         } else {
           console.log(
@@ -719,7 +741,10 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
         const candidateEffect = dreamIntegration!.effect!.effect
         const fuzzyZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone)
         if (!fuzzyZoneCheck.allowed) {
-          console.log(`[DecisionMaker ${fuzzyZoneCheck.reason}]`)
+          logHuntStrikeVetoOnce(
+            fuzzyZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`,
+            `[DecisionMaker ${fuzzyZoneCheck.reason}]`
+          )
           // Fall through instead of forcing strike through zone barrier
         } else {
           console.log(
@@ -748,7 +773,10 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       const candidateEffect = dreamIntegration!.effect!.effect
       const huntZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone)
       if (!huntZoneCheck.allowed) {
-        console.log(`[DecisionMaker ${huntZoneCheck.reason}]`)
+        logHuntStrikeVetoOnce(
+          huntZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`,
+          `[DecisionMaker ${huntZoneCheck.reason}]`
+        )
         // Fall through instead of forcing strike through zone barrier
       } else {
         return 'strike'
